@@ -481,6 +481,28 @@ def composite(
     ...
 
 
+@overload
+def composite(
+    _class_or_attr: Callable[..., _CC],
+    *attrs: _CompositeAttrType[Any],
+    group: Optional[str] = None,
+    deferred: bool = False,
+    raiseload: bool = False,
+    comparator_factory: Optional[Type[Composite.Comparator[_T]]] = None,
+    active_history: bool = False,
+    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    default: Optional[Any] = _NoArg.NO_ARG,
+    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
+    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    info: Optional[_InfoType] = None,
+    doc: Optional[str] = None,
+    **__kw: Any,
+) -> Composite[_CC]:
+    ...
+
+
 def composite(
     _class_or_attr: Union[
         None, Type[_CC], Callable[..., _CC], _CompositeAttrType[Any]

@@ -33,6 +33,10 @@ class Point:
     def __ne__(self, other: Any) -> bool:
         return not self.__eq__(other)
 
+    @classmethod
+    def _generate(cls, x1: int, y1: int) -> "Point":
+        return Point(x1, y1)
+
 
 class Vertex(Base):
     __tablename__ = "vertices"
@@ -47,7 +51,7 @@ class Vertex(Base):
     start = composite(Point, "x1", "y1")
 
     # taken from left hand side
-    end: Mapped[Point] = composite(Point, "x2", "y2")
+    end: Mapped[Point] = composite(Point._generate, "x2", "y2")
 
 
 v1 = Vertex(start=Point(3, 4), end=Point(5, 6))

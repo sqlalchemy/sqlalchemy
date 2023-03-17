@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 9502
+
+    Fixed typing issue where :func:`_orm.composite` would not allow an
+    arbitrary callable as the source of the composite class.
