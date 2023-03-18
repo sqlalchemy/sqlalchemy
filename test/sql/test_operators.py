@@ -4255,6 +4255,15 @@ class CustomOpTest(fixtures.TestBase):
         ):
             op1(3, 5)
 
+    def test_hash(self):
+        c1 = column("x")
+        c2 = column("y")
+
+        op1 = c1.op("+")(c2).operator
+        op2 = c1.op("+")(c2).operator
+
+        assert hash(op1) == hash(op2)
+
 
 class TupleTypingTest(fixtures.TestBase):
     def _assert_types(self, expr):
