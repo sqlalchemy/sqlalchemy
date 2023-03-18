@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 9506
+
+    Change hash implementation for :class:`_sql.custom_op`.
+    Pull request courtesy Yurii Karabas.

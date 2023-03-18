@@ -418,7 +418,17 @@ class custom_op(OperatorType, Generic[_T]):
         return isinstance(other, custom_op) and other.opstring == self.opstring
 
     def __hash__(self) -> int:
-        return id(self)
+        return hash(
+            (
+                self.opstring,
+                self.precedence,
+                self.is_comparison,
+                self.natural_self_precedent,
+                self.eager_grouping,
+                self.return_type,
+                self.python_impl,
+            )
+        )
 
     def __call__(
         self,
