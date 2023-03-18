@@ -1,7 +1,0 @@
-.. change::
-      :tags: usecase, postgresql
-      :tickets: 9442
-
-      Modifications to the base PostgreSQL dialect to allow for better integration with the
-      sqlalchemy-redshift third party dialect for SQLAlchemy 2.0. Pull request courtesy
-      matthewgdv.

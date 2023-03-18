@@ -10,7 +10,29 @@
 
 .. changelog::
     :version: 2.0.7
-    :include_notes_from: unreleased_20
+    :released: March 18, 2023
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 9416
+
+        Added new PostgreSQL type :class:`_postgresql.CITEXT`. Pull request
+        courtesy Julian David Rath.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 9502
+
+        Fixed typing issue where :func:`_orm.composite` would not allow an
+        arbitrary callable as the source of the composite class.
+
+    .. change::
+          :tags: usecase, postgresql
+          :tickets: 9442
+
+          Modifications to the base PostgreSQL dialect to allow for better integration with the
+          sqlalchemy-redshift third party dialect for SQLAlchemy 2.0. Pull request courtesy
+          matthewgdv.
 
 .. changelog::
     :version: 2.0.6

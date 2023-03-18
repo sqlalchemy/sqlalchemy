@@ -1,6 +1,0 @@
-.. change::
-    :tags: usecase, postgresql
-    :tickets: 9416
-
-    Added new PostgreSQL type :class:`_postgresql.CITEXT`. Pull request
-    courtesy Julian David Rath.
