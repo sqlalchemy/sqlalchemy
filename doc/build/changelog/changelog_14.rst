@@ -15,7 +15,109 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.47
-    :include_notes_from: unreleased_14
+    :released: March 18, 2023
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 9075
+        :versions: 2.0.0rc3
+
+        Fixed bug / regression where using :func:`.bindparam()` with the same name
+        as a column in the :meth:`.Update.values` method of :class:`.Update`, as
+        well as the :meth:`.Insert.values` method of :class:`.Insert` in 2.0 only,
+        would in some cases silently fail to honor the SQL expression in which the
+        parameter were presented, replacing the expression with a new parameter of
+        the same name and discarding any other elements of the SQL expression, such
+        as SQL functions, etc. The specific case would be statements that were
+        constructed against ORM entities rather than plain :class:`.Table`
+        instances, but would occur if the statement were invoked with a
+        :class:`.Session` or a :class:`.Connection`.
+
+        :class:`.Update` part of the issue was present in both 2.0 and 1.4 and is
+        backported to 1.4.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 5047
+
+        Added :class:`_oracle.ROWID` to reflected types as this type may be used in
+        a "CREATE TABLE" statement.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 7664
+
+        Fixed stringify for a the :class:`.CreateSchema` and :class:`.DropSchema`
+        DDL constructs, which would fail with an ``AttributeError`` when
+        stringified without a dialect.
+
+
+    .. change::
+        :tags: usecase, mysql
+        :tickets: 9047
+        :versions: 2.0.0
+
+        Added support to MySQL index reflection to correctly reflect the
+        ``mysql_length`` dictionary, which previously was being ignored.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 9048
+        :versions: 2.0.0
+
+        Added support to the asyncpg dialect to return the ``cursor.rowcount``
+        value for SELECT statements when available. While this is not a typical use
+        for ``cursor.rowcount``, the other PostgreSQL dialects generally provide
+        this value. Pull request courtesy Michael Gorven.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 9133
+
+        Fixed bug where a schema name given with brackets, but no dots inside the
+        name, for parameters such as :paramref:`_schema.Table.schema` would not be
+        interpreted within the context of the SQL Server dialect's documented
+        behavior of interpreting explicit brackets as token delimiters, first added
+        in 1.2 for #2626, when referring to the schema name in reflection
+        operations. The original assumption for #2626's behavior was that the
+        special interpretation of brackets was only significant if dots were
+        present, however in practice, the brackets are not included as part of the
+        identifier name for all SQL rendering operations since these are not valid
+        characters within regular or delimited identifiers.  Pull request courtesy
+        Shan.
+
+
+    .. change::
+        :tags: bug, mypy
+        :versions: 2.0.0rc3
+
+        Adjustments made to the mypy plugin to accommodate for some potential
+        changes being made for issue #236 sqlalchemy2-stubs when using SQLAlchemy
+        1.4. These changes are being kept in sync within SQLAlchemy 2.0.
+        The changes are also backwards compatible with older versions of
+        sqlalchemy2-stubs.
+
+
+    .. change::
+        :tags: bug, mypy
+        :tickets: 9102
+        :versions: 2.0.0rc3
+
+        Fixed crash in mypy plugin which could occur on both 1.4 and 2.0 versions
+        if a decorator for the :func:`_orm.registry.mapped` decorator were used
+        that was referenced in an expression with more than two components (e.g.
+        ``@Backend.mapper_registry.mapped``). This scenario is now ignored; when
+        using the plugin, the decorator expression needs to be two components (i.e.
+        ``@reg.mapped``).
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 9506
+
+        Fixed critical SQL caching issue where use of the
+        :meth:`_sql.Operators.op` custom operator function would not produce an appropriate
+        cache key, leading to reduce the effectiveness of the SQL cache.
+
 
 .. changelog::
     :version: 1.4.46

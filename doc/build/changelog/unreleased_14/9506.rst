@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 9506
-
-    Fixed critical SQL caching issue where use of the
-    :meth:`_sql.Operators.op` custom operator function would not produce an appropriate
-    cache key, leading to reduce the effectiveness of the SQL cache.
-

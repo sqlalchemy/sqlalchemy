@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 7664
-
-    Fixed stringify for a the :class:`.CreateSchema` and :class:`.DropSchema`
-    DDL constructs, which would fail with an ``AttributeError`` when
-    stringified without a dialect.
-
