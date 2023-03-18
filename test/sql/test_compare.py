@@ -13,6 +13,7 @@ from sqlalchemy import exists
 from sqlalchemy import extract
 from sqlalchemy import Float
 from sqlalchemy import Integer
+from sqlalchemy import literal
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import or_
@@ -204,12 +205,24 @@ class CoreFixtures:
             ),
         ),
         lambda: (
+            literal(1).op("+")(literal(1)),
+            literal(1).op("-")(literal(1)),
+            column("q").op("-")(literal(1)),
+            UnaryExpression(table_a.c.b, modifier=operators.neg),
+            UnaryExpression(table_a.c.b, modifier=operators.desc_op),
+            UnaryExpression(table_a.c.b, modifier=operators.custom_op("!")),
+            UnaryExpression(table_a.c.b, modifier=operators.custom_op("~")),
+        ),
+        lambda: (
             column("q") == column("x"),
             column("q") == column("y"),
             column("z") == column("x"),
             (column("z") == column("x")).self_group(),
             (column("q") == column("x")).self_group(),
             column("z") + column("x"),
+            column("z").op("foo")(column("x")),
+            column("z").op("foo")(literal(1)),
+            column("z").op("bar")(column("x")),
             column("z") - column("x"),
             column("x") - column("z"),
             column("z") > column("x"),

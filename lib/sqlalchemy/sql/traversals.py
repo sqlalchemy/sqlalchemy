@@ -767,7 +767,7 @@ class TraversalComparatorStrategy(HasTraversalDispatch, util.MemoizedSlots):
     def visit_operator(
         self, attrname, left_parent, left, right_parent, right, **kw
     ):
-        return left is right
+        return left == right
 
     def visit_type(
         self, attrname, left_parent, left, right_parent, right, **kw

@@ -41,6 +41,7 @@ from typing import Dict
 from typing import Generic
 from typing import Optional
 from typing import Set
+from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -52,6 +53,7 @@ from ..util.typing import Literal
 from ..util.typing import Protocol
 
 if typing.TYPE_CHECKING:
+    from .cache_key import CacheConst
     from .type_api import TypeEngine
 
 _T = TypeVar("_T", bound=Any)
@@ -415,10 +417,24 @@ class custom_op(OperatorType, Generic[_T]):
         self.python_impl = python_impl
 
     def __eq__(self, other: Any) -> bool:
-        return isinstance(other, custom_op) and other.opstring == self.opstring
+        return (
+            isinstance(other, custom_op)
+            and other._hash_key() == self._hash_key()
+        )
 
     def __hash__(self) -> int:
-        return id(self)
+        return hash(self._hash_key())
+
+    def _hash_key(self) -> Union[CacheConst, Tuple[Any, ...]]:
+        return (
+            self.__class__,
+            self.opstring,
+            self.precedence,
+            self.is_comparison,
+            self.natural_self_precedent,
+            self.eager_grouping,
+            self.return_type._static_cache_key if self.return_type else None,
+        )
 
     def __call__(
         self,
