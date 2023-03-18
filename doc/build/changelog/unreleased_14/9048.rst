@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 9048
-    :versions: 2.0.0rc2
-
-    Added support to the asyncpg dialect to return the ``cursor.rowcount``
-    value for SELECT statements when available. While this is not a typical use
-    for ``cursor.rowcount``, the other PostgreSQL dialects generally provide
-    this value. Pull request courtesy Michael Gorven.
