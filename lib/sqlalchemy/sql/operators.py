@@ -293,10 +293,24 @@ class custom_op(object):
         )
 
     def __eq__(self, other):
-        return isinstance(other, custom_op) and other.opstring == self.opstring
+        return (
+            isinstance(other, custom_op)
+            and other._hash_key() == self._hash_key()
+        )
 
     def __hash__(self):
-        return id(self)
+        return hash(self._hash_key())
+
+    def _hash_key(self):
+        return (
+            self.__class__,
+            self.opstring,
+            self.precedence,
+            self.is_comparison,
+            self.natural_self_precedent,
+            self.eager_grouping,
+            self.return_type._static_cache_key if self.return_type else None,
+        )
 
     def __call__(self, left, right, **kw):
         return left.operate(self, right, **kw)
