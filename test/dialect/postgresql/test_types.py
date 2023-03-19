@@ -91,6 +91,28 @@ from sqlalchemy.types import UserDefinedType
 from ...engine.test_ddlevents import DDLEventWCreateHarness
 
 
+class MiscTypesTest(AssertsCompiledSQL, fixtures.TestBase):
+    @testing.combinations(
+        ("asyncpg", "x LIKE $1::VARCHAR"),
+        ("psycopg", "x LIKE %(x_1)s::VARCHAR"),
+        ("psycopg2", "x LIKE %(x_1)s"),
+        ("pg8000", "x LIKE %s::VARCHAR"),
+    )
+    def test_string_coercion_no_len(self, driver, expected):
+        """test #9511.
+
+        comparing to string does not include length in the cast for those
+        dialects that require a cast.
+
+        """
+
+        self.assert_compile(
+            column("x", String(2)).like("%a%"),
+            expected,
+            dialect=f"postgresql+{driver}",
+        )
+
+
 class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
     __only_on__ = "postgresql"
     __dialect__ = postgresql.dialect()

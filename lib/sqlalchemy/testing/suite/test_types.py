@@ -397,6 +397,25 @@ class StringTest(_LiteralRoundTripFixture, fixtures.TestBase):
     def test_literal_non_ascii(self, literal_round_trip):
         literal_round_trip(String(40), ["réve🐍 illé"], ["réve🐍 illé"])
 
+    @testing.combinations(
+        ("%B%", ["AB", "BC"]),
+        ("A%C", ["AC"]),
+        ("A%C%Z", []),
+        argnames="expr, expected",
+    )
+    def test_dont_truncate_rightside(
+        self, metadata, connection, expr, expected
+    ):
+        t = Table("t", metadata, Column("x", String(2)))
+        t.create(connection)
+
+        connection.execute(t.insert(), [{"x": "AB"}, {"x": "BC"}, {"x": "AC"}])
+
+        eq_(
+            connection.scalars(select(t.c.x).where(t.c.x.like(expr))).all(),
+            expected,
+        )
+
     def test_literal_quoting(self, literal_round_trip):
         data = """some 'text' hey "hi there" that's text"""
         literal_round_trip(String(40), [data], [data])
