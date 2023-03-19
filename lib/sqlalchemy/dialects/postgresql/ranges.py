@@ -642,17 +642,18 @@ class Range(Generic[_T]):
         return self.difference(other)
 
     def intersection(self, other: Range[_T]) -> Range[_T]:
-        """Compute the intersection of this range with the `other`.
-        """
+        """Compute the intersection of this range with the `other`."""
         if self.empty or other.empty or not self.overlaps(other):
             return Range(empty=True)
 
         slower = self.lower
+        slower_b = self.bounds[0]
         supper = self.upper
-        slower_b, supper_b = self.bounds
+        supper_b = self.bounds[1]
         olower = other.lower
+        olower_b = other.bounds[0]
         oupper = other.upper
-        olower_b, oupper_b = other.bounds
+        oupper_b = other.bounds[1]
 
         if self._compare_edges(slower, slower_b, olower, olower_b) < 0:
             rlower = olower
@@ -668,7 +669,11 @@ class Range(Generic[_T]):
             rupper = supper
             rupper_b = supper_b
 
-        return Range(rlower, rupper, bounds=cast(_BoundsType, rlower_b + rupper_b))
+        return Range(
+            rlower,
+            rupper,
+            bounds=cast(_BoundsType, rlower_b + rupper_b),
+        )
 
     def __mul__(self, other: Range[_T]) -> Range[_T]:
         return self.intersection(other)
@@ -846,7 +851,7 @@ class AbstractRange(sqltypes.TypeEngine[Range[_T]]):
             Will raise an exception if the resulting range is not
             contiguous.
             """
-            return self.expr.op("*")(other)
+            return self.expr.op("*")(other)  # type: ignore
 
         __mul__ = intersection
 
