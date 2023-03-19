@@ -641,6 +641,38 @@ class Range(Generic[_T]):
     def __sub__(self, other: Range[_T]) -> Range[_T]:
         return self.difference(other)
 
+    def intersection(self, other: Range[_T]) -> Range[_T]:
+        """Compute the intersection of this range with the `other`.
+        """
+        if self.empty or other.empty or not self.overlaps(other):
+            return Range(empty=True)
+
+        slower = self.lower
+        supper = self.upper
+        slower_b, supper_b = self.bounds
+        olower = other.lower
+        oupper = other.upper
+        olower_b, oupper_b = other.bounds
+
+        if self._compare_edges(slower, slower_b, olower, olower_b) < 0:
+            rlower = olower
+            rlower_b = olower_b
+        else:
+            rlower = slower
+            rlower_b = slower_b
+
+        if self._compare_edges(supper, supper_b, oupper, oupper_b) > 0:
+            rupper = oupper
+            rupper_b = oupper_b
+        else:
+            rupper = supper
+            rupper_b = supper_b
+
+        return Range(rlower, rupper, bounds=cast(_BoundsType, rlower_b + rupper_b))
+
+    def __mul__(self, other: Range[_T]) -> Range[_T]:
+        return self.intersection(other)
+
     def __str__(self) -> str:
         return self._stringify()
 
@@ -808,6 +840,15 @@ class AbstractRange(sqltypes.TypeEngine[Range[_T]]):
             return self.expr.op("-")(other)  # type: ignore
 
         __sub__ = difference
+
+        def intersection(self, other: Any) -> ColumnElement[Range[_T]]:
+            """Range expression. Returns the intersection of the two ranges.
+            Will raise an exception if the resulting range is not
+            contiguous.
+            """
+            return self.expr.op("*")(other)
+
+        __mul__ = intersection
 
 
 class AbstractRangeImpl(AbstractRange[Range[_T]]):

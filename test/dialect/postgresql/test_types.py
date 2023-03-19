@@ -4396,6 +4396,50 @@ class _RangeComparisonFixtures(_RangeTests):
     @testing.combinations(
         *_common_ranges_to_test,
         lambda r, e: Range(r.lower, r.lower, bounds="[]"),
+        lambda r, e: Range(r.lower - e, r.upper - e, bounds="[]"),
+        lambda r, e: Range(r.lower - e, r.upper + e, bounds="[)"),
+        lambda r, e: Range(r.lower - e, r.upper + e, bounds="[]"),
+        argnames="r1t",
+    )
+    @testing.combinations(
+        *_common_ranges_to_test,
+        lambda r, e: Range(r.lower, r.lower, bounds="[]"),
+        lambda r, e: Range(r.lower, r.upper - e, bounds="(]"),
+        lambda r, e: Range(r.lower, r.lower + e, bounds="[)"),
+        lambda r, e: Range(r.lower - e, r.lower, bounds="(]"),
+        lambda r, e: Range(r.lower - e, r.lower + e, bounds="()"),
+        lambda r, e: Range(r.lower, r.upper, bounds="[]"),
+        lambda r, e: Range(r.lower, r.upper, bounds="()"),
+        argnames="r2t",
+    )
+    def test_intersection(self, connection, r1t, r2t):
+        r1 = r1t(self._data_obj(), self._epsilon)
+        r2 = r2t(self._data_obj(), self._epsilon)
+
+        RANGE = self._col_type
+        range_typ = self._col_str
+
+        q = select(
+            cast(r1, RANGE).intersection(r2),
+        )
+        validate_q = select(
+            literal_column(f"'{r1}'::{range_typ}*'{r2}'::{range_typ}", RANGE),
+        )
+
+        pg_res = connection.execute(q).scalar()
+
+        validate_difference = connection.execute(validate_q).scalar()
+        eq_(pg_res, validate_difference)
+        py_res = r1.difference(r2)
+        eq_(
+            py_res,
+            pg_res,
+            f"{r1}.intersection({r2}): got {py_res}, expected {pg_res}",
+        )
+
+    @testing.combinations(
+        *_common_ranges_to_test,
+        lambda r, e: Range(r.lower, r.lower, bounds="[]"),
         argnames="r1t",
     )
     @testing.combinations(
