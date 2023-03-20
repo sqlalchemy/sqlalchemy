@@ -644,7 +644,7 @@ class Range(Generic[_T]):
     def intersection(self, other: Range[_T]) -> Range[_T]:
         """Compute the intersection of this range with the `other`."""
         if self.empty or other.empty or not self.overlaps(other):
-            return Range(empty=True)
+            return Range(None, None, empty=True)
 
         slower = self.lower
         slower_b = self.bounds[0]
