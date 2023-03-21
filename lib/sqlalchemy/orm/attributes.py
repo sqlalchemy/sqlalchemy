@@ -611,11 +611,11 @@ def create_proxied_attribute(
 
         @property
         def _parententity(self):
-            return inspection.inspect(self.class_)
+            return inspection.inspect(self.class_, raiseerr=False)
 
         @property
         def parent(self):
-            return inspection.inspect(self.class_)
+            return inspection.inspect(self.class_, raiseerr=False)
 
         _is_internal_proxy = True
 

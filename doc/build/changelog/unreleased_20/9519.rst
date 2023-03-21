@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9519
+
+    Fixed regression where accessing the expression value of a hybrid property
+    on a class that was either unmapped or not-yet-mapped (such as calling upon
+    it within a :func:`_orm.declared_attr` method) would raise an internal
+    error, as an internal fetch for the parent class' mapper would fail and an
+    instruction for this failure to be ignored were inadvertently removed in
+    2.0.
