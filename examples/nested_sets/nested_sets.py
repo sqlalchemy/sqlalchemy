@@ -52,7 +52,9 @@ def before_insert(mapper, connection, instance):
         )
 
         connection.execute(
-            personnel.update(personnel.c.rgt >= right_most_sibling).values(
+            personnel.update()
+            .where(personnel.c.rgt >= right_most_sibling)
+            .values(
                 lft=case(
                     (
                         personnel.c.lft > right_most_sibling,
