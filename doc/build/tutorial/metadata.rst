@@ -498,8 +498,19 @@ another operation that was mentioned at the beginning of the section,
 that of **table reflection**.   Table reflection refers to the process of
 generating :class:`_schema.Table` and related objects by reading the current
 state of a database.   Whereas in the previous sections we've been declaring
-:class:`_schema.Table` objects in Python and then emitting DDL to the database,
-the reflection process does it in reverse.
+:class:`_schema.Table` objects in Python, where we then have the option
+to emit DDL to the database to generate such a schema, the reflection process
+does these two steps in reverse, starting from an existing database
+and generating in-Python data structures to represent the schemas within
+that database.
+
+.. tip::  There is no requirement that reflection must be used in order to
+   use SQLAlchemy with a pre-existing database.  It is entirely typical that
+   the SQLAlchemy application declares all metadata explicitly in Python,
+   such that its structure corresponds to that the existing database.
+   The metadata structure also need not include tables, columns, or other
+   constraints and constructs in the pre-existing database that are not needed
+   for the local application to function.
 
 As an example of reflection, we will create a new :class:`_schema.Table`
 object which represents the ``some_table`` object we created manually in
