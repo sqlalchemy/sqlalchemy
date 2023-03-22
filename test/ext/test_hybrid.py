@@ -15,7 +15,9 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.ext import hybrid
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import column_property
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
@@ -420,6 +422,61 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
                 return self.firstname + " " + self.lastname
 
         return A
+
+    def test_access_from_unmapped(self):
+        """test #9519"""
+
+        class DnsRecord:
+            name = Column("name", String)
+
+            @hybrid.hybrid_property
+            def ip_value(self):
+                return self.name[1:3]
+
+            @ip_value.expression
+            def ip_value(cls):
+                return func.substring(cls.name, 1, 3)
+
+        raw_attr = DnsRecord.ip_value
+        is_(raw_attr._parententity, None)
+
+        self.assert_compile(
+            raw_attr, "substring(name, :substring_1, :substring_2)"
+        )
+
+        self.assert_compile(
+            select(DnsRecord.ip_value),
+            "SELECT substring(name, :substring_2, :substring_3) "
+            "AS substring_1",
+        )
+
+    def test_access_from_not_yet_mapped(self, decl_base):
+        """test #9519"""
+
+        class DnsRecord(decl_base):
+            __tablename__ = "dnsrecord"
+            id = Column(Integer, primary_key=True)
+            name = Column(String, unique=False, nullable=False)
+
+            @declared_attr
+            def thing(cls):
+                return column_property(cls.ip_value)
+
+            name = Column("name", String)
+
+            @hybrid.hybrid_property
+            def ip_value(self):
+                return self.name[1:3]
+
+            @ip_value.expression
+            def ip_value(cls):
+                return func.substring(cls.name, 1, 3)
+
+        self.assert_compile(
+            select(DnsRecord.thing),
+            "SELECT substring(dnsrecord.name, :substring_2, :substring_3) "
+            "AS substring_1 FROM dnsrecord",
+        )
 
     def test_labeling_for_unnamed(self, _unnamed_expr_fixture):
         A = _unnamed_expr_fixture
