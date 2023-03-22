@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9526
+
+    Fixed issue where the :meth:`_sql.BindParameter.render_literal_execute`
+    method would fail when called on a parameter that also had ORM annotations
+    associated with it. In practice, this would be observed as a failure of SQL
+    compilation when using some combinations of a dialect that uses "FETCH
+    FIRST" such as Oracle along with a :class:`_sql.Select` construct that uses
+    :meth:`_sql.Select.limit`, within some ORM contexts, including if the
+    statement were embedded within a relationship primaryjoin expression.
+
