@@ -2057,12 +2057,9 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
             :ref:`engine_thirdparty_caching`
 
         """
-        return self.__class__(
-            self.key,
-            self.value,
-            type_=self.type,
-            literal_execute=True,
-        )
+        c = ClauseElement._clone(self)
+        c.literal_execute = True
+        return c
 
     def _negate_in_binary(self, negated_op, original_op):
         if self.expand_op is original_op:

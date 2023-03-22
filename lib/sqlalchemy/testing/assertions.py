@@ -498,6 +498,7 @@ class AssertsCompiledSQL:
         default_schema_name=None,
         from_linting=False,
         check_param_order=True,
+        use_literal_execute_for_simple_int=False,
     ):
         if use_default_dialect:
             dialect = default.DefaultDialect()
@@ -540,6 +541,9 @@ class AssertsCompiledSQL:
 
         if render_postcompile:
             compile_kwargs["render_postcompile"] = True
+
+        if use_literal_execute_for_simple_int:
+            compile_kwargs["use_literal_execute_for_simple_int"] = True
 
         if for_executemany:
             kw["for_executemany"] = True
