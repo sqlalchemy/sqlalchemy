@@ -2756,8 +2756,11 @@ class JSON(Indexable, TypeEngine[Any]):
             .. versionadded:: 1.4.0b2
 
             """
-            return self._binary_w_type(  # type: ignore
-                Numeric(precision, scale, asdecimal=asdecimal), "as_numeric"
+            return self._binary_w_type(
+                Numeric(
+                    precision, scale, asdecimal=asdecimal
+                ),  # type: ignore[call-overload]
+                "as_numeric",
             )
 
         def as_json(self) -> Any:
