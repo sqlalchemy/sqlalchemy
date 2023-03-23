@@ -235,7 +235,9 @@ class Query(
 
     def __init__(
         self,
-        entities: Sequence[_ColumnsClauseArgument[Any]],
+        entities: Union[
+            _ColumnsClauseArgument[Any], Sequence[_ColumnsClauseArgument[Any]]
+        ],
         session: Optional[Session] = None,
     ):
         """Construct a :class:`_query.Query` directly.
@@ -278,7 +280,10 @@ class Query(
         return self
 
     def _set_entities(
-        self, entities: Iterable[_ColumnsClauseArgument[Any]]
+        self,
+        entities: Union[
+            _ColumnsClauseArgument[Any], Iterable[_ColumnsClauseArgument[Any]]
+        ],
     ) -> None:
         self._raw_columns = [
             coercions.expect(

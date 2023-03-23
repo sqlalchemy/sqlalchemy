@@ -791,7 +791,7 @@ class AttributeEventToken:
 
     __slots__ = "impl", "op", "parent_token"
 
-    def __init__(self, attribute_impl, op):
+    def __init__(self, attribute_impl: AttributeImpl, op: util.symbol):
         self.impl = attribute_impl
         self.op = op
         self.parent_token = self.impl.parent_token
@@ -834,7 +834,7 @@ class AttributeImpl:
         self,
         class_: _ExternalEntityType[_O],
         key: str,
-        callable_: _LoaderCallable,
+        callable_: Optional[_LoaderCallable],
         dispatch: _Dispatch[QueryableAttribute[Any]],
         trackparent: bool = False,
         compare_function: Optional[Callable[..., bool]] = None,
@@ -2618,7 +2618,7 @@ def register_attribute_impl(
         # TODO: this appears to be the WriteOnlyAttributeImpl /
         # DynamicAttributeImpl constructor which is hardcoded
         impl = cast("Type[WriteOnlyAttributeImpl]", impl_class)(
-            class_, key, typecallable, dispatch, **kw
+            class_, key, dispatch, **kw
         )
     elif uselist:
         impl = CollectionAttributeImpl(
