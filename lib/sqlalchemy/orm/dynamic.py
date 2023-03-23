@@ -129,7 +129,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
 
     """
 
-    query_class = None
+    query_class: Type[Query[_T]] = None  # type: ignore[assignment]
     autoflush: Callable[[bool], AppenderQuery[_T]]
     _order_by_clauses: Tuple[ColumnElement[Any], ...]
 
@@ -306,7 +306,7 @@ class AppenderQuery(AppenderMixin[_T], Query[_T]):  # type: ignore[misc]
     """
 
 
-def mixin_user_query(cls: Any) -> type:
+def mixin_user_query(cls: Any) -> type[AppenderMixin[_T]]:
     """Return a new class with AppenderQuery functionality layered over."""
     name = "Appender" + cls.__name__
     return type(name, (AppenderMixin, cls), {"query_class": cls})
