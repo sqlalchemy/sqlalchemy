@@ -82,7 +82,6 @@ if typing.TYPE_CHECKING:
     from re import Match
     from typing import NoReturn
 
-    from ._py_util import cache_anon_map
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
     from ._typing import _InfoType
@@ -112,6 +111,7 @@ if typing.TYPE_CHECKING:
     from .type_api import TypeEngine
     from .visitors import _CloneCallableType
     from .visitors import _TraverseInternalsType
+    from .visitors import anon_map
     from ..engine import Connection
     from ..engine import Dialect
     from ..engine import Engine
@@ -2118,7 +2118,7 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
 
     def _gen_cache_key(
         self,
-        anon_map: cache_anon_map,
+        anon_map: anon_map,
         bindparams: List[BindParameter[_T]],
     ) -> Optional[typing_Tuple[Any, ...]]:
         _gen_cache_ok = self.__class__.__dict__.get("inherit_cache", False)
