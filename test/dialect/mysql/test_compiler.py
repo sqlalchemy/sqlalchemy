@@ -746,6 +746,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         (String(32), "CAST(t.col AS CHAR(32))"),
         (Unicode(32), "CAST(t.col AS CHAR(32))"),
         (CHAR(32), "CAST(t.col AS CHAR(32))"),
+        (CHAR(0), "CAST(t.col AS CHAR(0))"),
         (m.MSString, "CAST(t.col AS CHAR)"),
         (m.MSText, "CAST(t.col AS CHAR)"),
         (m.MSTinyText, "CAST(t.col AS CHAR)"),
@@ -1525,4 +1526,16 @@ class MatchExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
             expr,
             "MATCH ('x') AGAINST ('y' IN BOOLEAN MODE)",
             literal_binds=True,
+        )
+
+    def test_char_zero(self):
+        t1 = Table(
+            "sometable",
+            MetaData(),
+            Column("unused", CHAR(0))
+        )
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE sometable (unused "
+            "CHAR(0))",
         )
