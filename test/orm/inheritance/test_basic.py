@@ -198,11 +198,9 @@ class PolyExpressionEagerLoad(fixtures.DeclarativeMappedTest):
             child_id = Column(Integer, ForeignKey("a.id"))
             child = relationship("A")
 
-            p_a = case((discriminator == "a", "a"), else_="b")
-
             __mapper_args__ = {
                 "polymorphic_identity": "a",
-                "polymorphic_on": p_a,
+                "polymorphic_on": case((discriminator == "a", "a"), else_="b"),
             }
 
         class B(A):
