@@ -2275,7 +2275,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
             )
 
     def visit_CHAR(self, type_, **kw):
-        if type_.length:
+        if type_.length is not None:
             return self._extend_string(
                 type_, {}, "CHAR(%(length)s)" % {"length": type_.length}
             )
