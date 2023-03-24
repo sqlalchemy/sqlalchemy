@@ -80,8 +80,7 @@ from ..util.typing import Self
 
 if typing.TYPE_CHECKING:
     from re import Match
-
-    from mypy_extensions import NoReturn
+    from typing import NoReturn
 
     from ._py_util import cache_anon_map
     from ._typing import _ColumnExpressionArgument
@@ -92,7 +91,6 @@ if typing.TYPE_CHECKING:
     from .annotation import SupportsAnnotations
     from .base import _EntityNamespace
     from .cache_key import _CacheKeyTraversalType
-    from .cache_key import CacheConst
     from .cache_key import CacheKey
     from .compiler import Compiled
     from .compiler import SQLCompiler
@@ -2122,18 +2120,7 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
         self,
         anon_map: cache_anon_map,
         bindparams: List[BindParameter[_T]],
-    ) -> Optional[
-        Union[
-            typing_Tuple[str, Type[BindParameter[_T]]],
-            typing_Tuple[
-                str,
-                Type[BindParameter[_T]],
-                Union[CacheConst, typing_Tuple[Any, ...]],
-                str,
-                bool,
-            ],
-        ]
-    ]:
+    ) -> Optional[typing_Tuple[Any, ...]]:
         _gen_cache_ok = self.__class__.__dict__.get("inherit_cache", False)
 
         if not _gen_cache_ok:
@@ -2784,11 +2771,7 @@ class ClauseList(
     def self_group(
         self, against: Optional[OperatorType] = None
     ) -> ClauseElement:
-        if (
-            against
-            and self.group
-            and operators.is_precedent(self.operator, against)
-        ):
+        if self.group and operators.is_precedent(self.operator, against):
             return Grouping(self)
         else:
             return self
@@ -2814,8 +2797,7 @@ class OperatorExpression(ColumnElement[_T]):
         self, against: Optional[OperatorType] = None
     ) -> ColumnElement[Any]:
         if (
-            against
-            and self.group
+            self.group
             and operators.is_precedent(self.operator, against)
             or (
                 # a negate against a non-boolean operator
@@ -3698,11 +3680,7 @@ class UnaryExpression(ColumnElement[_T]):
     def self_group(
         self, against: Optional[OperatorType] = None
     ) -> ColumnElement[Any]:
-        if (
-            against
-            and self.operator
-            and operators.is_precedent(self.operator, against)
-        ):
+        if self.operator and operators.is_precedent(self.operator, against):
             return Grouping(self)
         else:
             return self
@@ -4438,7 +4416,7 @@ class FunctionFilter(ColumnElement[_T]):
     def self_group(
         self, against: Optional[OperatorType] = None
     ) -> ColumnElement[_T]:
-        if against and operators.is_precedent(operators.filter_op, against):
+        if operators.is_precedent(operators.filter_op, against):
             return Grouping(self)
         else:
             return self
