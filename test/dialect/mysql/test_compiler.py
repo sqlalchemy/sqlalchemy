@@ -1529,13 +1529,8 @@ class MatchExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_char_zero(self):
-        t1 = Table(
-            "sometable",
-            MetaData(),
-            Column("unused", CHAR(0))
-        )
+        t1 = Table("sometable", MetaData(), Column("unused", CHAR(0)))
         self.assert_compile(
             schema.CreateTable(t1),
-            "CREATE TABLE sometable (unused "
-            "CHAR(0))",
+            "CREATE TABLE sometable (unused CHAR(0))",
         )
