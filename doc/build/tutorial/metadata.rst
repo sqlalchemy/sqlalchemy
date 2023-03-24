@@ -205,7 +205,7 @@ In the next section we will emit the completed DDL for the ``user`` and
 Emitting DDL to the Database
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-We've constructed a an object structure that represents
+We've constructed an object structure that represents
 two database tables in a database, starting at the root :class:`_schema.MetaData`
 object, then into two :class:`_schema.Table` objects, each of which hold
 onto a collection of :class:`_schema.Column` and :class:`_schema.Constraint`
