@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 9544
+
+    Fixed creating ``CHAR(0)`` columns with the MySQL dialects. Previously,
+    these columns would be created as ``CHAR(1)`` columns.
