@@ -41,6 +41,7 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import TEXT
+from sqlalchemy import Text
 from sqlalchemy import text
 from sqlalchemy import TIME
 from sqlalchemy import Time
@@ -746,6 +747,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         (String(32), "CAST(t.col AS CHAR(32))"),
         (Unicode(32), "CAST(t.col AS CHAR(32))"),
         (CHAR(32), "CAST(t.col AS CHAR(32))"),
+        (CHAR(0), "CAST(t.col AS CHAR(0))"),
         (m.MSString, "CAST(t.col AS CHAR)"),
         (m.MSText, "CAST(t.col AS CHAR)"),
         (m.MSTinyText, "CAST(t.col AS CHAR)"),
@@ -1525,4 +1527,27 @@ class MatchExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
             expr,
             "MATCH ('x') AGAINST ('y' IN BOOLEAN MODE)",
             literal_binds=True,
+        )
+
+    def test_char_zero(self):
+        """test #9544"""
+
+        t1 = Table(
+            "sometable",
+            MetaData(),
+            Column("a", CHAR(0)),
+            Column("b", VARCHAR(0)),
+            Column("c", String(0)),
+            Column("d", NVARCHAR(0)),
+            Column("e", NCHAR(0)),
+            Column("f", TEXT(0)),
+            Column("g", Text(0)),
+            Column("h", BLOB(0)),
+            Column("i", LargeBinary(0)),
+        )
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE sometable (a CHAR(0), b VARCHAR(0), "
+            "c VARCHAR(0), d NATIONAL VARCHAR(0), e NATIONAL CHAR(0), "
+            "f TEXT(0), g TEXT(0), h BLOB(0), i BLOB(0))",
         )

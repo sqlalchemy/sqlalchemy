@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 9544
+
+    Fixed issue where string datatypes such as :class:`.CHAR`,
+    :class:`.VARCHAR`, :class:`.TEXT`, as well as binary :class:`.BLOB`, could
+    not be produced with an explicit length of zero, which has special meaning
+    for MySQL. Pull request courtesy J. Nick Koston.
