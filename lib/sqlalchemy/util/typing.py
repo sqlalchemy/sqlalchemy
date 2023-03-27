@@ -23,6 +23,7 @@ from typing import NewType
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
@@ -128,6 +129,7 @@ def de_stringify_annotation(
     *,
     str_cleanup_fn: Optional[Callable[[str, str], str]] = None,
     include_generic: bool = False,
+    _already_seen: Optional[Set[Any]] = None,
 ) -> Type[Any]:
     """Resolve annotations that may be string based into real objects.
 
@@ -137,17 +139,15 @@ def de_stringify_annotation(
     etc.
 
     """
-
     # looked at typing.get_type_hints(), looked at pydantic.  We need much
     # less here, and we here try to not use any private typing internals
     # or construct ForwardRef objects which is documented as something
     # that should be avoided.
 
-    if (
-        is_fwd_ref(annotation)
-        and not cast(ForwardRef, annotation).__forward_evaluated__
-    ):
-        annotation = cast(ForwardRef, annotation).__forward_arg__
+    original_annotation = annotation
+
+    if is_fwd_ref(annotation) and not annotation.__forward_evaluated__:
+        annotation = annotation.__forward_arg__
 
     if isinstance(annotation, str):
         if str_cleanup_fn:
@@ -162,6 +162,19 @@ def de_stringify_annotation(
         and is_generic(annotation)
         and not is_literal(annotation)
     ):
+
+        if _already_seen is None:
+            _already_seen = set()
+
+        if annotation in _already_seen:
+            # only occurs recursively.  outermost return type
+            # will always be Type.
+            # the element here will be either ForwardRef or
+            # Optional[ForwardRef]
+            return original_annotation  # type: ignore
+        else:
+            _already_seen.add(annotation)
+
         elements = tuple(
             de_stringify_annotation(
                 cls,
@@ -170,6 +183,7 @@ def de_stringify_annotation(
                 locals_,
                 str_cleanup_fn=str_cleanup_fn,
                 include_generic=include_generic,
+                _already_seen=_already_seen,
             )
             for elem in annotation.__args__
         )
@@ -301,7 +315,7 @@ def flatten_newtype(type_: NewType) -> Type[Any]:
 
 def is_fwd_ref(
     type_: _AnnotationScanType, check_generic: bool = False
-) -> bool:
+) -> TypeGuard[ForwardRef]:
     if isinstance(type_, ForwardRef):
         return True
     elif check_generic and is_generic(type_):
@@ -336,7 +350,7 @@ def de_optionalize_union_types(
     """
 
     if is_fwd_ref(type_):
-        return de_optionalize_fwd_ref_union_types(cast(ForwardRef, type_))
+        return de_optionalize_fwd_ref_union_types(type_)
 
     elif is_optional(type_):
         typ = set(type_.__args__)
