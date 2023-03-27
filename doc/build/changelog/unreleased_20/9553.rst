@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9553
+
+    Fixed issue in ORM Annotated Declarative where using a recursive type (e.g.
+    using a nested Dict type) would result in a recursion overflow in the ORM's
+    annotation resolution logic, even if this datatype were not necessary to
+    map the column.

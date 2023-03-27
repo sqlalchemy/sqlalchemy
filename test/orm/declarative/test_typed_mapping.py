@@ -1174,6 +1174,65 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         else:
             is_true(A.__table__.c.json.nullable)
 
+    @testing.variation("optional", [True, False])
+    @testing.variation("provide_type", [True, False])
+    @testing.variation("add_to_type_map", [True, False])
+    def test_recursive_type(
+        self, decl_base, optional, provide_type, add_to_type_map
+    ):
+        """test #9553"""
+
+        global T
+
+        T = Dict[str, Optional["T"]]
+
+        if not provide_type and not add_to_type_map:
+            with expect_raises_message(
+                sa_exc.ArgumentError,
+                r"Could not locate SQLAlchemy.*" r".*ForwardRef\('T'\).*",
+            ):
+
+                class TypeTest(decl_base):
+                    __tablename__ = "my_table"
+
+                    id: Mapped[int] = mapped_column(primary_key=True)
+                    if optional:
+                        type_test: Mapped[Optional[T]] = mapped_column()
+                    else:
+                        type_test: Mapped[T] = mapped_column()
+
+            return
+
+        else:
+            if add_to_type_map:
+                decl_base.registry.update_type_annotation_map({T: JSON()})
+
+            class TypeTest(decl_base):
+                __tablename__ = "my_table"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+
+                if add_to_type_map:
+                    if optional:
+                        type_test: Mapped[Optional[T]] = mapped_column()
+                    else:
+                        type_test: Mapped[T] = mapped_column()
+                else:
+                    if optional:
+                        type_test: Mapped[Optional[T]] = mapped_column(JSON())
+                    else:
+                        type_test: Mapped[T] = mapped_column(JSON())
+
+        if optional:
+            is_(TypeTest.__table__.c.type_test.nullable, True)
+        else:
+            is_(TypeTest.__table__.c.type_test.nullable, False)
+
+        self.assert_compile(
+            select(TypeTest),
+            "SELECT my_table.id, my_table.type_test FROM my_table",
+        )
+
     def test_missing_mapped_lhs(self, decl_base):
         with expect_annotation_syntax_error("User.name"):
 
