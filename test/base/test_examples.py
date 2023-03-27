@@ -15,8 +15,16 @@ test_versioning = __import__(
 ).versioned_history.test_versioning
 
 
-class VersionedRowsTest(
+class VersionedRowsTestLegacyBase(
     test_versioning.TestVersioning,
+    fixtures.RemoveORMEventsGlobally,
+    fixtures.TestBase,
+):
+    pass
+
+
+class VersionedRowsTestNewBase(
+    test_versioning.TestVersioningNewBase,
     fixtures.RemoveORMEventsGlobally,
     fixtures.TestBase,
 ):
