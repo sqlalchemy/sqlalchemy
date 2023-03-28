@@ -228,8 +228,7 @@ class DMLState(CompileState):
     def _process_select_values(self, statement: ValuesBase) -> None:
         assert statement._select_names is not None
         parameters: MutableMapping[_DMLColumnElement, Any] = {
-            coercions.expect(roles.DMLColumnRole, name, as_key=True): Null()
-            for name in statement._select_names
+            name: Null() for name in statement._select_names
         }
 
         if self._no_parameters:
@@ -1195,7 +1194,7 @@ class Insert(ValuesBase):
     @_generative
     def from_select(
         self,
-        names: List[str],
+        names: Sequence[_DMLColumnArgument],
         select: Selectable,
         include_defaults: bool = True,
     ) -> Self:
@@ -1253,7 +1252,10 @@ class Insert(ValuesBase):
                 "This construct already inserts value expressions"
             )
 
-        self._select_names = names
+        self._select_names = [
+            coercions.expect(roles.DMLColumnRole, name, as_key=True)
+            for name in names
+        ]
         self._inline = True
         self.include_insert_from_select_defaults = include_defaults
         self.select = coercions.expect(roles.DMLSelectRole, select)

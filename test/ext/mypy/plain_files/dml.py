@@ -5,6 +5,7 @@ from typing import Dict
 
 from sqlalchemy import Column
 from sqlalchemy import insert
+from sqlalchemy import select
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -33,3 +34,8 @@ stmt2 = insert(User).values(d2)
 
 d3: Dict[Column[str], Any] = {}
 stmt3 = insert(User).values(d3)
+
+stmt4 = insert(User).from_select(
+    [User.id, "name", User.__table__.c.data],
+    select(User.id, User.name, User.data),
+)
