@@ -741,6 +741,21 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             class Foo(Mixin):
                 bar_value: Mapped[float] = mapped_column(default=78)
 
+    def test_dataclass_exception_wrapped(self, dc_decl_base):
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            r"Python dataclasses error encountered when creating dataclass "
+            r"for \'Foo\': .*Please refer to Python dataclasses.*",
+        ) as ec:
+
+            class Foo(dc_decl_base):
+                id: Mapped[int] = mapped_column(primary_key=True, init=False)
+                foo_value: Mapped[float] = mapped_column(default=78)
+                foo_no_value: Mapped[float] = mapped_column()
+                __tablename__ = "foo"
+
+        is_true(isinstance(ec.error.__cause__, TypeError))
+
 
 class RelationshipDefaultFactoryTest(fixtures.TestBase):
     def test_list(self, dc_decl_base: Type[MappedAsDataclass]):

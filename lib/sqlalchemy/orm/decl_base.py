@@ -1210,6 +1210,14 @@ class _ClassScanMapperConfig(_MapperConfig):
                     if v is not _NoArg.NO_ARG and k != "dataclass_callable"
                 },
             )
+        except (TypeError, ValueError) as ex:
+            raise exc.InvalidRequestError(
+                f"Python dataclasses error encountered when creating "
+                f"dataclass for {klass.__name__!r}: "
+                f"{ex!r}. Please refer to Python dataclasses "
+                "documentation for additional information.",
+                code="dcte",
+            ) from ex
         finally:
             # restore original annotations outside of the dataclasses
             # process; for mixins and __abstract__ superclasses, SQLAlchemy

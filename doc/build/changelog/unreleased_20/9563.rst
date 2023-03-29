@@ -1,0 +1,16 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 9563
+
+    Exceptions such as ``TypeError`` and ``ValueError`` raised by Python
+    dataclasses when making use of the :class:`_orm.MappedAsDataclass` mixin
+    class or :meth:`_orm.registry.mapped_as_dataclass` decorator are now
+    wrapped within an :class:`.InvalidRequestError` wrapper along with
+    informative context about the error message, referring to the Python
+    dataclasses documentation as the authoritative source of background
+    information on the cause of the exception.
+
+    .. seealso::
+
+        :ref:`error_dcte`
+
