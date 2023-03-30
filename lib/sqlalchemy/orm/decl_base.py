@@ -1277,11 +1277,14 @@ class _ClassScanMapperConfig(_MapperConfig):
     def _warn_for_decl_attributes(
         self, cls: Type[Any], key: str, c: Any
     ) -> None:
-        if isinstance(c, expression.ColumnClause):
+        if isinstance(c, expression.ColumnElement):
             util.warn(
                 f"Attribute '{key}' on class {cls} appears to "
-                "be a non-schema 'sqlalchemy.sql.column()' "
-                "object; this won't be part of the declarative mapping"
+                "be a non-schema SQLAlchemy expression "
+                "object; this won't be part of the declarative mapping. "
+                "To map arbitrary expressions, use ``column_property()`` "
+                "or a similar function such as ``deferred()``, "
+                "``query_expression()`` etc. "
             )
 
     def _produce_column_copies(
