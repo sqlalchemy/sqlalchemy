@@ -24,7 +24,6 @@ from ._typing import _O
 from .descriptor_props import Composite
 from .descriptor_props import Synonym
 from .interfaces import _AttributeOptions
-from .properties import ColumnProperty
 from .properties import MappedColumn
 from .properties import MappedSQLExpression
 from .query import AliasOption
@@ -1971,7 +1970,7 @@ def deferred(
     expire_on_flush: bool = True,
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
-) -> ColumnProperty[_T]:
+) -> MappedSQLExpression[_T]:
     r"""Indicate a column-based mapped attribute that by default will
     not load unless accessed.
 
@@ -1997,7 +1996,7 @@ def deferred(
         :ref:`orm_queryguide_deferred_imperative`
 
     """
-    return ColumnProperty(
+    return MappedSQLExpression(
         column,
         *additional_columns,
         attribute_options=_AttributeOptions(
@@ -2021,7 +2020,7 @@ def query_expression(
     expire_on_flush: bool = True,
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
-) -> ColumnProperty[_T]:
+) -> MappedSQLExpression[_T]:
     """Indicate an attribute that populates from a query-time SQL expression.
 
     :param default_expr: Optional SQL expression object that will be used in
@@ -2034,7 +2033,7 @@ def query_expression(
         :ref:`orm_queryguide_with_expression` - background and usage examples
 
     """
-    prop = ColumnProperty(
+    prop = MappedSQLExpression(
         default_expr,
         attribute_options=_AttributeOptions(
             _NoArg.NO_ARG,
