@@ -2763,6 +2763,74 @@ class AllYourFavoriteHitsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "ON company.company_id = person.company_id",
         )
 
+    @testing.variation("anno_type", ["plain", "typemap", "annotated"])
+    @testing.variation("inh_type", ["single", "joined"])
+    def test_mixin_interp_on_inh(self, decl_base, inh_type, anno_type):
+
+        # anno only: global anno_col
+
+        if anno_type.typemap:
+            anno_col = Annotated[str, 30]
+
+            decl_base.registry.update_type_annotation_map({anno_col: String})
+
+            class Mixin:
+                foo: Mapped[anno_col]
+
+        elif anno_type.annotated:
+            anno_col = Annotated[str, mapped_column(String)]
+
+            class Mixin:
+                foo: Mapped[anno_col]
+
+        else:
+
+            class Mixin:
+                foo: Mapped[str]
+
+        class Employee(Mixin, decl_base):
+            __tablename__ = "employee"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            name: Mapped[str]
+            type: Mapped[str]
+
+            __mapper_args__ = {
+                "polymorphic_on": "type",
+                "polymorphic_identity": "employee",
+            }
+
+        class Manager(Employee):
+            if inh_type.joined:
+                __tablename__ = "manager"
+
+                id: Mapped[int] = mapped_column(  # noqa: A001
+                    ForeignKey("employee.id"), primary_key=True
+                )
+
+            manager_data: Mapped[str] = mapped_column(nullable=True)
+
+            __mapper_args__ = {
+                "polymorphic_identity": "manager",
+            }
+
+        if inh_type.single:
+            self.assert_compile(
+                select(Manager),
+                "SELECT employee.id, employee.name, employee.type, "
+                "employee.foo, employee.manager_data FROM employee "
+                "WHERE employee.type IN (__[POSTCOMPILE_type_1])",
+            )
+        elif inh_type.joined:
+            self.assert_compile(
+                select(Manager),
+                "SELECT manager.id, employee.id AS id_1, employee.name, "
+                "employee.type, employee.foo, manager.manager_data "
+                "FROM employee JOIN manager ON employee.id = manager.id",
+            )
+        else:
+            inh_type.fail()
+
 
 class WriteOnlyRelationshipTest(fixtures.TestBase):
     def _assertions(self, A, B, lazy):
