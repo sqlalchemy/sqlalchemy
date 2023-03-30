@@ -22,6 +22,7 @@ from typing import NewType
 from typing import Optional
 from typing import Set
 from typing import Type
+from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 import uuid
@@ -453,8 +454,9 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_(User.__table__.c.data.type.__class__, Integer)
 
     @testing.combinations(True, False, argnames="include_rhs_type")
+    @testing.combinations(True, False, argnames="use_mixin")
     def test_construct_nullability_overrides(
-        self, decl_base, include_rhs_type
+        self, decl_base, include_rhs_type, use_mixin
     ):
 
         if include_rhs_type:
@@ -487,10 +489,22 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             }
         )
 
-        class User(decl_base):
-            __tablename__ = "users"
+        if TYPE_CHECKING:
 
-            id: Mapped[int] = mapped_column(primary_key=True)
+            class user_base:
+                pass
+
+        else:
+            if use_mixin:
+                user_base = object
+            else:
+                user_base = decl_base
+
+        class UserPossibleMixin(user_base):
+            if not use_mixin:
+                __tablename__ = "users"
+
+                id: Mapped[int] = mapped_column(primary_key=True)  # noqa: A001
 
             lnnl_rndf: Mapped[str] = mapped_column(*args)
             lnnl_rnnl: Mapped[str] = mapped_column(*args, nullable=False)
@@ -506,6 +520,10 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             # test #9177 cases
             anno_1a: Mapped[anno_str] = mapped_column(*args)
             anno_1b: Mapped[anno_str] = mapped_column(*args, nullable=True)
+            anno_1c: Mapped[anno_str] = mapped_column(*args, deferred=True)
+            anno_1d: Mapped[anno_str] = mapped_column(
+                *args, deferred=True, deferred_group="mygroup"
+            )
 
             anno_2a: Mapped[anno_str_optional] = mapped_column(*args)
             anno_2b: Mapped[anno_str_optional] = mapped_column(
@@ -537,6 +555,20 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             newtype_1b: Mapped[newtype_str] = mapped_column(
                 *args, nullable=True
             )
+
+        if use_mixin:
+
+            class User(UserPossibleMixin, decl_base):
+                __tablename__ = "users"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+
+        else:
+            User = UserPossibleMixin
+
+        eq_(User.anno_1b.property.deferred, False)
+        eq_(User.anno_1c.property.deferred, True)
+        eq_(User.anno_1d.property.group, "mygroup")
 
         is_false(User.__table__.c.lnnl_rndf.nullable)
         is_false(User.__table__.c.lnnl_rnnl.nullable)
