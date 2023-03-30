@@ -35,12 +35,12 @@ most common runtime errors as well as programming time errors.
 
 
 Connections and Transactions
-============================
+----------------------------
 
 .. _error_3o7r:
 
 QueuePool limit of size <x> overflow <y> reached, connection timed out, timeout <z>
------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This is possibly the most common runtime error experienced, as it directly
 involves the work load of the application surpassing a configured limit, one
@@ -192,7 +192,7 @@ sooner.
 .. _error_8s2b:
 
 Can't reconnect until invalid transaction is rolled back.  Please rollback() fully before proceeding
------------------------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This error condition refers to the case where a :class:`_engine.Connection` was
 invalidated, either due to a database disconnect detection or due to an
@@ -206,7 +206,7 @@ back in order to remove it from the :class:`_engine.Connection`.
 .. _error_dbapi:
 
 DBAPI Errors
-============
+------------
 
 The Python database API, or DBAPI, is a specification for database drivers
 which can be located at `Pep-249 <https://www.python.org/dev/peps/pep-0249/>`_.
@@ -221,7 +221,7 @@ exception :class:`.DBAPIError`, however the messaging within the exception is
 .. _error_rvf5:
 
 InterfaceError
---------------
+~~~~~~~~~~~~~~
 
 Exception raised for errors that are related to the database interface rather
 than the database itself.
@@ -237,7 +237,7 @@ to the database.   For tips on how to deal with this, see the section
 .. _error_4xp6:
 
 DatabaseError
---------------
+~~~~~~~~~~~~~
 
 Exception raised for errors that are related to the database itself, and not
 the interface or data being passed.
@@ -248,7 +248,7 @@ the database driver (DBAPI), not SQLAlchemy itself.
 .. _error_9h9h:
 
 DataError
----------
+~~~~~~~~~
 
 Exception raised for errors that are due to problems with the processed data
 like division by zero, numeric value out of range, etc.
@@ -259,7 +259,7 @@ the database driver (DBAPI), not SQLAlchemy itself.
 .. _error_e3q8:
 
 OperationalError
------------------
+~~~~~~~~~~~~~~~~
 
 Exception raised for errors that are related to the database's operation and
 not necessarily under the control of the programmer, e.g. an unexpected
@@ -277,7 +277,7 @@ the section :ref:`pool_disconnects`.
 .. _error_gkpj:
 
 IntegrityError
---------------
+~~~~~~~~~~~~~~
 
 Exception raised when the relational integrity of the database is affected,
 e.g. a foreign key check fails.
@@ -288,7 +288,7 @@ the database driver (DBAPI), not SQLAlchemy itself.
 .. _error_2j85:
 
 InternalError
--------------
+~~~~~~~~~~~~~
 
 Exception raised when the database encounters an internal error, e.g. the
 cursor is not valid anymore, the transaction is out of sync, etc.
@@ -304,7 +304,7 @@ to the database.   For tips on how to deal with this, see the section
 .. _error_f405:
 
 ProgrammingError
-----------------
+~~~~~~~~~~~~~~~~
 
 Exception raised for programming errors, e.g. table not found or already
 exists, syntax error in the SQL statement, wrong number of parameters
@@ -321,7 +321,7 @@ to the database.   For tips on how to deal with this, see the section
 .. _error_tw8g:
 
 NotSupportedError
-------------------
+~~~~~~~~~~~~~~~~~
 
 Exception raised in case a method or database API was used which is not
 supported by the database, e.g. requesting a .rollback() on a connection that
@@ -331,12 +331,12 @@ This error is a :ref:`DBAPI Error <error_dbapi>` and originates from
 the database driver (DBAPI), not SQLAlchemy itself.
 
 SQL Expression Language
-=======================
+-----------------------
 .. _error_cprf:
 .. _caching_caveats:
 
 Object will not produce a cache key, Performance Implications
---------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 SQLAlchemy as of version 1.4 includes a
 :ref:`SQL compilation caching facility <sql_caching>` which will allow
@@ -425,7 +425,7 @@ each, see the section :ref:`faq_new_caching`.
 .. _error_l7de:
 
 Compiler StrSQLCompiler can't render element of type <element type>
--------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This error usually occurs when attempting to stringify a SQL expression
 construct that includes elements which are not part of the default compilation;
@@ -496,7 +496,7 @@ compilation of SQL elements.
 
 
 TypeError: <operator> not supported between instances of 'ColumnProperty' and <something>
------------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This often occurs when attempting to use a :func:`.column_property` or
 :func:`.deferred` object in the context of a SQL expression, usually within
@@ -537,7 +537,7 @@ The solution is to access the :class:`_schema.Column` directly using the
 .. _error_cd3x:
 
 A value is required for bind parameter <x> (in parameter group <y>)
--------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This error occurs when a statement makes use of :func:`.bindparam` either
 implicitly or explicitly and does not provide a value when the statement
@@ -603,7 +603,7 @@ Since "b" is required, pass it as ``None`` so that the INSERT may proceed::
 .. _error_89ve:
 
 Expected FROM clause, got Select.  To create a FROM clause, use the .subquery() method
---------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This refers to a change made as of SQLAlchemy 1.4 where a SELECT statement as generated
 by a function such as :func:`_expression.select`, but also including things like unions and textual
@@ -654,7 +654,7 @@ therefore requires that :meth:`_expression.SelectBase.subquery` is used::
 .. _error_xaj1:
 
 An alias is being generated automatically for raw clauseelement
-----------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. versionadded:: 1.4.26
 
@@ -722,7 +722,7 @@ Join to an alias::
 .. _error_xaj2:
 
 An alias is being generated automatically due to overlapping tables
--------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. versionadded:: 1.4.26
 
@@ -833,12 +833,12 @@ and instead keep the SQL construction as explicit as possible.
 
 
 Object Relational Mapping
-=========================
+-------------------------
 
 .. _error_bhk3:
 
 Parent instance <x> is not bound to a Session; (lazy load/deferred load/refresh/etc.) operation cannot proceed
---------------------------------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This is likely the most common error message when dealing with the ORM, and it
 occurs as a result of the nature of a technique the ORM makes wide use of known
@@ -914,7 +914,7 @@ Mitigation of this error is via these techniques:
 .. _error_7s2a:
 
 This Session's transaction has been rolled back due to a previous exception during flush
-----------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The flush process of the :class:`.Session`, described at
 :ref:`session_flushing`, will roll back the database transaction if an error is
@@ -931,7 +931,7 @@ application that doesn't yet have correct "framing" around its
 .. _error_bbf0:
 
 For relationship <relationship>, delete-orphan cascade is normally configured only on the "one" side of a one-to-many relationship, and not on the "many" side of a many-to-one or many-to-many relationship.
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 This error arises when the "delete-orphan" :ref:`cascade <unitofwork_cascades>`
@@ -1103,7 +1103,7 @@ in the "many" side, and not the other way around.
 .. _error_bbf1:
 
 Instance <instance> is already associated with an instance of <instance> via its <attribute> attribute, and is only allowed a single parent.
----------------------------------------------------------------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 This error is emitted when the :paramref:`_orm.relationship.single_parent` flag
@@ -1156,7 +1156,7 @@ message for details.
 .. _error_qzyx:
 
 relationship X will copy column Q to column P, which conflicts with relationship(s): 'Y'
-----------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This warning refers to the case when two or more relationships will write data
 to the same columns on flush, but the ORM does not have any means of
@@ -1242,7 +1242,7 @@ Above, the ORM will know that the overlap between ``Parent.c1``,
 .. _error_lkrp:
 
 Object cannot be converted to 'persistent' state, as this identity map is no longer valid.
--------------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. versionadded:: 1.4.26
 
@@ -1319,7 +1319,7 @@ the :term:`detached` state.
 .. _error_zlpr:
 
 Type annotation can't be interpreted for Annotated Declarative Table form
---------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 SQLAlchemy 2.0 introduces a new
 :ref:`Annotated Declarative Table <orm_declarative_mapped_column>` declarative
@@ -1341,13 +1341,117 @@ notes at :ref:`migration_20_step_six` for an example.
 
     :ref:`migration_20_step_six` - in the :ref:`migration_20_toplevel` document
 
+.. _error_dcmx:
+
+When transforming <cls> to a dataclass, attribute(s) originate from superclass <cls> which is not a dataclass.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This warning occurs when using the SQLAlchemy ORM Mapped Dataclasses feature
+described at :ref:`orm_declarative_native_dataclasses` in conjunction with
+any mixin class or abstract base that is not itself declared as a
+dataclass, such as in the example below::
+
+    from __future__ import annotations
+
+    import inspect
+    from typing import Optional
+    from uuid import uuid4
+
+    from sqlalchemy import String
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import MappedAsDataclass
+
+
+    class Mixin:
+
+        create_user: Mapped[int] = mapped_column()
+        update_user: Mapped[Optional[int]] = mapped_column(default=None, init=False)
+
+
+    class Base(DeclarativeBase, MappedAsDataclass):
+        pass
+
+
+    class User(Base, Mixin):
+        __tablename__ = "sys_user"
+
+        uid: Mapped[str] = mapped_column(
+            String(50), init=False, default_factory=uuid4, primary_key=True
+        )
+        username: Mapped[str] = mapped_column()
+        email: Mapped[str] = mapped_column()
+
+Above, since ``Mixin`` does not itself extend from :class:`_orm.MappedAsDataclass`,
+the following warning is generated:
+
+.. sourcecode:: none
+
+    SADeprecationWarning: When transforming <class '__main__.User'> to a
+    dataclass, attribute(s) "create_user", "update_user" originates from
+    superclass <class
+    '__main__.Mixin'>, which is not a dataclass. This usage is deprecated and
+    will raise an error in SQLAlchemy 2.1. When declaring SQLAlchemy
+    Declarative Dataclasses, ensure that all mixin classes and other
+    superclasses which include attributes are also a subclass of
+    MappedAsDataclass.
+
+The fix is to add :class:`_orm.MappedAsDataclass` to the signature of
+``Mixin`` as well::
+
+    class Mixin(MappedAsDataclass):
+
+        create_user: Mapped[int] = mapped_column()
+        update_user: Mapped[Optional[int]] = mapped_column(default=None, init=False)
+
+Python's :pep:`681` specification does not accommodate for attributes declared
+on superclasses of dataclasses that are not themselves dataclasses; per the
+behavior of Python dataclasses, such fields are ignored, as in the following
+example::
+
+    from dataclasses import dataclass
+    from dataclasses import field
+    import inspect
+    from typing import Optional
+    from uuid import uuid4
+
+
+    class Mixin:
+        create_user: int
+        update_user: Optional[int] = field(default=None)
+
+
+    @dataclass
+    class User(Mixin):
+        uid: str = field(init=False, default_factory=lambda: str(uuid4()))
+        username: str
+        password: str
+        email: str
+
+Above, the ``User`` class will not include ``create_user`` in its constructor
+nor will it attempt to interpret ``update_user`` as a dataclass attribute.
+This is because ``Mixin`` is not a dataclass.
+
+SQLAlchemy's dataclasses feature within the 2.0 series does not honor this
+behavior correctly; instead, attributes on non-dataclass mixins and
+superclasses are treated as part of the final dataclass configuration.  However
+type checkers such as Pyright and Mypy will not consider these fields as
+part of the dataclass constructor as they are to be ignored per :pep:`681`.
+Since their presence is ambiguous otherwise, SQLAlchemy 2.1 will require that
+mixin classes which have SQLAlchemy mapped attributes within a dataclass
+hierarchy have to themselves be dataclasses.
+
+
+
+
 AsyncIO Exceptions
-==================
+------------------
 
 .. _error_xd1r:
 
 AwaitRequired
--------------
+~~~~~~~~~~~~~
 
 The SQLAlchemy async mode requires an async driver to be used to connect to the db.
 This error is usually raised when trying to use the async version of SQLAlchemy
@@ -1360,7 +1464,7 @@ with a non compatible :term:`DBAPI`.
 .. _error_xd2s:
 
 MissingGreenlet
----------------
+~~~~~~~~~~~~~~~
 
 A call to the async :term:`DBAPI` was initiated outside the greenlet spawn
 context usually setup by the SQLAlchemy AsyncIO proxy classes. Usually this
@@ -1376,7 +1480,7 @@ attempt, which is unsupported when using SQLAlchemy with AsyncIO dialects.
 .. _error_xd3s:
 
 No Inspection Available
------------------------
+~~~~~~~~~~~~~~~~~~~~~~~
 
 Using the :func:`_sa.inspect` function directly on an
 :class:`_asyncio.AsyncConnection` or :class:`_asyncio.AsyncEngine` object is
@@ -1403,20 +1507,20 @@ that performs the desired operations::
 
 
 Core Exception Classes
-======================
+----------------------
 
 See :ref:`core_exceptions_toplevel` for Core exception classes.
 
 
 ORM Exception Classes
-======================
+---------------------
 
 See :ref:`orm_exceptions_toplevel` for ORM exception classes.
 
 
 
 Legacy Exceptions
-=================
+-----------------
 
 Exceptions in this section are not generated by current SQLAlchemy
 versions, however are provided here to suit exception message hyperlinks.
@@ -1424,7 +1528,7 @@ versions, however are provided here to suit exception message hyperlinks.
 .. _error_b8d9:
 
 The <some function> in SQLAlchemy 2.0 will no longer <something>
---------------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 SQLAlchemy 2.0 represents a major shift for a wide variety of key
 SQLAlchemy usage patterns in both the Core and ORM components.   The goal
@@ -1457,7 +1561,7 @@ this warning is at :ref:`deprecation_20_mode`.
 .. _error_s9r1:
 
 Object is being merged into a Session along the backref cascade
----------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This message refers to the "backref cascade" behavior of SQLAlchemy,
 removed in version 2.0.  This refers to the action of
@@ -1488,7 +1592,7 @@ by passing ``True`` for the :paramref:`_orm.Session.future` parameter.
 .. _error_c9ae:
 
 select() construct created in "legacy" mode; keyword arguments, etc.
---------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :func:`_expression.select` construct has been updated as of SQLAlchemy
 1.4 to support the newer calling style that is standard in
@@ -1536,7 +1640,7 @@ of :ref:`2.0 Migration <migration_20_toplevel>`.
 .. _error_c9bf:
 
 A bind was located via legacy bound metadata, but since future=True is set on this Session, this bind is ignored.
--------------------------------------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The concept of "bound metadata" is present up until SQLAlchemy 1.4; as
 of SQLAlchemy 2.0 it's been removed.
@@ -1591,7 +1695,7 @@ or :class:`_orm.Session`.
 .. _error_2afi:
 
 This Compiled object is not bound to any Engine or Connection
--------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This error refers to the concept of "bound metadata", which is a legacy
 SQLAlchemy pattern present only in 1.x versions. The issue occurs when one invokes
@@ -1632,7 +1736,7 @@ When using the ORM, a similar facility is available via the :class:`.Session`::
 .. _error_8s2a:
 
 This connection is on an inactive transaction.  Please rollback() fully before proceeding
-------------------------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This error condition was added to SQLAlchemy as of version 1.4, and does not
 apply to SQLAlchemy 2.0.    The error

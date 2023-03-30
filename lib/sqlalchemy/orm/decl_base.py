@@ -440,6 +440,7 @@ class _CollectedAnnotation(NamedTuple):
     is_dataclass: bool
     attr_value: Any
     originating_module: str
+    originating_class: Type[Any]
 
 
 class _ClassScanMapperConfig(_MapperConfig):
@@ -1051,6 +1052,19 @@ class _ClassScanMapperConfig(_MapperConfig):
                 "'@registry.mapped_as_dataclass'"
             )
 
+        warn_for_non_dc_attrs = collections.defaultdict(list)
+
+        def _allow_dataclass_field(
+            key: str, originating_class: Type[Any]
+        ) -> bool:
+            if (
+                originating_class is not self.cls
+                and "__dataclass_fields__" not in originating_class.__dict__
+            ):
+                warn_for_non_dc_attrs[originating_class].append(key)
+
+            return True
+
         manager = instrumentation.manager_of_class(self.cls)
         assert manager is not None
 
@@ -1074,20 +1088,45 @@ class _ClassScanMapperConfig(_MapperConfig):
                     is_dc,
                     attr_value,
                     originating_module,
+                    originating_class,
                 ) in self.collected_annotations.items()
-                if key not in self.collected_attributes
-                # issue #9226; check for attributes that we've collected
-                # which are already instrumented, which we would assume
-                # mean we are in an ORM inheritance mapping and this attribute
-                # is already mapped on the superclass.   Under no circumstance
-                # should any QueryableAttribute be sent to the dataclass()
-                # function; anything that's mapped should be Field and
-                # that's it
-                or not isinstance(
-                    self.collected_attributes[key], QueryableAttribute
+                if _allow_dataclass_field(key, originating_class)
+                and (
+                    key not in self.collected_attributes
+                    # issue #9226; check for attributes that we've collected
+                    # which are already instrumented, which we would assume
+                    # mean we are in an ORM inheritance mapping and this
+                    # attribute is already mapped on the superclass.   Under
+                    # no circumstance should any QueryableAttribute be sent to
+                    # the dataclass() function; anything that's mapped should
+                    # be Field and that's it
+                    or not isinstance(
+                        self.collected_attributes[key], QueryableAttribute
+                    )
                 )
             )
         ]
+
+        if warn_for_non_dc_attrs:
+            for (
+                originating_class,
+                non_dc_attrs,
+            ) in warn_for_non_dc_attrs.items():
+                util.warn_deprecated(
+                    f"When transforming {self.cls} to a dataclass, "
+                    f"attribute(s) "
+                    f"{', '.join(repr(key) for key in non_dc_attrs)} "
+                    f"originates from superclass "
+                    f"{originating_class}, which is not a dataclass.  This "
+                    f"usage is deprecated and will raise an error in "
+                    f"SQLAlchemy 2.1.  When declaring SQLAlchemy Declarative "
+                    f"Dataclasses, ensure that all mixin classes and other "
+                    f"superclasses which include attributes are also a "
+                    f"subclass of MappedAsDataclass.",
+                    "2.0",
+                    code="dcmx",
+                )
+
         annotations = {}
         defaults = {}
         for item in field_list:
@@ -1271,6 +1310,7 @@ class _ClassScanMapperConfig(_MapperConfig):
             is_dataclass,
             attr_value,
             originating_class.__module__,
+            originating_class,
         )
         return ca
 
@@ -1468,8 +1508,9 @@ class _ClassScanMapperConfig(_MapperConfig):
                         is_dataclass,
                         attr_value,
                         originating_module,
+                        originating_class,
                     ) = self.collected_annotations.get(
-                        k, (None, None, None, False, None, None)
+                        k, (None, None, None, False, None, None, None)
                     )
 
                     # issue #8692 - don't do any annotation interpretation if

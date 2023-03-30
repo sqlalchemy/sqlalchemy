@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9350
+
+    Fields that are declared on Declarative Mixins and then combined with
+    classes that make use of :class:`_orm.MappedAsDataclass`, where those mixin
+    fields are not themselves part of a dataclass, now emit a deprecation
+    warning as these fields will be ignored in a future release, as Python
+    dataclasses behavior is to ignore these fields. Type checkers will not see
+    these fields under pep-681.
+
+    .. seealso::
+
+        :ref:`error_dcmx` - background on rationale
+
+        :ref:`orm_declarative_dc_mixins`

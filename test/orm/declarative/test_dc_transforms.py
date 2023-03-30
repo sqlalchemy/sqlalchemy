@@ -1,5 +1,7 @@
+import contextlib
 import dataclasses
 from dataclasses import InitVar
+import functools
 import inspect as pyinspect
 from itertools import product
 from typing import Any
@@ -54,6 +56,13 @@ from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing import Variation
 from sqlalchemy.util import compat
+
+
+def _dataclass_mixin_warning(clsname, attrnames):
+    return testing.expect_deprecated(
+        rf"When transforming .* to a dataclass, attribute\(s\) "
+        rf"{attrnames} originates from superclass .*{clsname}"
+    )
 
 
 class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
@@ -196,6 +205,32 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
 
         a1 = Address("email@address")
         eq_(a1.email_address, "email@address")
+
+    def test_warn_on_non_dc_mixin(self):
+        class _BaseMixin:
+
+            create_user: Mapped[int] = mapped_column()
+            update_user: Mapped[Optional[int]] = mapped_column(
+                default=None, init=False
+            )
+
+        class Base(DeclarativeBase, MappedAsDataclass, _BaseMixin):
+            pass
+
+        class SubMixin:
+            foo: Mapped[str]
+            bar: Mapped[str] = mapped_column()
+
+        with _dataclass_mixin_warning(
+            "_BaseMixin", "'create_user', 'update_user'"
+        ), _dataclass_mixin_warning("SubMixin", "'foo', 'bar'"):
+
+            class User(SubMixin, Base):
+                __tablename__ = "sys_user"
+
+                id: Mapped[int] = mapped_column(primary_key=True, init=False)
+                username: Mapped[str] = mapped_column(String)
+                password: Mapped[str] = mapped_column(String)
 
     def test_basic_constructor_repr_cls_decorator(
         self, registry: _RegistryType
@@ -667,10 +702,10 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_mapped_column_overrides(self, dc_decl_base):
         """test #8688"""
 
-        class TriggeringMixin:
+        class TriggeringMixin(MappedAsDataclass):
             mixin_value: Mapped[int] = mapped_column(BigInteger)
 
-        class NonTriggeringMixin:
+        class NonTriggeringMixin(MappedAsDataclass):
             mixin_value: Mapped[int]
 
         class Foo(dc_decl_base, TriggeringMixin):
@@ -1167,6 +1202,9 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
                     )
 
             expected_annotations[Mixin] = {}
+
+            non_dc_mixin = contextlib.nullcontext
+
         else:
 
             class Mixin:
@@ -1204,50 +1242,66 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
                             insert_default=cls.__name__,
                         )
 
+            non_dc_mixin = functools.partial(
+                _dataclass_mixin_warning, "Mixin", "'polymorphic_type'"
+            )
+
         if dataclass_scope.on_base_class:
 
-            class Book(Mixin, MappedAsDataclass, Base, **klass_kw):
-                id: Mapped[int] = mapped_column(
-                    Integer,
-                    primary_key=True,
-                    init=False,
-                )
+            with non_dc_mixin():
 
-        else:
-
-            class Book(Mixin, Base):
-                if not dataclass_scope.on_sub_class:
-                    id: Mapped[int] = mapped_column(  # noqa: A001
-                        Integer, primary_key=True, init=False
-                    )
-                else:
-                    id: Mapped[int] = mapped_column(  # noqa: A001
+                class Book(Mixin, MappedAsDataclass, Base, **klass_kw):
+                    id: Mapped[int] = mapped_column(
                         Integer,
                         primary_key=True,
+                        init=False,
                     )
+
+        else:
+            if dataclass_scope.on_base:
+                local_non_dc_mixin = non_dc_mixin
+            else:
+                local_non_dc_mixin = contextlib.nullcontext
+
+            with local_non_dc_mixin():
+
+                class Book(Mixin, Base):
+                    if not dataclass_scope.on_sub_class:
+                        id: Mapped[int] = mapped_column(  # noqa: A001
+                            Integer, primary_key=True, init=False
+                        )
+                    else:
+                        id: Mapped[int] = mapped_column(  # noqa: A001
+                            Integer,
+                            primary_key=True,
+                        )
 
         if MappedAsDataclass in Book.__mro__:
             expected_annotations[Book] = {"id": int, "polymorphic_type": str}
 
         if dataclass_scope.on_sub_class:
 
-            class Novel(MappedAsDataclass, Book, **klass_kw):
-                id: Mapped[int] = mapped_column(  # noqa: A001
-                    ForeignKey("book.id"),
-                    primary_key=True,
-                    init=False,
-                )
-                description: Mapped[Optional[str]]
+            with non_dc_mixin():
+
+                class Novel(MappedAsDataclass, Book, **klass_kw):
+                    id: Mapped[int] = mapped_column(  # noqa: A001
+                        ForeignKey("book.id"),
+                        primary_key=True,
+                        init=False,
+                    )
+                    description: Mapped[Optional[str]]
 
         else:
 
-            class Novel(Book):
-                id: Mapped[int] = mapped_column(
-                    ForeignKey("book.id"),
-                    primary_key=True,
-                    init=False,
-                )
-                description: Mapped[Optional[str]]
+            with non_dc_mixin():
+
+                class Novel(Book):
+                    id: Mapped[int] = mapped_column(
+                        ForeignKey("book.id"),
+                        primary_key=True,
+                        init=False,
+                    )
+                    description: Mapped[Optional[str]]
 
         expected_annotations[Novel] = {"id": int, "description": Optional[str]}
 
@@ -1712,7 +1766,7 @@ class MixinColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                     class BaseEntity(DeclarativeBase):
                         pass
 
-                class IdMixin:
+                class IdMixin(MappedAsDataclass):
                     id: Mapped[int] = mapped_column(
                         primary_key=True, init=False
                     )
@@ -1764,14 +1818,14 @@ class MixinColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
                 elif mad_setup == "subclass":
 
-                    class BaseEntity(DeclarativeBase):
+                    class BaseEntity(MappedAsDataclass, DeclarativeBase):
                         id: Mapped[int] = mapped_column(
                             primary_key=True, init=False
                         )
 
                 if mad_setup == "subclass":
 
-                    class A(MappedAsDataclass, BaseEntity, **dataclass_kw):
+                    class A(BaseEntity, **dataclass_kw):
                         __mapper_args__ = {
                             "polymorphic_on": "type",
                             "polymorphic_identity": "a",
