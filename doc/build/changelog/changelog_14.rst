@@ -28,7 +28,7 @@ This document details individual issue-level changes made throughout
 
         Fixed bug / regression where using :func:`.bindparam()` with the same name
         as a column in the :meth:`.Update.values` method of :class:`.Update`, as
-        well as the :meth:`.Insert.values` method of :class:`.Insert` in 2.0 only,
+        well as the :meth:`_dml.Insert.values` method of :class:`_dml.Insert` in 2.0 only,
         would in some cases silently fail to honor the SQL expression in which the
         parameter were presented, replacing the expression with a new parameter of
         the same name and discarding any other elements of the SQL expression, such

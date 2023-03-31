@@ -1450,25 +1450,25 @@ Python dataclasses error encountered when creating dataclass for <classname>
 
 When using the :class:`_orm.MappedAsDataclass` mixin class or
 :meth:`_orm.registry.mapped_as_dataclass` decorator, SQLAlchemy makes use
-of the actual `Python dataclasses <dataclasses>`_ module that's in the Python standard library
+of the actual `Python dataclasses <dataclasses_>`_ module that's in the Python standard library
 in order to apply dataclass behaviors to the target class.   This API has
 its own error scenarios, most of which involve the construction of an
 ``__init__()`` method on the user defined class; the order of attributes
-declared on the class, as well as `on superclasses <dc_superclass>`_, determines
+declared on the class, as well as `on superclasses <dc_superclass_>`_, determines
 how the ``__init__()`` method will be constructed and there are specific
 rules in how the attributes are organized as well as how they should make
 use of parameters such as ``init=False``, ``kw_only=True``, etc.   **SQLAlchemy
 does not control or implement these rules**.  Therefore, for errors of this nature,
-consult the `Python dataclasses <dataclasses>`_ documentation, with special
-attention to the rules applied to `inheritance <_dc_superclass>`_.
+consult the `Python dataclasses <dataclasses_>`_ documentation, with special
+attention to the rules applied to `inheritance <dc_superclass_>`_.
 
 .. seealso::
 
   :ref:`orm_declarative_native_dataclasses` - SQLAlchemy dataclasses documentation
 
-  `Python dataclasses <dataclasses>`_ - on the python.org website
+  `Python dataclasses <dataclasses_>`_ - on the python.org website
 
-  `inheritance <_dc_superclass>`_ - on the python.org website
+  `inheritance <dc_superclass_>`_ - on the python.org website
 
 .. _dataclasses: https://docs.python.org/3/library/dataclasses.html
 
