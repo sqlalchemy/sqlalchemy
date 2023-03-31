@@ -19,9 +19,12 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_instance_of
+from sqlalchemy.testing import is_none
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing import not_in
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing.util import picklers
 from sqlalchemy.util import classproperty
@@ -209,6 +212,27 @@ class OrderedSetTest(fixtures.TestBase):
         eq_(o.difference(iter([3, 4])), util.OrderedSet([2, 5]))
         eq_(o.intersection(iter([3, 4, 6])), util.OrderedSet([3, 4]))
         eq_(o.union(iter([3, 4, 6])), util.OrderedSet([3, 2, 4, 5, 6]))
+        eq_(
+            o.symmetric_difference(iter([3, 4, 6])), util.OrderedSet([2, 5, 6])
+        )
+
+    def test_mutators_against_iter_update(self):
+        # testing a set modified against an iterator
+        o = util.OrderedSet([3, 2, 4, 5])
+        o.difference_update(iter([3, 4]))
+        eq_(list(o), [2, 5])
+
+        o = util.OrderedSet([3, 2, 4, 5])
+        o.intersection_update(iter([3, 4]))
+        eq_(list(o), [3, 4])
+
+        o = util.OrderedSet([3, 2, 4, 5])
+        o.update(iter([3, 4, 6]))
+        eq_(list(o), [3, 2, 4, 5, 6])
+
+        o = util.OrderedSet([3, 2, 4, 5])
+        o.symmetric_difference_update(iter([3, 4, 6]))
+        eq_(list(o), [2, 5, 6])
 
     def test_len(self):
         eq_(len(util.OrderedSet([1, 2, 3])), 3)
@@ -228,6 +252,110 @@ class OrderedSetTest(fixtures.TestBase):
         eq_(str(o), "OrderedSet([])")
         o = util.OrderedSet([3, 2, 4, 5])
         eq_(str(o), "OrderedSet([3, 2, 4, 5])")
+
+    def test_modify(self):
+        o = util.OrderedSet([3, 9, 11])
+        is_none(o.add(42))
+        in_(42, o)
+        in_(3, o)
+
+        is_none(o.remove(9))
+        not_in(9, o)
+        in_(3, o)
+
+        is_none(o.discard(11))
+        in_(3, o)
+
+        o.add(99)
+        is_none(o.insert(1, 13))
+        eq_(list(o), [3, 13, 42, 99])
+        eq_(o[2], 42)
+
+        val = o.pop()
+        eq_(val, 99)
+        not_in(99, o)
+        eq_(list(o), [3, 13, 42])
+
+        is_none(o.clear())
+        not_in(3, o)
+        is_false(bool(o))
+
+    def test_empty_pop(self):
+        with expect_raises_message(KeyError, "pop from an empty set"):
+            util.OrderedSet().pop()
+
+    @testing.combinations(
+        lambda o: o + util.OrderedSet([11, 22]),
+        lambda o: o | util.OrderedSet([11, 22]),
+        lambda o: o.union(util.OrderedSet([11, 22])),
+        lambda o: o.union([11, 2], [22, 8]),
+    )
+    def test_op(self, fn):
+        o = util.OrderedSet(range(10))
+        x = fn(o)
+        is_instance_of(x, util.OrderedSet)
+        in_(9, x)
+        in_(11, x)
+        not_in(11, o)
+
+    def test_update(self):
+        o = util.OrderedSet(range(10))
+        is_none(o.update([22, 2], [33, 11]))
+        in_(11, o)
+        in_(22, o)
+
+    def test_set_ops(self):
+        o1, o2 = util.OrderedSet([1, 3, 5, 7]), {2, 3, 4, 5}
+        eq_(o1 & o2, {3, 5})
+        eq_(o1.intersection(o2), {3, 5})
+        o3 = o1.copy()
+        o3 &= o2
+        eq_(o3, {3, 5})
+        o3 = o1.copy()
+        is_none(o3.intersection_update(o2))
+        eq_(o3, {3, 5})
+
+        eq_(o1 | o2, {1, 2, 3, 4, 5, 7})
+        eq_(o1.union(o2), {1, 2, 3, 4, 5, 7})
+        o3 = o1.copy()
+        o3 |= o2
+        eq_(o3, {1, 2, 3, 4, 5, 7})
+        o3 = o1.copy()
+        is_none(o3.update(o2))
+        eq_(o3, {1, 2, 3, 4, 5, 7})
+
+        eq_(o1 - o2, {1, 7})
+        eq_(o1.difference(o2), {1, 7})
+        o3 = o1.copy()
+        o3 -= o2
+        eq_(o3, {1, 7})
+        o3 = o1.copy()
+        is_none(o3.difference_update(o2))
+        eq_(o3, {1, 7})
+
+        eq_(o1 ^ o2, {1, 2, 4, 7})
+        eq_(o1.symmetric_difference(o2), {1, 2, 4, 7})
+        o3 = o1.copy()
+        o3 ^= o2
+        eq_(o3, {1, 2, 4, 7})
+        o3 = o1.copy()
+        is_none(o3.symmetric_difference_update(o2))
+        eq_(o3, {1, 2, 4, 7})
+
+    def test_copy(self):
+        o = util.OrderedSet([3, 2, 4, 5])
+        cp = o.copy()
+        is_instance_of(cp, util.OrderedSet)
+        eq_(o, cp)
+        o.add(42)
+        is_false(42 in cp)
+
+    def test_pickle(self):
+        o = util.OrderedSet([2, 4, 9, 42])
+        for loads, dumps in picklers():
+            l = loads(dumps(o))
+            is_instance_of(l, util.OrderedSet)
+            eq_(list(l), [2, 4, 9, 42])
 
 
 class ImmutableDictTest(fixtures.TestBase):
