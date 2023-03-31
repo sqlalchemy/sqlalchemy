@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9564
+
+    Fixed issue where an annotation-only :class:`_orm.Mapped` directive could
+    not be used in a Declarative mixin class, without that attribute attempting
+    to take effect for single- or joined-inheritance subclasses of mapped
+    classes that had already mapped that attribute on a superclass, producing
+    conflicting column errors and/or warnings.
+

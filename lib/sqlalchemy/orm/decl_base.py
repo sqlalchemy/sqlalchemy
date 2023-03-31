@@ -617,7 +617,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         if not sa_dataclass_metadata_key:
 
             def attribute_is_overridden(key: str, obj: Any) -> bool:
-                return getattr(cls, key) is not obj
+                return getattr(cls, key, obj) is not obj
 
         else:
 
@@ -974,7 +974,10 @@ class _ClassScanMapperConfig(_MapperConfig):
                         # then test if this name is already handled and
                         # otherwise proceed to generate.
                         if not fixed_table:
-                            assert name in collected_attributes
+                            assert (
+                                name in collected_attributes
+                                or attribute_is_overridden(name, None)
+                            )
                         continue
                     else:
                         # here, the attribute is some other kind of
@@ -1343,11 +1346,22 @@ class _ClassScanMapperConfig(_MapperConfig):
         # copy mixin columns to the mapped class
 
         for name, obj, annotation, is_dataclass in attributes_for_class():
+
             if (
                 not fixed_table
                 and obj is None
                 and _is_mapped_annotation(annotation, cls, originating_class)
             ):
+                # obj is None means this is the annotation only path
+
+                if attribute_is_overridden(name, obj):
+                    # perform same "overridden" check as we do for
+                    # Column/MappedColumn, this is how a mixin col is not
+                    # applied to an inherited subclass that does not have
+                    # the mixin.   the anno-only path added here for
+                    # #9564
+                    continue
+
                 collected_annotation = self._collect_annotation(
                     name, annotation, originating_class, True, obj
                 )
