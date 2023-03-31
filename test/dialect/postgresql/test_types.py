@@ -4450,9 +4450,9 @@ class _RangeComparisonFixtures(_RangeTests):
 
         pg_res = connection.execute(q).scalar()
 
-        validate_difference = connection.execute(validate_q).scalar()
-        eq_(pg_res, validate_difference)
-        py_res = r1.difference(r2)
+        validate_intersection = connection.execute(validate_q).scalar()
+        eq_(pg_res, validate_intersection)
+        py_res = r1.intersection(r2)
         eq_(
             py_res,
             pg_res,
