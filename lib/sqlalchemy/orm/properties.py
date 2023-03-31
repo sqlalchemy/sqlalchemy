@@ -594,6 +594,8 @@ class MappedColumn(
         new = self.__class__.__new__(self.__class__)
         new.column = self.column._copy(**kw)
         new.deferred = self.deferred
+        new.deferred_group = self.deferred_group
+        new.deferred_raiseload = self.deferred_raiseload
         new.foreign_keys = new.column.foreign_keys
         new._has_nullable = self._has_nullable
         new._attribute_options = self._attribute_options
