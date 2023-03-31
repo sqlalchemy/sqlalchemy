@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, mysql
-    :tickets: 9544
-
-    Fixed issue where string datatypes such as :class:`_sqltypes.CHAR`,
-    :class:`_sqltypes.VARCHAR`, :class:`_sqltypes.TEXT`, as well as binary
-    :class:`_sqltypes.BLOB`, could not be produced with an explicit length of
-    zero, which has special meaning for MySQL. Pull request courtesy J. Nick
-    Koston.

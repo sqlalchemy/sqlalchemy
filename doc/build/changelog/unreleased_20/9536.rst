@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 9536
-
-    Fixed typing for :func:`_orm.deferred` and :func:`_orm.query_expression`
-    to work correctly with 2.0 style mappings.

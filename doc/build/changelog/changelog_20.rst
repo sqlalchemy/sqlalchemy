@@ -10,7 +10,176 @@
 
 .. changelog::
     :version: 2.0.8
-    :include_notes_from: unreleased_20
+    :released: March 31, 2023
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9553
+
+        Fixed issue in ORM Annotated Declarative where using a recursive type (e.g.
+        using a nested Dict type) would result in a recursion overflow in the ORM's
+        annotation resolution logic, even if this datatype were not necessary to
+        map the column.
+
+    .. change::
+        :tags: bug, examples
+
+        Fixed issue in "versioned history" example where using a declarative base
+        that is derived from :class:`_orm.DeclarativeBase` would fail to be mapped.
+        Additionally, repaired the given test suite so that the documented
+        instructions for running the example using Python unittest now work again.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9550
+
+        Fixed issue where the :func:`_orm.mapped_column` construct would raise an
+        internal error if used on a Declarative mixin and included the
+        :paramref:`_orm.mapped_column.deferred` parameter.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 9544
+
+        Fixed issue where string datatypes such as :class:`_sqltypes.CHAR`,
+        :class:`_sqltypes.VARCHAR`, :class:`_sqltypes.TEXT`, as well as binary
+        :class:`_sqltypes.BLOB`, could not be produced with an explicit length of
+        zero, which has special meaning for MySQL. Pull request courtesy J. Nick
+        Koston.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9537
+
+        Expanded the warning emitted when a plain :func:`_sql.column` object is
+        present in a Declarative mapping to include any arbitrary SQL expression
+        that is not declared within an appropriate property type such as
+        :func:`_orm.column_property`, :func:`_orm.deferred`, etc. These attributes
+        are otherwise not mapped at all and remain unchanged within the class
+        dictionary. As it seems likely that such an expression is usually not
+        what's intended, this case now warns for all such otherwise ignored
+        expressions, rather than just the :func:`_sql.column` case.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9519
+
+        Fixed regression where accessing the expression value of a hybrid property
+        on a class that was either unmapped or not-yet-mapped (such as calling upon
+        it within a :func:`_orm.declared_attr` method) would raise an internal
+        error, as an internal fetch for the parent class' mapper would fail and an
+        instruction for this failure to be ignored were inadvertently removed in
+        2.0.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9350
+
+        Fields that are declared on Declarative Mixins and then combined with
+        classes that make use of :class:`_orm.MappedAsDataclass`, where those mixin
+        fields are not themselves part of a dataclass, now emit a deprecation
+        warning as these fields will be ignored in a future release, as Python
+        dataclasses behavior is to ignore these fields. Type checkers will not see
+        these fields under pep-681.
+
+        .. seealso::
+
+            :ref:`error_dcmx` - background on rationale
+
+            :ref:`orm_declarative_dc_mixins`
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 9511
+
+        Fixed critical regression in PostgreSQL dialects such as asyncpg which rely
+        upon explicit casts in SQL in order for datatypes to be passed to the
+        driver correctly, where a :class:`.String` datatype would be cast along
+        with the exact column length being compared, leading to implicit truncation
+        when comparing a ``VARCHAR`` of a smaller length to a string of greater
+        length regardless of operator in use (e.g. LIKE, MATCH, etc.). The
+        PostgreSQL dialect now omits the length from ``VARCHAR`` when rendering
+        these casts.
+
+    .. change::
+        :tags: bug, util
+        :tickets: 9487
+
+        Implemented missing methods ``copy`` and ``pop`` in
+        OrderedSet class.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 9536
+
+        Fixed typing for :func:`_orm.deferred` and :func:`_orm.query_expression`
+        to work correctly with 2.0 style mappings.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9526
+
+        Fixed issue where the :meth:`_sql.BindParameter.render_literal_execute`
+        method would fail when called on a parameter that also had ORM annotations
+        associated with it. In practice, this would be observed as a failure of SQL
+        compilation when using some combinations of a dialect that uses "FETCH
+        FIRST" such as Oracle along with a :class:`_sql.Select` construct that uses
+        :meth:`_sql.Select.limit`, within some ORM contexts, including if the
+        statement were embedded within a relationship primaryjoin expression.
+
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 9563
+
+        Exceptions such as ``TypeError`` and ``ValueError`` raised by Python
+        dataclasses when making use of the :class:`_orm.MappedAsDataclass` mixin
+        class or :meth:`_orm.registry.mapped_as_dataclass` decorator are now
+        wrapped within an :class:`.InvalidRequestError` wrapper along with
+        informative context about the error message, referring to the Python
+        dataclasses documentation as the authoritative source of background
+        information on the cause of the exception.
+
+        .. seealso::
+
+            :ref:`error_dcte`
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9549
+
+        Towards maintaining consistency with unit-of-work changes made for
+        :ticket:`5984` and :ticket:`8862`, both of which disable "lazy='raise'"
+        handling within :class:`_orm.Session` processes that aren't triggered by
+        attribute access, the :meth:`_orm.Session.delete` method will now also
+        disable "lazy='raise'" handling when it traverses relationship paths in
+        order to process the "delete" and "delete-orphan" cascade rules.
+        Previously, there was no easy way to generically call
+        :meth:`_orm.Session.delete` on an object that had "lazy='raise'" set up
+        such that only the necessary relationships would be loaded. As
+        "lazy='raise'" is primarily intended to catch SQL loading that emits on
+        attribute access, :meth:`_orm.Session.delete` is now made to behave like
+        other :class:`_orm.Session` methods including :meth:`_orm.Session.merge` as
+        well as :meth:`_orm.Session.flush` along with autoflush.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9564
+
+        Fixed issue where an annotation-only :class:`_orm.Mapped` directive could
+        not be used in a Declarative mixin class, without that attribute attempting
+        to take effect for single- or joined-inheritance subclasses of mapped
+        classes that had already mapped that attribute on a superclass, producing
+        conflicting column errors and/or warnings.
+
+
+    .. change::
+        :tags: bug, orm, typing
+        :tickets: 9514
+
+        Properly type :paramref:`_dml.Insert.from_select.names` to accept
+        a list of string or columns or mapped attributes.
 
 .. changelog::
     :version: 2.0.7

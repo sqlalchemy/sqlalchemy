@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 9550
-
-    Fixed issue where the :func:`_orm.mapped_column` construct would raise an
-    internal error if used on a Declarative mixin and included the
-    :paramref:`_orm.mapped_column.deferred` parameter.

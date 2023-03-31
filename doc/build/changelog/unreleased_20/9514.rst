@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, orm, typing
-    :tickets: 9514
-
-    Properly type :paramref:`_dml.Insert.from_select.names` to accept
-    a list of string or columns or mapped attributes.
