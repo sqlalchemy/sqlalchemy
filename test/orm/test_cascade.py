@@ -63,10 +63,10 @@ class CascadeArgTest(fixtures.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(cls.Basic):
+        class User(cls.Comparable):
             pass
 
-        class Address(cls.Basic):
+        class Address(cls.Comparable):
             pass
 
     def test_delete_with_passive_deletes_all(self):
@@ -171,6 +171,78 @@ class CascadeArgTest(fixtures.MappedTest):
         rel = relationship(Address)
         rel.cascade = "save-update, merge, expunge"
         eq_(rel.cascade, {"save-update", "merge", "expunge"})
+
+
+class CasadeWithRaiseloadTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "users",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("name", String(30), nullable=False),
+        )
+        Table(
+            "addresses",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("user_id", Integer, ForeignKey("users.id")),
+            Column("email_address", String(50), nullable=False),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class User(cls.Comparable):
+            pass
+
+        class Address(cls.Comparable):
+            pass
+
+    def test_delete_skips_lazy_raise(self):
+        User, Address = self.classes.User, self.classes.Address
+        users, addresses = self.tables.users, self.tables.addresses
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    Address, cascade="all, delete-orphan", lazy="raise"
+                )
+            },
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
+
+        self.mapper_registry.metadata.create_all(testing.db)
+
+        sess = fixture_session()
+        u1 = User(
+            name="u1",
+            addresses=[
+                Address(email_address="e1"),
+                Address(email_address="e2"),
+            ],
+        )
+        sess.add(u1)
+        sess.commit()
+
+        eq_(
+            sess.scalars(
+                select(Address).order_by(Address.email_address)
+            ).all(),
+            [Address(email_address="e1"), Address(email_address="e2")],
+        )
+
+        sess.close()
+
+        sess.delete(u1)
+        sess.commit()
+
+        eq_(sess.scalars(select(Address)).all(), [])
 
 
 class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):

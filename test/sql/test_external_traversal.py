@@ -33,6 +33,7 @@ from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import visitors
 from sqlalchemy.sql.elements import _clone
 from sqlalchemy.sql.expression import _from_objects
+from sqlalchemy.sql.util import _deep_annotate
 from sqlalchemy.sql.visitors import ClauseVisitor
 from sqlalchemy.sql.visitors import cloned_traverse
 from sqlalchemy.sql.visitors import CloningVisitor
@@ -507,6 +508,71 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         adapted = sql_util.ClauseAdapter(a1).traverse(expr)
 
         self.assert_compile(adapted, expected)
+
+    @testing.variation("annotate", [True, False])
+    def test_bindparam_render_literal_execute(self, annotate):
+        """test #9526"""
+
+        bp = bindparam("some_value")
+
+        if annotate:
+            bp = bp._annotate({"foo": "bar"})
+
+        bp = bp.render_literal_execute()
+        self.assert_compile(
+            column("q") == bp, "q = __[POSTCOMPILE_some_value]"
+        )
+
+    @testing.variation("limit_type", ["limit", "fetch"])
+    @testing.variation("dialect", ["default", "oracle"])
+    def test_annotated_fetch(self, limit_type: testing.Variation, dialect):
+        """test #9526"""
+
+        if limit_type.limit:
+            stmt = select(column("q")).limit(1)
+        elif limit_type.fetch:
+            stmt = select(column("q")).fetch(1)
+        else:
+            limit_type.fail()
+
+        stmt = _deep_annotate(stmt, {"foo": "bar"})
+
+        if limit_type.limit:
+            if dialect.default:
+                self.assert_compile(
+                    stmt,
+                    "SELECT q LIMIT :param_1",
+                    use_literal_execute_for_simple_int=True,
+                    dialect=dialect.name,
+                )
+            elif dialect.oracle:
+                self.assert_compile(
+                    stmt,
+                    "SELECT q FROM DUAL FETCH FIRST "
+                    "__[POSTCOMPILE_param_1] ROWS ONLY",
+                    dialect=dialect.name,
+                )
+            else:
+                dialect.fail()
+        elif limit_type.fetch:
+            if dialect.default:
+                self.assert_compile(
+                    stmt,
+                    "SELECT q FETCH FIRST __[POSTCOMPILE_param_1] ROWS ONLY",
+                    use_literal_execute_for_simple_int=True,
+                    dialect=dialect.name,
+                )
+            elif dialect.oracle:
+                self.assert_compile(
+                    stmt,
+                    "SELECT q FROM DUAL FETCH FIRST "
+                    "__[POSTCOMPILE_param_1] ROWS ONLY",
+                    dialect=dialect.name,
+                )
+            else:
+                dialect.fail()
+        else:
+            limit_type.fail()
 
     @testing.combinations((null(),), (true(),))
     def test_dont_adapt_singleton_elements(self, elem):

@@ -191,20 +191,15 @@ Additional steps specific to individual databases are as follows::
 
         postgres=# create database test with owner=scott encoding='utf8' template=template0;
 
-    To include tests for HSTORE, create the HSTORE type engine::
+    To include tests for HSTORE and CITEXT for PostgreSQL versions lower than 13,
+    create the extensions; for PostgreSQL 13 and above, these
+    extensions are created automatically as part of the test suite if not
+    already present::
 
         postgres=# \c test;
         You are now connected to database "test" as user "postgresql".
         test=# create extension hstore;
         CREATE EXTENSION
-
-    To include tests for CITEXT for PostgreSQL versions lower than 13,
-    create the CITEXT extension; for PostgreSQL 13 and above, this
-    extension is created automatically as part of the test suite if not
-    already present::
-
-        postgres=# \c test;
-        You are now connected to database "test" as user "postgresql".
         test=# create extension citext;
         CREATE EXTENSION
 
@@ -259,7 +254,7 @@ intended for production use!
 
     # configure the database
     sleep 10
-    docker exec -ti postgres psql -U scott -c 'CREATE SCHEMA test_schema; CREATE SCHEMA test_schema_2;CREATE EXTENSION hstore;' test
+    docker exec -ti postgres psql -U scott -c 'CREATE SCHEMA test_schema; CREATE SCHEMA test_schema_2;CREATE EXTENSION hstore;CREATE EXTENSION citext;' test
     # this last command is optional
     docker exec -ti postgres sed -i 's/#max_prepared_transactions = 0/max_prepared_transactions = 10/g' /var/lib/postgresql/data/postgresql.conf
 

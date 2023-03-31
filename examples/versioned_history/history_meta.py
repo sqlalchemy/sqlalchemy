@@ -6,6 +6,7 @@ from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import event
 from sqlalchemy import ForeignKeyConstraint
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy import util
@@ -174,22 +175,22 @@ def _history_mapper(local_mapper):
     else:
         bases = local_mapper.base_mapper.class_.__bases__
 
-    versioned_cls = type.__new__(
-        type,
+    versioned_cls = type(
         "%sHistory" % cls.__name__,
         bases,
-        {"_history_mapper_configured": True},
+        {
+            "_history_mapper_configured": True,
+            "__table__": history_table,
+            "__mapper_args__": dict(
+                inherits=super_history_mapper,
+                polymorphic_identity=local_mapper.polymorphic_identity,
+                polymorphic_on=polymorphic_on,
+                properties=properties,
+            ),
+        },
     )
 
-    m = local_mapper.registry.map_imperatively(
-        versioned_cls,
-        history_table,
-        inherits=super_history_mapper,
-        polymorphic_identity=local_mapper.polymorphic_identity,
-        polymorphic_on=polymorphic_on,
-        properties=properties,
-    )
-    cls.__history_mapper__ = m
+    cls.__history_mapper__ = versioned_cls.__mapper__
 
 
 class Versioned:
@@ -201,9 +202,17 @@ class Versioned:
     are used for new rows even for rows that have been deleted."""
 
     def __init_subclass__(cls) -> None:
-        @event.listens_for(cls, "after_mapper_constructed")
-        def _mapper_constructed(mapper, class_):
-            _history_mapper(mapper)
+        insp = inspect(cls, raiseerr=False)
+
+        if insp is not None:
+            _history_mapper(insp)
+        else:
+
+            @event.listens_for(cls, "after_mapper_constructed")
+            def _mapper_constructed(mapper, class_):
+                _history_mapper(mapper)
+
+        super().__init_subclass__()
 
 
 def versioned_objects(iter_):

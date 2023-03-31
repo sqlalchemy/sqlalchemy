@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 9511
+
+    Fixed critical regression in PostgreSQL dialects such as asyncpg which rely
+    upon explicit casts in SQL in order for datatypes to be passed to the
+    driver correctly, where a :class:`.String` datatype would be cast along
+    with the exact column length being compared, leading to implicit truncation
+    when comparing a ``VARCHAR`` of a smaller length to a string of greater
+    length regardless of operator in use (e.g. LIKE, MATCH, etc.). The
+    PostgreSQL dialect now omits the length from ``VARCHAR`` when rendering
+    these casts.

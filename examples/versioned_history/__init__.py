@@ -16,7 +16,8 @@ A fragment of example usage, using declarative::
 
     from history_meta import Versioned, versioned_session
 
-    Base = declarative_base()
+    class Base(DeclarativeBase):
+        pass
 
     class SomeClass(Versioned, Base):
         __tablename__ = 'sometable'

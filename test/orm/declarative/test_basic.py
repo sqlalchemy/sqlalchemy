@@ -1301,10 +1301,10 @@ class DeclarativeMultiBaseTest(
             class_mapper(Bar).get_property("some_data").columns[0] is t.c.data
         )
 
-    def test_lower_case_c_column_warning(self):
+    def test_non_sql_expression_warning_one(self):
         with assertions.expect_warnings(
             r"Attribute 'x' on class <class .*Foo.* appears to be a "
-            r"non-schema 'sqlalchemy.sql.column\(\)' object; "
+            r"non-schema SQLAlchemy expression object; "
         ):
 
             class Foo(Base):
@@ -1314,13 +1314,14 @@ class DeclarativeMultiBaseTest(
                 x = sa.sql.expression.column(Integer)
                 y = Column(Integer)
 
+    def test_non_sql_expression_warning_two(self):
         class MyMixin:
             x = sa.sql.expression.column(Integer)
             y = Column(Integer)
 
         with assertions.expect_warnings(
             r"Attribute 'x' on class <class .*MyMixin.* appears to be a "
-            r"non-schema 'sqlalchemy.sql.column\(\)' object; "
+            r"non-schema SQLAlchemy expression object; "
         ):
 
             class Foo2(MyMixin, Base):
@@ -1328,9 +1329,10 @@ class DeclarativeMultiBaseTest(
 
                 id = Column(Integer, primary_key=True)
 
+    def test_non_sql_expression_warning_three(self):
         with assertions.expect_warnings(
             r"Attribute 'x' on class <class .*Foo3.* appears to be a "
-            r"non-schema 'sqlalchemy.sql.column\(\)' object; "
+            r"non-schema SQLAlchemy expression object; "
         ):
 
             class Foo3(Base):
@@ -1344,9 +1346,10 @@ class DeclarativeMultiBaseTest(
 
                 y = Column(Integer)
 
+    def test_non_sql_expression_warning_four(self):
         with assertions.expect_warnings(
             r"Attribute 'x' on class <class .*Foo4.* appears to be a "
-            r"non-schema 'sqlalchemy.sql.column\(\)' object; "
+            r"non-schema SQLAlchemy expression object; "
         ):
 
             class MyMixin2:
@@ -1360,6 +1363,25 @@ class DeclarativeMultiBaseTest(
                 __tablename__ = "foo4"
 
                 id = Column(Integer, primary_key=True)
+
+    def test_non_sql_expression_warning_five(self):
+
+        # test for #9537
+        with assertions.expect_warnings(
+            r"Attribute 'x' on class <class .*Foo5.* appears to be a "
+            r"non-schema SQLAlchemy expression object; ",
+            r"Attribute 'y' on class <class .*Foo5.* appears to be a "
+            r"non-schema SQLAlchemy expression object; ",
+            raise_on_any_unexpected=True,
+        ):
+
+            class Foo5(Base):
+                __tablename__ = "foo5"
+
+                id = Column(Integer, primary_key=True)
+                x = Column("x", String()).collate("some collation")
+                y = Column("y", Integer) + 5
+                z = "im not a sqlalchemy thing"
 
     def test_column_named_twice(self):
         with expect_warnings(

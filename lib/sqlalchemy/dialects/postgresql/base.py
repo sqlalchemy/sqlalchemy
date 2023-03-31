@@ -1717,6 +1717,10 @@ class PGCompiler(compiler.SQLCompiler):
         return f"{element.name}{self.function_argspec(element, **kw)}"
 
     def render_bind_cast(self, type_, dbapi_type, sqltext):
+        if dbapi_type._type_affinity is sqltypes.String:
+            # use VARCHAR with no length for VARCHAR cast.
+            # see #9511
+            dbapi_type = sqltypes.STRINGTYPE
         return f"""{sqltext}::{
                 self.dialect.type_compiler_instance.process(
                     dbapi_type, identifier_preparer=self.preparer

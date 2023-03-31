@@ -1495,7 +1495,7 @@ class RelationshipProperty(
         if type_ != "delete" or self.passive_deletes:
             passive = PassiveFlag.PASSIVE_NO_INITIALIZE
         else:
-            passive = PassiveFlag.PASSIVE_OFF
+            passive = PassiveFlag.PASSIVE_OFF | PassiveFlag.NO_RAISE
 
         if type_ == "save-update":
             tuples = state.manager[self.key].impl.get_all_pending(state, dict_)

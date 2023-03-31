@@ -2252,7 +2252,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
             return "YEAR(%s)" % type_.display_width
 
     def visit_TEXT(self, type_, **kw):
-        if type_.length:
+        if type_.length is not None:
             return self._extend_string(type_, {}, "TEXT(%d)" % type_.length)
         else:
             return self._extend_string(type_, {}, "TEXT")
@@ -2267,7 +2267,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         return self._extend_string(type_, {}, "LONGTEXT")
 
     def visit_VARCHAR(self, type_, **kw):
-        if type_.length:
+        if type_.length is not None:
             return self._extend_string(type_, {}, "VARCHAR(%d)" % type_.length)
         else:
             raise exc.CompileError(
@@ -2275,7 +2275,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
             )
 
     def visit_CHAR(self, type_, **kw):
-        if type_.length:
+        if type_.length is not None:
             return self._extend_string(
                 type_, {}, "CHAR(%(length)s)" % {"length": type_.length}
             )
@@ -2285,7 +2285,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
     def visit_NVARCHAR(self, type_, **kw):
         # We'll actually generate the equiv. "NATIONAL VARCHAR" instead
         # of "NVARCHAR".
-        if type_.length:
+        if type_.length is not None:
             return self._extend_string(
                 type_,
                 {"national": True},
@@ -2299,7 +2299,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
     def visit_NCHAR(self, type_, **kw):
         # We'll actually generate the equiv.
         # "NATIONAL CHAR" instead of "NCHAR".
-        if type_.length:
+        if type_.length is not None:
             return self._extend_string(
                 type_,
                 {"national": True},
@@ -2327,7 +2327,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
             return self._visit_enumerated_values("ENUM", type_, type_.enums)
 
     def visit_BLOB(self, type_, **kw):
-        if type_.length:
+        if type_.length is not None:
             return "BLOB(%d)" % type_.length
         else:
             return "BLOB"
