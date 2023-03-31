@@ -375,6 +375,53 @@ the other arguments can remain within the ``Annotated`` construct::
 
     u1 = User()
 
+.. _orm_declarative_dc_mixins:
+
+Using mixins and abstract superclasses
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Any mixins or base classes that are used in a :class:`_orm.MappedAsDataclass`
+mapped class which include :class:`_orm.Mapped` attributes must themselves be
+part of a :class:`_orm.MappedAsDataclass`
+hierarchy, such as in the example below using a mixin::
+
+
+    class Mixin(MappedAsDataclass):
+
+        create_user: Mapped[int] = mapped_column()
+        update_user: Mapped[Optional[int]] = mapped_column(default=None, init=False)
+
+
+    class Base(DeclarativeBase, MappedAsDataclass):
+        pass
+
+
+    class User(Base, Mixin):
+        __tablename__ = "sys_user"
+
+        uid: Mapped[str] = mapped_column(
+            String(50), init=False, default_factory=uuid4, primary_key=True
+        )
+        username: Mapped[str] = mapped_column()
+        email: Mapped[str] = mapped_column()
+
+Python type checkers which support :pep:`681` will otherwise not consider
+attributes from non-dataclass mixins to be part of the dataclass.
+
+.. deprecated:: 2.0.8  Using mixins and abstract bases within
+   :class:`_orm.MappedAsDataclass` or
+   :meth:`_orm.registry.mapped_as_dataclass` hierarchies which are not
+   themselves dataclasses is deprecated, as these fields are not supported
+   by :pep:`681` as belonging to the dataclass.  A warning is emitted for this
+   case which will later be an error.
+
+   .. seealso::
+
+       :ref:`error_dcmx` - background on rationale
+
+
+
+
 Relationship Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
