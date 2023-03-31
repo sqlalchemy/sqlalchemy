@@ -3555,6 +3555,36 @@ class Uuid(TypeEngine[_UUID_RETURN]):
     "native" mode enabled by default allows these types will be used on those
     backends.
 
+    In its default mode of use, the :class:`_sqltypes.Uuid` datatype expects
+    **Python uuid objects**, from the Python
+    `uuid <https://docs.python.org/3/library/uuid.html>`_
+    module::
+
+        import uuid
+
+        from sqlalchemy import Uuid
+        from sqlalchemy import Table, Column, MetaData, String
+
+
+        metadata_obj = MetaData()
+
+        t = Table(
+            "t",
+            metadata_obj,
+            Column('uuid_data', Uuid, primary_key=True),
+            Column("other_data", String)
+        )
+
+        with engine.begin() as conn:
+            conn.execute(
+                t.insert(),
+                {"uuid_data": uuid.uuid4(), "other_data", "some data"}
+            )
+
+    To have the :class:`_sqltypes.Uuid` datatype work with string-based
+    Uuids (e.g. 32 character hexadecimal strings), pass the
+    :paramref:`_sqltypes.Uuid.as_uuid` parameter with the value ``False``.
+
     .. versionadded:: 2.0
 
     .. seealso::
