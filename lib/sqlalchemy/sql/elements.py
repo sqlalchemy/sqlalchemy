@@ -502,6 +502,28 @@ class ClauseElement(
             connection, distilled_params, execution_options
         ).scalar()
 
+    def _get_embedded_bindparams(self) -> Sequence[BindParameter[Any]]:
+        """Return the list of :class:`.BindParameter` objects embedded in the
+        object.
+
+        This accomplishes the same purpose as ``visitors.traverse()`` or
+        similar would provide, however by making use of the cache key
+        it takes advantage of memoization of the key to result in fewer
+        net method calls, assuming the statement is also going to be
+        executed.
+
+        """
+
+        key = self._generate_cache_key()
+        if key is None:
+            bindparams: List[BindParameter[Any]] = []
+
+            traverse(self, {}, {"bindparam": bindparams.append})
+            return bindparams
+
+        else:
+            return key.bindparams
+
     def unique_params(
         self,
         __optionaldict: Optional[Dict[str, Any]] = None,
