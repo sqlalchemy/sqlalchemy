@@ -201,6 +201,7 @@ RESERVED_WORDS_MARIADB = {
     "right",
     "rlike",
     "rows",
+    "row_number",
     "schema",
     "schemas",
     "second_microsecond",
