@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9590
+    :versions: 2.0.9
+
+    Fixed endless loop which could occur when using "relationship to aliased
+    class" feature and also indicating a recursive eager loader such as
+    ``lazy="selectinload"`` in the loader, in combination with another eager
+    loader on the opposite side. The check for cycles has been fixed to include
+    aliased class relationships.
