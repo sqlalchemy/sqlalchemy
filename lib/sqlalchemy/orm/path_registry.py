@@ -231,7 +231,7 @@ class PathRegistry(HasCacheKey):
     def contains_mapper(self, mapper: Mapper[Any]) -> bool:
         _m_path = cast(_OddPathRepresentation, self.path)
         for path_mapper in [_m_path[i] for i in range(0, len(_m_path), 2)]:
-            if path_mapper.is_mapper and path_mapper.isa(mapper):
+            if path_mapper.mapper.isa(mapper):
                 return True
         else:
             return False
