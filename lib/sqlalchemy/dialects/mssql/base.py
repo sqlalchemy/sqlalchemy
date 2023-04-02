@@ -3019,6 +3019,8 @@ class MSDialect(default.DefaultDialect):
 
     use_insertmanyvalues = True
 
+    # note pyodbc will set this to False if fast_executemany is set,
+    # as of SQLAlchemy 2.0.9
     use_insertmanyvalues_wo_returning = True
 
     # "The incoming request has too many parameters. The server supports a "

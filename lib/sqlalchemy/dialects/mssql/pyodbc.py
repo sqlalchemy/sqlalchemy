@@ -291,9 +291,10 @@ Fast Executemany Mode
 ---------------------
 
 .. note:: SQLAlchemy 2.0 now includes an equivalent "fast executemany"
-   handler for INSERT statements that is more robust than the PyODBC feature;
+   handler for INSERT statements that is more robust than the PyODBC feature
+   (but is not quite as performant particularly for very large datasets);
    the feature is called :ref:`insertmanyvalues <engine_insertmanyvalues>`
-   and is enabled by default for all INSERT statements used by SQL Server.
+   and is enabled for all INSERT statements by default.
    SQLAlchemy's feature integrates with the PyODBC ``setinputsizes()`` method
    which allows for more accurate specification of datatypes, and additionally
    uses a dynamically sized, batched approach that scales to any number of
@@ -301,9 +302,12 @@ Fast Executemany Mode
 
    The SQL Server ``fast_executemany`` parameter may be used at the same time
    as ``insertmanyvalues`` is enabled; however, the parameter will not be used
-   in as many cases as INSERT statements that are invoked using Core
-   :class:`_dml.Insert` constructs as well as all ORM use no longer use the
-   ``.executemany()`` DBAPI cursor method.
+   for INSERT statements that include RETURNING.
+
+.. versionchanged:: 2.0.9 - ``fast_executemany`` executions will be used
+   for INSERT statements that don't include RETURNING, when
+   ``fast_executemany`` is set. Previously, ``use_insertmanyvalues`` would
+   cause ``fast_executemany`` to not be used in most cases.
 
 The PyODBC driver includes support for a "fast executemany" mode of execution
 which greatly reduces round trips for a DBAPI ``executemany()`` call when using
@@ -662,6 +666,8 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
             8,
         )
         self.fast_executemany = fast_executemany
+        if fast_executemany:
+            self.use_insertmanyvalues_wo_returning = False
 
     def _get_server_version_info(self, connection):
         try:

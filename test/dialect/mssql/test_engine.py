@@ -459,7 +459,10 @@ class FastExecutemanyTest(fixtures.TestBase):
         # (... four months pass ...)
         # surprise! we need it again.  woop!  for #8917
         expect_failure = (
-            broken_types and not setinputsizes and insertmanyvalues
+            broken_types
+            and not setinputsizes
+            and insertmanyvalues
+            and not fastexecutemany
         )
 
         engine = testing_engine(
