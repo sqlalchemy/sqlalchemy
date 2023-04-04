@@ -6,9 +6,9 @@
 # mypy: ignore-errors
 
 import datetime as dt
+from typing import Optional
 
 from ...sql import sqltypes
-
 
 _DECIMAL_TYPES = (1231, 1700)
 _FLOAT_TYPES = (700, 701, 1021, 1022)
@@ -150,7 +150,7 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
 
     __visit_name__ = "TIMESTAMP"
 
-    def __init__(self, timezone=False, precision=None):
+    def __init__(self, timezone=False, precision: Optional[int] = None):
         """Construct a TIMESTAMP.
 
         :param timezone: boolean value if timezone present, default False
@@ -169,7 +169,7 @@ class TIME(sqltypes.TIME):
 
     __visit_name__ = "TIME"
 
-    def __init__(self, timezone=False, precision=None):
+    def __init__(self, timezone=False, precision: Optional[int] = None):
         """Construct a TIME.
 
         :param timezone: boolean value if timezone present, default False
@@ -189,7 +189,7 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
     __visit_name__ = "INTERVAL"
     native = True
 
-    def __init__(self, precision=None, fields=None):
+    def __init__(self, precision: Optional[int] = None, fields: Optional[str] = None):
         """Construct an INTERVAL.
 
         :param precision: optional integer precision value
@@ -225,7 +225,7 @@ PGInterval = INTERVAL
 class BIT(sqltypes.TypeEngine[int]):
     __visit_name__ = "BIT"
 
-    def __init__(self, length=None, varying=False):
+    def __init__(self, length: Optional[int] = None, varying=False):
         if not varying:
             # BIT without VARYING defaults to length 1
             self.length = length or 1
