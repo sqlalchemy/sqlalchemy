@@ -251,18 +251,11 @@ The process for fetching this value has several variants:
 
     INSERT INTO t (x) OUTPUT inserted.id VALUES (?)
 
-  As of SQLAlchemy 2.0, the :ref:`engine_insertmanyvalues` feature is also
-  used by default to optimize many-row INSERT statements; for SQL Server
-  the feature takes place for both RETURNING and-non RETURNING
-  INSERT statements.
-
-* The value of :paramref:`_sa.create_engine.insertmanyvalues_page_size`
-  defaults to 1000, however the ultimate page size for a particular INSERT
-  statement may be limited further, based on an observed limit of
-  2100 bound parameters for a single statement in SQL Server.
-  The page size may also be modified on a per-engine
-  or per-statement basis; see the section
-  :ref:`engine_insertmanyvalues_page_size` for details.
+  .. note::  SQLAlchemy 2.0 introduced the :ref:`engine_insertmanyvalues`
+     feature for SQL Server, which is used by default to optimize many-row
+     INSERT statements; however as of SQLAlchemy 2.0.9 this feature had
+     to be turned off for SQL Server as the database does not support
+     deterministic RETURNING of INSERT rows for a multi-row INSERT statement.
 
 * When RETURNING is not available or has been disabled via
   ``implicit_returning=False``, either the ``scope_identity()`` function or
@@ -3017,7 +3010,8 @@ class MSDialect(default.DefaultDialect):
     # may be changed at server inspection time for older SQL server versions
     supports_multivalues_insert = True
 
-    use_insertmanyvalues = True
+    # disabled due to #9603
+    use_insertmanyvalues = False
 
     # note pyodbc will set this to False if fast_executemany is set,
     # as of SQLAlchemy 2.0.9
@@ -3084,6 +3078,14 @@ class MSDialect(default.DefaultDialect):
             self.legacy_schema_aliasing = legacy_schema_aliasing
 
         super().__init__(**opts)
+
+        if self.use_insertmanyvalues:
+            raise exc.ArgumentError(
+                "The use_insertmanyvalues feature on SQL Server is currently "
+                "not safe to use, as returned result rows may be returned in "
+                "random order.  Ensure use_insertmanyvalues is left at its "
+                "default of False (this setting changed in SQLAlchemy 2.0.9)"
+            )
 
         self._json_serializer = json_serializer
         self._json_deserializer = json_deserializer

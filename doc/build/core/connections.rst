@@ -1854,7 +1854,9 @@ as follows:
 
 * SQLite - supported for SQLite versions 3.35 and above
 * PostgreSQL - all supported Postgresql versions (9 and above)
-* SQL Server - all supported SQL Server versions
+* SQL Server - **disabled by default as of SQLAlchemy 2.0.9** - the SQL syntax
+  used has been shown to not be safe for RETURNING
+  (see https://github.com/sqlalchemy/sqlalchemy/issues/9603)
 * MariaDB - supported for MariaDB versions 10.5 and above
 * MySQL - no support, no RETURNING feature is present
 * Oracle - supports RETURNING with executemany using native cx_Oracle / OracleDB
@@ -1887,11 +1889,7 @@ The feature can also be disabled from being used implicitly for a particular
       )
 
 The reason one might want to disable RETURNING for a specific table is to
-work around backend-specific limitations.  For example, there is a known
-limitation of SQL Server that the ``OUTPUT inserted.<colname>`` feature
-may not work correctly for a table that has INSERT triggers established;
-such a table may need to include ``implicit_returning=False`` (see
-:ref:`mssql_triggers`).
+work around backend-specific limitations.
 
 .. _engine_insertmanyvalues_page_size:
 
@@ -1929,9 +1927,8 @@ varies by dialect and server version; the largest size is 32700 (chosen as a
 healthy distance away from PostgreSQL's limit of 32767 and SQLite's modern
 limit of 32766, while leaving room for additional parameters in the statement
 as well as for DBAPI quirkiness). Older versions of SQLite (prior to 3.32.0)
-will set this value to 999; SQL Server sets it to 2099.  MariaDB has no
-established limit however 32700 remains as a limiting factor for SQL message
-size.
+will set this value to 999. MariaDB has no established limit however 32700
+remains as a limiting factor for SQL message size.
 
 The value of the "batch size" can be affected :class:`_engine.Engine`
 wide via the :paramref:`_sa.create_engine.insertmanyvalues_page_size` parameter.

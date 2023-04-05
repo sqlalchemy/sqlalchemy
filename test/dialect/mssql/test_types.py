@@ -1335,7 +1335,8 @@ class StringRoundTripTest(fixtures.TestBase):
         id_="ia",
     )
     @testing.combinations(
-        ("insertmany", True),
+        # disabled due to #9603
+        # ("insertmany", True),
         ("insertsingle", False),
         argnames="insertmany",
         id_="ia",

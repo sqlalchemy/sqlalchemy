@@ -3217,14 +3217,34 @@ class EagerDefaultsSettingTest(
             Conditional(
                 expect_returning,
                 [
-                    CompiledSQL(
-                        "INSERT INTO test (id, bar) VALUES (:id, :bar) "
-                        "RETURNING test.foo",
+                    Conditional(
+                        connection.dialect.insert_executemany_returning,
                         [
-                            {"id": 1, "bar": 6},
-                            {"id": 2, "bar": 6},
+                            CompiledSQL(
+                                "INSERT INTO test (id, bar) "
+                                "VALUES (:id, :bar) "
+                                "RETURNING test.foo",
+                                [
+                                    {"id": 1, "bar": 6},
+                                    {"id": 2, "bar": 6},
+                                ],
+                            )
                         ],
-                    )
+                        [
+                            CompiledSQL(
+                                "INSERT INTO test (id, bar) "
+                                "VALUES (:id, :bar) "
+                                "RETURNING test.foo",
+                                {"id": 1, "bar": 6},
+                            ),
+                            CompiledSQL(
+                                "INSERT INTO test (id, bar) "
+                                "VALUES (:id, :bar) "
+                                "RETURNING test.foo",
+                                {"id": 2, "bar": 6},
+                            ),
+                        ],
+                    ),
                 ],
                 [
                     CompiledSQL(
