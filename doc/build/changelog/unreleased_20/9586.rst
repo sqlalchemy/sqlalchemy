@@ -6,16 +6,15 @@
     pyodbc when ``fast_executemany`` is set to ``True`` by using
     ``fast_executemany`` / ``cursor.executemany()`` for bulk INSERT that does
     not include RETURNING, restoring the same behavior as was used in
-    SQLAlchemy 1.4 when this parameter is set. For INSERT statements that use
-    RETURNING, the "insertmanyvalues" strategy continues to be used as it is
-    the only current strategy that supports RETURNING with bulk INSERT.
-
-    Previously, SQLAlchemy 2.0 would use "insertmanyvalues" for all INSERT
-    statements when ``use_insertmanyvalues`` was left at its default of
-    ``False``, ignoring if ``fast_executemany`` was set.
+    SQLAlchemy 1.4 when this parameter is set.
 
     New performance details from end users have shown that ``fast_executemany``
     is still much faster for very large datasets as it uses ODBC commands that
     can receive all rows in a single round trip, allowing for much larger
-    datasizes than the batches that can be sent by the current
-    "insertmanyvalues" strategy.
+    datasizes than the batches that can be sent by "insertmanyvalues"
+    as was implemented for SQL Server.
+
+    While this change was made such that "insertmanyvalues" continued to be
+    used for INSERT that includes RETURNING, as well as if ``fast_executemany``
+    were not set, due to :ticket:`9603`, the "insertmanyvalues" strategy has
+    been disabled for SQL Server across the board in any case.
