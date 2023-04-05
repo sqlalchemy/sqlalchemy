@@ -5108,7 +5108,7 @@ class MetaData(HasSchemaAttr):
         self,
         schema: Optional[str] = None,
         quote_schema: Optional[bool] = None,
-        naming_convention: Optional[Dict[str, str]] = None,
+        naming_convention: Optional[Dict[str, str | Callable[Constraint, Table]]] = None,
         info: Optional[_InfoType] = None,
     ) -> None:
         """Create a new MetaData object.
