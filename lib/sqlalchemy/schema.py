@@ -60,6 +60,7 @@ from .sql.schema import ForeignKeyConstraint as ForeignKeyConstraint
 from .sql.schema import HasConditionalDDL as HasConditionalDDL
 from .sql.schema import Identity as Identity
 from .sql.schema import Index as Index
+from .sql.schema import insert_sentinel as insert_sentinel
 from .sql.schema import MetaData as MetaData
 from .sql.schema import PrimaryKeyConstraint as PrimaryKeyConstraint
 from .sql.schema import SchemaConst as SchemaConst

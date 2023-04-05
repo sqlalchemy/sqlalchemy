@@ -131,6 +131,7 @@ from typing import TYPE_CHECKING
 
 from . import json
 from . import ranges
+from .array import ARRAY as PGARRAY
 from .base import _DECIMAL_TYPES
 from .base import _FLOAT_TYPES
 from .base import _INT_TYPES
@@ -155,6 +156,10 @@ from ...util.concurrency import await_only
 
 if TYPE_CHECKING:
     from typing import Iterable
+
+
+class AsyncpgARRAY(PGARRAY):
+    render_bind_cast = True
 
 
 class AsyncpgString(sqltypes.String):
@@ -904,6 +909,7 @@ class PGDialect_asyncpg(PGDialect):
         PGDialect.colspecs,
         {
             sqltypes.String: AsyncpgString,
+            sqltypes.ARRAY: AsyncpgARRAY,
             REGCONFIG: AsyncpgREGCONFIG,
             sqltypes.Time: AsyncpgTime,
             sqltypes.Date: AsyncpgDate,

@@ -51,17 +51,15 @@ class HasDescriptionCode:
             self.code = code
         super().__init__(*arg, **kw)
 
+    _what_are_we = "error"
+
     def _code_str(self) -> str:
         if not self.code:
             return ""
         else:
             return (
-                "(Background on this error at: "
-                "https://sqlalche.me/e/%s/%s)"
-                % (
-                    _version_token,
-                    self.code,
-                )
+                f"(Background on this {self._what_are_we} at: "
+                f"https://sqlalche.me/e/{_version_token}/{self.code})"
             )
 
     def __str__(self) -> str:
@@ -831,3 +829,5 @@ class SAPendingDeprecationWarning(PendingDeprecationWarning):
 
 class SAWarning(HasDescriptionCode, RuntimeWarning):
     """Issued at runtime."""
+
+    _what_are_we = "warning"

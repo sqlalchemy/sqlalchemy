@@ -32,8 +32,8 @@ from typing import Union
 from . import coercions
 from . import roles
 from . import util as sql_util
-from ._typing import _no_kw
 from ._typing import _TP
+from ._typing import _unexpected_kw
 from ._typing import is_column_element
 from ._typing import is_named_from_clause
 from .base import _entity_namespace_key
@@ -455,6 +455,7 @@ class UpdateBase(
         self,
         *cols: _DMLColumnArgument,
         supplemental_cols: Optional[Iterable[_DMLColumnArgument]] = None,
+        sort_by_parameter_order: bool = False,
     ) -> Self:
         """Make use of a :term:`RETURNING` clause for the purpose
         of fetching server-side expressions and defaults, for supporting
@@ -603,6 +604,20 @@ class UpdateBase(
 
           .. versionadded:: 2.0
 
+        :param sort_by_parameter_order: for a batch INSERT that is being
+         executed against multiple parameter sets, organize the results of
+         RETURNING so that the returned rows correspond to the order of
+         parameter sets passed in.  This applies only to an :term:`executemany`
+         execution for supporting dialects and typically makes use of the
+         :term:`insertmanyvalues` feature.
+
+         .. versionadded:: 2.0.10
+
+         .. seealso::
+
+            :ref:`engine_insertmanyvalues_returning_order` - background on
+            sorting of RETURNING rows for bulk INSERT
+
         .. seealso::
 
             :meth:`.UpdateBase.returning`
@@ -636,7 +651,13 @@ class UpdateBase(
                 coercions.expect(roles.ColumnsClauseRole, c) for c in cols
             )
         self._return_defaults = True
-
+        if sort_by_parameter_order:
+            if not self.is_insert:
+                raise exc.ArgumentError(
+                    "The 'sort_by_parameter_order' argument to "
+                    "return_defaults() only applies to INSERT statements"
+                )
+            self._sort_by_parameter_order = True
         if supplemental_cols:
             # uniquifying while also maintaining order (the maintain of order
             # is for test suites but also for vertical splicing
@@ -661,7 +682,10 @@ class UpdateBase(
 
     @_generative
     def returning(
-        self, *cols: _ColumnsClauseArgument[Any], **__kw: Any
+        self,
+        *cols: _ColumnsClauseArgument[Any],
+        sort_by_parameter_order: bool = False,
+        **__kw: Any,
     ) -> UpdateBase:
         r"""Add a :term:`RETURNING` or equivalent clause to this statement.
 
@@ -723,6 +747,25 @@ class UpdateBase(
         read the documentation notes for the database in use in
         order to determine the availability of RETURNING.
 
+        :param \*cols: series of columns, SQL expressions, or whole tables
+         entities to be returned.
+        :param sort_by_parameter_order: for a batch INSERT that is being
+         executed against multiple parameter sets, organize the results of
+         RETURNING so that the returned rows correspond to the order of
+         parameter sets passed in.  This applies only to an :term:`executemany`
+         execution for supporting dialects and typically makes use of the
+         :term:`insertmanyvalues` feature.
+
+         .. versionadded:: 2.0.10
+
+         .. seealso::
+
+            :ref:`engine_insertmanyvalues_returning_order` - background on
+            sorting of RETURNING rows for bulk INSERT (Core level discussion)
+
+            :ref:`orm_queryguide_bulk_insert_returning_ordered` - example of
+            use with :ref:`orm_queryguide_bulk_insert` (ORM level discussion)
+
         .. seealso::
 
           :meth:`.UpdateBase.return_defaults` - an alternative method tailored
@@ -733,7 +776,7 @@ class UpdateBase(
 
         """  # noqa: E501
         if __kw:
-            raise _no_kw()
+            raise _unexpected_kw("UpdateBase.returning()", __kw)
         if self._return_defaults:
             raise exc.InvalidRequestError(
                 "return_defaults() is already configured on this statement"
@@ -741,6 +784,13 @@ class UpdateBase(
         self._returning += tuple(
             coercions.expect(roles.ColumnsClauseRole, c) for c in cols
         )
+        if sort_by_parameter_order:
+            if not self.is_insert:
+                raise exc.ArgumentError(
+                    "The 'sort_by_parameter_order' argument to returning() "
+                    "only applies to INSERT statements"
+                )
+            self._sort_by_parameter_order = True
         return self
 
     def corresponding_column(
@@ -1123,6 +1173,8 @@ class Insert(ValuesBase):
     select = None
     include_insert_from_select_defaults = False
 
+    _sort_by_parameter_order: bool = False
+
     is_insert = True
 
     table: TableClause
@@ -1143,6 +1195,7 @@ class Insert(ValuesBase):
                 "_return_defaults_columns",
                 InternalTraversal.dp_clauseelement_tuple,
             ),
+            ("_sort_by_parameter_order", InternalTraversal.dp_boolean),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
@@ -1231,24 +1284,35 @@ class Insert(ValuesBase):
 
     if TYPE_CHECKING:
 
-        # START OVERLOADED FUNCTIONS self.returning ReturningInsert 1-8
+        # START OVERLOADED FUNCTIONS self.returning ReturningInsert 1-8 ", *, sort_by_parameter_order: bool = False"  # noqa: E501
 
         # code within this block is **programmatically,
         # statically generated** by tools/generate_tuple_map_overloads.py
 
         @overload
-        def returning(self, __ent0: _TCCA[_T0]) -> ReturningInsert[Tuple[_T0]]:
+        def returning(
+            self, __ent0: _TCCA[_T0], *, sort_by_parameter_order: bool = False
+        ) -> ReturningInsert[Tuple[_T0]]:
             ...
 
         @overload
         def returning(
-            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
+            self,
+            __ent0: _TCCA[_T0],
+            __ent1: _TCCA[_T1],
+            *,
+            sort_by_parameter_order: bool = False,
         ) -> ReturningInsert[Tuple[_T0, _T1]]:
             ...
 
         @overload
         def returning(
-            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
+            self,
+            __ent0: _TCCA[_T0],
+            __ent1: _TCCA[_T1],
+            __ent2: _TCCA[_T2],
+            *,
+            sort_by_parameter_order: bool = False,
         ) -> ReturningInsert[Tuple[_T0, _T1, _T2]]:
             ...
 
@@ -1259,6 +1323,8 @@ class Insert(ValuesBase):
             __ent1: _TCCA[_T1],
             __ent2: _TCCA[_T2],
             __ent3: _TCCA[_T3],
+            *,
+            sort_by_parameter_order: bool = False,
         ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3]]:
             ...
 
@@ -1270,6 +1336,8 @@ class Insert(ValuesBase):
             __ent2: _TCCA[_T2],
             __ent3: _TCCA[_T3],
             __ent4: _TCCA[_T4],
+            *,
+            sort_by_parameter_order: bool = False,
         ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4]]:
             ...
 
@@ -1282,6 +1350,8 @@ class Insert(ValuesBase):
             __ent3: _TCCA[_T3],
             __ent4: _TCCA[_T4],
             __ent5: _TCCA[_T5],
+            *,
+            sort_by_parameter_order: bool = False,
         ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
             ...
 
@@ -1295,6 +1365,8 @@ class Insert(ValuesBase):
             __ent4: _TCCA[_T4],
             __ent5: _TCCA[_T5],
             __ent6: _TCCA[_T6],
+            *,
+            sort_by_parameter_order: bool = False,
         ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
             ...
 
@@ -1309,6 +1381,8 @@ class Insert(ValuesBase):
             __ent5: _TCCA[_T5],
             __ent6: _TCCA[_T6],
             __ent7: _TCCA[_T7],
+            *,
+            sort_by_parameter_order: bool = False,
         ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
             ...
 
@@ -1316,12 +1390,18 @@ class Insert(ValuesBase):
 
         @overload
         def returning(
-            self, *cols: _ColumnsClauseArgument[Any], **__kw: Any
+            self,
+            *cols: _ColumnsClauseArgument[Any],
+            sort_by_parameter_order: bool = False,
+            **__kw: Any,
         ) -> ReturningInsert[Any]:
             ...
 
         def returning(
-            self, *cols: _ColumnsClauseArgument[Any], **__kw: Any
+            self,
+            *cols: _ColumnsClauseArgument[Any],
+            sort_by_parameter_order: bool = False,
+            **__kw: Any,
         ) -> ReturningInsert[Any]:
             ...
 

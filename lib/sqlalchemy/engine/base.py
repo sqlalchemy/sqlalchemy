@@ -2020,13 +2020,8 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
         if self._echo:
             stats = context._get_cache_stats() + " (insertmanyvalues)"
-        for (
-            sub_stmt,
-            sub_params,
-            setinputsizes,
-            batchnum,
-            totalbatches,
-        ) in dialect._deliver_insertmanyvalues_batches(
+
+        for imv_batch in dialect._deliver_insertmanyvalues_batches(
             cursor,
             str_statement,
             effective_parameters,
@@ -2034,19 +2029,24 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             context,
         ):
 
-            if setinputsizes:
+            if imv_batch.processed_setinputsizes:
                 try:
                     dialect.do_set_input_sizes(
-                        context.cursor, setinputsizes, context
+                        context.cursor,
+                        imv_batch.processed_setinputsizes,
+                        context,
                     )
                 except BaseException as e:
                     self._handle_dbapi_exception(
                         e,
-                        sql_util._long_statement(sub_stmt),
-                        sub_params,
+                        sql_util._long_statement(imv_batch.replaced_statement),
+                        imv_batch.replaced_parameters,
                         None,
                         context,
                     )
+
+            sub_stmt = imv_batch.replaced_statement
+            sub_params = imv_batch.replaced_parameters
 
             if engine_events:
                 for fn in self.dispatch.before_cursor_execute:
@@ -2063,11 +2063,20 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
                 self._log_info(sql_util._long_statement(sub_stmt))
 
-                if batchnum > 1:
-                    stats = (
-                        f"insertmanyvalues batch {batchnum} "
-                        f"of {totalbatches}"
-                    )
+                imv_stats = f""" {
+                            imv_batch.batchnum}/{imv_batch.total_batches} ({
+                            'ordered'
+                            if imv_batch.rows_sorted else 'unordered'
+                        }{
+                            '; batch not supported'
+                            if imv_batch.is_downgraded
+                            else ''
+                        })"""
+
+                if imv_batch.batchnum == 1:
+                    stats += imv_stats
+                else:
+                    stats = f"insertmanyvalues{imv_stats}"
 
                 if not self.engine.hide_parameters:
                     self._log_info(
@@ -2096,7 +2105,12 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                     ):
                         break
                 else:
-                    dialect.do_execute(cursor, sub_stmt, sub_params, context)
+                    dialect.do_execute(
+                        cursor,
+                        sub_stmt,
+                        sub_params,
+                        context,
+                    )
 
             except BaseException as e:
                 self._handle_dbapi_exception(

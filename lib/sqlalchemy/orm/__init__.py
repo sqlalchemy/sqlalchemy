@@ -32,6 +32,7 @@ from ._orm_constructors import deferred as deferred
 from ._orm_constructors import dynamic_loader as dynamic_loader
 from ._orm_constructors import join as join
 from ._orm_constructors import mapped_column as mapped_column
+from ._orm_constructors import orm_insert_sentinel as orm_insert_sentinel
 from ._orm_constructors import outerjoin as outerjoin
 from ._orm_constructors import query_expression as query_expression
 from ._orm_constructors import relationship as relationship

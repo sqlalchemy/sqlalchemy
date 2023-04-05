@@ -30,6 +30,7 @@ from typing import Iterator
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
+from typing import NamedTuple
 from typing import NoReturn
 from typing import Optional
 from typing import overload
@@ -75,6 +76,8 @@ if TYPE_CHECKING:
     from .elements import NamedColumn
     from .elements import SQLCoreOperations
     from .elements import TextClause
+    from .schema import Column
+    from .schema import DefaultGenerator
     from .selectable import _JoinTargetElement
     from .selectable import _SelectIterable
     from .selectable import FromClause
@@ -120,6 +123,35 @@ _T = TypeVar("_T", bound=Any)
 _Fn = TypeVar("_Fn", bound=Callable[..., Any])
 
 _AmbiguousTableNameMap = MutableMapping[str, str]
+
+
+class _DefaultDescriptionTuple(NamedTuple):
+    arg: Any
+    is_scalar: Optional[bool]
+    is_callable: Optional[bool]
+    is_sentinel: Optional[bool]
+
+    @classmethod
+    def _from_column_default(
+        cls, default: Optional[DefaultGenerator]
+    ) -> _DefaultDescriptionTuple:
+        return (
+            _DefaultDescriptionTuple(
+                default.arg,  # type: ignore
+                default.is_scalar,
+                default.is_callable,
+                default.is_sentinel,
+            )
+            if default
+            and (
+                default.has_arg
+                or (not default.for_update and default.is_sentinel)
+            )
+            else _DefaultDescriptionTuple(None, None, None, None)
+        )
+
+
+_never_select_column = operator.attrgetter("_omit_from_statements")
 
 
 class _EntityNamespace(Protocol):
@@ -1301,6 +1333,25 @@ class SchemaVisitor(ClauseVisitor):
     """Define the visiting for ``SchemaItem`` objects."""
 
     __traverse_options__ = {"schema_visitor": True}
+
+
+class _SentinelDefaultCharacterization(Enum):
+    NONE = "none"
+    UNKNOWN = "unknown"
+    CLIENTSIDE = "clientside"
+    SENTINEL_DEFAULT = "sentinel_default"
+    SERVERSIDE = "serverside"
+    IDENTITY = "identity"
+    SEQUENCE = "sequence"
+
+
+class _SentinelColumnCharacterization(NamedTuple):
+    columns: Optional[Sequence[Column[Any]]] = None
+    is_explicit: bool = False
+    is_autoinc: bool = False
+    default_characterization: _SentinelDefaultCharacterization = (
+        _SentinelDefaultCharacterization.NONE
+    )
 
 
 _COLKEY = TypeVar("_COLKEY", Union[None, str], str)

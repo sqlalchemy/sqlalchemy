@@ -665,7 +665,11 @@ class MappedColumn(
     ) -> None:
         column = self.column
 
-        if self._use_existing_column and decl_scan.inherits:
+        if (
+            self._use_existing_column
+            and decl_scan.inherits
+            and decl_scan.single
+        ):
             if decl_scan.is_deferred:
                 raise sa_exc.ArgumentError(
                     "Can't use use_existing_column with deferred mappers"

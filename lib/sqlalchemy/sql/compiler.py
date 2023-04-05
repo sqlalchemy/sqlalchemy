@@ -41,6 +41,7 @@ from typing import ClassVar
 from typing import Dict
 from typing import FrozenSet
 from typing import Iterable
+from typing import Iterator
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
@@ -70,6 +71,7 @@ from ._typing import is_column_element
 from ._typing import is_dml
 from .base import _from_objects
 from .base import _NONE_NAME
+from .base import _SentinelDefaultCharacterization
 from .base import Executable
 from .base import NO_ARG
 from .elements import ClauseElement
@@ -81,6 +83,7 @@ from .visitors import prefix_anon_map
 from .visitors import Visitable
 from .. import exc
 from .. import util
+from ..util import FastIntFlag
 from ..util.typing import Literal
 from ..util.typing import Protocol
 from ..util.typing import TypedDict
@@ -100,6 +103,7 @@ if typing.TYPE_CHECKING:
     from .elements import ColumnElement
     from .elements import Label
     from .functions import Function
+    from .schema import Table
     from .selectable import AliasedReturnsRows
     from .selectable import CompoundSelectState
     from .selectable import CTE
@@ -109,9 +113,14 @@ if typing.TYPE_CHECKING:
     from .selectable import Select
     from .selectable import SelectState
     from .type_api import _BindProcessorType
+    from .type_api import _SentinelProcessorType
     from ..engine.cursor import CursorResultMetaData
     from ..engine.interfaces import _CoreSingleExecuteParams
+    from ..engine.interfaces import _DBAPIAnyExecuteParams
+    from ..engine.interfaces import _DBAPIMultiExecuteParams
+    from ..engine.interfaces import _DBAPISingleExecuteParams
     from ..engine.interfaces import _ExecuteOptions
+    from ..engine.interfaces import _GenericSetInputSizesType
     from ..engine.interfaces import _MutableCoreSingleExecuteParams
     from ..engine.interfaces import Dialect
     from ..engine.interfaces import SchemaTranslateMapType
@@ -460,12 +469,160 @@ class ExpandedState(NamedTuple):
 
 
 class _InsertManyValues(NamedTuple):
-    """represents state to use for executing an "insertmanyvalues" statement"""
+    """represents state to use for executing an "insertmanyvalues" statement.
+
+    The primary consumers of this object are the
+    :meth:`.SQLCompiler._deliver_insertmanyvalues_batches` and
+    :meth:`.DefaultDialect._deliver_insertmanyvalues_batches` methods.
+
+    .. versionadded:: 2.0
+
+    """
 
     is_default_expr: bool
+    """if True, the statement is of the form
+    ``INSERT INTO TABLE DEFAULT VALUES``, and can't be rewritten as a "batch"
+
+    """
+
     single_values_expr: str
+    """The rendered "values" clause of the INSERT statement.
+
+    This is typically the parenthesized section e.g. "(?, ?, ?)" or similar.
+    The insertmanyvalues logic uses this string as a search and replace
+    target.
+
+    """
+
     insert_crud_params: List[crud._CrudParamElementStr]
+    """List of Column / bind names etc. used while rewriting the statement"""
+
     num_positional_params_counted: int
+    """the number of bound parameters in a single-row statement.
+
+    This count may be larger or smaller than the actual number of columns
+    targeted in the INSERT, as it accommodates for SQL expressions
+    in the values list that may have zero or more parameters embedded
+    within them.
+
+    This count is part of what's used to organize rewritten parameter lists
+    when batching.
+
+    """
+
+    sort_by_parameter_order: bool = False
+    """if the deterministic_returnined_order parameter were used on the
+    insert.
+
+    All of the attributes following this will only be used if this is True.
+
+    """
+
+    includes_upsert_behaviors: bool = False
+    """if True, we have to accommodate for upsert behaviors.
+
+    This will in some cases downgrade "insertmanyvalues" that requests
+    deterministic ordering.
+
+    """
+
+    sentinel_columns: Optional[Sequence[Column[Any]]] = None
+    """List of sentinel columns that were located.
+
+    This list is only here if the INSERT asked for
+    sort_by_parameter_order=True,
+    and dialect-appropriate sentinel columns were located.
+
+    .. versionadded:: 2.0.10
+
+    """
+
+    num_sentinel_columns: int = 0
+    """how many sentinel columns are in the above list, if any.
+
+    This is the same as
+    ``len(sentinel_columns) if sentinel_columns is not None else 0``
+
+    """
+
+    sentinel_param_keys: Optional[Sequence[Union[str, int]]] = None
+    """parameter str keys / int indexes in each param dictionary / tuple
+    that would link to the client side "sentinel" values for that row, which
+    we can use to match up parameter sets to result rows.
+
+    This is only present if sentinel_columns is present and the INSERT
+    statement actually refers to client side values for these sentinel
+    columns.
+
+    .. versionadded:: 2.0.10
+
+    """
+
+    implicit_sentinel: bool = False
+    """if True, we have exactly one sentinel column and it uses a server side
+    value, currently has to generate an incrementing integer value.
+
+    The dialect in question would have asserted that it supports receiving
+    these values back and sorting on that value as a means of guaranteeing
+    correlation with the incoming parameter list.
+
+    .. versionadded:: 2.0.10
+
+    """
+
+    embed_values_counter: bool = False
+    """Whether to embed an incrementing integer counter in each parameter
+    set within the VALUES clause as parameters are batched over.
+
+    This is only used for a specific INSERT..SELECT..VALUES..RETURNING syntax
+    where a subquery is used to produce value tuples.  Current support
+    includes PostgreSQL, Microsoft SQL Server.
+
+    .. versionadded:: 2.0.10
+
+    """
+
+
+class _InsertManyValuesBatch(NamedTuple):
+    """represents an individual batch SQL statement for insertmanyvalues.
+
+    This is passed through the
+    :meth:`.SQLCompiler._deliver_insertmanyvalues_batches` and
+    :meth:`.DefaultDialect._deliver_insertmanyvalues_batches` methods out
+    to the :class:`.Connection` within the
+    :meth:`.Connection._exec_insertmany_context` method.
+
+    .. versionadded:: 2.0.10
+
+    """
+
+    replaced_statement: str
+    replaced_parameters: _DBAPIAnyExecuteParams
+    processed_setinputsizes: Optional[_GenericSetInputSizesType]
+    batch: Sequence[_DBAPISingleExecuteParams]
+    batch_size: int
+    batchnum: int
+    total_batches: int
+    rows_sorted: bool
+    is_downgraded: bool
+
+
+class InsertmanyvaluesSentinelOpts(FastIntFlag):
+    """bitflag enum indicating styles of PK defaults
+    which can work as implicit sentinel columns
+
+    """
+
+    NOT_SUPPORTED = 1
+    AUTOINCREMENT = 2
+    IDENTITY = 4
+    SEQUENCE = 8
+
+    ANY_AUTOINCREMENT = AUTOINCREMENT | IDENTITY | SEQUENCE
+    _SUPPORTED_OR_NOT = NOT_SUPPORTED | ANY_AUTOINCREMENT
+
+    USE_INSERT_FROM_SELECT = 16
+    RENDER_SELECT_COL_CASTS = 64
 
 
 class CompilerState(IntEnum):
@@ -1484,6 +1641,7 @@ class SQLCompiler(Compiled):
 
         if self._insertmanyvalues:
             positions = []
+
             single_values_expr = re.sub(
                 self._positional_pattern,
                 find_position,
@@ -1499,13 +1657,19 @@ class SQLCompiler(Compiled):
                 for v in self._insertmanyvalues.insert_crud_params
             ]
 
-            self._insertmanyvalues = _InsertManyValues(
-                is_default_expr=self._insertmanyvalues.is_default_expr,
+            sentinel_param_int_idxs = (
+                [
+                    self.positiontup.index(cast(str, _param_key))
+                    for _param_key in self._insertmanyvalues.sentinel_param_keys  # noqa: E501
+                ]
+                if self._insertmanyvalues.sentinel_param_keys is not None
+                else None
+            )
+
+            self._insertmanyvalues = self._insertmanyvalues._replace(
                 single_values_expr=single_values_expr,
                 insert_crud_params=insert_crud_params,
-                num_positional_params_counted=(
-                    self._insertmanyvalues.num_positional_params_counted
-                ),
+                sentinel_param_keys=sentinel_param_int_idxs,
             )
 
     def _process_numeric(self):
@@ -1574,15 +1738,21 @@ class SQLCompiler(Compiled):
                 for v in self._insertmanyvalues.insert_crud_params
             ]
 
-            self._insertmanyvalues = _InsertManyValues(
-                is_default_expr=self._insertmanyvalues.is_default_expr,
+            sentinel_param_int_idxs = (
+                [
+                    self.positiontup.index(cast(str, _param_key))
+                    for _param_key in self._insertmanyvalues.sentinel_param_keys  # noqa: E501
+                ]
+                if self._insertmanyvalues.sentinel_param_keys is not None
+                else None
+            )
+
+            self._insertmanyvalues = self._insertmanyvalues._replace(
                 # This has the numbers (:1, :2)
                 single_values_expr=single_values_expr,
                 # The single binds are instead %s so they can be formatted
                 insert_crud_params=insert_crud_params,
-                num_positional_params_counted=(
-                    self._insertmanyvalues.num_positional_params_counted
-                ),
+                sentinel_param_keys=sentinel_param_int_idxs,
             )
 
     @util.memoized_property
@@ -1610,6 +1780,23 @@ class SQLCompiler(Compiled):
             )
             if value is not None
         }
+
+    @util.memoized_property
+    def _imv_sentinel_value_resolvers(
+        self,
+    ) -> Optional[Sequence[Optional[_SentinelProcessorType[Any]]]]:
+        imv = self._insertmanyvalues
+        if imv is None or imv.sentinel_columns is None:
+            return None
+
+        sentinel_value_resolvers = [
+            _scol.type._cached_sentinel_value_processor(self.dialect)
+            for _scol in imv.sentinel_columns
+        ]
+        if util.NONE_SET.issuperset(sentinel_value_resolvers):
+            return None
+        else:
+            return sentinel_value_resolvers
 
     def is_subquery(self):
         return len(self.stack) > 1
@@ -5023,26 +5210,110 @@ class SQLCompiler(Compiled):
             )
         return dialect_hints, table_text
 
-    def _insert_stmt_should_use_insertmanyvalues(self, statement):
-        return (
-            self.dialect.supports_multivalues_insert
-            and self.dialect.use_insertmanyvalues
-            # note self.implicit_returning or self._result_columns
-            # implies self.dialect.insert_returning capability
-            and (
-                self.dialect.use_insertmanyvalues_wo_returning
-                or self.implicit_returning
-                or self._result_columns
+    # within the realm of "insertmanyvalues sentinel columns",
+    # these lookups match different kinds of Column() configurations
+    # to specific backend capabilities.  they are broken into two
+    # lookups, one for autoincrement columns and the other for non
+    # autoincrement columns
+    _sentinel_col_non_autoinc_lookup = util.immutabledict(
+        {
+            _SentinelDefaultCharacterization.CLIENTSIDE: (
+                InsertmanyvaluesSentinelOpts._SUPPORTED_OR_NOT
+            ),
+            _SentinelDefaultCharacterization.SENTINEL_DEFAULT: (
+                InsertmanyvaluesSentinelOpts._SUPPORTED_OR_NOT
+            ),
+            _SentinelDefaultCharacterization.NONE: (
+                InsertmanyvaluesSentinelOpts._SUPPORTED_OR_NOT
+            ),
+            _SentinelDefaultCharacterization.IDENTITY: (
+                InsertmanyvaluesSentinelOpts.IDENTITY
+            ),
+            _SentinelDefaultCharacterization.SEQUENCE: (
+                InsertmanyvaluesSentinelOpts.SEQUENCE
+            ),
+        }
+    )
+    _sentinel_col_autoinc_lookup = _sentinel_col_non_autoinc_lookup.union(
+        {
+            _SentinelDefaultCharacterization.NONE: (
+                InsertmanyvaluesSentinelOpts.AUTOINCREMENT
+            ),
+        }
+    )
+
+    def _get_sentinel_column_for_table(
+        self, table: Table
+    ) -> Optional[Sequence[Column[Any]]]:
+        """given a :class:`.Table`, return a usable sentinel column or
+        columns for this dialect if any.
+
+        Return None if no sentinel columns could be identified, or raise an
+        error if a column was marked as a sentinel explicitly but isn't
+        compatible with this dialect.
+
+        """
+
+        sentinel_opts = self.dialect.insertmanyvalues_implicit_sentinel
+        sentinel_characteristics = table._sentinel_column_characteristics
+
+        sent_cols = sentinel_characteristics.columns
+
+        if sent_cols is None:
+            return None
+
+        if sentinel_characteristics.is_autoinc:
+            bitmask = self._sentinel_col_autoinc_lookup.get(
+                sentinel_characteristics.default_characterization, 0
             )
-        )
+        else:
+            bitmask = self._sentinel_col_non_autoinc_lookup.get(
+                sentinel_characteristics.default_characterization, 0
+            )
+
+        if sentinel_opts & bitmask:
+            return sent_cols
+
+        if sentinel_characteristics.is_explicit:
+            # a column was explicitly marked as insert_sentinel=True,
+            # however it is not compatible with this dialect.   they should
+            # not indicate this column as a sentinel if they need to include
+            # this dialect.
+
+            # TODO: do we want non-primary key explicit sentinel cols
+            # that can gracefully degrade for some backends?
+            # insert_sentinel="degrade" perhaps.  not for the initial release.
+            # I am hoping people are generally not dealing with this sentinel
+            # business at all.
+
+            # if is_explicit is True, there will be only one sentinel column.
+
+            raise exc.InvalidRequestError(
+                f"Column {sent_cols[0]} can't be explicitly "
+                "marked as a sentinel column when using the "
+                f"{self.dialect.name} dialect, as the "
+                "particular type of default generation on this column is "
+                "not currently compatible with this dialect's specific "
+                f"INSERT..RETURNING syntax which can receive the "
+                "server-generated value in "
+                "a deterministic way.  To remove this error, remove "
+                "insert_sentinel=True from primary key autoincrement "
+                "columns; these columns are automatically used as "
+                "sentinels for supported dialects in any case."
+            )
+
+        return None
 
     def _deliver_insertmanyvalues_batches(
-        self, statement, parameters, generic_setinputsizes, batch_size
-    ):
+        self,
+        statement: str,
+        parameters: _DBAPIMultiExecuteParams,
+        generic_setinputsizes: Optional[_GenericSetInputSizesType],
+        batch_size: int,
+        sort_by_parameter_order: bool,
+    ) -> Iterator[_InsertManyValuesBatch]:
         imv = self._insertmanyvalues
         assert imv is not None
-
-        executemany_values = f"({imv.single_values_expr})"
 
         lenparams = len(parameters)
         if imv.is_default_expr and not self.dialect.supports_default_metavalue:
@@ -5058,19 +5329,41 @@ class SQLCompiler(Compiled):
             # cursor.lastrowid etc. still goes through the more heavyweight
             # "ExecutionContext per statement" system as it isn't usable
             # as a generic "RETURNING" approach
-            for batchnum, param in enumerate(parameters, 1):
-                yield (
+            use_row_at_a_time = True
+            downgraded = False
+        elif not self.dialect.supports_multivalues_insert or (
+            sort_by_parameter_order
+            and self._result_columns
+            and (imv.sentinel_columns is None or imv.includes_upsert_behaviors)
+        ):
+            # deterministic order was requested and the compiler could
+            # not organize sentinel columns for this dialect/statement.
+            # use row at a time
+            use_row_at_a_time = True
+            downgraded = True
+        else:
+            use_row_at_a_time = False
+            downgraded = False
+
+        if use_row_at_a_time:
+            for batchnum, param in enumerate(
+                cast("Sequence[_DBAPISingleExecuteParams]", parameters), 1
+            ):
+                yield _InsertManyValuesBatch(
                     statement,
                     param,
                     generic_setinputsizes,
+                    [param],
+                    batch_size,
                     batchnum,
                     lenparams,
+                    sort_by_parameter_order,
+                    downgraded,
                 )
             return
-        else:
-            statement = statement.replace(
-                executemany_values, "__EXECMANY_TOKEN__"
-            )
+
+        executemany_values = f"({imv.single_values_expr})"
+        statement = statement.replace(executemany_values, "__EXECMANY_TOKEN__")
 
         # Use optional insertmanyvalues_max_parameters
         # to further shrink the batch size so that there are no more than
@@ -5094,7 +5387,7 @@ class SQLCompiler(Compiled):
 
         batches = list(parameters)
 
-        processed_setinputsizes = None
+        processed_setinputsizes: Optional[_GenericSetInputSizesType] = None
         batchnum = 1
         total_batches = lenparams // batch_size + (
             1 if lenparams % batch_size else 0
@@ -5124,10 +5417,14 @@ class SQLCompiler(Compiled):
                     )
                 return formatted
 
+            if imv.embed_values_counter:
+                imv_values_counter = ", _IMV_VALUES_COUNTER"
+            else:
+                imv_values_counter = ""
             formatted_values_clause = f"""({', '.join(
                 apply_placeholders(bind_keys, formatted)
                 for _, _, formatted, bind_keys in insert_crud_params
-            )})"""
+            )}{imv_values_counter})"""
 
             keys_to_replace = all_keys.intersection(
                 escaped_bind_names.get(key, key)
@@ -5143,7 +5440,13 @@ class SQLCompiler(Compiled):
             formatted_values_clause = ""
             keys_to_replace = set()
             base_parameters = {}
-            executemany_values_w_comma = f"({imv.single_values_expr}), "
+
+            if imv.embed_values_counter:
+                executemany_values_w_comma = (
+                    f"({imv.single_values_expr}, _IMV_VALUES_COUNTER), "
+                )
+            else:
+                executemany_values_w_comma = f"({imv.single_values_expr}), "
 
             all_names_we_will_expand: Set[str] = set()
             for elem in imv.insert_crud_params:
@@ -5176,7 +5479,7 @@ class SQLCompiler(Compiled):
                 )
 
         while batches:
-            batch = batches[0:batch_size]
+            batch = cast("Sequence[Any]", batches[0:batch_size])
             batches[0:batch_size] = []
 
             if generic_setinputsizes:
@@ -5196,7 +5499,7 @@ class SQLCompiler(Compiled):
             if self.positional:
                 num_ins_params = imv.num_positional_params_counted
 
-                batch_iterator: Iterable[Tuple[Any, ...]]
+                batch_iterator: Iterable[Sequence[Any]]
                 if num_ins_params == len(batch[0]):
                     extra_params_left = extra_params_right = ()
                     batch_iterator = batch
@@ -5208,9 +5511,19 @@ class SQLCompiler(Compiled):
                         for b in batch
                     )
 
-                expanded_values_string = (
-                    executemany_values_w_comma * len(batch)
-                )[:-2]
+                if imv.embed_values_counter:
+                    expanded_values_string = (
+                        "".join(
+                            executemany_values_w_comma.replace(
+                                "_IMV_VALUES_COUNTER", str(i)
+                            )
+                            for i, _ in enumerate(batch)
+                        )
+                    )[:-2]
+                else:
+                    expanded_values_string = (
+                        (executemany_values_w_comma * len(batch))
+                    )[:-2]
 
                 if self._numeric_binds and num_ins_params > 0:
                     # numeric will always number the parameters inside of
@@ -5254,12 +5567,14 @@ class SQLCompiler(Compiled):
                 replaced_parameters = base_parameters.copy()
 
                 for i, param in enumerate(batch):
-                    replaced_values_clauses.append(
-                        formatted_values_clause.replace(
-                            "EXECMANY_INDEX__", str(i)
-                        )
-                    )
 
+                    fmv = formatted_values_clause.replace(
+                        "EXECMANY_INDEX__", str(i)
+                    )
+                    if imv.embed_values_counter:
+                        fmv = fmv.replace("_IMV_VALUES_COUNTER", str(i))
+
+                    replaced_values_clauses.append(fmv)
                     replaced_parameters.update(
                         {f"{key}__{i}": param[key] for key in keys_to_replace}
                     )
@@ -5269,12 +5584,16 @@ class SQLCompiler(Compiled):
                     ", ".join(replaced_values_clauses),
                 )
 
-            yield (
+            yield _InsertManyValuesBatch(
                 replaced_statement,
                 replaced_parameters,
                 processed_setinputsizes,
+                batch,
+                batch_size,
                 batchnum,
                 total_batches,
+                sort_by_parameter_order,
+                False,
             )
             batchnum += 1
 
@@ -5360,6 +5679,13 @@ class SQLCompiler(Compiled):
                     "version settings does not support "
                     "in-place multirow inserts." % self.dialect.name
                 )
+            elif (
+                self.implicit_returning or insert_stmt._returning
+            ) and insert_stmt._sort_by_parameter_order:
+                raise exc.CompileError(
+                    "RETURNING cannot be determinstically sorted when "
+                    "using an INSERT which includes multi-row values()."
+                )
             crud_params_single = crud_params_struct.single_params
         else:
             crud_params_single = crud_params_struct.single_params
@@ -5390,11 +5716,82 @@ class SQLCompiler(Compiled):
                 [expr for _, expr, _, _ in crud_params_single]
             )
 
-        if self.implicit_returning or insert_stmt._returning:
+        # look for insertmanyvalues attributes that would have been configured
+        # by crud.py as it scanned through the columns to be part of the
+        # INSERT
+        use_insertmanyvalues = crud_params_struct.use_insertmanyvalues
+        named_sentinel_params: Optional[Sequence[str]] = None
+        add_sentinel_cols = None
+        implicit_sentinel = False
+
+        returning_cols = self.implicit_returning or insert_stmt._returning
+        if returning_cols:
+
+            add_sentinel_cols = crud_params_struct.use_sentinel_columns
+
+            if add_sentinel_cols is not None:
+                assert use_insertmanyvalues
+
+                # search for the sentinel column explicitly present
+                # in the INSERT columns list, and additionally check that
+                # this column has a bound parameter name set up that's in the
+                # parameter list.  If both of these cases are present, it means
+                # we will have a client side value for the sentinel in each
+                # parameter set.
+
+                _params_by_col = {
+                    col: param_names
+                    for col, _, _, param_names in crud_params_single
+                }
+                named_sentinel_params = []
+                for _add_sentinel_col in add_sentinel_cols:
+                    if _add_sentinel_col not in _params_by_col:
+                        named_sentinel_params = None
+                        break
+                    param_name = self._within_exec_param_key_getter(
+                        _add_sentinel_col
+                    )
+                    if param_name not in _params_by_col[_add_sentinel_col]:
+                        named_sentinel_params = None
+                        break
+                    named_sentinel_params.append(param_name)
+
+                if named_sentinel_params is None:
+                    # if we are not going to have a client side value for
+                    # the sentinel in the parameter set, that means it's
+                    # an autoincrement, an IDENTITY, or a server-side SQL
+                    # expression like nextval('seqname').  So this is
+                    # an "implicit" sentinel; we will look for it in
+                    # RETURNING
+                    # only, and then sort on it.  For this case on PG,
+                    # SQL Server we have to use a special INSERT form
+                    # that guarantees the server side function lines up with
+                    # the entries in the VALUES.
+                    if (
+                        self.dialect.insertmanyvalues_implicit_sentinel
+                        & InsertmanyvaluesSentinelOpts.ANY_AUTOINCREMENT
+                    ):
+                        implicit_sentinel = True
+                    else:
+                        # here, we are not using a sentinel at all
+                        # and we are likely the SQLite dialect.
+                        # The first add_sentinel_col that we have should not
+                        # be marked as "insert_sentinel=True".  if it was,
+                        # an error should have been raised in
+                        # _get_sentinel_column_for_table.
+                        assert not add_sentinel_cols[0]._insert_sentinel, (
+                            "sentinel selection rules should have prevented "
+                            "us from getting here for this dialect"
+                        )
+
+                # always put the sentinel columns last.  even if they are
+                # in the returning list already, they will be there twice
+                # then.
+                returning_cols = list(returning_cols) + list(add_sentinel_cols)
 
             returning_clause = self.returning_clause(
                 insert_stmt,
-                self.implicit_returning or insert_stmt._returning,
+                returning_cols,
                 populate_result_map=toplevel,
             )
 
@@ -5423,9 +5820,8 @@ class SQLCompiler(Compiled):
                 text += " %s" % select_text
         elif not crud_params_single and supports_default_values:
             text += " DEFAULT VALUES"
-            if toplevel and self._insert_stmt_should_use_insertmanyvalues(
-                insert_stmt
-            ):
+            if use_insertmanyvalues:
+
                 self._insertmanyvalues = _InsertManyValues(
                     True,
                     self.dialect.default_metavalue_token,
@@ -5433,6 +5829,17 @@ class SQLCompiler(Compiled):
                         "List[crud._CrudParamElementStr]", crud_params_single
                     ),
                     counted_bindparam,
+                    sort_by_parameter_order=(
+                        insert_stmt._sort_by_parameter_order
+                    ),
+                    includes_upsert_behaviors=(
+                        insert_stmt._post_values_clause is not None
+                    ),
+                    sentinel_columns=add_sentinel_cols,
+                    num_sentinel_columns=len(add_sentinel_cols)
+                    if add_sentinel_cols
+                    else 0,
+                    implicit_sentinel=implicit_sentinel,
                 )
         elif compile_state._has_multi_parameters:
             text += " VALUES %s" % (
@@ -5440,11 +5847,9 @@ class SQLCompiler(Compiled):
                     "(%s)"
                     % (", ".join(value for _, _, value, _ in crud_param_set))
                     for crud_param_set in crud_params_struct.all_multi_params
-                )
+                ),
             )
         else:
-            # TODO: why is third element of crud_params_single not str
-            # already?
             insert_single_values_expr = ", ".join(
                 [
                     value
@@ -5455,19 +5860,89 @@ class SQLCompiler(Compiled):
                 ]
             )
 
-            text += " VALUES (%s)" % insert_single_values_expr
-            if toplevel and self._insert_stmt_should_use_insertmanyvalues(
-                insert_stmt
-            ):
+            if use_insertmanyvalues:
+
+                if (
+                    implicit_sentinel
+                    and (
+                        self.dialect.insertmanyvalues_implicit_sentinel
+                        & InsertmanyvaluesSentinelOpts.USE_INSERT_FROM_SELECT
+                    )
+                    # this is checking if we have
+                    # INSERT INTO table (id) VALUES (DEFAULT).
+                    and not (crud_params_struct.is_default_metavalue_only)
+                ):
+                    # if we have a sentinel column that is server generated,
+                    # then for selected backends render the VALUES list as a
+                    # subquery.  This is the orderable form supported by
+                    # PostgreSQL and SQL Server.
+                    embed_sentinel_value = True
+
+                    render_bind_casts = (
+                        self.dialect.insertmanyvalues_implicit_sentinel
+                        & InsertmanyvaluesSentinelOpts.RENDER_SELECT_COL_CASTS
+                    )
+
+                    colnames = ", ".join(
+                        f"p{i}" for i, _ in enumerate(crud_params_single)
+                    )
+
+                    if render_bind_casts:
+                        # render casts for the SELECT list.  For PG, we are
+                        # already rendering bind casts in the parameter list,
+                        # selectively for the more "tricky" types like ARRAY.
+                        # however, even for the "easy" types, if the parameter
+                        # is NULL for every entry, PG gives up and says
+                        # "it must be TEXT", which fails for other easy types
+                        # like ints.  So we cast on this side too.
+                        colnames_w_cast = ", ".join(
+                            self.render_bind_cast(
+                                col.type,
+                                col.type._unwrapped_dialect_impl(self.dialect),
+                                f"p{i}",
+                            )
+                            for i, (col, *_) in enumerate(crud_params_single)
+                        )
+                    else:
+                        colnames_w_cast = colnames
+
+                    text += (
+                        f" SELECT {colnames_w_cast} FROM "
+                        f"(VALUES ({insert_single_values_expr})) "
+                        f"AS imp_sen({colnames}, sen_counter) "
+                        "ORDER BY sen_counter"
+                    )
+                else:
+                    # otherwise, if no sentinel or backend doesn't support
+                    # orderable subquery form, use a plain VALUES list
+                    embed_sentinel_value = False
+                    text += f" VALUES ({insert_single_values_expr})"
+
                 self._insertmanyvalues = _InsertManyValues(
-                    False,
-                    insert_single_values_expr,
-                    cast(
+                    is_default_expr=False,
+                    single_values_expr=insert_single_values_expr,
+                    insert_crud_params=cast(
                         "List[crud._CrudParamElementStr]",
                         crud_params_single,
                     ),
-                    counted_bindparam,
+                    num_positional_params_counted=counted_bindparam,
+                    sort_by_parameter_order=(
+                        insert_stmt._sort_by_parameter_order
+                    ),
+                    includes_upsert_behaviors=(
+                        insert_stmt._post_values_clause is not None
+                    ),
+                    sentinel_columns=add_sentinel_cols,
+                    num_sentinel_columns=len(add_sentinel_cols)
+                    if add_sentinel_cols
+                    else 0,
+                    sentinel_param_keys=named_sentinel_params,
+                    implicit_sentinel=implicit_sentinel,
+                    embed_values_counter=embed_sentinel_value,
                 )
+
+            else:
+                text += f" VALUES ({insert_single_values_expr})"
 
         if insert_stmt._post_values_clause is not None:
             post_values_clause = self.process(

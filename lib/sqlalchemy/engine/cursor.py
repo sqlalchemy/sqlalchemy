@@ -1748,13 +1748,18 @@ class CursorResult(Result[_T]):
         position in the result.
 
         The expected use case here is so that multiple INSERT..RETURNING
-        statements against different tables can produce a single result
-        that looks like a JOIN of those two tables.
+        statements (which definitely need to be sorted) against different
+        tables can produce a single result that looks like a JOIN of those two
+        tables.
 
         E.g.::
 
             r1 = connection.execute(
-                users.insert().returning(users.c.user_name, users.c.user_id),
+                users.insert().returning(
+                    users.c.user_name,
+                    users.c.user_id,
+                    sort_by_parameter_order=True
+                ),
                 user_values
             )
 
@@ -1763,6 +1768,7 @@ class CursorResult(Result[_T]):
                     addresses.c.address_id,
                     addresses.c.address,
                     addresses.c.user_id,
+                    sort_by_parameter_order=True
                 ),
                 address_values
             )

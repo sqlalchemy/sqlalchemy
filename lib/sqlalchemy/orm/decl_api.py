@@ -241,6 +241,7 @@ class _declared_attr_common:
         self,
         fn: Callable[..., Any],
         cascading: bool = False,
+        quiet: bool = False,
     ):
         # suppport
         # @declared_attr
@@ -254,6 +255,7 @@ class _declared_attr_common:
 
         self.fget = fn
         self._cascading = cascading
+        self._quiet = quiet
         self.__doc__ = fn.__doc__
 
     def _collect_return_annotation(self) -> Optional[Type[Any]]:

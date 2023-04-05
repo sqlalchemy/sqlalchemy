@@ -1468,6 +1468,7 @@ from ...sql import expression
 from ...sql import roles
 from ...sql import sqltypes
 from ...sql import util as sql_util
+from ...sql.compiler import InsertmanyvaluesSentinelOpts
 from ...sql.visitors import InternalTraversal
 from ...types import BIGINT
 from ...types import BOOLEAN
@@ -2910,6 +2911,12 @@ class PGDialect(default.DefaultDialect):
     preexecute_autoincrement_sequences = True
     postfetch_lastrowid = False
     use_insertmanyvalues = True
+
+    insertmanyvalues_implicit_sentinel = (
+        InsertmanyvaluesSentinelOpts.ANY_AUTOINCREMENT
+        | InsertmanyvaluesSentinelOpts.USE_INSERT_FROM_SELECT
+        | InsertmanyvaluesSentinelOpts.RENDER_SELECT_COL_CASTS
+    )
 
     supports_comments = True
     supports_constraint_comments = True

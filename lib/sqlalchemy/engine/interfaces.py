@@ -55,8 +55,10 @@ if TYPE_CHECKING:
     from ..event import dispatcher
     from ..exc import StatementError
     from ..sql import Executable
+    from ..sql.compiler import _InsertManyValuesBatch
     from ..sql.compiler import DDLCompiler
     from ..sql.compiler import IdentifierPreparer
+    from ..sql.compiler import InsertmanyvaluesSentinelOpts
     from ..sql.compiler import Linting
     from ..sql.compiler import SQLCompiler
     from ..sql.elements import BindParameter
@@ -236,14 +238,16 @@ _DBAPIMultiExecuteParams = Union[
 _DBAPIAnyExecuteParams = Union[
     _DBAPIMultiExecuteParams, _DBAPISingleExecuteParams
 ]
-_DBAPICursorDescription = Tuple[
-    str,
-    "DBAPIType",
-    Optional[int],
-    Optional[int],
-    Optional[int],
-    Optional[int],
-    Optional[bool],
+_DBAPICursorDescription = Sequence[
+    Tuple[
+        str,
+        "DBAPIType",
+        Optional[int],
+        Optional[int],
+        Optional[int],
+        Optional[int],
+        Optional[bool],
+    ]
 ]
 
 _AnySingleExecuteParams = _DBAPISingleExecuteParams
@@ -609,9 +613,21 @@ class BindTyping(Enum):
     aren't.
 
     When RENDER_CASTS is used, the compiler will invoke the
-    :meth:`.SQLCompiler.render_bind_cast` method for each
-    :class:`.BindParameter` object whose dialect-level type sets the
-    :attr:`.TypeEngine.render_bind_cast` attribute.
+    :meth:`.SQLCompiler.render_bind_cast` method for the rendered
+    string representation of each :class:`.BindParameter` object whose
+    dialect-level type sets the :attr:`.TypeEngine.render_bind_cast` attribute.
+
+    The :meth:`.SQLCompiler.render_bind_cast` is also used to render casts
+    for one form of "insertmanyvalues" query, when both
+    :attr:`.InsertmanyvaluesSentinelOpts.USE_INSERT_FROM_SELECT` and
+    :attr:`.InsertmanyvaluesSentinelOpts.RENDER_SELECT_COL_CASTS` are set,
+    where the casts are applied to the intermediary columns e.g.
+    "INSERT INTO t (a, b, c) SELECT p0::TYP, p1::TYP, p2::TYP "
+    "FROM (VALUES (?, ?), (?, ?), ...)".
+
+    .. versionadded:: 2.0.10 - :meth:`.SQLCompiler.render_bind_cast` is now
+       used within some elements of the "insertmanyvalues" implementation.
+
 
     """
 
@@ -838,6 +854,14 @@ class Dialect(EventTarget):
 
     """
 
+    insert_executemany_returning_sort_by_parameter_order: bool
+    """dialect / driver / database supports some means of providing
+    INSERT...RETURNING support when dialect.do_executemany() is used
+    along with the :paramref:`_dml.Insert.returning.sort_by_parameter_order`
+    parameter being set.
+
+    """
+
     update_executemany_returning: bool
     """dialect supports UPDATE..RETURNING with executemany."""
 
@@ -880,6 +904,23 @@ class Dialect(EventTarget):
     that don't include RETURNING will also use "insertmanyvalues".
 
     .. versionadded:: 2.0
+
+    .. seealso::
+
+        :ref:`engine_insertmanyvalues`
+
+    """
+
+    insertmanyvalues_implicit_sentinel: InsertmanyvaluesSentinelOpts
+    """Options indicating the database supports a form of bulk INSERT where
+    the autoincrement integer primary key can be reliably used as an ordering
+    for INSERTed rows.
+
+    .. versionadded:: 2.0.10
+
+    .. seealso::
+
+        :ref:`engine_insertmanyvalues_returning_order`
 
     """
 
@@ -2116,15 +2157,7 @@ class Dialect(EventTarget):
         parameters: _DBAPIMultiExecuteParams,
         generic_setinputsizes: Optional[_GenericSetInputSizesType],
         context: ExecutionContext,
-    ) -> Iterator[
-        Tuple[
-            str,
-            _DBAPISingleExecuteParams,
-            _GenericSetInputSizesType,
-            int,
-            int,
-        ]
-    ]:
+    ) -> Iterator[_InsertManyValuesBatch]:
         """convert executemany parameters for an INSERT into an iterator
         of statement/single execute values, used by the insertmanyvalues
         feature.
@@ -3110,6 +3143,24 @@ class ExecutionContext:
 
         """
 
+        raise NotImplementedError()
+
+    def fetchall_for_returning(self, cursor: DBAPICursor) -> Sequence[Any]:
+        """For a RETURNING result, deliver cursor.fetchall() from the
+        DBAPI cursor.
+
+        This is a dialect-specific hook for dialects that have special
+        considerations when calling upon the rows delivered for a
+        "RETURNING" statement.   Default implementation is
+        ``cursor.fetchall()``.
+
+        This hook is currently used only by the :term:`insertmanyvalues`
+        feature.   Dialects that don't set ``use_insertmanyvalues=True``
+        don't need to consider this hook.
+
+        .. versionadded:: 2.0.10
+
+        """
         raise NotImplementedError()
 
 

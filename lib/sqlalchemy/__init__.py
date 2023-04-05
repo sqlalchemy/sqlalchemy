@@ -73,6 +73,7 @@ from .schema import ForeignKey as ForeignKey
 from .schema import ForeignKeyConstraint as ForeignKeyConstraint
 from .schema import Identity as Identity
 from .schema import Index as Index
+from .schema import insert_sentinel as insert_sentinel
 from .schema import MetaData as MetaData
 from .schema import PrimaryKeyConstraint as PrimaryKeyConstraint
 from .schema import Sequence as Sequence

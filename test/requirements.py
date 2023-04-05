@@ -1904,6 +1904,10 @@ class DefaultRequirements(SuiteRequirements):
         return only_if(["postgresql >= 10", "oracle >= 12", "mssql"])
 
     @property
+    def multiple_identity_columns(self):
+        return only_if(["postgresql >= 10"])
+
+    @property
     def identity_columns_standard(self):
         return self.identity_columns + skip_if("mssql")
 

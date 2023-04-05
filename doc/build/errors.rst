@@ -910,7 +910,6 @@ Mitigation of this error is via these techniques:
     :ref:`session_expire` - background on attribute expiry
 
 
-
 .. _error_7s2a:
 
 This Session's transaction has been rolled back due to a previous exception during flush

@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import contextlib
 from typing import Any
 from typing import List
 from typing import Optional
+from typing import Set
 import uuid
 
+from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
@@ -22,45 +25,101 @@ from sqlalchemy.orm import column_property
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import orm_insert_sentinel
+from sqlalchemy.orm import Session
 from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import provision
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 
 
 class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
-    def test_no_returning_error(self, decl_base):
+    __backend__ = True
+
+    @testing.variation(
+        "style",
+        [
+            "no_executemany",
+            ("no_sort_by", testing.requires.insert_returning),
+            ("all_enabled", testing.requires.insert_returning),
+        ],
+    )
+    @testing.variation("sort_by_parameter_order", [True, False])
+    def test_no_returning_error(
+        self,
+        decl_base,
+        testing_engine,
+        style: testing.Variation,
+        sort_by_parameter_order,
+    ):
         class A(fixtures.ComparableEntity, decl_base):
             __tablename__ = "a"
             id: Mapped[int] = mapped_column(Identity(), primary_key=True)
             data: Mapped[str]
             x: Mapped[Optional[int]] = mapped_column("xcol")
 
-        decl_base.metadata.create_all(testing.db)
-        s = fixture_session()
+        engine = testing_engine()
 
-        if testing.requires.insert_executemany_returning.enabled:
+        if style.no_executemany:
+            engine.dialect.use_insertmanyvalues = False
+            engine.dialect.insert_executemany_returning = False
+            engine.dialect.insert_executemany_returning_sort_by_parameter_order = (  # noqa: E501
+                False
+            )
+        elif style.no_sort_by:
+            engine.dialect.use_insertmanyvalues = True
+            engine.dialect.insert_executemany_returning = True
+            engine.dialect.insert_executemany_returning_sort_by_parameter_order = (  # noqa: E501
+                False
+            )
+        elif style.all_enabled:
+            engine.dialect.use_insertmanyvalues = True
+            engine.dialect.insert_executemany_returning = True
+            engine.dialect.insert_executemany_returning_sort_by_parameter_order = (  # noqa: E501
+                True
+            )
+        else:
+            style.fail()
+
+        decl_base.metadata.create_all(engine)
+        s = Session(engine)
+
+        if style.all_enabled or (
+            style.no_sort_by and not sort_by_parameter_order
+        ):
             result = s.scalars(
-                insert(A).returning(A),
+                insert(A).returning(
+                    A, sort_by_parameter_order=bool(sort_by_parameter_order)
+                ),
                 [
                     {"data": "d3", "x": 5},
                     {"data": "d4", "x": 6},
                 ],
             )
-            eq_(result.all(), [A(data="d3", x=5), A(data="d4", x=6)])
+            eq_(set(result.all()), {A(data="d3", x=5), A(data="d4", x=6)})
 
         else:
             with expect_raises_message(
                 exc.InvalidRequestError,
-                "Can't use explicit RETURNING for bulk INSERT operation",
+                r"Can't use explicit RETURNING for bulk INSERT operation.*"
+                rf"""executemany with RETURNING{
+                    ' and sort by parameter order'
+                    if sort_by_parameter_order else ''
+                } is """
+                r"not enabled for this dialect",
             ):
                 s.scalars(
-                    insert(A).returning(A),
+                    insert(A).returning(
+                        A,
+                        sort_by_parameter_order=bool(sort_by_parameter_order),
+                    ),
                     [
                         {"data": "d3", "x": 5},
                         {"data": "d4", "x": 6},
@@ -132,6 +191,9 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
         )
 
     @testing.requires.insert_returning
+    @testing.skip_if(
+        "oracle", "oracle doesn't like the no-FROM SELECT inside of an INSERT"
+    )
     def test_insert_from_select_col_property(self, decl_base):
         """test #9273"""
 
@@ -166,6 +228,40 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
 
 
 class BulkDMLReturningInhTest:
+    use_sentinel = False
+    randomize_returning = False
+
+    def assert_for_downgrade(self, *, sort_by_parameter_order):
+        if (
+            not sort_by_parameter_order
+            or not self.randomize_returning
+            or not testing.against(["postgresql", "mssql", "mariadb"])
+        ):
+            return contextlib.nullcontext()
+        else:
+            return expect_warnings("Batches were downgraded")
+
+    @classmethod
+    def setup_bind(cls):
+        if cls.randomize_returning:
+            new_eng = config.db.execution_options()
+
+            @event.listens_for(new_eng, "engine_connect")
+            def eng_connect(connection):
+                fixtures.insertmanyvalues_fixture(
+                    connection,
+                    randomize_rows=True,
+                    # there should be no sentinel downgrades for any of
+                    # these three dbs.  sqlite has downgrades
+                    warn_on_downgraded=testing.against(
+                        ["postgresql", "mssql", "mariadb"]
+                    ),
+                )
+
+            return new_eng
+        else:
+            return config.db
+
     def test_insert_col_key_also_works_currently(self):
         """using the column key, not mapped attr key.
 
@@ -178,7 +274,7 @@ class BulkDMLReturningInhTest:
         """
         A, B = self.classes("A", "B")
 
-        s = fixture_session()
+        s = fixture_session(bind=self.bind)
         s.execute(insert(A).values(type="a", data="d", xcol=10))
         eq_(s.scalars(select(A.x)).all(), [10])
 
@@ -186,7 +282,7 @@ class BulkDMLReturningInhTest:
     def test_autoflush(self, autoflush_option):
         A = self.classes.A
 
-        s = fixture_session()
+        s = fixture_session(bind=self.bind)
 
         a1 = A(data="x1")
         s.add(a1)
@@ -211,8 +307,9 @@ class BulkDMLReturningInhTest:
         else:
             assert False
 
-    @testing.combinations(True, False, argnames="use_returning")
-    def test_heterogeneous_keys(self, use_returning):
+    @testing.variation("use_returning", [True, False])
+    @testing.variation("sort_by_parameter_order", [True, False])
+    def test_heterogeneous_keys(self, use_returning, sort_by_parameter_order):
         A, B = self.classes("A", "B")
 
         values = [
@@ -224,21 +321,31 @@ class BulkDMLReturningInhTest:
             {"data": "d8", "x": 7, "type": "a"},
         ]
 
-        s = fixture_session()
+        s = fixture_session(bind=self.bind)
 
         stmt = insert(A)
         if use_returning:
-            stmt = stmt.returning(A)
+            stmt = stmt.returning(
+                A, sort_by_parameter_order=bool(sort_by_parameter_order)
+            )
 
         with self.sql_execution_asserter() as asserter:
             result = s.execute(stmt, values)
 
         if use_returning:
+            if self.use_sentinel and sort_by_parameter_order:
+                _sentinel_col = ", _sentinel"
+                _sentinel_returning = ", a._sentinel"
+                _sentinel_param = ", :_sentinel"
+            else:
+                _sentinel_col = _sentinel_param = _sentinel_returning = ""
+            # note no sentinel col is used when there is only one row
             asserter.assert_(
                 CompiledSQL(
-                    "INSERT INTO a (type, data, xcol) VALUES "
-                    "(:type, :data, :xcol) "
-                    "RETURNING a.id, a.type, a.data, a.xcol, a.y",
+                    f"INSERT INTO a (type, data, xcol{_sentinel_col}) VALUES "
+                    f"(:type, :data, :xcol{_sentinel_param}) "
+                    f"RETURNING a.id, a.type, a.data, a.xcol, a.y"
+                    f"{_sentinel_returning}",
                     [
                         {"type": "a", "data": "d3", "xcol": 5},
                         {"type": "a", "data": "d4", "xcol": 6},
@@ -250,9 +357,10 @@ class BulkDMLReturningInhTest:
                     [{"type": "a", "data": "d5"}],
                 ),
                 CompiledSQL(
-                    "INSERT INTO a (type, data, xcol, y) "
-                    "VALUES (:type, :data, :xcol, :y) "
-                    "RETURNING a.id, a.type, a.data, a.xcol, a.y",
+                    f"INSERT INTO a (type, data, xcol, y{_sentinel_col}) "
+                    f"VALUES (:type, :data, :xcol, :y{_sentinel_param}) "
+                    f"RETURNING a.id, a.type, a.data, a.xcol, a.y"
+                    f"{_sentinel_returning}",
                     [
                         {"type": "a", "data": "d6", "xcol": 8, "y": 9},
                         {"type": "a", "data": "d7", "xcol": 12, "y": 12},
@@ -297,15 +405,15 @@ class BulkDMLReturningInhTest:
         if use_returning:
             with self.assert_statement_count(testing.db, 0):
                 eq_(
-                    result.scalars().all(),
-                    [
+                    set(result.scalars().all()),
+                    {
                         A(data="d3", id=mock.ANY, type="a", x=5, y=None),
                         A(data="d4", id=mock.ANY, type="a", x=6, y=None),
                         A(data="d5", id=mock.ANY, type="a", x=None, y=None),
                         A(data="d6", id=mock.ANY, type="a", x=8, y=9),
                         A(data="d7", id=mock.ANY, type="a", x=12, y=12),
                         A(data="d8", id=mock.ANY, type="a", x=7, y=None),
-                    ],
+                    },
                 )
 
     @testing.combinations(
@@ -315,10 +423,8 @@ class BulkDMLReturningInhTest:
         "cols_w_exprs",
         argnames="paramstyle",
     )
-    @testing.combinations(
-        True,
-        (False, testing.requires.multivalues_inserts),
-        argnames="single_element",
+    @testing.variation(
+        "single_element", [True, (False, testing.requires.multivalues_inserts)]
     )
     def test_single_values_returning_fn(self, paramstyle, single_element):
         """test using insert().values().
@@ -364,7 +470,7 @@ class BulkDMLReturningInhTest:
         else:
             assert False
 
-        s = fixture_session()
+        s = fixture_session(bind=self.bind)
 
         if single_element:
             if paramstyle.startswith("strings"):
@@ -405,7 +511,7 @@ class BulkDMLReturningInhTest:
             },
         ]
 
-        s = fixture_session()
+        s = fixture_session(bind=self.bind)
 
         stmt = (
             insert(A)
@@ -415,11 +521,11 @@ class BulkDMLReturningInhTest:
 
         for i in range(3):
             result = s.execute(stmt, data)
-            expected: List[Any] = [
+            expected: Set[Any] = {
                 (A(data="dd", x=5, y=9), "DD"),
                 (A(data="dd", x=10, y=8), "DD"),
-            ]
-            eq_(result.all(), expected)
+            }
+            eq_(set(result.all()), expected)
 
     def test_bulk_w_sql_expressions_subclass(self):
         A, B = self.classes("A", "B")
@@ -429,7 +535,7 @@ class BulkDMLReturningInhTest:
             {"bd": "bd2", "x": 5, "y": 6, "z": 7, "q": 8},
         ]
 
-        s = fixture_session()
+        s = fixture_session(bind=self.bind)
 
         stmt = (
             insert(B)
@@ -439,17 +545,17 @@ class BulkDMLReturningInhTest:
 
         for i in range(3):
             result = s.execute(stmt, data)
-            expected: List[Any] = [
+            expected: Set[Any] = {
                 (B(bd="bd1", data="dd", q=4, type="b", x=1, y=2, z=3), "DD"),
                 (B(bd="bd2", data="dd", q=8, type="b", x=5, y=6, z=7), "DD"),
-            ]
-            eq_(result.all(), expected)
+            }
+            eq_(set(result), expected)
 
     @testing.combinations(True, False, argnames="use_ordered")
     def test_bulk_upd_w_sql_expressions_no_ordered_values(self, use_ordered):
         A, B = self.classes("A", "B")
 
-        s = fixture_session()
+        s = fixture_session(bind=self.bind)
 
         stmt = update(B).ordered_values(
             ("data", func.lower("DD_UPDATE")),
@@ -471,13 +577,16 @@ class BulkDMLReturningInhTest:
     def test_bulk_upd_w_sql_expressions_subclass(self):
         A, B = self.classes("A", "B")
 
-        s = fixture_session()
+        s = fixture_session(bind=self.bind)
 
         data = [
             {"data": "d3", "bd": "bd1", "x": 1, "y": 2, "z": 3, "q": 4},
             {"data": "d4", "bd": "bd2", "x": 5, "y": 6, "z": 7, "q": 8},
         ]
-        ids = s.scalars(insert(B).returning(B.id), data).all()
+        ids = {
+            row.data: row.id
+            for row in s.execute(insert(B).returning(B.id, B.data), data)
+        }
 
         stmt = update(B).values(
             data=func.lower("DD_UPDATE"), z=literal_column("3 + 12")
@@ -486,8 +595,8 @@ class BulkDMLReturningInhTest:
         result = s.execute(
             stmt,
             [
-                {"id": ids[0], "bd": "bd1_updated"},
-                {"id": ids[1], "bd": "bd2_updated"},
+                {"id": ids["d3"], "bd": "bd1_updated"},
+                {"id": ids["d4"], "bd": "bd2_updated"},
             ],
         )
 
@@ -495,12 +604,12 @@ class BulkDMLReturningInhTest:
         assert result is not None
 
         eq_(
-            s.scalars(select(B)).all(),
-            [
+            set(s.scalars(select(B))),
+            {
                 B(
                     bd="bd1_updated",
                     data="dd_update",
-                    id=ids[0],
+                    id=ids["d3"],
                     q=4,
                     type="b",
                     x=1,
@@ -510,36 +619,32 @@ class BulkDMLReturningInhTest:
                 B(
                     bd="bd2_updated",
                     data="dd_update",
-                    id=ids[1],
+                    id=ids["d4"],
                     q=8,
                     type="b",
                     x=5,
                     y=6,
                     z=15,
                 ),
-            ],
+            },
         )
 
     def test_single_returning_fn(self):
         A, B = self.classes("A", "B")
 
-        s = fixture_session()
+        s = fixture_session(bind=self.bind)
         for i in range(3):
             result = s.execute(
                 insert(A).returning(A, func.upper(A.data, type_=String)),
                 [{"data": "d3"}, {"data": "d4"}],
             )
-            eq_(result.all(), [(A(data="d3"), "D3"), (A(data="d4"), "D4")])
+            eq_(set(result), {(A(data="d3"), "D3"), (A(data="d4"), "D4")})
 
-    @testing.combinations(
-        True,
-        False,
-        argnames="single_element",
-    )
+    @testing.variation("single_element", [True, False])
     def test_subclass_no_returning(self, single_element):
         A, B = self.classes("A", "B")
 
-        s = fixture_session()
+        s = fixture_session(bind=self.bind)
 
         if single_element:
             data = {"data": "d3", "bd": "bd1", "x": 1, "y": 2, "z": 3, "q": 4}
@@ -552,19 +657,16 @@ class BulkDMLReturningInhTest:
         result = s.execute(insert(B), data)
         assert result._soft_closed
 
-    @testing.combinations(
-        True,
-        False,
-        argnames="single_element",
-    )
-    def test_subclass_load_only(self, single_element):
+    @testing.variation("sort_by_parameter_order", [True, False])
+    @testing.variation("single_element", [True, False])
+    def test_subclass_load_only(self, single_element, sort_by_parameter_order):
         """test that load_only() prevents additional attributes from being
         populated.
 
         """
         A, B = self.classes("A", "B")
 
-        s = fixture_session()
+        s = fixture_session(bind=self.bind)
 
         if single_element:
             data = {"data": "d3", "bd": "bd1", "x": 1, "y": 2, "z": 3, "q": 4}
@@ -578,7 +680,12 @@ class BulkDMLReturningInhTest:
             # tests both caching and that the data dictionaries aren't
             # mutated...
             result = s.execute(
-                insert(B).returning(B).options(load_only(B.data, B.y, B.q)),
+                insert(B)
+                .returning(
+                    B,
+                    sort_by_parameter_order=bool(sort_by_parameter_order),
+                )
+                .options(load_only(B.data, B.y, B.q)),
                 data,
             )
             objects = result.scalars().all()
@@ -593,13 +700,14 @@ class BulkDMLReturningInhTest:
             ]
             if not single_element:
                 expected.append(B(data="d4", bd="bd2", x=5, y=6, z=7, q=8))
-            eq_(objects, expected)
 
-    @testing.combinations(
-        True,
-        False,
-        argnames="single_element",
-    )
+            if sort_by_parameter_order:
+                coll = list
+            else:
+                coll = set
+            eq_(coll(objects), coll(expected))
+
+    @testing.variation("single_element", [True, False])
     def test_subclass_load_only_doesnt_fetch_cols(self, single_element):
         """test that when using load_only(), the actual INSERT statement
         does not include the deferred columns
@@ -607,7 +715,7 @@ class BulkDMLReturningInhTest:
         """
         A, B = self.classes("A", "B")
 
-        s = fixture_session()
+        s = fixture_session(bind=self.bind)
 
         data = [
             {"data": "d3", "bd": "bd1", "x": 1, "y": 2, "z": 3, "q": 4},
@@ -699,30 +807,60 @@ class BulkDMLReturningInhTest:
             # RETURNING only includes PK, discriminator, then the cols
             # we asked for data, y, q.  xcol, z, bd are omitted.  plus they
             # are broken out correctly in the two statements.
+
             asserter.assert_(
-                CompiledSQL(
-                    "INSERT INTO a (type, data, xcol, y) VALUES "
-                    "(:type, :data, :xcol, :y) "
-                    "RETURNING a.id, a.type, a.data, a.y",
-                    a_data,
-                ),
-                CompiledSQL(
-                    "INSERT INTO b (id, bd, zcol, q) "
-                    "VALUES (:id, :bd, :zcol, :q) "
-                    "RETURNING b.id, b.q",
-                    b_data,
-                ),
+                Conditional(
+                    self.use_sentinel and not single_element,
+                    [
+                        CompiledSQL(
+                            "INSERT INTO a (type, data, xcol, y, _sentinel) "
+                            "VALUES "
+                            "(:type, :data, :xcol, :y, :_sentinel) "
+                            "RETURNING a.id, a.type, a.data, a.y, a._sentinel",
+                            a_data,
+                        ),
+                        CompiledSQL(
+                            "INSERT INTO b (id, bd, zcol, q, _sentinel) "
+                            "VALUES (:id, :bd, :zcol, :q, :_sentinel) "
+                            "RETURNING b.id, b.q, b._sentinel",
+                            b_data,
+                        ),
+                    ],
+                    [
+                        CompiledSQL(
+                            "INSERT INTO a (type, data, xcol, y) VALUES "
+                            "(:type, :data, :xcol, :y) "
+                            "RETURNING a.id, a.type, a.data, a.y",
+                            a_data,
+                        ),
+                        Conditional(
+                            single_element,
+                            [
+                                CompiledSQL(
+                                    "INSERT INTO b (id, bd, zcol, q) "
+                                    "VALUES (:id, :bd, :zcol, :q) "
+                                    "RETURNING b.id, b.q",
+                                    b_data,
+                                ),
+                            ],
+                            [
+                                CompiledSQL(
+                                    "INSERT INTO b (id, bd, zcol, q) "
+                                    "VALUES (:id, :bd, :zcol, :q) "
+                                    "RETURNING b.id, b.q, b.id AS id__1",
+                                    b_data,
+                                ),
+                            ],
+                        ),
+                    ],
+                )
             )
 
-    @testing.combinations(
-        True,
-        False,
-        argnames="single_element",
-    )
+    @testing.variation("single_element", [True, False])
     def test_subclass_returning_bind_expr(self, single_element):
         A, B = self.classes("A", "B")
 
-        s = fixture_session()
+        s = fixture_session(bind=self.bind)
 
         if single_element:
             data = {"data": "d3", "bd": "bd1", "x": 1, "y": 2, "z": 3, "q": 4}
@@ -740,24 +878,27 @@ class BulkDMLReturningInhTest:
         if single_element:
             eq_(result.all(), [("d3", 2, 9)])
         else:
-            eq_(result.all(), [("d3", 2, 9), ("d4", 6, 13)])
+            eq_(set(result), {("d3", 2, 9), ("d4", 6, 13)})
 
     def test_subclass_bulk_update(self):
         A, B = self.classes("A", "B")
 
-        s = fixture_session()
+        s = fixture_session(bind=self.bind)
 
         data = [
             {"data": "d3", "bd": "bd1", "x": 1, "y": 2, "z": 3, "q": 4},
             {"data": "d4", "bd": "bd2", "x": 5, "y": 6, "z": 7, "q": 8},
         ]
-        ids = s.scalars(insert(B).returning(B.id), data).all()
+        ids = {
+            row.data: row.id
+            for row in s.execute(insert(B).returning(B.id, B.data), data).all()
+        }
 
         result = s.execute(
             update(B),
             [
-                {"id": ids[0], "data": "d3_updated", "bd": "bd1_updated"},
-                {"id": ids[1], "data": "d4_updated", "bd": "bd2_updated"},
+                {"id": ids["d3"], "data": "d3_updated", "bd": "bd1_updated"},
+                {"id": ids["d4"], "data": "d4_updated", "bd": "bd2_updated"},
             ],
         )
 
@@ -765,12 +906,12 @@ class BulkDMLReturningInhTest:
         assert result is not None
 
         eq_(
-            s.scalars(select(B)).all(),
-            [
+            set(s.scalars(select(B))),
+            {
                 B(
                     bd="bd1_updated",
                     data="d3_updated",
-                    id=ids[0],
+                    id=ids["d3"],
                     q=4,
                     type="b",
                     x=1,
@@ -780,21 +921,24 @@ class BulkDMLReturningInhTest:
                 B(
                     bd="bd2_updated",
                     data="d4_updated",
-                    id=ids[1],
+                    id=ids["d4"],
                     q=8,
                     type="b",
                     x=5,
                     y=6,
                     z=7,
                 ),
-            ],
+            },
         )
 
-    @testing.combinations(True, False, argnames="single_element")
-    def test_subclass_return_just_subclass_ids(self, single_element):
+    @testing.variation("single_element", [True, False])
+    @testing.variation("sort_by_parameter_order", [True, False])
+    def test_subclass_return_just_subclass_ids(
+        self, single_element, sort_by_parameter_order
+    ):
         A, B = self.classes("A", "B")
 
-        s = fixture_session()
+        s = fixture_session(bind=self.bind)
 
         if single_element:
             data = {"data": "d3", "bd": "bd1", "x": 1, "y": 2, "z": 3, "q": 4}
@@ -804,16 +948,24 @@ class BulkDMLReturningInhTest:
                 {"data": "d4", "bd": "bd2", "x": 5, "y": 6, "z": 7, "q": 8},
             ]
 
-        ids = s.scalars(insert(B).returning(B.id), data).all()
-        actual_ids = s.scalars(select(B.id).order_by(B.data)).all()
+        ids = s.execute(
+            insert(B).returning(
+                B.id,
+                B.data,
+                sort_by_parameter_order=bool(sort_by_parameter_order),
+            ),
+            data,
+        )
+        actual_ids = s.execute(select(B.id, B.data).order_by(B.id))
 
-        eq_(ids, actual_ids)
+        if sort_by_parameter_order:
+            coll = list
+        else:
+            coll = set
 
-    @testing.combinations(
-        "orm",
-        "bulk",
-        argnames="insert_strategy",
-    )
+        eq_(coll(ids), coll(actual_ids))
+
+    @testing.variation("insert_strategy", ["orm", "bulk", "bulk_ordered"])
     @testing.requires.provisioned_upsert
     def test_base_class_upsert(self, insert_strategy):
         """upsert is really tricky.   if you dont have any data updated,
@@ -825,17 +977,22 @@ class BulkDMLReturningInhTest:
         """
         A = self.classes.A
 
-        s = fixture_session()
+        s = fixture_session(bind=self.bind)
 
         initial_data = [
             {"data": "d3", "x": 1, "y": 2, "q": 4},
             {"data": "d4", "x": 5, "y": 6, "q": 8},
         ]
-        ids = s.scalars(insert(A).returning(A.id), initial_data).all()
+        ids = {
+            row.data: row.id
+            for row in s.execute(
+                insert(A).returning(A.id, A.data), initial_data
+            )
+        }
 
         upsert_data = [
             {
-                "id": ids[0],
+                "id": ids["d3"],
                 "type": "a",
                 "data": "d3",
                 "x": 1,
@@ -849,7 +1006,7 @@ class BulkDMLReturningInhTest:
                 "y": 5,
             },
             {
-                "id": ids[1],
+                "id": ids["d4"],
                 "type": "a",
                 "data": "d4",
                 "x": 5,
@@ -868,24 +1025,28 @@ class BulkDMLReturningInhTest:
             config,
             A,
             (A,),
-            lambda inserted: {"data": inserted.data + " upserted"},
+            set_lambda=lambda inserted: {"data": inserted.data + " upserted"},
+            sort_by_parameter_order=insert_strategy.bulk_ordered,
         )
 
-        if insert_strategy == "orm":
+        if insert_strategy.orm:
             result = s.scalars(stmt.values(upsert_data))
-        elif insert_strategy == "bulk":
-            result = s.scalars(stmt, upsert_data)
+        elif insert_strategy.bulk or insert_strategy.bulk_ordered:
+            with self.assert_for_downgrade(
+                sort_by_parameter_order=insert_strategy.bulk_ordered
+            ):
+                result = s.scalars(stmt, upsert_data)
         else:
-            assert False
+            insert_strategy.fail()
 
         eq_(
-            result.all(),
-            [
-                A(data="d3 upserted", id=ids[0], type="a", x=1, y=2),
+            set(result.all()),
+            {
+                A(data="d3 upserted", id=ids["d3"], type="a", x=1, y=2),
                 A(data="d32", id=32, type="a", x=19, y=5),
-                A(data="d4 upserted", id=ids[1], type="a", x=5, y=6),
+                A(data="d4 upserted", id=ids["d4"], type="a", x=5, y=6),
                 A(data="d28", id=28, type="a", x=9, y=15),
-            ],
+            },
         )
 
     @testing.combinations(
@@ -893,13 +1054,14 @@ class BulkDMLReturningInhTest:
         "bulk",
         argnames="insert_strategy",
     )
+    @testing.variation("sort_by_parameter_order", [True, False])
     @testing.requires.provisioned_upsert
-    def test_subclass_upsert(self, insert_strategy):
+    def test_subclass_upsert(self, insert_strategy, sort_by_parameter_order):
         """note this is overridden in the joined version to expect failure"""
 
         A, B = self.classes("A", "B")
 
-        s = fixture_session()
+        s = fixture_session(bind=self.bind)
 
         idd3 = 1
         idd4 = 2
@@ -926,11 +1088,19 @@ class BulkDMLReturningInhTest:
                 "q": 8,
             },
         ]
-        ids = s.scalars(insert(B).returning(B.id), initial_data).all()
+        ids = {
+            row.data: row.id
+            for row in s.execute(
+                insert(B).returning(
+                    B.id, B.data, sort_by_parameter_order=True
+                ),
+                initial_data,
+            )
+        }
 
         upsert_data = [
             {
-                "id": ids[0],
+                "id": ids["d3"],
                 "type": "b",
                 "data": "d3",
                 "bd": "bd1_upserted",
@@ -950,7 +1120,7 @@ class BulkDMLReturningInhTest:
                 "q": 21,
             },
             {
-                "id": ids[1],
+                "id": ids["d4"],
                 "type": "b",
                 "bd": "bd2_upserted",
                 "data": "d4",
@@ -975,19 +1145,24 @@ class BulkDMLReturningInhTest:
             config,
             B,
             (B,),
-            lambda inserted: {
+            set_lambda=lambda inserted: {
                 "data": inserted.data + " upserted",
                 "bd": inserted.bd + " upserted",
             },
+            sort_by_parameter_order=bool(sort_by_parameter_order),
         )
-        result = s.scalars(stmt, upsert_data)
+
+        with self.assert_for_downgrade(
+            sort_by_parameter_order=bool(sort_by_parameter_order)
+        ):
+            result = s.scalars(stmt, upsert_data)
         eq_(
-            result.all(),
-            [
+            set(result),
+            {
                 B(
                     bd="bd1_upserted upserted",
                     data="d3 upserted",
-                    id=ids[0],
+                    id=ids["d3"],
                     q=4,
                     type="b",
                     x=1,
@@ -1007,7 +1182,7 @@ class BulkDMLReturningInhTest:
                 B(
                     bd="bd2_upserted upserted",
                     data="d4 upserted",
-                    id=ids[1],
+                    id=ids["d4"],
                     q=8,
                     type="b",
                     x=5,
@@ -1024,16 +1199,43 @@ class BulkDMLReturningInhTest:
                     y=15,
                     z=10,
                 ),
-            ],
+            },
         )
 
 
+@testing.combinations(
+    (
+        "no_sentinel",
+        False,
+    ),
+    (
+        "w_sentinel",
+        True,
+    ),
+    argnames="use_sentinel",
+    id_="ia",
+)
+@testing.combinations(
+    (
+        "nonrandom",
+        False,
+    ),
+    (
+        "random",
+        True,
+    ),
+    argnames="randomize_returning",
+    id_="ia",
+)
 class BulkDMLReturningJoinedInhTest(
     BulkDMLReturningInhTest, fixtures.DeclarativeMappedTest
 ):
 
     __requires__ = ("insert_returning", "insert_executemany_returning")
     __backend__ = True
+
+    use_sentinel = False
+    randomize_returning = False
 
     @classmethod
     def setup_classes(cls):
@@ -1046,6 +1248,9 @@ class BulkDMLReturningJoinedInhTest(
             data: Mapped[str]
             x: Mapped[Optional[int]] = mapped_column("xcol")
             y: Mapped[Optional[int]]
+
+            if cls.use_sentinel:
+                _sentinel: Mapped[int] = orm_insert_sentinel()
 
             __mapper_args__ = {
                 "polymorphic_identity": "a",
@@ -1061,6 +1266,9 @@ class BulkDMLReturningJoinedInhTest(
             z: Mapped[Optional[int]] = mapped_column("zcol")
             q: Mapped[Optional[int]]
 
+            if cls.use_sentinel:
+                _sentinel: Mapped[int] = orm_insert_sentinel()
+
             __mapper_args__ = {"polymorphic_identity": "b"}
 
     @testing.combinations(
@@ -1073,17 +1281,26 @@ class BulkDMLReturningJoinedInhTest(
         False,
         argnames="single_param",
     )
+    @testing.variation("sort_by_parameter_order", [True, False])
     @testing.requires.provisioned_upsert
-    def test_subclass_upsert(self, insert_strategy, single_param):
+    def test_subclass_upsert(
+        self,
+        insert_strategy,
+        single_param,
+        sort_by_parameter_order,
+    ):
         A, B = self.classes("A", "B")
 
-        s = fixture_session()
+        s = fixture_session(bind=self.bind)
 
         initial_data = [
             {"data": "d3", "bd": "bd1", "x": 1, "y": 2, "z": 3, "q": 4},
             {"data": "d4", "bd": "bd2", "x": 5, "y": 6, "z": 7, "q": 8},
         ]
-        ids = s.scalars(insert(B).returning(B.id), initial_data).all()
+        ids = s.scalars(
+            insert(B).returning(B.id, sort_by_parameter_order=True),
+            initial_data,
+        ).all()
 
         upsert_data = [
             {
@@ -1102,9 +1319,10 @@ class BulkDMLReturningJoinedInhTest(
             config,
             B,
             (B,),
-            lambda inserted: {
+            set_lambda=lambda inserted: {
                 "bd": inserted.bd + " upserted",
             },
+            sort_by_parameter_order=bool(sort_by_parameter_order),
         )
 
         with expect_raises_message(
@@ -1115,6 +1333,18 @@ class BulkDMLReturningJoinedInhTest(
             s.scalars(stmt, upsert_data)
 
 
+@testing.combinations(
+    (
+        "nonrandom",
+        False,
+    ),
+    (
+        "random",
+        True,
+    ),
+    argnames="randomize_returning",
+    id_="ia",
+)
 class BulkDMLReturningSingleInhTest(
     BulkDMLReturningInhTest, fixtures.DeclarativeMappedTest
 ):
@@ -1146,6 +1376,18 @@ class BulkDMLReturningSingleInhTest(
             __mapper_args__ = {"polymorphic_identity": "b"}
 
 
+@testing.combinations(
+    (
+        "nonrandom",
+        False,
+    ),
+    (
+        "random",
+        True,
+    ),
+    argnames="randomize_returning",
+    id_="ia",
+)
 class BulkDMLReturningConcreteInhTest(
     BulkDMLReturningInhTest, fixtures.DeclarativeMappedTest
 ):
@@ -1253,7 +1495,7 @@ class CTETest(fixtures.DeclarativeMappedTest):
         else:
             assert False
 
-        sess = fixture_session()
+        sess = fixture_session(bind=self.bind)
         with self.sql_execution_asserter() as asserter:
 
             if not expect_entity:

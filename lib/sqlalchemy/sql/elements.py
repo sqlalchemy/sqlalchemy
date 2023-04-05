@@ -91,7 +91,6 @@ if typing.TYPE_CHECKING:
     from .compiler import SQLCompiler
     from .functions import FunctionElement
     from .operators import OperatorType
-    from .schema import _ServerDefaultType
     from .schema import Column
     from .schema import DefaultGenerator
     from .schema import FetchedValue
@@ -1263,6 +1262,8 @@ class ColumnElement(
     primary_key: bool = False
     _is_clone_of: Optional[ColumnElement[_T]]
     _is_column_element = True
+    _insert_sentinel: bool = False
+    _omit_from_statements = False
 
     foreign_keys: AbstractSet[ForeignKey] = frozenset()
 
@@ -2211,6 +2212,8 @@ class TextClause(
     _is_implicitly_boolean = False
 
     _render_label_in_columns_clause = False
+
+    _omit_from_statements = False
 
     @property
     def _hide_froms(self) -> Iterable[FromClause]:
@@ -4667,7 +4670,7 @@ class ColumnClause(
 
     onupdate: Optional[DefaultGenerator] = None
     default: Optional[DefaultGenerator] = None
-    server_default: Optional[_ServerDefaultType] = None
+    server_default: Optional[FetchedValue] = None
     server_onupdate: Optional[FetchedValue] = None
 
     _is_multiparam_column = False

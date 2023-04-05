@@ -131,19 +131,24 @@ def _bulk_insert(
 
     return_result: Optional[cursor.CursorResult[Any]] = None
 
-    for table, super_mapper in base_mapper._sorted_tables.items():
-        if not mapper.isa(super_mapper) or table not in mapper._pks_by_table:
-            continue
+    mappers_to_run = [
+        (table, mp)
+        for table, mp in base_mapper._sorted_tables.items()
+        if table in mapper._pks_by_table
+    ]
 
-        is_joined_inh_supertable = super_mapper is not mapper
-        bookkeeping = (
-            is_joined_inh_supertable
-            or return_defaults
-            or (
-                use_orm_insert_stmt is not None
-                and bool(use_orm_insert_stmt._returning)
-            )
-        )
+    if return_defaults:
+        # not used by new-style bulk inserts, only used for legacy
+        bookkeeping = True
+    elif len(mappers_to_run) > 1:
+        # if we have more than one table, mapper to run where we will be
+        # either horizontally splicing, or copying values between tables,
+        # we need the "bookkeeping" / deterministic returning order
+        bookkeeping = True
+    else:
+        bookkeeping = False
+
+    for table, super_mapper in mappers_to_run:
 
         records = (
             (
@@ -173,6 +178,7 @@ def _bulk_insert(
                 render_nulls=render_nulls,
             )
         )
+
         result = persistence._emit_insert_statements(
             base_mapper,
             None,
@@ -187,6 +193,7 @@ def _bulk_insert(
             if not use_orm_insert_stmt._returning or return_result is None:
                 return_result = result
             elif result.returns_rows:
+                assert bookkeeping
                 return_result = return_result.splice_horizontally(result)
 
     if return_defaults and isstates:
@@ -507,9 +514,11 @@ class ORMDMLState(AbstractORMCompileState):
                 dml_level_statement = dml_level_statement.return_defaults(
                     # this is a little weird looking, but by passing
                     # primary key as the main list of cols, this tells
-                    # return_defaults to omit server-default cols.  Since
-                    # we have cols_to_return, just return what we asked for
-                    # (plus primary key, which ORM persistence needs since
+                    # return_defaults to omit server-default cols (and
+                    # actually all cols, due to some weird thing we should
+                    # clean up in crud.py).
+                    # Since we have cols_to_return, just return what we asked
+                    # for (plus primary key, which ORM persistence needs since
                     # we likely set bookkeeping=True here, which is another
                     # whole thing...).   We dont want to clutter the
                     # statement up with lots of other cols the user didn't

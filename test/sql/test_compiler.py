@@ -35,6 +35,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Index
 from sqlalchemy import insert
+from sqlalchemy import insert_sentinel
 from sqlalchemy import Integer
 from sqlalchemy import intersect
 from sqlalchemy import join
@@ -7705,3 +7706,243 @@ class ResultMapTest(fixtures.TestBase):
         for orig_obj, proxied_obj in zip(orig, proxied):
 
             is_(orig_obj, proxied_obj)
+
+
+class OmitFromStatementsTest(fixtures.TestBase, AssertsCompiledSQL):
+    """test the _omit_from_statements parameter.
+
+    this somewhat awkward parameter was added to suit the case of
+    "insert_sentinel" columns that would try very hard not to be noticed
+    when not needed, by being omitted from any SQL statement that does not
+    refer to them explicitly.  If they are referred to explicitly or
+    are in a context where their client side default has to be fired off,
+    then they are present.
+
+    If marked public, the feature could be used as a general "I don't want to
+    see this column unless I asked it to" use case.
+
+    """
+
+    __dialect__ = "default_enhanced"
+
+    @testing.fixture
+    def t1(self):
+        m1 = MetaData()
+
+        t1 = Table(
+            "t1",
+            m1,
+            Column("id", Integer, primary_key=True),
+            Column("a", Integer),
+            Column(
+                "b", Integer, _omit_from_statements=True, insert_sentinel=True
+            ),
+            Column("c", Integer),
+            Column("d", Integer, _omit_from_statements=True),
+            Column("e", Integer),
+        )
+        return t1
+
+    @testing.fixture
+    def t2(self):
+        m1 = MetaData()
+
+        t2 = Table(
+            "t2",
+            m1,
+            Column("id", Integer, primary_key=True),
+            Column("a", Integer),
+            Column(
+                "b",
+                Integer,
+                _omit_from_statements=True,
+                insert_sentinel=True,
+                default="10",
+                onupdate="20",
+            ),
+            Column("c", Integer, default="14", onupdate="19"),
+            Column(
+                "d",
+                Integer,
+                _omit_from_statements=True,
+                default="5",
+                onupdate="15",
+            ),
+            Column("e", Integer),
+        )
+        return t2
+
+    @testing.fixture
+    def t3(self):
+        m1 = MetaData()
+
+        t3 = Table(
+            "t3",
+            m1,
+            Column("id", Integer, primary_key=True),
+            Column("a", Integer),
+            insert_sentinel("b"),
+            Column("c", Integer, default="14", onupdate="19"),
+        )
+        return t3
+
+    def test_select_omitted(self, t1):
+        self.assert_compile(
+            select(t1), "SELECT t1.id, t1.a, t1.c, t1.e FROM t1"
+        )
+
+    def test_select_from_subquery_includes_hidden(self, t1):
+        s1 = select(t1.c.a, t1.c.b, t1.c.c, t1.c.d, t1.c.e).subquery()
+        eq_(s1.c.keys(), ["a", "b", "c", "d", "e"])
+
+        self.assert_compile(
+            select(s1),
+            "SELECT anon_1.a, anon_1.b, anon_1.c, anon_1.d, anon_1.e "
+            "FROM (SELECT t1.a AS a, t1.b AS b, t1.c AS c, t1.d AS d, "
+            "t1.e AS e FROM t1) AS anon_1",
+        )
+
+    def test_select_from_subquery_omitted(self, t1):
+        s1 = select(t1).subquery()
+
+        eq_(s1.c.keys(), ["id", "a", "c", "e"])
+        self.assert_compile(
+            select(s1),
+            "SELECT anon_1.id, anon_1.a, anon_1.c, anon_1.e FROM "
+            "(SELECT t1.id AS id, t1.a AS a, t1.c AS c, t1.e AS e FROM t1) "
+            "AS anon_1",
+        )
+
+    def test_insert_omitted(self, t1):
+        self.assert_compile(
+            insert(t1), "INSERT INTO t1 (id, a, c, e) VALUES (:id, :a, :c, :e)"
+        )
+
+    def test_insert_from_select_omitted(self, t1):
+        self.assert_compile(
+            insert(t1).from_select(["a", "c", "e"], select(t1)),
+            "INSERT INTO t1 (a, c, e) SELECT t1.id, t1.a, t1.c, t1.e FROM t1",
+        )
+
+    def test_insert_from_select_included(self, t1):
+        self.assert_compile(
+            insert(t1).from_select(["a", "b", "c", "d", "e"], select(t1)),
+            "INSERT INTO t1 (a, b, c, d, e) SELECT t1.id, t1.a, t1.c, t1.e "
+            "FROM t1",
+        )
+
+    def test_insert_from_select_defaults_included(self, t2):
+        self.assert_compile(
+            insert(t2).from_select(["a", "c", "e"], select(t2)),
+            "INSERT INTO t2 (a, c, e, b, d) SELECT t2.id, t2.a, t2.c, t2.e, "
+            ":b AS anon_1, :d AS anon_2 FROM t2",
+            # TODO: do we have a test in test_defaults for this, that the
+            # default values get set up as expected?
+        )
+
+    def test_insert_from_select_sentinel_defaults_omitted(self, t3):
+        self.assert_compile(
+            # a pure SentinelDefault not included here, so there is no 'b'
+            insert(t3).from_select(["a", "c"], select(t3)),
+            "INSERT INTO t3 (a, c) SELECT t3.id, t3.a, t3.c FROM t3",
+        )
+
+    def test_insert_omitted_return_col_nonspecified(self, t1):
+        self.assert_compile(
+            insert(t1).returning(t1),
+            "INSERT INTO t1 (id, a, c, e) VALUES (:id, :a, :c, :e) "
+            "RETURNING t1.id, t1.a, t1.c, t1.e",
+        )
+
+    def test_insert_omitted_return_col_specified(self, t1):
+        self.assert_compile(
+            insert(t1).returning(t1.c.a, t1.c.b, t1.c.c, t1.c.d, t1.c.e),
+            "INSERT INTO t1 (id, a, c, e) VALUES (:id, :a, :c, :e) "
+            "RETURNING t1.a, t1.b, t1.c, t1.d, t1.e",
+        )
+
+    def test_insert_omitted_no_params(self, t1):
+        self.assert_compile(
+            insert(t1), "INSERT INTO t1 () VALUES ()", params={}
+        )
+
+    def test_insert_omitted_no_params_defaults(self, t2):
+        # omit columns that nonetheless have client-side defaults
+        # are included
+        self.assert_compile(
+            insert(t2),
+            "INSERT INTO t2 (b, c, d) VALUES (:b, :c, :d)",
+            params={},
+        )
+
+    def test_insert_omitted_no_params_defaults_no_sentinel(self, t3):
+        # omit columns that nonetheless have client-side defaults
+        # are included
+        self.assert_compile(
+            insert(t3),
+            "INSERT INTO t3 (c) VALUES (:c)",
+            params={},
+        )
+
+    def test_insert_omitted_defaults(self, t2):
+        self.assert_compile(
+            insert(t2), "INSERT INTO t2 (id, a, c, e) VALUES (:id, :a, :c, :e)"
+        )
+
+    def test_update_omitted(self, t1):
+        self.assert_compile(
+            update(t1), "UPDATE t1 SET id=:id, a=:a, c=:c, e=:e"
+        )
+
+    def test_update_omitted_defaults(self, t2):
+        self.assert_compile(
+            update(t2), "UPDATE t2 SET id=:id, a=:a, c=:c, e=:e"
+        )
+
+    def test_update_omitted_no_params_defaults(self, t2):
+        # omit columns that nonetheless have client-side defaults
+        # are included
+        self.assert_compile(
+            update(t2), "UPDATE t2 SET b=:b, c=:c, d=:d", params={}
+        )
+
+    def test_select_include_col(self, t1):
+        self.assert_compile(
+            select(t1, t1.c.b, t1.c.d),
+            "SELECT t1.id, t1.a, t1.c, t1.e, t1.b, t1.d FROM t1",
+        )
+
+    def test_update_include_col(self, t1):
+        self.assert_compile(
+            update(t1).values(a=5, b=10, c=15, d=20, e=25),
+            "UPDATE t1 SET a=:a, b=:b, c=:c, d=:d, e=:e",
+            checkparams={"a": 5, "b": 10, "c": 15, "d": 20, "e": 25},
+        )
+
+    def test_insert_include_col(self, t1):
+        self.assert_compile(
+            insert(t1).values(a=5, b=10, c=15, d=20, e=25),
+            "INSERT INTO t1 (a, b, c, d, e) VALUES (:a, :b, :c, :d, :e)",
+            checkparams={"a": 5, "b": 10, "c": 15, "d": 20, "e": 25},
+        )
+
+    def test_insert_include_col_via_keys(self, t1):
+        self.assert_compile(
+            insert(t1),
+            "INSERT INTO t1 (a, b, c, d, e) VALUES (:a, :b, :c, :d, :e)",
+            params={"a": 5, "b": 10, "c": 15, "d": 20, "e": 25},
+            checkparams={"a": 5, "b": 10, "c": 15, "d": 20, "e": 25},
+        )
+
+    def test_select_omitted_incl_whereclause(self, t1):
+        self.assert_compile(
+            select(t1).where(t1.c.d == 5),
+            "SELECT t1.id, t1.a, t1.c, t1.e FROM t1 WHERE t1.d = :d_1",
+            checkparams={"d_1": 5},
+        )
+
+    def test_select_omitted_incl_order_by(self, t1):
+        self.assert_compile(
+            select(t1).order_by(t1.c.d),
+            "SELECT t1.id, t1.a, t1.c, t1.e FROM t1 ORDER BY t1.d",
+        )

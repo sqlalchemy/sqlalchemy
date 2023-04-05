@@ -10,12 +10,14 @@
 from __future__ import annotations
 
 import itertools
+import random
 import re
 import sys
 
 import sqlalchemy as sa
 from . import assertions
 from . import config
+from . import mock
 from . import schema
 from .assertions import eq_
 from .assertions import ne_
@@ -1003,3 +1005,54 @@ class CacheKeyFixture:
             range(len(case_a)), 2
         ):
             self._compare_equal(case_a[a], case_b[b], compare_values)
+
+
+def insertmanyvalues_fixture(
+    connection, randomize_rows=False, warn_on_downgraded=False
+):
+
+    dialect = connection.dialect
+    orig_dialect = dialect._deliver_insertmanyvalues_batches
+    orig_conn = connection._exec_insertmany_context
+
+    class RandomCursor:
+        __slots__ = ("cursor",)
+
+        def __init__(self, cursor):
+            self.cursor = cursor
+
+        # only this method is called by the deliver method.
+        # by not having the other methods we assert that those aren't being
+        # used
+
+        def fetchall(self):
+            rows = self.cursor.fetchall()
+            rows = list(rows)
+            random.shuffle(rows)
+            return rows
+
+    def _deliver_insertmanyvalues_batches(
+        cursor, statement, parameters, generic_setinputsizes, context
+    ):
+        if randomize_rows:
+            cursor = RandomCursor(cursor)
+        for batch in orig_dialect(
+            cursor, statement, parameters, generic_setinputsizes, context
+        ):
+            if warn_on_downgraded and batch.is_downgraded:
+                util.warn("Batches were downgraded for sorted INSERT")
+
+            yield batch
+
+    def _exec_insertmany_context(
+        dialect,
+        context,
+    ):
+        with mock.patch.object(
+            dialect,
+            "_deliver_insertmanyvalues_batches",
+            new=_deliver_insertmanyvalues_batches,
+        ):
+            return orig_conn(dialect, context)
+
+    connection._exec_insertmany_context = _exec_insertmany_context

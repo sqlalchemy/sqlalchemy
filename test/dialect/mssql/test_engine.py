@@ -3,7 +3,6 @@ import re
 from unittest.mock import Mock
 
 from sqlalchemy import Column
-from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import inspect
@@ -628,14 +627,6 @@ class VersionDetectionTest(fixtures.TestBase):
 class MiscTest(fixtures.TestBase):
     __only_on__ = "mssql"
     __backend__ = True
-
-    def test_no_insertmanyvalues(self):
-        with expect_raises_message(
-            exc.ArgumentError,
-            "The use_insertmanyvalues feature on SQL Server is "
-            "currently not safe to use",
-        ):
-            create_engine("mssql+pyodbc://", use_insertmanyvalues=True)
 
     @testing.variation("enable_comments", [True, False])
     def test_comments_enabled_disabled(

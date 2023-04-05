@@ -105,7 +105,7 @@ Getting new objects with RETURNING
 The bulk ORM insert feature supports INSERT..RETURNING for selected
 backends, which can return a :class:`.Result` object that may yield individual
 columns back as well as fully constructed ORM objects corresponding
-to the new rows.    INSERT..RETURNING requires the use of a backend that
+to the newly generated records.    INSERT..RETURNING requires the use of a backend that
 supports SQL RETURNING syntax as well as support for :term:`executemany`
 with RETURNING; this feature is available with all
 :ref:`SQLAlchemy-included <included_dialects>` backends
@@ -127,9 +127,10 @@ iteration of ``User`` objects::
     ...     ],
     ... )
     {execsql}INSERT INTO user_account (name, fullname)
-    VALUES (?, ?), (?, ?), (?, ?), (?, ?), (?, ?) RETURNING id, name, fullname, species
-    [... (insertmanyvalues)] ('spongebob', 'Spongebob Squarepants', 'sandy',
-    'Sandy Cheeks', 'patrick', 'Patrick Star', 'squidward', 'Squidward Tentacles',
+    VALUES (?, ?), (?, ?), (?, ?), (?, ?), (?, ?)
+    RETURNING id, name, fullname, species
+    [...] ('spongebob', 'Spongebob Squarepants', 'sandy', 'Sandy Cheeks',
+    'patrick', 'Patrick Star', 'squidward', 'Squidward Tentacles',
     'ehkrabs', 'Eugene H. Krabs')
     {stop}>>> print(users.all())
     [User(name='spongebob', fullname='Spongebob Squarepants'),
@@ -153,6 +154,53 @@ single INSERT statement so that RETURNING may be used.
    in the result as ORM mapped objects.  Limited support for ORM loader
    options such as :func:`_orm.load_only` and :func:`_orm.selectinload`
    is also present.
+
+.. _orm_queryguide_bulk_insert_returning_ordered:
+
+Correlating RETURNING records with input data order
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When using bulk INSERT with RETURNING, it's important to note that most
+database backends provide no formal guarantee of the order in which the
+records from RETURNING are sent, including that there is no guarantee that
+their order will correspond to that of the input records.  For applications
+that need to ensure RETURNING records can be correlated with input data,
+the additional parameter :paramref:`_dml.Insert.returning.sort_by_parameter_order`
+may be specified, which depending on backend may use special INSERT forms
+that maintain a token which is used to reorder the returned rows appropriately,
+or in some cases, such as in the example below using the SQLite backend,
+the operation will INSERT one row at a time::
+
+    >>> data = [
+    ...     {"name": "pearl", "fullname": "Pearl Krabs"},
+    ...     {"name": "plankton", "fullname": "Plankton"},
+    ...     {"name": "gary", "fullname": "Gary"},
+    ... ]
+    >>> user_ids = session.scalars(
+    ...     insert(User).returning(User.id, sort_by_parameter_order=True), data
+    ... )
+    {execsql}INSERT INTO user_account (name, fullname) VALUES (?, ?) RETURNING id
+    [... (insertmanyvalues) 1/3 (ordered; batch not supported)] ('pearl', 'Pearl Krabs')
+    INSERT INTO user_account (name, fullname) VALUES (?, ?) RETURNING id
+    [insertmanyvalues 2/3 (ordered; batch not supported)] ('plankton', 'Plankton')
+    INSERT INTO user_account (name, fullname) VALUES (?, ?) RETURNING id
+    [insertmanyvalues 3/3 (ordered; batch not supported)] ('gary', 'Gary')
+    {stop}>>> for user_id, input_record in zip(user_ids, data):
+    ...     input_record["id"] = user_id
+    >>> print(data)
+    [{'name': 'pearl', 'fullname': 'Pearl Krabs', 'id': 6},
+    {'name': 'plankton', 'fullname': 'Plankton', 'id': 7},
+    {'name': 'gary', 'fullname': 'Gary', 'id': 8}]
+
+.. versionadded:: 2.0.10 Added :paramref:`_dml.Insert.returning.sort_by_parameter_order`
+   which is implemented within the :term:`insertmanyvalues` architecture.
+
+.. seealso::
+
+    :ref:`engine_insertmanyvalues_returning_order` - background on approaches
+    taken to guarantee correspondence between input data and result rows
+    without significant loss of performance
+
 
 .. _orm_queryguide_insert_heterogeneous_params:
 
@@ -190,12 +238,19 @@ to each set of keys and batch accordingly into separate INSERT statements::
     ...         {"name": "ehkrabs", "fullname": "Eugene H. Krabs", "species": "Crab"},
     ...     ],
     ... )
-    {execsql}INSERT INTO user_account (name, fullname, species) VALUES (?, ?, ?), (?, ?, ?) RETURNING id, name, fullname, species
-    [... (insertmanyvalues)] ('spongebob', 'Spongebob Squarepants', 'Sea Sponge', 'sandy', 'Sandy Cheeks', 'Squirrel')
-    INSERT INTO user_account (name, species) VALUES (?, ?) RETURNING id, name, fullname, species
+    {execsql}INSERT INTO user_account (name, fullname, species)
+    VALUES (?, ?, ?), (?, ?, ?) RETURNING id, name, fullname, species
+    [... (insertmanyvalues) 1/1 (unordered)] ('spongebob', 'Spongebob Squarepants', 'Sea Sponge',
+    'sandy', 'Sandy Cheeks', 'Squirrel')
+    INSERT INTO user_account (name, species)
+    VALUES (?, ?) RETURNING id, name, fullname, species
     [...] ('patrick', 'Starfish')
-    INSERT INTO user_account (name, fullname, species) VALUES (?, ?, ?), (?, ?, ?) RETURNING id, name, fullname, species
-    [... (insertmanyvalues)] ('squidward', 'Squidward Tentacles', 'Squid', 'ehkrabs', 'Eugene H. Krabs', 'Crab')
+    INSERT INTO user_account (name, fullname, species)
+    VALUES (?, ?, ?), (?, ?, ?) RETURNING id, name, fullname, species
+    [... (insertmanyvalues) 1/1 (unordered)] ('squidward', 'Squidward Tentacles',
+    'Squid', 'ehkrabs', 'Eugene H. Krabs', 'Crab')
+
+
 
 In the above example, the five parameter dictionaries passed translated into
 three INSERT statements, grouped along the specific sets of keys
@@ -232,12 +287,22 @@ the returned rows include values for all columns inserted::
     ...         {"name": "ehkrabs", "manager_name": "Eugene H. Krabs"},
     ...     ],
     ... )
-    {execsql}INSERT INTO employee (name, type) VALUES (?, ?), (?, ?) RETURNING id, name, type
-    [... (insertmanyvalues)] ('sandy', 'manager', 'ehkrabs', 'manager')
-    INSERT INTO manager (id, manager_name) VALUES (?, ?), (?, ?) RETURNING id, manager_name
-    [... (insertmanyvalues)] (1, 'Sandy Cheeks', 2, 'Eugene H. Krabs')
-    {stop}>>> print(managers.all())
-    [Manager('sandy', manager_name='Sandy Cheeks'), Manager('ehkrabs', manager_name='Eugene H. Krabs')]
+    {execsql}INSERT INTO employee (name, type) VALUES (?, ?) RETURNING id, name, type
+    [... (insertmanyvalues) 1/2 (ordered; batch not supported)] ('sandy', 'manager')
+    INSERT INTO employee (name, type) VALUES (?, ?) RETURNING id, name, type
+    [insertmanyvalues 2/2 (ordered; batch not supported)] ('ehkrabs', 'manager')
+    INSERT INTO manager (id, manager_name) VALUES (?, ?), (?, ?) RETURNING id, manager_name, id AS id__1
+    [... (insertmanyvalues) 1/1 (ordered)] (1, 'Sandy Cheeks', 2, 'Eugene H. Krabs')
+
+.. tip:: Bulk INSERT of joined inheritance mappings requires that the ORM
+   make use of the :paramref:`_dml.Insert.returning.sort_by_parameter_order`
+   parameter internally, so that it can correlate primary key values from
+   RETURNING rows from the base table into the parameter sets being used
+   to INSERT into the "sub" table, which is why the SQLite backend
+   illustrated above transparently degrades to using non-batched statements.
+   Background on this feature is at
+   :ref:`engine_insertmanyvalues_returning_order`.
+
 
 .. _orm_queryguide_bulk_insert_w_sql:
 
@@ -281,11 +346,12 @@ and then pass the additional records using "bulk" mode::
     ...     ],
     ... )
     {execsql}INSERT INTO log_record (message, code, timestamp)
-    VALUES (?, ?, CURRENT_TIMESTAMP), (?, ?, CURRENT_TIMESTAMP), (?, ?, CURRENT_TIMESTAMP),
-    (?, ?, CURRENT_TIMESTAMP)
+    VALUES (?, ?, CURRENT_TIMESTAMP), (?, ?, CURRENT_TIMESTAMP),
+    (?, ?, CURRENT_TIMESTAMP), (?, ?, CURRENT_TIMESTAMP)
     RETURNING id, message, code, timestamp
-    [... (insertmanyvalues)] ('log message #1', 'SQLA', 'log message #2', 'SQLA',
-    'log message #3', 'SQLA', 'log message #4', 'SQLA')
+    [... (insertmanyvalues) 1/1 (unordered)] ('log message #1', 'SQLA', 'log message #2',
+    'SQLA', 'log message #3', 'SQLA', 'log message #4', 'SQLA')
+
 
     {stop}>>> print(log_record_result.all())
     [LogRecord('log message #1', 'SQLA', datetime.datetime(...)),

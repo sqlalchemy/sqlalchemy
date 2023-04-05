@@ -506,7 +506,9 @@ class ExpireTest(_fixtures.FixtureTest):
             users,
             properties={
                 "addresses": relationship(
-                    Address, cascade="all, refresh-expire"
+                    Address,
+                    cascade="all, refresh-expire",
+                    order_by=addresses.c.id,
                 )
             },
         )
