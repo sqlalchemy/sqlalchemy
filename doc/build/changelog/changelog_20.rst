@@ -10,7 +10,49 @@
 
 .. changelog::
     :version: 2.0.9
-    :include_notes_from: unreleased_20
+    :released: April 5, 2023
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 9603
+
+        Due to a critical bug identified in SQL Server, the SQLAlchemy
+        "insertmanyvalues" feature which allows fast INSERT of many rows while also
+        supporting RETURNING unfortunately needs to be disabled for SQL Server. SQL
+        Server is apparently unable to guarantee that the order of rows inserted
+        matches the order in which they are sent back by OUTPUT inserted when
+        table-valued rows are used with INSERT in conjunction with OUTPUT inserted.
+        We are trying to see if Microsoft is able to confirm this undocumented
+        behavior however there is no known workaround, other than it's not safe to
+        use table-valued expressions with OUTPUT inserted for now.
+
+
+    .. change::
+        :tags: bug, mariadb
+        :tickets: 9588
+
+        Added ``row_number`` as reserved word in MariaDb.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 9586
+
+        Changed the bulk INSERT strategy used for SQL Server "executemany" with
+        pyodbc when ``fast_executemany`` is set to ``True`` by using
+        ``fast_executemany`` / ``cursor.executemany()`` for bulk INSERT that does
+        not include RETURNING, restoring the same behavior as was used in
+        SQLAlchemy 1.4 when this parameter is set.
+
+        New performance details from end users have shown that ``fast_executemany``
+        is still much faster for very large datasets as it uses ODBC commands that
+        can receive all rows in a single round trip, allowing for much larger
+        datasizes than the batches that can be sent by "insertmanyvalues"
+        as was implemented for SQL Server.
+
+        While this change was made such that "insertmanyvalues" continued to be
+        used for INSERT that includes RETURNING, as well as if ``fast_executemany``
+        were not set, due to :ticket:`9603`, the "insertmanyvalues" strategy has
+        been disabled for SQL Server across the board in any case.
 
 .. changelog::
     :version: 2.0.8

@@ -1,5 +1,0 @@
-.. change::
-    :tags: bug, mariadb
-    :tickets: 9588
-
-    Added ``row_number`` as reserved word in MariaDb.
