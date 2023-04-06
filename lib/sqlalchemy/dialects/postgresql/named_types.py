@@ -374,11 +374,11 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
     A domain is essentially a data type with optional constraints
     that restrict the allowed set of values. E.g.::
 
-        PositiveInt = Domain(
+        PositiveInt = DOMAIN(
             "pos_int", Integer, check="VALUE > 0", not_null=True
         )
 
-        UsPostalCode = Domain(
+        UsPostalCode = DOMAIN(
             "us_postal_code",
             Text,
             check="VALUE ~ '^\d{5}$' OR VALUE ~ '^\d{5}-\d{4}$'"
