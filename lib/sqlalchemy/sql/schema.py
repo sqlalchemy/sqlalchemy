@@ -579,6 +579,14 @@ class Table(
             When set to a non-None value, the autoload process will take place
             for this table against the given engine or connection.
 
+            .. seealso::
+
+                :ref:`metadata_reflection_toplevel`
+
+                :meth:`_events.DDLEvents.column_reflect`
+
+                :ref:`metadata_reflection_dbagnostic_types`
+
         :param extend_existing: When ``True``, indicates that if this
             :class:`_schema.Table` is already present in the given
             :class:`_schema.MetaData`,
@@ -5375,6 +5383,17 @@ class MetaData(HasSchemaAttr):
          ``<dialectname>_<argname>``.  See the documentation regarding an
          individual dialect at :ref:`dialect_toplevel` for detail on
          documented arguments.
+
+        .. seealso::
+
+            :ref:`metadata_reflection_toplevel`
+
+            :meth:`_events.DDLEvents.column_reflect` - Event used to customize
+            the reflected columns. Usually used to generalize the types using
+            :meth:`_types.TypeEngine.as_generic`
+
+            :ref:`metadata_reflection_dbagnostic_types` - describes how to
+            reflect tables using general types.
 
         """
 
