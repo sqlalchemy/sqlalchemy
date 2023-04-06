@@ -1,4 +1,5 @@
 import random
+import uuid
 
 from sqlalchemy import Column
 from sqlalchemy import exc
@@ -272,3 +273,19 @@ class AsyncPgTest(fixtures.TestBase):
             await conn.close()
 
         eq_(codec_meth.mock_calls, [mock.call(adapted_conn)])
+
+    @async_test
+    async def test_name_connection_func(self, metadata, async_testing_engine):
+        cache = []
+
+        def name_f():
+            name = str(uuid.uuid4())
+            cache.append(name)
+            return name
+
+        engine = async_testing_engine(
+            options={"connect_args": {"prepared_statement_name_func": name_f}},
+        )
+        async with engine.begin() as conn:
+            await conn.execute(select(1))
+            assert len(cache) > 0
