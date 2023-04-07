@@ -185,7 +185,7 @@ def mapped_column(
      "NOT NULL". If omitted, the nullability is derived from the type
      annotation based on whether or not ``typing.Optional`` is present.
      ``nullable`` defaults to ``True`` otherwise for non-primary key columns,
-     and ``False`` or primary key columns.
+     and ``False`` for primary key columns.
     :param primary_key: optional bool, indicates the :class:`_schema.Column`
      would be part of the table's primary key or not.
     :param deferred: Optional bool - this keyword argument is consumed by the
