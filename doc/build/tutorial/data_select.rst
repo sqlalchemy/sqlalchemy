@@ -274,7 +274,7 @@ SQL that's quicker to write literally.
 The :func:`_sql.text` construct introduced at
 :ref:`tutorial_working_with_transactions` can in fact be embedded into a
 :class:`_sql.Select` construct directly, such as below where we manufacture
-a hardcoded string literal ``'some label'`` and embed it within the
+a hardcoded string literal ``'some phrase'`` and embed it within the
 SELECT statement::
 
   >>> from sqlalchemy import text
