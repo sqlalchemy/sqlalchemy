@@ -3817,3 +3817,98 @@ class ORMOnlyPrimaryKeyTest(fixtures.TestBase):
                 is_(a1, aa)
 
         return go
+
+
+class TryToFoolInsertManyValuesTest(fixtures.TestBase):
+    __backend__ = True
+
+    @testing.variation(
+        "pk_type",
+        [
+            ("plain_autoinc", testing.requires.autoincrement_without_sequence),
+            ("sequence", testing.requires.sequences),
+            ("identity", testing.requires.identity_columns),
+        ],
+    )
+    def test_bulk_insert_maintains_correct_pks(
+        self, decl_base, connection, pk_type
+    ):
+        """test #9603.
+
+        this uses the ORM to ensure the ORM is not using any kind of
+        insertmany that causes the problem.  The errant behavior is very
+        specific to SQL Server, however if we identify any other similar
+        issues in other DBs we should add tests to this suite.
+
+        """
+
+        class Datum(decl_base):
+
+            __tablename__ = "datum"
+
+            id = Column(Integer, autoincrement=False, primary_key=True)
+            data = Column(String(10))
+
+        class Result(decl_base):
+
+            __tablename__ = "result"
+
+            if pk_type.plain_autoinc:
+                id = Column(Integer, primary_key=True)  # noqa: A001
+            elif pk_type.sequence:
+                id = Column(  # noqa: A001
+                    Integer, Sequence("rid_seq", start=1), primary_key=True
+                )
+            elif pk_type.identity:
+                id = Column(  # noqa: A001
+                    Integer, Identity(), primary_key=True
+                )
+            else:
+                pk_type.fail()
+
+            thing = Column(Integer)
+            lft_datum_id = Column(Integer, ForeignKey(Datum.id))
+
+        decl_base.metadata.create_all(connection)
+        with Session(connection) as sess:
+
+            size = 15
+            datum_ids = list(range(1, size + 1))
+
+            sess.add_all([Datum(id=id_, data=f"d{id_}") for id_ in datum_ids])
+            sess.flush()
+
+            result_data = [
+                Result(thing=num, lft_datum_id=datum_ids[num % size])
+                for num in range(size * size)
+            ]
+            sess.add_all(result_data)
+            sess.flush()
+
+            # this is what we expected we put in
+            the_data_in_order_should_be = [
+                (num + 1, num, datum_ids[num % size])
+                for num in range(size * size)
+            ]
+
+            # and yes, that's what went in
+            eq_(
+                sess.execute(
+                    select(
+                        Result.id, Result.thing, Result.lft_datum_id
+                    ).order_by(Result.id)
+                ).all(),
+                the_data_in_order_should_be,
+            )
+
+            # however, if insertmanyvalues is turned on, OUTPUT inserted
+            # did not give us the rows in the order we sent, so ids were
+            # mis-applied.  even if we sort the original records by the
+            # ids that were given
+            eq_(
+                [
+                    (r.id, r.thing, r.lft_datum_id)
+                    for r in sorted(result_data, key=lambda r: r.id)
+                ],
+                the_data_in_order_should_be,
+            )
