@@ -1613,12 +1613,11 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             "fast insertmany" feature.  Such features are very new and
             may not yet be well covered in documentation.
 
-        :param default: A scalar, Python callable, or
-            :class:`_expression.ColumnElement` expression representing the
-            *default value* for this column, which will be invoked upon insert
-            if this column is otherwise not specified in the VALUES clause of
-            the insert. This is a shortcut to using :class:`.ColumnDefault` as
-            a positional argument; see that class for full detail on the
+        :param default: A scalar, Python callable, or :class:`_expression.ColumnElement`
+            expression representing the *default value* for this column, 
+            which will be invoked upon insert if this column is otherwise not specified
+            in the VALUES clause of the insert. This is a shortcut to using :class:`.ColumnDefault`
+            as a positional argument; see that class for full detail on the
             structure of the argument.
 
             Contrast this argument to
