@@ -2397,7 +2397,8 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
         )
 
         Index("t_idx", func.lower(t.c.x), t.c.z, func.lower(t.c.y))
-
+        long_str = "long string " * 100
+        Index("t_idx_long", func.coalesce(t.c.x, long_str))
         Index("t_idx_2", t.c.x)
 
         metadata.create_all(connection)
@@ -2424,24 +2425,41 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
 
         completeIndex(expected[0])
 
-        class filtering_str(str):
+        class lower_index_str(str):
             def __eq__(self, other):
                 # test that lower and x or y are in the string
                 return "lower" in other and ("x" in other or "y" in other)
+
+        class coalesce_index_str(str):
+            def __eq__(self, other):
+                # test that coalesce and the string is in other
+                return "coalesce" in other.lower() and long_str in other
 
         if testing.requires.reflect_indexes_with_expressions.enabled:
             expr_index = {
                 "name": "t_idx",
                 "column_names": [None, "z", None],
                 "expressions": [
-                    filtering_str("lower(x)"),
+                    lower_index_str("lower(x)"),
                     "z",
-                    filtering_str("lower(y)"),
+                    lower_index_str("lower(y)"),
                 ],
                 "unique": False,
             }
             completeIndex(expr_index)
             expected.insert(0, expr_index)
+
+            expr_index_long = {
+                "name": "t_idx_long",
+                "column_names": [None],
+                "expressions": [
+                    coalesce_index_str(f"coalesce(x, '{long_str}')")
+                ],
+                "unique": False,
+            }
+            completeIndex(expr_index_long)
+            expected.append(expr_index_long)
+
             eq_(insp.get_indexes("t"), expected)
             m2 = MetaData()
             t2 = Table("t", m2, autoload_with=connection)

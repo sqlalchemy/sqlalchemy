@@ -3915,6 +3915,8 @@ class PGDialect(default.DefaultDialect):
             select(
                 pg_catalog.pg_class.c.relname,
                 pg_catalog.pg_constraint.c.conname,
+                # NOTE: avoid calling pg_get_constraintdef when not needed
+                # to speed up the query
                 sql.case(
                     (
                         pg_catalog.pg_constraint.c.oid.is_not(None),
@@ -4121,7 +4123,10 @@ class PGDialect(default.DefaultDialect):
                             idx_sq.c.indexrelid, idx_sq.c.ord + 1, True
                         ),
                     ),
-                    else_=pg_catalog.pg_attribute.c.attname,
+                    # NOTE: need to cast this since attname is of type "name"
+                    # that's limited to 63 bytes, while pg_get_indexdef
+                    # returns "text" so it may get cut
+                    else_=sql.cast(pg_catalog.pg_attribute.c.attname, TEXT()),
                 ).label("element"),
                 (idx_sq.c.attnum == 0).label("is_expr"),
             )
@@ -4169,9 +4174,9 @@ class PGDialect(default.DefaultDialect):
                 pg_catalog.pg_index.c.indoption,
                 pg_class_index.c.reloptions,
                 pg_catalog.pg_am.c.amname,
+                # NOTE: pg_get_expr is very fast so this case has almost no
+                # performance impact
                 sql.case(
-                    # pg_get_expr is very fast so this case has almost no
-                    # performance impact
                     (
                         pg_catalog.pg_index.c.indpred.is_not(None),
                         pg_catalog.pg_get_expr(
@@ -4179,7 +4184,7 @@ class PGDialect(default.DefaultDialect):
                             pg_catalog.pg_index.c.indrelid,
                         ),
                     ),
-                    else_=sql.null(),
+                    else_=None,
                 ).label("filter_definition"),
                 indnkeyatts,
                 cols_sq.c.elements,
@@ -4455,6 +4460,8 @@ class PGDialect(default.DefaultDialect):
             select(
                 pg_catalog.pg_class.c.relname,
                 pg_catalog.pg_constraint.c.conname,
+                # NOTE: avoid calling pg_get_constraintdef when not needed
+                # to speed up the query
                 sql.case(
                     (
                         pg_catalog.pg_constraint.c.oid.is_not(None),
