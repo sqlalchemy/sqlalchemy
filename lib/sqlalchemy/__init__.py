@@ -18,6 +18,7 @@ from .engine import Compiled as Compiled
 from .engine import Connection as Connection
 from .engine import create_engine as create_engine
 from .engine import create_mock_engine as create_mock_engine
+from .engine import create_pool_from_url as create_pool_from_url
 from .engine import CreateEnginePlugin as CreateEnginePlugin
 from .engine import CursorResult as CursorResult
 from .engine import Dialect as Dialect

@@ -970,6 +970,8 @@ Engine API Documentation
 
 .. autofunction:: async_engine_from_config
 
+.. autofunction:: create_async_pool_from_url
+
 .. autoclass:: AsyncEngine
    :members:
 

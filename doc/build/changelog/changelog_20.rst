@@ -651,7 +651,7 @@
         use is not supported and will be removed in a future release.
 
     .. change::
-        :tags: orm, use_case
+        :tags: orm, usecase
         :tickets: 9297
 
         To accommodate a change in column ordering used by ORM Declarative in

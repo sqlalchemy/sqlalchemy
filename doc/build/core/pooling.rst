@@ -683,6 +683,35 @@ ORM :class:`_orm.Session` object that's begun a transaction and references
 active :class:`_orm.Connection` instances; again prefer to create new
 :class:`_orm.Session` objects in new processes.
 
+Using a pool instance directly
+------------------------------
+
+A pool implementation can be used directly without an engine. This could be used
+in applications that just whish to use the pool behavior without all other
+SQLAlchemy features.
+In the example below the default pool for the ``MySQLdb`` dialect is obtained using
+:func:`_sa.create_pool_from_url`::
+
+    from sqlalchemy import create_pool_from_url
+
+    my_pool = create_pool_from_url(
+        "mysql+mysqldb://", max_overflow=5, pool_size=5, pre_ping=True
+    )
+
+    con = my_pool.connect()
+    # use the connection
+    ...
+    # then close it
+    con.close()
+
+If the type of pool to create is not specified, the default one for the dialect
+will be used. To specify it directly the ``poolclass`` argument can be used,
+like in the following example::
+
+    from sqlalchemy import create_pool_from_url
+    from sqlalchemy import NullPool
+
+    my_pool = create_pool_from_url("mysql+mysqldb://", poolclass=NullPool)
 
 API Documentation - Available Pool Implementations
 --------------------------------------------------

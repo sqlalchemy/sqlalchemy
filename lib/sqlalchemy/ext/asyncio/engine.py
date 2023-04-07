@@ -35,6 +35,7 @@ from ... import inspection
 from ... import util
 from ...engine import Connection
 from ...engine import create_engine as _create_engine
+from ...engine import create_pool_from_url as _create_pool_from_url
 from ...engine import Engine
 from ...engine.base import NestedTransaction
 from ...engine.base import Transaction
@@ -80,7 +81,6 @@ def create_async_engine(url: Union[str, URL], **kw: Any) -> AsyncEngine:
             "use the connection.stream() method for an async "
             "streaming result set"
         )
-    kw["future"] = True
     kw["_is_async"] = True
     sync_engine = _create_engine(url, **kw)
     return AsyncEngine(sync_engine)
@@ -109,6 +109,21 @@ def async_engine_from_config(
     options.update(kwargs)
     url = options.pop("url")
     return create_async_engine(url, **options)
+
+
+def create_async_pool_from_url(url: Union[str, URL], **kwargs: Any) -> Pool:
+    """Create a new async engine instance.
+
+    Arguments passed to :func:`_asyncio.create_async_pool_from_url` are mostly
+    identical to those passed to the :func:`_sa.create_pool_from_url` function.
+    The specified dialect must be an asyncio-compatible dialect
+    such as :ref:`dialect-postgresql-asyncpg`.
+
+    .. versionadded:: 2.0.10
+
+    """
+    kwargs["_is_async"] = True
+    return _create_pool_from_url(url, **kwargs)
 
 
 class AsyncConnectable:

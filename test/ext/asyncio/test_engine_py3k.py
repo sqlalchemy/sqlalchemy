@@ -1,5 +1,6 @@
 import asyncio
 import inspect as stdlib_inspect
+from unittest.mock import patch
 
 from sqlalchemy import Column
 from sqlalchemy import create_engine
@@ -18,6 +19,7 @@ from sqlalchemy import union_all
 from sqlalchemy.engine import cursor as _cursor
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import create_async_pool_from_url
 from sqlalchemy.ext.asyncio import engine as _async_engine
 from sqlalchemy.ext.asyncio import exc as async_exc
 from sqlalchemy.ext.asyncio import exc as asyncio_exc
@@ -705,6 +707,25 @@ class AsyncEngineTest(EngineFixture):
         assert engine.url == testing.db.url
         assert engine.echo is True
         assert engine.dialect.is_async is True
+
+
+class AsyncCreatePoolTest(fixtures.TestBase):
+    @config.fixture
+    def mock_create(self):
+        with patch(
+            "sqlalchemy.ext.asyncio.engine._create_pool_from_url",
+        ) as p:
+            yield p
+
+    def test_url_only(self, mock_create):
+        create_async_pool_from_url("sqlite://")
+        mock_create.assert_called_once_with("sqlite://", _is_async=True)
+
+    def test_pool_args(self, mock_create):
+        create_async_pool_from_url("sqlite://", foo=99, echo=True)
+        mock_create.assert_called_once_with(
+            "sqlite://", foo=99, echo=True, _is_async=True
+        )
 
 
 class AsyncEventTest(EngineFixture):

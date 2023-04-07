@@ -24,6 +24,7 @@ from .base import RootTransaction as RootTransaction
 from .base import Transaction as Transaction
 from .base import TwoPhaseTransaction as TwoPhaseTransaction
 from .create import create_engine as create_engine
+from .create import create_pool_from_url as create_pool_from_url
 from .create import engine_from_config as engine_from_config
 from .cursor import CursorResult as CursorResult
 from .cursor import ResultProxy as ResultProxy
