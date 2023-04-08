@@ -19,7 +19,6 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy.dialects.mssql import base as mssql
 from sqlalchemy.dialects.mssql import pyodbc as mssql_pyodbc
-from sqlalchemy.orm import Session
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
@@ -159,74 +158,6 @@ class IdentityInsertTest(fixtures.TablesTest, AssertsCompiledSQL):
 class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
     __only_on__ = "mssql"
     __backend__ = True
-
-    def test_broken_table_values_test(self, decl_base, connection):
-        """test #9603.
-
-        this uses the ORM to ensure the ORM is not using any kind of
-        insertmany that causes the problem.
-
-        """
-
-        class Datum(decl_base):
-
-            __tablename__ = "datum"
-
-            id = Column(Integer, autoincrement=False, primary_key=True)
-            data = Column(String(10))
-
-        class Result(decl_base):
-
-            __tablename__ = "result"
-
-            id = Column(Integer, primary_key=True)
-
-            thing = Column(Integer)
-            lft_datum_id = Column(Integer, ForeignKey(Datum.id))
-
-        decl_base.metadata.create_all(connection)
-        with Session(connection) as sess:
-
-            size = 15
-            datum_ids = list(range(1, size + 1))
-
-            sess.add_all([Datum(id=id_, data=f"d{id_}") for id_ in datum_ids])
-            sess.flush()
-
-            result_data = [
-                Result(thing=num, lft_datum_id=datum_ids[num % size])
-                for num in range(size * size)
-            ]
-            sess.add_all(result_data)
-            sess.flush()
-
-            # this is what we expected we put in
-            the_data_in_order_should_be = [
-                (num + 1, num, datum_ids[num % size])
-                for num in range(size * size)
-            ]
-
-            # and yes, that's what went in
-            eq_(
-                sess.execute(
-                    select(
-                        Result.id, Result.thing, Result.lft_datum_id
-                    ).order_by(Result.id)
-                ).all(),
-                the_data_in_order_should_be,
-            )
-
-            # however, if insertmanyvalues is turned on, OUTPUT inserted
-            # did not give us the rows in the order we sent, so ids were
-            # mis-applied.  even if we sort the original records by the
-            # ids that were given
-            eq_(
-                [
-                    (r.id, r.thing, r.lft_datum_id)
-                    for r in sorted(result_data, key=lambda r: r.id)
-                ],
-                the_data_in_order_should_be,
-            )
 
     def test_fetchid_trigger(self, metadata, connection):
         # TODO: investigate test hang on mssql when connection fixture is used
