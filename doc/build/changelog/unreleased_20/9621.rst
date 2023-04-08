@@ -1,0 +1,18 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 9611
+
+    Restored the :paramref:`_postgresql.ENUM.name` parameter as optional in the
+    signature for :class:`_postgresql.ENUM`, as this is chosen automatically
+    from a given pep-435 ``Enum`` type.
+
+
+.. change::
+    :tags: bug, postgresql
+    :tickets: 9621
+
+    Fixed issue where the comparison for :class:`_postgresql.ENUM` against a
+    plain string would cast that right-hand side type as VARCHAR, which due to
+    more explicit casting added to dialects such as asyncpg would produce a
+    PostgreSQL type mismatch error.
+
