@@ -20,15 +20,21 @@
         :tags: bug, mssql
         :tickets: 9603
 
-        Due to a critical bug identified in SQL Server, the SQLAlchemy
-        "insertmanyvalues" feature which allows fast INSERT of many rows while also
-        supporting RETURNING unfortunately needs to be disabled for SQL Server. SQL
-        Server is apparently unable to guarantee that the order of rows inserted
-        matches the order in which they are sent back by OUTPUT inserted when
-        table-valued rows are used with INSERT in conjunction with OUTPUT inserted.
-        We are trying to see if Microsoft is able to confirm this undocumented
-        behavior however there is no known workaround, other than it's not safe to
-        use table-valued expressions with OUTPUT inserted for now.
+        The SQLAlchemy "insertmanyvalues" feature which allows fast INSERT of
+        many rows while also supporting RETURNING is temporarily disabled for
+        SQL Server. As the unit of work currently relies upon this feature such
+        that it matches existing ORM objects to returned primary key
+        identities, this particular use pattern does not work with SQL Server
+        in all cases as the order of rows returned by "OUTPUT inserted" may not
+        always match the order in which the tuples were sent, leading to
+        the ORM making the wrong decisions about these objects in subsequent
+        operations.
+
+        The feature will be re-enabled in an upcoming release and will again
+        take effect for multi-row INSERT statements, however the unit-of-work's
+        use of the feature will be disabled, possibly for all dialects, unless
+        ORM-mapped tables also include a "sentinel" column so that the
+        returned rows can be referenced back to the original data passed in.
 
 
     .. change::

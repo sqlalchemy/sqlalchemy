@@ -253,9 +253,10 @@ The process for fetching this value has several variants:
 
   .. note::  SQLAlchemy 2.0 introduced the :ref:`engine_insertmanyvalues`
      feature for SQL Server, which is used by default to optimize many-row
-     INSERT statements; however as of SQLAlchemy 2.0.9 this feature had
-     to be turned off for SQL Server as the database does not support
-     deterministic RETURNING of INSERT rows for a multi-row INSERT statement.
+     INSERT statements; however as of SQLAlchemy 2.0.9 this feature is
+     temporarily disabled for SQL Server, until adjustments can be made
+     so that the ORM unit of work does not rely upon the ordering of returned
+     rows.
 
 * When RETURNING is not available or has been disabled via
   ``implicit_returning=False``, either the ``scope_identity()`` function or

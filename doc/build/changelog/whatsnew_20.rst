@@ -859,8 +859,8 @@ Optimized ORM bulk insert now implemented for all backends other than MySQL
 The dramatic performance improvement introduced in the 1.4 series and described
 at :ref:`change_5263` has now been generalized to all included backends that
 support RETURNING, which is all backends other than MySQL: SQLite, MariaDB,
-PostgreSQL (all drivers), and Oracle; SQL Server has support but unfortunately
-had to be turned off due to an issue with SQL Server [#]_. While the original feature
+PostgreSQL (all drivers), and Oracle; SQL Server has support but is
+temporarily disabled in version 2.0.9 [#]_. While the original feature
 was most critical for the psycopg2 driver which otherwise had major performance
 issues when using ``cursor.executemany()``, the change is also critical for
 other PostgreSQL drivers such as asyncpg, as when using RETURNING,
@@ -985,7 +985,10 @@ mariadb+mysqldb (network)      71.705197               4.075377
 
    .. [#] The feature is disabled for SQL Server as of SQLAlchemy 2.0.9 due
       to incompatibilities in how table-valued expressions are handled by
-      SQL Server.  See https://github.com/sqlalchemy/sqlalchemy/issues/9603
+      SQL Server regarding the ORM unit of work.  An upcoming release will
+      re-enable it with unit-of-work oriented adjustments.
+      See https://github.com/sqlalchemy/sqlalchemy/issues/9603 and
+      https://github.com/sqlalchemy/sqlalchemy/issues/9618.
 
 Two additional drivers have no change in performance; the psycopg2 drivers,
 for which fast executemany was already implemented in SQLAlchemy 1.4,
