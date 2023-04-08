@@ -1240,7 +1240,7 @@ class HasMemoized:
             self.__doc__ = doc or fget.__doc__
             self.__name__ = fget.__name__
 
-        @overload
+        @overload  # type: ignore[override]
         def __get__(self: _MA, obj: None, cls: Any) -> _MA:
             ...
 
