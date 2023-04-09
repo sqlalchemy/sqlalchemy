@@ -3093,6 +3093,7 @@ class DefaultGenerator(Executable, SchemaItem):
     is_clause_element = False
     is_callable = False
     is_scalar = False
+    has_arg = False
     column: Optional[Column[Any]]
 
     def __init__(self, for_update: bool = False) -> None:
@@ -3234,6 +3235,7 @@ class ScalarElementColumnDefault(ColumnDefault):
     """
 
     is_scalar = True
+    has_arg = True
 
     def __init__(self, arg: Any, for_update: bool = False) -> None:
         self.for_update = for_update
@@ -3256,7 +3258,7 @@ class ColumnElementColumnDefault(ColumnDefault):
     """
 
     is_clause_element = True
-
+    has_arg = True
     arg: _SQLExprDefault
 
     def __init__(
@@ -3294,6 +3296,7 @@ class CallableColumnDefault(ColumnDefault):
 
     is_callable = True
     arg: _CallableColumnDefaultProtocol
+    has_arg = True
 
     def __init__(
         self,
