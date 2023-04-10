@@ -290,6 +290,9 @@ def %(name)s%(grouped_args)s:
 """
                 % metadata
             )
+
+        mod = sys.modules[fn.__module__]
+        env.update(vars(mod))
         env.update({targ_name: target, fn_name: fn, "__name__": fn.__module__})
 
         decorated = cast(

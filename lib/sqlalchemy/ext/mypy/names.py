@@ -17,6 +17,7 @@ from typing import Union
 from mypy.nodes import ARG_POS
 from mypy.nodes import CallExpr
 from mypy.nodes import ClassDef
+from mypy.nodes import Decorator
 from mypy.nodes import Expression
 from mypy.nodes import FuncDef
 from mypy.nodes import MemberExpr
@@ -261,7 +262,20 @@ def type_id_for_unbound_type(
 
 def type_id_for_callee(callee: Expression) -> Optional[int]:
     if isinstance(callee, (MemberExpr, NameExpr)):
-        if isinstance(callee.node, OverloadedFuncDef):
+        if isinstance(callee.node, Decorator) and isinstance(
+            callee.node.func, FuncDef
+        ):
+            if callee.node.func.type and isinstance(
+                callee.node.func.type, CallableType
+            ):
+                ret_type = get_proper_type(callee.node.func.type.ret_type)
+
+                if isinstance(ret_type, Instance):
+                    return type_id_for_fullname(ret_type.type.fullname)
+
+            return None
+
+        elif isinstance(callee.node, OverloadedFuncDef):
             if (
                 callee.node.impl
                 and callee.node.impl.type

@@ -37,11 +37,9 @@ from . import clsregistry
 from . import instrumentation
 from . import interfaces
 from . import mapperlib
-from ._orm_constructors import column_property
 from ._orm_constructors import composite
 from ._orm_constructors import deferred
 from ._orm_constructors import mapped_column
-from ._orm_constructors import query_expression
 from ._orm_constructors import relationship
 from ._orm_constructors import synonym
 from .attributes import InstrumentedAttribute
@@ -59,7 +57,6 @@ from .descriptor_props import Composite
 from .descriptor_props import Synonym
 from .descriptor_props import Synonym as _orm_synonym
 from .mapper import Mapper
-from .properties import ColumnProperty
 from .properties import MappedColumn
 from .relationships import RelationshipProperty
 from .state import InstanceState
@@ -153,15 +150,12 @@ class DeclarativeAttributeIntercept(
         MappedColumn,
         RelationshipProperty,
         Composite,
-        ColumnProperty,
         Synonym,
         mapped_column,
         relationship,
         composite,
-        column_property,
         synonym,
         deferred,
-        query_expression,
     ),
 )
 class DCTransformDeclarative(DeclarativeAttributeIntercept):
@@ -1549,15 +1543,12 @@ class registry:
             MappedColumn,
             RelationshipProperty,
             Composite,
-            ColumnProperty,
             Synonym,
             mapped_column,
             relationship,
             composite,
-            column_property,
             synonym,
             deferred,
-            query_expression,
         ),
     )
     @overload

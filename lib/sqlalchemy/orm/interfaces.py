@@ -269,6 +269,15 @@ _DEFAULT_ATTRIBUTE_OPTIONS = _AttributeOptions(
     _NoArg.NO_ARG,
 )
 
+_DEFAULT_READONLY_ATTRIBUTE_OPTIONS = _AttributeOptions(
+    False,
+    _NoArg.NO_ARG,
+    _NoArg.NO_ARG,
+    _NoArg.NO_ARG,
+    _NoArg.NO_ARG,
+    _NoArg.NO_ARG,
+)
+
 
 class _DCAttributeOptions:
     """mixin for descriptors or configurational objects that include dataclass
@@ -519,19 +528,24 @@ class MapperProperty(
         """
 
     def __init__(
-        self, attribute_options: Optional[_AttributeOptions] = None
+        self,
+        attribute_options: Optional[_AttributeOptions] = None,
+        _assume_readonly_dc_attributes: bool = False,
     ) -> None:
         self._configure_started = False
         self._configure_finished = False
-        if (
-            attribute_options
-            and attribute_options != _DEFAULT_ATTRIBUTE_OPTIONS
-        ):
+
+        if _assume_readonly_dc_attributes:
+            default_attrs = _DEFAULT_READONLY_ATTRIBUTE_OPTIONS
+        else:
+            default_attrs = _DEFAULT_ATTRIBUTE_OPTIONS
+
+        if attribute_options and attribute_options != default_attrs:
             self._has_dataclass_arguments = True
             self._attribute_options = attribute_options
         else:
             self._has_dataclass_arguments = False
-            self._attribute_options = _DEFAULT_ATTRIBUTE_OPTIONS
+            self._attribute_options = default_attrs
 
     def init(self) -> None:
         """Called after all mappers are created to assemble

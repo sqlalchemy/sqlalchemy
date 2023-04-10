@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 import sqlalchemy as sa
 from sqlalchemy import cast
+from sqlalchemy import column
 from sqlalchemy import desc
 from sqlalchemy import event
 from sqlalchemy import exc as sa_exc
@@ -31,6 +32,8 @@ from sqlalchemy.orm import deferred
 from sqlalchemy.orm import foreign
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import Session
@@ -48,6 +51,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_ignore_whitespace
 from sqlalchemy.testing import expect_deprecated
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
@@ -398,6 +402,63 @@ class MiscDeprecationsTest(fixtures.TestBase):
         from sqlalchemy.orm.evaluator import _EvaluatorCompiler
 
         is_(EvaluatorCompiler, _EvaluatorCompiler)
+
+    @testing.combinations(
+        ("init", True),
+        ("kw_only", True, testing.requires.python310),
+        ("default", 5),
+        ("default_factory", lambda: 10),
+        argnames="paramname, value",
+    )
+    def test_column_property_dc_attributes(self, paramname, value):
+        with expect_deprecated(
+            rf"The column_property.{paramname} parameter is deprecated "
+            r"for column_property\(\)",
+            raise_on_any_unexpected=True,
+        ):
+            column_property(column("q"), **{paramname: value})
+
+    @testing.requires.python310
+    def test_column_property_dc_attributes_still_function(self, dc_decl_base):
+        with expect_deprecated(
+            r"The column_property.init parameter is deprecated "
+            r"for column_property\(\)",
+            r"The column_property.default parameter is deprecated "
+            r"for column_property\(\)",
+            r"The column_property.default_factory parameter is deprecated "
+            r"for column_property\(\)",
+            r"The column_property.kw_only parameter is deprecated "
+            r"for column_property\(\)",
+            raise_on_any_unexpected=True,
+        ):
+
+            class MyClass(dc_decl_base):
+                __tablename__ = "a"
+
+                id: Mapped[int] = mapped_column(primary_key=True, init=False)
+                data: Mapped[str] = mapped_column()
+
+                const1: Mapped[str] = column_property(
+                    data + "asdf", init=True, default="foobar"
+                )
+                const2: Mapped[str] = column_property(
+                    data + "asdf",
+                    init=True,
+                    default_factory=lambda: "factory_foo",
+                )
+                const3: Mapped[str] = column_property(
+                    data + "asdf", init=True, kw_only=True
+                )
+
+            m1 = MyClass(data="d1", const3="c3")
+            eq_(m1.const1, "foobar")
+            eq_(m1.const2, "factory_foo")
+            eq_(m1.const3, "c3")
+
+        with expect_raises_message(
+            TypeError, "missing 1 required keyword-only argument: 'const3'"
+        ):
+            MyClass(data="d1")
 
 
 class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
