@@ -68,6 +68,47 @@ class DeclarativeInheritanceTest(
         assert class_mapper(Engineer).polymorphic_identity is None
         assert class_mapper(Engineer).polymorphic_on is Person.__table__.c.type
 
+    @testing.variation("directive", ["declared_attr", "da_directive"])
+    def test_declared_attr_mapped_args(self, directive):
+        class Employee(Base):
+            __tablename__ = "employee"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            type: Mapped[str] = mapped_column(String(50))
+
+            if directive.declared_attr:
+
+                @declared_attr
+                def __mapper_args__(cls):
+                    if cls.__name__ == "Employee":
+                        return {
+                            "polymorphic_on": cls.type,
+                            "polymorphic_identity": "Employee",
+                        }
+                    else:
+                        return {"polymorphic_identity": cls.__name__}
+
+            elif directive.da_directive:
+
+                @declared_attr.directive
+                def __mapper_args__(cls):
+                    if cls.__name__ == "Employee":
+                        return {
+                            "polymorphic_on": cls.type,
+                            "polymorphic_identity": "Employee",
+                        }
+                    else:
+                        return {"polymorphic_identity": cls.__name__}
+
+            else:
+                directive.fail()
+
+        class Engineer(Employee):
+            pass
+
+        eq_(class_mapper(Engineer).polymorphic_identity, "Engineer")
+        eq_(class_mapper(Employee).polymorphic_identity, "Employee")
+
     def test_we_must_only_copy_column_mapper_args(self):
         class Person(Base):
 

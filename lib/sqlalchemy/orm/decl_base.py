@@ -260,9 +260,9 @@ def _mapper(
 
 @util.preload_module("sqlalchemy.orm.decl_api")
 def _is_declarative_props(obj: Any) -> bool:
-    declared_attr = util.preloaded.orm_decl_api.declared_attr
+    _declared_attr_common = util.preloaded.orm_decl_api._declared_attr_common
 
-    return isinstance(obj, (declared_attr, util.classproperty))
+    return isinstance(obj, (_declared_attr_common, util.classproperty))
 
 
 def _check_declared_props_nocascade(

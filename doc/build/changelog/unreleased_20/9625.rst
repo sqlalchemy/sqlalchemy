@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9625
+
+    Fixed issue where the :meth:`_orm.declared_attr.directive` modifier was not
+    correctly honored for subclasses when applied to the ``__mapper_args__``
+    special method name, as opposed to direct use of
+    :class:`_orm.declared_attr`. The two constructs should have identical
+    runtime behaviors.
