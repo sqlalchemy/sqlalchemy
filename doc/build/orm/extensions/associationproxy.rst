@@ -181,6 +181,7 @@ collection of ``User`` to the ``.keyword`` attribute present on each
 
     from __future__ import annotations
 
+    from typing import List
     from typing import Optional
 
     from sqlalchemy import ForeignKey
@@ -213,7 +214,9 @@ collection of ``User`` to the ``.keyword`` attribute present on each
         keywords: AssociationProxy[List[Keyword]] = association_proxy(
             "user_keyword_associations",
             "keyword",
-            creator=lambda keyword: UserKeywordAssociation(keyword=Keyword(keyword)),
+            creator=lambda keyword_obj: UserKeywordAssociation(
+                keyword=keyword_obj
+            ),
         )
 
         def __init__(self, name: str):
