@@ -3,7 +3,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 import datetime as dt
 from typing import Optional
@@ -53,7 +52,6 @@ PGMacAddr8 = MACADDR8
 
 
 class MONEY(sqltypes.TypeEngine[str]):
-
     r"""Provide the PostgreSQL MONEY type.
 
     Depending on driver, result rows using this type may return a
@@ -150,7 +148,7 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
 
     __visit_name__ = "TIMESTAMP"
 
-    def __init__(self, timezone=False, precision: Optional[int] = None):
+    def __init__(self, timezone: bool = False, precision: Optional[int] = None):
         """Construct a TIMESTAMP.
 
         :param timezone: boolean value if timezone present, default False
@@ -169,7 +167,7 @@ class TIME(sqltypes.TIME):
 
     __visit_name__ = "TIME"
 
-    def __init__(self, timezone=False, precision: Optional[int] = None):
+    def __init__(self, timezone: bool = False, precision: Optional[int] = None):
         """Construct a TIME.
 
         :param timezone: boolean value if timezone present, default False
@@ -204,14 +202,14 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
         self.fields = fields
 
     @classmethod
-    def adapt_emulated_to_native(cls, interval, **kw):
+    def adapt_emulated_to_native(cls, interval: sqltypes.Interval, **kw):
         return INTERVAL(precision=interval.second_precision)
 
     @property
     def _type_affinity(self):
         return sqltypes.Interval
 
-    def as_generic(self, allow_nulltype=False):
+    def as_generic(self, allow_nulltype: bool = False):
         return sqltypes.Interval(native=True, second_precision=self.precision)
 
     @property
@@ -225,7 +223,7 @@ PGInterval = INTERVAL
 class BIT(sqltypes.TypeEngine[int]):
     __visit_name__ = "BIT"
 
-    def __init__(self, length: Optional[int] = None, varying=False):
+    def __init__(self, length: Optional[int] = None, varying: bool = False):
         if not varying:
             # BIT without VARYING defaults to length 1
             self.length = length or 1
