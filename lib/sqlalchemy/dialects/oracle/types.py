@@ -160,8 +160,6 @@ class DATE(_OracleDateLiteralRender, sqltypes.DateTime):
     :class:`_types.DateTime`; this is to suit the fact that the Oracle
     ``DATE`` type supports a time value.
 
-    .. versionadded:: 0.9.4
-
     """
 
     __visit_name__ = "DATE"

@@ -453,8 +453,6 @@ the ``exclude_tablespaces`` parameter::
       "oracle+cx_oracle://scott:tiger@xe",
       exclude_tablespaces=["SYSAUX", "SOME_TABLESPACE"])
 
-.. versionadded:: 1.1
-
 DateTime Compatibility
 ----------------------
 
@@ -465,13 +463,6 @@ dialect provides a type :class:`_oracle.DATE` which is a subclass of
 present as a "marker" for this type; additionally, when a database column
 is reflected and the type is reported as ``DATE``, the time-supporting
 :class:`_oracle.DATE` type is used.
-
-.. versionchanged:: 0.9.4 Added :class:`_oracle.DATE` to subclass
-   :class:`.DateTime`.  This is a change as previous versions
-   would reflect a ``DATE`` column as :class:`_types.DATE`, which subclasses
-   :class:`.Date`.   The only significance here is for schemes that are
-   examining the type of column for use in special Python translations or
-   for migrating schemas to other database backends.
 
 .. _oracle_table_options:
 
@@ -488,8 +479,6 @@ in conjunction with the :class:`_schema.Table` construct:
         "some_table", metadata, ...,
         prefixes=['GLOBAL TEMPORARY'], oracle_on_commit='PRESERVE ROWS')
 
-.. versionadded:: 1.0.0
-
 * ``COMPRESS``::
 
     Table('mytable', metadata, Column('data', String(32)),
@@ -500,8 +489,6 @@ in conjunction with the :class:`_schema.Table` construct:
 
    The ``oracle_compress`` parameter accepts either an integer compression
    level, or ``True`` to use the default compression level.
-
-.. versionadded:: 1.0.0
 
 .. _oracle_index_options:
 
@@ -519,8 +506,6 @@ instead of a B-tree index::
 Bitmap indexes cannot be unique and cannot be compressed. SQLAlchemy will not
 check for such limitations, only the database will.
 
-.. versionadded:: 1.0.0
-
 Index compression
 ~~~~~~~~~~~~~~~~~
 
@@ -536,8 +521,6 @@ compression::
 The ``oracle_compress`` parameter accepts either an integer specifying the
 number of prefix columns to compress, or ``True`` to use the default (all
 columns for non-unique indexes, all but the last column for unique indexes).
-
-.. versionadded:: 1.0.0
 
 """  # noqa
 

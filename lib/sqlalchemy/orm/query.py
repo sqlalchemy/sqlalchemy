@@ -2432,8 +2432,6 @@ class Query(
 
         :param full=False: render FULL OUTER JOIN; implies ``isouter``.
 
-         .. versionadded:: 1.1
-
         """
 
         join_target = coercions.expect(
@@ -2530,13 +2528,6 @@ class Query(
          to the FROM clause.  Entities can be mapped classes,
          :class:`.AliasedClass` objects, :class:`.Mapper` objects
          as well as core :class:`.FromClause` elements like subqueries.
-
-        .. versionchanged:: 0.9
-            This method no longer applies the given FROM object
-            to be the selectable from which matching entities
-            select from; the :meth:`.select_entity_from` method
-            now accomplishes this.  See that method for a description
-            of this behavior.
 
         .. seealso::
 
@@ -2763,10 +2754,6 @@ class Query(
         Calling :meth:`_query.Query.one_or_none`
         results in an execution of the
         underlying query.
-
-        .. versionadded:: 1.0.9
-
-            Added :meth:`_query.Query.one_or_none`
 
         .. seealso::
 

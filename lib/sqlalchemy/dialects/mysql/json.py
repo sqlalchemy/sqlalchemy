@@ -28,8 +28,6 @@ class JSON(sqltypes.JSON):
     datatype, by adapting the operations to render the ``JSON_EXTRACT``
     function at the database level.
 
-    .. versionadded:: 1.1
-
     """
 
     pass

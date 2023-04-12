@@ -528,8 +528,6 @@ class CreateTable(_CreateBase):
          inline within the CREATE construct; if omitted, all foreign key
          constraints that do not specify use_alter=True are included.
 
-         .. versionadded:: 1.0.0
-
         :param if_not_exists: if True, an IF NOT EXISTS operator will be
          applied to the construct.
 
@@ -1305,8 +1303,6 @@ def sort_tables_and_constraints(
 
     :param extra_dependencies: a sequence of 2-tuples of tables which will
      also be considered as dependent on each other.
-
-    .. versionadded:: 1.0.0
 
     .. seealso::
 

@@ -566,8 +566,6 @@ class InstanceEvents(event.Events[ClassManager[Any]]):
             :meth:`.SessionEvents.pending_to_persistent` and
             :meth:`.MapperEvents.after_insert` are better choices.
 
-        .. versionadded:: 1.0.5
-
         :param target: the mapped instance.  If
          the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
@@ -1094,7 +1092,7 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
 
             @event.listens_for(Mapper, "before_configured")
             def go():
-                # ...
+                ...
 
         Contrast this event to :meth:`.MapperEvents.after_configured`,
         which is invoked after the series of mappers has been configured,
@@ -1114,10 +1112,7 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
 
             @event.listens_for(mapper, "before_configured", once=True)
             def go():
-                # ...
-
-
-        .. versionadded:: 0.9.3
+                ...
 
 
         .. seealso::
@@ -2205,8 +2200,6 @@ class SessionEvents(event.Events[Session]):
 
         :param instance: the ORM-mapped instance being operated upon.
 
-        .. versionadded:: 1.1
-
         .. seealso::
 
             :ref:`session_lifecycle_events`
@@ -2227,8 +2220,6 @@ class SessionEvents(event.Events[Session]):
 
         :param instance: the ORM-mapped instance being operated upon.
 
-        .. versionadded:: 1.1
-
         .. seealso::
 
             :ref:`session_lifecycle_events`
@@ -2247,8 +2238,6 @@ class SessionEvents(event.Events[Session]):
         :param session: target :class:`.Session`
 
         :param instance: the ORM-mapped instance being operated upon.
-
-        .. versionadded:: 1.1
 
         .. seealso::
 
@@ -2270,8 +2259,6 @@ class SessionEvents(event.Events[Session]):
         :param session: target :class:`.Session`
 
         :param instance: the ORM-mapped instance being operated upon.
-
-        .. versionadded:: 1.1
 
         .. seealso::
 
@@ -2308,8 +2295,6 @@ class SessionEvents(event.Events[Session]):
 
         :param instance: the ORM-mapped instance being operated upon.
 
-        .. versionadded:: 1.1
-
         .. seealso::
 
             :ref:`session_lifecycle_events`
@@ -2344,8 +2329,6 @@ class SessionEvents(event.Events[Session]):
 
         :param instance: the ORM-mapped instance being operated upon.
 
-        .. versionadded:: 1.1
-
         .. seealso::
 
             :ref:`session_lifecycle_events`
@@ -2377,8 +2360,6 @@ class SessionEvents(event.Events[Session]):
         the :meth:`.SessionEvents.persistent_to_deleted` event is therefore
         invoked at the end of a flush.
 
-        .. versionadded:: 1.1
-
         .. seealso::
 
             :ref:`session_lifecycle_events`
@@ -2394,8 +2375,6 @@ class SessionEvents(event.Events[Session]):
         successfully in a flush is restored due to a call to
         :meth:`.Session.rollback`.   The event is not called under
         any other circumstances.
-
-        .. versionadded:: 1.1
 
         .. seealso::
 
@@ -2418,8 +2397,6 @@ class SessionEvents(event.Events[Session]):
         when the :meth:`.Session.expunge_all` or :meth:`.Session.close`
         events are called, as well as if the object is individually
         expunged from its deleted state via :meth:`.Session.expunge`.
-
-        .. versionadded:: 1.1
 
         .. seealso::
 
@@ -2450,8 +2427,6 @@ class SessionEvents(event.Events[Session]):
         :param deleted: boolean.  If True, indicates this object moved
          to the detached state because it was marked as deleted and flushed.
 
-
-        .. versionadded:: 1.1
 
         .. seealso::
 
@@ -2792,10 +2767,6 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
           from its original value by backref handlers in order to control
           chained event propagation.
 
-          .. versionchanged:: 0.9.0 the ``initiator`` argument is now
-             passed as a :class:`.attributes.Event` object, and may be
-             modified by backref handlers within a chain of backref-linked
-             events.
         :param key: When the event is established using the
          :paramref:`.AttributeEvents.include_key` parameter set to
          True, this will be the key used in the operation, such as
@@ -2840,11 +2811,6 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
           representing the initiation of the event.  May be modified
           from its original value by backref handlers in order to control
           chained event propagation.
-
-          .. versionchanged:: 0.9.0 the ``initiator`` argument is now
-             passed as a :class:`.attributes.Event` object, and may be
-             modified by backref handlers within a chain of backref-linked
-             events.
 
         :return: if the event was registered with ``retval=True``,
          the given value, or a new effective value, should be returned.
@@ -2950,8 +2916,6 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
         returned by the previous listener that specifies ``retval=True``
         as the ``value`` argument of the next listener.
 
-        .. versionadded:: 1.1
-
         :param target: the object instance receiving the event.
          If the listener is registered with ``raw=True``, this will
          be the :class:`.InstanceState` object.
@@ -3013,9 +2977,6 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
         :param collection_adapter: the :class:`.CollectionAdapter` that will
          mediate internal access to the collection.
 
-        .. versionadded:: 1.0.0 :meth:`.AttributeEvents.init_collection`
-           and :meth:`.AttributeEvents.dispose_collection` events.
-
         .. seealso::
 
             :class:`.AttributeEvents` - background on listener options such
@@ -3047,9 +3008,6 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
            :meth:`.AttributeEvents.dispose_collection` will now have its
            contents before the dispose intact; previously, the collection
            would be empty.
-
-        .. versionadded:: 1.0.0 the :meth:`.AttributeEvents.init_collection`
-           and :meth:`.AttributeEvents.dispose_collection` events.
 
         .. seealso::
 

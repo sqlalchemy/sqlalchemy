@@ -30,9 +30,6 @@ It's helpful to know the states which an instance can have within a session:
   the session's transaction is rolled back, a deleted object moves
   *back* to the persistent state.
 
-  .. versionchanged:: 1.1 The 'deleted' state is a newly added session
-     object state distinct from the 'persistent' state.
-
 * **Detached** - an instance which corresponds, or previously corresponded,
   to a record in the database, but is not currently in any session.
   The detached object will contain a database identity marker, however

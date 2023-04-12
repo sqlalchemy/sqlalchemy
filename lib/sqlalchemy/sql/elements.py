@@ -260,8 +260,6 @@ class CompilerElement(Visitable):
 
                 print(s.compile(compile_kwargs={"literal_binds": True}))
 
-            .. versionadded:: 0.9.0
-
         .. seealso::
 
             :ref:`faq_sql_expression_string`
@@ -1648,8 +1646,6 @@ class ColumnElement(
 
             :func:`_expression.type_coerce`
 
-        .. versionadded:: 1.0.7
-
         """
         return Cast(self, type_)
 
@@ -2474,11 +2470,6 @@ class TextClause(
 
             query = session.query(User).from_statement(stmt).options(
                 contains_eager(User.addresses))
-
-        .. versionadded:: 1.1 the :meth:`_expression.TextClause.columns`
-           method now
-           offers positional column targeting in the result set when
-           the column expressions are passed purely positionally.
 
         The :meth:`_expression.TextClause.columns` method provides a direct
         route to calling :meth:`_expression.FromClause.subquery` as well as
@@ -3359,10 +3350,6 @@ class TypeCoerce(WrapsColumnExpression[_T]):
     :class:`.TypeCoerce` supplies the :func:`_expression.type_coerce`
     function; see that function for usage details.
 
-    .. versionchanged:: 1.1 The :func:`.type_coerce` function now produces
-       a persistent :class:`.TypeCoerce` wrapper object rather than
-       translating the given object in place.
-
     .. seealso::
 
         :func:`_expression.type_coerce`
@@ -4231,8 +4218,6 @@ class FunctionFilter(ColumnElement[_T]):
 
         func.count(1).filter(True)
 
-    .. versionadded:: 1.0.0
-
     .. seealso::
 
         :meth:`.FunctionElement.filter`
@@ -4988,8 +4973,6 @@ class quoted_name(util.MemoizedSlots, str):
     passing the name exactly as ``"some_table"`` without converting to
     upper case.
 
-    .. versionadded:: 0.9.0
-
     .. versionchanged:: 1.2 The :class:`.quoted_name` construct is now
        importable from ``sqlalchemy.sql``, in addition to the previous
        location of ``sqlalchemy.sql.elements``.
@@ -5177,8 +5160,6 @@ class conv(_truncated_label):
     Where above, the :func:`_schema.conv` marker indicates that the constraint
     name here is final, and the name will render as ``"ck_t_x5"`` and not
     ``"ck_t_ck_t_x5"``
-
-    .. versionadded:: 0.9.4
 
     .. seealso::
 

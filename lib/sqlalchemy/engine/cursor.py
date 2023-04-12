@@ -1544,8 +1544,6 @@ class CursorResult(Result[_T]):
         This method is **not public**, but is documented in order to clarify
         the "autoclose" process used.
 
-        .. versionadded:: 1.0.0
-
         .. seealso::
 
             :meth:`_engine.CursorResult.close`
@@ -1877,8 +1875,6 @@ class CursorResult(Result[_T]):
         The value is an instance of :class:`.Row`, or ``None``
         if :meth:`.ValuesBase.return_defaults` was not used or if the
         backend does not support RETURNING.
-
-        .. versionadded:: 0.9.0
 
         .. seealso::
 

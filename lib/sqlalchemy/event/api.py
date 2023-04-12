@@ -211,11 +211,6 @@ def remove(target: Any, identifier: str, fn: Callable[..., Any]) -> None:
         events at high scale, use a mutable structure that is handled
         from inside of a single listener.
 
-        .. versionchanged:: 1.0.0 - a ``collections.deque()`` object is now
-           used as the container for the list of events, which explicitly
-           disallows collection mutation while the collection is being
-           iterated.
-
     .. seealso::
 
         :func:`.listen`

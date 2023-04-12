@@ -553,8 +553,6 @@ class ColumnOperators(Operators):
         Renders "a IS DISTINCT FROM b" on most platforms;
         on some such as SQLite may render "a IS NOT b".
 
-        .. versionadded:: 1.1
-
         """
         return self.operate(is_distinct_from, other)
 
@@ -567,8 +565,6 @@ class ColumnOperators(Operators):
         .. versionchanged:: 1.4 The ``is_not_distinct_from()`` operator is
            renamed from ``isnot_distinct_from()`` in previous releases.
            The previous name remains available for backwards compatibility.
-
-        .. versionadded:: 1.1
 
         """
         return self.operate(is_not_distinct_from, other)
@@ -1760,8 +1756,6 @@ class ColumnOperators(Operators):
             :meth:`_types.ARRAY.Comparator.any` method, which a different
             calling syntax and usage pattern.
 
-        .. versionadded:: 1.1
-
         """
         return self.operate(any_op)
 
@@ -1776,9 +1770,6 @@ class ColumnOperators(Operators):
             :class:`_types.ARRAY`-specific counterpart, the
             :meth:`_types.ARRAY.Comparator.all` method, which a different
             calling syntax and usage pattern.
-
-
-        .. versionadded:: 1.1
 
         """
         return self.operate(all_op)

@@ -163,11 +163,7 @@ OVERLAP = operators.custom_op("&&", precedence=5, is_comparison=True)
 
 
 class ARRAY(sqltypes.ARRAY):
-
     """PostgreSQL ARRAY type.
-
-    .. versionchanged:: 1.1 The :class:`_postgresql.ARRAY` type is now
-       a subclass of the core :class:`_types.ARRAY` type.
 
     The :class:`_postgresql.ARRAY` type is constructed in the same way
     as the core :class:`_types.ARRAY` type; a member type is required, and a
@@ -307,9 +303,6 @@ class ARRAY(sqltypes.ARRAY):
          between Python zero-based and PostgreSQL one-based indexes, e.g.
          a value of one will be added to all index values before passing
          to the database.
-
-         .. versionadded:: 0.9.5
-
 
         """
         if isinstance(item_type, ARRAY):

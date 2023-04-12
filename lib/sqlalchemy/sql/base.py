@@ -471,8 +471,6 @@ class DialectKWArgs:
 
         :param default: default value of the parameter.
 
-        .. versionadded:: 0.9.4
-
         """
 
         construct_arg_dictionary = DialectKWArgs._kw_registry[dialect_name]
@@ -498,11 +496,6 @@ class DialectKWArgs:
         The collection is also writable; keys are accepted of the
         form ``<dialect>_<kwarg>`` where the value will be assembled
         into the list of options.
-
-        .. versionadded:: 0.9.2
-
-        .. versionchanged:: 0.9.4 The :attr:`.DialectKWArgs.dialect_kwargs`
-           collection is now writable.
 
         .. seealso::
 

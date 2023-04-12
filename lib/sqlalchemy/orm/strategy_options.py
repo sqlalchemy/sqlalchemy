@@ -295,12 +295,6 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             correctness of results, these joins are always INNER and are
             therefore right-nested if linked to an OUTER join.
 
-        .. versionchanged:: 1.0.0 ``innerjoin=True`` now implies
-            ``innerjoin="nested"``, whereas in 0.9 it implied
-            ``innerjoin="unnested"``. In order to achieve the pre-1.0
-            "unnested" inner join behavior, use the value
-            ``innerjoin="unnested"``. See :ref:`migration_3008`.
-
         .. note::
 
             The joins produced by :func:`_orm.joinedload` are **anonymously
@@ -531,9 +525,6 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
         This function is part of the :class:`_orm.Load` interface and supports
         both method-chained and standalone operation.
-
-
-        .. versionadded:: 1.1
 
         .. seealso::
 

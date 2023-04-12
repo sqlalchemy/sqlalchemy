@@ -407,10 +407,6 @@ class MapperProperty(
     :func:`.column_property`, :func:`_orm.relationship`, or :func:`.composite`
     functions.
 
-    .. versionchanged:: 1.0.0 :attr:`.InspectionAttr.info` moved
-        from :class:`.MapperProperty` so that it can apply to a wider
-        variety of ORM and extension constructs.
-
     .. seealso::
 
         :attr:`.QueryableAttribute.info`
@@ -428,11 +424,6 @@ class MapperProperty(
         :func:`.column_property`, :func:`_orm.relationship`, or
         :func:`.composite`
         functions.
-
-        .. versionchanged:: 1.0.0 :attr:`.MapperProperty.info` is also
-           available on extension types via the
-           :attr:`.InspectionAttrInfo.info` attribute, so that it can apply
-           to a wider variety of ORM and extension constructs.
 
         .. seealso::
 

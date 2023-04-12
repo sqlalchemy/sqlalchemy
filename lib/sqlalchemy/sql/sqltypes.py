@@ -146,10 +146,6 @@ class Indexable(TypeEngineMixin):
     """A mixin that marks a type as supporting indexing operations,
     such as array or JSON structures.
 
-
-    .. versionadded:: 1.1.0
-
-
     """
 
     class Comparator(TypeEngine.Comparator[_T]):
@@ -691,8 +687,6 @@ class Float(Numeric[_N]):
          Specifying this value will override that length.  Note that the
          MySQL float types, which do include "scale", will use "scale"
          as the default for decimal_return_scale, if not otherwise specified.
-
-         .. versionadded:: 0.9.0
 
         """  # noqa: E501
         self.precision = precision
@@ -1238,10 +1232,6 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
     impacts usage of LIKE expressions with enumerated values (an unusual
     use case).
 
-    .. versionchanged:: 1.1 the :class:`.Enum` type now provides in-Python
-       validation of input values as well as on data being returned by
-       the database.
-
     The source of enumerated values may be a list of string values, or
     alternatively a PEP-435-compliant enumerated class.  For the purposes
     of the :class:`.Enum` datatype, this class need only provide a
@@ -1279,10 +1269,6 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
     values to be persisted.   For a simple enumeration that uses string values,
     a callable such as  ``lambda x: [e.value for e in x]`` is sufficient.
 
-    .. versionadded:: 1.1 - support for PEP-435-style enumerated
-       classes.
-
-
     .. seealso::
 
         :ref:`orm_declarative_mapped_column_enums` - background on using
@@ -1307,9 +1293,6 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
 
         :param \*enums: either exactly one PEP-435 compliant enumerated type
            or one or more string labels.
-
-           .. versionadded:: 1.1 a PEP-435 style enumerated class may be
-              passed.
 
         :param create_constraint: defaults to False.  When creating a
            non-native enumerated type, also build a CHECK constraint on the
@@ -1405,8 +1388,6 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
            passed to the database in a SQL statement will be checked
            for validity against the list of enumerated values.  Unrecognized
            values will result in a ``LookupError`` being raised.
-
-           .. versionadded:: 1.1.0b2
 
         :param values_callable: A callable which will be passed the PEP-435
            compliant enumerated type, which should then return a list of string
@@ -2367,9 +2348,6 @@ class JSON(Indexable, TypeEngine[Any]):
 
         :class:`sqlalchemy.dialects.sqlite.JSON`
 
-    .. versionadded:: 1.1
-
-
     """
 
     __visit_name__ = "JSON"
@@ -2855,8 +2833,6 @@ class ARRAY(
 
         Alternatively, assigning a new array value to an ORM element that
         replaces the old one will always trigger a change event.
-
-    .. versionadded:: 1.1.0
 
     .. seealso::
 
@@ -3533,8 +3509,6 @@ class MatchType(Boolean):
     acts as a placeholder, currently subclassing :class:`.Boolean`.
     The type allows dialects to inject result-processing functionality
     if needed, and on MySQL will return floating-point values.
-
-    .. versionadded:: 1.0.0
 
     """
 

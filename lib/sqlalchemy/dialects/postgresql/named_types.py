@@ -231,14 +231,6 @@ class ENUM(NamedType, sqltypes.NativeForEmulated, sqltypes.Enum):
         my_enum.create(engine)
         my_enum.drop(engine)
 
-    .. versionchanged:: 1.0.0 The PostgreSQL :class:`_postgresql.ENUM` type
-       now behaves more strictly with regards to CREATE/DROP.  A metadata-level
-       ENUM type will only be created and dropped at the metadata level,
-       not the table level, with the exception of
-       ``table.create(checkfirst=True)``.
-       The ``table.drop()`` call will now emit a DROP TYPE for a table-level
-       enumerated type.
-
     """
 
     native_enum = True

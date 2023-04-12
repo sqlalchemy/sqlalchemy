@@ -243,9 +243,6 @@ value and pass it through, rather than omitting it as a "missing" value::
   signal to the ORM that we'd like ``None`` to be passed into the type whenever
   present, even though no special type-level behaviors are assigned to it.
 
-.. versionadded:: 1.1 added the :meth:`.TypeEngine.evaluates_none` method
-   in order to indicate that a "None" value should be treated as significant.
-
 .. _orm_server_defaults:
 
 Fetching Server-Generated Defaults

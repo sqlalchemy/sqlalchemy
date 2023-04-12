@@ -665,11 +665,6 @@ class InspectionAttrInfo(InspectionAttr):
         :func:`.composite`
         functions.
 
-        .. versionchanged:: 1.0.0 :attr:`.MapperProperty.info` is also
-           available on extension types via the
-           :attr:`.InspectionAttrInfo.info` attribute, so that it can apply
-           to a wider variety of ORM and extension constructs.
-
         .. seealso::
 
             :attr:`.QueryableAttribute.info`

@@ -51,8 +51,6 @@ class Insert(StandardInsert):
     The :class:`_postgresql.Insert` object is created using the
     :func:`sqlalchemy.dialects.postgresql.insert` function.
 
-    .. versionadded:: 1.1
-
     """
 
     stringify_dialect = "postgresql"
@@ -148,8 +146,6 @@ class Insert(StandardInsert):
          not meeting the ``WHERE`` condition will not be updated
          (effectively a ``DO NOTHING`` for those rows).
 
-         .. versionadded:: 1.1
-
 
         .. seealso::
 
@@ -187,8 +183,6 @@ class Insert(StandardInsert):
         :param index_where:
          Additional WHERE criterion that can be used to infer a
          conditional target index.
-
-         .. versionadded:: 1.1
 
         .. seealso::
 

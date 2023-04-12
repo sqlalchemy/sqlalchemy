@@ -551,8 +551,6 @@ and :meth:`~.postgresql.Insert.on_conflict_do_nothing`:
     {printsql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
     ON CONFLICT ON CONSTRAINT pk_my_table DO UPDATE SET data = %(param_1)s
 
-.. versionadded:: 1.1
-
 .. seealso::
 
     `INSERT .. ON CONFLICT
@@ -1021,15 +1019,11 @@ keyword argument::
 
     Index('my_index', my_table.c.data, postgresql_with={"fillfactor": 50})
 
-.. versionadded:: 1.0.6
-
 PostgreSQL allows to define the tablespace in which to create the index.
 The tablespace can be specified on :class:`.Index` using the
 ``postgresql_tablespace`` keyword argument::
 
     Index('my_index', my_table.c.data, postgresql_tablespace='my_tablespace')
-
-.. versionadded:: 1.1
 
 Note that the same option is available on :class:`_schema.Table` as well.
 
@@ -1054,11 +1048,6 @@ For DROP INDEX, assuming PostgreSQL 9.2 or higher is detected or for
 a connection-less dialect, it will emit::
 
     DROP INDEX CONCURRENTLY test_idx1
-
-.. versionadded:: 1.1 support for CONCURRENTLY on DROP INDEX.  The
-   CONCURRENTLY keyword is now only emitted if a high enough version
-   of PostgreSQL is detected on the connection (or for a connection-less
-   dialect).
 
 When using CONCURRENTLY, the PostgreSQL database requires that the statement
 be invoked outside of a transaction block.   The Python DBAPI enforces that
@@ -1097,14 +1086,6 @@ detected as mirroring a constraint.   When performing reflection using
 in :attr:`_schema.Table.indexes` when it is detected as mirroring a
 :class:`.UniqueConstraint` in the :attr:`_schema.Table.constraints` collection
 .
-
-.. versionchanged:: 1.0.0 - :class:`_schema.Table` reflection now includes
-   :class:`.UniqueConstraint` objects present in the
-   :attr:`_schema.Table.constraints`
-   collection; the PostgreSQL backend will no longer include a "mirrored"
-   :class:`.Index` construct in :attr:`_schema.Table.indexes`
-   if it is detected
-   as corresponding to a unique constraint.
 
 Special Reflection Options
 --------------------------
@@ -1154,8 +1135,6 @@ dialect in conjunction with the :class:`_schema.Table` construct:
     Table("some_table", metadata, ..., postgresql_inherits="some_supertable")
 
     Table("some_table", metadata, ..., postgresql_inherits=("t1", "t2", ...))
-
-    .. versionadded:: 1.0.0
 
 * ``PARTITION BY``::
 
@@ -2785,8 +2764,6 @@ class PGInspector(reflection.Inspector):
          (typically 'public') is used.  May also be set to ``'*'`` to
          indicate load enums for all schemas.
 
-        .. versionadded:: 1.0.0
-
         """
         with self._operation_context() as conn:
             return self.dialect._load_enums(
@@ -2802,8 +2779,6 @@ class PGInspector(reflection.Inspector):
         :meth:`_reflection.Inspector.get_table_names`,
         except that the list is limited to those tables that report a
         ``relkind`` value of ``f``.
-
-        .. versionadded:: 1.0.0
 
         """
         with self._operation_context() as conn:

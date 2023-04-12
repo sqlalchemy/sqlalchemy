@@ -679,8 +679,6 @@ class Compiled:
         :param schema_translate_map: dictionary of schema names to be
          translated when forming the resultant SQL
 
-         .. versionadded:: 1.1
-
          .. seealso::
 
             :ref:`schema_translating`

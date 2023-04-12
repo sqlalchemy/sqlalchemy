@@ -483,11 +483,6 @@ annotating with :func:`_orm.foreign`::
             "Writer.magazine_id == Article.magazine_id)",
         )
 
-.. versionchanged:: 1.0.0 the ORM will attempt to warn when a column is used
-   as the synchronization target from more than one relationship
-   simultaneously.
-
-
 Non-relational Comparisons / Materialized Path
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -526,11 +521,6 @@ we seek for a load of ``Element.descendants`` to look like:
     SELECT element.path AS element_path
     FROM element
     WHERE element.path LIKE ('/foo/bar2' || '/%') ORDER BY element.path
-
-.. versionadded:: 0.9.5 Support has been added to allow a single-column
-   comparison to itself within a primaryjoin condition, as well as for
-   primaryjoin conditions that use :meth:`.ColumnOperators.like` as the comparison
-   operator.
 
 .. _self_referential_many_to_many:
 

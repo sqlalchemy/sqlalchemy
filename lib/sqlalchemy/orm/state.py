@@ -278,9 +278,6 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         or via transaction commit and enters the "detached" state,
         this flag will continue to report True.
 
-        .. versionadded:: 1.1 - added a local method form of
-           :func:`.orm.util.was_deleted`.
-
         .. seealso::
 
             :attr:`.InstanceState.deleted` - refers to the "deleted" state
@@ -299,12 +296,6 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         An object that is in the persistent state is guaranteed to
         be within the :attr:`.Session.identity_map` of its parent
         :class:`.Session`.
-
-        .. versionchanged:: 1.1 The :attr:`.InstanceState.persistent`
-           accessor no longer returns True for an object that was
-           "deleted" within a flush; use the :attr:`.InstanceState.deleted`
-           accessor to detect this state.   This allows the "persistent"
-           state to guarantee membership in the identity map.
 
         .. seealso::
 
@@ -1103,8 +1094,6 @@ class AttributeState:
             :attr:`.AttributeState.history`
 
             :func:`.attributes.get_history` - underlying function
-
-        .. versionadded:: 0.9.0
 
         """
         return self.state.get_history(self.key, PASSIVE_OFF ^ INIT_OK)

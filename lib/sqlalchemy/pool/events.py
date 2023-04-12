@@ -278,9 +278,6 @@ class PoolEvents(event.Events[Pool]):
         :param exception: the exception object corresponding to the reason
          for this invalidation, if any.  May be ``None``.
 
-        .. versionadded:: 0.9.2 Added support for connection invalidation
-           listening.
-
         .. seealso::
 
             :ref:`pool_connection_invalidation`
@@ -303,8 +300,6 @@ class PoolEvents(event.Events[Pool]):
         this connection will force a reconnect after the current connection
         is checked in.   It does not actively close the dbapi_connection
         at the point at which it is called.
-
-        .. versionadded:: 1.0.3
 
         :param dbapi_connection: a DBAPI connection.
          The :attr:`.ConnectionPoolEntry.dbapi_connection` attribute.
@@ -334,8 +329,6 @@ class PoolEvents(event.Events[Pool]):
         associated with the pool. To intercept close events for detached
         connections use :meth:`.close_detached`.
 
-        .. versionadded:: 1.1
-
         :param dbapi_connection: a DBAPI connection.
          The :attr:`.ConnectionPoolEntry.dbapi_connection` attribute.
 
@@ -354,8 +347,6 @@ class PoolEvents(event.Events[Pool]):
         This event is emitted after the detach occurs.  The connection
         is no longer associated with the given connection record.
 
-        .. versionadded:: 1.1
-
         :param dbapi_connection: a DBAPI connection.
          The :attr:`.ConnectionPoolEntry.dbapi_connection` attribute.
 
@@ -372,8 +363,6 @@ class PoolEvents(event.Events[Pool]):
         The close of a connection can fail; typically this is because
         the connection is already closed.  If the close operation fails,
         the connection is discarded.
-
-        .. versionadded:: 1.1
 
         :param dbapi_connection: a DBAPI connection.
          The :attr:`.ConnectionPoolEntry.dbapi_connection` attribute.

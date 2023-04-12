@@ -259,18 +259,6 @@ like the following is generated:
     sqlalchemy.exc.CompileError: Can't emit DROP CONSTRAINT for constraint
     ForeignKeyConstraint(...); it has no name
 
-.. versionchanged:: 1.0.0 - The DDL system invoked by
-   :meth:`_schema.MetaData.create_all`
-   and :meth:`_schema.MetaData.drop_all` will now automatically resolve mutually
-   dependent foreign keys between tables declared by
-   :class:`_schema.ForeignKeyConstraint` and :class:`_schema.ForeignKey` objects, without
-   the need to explicitly set the :paramref:`_schema.ForeignKeyConstraint.use_alter`
-   flag.
-
-.. versionchanged:: 1.0.0 - The :paramref:`_schema.ForeignKeyConstraint.use_alter`
-   flag can be used with an un-named constraint; only the DROP operation
-   will emit a specific error when actually called upon.
-
 .. seealso::
 
     :ref:`constraint_naming_conventions`
@@ -730,9 +718,6 @@ one column present, the scan does use a deterministic search, however the
 structure of the expression will determine which column is noted as
 "column zero".
 
-.. versionadded:: 1.0.0 The :class:`.CheckConstraint` object now supports
-   the ``column_0_name`` naming convention token.
-
 .. _naming_schematypes:
 
 Configuring Naming for Boolean, Enum, and other schema types
@@ -789,9 +774,6 @@ The above schema will produce:
         flag BOOL,
         CONSTRAINT ck_foo_flag CHECK (flag IN (0, 1))
     )
-
-.. versionchanged:: 1.0 Constraint naming conventions that don't include
-   ``%(constraint_name)s`` again work with :class:`.SchemaType` constraints.
 
 Constraints API
 ---------------

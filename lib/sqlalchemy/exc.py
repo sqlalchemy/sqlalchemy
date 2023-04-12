@@ -138,8 +138,6 @@ class ObjectNotExecutableError(ArgumentError):
     """Raised when an object is passed to .execute() that can't be
     executed as SQL.
 
-    .. versionadded:: 1.1
-
     """
 
     def __init__(self, target: Any):

@@ -934,8 +934,6 @@ class SessionTransaction(_StateChange, TransactionalContext):
         :attr:`.SessionTransaction.nested` attribute is ``True``, then
         this is a SAVEPOINT, and if ``False``, indicates this a subtransaction.
 
-        .. versionadded:: 1.0.16 - use ._parent for previous versions
-
         """
         return self._parent
 
@@ -3703,10 +3701,6 @@ class Session(_SessionClassMethods, EventTarget):
         mapped with ``cascade="merge"``.
 
         See :ref:`unitofwork_merging` for a detailed discussion of merging.
-
-        .. versionchanged:: 1.1 - :meth:`.Session.merge` will now reconcile
-           pending objects with overlapping primary keys in the same way
-           as persistent.  See :ref:`change_3601` for discussion.
 
         :param instance: Instance to be merged.
         :param load: Boolean, when False, :meth:`.merge` switches into

@@ -440,9 +440,6 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
         See :func:`_expression.within_group` for a full description.
 
-        .. versionadded:: 1.1
-
-
         .. seealso::
 
             :ref:`tutorial_functions_within_group` -
@@ -466,8 +463,6 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
             from sqlalchemy import funcfilter
             funcfilter(func.count(1), True)
-
-        .. versionadded:: 1.0.0
 
         .. seealso::
 
@@ -1587,8 +1582,6 @@ class array_agg(GenericFunction[_T]):
 
         stmt = select(func.array_agg(table.c.values)[2:5])
 
-    .. versionadded:: 1.1
-
     .. seealso::
 
         :func:`_postgresql.array_agg` - PostgreSQL-specific version that
@@ -1646,8 +1639,6 @@ class mode(OrderedSetAgg[_T]):
 
     The return type of this function is the same as the sort expression.
 
-    .. versionadded:: 1.1
-
     """
 
     inherit_cache = True
@@ -1662,8 +1653,6 @@ class percentile_cont(OrderedSetAgg[_T]):
     The return type of this function is the same as the sort expression,
     or if the arguments are an array, an :class:`_types.ARRAY` of the sort
     expression's type.
-
-    .. versionadded:: 1.1
 
     """
 
@@ -1681,8 +1670,6 @@ class percentile_disc(OrderedSetAgg[_T]):
     or if the arguments are an array, an :class:`_types.ARRAY` of the sort
     expression's type.
 
-    .. versionadded:: 1.1
-
     """
 
     array_for_multi_clause = True
@@ -1696,8 +1683,6 @@ class rank(GenericFunction[int]):
     modifier to supply a sort expression to operate upon.
 
     The return type of this function is :class:`.Integer`.
-
-    .. versionadded:: 1.1
 
     """
 
@@ -1713,8 +1698,6 @@ class dense_rank(GenericFunction[int]):
 
     The return type of this function is :class:`.Integer`.
 
-    .. versionadded:: 1.1
-
     """
 
     type = sqltypes.Integer()
@@ -1729,8 +1712,6 @@ class percent_rank(GenericFunction[decimal.Decimal]):
 
     The return type of this function is :class:`.Numeric`.
 
-    .. versionadded:: 1.1
-
     """
 
     type: sqltypes.Numeric[decimal.Decimal] = sqltypes.Numeric()
@@ -1744,8 +1725,6 @@ class cume_dist(GenericFunction[decimal.Decimal]):
     modifier to supply a sort expression to operate upon.
 
     The return type of this function is :class:`.Numeric`.
-
-    .. versionadded:: 1.1
 
     """
 

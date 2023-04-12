@@ -863,8 +863,6 @@ class AsyncConnection(
         ahead of time from the first connection procured by the dialect,
         so SQL query is not invoked when this accessor is called.
 
-        .. versionadded:: 0.9.9
-
         .. seealso::
 
             :meth:`_engine.Connection.get_isolation_level`
