@@ -101,6 +101,9 @@ if not TYPE_CHECKING:
 class _NoArg(Enum):
     NO_ARG = 0
 
+    def __repr__(self):
+        return f"_NoArg.{self.name}"
+
 
 NO_ARG = _NoArg.NO_ARG
 

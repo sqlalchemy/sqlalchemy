@@ -39,11 +39,13 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import MappedAsDataclass
 from sqlalchemy.orm import MappedColumn
+from sqlalchemy.orm import query_expression
 from sqlalchemy.orm import registry
 from sqlalchemy.orm import registry as _RegistryType
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
+from sqlalchemy.sql.base import _NoArg
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_regex
@@ -1355,9 +1357,7 @@ class DataclassArgsTest(fixtures.TestBase):
         else:
             return args, args
 
-    @testing.fixture(
-        params=["mapped_column", "synonym", "deferred", "column_property"]
-    )
+    @testing.fixture(params=["mapped_column", "synonym", "deferred"])
     def mapped_expr_constructor(self, request):
         name = request.param
 
@@ -1367,8 +1367,6 @@ class DataclassArgsTest(fixtures.TestBase):
             yield synonym("some_int", default=7, init=True)
         elif name == "deferred":
             yield deferred(Column(Integer), default=7, init=True)
-        elif name == "column_property":
-            yield column_property(Column(Integer), default=7, init=True)
 
     def test_attrs_rejected_if_not_a_dc(
         self, mapped_expr_constructor, decl_base: Type[DeclarativeBase]
@@ -1725,7 +1723,6 @@ class DataclassArgsTest(fixtures.TestBase):
     @testing.combinations(
         mapped_column,
         lambda **kw: synonym("some_int", **kw),
-        lambda **kw: column_property(Column(Integer), **kw),
         lambda **kw: deferred(Column(Integer), **kw),
         lambda **kw: composite("foo", **kw),
         lambda **kw: relationship("Foo", **kw),
@@ -1748,6 +1745,28 @@ class DataclassArgsTest(fixtures.TestBase):
         else:
             kw = {}
             exp = interfaces._DEFAULT_ATTRIBUTE_OPTIONS
+
+        prop = construct(**kw)
+        eq_(prop._attribute_options, exp)
+
+    @testing.variation("use_arguments", [True, False])
+    @testing.combinations(
+        lambda **kw: column_property(Column(Integer), **kw),
+        lambda **kw: query_expression(**kw),
+        argnames="construct",
+    )
+    def test_ro_attribute_options(self, use_arguments, construct):
+        if use_arguments:
+            kw = {
+                "repr": False,
+                "compare": True,
+            }
+            exp = interfaces._AttributeOptions(
+                False, False, _NoArg.NO_ARG, _NoArg.NO_ARG, True, _NoArg.NO_ARG
+            )
+        else:
+            kw = {}
+            exp = interfaces._DEFAULT_READONLY_ATTRIBUTE_OPTIONS
 
         prop = construct(**kw)
         eq_(prop._attribute_options, exp)
@@ -1978,3 +1997,78 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "state='NY', zip_='12345'))",
         )
         eq_(repr(u2), "mymodule.User(name='u2', address=None)")
+
+
+class ReadOnlyAttrTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    """tests related to #9628"""
+
+    __dialect__ = "default"
+
+    @testing.combinations(
+        (query_expression,), (column_property,), argnames="construct"
+    )
+    def test_default_behavior(
+        self, dc_decl_base: Type[MappedAsDataclass], construct
+    ):
+        class MyClass(dc_decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            data: Mapped[str] = mapped_column()
+
+            const: Mapped[str] = construct(data + "asdf")
+
+        m1 = MyClass(data="foo")
+        eq_(m1, MyClass(data="foo"))
+        ne_(m1, MyClass(data="bar"))
+
+        eq_regex(
+            repr(m1),
+            r".*MyClass\(id=None, data='foo', const=None\)",
+        )
+
+    @testing.combinations(
+        (query_expression,), (column_property,), argnames="construct"
+    )
+    def test_no_repr_behavior(
+        self, dc_decl_base: Type[MappedAsDataclass], construct
+    ):
+        class MyClass(dc_decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            data: Mapped[str] = mapped_column()
+
+            const: Mapped[str] = construct(data + "asdf", repr=False)
+
+        m1 = MyClass(data="foo")
+
+        eq_regex(
+            repr(m1),
+            r".*MyClass\(id=None, data='foo'\)",
+        )
+
+    @testing.combinations(
+        (query_expression,), (column_property,), argnames="construct"
+    )
+    def test_enable_compare(
+        self, dc_decl_base: Type[MappedAsDataclass], construct
+    ):
+        class MyClass(dc_decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+            data: Mapped[str] = mapped_column()
+
+            const: Mapped[str] = construct(data + "asdf", compare=True)
+
+        m1 = MyClass(data="foo")
+        eq_(m1, MyClass(data="foo"))
+        ne_(m1, MyClass(data="bar"))
+
+        m2 = MyClass(data="foo")
+        m2.const = "some const"
+        ne_(m2, MyClass(data="foo"))
+        m3 = MyClass(data="foo")
+        m3.const = "some const"
+        eq_(m2, m3)

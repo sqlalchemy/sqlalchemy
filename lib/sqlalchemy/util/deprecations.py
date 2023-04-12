@@ -226,12 +226,18 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_F], _F]:
 
         check_defaults: Union[Set[str], Tuple[()]]
         if spec.defaults is not None:
+
             defaults = dict(
                 zip(
                     spec.args[(len(spec.args) - len(spec.defaults)) :],
                     spec.defaults,
                 )
             )
+            check_defaults = set(defaults).intersection(messages)
+            check_kw = set(messages).difference(defaults)
+        elif spec.kwonlydefaults is not None:
+
+            defaults = spec.kwonlydefaults
             check_defaults = set(defaults).intersection(messages)
             check_kw = set(messages).difference(defaults)
         else:

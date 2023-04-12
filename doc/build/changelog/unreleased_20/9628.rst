@@ -1,0 +1,29 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9628
+
+    Fixed bug in ORM Declarative Dataclasses where the
+    :func:`_orm.queryable_attribute` and :func:`_orm.column_property`
+    constructs, which are documented as read-only constructs in the context of
+    a Declarative mapping, could not be used with a
+    :class:`_orm.MappedAsDataclass` class without adding ``init=False``, which
+    in the case of :func:`_orm.queryable_attribute` was not possible as no
+    ``init`` parameter was included. These constructs have been modified from a
+    dataclass perspective to be assumed to be "read only", setting
+    ``init=False`` by default and no longer including them in the pep-681
+    constructor. The dataclass parameters for :func:`_orm.column_property`
+    ``init``, ``default``, ``default_factory``, ``kw_only`` are now deprecated;
+    these fields don't apply to :func:`_orm.column_property` as used in a
+    Declarative dataclasses configuration where the construct would be
+    read-only. Also added read-specific parameter
+    :paramref:`_orm.queryable_attribute.compare` to
+    :func:`_orm.queryable_attribute`; :paramref:`_orm.queryable_attribute.repr`
+    was already present.
+
+
+
+.. change::
+    :tags: bug, orm
+
+    Added missing :paramref:`_orm.mapped_column.active_history` parameter
+    to :func:`_orm.mapped_column` construct.

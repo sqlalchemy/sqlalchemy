@@ -151,8 +151,12 @@ class ColumnProperty(
         info: Optional[_InfoType] = None,
         doc: Optional[str] = None,
         _instrument: bool = True,
+        _assume_readonly_dc_attributes: bool = False,
     ):
-        super().__init__(attribute_options=attribute_options)
+        super().__init__(
+            attribute_options=attribute_options,
+            _assume_readonly_dc_attributes=_assume_readonly_dc_attributes,
+        )
         columns = (column,) + additional_columns
         self.columns = [
             coercions.expect(roles.LabeledColumnExprRole, c) for c in columns
@@ -532,6 +536,7 @@ class MappedColumn(
         "deferred",
         "deferred_group",
         "deferred_raiseload",
+        "active_history",
         "_attribute_options",
         "_has_dataclass_arguments",
         "_use_existing_column",
@@ -579,7 +584,7 @@ class MappedColumn(
             self.deferred = bool(
                 self.deferred_group or self.deferred_raiseload
             )
-
+        self.active_history = kw.pop("active_history", False)
         self._sort_order = kw.pop("sort_order", 0)
         self.column = cast("Column[_T]", Column(*arg, **kw))
         self.foreign_keys = self.column.foreign_keys
@@ -597,6 +602,7 @@ class MappedColumn(
         new.deferred_group = self.deferred_group
         new.deferred_raiseload = self.deferred_raiseload
         new.foreign_keys = new.column.foreign_keys
+        new.active_history = self.active_history
         new._has_nullable = self._has_nullable
         new._attribute_options = self._attribute_options
         new._has_insert_default = self._has_insert_default
@@ -612,13 +618,14 @@ class MappedColumn(
 
     @property
     def mapper_property_to_assign(self) -> Optional[MapperProperty[_T]]:
-        if self.deferred:
+        if self.deferred or self.active_history:
             return ColumnProperty(
                 self.column,
-                deferred=True,
+                deferred=self.deferred,
                 group=self.deferred_group,
                 raiseload=self.deferred_raiseload,
                 attribute_options=self._attribute_options,
+                active_history=self.active_history,
             )
         else:
             return None

@@ -2593,6 +2593,26 @@ class DeclarativeMultiBaseTest(
         sess.expunge_all()
         eq_(sess.query(User).all(), [User(name="u1", a="a", b="b")])
 
+    def test_active_history_columns(self):
+        class Foo(Base):
+            __tablename__ = "foo"
+
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            a = column_property(Column(String), active_history=True)
+            b = mapped_column(String, active_history=True)
+            c = column_property(Column(String))
+            d = mapped_column(String)
+
+        self.assert_compile(
+            select(Foo), "SELECT foo.id, foo.a, foo.b, foo.c, foo.d FROM foo"
+        )
+        eq_(Foo.a.impl.active_history, True)
+        eq_(Foo.b.impl.active_history, True)
+        eq_(Foo.c.impl.active_history, False)
+        eq_(Foo.d.impl.active_history, False)
+
     def test_column_properties(self):
         class Address(Base, fixtures.ComparableEntity):
 

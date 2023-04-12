@@ -1336,8 +1336,8 @@ declaration, typing tools will be able to match the attribute to the
 
 .. _orm_imperative_table_column_options:
 
-Applying Load, Persistence and Mapping Options for Mapped Table Columns
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Applying Load, Persistence and Mapping Options for Imperative Table Columns
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The section :ref:`orm_declarative_column_options` reviewed how to set load
 and persistence options when using the :func:`_orm.mapped_column` construct
