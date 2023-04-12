@@ -1595,6 +1595,15 @@ class CursorResultTest(fixtures.TablesTest):
         r = connection.exec_driver_sql("select user_name from users").first()
         eq_(len(r), 1)
 
+    def test_row_mapping_get(self, connection):
+        users = self.tables.users
+
+        connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
+        result = connection.execute(users.select())
+        row = result.first()
+        eq_(row._mapping.get("user_id"), 1)
+        eq_(row._mapping.get(users.c.user_id), 1)
+
     def test_sorting_in_python(self, connection):
         users = self.tables.users
 
