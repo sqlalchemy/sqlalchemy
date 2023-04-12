@@ -3,6 +3,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+from __future__ import annotations
 
 import datetime as dt
 from typing import Optional
@@ -148,7 +149,9 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
 
     __visit_name__ = "TIMESTAMP"
 
-    def __init__(self, timezone: bool = False, precision: Optional[int] = None):
+    def __init__(
+        self, timezone: bool = False, precision: Optional[int] = None
+    ):
         """Construct a TIMESTAMP.
 
         :param timezone: boolean value if timezone present, default False
@@ -167,7 +170,9 @@ class TIME(sqltypes.TIME):
 
     __visit_name__ = "TIME"
 
-    def __init__(self, timezone: bool = False, precision: Optional[int] = None):
+    def __init__(
+        self, timezone: bool = False, precision: Optional[int] = None
+    ):
         """Construct a TIME.
 
         :param timezone: boolean value if timezone present, default False
@@ -187,7 +192,9 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
     __visit_name__ = "INTERVAL"
     native = True
 
-    def __init__(self, precision: Optional[int] = None, fields: Optional[str] = None):
+    def __init__(
+        self, precision: Optional[int] = None, fields: Optional[str] = None
+    ):
         """Construct an INTERVAL.
 
         :param precision: optional integer precision value
@@ -202,18 +209,20 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
         self.fields = fields
 
     @classmethod
-    def adapt_emulated_to_native(cls, interval: sqltypes.Interval, **kw):
+    def adapt_emulated_to_native(
+        cls, interval: sqltypes.Interval, **kw
+    ) -> INTERVAL:
         return INTERVAL(precision=interval.second_precision)
 
     @property
-    def _type_affinity(self):
+    def _type_affinity(self) -> type:
         return sqltypes.Interval
 
-    def as_generic(self, allow_nulltype: bool = False):
+    def as_generic(self, allow_nulltype: bool = False) -> sqltypes.Interval:
         return sqltypes.Interval(native=True, second_precision=self.precision)
 
     @property
-    def python_type(self):
+    def python_type(self) -> type:
         return dt.timedelta
 
 
@@ -224,12 +233,12 @@ class BIT(sqltypes.TypeEngine[int]):
     __visit_name__ = "BIT"
 
     def __init__(self, length: Optional[int] = None, varying: bool = False):
-        if not varying:
+        if varying:
+            # BIT VARYING can be unlimited-length, so no default
+            self.length = length
+        else:
             # BIT without VARYING defaults to length 1
             self.length = length or 1
-        else:
-            # but BIT VARYING can be unlimited-length, so no default
-            self.length = length
         self.varying = varying
 
 
