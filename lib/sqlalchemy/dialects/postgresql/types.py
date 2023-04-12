@@ -102,11 +102,7 @@ class MONEY(sqltypes.TypeEngine[str]):
 
 class OID(sqltypes.TypeEngine[int]):
 
-    """Provide the PostgreSQL OID type.
-
-    .. versionadded:: 0.9.5
-
-    """
+    """Provide the PostgreSQL OID type."""
 
     __visit_name__ = "OID"
 
@@ -245,8 +241,6 @@ class TSVECTOR(sqltypes.TypeEngine[str]):
 
     It can be used to do full text queries on natural language
     documents.
-
-    .. versionadded:: 0.9.0
 
     .. seealso::
 

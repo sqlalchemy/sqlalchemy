@@ -949,11 +949,6 @@ def relationship(
           in some cases can enable complex :func:`_orm.relationship` SQL
           conditions to be used.
 
-      .. versionadded:: 0.9.2 :paramref:`_orm.relationship.secondary`
-         works
-         more effectively when referring to a :class:`_expression.Join`
-         instance.
-
     :param active_history=False:
       When ``True``, indicates that the "previous" value for a
       many-to-one reference should be loaded when replaced, if
@@ -1087,12 +1082,6 @@ def relationship(
       It may be desirable to set this flag to False when the DISTINCT is
       reducing performance of the innermost subquery beyond that of what
       duplicate innermost rows may be causing.
-
-      .. versionchanged:: 0.9.0 -
-         :paramref:`_orm.relationship.distinct_target_key` now defaults to
-         ``None``, so that the feature enables itself automatically for
-         those cases where the innermost query targets a non-unique
-         key.
 
       .. seealso::
 
@@ -1264,8 +1253,6 @@ def relationship(
         value is loaded.  This strategy can be used when objects will
         remain associated with the attached :class:`.Session`, however
         additional SELECT statements should be blocked.
-
-        .. versionadded:: 1.1
 
       * ``write_only`` - the attribute will be configured with a special
         "virtual collection" that may receive
@@ -1804,8 +1791,6 @@ def synonym(
 
     :param info: Optional data dictionary which will be populated into the
         :attr:`.InspectionAttr.info` attribute of this object.
-
-        .. versionadded:: 1.0.0
 
     :param comparator_factory: A subclass of :class:`.PropComparator`
       that will provide custom comparison behavior at the SQL expression

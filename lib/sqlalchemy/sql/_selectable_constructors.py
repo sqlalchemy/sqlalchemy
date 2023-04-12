@@ -256,8 +256,6 @@ def join(
 
     :param full: if True, render a FULL OUTER JOIN, instead of JOIN.
 
-     .. versionadded:: 1.1
-
     .. seealso::
 
         :meth:`_expression.FromClause.join` - method form,
@@ -285,8 +283,6 @@ def lateral(
     FROM clauses of that SELECT.   It is a special case of subquery
     only supported by a small number of backends, currently more recent
     PostgreSQL versions.
-
-    .. versionadded:: 1.1
 
     .. seealso::
 
@@ -502,11 +498,6 @@ def table(name: str, *columns: ColumnClause[Any], **kw: Any) -> TableClause:
     :class:`_schema.Table` object.
     It may be used to construct lightweight table constructs.
 
-    .. versionchanged:: 1.0.0 :func:`_expression.table` can now
-       be imported from the plain ``sqlalchemy`` namespace like any
-       other SQL element.
-
-
     :param name: Name of the table.
 
     :param columns: A collection of :func:`_expression.column` constructs.
@@ -556,8 +547,6 @@ def tablesample(
         SELECT alias.people_id FROM
         people AS alias TABLESAMPLE bernoulli(:bernoulli_1)
         REPEATABLE (random())
-
-    .. versionadded:: 1.1
 
     :param sampling: a ``float`` percentage between 0 and 100 or
         :class:`_functions.Function`.

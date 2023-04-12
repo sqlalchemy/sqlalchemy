@@ -1033,23 +1033,6 @@ class ValuesBase(UpdateBase):
                the traditional Core method of multiple parameter set
                invocation for INSERTs and other statements.
 
-           .. versionchanged:: 1.0.0 an INSERT that uses a multiple-VALUES
-              clause, even a list of length one,
-              implies that the :paramref:`_expression.Insert.inline`
-              flag is set to
-              True, indicating that the statement will not attempt to fetch
-              the "last inserted primary key" or other defaults.  The
-              statement deals with an arbitrary number of rows, so the
-              :attr:`_engine.CursorResult.inserted_primary_key`
-              accessor does not
-              apply.
-
-           .. versionchanged:: 1.0.0 A multiple-VALUES INSERT now supports
-              columns with Python side default values and callables in the
-              same way as that of an "executemany" style of invocation; the
-              callable is invoked for each row.   See :ref:`bug_3288`
-              for other details.
-
           The UPDATE construct also supports rendering the SET parameters
           in a specific order.  For this feature refer to the
           :meth:`_expression.Update.ordered_values` method.
@@ -1229,21 +1212,6 @@ class Insert(ValuesBase):
          .. note:: A Python-side default that uses a Python callable function
             will only be invoked **once** for the whole statement, and **not
             per row**.
-
-         .. versionadded:: 1.0.0 - :meth:`_expression.Insert.from_select`
-            now renders
-            Python-side and SQL expression column defaults into the
-            SELECT statement for columns otherwise not included in the
-            list of column names.
-
-        .. versionchanged:: 1.0.0 an INSERT that uses FROM SELECT
-           implies that the :paramref:`_expression.insert.inline`
-           flag is set to
-           True, indicating that the statement will not attempt to fetch
-           the "last inserted primary key" or other defaults.  The statement
-           deals with an arbitrary number of rows, so the
-           :attr:`_engine.CursorResult.inserted_primary_key`
-           accessor does not apply.
 
         """
 

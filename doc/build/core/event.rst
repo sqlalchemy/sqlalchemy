@@ -81,9 +81,6 @@ as long as the names match up::
 Above, the presence of ``**kw`` tells :func:`.listens_for` that
 arguments should be passed to the function by name, rather than positionally.
 
-.. versionadded:: 0.9.0 Added optional ``named`` argument dispatch to
-   event calling.
-
 Targets
 -------
 

@@ -699,10 +699,6 @@ lookup is used instead:
   ``REAL``, ``FLOA`` or ``DOUB``.
 * Otherwise, the :class:`_types.NUMERIC` type is used.
 
-.. versionadded:: 0.9.3 Support for SQLite type affinity rules when reflecting
-   columns.
-
-
 .. _sqlite_partial_index:
 
 Partial Indexes
@@ -720,8 +716,6 @@ The index will be rendered at create time as::
     CREATE INDEX test_idx1 ON testtbl (data)
     WHERE data > 5 AND data < 10
 
-.. versionadded:: 0.9.9
-
 .. _sqlite_dotted_column_names:
 
 Dotted Column Names
@@ -732,12 +726,6 @@ Using table or column names that explicitly have periods in them is
 databases in general, as the dot is a syntactically significant character,
 the SQLite driver up until version **3.10.0** of SQLite has a bug which
 requires that SQLAlchemy filter out these dots in result sets.
-
-.. versionchanged:: 1.1
-
-    The following SQLite issue has been resolved as of version 3.10.0
-    of SQLite.  SQLAlchemy as of **1.1** automatically disables its internal
-    workarounds based on detection of this version.
 
 The bug, entirely outside of SQLAlchemy, can be illustrated thusly::
 
@@ -954,8 +942,6 @@ class _DateTimeMixin:
         it will imply a NUMERIC storage format on SQLite; in this case,
         the type will generate its DDL as DATE_CHAR, DATETIME_CHAR,
         TIME_CHAR.
-
-        .. versionadded:: 1.0.0
 
         """
         spec = self._storage_format % {

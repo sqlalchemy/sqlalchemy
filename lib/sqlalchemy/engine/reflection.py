@@ -513,8 +513,6 @@ class Inspector(inspection.Inspectable["Inspector"]):
         foreign key constraint names that would require a separate CREATE
         step after-the-fact, based on dependencies between tables.
 
-        .. versionadded:: 1.0.-
-
         :param schema: schema name to query, if not the default schema.
         :param \**kw: Additional keyword argument to pass to the dialect
          specific implementation. See the documentation of the dialect
@@ -630,8 +628,6 @@ class Inspector(inspection.Inspectable["Inspector"]):
          specific implementation. See the documentation of the dialect
          in use for more information.
 
-        .. versionadded:: 1.0.0
-
         """
 
         with self._operation_context() as conn:
@@ -648,8 +644,6 @@ class Inspector(inspection.Inspectable["Inspector"]):
         :param \**kw: Additional keyword argument to pass to the dialect
          specific implementation. See the documentation of the dialect
          in use for more information.
-
-        .. versionadded:: 1.0.0
 
         """
         with self._operation_context() as conn:
@@ -1405,8 +1399,6 @@ class Inspector(inspection.Inspectable["Inspector"]):
 
         :return: a list of dictionaries, each representing the
          definition of a check constraints.
-
-        .. versionadded:: 1.1.0
 
         .. seealso:: :meth:`Inspector.get_multi_check_constraints`
         """

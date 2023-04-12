@@ -142,8 +142,6 @@ class SET(_StringType):
             essential that the list of set values is expressed in the
             **exact same order** as exists on the MySQL database.
 
-          .. versionadded:: 1.0.0
-
         """
         self.retrieve_as_bitwise = kw.pop("retrieve_as_bitwise", False)
         self.values = tuple(values)

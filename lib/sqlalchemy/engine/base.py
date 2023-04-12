@@ -484,8 +484,6 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
           are compiled into strings; the resulting schema name will be
           converted based on presence in the map of the original name.
 
-          .. versionadded:: 1.1
-
           .. seealso::
 
             :ref:`schema_translating`
@@ -598,8 +596,6 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         which returns the dialect-level setting without performing a SQL
         query.
 
-        .. versionadded:: 0.9.9
-
         .. seealso::
 
             :attr:`_engine.Connection.default_isolation_level`
@@ -635,8 +631,6 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         this attribute is set
         ahead of time from the first connection procured by the dialect,
         so SQL query is not invoked when this accessor is called.
-
-        .. versionadded:: 0.9.9
 
         .. seealso::
 

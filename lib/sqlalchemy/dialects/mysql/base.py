@@ -719,8 +719,6 @@ The value passed to the keyword argument will be simply passed through to the
 underlying CREATE INDEX, so it *must* be a valid index prefix for your MySQL
 storage engine.
 
-.. versionadded:: 1.1.5
-
 .. seealso::
 
     `CREATE INDEX <https://dev.mysql.com/doc/refman/5.0/en/create-index.html>`_ - MySQL documentation
@@ -999,11 +997,6 @@ output::
         c TIMESTAMP NULL,
         d TIMESTAMP NOT NULL
     )
-
-.. versionchanged:: 1.0.0 - SQLAlchemy now renders NULL or NOT NULL in all
-   cases for TIMESTAMP columns, to accommodate
-   ``explicit_defaults_for_timestamp``.  Prior to this version, it will
-   not render "NOT NULL" for a TIMESTAMP column that is ``nullable=False``.
 
 """  # noqa
 

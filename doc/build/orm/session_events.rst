@@ -410,9 +410,6 @@ Object Lifecycle Events
 Another use case for events is to track the lifecycle of objects.  This
 refers to the states first introduced at :ref:`session_object_states`.
 
-.. versionadded:: 1.1 added a system of events that intercept all possible
-   state transitions of an object within the :class:`.Session`.
-
 All the states above can be tracked fully with events.   Each event
 represents a distinct state transition, meaning, the starting state
 and the destination state are both part of what are tracked.   With the

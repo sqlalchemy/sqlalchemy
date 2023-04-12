@@ -1043,8 +1043,6 @@ class Dialect(EventTarget):
     here is so that third-party dialects that haven't yet implemented this
     feature continue to function in the old way.
 
-    .. versionadded:: 0.9.2
-
     .. seealso::
 
         :class:`.DialectKWArgs` - implementing base class which consumes
@@ -1620,8 +1618,6 @@ class Dialect(EventTarget):
 
         This is an internal dialect method. Applications should use
         :meth:`.Inspector.get_check_constraints`.
-
-        .. versionadded:: 1.1.0
 
         """
 
@@ -2511,8 +2507,6 @@ class Dialect(EventTarget):
 
         By default this just returns the cls.
 
-        .. versionadded:: 1.0.3
-
         """
         return cls
 
@@ -2578,8 +2572,6 @@ class Dialect(EventTarget):
         The hook should be used by dialects and/or wrappers to apply special
         events to the engine or its components.   In particular, it allows
         a dialect-wrapping class to apply dialect-level events.
-
-        .. versionadded:: 1.0.3
 
         """
 
@@ -2802,8 +2794,6 @@ class CreateEnginePlugin:
     :meth:`_engine.CreateEnginePlugin.engine_created` hook.  In this hook, additional
     changes can be made to the engine, most typically involving setup of
     events (e.g. those defined in :ref:`core_event_toplevel`).
-
-    .. versionadded:: 1.1
 
     """  # noqa: E501
 
@@ -3289,8 +3279,6 @@ class ExceptionContext:
     The purpose of this flag is for custom disconnect-handling schemes where
     the invalidation of other connections in the pool is to be performed
     based on other conditions, or even on a per-connection basis.
-
-    .. versionadded:: 1.0.3
 
     """
 

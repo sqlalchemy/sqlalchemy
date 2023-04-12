@@ -1425,10 +1425,6 @@ class scoped_session(Generic[_S]):
 
         See :ref:`unitofwork_merging` for a detailed discussion of merging.
 
-        .. versionchanged:: 1.1 - :meth:`.Session.merge` will now reconcile
-           pending objects with overlapping primary keys in the same way
-           as persistent.  See :ref:`change_3601` for discussion.
-
         :param instance: Instance to be merged.
         :param load: Boolean, when False, :meth:`.merge` switches into
          a "high performance" mode which causes it to forego emitting history

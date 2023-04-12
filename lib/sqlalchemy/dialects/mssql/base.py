@@ -632,8 +632,6 @@ behavior of this flag is as follows:
   will always remain fixed and always output exactly that
   type.
 
-.. versionadded:: 1.0.0
-
 .. _multipart_schema_names:
 
 Multipart Schema Names
@@ -726,10 +724,6 @@ no purpose; however in the case that legacy applications rely upon it,
 it is available using the ``legacy_schema_aliasing`` argument to
 :func:`_sa.create_engine` as illustrated above.
 
-.. versionchanged:: 1.1 the ``legacy_schema_aliasing`` flag introduced
-   in version 1.0.5 to allow disabling of legacy mode for schemas now
-   defaults to False.
-
 .. deprecated:: 1.4
 
    The ``legacy_schema_aliasing`` flag is now
@@ -783,12 +777,6 @@ which will render the table, for example, as::
 
   CREATE TABLE my_table (x INTEGER NOT NULL, y INTEGER NOT NULL,
                          PRIMARY KEY NONCLUSTERED (x, y))
-
-.. versionchanged:: 1.1 the ``mssql_clustered`` option now defaults
-   to None, rather than False.  ``mssql_clustered=False`` now explicitly
-   renders the NONCLUSTERED clause, whereas None omits the CLUSTERED
-   clause entirely, allowing SQL Server defaults to take effect.
-
 
 MSSQL-Specific Index Options
 -----------------------------
@@ -1405,8 +1393,6 @@ class VARBINARY(sqltypes.VARBINARY, sqltypes.LargeBinary):
     either ``VARBINARY(max)`` or IMAGE is rendered, as well as the SQL
     Server ``FILESTREAM`` option.
 
-    .. versionadded:: 1.0.0
-
     .. seealso::
 
         :ref:`mssql_large_type_deprecation`
@@ -1450,8 +1436,6 @@ class XML(sqltypes.Text):
     any Python-side datatype support.   It also does not currently support
     additional arguments, such as "CONTENT", "DOCUMENT",
     "xml_schema_collection".
-
-    .. versionadded:: 1.1.11
 
     """
 

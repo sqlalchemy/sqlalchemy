@@ -430,8 +430,6 @@ class Result:
         Note this uses a subquery to ensure an accurate count regardless
         of the structure of the original statement.
 
-        .. versionadded:: 1.1.6
-
         """
 
         col = func.count(literal_column("*"))
@@ -444,8 +442,6 @@ class Result:
         raises MultipleResultsFound.
 
         Equivalent to :meth:`_query.Query.scalar`.
-
-        .. versionadded:: 1.1.6
 
         """
         try:
@@ -485,8 +481,6 @@ class Result:
         rows.
 
         Equivalent to :meth:`_query.Query.one_or_none`.
-
-        .. versionadded:: 1.0.9
 
         """
         return self._iter().one_or_none()

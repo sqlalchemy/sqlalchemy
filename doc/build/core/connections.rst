@@ -855,9 +855,6 @@ as the schema name is passed to these methods explicitly.
     configurations, the :ref:`horizontal_sharding_toplevel` extension may
     be used.  See the example at :ref:`examples_sharding`.
 
-
-.. versionadded:: 1.1
-
 .. _sql_caching:
 
 

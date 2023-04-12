@@ -183,12 +183,6 @@ class JSON(sqltypes.JSON):
 
         data_table.c.data[('key_1', 'key_2', 5, ..., 'key_n')].astext == 'some value'
 
-    .. versionchanged:: 1.1  The :meth:`_expression.ColumnElement.cast`
-       operator on
-       JSON objects now requires that the :attr:`.JSON.Comparator.astext`
-       modifier be called explicitly, if the cast works only from a textual
-       string.
-
     Index operations return an expression object whose type defaults to
     :class:`_types.JSON` by default,
     so that further JSON-oriented instructions
@@ -213,9 +207,6 @@ class JSON(sqltypes.JSON):
 
         :class:`_postgresql.JSONB`
 
-    .. versionchanged:: 1.1 :class:`_postgresql.JSON` is now a PostgreSQL-
-       specific specialization of the new :class:`_types.JSON` type.
-
     """  # noqa
 
     astext_type = sqltypes.Text()
@@ -231,9 +222,6 @@ class JSON(sqltypes.JSON):
              from sqlalchemy import null
              conn.execute(table.insert(), data=null())
 
-         .. versionchanged:: 0.9.8 - Added ``none_as_null``, and :func:`.null`
-            is now supported in order to persist a NULL value.
-
          .. seealso::
 
               :attr:`_types.JSON.NULL`
@@ -241,8 +229,6 @@ class JSON(sqltypes.JSON):
         :param astext_type: the type to use for the
          :attr:`.JSON.Comparator.astext`
          accessor on indexed attributes.  Defaults to :class:`_types.Text`.
-
-         .. versionadded:: 1.1
 
         """
         super().__init__(none_as_null=none_as_null)
@@ -322,8 +308,6 @@ class JSONB(JSON):
     ``psycopg2.extras.register_default_jsonb`` on a per-connection basis,
     in the same way that ``psycopg2.extras.register_default_json`` is used
     to register these handlers with the json type.
-
-    .. versionadded:: 0.9.7
 
     .. seealso::
 

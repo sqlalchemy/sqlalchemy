@@ -302,8 +302,6 @@ class Selectable(ReturnsRows):
         The return value is the :class:`_expression.Lateral` construct also
         provided by the top-level :func:`_expression.lateral` function.
 
-        .. versionadded:: 1.1
-
         .. seealso::
 
             :ref:`tutorial_lateral_correlation` -  overview of usage.
@@ -491,8 +489,6 @@ class HasHints:
         directives such as isolation levels, file directives, fetch directives,
         etc.
 
-        .. versionadded:: 1.0.0
-
         .. seealso::
 
             :meth:`_expression.Select.with_hint`
@@ -671,8 +667,6 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         :param full: if True, render a FULL OUTER JOIN, instead of LEFT OUTER
          JOIN.  Implies :paramref:`.FromClause.join.isouter`.
 
-         .. versionadded:: 1.1
-
         .. seealso::
 
             :func:`_expression.join` - standalone function
@@ -722,8 +716,6 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         :param full: if True, render a FULL OUTER JOIN, instead of
          LEFT OUTER JOIN.
 
-         .. versionadded:: 1.1
-
         .. seealso::
 
             :meth:`_expression.FromClause.join`
@@ -768,8 +760,6 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         The return value is the :class:`_expression.TableSample`
         construct also
         provided by the top-level :func:`_expression.tablesample` function.
-
-        .. versionadded:: 1.1
 
         .. seealso::
 
@@ -1922,8 +1912,6 @@ class Lateral(FromClauseAlias, LateralFromClause):
     While LATERAL is part of the SQL standard, currently only more recent
     PostgreSQL versions provide support for this keyword.
 
-    .. versionadded:: 1.1
-
     .. seealso::
 
         :ref:`tutorial_lateral_correlation` -  overview of usage.
@@ -1953,8 +1941,6 @@ class TableSample(FromClauseAlias):
     level function as well as the :meth:`_expression.FromClause.tablesample`
     method
     available on all :class:`_expression.FromClause` subclasses.
-
-    .. versionadded:: 1.1
 
     .. seealso::
 
@@ -2399,11 +2385,7 @@ class SelectsRows(ReturnsRows):
 
 
 class HasCTE(roles.HasCTERole, SelectsRows):
-    """Mixin that declares a class to include CTE support.
-
-    .. versionadded:: 1.1
-
-    """
+    """Mixin that declares a class to include CTE support."""
 
     _has_ctes_traverse_internals: _TraverseInternalsType = [
         ("_independent_ctes", InternalTraversal.dp_clauseelement_list),
@@ -2538,9 +2520,6 @@ class HasCTE(roles.HasCTERole, SelectsRows):
         and DELETE on some databases, both as a source of CTE rows
         when combined with RETURNING, as well as a consumer of
         CTE rows.
-
-        .. versionchanged:: 1.1 Added support for UPDATE/INSERT/DELETE as
-           CTE, CTEs added to UPDATE/INSERT/DELETE.
 
         SQLAlchemy detects :class:`_expression.CTE` objects, which are treated
         similarly to :class:`_expression.Alias` objects, as special elements
@@ -3573,8 +3552,6 @@ class SelectBase(
         The return value is the :class:`_expression.Lateral` construct also
         provided by the top-level :func:`_expression.lateral` function.
 
-        .. versionadded:: 1.1
-
         .. seealso::
 
             :ref:`tutorial_lateral_correlation` -  overview of usage.
@@ -4010,9 +3987,6 @@ class GenerativeSelect(SelectBase, Generative):
            The :meth:`_sql.GenerativeSelect.limit` method will replace
            any clause applied with :meth:`_sql.GenerativeSelect.fetch`.
 
-        .. versionchanged:: 1.0.0 - :meth:`_expression.Select.limit` can now
-           accept arbitrary SQL expressions as well as integer values.
-
         :param limit: an integer LIMIT parameter, or a SQL expression
          that provides an integer result. Pass ``None`` to reset it.
 
@@ -4094,10 +4068,6 @@ class GenerativeSelect(SelectBase, Generative):
         expression in the resulting select.  Backends that don't
         support ``OFFSET`` will attempt to provide similar
         functionality.
-
-
-        .. versionchanged:: 1.0.0 - :meth:`_expression.Select.offset` can now
-           accept arbitrary SQL expressions as well as integer values.
 
         :param offset: an integer OFFSET parameter, or a SQL expression
          that provides an integer result. Pass ``None`` to reset it.

@@ -266,9 +266,6 @@ class Pool(log.Identified, event.EventTarget):
          make use of :func:`_sa.create_engine` should not use this parameter
          as it is handled by the engine creation strategy.
 
-         .. versionadded:: 1.1 - ``dialect`` is now a public parameter
-            to the :class:`_pool.Pool`.
-
         :param pre_ping: if True, the pool will emit a "ping" (typically
          "SELECT 1", but is dialect-specific) on the connection
          upon checkout, to test if the connection is alive or not.   If not,

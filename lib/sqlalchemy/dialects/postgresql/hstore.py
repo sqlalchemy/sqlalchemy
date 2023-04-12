@@ -147,8 +147,6 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
         :param text_type: the type that should be used for indexed values.
          Defaults to :class:`_types.Text`.
 
-         .. versionadded:: 1.1.0
-
         """
         if text_type is not None:
             self.text_type = text_type

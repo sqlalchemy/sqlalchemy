@@ -498,8 +498,6 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
         can still be used for new requests in which case
         it re-acquires connection resources.
 
-        .. versionadded:: 1.0.5
-
         """
 
     def begin(self, conn: Connection) -> None:
@@ -635,9 +633,6 @@ class DialectEvents(event.Events[Dialect]):
         :meth:`_events.ConnectionEvents.after_cursor_execute`
 
         :meth:`_events.ConnectionEvents.after_execute`
-
-
-    .. versionadded:: 0.9.4
 
     """
 
@@ -854,9 +849,6 @@ class DialectEvents(event.Events[Dialect]):
             @event.listens_for(e, 'do_connect')
             def receive_do_connect(dialect, conn_rec, cargs, cparams):
                 return psycopg2.connect(*cargs, **cparams)
-
-
-        .. versionadded:: 1.0.3
 
         .. seealso::
 

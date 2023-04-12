@@ -292,9 +292,6 @@ class TypeEngine(Visitable, Generic[_T]):
 
         :meth:`.TypeEngine.evaluates_none`
 
-    .. versionadded:: 1.1
-
-
     """
 
     _variant_mapping: util.immutabledict[
@@ -337,8 +334,6 @@ class TypeEngine(Visitable, Generic[_T]):
             ``None``
             still means "no default".
 
-        .. versionadded:: 1.1
-
         .. seealso::
 
             :ref:`session_forcing_null` - in the ORM documentation
@@ -379,8 +374,6 @@ class TypeEngine(Visitable, Generic[_T]):
         :param dialect: a :class:`.Dialect` that is involved in the comparison.
 
         :param conn_type: the type object reflected from the backend.
-
-        .. versionadded:: 1.0.3
 
         """
         return None
@@ -1363,10 +1356,6 @@ class UserDefinedType(
     accepts keyword arguments (e.g. ``**kw``) in its argument signature;
     introspection is used to check for this in order to support legacy
     forms of this function.
-
-    .. versionadded:: 1.0.0 the owning expression is passed to
-       the ``get_col_spec()`` method via the keyword argument
-       ``type_expression``, if it receives ``**kw`` in its signature.
 
     The :attr:`.UserDefinedType.cache_ok` class-level flag indicates if this
     custom :class:`.UserDefinedType` is safe to be used as part of a cache key.

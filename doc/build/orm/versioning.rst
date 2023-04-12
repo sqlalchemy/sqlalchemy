@@ -209,9 +209,6 @@ It is *strongly recommended* that server side version counters only be used
 when absolutely necessary and only on backends that support :term:`RETURNING`,
 currently PostgreSQL, Oracle, MariaDB 10.5, SQLite 3.35, and SQL Server.
 
-.. versionadded:: 0.9.0
-
-    Support for server side version identifier tracking.
 
 Programmatic or Conditional Version Counters
 --------------------------------------------
@@ -255,8 +252,3 @@ issues::
     # will leave version_uuid unchanged
     u1.name = "u3"
     session.commit()
-
-.. versionadded:: 0.9.0
-
-    Support for programmatic and conditional version identifier tracking.
-

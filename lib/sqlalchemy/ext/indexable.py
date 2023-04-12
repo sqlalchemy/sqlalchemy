@@ -22,9 +22,6 @@ The :mod:`~sqlalchemy.ext.indexable` extension provides
 :class:`_types.Indexable` typed column. In simple cases, it can be
 treated as a :class:`_schema.Column` - mapped attribute.
 
-
-.. versionadded:: 1.1
-
 Synopsis
 ========
 
@@ -234,8 +231,6 @@ class index_property(hybrid_property):  # noqa
     """A property generator. The generated property describes an object
     attribute that corresponds to an :class:`_types.Indexable`
     column.
-
-    .. versionadded:: 1.1
 
     .. seealso::
 

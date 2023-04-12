@@ -54,8 +54,6 @@ class aggregate_order_by(expression.ColumnElement):
 
         SELECT string_agg(a, ',' ORDER BY a) FROM table;
 
-    .. versionadded:: 1.1
-
     .. versionchanged:: 1.2.13 - the ORDER BY argument may be multiple terms
 
     .. seealso::
@@ -287,8 +285,6 @@ def array_agg(*arg, **kw):
     return type is :class:`_postgresql.ARRAY` and not
     the plain :class:`_types.ARRAY`, unless an explicit ``type_``
     is passed.
-
-    .. versionadded:: 1.1
 
     """
     kw["_default_array_type"] = ARRAY

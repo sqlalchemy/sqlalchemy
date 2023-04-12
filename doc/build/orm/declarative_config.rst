@@ -338,9 +338,6 @@ configuration via the :meth:`.MapperEvents.before_configured` event::
             """ """
             # do something before mappings are configured
 
-.. versionadded:: 0.9.3
-
-
 .. _declarative_metadata:
 
 ``metadata``

@@ -344,10 +344,6 @@ class Mapper(
           those rows automatically.  The warning may be changed to an
           exception in a future release.
 
-          .. versionadded:: 0.9.4 - added
-             :paramref:`.mapper.confirm_deleted_rows` as well as conditional
-             matched row checking on delete.
-
         :param eager_defaults: if True, the ORM will immediately fetch the
           value of server-generated default values after an INSERT or UPDATE,
           rather than leaving them as expired to be fetched on next access.
@@ -380,9 +376,6 @@ class Mapper(
           .. seealso::
 
                 :ref:`orm_server_defaults`
-
-          .. versionchanged:: 0.9.0 The ``eager_defaults`` option can now
-             make use of :term:`RETURNING` for backends which support it.
 
           .. versionchanged:: 2.0.0  RETURNING now works with multiple rows
              INSERTed at once using the
@@ -477,8 +470,6 @@ class Mapper(
            subclass mappers; that is, it's not possible for a superclass
            to specify passive_deletes without this taking effect for
            all subclass mappers.
-
-           .. versionadded:: 1.1
 
            .. seealso::
 
@@ -693,9 +684,6 @@ class Mapper(
           generator may be used, by specifying the value ``False``.
           Please see :ref:`server_side_version_counter` for a discussion
           of important points when using this option.
-
-          .. versionadded:: 0.9.0 ``version_id_generator`` supports
-             server-side version number generation.
 
           .. seealso::
 
@@ -4337,8 +4325,6 @@ def validates(
      event related via a backref.  This can be used for bi-directional
      :func:`.validates` usage where only one validator should emit per
      attribute operation.
-
-     .. versionadded:: 0.9.0
 
     .. seealso::
 

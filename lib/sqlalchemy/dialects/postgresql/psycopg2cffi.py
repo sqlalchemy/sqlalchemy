@@ -17,8 +17,6 @@ r"""
 layer. This makes it suitable for use in e.g. PyPy. Documentation
 is as per ``psycopg2``.
 
-.. versionadded:: 1.0.0
-
 .. seealso::
 
     :mod:`sqlalchemy.dialects.postgresql.psycopg2`

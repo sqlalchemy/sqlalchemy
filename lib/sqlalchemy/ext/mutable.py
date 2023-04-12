@@ -469,8 +469,6 @@ class MutableBase:
         of attribute names that have been refreshed; the list is compared
         against this set to determine if action needs to be taken.
 
-        .. versionadded:: 1.0.5
-
         """
         return {attribute.key}
 
@@ -880,8 +878,6 @@ class MutableList(Mutable, List[_T]):
     coercion to the values placed in the dictionary so that they too are
     "mutable", and emit events up to their parent structure.
 
-    .. versionadded:: 1.1
-
     .. seealso::
 
         :class:`.MutableDict`
@@ -985,8 +981,6 @@ class MutableSet(Mutable, Set[_T]):
     build a subclass of  :class:`.MutableSet` that provides appropriate
     coercion to the values placed in the dictionary so that they too are
     "mutable", and emit events up to their parent structure.
-
-    .. versionadded:: 1.1
 
     .. seealso::
 

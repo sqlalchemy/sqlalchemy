@@ -139,8 +139,6 @@ class SchemaConst(Enum):
 
         :paramref:`.Sequence.schema`
 
-    .. versionadded:: 1.0.14
-
     """
 
     NULL_UNSPECIFIED = 3
@@ -777,12 +775,6 @@ class Table(
             :class:`_schema.MetaData`,
             specify the special symbol :attr:`.BLANK_SCHEMA`.
 
-            .. versionadded:: 1.0.14  Added the :attr:`.BLANK_SCHEMA` symbol to
-              allow a :class:`_schema.Table`
-              to have a blank schema name even when the
-              parent :class:`_schema.MetaData` specifies
-              :paramref:`_schema.MetaData.schema`.
-
             The quoting rules for the schema name are the same as those for the
             ``name`` parameter, in that quoting is applied for reserved words or
             case-sensitive names; to enable unconditional quoting for the schema
@@ -1271,15 +1263,11 @@ class Table(
                 new_table = table.to_metadata(m2, schema="alt_schema",
                                         referred_schema_fn=referred_schema_fn)
 
-         .. versionadded:: 0.9.2
-
         :param name: optional string name indicating the target table name.
          If not specified or None, the table name is retained.  This allows
          a :class:`_schema.Table` to be copied to the same
          :class:`_schema.MetaData` target
          with a new name.
-
-         .. versionadded:: 1.0.0
 
         """
         if name is None:
@@ -1438,12 +1426,6 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
           well, at the moment that the foreign key is resolved against that
           remote :class:`_schema.Column` object.
 
-          .. versionchanged:: 0.9.0
-            Support for propagation of type to a :class:`_schema.Column`
-            from its
-            :class:`_schema.ForeignKey` object has been improved and should be
-            more reliable and timely.
-
         :param \*args: Additional positional arguments include various
           :class:`.SchemaItem` derived constructs which will be applied
           as options to the column.  These include instances of
@@ -1519,17 +1501,6 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
           set to ``False`` on a single-column primary key that has a
           datatype of INTEGER in order to disable auto increment semantics
           for that column.
-
-          .. versionchanged:: 1.1 The autoincrement flag now defaults to
-             ``"auto"`` which indicates autoincrement semantics by default
-             for single-column integer primary keys only; for composite
-             (multi-column) primary keys, autoincrement is never implicitly
-             enabled; as always, ``autoincrement=True`` will allow for
-             at most one of those columns to be an "autoincrement" column.
-             ``autoincrement=True`` may also be set on a
-             :class:`_schema.Column`
-             that has an explicit client-side or server-side default,
-             subject to limitations of the backend database and dialect.
 
           The setting *only* has an effect for columns which are:
 
@@ -2612,8 +2583,6 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         :param info: Optional data dictionary which will be populated into the
             :attr:`.SchemaItem.info` attribute of this object.
 
-            .. versionadded:: 1.0.0
-
         :param comment: Optional string that will render an SQL comment on
           foreign key constraint creation.
 
@@ -2626,8 +2595,6 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             See the documentation regarding
             an individual dialect at :ref:`dialect_toplevel` for detail on
             documented arguments.
-
-            .. versionadded:: 0.9.2
 
         """
 
@@ -3480,16 +3447,12 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
          minvalue of 1 and -2^63-1 for ascending and descending sequences,
          respectively.
 
-         .. versionadded:: 1.0.7
-
         :param maxvalue: the maximum value of the sequence.  This
          value is used when the CREATE SEQUENCE command is emitted to
          the database as the value of the "MAXVALUE" clause.  If ``None``,
          the clause is omitted, which on most platforms indicates a
          maxvalue of 2^63-1 and -1 for ascending and descending sequences,
          respectively.
-
-         .. versionadded:: 1.0.7
 
         :param nominvalue: no minimum value of the sequence.  This
          value is used when the CREATE SEQUENCE command is emitted to
@@ -3498,16 +3461,12 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
          minvalue of 1 and -2^63-1 for ascending and descending sequences,
          respectively.
 
-         .. versionadded:: 1.0.7
-
         :param nomaxvalue: no maximum value of the sequence.  This
          value is used when the CREATE SEQUENCE command is emitted to
          the database as the value of the "NO MAXVALUE" clause.  If ``None``,
          the clause is omitted, which on most platforms indicates a
          maxvalue of 2^63-1 and -1 for ascending and descending sequences,
          respectively.
-
-         .. versionadded:: 1.0.7
 
         :param cycle: allows the sequence to wrap around when the maxvalue
          or minvalue has been reached by an ascending or descending sequence
@@ -3517,8 +3476,6 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
          respectively.  If cycle=False (the default) any calls to nextval
          after the sequence has reached its maximum value will return an
          error.
-
-         .. versionadded:: 1.0.7
 
         :param schema: optional schema name for the sequence, if located
          in a schema other than the default.  The rules for selecting the
@@ -3530,14 +3487,10 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
          sequence which are calculated in advance.  Renders the CACHE keyword
          understood by Oracle and PostgreSQL.
 
-         .. versionadded:: 1.1.12
-
         :param order: optional boolean value; if ``True``, renders the
          ORDER keyword, understood by Oracle, indicating the sequence is
          definitively ordered.   May be necessary to provide deterministic
          ordering using Oracle RAC.
-
-         .. versionadded:: 1.1.12
 
         :param data_type: The type to be returned by the sequence, for
          dialects that allow us to choose between INTEGER, BIGINT, etc.
@@ -3835,8 +3788,6 @@ class Constraint(DialectKWArgs, HasConditionalDDL, SchemaItem):
 
         :param info: Optional data dictionary which will be populated into the
             :attr:`.SchemaItem.info` attribute of this object.
-
-            .. versionadded:: 1.0.0
 
         :param comment: Optional string that will render an SQL comment on
           foreign key constraint creation.
@@ -4232,8 +4183,6 @@ class CheckConstraint(ColumnCollectionConstraint):
         :param info: Optional data dictionary which will be populated into the
             :attr:`.SchemaItem.info` attribute of this object.
 
-            .. versionadded:: 1.0.0
-
         """
 
         self.sqltext = coercions.expect(roles.DDLExpressionRole, sqltext)
@@ -4369,11 +4318,6 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
           methods will perform this resolution
           automatically, so the flag is normally not needed.
 
-          .. versionchanged:: 1.0.0  Automatic resolution of foreign key
-             cycles has been added, removing the need to use the
-             :paramref:`_schema.ForeignKeyConstraint.use_alter` in typical use
-             cases.
-
           .. seealso::
 
                 :ref:`use_alter`
@@ -4385,8 +4329,6 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         :param info: Optional data dictionary which will be populated into the
             :attr:`.SchemaItem.info` attribute of this object.
 
-            .. versionadded:: 1.0.0
-
         :param comment: Optional string that will render an SQL comment on
           foreign key constraint creation.
 
@@ -4396,8 +4338,6 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
           specific, and passed in the form ``<dialectname>_<argname>``.  See
           the documentation regarding an individual dialect at
           :ref:`dialect_toplevel` for detail on documented arguments.
-
-            .. versionadded:: 0.9.2
 
         """
 
@@ -4502,8 +4442,6 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         if the constraint and/or parent table is not yet associated with
         a metadata collection that contains the referred table.
 
-        .. versionadded:: 1.0.0
-
         """
         return self.elements[0].column.table
 
@@ -4526,8 +4464,6 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         to the constructor of the :class:`_schema.ForeignKeyConstraint`,
         or if the constraint has been initialized with :class:`_schema.Column`
         objects, is the string ``.key`` of each element.
-
-        .. versionadded:: 1.0.0
 
         """
         if hasattr(self, "parent"):
@@ -4647,13 +4583,6 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     marked as ``primary_key=True`` are ignored.  This behavior is intended to
     be backwards compatible with previous behavior.
 
-    .. versionchanged:: 0.9.2  Using a mixture of columns within a
-       :class:`.PrimaryKeyConstraint` in addition to columns marked as
-       ``primary_key=True`` now emits a warning if the lists don't match.
-       The ultimate behavior of ignoring those columns marked with the flag
-       only is currently maintained for backwards compatibility; this warning
-       may raise an exception in a future release.
-
     For the use case where specific options are to be specified on the
     :class:`.PrimaryKeyConstraint`, but the usual style of using
     ``primary_key=True`` flags is still desirable, an empty
@@ -4668,13 +4597,6 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
                     PrimaryKeyConstraint(name='mytable_pk',
                                          mssql_clustered=True)
                 )
-
-    .. versionadded:: 0.9.2 an empty :class:`.PrimaryKeyConstraint` may now
-       be specified for the purposes of establishing keyword arguments with
-       the constraint, independently of the specification of "primary key"
-       columns within the :class:`_schema.Table` itself; columns marked as
-       ``primary_key=True`` will be gathered into the empty constraint's
-       column collection.
 
     """
 
@@ -4916,12 +4838,6 @@ class Index(
                         Index("some_index", text("lower(name)"))
                 )
 
-    .. versionadded:: 0.9.5 the :func:`_expression.text`
-       construct may be used to
-       specify :class:`.Index` expressions, provided the :class:`.Index`
-       is explicitly associated with the :class:`_schema.Table`.
-
-
     .. seealso::
 
         :ref:`schema_indexes` - General information on :class:`.Index`.
@@ -4975,8 +4891,6 @@ class Index(
 
         :param info=None: Optional data dictionary which will be populated
             into the :attr:`.SchemaItem.info` attribute of this object.
-
-            .. versionadded:: 1.0.0
 
         :param \**dialect_kw: Additional keyword arguments not mentioned above
             are dialect specific, and passed in the form
@@ -5137,8 +5051,6 @@ class MetaData(HasSchemaAttr):
 
         :param info: Optional data dictionary which will be populated into the
             :attr:`.SchemaItem.info` attribute of this object.
-
-            .. versionadded:: 1.0.0
 
         :param naming_convention: a dictionary referring to values which
           will establish default naming conventions for :class:`.Constraint`
@@ -5429,13 +5341,9 @@ class MetaData(HasSchemaAttr):
         :param extend_existing: Passed along to each :class:`_schema.Table` as
           :paramref:`_schema.Table.extend_existing`.
 
-          .. versionadded:: 0.9.1
-
         :param autoload_replace: Passed along to each :class:`_schema.Table`
           as
           :paramref:`_schema.Table.autoload_replace`.
-
-          .. versionadded:: 0.9.1
 
         :param resolve_fks: if True, reflect :class:`_schema.Table`
          objects linked
@@ -5467,11 +5375,6 @@ class MetaData(HasSchemaAttr):
          ``<dialectname>_<argname>``.  See the documentation regarding an
          individual dialect at :ref:`dialect_toplevel` for detail on
          documented arguments.
-
-          .. versionadded:: 0.9.2 - Added
-             :paramref:`.MetaData.reflect.**dialect_kwargs` to support
-             dialect-level reflection options for all :class:`_schema.Table`
-             objects reflected.
 
         """
 
