@@ -214,9 +214,7 @@ collection of ``User`` to the ``.keyword`` attribute present on each
         keywords: AssociationProxy[List[Keyword]] = association_proxy(
             "user_keyword_associations",
             "keyword",
-            creator=lambda keyword_obj: UserKeywordAssociation(
-                keyword=keyword_obj
-            ),
+            creator=lambda keyword_obj: UserKeywordAssociation(keyword=keyword_obj),
         )
 
         def __init__(self, name: str):
