@@ -269,6 +269,7 @@ Engine Creation API
 
 .. autofunction:: sqlalchemy.engine.make_url
 
+.. autofunction:: sqlalchemy.create_pool_from_url
 
 .. autoclass:: sqlalchemy.engine.URL
     :members:

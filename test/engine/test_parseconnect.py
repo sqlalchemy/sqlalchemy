@@ -2,9 +2,11 @@ import copy
 from unittest.mock import call
 from unittest.mock import MagicMock
 from unittest.mock import Mock
+from unittest.mock import patch
 
 import sqlalchemy as tsa
 from sqlalchemy import create_engine
+from sqlalchemy import create_pool_from_url
 from sqlalchemy import engine_from_config
 from sqlalchemy import exc
 from sqlalchemy import pool
@@ -13,9 +15,11 @@ from sqlalchemy.dialects import plugins
 from sqlalchemy.dialects import registry
 from sqlalchemy.engine.default import DefaultDialect
 import sqlalchemy.engine.url as url
+from sqlalchemy.pool.impl import NullPool
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixture
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
@@ -867,6 +871,56 @@ class CreateEngineTest(fixtures.TestBase):
                 pass
         # but we should at least find one
         ne_(successes, 0, "No default drivers found.")
+
+
+class CreatePoolTest(fixtures.TestBase):
+    @fixture
+    def mock_create(self):
+        with patch(
+            "sqlalchemy.engine.create.create_engine",
+        ) as p:
+            yield p
+
+    def test_url_only(self, mock_create):
+        create_pool_from_url("sqlite://")
+        mock_create.assert_called_once_with("sqlite://", _initialize=False)
+
+    def test_pool_args(self, mock_create):
+        create_pool_from_url(
+            "sqlite://",
+            logging_name="foo",
+            echo=True,
+            timeout=42,
+            recycle=22,
+            reset_on_return=True,
+            pre_ping=True,
+            use_lifo=True,
+            foo=99,
+        )
+        mock_create.assert_called_once_with(
+            "sqlite://",
+            pool_logging_name="foo",
+            echo_pool=True,
+            pool_timeout=42,
+            pool_recycle=22,
+            pool_reset_on_return=True,
+            pool_pre_ping=True,
+            pool_use_lifo=True,
+            foo=99,
+            _initialize=False,
+        )
+
+    def test_pool_creation(self):
+        pp = create_pool_from_url("sqlite://")
+        engine_pool = create_engine("sqlite://").pool
+        eq_(pp.__class__, engine_pool.__class__)
+        pp = create_pool_from_url("sqlite://", pre_ping=True)
+        is_true(pp._pre_ping)
+        is_false(isinstance(pp, NullPool))
+
+    def test_pool_creation_custom_class(self):
+        pp = create_pool_from_url("sqlite://", poolclass=NullPool)
+        is_true(isinstance(pp, NullPool))
 
 
 class TestRegNewDBAPI(fixtures.TestBase):

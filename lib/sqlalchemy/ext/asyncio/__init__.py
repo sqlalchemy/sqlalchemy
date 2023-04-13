@@ -10,6 +10,7 @@ from .engine import AsyncConnection as AsyncConnection
 from .engine import AsyncEngine as AsyncEngine
 from .engine import AsyncTransaction as AsyncTransaction
 from .engine import create_async_engine as create_async_engine
+from .engine import create_async_pool_from_url as create_async_pool_from_url
 from .result import AsyncMappingResult as AsyncMappingResult
 from .result import AsyncResult as AsyncResult
 from .result import AsyncScalarResult as AsyncScalarResult
