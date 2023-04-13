@@ -8,7 +8,10 @@ from sqlalchemy import column
 from sqlalchemy import create_engine
 from sqlalchemy import insert
 from sqlalchemy import Integer
+from sqlalchemy import MetaData
 from sqlalchemy import select
+from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import table
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,6 +32,14 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
+
+
+t_user = Table(
+    "user",
+    MetaData(),
+    Column("id", Integer, primary_key=True),
+    Column("name", String),
+)
 
 
 e = create_engine("sqlite://")
@@ -98,6 +109,11 @@ def t_result_ctxmanager() -> None:
     with session.scalars(select(User.id)) as r4:
         # EXPECTED_TYPE: ScalarResult[int]
         reveal_type(r4)
+
+
+def t_core_mappings() -> None:
+    r = connection.execute(select(t_user)).mappings().one()
+    r.get(t_user.c.id)
 
 
 def t_entity_varieties() -> None:
