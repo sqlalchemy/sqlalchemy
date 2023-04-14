@@ -35,21 +35,6 @@ Currently the SQLAlchemy team is targeting mypy support, with best effort suppor
         - label: The api is not in a module listed in [#6810](https://github.com/sqlalchemy/sqlalchemy/issues/6810) so it should pass type checking
           required: true
 
-  - type: checkboxes
-    id: mypy13856
-    attributes:
-      label: Confirm this is not Mypy dataclasses issue 13856
-      description: "Mypy 1.1.1 has a bug in its pep-681 implementation that affects SQLAlchemy
-      ``MappedAsDataclass``.  If the issue is using Mypy 1.1.1 and involves attribute types
-      for a ``MappedAsDataclass`` class, please consult the workarounds at
-      https://docs.sqlalchemy.org/en/20/orm/dataclasses.html#declarative-dataclass-mapping to
-      disable pep-681 for Mypy.
-
-      "
-      options:
-        - label: This is not related to Mypy issue 13856
-          required: true
-
   - type: textarea
     attributes:
       label: Describe the typing issue
