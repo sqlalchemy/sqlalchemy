@@ -1,0 +1,6 @@
+.. change::
+      :tags: usecase, postgresql
+      :tickets: 9509
+
+      Add missing :meth:`_postgresql.Range.intersection` method.
+      Pull request courtesy Yurii Karabas.
