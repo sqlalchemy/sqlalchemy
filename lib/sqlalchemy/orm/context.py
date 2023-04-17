@@ -209,6 +209,45 @@ _orm_load_exec_options = util.immutabledict(
 class AbstractORMCompileState(CompileState):
     is_dml_returning = False
 
+    def _init_global_attributes(
+        self, statement, compiler, *, toplevel, process_criteria_for_toplevel
+    ):
+        self.attributes = {}
+
+        if compiler is None:
+            # this is the legacy / testing only ORM _compile_state() use case.
+            # there is no need to apply criteria options for this.
+            self.global_attributes = ga = {}
+            assert toplevel
+            return
+        else:
+            self.global_attributes = ga = compiler._global_attributes
+
+        if toplevel:
+            ga["toplevel_orm"] = True
+
+            if process_criteria_for_toplevel:
+                for opt in statement._with_options:
+                    if opt._is_criteria_option:
+                        opt.process_compile_state(self)
+
+            return
+        elif ga.get("toplevel_orm", False):
+            return
+
+        stack_0 = compiler.stack[0]
+
+        try:
+            toplevel_stmt = stack_0["selectable"]
+        except KeyError:
+            pass
+        else:
+            for opt in toplevel_stmt._with_options:
+                if opt._is_compile_state and opt._is_criteria_option:
+                    opt.process_compile_state(self)
+
+        ga["toplevel_orm"] = True
+
     @classmethod
     def create_for_statement(
         cls,
@@ -622,17 +661,13 @@ class ORMFromStatementCompileState(ORMCompileState):
 
         assert isinstance(statement_container, FromStatement)
 
-        if compiler is not None:
-            toplevel = not compiler.stack
-        else:
-            toplevel = True
-
-        if not toplevel:
+        if compiler is not None and compiler.stack:
             raise sa_exc.CompileError(
                 "The ORM FromStatement construct only supports being "
                 "invoked as the topmost statement, as it is only intended to "
                 "define how result rows should be returned."
             )
+
         self = cls.__new__(cls)
         self._primary_entity = None
 
@@ -680,17 +715,17 @@ class ORMFromStatementCompileState(ORMCompileState):
 
         self.current_path = statement_container._compile_options._current_path
 
-        if toplevel and statement_container._with_options:
-            self.attributes = {}
-            self.global_attributes = compiler._global_attributes
+        self._init_global_attributes(
+            statement_container,
+            compiler,
+            process_criteria_for_toplevel=False,
+            toplevel=True,
+        )
 
+        if statement_container._with_options:
             for opt in statement_container._with_options:
                 if opt._is_compile_state:
                     opt.process_compile_state(self)
-
-        else:
-            self.attributes = {}
-            self.global_attributes = compiler._global_attributes
 
         if statement_container._with_context_options:
             for fn, key in statement_container._with_context_options:
@@ -911,10 +946,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         if compiler is not None:
             toplevel = not compiler.stack
-            self.global_attributes = compiler._global_attributes
         else:
             toplevel = True
-            self.global_attributes = {}
 
         select_statement = statement
 
@@ -1002,11 +1035,17 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         self.eager_order_by = ()
 
+        self._init_global_attributes(
+            select_statement,
+            compiler,
+            toplevel=toplevel,
+            process_criteria_for_toplevel=False,
+        )
+
         if toplevel and (
             select_statement._with_options
             or select_statement._memoized_select_entities
         ):
-            self.attributes = {}
 
             for (
                 memoized_entities
@@ -1027,9 +1066,6 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             for opt in self.select_statement._with_options:
                 if opt._is_compile_state:
                     opt.process_compile_state(self)
-
-        else:
-            self.attributes = {}
 
         # uncomment to print out the context.attributes structure
         # after it's been set up above
