@@ -3,10 +3,12 @@ import random
 
 from sqlalchemy import Column
 from sqlalchemy import DateTime
+from sqlalchemy import delete
 from sqlalchemy import event
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import insert
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
 from sqlalchemy import orm
@@ -14,6 +16,8 @@ from sqlalchemy import select
 from sqlalchemy import sql
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import union
+from sqlalchemy import update
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import defer
@@ -587,6 +591,238 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             "SELECT users.id, users.name "
             "FROM users WHERE users.name != :name_1",
         )
+
+    @testing.variation("style", ["direct_union", "from_statement"])
+    @testing.variation("add_nested_union", [True, False])
+    def test_select_mapper_columns_w_union_mapper_criteria(
+        self, multi_mixin_fixture, style: testing.Variation, add_nested_union
+    ):
+        """test #9635"""
+        HasFoob, Order, Item = multi_mixin_fixture
+
+        stmt = (
+            select(Order.id, Order.description)
+            .where(Order.id > 8)
+            .union(select(Order.id, Order.description).where(Order.id <= 8))
+        )
+
+        if add_nested_union:
+            stmt = union(
+                stmt,
+                union(
+                    select(Item.id, Item.description).where(Item.id <= 8),
+                    select(Item.id, Item.description).where(Item.id > 8),
+                ),
+            )
+
+        if style.direct_union:
+            stmt = stmt.options(
+                with_loader_criteria(
+                    HasFoob,
+                    lambda cls: cls.description != "name",
+                    include_aliases=True,
+                )
+            )
+        elif style.from_statement:
+
+            stmt = (
+                select(Order.id, Order.description)
+                .from_statement(stmt)
+                .options(
+                    with_loader_criteria(
+                        HasFoob,
+                        lambda cls: cls.description != "name",
+                        include_aliases=True,
+                    )
+                )
+            )
+
+        else:
+            style.fail()
+
+        if add_nested_union:
+            # the criteria is embedded into all UNIONS regardless of nesting.
+            self.assert_compile(
+                stmt,
+                "(SELECT orders.id, orders.description FROM orders WHERE "
+                "orders.id > :id_1 AND orders.description != :description_1 "
+                "UNION SELECT orders.id, orders.description FROM orders WHERE "
+                "orders.id <= :id_2 AND orders.description != :description_2) "
+                "UNION (SELECT items.id, items.description FROM items WHERE "
+                "items.id <= :id_3 AND items.description != :description_3 "
+                "UNION SELECT items.id, items.description FROM items WHERE "
+                "items.id > :id_4 AND items.description != :description_4)",
+                checkparams={
+                    "id_1": 8,
+                    "description_1": "name",
+                    "id_2": 8,
+                    "description_2": "name",
+                    "id_3": 8,
+                    "description_3": "name",
+                    "id_4": 8,
+                    "description_4": "name",
+                },
+            )
+        else:
+            self.assert_compile(
+                stmt,
+                "SELECT orders.id, orders.description FROM orders WHERE "
+                "orders.id > :id_1 AND orders.description != :description_1 "
+                "UNION SELECT orders.id, orders.description FROM orders WHERE "
+                "orders.id <= :id_2 AND orders.description != :description_2",
+                checkparams={
+                    "description_1": "name",
+                    "description_2": "name",
+                    "id_1": 8,
+                    "id_2": 8,
+                },
+            )
+
+    def test_select_mapper_columns_w_core_dml_mapper_criteria(
+        self, multi_mixin_fixture
+    ):
+        """test #9635"""
+        HasFoob, Order, Item = multi_mixin_fixture
+
+        stmt = (
+            insert(Order)
+            .from_select(
+                ["id", "description"],
+                select(Order.id, Order.description).where(Order.id > 8),
+            )
+            .options(
+                with_loader_criteria(
+                    HasFoob,
+                    lambda cls: cls.description != "name",
+                    include_aliases=True,
+                )
+            )
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO orders (id, description) SELECT orders.id, "
+            "orders.description FROM orders WHERE orders.id > :id_1 "
+            "AND orders.description != :description_1",
+            checkparams={"description_1": "name", "id_1": 8},
+        )
+
+    @testing.variation("update_is_orm", [True, False])
+    def test_select_mapper_columns_w_core_cte_update_mapper_criteria(
+        self, multi_mixin_fixture, update_is_orm
+    ):
+        """test #9635"""
+        HasFoob, Order, Item = multi_mixin_fixture
+
+        cte = select(Order).cte("pd")
+
+        if update_is_orm:
+            stmt = (
+                update(Order)
+                .where(Order.id == cte.c.id)
+                .values(description="newname")
+            )
+        else:
+            stmt = (
+                update(Order.__table__)
+                .where(Order.__table__.c.id == cte.c.id)
+                .values(description="newname")
+            )
+
+        stmt = stmt.options(
+            with_loader_criteria(
+                HasFoob,
+                lambda cls: cls.description != "name",
+                include_aliases=True,
+            )
+        )
+
+        if update_is_orm:
+            self.assert_compile(
+                stmt,
+                "WITH pd AS (SELECT orders.id AS id, "
+                "orders.user_id AS user_id, "
+                "orders.address_id AS address_id, "
+                "orders.description AS description, orders.isopen AS isopen "
+                "FROM orders WHERE orders.description != %(description_1)s) "
+                "UPDATE orders SET description=%(description)s "
+                "FROM pd WHERE orders.id = pd.id "
+                "AND orders.description != %(description_2)s",
+                dialect="postgresql",
+                checkparams={
+                    "description": "newname",
+                    "description_1": "name",
+                    "description_2": "name",
+                },
+            )
+        else:
+            # non ORM update, no criteria, but criteria still gets rendered
+            # inside the SELECT
+            self.assert_compile(
+                stmt,
+                "WITH pd AS (SELECT orders.id AS id, "
+                "orders.user_id AS user_id, "
+                "orders.address_id AS address_id, "
+                "orders.description AS description, orders.isopen AS isopen "
+                "FROM orders WHERE orders.description != %(description_1)s) "
+                "UPDATE orders SET description=%(description)s "
+                "FROM pd WHERE orders.id = pd.id",
+                dialect="postgresql",
+                checkparams={
+                    "description": "newname",
+                    "description_1": "name",
+                },
+            )
+
+    @testing.variation("delete_is_orm", [True, False])
+    def test_select_mapper_columns_w_core_cte_delete_mapper_criteria(
+        self, multi_mixin_fixture, delete_is_orm
+    ):
+        """test #9635"""
+        HasFoob, Order, Item = multi_mixin_fixture
+
+        cte = select(Order).cte("pd")
+
+        if delete_is_orm:
+            stmt = delete(Order).where(Order.id == cte.c.id)
+        else:
+            stmt = delete(Order.__table__).where(
+                Order.__table__.c.id == cte.c.id
+            )
+
+        stmt = stmt.options(
+            with_loader_criteria(
+                HasFoob,
+                lambda cls: cls.description != "name",
+                include_aliases=True,
+            )
+        )
+
+        if delete_is_orm:
+            self.assert_compile(
+                stmt,
+                "WITH pd AS (SELECT orders.id AS id, orders.user_id AS "
+                "user_id, orders.address_id AS address_id, "
+                "orders.description AS description, orders.isopen AS isopen "
+                "FROM orders WHERE orders.description != %(description_1)s) "
+                "DELETE FROM orders USING pd WHERE orders.id = pd.id "
+                "AND orders.description != %(description_2)s",
+                dialect="postgresql",
+                checkparams={"description_1": "name", "description_2": "name"},
+            )
+        else:
+            # non ORM update, no criteria, but criteria still gets rendered
+            # inside the SELECT
+            self.assert_compile(
+                stmt,
+                "WITH pd AS (SELECT orders.id AS id, orders.user_id AS "
+                "user_id, orders.address_id AS address_id, "
+                "orders.description AS description, orders.isopen AS isopen "
+                "FROM orders WHERE orders.description != %(description_1)s) "
+                "DELETE FROM orders USING pd WHERE orders.id = pd.id",
+                dialect="postgresql",
+                checkparams={"description_1": "name"},
+            )
 
     def test_select_join_mapper_mapper_criteria(self, user_address_fixture):
         User, Address = user_address_fixture

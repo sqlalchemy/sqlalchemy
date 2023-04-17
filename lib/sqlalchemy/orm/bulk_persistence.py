@@ -1346,15 +1346,14 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
 
         self.mapper = mapper = ext_info.mapper
 
-        self.extra_criteria_entities = {}
-
         self._resolved_values = self._get_resolved_values(mapper, statement)
 
-        extra_criteria_attributes = {}
-
-        for opt in statement._with_options:
-            if opt._is_criteria_option:
-                opt.get_global_criteria(extra_criteria_attributes)
+        self._init_global_attributes(
+            statement,
+            compiler,
+            toplevel=True,
+            process_criteria_for_toplevel=True,
+        )
 
         if statement._values:
             self._resolved_values = dict(self._resolved_values)
@@ -1372,7 +1371,7 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
             new_stmt._values = self._resolved_values
 
         new_crit = self._adjust_for_extra_criteria(
-            extra_criteria_attributes, mapper
+            self.global_attributes, mapper
         )
         if new_crit:
             new_stmt = new_stmt.where(*new_crit)
@@ -1741,19 +1740,18 @@ class BulkORMDelete(BulkUDCompileState, DeleteDMLState):
         ext_info = statement.table._annotations["parententity"]
         self.mapper = mapper = ext_info.mapper
 
-        self.extra_criteria_entities = {}
-
-        extra_criteria_attributes = {}
-
-        for opt in statement._with_options:
-            if opt._is_criteria_option:
-                opt.get_global_criteria(extra_criteria_attributes)
+        self._init_global_attributes(
+            statement,
+            compiler,
+            toplevel=True,
+            process_criteria_for_toplevel=True,
+        )
 
         new_stmt = statement._clone()
         new_stmt.table = mapper.local_table
 
         new_crit = cls._adjust_for_extra_criteria(
-            extra_criteria_attributes, mapper
+            self.global_attributes, mapper
         )
         if new_crit:
             new_stmt = new_stmt.where(*new_crit)

@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9635
+
+    Made an improvement to the :func:`_orm.with_loader_criteria` loader option
+    to allow it to be indicated in the :meth:`.Executable.options` method of a
+    top-level statement that is not itself an ORM statement. Examples include
+    :func:`_sql.select` that's embedded in compound statements such as
+    :func:`_sql.union`, within an :meth:`_dml.Insert.from_select` construct, as
+    well as within CTE expressions that are not ORM related at the top level.
