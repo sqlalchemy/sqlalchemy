@@ -858,30 +858,28 @@ class AsyncConnection(
 
     @property
     def default_isolation_level(self) -> Any:
-        r"""The default isolation level assigned to this
-        :class:`_engine.Connection`.
+        r"""The initial-connection time isolation level associated with the
+        :class:`_engine.Dialect` in use.
 
         .. container:: class_bases
 
             Proxied for the :class:`_engine.Connection` class
             on behalf of the :class:`_asyncio.AsyncConnection` class.
 
-        This is the isolation level setting that the
-        :class:`_engine.Connection`
-        has when first procured via the :meth:`_engine.Engine.connect` method.
-        This level stays in place until the
-        :paramref:`.Connection.execution_options.isolation_level` is used
-        to change the setting on a per-:class:`_engine.Connection` basis.
+        This value is independent of the
+        :paramref:`.Connection.execution_options.isolation_level` and
+        :paramref:`.Engine.execution_options.isolation_level` execution
+        options, and is determined by the :class:`_engine.Dialect` when the
+        first connection is created, by performing a SQL query against the
+        database for the current isolation level before any additional commands
+        have been emitted.
 
-        Unlike :meth:`_engine.Connection.get_isolation_level`,
-        this attribute is set
-        ahead of time from the first connection procured by the dialect,
-        so SQL query is not invoked when this accessor is called.
+        Calling this accessor does not invoke any new SQL queries.
 
         .. seealso::
 
             :meth:`_engine.Connection.get_isolation_level`
-            - view current level
+            - view current actual isolation level
 
             :paramref:`_sa.create_engine.isolation_level`
             - set per :class:`_engine.Engine` isolation level
