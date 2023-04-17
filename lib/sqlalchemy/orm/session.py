@@ -347,7 +347,10 @@ class ORMExecuteState(util.MemoizedSlots):
     def _orm_compile_options(self):
         if not self.is_select:
             return None
-        opts = self.statement._compile_options
+        try:
+            opts = self.statement._compile_options
+        except AttributeError:
+            return None
         if opts.isinstance(context.ORMCompileState.default_compile_options):
             return opts
         else:

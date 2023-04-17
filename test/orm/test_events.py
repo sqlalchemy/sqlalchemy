@@ -8,6 +8,7 @@ from sqlalchemy import literal_column
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy import update
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import class_mapper
@@ -291,6 +292,37 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
             )
 
         return canary
+
+    @testing.combinations(
+        (lambda: select(1), True),
+        (lambda User: select(User).union(select(User)), True),
+        (lambda: text("select * from users"), False),
+    )
+    def test_non_orm_statements(self, stmt, is_select):
+        sess = Session(testing.db, future=True)
+
+        canary = self._flag_fixture(sess)
+
+        User, Address = self.classes("User", "Address")
+        stmt = testing.resolve_lambda(stmt, User=User)
+        sess.execute(stmt).all()
+
+        eq_(
+            canary.mock_calls,
+            [
+                call.options(
+                    bind_mapper=None,
+                    all_mappers=[],
+                    is_select=is_select,
+                    is_update=False,
+                    is_delete=False,
+                    is_orm_statement=False,
+                    is_relationship_load=False,
+                    is_column_load=False,
+                    lazy_loaded_from=None,
+                )
+            ],
+        )
 
     def test_all_mappers_accessor_one(self):
         User, Address = self.classes("User", "Address")
