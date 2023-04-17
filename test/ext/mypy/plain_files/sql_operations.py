@@ -67,23 +67,54 @@ stmt = select(column("q")).where(lambda: column("g") > 5).where(c2 == 5)
 
 expr9 = c1.bool_op("@@")(func.to_tsquery("some & query"))
 
-# add tests for #9148
-and_(c1.is_(q))
-and_(c1.is_not(q))
-and_(c1.isnot(q))
-and_(c1.not_in(["x"]))
-and_(c1.notin_(["x"]))
-and_(c1.not_like("x"))
-and_(c1.notlike("x"))
-and_(c1.not_ilike("x"))
-and_(c1.notilike("x"))
 
-# issue #9451
-s1 = c1.cast(Integer)
-s2 = c1.cast(Float)
-s3 = c1.op("foobar")("operand").cast(DateTime)
-s4 = cast(c1, Float)
-s5 = cast(c1.op("foobar")("operand"), DateTime)
+def test_issue_9418() -> None:
+    and_(c1.is_(q))
+    and_(c1.is_not(q))
+    and_(c1.isnot(q))
+    and_(c1.not_in(["x"]))
+    and_(c1.notin_(["x"]))
+    and_(c1.not_like("x"))
+    and_(c1.notlike("x"))
+    and_(c1.not_ilike("x"))
+    and_(c1.notilike("x"))
+
+
+def test_issue_9451() -> None:
+    # issue #9451
+    c1.cast(Integer)
+    c1.cast(Float)
+    c1.op("foobar")("operand").cast(DateTime)
+    cast(c1, Float)
+    cast(c1.op("foobar")("operand"), DateTime)
+
+
+def test_issue_9650_char() -> None:
+    and_(c1.contains("x"))
+    and_(c1.startswith("x"))
+    and_(c1.endswith("x"))
+    and_(c1.icontains("x"))
+    and_(c1.istartswith("x"))
+    and_(c1.iendswith("x"))
+
+
+def test_issue_9650_bitwise() -> None:
+    # EXPECTED_TYPE: BinaryExpression[Any]
+    reveal_type(c2.bitwise_and(5))
+    # EXPECTED_TYPE: BinaryExpression[Any]
+    reveal_type(c2.bitwise_or(5))
+    # EXPECTED_TYPE: BinaryExpression[Any]
+    reveal_type(c2.bitwise_xor(5))
+    # EXPECTED_TYPE: UnaryExpression[int]
+    reveal_type(c2.bitwise_not())
+    # EXPECTED_TYPE: BinaryExpression[Any]
+    reveal_type(c2.bitwise_lshift(5))
+    # EXPECTED_TYPE: BinaryExpression[Any]
+    reveal_type(c2.bitwise_rshift(5))
+    # EXPECTED_TYPE: ColumnElement[Any]
+    reveal_type(c2 << 5)
+    # EXPECTED_TYPE: ColumnElement[Any]
+    reveal_type(c2 >> 5)
 
 
 if typing.TYPE_CHECKING:

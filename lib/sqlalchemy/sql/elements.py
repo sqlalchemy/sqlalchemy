@@ -833,6 +833,12 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         def __getitem__(self, index: Any) -> ColumnElement[Any]:
             ...
 
+        def __lshift__(self, other: Any) -> ColumnElement[Any]:
+            ...
+
+        def __rshift__(self, other: Any) -> ColumnElement[Any]:
+            ...
+
         @overload
         def concat(self: _SQO[str], other: Any) -> ColumnElement[str]:
             ...
@@ -852,6 +858,24 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         def ilike(
             self, other: Any, escape: Optional[str] = None
         ) -> BinaryExpression[bool]:
+            ...
+
+        def bitwise_xor(self, other: Any) -> BinaryExpression[Any]:
+            ...
+
+        def bitwise_or(self, other: Any) -> BinaryExpression[Any]:
+            ...
+
+        def bitwise_and(self, other: Any) -> BinaryExpression[Any]:
+            ...
+
+        def bitwise_not(self) -> UnaryExpression[_T]:
+            ...
+
+        def bitwise_lshift(self, other: Any) -> BinaryExpression[Any]:
+            ...
+
+        def bitwise_rshift(self, other: Any) -> BinaryExpression[Any]:
             ...
 
         def in_(
@@ -915,6 +939,14 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         ) -> ColumnElement[bool]:
             ...
 
+        def istartswith(
+            self,
+            other: Any,
+            escape: Optional[str] = None,
+            autoescape: bool = False,
+        ) -> ColumnElement[bool]:
+            ...
+
         def endswith(
             self,
             other: Any,
@@ -923,7 +955,18 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         ) -> ColumnElement[bool]:
             ...
 
+        def iendswith(
+            self,
+            other: Any,
+            escape: Optional[str] = None,
+            autoescape: bool = False,
+        ) -> ColumnElement[bool]:
+            ...
+
         def contains(self, other: Any, **kw: Any) -> ColumnElement[bool]:
+            ...
+
+        def icontains(self, other: Any, **kw: Any) -> ColumnElement[bool]:
             ...
 
         def match(self, other: Any, **kwargs: Any) -> ColumnElement[bool]:
