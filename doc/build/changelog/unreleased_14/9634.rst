@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9634
+    :versions: 2.0.10
+
+    Fixed bug where various ORM-specific getters such as
+    :attr:`.ORMExecuteState.is_column_load`,
+    :attr:`.ORMExecuteState.is_relationship_load`,
+    :attr:`.ORMExecuteState.loader_strategy_path` etc. would throw an
+    ``AttributeError`` if the SQL statement itself were a "compound select"
+    such as a UNION.

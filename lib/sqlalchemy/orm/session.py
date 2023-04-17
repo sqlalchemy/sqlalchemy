@@ -603,7 +603,11 @@ class ORMExecuteState(util.MemoizedSlots):
     ]:
         if not self.is_select:
             return None
-        opts = self.statement._compile_options
+        try:
+            opts = self.statement._compile_options
+        except AttributeError:
+            return None
+
         if opts is not None and opts.isinstance(
             context.ORMCompileState.default_compile_options
         ):
