@@ -338,7 +338,7 @@ class Connection(Connectable):
                 - set per :class:`_engine.Engine` isolation level
 
                 :meth:`_engine.Connection.get_isolation_level`
-                - view current level
+                - view current actual level
 
                 :ref:`SQLite Transaction Isolation <sqlite_isolation_level>`
 
@@ -543,22 +543,29 @@ class Connection(Connectable):
             return self._dbapi_connection
 
     def get_isolation_level(self):
-        """Return the current isolation level assigned to this
-        :class:`_engine.Connection`.
+        """Return the current **actual** isolation level that's present on
+        the database within the scope of this connection.
 
-        This will typically be the default isolation level as determined
-        by the dialect, unless if the
-        :paramref:`.Connection.execution_options.isolation_level`
-        feature has been used to alter the isolation level on a
-        per-:class:`_engine.Connection` basis.
+        This attribute will perform a live SQL operation against the database
+        in order to procure the current isolation level, so the value returned
+        is the actual level on the underlying DBAPI connection regardless of
+        how this state was set. This will be one of the four actual isolation
+        modes ``READ UNCOMMITTED``, ``READ COMMITTED``, ``REPEATABLE READ``,
+        ``SERIALIZABLE``. It will **not** include the ``AUTOCOMMIT`` isolation
+        level setting. Third party dialects may also feature additional
+        isolation level settings.
 
-        This attribute will typically perform a live SQL operation in order
-        to procure the current isolation level, so the value returned is the
-        actual level on the underlying DBAPI connection regardless of how
-        this state was set.  Compare to the
-        :attr:`_engine.Connection.default_isolation_level` accessor
-        which returns the dialect-level setting without performing a SQL
-        query.
+        .. note::  This method **will not report** on the ``AUTOCOMMIT``
+          isolation level, which is a separate :term:`dbapi` setting that's
+          independent of **actual** isolation level.  When ``AUTOCOMMIT`` is
+          in use, the database connection still has a "traditional" isolation
+          mode in effect, that is typically one of the four values
+          ``READ UNCOMMITTED``, ``READ COMMITTED``, ``REPEATABLE READ``,
+          ``SERIALIZABLE``.
+
+        Compare to the :attr:`_engine.Connection.default_isolation_level`
+        accessor which returns the isolation level that is present on the
+        database at initial connection time.
 
         .. versionadded:: 0.9.9
 
@@ -581,27 +588,25 @@ class Connection(Connectable):
 
     @property
     def default_isolation_level(self):
-        """The default isolation level assigned to this
-        :class:`_engine.Connection`.
+        """The initial-connection time isolation level associated with the
+        :class:`_engine.Dialect` in use.
 
-        This is the isolation level setting that the
-        :class:`_engine.Connection`
-        has when first procured via the :meth:`_engine.Engine.connect` method.
-        This level stays in place until the
-        :paramref:`.Connection.execution_options.isolation_level` is used
-        to change the setting on a per-:class:`_engine.Connection` basis.
+        This value is independent of the
+        :paramref:`.Connection.execution_options.isolation_level` and
+        :paramref:`.Engine.execution_options.isolation_level` execution
+        options, and is determined by the :class:`_engine.Dialect` when the
+        first connection is created, by performing a SQL query against the
+        database for the current isolation level before any additional commands
+        have been emitted.
 
-        Unlike :meth:`_engine.Connection.get_isolation_level`,
-        this attribute is set
-        ahead of time from the first connection procured by the dialect,
-        so SQL query is not invoked when this accessor is called.
+        Calling this accessor does not invoke any new SQL queries.
 
         .. versionadded:: 0.9.9
 
         .. seealso::
 
             :meth:`_engine.Connection.get_isolation_level`
-            - view current level
+            - view current actual isolation level
 
             :paramref:`_sa.create_engine.isolation_level`
             - set per :class:`_engine.Engine` isolation level
