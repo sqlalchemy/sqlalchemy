@@ -93,7 +93,7 @@ class BaseRow:
     if not typing.TYPE_CHECKING:
         __getitem__ = _get_by_int_impl
 
-    def _get_by_key_impl_mapping(self, key):
+    def _get_by_key_impl_mapping(self, key: str) -> Any:
         cached_index = self._keymap_by_str.get(key, _MISSING_SENTINEL)
         if cached_index is not _MISSING_SENTINEL and cached_index is not None:
             return self._data[cached_index]

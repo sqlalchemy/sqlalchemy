@@ -914,7 +914,7 @@ class CursorResultMetaData(ResultMetaData):
 
     def __getstate__(self):
         # TODO: consider serializing this as SimpleResultMetaData
-        keymap = {
+        keymap: _CursorKeyMapType = {
             key: (
                 rec[MD_INDEX],
                 rec[MD_RESULT_MAP_INDEX],
