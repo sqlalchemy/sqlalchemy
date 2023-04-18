@@ -201,7 +201,6 @@ class CursorResultTest(fixtures.TablesTest):
             rows[0].user_id
 
     def test_keys_no_rows(self, connection):
-
         for i in range(2):
             r = connection.execute(
                 text("update users set user_name='new' where user_id=10")
@@ -378,7 +377,6 @@ class CursorResultTest(fixtures.TablesTest):
                 operator.ge,
                 operator.le,
             ]:
-
                 try:
                     control = op(equal, compare)
                 except TypeError:
@@ -1709,8 +1707,12 @@ class CursorResultTest(fixtures.TablesTest):
             def __getitem__(self, i):
                 return list.__getitem__(self.internal_list, i)
 
+        class MockMeta:
+            def __init__(self):
+                self._name_cache = {}
+
         proxy = Row(
-            object(),
+            MockMeta(),
             [None],
             {"key": (0, None, "key"), 0: (0, None, "key")},
             Row._default_key_style,
@@ -1760,9 +1762,12 @@ class CursorResultTest(fixtures.TablesTest):
                 eq_(len(mock_rowcount.__get__.mock_calls), 2)
 
     def test_row_is_sequence(self):
+        class MockMeta:
+            def __init__(self):
+                self._name_cache = {}
 
         row = Row(
-            object(),
+            MockMeta(),
             [None],
             {"key": (None, 0), 0: (None, 0)},
             Row._default_key_style,
@@ -1841,9 +1846,12 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(list(row._mapping), ["a", "b", "count"])
 
     def test_row_is_hashable(self):
+        class MockMeta:
+            def __init__(self):
+                self._name_cache = {}
 
         row = Row(
-            object(),
+            MockMeta(),
             [None, None, None],
             {"key": (None, 0), 0: (None, 0)},
             Row._default_key_style,
@@ -3450,7 +3458,6 @@ class AlternateCursorResultTest(fixtures.TablesTest):
                 r = conn.execute(select(self.table))
                 assert isinstance(r.cursor_strategy, strategy_cls)
                 with mock.patch.object(r, "cursor", cursor()):
-
                     with testing.expect_raises_message(
                         IOError, "random non-DBAPI"
                     ):
@@ -3514,7 +3521,6 @@ class MergeCursorResultTest(fixtures.TablesTest):
         users = self.tables.users
 
         def results(connection):
-
             r1 = connection.execute(
                 users.select()
                 .where(users.c.user_id.in_([7, 8]))

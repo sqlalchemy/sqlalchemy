@@ -10,6 +10,7 @@ KEY_OBJECTS_ONLY = _KEY_OBJECTS_ONLY
 
 cdef class BaseRow:
     cdef readonly object _parent
+    cdef readonly dict _name_cache
     cdef readonly tuple _data
     cdef readonly dict _keymap
     cdef readonly int _key_style
@@ -18,6 +19,8 @@ cdef class BaseRow:
         """Row objects are constructed by CursorResult objects."""
 
         self._parent = parent
+
+        self._name_cache = parent._name_cache
 
         if processors:
             self._data = tuple(
@@ -47,10 +50,12 @@ cdef class BaseRow:
         }
 
     def __setstate__(self, dict state):
-        self._parent = state["_parent"]
+        parent = state["_parent"]
+        self._parent = parent
         self._data = state["_data"]
-        self._keymap = self._parent._keymap
+        self._keymap = parent._keymap
         self._key_style = state["_key_style"]
+        self._name_cache = parent._name_cache
 
     def _values_impl(self):
         return list(self)
@@ -68,6 +73,13 @@ cdef class BaseRow:
         return self._data[index]
 
     cpdef _get_by_key_impl_mapping(self, key):
+        return self._real_get_by_key_impl_mapping(key)
+
+    cdef _real_get_by_key_impl_mapping(self, key):
+        cached_index = self._name_cache.get(key)
+        if cached_index is not None:
+            return self._data[cached_index]
+
         try:
             rec = self._keymap[key]
         except KeyError as ke:
@@ -82,13 +94,14 @@ cdef class BaseRow:
         ):
             raise KeyError(key)
 
+        self._name_cache[key] = mdindex
         return self._data[mdindex]
 
     def __getattr__(self, name):
         try:
-            return self._get_by_key_impl_mapping(name)
+            return self._real_get_by_key_impl_mapping(name)
         except KeyError as e:
-           raise AttributeError(e.args[0]) from e
+            raise AttributeError(e.args[0]) from e
 
 
 def rowproxy_reconstructor(cls, state):

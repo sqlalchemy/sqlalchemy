@@ -99,6 +99,7 @@ class ResultMetaData:
     _keymap: _KeyMapType
     _keys: Sequence[str]
     _processors: Optional[_ProcessorsType]
+    _name_cache: Dict[_KeyType, _KeyMapRecType]
 
     @property
     def keys(self) -> RMKeyView:
@@ -222,6 +223,7 @@ class SimpleResultMetaData(ResultMetaData):
         "_tuplefilter",
         "_translated_indexes",
         "_unique_filters",
+        "_name_cache",
     )
 
     _keys: Sequence[str]
@@ -256,6 +258,8 @@ class SimpleResultMetaData(ResultMetaData):
         self._keymap = {key: rec for keys, rec in recs_names for key in keys}
 
         self._processors = _processors
+
+        self._name_cache = {}
 
     def _has_key(self, key: object) -> bool:
         return key in self._keymap

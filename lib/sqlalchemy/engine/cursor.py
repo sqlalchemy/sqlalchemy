@@ -149,7 +149,8 @@ class CursorResultMetaData(ResultMetaData):
         "_tuplefilter",
         "_translated_indexes",
         "_safe_for_cache",
-        "_unpickled"
+        "_unpickled",
+        "_name_cache"
         # don't need _unique_filters support here for now.  Can be added
         # if a need arises.
     )
@@ -193,6 +194,7 @@ class CursorResultMetaData(ResultMetaData):
         new_obj._translated_indexes = translated_indexes
         new_obj._safe_for_cache = safe_for_cache
         new_obj._keymap_by_result_column_idx = keymap_by_result_column_idx
+        new_obj._name_cache = {}
         return new_obj
 
     def _remove_processors(self) -> CursorResultMetaData:
@@ -490,6 +492,8 @@ class CursorResultMetaData(ResultMetaData):
                     if metadata_entry[MD_UNTRANSLATED]
                 }
             )
+
+        self._name_cache = {}
 
     def _merge_cursor_description(
         self,
@@ -921,6 +925,7 @@ class CursorResultMetaData(ResultMetaData):
         self._keymap = state["_keymap"]
 
         self._keymap_by_result_column_idx = None
+        self._name_cache = {}
         self._keys = state["_keys"]
         self._unpickled = True
         if state["_translated_indexes"]:

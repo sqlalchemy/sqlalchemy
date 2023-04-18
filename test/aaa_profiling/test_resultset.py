@@ -212,7 +212,7 @@ class RowTest(fixtures.TestBase):
     def _rowproxy_fixture(self, keys, processors, row, row_cls):
         class MockMeta:
             def __init__(self):
-                pass
+                self._name_cache = {}
 
             def _warn_for_nonint(self, arg):
                 pass

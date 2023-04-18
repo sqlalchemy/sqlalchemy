@@ -996,6 +996,84 @@ class BaseRow(Case):
         self.row_long.x
         self.row_long.y
 
+    @test_case
+    def getattr_repeats(self):
+        row = self.row
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+        row.a
+
+
+
 
 class CacheAnonMap(Case):
     @staticmethod

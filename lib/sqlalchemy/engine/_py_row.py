@@ -15,6 +15,7 @@ from typing import Union
 
 if typing.TYPE_CHECKING:
     from .result import _KeyMapType
+    from .result import _KeyMapRecType
     from .result import _KeyType
     from .result import _ProcessorsType
     from .result import _RawRowType
@@ -38,9 +39,10 @@ KEY_INTEGER_ONLY, KEY_OBJECTS_ONLY = list(_KeyStyle)
 
 
 class BaseRow:
-    __slots__ = ("_parent", "_data", "_keymap", "_key_style")
+    __slots__ = ("_parent", "_data", "_keymap", "_key_style", "_name_cache")
 
     _parent: ResultMetaData
+    _name_cache: Dict[_KeyType, _KeyMapRecType]
     _data: _RawRowType
     _keymap: _KeyMapType
     _key_style: _KeyStyle
@@ -55,6 +57,8 @@ class BaseRow:
     ):
         """Row objects are constructed by CursorResult objects."""
         object.__setattr__(self, "_parent", parent)
+
+        object.__setattr__(self, "_name_cache", parent._name_cache)
 
         if processors:
             object.__setattr__(
@@ -93,6 +97,7 @@ class BaseRow:
         object.__setattr__(self, "_data", state["_data"])
         object.__setattr__(self, "_keymap", parent._keymap)
         object.__setattr__(self, "_key_style", state["_key_style"])
+        object.__setattr__(self, "_name_cache", parent._name_cache)
 
     def _values_impl(self) -> List[Any]:
         return list(self)
@@ -113,6 +118,10 @@ class BaseRow:
         __getitem__ = _get_by_int_impl
 
     def _get_by_key_impl_mapping(self, key: _KeyType) -> Any:
+        cached_index = self._name_cache.get(key)
+        if cached_index is not None:
+            return self._data[cached_index]
+
         try:
             rec = self._keymap[key]
         except KeyError as ke:
@@ -127,6 +136,7 @@ class BaseRow:
         elif self._key_style == KEY_OBJECTS_ONLY and isinstance(key, int):
             raise KeyError(key)
 
+        self._name_cache[key] = mdindex
         return self._data[mdindex]
 
     def __getattr__(self, name: str) -> Any:
