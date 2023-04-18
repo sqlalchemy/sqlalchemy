@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import enum
 import operator
 import typing
 from typing import Any
@@ -14,7 +13,6 @@ from typing import Type
 from typing import Union
 
 if typing.TYPE_CHECKING:
-    from .result import _KeyMapType
     from .result import _KeyMapRecType
     from .result import _KeyType
     from .result import _ProcessorsType
@@ -24,41 +22,26 @@ if typing.TYPE_CHECKING:
 
 MD_INDEX = 0  # integer index in cursor.description
 
-
-class _KeyStyle(enum.IntEnum):
-    KEY_INTEGER_ONLY = 0
-    """__getitem__ only allows integer values and slices, raises TypeError
-    otherwise"""
-
-    KEY_OBJECTS_ONLY = 1
-    """__getitem__ only allows string/object values, raises TypeError
-    otherwise"""
-
-
-KEY_INTEGER_ONLY, KEY_OBJECTS_ONLY = list(_KeyStyle)
+_MISSING_SENTINEL = object()
 
 
 class BaseRow:
-    __slots__ = ("_parent", "_data", "_keymap", "_key_style", "_name_cache")
+    __slots__ = ("_parent", "_data", "_keymap_by_str")
 
     _parent: ResultMetaData
-    _name_cache: Dict[_KeyType, _KeyMapRecType]
+    _keymap_by_str: Dict[_KeyType, _KeyMapRecType]
     _data: _RawRowType
-    _keymap: _KeyMapType
-    _key_style: _KeyStyle
 
     def __init__(
         self,
         parent: ResultMetaData,
         processors: Optional[_ProcessorsType],
-        keymap: _KeyMapType,
-        key_style: _KeyStyle,
         data: _RawRowType,
     ):
         """Row objects are constructed by CursorResult objects."""
         object.__setattr__(self, "_parent", parent)
 
-        object.__setattr__(self, "_name_cache", parent._name_cache)
+        object.__setattr__(self, "_keymap_by_str", parent._keymap_by_str)
 
         if processors:
             object.__setattr__(
@@ -74,10 +57,6 @@ class BaseRow:
         else:
             object.__setattr__(self, "_data", tuple(data))
 
-        object.__setattr__(self, "_keymap", keymap)
-
-        object.__setattr__(self, "_key_style", key_style)
-
     def __reduce__(self) -> Tuple[Callable[..., BaseRow], Tuple[Any, ...]]:
         return (
             rowproxy_reconstructor,
@@ -88,16 +67,13 @@ class BaseRow:
         return {
             "_parent": self._parent,
             "_data": self._data,
-            "_key_style": self._key_style,
         }
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
         parent = state["_parent"]
         object.__setattr__(self, "_parent", parent)
         object.__setattr__(self, "_data", state["_data"])
-        object.__setattr__(self, "_keymap", parent._keymap)
-        object.__setattr__(self, "_key_style", state["_key_style"])
-        object.__setattr__(self, "_name_cache", parent._name_cache)
+        object.__setattr__(self, "_keymap_by_str", parent._keymap_by_str)
 
     def _values_impl(self) -> List[Any]:
         return list(self)
@@ -117,33 +93,28 @@ class BaseRow:
     if not typing.TYPE_CHECKING:
         __getitem__ = _get_by_int_impl
 
-    def _get_by_key_impl_mapping(self, key: _KeyType) -> Any:
-        cached_index = self._name_cache.get(key)
-        if cached_index is not None:
+    def _get_by_key_impl_mapping(self, key):
+        cached_index = self._keymap_by_str.get(key, _MISSING_SENTINEL)
+        if cached_index is not _MISSING_SENTINEL and cached_index is not None:
             return self._data[cached_index]
-
-        try:
-            rec = self._keymap[key]
-        except KeyError as ke:
-            rec = self._parent._key_fallback(key, ke)
-
-        mdindex = rec[MD_INDEX]
-        if mdindex is None:
-            self._parent._raise_for_ambiguous_column_name(rec)
-        # NOTE: keep "== KEY_OBJECTS_ONLY" instead of "is KEY_OBJECTS_ONLY"
-        # since deserializing the class from cython will load an int in
-        # _key_style, not an instance of _KeyStyle
-        elif self._key_style == KEY_OBJECTS_ONLY and isinstance(key, int):
-            raise KeyError(key)
-
-        self._name_cache[key] = mdindex
-        return self._data[mdindex]
+        if cached_index is _MISSING_SENTINEL:
+            self._parent._key_fallback(key, KeyError(key))
+        self._parent._raise_for_ambiguous_column_name(
+            self._parent._keymap[key]
+        )
 
     def __getattr__(self, name: str) -> Any:
-        try:
-            return self._get_by_key_impl_mapping(name)
-        except KeyError as e:
-            raise AttributeError(e.args[0]) from e
+        cached_index = self._keymap_by_str.get(name, _MISSING_SENTINEL)
+        if cached_index is not _MISSING_SENTINEL and cached_index is not None:
+            return self._data[cached_index]
+        if cached_index is _MISSING_SENTINEL:
+            try:
+                self._parent._key_fallback(name, KeyError(name))
+            except KeyError as e:
+                raise AttributeError(e.args[0]) from e
+        self._parent._raise_for_ambiguous_column_name(
+            self._parent._keymap[name]
+        )
 
 
 # This reconstructor is necessary so that pickles with the Cy extension or

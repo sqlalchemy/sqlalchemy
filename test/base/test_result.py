@@ -206,11 +206,9 @@ class ResultTupleTest(fixtures.TestBase):
 
         if direction.py_to_cy:
             dump_cls = _py_row.BaseRow
-            num = _py_row.KEY_INTEGER_ONLY
             load_cls = _cy_row.BaseRow
         elif direction.cy_to_py:
             dump_cls = _cy_row.BaseRow
-            num = _cy_row.KEY_INTEGER_ONLY
             load_cls = _py_row.BaseRow
         else:
             direction.fail()
@@ -220,7 +218,7 @@ class ResultTupleTest(fixtures.TestBase):
             class Row(dump_cls):
                 pass
 
-            row = Row(p, p._processors, p._keymap, num, (1, 2, 3))
+            row = Row(p, p._processors, (1, 2, 3))
 
             state = dumps(row)
 

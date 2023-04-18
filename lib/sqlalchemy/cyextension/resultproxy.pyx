@@ -2,25 +2,19 @@
 # more improvements are likely possible
 import operator
 
-cdef int MD_INDEX = 0  # integer index in cursor.description
-cdef int _KEY_OBJECTS_ONLY = 1
-
-KEY_INTEGER_ONLY = 0
-KEY_OBJECTS_ONLY = _KEY_OBJECTS_ONLY
+cdef object _MISSING_SENTINEL = object()
 
 cdef class BaseRow:
     cdef readonly object _parent
-    cdef readonly dict _name_cache
+    cdef readonly dict _keymap_by_str
     cdef readonly tuple _data
-    cdef readonly dict _keymap
-    cdef readonly int _key_style
 
-    def __init__(self, object parent, object processors, dict keymap, int key_style, object data):
+    def __init__(self, object parent, object processors, object data):
         """Row objects are constructed by CursorResult objects."""
 
         self._parent = parent
 
-        self._name_cache = parent._name_cache
+        self._keymap_by_str = parent._keymap_by_str
 
         if processors:
             self._data = tuple(
@@ -32,10 +26,6 @@ cdef class BaseRow:
         else:
             self._data = tuple(data)
 
-        self._keymap = keymap
-
-        self._key_style = key_style
-
     def __reduce__(self):
         return (
             rowproxy_reconstructor,
@@ -46,16 +36,13 @@ cdef class BaseRow:
         return {
             "_parent": self._parent,
             "_data": self._data,
-            "_key_style": self._key_style,
         }
 
     def __setstate__(self, dict state):
         parent = state["_parent"]
         self._parent = parent
         self._data = state["_data"]
-        self._keymap = parent._keymap
-        self._key_style = state["_key_style"]
-        self._name_cache = parent._name_cache
+        self._keymap_by_str = parent._keymap_by_str
 
     def _values_impl(self):
         return list(self)
@@ -73,35 +60,23 @@ cdef class BaseRow:
         return self._data[index]
 
     cpdef _get_by_key_impl_mapping(self, key):
-        return self._real_get_by_key_impl_mapping(key)
-
-    cdef _real_get_by_key_impl_mapping(self, key):
-        cached_index = self._name_cache.get(key)
-        if cached_index is not None:
-            return self._data[cached_index]
-
-        try:
-            rec = self._keymap[key]
-        except KeyError as ke:
-            rec = self._parent._key_fallback(key, ke)
-
-        mdindex = rec[MD_INDEX]
-        if mdindex is None:
-            self._parent._raise_for_ambiguous_column_name(rec)
-        elif (
-            self._key_style == _KEY_OBJECTS_ONLY
-            and isinstance(key, int)
-        ):
-            raise KeyError(key)
-
-        self._name_cache[key] = mdindex
-        return self._data[mdindex]
+        cached_index = self._keymap_by_str.get(key, _MISSING_SENTINEL)
+        if cached_index is not _MISSING_SENTINEL and cached_index is not None:
+            return self._data[cached_index]        
+        if cached_index is _MISSING_SENTINEL:
+            self._parent._key_fallback(key, KeyError(key))
+        self._parent._raise_for_ambiguous_column_name(self._parent._keymap[key])
 
     def __getattr__(self, name):
-        try:
-            return self._real_get_by_key_impl_mapping(name)
-        except KeyError as e:
-            raise AttributeError(e.args[0]) from e
+        cached_index = self._keymap_by_str.get(name, _MISSING_SENTINEL)
+        if cached_index is not _MISSING_SENTINEL and cached_index is not None:
+            return self._data[cached_index]
+        if cached_index is _MISSING_SENTINEL:
+            try:
+                self._parent._key_fallback(name, KeyError(name))
+            except KeyError as e:
+                raise AttributeError(e.args[0]) from e
+        self._parent._raise_for_ambiguous_column_name(self._parent._keymap[name])
 
 
 def rowproxy_reconstructor(cls, state):

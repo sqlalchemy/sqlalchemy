@@ -38,7 +38,6 @@ from sqlalchemy.engine import cursor as _cursor
 from sqlalchemy.engine import default
 from sqlalchemy.engine import Row
 from sqlalchemy.engine.result import SimpleResultMetaData
-from sqlalchemy.engine.row import KEY_INTEGER_ONLY
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql import expression
@@ -1067,9 +1066,9 @@ class CursorResultTest(fixtures.TablesTest):
 
         eq_(list(row._fields), ["case_insensitive", "CaseSensitive"])
 
-        in_("case_insensitive", row._keymap)
-        in_("CaseSensitive", row._keymap)
-        not_in("casesensitive", row._keymap)
+        in_("case_insensitive", row._parent._keymap)
+        in_("CaseSensitive", row._parent._keymap)
+        not_in("casesensitive", row._parent._keymap)
 
         eq_(row._mapping["case_insensitive"], 1)
         eq_(row._mapping["CaseSensitive"], 2)
@@ -1092,9 +1091,9 @@ class CursorResultTest(fixtures.TablesTest):
                 ["case_insensitive", "CaseSensitive", "screw_up_the_cols"],
             )
 
-            in_("case_insensitive", row._keymap)
-            in_("CaseSensitive", row._keymap)
-            not_in("casesensitive", row._keymap)
+            in_("case_insensitive", row._parent._keymap)
+            in_("CaseSensitive", row._parent._keymap)
+            not_in("casesensitive", row._parent._keymap)
 
             eq_(row._mapping["case_insensitive"], 1)
             eq_(row._mapping["CaseSensitive"], 2)
@@ -1709,13 +1708,14 @@ class CursorResultTest(fixtures.TablesTest):
 
         class MockMeta:
             def __init__(self):
-                self._name_cache = {}
+                self._keymap = {"key": (0, None, "key"), 0: (0, None, "key")}
+                self._keymap_by_str = {
+                    key: rec[0] for key, rec in self._keymap.items()
+                }
 
         proxy = Row(
             MockMeta(),
             [None],
-            {"key": (0, None, "key"), 0: (0, None, "key")},
-            Row._default_key_style,
             MyList(["value"]),
         )
         eq_(list(proxy), ["value"])
@@ -1764,13 +1764,14 @@ class CursorResultTest(fixtures.TablesTest):
     def test_row_is_sequence(self):
         class MockMeta:
             def __init__(self):
-                self._name_cache = {}
+                self._keymap = {"key": (None, 0), 0: (None, 0)}
+                self._keymap_by_str = {
+                    key: rec[0] for key, rec in self._keymap.items()
+                }
 
         row = Row(
             MockMeta(),
             [None],
-            {"key": (None, 0), 0: (None, 0)},
-            Row._default_key_style,
             ["value"],
         )
         is_true(isinstance(row, collections_abc.Sequence))
@@ -1780,8 +1781,6 @@ class CursorResultTest(fixtures.TablesTest):
         row = Row(
             metadata,
             [None, None, None, None],
-            metadata._keymap,
-            Row._default_key_style,
             ["kv", "cv", "iv", "f"],
         )
         is_true(isinstance(row, collections_abc.Sequence))
@@ -1799,8 +1798,6 @@ class CursorResultTest(fixtures.TablesTest):
         row = Row(
             metadata,
             [None, None, None],
-            metadata._keymap,
-            Row._default_key_style,
             ["kv", "cv", "iv"],
         )
         is_true(isinstance(row, collections_abc.Sequence))
@@ -1824,8 +1821,6 @@ class CursorResultTest(fixtures.TablesTest):
         row = Row(
             metadata,
             [None, None, None],
-            metadata._keymap,
-            KEY_INTEGER_ONLY,
             ["av", "bv", "cv"],
         )
 
@@ -1848,13 +1843,14 @@ class CursorResultTest(fixtures.TablesTest):
     def test_row_is_hashable(self):
         class MockMeta:
             def __init__(self):
-                self._name_cache = {}
+                self._keymap = {"key": (None, 0), 0: (None, 0)}
+                self._keymap_by_str = {
+                    key: rec[0] for key, rec in self._keymap.items()
+                }
 
         row = Row(
             MockMeta(),
             [None, None, None],
-            {"key": (None, 0), 0: (None, 0)},
-            Row._default_key_style,
             (1, "value", "foo"),
         )
         eq_(hash(row), hash((1, "value", "foo")))

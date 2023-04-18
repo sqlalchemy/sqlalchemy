@@ -210,23 +210,25 @@ class RowTest(fixtures.TestBase):
     __backend__ = True
 
     def _rowproxy_fixture(self, keys, processors, row, row_cls):
-        class MockMeta:
-            def __init__(self):
-                self._name_cache = {}
-
-            def _warn_for_nonint(self, arg):
-                pass
-
-        metadata = MockMeta()
 
         keymap = {}
         for index, (keyobjs, values) in enumerate(list(zip(keys, row))):
             for key in keyobjs:
                 keymap[key] = (index, key)
             keymap[index] = (index, key)
-        return row_cls(
-            metadata, processors, keymap, row_cls._default_key_style, row
-        )
+
+        class MockMeta:
+            def __init__(self):
+                self._keymap = keymap
+                self._keymap_by_str = {
+                    key: rec[0] for key, rec in self._keymap.items()
+                }
+
+            def _warn_for_nonint(self, arg):
+                pass
+
+        metadata = MockMeta()
+        return row_cls(metadata, processors, row)
 
     def _test_getitem_value_refcounts_new(self, seq_factory):
         col1, col2 = object(), object()
