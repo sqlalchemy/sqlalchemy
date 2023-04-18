@@ -405,7 +405,7 @@ class QueryableAttribute(
 
     def and_(
         self, *clauses: _ColumnExpressionArgument[bool]
-    ) -> interfaces.PropComparator[bool]:
+    ) -> QueryableAttribute[bool]:
         if TYPE_CHECKING:
             assert isinstance(self.comparator, RelationshipProperty.Comparator)
 
