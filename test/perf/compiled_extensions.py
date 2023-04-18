@@ -1073,8 +1073,6 @@ class BaseRow(Case):
         row.a
 
 
-
-
 class CacheAnonMap(Case):
     @staticmethod
     def python():
