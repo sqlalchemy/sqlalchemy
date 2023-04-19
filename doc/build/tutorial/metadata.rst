@@ -115,7 +115,7 @@ Components of ``Table``
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 We can observe that the :class:`_schema.Table` construct as written in Python
-has a resemblence to a SQL CREATE TABLE statement; starting with the table
+has a resemblance to a SQL CREATE TABLE statement; starting with the table
 name, then listing out each column, where each column has a name and a
 datatype. The objects we use above are:
 
@@ -655,7 +655,3 @@ Core and ORM table-oriented constructs that we can use to interact with
 these tables via a :class:`_engine.Connection` and/or ORM
 :class:`_orm.Session`.  In the following sections, we will illustrate
 how to create, manipulate, and select data using these structures.
-
-
-
-
