@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import collections
 import functools
+import operator
 import typing
 from typing import Any
 from typing import cast
@@ -1440,6 +1441,27 @@ class CursorResult(Result[_T]):
             # getter assuming no transformations will be called as this
             # is the most common case
 
+            metadata = self._init_metadata(context, cursor_description)
+
+            _make_row = functools.partial(
+                Row,
+                metadata,
+                metadata._effective_processors,
+                metadata._key_to_index,
+            )
+
+            if context._num_sentinel_cols:
+                sentinel_filter = operator.itemgetter(
+                    slice(-context._num_sentinel_cols)
+                )
+
+                def _sliced_row(raw_data):
+                    return _make_row(sentinel_filter(raw_data))
+
+                sliced_row = _sliced_row
+            else:
+                sliced_row = _make_row
+
             if echo:
                 log = self.context.connection._log_debug
 
@@ -1447,32 +1469,18 @@ class CursorResult(Result[_T]):
                     log("Row %r", sql_util._repr_row(row))
                     return row
 
-                self._row_logging_fn = log_row = _log_row
-            else:
-                log_row = None
-
-            metadata = self._init_metadata(context, cursor_description)
-
-            _make_row = functools.partial(
-                Row,
-                metadata,
-                metadata._processors,
-                metadata._key_to_index,
-            )
-            if log_row:
+                self._row_logging_fn = _log_row
 
                 def _make_row_2(row):
-                    made_row = _make_row(row)
-                    assert log_row is not None
-                    log_row(made_row)
-                    return made_row
+                    return _log_row(sliced_row(row))
 
                 make_row = _make_row_2
             else:
-                make_row = _make_row
+                make_row = sliced_row
             self._set_memoized_attribute("_row_getter", make_row)
 
         else:
+            assert context._num_sentinel_cols == 0
             self._metadata = self._no_result_metadata
 
     def _init_metadata(self, context, cursor_description):

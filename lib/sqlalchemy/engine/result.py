@@ -41,6 +41,7 @@ from ..sql.base import _generative
 from ..sql.base import HasMemoized
 from ..sql.base import InPlaceGenerative
 from ..util import HasMemoized_ro_memoized_attribute
+from ..util import NONE_SET
 from ..util._has_cy import HAS_CYEXTENSION
 from ..util.typing import Literal
 from ..util.typing import Self
@@ -84,7 +85,7 @@ across all the result types
 _InterimSupportsScalarsRowType = Union[Row, Any]
 
 _ProcessorsType = Sequence[Optional["_ResultProcessorType[Any]"]]
-_TupleGetterType = Callable[[Sequence[Any]], Tuple[Any, ...]]
+_TupleGetterType = Callable[[Sequence[Any]], Sequence[Any]]
 _UniqueFilterType = Callable[[Any], Any]
 _UniqueFilterStateType = Tuple[Set[Any], Optional[_UniqueFilterType]]
 
@@ -204,6 +205,13 @@ class ResultMetaData:
                     raise AttributeError(ke.args[0]) from ke
             else:
                 self._key_fallback(key, None)
+
+    @property
+    def _effective_processors(self) -> Optional[_ProcessorsType]:
+        if not self._processors or NONE_SET.issuperset(self._processors):
+            return None
+        else:
+            return self._processors
 
 
 class RMKeyView(typing.KeysView[Any]):
@@ -390,7 +398,7 @@ def result_tuple(
 ) -> Callable[[Iterable[Any]], Row[Any]]:
     parent = SimpleResultMetaData(fields, extra)
     return functools.partial(
-        Row, parent, parent._processors, parent._key_to_index
+        Row, parent, parent._effective_processors, parent._key_to_index
     )
 
 
@@ -454,7 +462,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
                 def process_row(  # type: ignore
                     metadata: ResultMetaData,
-                    processors: _ProcessorsType,
+                    processors: Optional[_ProcessorsType],
                     key_to_index: Mapping[_KeyType, int],
                     scalar_obj: Any,
                 ) -> Row[Any]:
@@ -468,7 +476,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         metadata = self._metadata
 
         key_to_index = metadata._key_to_index
-        processors = metadata._processors
+        processors = metadata._effective_processors
         tf = metadata._tuplefilter
 
         if tf and not real_result._source_supports_scalars:
@@ -489,21 +497,12 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                 process_row, metadata, processors, key_to_index
             )
 
-        fns: Tuple[Any, ...] = ()
-
         if real_result._row_logging_fn:
-            fns = (real_result._row_logging_fn,)
-        else:
-            fns = ()
-
-        if fns:
+            _log_row = real_result._row_logging_fn
             _make_row = make_row
 
             def make_row(row: _InterimRowType[Row[Any]]) -> _R:
-                interim_row = _make_row(row)
-                for fn in fns:
-                    interim_row = fn(interim_row)
-                return interim_row  # type: ignore
+                return _log_row(_make_row(row))  # type: ignore
 
         return make_row
 

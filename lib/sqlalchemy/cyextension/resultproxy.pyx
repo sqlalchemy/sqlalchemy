@@ -13,12 +13,7 @@ cdef class BaseRow:
         self._key_to_index = key_to_index
 
         if processors:
-            self._data = tuple(
-                [
-                    proc(value) if proc else value
-                    for proc, value in zip(processors, data)
-                ]
-            )
+            self._data = _apply_processors(processors, data)
         else:
             self._data = tuple(data)
 
@@ -64,6 +59,20 @@ cdef class BaseRow:
     def __getattr__(self, name):
         return self._get_by_key_impl(name, 1)
 
+    def _to_tuple_instance(self):
+        return self._data
+
+
+cdef tuple _apply_processors(proc, data):
+    res = []
+    for i in range(len(proc)):
+        p = proc[i]
+        if p is None:
+            res.append(data[i])
+        else:
+            res.append(p(data[i]))
+    return tuple(res)
+
 
 def rowproxy_reconstructor(cls, state):
     obj = cls.__new__(cls)
@@ -71,10 +80,17 @@ def rowproxy_reconstructor(cls, state):
     return obj
 
 
-def tuplegetter(*indexes):
-    it = operator.itemgetter(*indexes)
+cdef int is_contiguous(tuple indexes):
+    cdef int i
+    for i in range(1, len(indexes)):
+        if indexes[i-1] != indexes[i] -1:
+            return 0
+    return 1
 
-    if len(indexes) > 1:
-        return it
+
+def tuplegetter(*indexes):
+    if len(indexes) == 1 or is_contiguous(indexes) != 0:
+        # slice form is faster but returns a list if input is list
+        return operator.itemgetter(slice(indexes[0], indexes[-1] + 1))
     else:
-        return lambda row: (it(row),)
+        return operator.itemgetter(*indexes)

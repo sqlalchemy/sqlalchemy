@@ -236,6 +236,30 @@ class ResultTupleTest(fixtures.TestBase):
             row3 = loads(state2)
             is_true(isinstance(row3, dump_cls))
 
+    def test_processors(self):
+        parent = result.SimpleResultMetaData(["a", "b", "c", "d"])
+        data = (1, 99, "42", "foo")
+        row_none = result.Row(parent, None, parent._key_to_index, data)
+        eq_(row_none._to_tuple_instance(), data)
+        row_all_p = result.Row(
+            parent, [str, float, int, str.upper], parent._key_to_index, data
+        )
+        eq_(row_all_p._to_tuple_instance(), ("1", 99.0, 42, "FOO"))
+        row_some_p = result.Row(
+            parent, [None, str, None, str.upper], parent._key_to_index, data
+        )
+        eq_(row_some_p._to_tuple_instance(), (1, "99", "42", "FOO"))
+        row_shorter = result.Row(
+            parent, [None, str], parent._key_to_index, data
+        )
+        eq_(row_shorter._to_tuple_instance(), (1, "99"))
+
+    def test_tuplegetter(self):
+        data = list(range(10, 20))
+        eq_(result.tuplegetter(1)(data), [11])
+        eq_(result.tuplegetter(1, 9, 3)(data), (11, 19, 13))
+        eq_(result.tuplegetter(2, 3, 4)(data), [12, 13, 14])
+
 
 class ResultTest(fixtures.TestBase):
     def _fixture(

@@ -1881,11 +1881,11 @@ class DefaultExecutionContext(ExecutionContext):
             strategy = _cursor._NO_CURSOR_DML
         elif self._num_sentinel_cols:
             assert self.execute_style is ExecuteStyle.INSERTMANYVALUES
-            if cursor_description:
-                # strip out the sentinel columns from cursor description
-                cursor_description = cursor_description[
-                    0 : -(self._num_sentinel_cols)
-                ]
+            # strip out the sentinel columns from cursor description
+            # a similar logic is done to the rows only in CursorResult
+            cursor_description = cursor_description[
+                0 : -self._num_sentinel_cols
+            ]
 
         result: _cursor.CursorResult[Any] = _cursor.CursorResult(
             self, strategy, cursor_description

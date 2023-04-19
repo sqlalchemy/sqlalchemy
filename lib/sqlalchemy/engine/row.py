@@ -40,7 +40,7 @@ else:
 if TYPE_CHECKING:
     from .result import _KeyType
     from .result import RMKeyView
-    from ..sql.type_api import _ResultProcessorType
+    from .result import _ProcessorsType
 
 _T = TypeVar("_T", bound=Any)
 _TP = TypeVar("_TP", bound=Tuple[Any, ...])
@@ -131,9 +131,9 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
         return RowMapping(self._parent, None, self._key_to_index, self._data)
 
     def _filter_on_values(
-        self, filters: Optional[Sequence[Optional[_ResultProcessorType[Any]]]]
+        self, processor: Optional[_ProcessorsType]
     ) -> Row[Any]:
-        return Row(self._parent, filters, self._key_to_index, self._data)
+        return Row(self._parent, processor, self._key_to_index, self._data)
 
     if not TYPE_CHECKING:
 
@@ -163,9 +163,9 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
 
     def _op(self, other: Any, op: Callable[[Any, Any], bool]) -> bool:
         return (
-            op(tuple(self), tuple(other))
+            op(self._to_tuple_instance(), other._to_tuple_instance())
             if isinstance(other, Row)
-            else op(tuple(self), other)
+            else op(self._to_tuple_instance(), other)
         )
 
     __hash__ = BaseRow.__hash__
