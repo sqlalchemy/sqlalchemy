@@ -24,7 +24,6 @@ from typing import List
 from typing import Mapping
 from typing import NoReturn
 from typing import Optional
-from typing import overload
 from typing import Sequence
 from typing import Tuple
 from typing import TYPE_CHECKING
@@ -811,41 +810,25 @@ class CursorResultMetaData(ResultMetaData):
                 untranslated,
             )
 
-    @overload
-    def _key_fallback(
-        self, key: Any, err: Exception, raiseerr: Literal[True] = ...
-    ) -> NoReturn:
-        ...
+    if not TYPE_CHECKING:
 
-    @overload
-    def _key_fallback(
-        self, key: Any, err: Exception, raiseerr: Literal[False] = ...
-    ) -> None:
-        ...
+        def _key_fallback(
+            self, key: Any, err: Optional[Exception], raiseerr: bool = True
+        ) -> Optional[NoReturn]:
 
-    @overload
-    def _key_fallback(
-        self, key: Any, err: Exception, raiseerr: bool = ...
-    ) -> Optional[NoReturn]:
-        ...
-
-    def _key_fallback(
-        self, key: Any, err: Exception, raiseerr: bool = True
-    ) -> Optional[NoReturn]:
-
-        if raiseerr:
-            if self._unpickled and isinstance(key, elements.ColumnElement):
-                raise exc.NoSuchColumnError(
-                    "Row was unpickled; lookup by ColumnElement "
-                    "is unsupported"
-                ) from err
+            if raiseerr:
+                if self._unpickled and isinstance(key, elements.ColumnElement):
+                    raise exc.NoSuchColumnError(
+                        "Row was unpickled; lookup by ColumnElement "
+                        "is unsupported"
+                    ) from err
+                else:
+                    raise exc.NoSuchColumnError(
+                        "Could not locate column in row for column '%s'"
+                        % util.string_or_unprintable(key)
+                    ) from err
             else:
-                raise exc.NoSuchColumnError(
-                    "Could not locate column in row for column '%s'"
-                    % util.string_or_unprintable(key)
-                ) from err
-        else:
-            return None
+                return None
 
     def _raise_for_ambiguous_column_name(self, rec):
         raise exc.InvalidRequestError(

@@ -114,24 +114,24 @@ class ResultMetaData:
 
     @overload
     def _key_fallback(
-        self, key: Any, err: Exception, raiseerr: Literal[True] = ...
+        self, key: Any, err: Optional[Exception], raiseerr: Literal[True] = ...
     ) -> NoReturn:
         ...
 
     @overload
     def _key_fallback(
-        self, key: Any, err: Exception, raiseerr: Literal[False] = ...
+        self, key: Any, err: Optional[Exception], raiseerr: Literal[False] = ...
     ) -> None:
         ...
 
     @overload
     def _key_fallback(
-        self, key: Any, err: Exception, raiseerr: bool = ...
+        self, key: Any, err: Optional[Exception], raiseerr: bool = ...
     ) -> Optional[NoReturn]:
         ...
 
     def _key_fallback(
-        self, key: Any, err: Exception, raiseerr: bool = True
+        self, key: Any, err: Optional[Exception], raiseerr: bool = True
     ) -> Optional[NoReturn]:
         assert raiseerr
         raise KeyError(key) from err
@@ -191,16 +191,16 @@ class ResultMetaData:
     def _key_not_found(self, key: Any, attr_error: bool) -> NoReturn:
         if key in self._keymap:
             # the index must be none in this case
-            if attr_error:
-                try:
-                    self._key_fallback(key, KeyError(key))
-                except KeyError as ke:
-                    raise AttributeError(ke.args[0]) from ke
-            else:
-                self._key_fallback(key, KeyError(key))
+            self._raise_for_ambiguous_column_name(self._keymap[key])
         else:
             # unknown key
-            self._raise_for_ambiguous_column_name(self._keymap[key])
+            if attr_error:
+                try:
+                    self._key_fallback(key, None)
+                except KeyError as ke:
+                    raise AttributeError(key) from ke
+            else:
+                self._key_fallback(key, None)
 
 
 class RMKeyView(typing.KeysView[Any]):
