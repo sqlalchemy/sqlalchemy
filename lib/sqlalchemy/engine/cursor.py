@@ -21,9 +21,9 @@ from typing import ClassVar
 from typing import Dict
 from typing import Iterator
 from typing import List
+from typing import Mapping
 from typing import NoReturn
 from typing import Optional
-from typing import overload
 from typing import Sequence
 from typing import Tuple
 from typing import TYPE_CHECKING
@@ -123,7 +123,7 @@ _CursorKeyMapRecType = Tuple[
     Optional[str],  # MD_UNTRANSLATED
 ]
 
-_CursorKeyMapType = Dict["_KeyType", _CursorKeyMapRecType]
+_CursorKeyMapType = Mapping["_KeyType", _CursorKeyMapRecType]
 
 # same as _CursorKeyMapRecType except the MD_INDEX value is definitely
 # not None
@@ -149,7 +149,8 @@ class CursorResultMetaData(ResultMetaData):
         "_tuplefilter",
         "_translated_indexes",
         "_safe_for_cache",
-        "_unpickled"
+        "_unpickled",
+        "_key_to_index"
         # don't need _unique_filters support here for now.  Can be added
         # if a need arises.
     )
@@ -193,6 +194,7 @@ class CursorResultMetaData(ResultMetaData):
         new_obj._translated_indexes = translated_indexes
         new_obj._safe_for_cache = safe_for_cache
         new_obj._keymap_by_result_column_idx = keymap_by_result_column_idx
+        new_obj._key_to_index = self._make_key_to_index(keymap, MD_INDEX)
         return new_obj
 
     def _remove_processors(self) -> CursorResultMetaData:
@@ -217,7 +219,7 @@ class CursorResultMetaData(ResultMetaData):
 
         assert not self._tuplefilter
 
-        keymap = self._keymap.copy()
+        keymap = dict(self._keymap)
         offset = len(self._keys)
         keymap.update(
             {
@@ -232,7 +234,6 @@ class CursorResultMetaData(ResultMetaData):
                 for key, value in other._keymap.items()
             }
         )
-
         return self._make_new_metadata(
             unpickled=self._unpickled,
             processors=self._processors + other._processors,  # type: ignore
@@ -258,7 +259,7 @@ class CursorResultMetaData(ResultMetaData):
         tup = tuplegetter(*indexes)
         new_recs = [(index,) + rec[1:] for index, rec in enumerate(recs)]
 
-        keymap: _KeyMapType = {rec[MD_LOOKUP_KEY]: rec for rec in new_recs}
+        keymap = {rec[MD_LOOKUP_KEY]: rec for rec in new_recs}
         # TODO: need unit test for:
         # result = connection.execute("raw sql, no columns").scalars()
         # without the "or ()" it's failing because MD_OBJECTS is None
@@ -274,7 +275,7 @@ class CursorResultMetaData(ResultMetaData):
             keys=new_keys,
             tuplefilter=tup,
             translated_indexes=indexes,
-            keymap=keymap,
+            keymap=keymap,  # type: ignore[arg-type]
             safe_for_cache=self._safe_for_cache,
             keymap_by_result_column_idx=self._keymap_by_result_column_idx,
         )
@@ -490,6 +491,8 @@ class CursorResultMetaData(ResultMetaData):
                     if metadata_entry[MD_UNTRANSLATED]
                 }
             )
+
+        self._key_to_index = self._make_key_to_index(self._keymap, MD_INDEX)
 
     def _merge_cursor_description(
         self,
@@ -807,41 +810,25 @@ class CursorResultMetaData(ResultMetaData):
                 untranslated,
             )
 
-    @overload
-    def _key_fallback(
-        self, key: Any, err: Exception, raiseerr: Literal[True] = ...
-    ) -> NoReturn:
-        ...
+    if not TYPE_CHECKING:
 
-    @overload
-    def _key_fallback(
-        self, key: Any, err: Exception, raiseerr: Literal[False] = ...
-    ) -> None:
-        ...
+        def _key_fallback(
+            self, key: Any, err: Optional[Exception], raiseerr: bool = True
+        ) -> Optional[NoReturn]:
 
-    @overload
-    def _key_fallback(
-        self, key: Any, err: Exception, raiseerr: bool = ...
-    ) -> Optional[NoReturn]:
-        ...
-
-    def _key_fallback(
-        self, key: Any, err: Exception, raiseerr: bool = True
-    ) -> Optional[NoReturn]:
-
-        if raiseerr:
-            if self._unpickled and isinstance(key, elements.ColumnElement):
-                raise exc.NoSuchColumnError(
-                    "Row was unpickled; lookup by ColumnElement "
-                    "is unsupported"
-                ) from err
+            if raiseerr:
+                if self._unpickled and isinstance(key, elements.ColumnElement):
+                    raise exc.NoSuchColumnError(
+                        "Row was unpickled; lookup by ColumnElement "
+                        "is unsupported"
+                    ) from err
+                else:
+                    raise exc.NoSuchColumnError(
+                        "Could not locate column in row for column '%s'"
+                        % util.string_or_unprintable(key)
+                    ) from err
             else:
-                raise exc.NoSuchColumnError(
-                    "Could not locate column in row for column '%s'"
-                    % util.string_or_unprintable(key)
-                ) from err
-        else:
-            return None
+                return None
 
     def _raise_for_ambiguous_column_name(self, rec):
         raise exc.InvalidRequestError(
@@ -919,8 +906,8 @@ class CursorResultMetaData(ResultMetaData):
     def __setstate__(self, state):
         self._processors = [None for _ in range(len(state["_keys"]))]
         self._keymap = state["_keymap"]
-
         self._keymap_by_result_column_idx = None
+        self._key_to_index = self._make_key_to_index(self._keymap, MD_INDEX)
         self._keys = state["_keys"]
         self._unpickled = True
         if state["_translated_indexes"]:
@@ -1371,6 +1358,14 @@ class _NoResultMetaData(ResultMetaData):
         self._we_dont_return_rows()
 
     @property
+    def _key_to_index(self):
+        self._we_dont_return_rows()
+
+    @property
+    def _processors(self):
+        self._we_dont_return_rows()
+
+    @property
     def keys(self):
         self._we_dont_return_rows()
 
@@ -1458,12 +1453,11 @@ class CursorResult(Result[_T]):
 
             metadata = self._init_metadata(context, cursor_description)
 
-            keymap = metadata._keymap
-            processors = metadata._processors
-            process_row = Row
-            key_style = process_row._default_key_style
             _make_row = functools.partial(
-                process_row, metadata, processors, keymap, key_style
+                Row,
+                metadata,
+                metadata._processors,
+                metadata._key_to_index,
             )
             if log_row:
 

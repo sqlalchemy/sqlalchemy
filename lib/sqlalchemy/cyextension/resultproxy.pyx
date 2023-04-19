@@ -1,23 +1,16 @@
-# TODO: this is mostly just copied over from the python implementation
-# more improvements are likely possible
 import operator
-
-cdef int MD_INDEX = 0  # integer index in cursor.description
-cdef int _KEY_OBJECTS_ONLY = 1
-
-KEY_INTEGER_ONLY = 0
-KEY_OBJECTS_ONLY = _KEY_OBJECTS_ONLY
 
 cdef class BaseRow:
     cdef readonly object _parent
+    cdef readonly dict _key_to_index
     cdef readonly tuple _data
-    cdef readonly dict _keymap
-    cdef readonly int _key_style
 
-    def __init__(self, object parent, object processors, dict keymap, int key_style, object data):
+    def __init__(self, object parent, object processors, dict key_to_index, object data):
         """Row objects are constructed by CursorResult objects."""
 
         self._parent = parent
+
+        self._key_to_index = key_to_index
 
         if processors:
             self._data = tuple(
@@ -29,10 +22,6 @@ cdef class BaseRow:
         else:
             self._data = tuple(data)
 
-        self._keymap = keymap
-
-        self._key_style = key_style
-
     def __reduce__(self):
         return (
             rowproxy_reconstructor,
@@ -40,17 +29,13 @@ cdef class BaseRow:
         )
 
     def __getstate__(self):
-        return {
-            "_parent": self._parent,
-            "_data": self._data,
-            "_key_style": self._key_style,
-        }
+        return {"_parent": self._parent, "_data": self._data}
 
     def __setstate__(self, dict state):
-        self._parent = state["_parent"]
+        parent = state["_parent"]
+        self._parent = parent
         self._data = state["_data"]
-        self._keymap = self._parent._keymap
-        self._key_style = state["_key_style"]
+        self._key_to_index = parent._key_to_index
 
     def _values_impl(self):
         return list(self)
@@ -67,28 +52,17 @@ cdef class BaseRow:
     def __getitem__(self, index):
         return self._data[index]
 
-    cpdef _get_by_key_impl_mapping(self, key):
-        try:
-            rec = self._keymap[key]
-        except KeyError as ke:
-            rec = self._parent._key_fallback(key, ke)
+    def _get_by_key_impl_mapping(self, key):
+        return self._get_by_key_impl(key, 0)
 
-        mdindex = rec[MD_INDEX]
-        if mdindex is None:
-            self._parent._raise_for_ambiguous_column_name(rec)
-        elif (
-            self._key_style == _KEY_OBJECTS_ONLY
-            and isinstance(key, int)
-        ):
-            raise KeyError(key)
-
-        return self._data[mdindex]
+    cdef _get_by_key_impl(self, object key, int attr_err):
+        index = self._key_to_index.get(key)
+        if index is not None:
+            return self._data[<int>index]
+        self._parent._key_not_found(key, attr_err != 0)
 
     def __getattr__(self, name):
-        try:
-            return self._get_by_key_impl_mapping(name)
-        except KeyError as e:
-           raise AttributeError(e.args[0]) from e
+        return self._get_by_key_impl(name, 1)
 
 
 def rowproxy_reconstructor(cls, state):
