@@ -991,18 +991,14 @@ class CursorResultTest(fixtures.TablesTest):
 
     def test_column_accessor_err(self, connection):
         r = connection.execute(select(1)).first()
-        assert_raises_message(
-            AttributeError,
-            "Could not locate column in row for column 'foo'",
-            getattr,
-            r,
-            "foo",
-        )
-        assert_raises_message(
-            KeyError,
-            "Could not locate column in row for column 'foo'",
-            lambda: r._mapping["foo"],
-        )
+        with expect_raises_message(
+            AttributeError, "Could not locate column in row for column 'foo'"
+        ):
+            r.foo
+        with expect_raises_message(
+            KeyError, "Could not locate column in row for column 'foo'"
+        ):
+            r._mapping["foo"],
 
     def test_graceful_fetch_on_non_rows(self):
         """test that calling fetchone() etc. on a result that doesn't

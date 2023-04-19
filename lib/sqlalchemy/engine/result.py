@@ -120,7 +120,10 @@ class ResultMetaData:
 
     @overload
     def _key_fallback(
-        self, key: Any, err: Optional[Exception], raiseerr: Literal[False] = ...
+        self,
+        key: Any,
+        err: Optional[Exception],
+        raiseerr: Literal[False] = ...,
     ) -> None:
         ...
 
@@ -198,7 +201,7 @@ class ResultMetaData:
                 try:
                     self._key_fallback(key, None)
                 except KeyError as ke:
-                    raise AttributeError(key) from ke
+                    raise AttributeError(ke.args[0]) from ke
             else:
                 self._key_fallback(key, None)
 
