@@ -22,6 +22,7 @@ from typing import Generic
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Mapping
 from typing import NoReturn
 from typing import Optional
 from typing import overload
@@ -59,7 +60,7 @@ _KeyIndexType = Union[str, "Column[Any]", int]
 # is overridden in cursor using _CursorKeyMapRecType
 _KeyMapRecType = Any
 
-_KeyMapType = Dict[_KeyType, _KeyMapRecType]
+_KeyMapType = Mapping[_KeyType, _KeyMapRecType]
 
 
 _RowData = Union[Row, RowMapping, Any]
@@ -99,7 +100,7 @@ class ResultMetaData:
     _keymap: _KeyMapType
     _keys: Sequence[str]
     _processors: Optional[_ProcessorsType]
-    _keymap_by_str: Dict[_KeyType, _KeyMapRecType]
+    _key_to_index: Mapping[_KeyType, int]
 
     @property
     def keys(self) -> RMKeyView:
@@ -178,6 +179,29 @@ class ResultMetaData:
         indexes = self._indexes_for_keys(keys)
         return tuplegetter(*indexes)
 
+    def _make_key_to_index(
+        self, keymap: Mapping[_KeyType, Sequence[Any]], index: int
+    ) -> Mapping[_KeyType, int]:
+        return {
+            key: rec[index]
+            for key, rec in keymap.items()
+            if rec[index] is not None
+        }
+
+    def _key_not_found(self, key: Any, attr_error: bool) -> NoReturn:
+        if key in self._keymap:
+            # the index must be none in this case
+            if attr_error:
+                try:
+                    self._key_fallback(key, KeyError(key))
+                except KeyError as ke:
+                    raise AttributeError(ke.args[0]) from ke
+            else:
+                self._key_fallback(key, KeyError(key))
+        else:
+            # unknown key
+            self._raise_for_ambiguous_column_name(self._keymap[key])
+
 
 class RMKeyView(typing.KeysView[Any]):
     __slots__ = ("_parent", "_keys")
@@ -223,7 +247,7 @@ class SimpleResultMetaData(ResultMetaData):
         "_tuplefilter",
         "_translated_indexes",
         "_unique_filters",
-        "_keymap_by_str",
+        "_key_to_index",
     )
 
     _keys: Sequence[str]
@@ -259,9 +283,7 @@ class SimpleResultMetaData(ResultMetaData):
 
         self._processors = _processors
 
-        self._keymap_by_str = {
-            key: rec[0] for key, rec in self._keymap.items()
-        }
+        self._key_to_index = self._make_key_to_index(self._keymap, 0)
 
     def _has_key(self, key: object) -> bool:
         return key in self._keymap

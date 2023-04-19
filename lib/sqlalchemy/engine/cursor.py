@@ -21,6 +21,7 @@ from typing import ClassVar
 from typing import Dict
 from typing import Iterator
 from typing import List
+from typing import Mapping
 from typing import NoReturn
 from typing import Optional
 from typing import overload
@@ -123,7 +124,7 @@ _CursorKeyMapRecType = Tuple[
     Optional[str],  # MD_UNTRANSLATED
 ]
 
-_CursorKeyMapType = Dict["_KeyType", _CursorKeyMapRecType]
+_CursorKeyMapType = Mapping["_KeyType", _CursorKeyMapRecType]
 
 # same as _CursorKeyMapRecType except the MD_INDEX value is definitely
 # not None
@@ -150,7 +151,7 @@ class CursorResultMetaData(ResultMetaData):
         "_translated_indexes",
         "_safe_for_cache",
         "_unpickled",
-        "_keymap_by_str"
+        "_key_to_index"
         # don't need _unique_filters support here for now.  Can be added
         # if a need arises.
     )
@@ -184,7 +185,6 @@ class CursorResultMetaData(ResultMetaData):
         translated_indexes: Optional[List[int]],
         safe_for_cache: bool,
         keymap_by_result_column_idx: Any,
-        keymap_by_str: Dict[_KeyType, _KeyMapRecType],
     ) -> CursorResultMetaData:
         new_obj = self.__class__.__new__(self.__class__)
         new_obj._unpickled = unpickled
@@ -195,26 +195,23 @@ class CursorResultMetaData(ResultMetaData):
         new_obj._translated_indexes = translated_indexes
         new_obj._safe_for_cache = safe_for_cache
         new_obj._keymap_by_result_column_idx = keymap_by_result_column_idx
-        new_obj._keymap_by_str = keymap_by_str
+        new_obj._key_to_index = self._make_key_to_index(keymap, MD_INDEX)
         return new_obj
 
     def _remove_processors(self) -> CursorResultMetaData:
         assert not self._tuplefilter
-        keymap = {
-            key: value[0:5] + (None,) + value[6:]
-            for key, value in self._keymap.items()
-        }
-        keymap_by_str = {key: rec[MD_INDEX] for key, rec in keymap.items()}
         return self._make_new_metadata(
             unpickled=self._unpickled,
             processors=[None] * len(self._processors),
             tuplefilter=None,
             translated_indexes=None,
-            keymap=keymap,
+            keymap={
+                key: value[0:5] + (None,) + value[6:]
+                for key, value in self._keymap.items()
+            },
             keys=self._keys,
             safe_for_cache=self._safe_for_cache,
             keymap_by_result_column_idx=self._keymap_by_result_column_idx,
-            keymap_by_str=keymap_by_str,
         )
 
     def _splice_horizontally(
@@ -223,7 +220,7 @@ class CursorResultMetaData(ResultMetaData):
 
         assert not self._tuplefilter
 
-        keymap = self._keymap.copy()
+        keymap = dict(self._keymap)
         offset = len(self._keys)
         keymap.update(
             {
@@ -238,7 +235,6 @@ class CursorResultMetaData(ResultMetaData):
                 for key, value in other._keymap.items()
             }
         )
-        keymap_by_str = {key: rec[MD_INDEX] for key, rec in keymap.items()}
         return self._make_new_metadata(
             unpickled=self._unpickled,
             processors=self._processors + other._processors,  # type: ignore
@@ -251,7 +247,6 @@ class CursorResultMetaData(ResultMetaData):
                 metadata_entry[MD_RESULT_MAP_INDEX]: metadata_entry
                 for metadata_entry in keymap.values()
             },
-            keymap_by_str=keymap_by_str,
         )
 
     def _reduce(self, keys: Sequence[_KeyIndexType]) -> ResultMetaData:
@@ -265,7 +260,7 @@ class CursorResultMetaData(ResultMetaData):
         tup = tuplegetter(*indexes)
         new_recs = [(index,) + rec[1:] for index, rec in enumerate(recs)]
 
-        keymap: _KeyMapType = {rec[MD_LOOKUP_KEY]: rec for rec in new_recs}
+        keymap = {rec[MD_LOOKUP_KEY]: rec for rec in new_recs}
         # TODO: need unit test for:
         # result = connection.execute("raw sql, no columns").scalars()
         # without the "or ()" it's failing because MD_OBJECTS is None
@@ -274,7 +269,6 @@ class CursorResultMetaData(ResultMetaData):
             for new_rec in new_recs
             for e in new_rec[MD_OBJECTS] or ()
         )
-        keymap_by_str = {key: rec[MD_INDEX] for key, rec in keymap.items()}
 
         return self._make_new_metadata(
             unpickled=self._unpickled,
@@ -282,10 +276,9 @@ class CursorResultMetaData(ResultMetaData):
             keys=new_keys,
             tuplefilter=tup,
             translated_indexes=indexes,
-            keymap=keymap,
+            keymap=keymap,  # type: ignore[arg-type]
             safe_for_cache=self._safe_for_cache,
             keymap_by_result_column_idx=self._keymap_by_result_column_idx,
-            keymap_by_str=keymap_by_str,
         )
 
     def _adapt_to_context(self, context: ExecutionContext) -> ResultMetaData:
@@ -330,19 +323,17 @@ class CursorResultMetaData(ResultMetaData):
             }
 
         assert not self._tuplefilter
-        keymap = compat.dict_union(
-            self._keymap,
-            {
-                new: keymap_by_position[idx]
-                for idx, new in enumerate(
-                    invoked_statement._all_selected_columns
-                )
-                if idx in keymap_by_position
-            },
-        )
-        keymap_by_str = {key: rec[MD_INDEX] for key, rec in keymap.items()}
         return self._make_new_metadata(
-            keymap=keymap,
+            keymap=compat.dict_union(
+                self._keymap,
+                {
+                    new: keymap_by_position[idx]
+                    for idx, new in enumerate(
+                        invoked_statement._all_selected_columns
+                    )
+                    if idx in keymap_by_position
+                },
+            ),
             unpickled=self._unpickled,
             processors=self._processors,
             tuplefilter=None,
@@ -350,7 +341,6 @@ class CursorResultMetaData(ResultMetaData):
             keys=self._keys,
             safe_for_cache=self._safe_for_cache,
             keymap_by_result_column_idx=self._keymap_by_result_column_idx,
-            keymap_by_str=keymap_by_str,
         )
 
     def __init__(
@@ -503,9 +493,7 @@ class CursorResultMetaData(ResultMetaData):
                 }
             )
 
-        self._keymap_by_str = {
-            key: rec[MD_INDEX] for key, rec in self._keymap.items()
-        }
+        self._key_to_index = self._make_key_to_index(self._keymap, MD_INDEX)
 
     def _merge_cursor_description(
         self,
@@ -914,23 +902,19 @@ class CursorResultMetaData(ResultMetaData):
 
     def __getstate__(self):
         # TODO: consider serializing this as SimpleResultMetaData
-        keymap: _CursorKeyMapType = {
-            key: (
-                rec[MD_INDEX],
-                rec[MD_RESULT_MAP_INDEX],
-                [],
-                key,
-                rec[MD_RENDERED_NAME],
-                None,
-                None,
-            )
-            for key, rec in self._keymap.items()
-            if isinstance(key, (str, int))
-        }
         return {
-            "_keymap": keymap,
-            "_keymap_by_str": {
-                key: rec[MD_INDEX] for key, rec in keymap.items()
+            "_keymap": {
+                key: (
+                    rec[MD_INDEX],
+                    rec[MD_RESULT_MAP_INDEX],
+                    [],
+                    key,
+                    rec[MD_RENDERED_NAME],
+                    None,
+                    None,
+                )
+                for key, rec in self._keymap.items()
+                if isinstance(key, (str, int))
             },
             "_keys": self._keys,
             "_translated_indexes": self._translated_indexes,
@@ -940,7 +924,7 @@ class CursorResultMetaData(ResultMetaData):
         self._processors = [None for _ in range(len(state["_keys"]))]
         self._keymap = state["_keymap"]
         self._keymap_by_result_column_idx = None
-        self._keymap_by_str = state["_keymap_by_str"]
+        self._key_to_index = self._make_key_to_index(self._keymap, MD_INDEX)
         self._keys = state["_keys"]
         self._unpickled = True
         if state["_translated_indexes"]:
@@ -1391,7 +1375,7 @@ class _NoResultMetaData(ResultMetaData):
         self._we_dont_return_rows()
 
     @property
-    def _keymap_by_str(self):
+    def _key_to_index(self):
         self._we_dont_return_rows()
 
     @property

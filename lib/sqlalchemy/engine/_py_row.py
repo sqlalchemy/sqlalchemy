@@ -7,13 +7,12 @@ from typing import Callable
 from typing import Dict
 from typing import Iterator
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import Tuple
 from typing import Type
-from typing import Union
 
 if typing.TYPE_CHECKING:
-    from .result import _KeyMapRecType
     from .result import _KeyType
     from .result import _ProcessorsType
     from .result import _RawRowType
@@ -22,14 +21,12 @@ if typing.TYPE_CHECKING:
 
 MD_INDEX = 0  # integer index in cursor.description
 
-_MISSING_SENTINEL = object()
-
 
 class BaseRow:
-    __slots__ = ("_parent", "_data", "_keymap_by_str")
+    __slots__ = ("_parent", "_data", "_key_to_index")
 
     _parent: ResultMetaData
-    _keymap_by_str: Dict[_KeyType, _KeyMapRecType]
+    _key_to_index: Mapping[_KeyType, int]
     _data: _RawRowType
 
     def __init__(
@@ -41,7 +38,7 @@ class BaseRow:
         """Row objects are constructed by CursorResult objects."""
         object.__setattr__(self, "_parent", parent)
 
-        object.__setattr__(self, "_keymap_by_str", parent._keymap_by_str)
+        object.__setattr__(self, "_key_to_index", parent._key_to_index)
 
         if processors:
             object.__setattr__(
@@ -73,7 +70,7 @@ class BaseRow:
         parent = state["_parent"]
         object.__setattr__(self, "_parent", parent)
         object.__setattr__(self, "_data", state["_data"])
-        object.__setattr__(self, "_keymap_by_str", parent._keymap_by_str)
+        object.__setattr__(self, "_key_to_index", parent._key_to_index)
 
     def _values_impl(self) -> List[Any]:
         return list(self)
@@ -87,34 +84,22 @@ class BaseRow:
     def __hash__(self) -> int:
         return hash(self._data)
 
-    def _get_by_int_impl(self, key: Union[int, slice]) -> Any:
+    def __getitem__(self, key: Any) -> Any:
         return self._data[key]
 
-    if not typing.TYPE_CHECKING:
-        __getitem__ = _get_by_int_impl
-
     def _get_by_key_impl_mapping(self, key: str) -> Any:
-        cached_index = self._keymap_by_str.get(key, _MISSING_SENTINEL)
-        if cached_index is not _MISSING_SENTINEL and cached_index is not None:
-            return self._data[cached_index]
-        if cached_index is _MISSING_SENTINEL:
-            self._parent._key_fallback(key, KeyError(key))
-        self._parent._raise_for_ambiguous_column_name(
-            self._parent._keymap[key]
-        )
+        try:
+            return self._data[self._key_to_index[key]]
+        except KeyError:
+            pass
+        self._parent._key_not_found(key, False)
 
     def __getattr__(self, name: str) -> Any:
-        cached_index = self._keymap_by_str.get(name, _MISSING_SENTINEL)
-        if cached_index is not _MISSING_SENTINEL and cached_index is not None:
-            return self._data[cached_index]
-        if cached_index is _MISSING_SENTINEL:
-            try:
-                self._parent._key_fallback(name, KeyError(name))
-            except KeyError as e:
-                raise AttributeError(e.args[0]) from e
-        self._parent._raise_for_ambiguous_column_name(
-            self._parent._keymap[name]
-        )
+        try:
+            return self._data[self._key_to_index[name]]
+        except KeyError:
+            pass
+        self._parent._key_not_found(name, True)
 
 
 # This reconstructor is necessary so that pickles with the Cy extension or

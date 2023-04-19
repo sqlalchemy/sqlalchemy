@@ -2,11 +2,9 @@
 # more improvements are likely possible
 import operator
 
-cdef object _MISSING_SENTINEL = object()
-
 cdef class BaseRow:
     cdef readonly object _parent
-    cdef readonly dict _keymap_by_str
+    cdef readonly dict _key_to_index
     cdef readonly tuple _data
 
     def __init__(self, object parent, object processors, object data):
@@ -14,7 +12,7 @@ cdef class BaseRow:
 
         self._parent = parent
 
-        self._keymap_by_str = parent._keymap_by_str
+        self._key_to_index = parent._key_to_index
 
         if processors:
             self._data = tuple(
@@ -42,7 +40,7 @@ cdef class BaseRow:
         parent = state["_parent"]
         self._parent = parent
         self._data = state["_data"]
-        self._keymap_by_str = parent._keymap_by_str
+        self._key_to_index = parent._key_to_index
 
     def _values_impl(self):
         return list(self)
@@ -59,24 +57,17 @@ cdef class BaseRow:
     def __getitem__(self, index):
         return self._data[index]
 
-    cpdef _get_by_key_impl_mapping(self, key):
-        cached_index = self._keymap_by_str.get(key, _MISSING_SENTINEL)
-        if cached_index is not _MISSING_SENTINEL and cached_index is not None:
-            return self._data[cached_index]        
-        if cached_index is _MISSING_SENTINEL:
-            self._parent._key_fallback(key, KeyError(key))
-        self._parent._raise_for_ambiguous_column_name(self._parent._keymap[key])
+    def _get_by_key_impl_mapping(self, key):
+        return self._get_by_key_impl(key, 0)
+
+    cdef _get_by_key_impl(self, object key, int attr_err):
+        index = self._key_to_index.get(key)
+        if index is not None:
+            return self._data[<int>index]
+        self._parent._key_not_found(key, attr_err != 0)
 
     def __getattr__(self, name):
-        cached_index = self._keymap_by_str.get(name, _MISSING_SENTINEL)
-        if cached_index is not _MISSING_SENTINEL and cached_index is not None:
-            return self._data[cached_index]
-        if cached_index is _MISSING_SENTINEL:
-            try:
-                self._parent._key_fallback(name, KeyError(name))
-            except KeyError as e:
-                raise AttributeError(e.args[0]) from e
-        self._parent._raise_for_ambiguous_column_name(self._parent._keymap[name])
+        return self._get_by_key_impl(name, 1)
 
 
 def rowproxy_reconstructor(cls, state):

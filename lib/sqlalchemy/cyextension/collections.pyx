@@ -1,5 +1,4 @@
 cimport cython
-from cpython.dict cimport PyDict_Merge, PyDict_Update
 from cpython.long cimport PyLong_FromLongLong
 from cpython.set cimport PySet_Add
 

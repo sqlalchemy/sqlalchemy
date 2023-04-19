@@ -128,20 +128,12 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
         .. versionadded:: 1.4
 
         """
-        return RowMapping(
-            self._parent,
-            None,
-            self._data,
-        )
+        return RowMapping(self._parent, None, self._data)
 
     def _filter_on_values(
         self, filters: Optional[Sequence[Optional[_ResultProcessorType[Any]]]]
     ) -> Row[Any]:
-        return Row(
-            self._parent,
-            filters,
-            self._data,
-        )
+        return Row(self._parent, filters, self._data)
 
     if not TYPE_CHECKING:
 
@@ -188,9 +180,7 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
         def __getitem__(self, index: slice) -> Sequence[Any]:
             ...
 
-        def __getitem__(
-            self, index: Union[int, slice]
-        ) -> Union[Any, Sequence[Any]]:
+        def __getitem__(self, index: Union[int, slice]) -> Any:
             ...
 
     def __lt__(self, other: Any) -> bool:

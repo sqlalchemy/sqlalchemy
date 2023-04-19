@@ -1709,7 +1709,7 @@ class CursorResultTest(fixtures.TablesTest):
         class MockMeta:
             def __init__(self):
                 self._keymap = {"key": (0, None, "key"), 0: (0, None, "key")}
-                self._keymap_by_str = {
+                self._key_to_index = {
                     key: rec[0] for key, rec in self._keymap.items()
                 }
 
@@ -1765,7 +1765,7 @@ class CursorResultTest(fixtures.TablesTest):
         class MockMeta:
             def __init__(self):
                 self._keymap = {"key": (None, 0), 0: (None, 0)}
-                self._keymap_by_str = {
+                self._key_to_index = {
                     key: rec[0] for key, rec in self._keymap.items()
                 }
 
@@ -1844,7 +1844,7 @@ class CursorResultTest(fixtures.TablesTest):
         class MockMeta:
             def __init__(self):
                 self._keymap = {"key": (None, 0), 0: (None, 0)}
-                self._keymap_by_str = {
+                self._key_to_index = {
                     key: rec[0] for key, rec in self._keymap.items()
                 }
 

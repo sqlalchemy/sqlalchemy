@@ -220,7 +220,7 @@ class RowTest(fixtures.TestBase):
         class MockMeta:
             def __init__(self):
                 self._keymap = keymap
-                self._keymap_by_str = {
+                self._key_to_index = {
                     key: rec[0] for key, rec in self._keymap.items()
                 }
 
