@@ -271,9 +271,11 @@ class ROMappingView(ABC):
     __slots__ = ()
 
     _items: Sequence[Any]
-    _mapping: Mapping[str, Any]
+    _mapping: Mapping["_KeyType", Any]
 
-    def __init__(self, mapping: Mapping[str, Any], items: Sequence[Any]):
+    def __init__(
+        self, mapping: Mapping["_KeyType", Any], items: Sequence[Any]
+    ):
         self._mapping = mapping
         self._items = items
 
@@ -297,16 +299,16 @@ class ROMappingView(ABC):
 
 
 class ROMappingKeysValuesView(
-    ROMappingView, typing.KeysView[str], typing.ValuesView[Any]
+    ROMappingView, typing.KeysView["_KeyType"], typing.ValuesView[Any]
 ):
     __slots__ = ("_items",)
 
 
-class ROMappingItemsView(ROMappingView, typing.ItemsView[str, Any]):
+class ROMappingItemsView(ROMappingView, typing.ItemsView["_KeyType", Any]):
     __slots__ = ("_items",)
 
 
-class RowMapping(BaseRow, typing.Mapping[str, Any]):
+class RowMapping(BaseRow, typing.Mapping["_KeyType", Any]):
     """A ``Mapping`` that maps column names and objects to :class:`.Row`
     values.
 
