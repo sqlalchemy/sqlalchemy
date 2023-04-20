@@ -19,6 +19,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Index
 from sqlalchemy import inspect
+from sqlalchemy import LargeBinary
 from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import pool
@@ -279,6 +280,28 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         ):
             bindproc = t.dialect_impl(dialect).bind_processor(dialect)
             assert not bindproc or isinstance(bindproc("some string"), str)
+
+    def test_bytes(self, connection, metadata):
+        """Test that the bytes are processed correctly."""
+
+        t = Table(
+            "bytes_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("thebytes", LargeBinary(50)),
+        )
+        metadata.create_all(connection)
+        for stmt in [
+            "INSERT INTO bytes_table (id, thebytes) " "VALUES (1, x'37e79f');",
+        ]:
+            connection.exec_driver_sql(stmt)
+
+        eq_(
+            connection.execute(
+                t.select().where(t.c.thebytes).order_by(t.c.id)
+            ).fetchall(),
+            [(1, b'7\xe7\x9f')],
+        )
 
 
 class JSONTest(fixtures.TestBase):

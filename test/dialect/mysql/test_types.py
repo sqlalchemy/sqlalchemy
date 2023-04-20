@@ -739,6 +739,25 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
             self.assert_(colspec(table.c.y1).startswith("y1 YEAR"))
             eq_regex(colspec(table.c.y5), r"y5 YEAR(?:\(4\))?")
 
+    def test_bytes_roundtrip(self, metadata, connection):
+        bytes_table = Table(
+            "mysql_bytes",
+            metadata,
+            Column("thebytes", mysql.MSTinyBlob),
+        )
+
+        for col in bytes_table.c:
+            self.assert_(repr(col))
+        bytes_table.create(connection)
+        reflected = Table("thebytes", MetaData(), autoload_with=connection)
+
+        for table in bytes_table, reflected:
+            connection.execute(
+                table.insert().values([b"abc"])
+            )
+            row = connection.execute(table.select()).first()
+            eq_(list(row), [b"abc"])
+
 
 class JSONTest(fixtures.TestBase):
     __requires__ = ("json_type",)

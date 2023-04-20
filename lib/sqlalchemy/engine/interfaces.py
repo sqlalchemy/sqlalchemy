@@ -1013,6 +1013,13 @@ class Dialect(EventTarget):
     .. versionadded:: 2.0
 
     """
+    supports_native_bytes: bool
+    """indicates if Python bytes() objects are handled natively by the
+    driver for SQL bytes datatypes.
+
+    .. versionadded:: 2.0
+
+    """
 
     construct_arguments: Optional[
         List[Tuple[Type[Union[SchemaItem, ClauseElement]], Mapping[str, Any]]]
