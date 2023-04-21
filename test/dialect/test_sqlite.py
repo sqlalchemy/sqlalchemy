@@ -300,7 +300,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             connection.execute(
                 t.select().where(t.c.thebytes).order_by(t.c.id)
             ).fetchall(),
-            [(1, b'7\xe7\x9f')],
+            [(1, b"7\xe7\x9f")],
         )
 
 

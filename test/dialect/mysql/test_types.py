@@ -752,9 +752,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
         reflected = Table("thebytes", MetaData(), autoload_with=connection)
 
         for table in bytes_table, reflected:
-            connection.execute(
-                table.insert().values([b"abc"])
-            )
+            connection.execute(table.insert().values([b"abc"]))
             row = connection.execute(table.select()).first()
             eq_(list(row), [b"abc"])
 
