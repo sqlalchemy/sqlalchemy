@@ -33,7 +33,7 @@ from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 
 
-class InsertStmtTest(fixtures.TestBase):
+class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
     def test_no_returning_error(self, decl_base):
         class A(fixtures.ComparableEntity, decl_base):
             __tablename__ = "a"
@@ -87,6 +87,48 @@ class InsertStmtTest(fixtures.TestBase):
         eq_(
             s.execute(select(A.data, A.x).order_by(A.id)).all(),
             [("d3", 5), ("d4", 6)],
+        )
+
+    @testing.requires.insert_returning
+    def test_insert_returning_cols_dont_give_me_defaults(self, decl_base):
+        """test #9685"""
+
+        class User(decl_base):
+            __tablename__ = "users"
+
+            id: Mapped[int] = mapped_column(Identity(), primary_key=True)
+
+            name: Mapped[str] = mapped_column()
+            other_thing: Mapped[Optional[str]]
+            server_thing: Mapped[str] = mapped_column(server_default="thing")
+
+        decl_base.metadata.create_all(testing.db)
+        insert_stmt = insert(User).returning(User.id)
+
+        s = fixture_session()
+
+        with self.sql_execution_asserter() as asserter:
+            result = s.execute(
+                insert_stmt,
+                [
+                    {"name": "some name 1"},
+                    {"name": "some name 2"},
+                    {"name": "some name 3"},
+                ],
+            )
+
+        eq_(result.all(), [(1,), (2,), (3,)])
+
+        asserter.assert_(
+            CompiledSQL(
+                "INSERT INTO users (name) VALUES (:name) "
+                "RETURNING users.id",
+                [
+                    {"name": "some name 1"},
+                    {"name": "some name 2"},
+                    {"name": "some name 3"},
+                ],
+            ),
         )
 
     @testing.requires.insert_returning
@@ -191,17 +233,12 @@ class BulkDMLReturningInhTest:
         with self.sql_execution_asserter() as asserter:
             result = s.execute(stmt, values)
 
-        if inspect(B).single:
-            single_inh = ", a.bd, a.zcol, a.q"
-        else:
-            single_inh = ""
-
         if use_returning:
             asserter.assert_(
                 CompiledSQL(
                     "INSERT INTO a (type, data, xcol) VALUES "
                     "(:type, :data, :xcol) "
-                    f"RETURNING a.id, a.type, a.data, a.xcol, a.y{single_inh}",
+                    "RETURNING a.id, a.type, a.data, a.xcol, a.y",
                     [
                         {"type": "a", "data": "d3", "xcol": 5},
                         {"type": "a", "data": "d4", "xcol": 6},
@@ -209,13 +246,13 @@ class BulkDMLReturningInhTest:
                 ),
                 CompiledSQL(
                     "INSERT INTO a (type, data) VALUES (:type, :data) "
-                    f"RETURNING a.id, a.type, a.data, a.xcol, a.y{single_inh}",
+                    "RETURNING a.id, a.type, a.data, a.xcol, a.y",
                     [{"type": "a", "data": "d5"}],
                 ),
                 CompiledSQL(
                     "INSERT INTO a (type, data, xcol, y) "
                     "VALUES (:type, :data, :xcol, :y) "
-                    f"RETURNING a.id, a.type, a.data, a.xcol, a.y{single_inh}",
+                    "RETURNING a.id, a.type, a.data, a.xcol, a.y",
                     [
                         {"type": "a", "data": "d6", "xcol": 8, "y": 9},
                         {"type": "a", "data": "d7", "xcol": 12, "y": 12},
@@ -224,7 +261,7 @@ class BulkDMLReturningInhTest:
                 CompiledSQL(
                     "INSERT INTO a (type, data, xcol) "
                     "VALUES (:type, :data, :xcol) "
-                    f"RETURNING a.id, a.type, a.data, a.xcol, a.y{single_inh}",
+                    "RETURNING a.id, a.type, a.data, a.xcol, a.y",
                     [{"type": "a", "data": "d8", "xcol": 7}],
                 ),
             )
@@ -258,17 +295,18 @@ class BulkDMLReturningInhTest:
             )
 
         if use_returning:
-            eq_(
-                result.scalars().all(),
-                [
-                    A(data="d3", id=mock.ANY, type="a", x=5, y=None),
-                    A(data="d4", id=mock.ANY, type="a", x=6, y=None),
-                    A(data="d5", id=mock.ANY, type="a", x=None, y=None),
-                    A(data="d6", id=mock.ANY, type="a", x=8, y=9),
-                    A(data="d7", id=mock.ANY, type="a", x=12, y=12),
-                    A(data="d8", id=mock.ANY, type="a", x=7, y=None),
-                ],
-            )
+            with self.assert_statement_count(testing.db, 0):
+                eq_(
+                    result.scalars().all(),
+                    [
+                        A(data="d3", id=mock.ANY, type="a", x=5, y=None),
+                        A(data="d4", id=mock.ANY, type="a", x=6, y=None),
+                        A(data="d5", id=mock.ANY, type="a", x=None, y=None),
+                        A(data="d6", id=mock.ANY, type="a", x=8, y=9),
+                        A(data="d7", id=mock.ANY, type="a", x=12, y=12),
+                        A(data="d8", id=mock.ANY, type="a", x=7, y=None),
+                    ],
+                )
 
     @testing.combinations(
         "strings",

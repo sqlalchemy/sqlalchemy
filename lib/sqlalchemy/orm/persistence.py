@@ -1076,12 +1076,16 @@ def _emit_insert_statements(
             else:
                 do_executemany = False
 
-            if not has_all_defaults and base_mapper._prefer_eager_defaults(
-                connection.dialect, table
-            ):
-                statement = statement.return_defaults(
-                    *mapper._server_default_cols[table]
-                )
+            if use_orm_insert_stmt is None:
+                if (
+                    not has_all_defaults
+                    and base_mapper._prefer_eager_defaults(
+                        connection.dialect, table
+                    )
+                ):
+                    statement = statement.return_defaults(
+                        *mapper._server_default_cols[table]
+                    )
 
             if mapper.version_id_col is not None:
                 statement = statement.return_defaults(mapper.version_id_col)

@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9685
+
+    Fixed bug in ORM bulk insert feature where additional unnecessary columns
+    would be rendered in the INSERT statement if RETURNING of individual columns
+    were requested.
