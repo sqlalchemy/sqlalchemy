@@ -1812,7 +1812,7 @@ and more support towards in recent release series.
 Current Support
 ~~~~~~~~~~~~~~~
 
-The feature is enabled for all included SQLAlchemy backends that support
+The feature is enabled for all backend included in SQLAlchemy that support
 RETURNING, with the exception of Oracle for which both the cx_Oracle and
 OracleDB drivers offer their own equivalent feature. The feature normally takes
 place when making use of the :meth:`_dml.Insert.returning` method of an

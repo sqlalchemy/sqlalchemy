@@ -3,11 +3,11 @@
     :tickets: 9628
 
     Fixed bug in ORM Declarative Dataclasses where the
-    :func:`_orm.queryable_attribute` and :func:`_orm.column_property`
+    :func:`_orm.query_expression` and :func:`_orm.column_property`
     constructs, which are documented as read-only constructs in the context of
     a Declarative mapping, could not be used with a
     :class:`_orm.MappedAsDataclass` class without adding ``init=False``, which
-    in the case of :func:`_orm.queryable_attribute` was not possible as no
+    in the case of :func:`_orm.query_expression` was not possible as no
     ``init`` parameter was included. These constructs have been modified from a
     dataclass perspective to be assumed to be "read only", setting
     ``init=False`` by default and no longer including them in the pep-681
@@ -16,8 +16,8 @@
     these fields don't apply to :func:`_orm.column_property` as used in a
     Declarative dataclasses configuration where the construct would be
     read-only. Also added read-specific parameter
-    :paramref:`_orm.queryable_attribute.compare` to
-    :func:`_orm.queryable_attribute`; :paramref:`_orm.queryable_attribute.repr`
+    :paramref:`_orm.query_expression.compare` to
+    :func:`_orm.query_expression`; :paramref:`_orm.query_expression.repr`
     was already present.
 
 

@@ -162,7 +162,7 @@ Correlating RETURNING records with input data order
 
 When using bulk INSERT with RETURNING, it's important to note that most
 database backends provide no formal guarantee of the order in which the
-records from RETURNING are sent, including that there is no guarantee that
+records from RETURNING are returned, including that there is no guarantee that
 their order will correspond to that of the input records.  For applications
 that need to ensure RETURNING records can be correlated with input data,
 the additional parameter :paramref:`_dml.Insert.returning.sort_by_parameter_order`

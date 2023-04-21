@@ -108,7 +108,7 @@ can lead to errors if a name has already been taken for another prepared
 statement. This issue can arise if your application uses database proxies
 such as PgBouncer to handle connections. One possible workaround is to
 use dynamic prepared statement names, which asyncpg now supports through
-an optional name value for the statement name. This allows you to
+an optional ``name`` value for the statement name. This allows you to
 generate your own unique names that won't conflict with existing ones.
 To achieve this, you can provide a function that will be called every time
 a prepared statement is prepared::
@@ -130,9 +130,9 @@ a prepared statement is prepared::
    https://github.com/sqlalchemy/sqlalchemy/issues/6467
 
 .. warning:: To prevent a buildup of useless prepared statements in
-   your application, it's important to use the NullPool poolclass and
-   PgBouncer with a configured `DISCARD https://www.postgresql.org/docs/current/sql-discard.html`_
-   setup. The DISCARD command is used to release resources held by the db connection,
+   your application, it's important to use the :class:`.NullPool` pool
+   class, and to configure PgBouncer to use `DISCARD <https://www.postgresql.org/docs/current/sql-discard.html>`_
+   when returning connections.  The DISCARD command is used to release resources held by the db connection,
    including prepared statements. Without proper setup, prepared statements can
    accumulate quickly and cause performance issues.
 

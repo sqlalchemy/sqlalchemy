@@ -3,10 +3,9 @@
     :tickets: 9608
 
     Added ``prepared_statement_name_func`` connection argument option in the
-    asyncpg dialect. This option allow passing a callable used to customize
+    asyncpg dialect. This option allows passing a callable used to customize
     the name of the prepared statement that will be created by the driver
-    when executing the queries.
-    Pull request curtesy of Pavel Sirotkin.
+    when executing queries.  Pull request courtesy Pavel Sirotkin.
 
     .. seealso::
 

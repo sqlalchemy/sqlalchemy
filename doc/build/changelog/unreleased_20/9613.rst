@@ -1,6 +1,6 @@
 .. change::
-    :tags: usecase, pool
-    :tickets: 9625
+    :tags: usecase, engine
+    :tickets: 9613
 
     Added :func:`_sa.create_pool_from_url` and
     :func:`_asyncio.create_async_pool_from_url` to create

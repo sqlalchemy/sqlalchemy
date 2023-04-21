@@ -642,7 +642,11 @@ class Range(Generic[_T]):
         return self.difference(other)
 
     def intersection(self, other: Range[_T]) -> Range[_T]:
-        """Compute the intersection of this range with the `other`."""
+        """Compute the intersection of this range with the `other`.
+
+        .. versionadded:: 2.0.10
+
+        """
         if self.empty or other.empty or not self.overlaps(other):
             return Range(None, None, empty=True)
 
