@@ -749,7 +749,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
         for col in bytes_table.c:
             self.assert_(repr(col))
         bytes_table.create(connection)
-        reflected = Table("thebytes", MetaData(), autoload_with=connection)
+        reflected = Table("mysql_bytes", MetaData(), autoload_with=connection)
 
         for table in bytes_table, reflected:
             connection.execute(table.insert().values([b"abc"]))
