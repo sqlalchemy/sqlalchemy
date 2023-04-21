@@ -1,0 +1,6 @@
+.. change::
+    :tags: mysql, performance, sqlite
+    :tickets: 9680
+
+    Improved performance of processing rows that
+    return ``bytes`` objects with SQLite and MySQL.
