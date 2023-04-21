@@ -3550,6 +3550,15 @@ class NoRowInsertedTest(fixtures.TestBase):
                         "RETURNING my_table.id"
                     )
                     parameters = {}
+            else:
+                assert not testing.against(
+                    "postgresql"
+                ), "this test has to at least run on PostgreSQL"
+                testing.config.skip_test(
+                    "backend doesn't support the expected form of "
+                    "RETURNING for this test to work"
+                )
+
             return statement, parameters
 
         return MyClass
