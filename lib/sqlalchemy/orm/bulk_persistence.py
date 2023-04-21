@@ -464,8 +464,9 @@ class ORMDMLState(AbstractORMCompileState):
         compiler,
         orm_level_statement,
         dml_level_statement,
+        dml_mapper,
+        *,
         use_supplemental_cols=True,
-        dml_mapper=None,
     ):
         """establish ORM column handlers for an INSERT, UPDATE, or DELETE
         which uses explicit returning().
@@ -504,7 +505,17 @@ class ORMDMLState(AbstractORMCompileState):
 
             if use_supplemental_cols:
                 dml_level_statement = dml_level_statement.return_defaults(
-                    supplemental_cols=cols_to_return
+                    # this is a little weird looking, but by passing
+                    # primary key as the main list of cols, this tells
+                    # return_defaults to omit server-default cols.  Since
+                    # we have cols_to_return, just return what we asked for
+                    # (plus primary key, which ORM persistence needs since
+                    # we likely set bookkeeping=True here, which is another
+                    # whole thing...).   We dont want to clutter the
+                    # statement up with lots of other cols the user didn't
+                    # ask for.  see #9685
+                    *dml_mapper.primary_key,
+                    supplemental_cols=cols_to_return,
                 )
             else:
                 dml_level_statement = dml_level_statement.returning(
@@ -1280,6 +1291,7 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
             compiler,
             orm_level_statement,
             statement,
+            dml_mapper=mapper,
             use_supplemental_cols=False,
         )
         self.statement = statement
@@ -1314,8 +1326,8 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
             compiler,
             orm_level_statement,
             statement,
-            use_supplemental_cols=True,
             dml_mapper=emit_insert_mapper,
+            use_supplemental_cols=True,
         )
 
         self.statement = statement
@@ -1425,6 +1437,7 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
             compiler,
             orm_level_statement,
             new_stmt,
+            dml_mapper=mapper,
             use_supplemental_cols=use_supplemental_cols,
         )
 
@@ -1795,6 +1808,7 @@ class BulkORMDelete(BulkUDCompileState, DeleteDMLState):
             compiler,
             orm_level_statement,
             new_stmt,
+            dml_mapper=mapper,
             use_supplemental_cols=use_supplemental_cols,
         )
 
