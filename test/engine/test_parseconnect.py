@@ -179,6 +179,7 @@ class URLTest(fixtures.TestBase):
     def test_query_string(self):
         u = url.make_url("dialect://user:pass@host/db?arg1=param1&arg2=param2")
         eq_(u.query, {"arg1": "param1", "arg2": "param2"})
+        eq_(u.normalized_query, {"arg1": ("param1",), "arg2": ("param2",)})
         eq_(
             u.render_as_string(hide_password=False),
             "dialect://user:pass@host/db?arg1=param1&arg2=param2",
@@ -215,6 +216,10 @@ class URLTest(fixtures.TestBase):
         )
         eq_(u.query, {"arg1": "param1", "arg2": ("param2", "param3")})
         eq_(
+            u.normalized_query,
+            {"arg1": ("param1",), "arg2": ("param2", "param3")},
+        )
+        eq_(
             u.render_as_string(hide_password=False),
             "dialect://user:pass@host/db?arg1=param1&arg2=param2&arg2=param3",
         )
@@ -222,6 +227,7 @@ class URLTest(fixtures.TestBase):
         test_url = "dialect://user:pass@host/db?arg1%3D=param1&arg2=param+2"
         u = url.make_url(test_url)
         eq_(u.query, {"arg1=": "param1", "arg2": "param 2"})
+        eq_(u.normalized_query, {"arg1=": ("param1",), "arg2": ("param 2",)})
         eq_(u.render_as_string(hide_password=False), test_url)
 
     def test_comparison(self):

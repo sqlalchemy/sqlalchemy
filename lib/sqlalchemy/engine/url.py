@@ -564,7 +564,7 @@ class URL(NamedTuple):
             ),
         )
 
-    @util.memoized_property
+    @property
     def normalized_query(self) -> Mapping[str, Sequence[str]]:
         """Return the :attr:`_engine.URL.query` dictionary with values normalized
         into sequences.

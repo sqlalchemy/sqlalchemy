@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 9682
+
+    Fixed a bug that prevented use of :attr:`_engine.URL.normalized_query` in
+    SQLAlchemy v2.
