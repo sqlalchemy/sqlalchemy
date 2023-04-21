@@ -3273,6 +3273,9 @@ class Mapper(
 
         """
 
+        if column is not None and sql_base._never_select_column(column):
+            return True
+
         # check for class-bound attributes and/or descriptors,
         # either local or from an inherited class
         # ignore dataclass field default values

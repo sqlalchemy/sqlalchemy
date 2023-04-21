@@ -1,4 +1,5 @@
 import random
+import uuid
 
 import sqlalchemy as sa
 from sqlalchemy import CheckConstraint
@@ -13,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import UniqueConstraint
+from sqlalchemy import Uuid
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import as_declarative
 from sqlalchemy.orm import backref
@@ -208,6 +210,26 @@ class DeclarativeBaseSetupsTest(fixtures.TestBase):
                 TypeError, "'x' is an invalid keyword argument for fakeself"
             ):
                 Base.__init__(fs, x=5)
+
+    def test_insert_sentinel_param_custom_type_maintained(self, decl_base):
+        class A(decl_base):
+            __tablename__ = "a"
+            id: Mapped[uuid.UUID] = mapped_column(
+                default=uuid.uuid4, primary_key=True, insert_sentinel=True
+            )
+            data: Mapped[str]
+
+        is_(A.id.expression.type._type_affinity, Uuid)
+
+    def test_insert_sentinel_param_default_type(self, decl_base):
+        class A(decl_base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(
+                primary_key=True, insert_sentinel=True
+            )
+            data: Mapped[str]
+
+        is_(A.id.expression.type._type_affinity, Integer)
 
     @testing.variation("argument", ["version_id_col", "polymorphic_on"])
     @testing.variation("column_type", ["anno", "non_anno", "plain_column"])

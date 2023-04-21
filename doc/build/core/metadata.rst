@@ -604,6 +604,8 @@ Column, Table, MetaData API
 .. autoclass:: SchemaItem
     :members:
 
+.. autofunction:: insert_sentinel
+
 .. autoclass:: Table
     :members:
     :inherited-members:

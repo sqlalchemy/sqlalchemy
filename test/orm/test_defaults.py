@@ -10,6 +10,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import assert_engine
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
+from sqlalchemy.testing.assertsql import RegexSQL
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -285,26 +286,26 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
                     Conditional(
                         testing.db.dialect.insert_executemany_returning,
                         [
-                            CompiledSQL(
-                                "INSERT INTO test (id, foo) "
-                                "VALUES (%(id)s, %(foo)s) "
-                                "RETURNING test.bar",
+                            RegexSQL(
+                                r"INSERT INTO test \(id, foo\) .*"
+                                r"VALUES \(.*\) .*"
+                                r"RETURNING test.bar, test.id",
                                 [{"foo": 5, "id": 1}, {"foo": 10, "id": 2}],
                                 dialect="postgresql",
                             ),
                         ],
                         [
-                            CompiledSQL(
-                                "INSERT INTO test (id, foo) "
-                                "VALUES (%(id)s, %(foo)s) "
-                                "RETURNING test.bar",
+                            RegexSQL(
+                                r"INSERT INTO test \(id, foo\) .*"
+                                r"VALUES \(.*\) .*"
+                                r"RETURNING test.bar, test.id",
                                 [{"foo": 5, "id": 1}],
                                 dialect="postgresql",
                             ),
-                            CompiledSQL(
-                                "INSERT INTO test (id, foo) "
-                                "VALUES (%(id)s, %(foo)s) "
-                                "RETURNING test.bar",
+                            RegexSQL(
+                                r"INSERT INTO test \(id, foo\) .*"
+                                r"VALUES \(.*\) .*"
+                                r"RETURNING test.bar, test.id",
                                 [{"foo": 10, "id": 2}],
                                 dialect="postgresql",
                             ),
@@ -468,23 +469,23 @@ class IdentityDefaultsOnUpdateTest(fixtures.MappedTest):
                     Conditional(
                         testing.db.dialect.insert_executemany_returning,
                         [
-                            CompiledSQL(
-                                "INSERT INTO test (foo) VALUES (%(foo)s) "
-                                "RETURNING test.id",
+                            RegexSQL(
+                                r"INSERT INTO test \(foo\).*VALUES (.*).* "
+                                r"RETURNING test.id, test.id AS id__1",
                                 [{"foo": 5}, {"foo": 10}],
                                 dialect="postgresql",
                             ),
                         ],
                         [
-                            CompiledSQL(
-                                "INSERT INTO test (foo) VALUES (%(foo)s) "
-                                "RETURNING test.id",
+                            RegexSQL(
+                                r"INSERT INTO test \(foo\).*VALUES (.*).* "
+                                r"RETURNING test.id, test.id AS id__1",
                                 [{"foo": 5}],
                                 dialect="postgresql",
                             ),
-                            CompiledSQL(
-                                "INSERT INTO test (foo) VALUES (%(foo)s) "
-                                "RETURNING test.id",
+                            RegexSQL(
+                                r"INSERT INTO test \(foo\).*VALUES (.*).* "
+                                r"RETURNING test.id, test.id AS id__1",
                                 [{"foo": 10}],
                                 dialect="postgresql",
                             ),

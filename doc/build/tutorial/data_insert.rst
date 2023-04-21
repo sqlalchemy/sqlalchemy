@@ -268,6 +268,12 @@ as in the example below that builds upon the example stated in
     that are included in SQLAlchemy which support RETURNING.  See the section
     :ref:`engine_insertmanyvalues` for background on this feature.
 
+.. seealso::
+
+    Bulk INSERT with or without RETURNING is also supported by the ORM.  See
+    :ref:`orm_queryguide_bulk_insert` for reference documentation.
+
+
 
 .. _tutorial_insert_from_select:
 

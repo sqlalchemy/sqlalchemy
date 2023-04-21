@@ -1891,6 +1891,31 @@ class UuidTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             filter_=lambda x: x.lower(),
         )
 
+    @testing.requires.insert_returning
+    def test_uuid_returning(self, connection):
+        data = uuid.uuid4()
+        str_data = str(data)
+        uuid_table = self.tables.uuid_table
+
+        result = connection.execute(
+            uuid_table.insert().returning(
+                uuid_table.c.uuid_data,
+                uuid_table.c.uuid_text_data,
+                uuid_table.c.uuid_data_nonnative,
+                uuid_table.c.uuid_text_data_nonnative,
+            ),
+            {
+                "id": 1,
+                "uuid_data": data,
+                "uuid_text_data": str_data,
+                "uuid_data_nonnative": data,
+                "uuid_text_data_nonnative": str_data,
+            },
+        )
+        row = result.first()
+
+        eq_(row, (data, str_data, data, str_data))
+
 
 class NativeUUIDTest(UuidTest):
     __requires__ = ("uuid_data_type",)

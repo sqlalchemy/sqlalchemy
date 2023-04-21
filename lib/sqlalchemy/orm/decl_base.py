@@ -459,6 +459,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         "mapper_args",
         "mapper_args_fn",
         "inherits",
+        "single",
         "allow_dataclass_fields",
         "dataclass_setup_arguments",
         "is_dataclass_prior_to_mapping",
@@ -483,6 +484,7 @@ class _ClassScanMapperConfig(_MapperConfig):
     table_args: Optional[_TableArgsType]
     mapper_args_fn: Optional[Callable[[], Dict[str, Any]]]
     inherits: Optional[Type[Any]]
+    single: bool
 
     is_dataclass_prior_to_mapping: bool
     allow_unmapped_annotations: bool
@@ -527,7 +529,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         self.declared_columns = util.OrderedSet()
         self.column_ordering = {}
         self.column_copies = {}
-
+        self.single = False
         self.dataclass_setup_arguments = dca = getattr(
             self.cls, "_sa_apply_dc_transforms", None
         )
@@ -866,7 +868,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                         # should only be __table__
                         continue
                 elif class_mapped:
-                    if _is_declarative_props(obj):
+                    if _is_declarative_props(obj) and not obj._quiet:
                         util.warn(
                             "Regular (i.e. not __special__) "
                             "attribute '%s.%s' uses @declared_attr, "
@@ -1783,6 +1785,10 @@ class _ClassScanMapperConfig(_MapperConfig):
 
         self.inherits = inherits
 
+        clsdict_view = self.clsdict_view
+        if "__table__" not in clsdict_view and self.tablename is None:
+            self.single = True
+
     def _setup_inheriting_columns(self, mapper_kw: _MapperKwArgs) -> None:
         table = self.local_table
         cls = self.cls
@@ -1809,6 +1815,7 @@ class _ClassScanMapperConfig(_MapperConfig):
             )
 
             if table is None:
+
                 # single table inheritance.
                 # ensure no table args
                 if table_args:

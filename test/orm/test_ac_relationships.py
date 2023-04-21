@@ -3,6 +3,7 @@ from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import insert_sentinel
 from sqlalchemy import Integer
 from sqlalchemy import join
 from sqlalchemy import select
@@ -42,6 +43,7 @@ class PartitionByFixture(fixtures.DeclarativeMappedTest):
             __tablename__ = "c"
             id = Column(Integer, primary_key=True)
             b_id = Column(ForeignKey("b.id"))
+            _sentinel = insert_sentinel()
 
         partition = select(
             B,

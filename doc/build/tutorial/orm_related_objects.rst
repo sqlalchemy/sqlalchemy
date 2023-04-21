@@ -199,9 +199,13 @@ newly generated primary key of the ``user_account`` row is applied to the
   >>> session.commit()
   {execsql}INSERT INTO user_account (name, fullname) VALUES (?, ?)
   [...] ('pkrabs', 'Pearl Krabs')
-  INSERT INTO address (email_address, user_id) VALUES (?, ?), (?, ?) RETURNING id
-  [...] ('pearl.krabs@gmail.com', 6, 'pearl@aol.com', 6)
+  INSERT INTO address (email_address, user_id) VALUES (?, ?) RETURNING id
+  [... (insertmanyvalues) 1/2 (ordered; batch not supported)] ('pearl.krabs@gmail.com', 6)
+  INSERT INTO address (email_address, user_id) VALUES (?, ?) RETURNING id
+  [insertmanyvalues 2/2 (ordered; batch not supported)] ('pearl@aol.com', 6)
   COMMIT
+
+
 
 
 .. _tutorial_loading_relationships:

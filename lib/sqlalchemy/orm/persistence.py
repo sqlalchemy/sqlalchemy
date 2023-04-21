@@ -955,8 +955,13 @@ def _emit_insert_statements(
         # if a user query with RETURNING was passed, we definitely need
         # to use RETURNING.
         returning_is_required_anyway = bool(use_orm_insert_stmt._returning)
+        deterministic_results_reqd = (
+            returning_is_required_anyway
+            and use_orm_insert_stmt._sort_by_parameter_order
+        ) or bookkeeping
     else:
         returning_is_required_anyway = False
+        deterministic_results_reqd = bookkeeping
         cached_stmt = base_mapper._memo(("insert", table), table.insert)
         exec_opt = {"compiled_cache": base_mapper._compiled_cache}
 
@@ -1057,22 +1062,31 @@ def _emit_insert_statements(
             # know that we are using RETURNING in any case
 
             records = list(records)
-            if (
-                not hasvalue
-                and connection.dialect.insert_executemany_returning
-                and len(records) > 1
+
+            if returning_is_required_anyway or (
+                not hasvalue and len(records) > 1
             ):
-                do_executemany = True
-            elif returning_is_required_anyway:
-                if connection.dialect.insert_executemany_returning:
+                if (
+                    deterministic_results_reqd
+                    and connection.dialect.insert_executemany_returning_sort_by_parameter_order  # noqa: E501
+                ) or (
+                    not deterministic_results_reqd
+                    and connection.dialect.insert_executemany_returning
+                ):
                     do_executemany = True
-                else:
+                elif returning_is_required_anyway:
+                    if deterministic_results_reqd:
+                        dt = " with RETURNING and sort by parameter order"
+                    else:
+                        dt = " with RETURNING"
                     raise sa_exc.InvalidRequestError(
                         f"Can't use explicit RETURNING for bulk INSERT "
                         f"operation with "
                         f"{connection.dialect.dialect_description} backend; "
-                        f"executemany is not supported with RETURNING"
+                        f"executemany{dt} is not enabled for this dialect."
                     )
+                else:
+                    do_executemany = False
             else:
                 do_executemany = False
 
@@ -1084,13 +1098,19 @@ def _emit_insert_statements(
                     )
                 ):
                     statement = statement.return_defaults(
-                        *mapper._server_default_cols[table]
+                        *mapper._server_default_cols[table],
+                        sort_by_parameter_order=bookkeeping,
                     )
 
             if mapper.version_id_col is not None:
-                statement = statement.return_defaults(mapper.version_id_col)
+                statement = statement.return_defaults(
+                    mapper.version_id_col,
+                    sort_by_parameter_order=bookkeeping,
+                )
             elif do_executemany:
-                statement = statement.return_defaults(*table.primary_key)
+                statement = statement.return_defaults(
+                    *table.primary_key, sort_by_parameter_order=bookkeeping
+                )
 
             if do_executemany:
                 multiparams = [rec[2] for rec in records]

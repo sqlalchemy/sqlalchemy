@@ -68,7 +68,7 @@ class _InsertTestBase:
 
 
 class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
-    __dialect__ = "default"
+    __dialect__ = "default_enhanced"
 
     @testing.combinations(
         ((), ("z",), ()),
@@ -93,6 +93,51 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         stmt = stmt.return_defaults(*second_cols)
         assert isinstance(stmt._return_defaults_columns, tuple)
         eq_(set(stmt._return_defaults_columns), expected)
+
+    @testing.variation("add_values", ["before", "after"])
+    @testing.variation("multi_values", [True, False])
+    @testing.variation("sort_by_parameter_order", [True, False])
+    def test_sort_by_parameter_ordering_parameter_no_multi_values(
+        self, add_values, multi_values, sort_by_parameter_order
+    ):
+        t = table("foo", column("x"), column("y"), column("z"))
+        stmt = insert(t)
+
+        if add_values.before:
+            if multi_values:
+                stmt = stmt.values([{"y": 6}, {"y": 7}])
+            else:
+                stmt = stmt.values(y=6)
+
+        stmt = stmt.returning(
+            t.c.x, sort_by_parameter_order=bool(sort_by_parameter_order)
+        )
+
+        if add_values.after:
+            if multi_values:
+                stmt = stmt.values([{"y": 6}, {"y": 7}])
+            else:
+                stmt = stmt.values(y=6)
+
+        if multi_values:
+            if sort_by_parameter_order:
+                with expect_raises_message(
+                    exc.CompileError,
+                    "RETURNING cannot be determinstically sorted "
+                    "when using an INSERT",
+                ):
+                    stmt.compile()
+            else:
+                self.assert_compile(
+                    stmt,
+                    "INSERT INTO foo (y) VALUES (:y_m0), (:y_m1) "
+                    "RETURNING foo.x",
+                )
+        else:
+            self.assert_compile(
+                stmt,
+                "INSERT INTO foo (y) VALUES (:y) RETURNING foo.x",
+            )
 
     def test_binds_that_match_columns(self):
         """test bind params named after column names

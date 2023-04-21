@@ -12,6 +12,7 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import Mapping
+from typing import NoReturn
 from typing import Set
 from typing import Tuple
 from typing import Type
@@ -364,3 +365,8 @@ def _no_kw() -> exc.ArgumentError:
         "Additional keyword arguments are not accepted by this "
         "function/method.  The presence of **kw is for pep-484 typing purposes"
     )
+
+
+def _unexpected_kw(methname: str, kw: Dict[str, Any]) -> NoReturn:
+    k = list(kw)[0]
+    raise TypeError(f"{methname} got an unexpected keyword argument '{k}'")

@@ -26,6 +26,7 @@ from ._collections import IdentitySet as IdentitySet
 from ._collections import immutabledict as immutabledict
 from ._collections import LRUCache as LRUCache
 from ._collections import merge_lists_w_ordering as merge_lists_w_ordering
+from ._collections import NONE_SET as NONE_SET
 from ._collections import ordered_column_set as ordered_column_set
 from ._collections import OrderedDict as OrderedDict
 from ._collections import OrderedIdentitySet as OrderedIdentitySet

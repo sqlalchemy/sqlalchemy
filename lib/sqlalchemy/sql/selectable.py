@@ -63,6 +63,7 @@ from .base import _EntityNamespace
 from .base import _expand_cloned
 from .base import _from_objects
 from .base import _generative
+from .base import _never_select_column
 from .base import _NoArg
 from .base import _select_iterables
 from .base import CacheableOptions
@@ -930,7 +931,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
     @util.ro_non_memoized_property
     def _select_iterable(self) -> _SelectIterable:
-        return self.c
+        return (c for c in self.c if not _never_select_column(c))
 
     def _init_collections(self) -> None:
         assert "_columns" not in self.__dict__

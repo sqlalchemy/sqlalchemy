@@ -283,7 +283,8 @@ class LogParamsTest(fixtures.TestBase):
 
             eq_regex(
                 self.buf.buffer[4].message,
-                r"\[generated in .* \(insertmanyvalues\)\] \('d0', 'd1', "
+                r"\[generated in .* \(insertmanyvalues\) 1/3 "
+                r"\(unordered\)\] \('d0', 'd1', "
                 r"'d2', 'd3', 'd4', 'd5', 'd6', 'd7', "
                 r"'d8', 'd9', 'd10', 'd11', 'd12', 'd13', 'd14', 'd15', "
                 r"'d16', 'd17', 'd18', 'd19', 'd20', 'd21', 'd22', 'd23', "
@@ -304,7 +305,7 @@ class LogParamsTest(fixtures.TestBase):
             eq_(self.buf.buffer[5].message, full_insert)
             eq_(
                 self.buf.buffer[6].message,
-                "[insertmanyvalues batch 2 of 3] ('d150', 'd151', 'd152', "
+                "[insertmanyvalues 2/3 (unordered)] ('d150', 'd151', 'd152', "
                 "'d153', 'd154', 'd155', 'd156', 'd157', 'd158', 'd159', "
                 "'d160', 'd161', 'd162', 'd163', 'd164', 'd165', 'd166', "
                 "'d167', 'd168', 'd169', 'd170', 'd171', 'd172', 'd173', "
@@ -330,7 +331,7 @@ class LogParamsTest(fixtures.TestBase):
             )
             eq_(
                 self.buf.buffer[8].message,
-                "[insertmanyvalues batch 3 of 3] ('d300', 'd301', 'd302', "
+                "[insertmanyvalues 3/3 (unordered)] ('d300', 'd301', 'd302', "
                 "'d303', 'd304', 'd305', 'd306', 'd307', 'd308', 'd309', "
                 "'d310', 'd311', 'd312', 'd313', 'd314', 'd315', 'd316', "
                 "'d317', 'd318', 'd319', 'd320', 'd321', 'd322', 'd323', "

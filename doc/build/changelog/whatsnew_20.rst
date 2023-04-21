@@ -974,21 +974,20 @@ Driver                         SQLA 1.4 Time (secs)    SQLA 2.0 Time (secs)
 sqlite+pysqlite2 (memory)      6.204843                3.554856
 postgresql+asyncpg (network)   88.292285               4.561492
 postgresql+psycopg (network)   N/A (psycopg3)          4.861368
+mssql+pyodbc (network)         158.396667              4.825139
 oracle+cx_Oracle (network)     92.603953               4.809520
 mariadb+mysqldb (network)      71.705197               4.075377
 ============================   ====================    ====================
 
-.. mssql+pyodbc (network)      .. 158.396667           .. 4.825139
 
 
 .. note::
 
-   .. [#] The feature is disabled for SQL Server as of SQLAlchemy 2.0.9 due
-      to incompatibilities in how table-valued expressions are handled by
-      SQL Server regarding the ORM unit of work.  An upcoming release will
-      re-enable it with unit-of-work oriented adjustments.
-      See https://github.com/sqlalchemy/sqlalchemy/issues/9603 and
-      https://github.com/sqlalchemy/sqlalchemy/issues/9618.
+   .. [#] The feature is was temporarily disabled for SQL Server in
+      SQLAlchemy 2.0.9 due to issues with row ordering when RETURNING is used.
+      In SQLAlchemy 2.0.10, the feature is re-enabled, with special
+      case handling for the unit of work's requirement for RETURNING to be
+      ordered.
 
 Two additional drivers have no change in performance; the psycopg2 drivers,
 for which fast executemany was already implemented in SQLAlchemy 1.4,

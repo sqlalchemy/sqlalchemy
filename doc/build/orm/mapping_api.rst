@@ -133,6 +133,8 @@ Class Mapping API
 
 .. autofunction:: polymorphic_union
 
+.. autofunction:: orm_insert_sentinel
+
 .. autofunction:: reconstructor
 
 .. autoclass:: Mapper

@@ -43,7 +43,7 @@ class register:
 
         return decorate
 
-    def __call__(self, cfg, *arg):
+    def __call__(self, cfg, *arg, **kw):
         if isinstance(cfg, str):
             url = sa_url.make_url(cfg)
         elif isinstance(cfg, sa_url.URL):
@@ -52,9 +52,9 @@ class register:
             url = cfg.db.url
         backend = url.get_backend_name()
         if backend in self.fns:
-            return self.fns[backend](cfg, *arg)
+            return self.fns[backend](cfg, *arg, **kw)
         else:
-            return self.fns["*"](cfg, *arg)
+            return self.fns["*"](cfg, *arg, **kw)
 
 
 def create_follower_db(follower_ident):
@@ -462,7 +462,9 @@ def set_default_schema_on_connection(cfg, dbapi_connection, schema_name):
 
 
 @register.init
-def upsert(cfg, table, returning, set_lambda=None):
+def upsert(
+    cfg, table, returning, *, set_lambda=None, sort_by_parameter_order=False
+):
     """return the backends insert..on conflict / on dupe etc. construct.
 
     while we should add a backend-neutral upsert construct as well, such as

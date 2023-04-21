@@ -251,12 +251,16 @@ The process for fetching this value has several variants:
 
     INSERT INTO t (x) OUTPUT inserted.id VALUES (?)
 
-  .. note::  SQLAlchemy 2.0 introduced the :ref:`engine_insertmanyvalues`
-     feature for SQL Server, which is used by default to optimize many-row
-     INSERT statements; however as of SQLAlchemy 2.0.9 this feature is
-     temporarily disabled for SQL Server, until adjustments can be made
-     so that the ORM unit of work does not rely upon the ordering of returned
-     rows.
+  As of SQLAlchemy 2.0, the :ref:`engine_insertmanyvalues` feature is also
+  used by default to optimize many-row INSERT statements; for SQL Server
+  the feature takes place for both RETURNING and-non RETURNING
+  INSERT statements.
+
+  .. versionchanged:: 2.0.10 The :ref:`engine_insertmanyvalues` feature for
+     SQL Server was temporarily disabled for SQLAlchemy version 2.0.9 due to
+     issues with row ordering. As of 2.0.10 the feature is re-enabled, with
+     special case handling for the unit of work's requirement for RETURNING to
+     be ordered.
 
 * When RETURNING is not available or has been disabled via
   ``implicit_returning=False``, either the ``scope_identity()`` function or
@@ -936,6 +940,7 @@ from ...sql import roles
 from ...sql import sqltypes
 from ...sql import util as sql_util
 from ...sql._typing import is_sql_compiler
+from ...sql.compiler import InsertmanyvaluesSentinelOpts
 from ...types import BIGINT
 from ...types import BINARY
 from ...types import CHAR
@@ -1513,6 +1518,39 @@ class MSUUid(sqltypes.Uuid):
                     return value
 
                 return process
+
+    def _sentinel_value_resolver(self, dialect):
+        """Return a callable that will receive the uuid object or string
+        as it is normally passed to the DB in the parameter set, after
+        bind_processor() is called.  Convert this value to match
+        what it would be as coming back from an INSERT..OUTPUT inserted.
+
+        for the UUID type, there are four varieties of settings so here
+        we seek to convert to the string or UUID representation that comes
+        back from the driver.
+
+        """
+        character_based_uuid = (
+            not dialect.supports_native_uuid or not self.native_uuid
+        )
+
+        if character_based_uuid:
+            if self.native_uuid:
+                # for pyodbc, uuid.uuid() objects are accepted for incoming
+                # data, as well as strings. but the driver will always return
+                # uppercase strings in result sets.
+                def process(value):
+                    return str(value).upper()
+
+            else:
+
+                def process(value):
+                    return str(value)
+
+            return process
+        else:
+            # for pymssql, we get uuid.uuid() objects back.
+            return None
 
 
 class UNIQUEIDENTIFIER(sqltypes.Uuid[sqltypes._UUID_RETURN]):
@@ -2995,12 +3033,17 @@ class MSDialect(default.DefaultDialect):
     # may be changed at server inspection time for older SQL server versions
     supports_multivalues_insert = True
 
-    # disabled due to #9603
-    use_insertmanyvalues = False
+    use_insertmanyvalues = True
 
     # note pyodbc will set this to False if fast_executemany is set,
     # as of SQLAlchemy 2.0.9
     use_insertmanyvalues_wo_returning = True
+
+    insertmanyvalues_implicit_sentinel = (
+        InsertmanyvaluesSentinelOpts.AUTOINCREMENT
+        | InsertmanyvaluesSentinelOpts.IDENTITY
+        | InsertmanyvaluesSentinelOpts.USE_INSERT_FROM_SELECT
+    )
 
     # "The incoming request has too many parameters. The server supports a "
     # "maximum of 2100 parameters."
@@ -3063,14 +3106,6 @@ class MSDialect(default.DefaultDialect):
             self.legacy_schema_aliasing = legacy_schema_aliasing
 
         super().__init__(**opts)
-
-        if self.use_insertmanyvalues:
-            raise exc.ArgumentError(
-                "The use_insertmanyvalues feature on SQL Server is currently "
-                "not safe to use, as returned result rows may be returned in "
-                "random order.  Ensure use_insertmanyvalues is left at its "
-                "default of False (this setting changed in SQLAlchemy 2.0.9)"
-            )
 
         self._json_serializer = json_serializer
         self._json_deserializer = json_deserializer

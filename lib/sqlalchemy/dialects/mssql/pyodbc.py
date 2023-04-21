@@ -290,19 +290,6 @@ Pyodbc have been resolved as of SQLAlchemy 2.0.5. See the notes at
 Fast Executemany Mode
 ---------------------
 
-  .. note::  SQLAlchemy 2.0 introduced the :ref:`engine_insertmanyvalues`
-     feature for SQL Server, which is used by default to optimize many-row
-     INSERT statements; however as of SQLAlchemy 2.0.9 this feature had
-     to be turned off for SQL Server as the database does not support
-     deterministic RETURNING of INSERT rows for a multi-row INSERT statement.
-
-.. versionchanged:: 2.0.9 - ``fast_executemany`` executions will be used
-   for INSERT statements that don't include RETURNING, when
-   ``fast_executemany`` is set. Previously, ``use_insertmanyvalues`` would
-   cause ``fast_executemany`` to not be used in most cases.
-
-   ``use_insertmanyvalues`` is disabled for SQL Server overall as of 2.0.9.
-
 The PyODBC driver includes support for a "fast executemany" mode of execution
 which greatly reduces round trips for a DBAPI ``executemany()`` call when using
 Microsoft ODBC drivers, for **limited size batches that fit in memory**.  The
@@ -316,6 +303,12 @@ Server dialect supports this parameter by passing the
         "mssql+pyodbc://scott:tiger@mssql2017:1433/test?driver=ODBC+Driver+17+for+SQL+Server",
         fast_executemany=True)
 
+.. versionchanged:: 2.0.9 - the ``fast_executemany`` parameter now has its
+   intended effect of this PyODBC feature taking effect for all INSERT
+   statements that are executed with multiple parameter sets, which don't
+   include RETURNING.  Previously, SQLAlchemy 2.0's :term:`insertmanyvalues`
+   feature would cause ``fast_executemany`` to not be used in most cases
+   even if specified.
 
 .. versionadded:: 1.3
 

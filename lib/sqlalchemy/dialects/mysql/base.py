@@ -1062,6 +1062,7 @@ from ...sql import operators
 from ...sql import roles
 from ...sql import sqltypes
 from ...sql import util as sql_util
+from ...sql.compiler import InsertmanyvaluesSentinelOpts
 from ...types import BINARY
 from ...types import BLOB
 from ...types import BOOLEAN
@@ -2414,6 +2415,9 @@ class MySQLDialect(default.DefaultDialect):
     supports_default_metavalue = True
 
     use_insertmanyvalues: bool = True
+    insertmanyvalues_implicit_sentinel = (
+        InsertmanyvaluesSentinelOpts.ANY_AUTOINCREMENT
+    )
 
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False

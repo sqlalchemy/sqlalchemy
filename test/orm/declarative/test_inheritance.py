@@ -1,3 +1,5 @@
+import contextlib
+
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
 from sqlalchemy import Identity
@@ -7,6 +9,7 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import close_all_sessions
+from sqlalchemy.orm import column_property
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
@@ -20,6 +23,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
@@ -986,6 +990,98 @@ class DeclarativeInheritanceTest(
             )
             session.commit()
             eq_(session.query(Engineer).first().target, o1)
+
+    @testing.variation("omit_from_statements", [True, False])
+    @testing.variation("combine_on_b", [True, False])
+    @testing.variation("c_first", [True, False])
+    def test_use_existing_column_other_inh_types(
+        self, decl_base, omit_from_statements, combine_on_b, c_first
+    ):
+        """test additional fixes to use_existing_column, adding
+        some new use cases with "omit_from_statements" which in this case
+        is essentially the same as adding it to the mapper exclude_cols
+        list.
+
+        """
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str]
+            extra: Mapped[int] = mapped_column(
+                use_existing_column=True,
+                _omit_from_statements=bool(omit_from_statements),
+            )
+
+        if c_first:
+
+            class C(A):
+                foo: Mapped[str]
+                extra: Mapped[int] = mapped_column(
+                    use_existing_column=True,
+                    _omit_from_statements=bool(omit_from_statements),
+                )
+
+        if not combine_on_b and not omit_from_statements:
+            ctx = expect_warnings(
+                "Implicitly combining column a.extra with column b.extra",
+                raise_on_any_unexpected=True,
+            )
+        else:
+            ctx = contextlib.nullcontext()
+
+        with ctx:
+
+            class B(A):
+                __tablename__ = "b"
+                id: Mapped[int] = mapped_column(
+                    ForeignKey("a.id"), primary_key=True
+                )
+                if combine_on_b:
+                    extra: Mapped[int] = column_property(
+                        mapped_column(
+                            _omit_from_statements=bool(omit_from_statements)
+                        ),
+                        A.extra,
+                    )
+                else:
+                    extra: Mapped[int] = mapped_column(
+                        use_existing_column=True,
+                        _omit_from_statements=bool(omit_from_statements),
+                    )
+
+        if not c_first:
+
+            class C(A):  # noqa: F811
+                foo: Mapped[str]
+                extra: Mapped[int] = mapped_column(
+                    use_existing_column=True,
+                    _omit_from_statements=bool(omit_from_statements),
+                )
+
+        if bool(omit_from_statements):
+            self.assert_compile(select(A), "SELECT a.id, a.data FROM a")
+        else:
+            self.assert_compile(
+                select(A), "SELECT a.id, a.data, a.extra FROM a"
+            )
+
+        if bool(omit_from_statements) and not combine_on_b:
+            self.assert_compile(
+                select(B),
+                "SELECT b.id, a.id AS id_1, a.data "
+                "FROM a JOIN b ON a.id = b.id",
+            )
+        else:
+            # if we combine_on_b we made a column_property, which brought
+            # out "extra" even if it was omit_from_statements.  this should be
+            # expected
+            self.assert_compile(
+                select(B),
+                "SELECT b.id, a.id AS id_1, a.data, b.extra, "
+                "a.extra AS extra_1 FROM a JOIN b ON a.id = b.id",
+            )
 
     @testing.variation("decl_type", ["legacy", "use_existing_column"])
     def test_columns_single_inheritance_conflict_resolution_pk(

@@ -1,5 +1,6 @@
 from unittest.mock import Mock
 from unittest.mock import patch
+import uuid
 
 from sqlalchemy import cast
 from sqlalchemy import DateTime
@@ -9,6 +10,8 @@ from sqlalchemy import FetchedValue
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Identity
+from sqlalchemy import insert
+from sqlalchemy import insert_sentinel
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import JSON
@@ -19,6 +22,7 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import util
+from sqlalchemy import Uuid
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
@@ -32,12 +36,14 @@ from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import variation_fixture
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
+from sqlalchemy.testing.assertsql import RegexSQL
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
@@ -2536,23 +2542,26 @@ class EagerDefaultsTest(fixtures.MappedTest):
                     Conditional(
                         testing.db.dialect.insert_executemany_returning,
                         [
-                            CompiledSQL(
-                                "INSERT INTO test (id) VALUES (%(id)s) "
-                                "RETURNING test.foo",
+                            RegexSQL(
+                                r"INSERT INTO test \(id\) .*"
+                                r"VALUES \(.*\) .*"
+                                r"RETURNING test.foo, test.id",
                                 [{"id": 1}, {"id": 2}],
                                 dialect="postgresql",
                             ),
                         ],
                         [
-                            CompiledSQL(
-                                "INSERT INTO test (id) VALUES (%(id)s) "
-                                "RETURNING test.foo",
+                            RegexSQL(
+                                r"INSERT INTO test \(id\) .*"
+                                r"VALUES \(.*\) .*"
+                                r"RETURNING test.foo, test.id",
                                 [{"id": 1}],
                                 dialect="postgresql",
                             ),
-                            CompiledSQL(
-                                "INSERT INTO test (id) VALUES (%(id)s) "
-                                "RETURNING test.foo",
+                            RegexSQL(
+                                r"INSERT INTO test \(id\) .*"
+                                r"VALUES \(.*\) .*"
+                                r"RETURNING test.foo, test.id",
                                 [{"id": 2}],
                                 dialect="postgresql",
                             ),
@@ -2595,26 +2604,26 @@ class EagerDefaultsTest(fixtures.MappedTest):
                     Conditional(
                         testing.db.dialect.insert_executemany_returning,
                         [
-                            CompiledSQL(
-                                "INSERT INTO test3 (id, foo) "
-                                "VALUES (%(id)s, lower(%(lower_1)s)) "
-                                "RETURNING test3.foo",
+                            RegexSQL(
+                                r"INSERT INTO test3 \(id, foo\) .*"
+                                r"VALUES \(.*\) .*"
+                                r"RETURNING test3.foo, test3.id",
                                 [{"id": 1}, {"id": 2}],
                                 dialect="postgresql",
                             ),
                         ],
                         [
-                            CompiledSQL(
-                                "INSERT INTO test3 (id, foo) "
-                                "VALUES (%(id)s, lower(%(lower_1)s)) "
-                                "RETURNING test3.foo",
+                            RegexSQL(
+                                r"INSERT INTO test3 \(id, foo\) .*"
+                                r"VALUES \(.*\) .*"
+                                r"RETURNING test3.foo, test3.id",
                                 [{"id": 1}],
                                 dialect="postgresql",
                             ),
-                            CompiledSQL(
-                                "INSERT INTO test3 (id, foo) "
-                                "VALUES (%(id)s, lower(%(lower_1)s)) "
-                                "RETURNING test3.foo",
+                            RegexSQL(
+                                r"INSERT INTO test3 \(id, foo\) .*"
+                                r"VALUES \(.*\) .*"
+                                r"RETURNING test3.foo, test3.id",
                                 [{"id": 2}],
                                 dialect="postgresql",
                             ),
@@ -3830,9 +3839,19 @@ class TryToFoolInsertManyValuesTest(fixtures.TestBase):
             ("identity", testing.requires.identity_columns),
         ],
     )
-    def test_bulk_insert_maintains_correct_pks(
-        self, decl_base, connection, pk_type
-    ):
+    @testing.variation(
+        "sentinel",
+        [
+            "none",  # passes because we automatically downgrade
+            # for no sentinel col
+            "implicit_not_omitted",
+            "implicit_omitted",
+            "explicit",
+            "default_uuid",
+            "default_string_uuid",
+        ],
+    )
+    def test_original_use_case(self, decl_base, connection, pk_type, sentinel):
         """test #9603.
 
         this uses the ORM to ensure the ORM is not using any kind of
@@ -3840,75 +3859,221 @@ class TryToFoolInsertManyValuesTest(fixtures.TestBase):
         specific to SQL Server, however if we identify any other similar
         issues in other DBs we should add tests to this suite.
 
+        NOTE: Assuming the code is not doing the correct kind of INSERT
+        for SQL Server, the SQL Server failure here is still extremely
+        difficult to trip; any changes to the table structure and it no longer
+        fails, and it's likely this version of the test might not fail on SQL
+        Server in any case. The test_this_really_fails_on_mssql_wo_full_fix is
+        more optimized to producing the SQL Server failure as reliably as
+        possible, however this can change at any time as SQL Server's decisions
+        here are completely opaque.
+
         """
 
         class Datum(decl_base):
 
             __tablename__ = "datum"
 
-            id = Column(Integer, autoincrement=False, primary_key=True)
-            data = Column(String(10))
+            datum_id = Column(Integer, Identity(), primary_key=True)
 
         class Result(decl_base):
 
             __tablename__ = "result"
 
             if pk_type.plain_autoinc:
-                id = Column(Integer, primary_key=True)  # noqa: A001
+                result_id = Column(Integer, primary_key=True)
             elif pk_type.sequence:
-                id = Column(  # noqa: A001
-                    Integer, Sequence("rid_seq", start=1), primary_key=True
+                result_id = Column(
+                    Integer,
+                    Sequence("result_id_seq", start=1),
+                    primary_key=True,
                 )
             elif pk_type.identity:
-                id = Column(  # noqa: A001
-                    Integer, Identity(), primary_key=True
-                )
+                result_id = Column(Integer, Identity(), primary_key=True)
             else:
                 pk_type.fail()
 
-            thing = Column(Integer)
-            lft_datum_id = Column(Integer, ForeignKey(Datum.id))
+            lft_datum_id = Column(ForeignKey(Datum.datum_id))
+
+            lft_datum = relationship(Datum)
+
+            if sentinel.implicit_not_omitted or sentinel.implicit_omitted:
+                _sentinel = insert_sentinel(
+                    omit_from_statements=bool(sentinel.implicit_omitted),
+                )
+            elif sentinel.explicit:
+                some_uuid = Column(
+                    Uuid(), insert_sentinel=True, nullable=False
+                )
+            elif sentinel.default_uuid or sentinel.default_string_uuid:
+                _sentinel = Column(
+                    Uuid(native_uuid=bool(sentinel.default_uuid)),
+                    insert_sentinel=True,
+                    default=uuid.uuid4,
+                )
+
+        class ResultDatum(decl_base):
+
+            __tablename__ = "result_datum"
+
+            result_id = Column(ForeignKey(Result.result_id), primary_key=True)
+            lft_datum_id = Column(ForeignKey(Datum.datum_id))
+
+            lft_datum = relationship(Datum)
+            result = relationship(Result)
+
+            if sentinel.implicit_not_omitted or sentinel.implicit_omitted:
+                _sentinel = insert_sentinel(
+                    omit_from_statements=bool(sentinel.implicit_omitted),
+                )
+            elif sentinel.explicit:
+                some_uuid = Column(
+                    Uuid(native_uuid=False),
+                    insert_sentinel=True,
+                    nullable=False,
+                )
+            elif sentinel.default_uuid or sentinel.default_string_uuid:
+                _sentinel = Column(
+                    Uuid(native_uuid=bool(sentinel.default_uuid)),
+                    insert_sentinel=True,
+                    default=uuid.uuid4,
+                )
 
         decl_base.metadata.create_all(connection)
+        N = 13
         with Session(connection) as sess:
+            full_range = [num for num in range(N * N)]
 
-            size = 15
-            datum_ids = list(range(1, size + 1))
-
-            sess.add_all([Datum(id=id_, data=f"d{id_}") for id_ in datum_ids])
+            datum_idx = [Datum() for num in range(N)]
+            sess.add_all(datum_idx)
             sess.flush()
 
-            result_data = [
-                Result(thing=num, lft_datum_id=datum_ids[num % size])
-                for num in range(size * size)
-            ]
-            sess.add_all(result_data)
-            sess.flush()
+            if sentinel.explicit:
+                result_idx = [
+                    Result(
+                        lft_datum=datum_idx[n % N],
+                        some_uuid=uuid.uuid4(),
+                    )
+                    for n in full_range
+                ]
+            else:
+                result_idx = [
+                    Result(
+                        lft_datum=datum_idx[n % N],
+                    )
+                    for n in full_range
+                ]
 
-            # this is what we expected we put in
-            the_data_in_order_should_be = [
-                (num + 1, num, datum_ids[num % size])
-                for num in range(size * size)
-            ]
+            sess.add_all(result_idx)
 
-            # and yes, that's what went in
-            eq_(
-                sess.execute(
-                    select(
-                        Result.id, Result.thing, Result.lft_datum_id
-                    ).order_by(Result.id)
-                ).all(),
-                the_data_in_order_should_be,
+            if sentinel.explicit:
+                sess.add_all(
+                    ResultDatum(
+                        lft_datum=datum_idx[n % N],
+                        result=result_idx[n],
+                        some_uuid=uuid.uuid4(),
+                    )
+                    for n in full_range
+                )
+            else:
+                sess.add_all(
+                    ResultDatum(
+                        lft_datum=datum_idx[n % N],
+                        result=result_idx[n],
+                    )
+                    for n in full_range
+                )
+
+            fixtures.insertmanyvalues_fixture(
+                sess.connection(), warn_on_downgraded=True
+            )
+            if (
+                sentinel.none
+                and testing.db.dialect.insert_returning
+                and testing.db.dialect.use_insertmanyvalues
+                and select()
+                .compile(dialect=testing.db.dialect)
+                ._get_sentinel_column_for_table(Result.__table__)
+                is None
+            ):
+                with expect_warnings(
+                    "Batches were downgraded for sorted INSERT"
+                ):
+                    sess.flush()
+            else:
+                sess.flush()
+
+            num_bad = (
+                sess.query(ResultDatum)
+                .join(Result)
+                .filter(
+                    Result.lft_datum_id != ResultDatum.lft_datum_id,
+                )
+                .count()
             )
 
-            # however, if insertmanyvalues is turned on, OUTPUT inserted
-            # did not give us the rows in the order we sent, so ids were
-            # mis-applied.  even if we sort the original records by the
-            # ids that were given
-            eq_(
-                [
-                    (r.id, r.thing, r.lft_datum_id)
-                    for r in sorted(result_data, key=lambda r: r.id)
-                ],
-                the_data_in_order_should_be,
-            )
+            eq_(num_bad, 0)
+
+    @testing.only_on("mssql")
+    def test_this_really_fails_on_mssql_wo_full_fix(
+        self, decl_base, connection
+    ):
+        """this test tries as hard as possible to simulate the SQL server
+        failure.
+
+        """
+
+        class Datum(decl_base):
+
+            __tablename__ = "datum"
+
+            datum_id = Column(Integer, primary_key=True)
+            data = Column(String(10))
+
+        class Result(decl_base):
+
+            __tablename__ = "result"
+
+            result_id = Column(Integer, primary_key=True)
+
+            lft_datum_id = Column(Integer, ForeignKey(Datum.datum_id))
+
+            # use this instead to resolve; FK constraint is what affects
+            # SQL server
+            # lft_datum_id = Column(Integer)
+
+        decl_base.metadata.create_all(connection)
+
+        size = 13
+
+        result = connection.execute(
+            insert(Datum).returning(Datum.datum_id),
+            [{"data": f"d{i}"} for i in range(size)],
+        )
+
+        datum_ids = [row[0] for row in result]
+        assert datum_ids == list(range(1, size + 1))
+
+        # the rows are not inserted in the order that the table valued
+        # expressions are given.  SQL Server organizes the rows so that the
+        # "datum_id" values are grouped
+        result = connection.execute(
+            insert(Result).returning(
+                Result.result_id,
+                Result.lft_datum_id,
+                sort_by_parameter_order=True,
+            ),
+            [
+                {"lft_datum_id": datum_ids[num % size]}
+                for num in range(size * size)
+            ],
+        )
+
+        we_expect_returning_is = [
+            {"result_id": num + 1, "lft_datum_id": datum_ids[num % size]}
+            for num in range(size * size)
+        ]
+        what_we_got_is = [
+            {"result_id": row[0], "lft_datum_id": row[1]} for row in result
+        ]
+        eq_(we_expect_returning_is, what_we_got_is)

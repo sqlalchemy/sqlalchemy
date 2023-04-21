@@ -1,6 +1,7 @@
 """Tests unitofwork operations."""
 
 import datetime
+import re
 
 import sqlalchemy as sa
 from sqlalchemy import Boolean
@@ -3513,14 +3514,15 @@ class PartialNullPKTest(fixtures.MappedTest):
 class NoRowInsertedTest(fixtures.TestBase):
     """test #7594.
 
-    failure modes when INSERT doesnt actually insert a row.
+    failure modes when INSERT doesn't actually insert a row.
+    s
     """
 
-    __backend__ = True
-
     # the test manipulates INSERTS to become UPDATES to simulate
-    # "INSERT that returns no row" so both are needed
-    __requires__ = ("insert_returning", "update_returning")
+    # "INSERT that returns no row" so both are needed; the manipulations
+    # are currently postgresql or SQLite specific
+    __backend__ = True
+    __only_on__ = ("postgresql", "sqlite")
 
     @testing.fixture
     def null_server_default_fixture(self, registry, connection):
@@ -3537,30 +3539,26 @@ class NoRowInsertedTest(fixtures.TestBase):
         def revert_insert(
             conn, cursor, statement, parameters, context, executemany
         ):
-            if statement.startswith("INSERT"):
-                if statement.endswith("RETURNING my_table.id"):
-                    if executemany and isinstance(parameters, list):
-                        # remove some rows, so the count is wrong
-                        parameters = parameters[0:1]
-                    else:
-                        # statement should return no rows
-                        statement = (
-                            "UPDATE my_table SET id=NULL WHERE 1!=1 "
-                            "RETURNING my_table.id"
-                        )
-                        parameters = {}
+            if re.match(r"INSERT.* RETURNING (?:my_table.)?id", statement):
+                if executemany and isinstance(parameters, list):
+                    # remove some rows, so the count is wrong
+                    parameters = parameters[0:1]
                 else:
-                    assert not testing.against(
-                        "postgresql"
-                    ), "this test has to at least run on PostgreSQL"
-                    testing.config.skip_test(
-                        "backend doesn't support the expected form of "
-                        "RETURNING for this test to work"
+                    # statement should return no rows
+                    statement = (
+                        "UPDATE my_table SET id=NULL WHERE 1!=1 "
+                        "RETURNING my_table.id"
                     )
+                    parameters = {}
             return statement, parameters
 
         return MyClass
 
+    @testing.only_on(
+        "postgresql",
+        "only postgresql uses RETURNING for a single-row "
+        "INSERT among the DBs we are using in this test",
+    )
     def test_insert_single_no_pk_correct_exception(
         self, null_server_default_fixture, connection
     ):

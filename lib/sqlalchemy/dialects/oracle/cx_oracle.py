@@ -543,6 +543,11 @@ class _OracleNumeric(sqltypes.Numeric):
         return handler
 
 
+class _OracleUUID(sqltypes.Uuid):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.STRING
+
+
 class _OracleBinaryFloat(_OracleNumeric):
     def get_dbapi_type(self, dbapi):
         return dbapi.NATIVE_FLOAT
@@ -878,29 +883,9 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
             and is_sql_compiler(self.compiled)
             and self.compiled._oracle_returning
         ):
-            # create a fake cursor result from the out parameters. unlike
-            # get_out_parameter_values(), the result-row handlers here will be
-            # applied at the Result level
 
-            numcols = len(self.out_parameters)
-
-            # [stmt_result for stmt_result in outparam.values] == each
-            # statement in executemany
-            # [val for val in stmt_result] == each row for a particular
-            # statement
-            initial_buffer = list(
-                zip(
-                    *[
-                        [
-                            val
-                            for stmt_result in self.out_parameters[
-                                f"ret_{j}"
-                            ].values
-                            for val in stmt_result
-                        ]
-                        for j in range(numcols)
-                    ]
-                )
+            initial_buffer = self.fetchall_for_returning(
+                self.cursor, _internal=True
             )
 
             fetch_strategy = _cursor.FullyBufferedCursorFetchStrategy(
@@ -920,6 +905,43 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
             c.arraysize = self.dialect.arraysize
 
         return c
+
+    def fetchall_for_returning(self, cursor, *, _internal=False):
+        compiled = self.compiled
+        if (
+            not _internal
+            and compiled is None
+            or not is_sql_compiler(compiled)
+            or not compiled._oracle_returning
+        ):
+            raise NotImplementedError(
+                "execution context was not prepared for Oracle RETURNING"
+            )
+
+        # create a fake cursor result from the out parameters. unlike
+        # get_out_parameter_values(), the result-row handlers here will be
+        # applied at the Result level
+
+        numcols = len(self.out_parameters)
+
+        # [stmt_result for stmt_result in outparam.values] == each
+        # statement in executemany
+        # [val for val in stmt_result] == each row for a particular
+        # statement
+        return list(
+            zip(
+                *[
+                    [
+                        val
+                        for stmt_result in self.out_parameters[
+                            f"ret_{j}"
+                        ].values
+                        for val in (stmt_result or ())
+                    ]
+                    for j in range(numcols)
+                ]
+            )
+        )
 
     def get_out_parameter_values(self, out_param_names):
         # this method should not be called when the compiler has
@@ -942,6 +964,7 @@ class OracleDialect_cx_oracle(OracleDialect):
     supports_sane_multi_rowcount = True
 
     insert_executemany_returning = True
+    insert_executemany_returning_sort_by_parameter_order = True
     update_executemany_returning = True
     delete_executemany_returning = True
 
@@ -974,6 +997,7 @@ class OracleDialect_cx_oracle(OracleDialect):
             oracle.RAW: _OracleRaw,
             sqltypes.Unicode: _OracleUnicodeStringCHAR,
             sqltypes.NVARCHAR: _OracleUnicodeStringNCHAR,
+            sqltypes.Uuid: _OracleUUID,
             oracle.NCLOB: _OracleUnicodeTextNCLOB,
             oracle.ROWID: _OracleRowid,
         }

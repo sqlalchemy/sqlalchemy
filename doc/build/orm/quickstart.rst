@@ -221,10 +221,18 @@ is used:
     ...
     ...     session.commit()
     {execsql}BEGIN (implicit)
-    INSERT INTO user_account (name, fullname) VALUES (?, ?), (?, ?), (?, ?) RETURNING id
-    [...] ('spongebob', 'Spongebob Squarepants', 'sandy', 'Sandy Cheeks', 'patrick', 'Patrick Star')
-    INSERT INTO address (email_address, user_id) VALUES (?, ?), (?, ?), (?, ?) RETURNING id
-    [...] ('spongebob@sqlalchemy.org', 1, 'sandy@sqlalchemy.org', 2, 'sandy@squirrelpower.org', 2)
+    INSERT INTO user_account (name, fullname) VALUES (?, ?) RETURNING id
+    [...] ('spongebob', 'Spongebob Squarepants')
+    INSERT INTO user_account (name, fullname) VALUES (?, ?) RETURNING id
+    [...] ('sandy', 'Sandy Cheeks')
+    INSERT INTO user_account (name, fullname) VALUES (?, ?) RETURNING id
+    [...] ('patrick', 'Patrick Star')
+    INSERT INTO address (email_address, user_id) VALUES (?, ?) RETURNING id
+    [...] ('spongebob@sqlalchemy.org', 1)
+    INSERT INTO address (email_address, user_id) VALUES (?, ?) RETURNING id
+    [...] ('sandy@sqlalchemy.org', 2)
+    INSERT INTO address (email_address, user_id) VALUES (?, ?) RETURNING id
+    [...] ('sandy@squirrelpower.org', 2)
     COMMIT
 
 

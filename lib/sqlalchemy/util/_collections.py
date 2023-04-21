@@ -69,6 +69,7 @@ _VT = TypeVar("_VT", bound=Any)
 _T_co = TypeVar("_T_co", covariant=True)
 
 EMPTY_SET: FrozenSet[Any] = frozenset()
+NONE_SET: FrozenSet[Any] = frozenset([None])
 
 
 def merge_lists_w_ordering(a: List[Any], b: List[Any]) -> List[Any]:

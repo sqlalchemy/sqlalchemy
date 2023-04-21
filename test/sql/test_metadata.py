@@ -21,6 +21,7 @@ from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import func
 from sqlalchemy import Identity
 from sqlalchemy import Index
+from sqlalchemy import insert_sentinel
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import Numeric
@@ -48,6 +49,7 @@ from sqlalchemy.sql import naming
 from sqlalchemy.sql import operators
 from sqlalchemy.sql.base import _NONE_NAME
 from sqlalchemy.sql.elements import literal_column
+from sqlalchemy.sql.schema import _InsertSentinelColumnDefault
 from sqlalchemy.sql.schema import RETAIN_SCHEMA
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -621,7 +623,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         c.add_is_dependent_on(a)
         eq_(meta.sorted_tables, [d, b, a, c, e])
 
-    def test_deterministic_order(self):
+    def test_sort_by_parameter_order(self):
         meta = MetaData()
         a = Table("a", meta, Column("foo", Integer))
         b = Table("b", meta, Column("foo", Integer))
@@ -633,7 +635,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         a.add_is_dependent_on(b)
         eq_(meta.sorted_tables, [b, c, d, a, e])
 
-    def test_fks_deterministic_order(self):
+    def test_fks_sort_by_parameter_order(self):
         meta = MetaData()
         a = Table("a", meta, Column("foo", Integer, ForeignKey("b.foo")))
         b = Table("b", meta, Column("foo", Integer))
@@ -6079,3 +6081,52 @@ class CopyDialectOptionsTest(fixtures.TestBase):
             m2 = MetaData()
             t2 = t1.to_metadata(m2)  # make a copy
             self.check_dialect_options_(t2)
+
+
+class SentinelColTest(fixtures.TestBase):
+    def make_table_w_sentinel_col(self, *arg, **kw):
+        return Table(
+            "t",
+            MetaData(),
+            Column("id", Integer, primary_key=True),
+            Column(*arg, **kw),
+        )
+
+    def test_only_one_sentinel(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            "a Table may have only one explicit sentinel column",
+        ):
+            Table(
+                "t",
+                MetaData(),
+                Column("id", Integer, primary_key=True, insert_sentinel=True),
+                Column("ASdf", String(50)),
+                insert_sentinel("sentinel"),
+            )
+
+    def test_no_sentinel_default_on_notnull(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            "The _InsertSentinelColumnDefault may only be applied to a "
+            "Column that is nullable",
+        ):
+            self.make_table_w_sentinel_col(
+                "sentinel",
+                Integer,
+                nullable=False,
+                insert_sentinel=True,
+                default=_InsertSentinelColumnDefault(),
+            )
+
+    def test_no_sentinel_default_on_non_sentinel(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            "The _InsertSentinelColumnDefault may only be applied to a "
+            "Column marked as insert_sentinel=True",
+        ):
+            self.make_table_w_sentinel_col(
+                "sentinel",
+                Integer,
+                default=_InsertSentinelColumnDefault(),
+            )

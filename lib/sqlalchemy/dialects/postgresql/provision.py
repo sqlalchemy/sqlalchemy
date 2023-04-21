@@ -130,7 +130,9 @@ def prepare_for_drop_tables(config, connection):
 
 
 @upsert.for_db("postgresql")
-def _upsert(cfg, table, returning, set_lambda=None):
+def _upsert(
+    cfg, table, returning, *, set_lambda=None, sort_by_parameter_order=False
+):
     from sqlalchemy.dialects.postgresql import insert
 
     stmt = insert(table)
@@ -144,7 +146,9 @@ def _upsert(cfg, table, returning, set_lambda=None):
     else:
         stmt = stmt.on_conflict_do_nothing()
 
-    stmt = stmt.returning(*returning)
+    stmt = stmt.returning(
+        *returning, sort_by_parameter_order=sort_by_parameter_order
+    )
     return stmt
 
 

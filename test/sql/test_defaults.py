@@ -1567,6 +1567,7 @@ class CurrentParametersTest(fixtures.TablesTest):
 
         some_table = self.tables.some_table
         some_table.c.x.default.arg = gen_default
+        some_table.c.x._reset_memoizations()
         return fn
 
     @testing.combinations(

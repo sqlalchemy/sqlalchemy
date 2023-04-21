@@ -58,7 +58,10 @@ from . import ddl
 from . import roles
 from . import type_api
 from . import visitors
+from .base import _DefaultDescriptionTuple
 from .base import _NoneName
+from .base import _SentinelColumnCharacterization
+from .base import _SentinelDefaultCharacterization
 from .base import DedupeColumnCollection
 from .base import DialectKWArgs
 from .base import Executable
@@ -77,6 +80,7 @@ from .. import event
 from .. import exc
 from .. import inspection
 from .. import util
+from ..util import HasMemoized
 from ..util.typing import Final
 from ..util.typing import Literal
 from ..util.typing import Protocol
@@ -107,13 +111,16 @@ if typing.TYPE_CHECKING:
 
 _T = TypeVar("_T", bound="Any")
 _SI = TypeVar("_SI", bound="SchemaItem")
-_ServerDefaultType = Union["FetchedValue", str, TextClause, ColumnElement[Any]]
 _TAB = TypeVar("_TAB", bound="Table")
 
 
 _CreateDropBind = Union["Engine", "Connection", "MockConnection"]
 
 _ConstraintNameArgument = Optional[Union[str, _NoneName]]
+
+_ServerDefaultArgument = Union[
+    "FetchedValue", str, TextClause, ColumnElement[Any]
+]
 
 
 class SchemaConst(Enum):
@@ -344,6 +351,8 @@ class Table(
             ...
 
     _columns: DedupeColumnCollection[Column[Any]]
+
+    _sentinel_column: Optional[Column[Any]]
 
     constraints: Set[Constraint]
     """A collection of all :class:`_schema.Constraint` objects associated with
@@ -819,6 +828,8 @@ class Table(
             assert isinstance(schema, str)
             self.schema = quoted_name(schema, quote_schema)
 
+        self._sentinel_column = None
+
         self.indexes = set()
         self.constraints = set()
         PrimaryKeyConstraint(
@@ -1004,6 +1015,140 @@ class Table(
     @util.ro_non_memoized_property
     def _autoincrement_column(self) -> Optional[Column[int]]:
         return self.primary_key._autoincrement_column
+
+    @util.ro_memoized_property
+    def _sentinel_column_characteristics(
+        self,
+    ) -> _SentinelColumnCharacterization:
+        """determine a candidate column (or columns, in case of a client
+        generated composite primary key) which can be used as an
+        "insert sentinel" for an INSERT statement.
+
+        The returned structure, :class:`_SentinelColumnCharacterization`,
+        includes all the details needed by :class:`.Dialect` and
+        :class:`.SQLCompiler` to determine if these column(s) can be used
+        as an INSERT..RETURNING sentinel for a particular database
+        dialect.
+
+        .. versionadded:: 2.0.10
+
+        """
+
+        sentinel_is_explicit = False
+        sentinel_is_autoinc = False
+        the_sentinel: Optional[_typing_Sequence[Column[Any]]] = None
+
+        # see if a column was explicitly marked "insert_sentinel=True".
+        explicit_sentinel_col = self._sentinel_column
+
+        if explicit_sentinel_col is not None:
+            the_sentinel = (explicit_sentinel_col,)
+            sentinel_is_explicit = True
+
+        autoinc_col = self._autoincrement_column
+        if sentinel_is_explicit and explicit_sentinel_col is autoinc_col:
+            assert autoinc_col is not None
+            sentinel_is_autoinc = True
+        elif explicit_sentinel_col is None and autoinc_col is not None:
+            the_sentinel = (autoinc_col,)
+            sentinel_is_autoinc = True
+
+        default_characterization = _SentinelDefaultCharacterization.UNKNOWN
+
+        if the_sentinel:
+            the_sentinel_zero = the_sentinel[0]
+            if the_sentinel_zero.identity:
+
+                if the_sentinel_zero.identity._increment_is_negative:
+                    if sentinel_is_explicit:
+                        raise exc.InvalidRequestError(
+                            "Can't use IDENTITY default with negative "
+                            "increment as an explicit sentinel column"
+                        )
+                    else:
+                        if sentinel_is_autoinc:
+                            autoinc_col = None
+                            sentinel_is_autoinc = False
+                        the_sentinel = None
+                else:
+                    default_characterization = (
+                        _SentinelDefaultCharacterization.IDENTITY
+                    )
+            elif (
+                the_sentinel_zero.default is None
+                and the_sentinel_zero.server_default is None
+            ):
+                if the_sentinel_zero.nullable:
+                    raise exc.InvalidRequestError(
+                        f"Column {the_sentinel_zero} has been marked as a "
+                        "sentinel "
+                        "column with no default generation function; it "
+                        "at least needs to be marked nullable=False assuming "
+                        "user-populated sentinel values will be used."
+                    )
+                default_characterization = (
+                    _SentinelDefaultCharacterization.NONE
+                )
+            elif the_sentinel_zero.default is not None:
+                if the_sentinel_zero.default.is_sentinel:
+                    default_characterization = (
+                        _SentinelDefaultCharacterization.SENTINEL_DEFAULT
+                    )
+                elif default_is_sequence(the_sentinel_zero.default):
+
+                    if the_sentinel_zero.default._increment_is_negative:
+                        if sentinel_is_explicit:
+                            raise exc.InvalidRequestError(
+                                "Can't use SEQUENCE default with negative "
+                                "increment as an explicit sentinel column"
+                            )
+                        else:
+                            if sentinel_is_autoinc:
+                                autoinc_col = None
+                                sentinel_is_autoinc = False
+                            the_sentinel = None
+
+                    default_characterization = (
+                        _SentinelDefaultCharacterization.SEQUENCE
+                    )
+                elif the_sentinel_zero.default.is_callable:
+                    default_characterization = (
+                        _SentinelDefaultCharacterization.CLIENTSIDE
+                    )
+            elif the_sentinel_zero.server_default is not None:
+                if sentinel_is_explicit:
+                    raise exc.InvalidRequestError(
+                        f"Column {the_sentinel[0]} can't be a sentinel column "
+                        "because it uses an explicit server side default "
+                        "that's not the Identity() default."
+                    )
+
+                default_characterization = (
+                    _SentinelDefaultCharacterization.SERVERSIDE
+                )
+
+        if the_sentinel is None and self.primary_key:
+            assert autoinc_col is None
+
+            # determine for non-autoincrement pk if all elements are
+            # client side
+            for _pkc in self.primary_key:
+                if _pkc.server_default is not None or (
+                    _pkc.default and not _pkc.default.is_callable
+                ):
+                    break
+            else:
+                the_sentinel = tuple(self.primary_key)
+                default_characterization = (
+                    _SentinelDefaultCharacterization.CLIENTSIDE
+                )
+
+        return _SentinelColumnCharacterization(
+            the_sentinel,
+            sentinel_is_explicit,
+            sentinel_is_autoinc,
+            default_characterization,
+        )
 
     @property
     def autoincrement_column(self) -> Optional[Column[int]]:
@@ -1361,6 +1506,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
     inherit_cache = True
     key: str
 
+    server_default: Optional[FetchedValue]
+
     def __init__(
         self,
         __name_pos: Optional[
@@ -1384,11 +1531,13 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         ] = SchemaConst.NULL_UNSPECIFIED,
         onupdate: Optional[Any] = None,
         primary_key: bool = False,
-        server_default: Optional[_ServerDefaultType] = None,
+        server_default: Optional[_ServerDefaultArgument] = None,
         server_onupdate: Optional[FetchedValue] = None,
         quote: Optional[bool] = None,
         system: bool = False,
         comment: Optional[str] = None,
+        insert_sentinel: bool = False,
+        _omit_from_statements: bool = False,
         _proxies: Optional[Any] = None,
         **dialect_kwargs: Any,
     ):
@@ -1873,6 +2022,22 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                 :paramref:`_schema.Column.comment`
                 parameter to :class:`_schema.Column`.
 
+        :param insert_sentinel: Marks this :class:`_schema.Column` as an
+         :term:`insert sentinel` used for optimizing the performance of the
+         :term:`insertmanyvalues` feature for tables that don't
+         otherwise have qualifying primary key configurations.
+
+         .. versionadded:: 2.0.10
+
+         .. seealso::
+
+            :func:`_schema.insert_sentinel` - all in one helper for declaring
+            sentinel columns
+
+            :ref:`engine_insertmanyvalues`
+
+            :ref:`engine_insertmanyvalues_sentinel_columns`
+
 
         """  # noqa: E501, RST201, RST202
 
@@ -1914,7 +2079,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
 
         self.key = key if key is not None else name  # type: ignore
         self.primary_key = primary_key
-
+        self._insert_sentinel = insert_sentinel
+        self._omit_from_statements = _omit_from_statements
         self._user_defined_nullable = udn = nullable
         if udn is not NULL_UNSPECIFIED:
             self.nullable = udn
@@ -1962,22 +2128,26 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         else:
             self.onpudate = None
 
+        if server_default is not None:
+            if isinstance(server_default, FetchedValue):
+                server_default = server_default._as_for_update(False)
+                l_args.append(server_default)
+            else:
+                server_default = DefaultClause(server_default)
+                l_args.append(server_default)
         self.server_default = server_default
+
+        if server_onupdate is not None:
+            if isinstance(server_onupdate, FetchedValue):
+                server_onupdate = server_onupdate._as_for_update(True)
+                l_args.append(server_onupdate)
+            else:
+                server_onupdate = DefaultClause(
+                    server_onupdate, for_update=True
+                )
+                l_args.append(server_onupdate)
         self.server_onupdate = server_onupdate
 
-        if self.server_default is not None:
-            if isinstance(self.server_default, FetchedValue):
-                l_args.append(self.server_default._as_for_update(False))
-            else:
-                l_args.append(DefaultClause(self.server_default))
-
-        if self.server_onupdate is not None:
-            if isinstance(self.server_onupdate, FetchedValue):
-                l_args.append(self.server_onupdate._as_for_update(True))
-            else:
-                l_args.append(
-                    DefaultClause(self.server_onupdate, for_update=True)
-                )
         self._init_items(*cast(_typing_Sequence[SchemaItem], l_args))
 
         util.set_creation_order(self)
@@ -2041,6 +2211,17 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         for impl in self.type._variant_mapping.values():
             if isinstance(impl, SchemaEventTarget):
                 impl._set_parent_with_dispatch(self)
+
+    @HasMemoized.memoized_attribute
+    def _default_description_tuple(self) -> _DefaultDescriptionTuple:
+        """used by default.py -> _process_execute_defaults()"""
+
+        return _DefaultDescriptionTuple._from_column_default(self.default)
+
+    @HasMemoized.memoized_attribute
+    def _onupdate_description_tuple(self) -> _DefaultDescriptionTuple:
+        """used by default.py -> _process_execute_defaults()"""
+        return _DefaultDescriptionTuple._from_column_default(self.onupdate)
 
     @util.memoized_property
     def _gen_static_annotations_cache_key(self) -> bool:  # type: ignore
@@ -2185,6 +2366,13 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         all_names[self.name] = self
         self.table = table
 
+        if self._insert_sentinel:
+            if self.table._sentinel_column is not None:
+                raise exc.ArgumentError(
+                    "a Table may have only one explicit sentinel column"
+                )
+            self.table._sentinel_column = self
+
         if self.primary_key:
             table.primary_key._replace(self)
         elif self.key in table.primary_key:
@@ -2316,6 +2504,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             server_onupdate=server_onupdate,
             doc=self.doc,
             comment=self.comment,
+            _omit_from_statements=self._omit_from_statements,
+            insert_sentinel=self._insert_sentinel,
             *args,
             **column_kwargs,
         )
@@ -2470,6 +2660,56 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         if fk:
             selectable.foreign_keys.update(fk)  # type: ignore
         return c.key, c
+
+
+def insert_sentinel(
+    name: Optional[str] = None,
+    type_: Optional[_TypeEngineArgument[_T]] = None,
+    *,
+    default: Optional[Any] = None,
+    omit_from_statements: bool = True,
+) -> Column[Any]:
+    """Provides a surrogate :class:`_schema.Column` that will act as a
+    dedicated insert :term:`sentinel` column, allowing efficient bulk
+    inserts with deterministic RETURNING sorting for tables that
+    don't otherwise have qualifying primary key configurations.
+
+    Adding this column to a :class:`.Table` object requires that a
+    corresponding database table actually has this column present, so if adding
+    it to an existing model, existing database tables would need to be migrated
+    (e.g. using ALTER TABLE or similar) to include this column.
+
+    For background on how this object is used, see the section
+    :ref:`engine_insertmanyvalues_sentinel_columns` as part of the
+    section :ref:`engine_insertmanyvalues`.
+
+    The :class:`_schema.Column` returned will be a nullable integer column by
+    default and make use of a sentinel-specific default generator used only in
+    "insertmanyvalues" operations.
+
+    .. seealso::
+
+        :func:`_orm.orm_insert_sentinel`
+
+        :paramref:`_schema.Column.insert_sentinel`
+
+        :ref:`engine_insertmanyvalues`
+
+        :ref:`engine_insertmanyvalues_sentinel_columns`
+
+
+    .. versionadded:: 2.0.10
+
+    """
+    return Column(
+        name=name,
+        type_=type_api.INTEGERTYPE if type_ is None else type_,
+        default=default
+        if default is not None
+        else _InsertSentinelColumnDefault(),
+        _omit_from_statements=omit_from_statements,
+        insert_sentinel=True,
+    )
 
 
 class ForeignKey(DialectKWArgs, SchemaItem):
@@ -3058,17 +3298,24 @@ else:
 
 
 class DefaultGenerator(Executable, SchemaItem):
-    """Base class for column *default* values."""
+    """Base class for column *default* values.
+
+    This object is only present on column.default or column.onupdate.
+    It's not valid as a server default.
+
+    """
 
     __visit_name__ = "default_generator"
 
     _is_default_generator = True
     is_sequence = False
+    is_identity = False
     is_server_default = False
     is_clause_element = False
     is_callable = False
     is_scalar = False
     has_arg = False
+    is_sentinel = False
     column: Optional[Column[Any]]
 
     def __init__(self, for_update: bool = False) -> None:
@@ -3222,6 +3469,44 @@ class ScalarElementColumnDefault(ColumnDefault):
         )
 
 
+class _InsertSentinelColumnDefault(ColumnDefault):
+    """Default generator that's specific to the use of a "sentinel" column
+    when using the insertmanyvalues feature.
+
+    This default is used as part of the :func:`_schema.insert_sentinel`
+    construct.
+
+    """
+
+    is_sentinel = True
+    for_update = False
+    arg = None
+
+    def __new__(cls) -> _InsertSentinelColumnDefault:
+        return object.__new__(cls)
+
+    def __init__(self) -> None:
+        pass
+
+    def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
+        col = cast("Column[Any]", parent)
+        if not col._insert_sentinel:
+            raise exc.ArgumentError(
+                "The _InsertSentinelColumnDefault may only be applied to a "
+                "Column marked as insert_sentinel=True"
+            )
+        elif not col.nullable:
+            raise exc.ArgumentError(
+                "The _InsertSentinelColumnDefault may only be applied to a "
+                "Column that is nullable"
+            )
+
+        super()._set_parent(parent, **kw)
+
+    def _copy(self) -> _InsertSentinelColumnDefault:
+        return _InsertSentinelColumnDefault()
+
+
 _SQLExprDefault = Union["ColumnElement[Any]", "TextClause"]
 
 
@@ -3365,6 +3650,10 @@ class IdentityOptions:
         self.cycle = cycle
         self.cache = cache
         self.order = order
+
+    @property
+    def _increment_is_negative(self) -> bool:
+        return self.increment is not None and self.increment < 0
 
 
 class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
@@ -3674,6 +3963,7 @@ class FetchedValue(SchemaEventTarget):
     reflected = False
     has_argument = False
     is_clause_element = False
+    is_identity = False
 
     column: Optional[Column[Any]]
 
@@ -5667,6 +5957,8 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
     """
 
     __visit_name__ = "identity_column"
+
+    is_identity = True
 
     def __init__(
         self,
