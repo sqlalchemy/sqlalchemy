@@ -1,0 +1,13 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 9608
+
+    Added ``prepared_statement_name_func`` connection argument option in the
+    asyncpg dialect. This option allow passing a callable used to customize
+    the name of the prepared statement that will be created by the driver
+    when executing the queries.
+    Pull request curtesy of Pavel Sirotkin.
+
+    .. seealso::
+
+        :ref:`asyncpg_prepared_statement_name`
