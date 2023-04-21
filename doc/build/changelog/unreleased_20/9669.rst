@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 9669
-
-    Fixed typing issue where :meth:`_orm.PropComparator.and_` expressions would
-    not be correctly typed inside of loader options such as
-    :func:`_orm.selectinload`.

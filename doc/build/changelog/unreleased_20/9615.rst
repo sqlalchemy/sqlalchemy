@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 9615
-
-    Fixed issue that prevented reflection of expression based indexes
-    with long expressions in PostgreSQL. The expression where erroneously
-    truncated to the identifier length (that's 63 bytes by default).

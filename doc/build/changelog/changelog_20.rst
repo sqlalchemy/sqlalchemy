@@ -10,7 +10,208 @@
 
 .. changelog::
     :version: 2.0.10
-    :include_notes_from: unreleased_20
+    :released: April 21, 2023
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 9650
+
+        Added typing information for recently added operators
+        :meth:`.ColumnOperators.icontains`, :meth:`.ColumnOperators.istartswith`,
+        :meth:`.ColumnOperators.iendswith`, and bitwise operators
+        :meth:`.ColumnOperators.bitwise_and`, :meth:`.ColumnOperators.bitwise_or`,
+        :meth:`.ColumnOperators.bitwise_xor`, :meth:`.ColumnOperators.bitwise_not`,
+        :meth:`.ColumnOperators.bitwise_lshift`
+        :meth:`.ColumnOperators.bitwise_rshift`. Pull request courtesy Martijn
+        Pieters.
+
+
+    .. change::
+        :tags: bug, oracle
+
+        Fixed issue where the :class:`_sqltypes.Uuid` datatype could not be used in
+        an INSERT..RETURNING clause with the Oracle dialect.
+
+    .. change::
+        :tags: usecase, engine
+        :tickets: 9613
+
+        Added :func:`_sa.create_pool_from_url` and
+        :func:`_asyncio.create_async_pool_from_url` to create
+        a :class:`_pool.Pool` instance from an input url passed as string
+        or :class:`_sa.URL`.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 9618, 9603
+
+        Repaired a major shortcoming which was identified in the
+        :ref:`engine_insertmanyvalues` performance optimization feature first
+        introduced in the 2.0 series. This was a continuation of the change in
+        2.0.9 which disabled the SQL Server version of the feature due to a
+        reliance in the ORM on apparent row ordering that is not guaranteed to take
+        place. The fix applies new logic to all "insertmanyvalues" operations,
+        which takes effect when a new parameter
+        :paramref:`_dml.Insert.returning.sort_by_parameter_order` on the
+        :meth:`_dml.Insert.returning` or :meth:`_dml.UpdateBase.return_defaults`
+        methods, that through a combination of alternate SQL forms, direct
+        correspondence of client side parameters, and in some cases downgrading to
+        running row-at-a-time, will apply sorting to each batch of returned rows
+        using correspondence to primary key or other unique values in each row
+        which can be correlated to the input data.
+
+        Performance impact is expected to be minimal as nearly all common primary
+        key scenarios are suitable for parameter-ordered batching to be
+        achieved for all backends other than SQLite, while "row-at-a-time"
+        mode operates with a bare minimum of Python overhead compared to the very
+        heavyweight approaches used in the 1.x series. For SQLite, there is no
+        difference in performance when "row-at-a-time" mode is used.
+
+        It's anticipated that with an efficient "row-at-a-time" INSERT with
+        RETURNING batching capability, the "insertmanyvalues" feature can be later
+        be more easily generalized to third party backends that include RETURNING
+        support but not necessarily easy ways to guarantee a correspondence
+        with parameter order.
+
+        .. seealso::
+
+            :ref:`engine_insertmanyvalues_returning_order`
+
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 9618, 9603
+
+        Restored the :term:`insertmanyvalues` feature for Microsoft SQL Server.
+        This feature was disabled in version 2.0.9 due to an apparent reliance
+        on the ordering of RETURNING that is not guaranteed.   The architecture of
+        the "insertmanyvalues" feature has been reworked to accommodate for
+        specific organizations of INSERT statements and result row handling that
+        can guarantee the correspondence of returned rows to input records.
+
+        .. seealso::
+
+          :ref:`engine_insertmanyvalues_returning_order`
+
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 9608
+
+        Added ``prepared_statement_name_func`` connection argument option in the
+        asyncpg dialect. This option allows passing a callable used to customize
+        the name of the prepared statement that will be created by the driver
+        when executing queries.  Pull request courtesy Pavel Sirotkin.
+
+        .. seealso::
+
+            :ref:`asyncpg_prepared_statement_name`
+
+    .. change::
+        :tags: typing, bug
+
+        Updates to the codebase to pass typing with Mypy 1.2.0.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 9669
+
+        Fixed typing issue where :meth:`_orm.PropComparator.and_` expressions would
+        not be correctly typed inside of loader options such as
+        :func:`_orm.selectinload`.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9625
+
+        Fixed issue where the :meth:`_orm.declared_attr.directive` modifier was not
+        correctly honored for subclasses when applied to the ``__mapper_args__``
+        special method name, as opposed to direct use of
+        :class:`_orm.declared_attr`. The two constructs should have identical
+        runtime behaviors.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 9611
+
+        Restored the :paramref:`_postgresql.ENUM.name` parameter as optional in the
+        signature for :class:`_postgresql.ENUM`, as this is chosen automatically
+        from a given pep-435 ``Enum`` type.
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 9621
+
+        Fixed issue where the comparison for :class:`_postgresql.ENUM` against a
+        plain string would cast that right-hand side type as VARCHAR, which due to
+        more explicit casting added to dialects such as asyncpg would produce a
+        PostgreSQL type mismatch error.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9635
+
+        Made an improvement to the :func:`_orm.with_loader_criteria` loader option
+        to allow it to be indicated in the :meth:`.Executable.options` method of a
+        top-level statement that is not itself an ORM statement. Examples include
+        :func:`_sql.select` that's embedded in compound statements such as
+        :func:`_sql.union`, within an :meth:`_dml.Insert.from_select` construct, as
+        well as within CTE expressions that are not ORM related at the top level.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9685
+
+        Fixed bug in ORM bulk insert feature where additional unnecessary columns
+        would be rendered in the INSERT statement if RETURNING of individual columns
+        were requested.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 9615
+
+        Fixed issue that prevented reflection of expression based indexes
+        with long expressions in PostgreSQL. The expression where erroneously
+        truncated to the identifier length (that's 63 bytes by default).
+
+    .. change::
+          :tags: usecase, postgresql
+          :tickets: 9509
+
+          Add missing :meth:`_postgresql.Range.intersection` method.
+          Pull request courtesy Yurii Karabas.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9628
+
+        Fixed bug in ORM Declarative Dataclasses where the
+        :func:`_orm.query_expression` and :func:`_orm.column_property`
+        constructs, which are documented as read-only constructs in the context of
+        a Declarative mapping, could not be used with a
+        :class:`_orm.MappedAsDataclass` class without adding ``init=False``, which
+        in the case of :func:`_orm.query_expression` was not possible as no
+        ``init`` parameter was included. These constructs have been modified from a
+        dataclass perspective to be assumed to be "read only", setting
+        ``init=False`` by default and no longer including them in the pep-681
+        constructor. The dataclass parameters for :func:`_orm.column_property`
+        ``init``, ``default``, ``default_factory``, ``kw_only`` are now deprecated;
+        these fields don't apply to :func:`_orm.column_property` as used in a
+        Declarative dataclasses configuration where the construct would be
+        read-only. Also added read-specific parameter
+        :paramref:`_orm.query_expression.compare` to
+        :func:`_orm.query_expression`; :paramref:`_orm.query_expression.repr`
+        was already present.
+
+
+
+    .. change::
+        :tags: bug, orm
+
+        Added missing :paramref:`_orm.mapped_column.active_history` parameter
+        to :func:`_orm.mapped_column` construct.
 
 .. changelog::
     :version: 2.0.9

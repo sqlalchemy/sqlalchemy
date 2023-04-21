@@ -1,8 +1,0 @@
-.. change::
-    :tags: usecase, engine
-    :tickets: 9613
-
-    Added :func:`_sa.create_pool_from_url` and
-    :func:`_asyncio.create_async_pool_from_url` to create
-    a :class:`_pool.Pool` instance from an input url passed as string
-    or :class:`_sa.URL`.
