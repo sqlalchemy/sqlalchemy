@@ -108,6 +108,20 @@ def test_core_fetchall(n):
     with engine.connect() as conn:
         result = conn.execute(Customer.__table__.select().limit(n)).fetchall()
         for row in result:
+            row.id, row.name, row.description
+
+
+@Profiler.profile
+def test_core_fetchall_mapping(n):
+    """Load Core result rows using fetchall."""
+
+    with engine.connect() as conn:
+        result = (
+            conn.execute(Customer.__table__.select().limit(n))
+            .mappings()
+            .fetchall()
+        )
+        for row in result:
             row["id"], row["name"], row["description"]
 
 
@@ -124,7 +138,7 @@ def test_core_fetchmany_w_streaming(n):
             if not chunk:
                 break
             for row in chunk:
-                row["id"], row["name"], row["description"]
+                row.id, row.name, row.description
 
 
 @Profiler.profile
@@ -138,7 +152,7 @@ def test_core_fetchmany(n):
             if not chunk:
                 break
             for row in chunk:
-                row["id"], row["name"], row["description"]
+                row.id, row.name, row.description
 
 
 @Profiler.profile
