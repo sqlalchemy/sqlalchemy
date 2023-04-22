@@ -528,6 +528,22 @@ class ColumnCollectionAsSelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         eq_(list(coll), [table1.c.description, table1.c.myid])
 
+    def test_c_sub_collection_positive_slice(self):
+        coll = table1.c[0:2]
+
+        is_(coll.myid, table1.c.myid)
+        is_(coll.name, table1.c.name)
+
+        eq_(list(coll), [table1.c.myid, table1.c.name])
+
+    def test_c_sub_collection_negative_slice(self):
+        coll = table1.c[-2:]
+
+        is_(coll.name, table1.c.name)
+        is_(coll.description, table1.c.description)
+
+        eq_(list(coll), [table1.c.name, table1.c.description])
+
     def test_missing_key(self):
 
         with expect_raises_message(KeyError, "unknown"):

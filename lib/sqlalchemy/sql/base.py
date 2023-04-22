@@ -1591,14 +1591,26 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
     ) -> ReadOnlyColumnCollection[_COLKEY, _COL_co]:
         ...
 
+    @overload
     def __getitem__(
-        self, key: Union[str, int, Tuple[Union[str, int], ...]]
+        self, key: slice
+    ) -> ReadOnlyColumnCollection[_COLKEY, _COL_co]:
+        ...
+
+    def __getitem__(
+        self, key: Union[str, int, slice, Tuple[Union[str, int], ...]]
     ) -> Union[ReadOnlyColumnCollection[_COLKEY, _COL_co], _COL_co]:
         try:
-            if isinstance(key, tuple):
-                return ColumnCollection(  # type: ignore
-                    [self._index[sub_key] for sub_key in key]
-                ).as_readonly()
+            if isinstance(key, (tuple, slice)):
+                if isinstance(key, slice):
+                    cols = (
+                        (sub_key, col)
+                        for (sub_key, col, _) in self._collection[key]
+                    )
+                else:
+                    cols = (self._index[sub_key] for sub_key in key)
+
+                return ColumnCollection(cols).as_readonly()
             else:
                 return self._index[key][1]
         except KeyError as err:
