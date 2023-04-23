@@ -258,7 +258,7 @@ loads against a join of the ``employee`` and ``manager`` tables together.
 Loading Joined Inheritance Mappings
 +++++++++++++++++++++++++++++++++++
 
-See the sections :ref:`inheritance_loading_toplevel` for background
+See the section :ref:`inheritance_loading_toplevel` for background
 on inheritance loading techniques, including configuration of tables
 to be queried both at mapper configuration time as well as query time.
 
