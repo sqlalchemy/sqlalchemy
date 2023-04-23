@@ -1,0 +1,50 @@
+name: Build docs
+
+on:
+  # run on push in main or rel_* branches excluding changes are only on example folders
+  push:
+    branches:
+      - main
+      - "rel_*"
+      # branches used to test the workflow
+      - "workflow_test_*"
+    paths-ignore:
+      - "examples/**"
+
+permissions:
+  contents: read
+
+jobs:
+  run-test:
+    name: build-docs
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --requirement doc/build/requirements.txt
+          pip list
+
+      - name: Build docs
+        run: |
+          cd doc/build
+          make html
+
+      - name: Create artifact
+        run: |
+          tar czf docs.tgz doc/build/output/html
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: docs-archive
+          path: docs.tgz
