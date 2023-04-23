@@ -32,6 +32,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install --requirement doc/build/requirements.txt
+          pip install -U sphinx>6
           pip list
 
       - name: Build docs
