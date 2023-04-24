@@ -32,20 +32,39 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install --requirement doc/build/requirements.txt
-          pip install -U sphinx>6
+          pip install -U "sphinx>=6.2,<6.3"
           pip list
 
-      - name: Build docs
+      - name: Build site docs
         run: |
           cd doc/build
-          make html
+          READTHEDOCS=True make -e BUILDDIR=site_output html
 
-      - name: Create artifact
+      - name: Build site zip docs
         run: |
-          tar czf docs.tgz doc/build/output/html
+          cd doc/build
+          make -e BUILDDIR=zip_output html
 
-      - name: Upload artifact
+      - name: Create site docs artifact
+        run: |
+          cd doc/build/site_output/html
+          tar czf sqlalchemy_site_docs.tgz .
+          mv sqlalchemy_site_docs.tgz /
+
+      - name: Create site zipfile artifact
+        run: |
+          cd doc/build/zip_output/html
+          zip -r sqlalchemy_zip_docs.zip *
+          mv sqlalchemy_zip_docs.zip /
+
+      - name: Upload site artifact
         uses: actions/upload-artifact@v3
         with:
-          name: docs-archive
-          path: docs.tgz
+          name: site-docs-archive
+          path: sqlalchemy_site_docs.tgz
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: zip-docs-archive
+          path: sqlalchemy_zip_docs.zip
