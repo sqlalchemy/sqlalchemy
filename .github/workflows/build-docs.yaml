@@ -8,8 +8,7 @@ on:
       - "rel_*"
       # branches used to test the workflow
       - "workflow_test_*"
-    paths-ignore:
-      - "examples/**"
+      - "docs_build_*"
 
 permissions:
   contents: read
@@ -47,27 +46,15 @@ jobs:
 
       - name: Create site docs artifact
         run: |
-          cd doc/build/site_output/html
-          tar czf sqlalchemy_site_docs.tgz .
+          tar czf sqlalchemy_site_docs.tgz doc/build/site_output/html
 
       - name: Create site zipfile artifact
         run: |
-          cd doc/build/zip_output/html
-          zip -r sqlalchemy_zip_docs.zip *
+          zip -r sqlalchemy_zip_docs.zip doc/build/zip_output/html/*
 
-      - name: move files to root
-        run: |
-          mv doc/build/site_output/html/sqlalchemy_site_docs.tgz /
-          mv doc/build/zip_output/html/sqlalchemy_zip_docs.zip /
-
-      - name: Upload site artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v3
+        retention-days: 15
         with:
           name: site-docs-archive
-          path: sqlalchemy_site_docs.tgz
-
-      - name: Upload zip artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: zip-docs-archive
-          path: sqlalchemy_zip_docs.zip
+          path: sqlalchemy_*_docs.*
