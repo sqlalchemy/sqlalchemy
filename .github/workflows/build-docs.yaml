@@ -54,7 +54,7 @@ jobs:
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
-        retention-days: 15
         with:
           name: site-docs-archive
           path: sqlalchemy_*_docs.*
+          retention-days: 15
