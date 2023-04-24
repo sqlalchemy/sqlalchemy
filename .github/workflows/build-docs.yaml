@@ -47,7 +47,7 @@ jobs:
       - name: Create site docs artifact
         run: |
           cd doc/build/site_output/html
-          tar czf ${GITHUB_WORKSPACE}/sqlalchemy_site_docs.tgz .
+          tar czf ${GITHUB_WORKSPACE}/sqlalchemy_site_docs.tgz *
 
       - name: Create site zipfile artifact
         run: |
