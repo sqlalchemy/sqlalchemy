@@ -1166,7 +1166,7 @@ class ReflectionTest(
         connection.exec_driver_sql(
             """
             create index idx3 on party
-                (lower(name::text), other, lower(aname::text))
+                (lower(name::text), other, lower(aname::text) desc)
             """
         )
         connection.exec_driver_sql(
@@ -1216,6 +1216,7 @@ class ReflectionTest(
                 "unique": False,
                 "include_columns": [],
                 "dialect_options": {"postgresql_include": []},
+                "column_sorting": {"lower(aname::text)": ("desc",)},
             },
             {
                 "name": "idx4",

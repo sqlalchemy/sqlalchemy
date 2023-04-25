@@ -5,7 +5,6 @@ from sqlalchemy import FLOAT
 from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import ForeignKeyConstraint
-from sqlalchemy import func
 from sqlalchemy import Identity
 from sqlalchemy import Index
 from sqlalchemy import inspect
@@ -982,36 +981,109 @@ class RoundTripIndexTest(fixtures.TestBase):
         )
 
     def test_reflect_fn_index(self, metadata, connection):
-        """test reflection of a functional index.
+        """test reflection of a functional index."""
 
-        it appears this emitted a warning at some point but does not right now.
-        the returned data is not exactly correct, but this is what it's
-        likely been doing for many years.
+        Table(
+            "sometable",
+            metadata,
+            Column("group", Unicode(255)),
+            Column("col", Unicode(255)),
+            Column("other", Unicode(255), index=True),
+        )
+        metadata.create_all(connection)
+        connection.exec_driver_sql(
+            """create index idx3 on sometable(
+                lower("group"), other, upper(other))"""
+        )
+        connection.exec_driver_sql(
+            """create index idx1 on sometable
+            (("group" || col), col || other desc)"""
+        )
+        connection.exec_driver_sql(
+            """
+            create unique index idx2 on sometable
+                (col desc, lower(other), "group" asc)
+            """
+        )
 
-        """
+        expected = [
+            {
+                "name": "idx1",
+                "column_names": [None, None],
+                "expressions": ['"group"||"COL"', '"COL"||"OTHER"'],
+                "unique": False,
+                "dialect_options": {},
+                "column_sorting": {'"COL"||"OTHER"': ("desc",)},
+            },
+            {
+                "name": "idx2",
+                "column_names": [None, None, "group"],
+                "expressions": ['"COL"', 'LOWER("OTHER")', "group"],
+                "unique": True,
+                "column_sorting": {'"COL"': ("desc",)},
+                "dialect_options": {},
+            },
+            {
+                "name": "idx3",
+                "column_names": [None, "other", None],
+                "expressions": [
+                    'LOWER("group")',
+                    "other",
+                    'UPPER("OTHER")',
+                ],
+                "unique": False,
+                "dialect_options": {},
+            },
+            {
+                "name": "ix_sometable_other",
+                "column_names": ["other"],
+                "unique": False,
+                "dialect_options": {},
+            },
+        ]
 
+        eq_(inspect(connection).get_indexes("sometable"), expected)
+
+    def test_indexes_asc_desc(self, metadata, connection):
         s_table = Table(
             "sometable",
             metadata,
-            Column("group", Unicode(255), primary_key=True),
+            Column("a", Unicode(255), primary_key=True),
+            Column("b", Unicode(255)),
+            Column("group", Unicode(255)),
             Column("col", Unicode(255)),
         )
-
-        Index("data_idx", func.upper(s_table.c.col))
+        Index("id1", s_table.c.b.asc())
+        Index("id2", s_table.c.col.desc())
+        Index("id3", s_table.c.b.asc(), s_table.c.group.desc())
 
         metadata.create_all(connection)
 
-        eq_(
-            inspect(connection).get_indexes("sometable"),
-            [
-                {
-                    "column_names": [],
-                    "dialect_options": {},
-                    "name": "data_idx",
-                    "unique": False,
-                }
-            ],
-        )
+        expected = [
+            {
+                "name": "id1",
+                "column_names": ["b"],
+                "unique": False,
+                "dialect_options": {},
+            },
+            {
+                "name": "id2",
+                "column_names": [None],
+                "expressions": ['"COL"'],
+                "unique": False,
+                "column_sorting": {'"COL"': ("desc",)},
+                "dialect_options": {},
+            },
+            {
+                "name": "id3",
+                "column_names": ["b", None],
+                "expressions": ["b", '"group"'],
+                "unique": False,
+                "column_sorting": {'"group"': ("desc",)},
+                "dialect_options": {},
+            },
+        ]
+        eq_(inspect(connection).get_indexes("sometable"), expected)
 
     def test_basic(self, metadata, connection):
 

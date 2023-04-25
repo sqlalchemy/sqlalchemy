@@ -1962,13 +1962,16 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
             # in a _make_proxy operation
             util.memoized_property.reset(named_column, "proxy_set")
         else:
-            l = len(self._collection)
-            self._collection.append(
-                (key, named_column, _ColumnMetrics(self, named_column))
-            )
-            self._colset.add(named_column._deannotate())
-            self._index[l] = (key, named_column)
-            self._index[key] = (key, named_column)
+            self._append_new_column(key, named_column)
+
+    def _append_new_column(self, key: str, named_column: _NAMEDCOL) -> None:
+        l = len(self._collection)
+        self._collection.append(
+            (key, named_column, _ColumnMetrics(self, named_column))
+        )
+        self._colset.add(named_column._deannotate())
+        self._index[l] = (key, named_column)
+        self._index[key] = (key, named_column)
 
     def _populate_separate_keys(
         self, iter_: Iterable[Tuple[str, _NAMEDCOL]]
@@ -2057,6 +2060,9 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
         if column.key in self._index:
             remove_col.add(self._index[column.key][1])
 
+        if not remove_col:
+            self._append_new_column(column.key, column)
+            return
         new_cols: List[Tuple[str, _NAMEDCOL, _ColumnMetrics[_NAMEDCOL]]] = []
         replaced = False
         for k, col, metrics in self._collection:
