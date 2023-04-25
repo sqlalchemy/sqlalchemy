@@ -155,7 +155,7 @@ class DefaultDialect(Dialect):
     supports_native_enum = False
     supports_native_boolean = False
     supports_native_uuid = False
-    supports_native_bytes = False
+    returns_native_bytes = False
 
     non_native_boolean_check_constraint = True
 
