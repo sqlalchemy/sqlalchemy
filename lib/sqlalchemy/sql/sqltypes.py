@@ -934,6 +934,9 @@ class _Binary(TypeEngine[bytes]):
     # both sqlite3 and pg8000 seem to return it,
     # psycopg2 as of 2.5 returns 'memoryview'
     def result_processor(self, dialect, coltype):
+        if dialect.returns_native_bytes:
+            return None
+
         def process(value):
             if value is not None:
                 value = bytes(value)

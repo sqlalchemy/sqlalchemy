@@ -1405,6 +1405,7 @@ class OracleDialect(default.DefaultDialect):
 
     supports_simple_order_by_label = False
     cte_follows_insert = True
+    returns_native_bytes = True
 
     supports_sequences = True
     sequences_optional = False

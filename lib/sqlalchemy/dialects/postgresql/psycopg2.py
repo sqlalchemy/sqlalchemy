@@ -600,6 +600,8 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
     psycopg2_version = (0, 0)
     use_insertmanyvalues_wo_returning = True
 
+    returns_native_bytes = False
+
     _has_native_hstore = True
 
     colspecs = util.update_copy(
