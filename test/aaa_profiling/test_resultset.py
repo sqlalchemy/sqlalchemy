@@ -211,9 +211,6 @@ class RowTest(fixtures.TestBase):
 
     def _rowproxy_fixture(self, keys, processors, row, row_cls):
         class MockMeta:
-            def __init__(self):
-                pass
-
             def _warn_for_nonint(self, arg):
                 pass
 
@@ -224,9 +221,9 @@ class RowTest(fixtures.TestBase):
             for key in keyobjs:
                 keymap[key] = (index, key)
             keymap[index] = (index, key)
-        return row_cls(
-            metadata, processors, keymap, row_cls._default_key_style, row
-        )
+
+        key_to_index = {key: rec[0] for key, rec in keymap.items()}
+        return row_cls(metadata, processors, key_to_index, row)
 
     def _test_getitem_value_refcounts_new(self, seq_factory):
         col1, col2 = object(), object()

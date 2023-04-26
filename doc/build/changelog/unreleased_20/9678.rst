@@ -1,0 +1,10 @@
+.. change::
+    :tags: engine, performance
+    :tickets: 9678
+
+    Improved :class:`_engine.Row` implementation to optimize
+    ``__getattr__`` performance.
+    The serialization of a :class:`_engine.Row` to pickle has changed with
+    this change. Pickle saved by older SQLAlchemy versions can still be loaded,
+    but new pickle saved by this version cannot be loaded by older ones.
+    Pull request curtesy of J. Nick Koston.

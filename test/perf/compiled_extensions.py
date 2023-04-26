@@ -10,9 +10,17 @@ from sqlalchemy import bindparam
 from sqlalchemy import column
 
 
-def test_case(fn):
-    fn.__test_case__ = True
-    return fn
+def test_case(fn=None, *, number=None):
+    def wrap(fn):
+        fn.__test_case__ = True
+        if number is not None:
+            fn.__number__ = number
+        return fn
+
+    if fn is None:
+        return wrap
+    else:
+        return wrap(fn)
 
 
 class Case:
@@ -90,7 +98,11 @@ class Case:
             for m in methods:
                 call = getattr(impl_case, m)
                 try:
-                    value = timeit(call, number=number)
+                    t_num = number
+                    fn_num = getattr(call, "__number__", None)
+                    if fn_num is not None:
+                        t_num = max(1, int(fn_num * factor))
+                    value = timeit(call, number=t_num)
                     print(".", end="", flush=True)
                 except Exception as e:
                     fails.append(f"{name}::{m} error: {e}")
@@ -810,7 +822,7 @@ class TupleGetter(Case):
             def __init__(self, data):
                 self.data = data
 
-            def _get_by_int_impl(self, index):
+            def __getitem__(self, index):
                 # called by python
                 return self.data[index]
 
@@ -876,16 +888,14 @@ class BaseRow(Case):
         self.row_args = (
             self.parent,
             self.parent._processors,
-            self.parent._keymap,
-            0,
+            self.parent._key_to_index,
             (1, 2, 3),
         )
         self.parent_long = SimpleResultMetaData(tuple(ascii_letters))
         self.row_long_args = (
             self.parent_long,
             self.parent_long._processors,
-            self.parent_long._keymap,
-            0,
+            self.parent_long._key_to_index,
             tuple(range(len(ascii_letters))),
         )
         self.row = self.impl(*self.row_args)
@@ -928,11 +938,6 @@ class BaseRow(Case):
         self.impl.__new__(self.impl).__setstate__(self.row_long_state)
 
     @test_case
-    def row_filter(self):
-        self.row._filter_on_values(None)
-        self.row_long._filter_on_values(None)
-
-    @test_case
     def row_values_impl(self):
         self.row._values_impl()
         self.row_long._values_impl()
@@ -969,25 +974,11 @@ class BaseRow(Case):
         self.row_long[1:-1]
 
     @test_case
-    def get_by_int(self):
-        self.row._get_by_int_impl(0)
-        self.row._get_by_int_impl(1)
-        self.row_long._get_by_int_impl(0)
-        self.row_long._get_by_int_impl(1)
-
-    @test_case
     def get_by_key(self):
-        self.row._get_by_key_impl(0)
-        self.row._get_by_key_impl(1)
-        self.row_long._get_by_key_impl(0)
-        self.row_long._get_by_key_impl(1)
-
-    @test_case
-    def get_by_key_slice(self):
-        self.row._get_by_key_impl(slice(0, 1))
-        self.row._get_by_key_impl(slice(1, -1))
-        self.row_long._get_by_key_impl(slice(0, 1))
-        self.row_long._get_by_key_impl(slice(1, -1))
+        self.row._get_by_key_impl_mapping("a")
+        self.row._get_by_key_impl_mapping("b")
+        self.row_long._get_by_key_impl_mapping("s")
+        self.row_long._get_by_key_impl_mapping("a")
 
     @test_case
     def getattr(self):
@@ -995,6 +986,40 @@ class BaseRow(Case):
         self.row.b
         self.row_long.x
         self.row_long.y
+
+    @test_case(number=50_000)
+    def get_by_key_recreate(self):
+        self.init_objects()
+        row = self.row
+        for _ in range(25):
+            row._get_by_key_impl_mapping("a")
+        l_row = self.row_long
+        for _ in range(25):
+            l_row._get_by_key_impl_mapping("f")
+            l_row._get_by_key_impl_mapping("o")
+            l_row._get_by_key_impl_mapping("r")
+            l_row._get_by_key_impl_mapping("t")
+            l_row._get_by_key_impl_mapping("y")
+            l_row._get_by_key_impl_mapping("t")
+            l_row._get_by_key_impl_mapping("w")
+            l_row._get_by_key_impl_mapping("o")
+
+    @test_case(number=50_000)
+    def getattr_recreate(self):
+        self.init_objects()
+        row = self.row
+        for _ in range(25):
+            row.a
+        l_row = self.row_long
+        for _ in range(25):
+            l_row.f
+            l_row.o
+            l_row.r
+            l_row.t
+            l_row.y
+            l_row.t
+            l_row.w
+            l_row.o
 
 
 class CacheAnonMap(Case):

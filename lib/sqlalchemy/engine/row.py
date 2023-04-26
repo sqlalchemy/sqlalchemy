@@ -34,12 +34,8 @@ from ..util._has_cy import HAS_CYEXTENSION
 
 if TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_row import BaseRow as BaseRow
-    from ._py_row import KEY_INTEGER_ONLY
-    from ._py_row import KEY_OBJECTS_ONLY
 else:
     from sqlalchemy.cyextension.resultproxy import BaseRow as BaseRow
-    from sqlalchemy.cyextension.resultproxy import KEY_INTEGER_ONLY
-    from sqlalchemy.cyextension.resultproxy import KEY_OBJECTS_ONLY
 
 if TYPE_CHECKING:
     from .result import _KeyType
@@ -79,8 +75,6 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
     """
 
     __slots__ = ()
-
-    _default_key_style = KEY_INTEGER_ONLY
 
     def __setattr__(self, name: str, value: Any) -> NoReturn:
         raise AttributeError("can't set attribute")
@@ -134,24 +128,12 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
         .. versionadded:: 1.4
 
         """
-        return RowMapping(
-            self._parent,
-            None,
-            self._keymap,
-            RowMapping._default_key_style,
-            self._data,
-        )
+        return RowMapping(self._parent, None, self._key_to_index, self._data)
 
     def _filter_on_values(
         self, filters: Optional[Sequence[Optional[_ResultProcessorType[Any]]]]
     ) -> Row[Any]:
-        return Row(
-            self._parent,
-            filters,
-            self._keymap,
-            self._key_style,
-            self._data,
-        )
+        return Row(self._parent, filters, self._key_to_index, self._data)
 
     if not TYPE_CHECKING:
 
@@ -198,9 +180,7 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
         def __getitem__(self, index: slice) -> Sequence[Any]:
             ...
 
-        def __getitem__(
-            self, index: Union[int, slice]
-        ) -> Union[Any, Sequence[Any]]:
+        def __getitem__(self, index: Union[int, slice]) -> Any:
             ...
 
     def __lt__(self, other: Any) -> bool:
@@ -336,8 +316,6 @@ class RowMapping(BaseRow, typing.Mapping["_KeyType", Any]):
     """
 
     __slots__ = ()
-
-    _default_key_style = KEY_OBJECTS_ONLY
 
     if TYPE_CHECKING:
 
