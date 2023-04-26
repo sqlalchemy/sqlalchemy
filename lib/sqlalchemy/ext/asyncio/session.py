@@ -233,17 +233,40 @@ class AsyncSession(ReversibleProxy[Session]):
     async def run_sync(
         self, fn: Callable[..., Any], *arg: Any, **kw: Any
     ) -> Any:
-        """Invoke the given sync callable passing sync self as the first
+        """Invoke the given synchronous (i.e. not async) callable,
+        passing a synchronous-style :class:`_orm.Session` as the first
         argument.
+
+        This method allows traditional synchronous SQLAlchemy functions to
+        run within the context of an asyncio application.
+
+        E.g.::
+
+            def some_business_method(session: Session, param: str) -> str:
+                '''A synchronous function that does not require awaiting
+
+                :param session: a SQLAlchemy Session, used synchronously
+
+                :return: an optional return value is supported
+
+                '''
+                session.add(MyObject(param=param))
+                session.flush()
+                return "success"
+
+
+            async def do_something_async(async_engine: AsyncEngine) -> None:
+                '''an async function that uses awaiting'''
+
+                with AsyncSession(async_engine) as async_session:
+                    # run some_business_method() with a sync-style
+                    # Session, proxied into an awaitable
+                    return_code = await async_session.run_sync(some_business_method, param="param1")
+                    print(return_code)
 
         This method maintains the asyncio event loop all the way through
         to the database connection by running the given callable in a
         specially instrumented greenlet.
-
-        E.g.::
-
-            with AsyncSession(async_engine) as session:
-                await session.run_sync(some_business_method)
 
         .. note::
 
@@ -254,8 +277,10 @@ class AsyncSession(ReversibleProxy[Session]):
 
         .. seealso::
 
+            :meth:`.AsyncConnection.run_sync`
+
             :ref:`session_run_sync`
-        """
+        """  # noqa: E501
 
         return await greenlet_spawn(fn, self.sync_session, *arg, **kw)
 

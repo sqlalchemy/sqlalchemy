@@ -776,14 +776,50 @@ class AsyncConnection(
     async def run_sync(
         self, fn: Callable[..., Any], *arg: Any, **kw: Any
     ) -> Any:
-        """Invoke the given sync callable passing self as the first argument.
+        """Invoke the given synchronous (i.e. not async) callable,
+        passing a synchronous-style :class:`_engine.Connection` as the first
+        argument.
+
+        This method allows traditional synchronous SQLAlchemy functions to
+        run within the context of an asyncio application.
+
+        E.g.::
+
+            def do_something_with_core(conn: Connection, arg1: int, arg2: str) -> str:
+                '''A synchronous function that does not require awaiting
+
+                :param conn: a Core SQLAlchemy Connection, used synchronously
+
+                :return: an optional return value is supported
+
+                '''
+                conn.execute(
+                    some_table.insert().values(int_col=arg1, str_col=arg2)
+                )
+                return "success"
+
+
+            async def do_something_async(async_engine: AsyncEngine) -> None:
+                '''an async function that uses awaiting'''
+
+                async with async_engine.begin() as async_conn:
+                    # run do_something_with_core() with a sync-style
+                    # Connection, proxied into an awaitable
+                    return_code = await async_conn.run_sync(do_something_with_core, 5, "strval")
+                    print(return_code)
 
         This method maintains the asyncio event loop all the way through
         to the database connection by running the given callable in a
         specially instrumented greenlet.
 
-        E.g.::
+        The most rudimentary use of :meth:`.AsyncConnection.run_sync` is to
+        invoke methods such as :meth:`_schema.MetaData.create_all`, given
+        an :class:`.AsyncConnection` that needs to be provided to
+        :meth:`_schema.MetaData.create_all` as a :class:`_engine.Connection`
+        object::
 
+            # run metadata.create_all(conn) with a sync-style Connection,
+            # proxied into an awaitable
             with async_engine.begin() as conn:
                 await conn.run_sync(metadata.create_all)
 
@@ -796,8 +832,11 @@ class AsyncConnection(
 
         .. seealso::
 
+            :meth:`.AsyncSession.run_sync`
+
             :ref:`session_run_sync`
-        """
+
+        """  # noqa: E501
 
         return await greenlet_spawn(fn, self._proxied, *arg, **kw)
 
