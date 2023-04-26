@@ -279,7 +279,6 @@ class ArrayTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
 
 class BinaryTest(_LiteralRoundTripFixture, fixtures.TablesTest):
-    __requires__ = ("binary_literals",)
     __backend__ = True
 
     @classmethod
@@ -294,14 +293,15 @@ class BinaryTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             Column("pickle_data", PickleType),
         )
 
-    def test_binary_roundtrip(self, connection):
+    @testing.combinations(b"this is binary", b"7\xe7\x9f", argnames="data")
+    def test_binary_roundtrip(self, connection, data):
         binary_table = self.tables.binary_table
 
         connection.execute(
-            binary_table.insert(), {"id": 1, "binary_data": b"this is binary"}
+            binary_table.insert(), {"id": 1, "binary_data": data}
         )
         row = connection.execute(select(binary_table.c.binary_data)).first()
-        eq_(row, (b"this is binary",))
+        eq_(row, (data,))
 
     def test_pickle_roundtrip(self, connection):
         binary_table = self.tables.binary_table

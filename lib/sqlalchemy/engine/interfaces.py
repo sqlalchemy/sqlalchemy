@@ -1055,6 +1055,14 @@ class Dialect(EventTarget):
 
     """
 
+    returns_native_bytes: bool
+    """indicates if Python bytes() objects are returned natively by the
+    driver for SQL "binary" datatypes.
+
+    .. versionadded:: 2.0.11
+
+    """
+
     construct_arguments: Optional[
         List[Tuple[Type[Union[SchemaItem, ClauseElement]], Mapping[str, Any]]]
     ] = None

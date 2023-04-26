@@ -2398,6 +2398,8 @@ class MySQLDialect(default.DefaultDialect):
 
     supports_native_enum = True
 
+    returns_native_bytes = True
+
     supports_sequences = False  # default for MySQL ...
     # ... may be updated to True for MariaDB 10.3+ in initialize()
 

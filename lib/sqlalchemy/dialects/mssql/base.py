@@ -1347,7 +1347,8 @@ class TIMESTAMP(sqltypes._Binary):
         if self.convert_int:
 
             def process(value):
-                value = super_(value)
+                if super_:
+                    value = super_(value)
                 if value is not None:
                     # https://stackoverflow.com/a/30403242/34549
                     value = int(codecs.encode(value, "hex"), 16)
@@ -2973,6 +2974,8 @@ class MSDialect(default.DefaultDialect):
     supports_default_values = True
     supports_empty_insert = False
     favor_returning_over_lastrowid = True
+
+    returns_native_bytes = True
 
     supports_comments = True
     supports_default_metavalue = False

@@ -2912,6 +2912,8 @@ class PGDialect(default.DefaultDialect):
     postfetch_lastrowid = False
     use_insertmanyvalues = True
 
+    returns_native_bytes = True
+
     insertmanyvalues_implicit_sentinel = (
         InsertmanyvaluesSentinelOpts.ANY_AUTOINCREMENT
         | InsertmanyvaluesSentinelOpts.USE_INSERT_FROM_SELECT
