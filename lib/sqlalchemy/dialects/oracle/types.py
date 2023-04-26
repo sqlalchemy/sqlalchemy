@@ -97,7 +97,7 @@ class FLOAT(sqltypes.FLOAT):
         self.binary_precision = binary_precision
 
 
-class BINARY_DOUBLE(sqltypes.Float):
+class BINARY_DOUBLE(sqltypes.Double):
     __visit_name__ = "BINARY_DOUBLE"
 
 

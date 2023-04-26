@@ -1241,6 +1241,12 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def float_is_numeric(self):
+        """target backend uses Numeric for Float/Dual"""
+
+        return exclusions.open()
+
+    @property
     def text_type(self):
         """Target database must support an unbounded Text() "
         "type such as TEXT or CLOB"""

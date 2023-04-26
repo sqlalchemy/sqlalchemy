@@ -13,6 +13,7 @@ from .. import fixtures
 from .. import mock
 from ..assertions import eq_
 from ..assertions import is_
+from ..assertions import ne_
 from ..config import requirements
 from ..schema import Column
 from ..schema import Table
@@ -47,6 +48,7 @@ from ... import UUID
 from ... import Uuid
 from ...orm import declarative_base
 from ...orm import Session
+from ...sql import sqltypes
 from ...sql.sqltypes import LargeBinary
 from ...sql.sqltypes import PickleType
 
@@ -1089,6 +1091,15 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
         do_numeric_test(
             Numeric(precision=5, scale=3), numbers, numbers, check_scale=True
         )
+
+    @testing.combinations(sqltypes.Float, sqltypes.Double, argnames="cls_")
+    @testing.requires.float_is_numeric
+    def test_float_is_not_numeric(self, connection, cls_):
+        target_type = cls_().dialect_impl(connection.dialect)
+        numeric_type = sqltypes.Numeric().dialect_impl(connection.dialect)
+
+        ne_(target_type.__visit_name__, numeric_type.__visit_name__)
+        ne_(target_type.__class__, numeric_type.__class__)
 
 
 class BooleanTest(_LiteralRoundTripFixture, fixtures.TablesTest):
