@@ -55,6 +55,10 @@ class _PsycopgNumeric(sqltypes.Numeric):
                 )
 
 
+class _PsycopgFloat(_PsycopgNumeric):
+    __visit_name__ = "float"
+
+
 class _PsycopgHStore(HSTORE):
     def bind_processor(self, dialect):
         if dialect._has_native_hstore:
@@ -104,6 +108,7 @@ class _PGDialect_common_psycopg(PGDialect):
         PGDialect.colspecs,
         {
             sqltypes.Numeric: _PsycopgNumeric,
+            sqltypes.Float: _PsycopgFloat,
             HSTORE: _PsycopgHStore,
             sqltypes.ARRAY: _PsycopgARRAY,
             INT2VECTOR: _PsycopgINT2VECTOR,

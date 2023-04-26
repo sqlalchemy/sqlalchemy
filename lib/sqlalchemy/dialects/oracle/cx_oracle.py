@@ -819,6 +819,15 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                                 outconverter=lambda value: value.read(),
                                 arraysize=len_params,
                             )
+                        elif (
+                            isinstance(type_impl, _OracleNumeric)
+                            and type_impl.asdecimal
+                        ):
+                            out_parameters[name] = self.cursor.var(
+                                decimal.Decimal,
+                                arraysize=len_params,
+                            )
+
                         else:
                             out_parameters[name] = self.cursor.var(
                                 dbtype, arraysize=len_params

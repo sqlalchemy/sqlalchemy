@@ -19,6 +19,7 @@ from .base import DATETIME
 from .base import DATETIME2
 from .base import DATETIMEOFFSET
 from .base import DECIMAL
+from .base import DOUBLE_PRECISION
 from .base import FLOAT
 from .base import IMAGE
 from .base import INTEGER

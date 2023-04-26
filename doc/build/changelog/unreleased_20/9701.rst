@@ -1,0 +1,24 @@
+.. change::
+    :tags: bug, postgresql, regression
+    :tickets: 9701
+
+    Fixed regression caused by the fix for :ticket:`9618` where floating point
+    values would lose precision being inserted in bulk, using either the
+    psycopg2 or psycopg drivers.
+
+
+.. change::
+    :tags: bug, mssql
+
+    Implemented the :class:`_sqltypes.Double` type for SQL Server, having it
+    resolve to ``DOUBLE PRECISION``, or :class:`_mssql.DOUBLE_PRECISION`,
+    at DDL rendering time.
+
+
+.. change::
+    :tags: bug, oracle
+
+    Fixed issue in Oracle dialects where ``Decimal`` returning types such as
+    :class:`_sqltypes.Numeric` would return floating point values, rather than
+    ``Decimal`` objects, when these columns were used in the
+    :meth:`_dml.Insert.returning` clause to return INSERTed values.
