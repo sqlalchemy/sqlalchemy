@@ -5,11 +5,16 @@
     Fixed 2.0 regression where use of :func:`_sql.bindparam()` inside of
     :meth:`_dml.Insert.values` would fail to be interpreted correctly when
     executing the :class:`_dml.Insert` statement using the ORM
-    :class:`_orm.Session`, due to the new ORM-enabled insert feature not
+    :class:`_orm.Session`, due to the new
+    :ref:`ORM-enabled insert feature <orm_queryguide_bulk_insert>` not
     implementing this use case.
 
-    In addition, the bulk INSERT and UPDATE features now add these
-    capabilities:
+.. change::
+    :tags: usecase, orm
+    :tickets: 9583, 9595
+
+    The :ref:`ORM bulk INSERT and UPDATE <orm_expression_update_delete>`
+    features now add these capabilities:
 
     * The requirement that extra parameters aren't passed when using ORM
       INSERT using the "orm" dml_strategy setting is lifted.

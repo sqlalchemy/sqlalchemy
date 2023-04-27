@@ -3532,7 +3532,8 @@
         :tags: feature, sql
         :tickets: 5465
 
-        Added :class:`.Double`, :class:`.DOUBLE`, :class:`.DOUBLE_PRECISION`
+        Added :class:`.Double`, :class:`.DOUBLE`,
+        :class:`_sqltypes.DOUBLE_PRECISION`
         datatypes to the base ``sqlalchemy.`` module namespace, for explicit use of
         double/double precision as well as generic "double" datatypes. Use
         :class:`.Double` for generic support that will resolve to DOUBLE/DOUBLE

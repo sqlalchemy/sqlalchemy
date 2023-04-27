@@ -2,17 +2,20 @@
     :tags: bug, postgresql, regression
     :tickets: 9701
 
-    Fixed regression caused by the fix for :ticket:`9618` where floating point
-    values would lose precision being inserted in bulk, using either the
-    psycopg2 or psycopg drivers.
+    Fixed critical regression caused by :ticket:`9618`, which modified the
+    architecture of the :term:`insertmanyvalues` feature for 2.0.10, which
+    caused floating point values to lose all decimal places when being inserted
+    using the insertmanyvalues feature with either the psycopg2 or psycopg
+    drivers.
 
 
 .. change::
     :tags: bug, mssql
 
-    Implemented the :class:`_sqltypes.Double` type for SQL Server, having it
-    resolve to ``DOUBLE PRECISION``, or :class:`_mssql.DOUBLE_PRECISION`,
-    at DDL rendering time.
+    Implemented the :class:`_sqltypes.Double` type for SQL Server, where it
+    will render ``DOUBLE PRECISION`` at DDL time.  This is implemented using
+    a new MSSQL datatype :class:`_mssql.DOUBLE_PRECISION` which also may
+    be used directly.
 
 
 .. change::

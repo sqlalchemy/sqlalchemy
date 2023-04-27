@@ -6,4 +6,5 @@
     ``table.c[0:5]``, ``subquery.c[:-1]`` etc. Slice access returns a sub
     :class:`.ColumnCollection` in the same way as passing a tuple of keys. This
     is a natural continuation of the key-tuple access added for :ticket:`8285`,
-    which it appears to be an oversight that this usage was omitted.
+    where it appears to be an oversight that the slice access use case was
+    omitted.

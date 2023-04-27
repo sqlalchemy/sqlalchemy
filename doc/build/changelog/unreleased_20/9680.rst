@@ -1,9 +1,0 @@
-.. change::
-    :tags: performance, sql
-    :tickets: 9680
-
-    Improved row processing performance for "binary" datatypes by making the
-    "bytes" handler conditional on a per driver basis.  As a result, the
-    "bytes" result handler has been disabled for nearly all drivers other than
-    psycopg2, all of which in modern forms support returning Python "bytes"
-    directly.  Pull request courtesy J. Nick Koston.

@@ -68,6 +68,7 @@ __all__ = (
     "DATETIME2",
     "DATETIMEOFFSET",
     "DATE",
+    "DOUBLE_PRECISION",
     "TIME",
     "SMALLDATETIME",
     "BINARY",
