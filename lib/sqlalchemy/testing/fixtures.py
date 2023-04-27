@@ -13,6 +13,7 @@ import itertools
 import random
 import re
 import sys
+from typing import Any
 
 import sqlalchemy as sa
 from . import assertions
@@ -675,7 +676,7 @@ class MappedTest(TablesTest, assertions.AssertsExecutionResults):
     # 'once', 'each', None
     run_setup_mappers = "each"
 
-    classes = None
+    classes: Any = None
 
     @config.fixture(autouse=True, scope="class")
     def _setup_tables_test_class(self):

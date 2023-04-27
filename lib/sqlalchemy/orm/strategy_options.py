@@ -927,7 +927,9 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
     ) -> Optional[_PathRepresentation]:
         i = -1
 
-        for i, (c_token, p_token) in enumerate(zip(to_chop, path.path)):
+        for i, (c_token, p_token) in enumerate(
+            zip(to_chop, path.natural_path)
+        ):
             if isinstance(c_token, str):
                 if i == 0 and c_token.endswith(f":{_DEFAULT_TOKEN}"):
                     return to_chop
@@ -942,36 +944,8 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             elif (
                 isinstance(c_token, InspectionAttr)
                 and insp_is_mapper(c_token)
-                and (
-                    (insp_is_mapper(p_token) and c_token.isa(p_token))
-                    or (
-                        # a too-liberal check here to allow a path like
-                        # A->A.bs->B->B.cs->C->C.ds, natural path, to chop
-                        # against current path
-                        # A->A.bs->B(B, B2)->B(B, B2)->cs, in an of_type()
-                        # scenario which should only be occurring in a loader
-                        # that is against a non-aliased lead element with
-                        # single path.  otherwise the
-                        # "B" won't match into the B(B, B2).
-                        #
-                        # i>=2 prevents this check from proceeding for
-                        # the first path element.
-                        #
-                        # if we could do away with the "natural_path"
-                        # concept, we would not need guessy checks like this
-                        #
-                        # two conflicting tests for this comparison are:
-                        # test_eager_relations.py->
-                        #       test_lazyload_aliased_abs_bcs_two
-                        # and
-                        # test_of_type.py->test_all_subq_query
-                        #
-                        i >= 2
-                        and insp_is_aliased_class(p_token)
-                        and p_token._is_with_polymorphic
-                        and c_token in p_token.with_polymorphic_mappers
-                    )
-                )
+                and insp_is_mapper(p_token)
+                and c_token.isa(p_token)
             ):
                 continue
 
@@ -1321,7 +1295,7 @@ class _WildcardLoad(_AbstractLoad):
 
     strategy: Optional[Tuple[Any, ...]]
     local_opts: _OptsType
-    path: Tuple[str, ...]
+    path: Union[Tuple[()], Tuple[str]]
     propagate_to_loaders = False
 
     def __init__(self) -> None:
@@ -1366,6 +1340,7 @@ class _WildcardLoad(_AbstractLoad):
         it may be used as the sub-option of a :class:`_orm.Load` object.
 
         """
+        assert self.path
         attr = self.path[0]
         if attr.endswith(_DEFAULT_TOKEN):
             attr = f"{attr.split(':')[0]}:{_WILDCARD_TOKEN}"
@@ -1396,13 +1371,16 @@ class _WildcardLoad(_AbstractLoad):
 
         start_path: _PathRepresentation = self.path
 
-        # TODO: chop_path already occurs in loader.process_compile_state()
-        # so we will seek to simplify this
         if current_path:
+            # TODO: no cases in test suite where we actually get
+            # None back here
             new_path = self._chop_path(start_path, current_path)
-            if not new_path:
+            if new_path is None:
                 return
-            start_path = new_path
+
+            # chop_path does not actually "chop" a wildcard token path,
+            # just returns it
+            assert new_path == start_path
 
         # start_path is a single-token tuple
         assert start_path and len(start_path) == 1
@@ -1618,7 +1596,9 @@ class _LoadElement(
 
 
         """
-        chopped_start_path = Load._chop_path(effective_path.path, current_path)
+        chopped_start_path = Load._chop_path(
+            effective_path.natural_path, current_path
+        )
         if not chopped_start_path:
             return None
 
