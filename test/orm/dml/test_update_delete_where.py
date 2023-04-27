@@ -1,4 +1,3 @@
-from sqlalchemy import bindparam
 from sqlalchemy import Boolean
 from sqlalchemy import case
 from sqlalchemy import column
@@ -809,20 +808,6 @@ class UpdateDeleteTest(fixtures.MappedTest):
         assert john not in sess
 
         eq_(sess.query(User).order_by(User.id).all(), [jack, jill, jane])
-
-    def test_update_multirow_not_supported(self):
-        User = self.classes.User
-
-        sess = fixture_session()
-
-        with expect_raises_message(
-            exc.InvalidRequestError,
-            "WHERE clause with bulk ORM UPDATE not supported " "right now.",
-        ):
-            sess.execute(
-                update(User).where(User.id == bindparam("id")),
-                [{"id": 1, "age": 27}, {"id": 2, "age": 37}],
-            )
 
     def test_delete_bulk_not_supported(self):
         User = self.classes.User

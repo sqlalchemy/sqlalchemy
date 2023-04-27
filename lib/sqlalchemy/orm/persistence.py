@@ -326,9 +326,11 @@ def _organize_states_for_delete(base_mapper, states, uowtransaction):
 def _collect_insert_commands(
     table,
     states_to_insert,
+    *,
     bulk=False,
     return_defaults=False,
     render_nulls=False,
+    include_bulk_keys=(),
 ):
     """Identify sets of values to use in INSERT statements for a
     list of states.
@@ -401,10 +403,14 @@ def _collect_insert_commands(
                 None
             )
 
-        if bulk and mapper._set_polymorphic_identity:
-            params.setdefault(
-                mapper._polymorphic_attr_key, mapper.polymorphic_identity
-            )
+        if bulk:
+            if mapper._set_polymorphic_identity:
+                params.setdefault(
+                    mapper._polymorphic_attr_key, mapper.polymorphic_identity
+                )
+
+            if include_bulk_keys:
+                params.update((k, state_dict[k]) for k in include_bulk_keys)
 
         yield (
             state,
@@ -422,8 +428,10 @@ def _collect_update_commands(
     uowtransaction,
     table,
     states_to_update,
+    *,
     bulk=False,
     use_orm_update_stmt=None,
+    include_bulk_keys=(),
 ):
     """Identify sets of values to use in UPDATE statements for a
     list of states.
@@ -581,6 +589,9 @@ def _collect_update_commands(
                         "key value on column %s" % (table, col)
                     )
 
+        if include_bulk_keys:
+            params.update((k, state_dict[k]) for k in include_bulk_keys)
+
         if params or value_params:
             params.update(pk_params)
             yield (
@@ -712,8 +723,10 @@ def _emit_update_statements(
     mapper,
     table,
     update,
+    *,
     bookkeeping=True,
     use_orm_update_stmt=None,
+    enable_check_rowcount=True,
 ):
     """Emit UPDATE statements corresponding to value lists collected
     by _collect_update_commands()."""
@@ -847,10 +860,10 @@ def _emit_update_statements(
                         c.returned_defaults,
                     )
                 rows += c.rowcount
-                check_rowcount = assert_singlerow
+                check_rowcount = enable_check_rowcount and assert_singlerow
         else:
             if not allow_executemany:
-                check_rowcount = assert_singlerow
+                check_rowcount = enable_check_rowcount and assert_singlerow
                 for (
                     state,
                     state_dict,
@@ -883,8 +896,9 @@ def _emit_update_statements(
             else:
                 multiparams = [rec[2] for rec in records]
 
-                check_rowcount = assert_multirow or (
-                    assert_singlerow and len(multiparams) == 1
+                check_rowcount = enable_check_rowcount and (
+                    assert_multirow
+                    or (assert_singlerow and len(multiparams) == 1)
                 )
 
                 c = connection.execute(
@@ -941,6 +955,7 @@ def _emit_insert_statements(
     mapper,
     table,
     insert,
+    *,
     bookkeeping=True,
     use_orm_insert_stmt=None,
     execution_options=None,
