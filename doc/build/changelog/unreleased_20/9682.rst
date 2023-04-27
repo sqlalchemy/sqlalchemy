@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, engine, regression
-    :tickets: 9682
-
-    Fixed regression which prevented the :attr:`_engine.URL.normalized_query`
-    attribute of :class:`_engine.URL` from functioning.

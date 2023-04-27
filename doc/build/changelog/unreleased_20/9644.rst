@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 9644
-
-    Improved typing of :class:`_engine.RowMapping` to indicate that it
-    support also :class:`_schema.Column` as index objects, not only
-    string names. Pull request courtesy Andy Freeland.

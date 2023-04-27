@@ -10,7 +10,112 @@
 
 .. changelog::
     :version: 2.0.11
-    :include_notes_from: unreleased_20
+    :released: April 26, 2023
+
+    .. change::
+        :tags: bug, engine, regression
+        :tickets: 9682
+
+        Fixed regression which prevented the :attr:`_engine.URL.normalized_query`
+        attribute of :class:`_engine.URL` from functioning.
+
+    .. change::
+        :tags: bug, postgresql, regression
+        :tickets: 9701
+
+        Fixed critical regression caused by :ticket:`9618`, which modified the
+        architecture of the :term:`insertmanyvalues` feature for 2.0.10, which
+        caused floating point values to lose all decimal places when being inserted
+        using the insertmanyvalues feature with either the psycopg2 or psycopg
+        drivers.
+
+
+    .. change::
+        :tags: bug, mssql
+
+        Implemented the :class:`_sqltypes.Double` type for SQL Server, where it
+        will render ``DOUBLE PRECISION`` at DDL time.  This is implemented using
+        a new MSSQL datatype :class:`_mssql.DOUBLE_PRECISION` which also may
+        be used directly.
+
+
+    .. change::
+        :tags: bug, oracle
+
+        Fixed issue in Oracle dialects where ``Decimal`` returning types such as
+        :class:`_sqltypes.Numeric` would return floating point values, rather than
+        ``Decimal`` objects, when these columns were used in the
+        :meth:`_dml.Insert.returning` clause to return INSERTed values.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9583, 9595
+
+        Fixed 2.0 regression where use of :func:`_sql.bindparam()` inside of
+        :meth:`_dml.Insert.values` would fail to be interpreted correctly when
+        executing the :class:`_dml.Insert` statement using the ORM
+        :class:`_orm.Session`, due to the new
+        :ref:`ORM-enabled insert feature <orm_queryguide_bulk_insert>` not
+        implementing this use case.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 9583, 9595
+
+        The :ref:`ORM bulk INSERT and UPDATE <orm_expression_update_delete>`
+        features now add these capabilities:
+
+        * The requirement that extra parameters aren't passed when using ORM
+          INSERT using the "orm" dml_strategy setting is lifted.
+        * The requirement that additional WHERE criteria is not passed when using
+          ORM UPDATE using the "bulk" dml_strategy setting is lifted.  Note that
+          in this case, the check for expected row count is turned off.
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 8285
+
+        Added support for slice access with :class:`.ColumnCollection`, e.g.
+        ``table.c[0:5]``, ``subquery.c[:-1]`` etc. Slice access returns a sub
+        :class:`.ColumnCollection` in the same way as passing a tuple of keys. This
+        is a natural continuation of the key-tuple access added for :ticket:`8285`,
+        where it appears to be an oversight that the slice access use case was
+        omitted.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 9644
+
+        Improved typing of :class:`_engine.RowMapping` to indicate that it
+        support also :class:`_schema.Column` as index objects, not only
+        string names. Pull request courtesy Andy Freeland.
+
+    .. change::
+        :tags: engine, performance
+        :tickets: 9678, 9680
+
+        A series of performance enhancements to :class:`_engine.Row`:
+
+        * ``__getattr__`` performance of the row's "named tuple" interface has
+          been improved; within this change, the :class:`_engine.Row`
+          implementation has been streamlined, removing constructs and logic
+          that were specific to the 1.4 and prior series of SQLAlchemy.
+          As part of this change, the serialization format of :class:`_engine.Row`
+          has been modified slightly, however rows which were pickled with previous
+          SQLAlchemy 2.0 releases will be recognized within the new format.
+          Pull request courtesy J. Nick Koston.
+
+        * Improved row processing performance for "binary" datatypes by making the
+          "bytes" handler conditional on a per driver basis.  As a result, the
+          "bytes" result handler has been removed for nearly all drivers other than
+          psycopg2, all of which in modern forms support returning Python "bytes"
+          directly.  Pull request courtesy J. Nick Koston.
+
+        * Additional refactorings inside of :class:`_engine.Row` to improve
+          performance by Federico Caselli.
+
+
+
 
 .. changelog::
     :version: 2.0.10
