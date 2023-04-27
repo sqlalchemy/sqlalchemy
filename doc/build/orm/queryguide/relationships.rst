@@ -760,7 +760,7 @@ order to load related associations:
 .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select
-    >>> from sqlalchemy import selectinload
+    >>> from sqlalchemy.orm import selectinload
     >>> stmt = (
     ...     select(User)
     ...     .options(selectinload(User.addresses))
@@ -798,7 +798,7 @@ value from the parent object is used:
 .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import select
-    >>> from sqlalchemy import selectinload
+    >>> from sqlalchemy.orm import selectinload
     >>> stmt = select(Address).options(selectinload(Address.user))
     >>> result = session.scalars(stmt).all()
     {execsql}SELECT
