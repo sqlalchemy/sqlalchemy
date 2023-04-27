@@ -99,6 +99,9 @@ class BaseRow:
             pass
         self._parent._key_not_found(name, True)
 
+    def _to_tuple_instance(self) -> Tuple[Any, ...]:
+        return self._data
+
 
 # This reconstructor is necessary so that pickles with the Cy extension or
 # without use the same Binary format.
@@ -111,9 +114,9 @@ def rowproxy_reconstructor(
 
 
 def tuplegetter(*indexes: int) -> _TupleGetterType:
-    it = operator.itemgetter(*indexes)
-
-    if len(indexes) > 1:
-        return it
-    else:
-        return lambda row: (it(row),)
+    if len(indexes) != 1:
+        for i in range(1, len(indexes)):
+            if indexes[i - 1] != indexes[i] - 1:
+                return operator.itemgetter(*indexes)
+    # slice form is faster but returns a list if input is list
+    return operator.itemgetter(slice(indexes[0], indexes[-1] + 1))

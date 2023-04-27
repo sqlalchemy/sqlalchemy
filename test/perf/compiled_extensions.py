@@ -787,6 +787,8 @@ class OrderedSet(IdentitySet):
 
 
 class TupleGetter(Case):
+    NUMBER = 2_000_000
+
     @staticmethod
     def python():
         from sqlalchemy.engine._py_row import tuplegetter
@@ -817,20 +819,7 @@ class TupleGetter(Case):
         self.tuple = tuple(range(1000))
         self.tg_inst = self.impl_tg(42)
         self.tg_inst_m = self.impl_tg(42, 420, 99, 9, 1)
-
-        class MockRow:
-            def __init__(self, data):
-                self.data = data
-
-            def __getitem__(self, index):
-                # called by python
-                return self.data[index]
-
-            def _get_by_key_impl_mapping(self, index):
-                # called by c
-                return self.data[index]
-
-        self.row = MockRow(self.tuple)
+        self.tg_inst_seq = self.impl_tg(*range(70, 75))
 
     @classmethod
     def update_results(cls, results):
@@ -847,12 +836,20 @@ class TupleGetter(Case):
         self.tg_inst_m(self.tuple)
 
     @test_case
+    def tuplegetter_seq(self):
+        self.tg_inst_seq(self.tuple)
+
+    @test_case
     def tuplegetter_new_one(self):
         self.impl_tg(42)(self.tuple)
 
     @test_case
     def tuplegetter_new_many(self):
         self.impl_tg(42, 420, 99, 9, 1)(self.tuple)
+
+    @test_case
+    def tuplegetter_new_seq(self):
+        self.impl_tg(40, 41, 42, 43, 44)(self.tuple)
 
 
 class BaseRow(Case):
@@ -911,6 +908,30 @@ class BaseRow(Case):
         self.row_state = self.row.__getstate__()
         self.row_long_state = self.row_long.__getstate__()
 
+        assert len(ascii_letters) == 52
+        self.parent_proc = SimpleResultMetaData(
+            tuple(ascii_letters),
+            _processors=[None, int, float, None, str] * 10,  # cut the last 2
+        )
+        self.row_proc_args = (
+            self.parent_proc,
+            self.parent_proc._processors,
+            self.parent_proc._key_to_index,
+            tuple(range(len(ascii_letters))),
+        )
+
+        self.parent_proc_none = SimpleResultMetaData(
+            tuple(ascii_letters), _processors=[None] * 52
+        )
+        self.row_proc_none_args = (
+            self.parent_proc_none,
+            # NOTE: usually the code calls _effective_processors that returns
+            # None for this case of all None.
+            self.parent_proc_none._processors,
+            self.parent_proc_none._key_to_index,
+            tuple(range(len(ascii_letters))),
+        )
+
     @classmethod
     def update_results(cls, results):
         cls._divide_results(results, "c", "python", "c / py")
@@ -926,6 +947,22 @@ class BaseRow(Case):
     def row_new(self):
         self.Row(*self.row_args)
         self.Row(*self.row_long_args)
+
+    @test_case
+    def base_row_new_proc(self):
+        self.impl(*self.row_proc_args)
+
+    @test_case
+    def row_new_proc(self):
+        self.Row(*self.row_proc_args)
+
+    @test_case
+    def brow_new_proc_none(self):
+        self.impl(*self.row_proc_none_args)
+
+    @test_case
+    def row_new_proc_none(self):
+        self.Row(*self.row_proc_none_args)
 
     @test_case
     def row_dumps(self):
