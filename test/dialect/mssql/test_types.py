@@ -300,6 +300,8 @@ class TypeDDLTest(fixtures.TestBase):
             (types.Float, [None], {}, "FLOAT"),
             (types.Float, [12], {}, "FLOAT(12)"),
             (mssql.MSReal, [], {}, "REAL"),
+            (types.Double, [], {}, "DOUBLE PRECISION"),
+            (types.Double, [53], {}, "DOUBLE PRECISION"),
             (types.Integer, [], {}, "INTEGER"),
             (types.BigInteger, [], {}, "BIGINT"),
             (mssql.MSTinyInteger, [], {}, "TINYINT"),

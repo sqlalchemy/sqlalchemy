@@ -1396,6 +1396,10 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def float_or_double_precision_behaves_generically(self):
+        return skip_if(["oracle", "mysql", "mariadb"])
+
+    @property
     def precision_generic_float_type(self):
         """target backend will return native floating point numbers with at
         least seven decimal places when using the generic Float type."""

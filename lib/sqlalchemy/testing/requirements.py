@@ -1196,6 +1196,10 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def float_or_double_precision_behaves_generically(self):
+        return exclusions.closed()
+
+    @property
     def precision_generic_float_type(self):
         """target backend will return native floating point numbers with at
         least seven decimal places when using the generic Float type.

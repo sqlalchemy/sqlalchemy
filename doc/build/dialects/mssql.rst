@@ -29,6 +29,7 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
         DATETIME2,
         DATETIMEOFFSET,
         DECIMAL,
+        DOUBLE_PRECISION,
         FLOAT,
         IMAGE,
         INTEGER,
@@ -77,6 +78,8 @@ construction arguments, are as follows:
 .. autoclass:: DATETIMEOFFSET
    :members: __init__
 
+.. autoclass:: DOUBLE_PRECISION
+   :members: __init__
 
 .. autoclass:: IMAGE
    :members: __init__

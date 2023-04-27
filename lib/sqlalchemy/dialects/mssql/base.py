@@ -1156,13 +1156,28 @@ RESERVED_WORDS = {
 
 
 class REAL(sqltypes.REAL):
-    __visit_name__ = "REAL"
+    """the SQL Server REAL datatype."""
 
     def __init__(self, **kw):
         # REAL is a synonym for FLOAT(24) on SQL server.
         # it is only accepted as the word "REAL" in DDL, the numeric
         # precision value is not allowed to be present
         kw.setdefault("precision", 24)
+        super().__init__(**kw)
+
+
+class DOUBLE_PRECISION(sqltypes.DOUBLE_PRECISION):
+    """the SQL Server DOUBLE PRECISION datatype.
+
+    .. versionadded:: 2.0.11
+
+    """
+
+    def __init__(self, **kw):
+        # DOUBLE PRECISION is a synonym for FLOAT(53) on SQL server.
+        # it is only accepted as the word "DOUBLE PRECISION" in DDL,
+        # the numeric precision value is not allowed to be present
+        kw.setdefault("precision", 53)
         super().__init__(**kw)
 
 
@@ -1671,6 +1686,7 @@ ischema_names = {
     "varbinary": VARBINARY,
     "bit": BIT,
     "real": REAL,
+    "double precision": DOUBLE_PRECISION,
     "image": IMAGE,
     "xml": XML,
     "timestamp": TIMESTAMP,
@@ -1700,6 +1716,9 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
             spec = spec + "(%s)" % length
 
         return " ".join([c for c in (spec, collation) if c is not None])
+
+    def visit_double(self, type_, **kw):
+        return self.visit_DOUBLE_PRECISION(type_, **kw)
 
     def visit_FLOAT(self, type_, **kw):
         precision = getattr(type_, "precision", None)
