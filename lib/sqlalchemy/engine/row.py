@@ -39,8 +39,8 @@ else:
 
 if TYPE_CHECKING:
     from .result import _KeyType
-    from .result import RMKeyView
     from .result import _ProcessorsType
+    from .result import RMKeyView
 
 _T = TypeVar("_T", bound=Any)
 _TP = TypeVar("_TP", bound=Tuple[Any, ...])

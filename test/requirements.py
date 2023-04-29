@@ -171,6 +171,10 @@ class DefaultRequirements(SuiteRequirements):
         return only_on(["postgresql", "mysql", "mariadb", "oracle", "mssql"])
 
     @property
+    def comment_reflection_full_unicode(self):
+        return only_on(["postgresql", "oracle", "mssql"])
+
+    @property
     def constraint_comment_reflection(self):
         return only_on(["postgresql"])
 

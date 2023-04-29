@@ -564,6 +564,7 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
                 sa.String(20),
                 comment=r"""Comment types type speedily ' " \ '' Fun!""",
             ),
+            Column("d3", sa.String(42), comment="Comment\nwith\rescapes"),
             schema=schema,
             comment=r"""the test % ' " \ table comment""",
         )
@@ -572,6 +573,7 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
             metadata,
             Column("data", sa.String(20)),
             schema=schema,
+            comment="no\nconstraints\rhas\fescaped\vcomment",
         )
 
         if testing.requires.cross_schema_fk_reflection.enabled:
@@ -831,7 +833,9 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
             (schema, "comment_test"): {
                 "text": r"""the test % ' " \ table comment"""
             },
-            (schema, "no_constraints"): empty,
+            (schema, "no_constraints"): {
+                "text": "no\nconstraints\rhas\fescaped\vcomment"
+            },
             (schema, "local_table"): empty,
             (schema, "remote_table"): empty,
             (schema, "remote_table_2"): empty,
@@ -921,6 +925,7 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
                     "d2",
                     comment=r"""Comment types type speedily ' " \ '' Fun!""",
                 ),
+                col("d3", comment="Comment\nwith\rescapes"),
             ],
             (schema, "no_constraints"): [col("data")],
             (schema, "local_table"): [pk("id"), col("data"), col("remote_id")],
@@ -2270,6 +2275,45 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
         if schema:
             tables = [f"{schema}.{t}" for t in tables]
         eq_(sorted(m.tables), sorted(tables))
+
+    @testing.requires.comment_reflection
+    def test_comments_unicode(self, connection, metadata):
+        Table(
+            "unicode_comments",
+            metadata,
+            Column("unicode", Integer, comment="é試蛇ẟΩ"),
+            Column("emoji", Integer, comment="☁️✨"),
+            comment="試蛇ẟΩ✨",
+        )
+
+        metadata.create_all(connection)
+
+        insp = inspect(connection)
+        tc = insp.get_table_comment("unicode_comments")
+        eq_(tc, {"text": "試蛇ẟΩ✨"})
+
+        cols = insp.get_columns("unicode_comments")
+        value = {c["name"]: c["comment"] for c in cols}
+        exp = {"unicode": "é試蛇ẟΩ", "emoji": "☁️✨"}
+        eq_(value, exp)
+
+    @testing.requires.comment_reflection_full_unicode
+    def test_comments_unicode_full(self, connection, metadata):
+
+        Table(
+            "unicode_comments",
+            metadata,
+            Column("emoji", Integer, comment="🐍🧙🝝🧙‍♂️🧙‍♀️"),
+            comment="🎩🁰🝑🤷‍♀️🤷‍♂️",
+        )
+
+        metadata.create_all(connection)
+
+        insp = inspect(connection)
+        tc = insp.get_table_comment("unicode_comments")
+        eq_(tc, {"text": "🎩🁰🝑🤷‍♀️🤷‍♂️"})
+        c = insp.get_columns("unicode_comments")[0]
+        eq_({c["name"]: c["comment"]}, {"emoji": "🐍🧙🝝🧙‍♂️🧙‍♀️"})
 
 
 class TableNoColumnsTest(fixtures.TestBase):

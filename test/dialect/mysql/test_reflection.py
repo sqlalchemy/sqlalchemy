@@ -1368,6 +1368,29 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             },
         )
 
+    def test_reflect_comment_escapes(self, connection, metadata):
+        c = "\\ - \\\\ - \\0 - \\a - \\b - \\t - \\n - \\v - \\f - \\r"
+        Table("t", metadata, Column("c", Integer, comment=c), comment=c)
+        metadata.create_all(connection)
+
+        insp = inspect(connection)
+        tc = insp.get_table_comment("t")
+        eq_(tc, {"text": c})
+        col = insp.get_columns("t")[0]
+        eq_({col["name"]: col["comment"]}, {"c": c})
+
+    def test_reflect_comment_unicode(self, connection, metadata):
+        c = "☁️✨🐍🁰🝝"
+        c_exp = "☁️✨???"
+        Table("t", metadata, Column("c", Integer, comment=c), comment=c)
+        metadata.create_all(connection)
+
+        insp = inspect(connection)
+        tc = insp.get_table_comment("t")
+        eq_(tc, {"text": c_exp})
+        col = insp.get_columns("t")[0]
+        eq_({col["name"]: col["comment"]}, {"c": c_exp})
+
 
 class RawReflectionTest(fixtures.TestBase):
     def setup_test(self):

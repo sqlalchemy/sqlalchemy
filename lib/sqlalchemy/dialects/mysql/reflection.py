@@ -146,11 +146,8 @@ class MySQLTableDefinitionParser:
 
         options = {}
 
-        if not line or line == ")":
-            pass
-
-        else:
-            rest_of_line = line[:]
+        if line and line != ")":
+            rest_of_line = line
             for regex, cleanup in self._pr_options:
                 m = regex.search(rest_of_line)
                 if not m:
@@ -310,7 +307,7 @@ class MySQLTableDefinitionParser:
         comment = spec.get("comment", None)
 
         if comment is not None:
-            comment = comment.replace("\\\\", "\\").replace("''", "'")
+            comment = cleanup_text(comment)
 
         sqltext = spec.get("generated")
         if sqltext is not None:
@@ -585,11 +582,7 @@ class MySQLTableDefinitionParser:
             re.escape(directive),
             self._optional_equals,
         )
-        self._pr_options.append(
-            _pr_compile(
-                regex, lambda v: v.replace("\\\\", "\\").replace("''", "'")
-            )
-        )
+        self._pr_options.append(_pr_compile(regex, cleanup_text))
 
     def _add_option_word(self, directive):
         regex = r"(?P<directive>%s)%s" r"(?P<val>\w+)" % (
@@ -652,3 +645,28 @@ def _strip_values(values):
             a = a[1:-1].replace(a[0] * 2, a[0])
         strip_values.append(a)
     return strip_values
+
+
+def cleanup_text(raw_text: str) -> str:
+    if "\\" in raw_text:
+        raw_text = re.sub(
+            _control_char_regexp, lambda s: _control_char_map[s[0]], raw_text
+        )
+    return raw_text.replace("''", "'")
+
+
+_control_char_map = {
+    "\\\\": "\\",
+    "\\0": "\0",
+    "\\a": "\a",
+    "\\b": "\b",
+    "\\t": "\t",
+    "\\n": "\n",
+    "\\v": "\v",
+    "\\f": "\f",
+    "\\r": "\r",
+    # '\\e':'\e',
+}
+_control_char_regexp = re.compile(
+    "|".join(re.escape(k) for k in _control_char_map)
+)
