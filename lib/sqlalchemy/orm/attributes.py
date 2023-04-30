@@ -84,6 +84,9 @@ from ..sql import cache_key
 from ..sql import coercions
 from ..sql import roles
 from ..sql import visitors
+from ..sql.cache_key import HasCacheKey
+from ..sql.visitors import _TraverseInternalsType
+from ..sql.visitors import InternalTraversal
 from ..util.typing import Literal
 from ..util.typing import Self
 from ..util.typing import TypeGuard
@@ -326,13 +329,16 @@ class QueryableAttribute(
         # non-string keys.
         # ideally Proxy() would have a separate set of methods to deal
         # with this case.
+        entity_namespace = self._entity_namespace
+        assert isinstance(entity_namespace, HasCacheKey)
+
         if self.key is _UNKNOWN_ATTR_KEY:  # type: ignore[comparison-overlap]
-            annotations = {"entity_namespace": self._entity_namespace}
+            annotations = {"entity_namespace": entity_namespace}
         else:
             annotations = {
                 "proxy_key": self.key,
                 "proxy_owner": self._parententity,
-                "entity_namespace": self._entity_namespace,
+                "entity_namespace": entity_namespace,
             }
 
         ce = self.comparator.__clause_element__()
@@ -558,12 +564,20 @@ class InstrumentedAttribute(QueryableAttribute[_T]):
 
 
 @dataclasses.dataclass(frozen=True)
-class AdHocHasEntityNamespace:
+class AdHocHasEntityNamespace(HasCacheKey):
+    _traverse_internals: ClassVar[_TraverseInternalsType] = [
+        ("_entity_namespace", InternalTraversal.dp_has_cache_key),
+    ]
+
     # py37 compat, no slots=True on dataclass
-    __slots__ = ("entity_namespace",)
-    entity_namespace: _ExternalEntityType[Any]
+    __slots__ = ("_entity_namespace",)
+    _entity_namespace: _InternalEntityType[Any]
     is_mapper: ClassVar[bool] = False
     is_aliased_class: ClassVar[bool] = False
+
+    @property
+    def entity_namespace(self):
+        return self._entity_namespace.entity_namespace
 
 
 def create_proxied_attribute(
@@ -638,7 +652,7 @@ def create_proxied_attribute(
             else:
                 # used by hybrid attributes which try to remain
                 # agnostic of any ORM concepts like mappers
-                return AdHocHasEntityNamespace(self.class_)
+                return AdHocHasEntityNamespace(self._parententity)
 
         @property
         def property(self):
