@@ -10,7 +10,18 @@
 
 .. changelog::
     :version: 2.0.12
-    :include_notes_from: unreleased_20
+    :released: April 30, 2023
+
+    .. change::
+        :tags: bug, mysql, mariadb
+        :tickets: 9722
+
+        Fixed issues regarding reflection of comments for :class:`_schema.Table`
+        and :class:`_schema.Column` objects, where the comments contained control
+        characters such as newlines. Additional testing support for these
+        characters as well as extended Unicode characters in table and column
+        comments (the latter of which aren't supported by MySQL/MariaDB) added to
+        testing overall.
 
 .. changelog::
     :version: 2.0.11
