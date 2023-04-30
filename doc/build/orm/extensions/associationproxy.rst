@@ -8,12 +8,17 @@ Association Proxy
 ``associationproxy`` is used to create a read/write view of a
 target attribute across a relationship.  It essentially conceals
 the usage of a "middle" attribute between two endpoints, and
-can be used to cherry-pick fields from a collection of
-related objects or to reduce the verbosity of using the association
-object pattern.   Applied creatively, the association proxy allows
+can be used to cherry-pick fields from both a collection of
+related objects or scalar relationship. or to reduce the verbosity
+of using the association object pattern.
+Applied creatively, the association proxy allows
 the construction of sophisticated collections and dictionary
 views of virtually any geometry, persisted to the database using
 standard, transparently configured relational patterns.
+
+.. contents:: Some example use cases for Association Proxy
+    :depth: 1
+    :local:
 
 .. _associationproxy_scalar_collections:
 
@@ -124,7 +129,7 @@ the underlying collection or attribute does.
 .. _associationproxy_creator:
 
 Creation of New Values
-----------------------
+^^^^^^^^^^^^^^^^^^^^^^
 
 When a list ``append()`` event (or set ``add()``, dictionary ``__setitem__()``,
 or scalar assignment event) is intercepted by the association proxy, it
@@ -688,6 +693,72 @@ deleted depends on the relationship cascade setting.
 .. seealso::
 
     :ref:`unitofwork_cascades`
+
+Scalar Relationships
+--------------------
+
+The example below illustrates the use of the association proxy on the many
+side of of a one-to-many relationship, accessing attributes of a scalar
+object::
+
+    from __future__ import annotations
+
+    from typing import List
+
+    from sqlalchemy import ForeignKey
+    from sqlalchemy import String
+    from sqlalchemy.ext.associationproxy import association_proxy
+    from sqlalchemy.ext.associationproxy import AssociationProxy
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import relationship
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class Recipe(Base):
+        __tablename__ = "recipe"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        name: Mapped[str] = mapped_column(String(64))
+
+        steps: Mapped[List[Step]] = relationship(back_populates="recipe")
+        step_descriptions: AssociationProxy[List[str]] = association_proxy(
+            "steps", "description"
+        )
+
+
+    class Step(Base):
+        __tablename__ = "step"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        description: Mapped[str]
+        recipe_id: Mapped[int] = mapped_column(ForeignKey("recipe.id"))
+        recipe: Mapped[Recipe] = relationship(back_populates="steps")
+
+        recipe_name: AssociationProxy[str] = association_proxy("recipe", "name")
+
+        def __init__(self, description: str) -> None:
+            self.description = description
+
+
+    my_snack = Recipe(
+        name="afternoon snack",
+        step_descriptions=[
+            "slice bread",
+            "spread peanut butted",
+            "eat sandwich",
+        ],
+    )
+
+A summary of the steps of ``my_snack`` can be printed using::
+
+    >>> for i, step in enumerate(my_snack.steps, 1):
+    ...     print(f"Step {i} of {step.recipe_name!r}: {step.description}")
+    Step 1 of 'afternoon snack': slice bread
+    Step 2 of 'afternoon snack': spread peanut butted
+    Step 3 of 'afternoon snack': eat sandwich
 
 API Documentation
 -----------------
