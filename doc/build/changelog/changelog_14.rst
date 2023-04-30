@@ -15,7 +15,41 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.48
-    :include_notes_from: unreleased_14
+    :released: April 30, 2023
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9728
+        :versions: 2.0.12
+
+        Fixed critical caching issue where the combination of
+        :func:`_orm.aliased()` and :func:`_hybrid.hybrid_property` expression
+        compositions would cause a cache key mismatch, leading to cache keys that
+        held onto the actual :func:`_orm.aliased` object while also not matching
+        that of equivalent constructs, filling up the cache.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9634
+        :versions: 2.0.10
+
+        Fixed bug where various ORM-specific getters such as
+        :attr:`.ORMExecuteState.is_column_load`,
+        :attr:`.ORMExecuteState.is_relationship_load`,
+        :attr:`.ORMExecuteState.loader_strategy_path` etc. would throw an
+        ``AttributeError`` if the SQL statement itself were a "compound select"
+        such as a UNION.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9590
+        :versions: 2.0.9
+
+        Fixed endless loop which could occur when using "relationship to aliased
+        class" feature and also indicating a recursive eager loader such as
+        ``lazy="selectinload"`` in the loader, in combination with another eager
+        loader on the opposite side. The check for cycles has been fixed to include
+        aliased class relationships.
 
 .. changelog::
     :version: 1.4.47
