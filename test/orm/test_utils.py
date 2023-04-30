@@ -78,7 +78,6 @@ class ContextualWarningsTest(fixtures.TestBase):
                 "bar.foo_id, which conflicts with relationship(s): 'Foo.bars' "
                 "(copies foo.id to bar.foo_id). "
             ),
-            raise_on_any_unexpected=True,
         ):
             decl_base.registry.configure()
 
@@ -96,7 +95,6 @@ class ContextualWarningsTest(fixtures.TestBase):
                 "invoked automatically in response to a user-initiated "
                 "operation.)"
             ),
-            raise_on_any_unexpected=True,
         ):
             FooAlias = aliased(Foo)
             assert hasattr(FooAlias, "bars")
@@ -115,7 +113,6 @@ class ContextualWarningsTest(fixtures.TestBase):
                 "invoked automatically in response to a user-initiated "
                 "operation.)"
             ),
-            raise_on_any_unexpected=True,
         ):
             foo = Foo()
             assert hasattr(foo, "bars")
@@ -145,7 +142,6 @@ class ContextualWarningsTest(fixtures.TestBase):
                 "process, which was invoked automatically in response to a "
                 "user-initiated operation.)"
             ),
-            raise_on_any_unexpected=True,
         ):
             sess.execute(select(Foo))
 

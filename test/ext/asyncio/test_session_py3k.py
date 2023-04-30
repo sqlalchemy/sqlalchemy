@@ -741,6 +741,7 @@ class AsyncORMBehaviorsTest(AsyncFixture):
                 (exc.StatementError, exc.MissingGreenlet)
             ):
                 a1.b = b2
+
         else:
             a1.b = b2
 

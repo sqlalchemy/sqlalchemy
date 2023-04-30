@@ -414,7 +414,6 @@ class MiscDeprecationsTest(fixtures.TestBase):
         with expect_deprecated(
             rf"The column_property.{paramname} parameter is deprecated "
             r"for column_property\(\)",
-            raise_on_any_unexpected=True,
         ):
             column_property(column("q"), **{paramname: value})
 
@@ -429,7 +428,6 @@ class MiscDeprecationsTest(fixtures.TestBase):
             r"for column_property\(\)",
             r"The column_property.kw_only parameter is deprecated "
             r"for column_property\(\)",
-            raise_on_any_unexpected=True,
         ):
 
             class MyClass(dc_decl_base):
@@ -488,7 +486,8 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         s = addresses.select()
         sess = fixture_session()
         with testing.expect_deprecated(
-            "Implicit coercion of SELECT and " "textual SELECT constructs"
+            "Implicit coercion of SELECT and textual SELECT constructs",
+            "An alias is being generated automatically against joined entity",
         ):
             self.assert_compile(
                 sess.query(User).join(s, User.addresses),
@@ -1592,7 +1591,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         def go():
             with testing.expect_deprecated(
                 "The AliasOption object is not necessary for entities to be "
-                "matched up to a query"
+                "matched up to a query",
             ):
                 result = (
                     q.options(
@@ -1624,7 +1623,8 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         def go():
             with testing.expect_deprecated(
-                r"Using the Query.instances\(\) method without a context"
+                r"The Query.instances\(\) method is deprecated",
+                r"Using the Query.instances\(\) method without a context",
             ):
                 result = list(
                     q.options(contains_eager(User.addresses)).instances(
@@ -1639,7 +1639,8 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         def go():
             with testing.expect_deprecated(
-                r"Using the Query.instances\(\) method without a context"
+                r"The Query.instances\(\) method is deprecated",
+                r"Using the Query.instances\(\) method without a context",
             ):
                 result = list(
                     q.options(contains_eager(User.addresses)).instances(
@@ -1674,7 +1675,6 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
                 r"Using the Query.instances\(\) method without a context",
                 r"The Query.instances\(\) method is deprecated and will be "
                 r"removed in a future release.",
-                raise_on_any_unexpected=True,
             ):
                 result = list(
                     q.options(
@@ -1721,7 +1721,6 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
                 r"Using the Query.instances\(\) method without a context",
                 r"The Query.instances\(\) method is deprecated and will be "
                 r"removed in a future release.",
-                raise_on_any_unexpected=True,
             ):
                 result = list(
                     q.options(

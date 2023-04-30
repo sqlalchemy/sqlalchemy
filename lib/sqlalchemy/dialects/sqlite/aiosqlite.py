@@ -239,6 +239,16 @@ class AsyncAdapt_aiosqlite_connection(AdaptedConnection):
     def close(self):
         try:
             self.await_(self._connection.close())
+        except ValueError:
+            # this is undocumented for aiosqlite, that ValueError
+            # was raised if .close() was called more than once, which is
+            # both not customary for DBAPI and is also not a DBAPI.Error
+            # exception. This is now fixed in aiosqlite via my PR
+            # https://github.com/omnilib/aiosqlite/pull/238, so we can be
+            # assured this will not become some other kind of exception,
+            # since it doesn't raise anymore.
+
+            pass
         except Exception as error:
             self._handle_exception(error)
 

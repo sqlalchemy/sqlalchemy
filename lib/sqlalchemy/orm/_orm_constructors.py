@@ -83,6 +83,7 @@ _T = typing.TypeVar("_T")
     "The :class:`.AliasOption` object is not necessary "
     "for entities to be matched up to a query that is established "
     "via :meth:`.Query.from_statement` and now does nothing.",
+    enable_warnings=False,  # AliasOption itself warns
 )
 def contains_alias(alias: Union[Alias, Subquery]) -> AliasOption:
     r"""Return a :class:`.MapperOption` that will indicate to the

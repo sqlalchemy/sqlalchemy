@@ -1394,7 +1394,6 @@ class DeclarativeMultiBaseTest(
             r"non-schema SQLAlchemy expression object; ",
             r"Attribute 'y' on class <class .*Foo5.* appears to be a "
             r"non-schema SQLAlchemy expression object; ",
-            raise_on_any_unexpected=True,
         ):
 
             class Foo5(Base):

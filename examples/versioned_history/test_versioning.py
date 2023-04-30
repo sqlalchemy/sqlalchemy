@@ -13,9 +13,9 @@ from sqlalchemy import Integer
 from sqlalchemy import join
 from sqlalchemy import select
 from sqlalchemy import String
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import column_property
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import exc as orm_exc

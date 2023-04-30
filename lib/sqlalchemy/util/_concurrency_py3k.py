@@ -17,11 +17,13 @@ from typing import Awaitable
 from typing import Callable
 from typing import Coroutine
 from typing import Optional
+from typing import TYPE_CHECKING
 from typing import TypeVar
 
 from .langhelpers import memoized_property
 from .. import exc
 from ..util.typing import Protocol
+from ..util.typing import TypeGuard
 
 _T = TypeVar("_T")
 
@@ -78,6 +80,26 @@ class _AsyncIoGreenlet(greenlet):  # type: ignore
             self.gr_context = driver.gr_context
 
 
+_T_co = TypeVar("_T_co", covariant=True)
+
+if TYPE_CHECKING:
+
+    def iscoroutine(
+        awaitable: Awaitable[_T_co],
+    ) -> TypeGuard[Coroutine[Any, Any, _T_co]]:
+        ...
+
+else:
+    iscoroutine = asyncio.iscoroutine
+
+
+def _safe_cancel_awaitable(awaitable: Awaitable[Any]) -> None:
+    # https://docs.python.org/3/reference/datamodel.html#coroutine.close
+
+    if iscoroutine(awaitable):
+        awaitable.close()
+
+
 def await_only(awaitable: Awaitable[_T]) -> _T:
     """Awaits an async function in a sync method.
 
@@ -90,6 +112,8 @@ def await_only(awaitable: Awaitable[_T]) -> _T:
     # this is called in the context greenlet while running fn
     current = getcurrent()
     if not isinstance(current, _AsyncIoGreenlet):
+        _safe_cancel_awaitable(awaitable)
+
         raise exc.MissingGreenlet(
             "greenlet_spawn has not been called; can't call await_only() "
             "here. Was IO attempted in an unexpected place?"
@@ -117,6 +141,9 @@ def await_fallback(awaitable: Awaitable[_T]) -> _T:
     if not isinstance(current, _AsyncIoGreenlet):
         loop = get_event_loop()
         if loop.is_running():
+
+            _safe_cancel_awaitable(awaitable)
+
             raise exc.MissingGreenlet(
                 "greenlet_spawn has not been called and asyncio event "
                 "loop is already running; can't call await_fallback() here. "

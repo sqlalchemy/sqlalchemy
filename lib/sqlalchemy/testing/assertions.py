@@ -47,7 +47,7 @@ def expect_warnings(*messages, **kw):
     Note that the test suite sets SAWarning warnings to raise exceptions.
 
     """  # noqa
-    return _expect_warnings(sa_exc.SAWarning, messages, **kw)
+    return _expect_warnings_sqla_only(sa_exc.SAWarning, messages, **kw)
 
 
 @contextlib.contextmanager
@@ -84,11 +84,15 @@ def emits_warning(*messages):
 
 
 def expect_deprecated(*messages, **kw):
-    return _expect_warnings(sa_exc.SADeprecationWarning, messages, **kw)
+    return _expect_warnings_sqla_only(
+        sa_exc.SADeprecationWarning, messages, **kw
+    )
 
 
 def expect_deprecated_20(*messages, **kw):
-    return _expect_warnings(sa_exc.Base20DeprecationWarning, messages, **kw)
+    return _expect_warnings_sqla_only(
+        sa_exc.Base20DeprecationWarning, messages, **kw
+    )
 
 
 def emits_warning_on(db, *messages):
@@ -140,6 +144,29 @@ _SEEN = None
 _EXC_CLS = None
 
 
+def _expect_warnings_sqla_only(
+    exc_cls,
+    messages,
+    regex=True,
+    search_msg=False,
+    assert_=True,
+):
+    """SQLAlchemy internal use only _expect_warnings().
+
+    Alembic is using _expect_warnings() directly, and should be updated
+    to use this new interface.
+
+    """
+    return _expect_warnings(
+        exc_cls,
+        messages,
+        regex=regex,
+        search_msg=search_msg,
+        assert_=assert_,
+        raise_on_any_unexpected=True,
+    )
+
+
 @contextlib.contextmanager
 def _expect_warnings(
     exc_cls,
@@ -150,7 +177,6 @@ def _expect_warnings(
     raise_on_any_unexpected=False,
     squelch_other_warnings=False,
 ):
-
     global _FILTERS, _SEEN, _EXC_CLS
 
     if regex or search_msg:
@@ -181,7 +207,6 @@ def _expect_warnings(
             real_warn = warnings.warn
 
         def our_warn(msg, *arg, **kw):
-
             if isinstance(msg, _EXC_CLS):
                 exception = type(msg)
                 msg = str(msg)
@@ -379,7 +404,7 @@ def assert_warns(except_cls, callable_, *args, **kwargs):
 
 
     """
-    with _expect_warnings(except_cls, [".*"], squelch_other_warnings=True):
+    with _expect_warnings_sqla_only(except_cls, [".*"]):
         return callable_(*args, **kwargs)
 
 
@@ -394,12 +419,11 @@ def assert_warns_message(except_cls, msg, callable_, *args, **kwargs):
     rather than regex.match().
 
     """
-    with _expect_warnings(
+    with _expect_warnings_sqla_only(
         except_cls,
         [msg],
         search_msg=True,
         regex=False,
-        squelch_other_warnings=True,
     ):
         return callable_(*args, **kwargs)
 
@@ -413,7 +437,6 @@ def assert_raises_message_context_ok(
 def _assert_raises(
     except_cls, callable_, args, kwargs, msg=None, check_context=False
 ):
-
     with _expect_raises(except_cls, msg, check_context) as ec:
         callable_(*args, **kwargs)
     return ec.error
@@ -892,7 +915,6 @@ class AssertsExecutionResults:
         return result
 
     def assert_sql(self, db, callable_, rules):
-
         newrules = []
         for rule in rules:
             if isinstance(rule, dict):

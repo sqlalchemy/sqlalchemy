@@ -36,6 +36,7 @@ from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
@@ -108,7 +109,6 @@ class ExecutionTest(_fixtures.FixtureTest):
         )
 
     def test_no_string_execute(self, connection):
-
         with Session(bind=connection) as sess:
             with expect_raises_message(
                 sa.exc.ArgumentError,
@@ -242,7 +242,6 @@ class TransScopingTest(_fixtures.FixtureTest):
         self.mapper_registry.map_imperatively(Address, addresses)
 
         with Session(testing.db) as sess:
-
             sess.add(User(name="u1"))
             sess.commit()
 
@@ -2293,13 +2292,13 @@ class FlushWarningsTest(fixtures.MappedTest):
         def evt(mapper, conn, instance):
             instance.addresses.append(Address(email="x1"))
 
-        self._test(evt, "collection append")
+        self._test(evt, "collection append", "related attribute set")
 
     def test_o2m_cascade_remove(self):
         def evt(mapper, conn, instance):
             del instance.addresses[0]
 
-        self._test(evt, "collection remove")
+        self._test(evt, "collection remove", "related attribute set")
 
     def test_m2o_cascade_add(self):
         User = self.classes.User
@@ -2308,14 +2307,19 @@ class FlushWarningsTest(fixtures.MappedTest):
             instance.addresses[0].user = User(name="u2")
 
         with expect_raises_message(orm_exc.FlushError, ".*Over 100"):
-            self._test(evt, "related attribute set")
+            self._test(
+                evt,
+                "related attribute set",
+                "collection remove",
+                "collection append",
+            )
 
     def test_m2o_cascade_remove(self):
         def evt(mapper, conn, instance):
             a1 = instance.addresses[0]
             del a1.user
 
-        self._test(evt, "related attribute delete")
+        self._test(evt, "related attribute delete", "collection remove")
 
     def test_plain_add(self):
         Address = self.classes.Address
@@ -2344,7 +2348,7 @@ class FlushWarningsTest(fixtures.MappedTest):
         ):
             self._test(evt, r"Session.delete\(\)")
 
-    def _test(self, fn, method):
+    def _test(self, fn, *methods):
         User = self.classes.User
         Address = self.classes.Address
 
@@ -2353,6 +2357,8 @@ class FlushWarningsTest(fixtures.MappedTest):
 
         u1 = User(name="u1", addresses=[Address(name="a1")])
         s.add(u1)
-        assert_warns_message(
-            sa.exc.SAWarning, "Usage of the '%s'" % method, s.commit
-        )
+
+        with expect_warnings(
+            *[f"Usage of the '{method}'" for method in methods]
+        ):
+            s.commit()
