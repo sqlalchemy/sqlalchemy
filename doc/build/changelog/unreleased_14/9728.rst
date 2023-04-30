@@ -3,8 +3,8 @@
     :tickets: 9728
     :versions: 2.0.12
 
-    Fixed critical caching issue where combination of :func:`_orm.aliased()`
-    :func:`_sql.case` and :func:`_hybrid.hybrid_property` expressions would
-    cause a cache key mismatch, leading to cache keys that held onto the actual
-    :func:`_orm.aliased` object while also not matching each other, filling up
-    the cache.
+    Fixed critical caching issue where the combination of
+    :func:`_orm.aliased()` and :func:`_hybrid.hybrid_property` expression
+    compositions would cause a cache key mismatch, leading to cache keys that
+    held onto the actual :func:`_orm.aliased` object while also not matching
+    that of equivalent constructs, filling up the cache.
