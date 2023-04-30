@@ -54,6 +54,8 @@ from ..sql import base as sql_base
 from ..sql import roles
 from ..sql import traversals
 from ..sql import visitors
+from ..sql.traversals import HasCacheKey
+from ..sql.visitors import InternalTraversal
 
 
 class NoKey(str):
@@ -223,13 +225,16 @@ class QueryableAttribute(
         subclass representing a column expression.
 
         """
+        entity_namespace = self._entity_namespace
+        assert isinstance(entity_namespace, HasCacheKey)
+
         if self.key is NO_KEY:
-            annotations = {"entity_namespace": self._entity_namespace}
+            annotations = {"entity_namespace": entity_namespace}
         else:
             annotations = {
                 "proxy_key": self.key,
                 "proxy_owner": self._parententity,
-                "entity_namespace": self._entity_namespace,
+                "entity_namespace": entity_namespace,
             }
 
         ce = self.comparator.__clause_element__()
@@ -482,10 +487,22 @@ class InstrumentedAttribute(Mapped):
             return self.impl.get(state, dict_)
 
 
-HasEntityNamespace = util.namedtuple(
-    "HasEntityNamespace", ["entity_namespace"]
-)
-HasEntityNamespace.is_mapper = HasEntityNamespace.is_aliased_class = False
+class HasEntityNamespace(HasCacheKey):
+    __slots__ = ("_entity_namespace",)
+
+    is_mapper = False
+    is_aliased_class = False
+
+    _traverse_internals = [
+        ("_entity_namespace", InternalTraversal.dp_has_cache_key),
+    ]
+
+    def __init__(self, ent):
+        self._entity_namespace = ent
+
+    @property
+    def entity_namespace(self):
+        return self._entity_namespace.entity_namespace
 
 
 def create_proxied_attribute(descriptor):
@@ -550,7 +567,7 @@ def create_proxied_attribute(descriptor):
             else:
                 # used by hybrid attributes which try to remain
                 # agnostic of any ORM concepts like mappers
-                return HasEntityNamespace(self.class_)
+                return HasEntityNamespace(self._parententity)
 
         @property
         def property(self):

@@ -2,6 +2,7 @@ import random
 
 import sqlalchemy as sa
 from sqlalchemy import Column
+from sqlalchemy import column
 from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
@@ -16,6 +17,7 @@ from sqlalchemy import true
 from sqlalchemy import update
 from sqlalchemy import util
 from sqlalchemy.ext.declarative import ConcreteBase
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import defaultload
@@ -782,6 +784,55 @@ class PolyCacheKeyTest(fixtures.CacheKeyFixture, _poly_fixtures._Polymorphic):
 
         self._run_cache_key_fixture(
             lambda: stmt_20(one(), two(), three()),
+            compare_values=True,
+        )
+
+    @testing.variation(
+        "exprtype", ["plain_column", "self_standing_case", "case_w_columns"]
+    )
+    def test_hybrid_w_case_ac(self, decl_base, exprtype):
+        """test #9728"""
+
+        class Employees(decl_base):
+            __tablename__ = "employees"
+            id = Column(String(128), primary_key=True)
+            first_name = Column(String(length=64))
+
+            @hybrid_property
+            def name(self):
+                return self.first_name
+
+            @name.expression
+            def name(
+                cls,
+            ):
+                if exprtype.plain_column:
+                    return cls.first_name
+                elif exprtype.self_standing_case:
+                    return case(
+                        (column("x") == 1, column("q")),
+                        else_=column("q"),
+                    )
+                elif exprtype.case_w_columns:
+                    return case(
+                        (column("x") == 1, column("q")),
+                        else_=cls.first_name,
+                    )
+                else:
+                    exprtype.fail()
+
+        def go1():
+            employees_2 = aliased(Employees, name="employees_2")
+            stmt = select(employees_2.name)
+            return stmt
+
+        def go2():
+            employees_2 = aliased(Employees, name="employees_2")
+            stmt = select(employees_2)
+            return stmt
+
+        self._run_cache_key_fixture(
+            lambda: stmt_20(go1(), go2()),
             compare_values=True,
         )
 
