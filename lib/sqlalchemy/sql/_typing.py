@@ -26,6 +26,7 @@ from .. import util
 from ..inspection import Inspectable
 from ..util.typing import Literal
 from ..util.typing import Protocol
+from ..util.typing import TypeAlias
 
 if TYPE_CHECKING:
     from datetime import date
@@ -175,7 +176,10 @@ _ColumnExpressionArgument = Union[
     Callable[[], "ColumnElement[_T]"],
     "LambdaElement",
 ]
-"""narrower "column expression" argument.
+"See docs in public alias ColumnExpressionArgument."
+
+ColumnExpressionArgument: TypeAlias = _ColumnExpressionArgument[_T]
+"""Narrower "column expression" argument.
 
 This type is used for all the other "column" kinds of expressions that
 typically represent a single SQL column expression, not a set of columns the
@@ -184,9 +188,7 @@ way a table or ORM entity does.
 This includes ColumnElement, or ORM-mapped attributes that will have a
 `__clause_element__()` method, it also has the ExpressionElementRole
 overall which brings in the TextClause object also.
-
 """
-
 
 _ColumnExpressionOrLiteralArgument = Union[Any, _ColumnExpressionArgument[_T]]
 

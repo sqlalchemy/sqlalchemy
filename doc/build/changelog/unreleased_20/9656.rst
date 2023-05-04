@@ -1,0 +1,8 @@
+.. change::
+    :tags: typing, sql
+    :tickets: 9656
+
+    Added type ``ColumnExpressionArgument`` as a public alias of an internal
+    type. This type is useful since it's what' accepted by the sqlalchemy in
+    many api calls, such as :meth:`_sql.Select.where`, :meth:`_sql.and` and
+    many other.
