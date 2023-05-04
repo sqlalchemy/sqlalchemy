@@ -146,7 +146,7 @@ def de_stringify_annotation(
 
     original_annotation = annotation
 
-    if is_fwd_ref(annotation) and not annotation.__forward_evaluated__:
+    if is_fwd_ref(annotation):
         annotation = annotation.__forward_arg__
 
     if isinstance(annotation, str):

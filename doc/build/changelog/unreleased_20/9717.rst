@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9717
+
+    Fixed issue where ORM Annotated Declarative would not resolve forward
+    references correctly in all cases; in particular, when using
+    ``from __future__ import annotations`` in combination with Pydantic
+    dataclasses.
