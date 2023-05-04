@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9715
+
+    Fixed loader strategy pathing issues where eager loaders such as
+    :func:`_orm.joinedload` / :func:`_orm.selectinload` would fail to traverse
+    fully for many-levels deep following a load that had a
+    :func:`_orm.with_polymorphic` or similar construct as an interim member.

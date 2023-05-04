@@ -119,6 +119,8 @@ class PathRegistry(HasCacheKey):
     is_property = False
     is_entity = False
 
+    is_unnatural: bool
+
     path: _PathRepresentation
     natural_path: _PathRepresentation
     parent: Optional[PathRegistry]
@@ -510,7 +512,12 @@ class PropRegistry(PathRegistry):
         # given MapperProperty's parent.
         insp = cast("_InternalEntityType[Any]", parent[-1])
         natural_parent: AbstractEntityRegistry = parent
-        self.is_unnatural = False
+
+        # inherit "is_unnatural" from the parent
+        if parent.parent.is_unnatural:
+            self.is_unnatural = True
+        else:
+            self.is_unnatural = False
 
         if not insp.is_aliased_class or insp._use_mapper_path:  # type: ignore
             parent = natural_parent = parent.parent[prop.parent]
@@ -570,6 +577,7 @@ class PropRegistry(PathRegistry):
         self.parent = parent
         self.path = parent.path + (prop,)
         self.natural_path = natural_parent.natural_path + (prop,)
+
         self.has_entity = prop._links_to_entity
         if prop._is_relationship:
             if TYPE_CHECKING:
@@ -674,7 +682,6 @@ class AbstractEntityRegistry(CreatesToken):
         # elif not parent.path and self.is_aliased_class:
         #     self.natural_path = (self.entity._generate_cache_key()[0], )
         else:
-            # self.natural_path = parent.natural_path + (entity, )
             self.natural_path = self.path
 
     def _truncate_recursive(self) -> AbstractEntityRegistry:
