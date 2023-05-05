@@ -304,6 +304,7 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
 
     @testing.variation("populate_existing", [True, False])
     @testing.requires.provisioned_upsert
+    @testing.requires.update_returning
     def test_upsert_populate_existing(self, decl_base, populate_existing):
         """test #9742"""
 
