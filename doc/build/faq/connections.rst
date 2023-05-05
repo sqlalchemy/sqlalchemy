@@ -396,9 +396,9 @@ If using a SQLite ``:memory:`` database, or a version of SQLAlchemy prior
 to version 0.7, the default connection pool is the :class:`.SingletonThreadPool`,
 which maintains exactly one SQLite connection per thread.  So two
 connections in use in the same thread will actually be the same SQLite
-connection.  Make sure you're not using a :memory: database which will
-use :class:`.QueuePool`, the default for non-memory databases in
-current SQLAlchemy versions.
+connection.  Make sure you're not using a :memory: database so that the 
+engine will use :class:`.QueuePool` (the default for non-memory databases 
+in current SQLAlchemy versions).
 
 .. seealso::
 
