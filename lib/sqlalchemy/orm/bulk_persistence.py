@@ -586,6 +586,7 @@ class ORMDMLState(AbstractORMCompileState):
             load_options = execution_options.get(
                 "_sa_orm_load_options", QueryContext.default_load_options
             )
+
             querycontext = QueryContext(
                 compile_state.from_statement_ctx,
                 compile_state.select_statement,
@@ -1140,6 +1141,7 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
         _return_defaults: bool = False
         _subject_mapper: Optional[Mapper[Any]] = None
         _autoflush: bool = True
+        _populate_existing: bool = False
 
     select_statement: Optional[FromStatement] = None
 
@@ -1159,7 +1161,7 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
             execution_options,
         ) = BulkORMInsert.default_insert_options.from_execution_options(
             "_sa_orm_insert_options",
-            {"dml_strategy", "autoflush"},
+            {"dml_strategy", "autoflush", "populate_existing"},
             execution_options,
             statement._execution_options,
         )
@@ -1283,6 +1285,15 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
 
         if not bool(statement._returning):
             return result
+
+        if insert_options._populate_existing:
+            load_options = execution_options.get(
+                "_sa_orm_load_options", QueryContext.default_load_options
+            )
+            load_options += {"_populate_existing": True}
+            execution_options = execution_options.union(
+                {"_sa_orm_load_options": load_options}
+            )
 
         return cls._return_orm_returning(
             session,
