@@ -666,7 +666,7 @@ class DeclarativeBase(
         from sqlalchemy import String
         from sqlalchemy.orm import DeclarativeBase
 
-        bigint = Annotated(int, "bigint")
+        bigint = Annotated[int, "bigint"]
         my_metadata = MetaData()
 
         class Base(DeclarativeBase):
