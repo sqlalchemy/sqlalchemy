@@ -1,0 +1,14 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 9752
+
+
+    Added new :func:`.try_cast` factory function and corresponding
+    :class:`.TryCast` SQL Element, which implements a cast where
+    un-castable values are returned as NULL, instead of raising an error.
+
+    This is currently implemented as ``TRY_CAST`` in Microsoft SQL Server.
+    and could be implemented in other backends:
+    * ``SAFE_CAST`` in Google BigQuery, and
+    * ``TRY_CAST`` in DuckDB.
+    * ``TRY_CAST`` in Snowflake.

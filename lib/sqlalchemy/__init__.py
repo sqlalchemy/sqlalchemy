@@ -99,6 +99,8 @@ from .sql.expression import Case as Case
 from .sql.expression import case as case
 from .sql.expression import Cast as Cast
 from .sql.expression import cast as cast
+from .sql.expression import TryCast as TryCast
+from .sql.expression import try_cast as try_cast
 from .sql.expression import ClauseElement as ClauseElement
 from .sql.expression import ClauseList as ClauseList
 from .sql.expression import collate as collate

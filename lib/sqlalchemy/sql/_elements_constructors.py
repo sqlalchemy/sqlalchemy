@@ -40,6 +40,7 @@ from .elements import Null
 from .elements import Over
 from .elements import TextClause
 from .elements import True_
+from .elements import TryCast
 from .elements import Tuple
 from .elements import TypeCoerce
 from .elements import UnaryExpression
@@ -893,6 +894,9 @@ def cast(
 
         :ref:`tutorial_casts`
 
+        :func:`.try_cast` - an alternative to CAST that results in
+        NULLs when the cast fails, instead of raising an error.
+
         :func:`.type_coerce` - an alternative to CAST that coerces the type
         on the Python side only, which is often sufficient to generate the
         correct SQL and data coercion.
@@ -900,6 +904,30 @@ def cast(
 
     """
     return Cast(expression, type_)
+
+
+def try_cast(*arg, **kw):
+    """Create a TRY_CAST expression.
+
+    :class:`.TryCast` is a subclass of SQLAlchemy's :class:`.Cast`
+    construct, and works in the same way, except that the SQL expression
+    rendered is "TRY_CAST" rather than "CAST"::
+
+        from sqlalchemy import select, try_cast, Numeric
+
+        stmt = select(
+            try_cast(product_table.c.unit_price, Numeric(10, 4))
+        )
+
+    The above would render with mssql as::
+
+        SELECT TRY_CAST (product_table.unit_price AS NUMERIC(10, 4))
+        FROM product_table
+
+    .. versionadded:: 2.1.0
+
+    """
+    return TryCast(*arg, **kw)
 
 
 def column(

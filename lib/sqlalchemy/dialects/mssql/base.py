@@ -941,6 +941,7 @@ from ...sql import sqltypes
 from ...sql import util as sql_util
 from ...sql._typing import is_sql_compiler
 from ...sql.compiler import InsertmanyvaluesSentinelOpts
+from ...sql.elements import TryCast
 from ...types import BIGINT
 from ...types import BINARY
 from ...types import CHAR
@@ -1604,38 +1605,12 @@ class SQL_VARIANT(sqltypes.TypeEngine):
 
 
 def try_cast(*arg, **kw):
-    """Create a TRY_CAST expression.
-
-    :class:`.TryCast` is a subclass of SQLAlchemy's :class:`.Cast`
-    construct, and works in the same way, except that the SQL expression
-    rendered is "TRY_CAST" rather than "CAST"::
-
-        from sqlalchemy import select
-        from sqlalchemy import Numeric
-        from sqlalchemy.dialects.mssql import try_cast
-
-        stmt = select(
-            try_cast(product_table.c.unit_price, Numeric(10, 4))
-        )
-
-    The above would render::
-
-        SELECT TRY_CAST (product_table.unit_price AS NUMERIC(10, 4))
-        FROM product_table
-
-    .. versionadded:: 1.3.7
-
-    """
+    util.warn_deprecated(
+        "`sqlalchemy.dialects.mssql.base.try_cast` is deprecated. "
+        "Use directly from sqlalchemy instead, i.e. `sa.try_cast(...)`",
+        "2.1",
+    )
     return TryCast(*arg, **kw)
-
-
-class TryCast(sql.elements.Cast):
-    """Represent a SQL Server TRY_CAST expression."""
-
-    __visit_name__ = "try_cast"
-
-    stringify_dialect = "mssql"
-    inherit_cache = True
 
 
 # old names.
