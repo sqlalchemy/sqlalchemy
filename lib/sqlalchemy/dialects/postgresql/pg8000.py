@@ -148,7 +148,7 @@ class _PGNumeric(sqltypes.Numeric):
                 )
 
 
-class _PGFloat(_PGNumeric):
+class _PGFloat(_PGNumeric, sqltypes.Float):
     __visit_name__ = "float"
     render_bind_cast = True
 

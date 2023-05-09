@@ -327,7 +327,7 @@ class AsyncpgNumeric(sqltypes.Numeric):
                 )
 
 
-class AsyncpgFloat(AsyncpgNumeric):
+class AsyncpgFloat(AsyncpgNumeric, sqltypes.Float):
     __visit_name__ = "float"
     render_bind_cast = True
 
