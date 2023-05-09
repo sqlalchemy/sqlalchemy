@@ -2777,6 +2777,12 @@ class SQLCompiler(Compiled):
             cast.typeclause._compiler_dispatch(self, **kwargs),
         )
 
+    def visit_try_cast(self, cast, **kwargs):
+        return "TRY_CAST(%s AS %s)" % (
+            cast.clause._compiler_dispatch(self, **kwargs),
+            cast.typeclause._compiler_dispatch(self, **kwargs),
+        )
+
     def _format_frame_clause(self, range_, **kw):
 
         return "%s AND %s" % (

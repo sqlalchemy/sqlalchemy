@@ -939,6 +939,7 @@ from ...sql import quoted_name
 from ...sql import roles
 from ...sql import sqltypes
 from ...sql import util as sql_util
+from ...sql._elements_constructors import try_cast
 from ...sql._typing import is_sql_compiler
 from ...sql.compiler import InsertmanyvaluesSentinelOpts
 from ...sql.elements import TryCast
@@ -1604,15 +1605,6 @@ class SQL_VARIANT(sqltypes.TypeEngine):
     __visit_name__ = "SQL_VARIANT"
 
 
-def try_cast(*arg, **kw):
-    util.warn_deprecated(
-        "`sqlalchemy.dialects.mssql.base.try_cast` is deprecated. "
-        "Use directly from sqlalchemy instead, i.e. `sa.try_cast(...)`",
-        "2.1",
-    )
-    return TryCast(*arg, **kw)
-
-
 # old names.
 MSDateTime = _MSDateTime
 MSDate = _MSDate
@@ -2152,12 +2144,6 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
         else:
             return ""
-
-    def visit_try_cast(self, element, **kw):
-        return "TRY_CAST (%s AS %s)" % (
-            self.process(element.clause, **kw),
-            self.process(element.typeclause, **kw),
-        )
 
     def translate_select_structure(self, select_stmt, **kwargs):
         """Look for ``LIMIT`` and OFFSET in a select statement, and if

@@ -26,7 +26,6 @@ from sqlalchemy import UniqueConstraint
 from sqlalchemy import update
 from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects.mssql import base as mssql_base
-from sqlalchemy.dialects.mssql.base import try_cast
 from sqlalchemy.sql import column
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
@@ -1478,15 +1477,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         metadata = MetaData()
         t1 = Table("t1", metadata, Column("id", Integer, primary_key=True))
 
-        def call(func):
-            self.assert_compile(
-                select(func(t1.c.id, Integer)),
-                "SELECT TRY_CAST (t1.id AS INTEGER) AS id FROM t1",
-            )
-
-        with testing.expect_deprecated(".*try_cast.*"):
-            call(mssql_base.try_cast)
-        call(try_cast)
+        self.assert_compile(
+            select(try_cast(t1.c.id, Integer)),
+            "SELECT TRY_CAST (t1.id AS INTEGER) AS id FROM t1",
+        )
 
     @testing.combinations(
         ("no_persisted", "", "ignore"),
