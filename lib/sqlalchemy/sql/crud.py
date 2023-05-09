@@ -1344,7 +1344,7 @@ def _get_update_multitable_params(
 ):
     normalized_params = {
         coercions.expect(roles.DMLColumnRole, c): param
-        for c, param in stmt_parameter_tuples
+        for c, param in stmt_parameter_tuples or ()
     }
 
     include_table = compile_state.include_table_with_column_exprs

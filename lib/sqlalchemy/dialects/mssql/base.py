@@ -2425,13 +2425,13 @@ class MSSQLCompiler(compiler.SQLCompiler):
             for t in [from_table] + extra_froms
         )
 
-    def delete_table_clause(self, delete_stmt, from_table, extra_froms):
+    def delete_table_clause(self, delete_stmt, from_table, extra_froms, **kw):
         """If we have extra froms make sure we render any alias as hint."""
         ashint = False
         if extra_froms:
             ashint = True
         return from_table._compiler_dispatch(
-            self, asfrom=True, iscrud=True, ashint=ashint
+            self, asfrom=True, iscrud=True, ashint=ashint, **kw
         )
 
     def delete_extra_from_clause(
