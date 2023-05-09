@@ -19,5 +19,6 @@ from .scoping import async_scoped_session as async_scoped_session
 from .session import async_object_session as async_object_session
 from .session import async_session as async_session
 from .session import async_sessionmaker as async_sessionmaker
+from .session import AsyncAttrs as AsyncAttrs
 from .session import AsyncSession as AsyncSession
 from .session import AsyncSessionTransaction as AsyncSessionTransaction

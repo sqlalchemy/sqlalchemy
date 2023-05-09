@@ -155,6 +155,7 @@ illustrates a complete example including mapper and session configuration::
     from sqlalchemy import ForeignKey
     from sqlalchemy import func
     from sqlalchemy import select
+    from sqlalchemy.ext.asyncio import AsyncAttrs
     from sqlalchemy.ext.asyncio import async_sessionmaker
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy.ext.asyncio import create_async_engine
@@ -165,7 +166,7 @@ illustrates a complete example including mapper and session configuration::
     from sqlalchemy.orm import selectinload
 
 
-    class Base(DeclarativeBase):
+    class Base(AsyncAttrs, DeclarativeBase):
         pass
 
 
@@ -175,7 +176,7 @@ illustrates a complete example including mapper and session configuration::
         id: Mapped[int] = mapped_column(primary_key=True)
         data: Mapped[str]
         create_date: Mapped[datetime.datetime] = mapped_column(server_default=func.now())
-        bs: Mapped[List[B]] = relationship(lazy="raise")
+        bs: Mapped[List[B]] = relationship()
 
 
     class B(Base):
@@ -225,6 +226,11 @@ illustrates a complete example including mapper and session configuration::
             # expire_on_commit=False allows
             print(a1.data)
 
+            # alternatively, AsyncAttrs may be used to access any attribute
+            # as an awaitable (new in 2.0.13)
+            for b1 in await a1.awaitable_attrs.bs:
+                print(b1)
+
 
     async def async_main() -> None:
         engine = create_async_engine(
@@ -269,6 +275,64 @@ Using traditional asyncio, the application needs to avoid any points at which
 IO-on-attribute access may occur.   Techniques that can be used to help
 this are below, many of which are illustrated in the preceding example.
 
+* Attributes that are lazy-loading relationships, deferred columns or
+  expressions, or are being accessed in expiration scenarios can take advantage
+  of the  :class:`_asyncio.AsyncAttrs` mixin.  This mixin, when added to a
+  specific class or more generally to the Declarative ``Base`` superclass,
+  provides an accessor :attr:`_asyncio.AsyncAttrs.awaitable_attrs`
+  which delivers any attribute as an awaitable::
+
+    from __future__ import annotations
+
+    from typing import List
+
+    from sqlalchemy.ext.asyncio import AsyncAttrs
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import relationship
+
+
+    class Base(AsyncAttrs, DeclarativeBase):
+        pass
+
+
+    class A(Base):
+        __tablename__ = "a"
+
+        # ... rest of mapping ...
+
+        bs: Mapped[List[B]] = relationship()
+
+
+    class B(Base):
+        __tablename__ = "b"
+
+        # ... rest of mapping ...
+
+  Accessing the ``A.bs`` collection on newly loaded instances of ``A`` when
+  eager loading is not in use will normally use :term:`lazy loading`, which in
+  order to succeed will usually emit IO to the database, which will fail under
+  asyncio as no implicit IO is allowed. To access this attribute directly under
+  asyncio without any prior loading operations, the attribute can be accessed
+  as an awaitable by indicating the :attr:`_asyncio.AsyncAttrs.awaitable_attrs`
+  prefix::
+
+    a1 = await (session.scalars(select(A))).one()
+    for b1 in await a1.awaitable_attrs.bs:
+        print(b1)
+
+  The :class:`_asyncio.AsyncAttrs` mixin provides a succinct facade over the
+  internal approach that's also used by the
+  :meth:`_asyncio.AsyncSession.run_sync` method.
+
+
+  .. versionadded:: 2.0.13
+
+  .. seealso::
+
+      :class:`_asyncio.AsyncAttrs`
+
+
 * Collections can be replaced with **write only collections** that will never
   emit IO implicitly, by using the :ref:`write_only_relationship` feature in
   SQLAlchemy 2.0. Using this feature, collections are never read from, only
@@ -283,10 +347,9 @@ this are below, many of which are illustrated in the preceding example.
   bullets below address specific techniques when using traditional lazy-loaded
   relationships with asyncio, which requires more care.
 
-* If using traditional ORM relationships which are subject to lazy loading,
-  relationships can be declared with ``lazy="raise"`` so that by
-  default they will not attempt to emit SQL.  In order to load collections,
-  :term:`eager loading` must be used in all cases.
+* If not using :class:`_asyncio.AsyncAttrs`, relationships can be declared
+  with ``lazy="raise"`` so that by default they will not attempt to emit SQL.
+  In order to load collections, :term:`eager loading` would be used instead.
 
 * The most useful eager loading strategy is the
   :func:`_orm.selectinload` eager loader, which is employed in the previous
@@ -1018,6 +1081,9 @@ ORM Session API Documentation
 .. autoclass:: async_scoped_session
    :members:
    :inherited-members:
+
+.. autoclass:: AsyncAttrs
+   :members:
 
 .. autoclass:: AsyncSession
    :members:
