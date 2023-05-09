@@ -96,10 +96,6 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
-    def reflect_indexes_with_ascdesc(self):
-        return fails_if(["oracle"])
-
-    @property
     def table_ddl_if_exists(self):
         """target platform supports IF NOT EXISTS / IF EXISTS for tables."""
 
@@ -607,11 +603,15 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def indexes_with_expressions(self):
-        return only_on(["postgresql", "sqlite>=3.9.0"])
+        return only_on(["postgresql", "sqlite>=3.9.0", "oracle"])
 
     @property
     def reflect_indexes_with_expressions(self):
-        return only_on(["postgresql"])
+        return only_on(["postgresql", "oracle"])
+
+    @property
+    def reflect_indexes_with_ascdesc_as_expression(self):
+        return only_on(["oracle"])
 
     @property
     def temp_table_names(self):

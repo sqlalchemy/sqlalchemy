@@ -1,0 +1,14 @@
+.. change::
+    :tags: oracle, reflection
+    :tickets: 9597
+
+    Added reflection support in the Oracle dialect to expression based indexes
+    and the ordering direction of index expressions.
+
+.. change::
+    :tags: performance, schema
+    :tickets: 9597
+
+    Improved how table columns are added, avoiding unnecessary allocations,
+    significantly speeding up the creation of many table, like when reflecting
+    entire schemas.

@@ -549,8 +549,9 @@ class ReflectedIndex(TypedDict):
     """
 
     column_sorting: NotRequired[Dict[str, Tuple[str]]]
-    """optional dict mapping column names to tuple of sort keywords,
-    which may include ``asc``, ``desc``, ``nulls_first``, ``nulls_last``.
+    """optional dict mapping column names or expressions to tuple of sort
+    keywords, which may include ``asc``, ``desc``, ``nulls_first``,
+    ``nulls_last``.
 
     .. versionadded:: 1.3.5
     """

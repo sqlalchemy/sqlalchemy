@@ -2304,6 +2304,8 @@ class OracleDialect(default.DefaultDialect):
             else:
                 return value
 
+        remove_size = re.compile(r"\(\d+\)")
+
         for row_dict in result:
             table_name = self.normalize_name(row_dict["table_name"])
             orig_colname = row_dict["column_name"]
@@ -2339,7 +2341,7 @@ class OracleDialect(default.DefaultDialect):
             elif "WITH LOCAL TIME ZONE" in coltype:
                 coltype = TIMESTAMP(local_timezone=True)
             else:
-                coltype = re.sub(r"\(\d+\)", "", coltype)
+                coltype = re.sub(remove_size, "", coltype)
                 try:
                     coltype = self.ischema_names[coltype]
                 except KeyError:
@@ -2557,6 +2559,8 @@ class OracleDialect(default.DefaultDialect):
                 dictionary.all_indexes.c.uniqueness,
                 dictionary.all_indexes.c.compression,
                 dictionary.all_indexes.c.prefix_length,
+                dictionary.all_ind_columns.c.descend,
+                dictionary.all_ind_expressions.c.column_expression,
             )
             .select_from(dictionary.all_ind_columns)
             .join(
@@ -2564,17 +2568,30 @@ class OracleDialect(default.DefaultDialect):
                 sql.and_(
                     dictionary.all_ind_columns.c.index_name
                     == dictionary.all_indexes.c.index_name,
-                    dictionary.all_ind_columns.c.table_owner
-                    == dictionary.all_indexes.c.table_owner,
-                    # NOTE: this condition on table_name is not required
-                    # but it improves the query performance noticeably
-                    dictionary.all_ind_columns.c.table_name
-                    == dictionary.all_indexes.c.table_name,
+                    dictionary.all_ind_columns.c.index_owner
+                    == dictionary.all_indexes.c.owner,
+                ),
+            )
+            .outerjoin(
+                # NOTE: this adds about 20% to the query time. Using a
+                # case expression with a scalar subquery only when needed
+                # with the assumption that most indexes are not expression
+                # would be faster but oracle does not like that with
+                # LONG datatype. It errors with:
+                # ORA-00997: illegal use of LONG datatype
+                dictionary.all_ind_expressions,
+                sql.and_(
+                    dictionary.all_ind_expressions.c.index_name
+                    == dictionary.all_ind_columns.c.index_name,
+                    dictionary.all_ind_expressions.c.index_owner
+                    == dictionary.all_ind_columns.c.index_owner,
+                    dictionary.all_ind_expressions.c.column_position
+                    == dictionary.all_ind_columns.c.column_position,
                 ),
             )
             .where(
-                dictionary.all_ind_columns.c.table_owner == owner,
-                dictionary.all_ind_columns.c.table_name.in_(
+                dictionary.all_indexes.c.table_owner == owner,
+                dictionary.all_indexes.c.table_name.in_(
                     bindparam("all_objects")
                 ),
             )
@@ -2604,11 +2621,12 @@ class OracleDialect(default.DefaultDialect):
             if row_dict["constraint_type"] == "P"
         }
 
+        # all_ind_expressions.column_expression is LONG
         result = self._run_batches(
             connection,
             query,
             dblink,
-            returns_long=False,
+            returns_long=True,
             mappings=True,
             all_objects=all_objects,
         )
@@ -2642,8 +2660,6 @@ class OracleDialect(default.DefaultDialect):
         enabled = {"DISABLED": False, "ENABLED": True}
         is_bitmap = {"BITMAP", "FUNCTION-BASED BITMAP"}
 
-        oracle_sys_col = re.compile(r"SYS_NC\d+\$", re.IGNORECASE)
-
         indexes = defaultdict(dict)
 
         for row_dict in self._get_indexes_rows(
@@ -2669,13 +2685,25 @@ class OracleDialect(default.DefaultDialect):
             else:
                 index_dict = table_indexes[index_name]
 
-            # filter out Oracle SYS_NC names.  could also do an outer join
-            # to the all_tab_columns table and check for real col names
-            # there.
-            if not oracle_sys_col.match(row_dict["column_name"]):
-                index_dict["column_names"].append(
-                    self.normalize_name(row_dict["column_name"])
-                )
+            expr = row_dict["column_expression"]
+            if expr is not None:
+                index_dict["column_names"].append(None)
+                if "expressions" in index_dict:
+                    index_dict["expressions"].append(expr)
+                else:
+                    index_dict["expressions"] = index_dict["column_names"][:-1]
+                    index_dict["expressions"].append(expr)
+
+                if row_dict["descend"].lower() != "asc":
+                    assert row_dict["descend"].lower() == "desc"
+                    cs = index_dict.setdefault("column_sorting", {})
+                    cs[expr] = ("desc",)
+            else:
+                assert row_dict["descend"].lower() == "asc"
+                cn = self.normalize_name(row_dict["column_name"])
+                index_dict["column_names"].append(cn)
+                if "expressions" in index_dict:
+                    index_dict["expressions"].append(cn)
 
         default = ReflectionDefaults.indexes
 
