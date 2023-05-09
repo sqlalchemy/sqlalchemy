@@ -57,6 +57,7 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import Text
 from sqlalchemy import text
+from sqlalchemy import try_cast
 from sqlalchemy import TIMESTAMP
 from sqlalchemy import true
 from sqlalchemy import tuple_
@@ -6042,6 +6043,15 @@ class StringifySpecialTest(fixtures.TestBase):
         eq_ignore_whitespace(
             str(schema.AddConstraint(cons)),
             "ALTER TABLE testtbl ADD EXCLUDE USING gist " "(room WITH =)",
+        )
+
+    def test_try_cast(self):
+        metadata = MetaData()
+        t1 = Table("t1", metadata, Column("id", Integer, primary_key=True))
+
+        self.assert_compile(
+            select(try_cast(t1.c.id, Integer)),
+            "SELECT TRY_CAST (t1.id AS INTEGER) AS id FROM t1",
         )
 
 
