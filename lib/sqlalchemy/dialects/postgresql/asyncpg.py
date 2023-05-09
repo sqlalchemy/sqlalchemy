@@ -182,6 +182,7 @@ from .base import PGExecutionContext
 from .base import PGIdentifierPreparer
 from .base import REGCLASS
 from .base import REGCONFIG
+from .types import BYTEA
 from ... import exc
 from ... import pool
 from ... import util
@@ -209,6 +210,10 @@ class AsyncpgREGCONFIG(REGCONFIG):
 
 
 class AsyncpgTime(sqltypes.Time):
+    render_bind_cast = True
+
+
+class AsyncpgByteA(BYTEA):
     render_bind_cast = True
 
 
@@ -986,6 +991,7 @@ class PGDialect_asyncpg(PGDialect):
             sqltypes.Numeric: AsyncpgNumeric,
             sqltypes.Float: AsyncpgFloat,
             sqltypes.JSON: AsyncpgJSON,
+            sqltypes.LargeBinary: AsyncpgByteA,
             json.JSONB: AsyncpgJSONB,
             sqltypes.JSON.JSONPathType: AsyncpgJSONPathType,
             sqltypes.JSON.JSONIndexType: AsyncpgJSONIndexType,

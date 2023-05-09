@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, postgresql, regression
+    :tickets: 9739
+
+    Fixed another regression due to the "insertmanyvalues" change in 2.0.10 as
+    part of :ticket:`9618`, in a similar way as regression :ticket:`9701`, where
+    :class:`.LargeBinary` datatypes also need additional casts on when using the
+    asyncpg driver specifically in order to work with the new bulk INSERT
+    format.
