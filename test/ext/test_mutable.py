@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 import copy
 import dataclasses
 import pickle
+from typing import Any
+from typing import Dict
 
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
@@ -19,6 +23,8 @@ from sqlalchemy.orm import attributes
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.instrumentation import ClassManager
 from sqlalchemy.orm.mapper import Mapper
@@ -168,7 +174,6 @@ class MiscTest(fixtures.TestBase):
         registry.metadata.create_all(connection)
 
         with Session(connection) as sess:
-
             data = dict(
                 j1={"a": 1},
                 j2={"b": 2},
@@ -242,6 +247,34 @@ class MiscTest(fixtures.TestBase):
                 is_(t1_merged, already_present)
 
             is_true(inspect(t1_merged).attrs.data.history.added)
+
+    def test_no_duplicate_reg_w_inheritance(self, decl_base):
+        """test #9676"""
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            json: Mapped[Dict[str, Any]] = mapped_column(
+                MutableDict.as_mutable(JSON())
+            )
+
+        class B(A):
+            pass
+
+        class C(B):
+            pass
+
+        decl_base.registry.configure()
+
+        # the event hook itself doesnt do anything for repeated calls
+        # already, so there's really nothing else to assert other than there's
+        # only one "set" event listener
+
+        eq_(len(A.json.dispatch.set), 1)
+        eq_(len(B.json.dispatch.set), 1)
+        eq_(len(C.json.dispatch.set), 1)
 
 
 class _MutableDictTestBase(_MutableDictTestFixture):
@@ -1252,7 +1285,6 @@ class MutableAssocWithAttrInheritTest(
 ):
     @classmethod
     def define_tables(cls, metadata):
-
         Table(
             "foo",
             metadata,
@@ -1360,7 +1392,6 @@ class MutableAssociationScalarJSONTest(
 class CustomMutableAssociationScalarJSONTest(
     _MutableDictTestBase, fixtures.MappedTest
 ):
-
     CustomMutableDict = None
 
     @classmethod
@@ -1445,7 +1476,6 @@ class _CompositeTestBase:
 
     @classmethod
     def _type_fixture(cls):
-
         return Point
 
 
@@ -1494,7 +1524,6 @@ class MutableCompositeColumnDefaultTest(
 class MutableDCCompositeColumnDefaultTest(MutableCompositeColumnDefaultTest):
     @classmethod
     def _type_fixture(cls):
-
         return DCPoint
 
 
@@ -1520,7 +1549,6 @@ class MutableCompositesUnpickleTest(_CompositeTestBase, fixtures.MappedTest):
 class MutableDCCompositesUnpickleTest(MutableCompositesUnpickleTest):
     @classmethod
     def _type_fixture(cls):
-
         return DCPoint
 
 
@@ -1638,7 +1666,6 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
 class MutableDCCompositesTest(MutableCompositesTest):
     @classmethod
     def _type_fixture(cls):
-
         return DCPoint
 
 
@@ -1676,7 +1703,6 @@ class MutableCompositeCustomCoerceTest(
 ):
     @classmethod
     def _type_fixture(cls):
-
         return MyPoint
 
     @classmethod
@@ -1710,7 +1736,6 @@ class MutableCompositeCustomCoerceTest(
 class MutableDCCompositeCustomCoerceTest(MutableCompositeCustomCoerceTest):
     @classmethod
     def _type_fixture(cls):
-
         return MyDCPoint
 
 
@@ -1780,5 +1805,4 @@ class MutableInheritedCompositesTest(_CompositeTestBase, fixtures.MappedTest):
 class MutableInheritedDCCompositesTest(MutableInheritedCompositesTest):
     @classmethod
     def _type_fixture(cls):
-
         return DCPoint
