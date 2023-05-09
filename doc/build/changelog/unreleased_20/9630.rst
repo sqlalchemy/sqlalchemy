@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9630
+
+    Fixed issue in :func:`_orm.mapped_column` construct where the correct
+    warning for "column X named directly multiple times" would not be emitted
+    when ORM mapped attributes referred to the same :class:`_schema.Column`, if
+    the :func:`_orm.mapped_column` construct were involved, raising an internal
+    assertion instead.
