@@ -57,9 +57,9 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import Text
 from sqlalchemy import text
-from sqlalchemy import try_cast
 from sqlalchemy import TIMESTAMP
 from sqlalchemy import true
+from sqlalchemy import try_cast
 from sqlalchemy import tuple_
 from sqlalchemy import type_coerce
 from sqlalchemy import types

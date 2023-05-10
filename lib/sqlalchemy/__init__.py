@@ -99,8 +99,6 @@ from .sql.expression import Case as Case
 from .sql.expression import case as case
 from .sql.expression import Cast as Cast
 from .sql.expression import cast as cast
-from .sql.expression import TryCast as TryCast
-from .sql.expression import try_cast as try_cast
 from .sql.expression import ClauseElement as ClauseElement
 from .sql.expression import ClauseList as ClauseList
 from .sql.expression import collate as collate
@@ -201,6 +199,8 @@ from .sql.expression import TextClause as TextClause
 from .sql.expression import TextualSelect as TextualSelect
 from .sql.expression import true as true
 from .sql.expression import True_ as True_
+from .sql.expression import try_cast as try_cast
+from .sql.expression import TryCast as TryCast
 from .sql.expression import Tuple as Tuple
 from .sql.expression import tuple_ as tuple_
 from .sql.expression import type_coerce as type_coerce

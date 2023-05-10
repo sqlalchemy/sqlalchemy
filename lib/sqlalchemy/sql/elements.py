@@ -3414,7 +3414,6 @@ class Cast(WrapsColumnExpression[_T]):
         return self.clause
 
 
-
 class TryCast(Cast):
     """Represent a TRY_CAST expression.
 
