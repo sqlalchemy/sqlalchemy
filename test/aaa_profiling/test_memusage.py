@@ -296,7 +296,6 @@ class MemUsageTest(EnsureZeroed):
 
     @testing.requires.cextensions
     def test_cycles_in_row(self):
-
         tup = result.result_tuple(["a", "b", "c"])
 
         @profile_memory()
@@ -695,7 +694,6 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
         @testing.emits_warning()
         @profile_memory()
         def go():
-
             # execute with a non-unicode object. a warning is emitted,
             # this warning shouldn't clog up memory.
 
@@ -1066,7 +1064,9 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
 
         t1_mapper = self.mapper_registry.map_imperatively(T1, t1)
 
-        @testing.emits_warning()
+        @testing.emits_warning(
+            r"This declarative base", r"Property .* being replaced"
+        )
         @profile_memory()
         def go():
             class T2:
@@ -1128,7 +1128,9 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             s = table2.select()
             sess = session()
             with testing.expect_deprecated(
-                "Implicit coercion of SELECT and " "textual SELECT constructs"
+                "Implicit coercion of SELECT and textual SELECT constructs",
+                "An alias is being generated automatically",
+                assert_=False,
             ):
                 sess.query(Foo).join(s, Foo.bars).all()
             sess.rollback()
@@ -1637,7 +1639,6 @@ class CycleTest(_fixtures.FixtureTest):
 
     @testing.provide_metadata
     def test_optimized_get(self):
-
         Base = declarative_base(metadata=self.metadata)
 
         class Employee(Base):

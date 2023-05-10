@@ -61,7 +61,6 @@ def _aliased_join_warning(arg):
     return testing.expect_warnings(
         r"An alias is being generated automatically against joined entity "
         r"Mapper\[%s\] due to overlapping tables" % (arg,),
-        raise_on_any_unexpected=True,
     )
 
 

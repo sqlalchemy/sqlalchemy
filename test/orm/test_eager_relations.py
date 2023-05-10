@@ -1656,7 +1656,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         def go():
             eq_(u1.addresses[0].user, u1)
 
-        with testing.expect_warnings(raise_on_any_unexpected=True):
+        with testing.expect_warnings():
             self.assert_sql_execution(
                 testing.db,
                 go,
@@ -1707,7 +1707,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         def go():
             eq_(u1.addresses[0].user, u1)
 
-        with testing.expect_warnings(raise_on_any_unexpected=True):
+        with testing.expect_warnings():
             self.assert_sql_execution(
                 testing.db,
                 go,

@@ -1239,7 +1239,6 @@ class IMVSentinelTest(fixtures.TestBase):
             ):
                 return expect_warnings(
                     "Batches were downgraded",
-                    raise_on_any_unexpected=True,
                 )
 
         return contextlib.nullcontext()
@@ -1982,7 +1981,6 @@ class IMVSentinelTest(fixtures.TestBase):
         ):
             with expect_warnings(
                 "Batches were downgraded for sorted INSERT",
-                raise_on_any_unexpected=True,
             ):
                 result = connection.execute(stmt, data)
         else:
@@ -2407,7 +2405,6 @@ class IMVSentinelTest(fixtures.TestBase):
 
         with expect_warnings(
             r".*but has no Python-side or server-side default ",
-            raise_on_any_unexpected=True,
         ):
             with expect_raises(exc.IntegrityError):
                 connection.execute(

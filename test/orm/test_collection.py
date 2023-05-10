@@ -2928,7 +2928,6 @@ class AttrKeyedDictKeysTest(fixtures.TestBase):
                 "'bs' was None;",
                 "Attribute keyed dictionary value for attribute "
                 "'B.a' was None;",
-                raise_on_any_unexpected=True,
             ):
                 a1 = A(bs={"k1": b1, "k2": b2})
         sess.add(a1)
@@ -2943,7 +2942,6 @@ class AttrKeyedDictKeysTest(fixtures.TestBase):
             with expect_warnings(
                 "Attribute keyed dictionary value for attribute "
                 "'unknown relationship' was None;",
-                raise_on_any_unexpected=True,
             ):
                 eq_(a1.bs, {None: b2})
 
@@ -3074,7 +3072,6 @@ class UnpopulatedAttrTest(fixtures.TestBase):
             with expect_warnings(
                 "Attribute keyed dictionary value for attribute "
                 "'B.a' was None;",
-                raise_on_any_unexpected=True,
             ):
                 b1.a = a1
         else:

@@ -2044,6 +2044,7 @@ class EngineEventsTest(fixtures.TestBase):
                 select(1).compile(dialect=e1.dialect), (), {}
             )
 
+    @testing.emits_warning("The garbage collector is trying to clean up")
     def test_execute_events(self):
 
         stmts = []
@@ -2283,6 +2284,7 @@ class EngineEventsTest(fixtures.TestBase):
 
         eng_copy = copy.copy(eng)
         eng_copy.dispose(close=close)
+
         copy_conn = eng_copy.connect()
         dbapi_conn_two = copy_conn.connection.dbapi_connection
 
@@ -2293,6 +2295,9 @@ class EngineEventsTest(fixtures.TestBase):
             is_not(dbapi_conn_one, conn.connection.dbapi_connection)
         else:
             is_(dbapi_conn_one, conn.connection.dbapi_connection)
+
+        conn.close()
+        copy_conn.close()
 
     def test_retval_flag(self):
         canary = []
@@ -3702,8 +3707,8 @@ class DialectEventTest(fixtures.TestBase):
 
         conn.connection.invalidate(soft=True)
         conn.close()
-        conn = e.connect()
-        eq_(conn.info["boom"], "one")
+        with e.connect() as conn:
+            eq_(conn.info["boom"], "one")
 
     def test_connect_do_connect_info_there_after_invalidate(self):
         # test that info is maintained after the do_connect()
@@ -3720,8 +3725,9 @@ class DialectEventTest(fixtures.TestBase):
         eq_(conn.info["boom"], "one")
 
         conn.connection.invalidate()
-        conn = e.connect()
-        eq_(conn.info["boom"], "one")
+
+        with e.connect() as conn:
+            eq_(conn.info["boom"], "one")
 
 
 class SetInputSizesTest(fixtures.TablesTest):

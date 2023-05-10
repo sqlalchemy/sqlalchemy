@@ -70,11 +70,11 @@ class HorizontalShardTest(fixtures.TestBase):
         m1 = mock.Mock()
 
         with testing.expect_deprecated(
-            "The ``query_chooser`` parameter is deprecated; please use"
+            "The ``query_chooser`` parameter is deprecated; please use",
         ):
             s = ShardedSession(
                 shard_chooser=m1.shard_chooser,
-                id_chooser=m1.id_chooser,
+                identity_chooser=m1.identity_chooser,
                 query_chooser=m1.query_chooser,
             )
 

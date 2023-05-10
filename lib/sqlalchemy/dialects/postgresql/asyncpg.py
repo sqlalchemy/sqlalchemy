@@ -855,6 +855,7 @@ class AsyncAdapt_asyncpg_connection(AdaptedConnection):
 
     def terminate(self):
         self._connection.terminate()
+        self._started = False
 
     @staticmethod
     def _default_name_func():

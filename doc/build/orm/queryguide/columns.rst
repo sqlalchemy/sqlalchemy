@@ -869,7 +869,7 @@ onto newly loaded instances of ``A``::
     >>> orm_stmt = (
     ...     select(User)
     ...     .from_statement(union_stmt)
-    ...     .options(with_expression(User.book_count, union_stmt.c.book_count))
+    ...     .options(with_expression(User.book_count, union_stmt.selected_columns.book_count))
     ... )
     >>> for user in session.scalars(orm_stmt):
     ...     print(f"Username: {user.name}  Number of books: {user.book_count}")
