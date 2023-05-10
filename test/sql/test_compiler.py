@@ -6046,12 +6046,12 @@ class StringifySpecialTest(fixtures.TestBase):
         )
 
     def test_try_cast(self):
-        metadata = MetaData()
-        t1 = Table("t1", metadata, Column("id", Integer, primary_key=True))
+        t1 = Table("t1", MetaData(), Column("id", Integer, primary_key=True))
+        expr = select(try_cast(t1.c.id, Integer))
 
-        self.assert_compile(
-            select(try_cast(t1.c.id, Integer)),
-            "SELECT TRY_CAST (t1.id AS INTEGER) AS id FROM t1",
+        eq_ignore_whitespace(
+            str(expr),
+            "SELECT TRY_CAST(t1.id AS INTEGER) AS id FROM t1",
         )
 
 
