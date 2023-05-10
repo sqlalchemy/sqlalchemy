@@ -126,6 +126,7 @@ if typing.TYPE_CHECKING:
     from ..sql.base import ExecutableOption
     from ..sql.elements import ClauseElement
     from ..sql.roles import TypedColumnsClauseRole
+    from ..sql.selectable import ForUpdateParameter
     from ..sql.selectable import TypedReturnsRows
 
 _T = TypeVar("_T", bound=Any)
@@ -2911,7 +2912,7 @@ class Session(_SessionClassMethods, EventTarget):
         self,
         instance: object,
         attribute_names: Optional[Iterable[str]] = None,
-        with_for_update: Optional[ForUpdateArg] = None,
+        with_for_update: ForUpdateParameter = None,
     ) -> None:
         """Expire and refresh attributes on the given instance.
 
@@ -3432,7 +3433,7 @@ class Session(_SessionClassMethods, EventTarget):
         *,
         options: Optional[Sequence[ORMOption]] = None,
         populate_existing: bool = False,
-        with_for_update: Optional[ForUpdateArg] = None,
+        with_for_update: ForUpdateParameter = None,
         identity_token: Optional[Any] = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
@@ -3559,7 +3560,7 @@ class Session(_SessionClassMethods, EventTarget):
         *,
         options: Optional[Sequence[ExecutableOption]] = None,
         populate_existing: bool = False,
-        with_for_update: Optional[ForUpdateArg] = None,
+        with_for_update: ForUpdateParameter = None,
         identity_token: Optional[Any] = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,

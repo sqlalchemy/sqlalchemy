@@ -62,7 +62,7 @@ if TYPE_CHECKING:
     from ...sql._typing import _InfoType
     from ...sql.base import Executable
     from ...sql.elements import ClauseElement
-    from ...sql.selectable import ForUpdateArg
+    from ...sql.selectable import ForUpdateParameter
     from ...sql.selectable import TypedReturnsRows
 
 _AsyncSessionBind = Union["AsyncEngine", "AsyncConnection"]
@@ -301,7 +301,7 @@ class AsyncSession(ReversibleProxy[Session]):
         self,
         instance: object,
         attribute_names: Optional[Iterable[str]] = None,
-        with_for_update: Optional[ForUpdateArg] = None,
+        with_for_update: ForUpdateParameter = None,
     ) -> None:
         """Expire and refresh the attributes on the given instance.
 
@@ -566,7 +566,7 @@ class AsyncSession(ReversibleProxy[Session]):
         *,
         options: Optional[Sequence[ORMOption]] = None,
         populate_existing: bool = False,
-        with_for_update: Optional[ForUpdateArg] = None,
+        with_for_update: ForUpdateParameter = None,
         identity_token: Optional[Any] = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
     ) -> Optional[_O]:

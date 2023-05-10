@@ -3067,6 +3067,9 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
         return [self]
 
 
+ForUpdateParameter = Union["ForUpdateArg", None, bool, Dict[str, Any]]
+
+
 class ForUpdateArg(ClauseElement):
     _traverse_internals: _TraverseInternalsType = [
         ("of", InternalTraversal.dp_clauseelement_list),
@@ -3082,7 +3085,7 @@ class ForUpdateArg(ClauseElement):
 
     @classmethod
     def _from_argument(
-        cls, with_for_update: Union[ForUpdateArg, None, bool, Dict[str, Any]]
+        cls, with_for_update: ForUpdateParameter
     ) -> Optional[ForUpdateArg]:
         if isinstance(with_for_update, ForUpdateArg):
             return with_for_update
