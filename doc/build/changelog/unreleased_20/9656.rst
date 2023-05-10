@@ -1,9 +1,0 @@
-.. change::
-    :tags: typing, sql
-    :tickets: 9656
-
-    Added type :data:`_sql.ColumnExpressionArgument` as a public-facing type
-    that indicates column-oriented arguments which are passed to SQLAlchemy
-    constructs, such as :meth:`_sql.Select.where`, :func:`_sql.and_` and
-    others. This may be used to add typing to end-user functions which call
-    these methods.

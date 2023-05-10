@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 9746
-
-    Fixed issue in new :ref:`orm_queryguide_upsert_returning` feature where the
-    ``populate_existing`` execution option was not being propagated to the
-    loading option, preventing existing attributes from being refreshed
-    in-place.

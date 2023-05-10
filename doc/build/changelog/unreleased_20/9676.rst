@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, ext
-    :tickets: 9676
-
-    Fixed issue in :class:`_mutable.Mutable` where event registration for ORM
-    mapped attributes would be called repeatedly for mapped inheritance
-    subclasses, leading to duplicate events being invoked in inheritance
-    hierarchies.

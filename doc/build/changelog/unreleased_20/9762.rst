@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 9762
-
-    Fixed typing for the :paramref:`_orm.Session.get.with_for_update` parameter
-    of :meth:`_orm.Session.get` and :meth:`_orm.Session.refresh` (as well as
-    corresponding methods on :class:`_asyncio.AsyncSession`) to accept boolean
-    ``True`` and all other argument forms accepted by the parameter at runtime.
