@@ -3414,7 +3414,7 @@ class Cast(WrapsColumnExpression[_T]):
         return self.clause
 
 
-class TryCast(Cast):
+class TryCast(Cast[_T]):
     """Represent a TRY_CAST expression.
 
     Details on :class:`.TryCast` usage is at :func:`.try_cast`.

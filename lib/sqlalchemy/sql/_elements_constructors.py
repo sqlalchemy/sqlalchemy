@@ -907,7 +907,10 @@ def cast(
     return Cast(expression, type_)
 
 
-def try_cast(*arg, **kw):
+def try_cast(
+        expression: _ColumnExpressionOrLiteralArgument[Any],
+        type_: _TypeEngineArgument[_T],
+    ) -> TryCast[_T]:
     """Produce a ``TRY_CAST`` expression.
 
     :func:`.try_cast` returns an instance of :class:`.TryCast`.
@@ -938,7 +941,7 @@ def try_cast(*arg, **kw):
     .. versionadded:: 2.0.14
 
     """
-    return TryCast(*arg, **kw)
+    return TryCast(expression, type_)
 
 
 def column(
