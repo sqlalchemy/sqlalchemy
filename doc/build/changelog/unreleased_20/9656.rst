@@ -2,7 +2,8 @@
     :tags: typing, sql
     :tickets: 9656
 
-    Added type ``ColumnExpressionArgument`` as a public alias of an internal
-    type. This type is useful since it's what' accepted by the sqlalchemy in
-    many api calls, such as :meth:`_sql.Select.where`, :meth:`_sql.and` and
-    many other.
+    Added type :data:`_sql.ColumnExpressionArgument` as a public-facing type
+    that indicates column-oriented arguments which are passed to SQLAlchemy
+    constructs, such as :meth:`_sql.Select.where`, :func:`_sql.and_` and
+    others. This may be used to add typing to end-user functions which call
+    these methods.

@@ -186,8 +186,11 @@ typically represent a single SQL column expression, not a set of columns the
 way a table or ORM entity does.
 
 This includes ColumnElement, or ORM-mapped attributes that will have a
-`__clause_element__()` method, it also has the ExpressionElementRole
+``__clause_element__()`` method, it also has the ExpressionElementRole
 overall which brings in the TextClause object also.
+
+.. versionadded:: 2.0.13
+
 """
 
 _ColumnExpressionOrLiteralArgument = Union[Any, _ColumnExpressionArgument[_T]]
