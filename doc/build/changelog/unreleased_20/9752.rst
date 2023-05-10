@@ -14,3 +14,5 @@
     * ``SAFE_CAST`` in Google BigQuery
     * ``TRY_CAST`` in DuckDB
     * ``TRY_CAST`` in Snowflake
+
+    Pull request courtesy Nick Crews.
