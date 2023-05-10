@@ -55,7 +55,7 @@ if TYPE_CHECKING:
     from ...orm.session import _SessionBind
     from ...sql.base import Executable
     from ...sql.elements import ClauseElement
-    from ...sql.selectable import ForUpdateArg
+    from ...sql.selectable import ForUpdateParameter
     from ...sql.selectable import TypedReturnsRows
 
 _T = TypeVar("_T", bound=Any)
@@ -217,7 +217,7 @@ class async_scoped_session(Generic[_AS]):
         *,
         options: Optional[Sequence[ORMOption]] = None,
         populate_existing: bool = False,
-        with_for_update: Optional[ForUpdateArg] = None,
+        with_for_update: ForUpdateParameter = None,
         identity_token: Optional[Any] = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
     ) -> Optional[_O]:
@@ -934,7 +934,7 @@ class async_scoped_session(Generic[_AS]):
         self,
         instance: object,
         attribute_names: Optional[Iterable[str]] = None,
-        with_for_update: Optional[ForUpdateArg] = None,
+        with_for_update: ForUpdateParameter = None,
     ) -> None:
         r"""Expire and refresh the attributes on the given instance.
 
