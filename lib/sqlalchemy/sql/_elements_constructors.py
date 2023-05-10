@@ -919,7 +919,7 @@ def try_cast(*arg, **kw):
     construct, and works in the same way, except in regards to error
     handling. If the function encounters an un-castable value
     (for instance when trying to convert the string "hi" to an INT)
-    then normal :class:`.Cast` raises an error. :class:`.TryCast`
+    then normal :class:`.Cast` raises an error, :class:`.TryCast`
     instead returns a NULL value.
 
     E.g.::
