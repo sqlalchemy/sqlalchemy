@@ -69,7 +69,6 @@ be encouraged to move to :term:`2.0 style` execution which allows Core construct
 to be used freely against ORM entities::
 
     with Session(engine, future=True) as sess:
-
         stmt = (
             select(User)
             .where(User.name == "sandy")
@@ -105,7 +104,8 @@ Things to note about the above example:
 
 * Statements that work with ORM entities and are expected to return ORM
   results are invoked using :meth:`.orm.Session.execute`.  See
-  :ref:`session_querying_20` for a primer.
+  :ref:`session_querying_20` for a primer.  See also the following note
+  at :ref:`change_session_execute_result`.
 
 * a :class:`_engine.Result` object is returned, rather than a plain list, which
   itself is a much more sophisticated version of the previous ``ResultProxy``
@@ -152,6 +152,49 @@ for some examples).
     :ref:`migration_20_toplevel`
 
 :ticket:`5159`
+
+
+.. _change_session_execute_result:
+
+ORM ``Session.execute()`` uses "future" style ``Result`` sets in all cases
+--------------------------------------------------------------------------
+
+As noted in :ref:`change_4710_core`, the :class:`_engine.Result` and
+:class:`_engine.Row` objects now feature "named tuple" behavior, when used with
+an :class:`_engine.Engine` that includes the
+:paramref:`_sa.create_engine.future` parameter set to ``True``.  These
+"named tuple" rows in particular include a behavioral change which is that
+Python containment expressions using ``in``, such as::
+
+    >>> engine = create_engine("...", future=True)
+    >>> conn = engine.connect()
+    >>> row = conn.execute.first()
+    >>> "name" in row
+    True
+
+The above containment test will
+use **value containment**, not **key containment**; the ``row`` would need to
+have a **value** of "name" to return ``True``.
+
+Under SQLAlchemy 1.4, when :paramref:`_sa.create_engine.future` parameter set
+to ``False``, legacy-style ``LegacyRow`` objects are returned which feature the
+partial-named-tuple behavior of prior SQLAlchemy versions, where containment
+checks continue to use key containment; ``"name" in row`` would return
+True if the row had a **column** named "name", rather than a value.
+
+When using :meth:`_orm.Session.execute`, full named-tuple style is enabled
+**unconditionally**, meaning ``"name" in row`` will use **value containment**
+as the test, and **not** key containment. This is to accommodate that
+:meth:`_orm.Session.execute` now returns a :class:`_engine.Result` that also
+accommodates for ORM results, where even legacy ORM result rows such as those
+returned by :meth:`_orm.Query.all` use value containment.
+
+This is a behavioral change from SQLAlchemy 1.3 to 1.4.  To continue receiving
+key-containment collections, use the :meth:`_engine.Result.mappings` method to
+receive a :class:`_engine.MappingResult` that returns rows as dictionaries::
+
+    for dict_row in session.execute(text("select id from table")).mappings():
+        assert "id" in dict_row
 
 .. _change_4639:
 
@@ -1508,6 +1551,8 @@ There are many reasons why the above assumptions do not hold:
 .. seealso::
 
     :ref:`change_4710_orm`
+
+    :ref:`change_session_execute_result`
 
 :ticket:`4710`
 
