@@ -908,8 +908,8 @@ def cast(
 
 
 def try_cast(
-        expression: _ColumnExpressionOrLiteralArgument[Any],
-        type_: _TypeEngineArgument[_T],
+    expression: _ColumnExpressionOrLiteralArgument[Any],
+    type_: _TypeEngineArgument[_T],
 ) -> TryCast[_T]:
     """Produce a ``TRY_CAST`` expression.
 
