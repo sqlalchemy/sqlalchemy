@@ -3,11 +3,13 @@
     :tickets: 9752
 
 
-    Generalized the MSSQL :func:`.try_cast` function to any dialect.
+    Generalized the MSSQL :func:`.try_cast` function so that other
+    extension dialects can use it (MSSQL is the only builtin dialect
+    that currently supports it).
+
     This implements a cast where
     un-castable values are returned as NULL, instead of raising an error.
-    Now this function can be taken advantage of by third party dialects
-    that also support this function, such as
+    These are a few third party dialects that could implement this:
 
     * ``SAFE_CAST`` in Google BigQuery
     * ``TRY_CAST`` in DuckDB

@@ -896,6 +896,7 @@ def cast(
 
         :func:`.try_cast` - an alternative to CAST that results in
         NULLs when the cast fails, instead of raising an error.
+        Only supported by some dialects.
 
         :func:`.type_coerce` - an alternative to CAST that coerces the type
         on the Python side only, which is often sufficient to generate the
@@ -907,11 +908,21 @@ def cast(
 
 
 def try_cast(*arg, **kw):
-    """Create a TRY_CAST expression.
+    """Produce a ``TRY_CAST`` expression.
+
+    :func:`.try_cast` returns an instance of :class:`.TryCast`.
+
+    The only builtin dialect that supports :class:`.TryCast` is
+    Microsoft SQL (other third party dialects may support it as well).
 
     :class:`.TryCast` is a subclass of SQLAlchemy's :class:`.Cast`
-    construct, and works in the same way, except that the SQL expression
-    rendered is "TRY_CAST" rather than "CAST"::
+    construct, and works in the same way, except in regards to error
+    handling. If the function encounters an un-castable value
+    (for instance when trying to convert the string "hi" to an INT)
+    then normal :class:`.Cast` raises an error. :class:`.TryCast`
+    instead returns a NULL value.
+
+    E.g.::
 
         from sqlalchemy import select, try_cast, Numeric
 
@@ -919,12 +930,12 @@ def try_cast(*arg, **kw):
             try_cast(product_table.c.unit_price, Numeric(10, 4))
         )
 
-    The above would render with mssql as::
+    The above would render with Microsoft SQL as::
 
         SELECT TRY_CAST (product_table.unit_price AS NUMERIC(10, 4))
         FROM product_table
 
-    .. versionadded:: 2.1.0
+    .. versionadded:: 2.0.14
 
     """
     return TryCast(*arg, **kw)
