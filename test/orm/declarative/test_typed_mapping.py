@@ -803,8 +803,10 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_true(table.c.data_three.nullable)
         is_true(table.c.data_four.nullable)
 
+    @testing.variation("to_assert", ["ddl", "fkcount", "references"])
+    @testing.variation("assign_blank", [True, False])
     def test_extract_fk_col_from_pep593(
-        self, decl_base: Type[DeclarativeBase]
+        self, decl_base: Type[DeclarativeBase], to_assert, assign_blank
     ):
         # anno only: global intpk, element_ref
         intpk = Annotated[int, mapped_column(primary_key=True)]
@@ -819,28 +821,58 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             __tablename__ = "refone"
 
             id: Mapped[intpk]
-            other_id: Mapped[element_ref]
+
+            if assign_blank:
+                other_id: Mapped[element_ref] = mapped_column()
+            else:
+                other_id: Mapped[element_ref]
 
         class RefElementTwo(decl_base):
             __tablename__ = "reftwo"
 
             id: Mapped[intpk]
-            some_id: Mapped[element_ref]
+            if assign_blank:
+                some_id: Mapped[element_ref] = mapped_column()
+            else:
+                some_id: Mapped[element_ref]
 
         assert Element.__table__ is not None
         assert RefElementOne.__table__ is not None
         assert RefElementTwo.__table__ is not None
 
-        is_true(
-            RefElementOne.__table__.c.other_id.references(
-                Element.__table__.c.id
+        if to_assert.fkcount:
+            # test #9766
+            eq_(len(RefElementOne.__table__.c.other_id.foreign_keys), 1)
+            eq_(len(RefElementTwo.__table__.c.some_id.foreign_keys), 1)
+        elif to_assert.references:
+            is_true(
+                RefElementOne.__table__.c.other_id.references(
+                    Element.__table__.c.id
+                )
             )
-        )
-        is_true(
-            RefElementTwo.__table__.c.some_id.references(
-                Element.__table__.c.id
+            is_true(
+                RefElementTwo.__table__.c.some_id.references(
+                    Element.__table__.c.id
+                )
             )
-        )
+
+        elif to_assert.ddl:
+            self.assert_compile(
+                CreateTable(RefElementOne.__table__),
+                "CREATE TABLE refone "
+                "(id INTEGER NOT NULL, other_id INTEGER NOT NULL, "
+                "PRIMARY KEY (id), "
+                "FOREIGN KEY(other_id) REFERENCES element (id))",
+            )
+            self.assert_compile(
+                CreateTable(RefElementTwo.__table__),
+                "CREATE TABLE reftwo "
+                "(id INTEGER NOT NULL, some_id INTEGER NOT NULL, "
+                "PRIMARY KEY (id), "
+                "FOREIGN KEY(some_id) REFERENCES element (id))",
+            )
+        else:
+            to_assert.fail()
 
     @testing.combinations(
         (collections.abc.Sequence, (str,), testing.requires.python310),
