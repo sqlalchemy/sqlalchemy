@@ -592,7 +592,6 @@ class MappedColumn(
             None,
             SchemaConst.NULL_UNSPECIFIED,
         )
-
         util.set_creation_order(self)
 
     def _copy(self, **kw: Any) -> Self:
@@ -649,7 +648,9 @@ class MappedColumn(
         return op(col._bind_param(op, other), col, **kwargs)  # type: ignore[return-value]  # noqa: E501
 
     def found_in_pep593_annotated(self) -> Any:
-        return self._copy()
+        # return a blank mapped_column().  This mapped_column()'s
+        # Column will be merged into it in _init_column_for_annotation().
+        return MappedColumn()
 
     def declarative_scan(
         self,
@@ -751,13 +752,15 @@ class MappedColumn(
 
         if is_pep593(our_type):
             our_type_is_pep593 = True
+
             pep_593_components = typing_get_args(our_type)
             raw_pep_593_type = pep_593_components[0]
             if is_optional_union(raw_pep_593_type):
+                raw_pep_593_type = de_optionalize_union_types(raw_pep_593_type)
+
                 nullable = True
                 if not self._has_nullable:
                     self.column.nullable = nullable
-                raw_pep_593_type = de_optionalize_union_types(raw_pep_593_type)
             for elem in pep_593_components[1:]:
                 if isinstance(elem, MappedColumn):
                     use_args_from = elem
@@ -772,6 +775,7 @@ class MappedColumn(
                 and use_args_from.column.default is not None
             ):
                 self.column.default = None
+
             use_args_from.column._merge(self.column)
             sqltype = self.column.type
 
