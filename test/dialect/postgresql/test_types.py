@@ -231,6 +231,25 @@ class NamedTypeTest(
         is_(e2.native_enum, True)
         is_(e3.native_enum, True)
 
+    @testing.combinations(
+        ("name", "foobar", "name"),
+        ("validate_strings", True, "validate_strings"),
+        ("omit_aliases", False, "_omit_aliases"),
+        ("create_type", False, "create_type"),
+        ("create_type", True, "create_type"),
+        ("schema", "someschema", "schema"),
+        ("inherit_schema", True, "inherit_schema"),
+        ("metadata", MetaData(), "metadata"),
+        ("values_callable", lambda x: None, "values_callable"),
+    )
+    def test_enum_copy_args(self, argname, value, attrname):
+        kw = {argname: value}
+        e1 = ENUM("a", "b", "c", **kw)
+
+        e1_copy = e1.copy()
+
+        eq_(getattr(e1_copy, attrname), value)
+
     def test_enum_create_table(self, metadata, connection):
         metadata = self.metadata
         t1 = Table(
