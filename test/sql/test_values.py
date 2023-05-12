@@ -10,6 +10,7 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import true
 from sqlalchemy.engine import default
+from sqlalchemy.sql import func
 from sqlalchemy.sql import select
 from sqlalchemy.sql import Values
 from sqlalchemy.sql.compiler import FROM_LINTING
@@ -83,6 +84,31 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
             "(VALUES (:param_1, :param_2, :param_3), "
             "(:param_4, :param_5, :param_6)) "
             'AS "Spaces and Cases" ("CaseSensitive", "has spaces", number)',
+        )
+
+    def test_values_in_scalar_subq(self):
+        """test #9772"""
+
+        people = self.tables.people
+        table_value_constructor = Values(
+            Column("v1", Integer), name="tvc"
+        ).data(
+            [
+                (people.c.people_id,),
+                (people.c.age,),
+                (people.c.name,),
+            ]
+        )
+
+        maximum = select(func.max(table_value_constructor.c.v1))
+        maximum_subquery = maximum.scalar_subquery()
+        query = select(people.c.people_id, maximum_subquery)
+        self.assert_compile(
+            query,
+            "SELECT people.people_id, "
+            "(SELECT max(tvc.v1) AS max_1 FROM "
+            "(VALUES (people.people_id), (people.age), (people.name)) "
+            "AS tvc (v1)) AS anon_1 FROM people",
         )
 
     def test_values_in_cte_params(self):

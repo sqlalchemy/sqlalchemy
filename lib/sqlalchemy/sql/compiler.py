@@ -4275,15 +4275,14 @@ class SQLCompiler(Compiled):
                 )
 
             if name:
+                kw["include_table"] = False
                 v = "%s(%s)%s (%s)" % (
                     lateral,
                     v,
                     self.get_render_as_alias_suffix(self.preparer.quote(name)),
                     (
                         ", ".join(
-                            c._compiler_dispatch(
-                                self, include_table=False, **kw
-                            )
+                            c._compiler_dispatch(self, **kw)
                             for c in element.columns
                         )
                     ),

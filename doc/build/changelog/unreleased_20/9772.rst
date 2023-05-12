@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 9772
+
+    Fixed issue in :func:`_sql.values` construct where an internal compilation
+    error would occur if the construct were used inside of a scalar subquery.
