@@ -28,6 +28,7 @@ from sqlalchemy.orm import undefer
 from sqlalchemy.orm import util as orm_util
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_not
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import AssertsCompiledSQL
 from sqlalchemy.testing.assertions import emits_warning
@@ -1288,20 +1289,18 @@ class PickleTest(fixtures.MappedTest):
     def test_pickle_relationship_loader(self, user_address_fixture):
         User, Address = user_address_fixture
 
-        for i in range(3):
-            opt = joinedload(User.addresses)
+        opt = joinedload(User.addresses)
 
-            q1 = fixture_session().query(User).options(opt)
-            c1 = q1._compile_context()
+        pickled = pickle.dumps(opt)
 
-            pickled = pickle.dumps(opt)
+        opt2 = pickle.loads(pickled)
 
-            opt2 = pickle.loads(pickled)
+        is_not(opt, opt2)
+        assert isinstance(opt, Load)
+        assert isinstance(opt2, Load)
 
-            q2 = fixture_session().query(User).options(opt2)
-            c2 = q2._compile_context()
-
-            eq_(c1.attributes, c2.attributes)
+        for k in opt.__slots__:
+            eq_(getattr(opt, k), getattr(opt2, k))
 
 
 class LocalOptsTest(PathTest, QueryTest):

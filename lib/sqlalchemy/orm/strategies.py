@@ -2097,12 +2097,11 @@ class JoinedLoader(AbstractRelationshipLoader):
 
     """
 
-    __slots__ = "join_depth", "_aliased_class_pool"
+    __slots__ = "join_depth"
 
     def __init__(self, parent, strategy_key):
         super().__init__(parent, strategy_key)
         self.join_depth = self.parent_property.join_depth
-        self._aliased_class_pool = []
 
     def init_class_attribute(self, mapper):
         self.parent_property._get_strategy(
@@ -2215,14 +2214,19 @@ class JoinedLoader(AbstractRelationshipLoader):
             chained_from_outerjoin=chained_from_outerjoin,
         )
 
-        if with_poly_entity is not None and None in set(
-            compile_state.secondary_columns
-        ):
-            raise sa_exc.InvalidRequestError(
-                "Detected unaliased columns when generating joined "
-                "load.  Make sure to use aliased=True or flat=True "
-                "when using joined loading with with_polymorphic()."
-            )
+        has_nones = util.NONE_SET.intersection(compile_state.secondary_columns)
+
+        if has_nones:
+            if with_poly_entity is not None:
+                raise sa_exc.InvalidRequestError(
+                    "Detected unaliased columns when generating joined "
+                    "load.  Make sure to use aliased=True or flat=True "
+                    "when using joined loading with with_polymorphic()."
+                )
+            else:
+                compile_state.secondary_columns = [
+                    c for c in compile_state.secondary_columns if c is not None
+                ]
 
     def _init_user_defined_eager_proc(
         self, loadopt, compile_state, target_attributes
@@ -2308,40 +2312,6 @@ class JoinedLoader(AbstractRelationshipLoader):
         add_to_collection = context.primary_columns
         return user_defined_adapter, adapter, add_to_collection
 
-    def _gen_pooled_aliased_class(self, context):
-        # keep a local pool of AliasedClass objects that get re-used.
-        # we need one unique AliasedClass per query per appearance of our
-        # entity in the query.
-
-        if inspect(self.entity).is_aliased_class:
-            alt_selectable = inspect(self.entity).selectable
-        else:
-            alt_selectable = None
-
-        key = ("joinedloader_ac", self)
-        if key not in context.attributes:
-            context.attributes[key] = idx = 0
-        else:
-            context.attributes[key] = idx = context.attributes[key] + 1
-
-        if idx >= len(self._aliased_class_pool):
-            to_adapt = orm_util.AliasedClass(
-                self.mapper,
-                alias=alt_selectable._anonymous_fromclause(flat=True)
-                if alt_selectable is not None
-                else None,
-                flat=True,
-                use_mapper_path=True,
-            )
-
-            # load up the .columns collection on the Alias() before
-            # the object becomes shared among threads.  this prevents
-            # races for column identities.
-            inspect(to_adapt).selectable.c
-            self._aliased_class_pool.append(to_adapt)
-
-        return self._aliased_class_pool[idx]
-
     def _generate_row_adapter(
         self,
         compile_state,
@@ -2359,7 +2329,20 @@ class JoinedLoader(AbstractRelationshipLoader):
         if with_poly_entity:
             to_adapt = with_poly_entity
         else:
-            to_adapt = self._gen_pooled_aliased_class(compile_state)
+            insp = inspect(self.entity)
+            if insp.is_aliased_class:
+                alt_selectable = insp.selectable
+            else:
+                alt_selectable = None
+
+            to_adapt = orm_util.AliasedClass(
+                self.mapper,
+                alias=alt_selectable._anonymous_fromclause(flat=True)
+                if alt_selectable is not None
+                else None,
+                flat=True,
+                use_mapper_path=True,
+            )
 
         to_adapt_insp = inspect(to_adapt)
 
