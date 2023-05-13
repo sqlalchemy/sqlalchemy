@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9779
+
+    Fixed issue where using additional relationship criteria with the
+    :func:`_orm.joinedload` loader option, where the additional criteria itself
+    contained correlated subqueries that referred to the joined entities and
+    therefore also required "adaption" to aliased entities, would be excluded
+    from this adaption, producing the wrong ON clause for the joinedload.
