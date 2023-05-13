@@ -447,7 +447,9 @@ The flush which occurs automatically within the scope of certain methods
 is known as **autoflush**.  Autoflush is defined as a configurable,
 automatic flush call which occurs at the beginning of methods including:
 
-* :meth:`_orm.Session.execute` and other SQL-executing methods
+* :meth:`_orm.Session.execute` and other SQL-executing methods, when used
+  against ORM-enabled SQL constructs, such as :func:`_sql.select` objects
+  that refer to ORM entities and/or ORM-mapped attributes
 * When a :class:`_query.Query` is invoked to send SQL to the database
 * Within the :meth:`.Session.merge` method before querying the database
 * When objects are :ref:`refreshed <session_expiring>`
