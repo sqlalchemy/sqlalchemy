@@ -67,7 +67,7 @@ below::
 
     class Base(MappedAsDataclass, DeclarativeBase):
         """subclasses will be converted to dataclasses"""
-
+        pass
 
     class User(Base):
         __tablename__ = "user_account"
