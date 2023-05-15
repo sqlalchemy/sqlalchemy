@@ -20,6 +20,7 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import try_cast
 from sqlalchemy import union
 from sqlalchemy import UniqueConstraint
 from sqlalchemy import update
@@ -1470,6 +1471,13 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateIndex(idx),
             "CREATE INDEX foo ON test (x) INCLUDE (y) WHERE y > 1",
+        )
+
+    def test_try_cast(self):
+        t1 = Table("t1", MetaData(), Column("id", Integer, primary_key=True))
+        self.assert_compile(
+            select(try_cast(t1.c.id, Integer)),
+            "SELECT TRY_CAST (t1.id AS INTEGER) AS id FROM t1",
         )
 
     @testing.combinations(

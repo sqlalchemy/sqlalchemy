@@ -2145,6 +2145,12 @@ class MSSQLCompiler(compiler.SQLCompiler):
         else:
             return ""
 
+    def visit_try_cast(self, element, **kw):
+        return "TRY_CAST (%s AS %s)" % (
+            self.process(element.clause, **kw),
+            self.process(element.typeclause, **kw),
+        )
+
     def translate_select_structure(self, select_stmt, **kwargs):
         """Look for ``LIMIT`` and OFFSET in a select statement, and if
         so tries to wrap it in a subquery with ``row_number()`` criterion.
