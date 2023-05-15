@@ -259,5 +259,5 @@ def get_event_loop() -> asyncio.AbstractEventLoop:
         return asyncio.get_running_loop()
     except RuntimeError:
         # avoid "During handling of the above exception, another exception..."
-        pass 
+        pass
     return asyncio.get_event_loop_policy().get_event_loop()
