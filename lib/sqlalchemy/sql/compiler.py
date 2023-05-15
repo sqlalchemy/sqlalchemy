@@ -170,6 +170,7 @@ RESERVED_WORDS = {
     "full",
     "grant",
     "group",
+    "groups",
     "having",
     "ilike",
     "in",

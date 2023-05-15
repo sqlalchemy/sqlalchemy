@@ -1526,7 +1526,6 @@ RESERVED_WORDS = {
     "from",
     "grant",
     "group",
-    "groups",
     "having",
     "in",
     "initially",
