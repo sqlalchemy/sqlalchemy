@@ -33,7 +33,6 @@ from sqlalchemy.orm.interfaces import MANYTOONE
 from sqlalchemy.orm.interfaces import ONETOMANY
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
-from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
@@ -656,18 +655,15 @@ class OverlappingFksSiblingTest(fixtures.MappedTest):
         add_bsub2_a_viewonly=False,
         add_b_a_overlaps=None,
     ):
-
         Base = self.mapper_registry.generate_base()
 
         class A(Base):
-
             __tablename__ = "a"
 
             id = Column(Integer, primary_key=True)
             a_members = relationship("AMember", backref="a")
 
         class AMember(Base):
-
             __tablename__ = "a_member"
 
             a_id = Column(Integer, ForeignKey("a.id"), primary_key=True)
@@ -707,14 +703,12 @@ class OverlappingFksSiblingTest(fixtures.MappedTest):
         # however, *no* warning should be emitted otherwise.
 
         class BSub1(B):
-
             if add_bsub1_a:
                 a = relationship("A")
 
             __mapper_args__ = {"polymorphic_identity": "bsub1"}
 
         class BSub2(B):
-
             if add_bsub2_a_viewonly:
                 a = relationship("A", viewonly=True)
 
@@ -729,7 +723,6 @@ class OverlappingFksSiblingTest(fixtures.MappedTest):
         return A, AMember, B, BSub1, BSub2
 
     def _fixture_two(self, setup_backrefs=False, setup_overlaps=False):
-
         Base = self.mapper_registry.generate_base()
 
         # purposely using the comma to make sure parsing the comma works
@@ -874,15 +867,13 @@ class OverlappingFksSiblingTest(fixtures.MappedTest):
 
     @testing.provide_metadata
     def test_simple_warn(self):
-        assert_warns_message(
-            exc.SAWarning,
+        with expect_warnings(
             r"relationship '(?:Child.parent|Parent.children)' will copy "
             r"column parent.id to column child.parent_id, which conflicts "
             r"with relationship\(s\): '(?:Parent.children|Child.parent)' "
-            r"\(copies parent.id to child.parent_id\).",
-            self._fixture_two,
-            setup_backrefs=False,
-        )
+            r"\(copies parent.id to child.parent_id\)."
+        ):
+            self._fixture_two(setup_backrefs=False)
 
     @testing.combinations((True,), (False,), argnames="set_overlaps")
     def test_fixture_five(self, metadata, set_overlaps):
@@ -965,15 +956,12 @@ class OverlappingFksSiblingTest(fixtures.MappedTest):
 
     @testing.provide_metadata
     def test_double_rel_same_mapper_warns(self):
-        assert_warns_message(
-            exc.SAWarning,
+        with expect_warnings(
             r"relationship 'Parent.child[12]' will copy column parent.id to "
             r"column child.parent_id, which conflicts with relationship\(s\): "
-            r"'Parent.child[12]' \(copies parent.id to child.parent_id\)",
-            self._fixture_three,
-            use_same_mappers=True,
-            setup_overlaps=False,
-        )
+            r"'Parent.child[12]' \(copies parent.id to child.parent_id\)"
+        ):
+            self._fixture_three(use_same_mappers=True, setup_overlaps=False)
 
     @testing.provide_metadata
     def test_double_rel_same_mapper_overlaps_works(self):
@@ -985,48 +973,37 @@ class OverlappingFksSiblingTest(fixtures.MappedTest):
 
     @testing.provide_metadata
     def test_warn_one(self):
-        assert_warns_message(
-            exc.SAWarning,
+        with expect_warnings(
             r"relationship '(?:BSub1.a|BSub2.a_member|B.a)' will copy column "
-            r"(?:a.id|a_member.a_id) to column b.a_id",
-            self._fixture_one,
-            add_b_a=True,
-            add_bsub1_a=True,
-        )
+            r"(?:a.id|a_member.a_id) to column b.a_id"
+        ):
+            self._fixture_one(add_b_a=True, add_bsub1_a=True)
 
     @testing.provide_metadata
     def test_warn_two(self):
-        assert_warns_message(
-            exc.SAWarning,
+        with expect_warnings(
             r"relationship '(?:BSub1.a|B.a_member)' will copy column "
-            r"(?:a.id|a_member.a_id) to column b.a_id",
-            self._fixture_one,
-            add_b_amember=True,
-            add_bsub1_a=True,
-        )
+            r"(?:a.id|a_member.a_id) to column b.a_id"
+        ):
+            self._fixture_one(add_b_amember=True, add_bsub1_a=True)
 
     @testing.provide_metadata
     def test_warn_three(self):
-        assert_warns_message(
-            exc.SAWarning,
-            r"relationship '(?:BSub1.a|B.a_member|B.a)' will copy column "
-            r"(?:a.id|a_member.a_id) to column b.a_id",
-            self._fixture_one,
-            add_b_amember=True,
-            add_bsub1_a=True,
-            add_b_a=True,
-        )
+        with expect_warnings(
+            r"relationship '(?:BSub1.a|B.a_member|BSub2.a_member|B.a)' "
+            r"will copy column (?:a.id|a_member.a_id) to column b.a_id",
+        ):
+            self._fixture_one(
+                add_b_amember=True, add_bsub1_a=True, add_b_a=True
+            )
 
     @testing.provide_metadata
     def test_warn_four(self):
-        assert_warns_message(
-            exc.SAWarning,
+        with expect_warnings(
             r"relationship '(?:B.a|BSub2.a_member|B.a)' will copy column "
-            r"(?:a.id|a_member.a_id) to column b.a_id",
-            self._fixture_one,
-            add_bsub2_a_viewonly=True,
-            add_b_a=True,
-        )
+            r"(?:a.id|a_member.a_id) to column b.a_id"
+        ):
+            self._fixture_one(add_bsub2_a_viewonly=True, add_b_a=True)
 
     @testing.provide_metadata
     def test_works_one(self):
@@ -1303,12 +1280,11 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
             },
         )
 
-        assert_warns_message(
-            exc.SAWarning,
+        with expect_warnings(
             r"relationship .* will copy column .* to column "
-            r"employee_t.company_id, which conflicts with relationship\(s\)",
-            configure_mappers,
-        )
+            r"employee_t.company_id, which conflicts with relationship\(s\)"
+        ):
+            configure_mappers()
 
     def test_annotated_no_overwriting(self):
         Employee, Company, employee_t, company_t = (
@@ -2537,7 +2513,6 @@ class JoinConditionErrorTest(fixtures.TestBase):
         argnames="argname, arg",
     )
     def test_invalid_string_args(self, registry, argname, arg):
-
         kw = {argname: arg}
         Base = registry.generate_base()
 
@@ -4789,7 +4764,6 @@ class SecondaryNestedJoinTest(
         )
 
     def test_render_lazyload(self):
-
         A = self.classes.A
         sess = fixture_session()
         a1 = sess.query(A).filter(A.name == "a1").first()
@@ -5968,7 +5942,6 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
         delete,
         legacy_inactive_history_style,
     ):
-
         if delete:
             assert not backref, "delete and backref are mutually exclusive"
 

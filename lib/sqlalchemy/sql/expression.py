@@ -61,6 +61,7 @@ from ._selectable_constructors import tablesample as tablesample
 from ._selectable_constructors import union as union
 from ._selectable_constructors import union_all as union_all
 from ._selectable_constructors import values as values
+from ._typing import ColumnExpressionArgument as ColumnExpressionArgument
 from .base import _from_objects as _from_objects
 from .base import _select_iterables as _select_iterables
 from .base import ColumnCollection as ColumnCollection

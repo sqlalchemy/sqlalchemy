@@ -1482,6 +1482,8 @@ class Emulated(TypeEngineMixin):
                 # as only the default logic is implemented.
                 return cls.adapt_native_to_emulated(self, **kw)
         else:
+            # this would be, both classes are Enum, or both classes
+            # are postgresql.ENUM
             if issubclass(cls, self.__class__):
                 return self.adapt_to_emulated(cls, **kw)
             else:

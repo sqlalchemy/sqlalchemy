@@ -13,6 +13,7 @@ from .. import fixtures
 from .. import mock
 from ..assertions import eq_
 from ..assertions import is_
+from ..assertions import ne_
 from ..config import requirements
 from ..schema import Column
 from ..schema import Table
@@ -26,6 +27,7 @@ from ... import cast
 from ... import Date
 from ... import DateTime
 from ... import Float
+from ... import Identity
 from ... import Integer
 from ... import JSON
 from ... import literal
@@ -45,8 +47,10 @@ from ... import Unicode
 from ... import UnicodeText
 from ... import UUID
 from ... import Uuid
+from ...dialects.postgresql import BYTEA
 from ...orm import declarative_base
 from ...orm import Session
+from ...sql import sqltypes
 from ...sql.sqltypes import LargeBinary
 from ...sql.sqltypes import PickleType
 
@@ -312,6 +316,68 @@ class BinaryTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         )
         row = connection.execute(select(binary_table.c.pickle_data)).first()
         eq_(row, ({"foo": [1, 2, 3], "bar": "bat"},))
+
+    @testing.combinations(
+        (
+            LargeBinary(),
+            b"this is binary",
+        ),
+        (LargeBinary(), b"7\xe7\x9f"),
+        (BYTEA(), b"7\xe7\x9f", testing.only_on("postgresql")),
+        argnames="type_,value",
+    )
+    @testing.variation("sort_by_parameter_order", [True, False])
+    @testing.variation("multiple_rows", [True, False])
+    @testing.requires.insert_returning
+    def test_imv_returning(
+        self,
+        connection,
+        metadata,
+        sort_by_parameter_order,
+        type_,
+        value,
+        multiple_rows,
+    ):
+        """test #9739 (similar to #9701).
+
+        this tests insertmanyvalues as well as binary
+        RETURNING types
+
+        """
+        t = Table(
+            "t",
+            metadata,
+            Column("id", Integer, Identity(), primary_key=True),
+            Column("value", type_),
+        )
+
+        t.create(connection)
+
+        result = connection.execute(
+            t.insert().returning(
+                t.c.id,
+                t.c.value,
+                sort_by_parameter_order=bool(sort_by_parameter_order),
+            ),
+            [{"value": value} for i in range(10)]
+            if multiple_rows
+            else {"value": value},
+        )
+
+        if multiple_rows:
+            i_range = range(1, 11)
+        else:
+            i_range = range(1, 2)
+
+        eq_(
+            set(result),
+            {(id_, value) for id_ in i_range},
+        )
+
+        eq_(
+            set(connection.scalars(select(t.c.value))),
+            {value},
+        )
 
 
 class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
@@ -1089,6 +1155,15 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
         do_numeric_test(
             Numeric(precision=5, scale=3), numbers, numbers, check_scale=True
         )
+
+    @testing.combinations(sqltypes.Float, sqltypes.Double, argnames="cls_")
+    @testing.requires.float_is_numeric
+    def test_float_is_not_numeric(self, connection, cls_):
+        target_type = cls_().dialect_impl(connection.dialect)
+        numeric_type = sqltypes.Numeric().dialect_impl(connection.dialect)
+
+        ne_(target_type.__visit_name__, numeric_type.__visit_name__)
+        ne_(target_type.__class__, numeric_type.__class__)
 
 
 class BooleanTest(_LiteralRoundTripFixture, fixtures.TablesTest):

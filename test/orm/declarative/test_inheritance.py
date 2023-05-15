@@ -1026,7 +1026,6 @@ class DeclarativeInheritanceTest(
         if not combine_on_b and not omit_from_statements:
             ctx = expect_warnings(
                 "Implicitly combining column a.extra with column b.extra",
-                raise_on_any_unexpected=True,
             )
         else:
             ctx = contextlib.nullcontext()

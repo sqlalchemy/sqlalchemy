@@ -80,6 +80,7 @@ from ..sql._typing import _ColumnExpressionArgument
 from ..sql._typing import _HasClauseElement
 from ..sql.elements import ColumnClause
 from ..sql.elements import ColumnElement
+from ..sql.util import _deep_annotate
 from ..sql.util import _deep_deannotate
 from ..sql.util import _shallow_annotate
 from ..sql.util import adapt_criterion_to_null
@@ -115,6 +116,7 @@ if typing.TYPE_CHECKING:
     from ..sql._typing import _EquivalentColumnMap
     from ..sql._typing import _InfoType
     from ..sql.annotation import _AnnotationDict
+    from ..sql.annotation import SupportsAnnotations
     from ..sql.elements import BinaryExpression
     from ..sql.elements import BindParameter
     from ..sql.elements import ClauseElement
@@ -3284,6 +3286,38 @@ class JoinCondition:
                 primaryjoin = primaryjoin & single_crit
 
         if extra_criteria:
+
+            def mark_unrelated_columns_as_ok_to_adapt(
+                elem: SupportsAnnotations, annotations: _AnnotationDict
+            ) -> SupportsAnnotations:
+                """note unrelated columns in the "extra criteria" as OK
+                to adapt, even though they are not part of our "local"
+                or "remote" side.
+
+                see #9779 for this case
+
+                """
+
+                parentmapper_for_element = elem._annotations.get(
+                    "parentmapper", None
+                )
+                if (
+                    parentmapper_for_element is not self.prop.parent
+                    and parentmapper_for_element is not self.prop.mapper
+                ):
+                    return elem._annotate(annotations)
+                else:
+                    return elem
+
+            extra_criteria = tuple(
+                _deep_annotate(
+                    elem,
+                    {"ok_to_adapt_in_join_condition": True},
+                    annotate_callable=mark_unrelated_columns_as_ok_to_adapt,
+                )
+                for elem in extra_criteria
+            )
+
             if secondaryjoin is not None:
                 secondaryjoin = secondaryjoin & sql.and_(*extra_criteria)
             else:
@@ -3409,7 +3443,10 @@ class _ColInAnnotations:
         self.name = name
 
     def __call__(self, c: ClauseElement) -> bool:
-        return self.name in c._annotations
+        return (
+            self.name in c._annotations
+            or "ok_to_adapt_in_join_condition" in c._annotations
+        )
 
 
 class Relationship(  # type: ignore

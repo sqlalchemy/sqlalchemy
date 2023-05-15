@@ -1282,7 +1282,6 @@ the ``prebuffer_rows`` execution option may be used as follows::
 
     # context manager creates new Session
     with Session(engine) as session_obj:
-
         # result internally pre-fetches all objects
         result = sess.execute(
             select(User).where(User.id == 7), execution_options={"prebuffer_rows": True}
@@ -1364,7 +1363,6 @@ dataclass, such as in the example below::
 
 
     class Mixin:
-
         create_user: Mapped[int] = mapped_column()
         update_user: Mapped[Optional[int]] = mapped_column(default=None, init=False)
 
@@ -1400,7 +1398,6 @@ The fix is to add :class:`_orm.MappedAsDataclass` to the signature of
 ``Mixin`` as well::
 
     class Mixin(MappedAsDataclass):
-
         create_user: Mapped[int] = mapped_column()
         update_user: Mapped[Optional[int]] = mapped_column(default=None, init=False)
 
@@ -1500,14 +1497,17 @@ MissingGreenlet
 
 A call to the async :term:`DBAPI` was initiated outside the greenlet spawn
 context usually setup by the SQLAlchemy AsyncIO proxy classes. Usually this
-error happens when an IO was attempted in an unexpected place, without using
-the provided async api. When using the ORM this may be due to a lazy loading
-attempt, which is unsupported when using SQLAlchemy with AsyncIO dialects.
+error happens when an IO was attempted in an unexpected place, using a
+calling pattern that does not directly provide for use of the ``await`` keyword.
+When using the ORM this is nearly always due to the use of :term:`lazy loading`,
+which is not directly supported under asyncio without additional steps
+and/or alternate loader patterns in order to use successfully.
 
 .. seealso::
 
     :ref:`asyncio_orm_avoid_lazyloads` - covers most ORM scenarios where
-    this problem can occur and how to mitigate.
+    this problem can occur and how to mitigate, including specific patterns
+    to use with lazy load scenarios.
 
 .. _error_xd3s:
 

@@ -1705,6 +1705,7 @@ class QueuePoolTest(PoolTestBase):
         )
 
     @testing.combinations((True,), (False,))
+    @testing.emits_warning("The garbage collector")
     def test_userspace_disconnectionerror_weakref_finalizer(self, detach_gced):
         dbapi, pool = self._queuepool_dbapi_fixture(
             pool_size=1, max_overflow=2, _is_asyncio=detach_gced
@@ -1737,6 +1738,7 @@ class QueuePoolTest(PoolTestBase):
 
         not_closed_dbapi_conn = conn.dbapi_connection
         del conn
+
         gc_collect()
 
         if detach_gced:
@@ -1744,6 +1746,9 @@ class QueuePoolTest(PoolTestBase):
             eq_(not_closed_dbapi_conn.mock_calls, [])
         else:
             # new connection reset and returned to pool
+            # this creates a gc-level warning that is not easy to pin down,
+            # hence we use the testing.emits_warning() decorator just to squash
+            # it
             eq_(not_closed_dbapi_conn.mock_calls, [call.rollback()])
 
     @testing.requires.timing_intensive

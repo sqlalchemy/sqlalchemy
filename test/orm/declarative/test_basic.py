@@ -1394,7 +1394,6 @@ class DeclarativeMultiBaseTest(
             r"non-schema SQLAlchemy expression object; ",
             r"Attribute 'y' on class <class .*Foo5.* appears to be a "
             r"non-schema SQLAlchemy expression object; ",
-            raise_on_any_unexpected=True,
         ):
 
             class Foo5(Base):
@@ -1419,20 +1418,35 @@ class DeclarativeMultiBaseTest(
                 x = Column("x", Integer)
                 y = Column("x", Integer)
 
-    def test_column_repeated_under_prop(self):
+    @testing.variation("style", ["old", "new"])
+    def test_column_repeated_under_prop(self, style):
         with expect_warnings(
             "On class 'Foo', Column object 'x' named directly multiple "
             "times, only one will be used: x, y, z. Consider using "
             "orm.synonym instead"
         ), expect_raises(exc.DuplicateColumnError):
+            if style.old:
 
-            class Foo(Base):
-                __tablename__ = "foo"
+                class Foo(Base):
+                    __tablename__ = "foo"
 
-                id = Column(Integer, primary_key=True)
-                x = Column("x", Integer)
-                y = column_property(x)
-                z = Column("x", Integer)
+                    id = Column(Integer, primary_key=True)
+                    x = Column("x", Integer)
+                    y = column_property(x)
+                    z = Column("x", Integer)
+
+            elif style.new:
+
+                class Foo(Base):
+                    __tablename__ = "foo"
+
+                    id = mapped_column(Integer, primary_key=True)
+                    x = mapped_column("x", Integer)
+                    y = column_property(x)
+                    z = mapped_column("x", Integer)
+
+            else:
+                style.fail()
 
     def test_using_explicit_prop_in_schema_objects(self):
         class Foo(Base):

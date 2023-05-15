@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
+from typing import Awaitable
 from typing import Callable
 from typing import Dict
 from typing import Generic
@@ -61,7 +62,7 @@ if TYPE_CHECKING:
     from ...sql._typing import _InfoType
     from ...sql.base import Executable
     from ...sql.elements import ClauseElement
-    from ...sql.selectable import ForUpdateArg
+    from ...sql.selectable import ForUpdateParameter
     from ...sql.selectable import TypedReturnsRows
 
 _AsyncSessionBind = Union["AsyncEngine", "AsyncConnection"]
@@ -71,6 +72,99 @@ _T = TypeVar("_T", bound=Any)
 
 _EXECUTE_OPTIONS = util.immutabledict({"prebuffer_rows": True})
 _STREAM_OPTIONS = util.immutabledict({"stream_results": True})
+
+
+class AsyncAttrs:
+    """Mixin class which provides an awaitable accessor for all attributes.
+
+    E.g.::
+
+        from __future__ import annotations
+
+        from typing import List
+
+        from sqlalchemy import ForeignKey
+        from sqlalchemy import func
+        from sqlalchemy.ext.asyncio import AsyncAttrs
+        from sqlalchemy.orm import DeclarativeBase
+        from sqlalchemy.orm import Mapped
+        from sqlalchemy.orm import mapped_column
+        from sqlalchemy.orm import relationship
+
+
+        class Base(AsyncAttrs, DeclarativeBase):
+            pass
+
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str]
+            bs: Mapped[List[B]] = relationship()
+
+
+        class B(Base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+            data: Mapped[str]
+
+    In the above example, the :class:`_asyncio.AsyncAttrs` mixin is applied to
+    the declarative ``Base`` class where it takes effect for all subclasses.
+    This mixin adds a single new attribute
+    :attr:`_asyncio.AsyncAttrs.awaitable_attrs` to all classes, which will
+    yield the value of any attribute as an awaitable. This allows attributes
+    which may be subject to lazy loading or deferred / unexpiry loading to be
+    accessed such that IO can still be emitted::
+
+        a1 = (await async_session.scalars(select(A).where(A.id == 5))).one()
+
+        # use the lazy loader on ``a1.bs`` via the ``.async_attrs``
+        # interface, so that it may be awaited
+        for b1 in await a1.async_attrs.bs:
+            print(b1)
+
+    The :attr:`_asyncio.AsyncAttrs.awaitable_attrs` performs a call against the
+    attribute that is approximately equivalent to using the
+    :meth:`_asyncio.AsyncSession.run_sync` method, e.g.::
+
+        for b1 in await async_session.run_sync(lambda sess: a1.bs):
+            print(b1)
+
+    .. versionadded:: 2.0.13
+
+    .. seealso::
+
+        :ref:`asyncio_orm_avoid_lazyloads`
+
+    """
+
+    class _AsyncAttrGetitem:
+        __slots__ = "_instance"
+
+        def __init__(self, _instance: Any):
+            self._instance = _instance
+
+        def __getattr__(self, name: str) -> Awaitable[Any]:
+            return greenlet_spawn(getattr, self._instance, name)
+
+    @property
+    def awaitable_attrs(self) -> AsyncAttrs._AsyncAttrGetitem:
+        """provide a namespace of all attributes on this object wrapped
+        as awaitables.
+
+        e.g.::
+
+
+            a1 = (await async_session.scalars(select(A).where(A.id == 5))).one()
+
+            some_attribute = await a1.async_attrs.some_deferred_attribute
+            some_collection = await a1.async_attrs.some_collection
+
+        """  # noqa: E501
+
+        return AsyncAttrs._AsyncAttrGetitem(self)
 
 
 @util.create_proxy_methods(
@@ -207,7 +301,7 @@ class AsyncSession(ReversibleProxy[Session]):
         self,
         instance: object,
         attribute_names: Optional[Iterable[str]] = None,
-        with_for_update: Optional[ForUpdateArg] = None,
+        with_for_update: ForUpdateParameter = None,
     ) -> None:
         """Expire and refresh the attributes on the given instance.
 
@@ -268,7 +362,7 @@ class AsyncSession(ReversibleProxy[Session]):
         to the database connection by running the given callable in a
         specially instrumented greenlet.
 
-        .. note::
+        .. tip::
 
             The provided callable is invoked inline within the asyncio event
             loop, and will block on traditional IO calls.  IO within this
@@ -276,6 +370,9 @@ class AsyncSession(ReversibleProxy[Session]):
             APIs which will be properly adapted to the greenlet context.
 
         .. seealso::
+
+            :class:`.AsyncAttrs`  - a mixin for ORM mapped classes that provides
+            a similar feature more succinctly on a per-attribute basis
 
             :meth:`.AsyncConnection.run_sync`
 
@@ -469,7 +566,7 @@ class AsyncSession(ReversibleProxy[Session]):
         *,
         options: Optional[Sequence[ORMOption]] = None,
         populate_existing: bool = False,
-        with_for_update: Optional[ForUpdateArg] = None,
+        with_for_update: ForUpdateParameter = None,
         identity_token: Optional[Any] = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
     ) -> Optional[_O]:

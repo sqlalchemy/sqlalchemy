@@ -9,8 +9,149 @@
 
 
 .. changelog::
-    :version: 2.0.13
+    :version: 2.0.14
     :include_notes_from: unreleased_20
+
+.. changelog::
+    :version: 2.0.13
+    :released: May 10, 2023
+
+    .. change::
+        :tags: usecase, asyncio
+        :tickets: 9731
+
+        Added a new helper mixin :class:`_asyncio.AsyncAttrs` that seeks to improve
+        the use of lazy-loader and other expired or deferred ORM attributes with
+        asyncio, providing a simple attribute accessor that provides an ``await``
+        interface to any ORM attribute, whether or not it needs to emit SQL.
+
+        .. seealso::
+
+            :class:`_asyncio.AsyncAttrs`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9717
+
+        Fixed issue where ORM Annotated Declarative would not resolve forward
+        references correctly in all cases; in particular, when using
+        ``from __future__ import annotations`` in combination with Pydantic
+        dataclasses.
+
+    .. change::
+        :tags: typing, sql
+        :tickets: 9656
+
+        Added type :data:`_sql.ColumnExpressionArgument` as a public-facing type
+        that indicates column-oriented arguments which are passed to SQLAlchemy
+        constructs, such as :meth:`_sql.Select.where`, :func:`_sql.and_` and
+        others. This may be used to add typing to end-user functions which call
+        these methods.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9746
+
+        Fixed issue in new :ref:`orm_queryguide_upsert_returning` feature where the
+        ``populate_existing`` execution option was not being propagated to the
+        loading option, preventing existing attributes from being refreshed
+        in-place.
+
+    .. change::
+        :tags: bug, sql
+
+        Fixed the base class for dialect-specific float/double types; Oracle
+        :class:`_oracle.BINARY_DOUBLE` now subclasses :class:`_sqltypes.Double`,
+        and internal types for :class:`_sqltypes.Float` for asyncpg and pg8000 now
+        correctly subclass :class:`_sqltypes.Float`.
+
+    .. change::
+        :tags: bug, ext
+        :tickets: 9676
+
+        Fixed issue in :class:`_mutable.Mutable` where event registration for ORM
+        mapped attributes would be called repeatedly for mapped inheritance
+        subclasses, leading to duplicate events being invoked in inheritance
+        hierarchies.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9715
+
+        Fixed loader strategy pathing issues where eager loaders such as
+        :func:`_orm.joinedload` / :func:`_orm.selectinload` would fail to traverse
+        fully for many-levels deep following a load that had a
+        :func:`_orm.with_polymorphic` or similar construct as an interim member.
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 9721
+
+        Implemented the "cartesian product warning" for UPDATE and DELETE
+        statements, those which include multiple tables that are not correlated
+        together in some way.
+
+    .. change::
+        :tags: bug, sql
+
+        Fixed issue where :func:`_dml.update` construct that included multiple
+        tables and no VALUES clause would raise with an internal error. Current
+        behavior for :class:`_dml.Update` with no values is to generate a SQL
+        UPDATE statement with an empty "set" clause, so this has been made
+        consistent for this specific sub-case.
+
+    .. change::
+        :tags: oracle, reflection
+        :tickets: 9597
+
+        Added reflection support in the Oracle dialect to expression based indexes
+        and the ordering direction of index expressions.
+
+    .. change::
+        :tags: performance, schema
+        :tickets: 9597
+
+        Improved how table columns are added, avoiding unnecessary allocations,
+        significantly speeding up the creation of many table, like when reflecting
+        entire schemas.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 9762
+
+        Fixed typing for the :paramref:`_orm.Session.get.with_for_update` parameter
+        of :meth:`_orm.Session.get` and :meth:`_orm.Session.refresh` (as well as
+        corresponding methods on :class:`_asyncio.AsyncSession`) to accept boolean
+        ``True`` and all other argument forms accepted by the parameter at runtime.
+
+    .. change::
+        :tags: bug, postgresql, regression
+        :tickets: 9739
+
+        Fixed another regression due to the "insertmanyvalues" change in 2.0.10 as
+        part of :ticket:`9618`, in a similar way as regression :ticket:`9701`, where
+        :class:`.LargeBinary` datatypes also need additional casts on when using the
+        asyncpg driver specifically in order to work with the new bulk INSERT
+        format.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9630
+
+        Fixed issue in :func:`_orm.mapped_column` construct where the correct
+        warning for "column X named directly multiple times" would not be emitted
+        when ORM mapped attributes referred to the same :class:`_schema.Column`, if
+        the :func:`_orm.mapped_column` construct were involved, raising an internal
+        assertion instead.
+
+    .. change::
+        :tags: bug, asyncio
+
+        Fixed issue in semi-private ``await_only()`` and ``await_fallback()``
+        concurrency functions where the given awaitable would remain un-awaited if
+        the function threw a ``GreenletError``, which could cause "was not awaited"
+        warnings later on if the program continued. In this case, the given
+        awaitable is now cancelled before the exception is thrown.
 
 .. changelog::
     :version: 2.0.12

@@ -770,6 +770,12 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def reflect_indexes_with_ascdesc_as_expression(self):
+        """target database supports reflecting INDEX with per-column
+        ASC/DESC but reflects them as expressions (like oracle)."""
+        return exclusions.closed()
+
+    @property
     def indexes_with_expressions(self):
         """target database supports CREATE INDEX against SQL expressions."""
         return exclusions.closed()
@@ -1244,6 +1250,12 @@ class SuiteRequirements(Requirements):
 
         Added to support Pyodbc bug #351.
         """
+
+        return exclusions.open()
+
+    @property
+    def float_is_numeric(self):
+        """target backend uses Numeric for Float/Dual"""
 
         return exclusions.open()
 

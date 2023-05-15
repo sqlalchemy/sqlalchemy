@@ -1114,6 +1114,10 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
         ):
             fk_req = testing.requires.foreign_keys_reflect_as_index
             dup_req = testing.requires.unique_constraints_reflect_as_index
+            sorting_expression = (
+                testing.requires.reflect_indexes_with_ascdesc_as_expression
+            )
+
             if (fk and not fk_req.enabled) or (
                 duplicates and not dup_req.enabled
             ):
@@ -1126,7 +1130,13 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
                 "include_columns": [],
             }
             if column_sorting:
-                res["column_sorting"] = {"q": ("desc",)}
+                res["column_sorting"] = column_sorting
+                if sorting_expression.enabled:
+                    res["expressions"] = orig = res["column_names"]
+                    res["column_names"] = [
+                        None if c in column_sorting else c for c in orig
+                    ]
+
             if duplicates:
                 res["duplicates_constraint"] = name
             return [res]
@@ -2070,6 +2080,15 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
             insp.clear_cache()
             eq_(insp.get_multi_table_comment(**kw), exp)
 
+    def _check_expressions(self, result, exp, err_msg):
+        def _clean(text: str):
+            return re.sub(r"['\" ]", "", text).lower()
+
+        if isinstance(exp, dict):
+            eq_({_clean(e): v for e, v in result.items()}, exp, err_msg)
+        else:
+            eq_([_clean(e) for e in result], exp, err_msg)
+
     def _check_list(self, result, exp, req_keys=None, msg=None):
         if req_keys is None:
             eq_(result, exp, msg)
@@ -2078,7 +2097,11 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
             for r, e in zip(result, exp):
                 for k in set(r) | set(e):
                     if k in req_keys or (k in r and k in e):
-                        eq_(r[k], e[k], f"{msg} - {k} - {r}")
+                        err_msg = f"{msg} - {k} - {r}"
+                        if k in ("expressions", "column_sorting"):
+                            self._check_expressions(r[k], e[k], err_msg)
+                        else:
+                            eq_(r[k], e[k], err_msg)
 
     def _check_table_dict(self, result, exp, req_keys=None, make_lists=False):
         eq_(set(result.keys()), set(exp.keys()))
@@ -2471,8 +2494,9 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
 
         class lower_index_str(str):
             def __eq__(self, other):
+                ol = other.lower()
                 # test that lower and x or y are in the string
-                return "lower" in other and ("x" in other or "y" in other)
+                return "lower" in ol and ("x" in ol or "y" in ol)
 
         class coalesce_index_str(str):
             def __eq__(self, other):

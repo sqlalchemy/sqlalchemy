@@ -69,3 +69,4 @@ Some key internal constructs are listed here.
 
 .. autoclass:: sqlalchemy.engine.AdaptedConnection
     :members:
+

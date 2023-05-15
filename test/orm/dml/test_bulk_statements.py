@@ -302,6 +302,78 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
             else:
                 eq_(result.first(), (10, expected_qs[0]))
 
+    @testing.variation("populate_existing", [True, False])
+    @testing.requires.provisioned_upsert
+    @testing.requires.update_returning
+    def test_upsert_populate_existing(self, decl_base, populate_existing):
+        """test #9742"""
+
+        class Employee(ComparableEntity, decl_base):
+            __tablename__ = "employee"
+
+            uuid: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+            user_name: Mapped[str] = mapped_column(nullable=False)
+
+        decl_base.metadata.create_all(testing.db)
+        s = fixture_session()
+
+        uuid1 = uuid.uuid4()
+        uuid2 = uuid.uuid4()
+        e1 = Employee(uuid=uuid1, user_name="e1 old name")
+        e2 = Employee(uuid=uuid2, user_name="e2 old name")
+        s.add_all([e1, e2])
+        s.flush()
+
+        stmt = provision.upsert(
+            config,
+            Employee,
+            (Employee,),
+            set_lambda=lambda inserted: {"user_name": inserted.user_name},
+        ).values(
+            [
+                dict(uuid=uuid1, user_name="e1 new name"),
+                dict(uuid=uuid2, user_name="e2 new name"),
+            ]
+        )
+        if populate_existing:
+            rows = s.scalars(
+                stmt, execution_options={"populate_existing": True}
+            )
+            # SPECIAL: before we actually receive the returning rows,
+            # the existing objects have not been updated yet
+            eq_(e1.user_name, "e1 old name")
+            eq_(e2.user_name, "e2 old name")
+
+            eq_(
+                set(rows),
+                {
+                    Employee(uuid=uuid1, user_name="e1 new name"),
+                    Employee(uuid=uuid2, user_name="e2 new name"),
+                },
+            )
+
+            # now they are updated
+            eq_(e1.user_name, "e1 new name")
+            eq_(e2.user_name, "e2 new name")
+        else:
+            # no populate existing
+            rows = s.scalars(stmt)
+            eq_(e1.user_name, "e1 old name")
+            eq_(e2.user_name, "e2 old name")
+            eq_(
+                set(rows),
+                {
+                    Employee(uuid=uuid1, user_name="e1 old name"),
+                    Employee(uuid=uuid2, user_name="e2 old name"),
+                },
+            )
+            eq_(e1.user_name, "e1 old name")
+            eq_(e2.user_name, "e2 old name")
+        s.commit()
+        s.expire_all()
+        eq_(e1.user_name, "e1 new name")
+        eq_(e2.user_name, "e2 new name")
+
 
 class UpdateStmtTest(fixtures.TestBase):
     __backend__ = True

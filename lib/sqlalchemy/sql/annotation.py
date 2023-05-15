@@ -406,8 +406,12 @@ def _deep_annotate(
     element: _SA,
     annotations: _AnnotationDict,
     exclude: Optional[Sequence[SupportsAnnotations]] = None,
+    *,
     detect_subquery_cols: bool = False,
     ind_cols_on_fromclause: bool = False,
+    annotate_callable: Optional[
+        Callable[[SupportsAnnotations, _AnnotationDict], SupportsAnnotations]
+    ] = None,
 ) -> _SA:
     """Deep copy the given ClauseElement, annotating each element
     with the given annotations dictionary.
@@ -446,9 +450,13 @@ def _deep_annotate(
             newelem = elem._clone(clone=clone, **kw)
         elif annotations != elem._annotations:
             if detect_subquery_cols and elem._is_immutable:
-                newelem = elem._clone(clone=clone, **kw)._annotate(annotations)
+                to_annotate = elem._clone(clone=clone, **kw)
             else:
-                newelem = elem._annotate(annotations)
+                to_annotate = elem
+            if annotate_callable:
+                newelem = annotate_callable(to_annotate, annotations)
+            else:
+                newelem = to_annotate._annotate(annotations)
         else:
             newelem = elem
 

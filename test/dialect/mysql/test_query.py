@@ -11,9 +11,9 @@ from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
-from sqlalchemy import testing
 from sqlalchemy import true
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 
@@ -22,23 +22,26 @@ class IdiosyncrasyTest(fixtures.TestBase):
     __only_on__ = "mysql", "mariadb"
     __backend__ = True
 
-    @testing.emits_warning()
     def test_is_boolean_symbols_despite_no_native(self, connection):
+        with expect_warnings("Datatype BOOL does not support CAST"):
+            is_(
+                connection.scalar(select(cast(true().is_(true()), Boolean))),
+                True,
+            )
 
-        is_(
-            connection.scalar(select(cast(true().is_(true()), Boolean))),
-            True,
-        )
+        with expect_warnings("Datatype BOOL does not support CAST"):
+            is_(
+                connection.scalar(
+                    select(cast(true().is_not(true()), Boolean))
+                ),
+                False,
+            )
 
-        is_(
-            connection.scalar(select(cast(true().is_not(true()), Boolean))),
-            False,
-        )
-
-        is_(
-            connection.scalar(select(cast(false().is_(false()), Boolean))),
-            True,
-        )
+        with expect_warnings("Datatype BOOL does not support CAST"):
+            is_(
+                connection.scalar(select(cast(false().is_(false()), Boolean))),
+                True,
+            )
 
 
 class MatchTest(fixtures.TablesTest):

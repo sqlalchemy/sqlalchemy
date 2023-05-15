@@ -150,11 +150,22 @@ The classes here are generated using the constructors listed at
 .. autoclass:: ColumnCollection
    :members:
 
-
 .. autoclass:: ColumnElement
    :members:
    :inherited-members:
    :undoc-members:
+
+.. data:: ColumnExpressionArgument
+
+   General purpose "column expression" argument.
+
+   .. versionadded:: 2.0.13
+
+   This type is used for "column" kinds of expressions that typically represent
+   a single SQL column expression, including :class:`_sql.ColumnElement`, as
+   well as ORM-mapped attributes that will have a ``__clause_element__()``
+   method.
+
 
 .. autoclass:: ColumnOperators
    :members:

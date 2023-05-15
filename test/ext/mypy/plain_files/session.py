@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+import asyncio
 from typing import List
 
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
+from sqlalchemy.ext.asyncio import async_scoped_session
+from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 
 class Base(DeclarativeBase):
@@ -94,3 +100,41 @@ with Session(e) as sess:
     ).offset(User.id)
 
 # more result tests in typed_results.py
+
+
+def test_with_for_update() -> None:
+    """test #9762"""
+    sess = Session()
+    ss = scoped_session(sessionmaker())
+
+    sess.get(User, 1)
+    sess.get(User, 1, with_for_update=True)
+    ss.get(User, 1)
+    ss.get(User, 1, with_for_update=True)
+
+    u1 = User()
+    sess.refresh(u1)
+    sess.refresh(u1, with_for_update=True)
+    ss.refresh(u1)
+    ss.refresh(u1, with_for_update=True)
+
+
+async def test_with_for_update_async() -> None:
+    """test #9762"""
+    sess = AsyncSession()
+    ss = async_scoped_session(
+        async_sessionmaker(), scopefunc=asyncio.current_task
+    )
+
+    await sess.get(User, 1)
+    await sess.get(User, 1, with_for_update=True)
+
+    await ss.get(User, 1)
+    await ss.get(User, 1, with_for_update=True)
+
+    u1 = User()
+    await sess.refresh(u1)
+    await sess.refresh(u1, with_for_update=True)
+
+    await ss.refresh(u1)
+    await ss.refresh(u1, with_for_update=True)

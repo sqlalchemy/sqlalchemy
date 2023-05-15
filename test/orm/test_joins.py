@@ -170,7 +170,6 @@ class InheritedJoinTest(InheritedTest, AssertsCompiledSQL):
             r"Mapper\[Manager\(managers\)\] due to overlapping",
             "An alias is being generated automatically against joined entity "
             r"Mapper\[Boss\(boss\)\] due to overlapping",
-            raise_on_any_unexpected=True,
         ):
             self.assert_compile(
                 q,

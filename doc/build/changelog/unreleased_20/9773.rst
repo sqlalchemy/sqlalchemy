@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 9773
+
+    Fixed apparently very old issue where the
+    :paramref:`_postgresql.ENUM.create_type` parameter, when set to its
+    non-default of ``False``, would not be propagated when the
+    :class:`_schema.Column` which it's a part of were copied, as is common when
+    using ORM Declarative mixins.

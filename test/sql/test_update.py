@@ -113,6 +113,59 @@ class _UpdateFromTestBase:
 class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     __dialect__ = "default_enhanced"
 
+    @testing.variation("twotable", [True, False])
+    @testing.variation("values", ["none", "blank"])
+    def test_update_no_params(self, values, twotable):
+        """test issue identified while doing #9721
+
+        UPDATE with empty VALUES but multiple tables would raise a
+        NoneType error; fixed this to emit an empty "SET" the way a single
+        table UPDATE currently does.
+
+        both cases should probably raise CompileError, however this could
+        be backwards incompatible with current use cases (such as other test
+        suites)
+
+        """
+
+        table1 = self.tables.mytable
+        table2 = self.tables.myothertable
+
+        stmt = table1.update().where(table1.c.name == "jill")
+        if twotable:
+            stmt = stmt.where(table2.c.otherid == table1.c.myid)
+
+        if values.blank:
+            stmt = stmt.values()
+
+        if twotable:
+            if values.blank:
+                self.assert_compile(
+                    stmt,
+                    "UPDATE mytable SET  FROM myothertable "
+                    "WHERE mytable.name = :name_1 "
+                    "AND myothertable.otherid = mytable.myid",
+                )
+            elif values.none:
+                self.assert_compile(
+                    stmt,
+                    "UPDATE mytable SET myid=:myid, name=:name, "
+                    "description=:description FROM myothertable "
+                    "WHERE mytable.name = :name_1 "
+                    "AND myothertable.otherid = mytable.myid",
+                )
+        elif values.blank:
+            self.assert_compile(
+                stmt,
+                "UPDATE mytable SET  WHERE mytable.name = :name_1",
+            )
+        elif values.none:
+            self.assert_compile(
+                stmt,
+                "UPDATE mytable SET myid=:myid, name=:name, "
+                "description=:description WHERE mytable.name = :name_1",
+            )
+
     def test_update_literal_binds(self):
         table1 = self.tables.mytable
 

@@ -430,6 +430,8 @@ class ReturningTest(fixtures.TablesTest):
         this tests insertmanyvalues as well as decimal / floating point
         RETURNING types
 
+        TODO: this might be better in suite/test_types?
+
         """
 
         t = Table(

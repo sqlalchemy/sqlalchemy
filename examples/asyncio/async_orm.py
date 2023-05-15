@@ -12,15 +12,18 @@ from typing import Optional
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.future import select
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 
-Base = declarative_base()
+
+class Base(AsyncAttrs, DeclarativeBase):
+    pass
 
 
 class A(Base):
@@ -31,7 +34,7 @@ class A(Base):
     create_date: Mapped[datetime.datetime] = mapped_column(
         server_default=func.now()
     )
-    bs: Mapped[List[B]] = relationship(lazy="raise")
+    bs: Mapped[List[B]] = relationship()
 
 
 class B(Base):
@@ -93,11 +96,15 @@ async def async_main():
 
         result = await session.scalars(select(A).order_by(A.id))
 
-        a1 = result.first()
+        a1 = result.one()
 
         a1.data = "new data"
 
         await session.commit()
+
+        # use the AsyncAttrs interface to accommodate for a lazy load
+        for b1 in await a1.awaitable_attrs.bs:
+            print(b1)
 
 
 asyncio.run(async_main())

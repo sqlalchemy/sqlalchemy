@@ -79,6 +79,7 @@ from .schema import PrimaryKeyConstraint as PrimaryKeyConstraint
 from .schema import Sequence as Sequence
 from .schema import Table as Table
 from .schema import UniqueConstraint as UniqueConstraint
+from .sql import ColumnExpressionArgument as ColumnExpressionArgument
 from .sql import SelectLabelStyle as SelectLabelStyle
 from .sql.expression import Alias as Alias
 from .sql.expression import alias as alias
@@ -264,7 +265,7 @@ from .types import Uuid as Uuid
 from .types import VARBINARY as VARBINARY
 from .types import VARCHAR as VARCHAR
 
-__version__ = "2.0.13"
+__version__ = "2.0.14"
 
 
 def __go(lcls: Any) -> None:

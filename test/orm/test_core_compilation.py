@@ -360,6 +360,40 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
         )
 
 
+class DMLTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    @testing.variation("stmt_type", ["update", "delete"])
+    def test_dml_ctes(self, stmt_type: testing.Variation):
+        User = self.classes.User
+
+        if stmt_type.update:
+            fn = update
+        elif stmt_type.delete:
+            fn = delete
+        else:
+            stmt_type.fail()
+
+        inner_cte = fn(User).returning(User.id).cte("uid")
+
+        stmt = select(inner_cte)
+
+        if stmt_type.update:
+            self.assert_compile(
+                stmt,
+                "WITH uid AS (UPDATE users SET id=:id, name=:name "
+                "RETURNING users.id) SELECT uid.id FROM uid",
+            )
+        elif stmt_type.delete:
+            self.assert_compile(
+                stmt,
+                "WITH uid AS (DELETE FROM users "
+                "RETURNING users.id) SELECT uid.id FROM uid",
+            )
+        else:
+            stmt_type.fail()
+
+
 class ColumnsClauseFromsTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"
 

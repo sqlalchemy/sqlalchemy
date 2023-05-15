@@ -1646,7 +1646,11 @@ class _ClassScanMapperConfig(_MapperConfig):
                     if not isinstance(c, CompositeProperty):
                         name_to_prop_key[col.name].add(key)
                     declared_columns.add(col)
-                    assert col not in column_ordering
+
+                    # we would assert this, however we want the below
+                    # warning to take effect instead.  See #9630
+                    # assert col not in column_ordering
+
                     column_ordering[col] = sort_order
 
                     # if this is a MappedColumn and the attribute key we

@@ -1,20 +1,31 @@
+from __future__ import annotations
+
+from typing import List
+from typing import Optional
+
 from sqlalchemy import Column
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import Identity
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import Sequence
+from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import async_object_session
 from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import exc as async_exc
 from sqlalchemy.ext.asyncio.base import ReversibleProxy
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
@@ -24,6 +35,7 @@ from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
+from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
@@ -44,6 +56,12 @@ class AsyncFixture(_AsyncFixture, _fixtures.FixtureTest):
     @testing.fixture
     def async_engine(self):
         return engines.testing_engine(asyncio=True, transfer_staticpool=True)
+
+    # TODO: this seems to cause deadlocks in
+    # OverrideSyncSession for some reason
+    # @testing.fixture
+    # def async_engine(self, async_testing_engine):
+    # return async_testing_engine(transfer_staticpool=True)
 
     @testing.fixture
     def async_session(self, async_engine):
@@ -741,6 +759,7 @@ class AsyncORMBehaviorsTest(AsyncFixture):
                 (exc.StatementError, exc.MissingGreenlet)
             ):
                 a1.b = b2
+
         else:
             a1.b = b2
 
@@ -1005,3 +1024,103 @@ class OverrideSyncSession(AsyncFixture):
 
         is_true(not isinstance(ass.sync_session, _MySession))
         is_(ass.sync_session_class, Session)
+
+
+class AsyncAttrsTest(
+    testing.AssertsExecutionResults, _AsyncFixture, fixtures.TestBase
+):
+    __requires__ = ("async_dialect",)
+
+    @config.fixture
+    def decl_base(self, metadata):
+        _md = metadata
+
+        class Base(fixtures.ComparableEntity, AsyncAttrs, DeclarativeBase):
+            metadata = _md
+            type_annotation_map = {
+                str: String().with_variant(
+                    String(50), "mysql", "mariadb", "oracle"
+                )
+            }
+
+        yield Base
+        Base.registry.dispose()
+
+    @testing.fixture
+    def async_engine(self, async_testing_engine):
+        yield async_testing_engine(transfer_staticpool=True)
+
+    @testing.fixture
+    def ab_fixture(self, decl_base):
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(Identity(), primary_key=True)
+            data: Mapped[Optional[str]]
+            bs: Mapped[List[B]] = relationship(order_by=lambda: B.id)
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(Identity(), primary_key=True)
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+            data: Mapped[Optional[str]]
+
+        decl_base.metadata.create_all(testing.db)
+
+        return A, B
+
+    @async_test
+    async def test_lazyloaders(self, async_engine, ab_fixture):
+        A, B = ab_fixture
+
+        async with AsyncSession(async_engine) as session:
+            b1, b2, b3 = B(data="b1"), B(data="b2"), B(data="b3")
+            a1 = A(data="a1", bs=[b1, b2, b3])
+            session.add(a1)
+
+            await session.commit()
+
+            assert inspect(a1).expired
+
+            with self.assert_statement_count(async_engine.sync_engine, 1):
+                eq_(await a1.awaitable_attrs.data, "a1")
+
+            with self.assert_statement_count(async_engine.sync_engine, 1):
+                eq_(await a1.awaitable_attrs.bs, [b1, b2, b3])
+
+            # now it's loaded, lazy loading not used anymore
+            eq_(a1.bs, [b1, b2, b3])
+
+    @async_test
+    async def test_it_didnt_load_but_is_ok(self, async_engine, ab_fixture):
+        A, B = ab_fixture
+
+        async with AsyncSession(async_engine) as session:
+            b1, b2, b3 = B(data="b1"), B(data="b2"), B(data="b3")
+            a1 = A(data="a1", bs=[b1, b2, b3])
+            session.add(a1)
+
+            await session.commit()
+
+        async with AsyncSession(async_engine) as session:
+            a1 = (
+                await session.scalars(select(A).options(selectinload(A.bs)))
+            ).one()
+
+            with self.assert_statement_count(async_engine.sync_engine, 0):
+                eq_(await a1.awaitable_attrs.bs, [b1, b2, b3])
+
+    @async_test
+    async def test_the_famous_lazyloader_gotcha(
+        self, async_engine, ab_fixture
+    ):
+        A, B = ab_fixture
+
+        async with AsyncSession(async_engine) as session:
+            a1 = A(data="a1")
+            session.add(a1)
+
+            await session.flush()
+
+            with self.assert_statement_count(async_engine.sync_engine, 1):
+                eq_(await a1.awaitable_attrs.bs, [])

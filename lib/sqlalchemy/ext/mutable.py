@@ -693,14 +693,28 @@ class Mutable(MutableBase):
         ) -> None:
             if mapper.non_primary:
                 return
+            _APPLIED_KEY = "_ext_mutable_listener_applied"
+
             for prop in mapper.column_attrs:
                 if (
-                    schema_event_check
-                    and hasattr(prop.expression, "info")
-                    and prop.expression.info.get("_ext_mutable_orig_type")  # type: ignore # noqa: E501 # TODO: https://github.com/python/mypy/issues/1424#issuecomment-1272354487
-                    is sqltype
-                ) or (prop.columns[0].type is sqltype):
-                    cls.associate_with_attribute(getattr(class_, prop.key))
+                    # all Mutable types refer to a Column that's mapped,
+                    # since this is the only kind of Core target the ORM can
+                    # "mutate"
+                    isinstance(prop.expression, Column)
+                    and (
+                        (
+                            schema_event_check
+                            and prop.expression.info.get(
+                                "_ext_mutable_orig_type"
+                            )
+                            is sqltype
+                        )
+                        or prop.expression.type is sqltype
+                    )
+                ):
+                    if not prop.expression.info.get(_APPLIED_KEY, False):
+                        prop.expression.info[_APPLIED_KEY] = True
+                        cls.associate_with_attribute(getattr(class_, prop.key))
 
         event.listen(Mapper, "mapper_configured", listen_for_type)
 
@@ -724,7 +738,6 @@ class MutableComposite(MutableBase):
         """Subclasses should call this method whenever change events occur."""
 
         for parent, key in self._parents.items():
-
             prop = parent.mapper.get_property(key)
             for value, attr_name in zip(
                 prop._composite_values_from_instance(self),
@@ -781,7 +794,6 @@ class MutableDict(Mutable, Dict[_KT, _VT]):
         self.changed()
 
     if TYPE_CHECKING:
-
         # from https://github.com/python/mypy/issues/14858
 
         @overload

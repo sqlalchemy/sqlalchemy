@@ -27,16 +27,15 @@ def generate_table(meta: sa.MetaData, min_cols, max_cols, dialect_name):
     cols = []
     for i in range(col_number - (0 if is_mssql else add_identity)):
         args = []
-        if random.random() < 0.95 or table_num == 0:
+        if random.random() < 0.99 or table_num == 0:
             if is_mssql and add_identity and i == 0:
                 args.append(sa.Integer)
                 args.append(identity)
             else:
                 args.append(random.choice(types))
         else:
-            args.append(
-                sa.ForeignKey(f"table_{table_num-1}.table_{table_num-1}_col_1")
-            )
+            target = random.randint(0, table_num - 1)
+            args.append(sa.ForeignKey(f"table_{target}.table_{target}_col_1"))
         cols.append(
             sa.Column(
                 f"table_{table_num}_col_{i+1}",
@@ -45,8 +44,8 @@ def generate_table(meta: sa.MetaData, min_cols, max_cols, dialect_name):
                 comment=f"primary key of table_{table_num}"
                 if i == 0
                 else None,
-                index=random.random() > 0.9 and i > 0,
-                unique=random.random() > 0.95 and i > 0,
+                index=random.random() > 0.97 and i > 0,
+                unique=random.random() > 0.97 and i > 0,
             )
         )
     if add_identity and not is_mssql:
@@ -131,6 +130,19 @@ def create_tables(engine, meta):
         meta.create_all(engine, tables[i : i + 500])
 
 
+def _drop_ddl(name, schema_name, dialect_name):
+    if dialect_name.startswith("postgres"):
+        suffix = "CASCADE"
+    elif dialect_name.startswith("oracle"):
+        suffix = "CASCADE CONSTRAINTS PURGE"
+    else:
+        suffix = ""
+    if schema_name:
+        return sa.schema.DDL(f"DROP TABLE {schema_name}.{name} {suffix}")
+    else:
+        return sa.schema.DDL(f"DROP TABLE {name} {suffix}")
+
+
 @log
 def drop_tables(engine, meta, schema_name, table_names: list):
     tables = list(meta.tables.values())[::-1]
@@ -138,10 +150,6 @@ def drop_tables(engine, meta, schema_name, table_names: list):
         meta.drop_all(engine, tables[i : i + 500])
 
     remaining = sa.inspect(engine).get_table_names(schema=schema_name)
-    suffix = ""
-    if engine.dialect.name.startswith("postgres"):
-        suffix = "CASCADE"
-
     remaining = sorted(
         remaining, key=lambda tn: int(tn.partition("_")[2]), reverse=True
     )
@@ -151,14 +159,7 @@ def drop_tables(engine, meta, schema_name, table_names: list):
                 name = engine.dialect.denormalize_name(tn)
             else:
                 name = tn
-            if schema_name:
-                conn.execute(
-                    sa.schema.DDL(
-                        f'DROP TABLE {schema_name}."{name}" {suffix}'
-                    )
-                )
-            else:
-                conn.execute(sa.schema.DDL(f'DROP TABLE "{name}" {suffix}'))
+            conn.execute(_drop_ddl(name, schema_name, engine.dialect.name))
             if i % 500 == 0:
                 conn.commit()
         conn.commit()
@@ -454,6 +455,9 @@ def main(db, schema_name, table_number, min_cols, max_cols, args):
     else:
         engine = sa.create_engine(db, echo=args.echo, future=True)
 
+    if args.drop_all:
+        return drop_all(engine, schema_name)
+
     if engine.name == "oracle":
         # clear out oracle caches so that we get the real-world time the
         # queries would normally take for scripts that aren't run repeatedly
@@ -537,6 +541,25 @@ def timer():
     return track_time
 
 
+def drop_all(engine, schema_name):
+    with engine.connect() as conn:
+        table_names = engine.dialect.get_table_names(conn, schema=schema_name)
+        print(f"Dropping {len(table_names)} tables")
+        dn = engine.dialect.name
+        i = 0
+        while table_names:
+            name = table_names.pop()
+            try:
+                conn.execute(_drop_ddl(name, schema_name, dn))
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                table_names.insert(0, name)
+            i += 1
+            if i % 25 == 0:
+                print(f"Still running. Tables left {len(table_names)}")
+
+
 if __name__ == "__main__":
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument(
@@ -572,7 +595,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--no-drop", help="Do not run drop tables", action="store_true"
     )
-    parser.add_argument("--reflect", help="Run reflect", action="store_true")
+    parser.add_argument(
+        "--reflect", help="Run metadata reflect", action="store_true"
+    )
     parser.add_argument(
         "--test",
         help="Run these tests. 'all' runs all tests",
@@ -608,6 +633,11 @@ if __name__ == "__main__":
         "using single reflections. Mainly for sqlite.",
     )
     parser.add_argument("--pool-class", help="The pool class to use")
+    parser.add_argument(
+        "--drop-all",
+        action="store_true",
+        help="Drop all tables, do nothing else",
+    )
 
     args = parser.parse_args()
     min_cols = args.min_cols

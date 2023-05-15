@@ -1436,7 +1436,13 @@ class Query(
         to the given list of columns
 
         """
+        return self._values_no_warn(*columns)
 
+    _values = values
+
+    def _values_no_warn(
+        self, *columns: _ColumnsClauseArgument[Any]
+    ) -> Iterable[Any]:
         if not columns:
             return iter(())
         q = self._clone().enable_eagerloads(False)
@@ -1444,8 +1450,6 @@ class Query(
         if not q.load_options._yield_per:
             q.load_options += {"_yield_per": 10}
         return iter(q)  # type: ignore
-
-    _values = values
 
     @util.deprecated(
         "1.4",
@@ -1460,7 +1464,7 @@ class Query(
 
         """
         try:
-            return next(self.values(column))[0]  # type: ignore
+            return next(self._values_no_warn(column))[0]  # type: ignore
         except StopIteration:
             return None
 
@@ -3332,7 +3336,7 @@ class AliasOption(interfaces.LoaderOption):
 
     @util.deprecated(
         "1.4",
-        "The :class:`.AliasOption` is not necessary "
+        "The :class:`.AliasOption` object is not necessary "
         "for entities to be matched up to a query that is established "
         "via :meth:`.Query.from_statement` and now does nothing.",
     )

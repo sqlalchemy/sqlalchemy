@@ -1063,6 +1063,7 @@ class LazyLoader(
 
         if extra_options:
             stmt._with_options += extra_options
+
         stmt._compile_options += {"_current_path": effective_path}
 
         if use_get:
