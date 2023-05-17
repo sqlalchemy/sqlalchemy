@@ -1143,7 +1143,9 @@ class EmbeddedSubqTest(
         Base.registry.configure()
 
     @testing.combinations(
-        "tuples", ("memory", testing.requires.is64bit), argnames="assert_on"
+        "tuples",
+        ("memory", testing.requires.is64bit + testing.requires.cpython),
+        argnames="assert_on",
     )
     def test_cache_key_gen(self, assert_on):
         Employee = self.classes.Employee
