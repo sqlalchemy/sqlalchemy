@@ -42,7 +42,7 @@ from .base import UNIQUEIDENTIFIER
 from .base import VARBINARY
 from .base import VARCHAR
 from .base import XML
-from ...sql._elements_constructors import try_cast
+from ...sql import try_cast
 
 
 base.dialect = dialect = pyodbc.dialect
