@@ -938,8 +938,9 @@ def try_cast(
         SELECT TRY_CAST (product_table.unit_price AS NUMERIC(10, 4))
         FROM product_table
 
-    .. versionadded:: 2.0.14
-
+    .. versionadded:: 2.0.14  The :func:.try_cast construct has been
+       generalized from the SQL Server dialect into a general use
+       construct that may be supported by additional dialects.
     """
     return TryCast(expression, type_)
 
