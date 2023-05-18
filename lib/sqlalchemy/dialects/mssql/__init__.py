@@ -6,7 +6,6 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
-
 from . import base  # noqa
 from . import pymssql  # noqa
 from . import pyodbc  # noqa
@@ -39,11 +38,11 @@ from .base import TEXT
 from .base import TIME
 from .base import TIMESTAMP
 from .base import TINYINT
-from .base import try_cast
 from .base import UNIQUEIDENTIFIER
 from .base import VARBINARY
 from .base import VARCHAR
 from .base import XML
+from ...sql import try_cast
 
 
 base.dialect = dialect = pyodbc.dialect

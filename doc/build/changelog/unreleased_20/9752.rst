@@ -1,0 +1,17 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 9752
+
+
+    Generalized the MSSQL :func:`_sql.try_cast` function into the
+    ``sqlalchemy.`` import namespace so that it may be implemented by third
+    party dialects as well. Within SQLAlchemy, the :func:`_sql.try_cast`
+    function remains a SQL Server-only construct that will raise
+    :class:`.CompileError` if used with backends that don't support it.
+
+    :func:`_sql.try_cast` implements a CAST where un-castable conversions are
+    returned as NULL, instead of raising an error. Theoretically, the construct
+    could be implemented by third party dialects for Google BigQuery, DuckDB,
+    and Snowflake, and possibly others.
+
+    Pull request courtesy Nick Crews.
