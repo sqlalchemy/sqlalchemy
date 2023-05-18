@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, tests, pypy
-    :tickets: 9789
-
-    Fixed test that relied on the ``sys.getsizeof()`` function to not run on
-    pypy, where this function appears to have different behavior than it does
-    on cpython.
