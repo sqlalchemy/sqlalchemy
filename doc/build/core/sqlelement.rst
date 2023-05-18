@@ -63,6 +63,8 @@ used when building up SQLAlchemy Expression Language constructs.
 
 .. autofunction:: true
 
+.. autofunction:: try_cast
+
 .. autofunction:: tuple_
 
 .. autofunction:: type_coerce
@@ -198,6 +200,9 @@ The classes here are generated using the constructors listed at
 .. autoclass:: SQLColumnExpression
 
 .. autoclass:: TextClause
+   :members:
+
+.. autoclass:: TryCast
    :members:
 
 .. autoclass:: Tuple

@@ -40,6 +40,7 @@ from .elements import Null
 from .elements import Over
 from .elements import TextClause
 from .elements import True_
+from .elements import TryCast
 from .elements import Tuple
 from .elements import TypeCoerce
 from .elements import UnaryExpression
@@ -893,6 +894,10 @@ def cast(
 
         :ref:`tutorial_casts`
 
+        :func:`.try_cast` - an alternative to CAST that results in
+        NULLs when the cast fails, instead of raising an error.
+        Only supported by some dialects.
+
         :func:`.type_coerce` - an alternative to CAST that coerces the type
         on the Python side only, which is often sufficient to generate the
         correct SQL and data coercion.
@@ -900,6 +905,49 @@ def cast(
 
     """
     return Cast(expression, type_)
+
+
+def try_cast(
+    expression: _ColumnExpressionOrLiteralArgument[Any],
+    type_: _TypeEngineArgument[_T],
+) -> TryCast[_T]:
+    """Produce a ``TRY_CAST`` expression for backends which support it;
+    this is a ``CAST`` which returns NULL for un-castable conversions.
+
+    In SQLAlchemy, this construct is supported **only** by the SQL Server
+    dialect, and will raise a :class:`.CompileError` if used on other
+    included backends.  However, third party backends may also support
+    this construct.
+
+    .. tip:: As :func:`_sql.try_cast` originates from the SQL Server dialect,
+       it's importable both from ``sqlalchemy.`` as well as from
+       ``sqlalchemy.dialects.mssql``.
+
+    :func:`_sql.try_cast` returns an instance of :class:`.TryCast` and
+    generally behaves similarly to the :class:`.Cast` construct;
+    at the SQL level, the difference between ``CAST`` and ``TRY_CAST``
+    is that ``TRY_CAST`` returns NULL for an un-castable expression,
+    such as attempting to cast a string ``"hi"`` to an integer value.
+
+    E.g.::
+
+        from sqlalchemy import select, try_cast, Numeric
+
+        stmt = select(
+            try_cast(product_table.c.unit_price, Numeric(10, 4))
+        )
+
+    The above would render on Microsoft SQL Server as::
+
+        SELECT TRY_CAST (product_table.unit_price AS NUMERIC(10, 4))
+        FROM product_table
+
+    .. versionadded:: 2.0.14  :func:`.try_cast` has been
+       generalized from the SQL Server dialect into a general use
+       construct that may be supported by additional dialects.
+
+    """
+    return TryCast(expression, type_)
 
 
 def column(

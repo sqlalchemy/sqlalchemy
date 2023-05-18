@@ -6393,6 +6393,12 @@ class StrSQLCompiler(SQLCompiler):
             replacement._compiler_dispatch(self, **kw),
         )
 
+    def visit_try_cast(self, cast, **kwargs):
+        return "TRY_CAST(%s AS %s)" % (
+            cast.clause._compiler_dispatch(self, **kwargs),
+            cast.typeclause._compiler_dispatch(self, **kwargs),
+        )
+
 
 class DDLCompiler(Compiled):
     is_ddl = True

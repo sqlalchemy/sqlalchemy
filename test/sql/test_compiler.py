@@ -59,6 +59,7 @@ from sqlalchemy import Text
 from sqlalchemy import text
 from sqlalchemy import TIMESTAMP
 from sqlalchemy import true
+from sqlalchemy import try_cast
 from sqlalchemy import tuple_
 from sqlalchemy import type_coerce
 from sqlalchemy import types
@@ -6042,6 +6043,15 @@ class StringifySpecialTest(fixtures.TestBase):
         eq_ignore_whitespace(
             str(schema.AddConstraint(cons)),
             "ALTER TABLE testtbl ADD EXCLUDE USING gist " "(room WITH =)",
+        )
+
+    def test_try_cast(self):
+        t1 = Table("t1", MetaData(), Column("id", Integer, primary_key=True))
+        expr = select(try_cast(t1.c.id, Integer))
+
+        eq_ignore_whitespace(
+            str(expr),
+            "SELECT TRY_CAST(t1.id AS INTEGER) AS id FROM t1",
         )
 
 
