@@ -2,7 +2,7 @@
     :tags: bug, orm, regression
     :tickets: 9767
 
-    Fixed regression where use of :func:`_dml.update` or :func:`_dml_delete`
+    Fixed regression where use of :func:`_dml.update` or :func:`_dml.delete`
     within a :class:`_sql.CTE` construct, then used in a :func:`_sql.select`,
     would raise a :class:`.CompileError` as a result of ORM related rules for
     performing ORM-level update/delete statements.
