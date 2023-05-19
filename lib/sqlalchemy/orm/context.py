@@ -59,6 +59,7 @@ from ..sql.base import Options
 from ..sql.dml import UpdateBase
 from ..sql.elements import GroupedElement
 from ..sql.elements import TextClause
+from ..sql.selectable import CompoundSelectState
 from ..sql.selectable import LABEL_STYLE_DISAMBIGUATE_ONLY
 from ..sql.selectable import LABEL_STYLE_NONE
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -312,6 +313,52 @@ class AbstractORMCompileState(CompileState):
         result,
     ):
         raise NotImplementedError()
+
+
+class AutoflushOnlyORMCompileState(AbstractORMCompileState):
+    """ORM compile state that is a passthrough, except for autoflush."""
+
+    @classmethod
+    def orm_pre_session_exec(
+        cls,
+        session,
+        statement,
+        params,
+        execution_options,
+        bind_arguments,
+        is_pre_event,
+    ):
+
+        # consume result-level load_options.  These may have been set up
+        # in an ORMExecuteState hook
+        (
+            load_options,
+            execution_options,
+        ) = QueryContext.default_load_options.from_execution_options(
+            "_sa_orm_load_options",
+            {
+                "autoflush",
+            },
+            execution_options,
+            statement._execution_options,
+        )
+
+        if not is_pre_event and load_options._autoflush:
+            session._autoflush()
+
+        return statement, execution_options
+
+    @classmethod
+    def orm_setup_cursor_result(
+        cls,
+        session,
+        statement,
+        params,
+        execution_options,
+        bind_arguments,
+        result,
+    ):
+        return result
 
 
 class ORMCompileState(AbstractORMCompileState):
@@ -912,6 +959,13 @@ class FromStatement(GroupedElement, Generative, TypedReturnsRows[_TP]):
     @property
     def _inline(self):
         return self.element._inline if is_insert_update(self.element) else None
+
+
+@sql.base.CompileState.plugin_for("orm", "compound_select")
+class CompoundSelectCompileState(
+    AutoflushOnlyORMCompileState, CompoundSelectState
+):
+    pass
 
 
 @sql.base.CompileState.plugin_for("orm", "select")

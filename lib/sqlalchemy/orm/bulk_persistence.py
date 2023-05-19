@@ -665,7 +665,9 @@ class BulkUDCompileState(ORMDMLState):
 
         update_options += {"_subject_mapper": plugin_subject.mapper}
 
-        if not isinstance(params, list):
+        if "parententity" not in statement.table._annotations:
+            update_options += {"_dml_strategy": "core_only"}
+        elif not isinstance(params, list):
             if update_options._dml_strategy == "auto":
                 update_options += {"_dml_strategy": "orm"}
             elif update_options._dml_strategy == "bulk":
@@ -1401,6 +1403,12 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
 
         if toplevel and dml_strategy == "bulk":
             self._setup_for_bulk_update(statement, compiler)
+        elif (
+            dml_strategy == "core_only"
+            or dml_strategy == "unspecified"
+            and "parententity" not in statement.table._annotations
+        ):
+            UpdateDMLState.__init__(self, statement, compiler, **kw)
         elif not toplevel or dml_strategy in ("orm", "unspecified"):
             self._setup_for_orm_update(statement, compiler)
 
@@ -1555,10 +1563,15 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
             "_sa_orm_update_options", cls.default_update_options
         )
 
-        if update_options._dml_strategy not in ("orm", "auto", "bulk"):
+        if update_options._dml_strategy not in (
+            "orm",
+            "auto",
+            "bulk",
+            "core_only",
+        ):
             raise sa_exc.ArgumentError(
                 "Valid strategies for ORM UPDATE strategy "
-                "are 'orm', 'auto', 'bulk'"
+                "are 'orm', 'auto', 'bulk', 'core_only'"
             )
 
         result: _result.Result[Any]
@@ -1822,6 +1835,18 @@ class BulkORMDelete(BulkUDCompileState, DeleteDMLState):
     def create_for_statement(cls, statement, compiler, **kw):
         self = cls.__new__(cls)
 
+        dml_strategy = statement._annotations.get(
+            "dml_strategy", "unspecified"
+        )
+
+        if (
+            dml_strategy == "core_only"
+            or dml_strategy == "unspecified"
+            and "parententity" not in statement.table._annotations
+        ):
+            DeleteDMLState.__init__(self, statement, compiler, **kw)
+            return self
+
         toplevel = not compiler.stack
 
         orm_level_statement = statement
@@ -1919,12 +1944,10 @@ class BulkORMDelete(BulkUDCompileState, DeleteDMLState):
                 "session.connection().execute(stmt, parameters)"
             )
 
-        if update_options._dml_strategy not in (
-            "orm",
-            "auto",
-        ):
+        if update_options._dml_strategy not in ("orm", "auto", "core_only"):
             raise sa_exc.ArgumentError(
-                "Valid strategies for ORM DELETE strategy are 'orm', 'auto'"
+                "Valid strategies for ORM DELETE strategy are 'orm', 'auto', "
+                "'core_only'"
             )
 
         return super().orm_execute_statement(

@@ -4033,6 +4033,7 @@ class Grouping(GroupedElement, ColumnElement[_T]):
 
         # nulltype assignment issue
         self.type = getattr(element, "type", type_api.NULLTYPE)  # type: ignore
+        self._propagate_attrs = element._propagate_attrs
 
     def _with_binary_element_type(self, type_):
         return self.__class__(self.element._with_binary_element_type(type_))

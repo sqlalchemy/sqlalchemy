@@ -2,6 +2,7 @@ from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import delete
 from sqlalchemy import exc
+from sqlalchemy import exists
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import insert
@@ -15,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import true
 from sqlalchemy import union
 from sqlalchemy import update
 from sqlalchemy import util
@@ -26,6 +28,7 @@ from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import query_expression
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.orm import undefer
 from sqlalchemy.orm import with_expression
 from sqlalchemy.orm import with_loader_criteria
@@ -40,6 +43,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import mock
 from sqlalchemy.testing import Variation
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.util import resolve_lambda
@@ -358,6 +362,129 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
             "ROWS FETCH FIRST :param_2 %s" % (fetch_clause,),
             checkparams={"param_1": 6, "param_2": 5},
         )
+
+
+class PropagateAttrsTest(QueryTest):
+    def propagate_cases():
+        return testing.combinations(
+            (lambda: select(1), False),
+            (lambda User: select(func.count(User.id)), True),
+            (
+                lambda User: select(1).select_from(select(User).subquery()),
+                True,
+            ),
+            (
+                lambda User: select(
+                    select(User.id).where(User.id == 5).scalar_subquery()
+                ),
+                True,
+            ),
+            (
+                lambda User: select(
+                    select(User.id).where(User.id == 5).label("x")
+                ),
+                True,
+            ),
+            (lambda User: select(1).select_from(User), True),
+            (lambda User: select(1).where(exists(User.id)), True),
+            (lambda User: select(1).where(~exists(User.id)), True),
+            (
+                # changed as part of #9805
+                lambda User: select(1).where(User.id == 1),
+                True,
+            ),
+            (
+                # changed as part of #9805
+                lambda User, user_table: select(func.count(1))
+                .select_from(user_table)
+                .group_by(user_table.c.id)
+                .having(User.id == 1),
+                True,
+            ),
+            (
+                # changed as part of #9805
+                lambda User, user_table: select(1)
+                .select_from(user_table)
+                .order_by(User.id),
+                True,
+            ),
+            (
+                # changed as part of #9805
+                lambda User, user_table: select(1)
+                .select_from(user_table)
+                .group_by(User.id),
+                True,
+            ),
+            (
+                lambda User, user_table: select(user_table).join(
+                    aliased(User), true()
+                ),
+                True,
+            ),
+            (
+                # changed as part of #9805
+                lambda User, user_table: select(1)
+                .distinct(User.id)
+                .select_from(user_table),
+                True,
+                testing.requires.supports_distinct_on,
+            ),
+            (lambda user_table: select(user_table), False),
+            (lambda User: select(User), True),
+            (lambda User: union(select(User), select(User)), True),
+            (
+                lambda User: select(1).select_from(
+                    union(select(User), select(User)).subquery()
+                ),
+                True,
+            ),
+            (lambda User: select(User.id), True),
+            # these are meaningless, correlate by itself has no effect
+            (lambda User: select(1).correlate(User), False),
+            (lambda User: select(1).correlate_except(User), False),
+            (lambda User: delete(User).where(User.id > 20), True),
+            (
+                lambda User, user_table: delete(user_table).where(
+                    User.id > 20
+                ),
+                True,
+            ),
+            (lambda User: update(User).values(name="x"), True),
+            (
+                lambda User, user_table: update(user_table)
+                .values(name="x")
+                .where(User.id > 20),
+                True,
+            ),
+            (lambda User: insert(User).values(name="x"), True),
+        )
+
+    @propagate_cases()
+    def test_propagate_attr_yesno(self, test_case, expected):
+        User = self.classes.User
+        user_table = self.tables.users
+
+        stmt = resolve_lambda(test_case, User=User, user_table=user_table)
+
+        eq_(bool(stmt._propagate_attrs), expected)
+
+    @propagate_cases()
+    def test_autoflushes(self, test_case, expected):
+        User = self.classes.User
+        user_table = self.tables.users
+
+        stmt = resolve_lambda(test_case, User=User, user_table=user_table)
+
+        with Session(testing.db) as s:
+
+            with mock.patch.object(s, "_autoflush", wrap=True) as before_flush:
+                r = s.execute(stmt)
+                r.close()
+
+        if expected:
+            eq_(before_flush.mock_calls, [mock.call()])
+        else:
+            eq_(before_flush.mock_calls, [])
 
 
 class DMLTest(QueryTest, AssertsCompiledSQL):

@@ -1,0 +1,27 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9805
+
+    As more projects are using new-style "2.0" ORM querying, it's becoming
+    apparent that the conditional nature of "autoflush", being based on whether
+    or not the given statement refers to ORM entities, is becoming more of a
+    key behavior. Up until now, the "ORM" flag for a statement has been loosely
+    based around whether or not the statement returns rows that correspond to
+    ORM entities or columns; the original purpose of the "ORM" flag was to
+    enable ORM-entity fetching rules which apply post-processing to Core result
+    sets as well as ORM loader strategies to the statement.  For statements
+    that don't build on rows that contain ORM entities, the "ORM" flag was
+    considered to be mostly unnecessary.
+
+    It still may be the case that "autoflush" would be better taking effect for
+    *all* usage of :meth:`_orm.Session.execute` and related methods, even for
+    purely Core SQL constructs. However, this still could impact legacy cases
+    where this is not expected and may be more of a 2.1 thing. For now however,
+    the rules for the "ORM-flag" have been opened up so that a statement that
+    includes ORM entities or attributes anywhere within, including in the WHERE
+    / ORDER BY / GROUP BY clause alone, within scalar subqueries, etc. will
+    enable this flag.  This will cause "autoflush" to occur for such statements
+    and also be visible via the :attr:`_orm.ORMExecuteState.is_orm_statement`
+    event-level attribute.
+
+
