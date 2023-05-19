@@ -162,7 +162,7 @@ class EnumDropper(NamedTypeDropper):
             self.connection.execute(DropEnumType(enum))
 
 
-class ENUM(NamedType, sqltypes.NativeForEmulated, sqltypes.Enum):
+class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
 
     """PostgreSQL ENUM type.
 
