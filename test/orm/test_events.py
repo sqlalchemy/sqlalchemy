@@ -403,7 +403,10 @@ class ORMExecuteTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
 
     @testing.combinations(
         (lambda: select(1), True),
-        (lambda User: select(User).union(select(User)), True),
+        (
+            lambda user_table: select(user_table).union(select(user_table)),
+            True,
+        ),
         (lambda: text("select * from users"), False),
     )
     def test_non_orm_statements(self, stmt, is_select):
@@ -411,8 +414,8 @@ class ORMExecuteTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
 
         canary = self._flag_fixture(sess)
 
-        User, Address = self.classes("User", "Address")
-        stmt = testing.resolve_lambda(stmt, User=User)
+        user_table = self.tables.users
+        stmt = testing.resolve_lambda(stmt, user_table=user_table)
         sess.execute(stmt).all()
 
         eq_(

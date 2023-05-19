@@ -424,9 +424,8 @@ def expect(
         if typing.TYPE_CHECKING:
             assert isinstance(resolved, (SQLCoreOperations, ClauseElement))
 
-        if (
-            not apply_propagate_attrs._propagate_attrs
-            and resolved._propagate_attrs
+        if not apply_propagate_attrs._propagate_attrs and getattr(
+            resolved, "_propagate_attrs", None
         ):
             apply_propagate_attrs._propagate_attrs = resolved._propagate_attrs
 
