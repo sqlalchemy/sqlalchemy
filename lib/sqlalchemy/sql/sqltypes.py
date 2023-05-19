@@ -3519,7 +3519,7 @@ class MatchType(Boolean):
 _UUID_RETURN = TypeVar("_UUID_RETURN", str, _python_UUID)
 
 
-class Uuid(TypeEngine[_UUID_RETURN]):
+class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
 
     """Represent a database agnostic UUID datatype.
 
@@ -3613,6 +3613,10 @@ class Uuid(TypeEngine[_UUID_RETURN]):
     @property
     def python_type(self):
         return _python_UUID if self.as_uuid else str
+
+    @property
+    def native(self):
+        return self.native_uuid
 
     def coerce_compared_value(self, op, value):
         """See :meth:`.TypeEngine.coerce_compared_value` for a description."""
@@ -3716,7 +3720,7 @@ class Uuid(TypeEngine[_UUID_RETURN]):
                 return process
 
 
-class UUID(Uuid[_UUID_RETURN]):
+class UUID(Uuid[_UUID_RETURN], type_api.NativeForEmulated):
 
     """Represent the SQL UUID type.
 
@@ -3761,6 +3765,11 @@ class UUID(Uuid[_UUID_RETURN]):
         """
         self.as_uuid = as_uuid
         self.native_uuid = True
+
+    @classmethod
+    def adapt_emulated_to_native(cls, impl, **kw):
+        kw.setdefault("as_uuid", impl.as_uuid)
+        return cls(**kw)
 
 
 NULLTYPE = NullType()

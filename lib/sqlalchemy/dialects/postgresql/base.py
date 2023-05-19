@@ -1598,7 +1598,7 @@ colspecs = {
     sqltypes.Enum: ENUM,
     sqltypes.JSON.JSONPathType: _json.JSONPATH,
     sqltypes.JSON: _json.JSON,
-    UUID: PGUuid,
+    sqltypes.Uuid: PGUuid,
 }
 
 
