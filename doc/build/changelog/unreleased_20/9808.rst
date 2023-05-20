@@ -3,11 +3,11 @@
     :tickets: 9808
 
     Repaired the base :class:`.Uuid` datatype for the PostgreSQL dialect to
-    make proper use of the PG-specific ``UUID`` internal datatype when
+    make full use of the PG-specific ``UUID`` dialect-specific datatype when
     "native_uuid" is selected, so that PG driver behaviors are included. This
     issue became apparent due to the insertmanyvalues improvement made as part
-    of :ticket:`9618`, where in a similar manner as that of :ticket:` 9739`
-    where the asyncpg driver is very sensitive to datatype casts being present
-    or not, the PostgreSQL driver-specific native ``UUID`` datatype must be
-    invoked when this generic type is used.
+    of :ticket:`9618`, where in a similar manner as that of :ticket:`9739`, the
+    asyncpg driver is very sensitive to datatype casts being present or not,
+    and the PostgreSQL driver-specific native ``UUID`` datatype must be invoked
+    when this generic type is used so that these casts take place.
 
