@@ -34,7 +34,9 @@ Write Only Relationships
 The **write only** loader strategy is the primary means of configuring a
 :func:`_orm.relationship` that will remain writeable, but will not load
 its contents into memory.  A write-only ORM configuration in modern
-type-annotated Declarative form is illustrated below::
+type-annotated Declarative form is illustrated below:
+
+.. sourcecode:: python
 
     >>> from decimal import Decimal
     >>> from datetime import datetime
