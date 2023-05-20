@@ -846,7 +846,7 @@ def _parse_url(name: str) -> URL:
             (?P<name>[\w\+]+)://
             (?:
                 (?P<username>[^:/]*)
-                (?::(?P<password>[^@]*))?
+                (?::(?P<password>.*(?=@)))?
             @)?
             (?:
                 (?:
