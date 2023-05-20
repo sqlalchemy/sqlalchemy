@@ -10,7 +10,49 @@
 
 .. changelog::
     :version: 2.0.15
-    :include_notes_from: unreleased_20
+    :released: May 19, 2023
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9805
+
+        As more projects are using new-style "2.0" ORM querying, it's becoming
+        apparent that the conditional nature of "autoflush", being based on whether
+        or not the given statement refers to ORM entities, is becoming more of a
+        key behavior. Up until now, the "ORM" flag for a statement has been loosely
+        based around whether or not the statement returns rows that correspond to
+        ORM entities or columns; the original purpose of the "ORM" flag was to
+        enable ORM-entity fetching rules which apply post-processing to Core result
+        sets as well as ORM loader strategies to the statement.  For statements
+        that don't build on rows that contain ORM entities, the "ORM" flag was
+        considered to be mostly unnecessary.
+
+        It still may be the case that "autoflush" would be better taking effect for
+        *all* usage of :meth:`_orm.Session.execute` and related methods, even for
+        purely Core SQL constructs. However, this still could impact legacy cases
+        where this is not expected and may be more of a 2.1 thing. For now however,
+        the rules for the "ORM-flag" have been opened up so that a statement that
+        includes ORM entities or attributes anywhere within, including in the WHERE
+        / ORDER BY / GROUP BY clause alone, within scalar subqueries, etc. will
+        enable this flag.  This will cause "autoflush" to occur for such statements
+        and also be visible via the :attr:`_orm.ORMExecuteState.is_orm_statement`
+        event-level attribute.
+
+
+
+    .. change::
+        :tags: bug, postgresql, regression
+        :tickets: 9808
+
+        Repaired the base :class:`.Uuid` datatype for the PostgreSQL dialect to
+        make full use of the PG-specific ``UUID`` dialect-specific datatype when
+        "native_uuid" is selected, so that PG driver behaviors are included. This
+        issue became apparent due to the insertmanyvalues improvement made as part
+        of :ticket:`9618`, where in a similar manner as that of :ticket:`9739`, the
+        asyncpg driver is very sensitive to datatype casts being present or not,
+        and the PostgreSQL driver-specific native ``UUID`` datatype must be invoked
+        when this generic type is used so that these casts take place.
+
 
 .. changelog::
     :version: 2.0.14
