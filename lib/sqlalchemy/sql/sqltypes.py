@@ -2058,7 +2058,12 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator):
     """
 
     impl = DateTime
-    epoch = dt.datetime.utcfromtimestamp(0)
+    if compat.py2k:
+        epoch = dt.datetime.utcfromtimestamp(0)
+    else:
+        epoch = dt.datetime.fromtimestamp(0, dt.timezone.utc).replace(
+            tzinfo=None
+        )
     cache_ok = True
 
     def __init__(self, native=True, second_precision=None, day_precision=None):

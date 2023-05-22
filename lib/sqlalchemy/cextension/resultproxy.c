@@ -21,6 +21,12 @@ typedef Py_ssize_t (*lenfunc)(PyObject *);
 typedef intargfunc ssizeargfunc;
 #endif
 
+#if PY_VERSION_HEX > 0x030c0000
+#    define PY_RAISE_SLICE_FOR_MAPPING PyExc_KeyError
+#else
+#    define PY_RAISE_SLICE_FOR_MAPPING PyExc_TypeError
+#endif
+
 #if PY_MAJOR_VERSION < 3
 
 // new typedef in Python 3
@@ -369,7 +375,7 @@ BaseRow_getitem_by_object(BaseRow *self, PyObject *key, int asmapping)
 
     if (record == NULL) {
         if (PySlice_Check(key)) {
-            PyErr_Format(PyExc_TypeError, "can't use slices for mapping access");
+            PyErr_Format(PY_RAISE_SLICE_FOR_MAPPING, "can't use slices for mapping access");
             return NULL;
         }
         record = PyObject_CallMethod(self->parent, "_key_fallback",

@@ -130,7 +130,10 @@ except ImportError:
             try:
                 rec = self._keymap[key]
             except KeyError as ke:
-                rec = self._parent._key_fallback(key, ke)
+                if isinstance(key, slice):
+                    return tuple(self._data[key])
+                else:
+                    rec = self._parent._key_fallback(key, ke)
             except TypeError:
                 if isinstance(key, slice):
                     return tuple(self._data[key])

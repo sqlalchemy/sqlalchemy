@@ -1,0 +1,4 @@
+.. change::
+    :tags: installation
+
+    Compatibility improvements to work fully with Python 3.12

@@ -46,6 +46,12 @@ def setup_filters():
     warnings.filterwarnings(
         "error", category=DeprecationWarning, module=origin
     )
+    warnings.filterwarnings(
+        "ignore",
+        category=DeprecationWarning,
+        message=r".*The default (?:date)?(?:time)?(?:stamp)? "
+        r"(adapter|converter) is deprecated",
+    )
 
     # ignore things that are deprecated *as of* 2.0 :)
     warnings.filterwarnings(
