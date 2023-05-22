@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 9820
+
+    Fixed regression in the 2.0 series where the default value of
+    :paramref:`_orm.validates.include_backrefs` got changed to ``False`` for
+    the :func:`_orm.validates` function. This default is now restored to
+    ``True``.

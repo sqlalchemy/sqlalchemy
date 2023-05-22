@@ -4300,7 +4300,7 @@ def reconstructor(fn):
 
 
 def validates(
-    *names: str, include_removes: bool = False, include_backrefs: bool = False
+    *names: str, include_removes: bool = False, include_backrefs: bool = True
 ) -> Callable[[_Fn], _Fn]:
     r"""Decorate a method as a 'validator' for one or more named properties.
 
@@ -4328,6 +4328,10 @@ def validates(
      event related via a backref.  This can be used for bi-directional
      :func:`.validates` usage where only one validator should emit per
      attribute operation.
+
+     .. versionchanged:: 2.0.16 This paramter inadvertently defaulted to
+        ``False `` for releases 2.0.0 through 2.0.15.  Its correct default
+        of ``True`` is restored in 2.0.16.
 
     .. seealso::
 
