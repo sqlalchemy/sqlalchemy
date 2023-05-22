@@ -35,8 +35,7 @@ jobs:
           - "3.9"
           - "3.10"
           - "3.11"
-          # greenlet doesn't build as of 2022-12-01
-          # - "3.12.0-alpha - 3.12"
+          - "3.12.0-alpha - 3.12"
           - "pypy-3.9"
         build-type:
           - "cext"
@@ -51,6 +50,10 @@ jobs:
             pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
           - os: "ubuntu-latest"
             pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
+          # greenlet doesn't build as of 2022-12-01
+          - python-version: "3.12.0-alpha - 3.12"
+            no-greenlet: "true"
+            pytest-args: "--dbdriver pysqlite --assert plain"
 
         exclude:
           # linux and osx do not have x86 python
@@ -77,6 +80,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}
+
+      - name: Remove greenlet
+        if: ${{ matrix.no-greenlet == 'true' }}
+        shell: pwsh
+        run: |
+          (cat setup.cfg) | %{$_ -replace "^\s*greenlet.+",""} | set-content setup.cfg
 
       - name: Install dependencies
         run: |
