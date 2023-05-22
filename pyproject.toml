@@ -34,7 +34,11 @@ filterwarnings = [
     # here as pytest loads them immediately, which breaks coverage as well
     # as sys.path adjustments in conftest.py
     "error::DeprecationWarning:test",
-    "error::DeprecationWarning:sqlalchemy"
+    "error::DeprecationWarning:sqlalchemy",
+
+    # sqlite3 warnings due to test/dialect/test_sqlite.py->test_native_datetime,
+    # which is asserting that these deprecated-in-py312 handlers are functional
+    "ignore:The default (date)?(time)?(stamp)? (adapter|converter):DeprecationWarning",
 ]
 markers = [
     "memory_intensive: memory / CPU intensive suite tests",

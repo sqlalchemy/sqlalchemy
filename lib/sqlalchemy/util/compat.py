@@ -18,6 +18,8 @@ import platform
 import sys
 import typing
 from typing import Any
+from typing import AsyncGenerator
+from typing import Awaitable
 from typing import Callable
 from typing import Dict
 from typing import Iterable
@@ -28,6 +30,7 @@ from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Type
+from typing import TypeVar
 
 
 py312 = sys.version_info >= (3, 12)
@@ -46,6 +49,8 @@ is64bit = sys.maxsize > 2**32
 has_refcount_gc = bool(cpython)
 
 dottedgetter = operator.attrgetter
+
+_T_co = TypeVar("_T_co", covariant=True)
 
 
 class FullArgSpec(typing.NamedTuple):
@@ -94,6 +99,24 @@ def inspect_getfullargspec(func: Callable[..., Any]) -> FullArgSpec:
         func.__kwdefaults__,
         func.__annotations__,
     )
+
+
+if py312:
+    # we are 95% certain this form of athrow works in former Python
+    # versions, however we are unable to get confirmation;
+    # see https://github.com/python/cpython/issues/105269 where have
+    # been unable to get a straight answer so far
+    def athrow(  # noqa
+        gen: AsyncGenerator[_T_co, Any], typ: Any, value: Any, traceback: Any
+    ) -> Awaitable[_T_co]:
+        return gen.athrow(value)
+
+else:
+
+    def athrow(  # noqa
+        gen: AsyncGenerator[_T_co, Any], typ: Any, value: Any, traceback: Any
+    ) -> Awaitable[_T_co]:
+        return gen.athrow(typ, value, traceback)
 
 
 if typing.TYPE_CHECKING or py38:
