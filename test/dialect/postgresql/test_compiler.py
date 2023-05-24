@@ -713,7 +713,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             tbl.c.data3,
             postgresql_nulls_not_distinct=True,
             postgresql_include=["data2"],
-            postgresql_where = and_(tbl.c.data3 > 5)
+            postgresql_where = and_(tbl.c.data3 > 5),
+            postgresql_with={"fillfactor": 50}
         )
 
         unique_constr1 = schema.UniqueConstraint(
@@ -748,18 +749,21 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateIndex(idx4),
             "CREATE INDEX test_idx3 ON test_tbl "
-            "(data3) INCLUDE (data2) NULLS NOT DISTINCT WHERE data3 > 5",
+            "(data3) INCLUDE (data2) NULLS NOT DISTINCT WITH "
+            "(fillfactor = 50) WHERE data3 > 5",
             dialect=dd,
         )
 
         self.assert_compile(
             schema.AddConstraint(unique_constr1),
-            "ALTER TABLE test_tbl ADD CONSTRAINT uq_data1 UNIQUE NULLS NOT DISTINCT (data)",
+            "ALTER TABLE test_tbl ADD CONSTRAINT uq_data1 UNIQUE "
+            "NULLS NOT DISTINCT (data)",
             dialect=dd,
         )
         self.assert_compile(
             schema.AddConstraint(unique_constr2),
-            "ALTER TABLE test_tbl ADD CONSTRAINT uq_data2 UNIQUE NULLS DISTINCT (data2)",
+            "ALTER TABLE test_tbl ADD CONSTRAINT uq_data2 UNIQUE "
+            "NULLS DISTINCT (data2)",
             dialect=dd,
         )
         self.assert_compile(
