@@ -11,9 +11,15 @@
 from __future__ import annotations
 
 import collections
+import contextlib
+from typing import Any
 from typing import Callable
 from typing import TYPE_CHECKING
+from typing import Union
 
+from ... import exc as sa_exc
+from ...engine import Connection
+from ...engine import Engine
 from ...orm import exc as orm_exc
 from ...orm import relationships
 from ...orm.base import _mapper_or_none
@@ -414,9 +420,25 @@ class DeferredReflection:
     """
 
     @classmethod
-    def prepare(cls, engine):
-        """Reflect all :class:`_schema.Table` objects for all current
-        :class:`.DeferredReflection` subclasses"""
+    def prepare(
+        cls, bind: Union[Engine, Connection], **reflect_kw: Any
+    ) -> None:
+        r"""Reflect all :class:`_schema.Table` objects for all current
+        :class:`.DeferredReflection` subclasses
+
+        :param bind: :class:`_engine.Engine` or :class:`_engine.Connection`
+         instance
+
+         ..versionchanged:: 2.0.16 a :class:`_engine.Connection` is also
+         accepted.
+
+        :param \**reflect_kw: additional keyword arguments passed to
+         :meth:`_schema.MetaData.reflect`, such as
+         :paramref:`_schema.MetaData.reflect.views`.
+
+         .. versionadded:: 2.0.16
+
+        """
 
         to_map = _DeferredMapperConfig.classes_for_base(cls)
 
@@ -432,7 +454,18 @@ class DeferredReflection:
                 ].add(thingy.local_table.name)
 
         # then reflect all those tables into their metadatas
-        with engine.connect() as conn:
+
+        if isinstance(bind, Connection):
+            conn = bind
+            ctx = contextlib.nullcontext(enter_result=conn)
+        elif isinstance(bind, Engine):
+            ctx = bind.connect()
+        else:
+            raise sa_exc.ArgumentError(
+                f"Expected Engine or Connection, got {bind!r}"
+            )
+
+        with ctx as conn:
             for (metadata, schema), table_names in metadata_to_table.items():
                 metadata.reflect(
                     conn,
@@ -440,6 +473,7 @@ class DeferredReflection:
                     schema=schema,
                     extend_existing=True,
                     autoload_replace=False,
+                    **reflect_kw,
                 )
 
             metadata_to_table.clear()
