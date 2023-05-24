@@ -904,8 +904,11 @@ class DefaultDialect(Dialect):
                             "found. "
                             "There may be a mismatch between the datatype "
                             "passed to the DBAPI driver vs. that which it "
-                            "returns in a result row.  Try using a different "
-                            "datatype, such as integer"
+                            "returns in a result row.  Ensure the given "
+                            "Python value matches the expected result type "
+                            "*exactly*, taking care to not rely upon implicit "
+                            "conversions which may occur such as when using "
+                            "strings in place of UUID or integer values, etc. "
                         ) from ke
 
                     result.extend(ordered_rows)
