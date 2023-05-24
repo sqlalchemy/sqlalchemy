@@ -2226,6 +2226,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
         text = "CREATE "
         if index.unique:
             text += "UNIQUE "
+
         text += "INDEX "
 
         if self.dialect._supports_create_index_concurrently:
@@ -2279,6 +2280,13 @@ class PGDDLCompiler(compiler.DDLCompiler):
                 [preparer.quote(c.name) for c in inclusions]
             )
 
+        if self.dialect._supports_nulls_not_distinct:
+            nulls_not_distinct = index.dialect_options["postgresql"]["nulls_not_distinct"]
+            if nulls_not_distinct is True:
+                text += " NULLS NOT DISTINCT"
+            elif nulls_not_distinct is False:
+                text += " NULLS DISTINCT"
+
         withclause = index.dialect_options["postgresql"]["with"]
         if withclause:
             text += " WITH (%s)" % (
@@ -2305,6 +2313,29 @@ class PGDDLCompiler(compiler.DDLCompiler):
             )
             text += " WHERE " + where_compiled
 
+        return text
+
+
+    def visit_unique_constraint(self, constraint, **kw):
+        if len(constraint) == 0:
+            return ""
+        nulls_not_distinct_option = ""
+        if self.dialect._supports_nulls_not_distinct:
+            nulls_not_distinct = constraint.dialect_options["postgresql"]["nulls_not_distinct"]
+            if nulls_not_distinct is True:
+                nulls_not_distinct_option = "NULLS NOT DISTINCT "
+            elif nulls_not_distinct is False:
+                nulls_not_distinct_option = "NULLS DISTINCT "
+        text = ""
+        if constraint.name is not None:
+            formatted_name = self.preparer.format_constraint(constraint)
+            if formatted_name is not None:
+                text += "CONSTRAINT %s " % formatted_name
+        text += "UNIQUE %s(%s)" % (
+            nulls_not_distinct_option,
+            ", ".join(self.preparer.quote(c.name) for c in constraint)
+        )
+        text += self.define_constraint_deferrability(constraint)
         return text
 
     def visit_drop_index(self, drop, **kw):
@@ -2969,6 +3000,7 @@ class PGDialect(default.DefaultDialect):
                 "concurrently": False,
                 "with": {},
                 "tablespace": None,
+                "nulls_not_distinct": None
             },
         ),
         (
@@ -2994,6 +3026,12 @@ class PGDialect(default.DefaultDialect):
                 "not_valid": False,
             },
         ),
+        (
+            schema.UniqueConstraint,
+            {
+                "nulls_not_distinct": None
+            },
+        ),
     ]
 
     reflection_options = ("postgresql_ignore_search_path",)
@@ -3001,6 +3039,7 @@ class PGDialect(default.DefaultDialect):
     _backslash_escapes = True
     _supports_create_index_concurrently = True
     _supports_drop_index_concurrently = True
+    _supports_nulls_not_distinct = False
 
     def __init__(self, json_serializer=None, json_deserializer=None, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
@@ -3021,6 +3060,8 @@ class PGDialect(default.DefaultDialect):
             2,
         )
         self.supports_identity_columns = self.server_version_info >= (10,)
+        # https://www.postgresql.org/about/featurematrix/detail/392/
+        self._supports_nulls_not_distinct = self.server_version_info >= (15,)
 
     def get_isolation_level_values(self, dbapi_conn):
         # note the generic dialect doesn't have AUTOCOMMIT, however
