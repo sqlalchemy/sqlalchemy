@@ -2280,12 +2280,11 @@ class PGDDLCompiler(compiler.DDLCompiler):
                 [preparer.quote(c.name) for c in inclusions]
             )
 
-        if self.dialect._supports_nulls_not_distinct:
-            nulls_not_distinct = index.dialect_options["postgresql"]["nulls_not_distinct"]
-            if nulls_not_distinct is True:
-                text += " NULLS NOT DISTINCT"
-            elif nulls_not_distinct is False:
-                text += " NULLS DISTINCT"
+        nulls_not_distinct = index.dialect_options["postgresql"]["nulls_not_distinct"]
+        if nulls_not_distinct is True:
+            text += " NULLS NOT DISTINCT"
+        elif nulls_not_distinct is False:
+            text += " NULLS DISTINCT"
 
         withclause = index.dialect_options["postgresql"]["with"]
         if withclause:
@@ -2320,12 +2319,11 @@ class PGDDLCompiler(compiler.DDLCompiler):
         if len(constraint) == 0:
             return ""
         nulls_not_distinct_option = ""
-        if self.dialect._supports_nulls_not_distinct:
-            nulls_not_distinct = constraint.dialect_options["postgresql"]["nulls_not_distinct"]
-            if nulls_not_distinct is True:
-                nulls_not_distinct_option = "NULLS NOT DISTINCT "
-            elif nulls_not_distinct is False:
-                nulls_not_distinct_option = "NULLS DISTINCT "
+        nulls_not_distinct = constraint.dialect_options["postgresql"]["nulls_not_distinct"]
+        if nulls_not_distinct is True:
+            nulls_not_distinct_option = "NULLS NOT DISTINCT "
+        elif nulls_not_distinct is False:
+            nulls_not_distinct_option = "NULLS DISTINCT "
         text = ""
         if constraint.name is not None:
             formatted_name = self.preparer.format_constraint(constraint)
@@ -3039,7 +3037,6 @@ class PGDialect(default.DefaultDialect):
     _backslash_escapes = True
     _supports_create_index_concurrently = True
     _supports_drop_index_concurrently = True
-    _supports_nulls_not_distinct = False
 
     def __init__(self, json_serializer=None, json_deserializer=None, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
@@ -3060,8 +3057,6 @@ class PGDialect(default.DefaultDialect):
             2,
         )
         self.supports_identity_columns = self.server_version_info >= (10,)
-        # https://www.postgresql.org/about/featurematrix/detail/392/
-        self._supports_nulls_not_distinct = self.server_version_info >= (15,)
 
     def get_isolation_level_values(self, dbapi_conn):
         # note the generic dialect doesn't have AUTOCOMMIT, however
