@@ -9,85 +9,20 @@
 
 from .array import ARRAY
 from .array import array as _pg_array
+from .operators import ASTEXT
+from .operators import CONTAINED_BY
+from .operators import CONTAINS
+from .operators import DELETE_PATH
+from .operators import HAS_ALL
+from .operators import HAS_ANY
+from .operators import HAS_KEY
+from .operators import JSONPATH_ASTEXT
+from .operators import PATH_EXISTS
+from .operators import PATH_MATCH
 from ... import types as sqltypes
 from ...sql import cast
-from ...sql import operators
-
 
 __all__ = ("JSON", "JSONB")
-
-idx_precedence = operators._PRECEDENCE[operators.json_getitem_op]
-
-ASTEXT = operators.custom_op(
-    "->>",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-JSONPATH_ASTEXT = operators.custom_op(
-    "#>>",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-
-HAS_KEY = operators.custom_op(
-    "?",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-HAS_ALL = operators.custom_op(
-    "?&",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-HAS_ANY = operators.custom_op(
-    "?|",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-CONTAINS = operators.custom_op(
-    "@>",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-CONTAINED_BY = operators.custom_op(
-    "<@",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-DELETE_PATH = operators.custom_op(
-    "#-",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-PATH_EXISTS = operators.custom_op(
-    "@?",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-PATH_MATCH = operators.custom_op(
-    "@@",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
 
 
 class JSONPathType(sqltypes.JSON.JSONPathType):

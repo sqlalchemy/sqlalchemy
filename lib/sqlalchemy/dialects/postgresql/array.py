@@ -14,6 +14,9 @@ from typing import Any
 from typing import Optional
 from typing import TypeVar
 
+from .operators import CONTAINED_BY
+from .operators import CONTAINS
+from .operators import OVERLAP
 from ... import types as sqltypes
 from ... import util
 from ...sql import expression
@@ -153,13 +156,6 @@ class array(expression.ExpressionClauseList[_T]):
             return expression.Grouping(self)
         else:
             return self
-
-
-CONTAINS = operators.custom_op("@>", precedence=5, is_comparison=True)
-
-CONTAINED_BY = operators.custom_op("<@", precedence=5, is_comparison=True)
-
-OVERLAP = operators.custom_op("&&", precedence=5, is_comparison=True)
 
 
 class ARRAY(sqltypes.ARRAY):

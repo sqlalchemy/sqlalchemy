@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 9836
+
+    Use proper precedence on PostgreSQL specific operators, such as ``@>``.
+    Previously the precedence was wrong, leading to wrong parenthesis when
+    rendering against and ``ANY`` or ``ALL`` construct.
