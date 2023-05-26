@@ -2280,7 +2280,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
                 [preparer.quote(c.name) for c in inclusions]
             )
 
-        nulls_not_distinct = index.dialect_options["postgresql"]["nulls_not_distinct"]
+        nulls_not_distinct = index.dialect_options["postgresql"][
+            "nulls_not_distinct"
+        ]
         if nulls_not_distinct is True:
             text += " NULLS NOT DISTINCT"
         elif nulls_not_distinct is False:
@@ -2314,12 +2316,13 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         return text
 
-
     def visit_unique_constraint(self, constraint, **kw):
         if len(constraint) == 0:
             return ""
         nulls_not_distinct_option = ""
-        nulls_not_distinct = constraint.dialect_options["postgresql"]["nulls_not_distinct"]
+        nulls_not_distinct = constraint.dialect_options["postgresql"][
+            "nulls_not_distinct"
+        ]
         if nulls_not_distinct is True:
             nulls_not_distinct_option = "NULLS NOT DISTINCT "
         elif nulls_not_distinct is False:
@@ -2331,7 +2334,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
                 text += "CONSTRAINT %s " % formatted_name
         text += "UNIQUE %s(%s)" % (
             nulls_not_distinct_option,
-            ", ".join(self.preparer.quote(c.name) for c in constraint)
+            ", ".join(self.preparer.quote(c.name) for c in constraint),
         )
         text += self.define_constraint_deferrability(constraint)
         return text
@@ -2998,7 +3001,7 @@ class PGDialect(default.DefaultDialect):
                 "concurrently": False,
                 "with": {},
                 "tablespace": None,
-                "nulls_not_distinct": None
+                "nulls_not_distinct": None,
             },
         ),
         (
@@ -3026,9 +3029,7 @@ class PGDialect(default.DefaultDialect):
         ),
         (
             schema.UniqueConstraint,
-            {
-                "nulls_not_distinct": None
-            },
+            {"nulls_not_distinct": None},
         ),
     ]
 

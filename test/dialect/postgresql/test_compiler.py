@@ -109,7 +109,6 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
-
     __dialect__ = postgresql.dialect()
 
     def test_plain_stringify_returning(self):
@@ -644,7 +643,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_create_index_with_ops(self):
-
         m = MetaData()
         tbl = Table(
             "testtbl",
@@ -680,57 +678,85 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @testing.combinations(
         (
-                lambda tbl: schema.CreateIndex(Index("test_idx1", tbl.c.data, unique=True,
-                                              postgresql_nulls_not_distinct=True
-                                              )),
-                "CREATE UNIQUE INDEX test_idx1 ON test_tbl "
-                "(data) NULLS NOT DISTINCT",
+            lambda tbl: schema.CreateIndex(
+                Index(
+                    "test_idx1",
+                    tbl.c.data,
+                    unique=True,
+                    postgresql_nulls_not_distinct=True,
+                )
+            ),
+            "CREATE UNIQUE INDEX test_idx1 ON test_tbl "
+            "(data) NULLS NOT DISTINCT",
         ),
         (
-                lambda tbl: schema.CreateIndex(Index("test_idx2", tbl.c.data2, unique=True,
-                                              postgresql_nulls_not_distinct=False
-                                              )),
-                "CREATE UNIQUE INDEX test_idx2 ON test_tbl "
-                "(data2) NULLS DISTINCT",
+            lambda tbl: schema.CreateIndex(
+                Index(
+                    "test_idx2",
+                    tbl.c.data2,
+                    unique=True,
+                    postgresql_nulls_not_distinct=False,
+                )
+            ),
+            "CREATE UNIQUE INDEX test_idx2 ON test_tbl "
+            "(data2) NULLS DISTINCT",
         ),
         (
-                lambda tbl: schema.CreateIndex(Index("test_idx3", tbl.c.data3, unique=True,
-                                              )),
-                "CREATE UNIQUE INDEX test_idx3 ON test_tbl "
-                "(data3)",
+            lambda tbl: schema.CreateIndex(
+                Index(
+                    "test_idx3",
+                    tbl.c.data3,
+                    unique=True,
+                )
+            ),
+            "CREATE UNIQUE INDEX test_idx3 ON test_tbl " "(data3)",
         ),
         (
-                lambda tbl: schema.CreateIndex(Index("test_idx3_complex", tbl.c.data3,
-                                              postgresql_nulls_not_distinct=True,
-                                              postgresql_include=["data2"],
-                                              postgresql_where = and_(tbl.c.data3 > 5),
-                                              postgresql_with={"fillfactor": 50},
-                                              )),
-                "CREATE INDEX test_idx3_complex ON test_tbl "
-                "(data3) INCLUDE (data2) NULLS NOT DISTINCT WITH "
-                "(fillfactor = 50) WHERE data3 > 5",
+            lambda tbl: schema.CreateIndex(
+                Index(
+                    "test_idx3_complex",
+                    tbl.c.data3,
+                    postgresql_nulls_not_distinct=True,
+                    postgresql_include=["data2"],
+                    postgresql_where=and_(tbl.c.data3 > 5),
+                    postgresql_with={"fillfactor": 50},
+                )
+            ),
+            "CREATE INDEX test_idx3_complex ON test_tbl "
+            "(data3) INCLUDE (data2) NULLS NOT DISTINCT WITH "
+            "(fillfactor = 50) WHERE data3 > 5",
         ),
         (
-                lambda tbl: schema.AddConstraint(schema.UniqueConstraint(
-                    tbl.c.data, name="uq_data1", postgresql_nulls_not_distinct=True,
-                )),
-                "ALTER TABLE test_tbl ADD CONSTRAINT uq_data1 UNIQUE "
-                "NULLS NOT DISTINCT (data)",
+            lambda tbl: schema.AddConstraint(
+                schema.UniqueConstraint(
+                    tbl.c.data,
+                    name="uq_data1",
+                    postgresql_nulls_not_distinct=True,
+                )
+            ),
+            "ALTER TABLE test_tbl ADD CONSTRAINT uq_data1 UNIQUE "
+            "NULLS NOT DISTINCT (data)",
         ),
         (
-                lambda tbl: schema.AddConstraint(schema.UniqueConstraint(
-                    tbl.c.data2, name="uq_data2", postgresql_nulls_not_distinct=False,
-                )),
-                "ALTER TABLE test_tbl ADD CONSTRAINT uq_data2 UNIQUE "
-                "NULLS DISTINCT (data2)",
+            lambda tbl: schema.AddConstraint(
+                schema.UniqueConstraint(
+                    tbl.c.data2,
+                    name="uq_data2",
+                    postgresql_nulls_not_distinct=False,
+                )
+            ),
+            "ALTER TABLE test_tbl ADD CONSTRAINT uq_data2 UNIQUE "
+            "NULLS DISTINCT (data2)",
         ),
         (
-                lambda tbl: schema.AddConstraint(schema.UniqueConstraint(
-                    tbl.c.data3, name="uq_data3",
-                )),
-                "ALTER TABLE test_tbl ADD CONSTRAINT uq_data3 UNIQUE (data3)",
+            lambda tbl: schema.AddConstraint(
+                schema.UniqueConstraint(
+                    tbl.c.data3,
+                    name="uq_data3",
+                )
+            ),
+            "ALTER TABLE test_tbl ADD CONSTRAINT uq_data3 UNIQUE (data3)",
         ),
-
     )
     def test_nulls_not_distinct(self, expr_fn, expected):
         dd = PGDialect()
@@ -2162,26 +2188,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_pg_array_agg_implicit_pg_array(self):
-
         expr = pg_array_agg(column("data", Integer))
         assert isinstance(expr.type, PG_ARRAY)
         is_(expr.type.item_type._type_affinity, Integer)
 
     def test_pg_array_agg_uses_base_array(self):
-
         expr = pg_array_agg(column("data", sqltypes.ARRAY(Integer)))
         assert isinstance(expr.type, sqltypes.ARRAY)
         assert not isinstance(expr.type, PG_ARRAY)
         is_(expr.type.item_type._type_affinity, Integer)
 
     def test_pg_array_agg_uses_pg_array(self):
-
         expr = pg_array_agg(column("data", PG_ARRAY(Integer)))
         assert isinstance(expr.type, PG_ARRAY)
         is_(expr.type.item_type._type_affinity, Integer)
 
     def test_pg_array_agg_explicit_base_array(self):
-
         expr = pg_array_agg(
             column("data", sqltypes.ARRAY(Integer)),
             type_=sqltypes.ARRAY(Integer),
@@ -2191,7 +2213,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         is_(expr.type.item_type._type_affinity, Integer)
 
     def test_pg_array_agg_explicit_pg_array(self):
-
         expr = pg_array_agg(
             column("data", sqltypes.ARRAY(Integer)), type_=PG_ARRAY(Integer)
         )
@@ -2673,7 +2694,6 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
                 stmt.on_conflict_do_nothing,
                 stmt.on_conflict_do_update,
             ):
-
                 with testing.expect_raises_message(
                     exc.InvalidRequestError,
                     "This Insert construct already has an "
@@ -2704,7 +2724,6 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
         )
 
     def test_do_nothing_no_target(self):
-
         i = (
             insert(self.table1)
             .values(dict(name="foo"))
@@ -2717,7 +2736,6 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
         )
 
     def test_do_nothing_index_elements_target(self):
-
         i = (
             insert(self.table1)
             .values(dict(name="foo"))
@@ -3277,7 +3295,6 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_distinct_on_subquery_anon(self):
-
         sq = select(self.table).alias()
         q = (
             select(self.table.c.id, sq.c.id)
