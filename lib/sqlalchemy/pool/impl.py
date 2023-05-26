@@ -48,7 +48,8 @@ class QueuePool(Pool):
     that imposes a limit on the number of open connections.
 
     :class:`.QueuePool` is the default pooling implementation used for
-    all :class:`_engine.Engine` objects, unless the SQLite dialect is in use.
+    all :class:`_engine.Engine` objects, unless the SQLite dialect is
+    in use with a ``:memory:`` database.
 
     """
 
