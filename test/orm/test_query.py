@@ -7694,6 +7694,8 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 
 class SessionBindTest(QueryTest):
+    run_setup_mappers = "each"
+
     @contextlib.contextmanager
     def _assert_bind_args(self, session, expect_mapped_bind=True):
         get_bind = mock.Mock(side_effect=session.get_bind)
