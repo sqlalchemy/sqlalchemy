@@ -2688,8 +2688,9 @@ class MSDDLCompiler(compiler.DDLCompiler):
             formatted_name = self.preparer.format_constraint(constraint)
             if formatted_name is not None:
                 text += "CONSTRAINT %s " % formatted_name
-        text += "UNIQUE "
-
+        text += "UNIQUE %s" % self.define_unique_constraint_distinct(
+            constraint, **kw
+        )
         clustered = constraint.dialect_options["mssql"]["clustered"]
         if clustered is not None:
             if clustered:

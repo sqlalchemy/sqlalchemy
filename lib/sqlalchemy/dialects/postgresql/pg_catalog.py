@@ -166,6 +166,7 @@ pg_index = Table(
     Column("indnatts", SmallInteger),
     Column("indnkeyatts", SmallInteger, info={"server_version": (11,)}),
     Column("indisunique", Boolean),
+    Column("indnullsnotdistinct", Boolean, info={"server_version": (15,)}),
     Column("indisprimary", Boolean),
     Column("indisexclusion", Boolean, info={"server_version": (9, 1)}),
     Column("indimmediate", Boolean),

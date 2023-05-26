@@ -676,6 +676,102 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=postgresql.dialect(),
         )
 
+    @testing.combinations(
+        (
+            lambda tbl: schema.CreateIndex(
+                Index(
+                    "test_idx1",
+                    tbl.c.data,
+                    unique=True,
+                    postgresql_nulls_not_distinct=True,
+                )
+            ),
+            "CREATE UNIQUE INDEX test_idx1 ON test_tbl "
+            "(data) NULLS NOT DISTINCT",
+        ),
+        (
+            lambda tbl: schema.CreateIndex(
+                Index(
+                    "test_idx2",
+                    tbl.c.data2,
+                    unique=True,
+                    postgresql_nulls_not_distinct=False,
+                )
+            ),
+            "CREATE UNIQUE INDEX test_idx2 ON test_tbl "
+            "(data2) NULLS DISTINCT",
+        ),
+        (
+            lambda tbl: schema.CreateIndex(
+                Index(
+                    "test_idx3",
+                    tbl.c.data3,
+                    unique=True,
+                )
+            ),
+            "CREATE UNIQUE INDEX test_idx3 ON test_tbl " "(data3)",
+        ),
+        (
+            lambda tbl: schema.CreateIndex(
+                Index(
+                    "test_idx3_complex",
+                    tbl.c.data3,
+                    postgresql_nulls_not_distinct=True,
+                    postgresql_include=["data2"],
+                    postgresql_where=and_(tbl.c.data3 > 5),
+                    postgresql_with={"fillfactor": 50},
+                )
+            ),
+            "CREATE INDEX test_idx3_complex ON test_tbl "
+            "(data3) INCLUDE (data2) NULLS NOT DISTINCT WITH "
+            "(fillfactor = 50) WHERE data3 > 5",
+        ),
+        (
+            lambda tbl: schema.AddConstraint(
+                schema.UniqueConstraint(
+                    tbl.c.data,
+                    name="uq_data1",
+                    postgresql_nulls_not_distinct=True,
+                )
+            ),
+            "ALTER TABLE test_tbl ADD CONSTRAINT uq_data1 UNIQUE "
+            "NULLS NOT DISTINCT (data)",
+        ),
+        (
+            lambda tbl: schema.AddConstraint(
+                schema.UniqueConstraint(
+                    tbl.c.data2,
+                    name="uq_data2",
+                    postgresql_nulls_not_distinct=False,
+                )
+            ),
+            "ALTER TABLE test_tbl ADD CONSTRAINT uq_data2 UNIQUE "
+            "NULLS DISTINCT (data2)",
+        ),
+        (
+            lambda tbl: schema.AddConstraint(
+                schema.UniqueConstraint(
+                    tbl.c.data3,
+                    name="uq_data3",
+                )
+            ),
+            "ALTER TABLE test_tbl ADD CONSTRAINT uq_data3 UNIQUE (data3)",
+        ),
+    )
+    def test_nulls_not_distinct(self, expr_fn, expected):
+        dd = PGDialect()
+        m = MetaData()
+        tbl = Table(
+            "test_tbl",
+            m,
+            Column("data", String),
+            Column("data2", Integer),
+            Column("data3", Integer),
+        )
+
+        expr = testing.resolve_lambda(expr_fn, tbl=tbl)
+        self.assert_compile(expr, expected, dialect=dd)
+
     def test_create_index_with_labeled_ops(self):
         m = MetaData()
         tbl = Table(
