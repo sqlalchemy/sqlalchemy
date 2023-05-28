@@ -27,6 +27,7 @@ home = Path(__file__).parent.parent
 ignore_paths = (re.compile(r"changelog/unreleased_\d{2}"),)
 
 
+# Data class for holding block lines
 class BlockLine(NamedTuple):
     line: str
     line_no: int
@@ -35,9 +36,11 @@ class BlockLine(NamedTuple):
     sql_marker: str | None = None
 
 
+# List of BlockLines
 _Block = list[BlockLine]
 
 
+# The central function for formatting a block
 def _format_block(
     input_block: _Block,
     exit_on_error: bool,
@@ -45,6 +48,19 @@ def _format_block(
     is_doctest: bool,
     file: str,
 ) -> list[str]:
+    """
+    Formats the input block and returns a list of formatted lines.
+
+    This function first removes any extra padding, then tries to format the 
+    block with the black code formatter, catching any exceptions that occur.
+    If there's an exception, it prints the error and either raises or ignores 
+    it based on the exit_on_error argument.
+
+    Finally, it splits the formatted code into lines, and adds back any 
+    padding or markers that were removed, and returns the resulting lines.
+    """
+
+    # If the block is not a doctest, remove extra padding on the first line
     if not is_doctest:
         # The first line may have additional padding. Remove then restore later
         add_padding = start_space.match(input_block[0].code).groups()[0]
@@ -92,15 +108,10 @@ def _format_block(
             ]
         else:
             formatted_lines = [
-                f"{padding}{add_padding}{sql_prefix}{formatted_code_lines[0]}",
-                *(
-                    f"{padding}{add_padding}{fcl}" if fcl else fcl
-                    for fcl in formatted_code_lines[1:]
-                ),
+                f"{padding}{sql_prefix}{formatted_code_lines[0]}",
+                *(f"{padding}{' ' if fcl else ''}{fcl}"
+                    for fcl in formatted_code_lines[1:])
             ]
-            if not input_block[-1].line and formatted_lines[-1]:
-                # last line was empty and black removed it. restore it
-                formatted_lines.append("")
         return formatted_lines
 
 
