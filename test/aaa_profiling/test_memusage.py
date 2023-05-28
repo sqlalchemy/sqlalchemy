@@ -1064,9 +1064,8 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
 
         t1_mapper = self.mapper_registry.map_imperatively(T1, t1)
 
-        @testing.emits_warning(
-            r"This declarative base", r"Property .* being replaced"
-        )
+        @testing.emits_warning(r"This declarative base")
+        @testing.expect_deprecated(r"User-placed attribute .* is replacing")
         @profile_memory()
         def go():
             class T2:

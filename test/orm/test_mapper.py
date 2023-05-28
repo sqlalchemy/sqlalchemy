@@ -6,6 +6,7 @@ import sqlalchemy as sa
 from sqlalchemy import column
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal
 from sqlalchemy import MetaData
@@ -43,8 +44,8 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises_message
-from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
@@ -722,11 +723,15 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             properties={"user": relationship(MyClass, backref="addresses")},
         )
 
-        attr_repr = re.sub(r"[\(\)]", ".", repr(MyClass.__dict__["addresses"]))
-        with expect_warnings(
-            rf"User-placed attribute {attr_repr} on "
-            r"Mapper\[MyClass\(users\)\] being replaced with new property "
-            '"MyClass.addresses"; the old attribute will be discarded'
+        with expect_deprecated(
+            re.escape(
+                f"User-placed attribute MyClass.addresses on "
+                f"{str(inspect(MyClass))} is replacing an existing "
+                "class-bound attribute of the same name.  "
+                "Behavior is not fully defined in this case.  This "
+                "use is deprecated and will raise an error in a future "
+                "release",
+            ),
         ):
             configure_mappers()
 
@@ -789,7 +794,10 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             ):
                 configure_mappers()
         elif attr_type.assocprox:
-            with expect_warnings("User-placed attribute"):
+            with expect_deprecated(
+                "User-placed attribute .* replacing an "
+                "existing class-bound attribute"
+            ):
                 configure_mappers()
         else:
             attr_type.fail()
@@ -981,6 +989,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self.mapper(Address, addresses)
 
         m.add_property("_name", deferred(users.c.name))
+
         m.add_property("name", synonym("_name"))
         m.add_property("addresses", relationship(Address))
 
@@ -1048,25 +1057,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         eq_(u.name, "jack")
         u.name = "jacko"
         assert m._columntoproperty[users.c.name] is m.get_property("_name")
-
-    def test_replace_rel_prop_with_rel_warns(self):
-        users, User = self.tables.users, self.classes.User
-        addresses, Address = self.tables.addresses, self.classes.Address
-
-        m = self.mapper(
-            User, users, properties={"addresses": relationship(Address)}
-        )
-        self.mapper(Address, addresses)
-
-        assert_warns_message(
-            sa.exc.SAWarning,
-            "Property User.addresses on Mapper|User|users being replaced "
-            "with new property User.addresses; the old property will "
-            "be discarded",
-            m.add_property,
-            "addresses",
-            relationship(Address),
-        )
 
     @testing.combinations((True,), (False,))
     def test_add_column_prop_adaption(self, autoalias):
