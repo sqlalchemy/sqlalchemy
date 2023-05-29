@@ -161,6 +161,7 @@ from __future__ import annotations
 
 import collections
 import decimal
+import functools
 import json as _py_json
 import re
 import time
@@ -875,6 +876,7 @@ class AsyncAdapt_asyncpg_dbapi:
 
     def connect(self, *arg, **kw):
         async_fallback = kw.pop("async_fallback", False)
+        creator_fn = kw.pop("creator_fn", functools.partial(self.asyncpg.connect))
         prepared_statement_cache_size = kw.pop(
             "prepared_statement_cache_size", 100
         )
@@ -885,14 +887,14 @@ class AsyncAdapt_asyncpg_dbapi:
         if util.asbool(async_fallback):
             return AsyncAdaptFallback_asyncpg_connection(
                 self,
-                await_fallback(self.asyncpg.connect(*arg, **kw)),
+                await_fallback(creator_fn(*arg, **kw)),
                 prepared_statement_cache_size=prepared_statement_cache_size,
                 prepared_statement_name_func=prepared_statement_name_func,
             )
         else:
             return AsyncAdapt_asyncpg_connection(
                 self,
-                await_only(self.asyncpg.connect(*arg, **kw)),
+                await_only(creator_fn(*arg, **kw)),
                 prepared_statement_cache_size=prepared_statement_cache_size,
                 prepared_statement_name_func=prepared_statement_name_func,
             )

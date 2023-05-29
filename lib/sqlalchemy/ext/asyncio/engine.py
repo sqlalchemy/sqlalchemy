@@ -82,6 +82,19 @@ def create_async_engine(url: Union[str, URL], **kw: Any) -> AsyncEngine:
             "streaming result set"
         )
     kw["_is_async"] = True
+    async_creator = kw.pop("async_creator", None)
+    if async_creator:
+        async def wrap_async_creator():
+            return await async_creator()
+
+        def creator():
+            # note that to send adapted arguments like
+            # prepared_statement_cache_size, user would use
+            # "creator" and emulate this form here
+            return sync_engine.dialect.dbapi.connect(
+                creator_fn=wrap_async_creator
+            )
+        kw["creator"] = creator
     sync_engine = _create_engine(url, **kw)
     return AsyncEngine(sync_engine)
 
