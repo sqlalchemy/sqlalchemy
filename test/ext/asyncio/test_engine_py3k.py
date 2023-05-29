@@ -2,7 +2,6 @@ import asyncio
 import inspect as stdlib_inspect
 from unittest.mock import patch
 
-import asyncpg
 from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import delete

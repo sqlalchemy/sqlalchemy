@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy.dialects.postgresql import ENUM
+from sqlalchemy.dialects.postgresql import asyncpg, ENUM
 from sqlalchemy.testing import async_test
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -286,11 +286,8 @@ class AsyncPgTest(fixtures.TestBase):
 
     @async_test
     async def test_async_creator(self, metadata, async_testing_engine):
-        print(testing.db.url)
-
+        import asyncpg
         async def async_creator():
-            import asyncpg
-
             conn = await asyncpg.connect(
                 "postgresql://scott:tiger@127.0.0.1:5432/test"
             )
