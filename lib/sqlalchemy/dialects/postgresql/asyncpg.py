@@ -235,7 +235,6 @@ class AsyncPgInterval(INTERVAL):
 
     @classmethod
     def adapt_emulated_to_native(cls, interval, **kw):
-
         return AsyncPgInterval(precision=interval.second_precision)
 
 
@@ -496,7 +495,6 @@ class AsyncAdapt_asyncpg_cursor:
         adapt_connection = self._adapt_connection
 
         async with adapt_connection._execute_mutex:
-
             if not adapt_connection._started:
                 await adapt_connection._start_transaction()
 
@@ -598,7 +596,6 @@ class AsyncAdapt_asyncpg_cursor:
 
 
 class AsyncAdapt_asyncpg_ss_cursor(AsyncAdapt_asyncpg_cursor):
-
     server_side = True
     __slots__ = ("_rowbuffer",)
 
@@ -876,7 +873,9 @@ class AsyncAdapt_asyncpg_dbapi:
 
     def connect(self, *arg, **kw):
         async_fallback = kw.pop("async_fallback", False)
-        creator_fn = kw.pop("creator_fn", functools.partial(self.asyncpg.connect))
+        creator_fn = kw.pop(
+            "creator_fn", functools.partial(self.asyncpg.connect)
+        )
         prepared_statement_cache_size = kw.pop(
             "prepared_statement_cache_size", 100
         )
@@ -1076,7 +1075,6 @@ class PGDialect_asyncpg(PGDialect):
 
     @classmethod
     def get_pool_class(cls, url):
-
         async_fallback = url.query.get("async_fallback", False)
 
         if util.asbool(async_fallback):
