@@ -84,6 +84,7 @@ def create_async_engine(url: Union[str, URL], **kw: Any) -> AsyncEngine:
     kw["_is_async"] = True
     async_creator = kw.pop("async_creator", None)
     if async_creator:
+
         async def wrap_async_creator() -> Any:
             return await async_creator()
 
@@ -94,6 +95,7 @@ def create_async_engine(url: Union[str, URL], **kw: Any) -> AsyncEngine:
             return sync_engine.dialect.dbapi.connect(
                 creator_fn=wrap_async_creator
             )
+
         kw["creator"] = creator
     sync_engine = _create_engine(url, **kw)
     return AsyncEngine(sync_engine)
@@ -1088,7 +1090,6 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):
         return AsyncEngine(self.sync_engine.execution_options(**opt))
 
     async def dispose(self, close: bool = True) -> None:
-
         """Dispose of the connection pool used by this
         :class:`_asyncio.AsyncEngine`.
 
