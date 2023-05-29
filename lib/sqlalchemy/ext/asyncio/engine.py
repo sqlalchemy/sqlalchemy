@@ -84,10 +84,10 @@ def create_async_engine(url: Union[str, URL], **kw: Any) -> AsyncEngine:
     kw["_is_async"] = True
     async_creator = kw.pop("async_creator", None)
     if async_creator:
-        async def wrap_async_creator():
+        async def wrap_async_creator() -> Any:
             return await async_creator()
 
-        def creator():
+        def creator() -> Any:
             # note that to send adapted arguments like
             # prepared_statement_cache_size, user would use
             # "creator" and emulate this form here
