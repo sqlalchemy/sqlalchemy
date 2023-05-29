@@ -287,6 +287,7 @@ class AsyncPgTest(fixtures.TestBase):
     @async_test
     async def test_async_creator(self, metadata, async_testing_engine):
         import asyncpg
+
         async def async_creator():
             conn = await asyncpg.connect(
                 "postgresql://scott:tiger@127.0.0.1:5432/test"
