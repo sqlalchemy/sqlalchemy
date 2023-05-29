@@ -34,7 +34,8 @@ exception of an extra attribute added to the ``User`` class called
 
     from __future__ import annotations
 
-    from typing import Final, List
+    from typing import Final
+    from typing import List
 
     from sqlalchemy import Column
     from sqlalchemy import ForeignKey
