@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9841
+
+    A deprecation warning is emitted whenever a property is added to a
+    :class:`_orm.Mapper` where an ORM mapped property were already configured,
+    or an attribute is already present on the class. Previously, there was a
+    non-deprecation warning for this case that did not emit consistently. The
+    logic for this warning has been improved so that it detects end-user
+    replacement of attribute while not having false positives for internal
+    Declarative and other cases where replacement of descriptors with new ones
+    is expected.

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from sqlalchemy import DDL
+from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.ext.declarative import DeferredReflection
@@ -81,7 +84,7 @@ class DeferredReflectPKFKTest(DeferredReflectBase):
         DeferredReflection.prepare(testing.db)
 
 
-class DeferredReflectionTest(DeferredReflectBase):
+class DeferredReflectionTest(testing.AssertsCompiledSQL, DeferredReflectBase):
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -148,7 +151,8 @@ class DeferredReflectionTest(DeferredReflectBase):
             User,
         )
 
-    def test_basic_deferred(self):
+    @testing.variation("bind", ["engine", "connection", "raise_"])
+    def test_basic_deferred(self, bind):
         class User(DeferredReflection, fixtures.ComparableEntity, Base):
             __tablename__ = "users"
             addresses = relationship("Address", backref="user")
@@ -156,8 +160,57 @@ class DeferredReflectionTest(DeferredReflectBase):
         class Address(DeferredReflection, fixtures.ComparableEntity, Base):
             __tablename__ = "addresses"
 
-        DeferredReflection.prepare(testing.db)
+        if bind.engine:
+            DeferredReflection.prepare(testing.db)
+        elif bind.connection:
+            with testing.db.connect() as conn:
+                DeferredReflection.prepare(conn)
+        elif bind.raise_:
+            with expect_raises_message(
+                exc.ArgumentError, "Expected Engine or Connection, got 'foo'"
+            ):
+                DeferredReflection.prepare("foo")
+            return
+        else:
+            bind.fail()
+
         self._roundtrip()
+
+    @testing.requires.view_reflection
+    @testing.variation("include_views", [True, False])
+    def test_views(self, metadata, connection, include_views):
+        Table(
+            "test_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", String(50)),
+        )
+        query = "CREATE VIEW view_name AS SELECT id, data FROM test_table"
+
+        event.listen(metadata, "after_create", DDL(query))
+        event.listen(
+            metadata, "before_drop", DDL("DROP VIEW IF EXISTS view_name")
+        )
+        metadata.create_all(connection)
+
+        class ViewName(DeferredReflection, Base):
+            __tablename__ = "view_name"
+
+            id = Column(Integer, primary_key=True)
+
+        if include_views:
+            DeferredReflection.prepare(connection, views=True)
+        else:
+            with expect_raises_message(
+                exc.InvalidRequestError, r"Could not reflect: .*view_name"
+            ):
+                DeferredReflection.prepare(connection)
+            return
+
+        self.assert_compile(
+            select(ViewName),
+            "SELECT view_name.id, view_name.data FROM view_name",
+        )
 
     def test_abstract_base(self):
         class DefBase(DeferredReflection, Base):

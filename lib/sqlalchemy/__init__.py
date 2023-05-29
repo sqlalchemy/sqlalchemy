@@ -199,6 +199,8 @@ from .sql.expression import TextClause as TextClause
 from .sql.expression import TextualSelect as TextualSelect
 from .sql.expression import true as true
 from .sql.expression import True_ as True_
+from .sql.expression import try_cast as try_cast
+from .sql.expression import TryCast as TryCast
 from .sql.expression import Tuple as Tuple
 from .sql.expression import tuple_ as tuple_
 from .sql.expression import type_coerce as type_coerce
@@ -265,7 +267,7 @@ from .types import Uuid as Uuid
 from .types import VARBINARY as VARBINARY
 from .types import VARCHAR as VARCHAR
 
-__version__ = "2.0.14"
+__version__ = "2.0.16"
 
 
 def __go(lcls: Any) -> None:

@@ -3372,6 +3372,8 @@ class Cast(WrapsColumnExpression[_T]):
 
         :func:`.cast`
 
+        :func:`.try_cast`
+
         :func:`.type_coerce` - an alternative to CAST that coerces the type
         on the Python side only, which is often sufficient to generate the
         correct SQL and data coercion.
@@ -3410,6 +3412,22 @@ class Cast(WrapsColumnExpression[_T]):
     @property
     def wrapped_column_expression(self):
         return self.clause
+
+
+class TryCast(Cast[_T]):
+    """Represent a TRY_CAST expression.
+
+    Details on :class:`.TryCast` usage is at :func:`.try_cast`.
+
+    .. seealso::
+
+        :func:`.try_cast`
+
+        :ref:`tutorial_casts`
+    """
+
+    __visit_name__ = "try_cast"
+    inherit_cache = True
 
 
 class TypeCoerce(WrapsColumnExpression[_T]):
@@ -4015,6 +4033,7 @@ class Grouping(GroupedElement, ColumnElement[_T]):
 
         # nulltype assignment issue
         self.type = getattr(element, "type", type_api.NULLTYPE)  # type: ignore
+        self._propagate_attrs = element._propagate_attrs
 
     def _with_binary_element_type(self, type_):
         return self.__class__(self.element._with_binary_element_type(type_))

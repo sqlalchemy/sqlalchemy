@@ -1067,8 +1067,7 @@ examples being the :class:`.Values` construct as well as when using "multivalued
 inserts" with the :meth:`.Insert.values` method.
 
 So far our cache is still empty.  The next statements will be cached however,
-a segment looks like::
-
+a segment looks like:
 
 .. sourcecode:: sql
 

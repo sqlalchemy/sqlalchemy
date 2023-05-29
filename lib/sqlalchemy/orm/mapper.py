@@ -1746,7 +1746,9 @@ class Mapper(
 
                 if _map_as_property_now:
                     self._configure_property(
-                        key, possible_col_prop, init=False
+                        key,
+                        possible_col_prop,
+                        init=False,
                     )
 
         # step 2: pull properties from the inherited mapper.  reconcile
@@ -1810,7 +1812,10 @@ class Mapper(
                     column_key = mapper._columntoproperty[column].key
 
             self._configure_property(
-                column_key, column, init=False, setparent=True
+                column_key,
+                column,
+                init=False,
+                setparent=True,
             )
 
     def _configure_polymorphic_setter(self, init=False):
@@ -2165,37 +2170,50 @@ class Mapper(
                 "%r for column %r" % (syn, key, key, syn)
             )
 
+        # replacement cases
+
+        # case one: prop is replacing a prop that we have mapped.  this is
+        # independent of whatever might be in the actual class dictionary
         if (
             key in self._props
-            and not isinstance(prop, properties.ColumnProperty)
             and not isinstance(
-                self._props[key],
-                (
-                    properties.ColumnProperty,
-                    descriptor_props.ConcreteInheritedProperty,
-                ),
+                self._props[key], descriptor_props.ConcreteInheritedProperty
             )
+            and not isinstance(prop, descriptor_props.SynonymProperty)
         ):
-            util.warn(
-                "Property %s on %s being replaced with new "
-                "property %s; the old property will be discarded"
-                % (self._props[key], self, prop)
-            )
+            if warn_for_existing:
+                util.warn_deprecated(
+                    f"User-placed attribute {self.class_.__name__}.{key} on "
+                    f"{self} is replacing an existing ORM-mapped attribute.  "
+                    "Behavior is not fully defined in this case.  This "
+                    "use is deprecated and will raise an error in a future "
+                    "release",
+                    "2.0",
+                )
             oldprop = self._props[key]
             self._path_registry.pop(oldprop, None)
 
-        if (
+        # case two: prop is replacing an attribute on the class of some kind.
+        # we have to be more careful here since it's normal when using
+        # Declarative that all the "declared attributes" on the class
+        # get replaced.
+        elif (
             warn_for_existing
             and self.class_.__dict__.get(key, None) is not None
+            and not isinstance(prop, descriptor_props.SynonymProperty)
             and not isinstance(
                 self._props.get(key, None),
-                (descriptor_props.ConcreteInheritedProperty,),
+                descriptor_props.ConcreteInheritedProperty,
             )
         ):
-            util.warn(
-                "User-placed attribute %r on %s being replaced with "
-                'new property "%s"; the old attribute will be discarded'
-                % (self.class_.__dict__[key], self, prop)
+            util.warn_deprecated(
+                f"User-placed attribute {self.class_.__name__}.{key} on "
+                f"{self} is replacing an existing class-bound "
+                "attribute of the same name.  "
+                "Behavior is not fully defined in this case.  This "
+                "use is deprecated and will raise an error in a future "
+                "release",
+                "2.0",
             )
 
         self._props[key] = prop
@@ -2403,7 +2421,9 @@ class Mapper(
         the given MapperProperty is configured immediately.
 
         """
-        prop = self._configure_property(key, prop, init=self.configured)
+        prop = self._configure_property(
+            key, prop, init=self.configured, warn_for_existing=True
+        )
         assert isinstance(prop, MapperProperty)
         self._init_properties[key] = prop
 
@@ -4300,7 +4320,7 @@ def reconstructor(fn):
 
 
 def validates(
-    *names: str, include_removes: bool = False, include_backrefs: bool = False
+    *names: str, include_removes: bool = False, include_backrefs: bool = True
 ) -> Callable[[_Fn], _Fn]:
     r"""Decorate a method as a 'validator' for one or more named properties.
 
@@ -4328,6 +4348,10 @@ def validates(
      event related via a backref.  This can be used for bi-directional
      :func:`.validates` usage where only one validator should emit per
      attribute operation.
+
+     .. versionchanged:: 2.0.16 This paramter inadvertently defaulted to
+        ``False `` for releases 2.0.0 through 2.0.15.  Its correct default
+        of ``True`` is restored in 2.0.16.
 
     .. seealso::
 

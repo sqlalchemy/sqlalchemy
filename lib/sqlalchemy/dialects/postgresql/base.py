@@ -1598,7 +1598,7 @@ colspecs = {
     sqltypes.Enum: ENUM,
     sqltypes.JSON.JSONPathType: _json.JSONPATH,
     sqltypes.JSON: _json.JSON,
-    UUID: PGUuid,
+    sqltypes.Uuid: PGUuid,
 }
 
 
@@ -3796,7 +3796,11 @@ class PGDialect(default.DefaultDialect):
             select(
                 attr_sq.c.conrelid,
                 sql.func.array_agg(
-                    aggregate_order_by(attr_sq.c.attname, attr_sq.c.ord)
+                    # NOTE: cast since some postgresql derivatives may
+                    # not support array_agg on the name type
+                    aggregate_order_by(
+                        attr_sq.c.attname.cast(TEXT), attr_sq.c.ord
+                    )
                 ).label("cols"),
                 attr_sq.c.conname,
                 sql.func.min(attr_sq.c.description).label("description"),
@@ -4109,8 +4113,8 @@ class PGDialect(default.DefaultDialect):
                     ),
                     # NOTE: need to cast this since attname is of type "name"
                     # that's limited to 63 bytes, while pg_get_indexdef
-                    # returns "text" so it may get cut
-                    else_=sql.cast(pg_catalog.pg_attribute.c.attname, TEXT()),
+                    # returns "text" so its output may get cut
+                    else_=pg_catalog.pg_attribute.c.attname.cast(TEXT),
                 ).label("element"),
                 (idx_sq.c.attnum == 0).label("is_expr"),
             )
@@ -4546,7 +4550,9 @@ class PGDialect(default.DefaultDialect):
                 pg_catalog.pg_enum.c.enumtypid,
                 sql.func.array_agg(
                     aggregate_order_by(
-                        pg_catalog.pg_enum.c.enumlabel,
+                        # NOTE: cast since some postgresql derivatives may
+                        # not support array_agg on the name type
+                        pg_catalog.pg_enum.c.enumlabel.cast(TEXT),
                         pg_catalog.pg_enum.c.enumsortorder,
                     )
                 ).label("labels"),
@@ -4609,9 +4615,11 @@ class PGDialect(default.DefaultDialect):
                         pg_catalog.pg_constraint.c.oid, True
                     )
                 ).label("condefs"),
-                sql.func.array_agg(pg_catalog.pg_constraint.c.conname).label(
-                    "connames"
-                ),
+                sql.func.array_agg(
+                    # NOTE: cast since some postgresql derivatives may
+                    # not support array_agg on the name type
+                    pg_catalog.pg_constraint.c.conname.cast(TEXT)
+                ).label("connames"),
             )
             # The domain this constraint is on; zero if not a domain constraint
             .where(pg_catalog.pg_constraint.c.contypid != 0)

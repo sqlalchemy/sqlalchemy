@@ -9,8 +9,144 @@
 
 
 .. changelog::
-    :version: 2.0.14
+    :version: 2.0.16
     :include_notes_from: unreleased_20
+
+.. changelog::
+    :version: 2.0.15
+    :released: May 19, 2023
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9805
+
+        As more projects are using new-style "2.0" ORM querying, it's becoming
+        apparent that the conditional nature of "autoflush", being based on whether
+        or not the given statement refers to ORM entities, is becoming more of a
+        key behavior. Up until now, the "ORM" flag for a statement has been loosely
+        based around whether or not the statement returns rows that correspond to
+        ORM entities or columns; the original purpose of the "ORM" flag was to
+        enable ORM-entity fetching rules which apply post-processing to Core result
+        sets as well as ORM loader strategies to the statement.  For statements
+        that don't build on rows that contain ORM entities, the "ORM" flag was
+        considered to be mostly unnecessary.
+
+        It still may be the case that "autoflush" would be better taking effect for
+        *all* usage of :meth:`_orm.Session.execute` and related methods, even for
+        purely Core SQL constructs. However, this still could impact legacy cases
+        where this is not expected and may be more of a 2.1 thing. For now however,
+        the rules for the "ORM-flag" have been opened up so that a statement that
+        includes ORM entities or attributes anywhere within, including in the WHERE
+        / ORDER BY / GROUP BY clause alone, within scalar subqueries, etc. will
+        enable this flag.  This will cause "autoflush" to occur for such statements
+        and also be visible via the :attr:`_orm.ORMExecuteState.is_orm_statement`
+        event-level attribute.
+
+
+
+    .. change::
+        :tags: bug, postgresql, regression
+        :tickets: 9808
+
+        Repaired the base :class:`.Uuid` datatype for the PostgreSQL dialect to
+        make full use of the PG-specific ``UUID`` dialect-specific datatype when
+        "native_uuid" is selected, so that PG driver behaviors are included. This
+        issue became apparent due to the insertmanyvalues improvement made as part
+        of :ticket:`9618`, where in a similar manner as that of :ticket:`9739`, the
+        asyncpg driver is very sensitive to datatype casts being present or not,
+        and the PostgreSQL driver-specific native ``UUID`` datatype must be invoked
+        when this generic type is used so that these casts take place.
+
+
+.. changelog::
+    :version: 2.0.14
+    :released: May 18, 2023
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 9772
+
+        Fixed issue in :func:`_sql.values` construct where an internal compilation
+        error would occur if the construct were used inside of a scalar subquery.
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 9752
+
+
+        Generalized the MSSQL :func:`_sql.try_cast` function into the
+        ``sqlalchemy.`` import namespace so that it may be implemented by third
+        party dialects as well. Within SQLAlchemy, the :func:`_sql.try_cast`
+        function remains a SQL Server-only construct that will raise
+        :class:`.CompileError` if used with backends that don't support it.
+
+        :func:`_sql.try_cast` implements a CAST where un-castable conversions are
+        returned as NULL, instead of raising an error. Theoretically, the construct
+        could be implemented by third party dialects for Google BigQuery, DuckDB,
+        and Snowflake, and possibly others.
+
+        Pull request courtesy Nick Crews.
+
+    .. change::
+        :tags: bug, tests, pypy
+        :tickets: 9789
+
+        Fixed test that relied on the ``sys.getsizeof()`` function to not run on
+        pypy, where this function appears to have different behavior than it does
+        on cpython.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9777
+
+        Modified the ``JoinedLoader`` implementation to use a simpler approach in
+        one particular area where it previously used a cached structure that would
+        be shared among threads. The rationale is to avoid a potential race
+        condition which is suspected of being the cause of a particular crash
+        that's been reported multiple times. The cached structure in question is
+        still ultimately "cached" via the compiled SQL cache, so a performance
+        degradation is not anticipated.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 9767
+
+        Fixed regression where use of :func:`_dml.update` or :func:`_dml.delete`
+        within a :class:`_sql.CTE` construct, then used in a :func:`_sql.select`,
+        would raise a :class:`.CompileError` as a result of ORM related rules for
+        performing ORM-level update/delete statements.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9766
+
+        Fixed issue in new ORM Annotated Declarative where using a
+        :class:`_schema.ForeignKey` (or other column-level constraint) inside of
+        :func:`_orm.mapped_column` which is then copied out to models via pep-593
+        ``Annotated`` would apply duplicates of each constraint to the
+        :class:`_schema.Column` as produced in the target :class:`_schema.Table`,
+        leading to incorrect CREATE TABLE DDL as well as migration directives under
+        Alembic.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9779
+
+        Fixed issue where using additional relationship criteria with the
+        :func:`_orm.joinedload` loader option, where the additional criteria itself
+        contained correlated subqueries that referred to the joined entities and
+        therefore also required "adaption" to aliased entities, would be excluded
+        from this adaption, producing the wrong ON clause for the joinedload.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 9773
+
+        Fixed apparently very old issue where the
+        :paramref:`_postgresql.ENUM.create_type` parameter, when set to its
+        non-default of ``False``, would not be propagated when the
+        :class:`_schema.Column` which it's a part of were copied, as is common when
+        using ORM Declarative mixins.
 
 .. changelog::
     :version: 2.0.13

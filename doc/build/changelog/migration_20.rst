@@ -770,7 +770,7 @@ the ORM-level :meth:`_orm.Session.execute` method)::
         t = Table("t", metadata_obj, autoload_with=connection)
 
         # execute SQL statements
-        result = conn.execute(t.select())
+        result = connection.execute(t.select())
 
 **Discussion**
 

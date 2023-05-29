@@ -844,6 +844,37 @@ class DeprecatedMapperTest(
 
         self.sql_count_(1, go)
 
+    @testing.variation("prop_type", ["relationship", "col_prop"])
+    def test_prop_replacement_warns(self, prop_type: testing.Variation):
+        users, User = self.tables.users, self.classes.User
+        addresses, Address = self.tables.addresses, self.classes.Address
+
+        m = self.mapper(
+            User,
+            users,
+            properties={
+                "foo": column_property(users.c.name),
+                "addresses": relationship(Address),
+            },
+        )
+        self.mapper(Address, addresses)
+
+        if prop_type.relationship:
+            key = "addresses"
+            new_prop = relationship(Address)
+        elif prop_type.col_prop:
+            key = "foo"
+            new_prop = column_property(users.c.name)
+        else:
+            prop_type.fail()
+
+        with expect_deprecated(
+            f"Property User.{key} on Mapper|User|users being replaced "
+            f"with new property User.{key}; the old property will "
+            "be discarded",
+        ):
+            m.add_property(key, new_prop)
+
 
 class DeprecatedOptionAllTest(OptionsPathTest, _fixtures.FixtureTest):
     run_inserts = "once"

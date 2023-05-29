@@ -1713,8 +1713,11 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         parameters: Optional[_DBAPIAnyExecuteParams] = None,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> CursorResult[Any]:
-        r"""Executes a SQL statement construct and returns a
-        :class:`_engine.CursorResult`.
+        r"""Executes a string SQL statement on the DBAPI cursor directly,
+        without any SQL compilation steps.
+
+        This can be used to pass any string directly to the
+        ``cursor.execute()`` method of the DBAPI in use.
 
         :param statement: The statement str to be executed.   Bound parameters
          must use the underlying DBAPI's paramstyle, such as "qmark",
@@ -1724,6 +1727,8 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
          execution.  The format is one of:   a dictionary of named parameters,
          a tuple of positional parameters, or a list containing either
          dictionaries or tuples for multiple-execute support.
+
+        :return: a :class:`_engine.CursorResult`.
 
          E.g. multiple dictionaries::
 

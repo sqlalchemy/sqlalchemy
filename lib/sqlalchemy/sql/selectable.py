@@ -4179,7 +4179,9 @@ class GenerativeSelect(SelectBase, Generative):
             self._order_by_clauses = ()
         elif __first is not _NoArg.NO_ARG:
             self._order_by_clauses += tuple(
-                coercions.expect(roles.OrderByRole, clause)
+                coercions.expect(
+                    roles.OrderByRole, clause, apply_propagate_attrs=self
+                )
                 for clause in (__first,) + clauses
             )
         return self
@@ -4220,7 +4222,9 @@ class GenerativeSelect(SelectBase, Generative):
             self._group_by_clauses = ()
         elif __first is not _NoArg.NO_ARG:
             self._group_by_clauses += tuple(
-                coercions.expect(roles.GroupByRole, clause)
+                coercions.expect(
+                    roles.GroupByRole, clause, apply_propagate_attrs=self
+                )
                 for clause in (__first,) + clauses
             )
         return self
@@ -4299,9 +4303,9 @@ class CompoundSelect(HasCompileState, GenerativeSelect, ExecutableReturnsRows):
     ):
         self.keyword = keyword
         self.selects = [
-            coercions.expect(roles.CompoundElementRole, s).self_group(
-                against=self
-            )
+            coercions.expect(
+                roles.CompoundElementRole, s, apply_propagate_attrs=self
+            ).self_group(against=self)
             for s in selects
         ]
 
@@ -5966,7 +5970,7 @@ class Select(
 
         for criterion in whereclause:
             where_criteria: ColumnElement[Any] = coercions.expect(
-                roles.WhereHavingRole, criterion
+                roles.WhereHavingRole, criterion, apply_propagate_attrs=self
             )
             self._where_criteria += (where_criteria,)
         return self
@@ -5981,7 +5985,7 @@ class Select(
 
         for criterion in having:
             having_criteria = coercions.expect(
-                roles.WhereHavingRole, criterion
+                roles.WhereHavingRole, criterion, apply_propagate_attrs=self
             )
             self._having_criteria += (having_criteria,)
         return self
@@ -6002,7 +6006,8 @@ class Select(
         if expr:
             self._distinct = True
             self._distinct_on = self._distinct_on + tuple(
-                coercions.expect(roles.ByOfRole, e) for e in expr
+                coercions.expect(roles.ByOfRole, e, apply_propagate_attrs=self)
+                for e in expr
             )
         else:
             self._distinct = True
@@ -6474,6 +6479,7 @@ class ScalarSelect(
     def __init__(self, element: SelectBase) -> None:
         self.element = element
         self.type = element._scalar_type()
+        self._propagate_attrs = element._propagate_attrs
 
     def __getattr__(self, attr: str) -> Any:
         return getattr(self.element, attr)

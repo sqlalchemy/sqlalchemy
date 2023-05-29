@@ -364,8 +364,8 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         ),
         (
             lambda User: select(1).where(User.name == "ed"),
-            # no mapper for this one because the plugin is not "orm"
-            lambda User: {"clause": mock.ANY},
+            # changed by #9805
+            lambda User: {"clause": mock.ANY, "mapper": inspect(User)},
             "e1",
         ),
         (
