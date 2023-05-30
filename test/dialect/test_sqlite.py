@@ -44,6 +44,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import async_test
 from sqlalchemy.testing import combinations
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
@@ -3592,3 +3593,23 @@ class ReflectInternalSchemaTables(fixtures.TablesTest):
             eq_(res, ["sqlitetempview"])
         finally:
             connection.exec_driver_sql("DROP VIEW sqlitetempview")
+
+
+class AsyncSqlliteTest(fixtures.TestBase):
+    __requires__ = ("async_dialect",)
+    __only_on__ = "sqlite+aiosqlite"
+
+    @async_test
+    async def test_async_creator(self, async_testing_engine):
+        import aiosqlite
+
+        async def async_creator():
+            conn = await aiosqlite.connect(":memory:")
+            return conn
+
+        engine = async_testing_engine(
+            options={"async_creator": async_creator},
+        )
+        async with engine.connect() as conn:
+            result = await conn.execute(select(1))
+            eq_(result.scalar(), 1)

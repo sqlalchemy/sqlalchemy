@@ -12,6 +12,7 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy.dialects.postgresql import ENUM
 from sqlalchemy.testing import async_test
+from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
@@ -285,13 +286,15 @@ class AsyncPgTest(fixtures.TestBase):
             assert len(cache) > 0
 
     @async_test
-    async def test_async_creator(self, metadata, async_testing_engine):
+    async def test_async_creator(self, async_testing_engine):
         import asyncpg
 
+        url = config.db.url.render_as_string(hide_password=False)
+        # format URL properly, strip driver
+        url = url.replace("+asyncpg", "")
+
         async def async_creator():
-            conn = await asyncpg.connect(
-                "postgresql://scott:tiger@127.0.0.1:5432/test"
-            )
+            conn = await asyncpg.connect(url)
             return conn
 
         engine = async_testing_engine(

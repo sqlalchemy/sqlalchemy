@@ -1,4 +1,5 @@
 import datetime
+from functools import partial
 
 from sqlalchemy import bindparam
 from sqlalchemy import Column
@@ -14,6 +15,8 @@ from sqlalchemy import testing
 from sqlalchemy.dialects import mysql
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import async_test
+from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
@@ -610,3 +613,36 @@ class ExecutionTest(fixtures.TestBase):
     def test_sysdate(self, connection):
         d = connection.execute(func.sysdate()).scalar()
         assert isinstance(d, datetime.datetime)
+
+
+class AsyncMySQLTest(fixtures.TestBase):
+    __requires__ = ("async_dialect",)
+    __only_on__ = "mysql+aiomysql", "mysql+asyncmy"
+
+    @async_test
+    async def test_async_creator(self, async_testing_engine):
+        if testing.against("mysql+aiomysql"):
+            import aiomysql
+
+            connect_func = partial(aiomysql.connect)
+        if testing.against("mysql+asyncmy"):
+            import asyncmy
+
+            connect_func = partial(asyncmy.connect)
+
+        async def async_creator():
+            conn = await connect_func(
+                host=config.db.url.host,
+                port=config.db.url.port,
+                user=config.db.url.username,
+                password=config.db.url.password,
+                db=config.db.url.database,
+            )
+            return conn
+
+        engine = async_testing_engine(
+            options={"async_creator": async_creator},
+        )
+        async with engine.connect() as conn:
+            result = await conn.execute(select(1))
+            eq_(result.scalar(), 1)

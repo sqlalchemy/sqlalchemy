@@ -29,8 +29,8 @@ This dialect should normally be used only with the
 
 
 """  # noqa
-
 from contextlib import asynccontextmanager
+from functools import partial
 
 from .pymysql import MySQLDialect_pymysql
 from ... import pool
@@ -267,16 +267,17 @@ class AsyncAdapt_asyncmy_dbapi:
 
     def connect(self, *arg, **kw):
         async_fallback = kw.pop("async_fallback", False)
+        creator_fn = kw.pop("creator_fn", partial(self.asyncmy.connect))
 
         if util.asbool(async_fallback):
             return AsyncAdaptFallback_asyncmy_connection(
                 self,
-                await_fallback(self.asyncmy.connect(*arg, **kw)),
+                await_fallback(creator_fn(*arg, **kw)),
             )
         else:
             return AsyncAdapt_asyncmy_connection(
                 self,
-                await_only(self.asyncmy.connect(*arg, **kw)),
+                await_only(creator_fn(*arg, **kw)),
             )
 
 
