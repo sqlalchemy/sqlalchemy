@@ -88,7 +88,6 @@ def _schema_column(factory, args, kw):
     if test_opts.get("test_needs_autoincrement", False) and kw.get(
         "primary_key", False
     ):
-
         if col.default is None and col.server_default is None:
             col.autoincrement = True
 

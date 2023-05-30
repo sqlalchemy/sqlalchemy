@@ -4,14 +4,12 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 
 def regular() -> None:
-
     e = create_engine("sqlite://")
 
     # EXPECTED_TYPE: Engine
     reveal_type(e)
 
     with e.connect() as conn:
-
         # EXPECTED_TYPE: Connection
         reveal_type(conn)
 
@@ -21,7 +19,6 @@ def regular() -> None:
         reveal_type(result)
 
     with e.begin() as conn:
-
         # EXPECTED_TYPE: Connection
         reveal_type(conn)
 
@@ -38,7 +35,6 @@ async def asyncio() -> None:
     reveal_type(e)
 
     async with e.connect() as conn:
-
         # EXPECTED_TYPE: AsyncConnection
         reveal_type(conn)
 
@@ -76,7 +72,6 @@ async def asyncio() -> None:
             reveal_type(ctx_async_scalar_result)
 
     async with e.begin() as conn:
-
         # EXPECTED_TYPE: AsyncConnection
         reveal_type(conn)
 

@@ -204,7 +204,6 @@ class MypyPluginTest(fixtures.TestBase):
         id_="isaa",
     )
     def test_files(self, mypy_runner, filename, path, use_plugin):
-
         expected_messages = []
         expected_re = re.compile(r"\s*# EXPECTED(_MYPY)?(_RE)?(_TYPE)?: (.+)")
         py_ver_re = re.compile(r"^#\s*PYTHON_VERSION\s?>=\s?(\d+\.\d+)")

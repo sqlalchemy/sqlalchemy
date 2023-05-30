@@ -330,7 +330,6 @@ class AbstractConcreteBase(ConcreteBase):
                 for sup_ in scls.__mro__[1:]:
                     sup_sm = _mapper_or_none(sup_)
                     if sup_sm:
-
                         sm._set_concrete_base(sup_sm)
                         break
 
@@ -447,7 +446,6 @@ class DeferredReflection:
         # first collect the primary __table__ for each class into a
         # collection of metadata/schemaname -> table names
         for thingy in to_map:
-
             if thingy.local_table is not None:
                 metadata_to_table[
                     (thingy.local_table.metadata, thingy.local_table.schema)
@@ -487,12 +485,10 @@ class DeferredReflection:
                 metadata = mapper.class_.metadata
 
                 for rel in mapper._props.values():
-
                     if (
                         isinstance(rel, relationships.RelationshipProperty)
                         and rel._init_args.secondary._is_populated()
                     ):
-
                         secondary_arg = rel._init_args.secondary
 
                         if isinstance(secondary_arg.argument, Table):

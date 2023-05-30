@@ -440,7 +440,6 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
         User, Order = self.classes.User, self.classes.Order
 
         with fixture_session() as sess:
-
             u = User(name="jack")
             sess.add(u)
             sess.commit()
@@ -457,7 +456,6 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
         User, Order = self.classes.User, self.classes.Order
 
         with fixture_session() as sess:
-
             u = User(name="jack")
 
             o1 = Order()
@@ -1149,7 +1147,6 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         o2m=False,
         m2o=False,
     ):
-
         Address, addresses, users, User = (
             self.classes.Address,
             self.tables.addresses,
@@ -1204,7 +1201,6 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         fwd=False,
         bkd=False,
     ):
-
         keywords, items, item_keywords, Keyword, Item = (
             self.tables.keywords,
             self.tables.items,

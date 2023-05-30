@@ -175,7 +175,6 @@ class CTETest(fixtures.TablesTest):
 
     @testing.requires.ctes_with_update_delete
     def test_delete_scalar_subq_round_trip(self, connection):
-
         some_table = self.tables.some_table
         some_other_table = self.tables.some_other_table
 

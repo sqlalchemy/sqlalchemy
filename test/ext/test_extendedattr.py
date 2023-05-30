@@ -159,7 +159,6 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
             )
 
         class MyClass:
-
             # This proves that a staticmethod will work here; don't
             # flatten this back to a class assignment!
             def __sa_instrumentation_manager__(cls):

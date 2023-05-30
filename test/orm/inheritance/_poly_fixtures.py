@@ -164,7 +164,6 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
 
     @classmethod
     def insert_data(cls, connection):
-
         cls.e1 = e1 = Engineer(
             name="dilbert",
             engineer_name="dilbert",

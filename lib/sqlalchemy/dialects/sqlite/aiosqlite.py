@@ -190,7 +190,6 @@ class AsyncAdapt_aiosqlite_connection(AdaptedConnection):
 
     @isolation_level.setter
     def isolation_level(self, value):
-
         # aiosqlite's isolation_level setter works outside the Thread
         # that it's supposed to, necessitating setting check_same_thread=False.
         # for improved stability, we instead invent our own awaitable version

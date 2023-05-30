@@ -144,7 +144,6 @@ class M2MTest(fixtures.MappedTest):
         )
 
     def test_self_referential_roundtrip(self):
-
         place, Place, place_place = (
             self.tables.place,
             self.classes.Place,

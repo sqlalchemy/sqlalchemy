@@ -1049,7 +1049,6 @@ def cloned_traverse(
             return elem
         else:
             if id(elem) not in cloned:
-
                 if "replace" in kw:
                     newelem = cast(
                         Optional[ExternallyTraversible], kw["replace"](elem)

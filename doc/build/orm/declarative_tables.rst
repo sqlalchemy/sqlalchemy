@@ -562,7 +562,6 @@ of the ``NULL`` / ``NOT NULL`` setting that takes place in the database::
 
 
     class SomeClass(Base):
-
         # ...
 
         # pep-484 type will be Optional, but column will be

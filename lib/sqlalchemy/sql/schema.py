@@ -124,7 +124,6 @@ _ServerDefaultArgument = Union[
 
 
 class SchemaConst(Enum):
-
     RETAIN_SCHEMA = 1
     """Symbol indicating that a :class:`_schema.Table`, :class:`.Sequence`
     or in some cases a :class:`_schema.ForeignKey` object, in situations
@@ -1058,7 +1057,6 @@ class Table(
         if the_sentinel:
             the_sentinel_zero = the_sentinel[0]
             if the_sentinel_zero.identity:
-
                 if the_sentinel_zero.identity._increment_is_negative:
                     if sentinel_is_explicit:
                         raise exc.InvalidRequestError(
@@ -1095,7 +1093,6 @@ class Table(
                         _SentinelDefaultCharacterization.SENTINEL_DEFAULT
                     )
                 elif default_is_sequence(the_sentinel_zero.default):
-
                     if the_sentinel_zero.default._increment_is_negative:
                         if sentinel_is_explicit:
                             raise exc.InvalidRequestError(
@@ -3166,7 +3163,6 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         _column: Column[Any]
 
         if isinstance(self._colspec, str):
-
             parenttable, tablekey, colname = self._resolve_col_tokens()
 
             if self._unresolvable or tablekey not in parenttable.metadata:

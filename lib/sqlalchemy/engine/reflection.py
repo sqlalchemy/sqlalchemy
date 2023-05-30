@@ -229,7 +229,6 @@ class Inspector(inspection.Inspectable["Inspector"]):
     def _construct(
         cls, init: Callable[..., Any], bind: Union[Engine, Connection]
     ) -> Inspector:
-
         if hasattr(bind.dialect, "inspector"):
             cls = bind.dialect.inspector  # type: ignore[attr-defined]
 
@@ -1625,7 +1624,6 @@ class Inspector(inspection.Inspectable["Inspector"]):
         exclude_columns: Collection[str],
         cols_by_orig_name: Dict[str, sa_schema.Column[Any]],
     ) -> None:
-
         orig_name = col_d["name"]
 
         table.metadata.dispatch.column_reflect(self, table, col_d)

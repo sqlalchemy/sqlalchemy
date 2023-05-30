@@ -173,7 +173,6 @@ class OnConflictClause(ClauseElement):
     stringify_dialect = "sqlite"
 
     def __init__(self, index_elements=None, index_where=None):
-
         if index_elements is not None:
             self.constraint_target = None
             self.inferred_target_elements = index_elements

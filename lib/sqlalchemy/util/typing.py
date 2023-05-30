@@ -162,7 +162,6 @@ def de_stringify_annotation(
         and is_generic(annotation)
         and not is_literal(annotation)
     ):
-
         if _already_seen is None:
             _already_seen = set()
 

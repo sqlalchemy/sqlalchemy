@@ -69,7 +69,6 @@ class InsertExecTest(fixtures.TablesTest):
     @testing.requires.multivalues_inserts
     @testing.combinations("string", "column", "expect", argnames="keytype")
     def test_multivalues_insert(self, connection, keytype):
-
         users = self.tables.users
 
         if keytype == "string":
@@ -636,7 +635,6 @@ class TableInsertTest(fixtures.TablesTest):
 
     @testing.requires.sql_expressions_inserted_as_primary_key
     def test_sql_expr_lastrowid(self, connection):
-
         # see also test.orm.test_unitofwork.py
         # ClauseAttributesTest.test_insert_pk_expression
         t = self.tables.foo_no_seq
@@ -1103,7 +1101,6 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
         argnames="paramtype",
     )
     def test_page_size_adjustment(self, testing_engine, batchsize, paramtype):
-
         t = self.tables.data
 
         if paramtype == "engine" and batchsize is not None:
@@ -1164,7 +1161,6 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
         )
 
     def test_disabled(self, testing_engine):
-
         e = testing_engine(
             options={"use_insertmanyvalues": False},
             share_pool=True,
@@ -1201,7 +1197,6 @@ class IMVSentinelTest(fixtures.TestBase):
         autoincrement_is_sequence=False,
         connection=None,
     ):
-
         if connection:
             dialect = connection.dialect
         else:
@@ -1212,7 +1207,6 @@ class IMVSentinelTest(fixtures.TestBase):
             and warn_for_downgrades
             and dialect.use_insertmanyvalues
         ):
-
             if (
                 not separate_sentinel
                 and (
@@ -1766,7 +1760,6 @@ class IMVSentinelTest(fixtures.TestBase):
         default_type,
         sort_by_parameter_order,
     ):
-
         t1 = Table(
             "data",
             metadata,
@@ -1865,7 +1858,6 @@ class IMVSentinelTest(fixtures.TestBase):
         metadata,
         connection,
     ):
-
         if pk_type.plain_autoinc:
             pk_col = Column("id", Integer, primary_key=True)
         elif pk_type.sequence:
@@ -2304,7 +2296,6 @@ class IMVSentinelTest(fixtures.TestBase):
                 metadata.create_all(connection)
             return
         else:
-
             metadata.create_all(connection)
 
         fixtures.insertmanyvalues_fixture(
@@ -2439,7 +2430,6 @@ class IMVSentinelTest(fixtures.TestBase):
         sentinel_type,
         add_sentinel_flag_to_col,
     ):
-
         if sentinel_type.identity:
             sentinel_args = [Identity()]
         elif sentinel_type.sequence:
@@ -2761,7 +2751,6 @@ class IMVSentinelTest(fixtures.TestBase):
         metadata.create_all(engine)
 
         with engine.connect() as conn:
-
             fixtures.insertmanyvalues_fixture(
                 conn,
                 randomize_rows=bool(randomize_returning),

@@ -876,7 +876,6 @@ _T_con = TypeVar("_T_con", bound=Any, contravariant=True)
 
 
 class HybridExtensionType(InspectionAttrExtensionType):
-
     HYBRID_METHOD = "HYBRID_METHOD"
     """Symbol indicating an :class:`InspectionAttr` that's
     of type :class:`.hybrid_method`.
@@ -1412,7 +1411,6 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
     def _get_comparator(
         self, comparator: Any
     ) -> Callable[[Any], _HybridClassLevelAccessor[_T]]:
-
         proxy_attr = attributes.create_proxied_attribute(self)
 
         def expr_comparator(

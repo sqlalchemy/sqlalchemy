@@ -548,7 +548,6 @@ def _resolver(
     Callable[[str], Callable[[], Union[Type[Any], Table, _ModNS]]],
     Callable[[str, bool], _class_resolver],
 ]:
-
     global _fallback_dict
 
     if _fallback_dict is None:

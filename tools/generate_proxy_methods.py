@@ -182,7 +182,6 @@ def process_class(
     attributes: Iterable[str],
     cls: Type[Any],
 ):
-
     sphinx_symbol_match = re.match(r":class:`(.+)`", target_cls_sphinx_name)
     if not sphinx_symbol_match:
         raise Exception(
@@ -341,7 +340,6 @@ def process_class(
 
 
 def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
-
     class_entries = classes[modname]
 
     # use tempfile in same path as the module, or at least in the
@@ -352,7 +350,6 @@ def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
         delete=False,
         suffix=".py",
     ) as buf, open(filename) as orig_py:
-
         in_block = False
         current_clsname = None
         for line in orig_py:
@@ -382,7 +379,6 @@ def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
 
 
 def run_module(modname: str, cmd: code_writer_cmd) -> None:
-
     cmd.write_status(f"importing module {modname}\n")
     mod = importlib.import_module(modname)
     destination_path = mod.__file__
@@ -416,7 +412,6 @@ entries = [
 ]
 
 if __name__ == "__main__":
-
     cmd = code_writer_cmd(__file__)
 
     with cmd.add_arguments() as parser:

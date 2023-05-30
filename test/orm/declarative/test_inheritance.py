@@ -55,7 +55,6 @@ class DeclarativeInheritanceTest(
     @testing.emits_warning(r".*does not indicate a 'polymorphic_identity'")
     def test_we_must_copy_mapper_args(self):
         class Person(Base):
-
             __tablename__ = "people"
             id = Column(Integer, primary_key=True)
             discriminator = Column("type", String(50))
@@ -65,7 +64,6 @@ class DeclarativeInheritanceTest(
             }
 
         class Engineer(Person):
-
             primary_language = Column(String(50))
 
         assert "inherits" not in Person.__mapper_args__
@@ -115,7 +113,6 @@ class DeclarativeInheritanceTest(
 
     def test_we_must_only_copy_column_mapper_args(self):
         class Person(Base):
-
             __tablename__ = "people"
             id = Column(Integer, primary_key=True)
             a = Column(Integer)
@@ -136,12 +133,10 @@ class DeclarativeInheritanceTest(
 
     def test_custom_join_condition(self):
         class Foo(Base):
-
             __tablename__ = "foo"
             id = Column("id", Integer, primary_key=True)
 
         class Bar(Foo):
-
             __tablename__ = "bar"
             bar_id = Column("id", Integer, primary_key=True)
             foo_id = Column("foo_id", Integer)
@@ -153,7 +148,6 @@ class DeclarativeInheritanceTest(
 
     def test_joined(self):
         class Company(Base, fixtures.ComparableEntity):
-
             __tablename__ = "companies"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -162,7 +156,6 @@ class DeclarativeInheritanceTest(
             employees = relationship("Person")
 
         class Person(Base, fixtures.ComparableEntity):
-
             __tablename__ = "people"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -175,7 +168,6 @@ class DeclarativeInheritanceTest(
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __tablename__ = "engineers"
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             id = Column(
@@ -184,7 +176,6 @@ class DeclarativeInheritanceTest(
             primary_language = Column("primary_language", String(50))
 
         class Manager(Person):
-
             __tablename__ = "managers"
             __mapper_args__ = {"polymorphic_identity": "manager"}
             id = Column(
@@ -255,7 +246,6 @@ class DeclarativeInheritanceTest(
 
     def test_add_subcol_after_the_fact(self):
         class Person(Base, fixtures.ComparableEntity):
-
             __tablename__ = "people"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -265,7 +255,6 @@ class DeclarativeInheritanceTest(
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __tablename__ = "engineers"
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             id = Column(
@@ -286,7 +275,6 @@ class DeclarativeInheritanceTest(
 
     def test_add_parentcol_after_the_fact(self):
         class Person(Base, fixtures.ComparableEntity):
-
             __tablename__ = "people"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -295,7 +283,6 @@ class DeclarativeInheritanceTest(
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __tablename__ = "engineers"
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             primary_language = Column(String(50))
@@ -317,7 +304,6 @@ class DeclarativeInheritanceTest(
 
     def test_add_sub_parentcol_after_the_fact(self):
         class Person(Base, fixtures.ComparableEntity):
-
             __tablename__ = "people"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -326,7 +312,6 @@ class DeclarativeInheritanceTest(
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __tablename__ = "engineers"
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             primary_language = Column(String(50))
@@ -335,7 +320,6 @@ class DeclarativeInheritanceTest(
             )
 
         class Admin(Engineer):
-
             __tablename__ = "admins"
             __mapper_args__ = {"polymorphic_identity": "admin"}
             workstation = Column(String(50))
@@ -357,7 +341,6 @@ class DeclarativeInheritanceTest(
 
     def test_subclass_mixin(self):
         class Person(Base, fixtures.ComparableEntity):
-
             __tablename__ = "people"
             id = Column("id", Integer, primary_key=True)
             name = Column("name", String(50))
@@ -365,11 +348,9 @@ class DeclarativeInheritanceTest(
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class MyMixin:
-
             pass
 
         class Engineer(MyMixin, Person):
-
             __tablename__ = "engineers"
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             id = Column(
@@ -488,14 +469,12 @@ class DeclarativeInheritanceTest(
 
     def test_with_undefined_foreignkey(self):
         class Parent(Base):
-
             __tablename__ = "parent"
             id = Column("id", Integer, primary_key=True)
             tp = Column("type", String(50))
             __mapper_args__ = dict(polymorphic_on=tp)
 
         class Child1(Parent):
-
             __tablename__ = "child1"
             id = Column(
                 "id", Integer, ForeignKey("parent.id"), primary_key=True
@@ -507,7 +486,6 @@ class DeclarativeInheritanceTest(
         # though child2 doesn't exist yet
 
         class Child2(Parent):
-
             __tablename__ = "child2"
             id = Column(
                 "id", Integer, ForeignKey("parent.id"), primary_key=True
@@ -555,7 +533,6 @@ class DeclarativeInheritanceTest(
         class."""
 
         class Company(Base, fixtures.ComparableEntity):
-
             __tablename__ = "companies"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -564,7 +541,6 @@ class DeclarativeInheritanceTest(
             employees = relationship("Person")
 
         class Person(Base, fixtures.ComparableEntity):
-
             __tablename__ = "people"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -579,11 +555,9 @@ class DeclarativeInheritanceTest(
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __mapper_args__ = {"polymorphic_identity": "engineer"}
 
         class Manager(Person):
-
             __mapper_args__ = {"polymorphic_identity": "manager"}
 
         Base.metadata.create_all(testing.db)
@@ -631,7 +605,6 @@ class DeclarativeInheritanceTest(
         """
 
         class Company(Base, fixtures.ComparableEntity):
-
             __tablename__ = "companies"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -640,7 +613,6 @@ class DeclarativeInheritanceTest(
             employees = relationship("Person")
 
         class Person(Base, fixtures.ComparableEntity):
-
             __tablename__ = "people"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -651,12 +623,10 @@ class DeclarativeInheritanceTest(
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             primary_language = Column(String(50))
 
         class Manager(Person):
-
             __mapper_args__ = {"polymorphic_identity": "manager"}
             golf_swing = Column(String(50))
 
@@ -818,7 +788,6 @@ class DeclarativeInheritanceTest(
         """test the somewhat unusual case of [ticket:3341]"""
 
         class Person(Base, fixtures.ComparableEntity):
-
             __tablename__ = "people"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -828,7 +797,6 @@ class DeclarativeInheritanceTest(
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             primary_language = Column(String(50))
 
@@ -1180,7 +1148,6 @@ class DeclarativeInheritanceTest(
 
     def test_joined_from_single(self):
         class Company(Base, fixtures.ComparableEntity):
-
             __tablename__ = "companies"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -1189,7 +1156,6 @@ class DeclarativeInheritanceTest(
             employees = relationship("Person")
 
         class Person(Base, fixtures.ComparableEntity):
-
             __tablename__ = "people"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -1200,12 +1166,10 @@ class DeclarativeInheritanceTest(
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Manager(Person):
-
             __mapper_args__ = {"polymorphic_identity": "manager"}
             golf_swing = Column(String(50))
 
         class Engineer(Person):
-
             __tablename__ = "engineers"
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             id = Column(Integer, ForeignKey("people.id"), primary_key=True)
@@ -1257,7 +1221,6 @@ class DeclarativeInheritanceTest(
 
     def test_single_from_joined_colsonsub(self):
         class Person(Base, fixtures.ComparableEntity):
-
             __tablename__ = "people"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -1306,7 +1269,6 @@ class DeclarativeInheritanceTest(
 
     def test_add_deferred(self):
         class Person(Base, fixtures.ComparableEntity):
-
             __tablename__ = "people"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -1331,7 +1293,6 @@ class DeclarativeInheritanceTest(
         """
 
         class Person(Base, fixtures.ComparableEntity):
-
             __tablename__ = "people"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -1341,13 +1302,11 @@ class DeclarativeInheritanceTest(
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             primary_language_id = Column(Integer, ForeignKey("languages.id"))
             primary_language = relationship("Language")
 
         class Language(Base, fixtures.ComparableEntity):
-
             __tablename__ = "languages"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -1396,7 +1355,6 @@ class DeclarativeInheritanceTest(
 
     def test_single_three_levels(self):
         class Person(Base, fixtures.ComparableEntity):
-
             __tablename__ = "people"
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
@@ -1404,17 +1362,14 @@ class DeclarativeInheritanceTest(
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             primary_language = Column(String(50))
 
         class JuniorEngineer(Engineer):
-
             __mapper_args__ = {"polymorphic_identity": "junior_engineer"}
             nerf_gun = Column(String(50))
 
         class Manager(Person):
-
             __mapper_args__ = {"polymorphic_identity": "manager"}
             golf_swing = Column(String(50))
 
@@ -1430,7 +1385,6 @@ class DeclarativeInheritanceTest(
 
     def test_single_detects_conflict(self):
         class Person(Base):
-
             __tablename__ = "people"
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
@@ -1438,7 +1392,6 @@ class DeclarativeInheritanceTest(
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             primary_language = Column(String(50))
 
@@ -1446,7 +1399,6 @@ class DeclarativeInheritanceTest(
 
         def go():
             class Manager(Person):
-
                 __mapper_args__ = {"polymorphic_identity": "manager"}
                 golf_swing = Column(String(50))
                 primary_language = Column(String(50))
@@ -1457,7 +1409,6 @@ class DeclarativeInheritanceTest(
 
         def go():
             class Salesman(Person):
-
                 __mapper_args__ = {"polymorphic_identity": "manager"}
                 name = Column(String(50))
 
@@ -1465,7 +1416,6 @@ class DeclarativeInheritanceTest(
 
     def test_single_no_special_cols(self):
         class Person(Base, fixtures.ComparableEntity):
-
             __tablename__ = "people"
             id = Column("id", Integer, primary_key=True)
             name = Column("name", String(50))
@@ -1474,7 +1424,6 @@ class DeclarativeInheritanceTest(
 
         def go():
             class Engineer(Person):
-
                 __mapper_args__ = {"polymorphic_identity": "engineer"}
                 primary_language = Column("primary_language", String(50))
                 foo_bar = Column(Integer, primary_key=True)
@@ -1483,7 +1432,6 @@ class DeclarativeInheritanceTest(
 
     def test_single_no_table_args(self):
         class Person(Base, fixtures.ComparableEntity):
-
             __tablename__ = "people"
             id = Column("id", Integer, primary_key=True)
             name = Column("name", String(50))
@@ -1492,7 +1440,6 @@ class DeclarativeInheritanceTest(
 
         def go():
             class Engineer(Person):
-
                 __mapper_args__ = {"polymorphic_identity": "engineer"}
                 primary_language = Column("primary_language", String(50))
 

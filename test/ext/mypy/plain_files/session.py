@@ -86,12 +86,10 @@ with Session(e) as sess:
     # test #9125
 
     for row in sess.query(User.id, User.name):
-
         # EXPECTED_TYPE: Row[Tuple[int, str]]
         reveal_type(row)
 
     for uobj1 in sess.query(User):
-
         # EXPECTED_TYPE: User
         reveal_type(uobj1)
 

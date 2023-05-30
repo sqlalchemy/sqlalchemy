@@ -894,7 +894,6 @@ class CoreFixtures:
             return stmt
 
         def three():
-
             a1 = table_a.alias()
             a2 = table_a.alias()
             ex = exists().where(table_b.c.b == a1.c.a)
@@ -921,7 +920,6 @@ class CoreFixtures:
     fixtures.append(_complex_fixtures)
 
     def _statements_w_context_options_fixtures():
-
         return [
             select(table_a)._add_context_option(opt1, True),
             select(table_a)._add_context_option(opt1, 5),
@@ -970,7 +968,6 @@ class CoreFixtures:
             return anon_col > 5
 
         def three():
-
             l1, l2 = table_a.c.a.label(None), table_a.c.b.label(None)
 
             stmt = select(table_a.c.a, table_a.c.b, l1, l2)
@@ -1482,7 +1479,6 @@ class CompareClausesTest(fixtures.TestBase):
         )
 
     def test_compare_metadata_tables_annotations_two(self):
-
         t1 = Table("a", MetaData(), Column("q", Integer), Column("p", Integer))
         t2 = Table("a", MetaData(), Column("q", Integer), Column("p", Integer))
 
@@ -1516,7 +1512,6 @@ class CompareClausesTest(fixtures.TestBase):
         ne_(t3._generate_cache_key(), t4._generate_cache_key())
 
     def test_compare_comparison_associative(self):
-
         l1 = table_c.c.x == table_d.c.y
         l2 = table_d.c.y == table_c.c.x
         l3 = table_c.c.x == table_d.c.z
@@ -1535,7 +1530,6 @@ class CompareClausesTest(fixtures.TestBase):
         is_false(l1.compare(l3))
 
     def test_compare_clauselist_associative(self):
-
         l1 = and_(table_c.c.x == table_d.c.y, table_c.c.y == table_d.c.z)
 
         l2 = and_(table_c.c.y == table_d.c.z, table_c.c.x == table_d.c.y)
@@ -1547,7 +1541,6 @@ class CompareClausesTest(fixtures.TestBase):
         is_false(l1.compare(l3))
 
     def test_compare_clauselist_not_associative(self):
-
         l1 = ClauseList(
             table_c.c.x, table_c.c.y, table_d.c.y, operator=operators.sub
         )
@@ -1560,7 +1553,6 @@ class CompareClausesTest(fixtures.TestBase):
         is_false(l1.compare(l2))
 
     def test_compare_clauselist_assoc_different_operator(self):
-
         l1 = and_(table_c.c.x == table_d.c.y, table_c.c.y == table_d.c.z)
 
         l2 = or_(table_c.c.y == table_d.c.z, table_c.c.x == table_d.c.y)
@@ -1568,7 +1560,6 @@ class CompareClausesTest(fixtures.TestBase):
         is_false(l1.compare(l2))
 
     def test_compare_clauselist_not_assoc_different_operator(self):
-
         l1 = ClauseList(
             table_c.c.x, table_c.c.y, table_d.c.y, operator=operators.sub
         )

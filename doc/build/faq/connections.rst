@@ -306,7 +306,6 @@ using the following proof of concept script.  Once run, it will emit a
     from sqlalchemy import select
 
     if __name__ == "__main__":
-
         engine = create_engine("mysql+mysqldb://scott:tiger@localhost/test", echo_pool=True)
 
         def do_a_thing(engine):

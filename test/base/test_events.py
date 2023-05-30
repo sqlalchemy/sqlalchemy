@@ -227,7 +227,6 @@ class EventsTest(TearDownLocalEventsFixture, fixtures.TestBase):
             pass
 
         class E2(event.Events):
-
             _dispatch_target = T2
 
             def event_four(self, x):

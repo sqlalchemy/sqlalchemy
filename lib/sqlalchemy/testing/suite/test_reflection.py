@@ -345,7 +345,6 @@ class QuotedNameArgumentTest(fixtures.TablesTest):
         )
 
         if testing.requires.view_column_reflection.enabled:
-
             if testing.requires.symbol_names_w_double_quote.enabled:
                 names = [
                     "quote ' one",
@@ -1430,7 +1429,6 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
         (True, testing.requires.schemas), False, argnames="use_schema"
     )
     def test_get_table_names(self, connection, order_by, use_schema):
-
         if use_schema:
             schema = config.test_schema
         else:
@@ -1540,7 +1538,6 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
         argnames="use_views,use_schema",
     )
     def test_get_columns(self, connection, use_views, use_schema):
-
         if use_schema:
             schema = config.test_schema
         else:
@@ -1607,7 +1604,6 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
 
     @testing.requires.temp_table_reflection
     def test_reflect_table_temp_table(self, connection):
-
         table_name = self.temp_table_name()
         user_tmp = self.tables[table_name]
 
@@ -1755,7 +1751,6 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
     )
     @testing.requires.index_reflection
     def test_get_indexes(self, connection, use_schema):
-
         if use_schema:
             schema = config.test_schema
         else:
@@ -2322,7 +2317,6 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
 
     @testing.requires.comment_reflection_full_unicode
     def test_comments_unicode_full(self, connection, metadata):
-
         Table(
             "unicode_comments",
             metadata,
@@ -2393,7 +2387,6 @@ class TableNoColumnsTest(fixtures.TestBase):
 
 
 class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
-
     __backend__ = True
 
     @testing.combinations(
@@ -2744,7 +2737,6 @@ class NormalizedNameTest(fixtures.TablesTest):
         )
 
     def test_reflect_lowercase_forced_tables(self):
-
         m2 = MetaData()
         t2_ref = Table(
             quoted_name("t2", quote=True), m2, autoload_with=config.db

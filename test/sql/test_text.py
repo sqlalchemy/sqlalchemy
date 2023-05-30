@@ -215,7 +215,6 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
         ),
     )
     def test_select_composition_nine(self, label_style, expected):
-
         s1 = select(table1.c.myid, text("whatever"))
         if label_style:
             s1 = s1.set_label_style(label_style)
@@ -257,7 +256,6 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
         ),
     )
     def test_select_composition_ten(self, label_style, expected):
-
         s1 = select(table1.c.myid, text("whatever"))
         if label_style:
             s1 = s1.set_label_style(label_style)
@@ -284,7 +282,6 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
         ),
     )
     def test_select_composition_eleven(self, label_style, expected):
-
         stmt = select(table1.c.myid, text("whatever"))
         if label_style:
             stmt = stmt.set_label_style(label_style)
@@ -301,7 +298,6 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
         ),
     )
     def test_select_selected_columns_ignores_text(self, label_style, expected):
-
         stmt = select(table1.c.myid, text("whatever"), table1.c.description)
         if label_style:
             stmt = stmt.set_label_style(label_style)
@@ -494,7 +490,6 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_text_in_select_nonfrom(self):
-
         generate_series = text(
             "generate_series(:x, :y, :z) as s(a)"
         ).bindparams(x=None, y=None, z=None)
@@ -902,7 +897,6 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
         (column("q").op("+")(5).label("a"), "a DESC", (desc,)),
     )
     def test_order_by_expr(self, case, expected, modifiers):
-
         order_by = case
         for mod in modifiers:
             order_by = mod(order_by)
@@ -942,7 +936,6 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
         self._test_exception(stmt, "foobar")
 
     def test_distinct_label(self):
-
         stmt = select(table1.c.myid.label("foo")).distinct("foo")
         self.assert_compile(
             stmt,
@@ -951,7 +944,6 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_distinct_label_keyword(self):
-
         stmt = select(table1.c.myid.label("foo")).distinct("foo")
         self.assert_compile(
             stmt,

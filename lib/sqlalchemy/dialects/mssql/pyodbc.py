@@ -377,7 +377,6 @@ class _ms_numeric_pyodbc:
     """
 
     def bind_processor(self, dialect):
-
         super_process = super().bind_processor(dialect)
 
         if not dialect._need_decimal_fix:

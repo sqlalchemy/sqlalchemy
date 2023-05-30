@@ -222,7 +222,6 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_text_doesnt_explode(self, connection):
-
         for s in [
             select(
                 case(

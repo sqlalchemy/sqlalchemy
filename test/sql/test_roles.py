@@ -420,7 +420,6 @@ class SubqueryCoercionsTest(fixtures.TestBase, AssertsCompiledSQL):
             is_true(coerced.compare(stmt.scalar_subquery().label(None)))
 
     def test_scalar_select(self):
-
         with testing.expect_warnings(
             "implicitly coercing SELECT object to scalar subquery"
         ):

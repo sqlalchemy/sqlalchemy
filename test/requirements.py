@@ -1162,7 +1162,6 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def sqlite_partial_indexes(self):
-
         return only_on(self._sqlite_partial_idx)
 
     @property

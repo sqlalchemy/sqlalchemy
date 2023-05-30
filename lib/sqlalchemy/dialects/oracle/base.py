@@ -699,7 +699,6 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         **kw,
     ):
         if precision is None:
-
             precision = getattr(type_, "precision", None)
 
         if _requires_binary_precision:
@@ -1098,7 +1097,6 @@ class OracleCompiler(compiler.SQLCompiler):
 
                 # add expressions to accommodate FOR UPDATE OF
                 if for_update is not None and for_update.of:
-
                     adapter = sql_util.ClauseAdapter(inner_subquery)
                     for_update.of = [
                         adapter.traverse(elem) for elem in for_update.of
@@ -1352,7 +1350,6 @@ class OracleDDLCompiler(compiler.DDLCompiler):
 
 
 class OracleIdentifierPreparer(compiler.IdentifierPreparer):
-
     reserved_words = {x.lower() for x in RESERVED_WORDS}
     illegal_initial_characters = {str(dig) for dig in range(0, 10)}.union(
         ["_", "$"]

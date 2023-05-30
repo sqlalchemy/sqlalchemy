@@ -1035,7 +1035,6 @@ class ColumnCollisionTest(fixtures.MappedTest):
 
         self.mapper_registry.map_imperatively(Book, book)
         with fixture_session() as sess:
-
             b1 = Book(book_id="abc", title="def")
             sess.add(b1)
             sess.flush()
@@ -1468,7 +1467,6 @@ class ColumnPropertyTest(fixtures.MappedTest):
         Data = self.classes.Data
 
         with fixture_session() as sess:
-
             d1 = Data(a="hello", b="there")
             sess.add(d1)
             sess.flush()

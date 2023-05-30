@@ -861,7 +861,6 @@ class TypesTest(fixtures.TestBase):
         eq_(t2.c.c4.type.length, 180)
 
     def test_long_type(self, metadata, connection):
-
         t = Table("t", metadata, Column("data", oracle.LONG))
         metadata.create_all(connection)
         connection.execute(t.insert(), dict(data="xyz"))

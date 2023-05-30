@@ -238,14 +238,12 @@ class TypeReflectionTest(fixtures.TestBase):
         metadata,
         connection,
     ):
-
         specs = [(mysql.ENUM("", "fleem"), mysql.ENUM("", "fleem"))]
 
         self._run_test(metadata, connection, specs, ["enums"])
 
 
 class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
-
     __only_on__ = "mysql", "mariadb"
     __backend__ = True
 
@@ -432,7 +430,6 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(ref_kw["partitions"], "6")
 
     def test_reflection_with_subpartition_options(self, connection, metadata):
-
         subpartititon_text = """HASH (TO_DAYS (c2))
                                 SUBPARTITIONS 2(
                                  PARTITION p0 VALUES LESS THAN (1990),

@@ -450,7 +450,6 @@ def execute_and_instances(
     def iter_for_shard(
         shard_id: ShardIdentifier,
     ) -> Union[Result[_T], IteratorResult[_TP]]:
-
         bind_arguments = dict(orm_context.bind_arguments)
         bind_arguments["shard_id"] = shard_id
 

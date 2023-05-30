@@ -966,7 +966,6 @@ class TypeEngine(Visitable, Generic[_T]):
     def _cached_sentinel_value_processor(
         self, dialect: Dialect
     ) -> Optional[_SentinelProcessorType[_T]]:
-
         try:
             return dialect._type_memos[self]["sentinel"]
         except KeyError:
@@ -1114,7 +1113,6 @@ class TypeEngine(Visitable, Generic[_T]):
 
     @util.preload_module("sqlalchemy.engine.default")
     def _default_dialect(self) -> Dialect:
-
         default = util.preloaded.engine_default
 
         # dmypy / mypy seems to sporadically keep thinking this line is
@@ -1523,7 +1521,6 @@ class NativeForEmulated(TypeEngineMixin):
         impl: Union[TypeEngine[Any], TypeEngineMixin],
         **kw: Any,
     ) -> TypeEngine[Any]:
-
         """Given an impl, adapt this type's class to the impl assuming
         "native".
 
@@ -2028,7 +2025,6 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
         if process_literal_param is not None:
             impl_processor = self.impl_instance.literal_processor(dialect)
             if impl_processor:
-
                 fixed_impl_processor = impl_processor
                 fixed_process_literal_param = process_literal_param
 
@@ -2165,7 +2161,6 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
 
     @util.memoized_property
     def _has_bind_expression(self) -> bool:
-
         return (
             util.method_is_overridden(self, TypeDecorator.bind_expression)
             or self.impl_instance._has_bind_expression

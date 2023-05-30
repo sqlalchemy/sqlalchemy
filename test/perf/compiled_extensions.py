@@ -1077,7 +1077,6 @@ class CacheAnonMap(Case):
     NUMBER = 1000000
 
     def init_objects(self):
-
         self.object_1 = column("x")
         self.object_2 = bindparam("y")
 
@@ -1139,12 +1138,10 @@ class PrefixAnonMap(Case):
 
     @test_case
     def test_apply_non_present(self):
-
         self.name.apply_map(self.impl_w_non_present)
 
     @test_case
     def test_apply_present(self):
-
         self.name.apply_map(self.impl_w_present)
 
 

@@ -138,7 +138,6 @@ class DialectTest(fixtures.TestBase):
     def test_ensure_version_is_qualified(
         self, future_connection, testing_engine, metadata
     ):
-
         default_schema_name = future_connection.dialect.default_schema_name
         event.listen(
             metadata,
@@ -570,7 +569,6 @@ class ExecutemanyFlagOptionsTest(fixtures.TablesTest):
 class MiscBackendTest(
     fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
 ):
-
     __only_on__ = "postgresql"
     __backend__ = True
 
@@ -637,13 +635,11 @@ class MiscBackendTest(
         with testing.db.connect().execution_options(
             isolation_level="SERIALIZABLE"
         ) as conn:
-
             dbapi_conn = conn.connection.dbapi_connection
 
             is_false(dbapi_conn.autocommit)
 
             with conn.begin():
-
                 existing_isolation = conn.exec_driver_sql(
                     "show transaction isolation level"
                 ).scalar()
@@ -665,7 +661,6 @@ class MiscBackendTest(
             dbapi_conn.autocommit = False
 
             with conn.begin():
-
                 existing_isolation = conn.exec_driver_sql(
                     "show transaction isolation level"
                 ).scalar()

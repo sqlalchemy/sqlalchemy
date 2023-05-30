@@ -3074,7 +3074,6 @@ class EagerDefaultsTest(fixtures.MappedTest):
 
     @testing.fixture
     def selectable_fixture(self, decl_base):
-
         t1, t2 = self.tables("test", "test2")
 
         stmt = (
@@ -3768,7 +3767,6 @@ class ORMOnlyPrimaryKeyTest(fixtures.TestBase):
     @testing.requires.sequences_as_server_defaults
     @testing.requires.insert_returning
     def test_b(self, base, run_test):
-
         seq = normalize_sequence(config, Sequence("x_seq"))
 
         class A(base):
@@ -3871,13 +3869,11 @@ class TryToFoolInsertManyValuesTest(fixtures.TestBase):
         """
 
         class Datum(decl_base):
-
             __tablename__ = "datum"
 
             datum_id = Column(Integer, Identity(), primary_key=True)
 
         class Result(decl_base):
-
             __tablename__ = "result"
 
             if pk_type.plain_autoinc:
@@ -3913,7 +3909,6 @@ class TryToFoolInsertManyValuesTest(fixtures.TestBase):
                 )
 
         class ResultDatum(decl_base):
-
             __tablename__ = "result_datum"
 
             result_id = Column(ForeignKey(Result.result_id), primary_key=True)
@@ -4024,14 +4019,12 @@ class TryToFoolInsertManyValuesTest(fixtures.TestBase):
         """
 
         class Datum(decl_base):
-
             __tablename__ = "datum"
 
             datum_id = Column(Integer, primary_key=True)
             data = Column(String(10))
 
         class Result(decl_base):
-
             __tablename__ = "result"
 
             result_id = Column(Integer, primary_key=True)

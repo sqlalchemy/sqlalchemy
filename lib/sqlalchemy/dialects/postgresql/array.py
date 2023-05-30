@@ -102,7 +102,6 @@ class array(expression.ExpressionClauseList[_T]):
     inherit_cache = True
 
     def __init__(self, clauses, **kw):
-
         type_arg = kw.pop("type_", None)
         super().__init__(operators.comma_op, *clauses, **kw)
 
@@ -404,7 +403,6 @@ class ARRAY(sqltypes.ARRAY):
 
 
 def _split_enum_values(array_string):
-
     if '"' not in array_string:
         # no escape char is present so it can just split on the comma
         return array_string.split(",") if array_string else []

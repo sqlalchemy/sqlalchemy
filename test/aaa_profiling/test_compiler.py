@@ -20,7 +20,6 @@ class CompileTest(fixtures.TestBase, AssertsExecutionResults):
 
     @classmethod
     def setup_test_class(cls):
-
         global t1, t2, metadata
         metadata = MetaData()
         t1 = Table(

@@ -22,7 +22,6 @@ def _fns_in_deterministic_order():
 
 
 def process_functions(filename: str, cmd: code_writer_cmd) -> str:
-
     with NamedTemporaryFile(
         mode="w",
         delete=False,
@@ -141,7 +140,6 @@ test_functions_py = "test/ext/mypy/plain_files/functions.py"
 
 
 if __name__ == "__main__":
-
     cmd = code_writer_cmd(__file__)
 
     with cmd.run_program():

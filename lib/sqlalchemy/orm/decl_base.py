@@ -242,7 +242,6 @@ def _dive_for_cls_manager(cls: Type[_O]) -> Optional[ClassManager[_O]]:
 def _as_declarative(
     registry: _RegistryType, cls: Type[Any], dict_: _ClassDict
 ) -> Optional[_MapperConfig]:
-
     # declarative scans the class for attributes.  no table or mapper
     # args passed separately.
     return _MapperConfig.setup_mapping(registry, cls, dict_, None, {})
@@ -359,7 +358,6 @@ class _MapperConfig:
                 )
 
     def set_cls_attribute(self, attrname: str, value: _T) -> _T:
-
         manager = instrumentation.manager_of_class(self.cls)
         manager.install_member(attrname, value)
         return value
@@ -514,7 +512,6 @@ class _ClassScanMapperConfig(_MapperConfig):
         table: Optional[FromClause],
         mapper_kw: _MapperKwArgs,
     ):
-
         # grab class dict before the instrumentation manager has been added.
         # reduces cycles
         self.clsdict_view = (
@@ -622,7 +619,6 @@ class _ClassScanMapperConfig(_MapperConfig):
                 return getattr(cls, key, obj) is not obj
 
         else:
-
             all_datacls_fields = {
                 f.name: f.metadata[sa_dataclass_metadata_key]
                 for f in util.dataclass_fields(cls)
@@ -719,9 +715,9 @@ class _ClassScanMapperConfig(_MapperConfig):
 
         if not sa_dataclass_metadata_key:
 
-            def local_attributes_for_class() -> Iterable[
-                Tuple[str, Any, Any, bool]
-            ]:
+            def local_attributes_for_class() -> (
+                Iterable[Tuple[str, Any, Any, bool]]
+            ):
                 return (
                     (
                         name,
@@ -739,9 +735,9 @@ class _ClassScanMapperConfig(_MapperConfig):
 
             fixed_sa_dataclass_metadata_key = sa_dataclass_metadata_key
 
-            def local_attributes_for_class() -> Iterable[
-                Tuple[str, Any, Any, bool]
-            ]:
+            def local_attributes_for_class() -> (
+                Iterable[Tuple[str, Any, Any, bool]]
+            ):
                 for name in names:
                     field = dataclass_fields.get(name, None)
                     if field and sa_dataclass_metadata_key in field.metadata:
@@ -810,7 +806,6 @@ class _ClassScanMapperConfig(_MapperConfig):
             local_attributes_for_class,
             locally_collected_columns,
         ) in bases:
-
             # this transfer can also take place as we scan each name
             # for finer-grained control of how collected_attributes is
             # populated, as this is what impacts column ordering.
@@ -1041,7 +1036,6 @@ class _ClassScanMapperConfig(_MapperConfig):
         self.mapper_args_fn = mapper_args_fn
 
     def _setup_dataclasses_transforms(self) -> None:
-
         dataclass_setup_arguments = self.dataclass_setup_arguments
         if not dataclass_setup_arguments:
             return
@@ -1160,7 +1154,6 @@ class _ClassScanMapperConfig(_MapperConfig):
         new_anno = {}
         for name, annotation in cls_annotations.items():
             if _is_mapped_annotation(annotation, klass, klass):
-
                 extracted = _extract_mapped_subtype(
                     annotation,
                     klass,
@@ -1258,7 +1251,6 @@ class _ClassScanMapperConfig(_MapperConfig):
         expect_mapped: Optional[bool],
         attr_value: Any,
     ) -> Optional[_CollectedAnnotation]:
-
         if name in self.collected_annotations:
             return self.collected_annotations[name]
 
@@ -1356,7 +1348,6 @@ class _ClassScanMapperConfig(_MapperConfig):
         # copy mixin columns to the mapped class
 
         for name, obj, annotation, is_dataclass in attributes_for_class():
-
             if (
                 not fixed_table
                 and obj is None
@@ -1387,7 +1378,6 @@ class _ClassScanMapperConfig(_MapperConfig):
                 setattr(cls, name, obj)
 
             elif isinstance(obj, (Column, MappedColumn)):
-
                 if attribute_is_overridden(name, obj):
                     # if column has been overridden
                     # (like by the InstrumentedAttribute of the
@@ -1452,7 +1442,6 @@ class _ClassScanMapperConfig(_MapperConfig):
         look_for_dataclass_things = bool(self.dataclass_setup_arguments)
 
         for k in list(collected_attributes):
-
             if k in _include_dunders:
                 continue
 
@@ -1570,7 +1559,6 @@ class _ClassScanMapperConfig(_MapperConfig):
                         assert expect_annotations_wo_mapped
 
                 if isinstance(value, _DCAttributeOptions):
-
                     if (
                         value._has_dataclass_arguments
                         and not look_for_dataclass_things
@@ -1633,7 +1621,6 @@ class _ClassScanMapperConfig(_MapperConfig):
 
         for key, c in list(our_stuff.items()):
             if isinstance(c, _MapsColumns):
-
                 mp_to_assign = c.mapper_property_to_assign
                 if mp_to_assign:
                     our_stuff[key] = mp_to_assign
@@ -1705,7 +1692,6 @@ class _ClassScanMapperConfig(_MapperConfig):
                 table_cls = Table
 
             if tablename is not None:
-
                 args: Tuple[Any, ...] = ()
                 table_kw: Dict[str, Any] = {}
 
@@ -1804,7 +1790,6 @@ class _ClassScanMapperConfig(_MapperConfig):
             and self.inherits is None
             and not _get_immediate_cls_attr(cls, "__no_table__")
         ):
-
             raise exc.InvalidRequestError(
                 "Class %r does not have a __table__ or __tablename__ "
                 "specified and does not inherit from an existing "
@@ -1819,7 +1804,6 @@ class _ClassScanMapperConfig(_MapperConfig):
             )
 
             if table is None:
-
                 # single table inheritance.
                 # ensure no table args
                 if table_args:

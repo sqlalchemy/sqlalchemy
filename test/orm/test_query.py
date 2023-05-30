@@ -358,7 +358,6 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
         (lambda s, users: select(users.c.id, users.c.name),),
     )
     def test_legacy_tuple_old_select(self, test_case):
-
         User, users = self.classes.User, self.tables.users
 
         self.mapper_registry.map_imperatively(User, users)
@@ -798,7 +797,6 @@ class RowLabelingTest(QueryTest):
     @testing.fixture
     def assert_row_keys(self):
         def go(stmt, expected, coreorm_exec, selected_columns=None):
-
             if coreorm_exec == "core":
                 with testing.db.connect() as conn:
                     row = conn.execute(stmt).first()
@@ -824,7 +822,6 @@ class RowLabelingTest(QueryTest):
                 stmt._label_style is not LABEL_STYLE_NONE
                 and coreorm_exec == "orm"
             ):
-
                 for k in expected:
                     is_not_none(getattr(row, k))
 
@@ -1608,7 +1605,6 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
         (Query.order_by, lambda meth, User: meth(User.name)),
     )
     def test_from_statement_text(self, meth, test_case):
-
         User = self.classes.User
         s = fixture_session()
         q = s.query(User)
@@ -1923,7 +1919,6 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_selfref_relationship(self):
-
         Node = self.classes.Node
 
         nalias = aliased(Node)
@@ -2116,7 +2111,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
     def test_clauses(self):
         User, Address = self.classes.User, self.classes.Address
 
-        for (expr, compare) in (
+        for expr, compare in (
             (func.max(User.id), "max(users.id)"),
             (User.id.desc(), "users.id DESC"),
             (
@@ -4660,7 +4655,6 @@ class CountTest(QueryTest):
         eq_(q.distinct().count(), 3)
 
     def test_cols_future(self):
-
         User, Address = self.classes.User, self.classes.Address
 
         s = fixture_session()
@@ -6864,7 +6858,6 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
             Address.special_user == User(id=None, name=None)
         )
         with expect_warnings("Got None for value of column"):
-
             self.assert_compile(
                 q,
                 "SELECT addresses.id AS addresses_id, "
@@ -6983,7 +6976,6 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
             )
         )
         with expect_warnings("Got None for value of column"):
-
             self.assert_compile(
                 q,
                 "SELECT users.id AS users_id, users.name AS users_name "

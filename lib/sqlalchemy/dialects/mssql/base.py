@@ -1309,7 +1309,6 @@ class DATETIMEOFFSET(_DateTimeBase, sqltypes.DateTime):
 class _UnicodeLiteral:
     def literal_processor(self, dialect):
         def process(value):
-
             value = value.replace("'", "''")
 
             if dialect.identifier_preparer._double_percents:
@@ -1838,9 +1837,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
     dialect: MSDialect
 
     def _opt_encode(self, statement):
-
         if self.compiled and self.compiled.schema_translate_map:
-
             rst = self.compiled.preparer._render_schema_translates
             statement = rst(statement, self.compiled.schema_translate_map)
 

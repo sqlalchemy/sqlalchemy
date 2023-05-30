@@ -398,7 +398,6 @@ def _apply_events(engine):
     def before_cursor_execute(
         conn, cursor, statement, parameters, context, executemany
     ):
-
         nonlocal now
         now = time.time()
 

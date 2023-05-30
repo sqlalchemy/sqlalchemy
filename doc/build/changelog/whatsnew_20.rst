@@ -198,7 +198,6 @@ helper):
   ::
 
     with engine.connect() as conn:
-
         # (variable) stmt: Select[Tuple[str, int]]
         stmt = select(str_col, int_col)
 
@@ -262,7 +261,6 @@ helper):
   all the way from statement to result set::
 
       with Session(engine) as session:
-
           # (variable) stmt: Select[Tuple[int, str]]
           stmt_1 = select(User.id, User.name)
 
@@ -277,7 +275,6 @@ helper):
   as a SELECT against two mapped classes::
 
       with Session(engine) as session:
-
           # (variable) stmt: Select[Tuple[User, Address]]
           stmt_2 = select(User, Address).join_from(User, Address)
 
@@ -293,7 +290,6 @@ helper):
   class as well as the return type expected from a statement::
 
       with Session(engine) as session:
-
           # this is in fact an Annotated type, but typing tools don't
           # generally display this
 
@@ -620,6 +616,7 @@ of :class:`_types.String`, as below where use of an ``Annotated`` ``str`` called
     from sqlalchemy.orm import DeclarativeBase
 
     str50 = Annotated[str, 50]
+
 
     # declarative base with a type-level override, using a type that is
     # expected to be used in multiple places
@@ -1844,19 +1841,16 @@ declared class itself to place columns from the declared class first, followed
 by mixin columns.  The following mapping::
 
     class Foo:
-
         col1 = mapped_column(Integer)
         col3 = mapped_column(Integer)
 
 
     class Bar:
-
         col2 = mapped_column(Integer)
         col4 = mapped_column(Integer)
 
 
     class Model(Base, Foo, Bar):
-
         id = mapped_column(Integer, primary_key=True)
         __tablename__ = "model"
 
@@ -1892,14 +1886,12 @@ this is no comfort for the application that defined models the other way
 around, as::
 
     class Foo:
-
         id = mapped_column(Integer, primary_key=True)
         col1 = mapped_column(Integer)
         col3 = mapped_column(Integer)
 
 
     class Model(Foo, Base):
-
         col2 = mapped_column(Integer)
         col4 = mapped_column(Integer)
         __tablename__ = "model"
@@ -1930,7 +1922,6 @@ before or after other columns, as in the example below::
 
 
     class Model(Foo, Base):
-
         col2 = mapped_column(Integer)
         col4 = mapped_column(Integer)
         __tablename__ = "model"

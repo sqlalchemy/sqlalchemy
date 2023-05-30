@@ -333,7 +333,6 @@ class ValidatorTest(_fixtures.FixtureTest):
         )
 
         class User(fixtures.ComparableEntity):
-
             if need_remove_param:
 
                 @validates("addresses", **validate_kw)
@@ -349,7 +348,6 @@ class ValidatorTest(_fixtures.FixtureTest):
                     return item
 
         class Address(fixtures.ComparableEntity):
-
             if need_remove_param:
 
                 @validates("user", **validate_kw)

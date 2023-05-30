@@ -1601,7 +1601,6 @@ class SessionEvents(event.Events[Session]):
         cls, target: Any, identifier: str
     ) -> Union[Session, type]:
         if isinstance(target, scoped_session):
-
             target = target.session_factory
             if not isinstance(target, sessionmaker) and (
                 not isinstance(target, type) or not issubclass(target, Session)
@@ -1642,7 +1641,6 @@ class SessionEvents(event.Events[Session]):
 
         if is_instance_event:
             if not raw or restore_load_context:
-
                 fn = event_key._listen_fn
 
                 def wrap(
@@ -2537,7 +2535,6 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
         propagate: bool = False,
         include_key: bool = False,
     ) -> None:
-
         target, fn = event_key.dispatch_target, event_key._listen_fn
 
         if active_history:

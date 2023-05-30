@@ -662,7 +662,6 @@ class DistinctEngineShardTest(ShardTest, fixtures.MappedTest):
         return self.dbs
 
     def teardown_test(self):
-
         testing_reaper.checkin_all()
         for i in range(1, 5):
             os.remove("shard%d_%s.db" % (i, provision.FOLLOWER_IDENT))

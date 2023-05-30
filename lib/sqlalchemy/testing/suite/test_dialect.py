@@ -109,9 +109,7 @@ class ExceptionTest(fixtures.TablesTest):
 
     @requirements.duplicate_key_raises_integrity_error
     def test_integrity_error(self):
-
         with config.db.connect() as conn:
-
             trans = conn.begin()
             conn.execute(
                 self.tables.manual_pk.insert(), {"id": 1, "data": "d1"}
@@ -251,7 +249,6 @@ class IsolationLevelTest(fixtures.TestBase):
 
 
 class AutocommitIsolationTest(fixtures.TablesTest):
-
     run_deletes = "each"
 
     __requires__ = ("autocommit",)
@@ -542,7 +539,6 @@ class ReturningGuardsTest(fixtures.TablesTest):
 
     @classmethod
     def define_tables(cls, metadata):
-
         Table(
             "t",
             metadata,

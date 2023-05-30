@@ -145,12 +145,10 @@ class ConcreteInhTest(
         )
 
         class Employee(Base, fixtures.ComparableEntity):
-
             __table__ = punion
             __mapper_args__ = {"polymorphic_on": punion.c.type}
 
         class Engineer(Employee):
-
             __table__ = engineers
             __mapper_args__ = {
                 "polymorphic_identity": "engineer",
@@ -158,7 +156,6 @@ class ConcreteInhTest(
             }
 
         class Manager(Employee):
-
             __table__ = managers
             __mapper_args__ = {
                 "polymorphic_identity": "manager",
@@ -178,7 +175,6 @@ class ConcreteInhTest(
         """test the example from the declarative docs."""
 
         class Employee(Base, fixtures.ComparableEntity):
-
             __tablename__ = "people"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -186,7 +182,6 @@ class ConcreteInhTest(
             name = Column(String(50))
 
         class Engineer(Employee):
-
             __tablename__ = "engineers"
             __mapper_args__ = {"concrete": True}
             id = Column(
@@ -196,7 +191,6 @@ class ConcreteInhTest(
             name = Column(String(50))
 
         class Manager(Employee):
-
             __tablename__ = "manager"
             __mapper_args__ = {"concrete": True}
             id = Column(

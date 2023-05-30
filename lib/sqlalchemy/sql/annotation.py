@@ -426,7 +426,6 @@ def _deep_annotate(
     cloned_ids: Dict[int, SupportsAnnotations] = {}
 
     def clone(elem: SupportsAnnotations, **kw: Any) -> SupportsAnnotations:
-
         # ind_cols_on_fromclause means make sure an AnnotatedFromClause
         # has its own .c collection independent of that which its proxying.
         # this is used specifically by orm.LoaderCriteriaOption to break

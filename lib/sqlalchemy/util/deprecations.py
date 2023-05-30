@@ -226,7 +226,6 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_F], _F]:
 
         check_defaults: Union[Set[str], Tuple[()]]
         if spec.defaults is not None:
-
             defaults = dict(
                 zip(
                     spec.args[(len(spec.args) - len(spec.defaults)) :],
@@ -236,7 +235,6 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_F], _F]:
             check_defaults = set(defaults).intersection(messages)
             check_kw = set(messages).difference(defaults)
         elif spec.kwonlydefaults is not None:
-
             defaults = spec.kwonlydefaults
             check_defaults = set(defaults).intersection(messages)
             check_kw = set(messages).difference(defaults)
@@ -320,7 +318,6 @@ def _decorate_cls_with_warning(
 ) -> Type[_T]:
     doc = cls.__doc__ is not None and cls.__doc__ or ""
     if docstring_header is not None:
-
         if constructor is not None:
             docstring_header %= dict(func=constructor)
 

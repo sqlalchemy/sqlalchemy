@@ -63,13 +63,11 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
 
     def test_basic(self):
         class User(Base, fixtures.ComparableEntity):
-
             __tablename__ = "users"
             __autoload_with__ = testing.db
             addresses = relationship("Address", backref="user")
 
         class Address(Base, fixtures.ComparableEntity):
-
             __tablename__ = "addresses"
             __autoload_with__ = testing.db
 
@@ -95,14 +93,12 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
 
     def test_rekey_wbase(self):
         class User(Base, fixtures.ComparableEntity):
-
             __tablename__ = "users"
             __autoload_with__ = testing.db
             nom = Column("name", String(50), key="nom")
             addresses = relationship("Address", backref="user")
 
         class Address(Base, fixtures.ComparableEntity):
-
             __tablename__ = "addresses"
             __autoload_with__ = testing.db
 
@@ -130,7 +126,6 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
     def test_rekey_wdecorator(self):
         @registry.mapped
         class User(fixtures.ComparableMixin):
-
             __tablename__ = "users"
             __autoload_with__ = testing.db
             nom = Column("name", String(50), key="nom")
@@ -138,7 +133,6 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
 
         @registry.mapped
         class Address(fixtures.ComparableMixin):
-
             __tablename__ = "addresses"
             __autoload_with__ = testing.db
 
@@ -165,13 +159,11 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
 
     def test_supplied_fk(self):
         class IMHandle(Base, fixtures.ComparableEntity):
-
             __tablename__ = "imhandles"
             __autoload_with__ = testing.db
             user_id = Column("user_id", Integer, ForeignKey("users.id"))
 
         class User(Base, fixtures.ComparableEntity):
-
             __tablename__ = "users"
             __autoload_with__ = testing.db
             handles = relationship("IMHandle", backref="user")

@@ -306,7 +306,6 @@ class CacheKeyTest(fixtures.CacheKeyFixture, _fixtures.FixtureTest):
         )
 
     def test_selects_w_orm_joins(self):
-
         User, Address, Keyword, Order, Item = self.classes(
             "User", "Address", "Keyword", "Order", "Item"
         )
@@ -338,7 +337,6 @@ class CacheKeyTest(fixtures.CacheKeyFixture, _fixtures.FixtureTest):
         )
 
     def test_orm_query_w_orm_joins(self):
-
         User, Address, Keyword, Order, Item = self.classes(
             "User", "Address", "Keyword", "Order", "Item"
         )
@@ -528,7 +526,6 @@ class CacheKeyTest(fixtures.CacheKeyFixture, _fixtures.FixtureTest):
         )
 
     def test_orm_query_basic(self):
-
         User, Address, Keyword, Order, Item = self.classes(
             "User", "Address", "Keyword", "Order", "Item"
         )
@@ -872,7 +869,6 @@ class RoundTripTest(QueryTest, AssertsCompiledSQL):
         return User, Address
 
     def test_subqueryload(self, plain_fixture):
-
         # subqueryload works pretty poorly w/ caching because it has
         # to create a new query.  previously, baked query went through a
         # bunch of hoops to improve upon this and they were found to be
@@ -945,7 +941,6 @@ class RoundTripTest(QueryTest, AssertsCompiledSQL):
         user_table = inspect(User).persist_selectable
 
         def go():
-
             my_thing = case((User.id > 9, 1), else_=2)
 
             # include entities in the statement so that we test that

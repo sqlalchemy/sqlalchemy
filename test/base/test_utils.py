@@ -682,7 +682,6 @@ class ToListTest(fixtures.TestBase):
         eq_(util.to_list((1, 2, 3)), [1, 2, 3])
 
     def test_from_bytes(self):
-
         eq_(util.to_list(compat.b("abc")), [compat.b("abc")])
 
         eq_(
@@ -891,7 +890,6 @@ class ColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         assert "kcol2" in cc
 
     def test_dupes_add(self):
-
         c1, c2a, c3, c2b = (
             column("c1"),
             column("c2"),
@@ -925,7 +923,6 @@ class ColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         eq_(ci.keys(), ["c1", "c2", "c3", "c2"])
 
     def test_dupes_construct(self):
-
         c1, c2a, c3, c2b = (
             column("c1"),
             column("c2"),
@@ -956,7 +953,6 @@ class ColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         eq_(ci.keys(), ["c1", "c2", "c3", "c2"])
 
     def test_identical_dupe_construct(self):
-
         c1, c2, c3 = (column("c1"), column("c2"), column("c3"))
 
         cc = sql.ColumnCollection(
@@ -1069,7 +1065,6 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         self._assert_collection_integrity(cc)
 
     def test_dupes_construct_dedupe(self):
-
         c1, c2a, c3, c2b = (
             column("c1"),
             column("c2"),
@@ -1114,7 +1109,6 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         eq_(list(ci), [c1, c2, c3])
 
     def test_identical_dupe_construct_dedupes(self):
-
         c1, c2, c3 = (column("c1"), column("c2"), column("c3"))
 
         cc = DedupeColumnCollection(
@@ -1304,7 +1298,6 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         self._assert_collection_integrity(cc)
 
     def test_remove(self):
-
         c1, c2, c3 = column("c1"), column("c2"), column("c3")
 
         cc = DedupeColumnCollection(
@@ -1342,7 +1335,6 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         assert_raises(IndexError, lambda: ci[2])
 
     def test_remove_doesnt_change_iteration(self):
-
         c1, c2, c3, c4, c5 = (
             column("c1"),
             column("c2"),
@@ -2924,7 +2916,6 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
         argnames="fn,wanted,grouped",
     )
     def test_specs(self, fn, wanted, grouped):
-
         # test direct function
         if grouped is None:
             parsed = util.format_argspec_plus(fn)

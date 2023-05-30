@@ -74,7 +74,6 @@ class ProxiedDictMixin:
 
 
 if __name__ == "__main__":
-
     Base = declarative_base()
 
     class AnimalFact(Base):

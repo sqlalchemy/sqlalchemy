@@ -639,7 +639,6 @@ class CompositeProperty(
     def _populate_composite_bulk_save_mappings_fn(
         self,
     ) -> Callable[[Dict[str, Any]], None]:
-
         if self._generated_composite_accessor:
             get_values = self._generated_composite_accessor
         else:
@@ -886,7 +885,6 @@ class ConcreteInheritedProperty(DescriptorProperty[_T]):
     def _comparator_factory(
         self, mapper: Mapper[Any]
     ) -> Type[PropComparator[_T]]:
-
         comparator_callable = None
 
         for m in self.parent.iterate_to_root():

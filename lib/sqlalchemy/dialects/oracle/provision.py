@@ -62,7 +62,6 @@ def _ora_drop_all_schema_objects_pre_tables(cfg, eng):
 
 @drop_all_schema_objects_post_tables.for_db("oracle")
 def _ora_drop_all_schema_objects_post_tables(cfg, eng):
-
     with eng.begin() as conn:
         for syn in conn.dialect._get_synonyms(conn, None, None, None):
             conn.exec_driver_sql(f"drop synonym {syn['synonym_name']}")
@@ -93,7 +92,6 @@ def _oracle_drop_db(cfg, eng, ident):
 
 @stop_test_class_outside_fixtures.for_db("oracle")
 def _ora_stop_test_class_outside_fixtures(config, db, cls):
-
     try:
         _purge_recyclebin(db)
     except exc.DatabaseError as err:
@@ -155,7 +153,6 @@ def _reap_oracle_dbs(url, idents):
     log.info("db reaper connecting to %r", url)
     eng = create_engine(url)
     with eng.begin() as conn:
-
         log.info("identifiers in file: %s", ", ".join(idents))
 
         to_reap = conn.exec_driver_sql(

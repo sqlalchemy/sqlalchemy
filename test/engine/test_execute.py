@@ -1283,7 +1283,6 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
         )
 
     def test_ddl_hastable(self, plain_tables, connection):
-
         map_ = {
             None: config.test_schema,
             "foo": config.test_schema,
@@ -1465,7 +1464,6 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
         )
 
     def test_via_engine(self, plain_tables, metadata):
-
         with config.db.begin() as connection:
             metadata.create_all(connection)
 
@@ -1876,7 +1874,6 @@ class EngineEventsTest(fixtures.TestBase):
         stmt = str(select(1).compile(dialect=e1.dialect))
 
         with e1.connect() as conn:
-
             result = conn.exec_driver_sql(stmt)
             eq_(result.scalar(), 1)
 
@@ -2046,7 +2043,6 @@ class EngineEventsTest(fixtures.TestBase):
 
     @testing.emits_warning("The garbage collector is trying to clean up")
     def test_execute_events(self):
-
         stmts = []
         cursor_stmts = []
 
@@ -2954,7 +2950,6 @@ class HandleErrorTest(fixtures.TestBase):
         with patch.object(
             engine.dialect, "is_disconnect", Mock(return_value=orig_error)
         ):
-
             with engine.connect() as c:
                 try:
                     c.exec_driver_sql("SELECT x FROM nonexistent")
@@ -2994,7 +2989,6 @@ class HandleErrorTest(fixtures.TestBase):
         with patch.object(
             engine.dialect, "is_disconnect", Mock(return_value=orig_error)
         ):
-
             with engine.connect() as c:
                 target_crec = c.connection._connection_record
                 try:
@@ -3035,7 +3029,6 @@ class HandleErrorTest(fixtures.TestBase):
                 assert_raises(MySpecialException, conn.get_isolation_level)
 
     def test_handle_error_not_on_connection(self, connection):
-
         with expect_raises_message(
             tsa.exc.InvalidRequestError,
             r"The handle_error\(\) event hook as of SQLAlchemy 2.0 is "

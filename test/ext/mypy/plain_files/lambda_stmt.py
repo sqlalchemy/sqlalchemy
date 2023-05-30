@@ -49,7 +49,6 @@ s6 = lambda_stmt(lambda: select(User)) + (lambda s: s.where(User.id == 5))
 
 
 if TYPE_CHECKING:
-
     # EXPECTED_TYPE: StatementLambdaElement
     reveal_type(s5)
 

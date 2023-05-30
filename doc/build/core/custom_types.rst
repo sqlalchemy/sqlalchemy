@@ -342,7 +342,6 @@ method::
 
 
     class JSONEncodedDict(TypeDecorator):
-
         impl = VARCHAR
 
         cache_ok = True

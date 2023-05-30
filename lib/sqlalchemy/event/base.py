@@ -340,7 +340,6 @@ class Events(_HasEventsDispatch[_ET]):
             return all(isinstance(target.dispatch, t) for t in types)
 
         def dispatch_parent_is(t: Type[Any]) -> bool:
-
             return isinstance(
                 cast("_JoinedDispatcher[_ET]", target.dispatch).parent, t
             )

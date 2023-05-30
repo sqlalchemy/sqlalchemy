@@ -99,7 +99,6 @@ class ReservedWordFixture(AssertsCompiledSQL):
         try:
             yield table, expected_mysql, expected_mdb
         finally:
-
             reserved_words.RESERVED_WORDS_MARIADB.discard("mdb_reserved")
             reserved_words.RESERVED_WORDS_MYSQL.discard("mysql_reserved")
             reserved_words.RESERVED_WORDS_MYSQL.discard("mdb_mysql_reserved")
@@ -107,7 +106,6 @@ class ReservedWordFixture(AssertsCompiledSQL):
 
 
 class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
-
     __dialect__ = mysql.dialect()
 
     @testing.combinations(
@@ -819,7 +817,6 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         (m.MSSet("1", "2"), "t.col"),
     )
     def test_unsupported_casts(self, type_, expected):
-
         t = sql.table("t", sql.column("col"))
         with expect_warnings(
             "Datatype .* does not support CAST on MySQL/MariaDb;"
@@ -838,7 +835,6 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
     )
     @testing.combinations(True, False, argnames="maria_db")
     def test_float_cast(self, type_, expected, maria_db):
-
         dialect = mysql.dialect()
         if maria_db:
             dialect.is_mariadb = maria_db
@@ -1172,7 +1168,6 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
             )
             dialect = None
         elif version.mysql8:
-
             expected_sql = (
                 "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) "
                 "AS new ON DUPLICATE KEY UPDATE bar = "
@@ -1363,7 +1358,6 @@ class RegexpTestMariaDb(fixtures.TestBase, RegexpCommon):
 
 
 class MatchExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
-
     __dialect__ = mysql.dialect()
 
     match_table = table(

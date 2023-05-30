@@ -980,7 +980,6 @@ class SessionTransaction(_StateChange, TransactionalContext):
     def _iterate_self_and_parents(
         self, upto: Optional[SessionTransaction] = None
     ) -> Iterable[SessionTransaction]:
-
         current = self
         result: Tuple[SessionTransaction, ...] = ()
         while current:
@@ -1083,7 +1082,6 @@ class SessionTransaction(_StateChange, TransactionalContext):
         bind: _SessionBind,
         execution_options: Optional[_ExecuteOptions],
     ) -> Connection:
-
         if bind in self._connections:
             if execution_options:
                 util.warn(
@@ -1179,7 +1177,6 @@ class SessionTransaction(_StateChange, TransactionalContext):
         (SessionTransactionState.ACTIVE,), SessionTransactionState.PREPARED
     )
     def _prepare_impl(self) -> None:
-
         if self._parent is None or self.nested:
             self.session.dispatch.before_commit(self.session)
 
@@ -1249,7 +1246,6 @@ class SessionTransaction(_StateChange, TransactionalContext):
     def rollback(
         self, _capture_exception: bool = False, _to_root: bool = False
     ) -> None:
-
         stx = self.session._transaction
         assert stx is not None
         if stx is not self:
@@ -1285,7 +1281,6 @@ class SessionTransaction(_StateChange, TransactionalContext):
         sess = self.session
 
         if not rollback_err and not sess._is_clean():
-
             # if items were added, deleted, or mutated
             # here, we need to re-restore the snapshot
             util.warn(
@@ -1313,7 +1308,6 @@ class SessionTransaction(_StateChange, TransactionalContext):
         _StateChangeStates.ANY, SessionTransactionState.CLOSED
     )
     def close(self, invalidate: bool = False) -> None:
-
         if self.nested:
             self.session._nested_transaction = (
                 self._previous_nested_transaction
@@ -1749,7 +1743,6 @@ class Session(_SessionClassMethods, EventTarget):
 
     def _autobegin_t(self, begin: bool = False) -> SessionTransaction:
         if self._transaction is None:
-
             if not begin and not self.autobegin:
                 raise sa_exc.InvalidRequestError(
                     "Autobegin is disabled on this Session; please call "
@@ -3191,7 +3184,6 @@ class Session(_SessionClassMethods, EventTarget):
             # prevent against last minute dereferences of the object
             obj = state.obj()
             if obj is not None:
-
                 instance_key = mapper._identity_key_from_state(state)
 
                 if (
@@ -3389,7 +3381,6 @@ class Session(_SessionClassMethods, EventTarget):
     def _delete_impl(
         self, state: InstanceState[Any], obj: object, head: bool
     ) -> None:
-
         if state.key is None:
             if head:
                 raise sa_exc.InvalidRequestError(
@@ -3565,7 +3556,6 @@ class Session(_SessionClassMethods, EventTarget):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
     ) -> Optional[_O]:
-
         # convert composite types to individual args
         if (
             is_composite_class(primary_key_identity)
@@ -3598,7 +3588,6 @@ class Session(_SessionClassMethods, EventTarget):
             )
 
         if is_dict:
-
             pk_synonyms = mapper._pk_synonyms
 
             if pk_synonyms:
@@ -3635,7 +3624,6 @@ class Session(_SessionClassMethods, EventTarget):
             and not mapper.always_refresh
             and with_for_update is None
         ):
-
             instance = self._identity_lookup(
                 mapper,
                 primary_key_identity,
@@ -4171,7 +4159,6 @@ class Session(_SessionClassMethods, EventTarget):
         )
 
     def _flush(self, objects: Optional[Sequence[object]] = None) -> None:
-
         dirty = self._dirty_states
         if not dirty and not self._deleted and not self._new:
             self.identity_map._modified.clear()

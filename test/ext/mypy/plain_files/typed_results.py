@@ -117,7 +117,6 @@ def t_core_mappings() -> None:
 
 
 def t_entity_varieties() -> None:
-
     a1 = aliased(User)
 
     s1 = select(User.id, User, User.name).where(User.name == "foo")
@@ -184,7 +183,6 @@ def t_ambiguous_result_type_one() -> None:
 
 
 def t_ambiguous_result_type_two() -> None:
-
     stmt = select(column("q"))
 
     # EXPECTED_TYPE: Select[Tuple[Any]]
@@ -196,7 +194,6 @@ def t_ambiguous_result_type_two() -> None:
 
 
 def t_aliased() -> None:
-
     a1 = aliased(User)
 
     s1 = select(a1)

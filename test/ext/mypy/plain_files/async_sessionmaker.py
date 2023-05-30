@@ -79,7 +79,6 @@ async def async_main() -> None:
         )
 
     async with async_session() as session:
-
         result = await session.execute(select(A).order_by(A.id))
 
         r: ScalarResult[A] = result.scalars()

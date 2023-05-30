@@ -442,7 +442,6 @@ def _infer_type_from_decl_column(
         )
 
         if left_hand_explicit_type is not None:
-
             return _infer_type_from_left_and_inferred_right(
                 api, node, left_hand_explicit_type, python_type_for_type
             )

@@ -262,7 +262,6 @@ class TestBase:
 
         def run_test(subject, trans_on_subject, execute_on_subject):
             with subject.begin() as trans:
-
                 if begin_nested:
                     if not config.requirements.savepoints.enabled:
                         config.skip_test("savepoints not enabled")
@@ -391,7 +390,6 @@ class FutureEngineMixin:
 
 
 class TablesTest(TestBase):
-
     # 'once', None
     run_setup_bind = "once"
 
@@ -915,7 +913,6 @@ class CacheKeyFixture:
 
             assert b_key is None
         else:
-
             eq_(a_key.key, b_key.key)
             eq_(hash(a_key.key), hash(b_key.key))
 
@@ -1011,7 +1008,6 @@ class CacheKeyFixture:
 def insertmanyvalues_fixture(
     connection, randomize_rows=False, warn_on_downgraded=False
 ):
-
     dialect = connection.dialect
     orig_dialect = dialect._deliver_insertmanyvalues_batches
     orig_conn = connection._exec_insertmany_context

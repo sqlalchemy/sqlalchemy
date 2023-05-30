@@ -164,7 +164,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         for i in range(3):
 
             def go():
-
                 sess = fixture_session()
 
                 u = aliased(User)
@@ -202,7 +201,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.assert_sql_count(testing.db, go, 2)
 
     def test_from_aliased_w_cache_three(self):
-
         User, Dingaling, Address = self.user_dingaling_fixture()
 
         for i in range(3):
@@ -860,7 +858,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         )
 
     def test_double_w_ac_against_subquery(self):
-
         (
             users,
             orders,
@@ -930,7 +927,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self._run_double_test()
 
     def test_double_w_ac(self):
-
         (
             users,
             orders,
@@ -1833,7 +1829,6 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
 
     @classmethod
     def insert_data(cls, connection):
-
         e1 = Engineer(primary_language="java")
         e2 = Engineer(primary_language="c++")
         e1.paperwork = [
@@ -2168,7 +2163,6 @@ class HeterogeneousSubtypesTest(fixtures.DeclarativeMappedTest):
         sess.commit()
 
     def test_one_to_many(self):
-
         Company, Programmer, Manager, GolfSwing, Language = self.classes(
             "Company", "Programmer", "Manager", "GolfSwing", "Language"
         )
@@ -2449,7 +2443,6 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
                 .offset(offset)
                 .options(selectinload(A.bs))
             ):
-
                 # this part fails with joined eager loading
                 # (if you enable joined eager w/ yield_per)
                 eq_(a.bs, [B(id=(a.id * 6) + j) for j in range(1, 6)])
@@ -3701,7 +3694,6 @@ class TestCompositePlusNonComposite(fixtures.DeclarativeMappedTest):
         s.commit()
 
     def test_load_composite_then_non_composite(self):
-
         A, B, A2, B2 = self.classes("A", "B", "A2", "B2")
 
         s = fixture_session()

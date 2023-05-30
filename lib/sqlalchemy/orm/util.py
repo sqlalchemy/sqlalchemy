@@ -957,7 +957,6 @@ class AliasedInsp(
         represents_outer_join: bool,
         nest_adapters: bool,
     ):
-
         mapped_class_or_ac = inspected.entity
         mapper = inspected.mapper
 
@@ -1029,7 +1028,6 @@ class AliasedInsp(
         flat: bool = False,
         adapt_on_names: bool = False,
     ) -> Union[AliasedClass[_O], FromClause]:
-
         if isinstance(element, FromClause):
             if adapt_on_names:
                 raise sa_exc.ArgumentError(
@@ -1063,7 +1061,6 @@ class AliasedInsp(
         adapt_on_names: bool = False,
         _use_mapper_path: bool = False,
     ) -> AliasedClass[_O]:
-
         primary_mapper = _class_to_mapper(base)
 
         if selectable not in (None, False) and flat:
@@ -1440,7 +1437,6 @@ class LoaderCriteriaOption(CriteriaOption):
         )
 
     def _all_mappers(self) -> Iterator[Mapper[Any]]:
-
         if self.entity:
             yield from self.entity.mapper.self_and_descendants
         else:
@@ -1516,14 +1512,12 @@ inspection._inspects(AliasedClass)(lambda target: target._aliased_insp)
 def _inspect_mc(
     class_: Type[_O],
 ) -> Optional[Mapper[_O]]:
-
     try:
         class_manager = opt_manager_of_class(class_)
         if class_manager is None or not class_manager.is_mapped:
             return None
         mapper = class_manager.mapper
     except exc.NO_STATE:
-
         return None
     else:
         return mapper
@@ -1536,7 +1530,6 @@ GenericAlias = type(List[Any])
 def _inspect_generic_alias(
     class_: Type[_O],
 ) -> Optional[Mapper[_O]]:
-
     origin = cast("Type[_O]", typing_get_origin(class_))
     return _inspect_mc(origin)
 
@@ -2316,7 +2309,6 @@ def _extract_mapped_subtype(
     """
 
     if raw_annotation is None:
-
         if required:
             raise sa_exc.ArgumentError(
                 f"Python typing annotation is required for attribute "
@@ -2354,7 +2346,6 @@ def _extract_mapped_subtype(
         if not hasattr(annotated, "__origin__") or not is_origin_of_cls(
             annotated, _MappedAnnotationBase
         ):
-
             if expect_mapped:
                 if getattr(annotated, "__origin__", None) is typing.ClassVar:
                     return None

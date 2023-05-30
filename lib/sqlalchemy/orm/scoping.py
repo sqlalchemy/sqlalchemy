@@ -167,7 +167,6 @@ class scoped_session(Generic[_S]):
         session_factory: sessionmaker[_S],
         scopefunc: Optional[Callable[[], Any]] = None,
     ):
-
         """Construct a new :class:`.scoped_session`.
 
         :param session_factory: a factory to create new :class:`.Session`

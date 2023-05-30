@@ -534,7 +534,6 @@ class FastExecutemanyTest(fixtures.TestBase):
                         )
 
         with engine.begin() as conn:
-
             if expect_failure:
                 with expect_raises(DBAPIError):
                     conn.execute(observations.insert(), records)

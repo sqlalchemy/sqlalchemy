@@ -902,7 +902,6 @@ class DeclarativeBaseNoMeta(inspection.Inspectable[InstanceState[Any]]):
     """
 
     if typing.TYPE_CHECKING:
-
         __tablename__: Any
         """String name to assign to the generated
         :class:`_schema.Table` object, if not specified directly via
@@ -1220,7 +1219,6 @@ class registry:
     def _resolve_type(
         self, python_type: _MatchedOnType
     ) -> Optional[sqltypes.TypeEngine[Any]]:
-
         search: Iterable[Tuple[_MatchedOnType, Type[Any]]]
         python_type_type: Type[Any]
 

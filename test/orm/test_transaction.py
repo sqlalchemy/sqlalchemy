@@ -172,7 +172,6 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
                 assert not connection.in_transaction()
 
         elif external_state.transaction:
-
             assert t1 is not None
 
             if (
@@ -626,7 +625,6 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
             "do_commit",
             side_effect=testing.db.dialect.do_commit,
         ) as succeed_mock:
-
             # sess.begin() -> commit().  why would do_rollback() be called?
             # because of connection pool finalize_fairy *after* the commit.
             # this will cause the conn.close() in session.commit() to fail,
@@ -1009,7 +1007,6 @@ class _LocalFixture(FixtureTest):
 def subtransaction_recipe_one(self):
     @contextlib.contextmanager
     def transaction(session):
-
         if session.in_transaction():
             outermost = False
         else:
@@ -1173,12 +1170,10 @@ class SubtransactionRecipeTest(FixtureTest):
         self.mapper_registry.map_imperatively(User, users)
 
         with fixture_session() as sess:
-
             sess.begin()
             sess.begin_nested()
 
             with subtransaction_recipe(sess):
-
                 sess.add(User(name="u1"))
 
             sess.commit()
@@ -2173,7 +2168,6 @@ class ContextManagerPlusFutureTest(FixtureTest):
 class TransactionFlagsTest(fixtures.TestBase):
     def test_in_transaction(self):
         with fixture_session() as s1:
-
             eq_(s1.in_transaction(), False)
 
             trans = s1.begin()
@@ -2233,7 +2227,6 @@ class TransactionFlagsTest(fixtures.TestBase):
 
     def test_in_transaction_nesting(self):
         with fixture_session() as s1:
-
             eq_(s1.in_transaction(), False)
 
             trans = s1.begin()
@@ -2685,7 +2678,6 @@ class LegacyJoinIntoAnExternalTransactionTest(
             @event.listens_for(self.session, "after_transaction_end")
             def restart_savepoint(session, transaction):
                 if transaction.nested and not transaction._parent.nested:
-
                     # ensure that state is expired the way
                     # session.commit() at the top level normally does
                     # (optional step)

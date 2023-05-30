@@ -1450,7 +1450,6 @@ class SQLiteCompiler(compiler.SQLCompiler):
         return target_text
 
     def visit_on_conflict_do_nothing(self, on_conflict, **kw):
-
         target_text = self._on_conflict_target(on_conflict, **kw)
 
         if target_text:
@@ -1528,7 +1527,6 @@ class SQLiteCompiler(compiler.SQLCompiler):
 
 class SQLiteDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
-
         coltype = self.dialect.type_compiler_instance.process(
             column.type, type_expression=column
         )
@@ -1650,7 +1648,6 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         return text
 
     def visit_foreign_key_constraint(self, constraint, **kw):
-
         local_table = constraint.elements[0].parent.table
         remote_table = constraint.elements[0].column.table
 
@@ -2263,7 +2260,6 @@ class SQLiteDialect(default.DefaultDialect):
         persisted,
         tablesql,
     ):
-
         if generated:
             # the type of a column "cc INTEGER GENERATED ALWAYS AS (1 + 42)"
             # somehow is "INTEGER GENERATED ALWAYS"
@@ -2541,7 +2537,6 @@ class SQLiteDialect(default.DefaultDialect):
     def get_unique_constraints(
         self, connection, table_name, schema=None, **kw
     ):
-
         auto_index_by_sig = {}
         for idx in self.get_indexes(
             connection,

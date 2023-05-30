@@ -31,7 +31,6 @@ class EagerTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-
         Table(
             "owners",
             metadata,

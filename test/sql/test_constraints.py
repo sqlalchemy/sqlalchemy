@@ -810,7 +810,6 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
                 ("sometable", "this_name_is_too_long", "ix_sometable_t_09aa"),
                 ("sometable", "this_name_alsois_long", "ix_sometable_t_3cf1"),
             ]:
-
                 t1 = Table(
                     tname, MetaData(), Column(cname, Integer, index=True)
                 )

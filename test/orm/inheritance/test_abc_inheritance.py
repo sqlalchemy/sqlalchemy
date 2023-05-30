@@ -17,7 +17,6 @@ def _combinations():
     for parent in ["a", "b", "c"]:
         for child in ["a", "b", "c"]:
             for direction in [ONETOMANY, MANYTOONE]:
-
                 name = "Test%sTo%s%s" % (
                     parent,
                     child,

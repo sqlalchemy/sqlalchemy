@@ -52,7 +52,6 @@ class FirstNameOnly(Base):
 
 
 class FirstNameLastName(FirstNameOnly):
-
     last_name: Mapped[str]
 
     @FirstNameOnly.name.getter

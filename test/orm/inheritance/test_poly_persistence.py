@@ -530,7 +530,6 @@ class RoundTripTest(PolymorphTest):
         )
 
     def test_primary_table_only_for_requery(self):
-
         session = fixture_session()
 
         if self.redefine_colprop:

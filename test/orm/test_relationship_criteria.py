@@ -624,7 +624,6 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                 )
             )
         elif style.from_statement:
-
             stmt = (
                 select(Order.id, Order.description)
                 .from_statement(stmt)
@@ -916,7 +915,6 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
         s = Session(testing.db, future=True)
 
         with self.sql_execution_asserter() as asserter:
-
             s.execute(stmt).all()
 
         asserter.assert_(
@@ -941,7 +939,6 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
         User, Address = user_address_fixture
 
         def get_statement(closure="name"):
-
             stmt = select(User).options(
                 selectinload(User.addresses),
                 with_loader_criteria(
@@ -1060,7 +1057,6 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
         User, Address = user_address_fixture
 
         def get_statement(closure="name"):
-
             stmt = (
                 select(User)
                 .options(
@@ -1356,7 +1352,6 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
         )
 
         with self.sql_execution_asserter() as asserter:
-
             s.execute(stmt)
 
         asserter.assert_(
@@ -1878,7 +1873,6 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
         for value in "ed@wood.com", "ed@lala.com":
             s.close()
             with self.sql_execution_asserter() as asserter:
-
                 result = go(value)
 
                 eq_(
@@ -2208,7 +2202,6 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
 
         for value in "ed@wood.com", "ed@lala.com":
             with self.sql_execution_asserter() as asserter:
-
                 result = go(value)
 
                 eq_(
@@ -2281,7 +2274,6 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
 
         for value in "ed@wood.com", "ed@lala.com":
             with self.sql_execution_asserter() as asserter:
-
                 result = go(value)
 
                 eq_(

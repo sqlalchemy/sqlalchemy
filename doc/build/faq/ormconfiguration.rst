@@ -234,6 +234,7 @@ The same idea applies to all the other arguments, such as ``foreign_keys``::
     # also correct !
     foo = relationship(Dest, foreign_keys=[Dest.foo_id, Dest.bar_id])
 
+
     # if you're using columns from the class that you're inside of, just use the column objects !
     class MyClass(Base):
         foo_id = Column(...)

@@ -116,7 +116,6 @@ else:
 if py310:
     anext_ = anext
 else:
-
     _NOT_PROVIDED = object()
     from collections.abc import AsyncIterator
 

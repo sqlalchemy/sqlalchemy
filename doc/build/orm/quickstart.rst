@@ -201,7 +201,6 @@ is used:
     >>> from sqlalchemy.orm import Session
 
     >>> with Session(engine) as session:
-    ...
     ...     spongebob = User(
     ...         name="spongebob",
     ...         fullname="Spongebob Squarepants",

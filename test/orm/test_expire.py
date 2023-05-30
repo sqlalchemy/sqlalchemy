@@ -715,7 +715,6 @@ class ExpireTest(_fixtures.FixtureTest):
         sess = fixture_session(autoflush=False)
 
         with self.sql_execution_asserter(testing.db) as asserter:
-
             if case == "contains,joined":
                 a1 = (
                     sess.query(Address)
@@ -1170,7 +1169,6 @@ class ExpireTest(_fixtures.FixtureTest):
                     "with a refresh"
                 ),
             ):
-
                 sess.refresh(u, ["name"])
 
             # id was not expired

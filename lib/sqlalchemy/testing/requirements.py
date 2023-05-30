@@ -1028,7 +1028,6 @@ class SuiteRequirements(Requirements):
             }
         """
         with config.db.connect() as conn:
-
             try:
                 supported = conn.dialect.get_isolation_level_values(
                     conn.connection.dbapi_connection

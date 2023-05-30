@@ -1117,7 +1117,6 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 self._handle_dbapi_exception(e, None, None, None, None)
 
     def _commit_impl(self) -> None:
-
         if self._has_events or self.engine._has_events:
             self.dispatch.commit(self)
 
@@ -1552,7 +1551,6 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         _CoreMultiExecuteParams,
         _CoreSingleExecuteParams,
     ]:
-
         event_multiparams: _CoreMultiExecuteParams
         event_params: _CoreSingleExecuteParams
 
@@ -1896,7 +1894,6 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 )
 
         if self._echo:
-
             self._log_info(str_statement)
 
             stats = context._get_cache_stats()
@@ -2033,7 +2030,6 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             generic_setinputsizes,
             context,
         ):
-
             if imv_batch.processed_setinputsizes:
                 try:
                     dialect.do_set_input_sizes(
@@ -2065,7 +2061,6 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                     )
 
             if self._echo:
-
                 self._log_info(sql_util._long_statement(sub_stmt))
 
                 imv_stats = f""" {

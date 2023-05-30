@@ -112,7 +112,6 @@ def track_cascade_events(descriptor, prop):
 
         sess = state.session
         if sess:
-
             if sess._warn_on_events:
                 sess._flush_warning("related attribute set")
 
@@ -489,7 +488,6 @@ class UOWTransaction:
 
 
 class IterateMappersMixin:
-
     __slots__ = ()
 
     def _mappers(self, uow):

@@ -1546,7 +1546,6 @@ class MultiPathTest(fixtures.DeclarativeMappedTest):
             session.commit()
 
     def test_data_loaded(self):
-
         User, Task = self.classes("User", "Task")
         session = fixture_session()
 

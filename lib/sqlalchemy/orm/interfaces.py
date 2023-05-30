@@ -969,7 +969,6 @@ class StrategizedProperty(MapperProperty[_T]):
     def _get_context_loader(
         self, context: ORMCompileState, path: AbstractEntityRegistry
     ) -> Optional[_LoadElement]:
-
         load: Optional[_LoadElement] = None
 
         search_path = path[self]

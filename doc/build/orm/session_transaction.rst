@@ -689,7 +689,6 @@ data changes throughout the test are reverted::
             self.session.commit()
 
         def test_something_with_rollbacks(self):
-
             self.session.add(Bar())
             self.session.flush()
             self.session.rollback()

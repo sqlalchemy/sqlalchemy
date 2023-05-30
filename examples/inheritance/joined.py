@@ -91,7 +91,6 @@ engine = create_engine("sqlite://", echo=True)
 Base.metadata.create_all(engine)
 
 with Session(engine) as session:
-
     c = Company(
         name="company1",
         employees=[

@@ -33,7 +33,6 @@ async def async_main():
 
     # conn is an instance of AsyncConnection
     async with engine.begin() as conn:
-
         # to support SQLAlchemy DDL methods as well as legacy functions, the
         # AsyncConnection.run_sync() awaitable method will pass a "sync"
         # version of the AsyncConnection object to any synchronous method,
@@ -49,7 +48,6 @@ async def async_main():
         )
 
     async with engine.connect() as conn:
-
         # the default result object is the
         # sqlalchemy.engine.Result object
         result = await conn.execute(t1.select())

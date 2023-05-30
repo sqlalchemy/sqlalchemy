@@ -168,7 +168,6 @@ class MiscTest(fixtures.TestBase):
         ),
     )
     def test_unwrap_order_by(self, expr, expected):
-
         expr = coercions.expect(roles.OrderByRole, expr)
 
         unwrapped = sql_util.unwrap_order_by(expr)

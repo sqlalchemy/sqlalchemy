@@ -171,7 +171,6 @@ def _binary_operate(
     result_type: Optional[TypeEngine[_T]] = None,
     **kw: Any,
 ) -> OperatorExpression[_T]:
-
     coerced_obj = coercions.expect(
         roles.BinaryElementRole, obj, expr=expr, operator=op
     )

@@ -15,7 +15,6 @@ from sqlalchemy.testing.assertions import eq_
 
 
 class OnConflictTest(fixtures.TablesTest):
-
     __only_on__ = ("postgresql >= 9.5",)
     __backend__ = True
     run_define_tables = "each"

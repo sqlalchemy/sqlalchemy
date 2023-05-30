@@ -271,7 +271,6 @@ class AsyncSessionTransactionTest(AsyncFixture):
 
     @async_test
     async def test_orm_sessionmaker_block_one(self, async_engine):
-
         User = self.classes.User
         maker = sessionmaker(async_engine, class_=AsyncSession)
 
@@ -295,7 +294,6 @@ class AsyncSessionTransactionTest(AsyncFixture):
 
     @async_test
     async def test_orm_sessionmaker_block_two(self, async_engine):
-
         User = self.classes.User
         maker = sessionmaker(async_engine, class_=AsyncSession)
 
@@ -317,7 +315,6 @@ class AsyncSessionTransactionTest(AsyncFixture):
 
     @async_test
     async def test_async_sessionmaker_block_one(self, async_engine):
-
         User = self.classes.User
         maker = async_sessionmaker(async_engine)
 
@@ -341,7 +338,6 @@ class AsyncSessionTransactionTest(AsyncFixture):
 
     @async_test
     async def test_async_sessionmaker_block_two(self, async_engine):
-
         User = self.classes.User
         maker = async_sessionmaker(async_engine)
 
@@ -364,11 +360,9 @@ class AsyncSessionTransactionTest(AsyncFixture):
     @async_test
     async def test_trans(self, async_session, async_engine):
         async with async_engine.connect() as outer_conn:
-
             User = self.classes.User
 
             async with async_session.begin():
-
                 eq_(await outer_conn.scalar(select(func.count(User.id))), 0)
 
                 u1 = User(name="u1")
@@ -384,7 +378,6 @@ class AsyncSessionTransactionTest(AsyncFixture):
     @async_test
     async def test_commit_as_you_go(self, async_session, async_engine):
         async with async_engine.connect() as outer_conn:
-
             User = self.classes.User
 
             eq_(await outer_conn.scalar(select(func.count(User.id))), 0)
@@ -404,7 +397,6 @@ class AsyncSessionTransactionTest(AsyncFixture):
     @async_test
     async def test_trans_noctx(self, async_session, async_engine):
         async with async_engine.connect() as outer_conn:
-
             User = self.classes.User
 
             trans = await async_session.begin()
@@ -571,7 +563,6 @@ class AsyncSessionTransactionTest(AsyncFixture):
         User = self.classes.User
 
         async with async_engine.connect() as conn:
-
             await conn.begin()
 
             await conn.begin_nested()
@@ -737,7 +728,6 @@ class AsyncORMBehaviorsTest(AsyncFixture):
     async def test_new_style_active_history(
         self, async_session, one_to_one_fixture, _legacy_inactive_history_style
     ):
-
         A, B = await one_to_one_fixture(_legacy_inactive_history_style)
 
         a1 = A()
@@ -845,7 +835,6 @@ class AsyncProxyTest(AsyncFixture):
 
     @async_test
     async def test_get_transaction(self, async_session):
-
         is_(async_session.get_transaction(), None)
         is_(async_session.get_nested_transaction(), None)
 
@@ -952,7 +941,6 @@ class AsyncProxyTest(AsyncFixture):
 
     def test_inspect_session_no_asyncio_imported(self):
         with mock.patch("sqlalchemy.orm.state._async_provider", None):
-
             User = self.classes.User
 
             s1 = Session(testing.db)

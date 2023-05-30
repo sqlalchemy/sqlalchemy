@@ -1343,7 +1343,6 @@ class ColumnAdapter(ClauseAdapter):
     def traverse(
         self, obj: Optional[ExternallyTraversible]
     ) -> Optional[ExternallyTraversible]:
-
         return self.columns[obj]
 
     def chain(self, visitor: ExternalTraversal) -> ColumnAdapter:

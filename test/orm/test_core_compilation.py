@@ -476,7 +476,6 @@ class PropagateAttrsTest(QueryTest):
         stmt = resolve_lambda(test_case, User=User, user_table=user_table)
 
         with Session(testing.db) as s:
-
             with mock.patch.object(s, "_autoflush", wrap=True) as before_flush:
                 r = s.execute(stmt)
                 r.close()
@@ -1735,7 +1734,6 @@ class InheritedTest(_poly_fixtures._Polymorphic):
 class ExplicitWithPolymorhpicTest(
     _poly_fixtures._PolymorphicUnions, AssertsCompiledSQL
 ):
-
     __dialect__ = "default"
 
     default_punion = (
@@ -1942,7 +1940,6 @@ class ImplicitWithPolymorphicTest(
         )
 
     def test_select_where_subclass(self):
-
         Engineer = self.classes.Engineer
 
         # what will *not* work with Core, that the ORM does for now,
@@ -1993,7 +1990,6 @@ class ImplicitWithPolymorphicTest(
         )
 
     def test_select_where_columns_subclass(self):
-
         Engineer = self.classes.Engineer
 
         # what will *not* work with Core, that the ORM does for now,
@@ -2261,7 +2257,6 @@ class RelationshipNaturalInheritedTest(InheritedTest, AssertsCompiledSQL):
 class RelNaturalAliasedJoinsTest(
     _poly_fixtures._PolymorphicAliasedJoins, RelationshipNaturalInheritedTest
 ):
-
     # this is the label style for the polymorphic selectable, not the
     # outside query
     label_style = LABEL_STYLE_TABLENAME_PLUS_COL

@@ -62,14 +62,12 @@ class LastrowidTest(fixtures.TablesTest):
         )
 
     def test_autoincrement_on_insert(self, connection):
-
         connection.execute(
             self.tables.autoinc_pk.insert(), dict(data="some data")
         )
         self._assert_round_trip(self.tables.autoinc_pk, connection)
 
     def test_last_inserted_id(self, connection):
-
         r = connection.execute(
             self.tables.autoinc_pk.insert(), dict(data="some data")
         )
@@ -356,14 +354,12 @@ class ReturningTest(fixtures.TablesTest):
         eq_(fetched_pk, pk)
 
     def test_autoincrement_on_insert_implicit_returning(self, connection):
-
         connection.execute(
             self.tables.autoinc_pk.insert(), dict(data="some data")
         )
         self._assert_round_trip(self.tables.autoinc_pk, connection)
 
     def test_last_inserted_id_implicit_returning(self, connection):
-
         r = connection.execute(
             self.tables.autoinc_pk.insert(), dict(data="some data")
         )

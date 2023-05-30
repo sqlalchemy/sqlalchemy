@@ -63,7 +63,6 @@ if HAS_CYTHON and IS_CPYTHON and not DISABLE_EXTENSION:
     cmdclass = {"build_ext": _cy_build_ext}
 
 elif REQUIRE_EXTENSION:
-
     reasons = []
     if not HAS_CYTHON:
         reasons.append("Cython is missing")

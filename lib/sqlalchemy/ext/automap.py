@@ -1290,7 +1290,6 @@ class AutomapBase:
 
                     by_module_properties: ByModuleProperties = cls.by_module
                     for token in map_config.cls.__module__.split("."):
-
                         if token not in by_module_properties:
                             by_module_properties[token] = util.Properties({})
 
@@ -1571,7 +1570,6 @@ def _m2m_relationship(
     name_for_collection_relationship: NameForCollectionRelationshipType,
     generate_relationship: GenerateRelationshipType,
 ) -> None:
-
     map_config = table_to_map_config.get(lcl_m2m, None)
     referred_cfg = table_to_map_config.get(rem_m2m, None)
     if map_config is None or referred_cfg is None:

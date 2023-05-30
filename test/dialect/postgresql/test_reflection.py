@@ -821,7 +821,6 @@ class ReflectionTest(
         assert inspect(connection).has_table("some_temp_table")
 
     def test_cross_schema_reflection_one(self, metadata, connection):
-
         meta1 = metadata
 
         users = Table(
@@ -1127,7 +1126,6 @@ class ReflectionTest(
         )
 
     def test_uppercase_lowercase_table(self, metadata, connection):
-
         a_table = Table("a", metadata, Column("x", Integer))
         A_table = Table("A", metadata, Column("x", Integer))
 
@@ -1138,7 +1136,6 @@ class ReflectionTest(
         assert inspect(connection).has_table("A")
 
     def test_uppercase_lowercase_sequence(self, connection):
-
         a_seq = Sequence("a")
         A_seq = Sequence("A")
 
@@ -1634,7 +1631,6 @@ class ReflectionTest(
         is_false(inspector.has_type("mood"))
 
     def test_inspect_enums(self, metadata, inspect_fixture):
-
         inspector, conn = inspect_fixture
 
         enum_type = postgresql.ENUM(
@@ -1698,7 +1694,6 @@ class ReflectionTest(
 
         for enum in "lower_case", "UpperCase", "Name.With.Dot":
             for schema in None, "test_schema", "TestSchema":
-
                 postgresql.ENUM(
                     "CapsOne",
                     "CapsTwo",
@@ -1753,7 +1748,6 @@ class ReflectionTest(
         counter = itertools.count()
         for enum in "lower_case", "UpperCase", "Name.With.Dot":
             for schema in None, "test_schema", "TestSchema":
-
                 enum_type = postgresql.ENUM(
                     "CapsOne",
                     "CapsTwo",

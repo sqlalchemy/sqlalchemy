@@ -82,7 +82,6 @@ class BackendDialectTest(
         )
 
     def test_no_show_variables(self):
-
         engine = engines.testing_engine()
 
         def my_execute(self, statement, *args, **kw):
@@ -101,7 +100,6 @@ class BackendDialectTest(
                 engine.connect()
 
     def test_no_default_isolation_level(self):
-
         engine = engines.testing_engine()
 
         real_isolation_level = testing.db.dialect.get_isolation_level
@@ -346,7 +344,6 @@ class DialectTest(fixtures.TestBase):
         ("utf8",),
     )
     def test_special_encodings(self, enc):
-
         eng = engines.testing_engine(
             options={"connect_args": {"charset": enc, "use_unicode": 0}}
         )
@@ -360,7 +357,6 @@ class DialectTest(fixtures.TestBase):
 
     @testing.only_on("mariadb+mariadbconnector")
     def test_mariadb_connector_special_encodings(self):
-
         eng = engines.testing_engine()
         conn = eng.connect()
 

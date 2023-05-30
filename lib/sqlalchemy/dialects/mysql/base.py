@@ -1179,7 +1179,6 @@ class MySQLExecutionContext(default.DefaultExecutionContext):
 
 
 class MySQLCompiler(compiler.SQLCompiler):
-
     render_table_with_column_in_update_from = True
     """Overridden from base SQLCompiler value"""
 
@@ -1581,7 +1580,6 @@ class MySQLCompiler(compiler.SQLCompiler):
             tmp = " FOR UPDATE"
 
         if select._for_update_arg.of and self.dialect.supports_for_update_of:
-
             tables = util.OrderedSet()
             for c in select._for_update_arg.of:
                 tables.update(sql_util.surface_selectables_only(c))
@@ -1848,7 +1846,6 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         ):
             arg = opts[opt]
             if opt in _reflection._options_of_type_string:
-
                 arg = self.sql_compiler.render_literal_value(
                     arg, sqltypes.String()
                 )
@@ -1940,7 +1937,6 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
         length = index.dialect_options[self.dialect.name]["length"]
         if length is not None:
-
             if isinstance(length, dict):
                 # length value can be a (column_name --> integer value)
                 # mapping specifying the prefix length for each column of the
@@ -2909,7 +2905,6 @@ class MySQLDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_table_options(self, connection, table_name, schema=None, **kw):
-
         parsed_state = self._parsed_state_or_create(
             connection, table_name, schema, **kw
         )
@@ -2942,7 +2937,6 @@ class MySQLDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):
-
         parsed_state = self._parsed_state_or_create(
             connection, table_name, schema, **kw
         )
@@ -3021,7 +3015,6 @@ class MySQLDialect(default.DefaultDialect):
         ]
 
         if col_tuples:
-
             correct_for_wrong_fk_case = connection.execute(
                 sql.text(
                     """
@@ -3092,7 +3085,6 @@ class MySQLDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_indexes(self, connection, table_name, schema=None, **kw):
-
         parsed_state = self._parsed_state_or_create(
             connection, table_name, schema, **kw
         )
@@ -3168,7 +3160,6 @@ class MySQLDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None, **kw):
-
         charset = self._connection_charset
         full_name = ".".join(
             self.identifier_preparer._quote_free_identifiers(schema, view_name)

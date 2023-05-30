@@ -38,7 +38,6 @@ class Address(fixtures.ComparableEntity):
 
 
 class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
-
     run_setup_mappers = "once"
     run_inserts = "once"
     run_deletes = None

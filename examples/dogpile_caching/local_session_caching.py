@@ -64,7 +64,6 @@ register_backend("sqlalchemy.session", __name__, "ScopedSessionBackend")
 
 
 if __name__ == "__main__":
-
     # set up a region based on the ScopedSessionBackend,
     # pointing to the scoped_session declared in the example
     # environment.

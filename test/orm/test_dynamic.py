@@ -1375,7 +1375,6 @@ class DynamicUOWTest(
     _fixtures.FixtureTest,
     testing.AssertsExecutionResults,
 ):
-
     run_inserts = None
 
     @testing.combinations(
@@ -1975,7 +1974,6 @@ class _HistoryTest:
         if sess:
             sess.autoflush = False
         try:
-
             if self.lazy == "write_only" and compare_passive is not None:
                 eq_(
                     attributes.get_history(

@@ -1161,7 +1161,6 @@ class _memoized_property(generic_fn_descriptor[_T_co]):
 # additional issues, RO properties:
 # https://github.com/python/mypy/issues/12440
 if TYPE_CHECKING:
-
     # allow memoized and non-memoized to be freely mixed by having them
     # be the same class
     memoized_property = generic_fn_descriptor
@@ -1850,7 +1849,6 @@ def _warnings_warn(
     category: Optional[Type[Warning]] = None,
     stacklevel: int = 2,
 ) -> None:
-
     # adjust the given stacklevel to be outside of SQLAlchemy
     try:
         frame = sys._getframe(stacklevel)

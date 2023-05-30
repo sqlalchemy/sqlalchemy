@@ -32,7 +32,6 @@ from sqlalchemy.testing import fixtures
 
 
 class CTETest(fixtures.TestBase, AssertsCompiledSQL):
-
     __dialect__ = "default_enhanced"
 
     def test_nonrecursive(self):
@@ -1530,7 +1529,6 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(stmt.compile().isupdate, False)
 
     def test_pg_example_three(self):
-
         parts = table("parts", column("part"), column("sub_part"))
 
         included_parts = (
@@ -1747,7 +1745,6 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_textual_select_uses_independent_cte_two(self):
-
         foo = table("foo", column("id"))
         bar = table("bar", column("id"), column("attr"), column("foo_id"))
         s1 = select(foo.c.id)
@@ -1990,7 +1987,6 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
-
     __dialect__ = "default_enhanced"
 
     def test_select_with_nesting_cte_in_cte(self):
@@ -2324,7 +2320,6 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
     def test_nesting_cte_in_recursive_cte_positional(
         self, nesting_cte_in_recursive_cte
     ):
-
         self.assert_compile(
             nesting_cte_in_recursive_cte,
             "WITH RECURSIVE rec_cte(outer_cte) AS (WITH nesting AS "
@@ -2695,7 +2690,6 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
     def test_recursive_nesting_cte_in_recursive_cte_positional(
         self, recursive_nesting_cte_in_recursive_cte
     ):
-
         self.assert_compile(
             recursive_nesting_cte_in_recursive_cte,
             "WITH RECURSIVE rec_cte(outer_cte) AS ("

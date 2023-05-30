@@ -31,7 +31,6 @@ remove_str = "# anno only: "
 def run_operation(
     name: str, source: str, dest: str, cmd: code_writer_cmd
 ) -> None:
-
     source_data = Path(source).read_text().replace(remove_str, "")
     dest_data = header.format(source=source, this_file=this_file) + source_data
 

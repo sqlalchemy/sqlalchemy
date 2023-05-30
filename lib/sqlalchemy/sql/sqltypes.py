@@ -804,7 +804,6 @@ class DateTime(
 
     @util.memoized_property
     def _expression_adaptations(self):
-
         # Based on
         # https://www.postgresql.org/docs/current/static/functions-datetime.html.
 
@@ -1515,7 +1514,6 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         matched_on: _MatchedOnType,
         matched_on_flattened: Type[Any],
     ) -> Optional[Enum]:
-
         # "generic form" indicates we were placed in a type map
         # as ``sqlalchemy.Enum(enum.Enum)`` which indicates we need to
         # get enumerated values from the datatype
@@ -2868,7 +2866,6 @@ class ARRAY(
         type: ARRAY
 
         def _setup_getitem(self, index):
-
             arr_type = self.type
 
             return_type: TypeEngine[Any]
@@ -3159,7 +3156,6 @@ class TupleType(TypeEngine[Tuple[Any, ...]]):
     def coerce_compared_value(
         self, op: Optional[OperatorType], value: Any
     ) -> TypeEngine[Any]:
-
         if value is type_api._NO_VALUE_IN_LIST:
             return super().coerce_compared_value(op, value)
         else:
@@ -3674,7 +3670,6 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
 
                 return process
         else:
-
             if not self.as_uuid:
 
                 def process(value):

@@ -430,7 +430,6 @@ def get_from_identity(
     """
     instance = session.identity_map.get(key)
     if instance is not None:
-
         state = attributes.instance_state(instance)
 
         if mapper.inherits and not state.mapper.isa(mapper):
@@ -512,7 +511,6 @@ def load_on_pk_identity(
     require_pk_cols: bool = False,
     is_user_refresh: bool = False,
 ):
-
     """Load the given primary key identity from the database."""
 
     query = statement
@@ -691,7 +689,6 @@ def _set_get_options(
     identity_token=None,
     is_user_refresh=None,
 ):
-
     compile_options = {}
     load_options = {}
     if version_check:
@@ -728,7 +725,6 @@ def _setup_entity_query(
     polymorphic_discriminator=None,
     **kw,
 ):
-
     if with_polymorphic:
         poly_properties = mapper._iterate_polymorphic_properties(
             with_polymorphic
@@ -766,7 +762,6 @@ def _setup_entity_query(
         polymorphic_discriminator is not None
         and polymorphic_discriminator is not mapper.polymorphic_on
     ):
-
         if adapter:
             pd = adapter.columns[polymorphic_discriminator]
         else:
@@ -1026,7 +1021,6 @@ def _instance_processor(
         is_not_primary_key = _none_set.intersection
 
     def _instance(row):
-
         # determine the state that we'll be populating
         if refresh_identity_key:
             # fixed state that we're refreshing
@@ -1335,7 +1329,6 @@ def _populate_full(
 def _populate_partial(
     context, row, state, dict_, isnew, load_path, unloaded, populators
 ):
-
     if not isnew:
         if unloaded:
             # extra pass, see #8166
@@ -1371,7 +1364,6 @@ def _populate_partial(
 
 
 def _validate_version_id(mapper, state, dict_, row, getter):
-
     if mapper._get_state_attr_by_column(
         state, dict_, mapper.version_id_col
     ) != getter(row):
@@ -1577,7 +1569,6 @@ def load_scalar_attributes(mapper, state, attribute_names, passive):
         # currently use state.key
         statement = mapper._optimized_get_statement(state, attribute_names)
         if statement is not None:
-
             # undefer() isn't needed here because statement has the
             # columns needed already, this implicitly undefers that column
             stmt = FromStatement(mapper, statement)

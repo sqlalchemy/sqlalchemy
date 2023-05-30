@@ -338,7 +338,6 @@ class _EventKey(Generic[_ET]):
         retval: Optional[bool] = None,
         asyncio: bool = False,
     ) -> None:
-
         target, identifier = self.dispatch_target, self.identifier
 
         dispatch_collection = getattr(target.dispatch, identifier)

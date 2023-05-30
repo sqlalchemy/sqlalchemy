@@ -583,7 +583,6 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             )
 
     def test_having(self):
-
         Engineer, Manager = self.classes("Engineer", "Manager")
 
         sess = fixture_session()

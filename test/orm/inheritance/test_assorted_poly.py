@@ -1137,7 +1137,6 @@ class ColPropWAliasJoinedToBaseTest(
         Base = cls.DeclarativeBasic
 
         class Content(Base):
-
             __tablename__ = "content"
 
             id = Column(Integer, primary_key=True)
@@ -1147,7 +1146,6 @@ class ColPropWAliasJoinedToBaseTest(
             __mapper_args__ = {"polymorphic_on": type}
 
         class Folder(Content):
-
             __tablename__ = "folder"
 
             id = Column(ForeignKey("content.id"), primary_key=True)
@@ -1422,7 +1420,6 @@ class GenerativeTest(fixtures.MappedTest, AssertsExecutionResults):
             "Status", "Person", "Engineer", "Manager", "Car"
         )
         with sessionmaker(connection).begin() as session:
-
             active = Status(name="active")
             dead = Status(name="dead")
 
@@ -2312,7 +2309,6 @@ class CorrelateExceptWPolyAdaptTest(
     __dialect__ = "default"
 
     def _fixture(self, use_correlate_except):
-
         Base = self.DeclarativeBasic
 
         class Superclass(Base):
@@ -2636,7 +2632,6 @@ class PolyIntoSelfReferentialTest(
         )
 
         with Session(connection) as sess:
-
             grandparent_otherrel1 = OtherRelated(name="GP1")
             grandparent_otherrel2 = OtherRelated(name="GP2")
 

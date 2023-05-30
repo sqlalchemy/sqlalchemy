@@ -570,7 +570,6 @@ class AsyncSession(ReversibleProxy[Session]):
         identity_token: Optional[Any] = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
     ) -> Optional[_O]:
-
         """Return an instance based on the given primary key identifier,
         or ``None`` if not found.
 
@@ -625,7 +624,6 @@ class AsyncSession(ReversibleProxy[Session]):
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> AsyncResult[Any]:
-
         """Execute a statement and return a streaming
         :class:`_asyncio.AsyncResult` object.
 

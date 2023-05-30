@@ -464,7 +464,6 @@ class TypeCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
-
     __dialect__ = mysql.dialect()
     __only_on__ = "mysql", "mariadb"
     __backend__ = True
@@ -552,7 +551,6 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
         argnames="store, expected",
     )
     def test_bit_50_roundtrip(self, connection, bit_table, store, expected):
-
         reflected = Table("mysql_bits", MetaData(), autoload_with=connection)
 
         expected = expected or store
@@ -747,7 +745,6 @@ class JSONTest(fixtures.TestBase):
 
     @testing.requires.reflects_json_type
     def test_reflection(self, metadata, connection):
-
         Table("mysql_json", metadata, Column("foo", mysql.JSON))
         metadata.create_all(connection)
 
@@ -772,7 +769,6 @@ class JSONTest(fixtures.TestBase):
 class EnumSetTest(
     fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
 ):
-
     __only_on__ = "mysql", "mariadb"
     __dialect__ = mysql.dialect()
     __backend__ = True
@@ -1216,7 +1212,6 @@ class EnumSetTest(
         )
 
     def test_enum_parse(self, metadata, connection):
-
         enum_table = Table(
             "mysql_enum",
             metadata,

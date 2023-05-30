@@ -104,7 +104,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         argnames="type_obj,ddl",
     )
     def test_assorted_types(self, metadata, connection, type_obj, ddl):
-
         table = Table("type_test", metadata, Column("col1", type_obj))
         table.create(connection)
 
@@ -318,7 +317,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         """test #6910"""
 
         with testing.db.connect() as c1, testing.db.connect() as c2:
-
             try:
                 with c1.begin():
                     c1.exec_driver_sql(
@@ -535,7 +533,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         )
 
     def test_indexes_cols(self, metadata, connection):
-
         t1 = Table("t", metadata, Column("x", Integer), Column("y", Integer))
         Index("foo", t1.c.x, t1.c.y)
         metadata.create_all(connection)
@@ -546,7 +543,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         eq_(set(list(t2.indexes)[0].columns), {t2.c["x"], t2.c.y})
 
     def test_indexes_cols_with_commas(self, metadata, connection):
-
         t1 = Table(
             "t",
             metadata,
@@ -562,7 +558,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         eq_(set(list(t2.indexes)[0].columns), {t2.c["x, col"], t2.c.y})
 
     def test_indexes_cols_with_spaces(self, metadata, connection):
-
         t1 = Table(
             "t",
             metadata,
@@ -578,7 +573,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         eq_(set(list(t2.indexes)[0].columns), {t2.c["x col"], t2.c.y})
 
     def test_indexes_with_filtered(self, metadata, connection):
-
         t1 = Table(
             "t",
             metadata,
@@ -1047,7 +1041,6 @@ class IdentityReflectionTest(fixtures.TablesTest):
 
     @classmethod
     def define_tables(cls, metadata):
-
         for i, col in enumerate(
             [
                 Column(

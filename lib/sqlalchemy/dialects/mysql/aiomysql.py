@@ -285,7 +285,6 @@ class MySQLDialect_aiomysql(MySQLDialect_pymysql):
 
     @classmethod
     def get_pool_class(cls, url):
-
         async_fallback = url.query.get("async_fallback", False)
 
         if util.asbool(async_fallback):

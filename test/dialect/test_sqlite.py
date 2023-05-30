@@ -68,7 +68,6 @@ def exec_sql(engine, sql, *args, **kwargs):
 
 
 class TestTypes(fixtures.TestBase, AssertsExecutionResults):
-
     __only_on__ = "sqlite"
 
     __backend__ = True
@@ -109,7 +108,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         )
 
     def test_cant_parse_datetime_message(self, connection):
-        for (typ, disp) in [
+        for typ, disp in [
             (Time, "time"),
             (DateTime, "datetime"),
             (Date, "date"),
@@ -282,7 +281,6 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
 
 
 class JSONTest(fixtures.TestBase):
-
     __requires__ = ("json_type",)
     __only_on__ = "sqlite"
     __backend__ = True
@@ -441,12 +439,10 @@ class TimeTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
-
     __only_on__ = "sqlite"
     __backend__ = True
 
     def test_default_reflection(self, connection, metadata):
-
         specs = [
             (String(3), '"foo"'),
             (sqltypes.NUMERIC(10, 2), "100.50"),
@@ -474,7 +470,6 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
         "table_info()",
     )
     def test_default_reflection_2(self):
-
         db = testing.db
         m = MetaData()
         expected = ["'my_default'", "0"]
@@ -576,7 +571,6 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
 class DialectTest(
     fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
 ):
-
     __only_on__ = "sqlite"
     __backend__ = True
 
@@ -892,7 +886,6 @@ class AttachedDBTest(fixtures.TablesTest):
         eq_(len(c2.c), 2)
 
     def test_crud(self, connection):
-
         (ct,) = self.tables("test_schema.created")
         connection.execute(ct.insert(), {"id": 1, "name": "foo"})
         eq_(connection.execute(ct.select()).fetchall(), [(1, "foo")])
@@ -1039,7 +1032,6 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_column_defaults_ddl(self):
-
         t = Table(
             "t",
             MetaData(),
@@ -1154,7 +1146,6 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class OnConflictDDLTest(fixtures.TestBase, AssertsCompiledSQL):
-
     __dialect__ = sqlite.dialect()
 
     def test_on_conflict_clause_column_not_null(self):
@@ -1208,7 +1199,6 @@ class OnConflictDDLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_on_conflict_clause_unique_constraint(self):
-
         meta = MetaData()
         t = Table(
             "n",
@@ -1226,7 +1216,6 @@ class OnConflictDDLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_on_conflict_clause_primary_key(self):
-
         meta = MetaData()
         t = Table(
             "n",
@@ -1248,7 +1237,6 @@ class OnConflictDDLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_on_conflict_clause_primary_key_constraint_from_column(self):
-
         meta = MetaData()
         t = Table(
             "n",
@@ -1269,7 +1257,6 @@ class OnConflictDDLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_on_conflict_clause_check_constraint(self):
-
         meta = MetaData()
         t = Table(
             "n",
@@ -1287,7 +1274,6 @@ class OnConflictDDLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_on_conflict_clause_check_constraint_from_column(self):
-
         meta = MetaData()
         t = Table(
             "n",
@@ -1308,7 +1294,6 @@ class OnConflictDDLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_on_conflict_clause_primary_key_constraint(self):
-
         meta = MetaData()
         t = Table(
             "n",
@@ -1499,7 +1484,6 @@ metadata = cattable = matchtable = None
 
 
 class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
-
     __only_on__ = "sqlite"
     __skip_if__ = (full_text_search_missing,)
     __backend__ = True
@@ -1744,7 +1728,6 @@ class ConstraintReflectionTest(fixtures.TestBase):
     @classmethod
     def setup_test_class(cls):
         with testing.db.begin() as conn:
-
             conn.exec_driver_sql("CREATE TABLE a1 (id INTEGER PRIMARY KEY)")
             conn.exec_driver_sql("CREATE TABLE a2 (id INTEGER PRIMARY KEY)")
             conn.exec_driver_sql(
@@ -1933,7 +1916,6 @@ class ConstraintReflectionTest(fixtures.TestBase):
 
     @testing.fixture
     def temp_table_fixture(self, connection):
-
         connection.exec_driver_sql(
             "CREATE TEMPORARY TABLE g "
             "(x INTEGER, CONSTRAINT foo_gx UNIQUE(x))"
@@ -1983,7 +1965,6 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 with mock.patch.object(
                     dialect, "_get_table_sql", _get_table_sql
                 ):
-
                     fkeys = dialect.get_foreign_keys(None, "foo")
                     eq_(
                         fkeys,
@@ -2401,7 +2382,6 @@ class ConstraintReflectionTest(fixtures.TestBase):
     def test_unique_constraint_named_broken_temp(
         self, connection, temp_table_fixture
     ):
-
         inspector = inspect(connection)
         eq_(
             inspector.get_unique_constraints("g"),
@@ -2598,7 +2578,6 @@ class SavepointTest(fixtures.TablesTest):
 
 
 class TypeReflectionTest(fixtures.TestBase):
-
     __only_on__ = "sqlite"
     __backend__ = True
 
@@ -2863,7 +2842,6 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 
 class OnConflictTest(AssertsCompiledSQL, fixtures.TablesTest):
-
     __only_on__ = ("sqlite >= 3.24.0",)
     __backend__ = True
 
@@ -2980,7 +2958,6 @@ class OnConflictTest(AssertsCompiledSQL, fixtures.TablesTest):
                 stmt.on_conflict_do_nothing,
                 stmt.on_conflict_do_update,
             ):
-
                 with testing.expect_raises_message(
                     exc.InvalidRequestError,
                     "This Insert construct already has an "
@@ -3578,7 +3555,6 @@ class ReflectInternalSchemaTables(fixtures.TablesTest):
         eq_(res, ["sqlitetemptable"])
 
     def test_get_temp_view_names(self, connection):
-
         view = (
             "CREATE TEMPORARY VIEW sqlitetempview AS "
             "SELECT * FROM sqliteatable"

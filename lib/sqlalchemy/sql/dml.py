@@ -1113,7 +1113,6 @@ class ValuesBase(UpdateBase):
                 )
 
             elif isinstance(arg, collections_abc.Sequence):
-
                 if arg and isinstance(arg[0], dict):
                     multi_kv_generator = DMLState.get_plugin_class(
                         self
@@ -1283,7 +1282,6 @@ class Insert(ValuesBase):
         return self
 
     if TYPE_CHECKING:
-
         # START OVERLOADED FUNCTIONS self.returning ReturningInsert 1-8 ", *, sort_by_parameter_order: bool = False"  # noqa: E501
 
         # code within this block is **programmatically,
@@ -1725,7 +1723,6 @@ class Delete(DMLWhereBase, UpdateBase):
         )
 
     if TYPE_CHECKING:
-
         # START OVERLOADED FUNCTIONS self.returning ReturningDelete 1-8
 
         # code within this block is **programmatically,

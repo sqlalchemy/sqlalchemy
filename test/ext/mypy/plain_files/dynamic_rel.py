@@ -36,20 +36,17 @@ with Session() as session:
     session.commit()
 
     if typing.TYPE_CHECKING:
-
         # EXPECTED_TYPE: AppenderQuery[Address]
         reveal_type(u.addresses)
 
     count = u.addresses.count()
     if typing.TYPE_CHECKING:
-
         # EXPECTED_TYPE: int
         reveal_type(count)
 
     address = u.addresses.filter(Address.email_address.like("xyz")).one()
 
     if typing.TYPE_CHECKING:
-
         # EXPECTED_TYPE: Address
         reveal_type(address)
 
@@ -59,7 +56,6 @@ with Session() as session:
     current_addresses = list(u.addresses)
 
     if typing.TYPE_CHECKING:
-
         # EXPECTED_TYPE: list[Address]
         reveal_type(current_addresses)
 

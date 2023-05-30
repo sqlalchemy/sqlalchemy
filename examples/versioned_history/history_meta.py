@@ -28,7 +28,6 @@ def _is_versioning_col(col):
 
 
 def _history_mapper(local_mapper):
-
     cls = local_mapper.class_
 
     if cls.__dict__.get("_history_mapper_configured", False):

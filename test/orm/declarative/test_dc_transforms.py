@@ -210,7 +210,6 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
 
     def test_warn_on_non_dc_mixin(self):
         class _BaseMixin:
-
             create_user: Mapped[int] = mapped_column()
             update_user: Mapped[Optional[int]] = mapped_column(
                 default=None, init=False
@@ -692,7 +691,6 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             b: Mapped[int] = mapped_column(default=1)
 
         class Child(Mixin, dc_decl_base):
-
             __tablename__ = "child"
 
             _: dataclasses.KW_ONLY
@@ -1264,7 +1262,6 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
             )
 
         if dataclass_scope.on_base_class:
-
             with non_dc_mixin():
 
                 class Book(Mixin, MappedAsDataclass, Base, **klass_kw):
@@ -1297,7 +1294,6 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
             expected_annotations[Book] = {"id": int, "polymorphic_type": str}
 
         if dataclass_scope.on_sub_class:
-
             with non_dc_mixin():
 
                 class Novel(MappedAsDataclass, Book, **klass_kw):
@@ -1309,7 +1305,6 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
                     description: Mapped[Optional[str]]
 
         else:
-
             with non_dc_mixin():
 
                 class Novel(Book):

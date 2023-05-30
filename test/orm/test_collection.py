@@ -351,7 +351,6 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             assert_eq()
 
         if hasattr(direct, "__setitem__") or hasattr(direct, "__setslice__"):
-
             values = [creator(), creator()]
             direct[:] = values
             control[:] = values
@@ -548,7 +547,6 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self.assert_(e7 not in canary.removed)
 
     def _test_list_dataclasses(self, typecallable):
-
         creator = self.SimpleComparableEntity
 
         @dataclasses.dataclass
@@ -584,7 +582,6 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self._test_list_dataclasses(list)
 
     def test_list_setitem_with_slices(self):
-
         # this is a "list" that has no __setslice__
         # or __delslice__ methods.  The __setitem__
         # and __delitem__ must therefore accept
@@ -1082,7 +1079,6 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             self.assert_(e3 in canary.data)
 
     def _test_set_dataclasses(self, typecallable):
-
         creator = self.SimpleComparableEntity
 
         @dataclasses.dataclass
@@ -1471,7 +1467,6 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         )
 
     def _test_dict_dataclasses(self, typecallable):
-
         creator = self.SimpleComparableEntity
 
         @dataclasses.dataclass

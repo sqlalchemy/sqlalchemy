@@ -100,7 +100,6 @@ def test_orm_query_new_style_using_external_lambdas(n):
 
     session = Session(bind=engine)
     for id_ in random.sample(ids, n):
-
         stmt = lambdas.lambda_stmt(lambda: future_select(Customer))
         stmt += lambda s: s.where(Customer.id == id_)
         session.execute(stmt).scalar_one()
@@ -185,7 +184,6 @@ def test_core_reuse_stmt(n):
     stmt = select(Customer.__table__).where(Customer.id == bindparam("id"))
     with engine.connect() as conn:
         for id_ in random.sample(ids, n):
-
             row = conn.execute(stmt, {"id": id_}).first()
             tuple(row)
 

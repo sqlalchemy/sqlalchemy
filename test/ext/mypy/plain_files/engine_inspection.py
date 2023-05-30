@@ -13,7 +13,6 @@ cols = insp.get_columns("some_table")
 c1 = cols[0]
 
 if typing.TYPE_CHECKING:
-
     # EXPECTED_RE_TYPE: sqlalchemy.engine.base.Engine
     reveal_type(e)
 

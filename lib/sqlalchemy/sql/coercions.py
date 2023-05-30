@@ -373,7 +373,6 @@ def expect(
         if impl._resolve_literal_only:
             resolved = impl._literal_coercion(element, **kw)
         else:
-
             original_element = element
 
             is_clause_element = False
@@ -802,7 +801,6 @@ class ExpressionElementImpl(_ColumnCoercions, RoleImpl):
 
 
 class BinaryElementImpl(ExpressionElementImpl, RoleImpl):
-
     __slots__ = ()
 
     def _literal_coercion(
@@ -961,7 +959,6 @@ class StrAsPlainColumnImpl(_CoerceLiterals, RoleImpl):
 
 
 class ByOfImpl(_CoerceLiterals, _ColumnCoercions, RoleImpl, roles.ByOfRole):
-
     __slots__ = ()
 
     _coerce_consts = True
@@ -1053,7 +1050,6 @@ class TruncatedLabelImpl(_StringOnly, RoleImpl):
 
 
 class DDLExpressionImpl(_Deannotate, _CoerceLiterals, RoleImpl):
-
     __slots__ = ()
 
     _coerce_consts = True

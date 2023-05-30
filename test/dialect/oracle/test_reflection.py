@@ -348,7 +348,6 @@ class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class ConstraintTest(AssertsCompiledSQL, fixtures.TestBase):
-
     __only_on__ = "oracle"
     __backend__ = True
 
@@ -361,7 +360,6 @@ class ConstraintTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_oracle_has_no_on_update_cascade(
         self, metadata, connection, plain_foo_table
     ):
-
         bar = Table(
             "bar",
             metadata,
@@ -384,7 +382,6 @@ class ConstraintTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_reflect_check_include_all(
         self, metadata, connection, plain_foo_table
     ):
-
         insp = inspect(connection)
         eq_(insp.get_check_constraints("foo"), [])
         eq_(
@@ -545,7 +542,6 @@ class SystemTableTablenamesTest(fixtures.TestBase):
     __backend__ = True
 
     def setup_test(self):
-
         with testing.db.begin() as conn:
             conn.exec_driver_sql("create table my_table (id integer)")
             conn.exec_driver_sql(
@@ -649,7 +645,6 @@ class TableReflectionTest(fixtures.TestBase):
 
     @testing.fails_if(all_tables_compression_missing)
     def test_reflect_basic_compression(self, metadata, connection):
-
         tbl = Table(
             "test_compress",
             metadata,
@@ -940,7 +935,6 @@ class RoundTripIndexTest(fixtures.TestBase):
     def test_include_indexes_resembling_pk(
         self, metadata, connection, explicit_pk
     ):
-
         t = Table(
             "sometable",
             metadata,
@@ -1086,7 +1080,6 @@ class RoundTripIndexTest(fixtures.TestBase):
         eq_(inspect(connection).get_indexes("sometable"), expected)
 
     def test_basic(self, metadata, connection):
-
         s_table = Table(
             "sometable",
             metadata,

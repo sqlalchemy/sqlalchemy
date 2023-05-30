@@ -1149,7 +1149,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
     @testing.crashes("oracle", "FIXME: unknown, confirm not fails_on")
     @testing.requires.check_constraints
     def test_reserved(self, connection, metadata):
-
         # check a table that uses a SQL reserved name doesn't cause an
         # error
 
@@ -1632,7 +1631,6 @@ class UnicodeReflectionTest(fixtures.TablesTest):
 
     @classmethod
     def define_tables(cls, metadata):
-
         no_multibyte_period = {("plain", "col_plain", "ix_plain")}
         no_has_table = [
             (
@@ -1720,7 +1718,6 @@ class UnicodeReflectionTest(fixtures.TablesTest):
         reflected = set(inspect(connection).get_table_names())
 
         if not names.issubset(reflected) and hasattr(unicodedata, "normalize"):
-
             # Python source files in the utf-8 coding seem to
             # normalize literals as NFC (and the above are
             # explicitly NFC).  Maybe this database normalizes NFD
@@ -1773,7 +1770,6 @@ class SchemaTest(fixtures.TestBase):
     @testing.requires.cross_schema_fk_reflection
     @testing.requires.implicit_default_schema
     def test_blank_schema_arg(self, connection, metadata):
-
         Table(
             "some_table",
             metadata,
@@ -1803,7 +1799,6 @@ class SchemaTest(fixtures.TestBase):
 
     @testing.requires.schemas
     def test_explicit_default_schema(self, connection, metadata):
-
         schema = connection.dialect.default_schema_name
 
         assert bool(schema)
@@ -2164,7 +2159,6 @@ class ColumnEventsTest(fixtures.RemovesEvents, fixtures.TablesTest):
         m = MetaData()
 
         def column_reflect(insp, table, column_info):
-
             if column_info["name"] == "q":
                 column_info["key"] = "qyz"
             elif column_info["name"] == "x":

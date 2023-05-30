@@ -122,7 +122,6 @@ def all_partial_orderings(tuples, elements):
         edges[child].add(parent)
 
     def _all_orderings(elements):
-
         if len(elements) == 1:
             yield list(elements)
         else:
@@ -325,7 +324,6 @@ def metadata_fixture(ddl="function"):
 
     def decorate(fn):
         def run_ddl(self):
-
             metadata = self.metadata = schema.MetaData()
             try:
                 result = fn(self, metadata)
@@ -349,7 +347,6 @@ def force_drop_names(*names):
 
     @decorator
     def go(fn, *args, **kw):
-
         try:
             return fn(*args, **kw)
         finally:
@@ -403,7 +400,6 @@ def drop_all_tables(
     consider_schemas=(None,),
     include_names=None,
 ):
-
     if include_names is not None:
         include_names = set(include_names)
 

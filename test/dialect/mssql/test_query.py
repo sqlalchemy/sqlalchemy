@@ -136,7 +136,6 @@ class IdentityInsertTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     @testing.requires.schemas
     def test_insert_using_schema_translate(self, connection, metadata):
-
         t = Table(
             "t",
             metadata,
@@ -411,7 +410,6 @@ def full_text_search_missing():
 
 
 class MatchTest(AssertsCompiledSQL, fixtures.TablesTest):
-
     __only_on__ = "mssql"
     __skip_if__ = (full_text_search_missing,)
     __backend__ = True
