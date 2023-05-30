@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9862
+
+    Fixed issue where :class:`.DeclarativeBaseNoMeta` declarative base class
+    would not function with non-mapped mixins or abstract classes, raising an
+    ``AttributeError`` instead.

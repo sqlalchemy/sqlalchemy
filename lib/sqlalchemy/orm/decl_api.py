@@ -943,7 +943,7 @@ class DeclarativeBaseNoMeta(inspection.Inspectable[InstanceState[Any]]):
             _check_not_declarative(cls, DeclarativeBaseNoMeta)
             _setup_declarative_base(cls)
         else:
-            cls._sa_registry.map_declaratively(cls)
+            _as_declarative(cls._sa_registry, cls, cls.__dict__)
 
 
 def add_mapped_attribute(
