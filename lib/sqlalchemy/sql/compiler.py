@@ -715,7 +715,6 @@ class FromLinter(collections.namedtuple("FromLinter", ["froms", "edges"])):
 
         # FROMS left over?  boom
         if the_rest:
-
             froms = the_rest
             if froms:
                 template = (
@@ -1763,7 +1762,6 @@ class SQLCompiler(Compiled):
     ) -> MutableMapping[
         str, Union[_BindProcessorType[Any], Sequence[_BindProcessorType[Any]]]
     ]:
-
         # mypy is not able to see the two value types as the above Union,
         # it just sees "object".  don't know how to resolve
         return {
@@ -1856,7 +1854,6 @@ class SQLCompiler(Compiled):
         has_escaped_names = escape_names and bool(self.escaped_bind_names)
 
         if extracted_parameters:
-
             # related the bound parameters collected in the original cache key
             # to those collected in the incoming cache key.  They will not have
             # matching names but they will line up positionally in the same
@@ -1883,7 +1880,6 @@ class SQLCompiler(Compiled):
             resolved_extracted = None
 
         if params:
-
             pd = {}
             for bindparam, name in self.bind_names.items():
                 escaped_name = (
@@ -2631,7 +2627,6 @@ class SQLCompiler(Compiled):
     def visit_textual_select(
         self, taf, compound_index=None, asfrom=False, **kw
     ):
-
         toplevel = not self.stack
         entry = self._default_stack_entry if toplevel else self.stack[-1]
 
@@ -2704,7 +2699,6 @@ class SQLCompiler(Compiled):
         )
 
     def _generate_delimited_and_list(self, clauses, **kw):
-
         lcc, clauses = elements.BooleanClauseList._process_clauses_for_boolean(
             operators.and_,
             elements.True_._singleton,
@@ -2780,7 +2774,6 @@ class SQLCompiler(Compiled):
         )
 
     def _format_frame_clause(self, range_, **kw):
-
         return "%s AND %s" % (
             "UNBOUNDED PRECEDING"
             if range_[0] is elements.RANGE_UNBOUNDED
@@ -2995,7 +2988,6 @@ class SQLCompiler(Compiled):
     def visit_unary(
         self, unary, add_to_result_map=None, result_map_targets=(), **kw
     ):
-
         if add_to_result_map is not None:
             result_map_targets += (unary,)
             kw["add_to_result_map"] = add_to_result_map
@@ -3130,7 +3122,6 @@ class SQLCompiler(Compiled):
     def _literal_execute_expanding_parameter_literal_binds(
         self, parameter, values, bind_expression_template=None
     ):
-
         typ_dialect_impl = parameter.type._unwrapped_dialect_impl(self.dialect)
 
         if not values:
@@ -3155,7 +3146,6 @@ class SQLCompiler(Compiled):
             and isinstance(values[0], collections_abc.Sequence)
             and not isinstance(values[0], (str, bytes))
         ):
-
             if typ_dialect_impl._has_bind_expression:
                 raise NotImplementedError(
                     "bind_expression() on TupleType not supported with "
@@ -3204,7 +3194,6 @@ class SQLCompiler(Compiled):
         return (), replacement_expression
 
     def _literal_execute_expanding_parameter(self, name, parameter, values):
-
         if parameter.literal_execute:
             return self._literal_execute_expanding_parameter_literal_binds(
                 parameter, values
@@ -3238,7 +3227,6 @@ class SQLCompiler(Compiled):
         if not values:
             to_update = []
             if typ_dialect_impl._is_tuple_type:
-
                 replacement_expression = self.visit_empty_set_op_expr(
                     parameter.type.types, parameter.expand_op
                 )
@@ -3373,7 +3361,6 @@ class SQLCompiler(Compiled):
     def _generate_generic_binary(
         self, binary, opstring, eager_grouping=False, **kw
     ):
-
         _in_binary = kw.get("_in_binary", False)
 
         kw["_in_binary"] = True
@@ -3839,7 +3826,6 @@ class SQLCompiler(Compiled):
         visited_bindparam: Optional[List[str]] = None,
         **kw: Any,
     ) -> str:
-
         # TODO: accumulate_bind_names is passed by crud.py to gather
         # names on a per-value basis, visited_bindparam is passed by
         # visit_insert() to collect all parameters in the statement.
@@ -3850,7 +3836,6 @@ class SQLCompiler(Compiled):
             visited_bindparam.append(name)
 
         if not escaped_from:
-
             if self._bind_translate_re.search(name):
                 # not quite the translate use case as we want to
                 # also get a quick boolean if we even found
@@ -4132,7 +4117,6 @@ class SQLCompiler(Compiled):
         from_linter=None,
         **kwargs,
     ):
-
         if lateral:
             if "enclosing_lateral" not in kwargs:
                 # if lateral is set and enclosing_lateral is not
@@ -5046,7 +5030,6 @@ class SQLCompiler(Compiled):
         populate_result_map: bool,
         **kw: Any,
     ) -> str:
-
         columns = [
             self._label_returning_column(
                 stmt,
@@ -5568,7 +5551,6 @@ class SQLCompiler(Compiled):
                 replaced_parameters = base_parameters.copy()
 
                 for i, param in enumerate(batch):
-
                     fmv = formatted_values_clause.replace(
                         "EXECMANY_INDEX__", str(i)
                     )
@@ -5599,7 +5581,6 @@ class SQLCompiler(Compiled):
             batchnum += 1
 
     def visit_insert(self, insert_stmt, visited_bindparam=None, **kw):
-
         compile_state = insert_stmt._compile_state_factory(
             insert_stmt, self, **kw
         )
@@ -5727,7 +5708,6 @@ class SQLCompiler(Compiled):
 
         returning_cols = self.implicit_returning or insert_stmt._returning
         if returning_cols:
-
             add_sentinel_cols = crud_params_struct.use_sentinel_columns
 
             if add_sentinel_cols is not None:
@@ -5822,7 +5802,6 @@ class SQLCompiler(Compiled):
         elif not crud_params_single and supports_default_values:
             text += " DEFAULT VALUES"
             if use_insertmanyvalues:
-
                 self._insertmanyvalues = _InsertManyValues(
                     True,
                     self.dialect.default_metavalue_token,
@@ -5862,7 +5841,6 @@ class SQLCompiler(Compiled):
             )
 
             if use_insertmanyvalues:
-
                 if (
                     implicit_sentinel
                     and (
@@ -5998,7 +5976,6 @@ class SQLCompiler(Compiled):
         )
 
     def visit_update(self, update_stmt, **kw):
-
         compile_state = update_stmt._compile_state_factory(
             update_stmt, self, **kw
         )
@@ -6537,7 +6514,6 @@ class DDLCompiler(Compiled):
     def create_table_constraints(
         self, table, _include_foreign_key_constraints=None, **kw
     ):
-
         # On some DB order is significant: visit PK first, then the
         # other constraints (engine.ReflectionTest.testbasic failed on FB2)
         constraints = []
@@ -6882,11 +6858,15 @@ class DDLCompiler(Compiled):
             formatted_name = self.preparer.format_constraint(constraint)
             if formatted_name is not None:
                 text += "CONSTRAINT %s " % formatted_name
-        text += "UNIQUE (%s)" % (
-            ", ".join(self.preparer.quote(c.name) for c in constraint)
+        text += "UNIQUE %s(%s)" % (
+            self.define_unique_constraint_distinct(constraint, **kw),
+            ", ".join(self.preparer.quote(c.name) for c in constraint),
         )
         text += self.define_constraint_deferrability(constraint)
         return text
+
+    def define_unique_constraint_distinct(self, constraint, **kw) -> str:
+        return ""
 
     def define_constraint_cascades(self, constraint):
         text = ""
@@ -7002,7 +6982,6 @@ class GenericTypeCompiler(TypeCompiler):
         return "NCLOB"
 
     def _render_string_type(self, type_, name, length_override=None):
-
         text = name
         if length_override:
             text += "(%d)" % length_override

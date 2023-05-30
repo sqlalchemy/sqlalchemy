@@ -2316,28 +2316,17 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         return text
 
-    def visit_unique_constraint(self, constraint, **kw):
-        if len(constraint) == 0:
-            return ""
-        nulls_not_distinct_option = ""
+    def define_unique_constraint_distinct(self, constraint, **kw) -> str:
         nulls_not_distinct = constraint.dialect_options["postgresql"][
             "nulls_not_distinct"
         ]
         if nulls_not_distinct is True:
-            nulls_not_distinct_option = "NULLS NOT DISTINCT "
+            nulls_not_distinct_param = "NULLS NOT DISTINCT "
         elif nulls_not_distinct is False:
-            nulls_not_distinct_option = "NULLS DISTINCT "
-        text = ""
-        if constraint.name is not None:
-            formatted_name = self.preparer.format_constraint(constraint)
-            if formatted_name is not None:
-                text += "CONSTRAINT %s " % formatted_name
-        text += "UNIQUE %s(%s)" % (
-            nulls_not_distinct_option,
-            ", ".join(self.preparer.quote(c.name) for c in constraint),
-        )
-        text += self.define_constraint_deferrability(constraint)
-        return text
+            nulls_not_distinct_param = "NULLS DISTINCT "
+        else:
+            nulls_not_distinct_param = ""
+        return nulls_not_distinct_param
 
     def visit_drop_index(self, drop, **kw):
         index = drop.element
