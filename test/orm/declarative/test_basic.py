@@ -3227,3 +3227,92 @@ class NamedAttrOrderingTest(fixtures.TestBase):
 
         stmt = select(new_cls)
         eq_(stmt.selected_columns.keys(), col_names_only)
+
+    @testing.variation(
+        "mapping_style",
+        [
+            "decl_base_fn",
+            "decl_base_base",
+            "decl_base_no_meta",
+            "map_declaratively",
+            "decorator",
+            "mapped_as_dataclass",
+        ],
+    )
+    def test_no_imperative_with_declarative_table(self, mapping_style):
+        if mapping_style.decl_base_fn:
+            Base = declarative_base()
+
+            class DecModel(Base):
+                __tablename__ = "foo"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[str]
+
+        elif mapping_style.decl_base_base:
+
+            class Base(DeclarativeBase):
+                pass
+
+            class DecModel(Base):
+                __tablename__ = "foo"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[str]
+
+        elif mapping_style.decl_base_no_meta:
+
+            class Base(DeclarativeBaseNoMeta):
+                pass
+
+            class DecModel(Base):
+                __tablename__ = "foo"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[str]
+
+        elif mapping_style.decorator:
+            r = registry()
+
+            @r.mapped
+            class DecModel:
+                __tablename__ = "foo"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[str]
+
+        elif mapping_style.map_declaratively:
+
+            class DecModel:
+                __tablename__ = "foo"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[str]
+
+            registry().map_declaratively(DecModel)
+        elif mapping_style.decorator:
+            r = registry()
+
+            @r.mapped
+            class DecModel:
+                __tablename__ = "foo"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[str]
+
+        elif mapping_style.mapped_as_dataclass:
+            r = registry()
+
+            @r.mapped_as_dataclass
+            class DecModel:
+                __tablename__ = "foo"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data: Mapped[str]
+
+        else:
+            assert False
+
+        class ImpModel:
+            id: int
+            data: str
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            "FROM expression, such as a Table or alias.. object expected "
+            "for argument 'local_table'; got",
+        ):
+            registry().map_imperatively(ImpModel, DecModel)

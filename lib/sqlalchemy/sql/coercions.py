@@ -335,6 +335,7 @@ def expect(
     apply_propagate_attrs: Optional[ClauseElement] = None,
     argname: Optional[str] = None,
     post_inspect: bool = False,
+    disable_inspection: bool = False,
     **kw: Any,
 ) -> Any:
     if (
@@ -398,7 +399,7 @@ def expect(
                         break
 
             if not is_clause_element:
-                if impl._use_inspection:
+                if impl._use_inspection and not disable_inspection:
                     insp = inspection.inspect(element, raiseerr=False)
                     if insp is not None:
                         if post_inspect:

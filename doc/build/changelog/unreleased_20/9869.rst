@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9869
+
+    Added a check to prevent invocation of
+    :meth:`_orm.registry.map_imperatively` using a mapped class as
+    :paramref:`_orm.registry.map_imperatively.local_table`.

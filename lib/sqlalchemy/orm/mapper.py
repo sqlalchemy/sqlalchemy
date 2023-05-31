@@ -754,7 +754,10 @@ class Mapper(
 
         if local_table is not None:
             self.local_table = coercions.expect(
-                roles.StrictFromClauseRole, local_table
+                roles.StrictFromClauseRole,
+                local_table,
+                disable_inspection=True,
+                argname="local_table",
             )
         elif self.inherits:
             # note this is a new flow as of 2.0 so that
