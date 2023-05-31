@@ -692,6 +692,75 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             ],
         )
 
+    def test_undefer_group_with_load(self):
+        users, Order, User, orders = (
+            self.tables.users,
+            self.classes.Order,
+            self.classes.User,
+            self.tables.orders,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+        )
+        self.mapper_registry.map_imperatively(
+            Order,
+            orders,
+            properties=util.OrderedDict(
+                [
+                    ("userident", deferred(orders.c.user_id, group="primary")),
+                    (
+                        "description",
+                        deferred(orders.c.description, group="primary"),
+                    ),
+                    ("opened", deferred(orders.c.isopen, group="primary")),
+                    ("user", relationship(User)),
+                ]
+            ),
+        )
+
+        sess = fixture_session()
+        q = (
+            sess.query(Order)
+            .filter(Order.id == 3)
+            .options(
+                selectinload(Order.user),
+                undefer_group("primary"),
+            )
+        )
+
+        def go():
+            result = q.all()
+            print(result)
+            o = result[0]
+            eq_(o.opened, 1)
+            eq_(o.userident, 7)
+            eq_(o.description, "order 3")
+            u = o.user
+            eq_(u.id, 7)
+
+        self.sql_eq_(
+            go,
+            [
+                (
+                    "SELECT orders.id AS orders_id, "
+                    "orders.user_id AS orders_user_id, "
+                    "orders.address_id AS orders_address_id, "
+                    "orders.description AS orders_description, "
+                    "orders.isopen AS orders_isopen "
+                    "FROM orders WHERE orders.id = :id_1",
+                    {"id_1": 3},
+                ),
+                (
+                    "SELECT users.id AS users_id, users.name AS users_name "
+                    "FROM users WHERE users.id IN "
+                    "(__[POSTCOMPILE_primary_keys])",
+                    [{"primary_keys": [7]}],
+                ),
+            ],
+        )
+
     def test_undefer_group_from_relationship_lazyload(self):
         users, Order, User, orders = (
             self.tables.users,
