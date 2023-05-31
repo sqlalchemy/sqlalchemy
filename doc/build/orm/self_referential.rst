@@ -116,8 +116,7 @@ to a specific folder within that account::
         name = mapped_column(String)
 
         parent_folder = relationship(
-            "Folder", back_populates="child_folders",
-            remote_side=[account_id, folder_id]
+            "Folder", back_populates="child_folders", remote_side=[account_id, folder_id]
         )
 
         child_folders = relationship("Folder", back_populates="parent_folder")
