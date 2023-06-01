@@ -146,7 +146,7 @@ class Visitable:
             cls._original_compiler_dispatch
         ) = _compiler_dispatch
 
-    def __class_getitem__(cls, key: str) -> Any:
+    def __class_getitem__(cls, key: Any) -> Any:
         # allow generic classes in py3.9+
         return cls
 

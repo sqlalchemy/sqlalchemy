@@ -1532,7 +1532,7 @@ class registry:
 
         if hasattr(cls, "__class_getitem__"):
 
-            def __class_getitem__(cls: Type[_T], key: str) -> Type[_T]:
+            def __class_getitem__(cls: Type[_T], key: Any) -> Type[_T]:
                 # allow generic classes in py3.9+
                 return cls
 
