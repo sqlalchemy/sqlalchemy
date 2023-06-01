@@ -30,7 +30,6 @@ This dialect should normally be used only with the
 
 """  # noqa
 from contextlib import asynccontextmanager
-from functools import partial
 
 from .pymysql import MySQLDialect_pymysql
 from ... import pool
@@ -267,7 +266,7 @@ class AsyncAdapt_asyncmy_dbapi:
 
     def connect(self, *arg, **kw):
         async_fallback = kw.pop("async_fallback", False)
-        creator_fn = kw.pop("creator_fn", partial(self.asyncmy.connect))
+        creator_fn = kw.pop("creator_fn", self.asyncmy.connect)
 
         if util.asbool(async_fallback):
             return AsyncAdaptFallback_asyncmy_connection(

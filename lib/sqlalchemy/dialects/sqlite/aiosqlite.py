@@ -298,7 +298,7 @@ class AsyncAdapt_aiosqlite_dbapi:
 
     def connect(self, *arg, **kw):
         async_fallback = kw.pop("async_fallback", False)
-        creator_fn = kw.pop("creator_fn", partial(self.aiosqlite.connect))
+        creator_fn = kw.pop("creator_fn", self.aiosqlite.connect)
         connection = creator_fn(*arg, **kw)
 
         # it's a Thread.   you'll thank us later

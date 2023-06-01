@@ -34,8 +34,6 @@ This dialect should normally be used only with the
 
 
 """  # noqa
-from functools import partial
-
 from .pymysql import MySQLDialect_pymysql
 from ... import pool
 from ... import util
@@ -256,7 +254,7 @@ class AsyncAdapt_aiomysql_dbapi:
 
     def connect(self, *arg, **kw):
         async_fallback = kw.pop("async_fallback", False)
-        creator_fn = kw.pop("creator_fn", partial(self.aiomysql.connect))
+        creator_fn = kw.pop("creator_fn", self.aiomysql.connect)
 
         if util.asbool(async_fallback):
             return AsyncAdaptFallback_aiomysql_connection(
