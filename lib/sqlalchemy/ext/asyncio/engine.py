@@ -95,7 +95,9 @@ def create_async_engine(url: Union[str, URL], **kw: Any) -> AsyncEngine:
             # note that to send adapted arguments like
             # prepared_statement_cache_size, user would use
             # "creator" and emulate this form here
-            return sync_engine.dialect.dbapi.connect(creator_fn=async_creator)
+            return sync_engine.dialect.dbapi.connect(  # type: ignore
+                creator_fn=async_creator
+            )
 
         kw["creator"] = creator
     sync_engine = _create_engine(url, **kw)

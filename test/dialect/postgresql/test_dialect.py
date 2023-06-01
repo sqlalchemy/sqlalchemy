@@ -39,6 +39,7 @@ from sqlalchemy.dialects.postgresql.psycopg2 import (
 )
 from sqlalchemy.engine import url
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
+from sqlalchemy.testing import async_test
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import expect_raises_message
@@ -1214,3 +1215,27 @@ class Psycopg3Test(fixtures.TestBase):
     def test_async_version(self):
         e = create_engine("postgresql+psycopg_async://")
         is_true(isinstance(e.dialect, psycopg_dialect.PGDialectAsync_psycopg))
+
+
+class AsyncPostgresTest(fixtures.TestBase):
+    __requires__ = ("async_dialect",)
+
+    @testing.only_on("postgresql+psycopg")
+    @async_test
+    async def test_async_creator(self, async_testing_engine):
+        import psycopg
+
+        url = config.db.url.render_as_string(hide_password=False)
+        # format URL properly, strip driver
+        url = url.replace("+psycopg_async", "")
+
+        async def async_creator():
+            conn = await psycopg.AsyncConnection.connect(url)
+            return conn
+
+        engine = async_testing_engine(
+            options={"async_creator": async_creator},
+        )
+        async with engine.connect() as conn:
+            result = await conn.execute(select(1))
+            eq_(result.scalar(), 1)
