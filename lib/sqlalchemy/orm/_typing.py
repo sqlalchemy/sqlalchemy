@@ -53,15 +53,8 @@ _T = TypeVar("_T", bound=Any)
 
 _T_co = TypeVar("_T_co", bound=Any, covariant=True)
 
-# I would have preferred this were bound=object however it seems
-# to not travel in all situations when defined in that way.
-_O = TypeVar("_O", bound=Any)
+_O = TypeVar("_O", bound=object)
 """The 'ORM mapped object' type.
-
-"""
-
-_OO = TypeVar("_OO", bound=object)
-"""The 'ORM mapped object, that's definitely object' type.
 
 """
 

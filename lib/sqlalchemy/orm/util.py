@@ -935,7 +935,7 @@ class AliasedInsp(
     _weak_entity: weakref.ref[AliasedClass[_O]]
     """the AliasedClass that refers to this AliasedInsp"""
 
-    _target: Union[_O, AliasedClass[_O]]
+    _target: Union[Type[_O], AliasedClass[_O]]
     """the thing referred towards by the AliasedClass/AliasedInsp.
 
     In the vast majority of cases, this is the mapped class.  However
