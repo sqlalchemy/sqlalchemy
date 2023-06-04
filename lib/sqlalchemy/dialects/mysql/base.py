@@ -1210,8 +1210,11 @@ class MySQLCompiler(compiler.SQLCompiler):
 
     def visit_string_agg_func(self, fn, **kw):
         if len(fn.clauses) > 1:
+            clause = ", ".join(
+                elem._compiler_dispatch(self, **kw) for elem in fn.clauses[:-1]
+            )
             return "group_concat(%s SEPARATOR %s)" % (
-                fn.clauses[0]._compiler_dispatch(self, **kw),
+                clause,
                 fn.clauses[-1]._compiler_dispatch(self, **kw),
             )
         else:
