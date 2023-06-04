@@ -1,50 +1,47 @@
-from sqlalchemy import Column
+from __future__ import annotations
+
+from typing import Dict
+from typing import Optional
+
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
-from sqlalchemy import Integer
-from sqlalchemy import String
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import backref
-from sqlalchemy.orm import joinedload
+from sqlalchemy import select
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import MappedAsDataclass
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.collections import attribute_keyed_dict
 
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 
-class TreeNode(Base):
+class TreeNode(MappedAsDataclass, Base):
     __tablename__ = "tree"
-    id = Column(Integer, primary_key=True)
-    parent_id = Column(Integer, ForeignKey(id))
-    name = Column(String(50), nullable=False)
 
-    children = relationship(
-        "TreeNode",
-        # cascade deletions
+    id: Mapped[int] = mapped_column(primary_key=True, init=False)
+    parent_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("tree.id"), init=False
+    )
+    name: Mapped[str]
+
+    children: Mapped[Dict[str, TreeNode]] = relationship(
         cascade="all, delete-orphan",
-        # many to one + adjacency list - remote_side
-        # is required to reference the 'remote'
-        # column in the join condition.
-        backref=backref("parent", remote_side=id),
-        # children will be represented as a dictionary
-        # on the "name" attribute.
+        back_populates="parent",
         collection_class=attribute_keyed_dict("name"),
+        init=False,
+        repr=False,
     )
 
-    def __init__(self, name, parent=None):
-        self.name = name
-        self.parent = parent
+    parent: Mapped[Optional[TreeNode]] = relationship(
+        back_populates="children", remote_side=id, default=None
+    )
 
-    def __repr__(self):
-        return "TreeNode(name=%r, id=%r, parent_id=%r)" % (
-            self.name,
-            self.id,
-            self.parent_id,
-        )
-
-    def dump(self, _indent=0):
+    def dump(self, _indent: int = 0) -> str:
         return (
             "   " * _indent
             + repr(self)
@@ -56,70 +53,65 @@ class TreeNode(Base):
 if __name__ == "__main__":
     engine = create_engine("sqlite://", echo=True)
 
-    def msg(msg, *args):
-        msg = msg % args
-        print("\n\n\n" + "-" * len(msg.split("\n")[0]))
-        print(msg)
-        print("-" * len(msg.split("\n")[0]))
-
-    msg("Creating Tree Table:")
+    print("Creating Tree Table:")
 
     Base.metadata.create_all(engine)
 
-    session = Session(engine)
+    with Session(engine) as session:
+        node = TreeNode("rootnode")
+        TreeNode("node1", parent=node)
+        TreeNode("node3", parent=node)
 
-    node = TreeNode("rootnode")
-    TreeNode("node1", parent=node)
-    TreeNode("node3", parent=node)
+        node2 = TreeNode("node2")
+        TreeNode("subnode1", parent=node2)
+        node.children["node2"] = node2
+        TreeNode("subnode2", parent=node.children["node2"])
 
-    node2 = TreeNode("node2")
-    TreeNode("subnode1", parent=node2)
-    node.children["node2"] = node2
-    TreeNode("subnode2", parent=node.children["node2"])
+        print(f"Created new tree structure:\n{node.dump()}")
 
-    msg("Created new tree structure:\n%s", node.dump())
+        print("flush + commit:")
 
-    msg("flush + commit:")
+        session.add(node)
+        session.commit()
 
-    session.add(node)
-    session.commit()
+        print(f"Tree after save:\n{node.dump()}")
 
-    msg("Tree After Save:\n %s", node.dump())
-
-    TreeNode("node4", parent=node)
-    TreeNode("subnode3", parent=node.children["node4"])
-    TreeNode("subnode4", parent=node.children["node4"])
-    TreeNode("subsubnode1", parent=node.children["node4"].children["subnode3"])
-
-    # remove node1 from the parent, which will trigger a delete
-    # via the delete-orphan cascade.
-    del node.children["node1"]
-
-    msg("Removed node1.  flush + commit:")
-    session.commit()
-
-    msg("Tree after save:\n %s", node.dump())
-
-    msg(
-        "Emptying out the session entirely, selecting tree on root, using "
-        "eager loading to join four levels deep."
-    )
-    session.expunge_all()
-    node = (
-        session.query(TreeNode)
-        .options(
-            joinedload("children")
-            .joinedload("children")
-            .joinedload("children")
-            .joinedload("children")
+        session.add_all(
+            [
+                TreeNode("node4", parent=node),
+                TreeNode("subnode3", parent=node.children["node4"]),
+                TreeNode("subnode4", parent=node.children["node4"]),
+                TreeNode(
+                    "subsubnode1",
+                    parent=node.children["node4"].children["subnode3"],
+                ),
+            ]
         )
-        .filter(TreeNode.name == "rootnode")
-        .first()
-    )
 
-    msg("Full Tree:\n%s", node.dump())
+        # remove node1 from the parent, which will trigger a delete
+        # via the delete-orphan cascade.
+        del node.children["node1"]
 
-    msg("Marking root node as deleted, flush + commit:")
+        print("Removed node1.  flush + commit:")
+        session.commit()
 
-    session.delete(node)
-    session.commit()
+        print("Tree after save, will unexpire all nodes:\n")
+        print(f"{node.dump()}")
+
+    with Session(engine) as session:
+        print(
+            "Perform a full select of the root node, eagerly loading "
+            "up to a depth of four"
+        )
+        node = session.scalars(
+            select(TreeNode)
+            .options(selectinload(TreeNode.children, recursion_depth=4))
+            .filter(TreeNode.name == "rootnode")
+        ).one()
+
+        print(f"Full Tree:\n{node.dump()}")
+
+        print("Marking root node as deleted, flush + commit:")
+
+        session.delete(node)
+        session.commit()

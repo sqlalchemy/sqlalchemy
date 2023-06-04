@@ -10,6 +10,7 @@ import asyncio
 from typing import Any
 from typing import Awaitable
 from typing import Callable
+from typing import cast
 from typing import Dict
 from typing import Generic
 from typing import Iterable
@@ -581,8 +582,10 @@ class AsyncSession(ReversibleProxy[Session]):
 
         """
 
+        # result_obj = self.sync_session.get(entity, ident)
+
         result_obj = await greenlet_spawn(
-            self.sync_session.get,
+            cast("Callable[..., _O]", self.sync_session.get),
             entity,
             ident,
             options=options,

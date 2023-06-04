@@ -578,7 +578,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         return self._pending_mutations[key]
 
     def __getstate__(self) -> Dict[str, Any]:
-        state_dict = {
+        state_dict: Dict[str, Any] = {
             "instance": self.obj(),
             "class_": self.class_,
             "committed_state": self.committed_state,
