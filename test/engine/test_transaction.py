@@ -276,7 +276,6 @@ class TransactionTest(fixtures.TablesTest):
         savepoint = [None]
 
         def go():
-
             with connection.begin_nested() as sp:
                 savepoint[0] = sp
                 # force the "commit" of the savepoint that occurs
@@ -614,7 +613,6 @@ class TransactionTest(fixtures.TablesTest):
 
     @testing.requires.autocommit
     def test_no_autocommit_w_begin(self):
-
         with testing.db.begin() as conn:
             assert_raises_message(
                 exc.InvalidRequestError,
@@ -628,7 +626,6 @@ class TransactionTest(fixtures.TablesTest):
 
     @testing.requires.autocommit
     def test_no_autocommit_w_autobegin(self):
-
         with testing.db.connect() as conn:
             conn.execute(select(1))
 
@@ -650,7 +647,6 @@ class TransactionTest(fixtures.TablesTest):
         users = self.tables.users
 
         with testing.db.connect() as conn:
-
             assert not conn.in_transaction()
             conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
 
@@ -745,7 +741,6 @@ class TransactionTest(fixtures.TablesTest):
     def test_rollback_inactive(self):
         users = self.tables.users
         with testing.db.connect() as conn:
-
             conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
             conn.commit()
 
@@ -1161,7 +1156,6 @@ class IsolationLevelTest(fixtures.TestBase):
             assert False, "no non-default isolation level available"
 
     def test_engine_param_stays(self):
-
         eng = testing_engine()
         with eng.connect() as conn:
             isolation_level = eng.dialect.get_isolation_level(
@@ -1480,11 +1474,9 @@ class ConnectionCharacteristicTest(fixtures.TestBase):
             transactional = True
 
             def reset_characteristic(self, dialect, dbapi_conn):
-
                 dialect.reset_foo(dbapi_conn)
 
             def set_characteristic(self, dialect, dbapi_conn, value):
-
                 dialect.set_foo(dbapi_conn, value)
 
             def get_characteristic(self, dialect, dbapi_conn):
@@ -1515,7 +1507,6 @@ class ConnectionCharacteristicTest(fixtures.TestBase):
         return base.Engine(pool, FooDialect(), u), connection
 
     def test_engine_param_stays(self, characteristic_fixture):
-
         engine, connection = characteristic_fixture
 
         foo_level = engine.dialect.get_foo(engine.connect().connection)
@@ -1594,7 +1585,6 @@ class ConnectionCharacteristicTest(fixtures.TestBase):
         )
 
     def test_per_engine(self, characteristic_fixture):
-
         engine, connection = characteristic_fixture
 
         pool, dialect, url = engine.pool, engine.dialect, engine.url
@@ -1607,7 +1597,6 @@ class ConnectionCharacteristicTest(fixtures.TestBase):
         eq_(eng.dialect.get_foo(conn.connection), "new_value")
 
     def test_per_option_engine(self, characteristic_fixture):
-
         engine, connection = characteristic_fixture
 
         eng = engine.execution_options(foo="new_value")

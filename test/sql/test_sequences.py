@@ -162,7 +162,6 @@ class SequenceExecTest(fixtures.TestBase):
         self._assert_seq_result(connection.scalar(s))
 
     def test_execute_deprecated(self, connection):
-
         s = normalize_sequence(config, Sequence("my_sequence", optional=True))
 
         with expect_deprecated(

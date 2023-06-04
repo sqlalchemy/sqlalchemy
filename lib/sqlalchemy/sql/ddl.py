@@ -944,7 +944,6 @@ class SchemaGenerator(InvokeCreateDDLBase):
             checkfirst=self.checkfirst,
             _is_metadata_operation=_is_metadata_operation,
         ):
-
             for column in table.columns:
                 if column.default is not None:
                     self.traverse_single(column.default)
@@ -1074,7 +1073,6 @@ class SchemaDropper(InvokeDropDDLBase):
             tables=event_collection,
             checkfirst=self.checkfirst,
         ):
-
             for table, fkcs in collection:
                 if table is not None:
                     self.traverse_single(
@@ -1144,7 +1142,6 @@ class SchemaDropper(InvokeDropDDLBase):
             checkfirst=self.checkfirst,
             _is_metadata_operation=_is_metadata_operation,
         ):
-
             DropTable(table)._invoke_with(self.connection)
 
             # traverse client side defaults which may refer to server-side
@@ -1168,7 +1165,6 @@ class SchemaDropper(InvokeDropDDLBase):
             DropConstraint(constraint)._invoke_with(self.connection)
 
     def visit_sequence(self, sequence, drop_ok=False):
-
         if not drop_ok and not self._can_drop_sequence(sequence):
             return
         with self.with_ddl_events(sequence):

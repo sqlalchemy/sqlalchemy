@@ -748,7 +748,6 @@ class SetTest(_CollectionOperations):
             {"e", "f", "g"},
             set(),
         ):
-
             eq_(p1.children.union(other), control.union(other))
             eq_(p1.children.difference(other), control.difference(other))
             eq_((p1.children - other), (control - other))
@@ -1194,7 +1193,6 @@ class ScalarTest(fixtures.MappedTest):
 class LazyLoadTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-
         Table(
             "Parent",
             metadata,
@@ -2373,7 +2371,6 @@ class DictOfTupleUpdateTest(fixtures.MappedTest):
         cls.mapper_registry.map_imperatively(B, b)
 
     def test_update_one_elem_dict(self):
-
         a1 = self.classes.A()
         a1.elements.update({("B", 3): "elem2"})
         eq_(a1.elements, {("B", 3): "elem2"})
@@ -2884,7 +2881,6 @@ class ScalarRemoveTest:
 class ScalarRemoveListObjectCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
-
     run_create_tables = None
     useobject = True
     cascade_scalar_deletes = True
@@ -2894,7 +2890,6 @@ class ScalarRemoveListObjectCascade(
 class ScalarRemoveScalarObjectCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
-
     run_create_tables = None
     useobject = True
     cascade_scalar_deletes = True
@@ -2904,7 +2899,6 @@ class ScalarRemoveScalarObjectCascade(
 class ScalarRemoveListScalarCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
-
     run_create_tables = None
     useobject = False
     cascade_scalar_deletes = True
@@ -2914,7 +2908,6 @@ class ScalarRemoveListScalarCascade(
 class ScalarRemoveScalarScalarCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
-
     run_create_tables = None
     useobject = False
     cascade_scalar_deletes = True
@@ -2924,7 +2917,6 @@ class ScalarRemoveScalarScalarCascade(
 class ScalarRemoveListObjectNoCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
-
     run_create_tables = None
     useobject = True
     cascade_scalar_deletes = False
@@ -2934,7 +2926,6 @@ class ScalarRemoveListObjectNoCascade(
 class ScalarRemoveScalarObjectNoCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
-
     run_create_tables = None
     useobject = True
     cascade_scalar_deletes = False
@@ -2944,7 +2935,6 @@ class ScalarRemoveScalarObjectNoCascade(
 class ScalarRemoveListScalarNoCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
-
     run_create_tables = None
     useobject = False
     cascade_scalar_deletes = False
@@ -2954,7 +2944,6 @@ class ScalarRemoveListScalarNoCascade(
 class ScalarRemoveScalarScalarNoCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
-
     run_create_tables = None
     useobject = False
     cascade_scalar_deletes = False
@@ -3521,7 +3510,6 @@ class ProxyPlainPropertyTest(fixtures.DeclarativeMappedTest):
 
     @classmethod
     def setup_classes(cls):
-
         Base = cls.DeclarativeBasic
 
         class A(Base):

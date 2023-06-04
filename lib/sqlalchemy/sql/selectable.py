@@ -2318,7 +2318,6 @@ class SelectsRows(ReturnsRows):
                     # c, use hash(), so that an annotated version of the column
                     # is seen as the same as the non-annotated
                     if hash(names[effective_name]) != hash(c):
-
                         # different column under the same name.  apply
                         # disambiguating label
                         if table_qualified:
@@ -3185,7 +3184,6 @@ class Values(roles.InElementRole, Generative, LateralFromClause):
 
     @_generative
     def alias(self, name: Optional[str] = None, flat: bool = False) -> Self:
-
         """Return a new :class:`_expression.Values`
         construct that is a copy of this
         one with the given name.
@@ -4385,7 +4383,6 @@ class CompoundSelect(HasCompileState, GenerativeSelect, ExecutableReturnsRows):
             Iterable[Sequence[ColumnElement[Any]]]
         ] = None,
     ) -> None:
-
         # this is a slightly hacky thing - the union exports a
         # column that resembles just that of the *first* selectable.
         # to get at a "composite" column, particularly foreign keys,
@@ -4548,7 +4545,6 @@ class SelectState(util.MemoizedSlots, CompileState):
     def _column_naming_convention(
         cls, label_style: SelectLabelStyle
     ) -> _LabelConventionCallable:
-
         table_qualified = label_style is LABEL_STYLE_TABLENAME_PLUS_COL
         dedupe = label_style is not LABEL_STYLE_NONE
 
@@ -4635,7 +4631,6 @@ class SelectState(util.MemoizedSlots, CompileState):
         froms: List[FromClause] = []
 
         for item in iterable_of_froms:
-
             if is_subquery(item) and item.element is check_statement:
                 raise exc.InvalidRequestError(
                     "select() construct refers to itself as a FROM"
@@ -4705,7 +4700,6 @@ class SelectState(util.MemoizedSlots, CompileState):
                 ]
 
         if self.statement._correlate_except is not None:
-
             froms = [
                 f
                 for f in froms
@@ -4723,7 +4717,6 @@ class SelectState(util.MemoizedSlots, CompileState):
             and implicit_correlate_froms
             and len(froms) > 1
         ):
-
             froms = [
                 f
                 for f in froms
@@ -4784,7 +4777,7 @@ class SelectState(util.MemoizedSlots, CompileState):
         args: Tuple[_SetupJoinsElement, ...],
         raw_columns: List[_ColumnsClauseElement],
     ) -> None:
-        for (right, onclause, left, flags) in args:
+        for right, onclause, left, flags in args:
             if TYPE_CHECKING:
                 if onclause is not None:
                     assert isinstance(onclause, ColumnElement)
@@ -4859,7 +4852,6 @@ class SelectState(util.MemoizedSlots, CompileState):
         from_clauses = self.from_clauses
 
         if from_clauses:
-
             indexes: List[int] = sql_util.find_left_clause_to_join_from(
                 from_clauses, right, onclause
             )
@@ -4882,7 +4874,6 @@ class SelectState(util.MemoizedSlots, CompileState):
                     ]
                 ),
             ):
-
                 potential[from_clause] = ()
 
             all_clauses = list(potential.keys())
@@ -6290,7 +6281,6 @@ class Select(
                 if is_column_element(c)
             ]
         else:
-
             prox = [
                 c._make_proxy(
                     subquery,
@@ -6525,7 +6515,6 @@ class ScalarSelect(
     def self_group(
         self, against: Optional[OperatorType] = None
     ) -> ColumnElement[Any]:
-
         return self
 
     if TYPE_CHECKING:
@@ -6801,7 +6790,6 @@ class TextualSelect(SelectBase, ExecutableReturnsRows, Generative):
         columns: List[_ColumnExpressionArgument[Any]],
         positional: bool = False,
     ) -> None:
-
         self._init(
             text,
             # convert for ORM attributes->columns, etc

@@ -134,7 +134,6 @@ def on_new_class(mapper, cls_):
 
 
 if __name__ == "__main__":
-
     Base = declarative_base()
 
     class AnimalFact(PolymorphicVerticalProperty, Base):

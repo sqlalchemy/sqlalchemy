@@ -140,7 +140,6 @@ _prefix_dict = {
 
 
 def _get_convention(dict_, key):
-
     for super_ in key.__mro__:
         if super_ in _prefix_dict and _prefix_dict[super_] in dict_:
             return dict_[_prefix_dict[super_]]

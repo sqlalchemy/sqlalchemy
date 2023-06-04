@@ -203,7 +203,6 @@ class ClassManager(
         ] = None,
         init_method: Optional[Callable[..., None]] = None,
     ) -> None:
-
         if mapper:
             self.mapper = mapper  # type: ignore[assignment]
         if registry:

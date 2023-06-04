@@ -650,7 +650,6 @@ class PickleTest(fixtures.MappedTest):
 
 class OptionsTest(_Polymorphic):
     def test_options_of_type(self):
-
         with_poly = with_polymorphic(Person, [Engineer, Manager], flat=True)
         for opt, serialized_path, serialized_of_type in [
             (

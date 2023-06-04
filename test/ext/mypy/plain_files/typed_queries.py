@@ -259,7 +259,6 @@ def t_legacy_query_cols_2() -> None:
 
 
 def t_legacy_query_cols_2_with_entities() -> None:
-
     q1 = session.query(User)
 
     # EXPECTED_TYPE: Query[User]
@@ -459,7 +458,6 @@ def t_dml_delete() -> None:
 
 
 def t_from_statement() -> None:
-
     t = text("select * from user")
 
     # EXPECTED_TYPE: TextClause

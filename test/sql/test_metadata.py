@@ -442,7 +442,6 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         )
 
     def test_fk_mismatched_local_remote_cols(self):
-
         assert_raises_message(
             exc.ArgumentError,
             "ForeignKeyConstraint number of constrained columns must "
@@ -1518,7 +1517,6 @@ class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
 
     @emits_warning("Table '.+' already exists within the given MetaData")
     def test_already_exists(self):
-
         meta1 = MetaData()
         table1 = Table(
             "mytable", meta1, Column("myid", Integer, primary_key=True)
@@ -1780,7 +1778,6 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_reset_exported_passes(self):
-
         m = MetaData()
 
         t = Table("t", m, Column("foo", Integer))
@@ -1959,7 +1956,6 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
             "Table 't' specifies columns 'a', 'b', 'c' as primary_key=True, "
             "not matching locally specified columns 'b', 'c'"
         ):
-
             Table(
                 "t",
                 m,
@@ -2292,7 +2288,6 @@ class SchemaTypeTest(fixtures.TestBase):
         self._test_before_parent_attach(typ)
 
     def test_before_parent_attach_variant_array_schematype(self):
-
         target = Enum("one", "two", "three")
         typ = ARRAY(target).with_variant(String(), "other")
         self._test_before_parent_attach(typ, evt_target=target)
@@ -2685,7 +2680,6 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_ignore_whitespace(str(element), expected)
 
     def test_create_drop_schema(self):
-
         self.assert_compile(
             schema.CreateSchema("sa_schema"), "CREATE SCHEMA sa_schema"
         )
@@ -2766,7 +2760,6 @@ class UseExistingTest(testing.AssertsCompiledSQL, fixtures.TablesTest):
     def test_table_w_two_same_named_columns(
         self, empty_meta, scenario: Variation, both_have_keys: Variation
     ):
-
         if scenario.inplace:
             with expect_raises_message(
                 exc.DuplicateColumnError,
@@ -3742,7 +3735,6 @@ class ConstraintTest(fixtures.TestBase):
         assert c in t.indexes
 
     def test_auto_append_lowercase_table(self):
-
         t = table("t", column("a"))
         t2 = table("t2", column("a"))
         for c in (
@@ -4088,7 +4080,6 @@ class ConstraintTest(fixtures.TestBase):
         return t, ClauseElement(t.c.q)
 
     def test_pickle_fk_annotated_col(self, no_pickle_annotated):
-
         t, q_col = no_pickle_annotated
 
         t2 = Table("t2", t.metadata, Column("p", ForeignKey(q_col)))
@@ -4175,7 +4166,6 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
             assert col.name == c[i].name
 
     def test_name_none(self):
-
         c = Column(Integer)
         assert_raises_message(
             exc.ArgumentError,
@@ -4188,7 +4178,6 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
     def test_name_blank(self):
-
         c = Column("", Integer)
         assert_raises_message(
             exc.ArgumentError,
@@ -4399,7 +4388,6 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         paramname,
         value,
     ):
-
         args = []
         params = {}
         if paramname == "type" or isinstance(
@@ -4514,7 +4502,6 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         value,
         override_value,
     ):
-
         args = []
         params = {}
         override_args = []
@@ -4716,7 +4703,6 @@ class ColumnOptionsTest(fixtures.TestBase):
         self._no_error(Column("foo", ForeignKey("bar.id"), Sequence("a")))
 
     def test_column_info(self):
-
         c1 = Column("foo", String, info={"x": "y"})
         c2 = Column("bar", String, info={})
         c3 = Column("bat", String)

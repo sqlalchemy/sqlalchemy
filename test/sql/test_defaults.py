@@ -117,7 +117,6 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_literal_binds_pgarray(self):
-
         m = MetaData()
         t = Table(
             "t",
@@ -1098,7 +1097,6 @@ class PKIncrementTest(fixtures.TablesTest):
 
 
 class AutoIncrementTest(fixtures.TestBase):
-
     __backend__ = True
 
     @testing.requires.empty_inserts

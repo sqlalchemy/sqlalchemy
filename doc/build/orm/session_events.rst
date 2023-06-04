@@ -89,7 +89,6 @@ may be used on its own, or is ideally suited to be used within the
 
     @event.listens_for(Session, "do_orm_execute")
     def _do_orm_execute(orm_execute_state):
-
         if (
             orm_execute_state.is_select
             and not orm_execute_state.is_column_load

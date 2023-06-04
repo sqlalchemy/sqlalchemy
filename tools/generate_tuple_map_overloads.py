@@ -37,7 +37,6 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 
 def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
-
     # use tempfile in same path as the module, or at least in the
     # current working directory, so that black / zimports use
     # local pyproject.toml
@@ -115,7 +114,6 @@ def {current_fnname}(
 
 
 def run_module(modname: str, cmd: code_writer_cmd) -> None:
-
     cmd.write_status(f"importing module {modname}\n")
     mod = importlib.import_module(modname)
     destination_path = mod.__file__
@@ -143,7 +141,6 @@ entries = [
 ]
 
 if __name__ == "__main__":
-
     cmd = code_writer_cmd(__file__)
 
     with cmd.add_arguments() as parser:

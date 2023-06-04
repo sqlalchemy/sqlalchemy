@@ -1236,7 +1236,6 @@ class OptionsNoPropTestInh(_Polymorphic):
             r'does not link from relationship "Company.employees".  Did you '
             r'mean to use "Company.employees.of_type\(Engineer\)"\?',
         ):
-
             if use_options:
                 s.query(Company).options(
                     joinedload(Company.employees).options(
@@ -1268,7 +1267,6 @@ class PickleTest(fixtures.MappedTest):
 
     @testing.fixture
     def user_address_fixture(self, registry):
-
         registry.map_imperatively(
             User,
             self.tables.users,

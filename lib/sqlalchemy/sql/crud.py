@@ -534,7 +534,6 @@ def _scan_insert_from_select_cols(
     toplevel,
     kw,
 ):
-
     cols = [stmt.table.c[_column_as_key(name)] for name in stmt._select_names]
 
     assert compiler.stack[-1]["selectable"] is stmt
@@ -823,7 +822,6 @@ def _append_param_parameter(
     accumulated_bind_names: Set[str] = set()
 
     if coercions._is_literal(value):
-
         if (
             insert_null_pk_still_autoincrements
             and c.primary_key
@@ -890,7 +888,6 @@ def _append_param_parameter(
                 compiler.postfetch.append(c)
         else:
             if c.primary_key:
-
                 if implicit_returning:
                     compiler.implicit_returning.append(c)
                 elif compiler.dialect.postfetch_lastrowid:
@@ -1111,7 +1108,6 @@ def _append_param_insert_select_hasdefault(
     values: List[_CrudParamElementSQLExpr],
     kw: Dict[str, Any],
 ) -> None:
-
     if default_is_sequence(c.default):
         if compiler.dialect.supports_sequences and (
             not c.default.optional or not compiler.dialect.sequences_optional
@@ -1149,7 +1145,6 @@ def _append_param_insert_select_hasdefault(
 def _append_param_update(
     compiler, compile_state, stmt, c, implicit_return_defaults, values, kw
 ):
-
     include_table = compile_state.include_table_with_column_exprs
     if c.onupdate is not None and not c.onupdate.is_sequence:
         if c.onupdate.is_clause_element:
@@ -1220,7 +1215,6 @@ def _create_insert_prefetch_bind_param(
     name: Optional[str] = None,
     **kw: Any,
 ) -> Union[elements.BindParameter[Any], str]:
-
     param = _create_bind_param(
         compiler, c, None, process=process, name=name, **kw
     )
@@ -1431,7 +1425,7 @@ def _extend_values_for_multiparams(
 
         row = {_column_as_key(key): v for key, v in row.items()}
 
-        for (col, col_expr, param, accumulated_names) in values_0:
+        for col, col_expr, param, accumulated_names in values_0:
             if col.key in row:
                 key = col.key
 
@@ -1466,7 +1460,6 @@ def _get_stmt_parameter_tuples_params(
     values,
     kw,
 ):
-
     for k, v in stmt_parameter_tuples:
         colkey = _column_as_key(k)
         if colkey is not None:

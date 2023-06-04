@@ -109,7 +109,6 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
-
     __dialect__ = postgresql.dialect()
 
     def test_plain_stringify_returning(self):
@@ -644,7 +643,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_create_index_with_ops(self):
-
         m = MetaData()
         tbl = Table(
             "testtbl",
@@ -2094,26 +2092,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_pg_array_agg_implicit_pg_array(self):
-
         expr = pg_array_agg(column("data", Integer))
         assert isinstance(expr.type, PG_ARRAY)
         is_(expr.type.item_type._type_affinity, Integer)
 
     def test_pg_array_agg_uses_base_array(self):
-
         expr = pg_array_agg(column("data", sqltypes.ARRAY(Integer)))
         assert isinstance(expr.type, sqltypes.ARRAY)
         assert not isinstance(expr.type, PG_ARRAY)
         is_(expr.type.item_type._type_affinity, Integer)
 
     def test_pg_array_agg_uses_pg_array(self):
-
         expr = pg_array_agg(column("data", PG_ARRAY(Integer)))
         assert isinstance(expr.type, PG_ARRAY)
         is_(expr.type.item_type._type_affinity, Integer)
 
     def test_pg_array_agg_explicit_base_array(self):
-
         expr = pg_array_agg(
             column("data", sqltypes.ARRAY(Integer)),
             type_=sqltypes.ARRAY(Integer),
@@ -2123,7 +2117,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         is_(expr.type.item_type._type_affinity, Integer)
 
     def test_pg_array_agg_explicit_pg_array(self):
-
         expr = pg_array_agg(
             column("data", sqltypes.ARRAY(Integer)), type_=PG_ARRAY(Integer)
         )
@@ -2605,7 +2598,6 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
                 stmt.on_conflict_do_nothing,
                 stmt.on_conflict_do_update,
             ):
-
                 with testing.expect_raises_message(
                     exc.InvalidRequestError,
                     "This Insert construct already has an "
@@ -2636,7 +2628,6 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
         )
 
     def test_do_nothing_no_target(self):
-
         i = (
             insert(self.table1)
             .values(dict(name="foo"))
@@ -2649,7 +2640,6 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
         )
 
     def test_do_nothing_index_elements_target(self):
-
         i = (
             insert(self.table1)
             .values(dict(name="foo"))
@@ -3209,7 +3199,6 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_distinct_on_subquery_anon(self):
-
         sq = select(self.table).alias()
         q = (
             select(self.table.c.id, sq.c.id)

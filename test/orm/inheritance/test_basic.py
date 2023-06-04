@@ -2940,7 +2940,6 @@ class OptimizedLoadTest(fixtures.MappedTest):
             "sqlalchemy.engine.result.ResultMetaData._key_fallback",
             _key_fallback,
         ):
-
             eq_(s1.sub, "s1sub")
 
     def test_optimized_get_blank_intermediary(self, registry, connection):
@@ -3921,7 +3920,6 @@ class PolymorphicUnionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 
 class DiscriminatorOrPkNoneTest(fixtures.DeclarativeMappedTest):
-
     run_setup_mappers = "once"
     __dialect__ = "default"
 
@@ -4061,7 +4059,6 @@ class UnexpectedPolymorphicIdentityTest(fixtures.DeclarativeMappedTest):
             "ASingleSubA", "ASingleSubB", "AJoinedSubA", "AJoinedSubB"
         )
         with Session(connection) as s:
-
             s.add_all(
                 [ASingleSubA(), ASingleSubB(), AJoinedSubA(), AJoinedSubB()]
             )

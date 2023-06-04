@@ -674,7 +674,6 @@ class TypeRoundTripTest(
             eq_(value, returned)
 
     def test_float(self, metadata, connection):
-
         float_table = Table(
             "float_table",
             metadata,
@@ -1365,7 +1364,6 @@ class StringRoundTripTest(fixtures.TestBase):
         use_returning,
         insertmany,
     ):
-
         if datatype is NVARCHAR and length != "max" and length > 4000:
             return
         elif unicode_ and datatype not in (NVARCHAR, UnicodeText):

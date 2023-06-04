@@ -120,7 +120,6 @@ class SequenceTest(fixtures.TablesTest):
     @testing.combinations((True,), (False,), argnames="implicit_returning")
     @testing.requires.schemas
     def test_insert_roundtrip_translate(self, connection, implicit_returning):
-
         seq_no_returning = Table(
             "seq_no_returning_sch",
             MetaData(),

@@ -1048,7 +1048,6 @@ class RealPrePingEventHandlerTest(fixtures.TestBase):
         with mock.patch.object(
             engine.dialect.loaded_dbapi, "connect", mock_connect
         ):
-
             # set up initial connection.  pre_ping works on subsequent connects
             engine.connect().close()
 
@@ -1166,7 +1165,6 @@ class RealReconnectTest(fixtures.TestBase):
 
     def test_reconnect(self):
         with self.engine.connect() as conn:
-
             eq_(conn.execute(select(1)).scalar(), 1)
             assert not conn.closed
 

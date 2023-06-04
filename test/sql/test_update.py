@@ -413,7 +413,6 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
 
     def test_labels_no_collision(self):
-
         t = table("foo", column("id"), column("foo_id"))
 
         self.assert_compile(
@@ -980,7 +979,6 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
 
         if paramstyle.qmark:
-
             dialect = default.StrCompileDialect(paramstyle="qmark")
             self.assert_compile(
                 upd,

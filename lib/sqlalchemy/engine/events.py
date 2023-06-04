@@ -658,7 +658,6 @@ class DialectEvents(event.Events[Dialect]):
         target: Union[Engine, Type[Engine], Dialect, Type[Dialect]],
         identifier: str,
     ) -> Optional[Union[Dialect, Type[Dialect]]]:
-
         if isinstance(target, type):
             if issubclass(target, Engine):
                 return Dialect

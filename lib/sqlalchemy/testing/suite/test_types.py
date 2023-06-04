@@ -683,7 +683,6 @@ class IntegerTest(_LiteralRoundTripFixture, fixtures.TestBase):
         literal_round_trip(Integer, [5], [5])
 
     def _huge_ints():
-
         return testing.combinations(
             2147483649,  # 32 bits
             2147483648,  # 32 bits
@@ -1216,7 +1215,6 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     )
     @testing.combinations(100, 1999, 3000, 4000, 5000, 9000, argnames="length")
     def test_round_trip_pretty_large_data(self, connection, unicode_, length):
-
         if unicode_:
             data = "réve🐍illé" * ((length // 9) + 1)
             data = data[0 : (length // 2)]
@@ -1239,7 +1237,6 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         eq_(row, (data_element,))
 
     def _index_fixtures(include_comparison):
-
         if include_comparison:
             # basically SQL Server and MariaDB can kind of do json
             # comparison, MySQL, PG and SQLite can't.  not worth it.
@@ -1302,7 +1299,6 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     def _json_value_insert(self, connection, datatype, value, data_element):
         data_table = self.tables.data_table
         if datatype == "_decimal":
-
             # Python's builtin json serializer basically doesn't support
             # Decimal objects without implicit float conversion period.
             # users can otherwise use simplejson which supports
@@ -1380,7 +1376,6 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         data_element = {"key1": value}
 
         with config.db.begin() as conn:
-
             datatype, compare_value, p_s = self._json_value_insert(
                 conn, datatype, value, data_element
             )
@@ -1425,7 +1420,6 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         data_table = self.tables.data_table
         data_element = {"key1": {"subkey1": value}}
         with config.db.begin() as conn:
-
             datatype, compare_value, p_s = self._json_value_insert(
                 conn, datatype, value, data_element
             )
@@ -1639,7 +1633,6 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             )
 
     def test_eval_none_flag_orm(self, connection):
-
         Base = declarative_base()
 
         class Data(Base):

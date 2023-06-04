@@ -452,7 +452,6 @@ class TestORMInspection(_fixtures.FixtureTest):
         return [_random_name() for i in range(random.randint(8, 15))]
 
     def _ordered_name_fixture(self, glbls, clsname, base, supercls):
-
         names = self._random_names()
 
         if base is supercls:

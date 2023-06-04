@@ -173,7 +173,6 @@ class DialectWBackendTest(fixtures.TestBase):
     )
     @testing.only_on(["oracle+cx_oracle", "oracle+oracledb"])
     def test_is_disconnect(self, message, code, expected):
-
         dialect = testing.db.dialect
 
         exception_obj = dialect.dbapi.InterfaceError()
@@ -267,7 +266,6 @@ class DefaultSchemaNameTest(fixtures.TestBase):
         eng = engines.testing_engine()
 
         with eng.connect() as conn:
-
             trans = conn.begin()
             eq_(
                 testing.db.dialect._get_default_schema_name(conn),
@@ -359,7 +357,6 @@ class EncodingErrorsTest(fixtures.TestBase):
         utf8_w_errors = data.encode("utf-16")
 
         if has_errorhandler:
-
             eq_(
                 outconverter(utf8_w_errors),
                 data.encode("utf-16").decode("utf-8", "ignore"),
@@ -551,7 +548,6 @@ end;
 
 
 class QuotedBindRoundTripTest(fixtures.TestBase):
-
     __only_on__ = "oracle"
     __backend__ = True
 
@@ -839,7 +835,6 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class ExecuteTest(fixtures.TestBase):
-
     __only_on__ = "oracle"
     __backend__ = True
 

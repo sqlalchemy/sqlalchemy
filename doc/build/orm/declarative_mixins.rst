@@ -634,7 +634,6 @@ for inheriting subclasses by default::
 
 
     class Manager(Person):
-
         __mapper_args__ = {"polymorphic_identity": "manager"}
 
 .. _mixin_inheritance_columns:

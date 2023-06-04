@@ -464,7 +464,6 @@ class DDLEventHarness:
 
 
 class DDLEventWCreateHarness(DDLEventHarness):
-
     requires_table_to_exist = True
 
     def test_straight_create_drop(
@@ -779,7 +778,6 @@ class DDLExecutionTest(AssertsCompiledSQL, fixtures.TestBase):
         )[0]
 
         if ddl_if_type in ("callable", "callable_w_state"):
-
             if ddl_if_type == "callable":
                 check_state = None
             else:

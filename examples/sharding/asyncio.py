@@ -283,7 +283,6 @@ async def main():
     quito.reports.append(Report(85))
 
     async with Session() as sess:
-
         sess.add_all(
             [tokyo, newyork, toronto, london, dublin, brasilia, quito]
         )

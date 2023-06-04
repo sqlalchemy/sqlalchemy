@@ -36,7 +36,6 @@ def temporal_range(range_lower, range_upper):
 
 
 if __name__ == "__main__":
-
     Base = declarative_base()
 
     class Parent(HasTemporal, Base):

@@ -22,7 +22,6 @@ from ...testing.provision import temp_table_keyword_args
 
 @generate_driver_url.for_db("mssql")
 def generate_driver_url(url, driver, query_str):
-
     backend = url.get_backend_name()
 
     new_url = url.set(drivername="%s+%s" % (backend, driver))
@@ -84,7 +83,6 @@ def _reap_mssql_dbs(url, idents):
     log.info("db reaper connecting to %r", url)
     eng = create_engine(url)
     with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-
         log.info("identifiers in file: %s", ", ".join(idents))
 
         to_reap = conn.exec_driver_sql(

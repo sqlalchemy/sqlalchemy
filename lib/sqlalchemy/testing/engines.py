@@ -230,7 +230,6 @@ class ReconnectFixture:
         return getattr(self.dbapi, key)
 
     def connect(self, *args, **kwargs):
-
         conn = self.dbapi.connect(*args, **kwargs)
         if self.is_stopped:
             self._safe(conn.close)

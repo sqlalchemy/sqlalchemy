@@ -625,7 +625,6 @@ class SelectInEagerLoadTest(NoCache, fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-
         Table(
             "a",
             metadata,

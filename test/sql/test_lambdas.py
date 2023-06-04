@@ -227,7 +227,6 @@ class LambdaElementTest(
 
     def test_stale_checker_embedded(self):
         def go(x):
-
             stmt = select(lambda: x)
             return stmt
 
@@ -245,7 +244,6 @@ class LambdaElementTest(
 
     def test_stale_checker_statement(self):
         def go(x):
-
             stmt = lambdas.lambda_stmt(lambda: select(x))
             return stmt
 
@@ -263,7 +261,6 @@ class LambdaElementTest(
 
     def test_stale_checker_linked(self):
         def go(x, y):
-
             stmt = lambdas.lambda_stmt(lambda: select(x)) + (
                 lambda s: s.where(y > 5)
             )
@@ -434,7 +431,6 @@ class LambdaElementTest(
         )
 
     def test_boolean_conditionals(self):
-
         tab = table("foo", column("id"), column("col"))
 
         def run_my_statement(parameter, add_criteria=False):
@@ -837,7 +833,6 @@ class LambdaElementTest(
         ne_(s1key[0], s2key[0])
 
     def test_stmt_lambda_w_set_of_opts(self):
-
         stmt = lambdas.lambda_stmt(lambda: select(column("x")))
 
         class MyUncacheable(ExecutableOption):
@@ -1168,7 +1163,6 @@ class LambdaElementTest(
         )
 
     def test_in_parameters_one(self):
-
         expr1 = select(1).where(column("q").in_(["a", "b", "c"]))
         self.assert_compile(expr1, "SELECT 1 WHERE q IN (__[POSTCOMPILE_q_1])")
 
@@ -1393,7 +1387,6 @@ class LambdaElementTest(
         x = 5
 
         def my_lambda():
-
             y = 10
             z = y + 18
 
@@ -1424,7 +1417,6 @@ class LambdaElementTest(
         z = 10
 
         def my_lambda():
-
             y = x + z
 
             expr1 = users.c.name > x
@@ -1457,7 +1449,6 @@ class LambdaElementTest(
         z = 10
 
         def my_lambda():
-
             y = 10 + z
 
             expr1 = users.c.name > x

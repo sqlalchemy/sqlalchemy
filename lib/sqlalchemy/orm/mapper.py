@@ -840,7 +840,6 @@ class Mapper(
         # while a configure_mappers() is occurring (and defer a
         # configure_mappers() until construction succeeds)
         with _CONFIGURE_MUTEX:
-
             cast("MapperEvents", self.dispatch._events)._new_mapper_instance(
                 class_, self
             )
@@ -1603,7 +1602,6 @@ class Mapper(
             )
 
         if self._primary_key_argument:
-
             coerced_pk_arg = [
                 self._str_arg_to_mapped_col("primary_key", c)
                 if isinstance(c, str)
@@ -1701,7 +1699,6 @@ class Mapper(
         }
 
     def _configure_properties(self) -> None:
-
         self.columns = self.c = sql_base.ColumnCollection()  # type: ignore
 
         # object attribute names mapped to MapperProperty objects
@@ -1761,7 +1758,6 @@ class Mapper(
 
                 incoming_prop = explicit_col_props_by_key.get(key)
                 if incoming_prop:
-
                     new_prop = self._reconcile_prop_with_incoming_columns(
                         key,
                         inherited_prop,
@@ -2240,7 +2236,6 @@ class Mapper(
             Sequence[KeyedColumnElement[Any]], KeyedColumnElement[Any]
         ],
     ) -> ColumnProperty[Any]:
-
         columns = util.to_list(column)
         mapped_column = []
         for c in columns:
@@ -2273,7 +2268,6 @@ class Mapper(
         incoming_prop: Optional[ColumnProperty[Any]] = None,
         single_column: Optional[KeyedColumnElement[Any]] = None,
     ) -> ColumnProperty[Any]:
-
         if incoming_prop and (
             self.concrete
             or not isinstance(existing_prop, properties.ColumnProperty)
@@ -2467,7 +2461,7 @@ class Mapper(
     def _is_orphan(self, state: InstanceState[_O]) -> bool:
         orphan_possible = False
         for mapper in self.iterate_to_root():
-            for (key, cls) in mapper._delete_orphans:
+            for key, cls in mapper._delete_orphans:
                 orphan_possible = True
 
                 has_parent = attributes.manager_of_class(cls).has_parent(
@@ -2836,7 +2830,6 @@ class Mapper(
 
     @HasMemoized.memoized_instancemethod
     def __clause_element__(self):
-
         annotations: Dict[str, Any] = {
             "entity_namespace": self,
             "parententity": self,
@@ -3588,7 +3581,6 @@ class Mapper(
     def _get_committed_state_attr_by_column(
         self, state, dict_, column, passive=PassiveFlag.PASSIVE_RETURN_NO_VALUE
     ):
-
         prop = self._columntoproperty[column]
         return state.manager[prop.key].impl.get_committed_value(
             state, dict_, passive=passive
@@ -3820,7 +3812,6 @@ class Mapper(
             m = m.inherits
 
         for prop in self.attrs:
-
             # skip prop keys that are not instrumented on the mapped class.
             # this is primarily the "_sa_polymorphic_on" property that gets
             # created for an ad-hoc polymorphic_on SQL expression, issue #8704
@@ -3879,7 +3870,6 @@ class Mapper(
                 in_expr.in_(sql.bindparam("primary_keys", expanding=True))
             ).order_by(*primary_key)
         else:
-
             q = sql.select(self).set_label_style(
                 LABEL_STYLE_TABLENAME_PLUS_COL
             )
@@ -4180,7 +4170,6 @@ def _configure_registries(
             return
         _already_compiling = True
         try:
-
             # double-check inside mutex
             for reg in registries:
                 if reg._new_mappers:
@@ -4204,7 +4193,6 @@ def _configure_registries(
 def _do_configure_registries(
     registries: Set[_RegistryType], cascade: bool
 ) -> None:
-
     registry = util.preloaded.orm_decl_api.registry
 
     orig = set(registries)
@@ -4256,7 +4244,6 @@ def _do_configure_registries(
 
 @util.preload_module("sqlalchemy.orm.decl_api")
 def _dispose_registries(registries: Set[_RegistryType], cascade: bool) -> None:
-
     registry = util.preloaded.orm_decl_api.registry
 
     orig = set(registries)

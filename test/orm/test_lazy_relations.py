@@ -473,7 +473,6 @@ class LazyTest(_fixtures.FixtureTest):
         )
 
     def test_double_w_ac_against_subquery(self):
-
         (
             users,
             orders,
@@ -532,7 +531,6 @@ class LazyTest(_fixtures.FixtureTest):
         self._run_double_test()
 
     def test_double_w_ac(self):
-
         (
             users,
             orders,
@@ -754,7 +752,6 @@ class LazyTest(_fixtures.FixtureTest):
             )
 
             with fixture_session() as sess:
-
                 # load address
                 a1 = (
                     sess.query(Address)

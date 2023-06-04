@@ -57,7 +57,6 @@ class cache_anon_map(
     _index = 0
 
     def get_anon(self, object_: Any) -> Tuple[str, bool]:
-
         idself = id(object_)
         if idself in self:
             s_val = self[idself]

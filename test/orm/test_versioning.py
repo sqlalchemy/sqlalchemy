@@ -432,7 +432,6 @@ class VersioningTest(fixtures.MappedTest):
         with patch.object(
             config.db.dialect, "supports_sane_multi_rowcount", False
         ), patch("sqlalchemy.engine.cursor.CursorResult.rowcount", rowcount):
-
             Foo = self.classes.Foo
             s1 = self._fixture()
             f1s1 = Foo(value="f1 value")
@@ -445,7 +444,6 @@ class VersioningTest(fixtures.MappedTest):
             eq_(f1s1.version_id, 2)
 
     def test_update_delete_no_plain_rowcount(self):
-
         with patch.object(
             config.db.dialect, "supports_sane_rowcount", False
         ), patch.object(

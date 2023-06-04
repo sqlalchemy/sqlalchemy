@@ -182,7 +182,6 @@ class ResultTupleTest(fixtures.TestBase):
         assert_raises(TypeError, should_raise)
 
     def test_serialize(self):
-
         keyed_tuple = self._fixture([1, 2, 3], ["a", None, "b"])
 
         for loads, dumps in picklers():
@@ -270,7 +269,6 @@ class ResultTest(fixtures.TestBase):
         default_filters=None,
         data=None,
     ):
-
         if data is None:
             data = [(1, 1, 1), (2, 1, 2), (1, 3, 2), (4, 1, 2)]
         if num_rows is not None:
@@ -958,7 +956,6 @@ class ResultTest(fixtures.TestBase):
 class MergeResultTest(fixtures.TestBase):
     @testing.fixture
     def merge_fixture(self):
-
         r1 = result.IteratorResult(
             result.SimpleResultMetaData(["user_id", "user_name"]),
             iter([(7, "u1"), (8, "u2")]),
@@ -980,7 +977,6 @@ class MergeResultTest(fixtures.TestBase):
 
     @testing.fixture
     def dupe_fixture(self):
-
         r1 = result.IteratorResult(
             result.SimpleResultMetaData(["x", "y", "z"]),
             iter([(1, 2, 1), (2, 2, 1)]),

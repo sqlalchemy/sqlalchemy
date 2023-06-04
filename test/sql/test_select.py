@@ -545,11 +545,9 @@ class ColumnCollectionAsSelectTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(list(coll), [table1.c.name, table1.c.description])
 
     def test_missing_key(self):
-
         with expect_raises_message(KeyError, "unknown"):
             table1.c["myid", "unknown"]
 
     def test_missing_index(self):
-
         with expect_raises_message(IndexError, "5"):
             table1.c["myid", 5]

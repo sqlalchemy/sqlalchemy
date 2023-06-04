@@ -21,7 +21,6 @@ from ..schema import BaseDDLElement
 
 
 class AssertRule:
-
     is_consumed = False
     errormessage = None
     consume_statement = True
@@ -128,7 +127,6 @@ class CompiledSQL(SQLMatchRule):
             map_ = None
 
         if isinstance(execute_observed.clauseelement, BaseDDLElement):
-
             compiled = execute_observed.clauseelement.compile(
                 dialect=compare_dialect,
                 schema_translate_map=map_,

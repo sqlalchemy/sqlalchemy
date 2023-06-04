@@ -1477,7 +1477,6 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
                 table1.c.description,
             )
         elif column_style == "inspectables":
-
             myid, name, description = (
                 ORMExpr(table1.c.myid),
                 ORMExpr(table1.c.name),

@@ -170,9 +170,7 @@ def _generate_driver_urls(url, extra_drivers):
     yield url
 
     for drv in list(extra_drivers):
-
         if "?" in drv:
-
             driver_only, query_str = drv.split("?", 1)
 
         else:
@@ -234,7 +232,6 @@ def drop_all_schema_objects_post_tables(cfg, eng):
 
 
 def drop_all_schema_objects(cfg, eng):
-
     drop_all_schema_objects_pre_tables(cfg, eng)
 
     drop_views(cfg, eng)

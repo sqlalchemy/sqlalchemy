@@ -1263,7 +1263,6 @@ class _ConnectionFairy(PoolProxiedConnection):
         threadconns: Optional[threading.local] = None,
         fairy: Optional[_ConnectionFairy] = None,
     ) -> _ConnectionFairy:
-
         if not fairy:
             fairy = _ConnectionRecord.checkout(pool)
 
@@ -1472,7 +1471,6 @@ class _ConnectionFairy(PoolProxiedConnection):
     def invalidate(
         self, e: Optional[BaseException] = None, soft: bool = False
     ) -> None:
-
         if self.dbapi_connection is None:
             util.warn("Can't invalidate an already-closed connection.")
             return

@@ -202,7 +202,6 @@ class InstanceLogger:
             selected_level = self.logger.getEffectiveLevel()
 
         if level >= selected_level:
-
             if STACKLEVEL:
                 kwargs["stacklevel"] = (
                     kwargs.get("stacklevel", 1) + STACKLEVEL_OFFSET

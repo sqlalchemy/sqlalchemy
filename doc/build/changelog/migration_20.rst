@@ -512,6 +512,7 @@ that descend from ``Base``::
 
     Base = declarative_base(cls=Base)
 
+
     # existing mapping proceeds, Declarative will ignore any annotations
     # which don't include ``Mapped[]``
     class Foo(Base):

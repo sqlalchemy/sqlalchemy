@@ -762,7 +762,6 @@ class RelationshipProperty(
             criterion: Optional[_ColumnExpressionArgument[bool]] = None,
             **kwargs: Any,
         ) -> Exists:
-
             where_criteria = (
                 coercions.expect(roles.WhereHavingRole, criterion)
                 if criterion is not None
@@ -1371,7 +1370,6 @@ class RelationshipProperty(
         _recursive: Dict[Any, object],
         _resolve_conflict_map: Dict[_IdentityKeyType[Any], object],
     ) -> None:
-
         if load:
             for r in self._reverse_property:
                 if (source_state, r) in _recursive:
@@ -1669,7 +1667,6 @@ class RelationshipProperty(
             "foreign_keys",
             "remote_side",
         ):
-
             rel_arg = getattr(init_args, attr)
 
             rel_arg._resolve_against_registry(self._clsregistry_resolvers[1])
@@ -1740,7 +1737,6 @@ class RelationshipProperty(
         argument = extracted_mapped_annotation
 
         if extracted_mapped_annotation is None:
-
             if self.argument is None:
                 self._raise_for_required(key, cls)
             else:
@@ -2168,7 +2164,6 @@ class RelationshipProperty(
         Optional[FromClause],
         Optional[ClauseAdapter],
     ]:
-
         aliased = False
 
         if alias_secondary and self.secondary is not None:
@@ -2251,7 +2246,6 @@ def _annotate_columns(element: _CE, annotations: _AnnotationDict) -> _CE:
 
 
 class JoinCondition:
-
     primaryjoin_initial: Optional[ColumnElement[bool]]
     primaryjoin: ColumnElement[bool]
     secondaryjoin: Optional[ColumnElement[bool]]
@@ -2289,7 +2283,6 @@ class JoinCondition:
         support_sync: bool = True,
         can_be_synced_fn: Callable[..., bool] = lambda *c: True,
     ):
-
         self.parent_persist_selectable = parent_persist_selectable
         self.parent_local_selectable = parent_local_selectable
         self.child_persist_selectable = child_persist_selectable
@@ -2878,7 +2871,6 @@ class JoinCondition:
                 "the relationship." % (self.prop,)
             )
         else:
-
             not_target = util.column_set(
                 self.parent_persist_selectable.c
             ).difference(self.child_persist_selectable.c)
@@ -3166,7 +3158,6 @@ class JoinCondition:
                             or not self.prop.parent.common_parent(pr.parent)
                         )
                     ):
-
                         other_props.append((pr, fr_))
 
                 if other_props:
@@ -3399,7 +3390,6 @@ class JoinCondition:
         def col_to_bind(
             element: ColumnElement[Any], **kw: Any
         ) -> Optional[BindParameter[Any]]:
-
             if (
                 (not reverse_direction and "local" in element._annotations)
                 or reverse_direction

@@ -1505,7 +1505,6 @@ class AdaptOnNamesTest(
 
             @classmethod
             def make_statement(cls, *filter_cond, include_metadata=False):
-
                 a_stmt = (
                     select(
                         A.id,

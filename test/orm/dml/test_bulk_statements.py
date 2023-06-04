@@ -1103,7 +1103,6 @@ class BulkDMLReturningInhTest:
             data = data[0]
 
         with self.sql_execution_asserter() as asserter:
-
             # tests both caching and that the data dictionaries aren't
             # mutated...
 
@@ -1620,7 +1619,6 @@ class BulkDMLReturningInhTest:
 class BulkDMLReturningJoinedInhTest(
     BulkDMLReturningInhTest, fixtures.DeclarativeMappedTest
 ):
-
     __requires__ = ("insert_returning", "insert_executemany_returning")
     __backend__ = True
 
@@ -1887,7 +1885,6 @@ class CTETest(fixtures.DeclarativeMappedTest):
 
         sess = fixture_session(bind=self.bind)
         with self.sql_execution_asserter() as asserter:
-
             if not expect_entity:
                 row = sess.execute(outer_stmt).one()
                 eq_(row, (id_, "some user"))

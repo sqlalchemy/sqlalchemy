@@ -297,7 +297,6 @@ class _regconfig_fn(functions.GenericFunction[_T]):
     def __init__(self, *args, **kwargs):
         args = list(args)
         if len(args) > 1:
-
             initial_arg = coercions.expect(
                 roles.ExpressionElementRole,
                 args.pop(0),

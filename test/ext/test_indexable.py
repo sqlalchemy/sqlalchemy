@@ -169,7 +169,6 @@ class IndexPropertyTest(fixtures.TestBase):
 
 
 class IndexPropertyArrayTest(fixtures.DeclarativeMappedTest):
-
     __requires__ = ("array_type",)
     __backend__ = True
 
@@ -250,7 +249,6 @@ class IndexPropertyArrayTest(fixtures.DeclarativeMappedTest):
 
 
 class IndexPropertyJsonTest(fixtures.DeclarativeMappedTest):
-
     # TODO: remove reliance on "astext" for these tests
     __requires__ = ("json_type",)
     __only_on__ = "postgresql"
@@ -324,7 +322,6 @@ class IndexPropertyJsonTest(fixtures.DeclarativeMappedTest):
         eq_(j.other, 42)
 
     def test_modified(self):
-
         Json = self.classes.Json
         s = Session(testing.db)
 

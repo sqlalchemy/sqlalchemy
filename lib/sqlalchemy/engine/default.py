@@ -431,7 +431,6 @@ class DefaultDialect(Dialect):
         return self.bind_typing is interfaces.BindTyping.RENDER_CASTS
 
     def _ensure_has_table_connection(self, arg):
-
         if not isinstance(arg, Connection):
             raise exc.ArgumentError(
                 "The argument passed to Dialect.has_table() should be a "
@@ -651,7 +650,6 @@ class DefaultDialect(Dialect):
             self._set_connection_characteristics(connection, characteristics)
 
     def _set_connection_characteristics(self, connection, characteristics):
-
         characteristic_values = [
             (name, self.connection_characteristics[name], value)
             for name, value in characteristics.items()
@@ -930,7 +928,6 @@ class DefaultDialect(Dialect):
 
     @util.memoized_instancemethod
     def _gen_allowed_isolation_levels(self, dbapi_conn):
-
         try:
             raw_levels = list(self.get_isolation_level_values(dbapi_conn))
         except NotImplementedError:
@@ -1036,7 +1033,6 @@ class DefaultDialect(Dialect):
         scope,
         **kw,
     ):
-
         names_fns = []
         temp_names_fns = []
         if ObjectKind.TABLE in kind:
@@ -1138,7 +1134,6 @@ class DefaultDialect(Dialect):
 
 
 class StrCompileDialect(DefaultDialect):
-
     statement_compiler = compiler.StrSQLCompiler
     ddl_compiler = compiler.DDLCompiler
     type_compiler_cls = compiler.StrSQLTypeCompiler
@@ -1834,7 +1829,6 @@ class DefaultExecutionContext(ExecutionContext):
                 [name for param, name in out_bindparams]
             ),
         ):
-
             type_ = bindparam.type
             impl_type = type_.dialect_impl(self.dialect)
             dbapi_type = impl_type.get_dbapi_type(self.dialect.loaded_dbapi)
@@ -1977,7 +1971,6 @@ class DefaultExecutionContext(ExecutionContext):
         return [getter(None, param) for param in self.compiled_parameters]
 
     def _setup_ins_pk_from_implicit_returning(self, result, rows):
-
         if not rows:
             return []
 

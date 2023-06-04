@@ -34,7 +34,6 @@ with Session() as session:
     session.commit()
 
     if typing.TYPE_CHECKING:
-
         # EXPECTED_TYPE: WriteOnlyCollection[Address]
         reveal_type(u.addresses)
 
@@ -43,7 +42,6 @@ with Session() as session:
     ).one()
 
     if typing.TYPE_CHECKING:
-
         # EXPECTED_TYPE: Address
         reveal_type(address)
 

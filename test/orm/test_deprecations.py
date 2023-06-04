@@ -1182,7 +1182,6 @@ class NonPrimaryRelationshipLoaderTest(_fixtures.FixtureTest):
         self._run_double_test(1)
 
     def test_selectin(self):
-
         users, orders, User, Address, Order, addresses = (
             self.tables.users,
             self.tables.orders,
@@ -1239,7 +1238,6 @@ class NonPrimaryRelationshipLoaderTest(_fixtures.FixtureTest):
         self._run_double_test(4)
 
     def test_subqueryload(self):
-
         users, orders, User, Address, Order, addresses = (
             self.tables.users,
             self.tables.orders,

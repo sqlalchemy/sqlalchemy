@@ -940,7 +940,6 @@ class _PolymorphicTestBase:
         sess = fixture_session()
 
         def go():
-
             wp = with_polymorphic(Person, "*", selectable=None)
             eq_(
                 sess.query(wp).order_by(wp.person_id).all(),
@@ -1578,7 +1577,6 @@ class _PolymorphicTestBase:
         )
 
     def test_self_referential_two_point_five_future(self):
-
         # TODO: this is the first test *EVER* of an aliased class of
         # an aliased class.  we should add many more tests for this.
         # new case added in Id810f485c5f7ed971529489b84694e02a3356d6d
@@ -2147,7 +2145,6 @@ class PolymorphicTest(_PolymorphicTestBase, _Polymorphic):
         sess = fixture_session()
 
         def go():
-
             wp = with_polymorphic(Person, "*")
             eq_(
                 sess.query(wp).order_by(wp.person_id).all(),
@@ -2178,7 +2175,6 @@ class PolymorphicTest(_PolymorphicTestBase, _Polymorphic):
         )
 
     def test_correlation_w_polymorphic(self):
-
         sess = fixture_session()
 
         p_poly = with_polymorphic(Person, "*")
@@ -2197,7 +2193,6 @@ class PolymorphicTest(_PolymorphicTestBase, _Polymorphic):
         )
 
     def test_correlation_w_polymorphic_flat(self):
-
         sess = fixture_session()
 
         p_poly = with_polymorphic(Person, "*", flat=True)
@@ -2246,7 +2241,6 @@ class PolymorphicPolymorphicTest(
         sess = fixture_session()
 
         def go():
-
             wp = with_polymorphic(Person, "*")
             eq_(
                 sess.query(wp).order_by(wp.person_id).all(),
@@ -2365,7 +2359,6 @@ class PolymorphicUnionsTest(_PolymorphicTestBase, _PolymorphicUnions):
         sess = fixture_session()
 
         def go():
-
             wp = with_polymorphic(Person, "*")
             eq_(
                 sess.query(wp).order_by(wp.person_id).all(),
@@ -2472,7 +2465,6 @@ class PolymorphicAliasedJoinsTest(
         sess = fixture_session()
 
         def go():
-
             wp = with_polymorphic(Person, "*")
             eq_(
                 sess.query(wp).order_by(wp.person_id).all(),
@@ -2493,7 +2485,6 @@ class PolymorphicJoinsTest(_PolymorphicTestBase, _PolymorphicJoins):
         sess = fixture_session()
 
         def go():
-
             wp = with_polymorphic(Person, "*")
             eq_(
                 sess.query(wp).order_by(wp.person_id).all(),

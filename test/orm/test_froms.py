@@ -528,7 +528,6 @@ class EntityFromSubqueryTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_no_joinedload(self):
-
         User = self.classes.User
 
         s = fixture_session()
@@ -1023,7 +1022,6 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_anonymous_expression_plus_flag_aliased_join_newstyle(self):
-
         User = self.classes.User
         Address = self.classes.Address
         addresses = self.tables.addresses
@@ -1733,7 +1731,6 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         sess.expunge_all()
 
         def go():
-
             # same as above, except Order is aliased, so two adapters
             # are applied by the eager loader
 
@@ -2331,7 +2328,6 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             q4,
             q5,
         ]:
-
             eq_(
                 q.all(),
                 [
@@ -4092,7 +4088,6 @@ class CorrelateORMTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         Base.registry.dispose()
 
     def _combinations(fn):
-
         return testing.combinations(
             (True,), (False,), argnames="include_property"
         )(

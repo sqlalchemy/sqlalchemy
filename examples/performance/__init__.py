@@ -318,7 +318,6 @@ class Profiler:
 
     @classmethod
     def main(cls):
-
         parser = argparse.ArgumentParser("python -m examples.performance")
 
         if cls.name is None:

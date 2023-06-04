@@ -736,7 +736,6 @@ class OracleCompiler_cx_oracle(OracleCompiler):
         # Oracle parameters and use the custom escaping here
         escaped_from = kw.get("escaped_from", None)
         if not escaped_from:
-
             if self._bind_translate_re.search(name):
                 # not quite the translate use case as we want to
                 # also get a quick boolean if we even found
@@ -764,7 +763,6 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
         # check for has_out_parameters or RETURNING, create cx_Oracle.var
         # objects if so
         if self.compiled.has_out_parameters or self.compiled._oracle_returning:
-
             out_parameters = self.out_parameters
             assert out_parameters is not None
 
@@ -841,7 +839,7 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
     def _generate_cursor_outputtype_handler(self):
         output_handlers = {}
 
-        for (keyname, name, objects, type_) in self.compiled._result_columns:
+        for keyname, name, objects, type_ in self.compiled._result_columns:
             handler = type_._cached_custom_processor(
                 self.dialect,
                 "cx_oracle_outputtypehandler",
@@ -892,7 +890,6 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
             and is_sql_compiler(self.compiled)
             and self.compiled._oracle_returning
         ):
-
             initial_buffer = self.fetchall_for_returning(
                 self.cursor, _internal=True
             )
@@ -1038,7 +1035,6 @@ class OracleDialect_cx_oracle(OracleDialect):
         threaded=None,
         **kwargs,
     ):
-
         OracleDialect.__init__(self, **kwargs)
         self.arraysize = arraysize
         self.encoding_errors = encoding_errors
@@ -1240,7 +1236,6 @@ class OracleDialect_cx_oracle(OracleDialect):
         def output_type_handler(
             cursor, name, default_type, size, precision, scale
         ):
-
             if (
                 default_type == cx_Oracle.NUMBER
                 and default_type is not cx_Oracle.NATIVE_FLOAT
@@ -1307,7 +1302,6 @@ class OracleDialect_cx_oracle(OracleDialect):
         return output_type_handler
 
     def on_connect(self):
-
         output_type_handler = self._generate_connection_outputtype_handler()
 
         def on_connect(conn):
@@ -1453,7 +1447,6 @@ class OracleDialect_cx_oracle(OracleDialect):
     def do_commit_twophase(
         self, connection, xid, is_prepared=True, recover=False
     ):
-
         if not is_prepared:
             self.do_commit(connection.connection)
         else:

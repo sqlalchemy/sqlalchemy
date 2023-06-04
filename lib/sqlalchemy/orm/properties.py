@@ -788,7 +788,6 @@ class MappedColumn(
                 checks = [our_type]
 
             for check_type in checks:
-
                 new_sqltype = registry._resolve_type(check_type)
                 if new_sqltype is not None:
                     break

@@ -1394,7 +1394,6 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 execution_options=dict(synchronize_session="evaluate"),
             )
         elif update_type == "bulk":
-
             data = [
                 {"id": john.id, "age": 25},
                 {"id": jack.id, "age": 37},
@@ -1788,7 +1787,6 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         @event.listens_for(session, "after_bulk_update")
         def do_orm_execute(bulk_ud):
-
             cols = [
                 c.key
                 for c, v in (
@@ -2409,7 +2407,6 @@ class ExpressionUpdateTest(fixtures.MappedTest):
 
 
 class InheritTest(fixtures.DeclarativeMappedTest):
-
     run_inserts = "each"
 
     run_deletes = "each"
@@ -2638,7 +2635,6 @@ class InheritTest(fixtures.DeclarativeMappedTest):
         e2 = s.query(Engineer).filter_by(name="e2").first()
 
         with self.sql_execution_asserter() as asserter:
-
             assert e2 in s
 
             q = (

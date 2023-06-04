@@ -530,7 +530,6 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_subquery_four(self):
-
         # Not lower case names, quotes off, should not quote
         metadata = MetaData()
         t1 = Table(

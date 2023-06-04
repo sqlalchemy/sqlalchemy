@@ -33,7 +33,6 @@ class ClsRegistryTest(fixtures.TestBase):
     __requires__ = ("predictable_gc",)
 
     def test_same_module_same_name(self):
-
         base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
         f2 = MockClass(base, "foo.bar.Foo")
@@ -123,7 +122,6 @@ class ClsRegistryTest(fixtures.TestBase):
         argnames="name",
     )
     def test_name_resolution_failures(self, name, registry):
-
         Base = registry.generate_base()
 
         f1 = MockClass(registry, "existent.Foo")

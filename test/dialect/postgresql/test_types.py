@@ -487,7 +487,6 @@ class NamedTypeTest(
                 ],
             )
         elif datatype == "domain":
-
             def_schame = testing.config.db.dialect.default_schema_name
             eq_(
                 inspect(connection).get_domains(schema=assert_schema),
@@ -604,7 +603,6 @@ class NamedTypeTest(
         argnames="datatype",
     )
     def test_name_required(self, metadata, connection, datatype):
-
         assert_raises(exc.CompileError, datatype.create, connection)
         assert_raises(
             exc.CompileError, datatype.compile, dialect=connection.dialect
@@ -890,7 +888,6 @@ class NamedTypeTest(
         ]
 
     def test_generate_multiple_on_metadata(self, connection, metadata):
-
         e1 = Enum("one", "two", "three", name="myenum", metadata=metadata)
 
         t1 = Table("e1", metadata, Column("c1", e1))
@@ -911,7 +908,6 @@ class NamedTypeTest(
     def test_generate_multiple_schemaname_on_metadata(
         self, metadata, connection
     ):
-
         Enum("one", "two", "three", name="myenum", metadata=metadata)
         Enum(
             "one",
@@ -938,7 +934,6 @@ class NamedTypeTest(
         ]
 
     def test_create_drop_schema_translate_map(self, connection):
-
         conn = connection.execution_options(
             schema_translate_map={None: testing.config.test_schema}
         )
@@ -1353,7 +1348,6 @@ class NumericInterpretationTest(fixtures.TestBase):
     __backend__ = True
 
     def test_numeric_codes(self):
-
         dialects = (
             pg8000.dialect(),
             psycopg2.dialect(),
@@ -1470,7 +1464,6 @@ class TimezoneTest(fixtures.TablesTest):
         assert row[0] >= somedate
 
     def test_without_timezone(self, connection):
-
         # get a date without a tzinfo
         tztable, notztable = self.tables("tztable", "notztable")
 
@@ -1520,7 +1513,6 @@ class TimePrecisionCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class TimePrecisionTest(fixtures.TestBase):
-
     __only_on__ = "postgresql"
     __backend__ = True
 
@@ -1875,7 +1867,6 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         argnames="with_enum, using_aggregate_order_by",
     )
     def test_array_agg_specific(self, with_enum, using_aggregate_order_by):
-
         element = ENUM(name="pgenum") if with_enum else Integer()
         element_type = type(element)
         expr = (
@@ -1898,7 +1889,6 @@ AnEnum("Baz", 3)
 
 
 class ArrayRoundTripTest:
-
     __only_on__ = "postgresql"
     __backend__ = True
 
@@ -2334,7 +2324,6 @@ class ArrayRoundTripTest:
         )
 
     def test_tuple_flag(self, connection, metadata):
-
         t1 = Table(
             "t1",
             metadata,
@@ -2721,7 +2710,6 @@ class ArrayRoundTripTest:
 class CoreArrayRoundTripTest(
     ArrayRoundTripTest, fixtures.TablesTest, AssertsExecutionResults
 ):
-
     ARRAY = sqltypes.ARRAY
 
 
@@ -3192,7 +3180,6 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
 
     @testing.metadata_fixture()
     def special_types_table(self, metadata):
-
         # create these types so that we can issue
         # special SQL92 INTERVAL syntax
         class y2m(types.UserDefinedType, postgresql.INTERVAL):
@@ -3382,7 +3369,6 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
     def test_bind_serialize_default(self):
-
         dialect = postgresql.dialect(use_native_hstore=False)
         proc = self.test_table.c.hash.type._cached_bind_processor(dialect)
         eq_(
@@ -4722,7 +4708,6 @@ class _RangeTypeRoundTrip(_RangeComparisonFixtures, fixtures.TablesTest):
 
 
 class _Int4RangeTests:
-
     _col_type = INT4RANGE
     _col_str = "INT4RANGE"
     _col_str_arr = "INT8RANGE"
@@ -4743,7 +4728,6 @@ class _Int4RangeTests:
 
 
 class _Int8RangeTests:
-
     _col_type = INT8RANGE
     _col_str = "INT8RANGE"
 
@@ -4763,7 +4747,6 @@ class _Int8RangeTests:
 
 
 class _NumRangeTests:
-
     _col_type = NUMRANGE
     _col_str = "NUMRANGE"
 
@@ -4783,7 +4766,6 @@ class _NumRangeTests:
 
 
 class _DateRangeTests:
-
     _col_type = DATERANGE
     _col_str = "DATERANGE"
 
@@ -4803,7 +4785,6 @@ class _DateRangeTests:
 
 
 class _DateTimeRangeTests:
-
     _col_type = TSRANGE
     _col_str = "TSRANGE"
 
@@ -4826,7 +4807,6 @@ class _DateTimeRangeTests:
 
 
 class _DateTimeTZRangeTests:
-
     _col_type = TSTZRANGE
     _col_str = "TSTZRANGE"
 
@@ -5208,7 +5188,6 @@ class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
 
 
 class _Int4MultiRangeTests:
-
     _col_type = INT4MULTIRANGE
     _col_str = "INT4MULTIRANGE"
 
@@ -5224,7 +5203,6 @@ class _Int4MultiRangeTests:
 
 
 class _Int8MultiRangeTests:
-
     _col_type = INT8MULTIRANGE
     _col_str = "INT8MULTIRANGE"
 
@@ -5242,7 +5220,6 @@ class _Int8MultiRangeTests:
 
 
 class _NumMultiRangeTests:
-
     _col_type = NUMMULTIRANGE
     _col_str = "NUMMULTIRANGE"
 
@@ -5258,7 +5235,6 @@ class _NumMultiRangeTests:
 
 
 class _DateMultiRangeTests:
-
     _col_type = DATEMULTIRANGE
     _col_str = "DATEMULTIRANGE"
 
@@ -5273,7 +5249,6 @@ class _DateMultiRangeTests:
 
 
 class _DateTimeMultiRangeTests:
-
     _col_type = TSMULTIRANGE
     _col_str = "TSMULTIRANGE"
 
@@ -5297,7 +5272,6 @@ class _DateTimeMultiRangeTests:
 
 
 class _DateTimeTZMultiRangeTests:
-
     _col_type = TSTZMULTIRANGE
     _col_str = "TSTZMULTIRANGE"
 
@@ -5583,7 +5557,6 @@ class JSONRoundTripTest(fixtures.TablesTest):
         return self.tables.data_table
 
     def _fixture_data(self, connection):
-
         data = [
             {"name": "r1", "data": {"k1": "r1v1", "k2": "r1v2"}},
             {"name": "r2", "data": {"k1": "r2v1", "k2": "r2v2"}},

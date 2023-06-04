@@ -422,7 +422,6 @@ class ResultPostCriteriaTest(BakedTest):
 
     def test_spoiled(self):
         with self._fixture() as (sess, bq):
-
             result = bq.spoil()(sess).with_post_criteria(
                 lambda q: q.execution_options(yes=True)
             )

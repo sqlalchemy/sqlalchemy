@@ -65,7 +65,6 @@ def _aliased_join_warning(arg):
 
 
 class SelfReferentialTestJoinedToBase(fixtures.MappedTest):
-
     run_setup_mappers = "once"
 
     @classmethod
@@ -174,7 +173,6 @@ class SelfReferentialTestJoinedToBase(fixtures.MappedTest):
 
 
 class SelfReferentialJ2JTest(fixtures.MappedTest):
-
     run_setup_mappers = "once"
 
     @classmethod
@@ -406,7 +404,6 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
 
 
 class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
-
     run_setup_mappers = "once"
 
     @classmethod
@@ -558,7 +555,6 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
 
 
 class M2MFilterTest(fixtures.MappedTest):
-
     run_setup_mappers = "once"
     run_inserts = "once"
     run_deletes = None
@@ -2759,7 +2755,6 @@ class MultipleAdaptUsesEntityOverTableTest(
 
 
 class SameNameOnJoined(fixtures.MappedTest):
-
     run_setup_mappers = "once"
     run_inserts = None
     run_deletes = None

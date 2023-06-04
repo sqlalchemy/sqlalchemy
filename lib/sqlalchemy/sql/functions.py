@@ -911,7 +911,6 @@ class _FunctionGenerator:
         )
 
     if TYPE_CHECKING:
-
         # START GENERATED FUNCTION ACCESSORS
 
         # code within this block is **programmatically,
@@ -1602,7 +1601,6 @@ class array_agg(GenericFunction[_T]):
 
         default_array_type = kwargs.pop("_default_array_type", sqltypes.ARRAY)
         if "type_" not in kwargs:
-
             type_from_args = _type_from_args(fn_args)
             if isinstance(type_from_args, sqltypes.ARRAY):
                 kwargs["type_"] = type_from_args

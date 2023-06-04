@@ -100,7 +100,6 @@ def runit_persist(status, factor=1, query_runs=5):
 
 
 def runit_query_runs(status, factor=1, query_runs=5):
-
     # do some heavier reading
     for i in range(query_runs):
         status("Heavy query run #%d" % (i + 1))

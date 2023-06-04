@@ -1009,7 +1009,6 @@ class BulkIssue6793Test(BulkTest, fixtures.DeclarativeMappedTest):
         session = fixture_session()
 
         with self.sql_execution_asserter() as asserter:
-
             session.bulk_save_objects([User(name="A"), User(name="B")])
 
             session.add(User(name="C"))

@@ -957,7 +957,6 @@ class SubclassRelationshipTest(
 class SubclassRelationshipTest2(
     testing.AssertsCompiledSQL, fixtures.DeclarativeMappedTest
 ):
-
     run_setup_classes = "once"
     run_setup_mappers = "once"
     run_inserts = "once"
@@ -1103,7 +1102,6 @@ class SubclassRelationshipTest2(
 class SubclassRelationshipTest3(
     testing.AssertsCompiledSQL, fixtures.DeclarativeMappedTest
 ):
-
     run_setup_classes = "once"
     run_setup_mappers = "once"
     run_inserts = "once"

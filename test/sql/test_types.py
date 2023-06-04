@@ -233,7 +233,6 @@ class AdaptTest(fixtures.TestBase):
 
     def _adaptions():
         for typ in _all_types(omit_special_types=True):
-
             # up adapt from LowerCase to UPPERCASE,
             # as well as to all non-sqltypes
             up_adaptions = [typ] + typ.__subclasses__()
@@ -1017,7 +1016,6 @@ class BindProcessorInsertValuesTest(UserDefinedRoundTripTest):
 class UserDefinedTest(
     _UserDefinedTypeFixture, fixtures.TablesTest, AssertsCompiledSQL
 ):
-
     run_create_tables = None
     run_inserts = None
     run_deletes = None
@@ -3926,7 +3924,6 @@ class NumericRawSQLTest(fixtures.TestBase):
 
 
 class IntervalTest(fixtures.TablesTest, AssertsExecutionResults):
-
     __backend__ = True
 
     @classmethod

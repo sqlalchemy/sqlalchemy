@@ -233,7 +233,7 @@ class AsyncConnection(
         if self.sync_connection:
             raise exc.InvalidRequestError("connection is already started")
         self.sync_connection = self._assign_proxied(
-            await (greenlet_spawn(self.sync_engine.connect))
+            await greenlet_spawn(self.sync_engine.connect)
         )
         return self
 
@@ -301,7 +301,6 @@ class AsyncConnection(
     async def invalidate(
         self, exception: Optional[BaseException] = None
     ) -> None:
-
         """Invalidate the underlying DBAPI connection associated with
         this :class:`_engine.Connection`.
 
@@ -1075,7 +1074,6 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):
         return AsyncEngine(self.sync_engine.execution_options(**opt))
 
     async def dispose(self, close: bool = True) -> None:
-
         """Dispose of the connection pool used by this
         :class:`_asyncio.AsyncEngine`.
 

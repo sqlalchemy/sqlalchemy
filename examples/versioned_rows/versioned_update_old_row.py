@@ -48,7 +48,6 @@ class VersionedStartEnd:
         super().__init__(**kw)
 
     def new_version(self, session):
-
         # our current identity key, which will be used on the "old"
         # version of us to emit an UPDATE. this is just for assertion purposes
         old_identity_key = inspect(self).key
@@ -153,7 +152,6 @@ class Child(VersionedStartEnd, Base):
     data = Column(String)
 
     def new_version(self, session):
-
         # expire parent's reference to us
         session.expire(self.parent, ["child"])
 

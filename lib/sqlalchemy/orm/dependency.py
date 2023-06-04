@@ -377,9 +377,7 @@ class OneToManyDP(DependencyProcessor):
         isdelete,
         childisdelete,
     ):
-
         if self.post_update:
-
             child_post_updates = unitofwork.PostUpdateAll(
                 uow, self.mapper.primary_base_mapper, False
             )
@@ -645,7 +643,6 @@ class ManyToOneDP(DependencyProcessor):
         after_save,
         before_delete,
     ):
-
         if self.post_update:
             parent_post_updates = unitofwork.PostUpdateAll(
                 uow, self.parent.primary_base_mapper, False
@@ -686,9 +683,7 @@ class ManyToOneDP(DependencyProcessor):
         isdelete,
         childisdelete,
     ):
-
         if self.post_update:
-
             if not isdelete:
                 parent_post_updates = unitofwork.PostUpdateAll(
                     uow, self.parent.primary_base_mapper, False
@@ -784,7 +779,6 @@ class ManyToOneDP(DependencyProcessor):
             and not self.cascade.delete_orphan
             and not self.passive_deletes == "all"
         ):
-
             # post_update means we have to update our
             # row to not reference the child object
             # before we can DELETE the row
@@ -986,7 +980,6 @@ class ManyToManyDP(DependencyProcessor):
         after_save,
         before_delete,
     ):
-
         uow.dependencies.update(
             [
                 (parent_saves, after_save),
@@ -1160,7 +1153,6 @@ class ManyToManyDP(DependencyProcessor):
                 tmp.update((c, state) for c in history.added + history.deleted)
 
                 if need_cascade_pks:
-
                     for child in history.unchanged:
                         associationrow = {}
                         sync.update(
@@ -1251,7 +1243,6 @@ class ManyToManyDP(DependencyProcessor):
     def _synchronize(
         self, state, child, associationrow, clearkeys, uowcommit, operation
     ):
-
         # this checks for None if uselist=True
         self._verify_canload(child)
 

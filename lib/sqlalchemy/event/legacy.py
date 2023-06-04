@@ -72,7 +72,6 @@ def _wrap_fn_for_legacy(
         if len(argnames) == len(argspec.args) and has_kw is bool(
             argspec.varkw
         ):
-
             formatted_def = "def %s(%s%s)" % (
                 dispatch_collection.name,
                 ", ".join(dispatch_collection.arg_names),

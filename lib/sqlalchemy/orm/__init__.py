@@ -163,7 +163,6 @@ from .. import util as _sa_util
 
 
 def __go(lcls: Any) -> None:
-
     _sa_util.preloaded.import_prefix("sqlalchemy.orm")
     _sa_util.preloaded.import_prefix("sqlalchemy.ext")
 

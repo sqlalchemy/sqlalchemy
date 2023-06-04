@@ -66,7 +66,6 @@ class AsyncFixture:
 
         async def run_test(subject, trans_on_subject, execute_on_subject):
             async with subject.begin() as trans:
-
                 if begin_nested:
                     if not config.requirements.savepoints.enabled:
                         config.skip_test("savepoints not enabled")
@@ -305,7 +304,6 @@ class AsyncEngineTest(EngineFixture):
 
     @async_test
     async def test_connection_info(self, async_engine):
-
         async with async_engine.connect() as conn:
             conn.info["foo"] = "bar"
 
@@ -313,7 +311,6 @@ class AsyncEngineTest(EngineFixture):
 
     @async_test
     async def test_connection_eq_ne(self, async_engine):
-
         async with async_engine.connect() as conn:
             c2 = _async_engine.AsyncConnection(
                 async_engine, conn.sync_connection
@@ -328,7 +325,6 @@ class AsyncEngineTest(EngineFixture):
 
     @async_test
     async def test_transaction_eq_ne(self, async_engine):
-
         async with async_engine.connect() as conn:
             t1 = await conn.begin()
 
@@ -374,7 +370,6 @@ class AsyncEngineTest(EngineFixture):
                 "do_rollback",
                 mock.Mock(side_effect=Exception("can't run rollback")),
             ), mock.patch("sqlalchemy.util.warn") as m:
-
                 _finalize_fairy(
                     None, rec, pool, ref, echo, transaction_was_reset=False
                 )
@@ -506,7 +501,6 @@ class AsyncEngineTest(EngineFixture):
 
     @async_test
     async def test_get_raw_connection(self, async_connection):
-
         pooled = await async_connection.get_raw_connection()
         is_(pooled, async_connection.sync_connection.connection)
 
@@ -590,7 +584,6 @@ class AsyncEngineTest(EngineFixture):
 
     @async_test
     async def test_connection_not_started(self, async_engine):
-
         conn = async_engine.connect()
         testing.assert_raises_message(
             asyncio_exc.AsyncContextNotStarted,
@@ -614,7 +607,6 @@ class AsyncEngineTest(EngineFixture):
         users = self.tables.users
 
         async with async_engine.begin() as conn:
-
             savepoint = await conn.begin_nested()
             await conn.execute(delete(users))
             await savepoint.rollback()
@@ -627,7 +619,6 @@ class AsyncEngineTest(EngineFixture):
         users = self.tables.users
 
         async with async_engine.begin() as conn:
-
             savepoint = await conn.begin_nested()
             await conn.execute(delete(users))
             await savepoint.commit()
@@ -650,7 +641,6 @@ class AsyncEngineTest(EngineFixture):
 
     @async_test
     async def test_conn_transaction_not_started(self, async_engine):
-
         async with async_engine.connect() as conn:
             trans = conn.begin()
             with expect_raises_message(
@@ -1214,7 +1204,6 @@ class AsyncProxyTest(EngineFixture, fixtures.TestBase):
     async def test_get_transaction(self, async_engine):
         async with async_engine.connect() as conn:
             async with conn.begin() as trans:
-
                 is_(trans.connection, conn)
                 is_(conn.get_transaction(), trans)
 
@@ -1247,7 +1236,6 @@ class AsyncProxyTest(EngineFixture, fixtures.TestBase):
             )
 
     def test_regenerate_connection(self, connection):
-
         async_connection = AsyncConnection._retrieve_proxy_for_target(
             connection
         )
@@ -1300,9 +1288,7 @@ class AsyncProxyTest(EngineFixture, fixtures.TestBase):
         eq_(len(ReversibleProxy._proxy_objects), 0)
 
     def test_regen_conn_but_not_engine(self, async_engine):
-
         with async_engine.sync_engine.connect() as sync_conn:
-
             async_conn = AsyncConnection._retrieve_proxy_for_target(sync_conn)
             async_conn2 = AsyncConnection._retrieve_proxy_for_target(sync_conn)
 

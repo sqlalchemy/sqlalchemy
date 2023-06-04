@@ -255,7 +255,6 @@ class PlainDeclarativeDataclassesTest(DataclassesTest):
         @declarative
         @dataclasses.dataclass
         class SpecialWidget(Widget):
-
             magic: bool = False
 
             __mapper_args__ = dict(
@@ -393,7 +392,6 @@ class FieldEmbeddedWMixinTest(FieldEmbeddedDeclarativeDataclassesTest):
 
         @dataclasses.dataclass
         class SurrogateWidgetPK:
-
             __sa_dataclass_metadata_key__ = "sa"
 
             widget_id: int = dataclasses.field(
@@ -438,7 +436,6 @@ class FieldEmbeddedWMixinTest(FieldEmbeddedDeclarativeDataclassesTest):
 
         @dataclasses.dataclass
         class SurrogateAccountPK:
-
             __sa_dataclass_metadata_key__ = "sa"
 
             account_id = Column(
@@ -521,7 +518,6 @@ class FieldEmbeddedMixinWLambdaTest(fixtures.DeclarativeMappedTest):
 
         @dataclasses.dataclass
         class WidgetDC:
-
             __sa_dataclass_metadata_key__ = "sa"
 
             widget_id: int = dataclasses.field(
@@ -589,7 +585,6 @@ class FieldEmbeddedMixinWLambdaTest(fixtures.DeclarativeMappedTest):
 
         @dataclasses.dataclass
         class AccountDC:
-
             __sa_dataclass_metadata_key__ = "sa"
 
             # relationship on mixin
@@ -697,7 +692,6 @@ class FieldEmbeddedMixinWDeclaredAttrTest(FieldEmbeddedMixinWLambdaTest):
 
         @dataclasses.dataclass
         class WidgetDC:
-
             __sa_dataclass_metadata_key__ = "sa"
 
             widget_id: int = dataclasses.field(
@@ -766,7 +760,6 @@ class FieldEmbeddedMixinWDeclaredAttrTest(FieldEmbeddedMixinWLambdaTest):
 
         @dataclasses.dataclass
         class AccountDC:
-
             __sa_dataclass_metadata_key__ = "sa"
 
             # relationship on mixin
@@ -889,7 +882,6 @@ class PropagationFromMixinTest(fixtures.TestBase):
             @declarative
             @dataclasses.dataclass
             class BaseType(CommonMixin):
-
                 discriminator = Column("type", String(50))
                 __mapper_args__ = dict(polymorphic_on=discriminator)
                 id = Column(Integer, primary_key=True)
@@ -898,14 +890,12 @@ class PropagationFromMixinTest(fixtures.TestBase):
             @declarative
             @dataclasses.dataclass
             class Single(BaseType):
-
                 __tablename__ = None
                 __mapper_args__ = dict(polymorphic_identity="type1")
 
             @declarative
             @dataclasses.dataclass
             class Joined(BaseType):
-
                 __mapper_args__ = dict(polymorphic_identity="type2")
                 id = Column(
                     Integer, ForeignKey("basetype.id"), primary_key=True
@@ -991,7 +981,6 @@ class PropagationFromAbstractTest(fixtures.TestBase):
             @declarative
             @dataclasses.dataclass
             class Single(BaseType):
-
                 __tablename__ = "single"
                 __mapper_args__ = dict(polymorphic_identity="type1")
 

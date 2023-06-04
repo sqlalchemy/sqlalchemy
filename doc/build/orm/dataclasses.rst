@@ -348,7 +348,6 @@ hierarchy, such as in the example below using a mixin::
 
 
     class Mixin(MappedAsDataclass):
-
         create_user: Mapped[int] = mapped_column()
         update_user: Mapped[Optional[int]] = mapped_column(default=None, init=False)
 

@@ -72,7 +72,6 @@ class SQLAlchemyPlugin(Plugin):
     def get_class_decorator_hook(
         self, fullname: str
     ) -> Optional[Callable[[ClassDefContext], None]]:
-
         sym = self.lookup_fully_qualified(fullname)
 
         if sym is not None and sym.node is not None:

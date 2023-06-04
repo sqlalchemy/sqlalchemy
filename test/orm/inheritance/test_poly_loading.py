@@ -1247,7 +1247,6 @@ class NoBaseWPPlusAliasedTest(
 
         registry.metadata.create_all(connection)
         with Session(connection) as sess:
-
             sess.add_all(
                 [
                     A(thing1="thing1_1"),

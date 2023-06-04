@@ -38,7 +38,6 @@ class TestAsyncioCompat(fixtures.TestBase):
 
     @async_test
     async def test_ok(self):
-
         eq_(await greenlet_spawn(go, run1, run2), 3)
 
     @async_test

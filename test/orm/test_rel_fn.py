@@ -1137,7 +1137,6 @@ class DetermineJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_determine_join_ambiguous_fks_m2m(self):
-
         self._assert_raises_ambig_join(
             relationships.JoinCondition,
             "Whatever.foo",

@@ -357,7 +357,6 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             )
 
     def test_alias_union(self):
-
         # same as testunion, except its an alias of the union
 
         u = (
@@ -667,7 +666,6 @@ class PKIncrementTest(fixtures.TablesTest):
 class TableDeprecationTest(fixtures.TestBase):
     def test_mustexists(self):
         with testing.expect_deprecated("Deprecated alias of .*must_exist"):
-
             with testing.expect_raises_message(
                 exc.InvalidRequestError, "Table 'foo' not defined"
             ):

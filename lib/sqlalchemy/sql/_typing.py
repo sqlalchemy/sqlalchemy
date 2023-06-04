@@ -331,7 +331,6 @@ if TYPE_CHECKING:
         ...
 
 else:
-
     is_sql_compiler = operator.attrgetter("is_sql")
     is_ddl_compiler = operator.attrgetter("is_ddl")
     is_named_from_clause = operator.attrgetter("named_with_column")

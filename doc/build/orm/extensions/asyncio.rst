@@ -187,7 +187,6 @@ illustrates a complete example including mapper and session configuration::
 
 
     async def insert_objects(async_session: async_sessionmaker[AsyncSession]) -> None:
-
         async with async_session() as session:
             async with session.begin():
                 session.add_all(
@@ -202,7 +201,6 @@ illustrates a complete example including mapper and session configuration::
     async def select_and_update_objects(
         async_session: async_sessionmaker[AsyncSession],
     ) -> None:
-
         async with async_session() as session:
             stmt = select(A).options(selectinload(A.bs))
 
@@ -317,7 +315,7 @@ this are below, many of which are illustrated in the preceding example.
   as an awaitable by indicating the :attr:`_asyncio.AsyncAttrs.awaitable_attrs`
   prefix::
 
-    a1 = await (session.scalars(select(A))).one()
+    a1 = (await session.scalars(select(A))).one()
     for b1 in await a1.awaitable_attrs.bs:
         print(b1)
 

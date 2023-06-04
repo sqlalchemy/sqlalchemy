@@ -22,7 +22,6 @@ def configure_listener(mapper, class_):
 
     # iterate through ColumnProperty objects
     for col_attr in mapper.column_attrs:
-
         # look at the Column mapped by the ColumnProperty
         # (we look at the first column in the less common case
         # of a property mapped to multiple columns at once)
@@ -46,7 +45,6 @@ def default_listener(col_attr, default):
 
     @event.listens_for(col_attr, "init_scalar", retval=True, propagate=True)
     def init_scalar(target, value, dict_):
-
         if default.is_callable:
             # the callable of ColumnDefault always accepts a context
             # argument; we can pass it as None here.
@@ -74,7 +72,6 @@ def default_listener(col_attr, default):
 
 
 if __name__ == "__main__":
-
     Base = declarative_base()
 
     event.listen(Base, "mapper_configured", configure_listener, propagate=True)

@@ -242,7 +242,6 @@ class PercentSchemaNamesTest(fixtures.TablesTest):
 class ServerSideCursorsTest(
     fixtures.TestBase, testing.AssertsExecutionResults
 ):
-
     __requires__ = ("server_side_cursors",)
 
     __backend__ = True

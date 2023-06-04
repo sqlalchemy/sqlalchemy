@@ -693,7 +693,6 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
     engine = engineclass(pool, dialect, u, **engine_args)
 
     if _initialize:
-
         do_on_connect = dialect.on_connect_url(u)
         if do_on_connect:
 

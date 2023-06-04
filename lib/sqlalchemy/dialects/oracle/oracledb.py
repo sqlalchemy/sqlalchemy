@@ -67,7 +67,6 @@ class OracleDialect_oracledb(_OracleDialect_cx_oracle):
         thick_mode=None,
         **kwargs,
     ):
-
         super().__init__(
             auto_convert_lobs,
             coerce_to_decimal,

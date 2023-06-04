@@ -167,7 +167,6 @@ def format_file(
 
     disable_format = False
     for line_no, line in enumerate(original.splitlines(), 1):
-
         if (
             line
             and not disable_format

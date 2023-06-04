@@ -30,7 +30,6 @@ _T = TypeVar("_T")
 if typing.TYPE_CHECKING:
 
     class greenlet(Protocol):
-
         dead: bool
         gr_context: Optional[Context]
 
@@ -141,7 +140,6 @@ def await_fallback(awaitable: Awaitable[_T]) -> _T:
     if not isinstance(current, _AsyncIoGreenlet):
         loop = get_event_loop()
         if loop.is_running():
-
             _safe_cancel_awaitable(awaitable)
 
             raise exc.MissingGreenlet(
@@ -237,7 +235,6 @@ def _util_async_run_coroutine_function(
 def _util_async_run(
     fn: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any
 ) -> Any:
-
     """for test suite/ util only"""
 
     loop = get_event_loop()

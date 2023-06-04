@@ -65,7 +65,6 @@ class HasPrivate:
 
 
 if __name__ == "__main__":
-
     Base = declarative_base()
 
     class User(HasPrivate, Base):

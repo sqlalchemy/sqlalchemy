@@ -217,7 +217,6 @@ class CursorResultMetaData(ResultMetaData):
     def _splice_horizontally(
         self, other: CursorResultMetaData
     ) -> CursorResultMetaData:
-
         assert not self._tuplefilter
 
         keymap = dict(self._keymap)
@@ -453,7 +452,6 @@ class CursorResultMetaData(ResultMetaData):
                 )
 
             else:
-
                 # no dupes - copy secondary elements from compiled
                 # columns into self._keymap.  this is the most common
                 # codepath for Core / ORM statement executions before the
@@ -593,7 +591,6 @@ class CursorResultMetaData(ResultMetaData):
                 for idx, rmap_entry in enumerate(result_columns)
             ]
         else:
-
             # name-based or text-positional cases, where we need
             # to read cursor.description names
 
@@ -816,7 +813,6 @@ class CursorResultMetaData(ResultMetaData):
         def _key_fallback(
             self, key: Any, err: Optional[Exception], raiseerr: bool = True
         ) -> Optional[NoReturn]:
-
             if raiseerr:
                 if self._unpickled and isinstance(key, elements.ColumnElement):
                     raise exc.NoSuchColumnError(
@@ -857,7 +853,6 @@ class CursorResultMetaData(ResultMetaData):
         return index
 
     def _indexes_for_keys(self, keys):
-
         try:
             return [self._keymap[key][0] for key in keys]
         except KeyError as ke:
@@ -1484,7 +1479,6 @@ class CursorResult(Result[_T]):
             self._metadata = self._no_result_metadata
 
     def _init_metadata(self, context, cursor_description):
-
         if context.compiled:
             compiled = context.compiled
 

@@ -39,7 +39,6 @@ class Foo(Base):
 u1 = User()
 
 if typing.TYPE_CHECKING:
-
     # EXPECTED_TYPE: str
     reveal_type(User.__tablename__)
 

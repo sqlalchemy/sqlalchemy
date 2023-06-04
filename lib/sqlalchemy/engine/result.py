@@ -169,7 +169,6 @@ class ResultMetaData:
     def _getter(
         self, key: Any, raiseerr: bool = True
     ) -> Optional[Callable[[Row[Any]], Any]]:
-
         index = self._index_for_key(key, raiseerr)
 
         if index is not None:
@@ -508,7 +507,6 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
     @HasMemoized_ro_memoized_attribute
     def _iterator_getter(self) -> Callable[..., Iterator[_R]]:
-
         make_row = self._row_getter
 
         post_creational_filter = self._post_creational_filter
@@ -549,7 +547,6 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         return [make_row(row) for row in rows]
 
     def _allrows(self) -> List[_R]:
-
         post_creational_filter = self._post_creational_filter
 
         make_row = self._row_getter

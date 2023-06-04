@@ -216,7 +216,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             self.assert_compile(func.random(), ret, dialect=dialect)
 
     def test_cube_operators(self):
-
         t = table(
             "t",
             column("value"),
@@ -458,7 +457,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         assert_raises(TypeError, func.char_length)
 
     def test_return_type_detection(self):
-
         for fn in [func.coalesce, func.max, func.min, func.sum]:
             for args, type_ in [
                 (
@@ -882,7 +880,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_as_comparison(self):
-
         fn = func.substring("foo", "foobar").as_comparison(1, 2)
         is_(fn.type._type_affinity, Boolean)
 
@@ -900,7 +897,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_as_comparison_annotate(self):
-
         fn = func.foobar("x", "y", "q", "p", "r").as_comparison(2, 5)
 
         from sqlalchemy.sql import annotation
@@ -911,7 +907,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(fn_annotated.left._annotations, {"token": "yes"})
 
     def test_as_comparison_many_argument(self):
-
         fn = func.some_comparison("x", "y", "z", "p", "q", "r").as_comparison(
             2, 5
         )
@@ -978,7 +973,6 @@ class ReturnTypeTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(expr.type.dimensions, col.type.dimensions)
 
     def test_array_agg_array_literal_implicit_type(self):
-
         expr = array([column("data", Integer), column("d2", Integer)])
 
         assert isinstance(expr.type, PG_ARRAY)
@@ -1225,7 +1219,6 @@ class RegisterTest(fixtures.TestBase, AssertsCompiledSQL):
         assert "GenericFunction" not in functions._registry["_default"]
 
     def test_register_function(self):
-
         # test generic function registering
         class registered_func(GenericFunction):
             _register = True
@@ -1390,7 +1383,6 @@ class TableValuedCompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_scalar_subquery(self):
-
         a = table(
             "a",
             column("id"),
@@ -1702,7 +1694,6 @@ class TableValuedCompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_named_table_valued(self):
-
         fn = (
             func.json_to_recordset(  # noqa
                 '[{"a":1,"b":"foo"},{"a":"2","c":"bar"}]'
@@ -1721,7 +1712,6 @@ class TableValuedCompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_named_table_valued_w_quoting(self):
-
         fn = (
             func.json_to_recordset(  # noqa
                 '[{"CaseSensitive":1,"the % value":"foo"}, '
@@ -1743,7 +1733,6 @@ class TableValuedCompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_named_table_valued_subquery(self):
-
         fn = (
             func.json_to_recordset(  # noqa
                 '[{"a":1,"b":"foo"},{"a":"2","c":"bar"}]'
@@ -1766,7 +1755,6 @@ class TableValuedCompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_named_table_valued_alias(self):
-
         """select * from json_to_recordset
         ('[{"a":1,"b":"foo"},{"a":"2","c":"bar"}]') as x(a int, b text);"""
 

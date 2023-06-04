@@ -118,7 +118,6 @@ def test_issue_9650_bitwise() -> None:
 
 
 if typing.TYPE_CHECKING:
-
     # as far as if this is ColumnElement, BinaryElement, SQLCoreOperations,
     # that might change.  main thing is it's SomeSQLColThing[bool] and
     # not 'bool' or 'Any'.

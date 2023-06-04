@@ -989,7 +989,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         )
 
     def test_double_w_ac_against_subquery(self):
-
         (
             users,
             orders,
@@ -1053,7 +1052,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self._run_double_test()
 
     def test_double_w_ac(self):
-
         (
             users,
             orders,
@@ -1894,7 +1892,6 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
 
     @classmethod
     def insert_data(cls, connection):
-
         e1 = Engineer(primary_language="java")
         e2 = Engineer(primary_language="c++")
         e1.paperwork = [
@@ -3090,7 +3087,6 @@ class SubqueryloadDistinctTest(
         self._run_test_m2o(None, False)
 
     def _run_test_m2o(self, director_strategy_level, photo_strategy_level):
-
         # test where the innermost is m2o, e.g.
         # Movie->director
 
@@ -3538,7 +3534,6 @@ class FromSubqTest(fixtures.DeclarativeMappedTest):
         cache = {}
 
         for i in range(3):
-
             subq = (
                 s.query(B)
                 .join(B.a)
@@ -3616,7 +3611,6 @@ class FromSubqTest(fixtures.DeclarativeMappedTest):
             s.close()
 
     def test_subq_w_from_self_two(self):
-
         A, B, C = self.classes("A", "B", "C")
 
         s = fixture_session()
@@ -3625,7 +3619,6 @@ class FromSubqTest(fixtures.DeclarativeMappedTest):
         for i in range(3):
 
             def go():
-
                 subq = s.query(B).join(B.a).subquery()
 
                 bq = aliased(B, subq)

@@ -1240,7 +1240,6 @@ class ObjectAssociationProxyInstance(AssociationProxyInstance[_T]):
                 "contains() doesn't apply to a scalar object endpoint; use =="
             )
         else:
-
             return self._comparator._criterion_exists(
                 **{self.value_attr: other}
             )

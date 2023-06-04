@@ -796,7 +796,6 @@ def prepare_instrumentation(
 
     # Did factory callable return a builtin?
     if cls in __canned_instrumentation:
-
         # if so, just convert.
         # in previous major releases, this codepath wasn't working and was
         # not covered by tests.   prior to that it supplied a "wrapper"
@@ -1548,7 +1547,6 @@ __interfaces: util.immutabledict[
 
 
 def __go(lcls):
-
     global keyfunc_mapping, mapped_collection
     global column_keyed_dict, column_mapped_collection
     global MappedCollection, KeyFuncDict

@@ -990,7 +990,6 @@ class AttributeImpl:
                     last_parent is not False
                     and last_parent.key != parent_state.key
                 ):
-
                     if last_parent.obj() is None:
                         raise orm_exc.StaleDataError(
                             "Removing state %s from parent "
@@ -1370,7 +1369,6 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         else:
             original = state.committed_state.get(self.key, _NO_HISTORY)
             if original is PASSIVE_NO_RESULT:
-
                 loader_passive = passive | (
                     PASSIVE_ONLY_PERSISTENT
                     | NO_AUTOFLUSH
@@ -1418,7 +1416,6 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
                 and original is not NO_VALUE
                 and original is not current
             ):
-
                 ret.append((instance_state(original), original))
         return ret
 
@@ -1828,7 +1825,6 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
     def _initialize_collection(
         self, state: InstanceState[Any]
     ) -> Tuple[CollectionAdapter, _AdaptedCollectionProtocol]:
-
         adapter, collection = state.manager.initialize_collection(
             self.key, state, self.collection_factory
         )
@@ -2255,7 +2251,6 @@ def backref_listeners(
                 initiator is not check_remove_token
                 and initiator is not check_replace_token
             ):
-
                 if not check_for_dupes_on_remove or not util.has_dupes(
                     # when this event is called, the item is usually
                     # present in the list, except for a pop() operation.
@@ -2478,7 +2473,6 @@ class History(NamedTuple):
         elif original is _NO_HISTORY:
             return cls((), list(current), ())
         else:
-
             current_states = [
                 ((c is not None) and instance_state(c) or None, c)
                 for c in current
@@ -2582,7 +2576,6 @@ def register_attribute_impl(
     backref: Optional[str] = None,
     **kw: Any,
 ) -> QueryableAttribute[Any]:
-
     manager = manager_of_class(class_)
     if uselist:
         factory = kw.pop("typecallable", None)

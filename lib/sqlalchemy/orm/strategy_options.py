@@ -1089,7 +1089,6 @@ class Load(_AbstractLoad):
         mapper_entities: Sequence[_MapperEntity],
         raiseerr: bool,
     ) -> None:
-
         reconciled_lead_entity = self._reconcile_query_entities_with_us(
             mapper_entities, raiseerr
         )
@@ -1947,7 +1946,6 @@ class _AttributeStrategyLoad(_LoadElement):
             )
         start_path = self._path_with_polymorphic_path
         if current_path:
-
             new_path = self._adjust_effective_path_for_current_path(
                 start_path, current_path
             )

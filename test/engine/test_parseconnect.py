@@ -692,7 +692,7 @@ class CreateEngineTest(fixtures.TestBase):
         dbapi = MockDBAPI(
             foober=12, lala=18, hoho={"this": "dict"}, fooz="somevalue"
         )
-        for (value, expected) in [
+        for value, expected in [
             ("rollback", pool.reset_rollback),
             ("commit", pool.reset_commit),
             (None, pool.reset_none),

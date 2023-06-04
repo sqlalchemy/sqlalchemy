@@ -108,7 +108,6 @@ class DeferredReflectionTest(testing.AssertsCompiledSQL, DeferredReflectBase):
         )
 
     def _roundtrip(self):
-
         User = Base.registry._class_registry["User"]
         Address = Base.registry._class_registry["Address"]
 
@@ -326,7 +325,6 @@ class DeferredSecondaryReflectionTest(DeferredReflectBase):
         )
 
     def _roundtrip(self):
-
         User = Base.registry._class_registry["User"]
         Item = Base.registry._class_registry["Item"]
 

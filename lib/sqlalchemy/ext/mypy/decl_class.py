@@ -50,7 +50,6 @@ def scan_declarative_assignments_and_apply_types(
     api: SemanticAnalyzerPluginInterface,
     is_mixin_scan: bool = False,
 ) -> Optional[List[util.SQLAlchemyAttribute]]:
-
     info = util.info_for_cls(cls, api)
 
     if info is None:
@@ -161,7 +160,6 @@ def _scan_symbol_table_entry(
                 sym = api.lookup_qualified(typeengine_arg.name, typeengine_arg)
                 if sym is not None and isinstance(sym.node, TypeInfo):
                     if names.has_base_type_id(sym.node, names.TYPEENGINE):
-
                         left_hand_explicit_type = UnionType(
                             [
                                 infer.extract_python_type_from_typeengine(
@@ -457,7 +455,6 @@ def _scan_declarative_assignment_stmt(
     elif isinstance(stmt.rvalue, CallExpr) and isinstance(
         stmt.rvalue.callee, RefExpr
     ):
-
         python_type_for_type = infer.infer_type_from_right_hand_nameexpr(
             api, stmt, node, left_hand_explicit_type, stmt.rvalue.callee
         )

@@ -472,7 +472,6 @@ class CacheKey(NamedTuple):
         return ck1._diff(ck2)
 
     def _whats_different(self, other: CacheKey) -> Iterator[str]:
-
         k1 = self.key
         k2 = other.key
 

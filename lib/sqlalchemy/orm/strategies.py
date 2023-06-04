@@ -75,7 +75,6 @@ def _register_attribute(
     impl_class=None,
     **kw,
 ):
-
     listen_hooks = []
 
     uselist = useobject and prop.uselist
@@ -120,7 +119,6 @@ def _register_attribute(
         if prop is m._props.get(
             prop.key
         ) and not m.class_manager._attr_has_impl(prop.key):
-
             desc = attributes.register_attribute_impl(
                 m.class_,
                 prop.key,
@@ -402,7 +400,6 @@ class DeferredColumnLoader(LoaderStrategy):
         adapter,
         populators,
     ):
-
         # for a DeferredColumnLoader, this method is only used during a
         # "row processor only" query; see test_deferred.py ->
         # tests with "rowproc_only" in their name.  As of the 1.0 series,
@@ -467,7 +464,6 @@ class DeferredColumnLoader(LoaderStrategy):
         only_load_props=None,
         **kw,
     ):
-
         if (
             (
                 compile_state.compile_options._render_for_subquery
@@ -799,7 +795,6 @@ class LazyLoader(
         )
 
     def _memoized_attr__simple_lazy_clause(self):
-
         lazywhere = sql_util._deep_annotate(
             self._lazywhere, {"_orm_adapt": True}
         )
@@ -912,7 +907,6 @@ class LazyLoader(
                 or passive & PassiveFlag.RELATED_OBJECT_OK
             )
         ):
-
             self._invoke_raise_load(state, passive, "raise")
 
         session = _state_session(state)
@@ -1103,7 +1097,6 @@ class LazyLoader(
         lazy_clause, params = self._generate_lazy_clause(state, passive)
 
         if execution_options:
-
             execution_options = util.EMPTY_DICT.merge_with(
                 execution_options,
                 {
@@ -1173,7 +1166,6 @@ class LazyLoader(
             and context.query._compile_options._only_load_props
             and self.key in context.query._compile_options._only_load_props
         ):
-
             return self._immediateload_create_row_processor(
                 context,
                 query_entity,
@@ -1284,7 +1276,6 @@ class PostLoader(AbstractRelationshipLoader):
     __slots__ = ()
 
     def _setup_for_recursion(self, context, path, loadopt, join_depth=None):
-
         effective_path = (
             context.compile_state.current_path or orm_util.PathRegistry.root
         ) + path
@@ -1375,7 +1366,6 @@ class ImmediateLoader(PostLoader):
         adapter,
         populators,
     ):
-
         (
             effective_path,
             run_loader,
@@ -1414,7 +1404,6 @@ class ImmediateLoader(PostLoader):
         recursion_depth,
         execution_options,
     ):
-
         if recursion_depth:
             new_opt = Load(loadopt.path.entity)
             new_opt.context = (
@@ -1660,7 +1649,6 @@ class SubqueryLoader(PostLoader):
     def _apply_joins(
         self, q, to_join, left_alias, parent_alias, effective_entity
     ):
-
         ltj = len(to_join)
         if ltj == 1:
             to_join = [
@@ -1720,7 +1708,6 @@ class SubqueryLoader(PostLoader):
         effective_entity,
         loadopt,
     ):
-
         # note that because the subqueryload object
         # does not re-use the cached query, instead always making
         # use of the current invoked query, while we have two queries
@@ -1731,7 +1718,6 @@ class SubqueryLoader(PostLoader):
         new_options = orig_query._with_options
 
         if loadopt and loadopt._extra_criteria:
-
             new_options += (
                 orm_util.LoaderCriteriaOption(
                     self.entity,
@@ -1958,7 +1944,6 @@ class SubqueryLoader(PostLoader):
         adapter,
         populators,
     ):
-
         if context.refresh_state:
             return self._immediateload_create_row_processor(
                 context,
@@ -2140,7 +2125,6 @@ class JoinedLoader(AbstractRelationshipLoader):
         )
 
         if user_defined_adapter is not False:
-
             # setup an adapter but dont create any JOIN, assume it's already
             # in the query
             (
@@ -2231,7 +2215,6 @@ class JoinedLoader(AbstractRelationshipLoader):
     def _init_user_defined_eager_proc(
         self, loadopt, compile_state, target_attributes
     ):
-
         # check if the opt applies at all
         if "eager_from_alias" not in loadopt.local_opts:
             # nope
@@ -2289,7 +2272,6 @@ class JoinedLoader(AbstractRelationshipLoader):
     def _setup_query_on_user_defined_adapter(
         self, context, entity, path, adapter, user_defined_adapter
     ):
-
         # apply some more wrapping to the "user defined adapter"
         # if we are setting up the query for SQL render.
         adapter = entity._get_entity_clauses(context)
@@ -2421,7 +2403,6 @@ class JoinedLoader(AbstractRelationshipLoader):
             and not should_nest_selectable
             and compile_state.from_clauses
         ):
-
             indexes = sql_util.find_left_clause_that_matches_given(
                 compile_state.from_clauses, query_entity.selectable
             )
@@ -2552,7 +2533,6 @@ class JoinedLoader(AbstractRelationshipLoader):
     def _splice_nested_inner_join(
         self, path, join_obj, clauses, onclause, extra_criteria, splicing=False
     ):
-
         # recursive fn to splice a nested join into an existing one.
         # splicing=False means this is the outermost call, and it
         # should return a value.  splicing=<from object> is the recursive
@@ -2941,7 +2921,6 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         adapter,
         populators,
     ):
-
         if context.refresh_state:
             return self._immediateload_create_row_processor(
                 context,
@@ -3300,7 +3279,6 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                 data[k].extend(vv[1] for vv in v)
 
             for key, state, state_dict, overwrite in chunk:
-
                 if not overwrite and self.key in state_dict:
                     continue
 

@@ -73,6 +73,7 @@ the use of a declarative base which is then used in a declarative table mapping:
     from sqlalchemy.orm import Mapped
     from sqlalchemy.orm import mapped_column
 
+
     # declarative base class
     class Base(DeclarativeBase):
         pass

@@ -84,7 +84,6 @@ def _maybe_async(fn, *args, **kwargs):
 
     """
     if not ENABLE_ASYNCIO:
-
         return fn(*args, **kwargs)
 
     is_async = config._current.is_async

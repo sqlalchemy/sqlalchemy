@@ -93,7 +93,6 @@ class _StateChange:
 
         @util.decorator
         def _go(fn: _F, self: Any, *arg: Any, **kw: Any) -> Any:
-
             current_state = self._state
 
             if (

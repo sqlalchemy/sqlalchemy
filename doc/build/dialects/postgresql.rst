@@ -172,7 +172,6 @@ E.g. an example of a fully typed model using the
 
 
     class RoomBooking(Base):
-
         __tablename__ = "room_booking"
 
         id: Mapped[int] = mapped_column(primary_key=True)
@@ -246,7 +245,6 @@ datatype::
 
 
     class EventCalendar(Base):
-
         __tablename__ = "event_calendar"
 
         id: Mapped[int] = mapped_column(primary_key=True)
@@ -515,7 +513,6 @@ For example::
 
 
     class RoomBooking(Base):
-
         __tablename__ = "room_booking"
 
         room = Column(Integer(), primary_key=True)

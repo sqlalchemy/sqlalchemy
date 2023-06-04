@@ -31,7 +31,6 @@ from ..sql import roles
 from ..util.typing import Literal
 
 if TYPE_CHECKING:
-
     from . import AttributeEventToken
     from . import Mapper
     from ..sql.elements import ColumnElement
@@ -134,7 +133,7 @@ class _SerializableColumnGetterV2(_PlainColumnGetter[_KT]):
     def _cols(self, mapper: Mapper[_KT]) -> Sequence[ColumnElement[_KT]]:
         cols: List[ColumnElement[_KT]] = []
         metadata = getattr(mapper.local_table, "metadata", None)
-        for (ckey, tkey) in self.colkeys:
+        for ckey, tkey in self.colkeys:
             if tkey is None or metadata is None or tkey not in metadata:
                 cols.append(mapper.local_table.c[ckey])  # type: ignore
             else:

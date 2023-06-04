@@ -74,7 +74,6 @@ class Manager(Employee):
 def do_something_with_mapped_class(
     cls_: MappedClassProtocol[Employee],
 ) -> None:
-
     # EXPECTED_TYPE: Select[Any]
     reveal_type(cls_.__table__.select())
 
@@ -90,7 +89,6 @@ do_something_with_mapped_class(Engineer)
 
 
 if typing.TYPE_CHECKING:
-
     # EXPECTED_TYPE: InstrumentedAttribute[datetime]
     reveal_type(Engineer.start_date)
 

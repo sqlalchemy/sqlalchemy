@@ -168,7 +168,6 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         (BIGINT().with_variant(String(), "some_other_dialect")),
     )
     def test_type_map_varieties(self, typ):
-
         Base = declarative_base(type_annotation_map={int: typ})
 
         class MyClass(Base):
@@ -421,7 +420,6 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 data: Mapped[MyClass] = mapped_column()
 
     def test_construct_lhs_sqlalchemy_type(self, decl_base):
-
         with expect_raises_message(
             sa_exc.ArgumentError,
             "The type provided inside the 'data' attribute Mapped "
@@ -458,7 +456,6 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_construct_nullability_overrides(
         self, decl_base, include_rhs_type, use_mixin
     ):
-
         if include_rhs_type:
             args = (String,)
         else:
@@ -642,7 +639,6 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_pep484_newtypes_as_typemap_keys(
         self, decl_base: Type[DeclarativeBase]
     ):
-
         global str50, str30, str3050
 
         str50 = NewType("str50", str)
@@ -1926,7 +1922,6 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             r"state the generic argument using an annotation, e.g. "
             r'"bs: Mapped\[List\[\'B\'\]\] = relationship\(\)"',
         ):
-
             decl_base.registry.configure()
 
     def test_required_no_arg(self, decl_base):
@@ -2149,7 +2144,6 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_(a1, b1.a)
 
     def test_wrong_annotation_type_one(self, decl_base):
-
         with expect_annotation_syntax_error("A.data"):
 
             class A(decl_base):
@@ -2159,7 +2153,6 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 data: "B" = relationship()  # type: ignore  # noqa
 
     def test_wrong_annotation_type_two(self, decl_base):
-
         with expect_annotation_syntax_error("A.data"):
 
             class B(decl_base):
@@ -2174,7 +2167,6 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 data: B = relationship()  # type: ignore  # noqa
 
     def test_wrong_annotation_type_three(self, decl_base):
-
         with expect_annotation_syntax_error("A.data"):
 
             class B(decl_base):
@@ -2839,7 +2831,6 @@ class AllYourFavoriteHitsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     @testing.variation("anno_type", ["plain", "typemap", "annotated"])
     @testing.variation("inh_type", ["single", "joined"])
     def test_mixin_interp_on_inh(self, decl_base, inh_type, anno_type):
-
         global anno_col
 
         if anno_type.typemap:

@@ -118,7 +118,6 @@ def re_apply_declarative_assignments(
             and stmt.lvalues[0].name in mapped_attr_lookup
             and isinstance(stmt.lvalues[0].node, Var)
         ):
-
             left_node = stmt.lvalues[0].node
 
             python_type_for_type = mapped_attr_lookup[
@@ -145,7 +144,6 @@ def re_apply_declarative_assignments(
                     and isinstance(stmt.rvalue.args[0].callee, RefExpr)
                 )
             ):
-
                 new_python_type_for_type = (
                     infer.infer_type_from_right_hand_nameexpr(
                         api,

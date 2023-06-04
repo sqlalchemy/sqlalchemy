@@ -52,7 +52,6 @@ class _NodeTest:
 
     @classmethod
     def setup_mappers(cls):
-
         nodes = cls.tables.nodes
         Node = cls.classes.Node
 
@@ -182,7 +181,6 @@ class DeepRecursiveTest(_NodeTest, fixtures.MappedTest):
 
     @testing.fixture
     def limited_cache_conn(self, connection):
-
         connection.engine._compiled_cache.clear()
 
         assert_limit = 0

@@ -532,7 +532,6 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
     )
 
     def set_isolation_level(self, dbapi_connection, level):
-
         if level == "AUTOCOMMIT":
             dbapi_connection.isolation_level = None
         else:

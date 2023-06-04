@@ -154,7 +154,6 @@ class GlyphCoordinate(Base):
         for color, char in [
             (data[i], data[i + 1]) for i in range(0, len(data), 2)
         ]:
-
             x = self.x + col
             y = self.y + row
             if 0 <= x <= MAX_X and 0 <= y <= MAX_Y:
@@ -448,7 +447,7 @@ def init_positions(session):
         ("enemy2", 25),
         ("enemy1", 10),
     )
-    for (ship_vert, (etype, score)) in zip(
+    for ship_vert, (etype, score) in zip(
         range(5, 30, ENEMY_VERT_SPACING), arrangement
     ):
         for ship_horiz in range(0, 50, 10):

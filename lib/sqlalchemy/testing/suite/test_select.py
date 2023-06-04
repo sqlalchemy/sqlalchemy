@@ -1729,7 +1729,6 @@ class IdentityColumnTest(fixtures.TablesTest):
         eq_(res, [(-5, "b"), (0, "a"), (42, "c")])
 
     def test_select_columns(self, connection):
-
         res = connection.execute(
             select(self.tables.tbl_a.c.id).order_by(self.tables.tbl_a.c.id)
         ).fetchall()

@@ -388,7 +388,6 @@ class StructuralEagerLoadCycleTest(fixtures.DeclarativeMappedTest):
         # so test it both ways even though when things are "working", there's
         # no problem
         if ensure_no_warning:
-
             a = results.first()
         else:
             with expect_warnings(

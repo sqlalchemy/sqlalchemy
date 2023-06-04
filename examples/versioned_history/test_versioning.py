@@ -39,7 +39,6 @@ class TestVersioning(AssertsCompiledSQL):
     __dialect__ = "default"
 
     def setUp(self):
-
         self.engine = engine = create_engine("sqlite://")
         self.session = Session(engine)
         self.make_base()
@@ -520,7 +519,6 @@ class TestVersioning(AssertsCompiledSQL):
             }
 
         class SubClass(BaseClass):
-
             subname = Column(String(50), unique=True)
             __mapper_args__ = {"polymorphic_identity": "sub"}
 

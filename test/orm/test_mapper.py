@@ -660,7 +660,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "sqlalchemy.orm.attributes.register_attribute_impl",
             side_effect=register_attribute_impl,
         ) as some_mock:
-
             self.mapper(A, users, properties={"bs": relationship(B)})
             self.mapper(B, addresses)
 
@@ -2268,7 +2267,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         eq_(recon, ["A", "B", "C"])
 
     def test_reconstructor_init(self):
-
         users = self.tables.users
 
         recon = []
@@ -3003,7 +3001,6 @@ class MagicNamesTest(fixtures.MappedTest):
 
 class DocumentTest(fixtures.TestBase):
     def setup_test(self):
-
         self.mapper = registry().map_imperatively
 
     def test_doc_propagate(self):

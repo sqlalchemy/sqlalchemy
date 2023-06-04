@@ -639,7 +639,6 @@ class MergeTest(_fixtures.FixtureTest):
         self.load_tracker(Address, load)
 
         with fixture_session(expire_on_commit=False) as sess, sess.begin():
-
             # set up data and save
             u = User(
                 id=7,
@@ -965,7 +964,6 @@ class MergeTest(_fixtures.FixtureTest):
         self.load_tracker(Item, load)
 
         with fixture_session(expire_on_commit=False) as sess:
-
             i1 = Item()
             i1.description = "item 1"
 

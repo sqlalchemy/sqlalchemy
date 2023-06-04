@@ -120,11 +120,7 @@ def combinations(
 
 
 def combinations_list(
-    arg_iterable: Iterable[
-        Tuple[
-            Any,
-        ]
-    ],
+    arg_iterable: Iterable[Tuple[Any,]],
     **kw,
 ):
     "As combination, but takes a single iterable"

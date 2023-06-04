@@ -47,7 +47,6 @@ async def run_out_of_band(
     """
 
     async with async_sessionmaker() as oob_session:
-
         # use AUTOCOMMIT for each connection to reduce transaction
         # overhead / contention
         await oob_session.connection(
@@ -83,7 +82,6 @@ async def run_out_of_band(
 
 
 async def async_main():
-
     engine = create_async_engine(
         "postgresql+asyncpg://scott:tiger@localhost/test",
         echo=True,
