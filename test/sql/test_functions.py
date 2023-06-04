@@ -216,11 +216,39 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         ]:
             self.assert_compile(func.random(), ret, dialect=dialect)
 
-    def test_generic_string_agg(self):
+    def test_return_type_string_agg(self):
         t = table("t", column("value", String))
         expr = func.string_agg(t.c.value, ",")
         is_(expr.type._type_affinity, String)
-        stmt = select(expr)
+
+    def test_generic_string_agg(self):
+        t = table("t", column("value", String))
+        stmt = select(func.string_agg(t.c.value))
+
+        self.assert_compile(
+            stmt,
+            "SELECT group_concat(t.value) AS string_agg_1 FROM t",
+            dialect=sqlite.dialect(),
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT string_agg(t.value) AS string_agg_1 FROM t",
+            dialect=postgresql.dialect(),
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT string_agg(t.value) AS string_agg_1 FROM t",
+            dialect=mssql.dialect(),
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT group_concat(t.value) AS string_agg_1 FROM t",
+            dialect=mysql.dialect(),
+        )
+
+    def test_generic_string_agg_with_delimeter(self):
+        t = table("t", column("value", String))
+        stmt = select(func.string_agg(t.c.value, ","))
 
         self.assert_compile(
             stmt,
@@ -1204,6 +1232,7 @@ class ExecuteTest(fixtures.TestBase):
                 {"value": "a"},
                 {"value": "b"},
                 {"value": "c"},
+                {"value": None},  # ignored
             ],
         )
         rs = connection.execute(select(func.string_agg(values_t.c.value)))
@@ -1213,7 +1242,7 @@ class ExecuteTest(fixtures.TestBase):
         rs.close()
 
     @testing.provide_metadata
-    def test_string_agg_custom_sep(self, connection):
+    def test_string_agg_execute_with_delimeter(self, connection):
         meta = self.metadata
         values_t = Table("values", meta, Column("value", String))
         meta.create_all(connection)
@@ -1222,6 +1251,7 @@ class ExecuteTest(fixtures.TestBase):
             [
                 {"value": "a"},
                 {"value": "b"},
+                {"value": None},  # ignored
                 {"value": "c"},
             ],
         )
