@@ -1807,12 +1807,13 @@ class string_agg(GenericFunction[_T]):
     This function will concatenate non-null values into a string and
     separate the values by a delimeter.
 
+    e.g. Example usage with delimeter '.' as the last argument
+
+    stmt = select(func.string_agg(table.c.str_col, "."))
+
     The return type of this function is :class:`.String`.
 
     """
     type = sqltypes.String()
     _has_args = True
     inherit_cache = True
-
-    def __init__(self, sep=",", *args, **kwargs):
-        super().__init__(sep, *args, **kwargs)
