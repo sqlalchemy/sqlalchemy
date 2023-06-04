@@ -1,0 +1,11 @@
+.. change::
+    :tags: usecase, asyncio
+    :tickets: 8215
+
+    Added new :paramref:`_asyncio.create_async_engine.async_creator` parameter
+    to :func:`.create_async_engine`, which accomplishes the same purpose as the
+    :paramref:`.create_engine.creator` parameter of :func:`.create_engine`.
+    This is a no-argument callable that provides a new asyncio connection,
+    using the asyncio database driver directly. The
+    :func:`.create_async_engine` function will wrap the driver-level connection
+    in the appropriate structures. Pull request curtesy of Jack Wotherspoon.

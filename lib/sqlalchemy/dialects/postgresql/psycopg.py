@@ -672,15 +672,16 @@ class PsycopgAdaptDBAPI:
 
     def connect(self, *arg, **kw):
         async_fallback = kw.pop("async_fallback", False)
+        creator_fn = kw.pop(
+            "async_creator_fn", self.psycopg.AsyncConnection.connect
+        )
         if util.asbool(async_fallback):
             return AsyncAdaptFallback_psycopg_connection(
-                await_fallback(
-                    self.psycopg.AsyncConnection.connect(*arg, **kw)
-                )
+                await_fallback(creator_fn(*arg, **kw))
             )
         else:
             return AsyncAdapt_psycopg_connection(
-                await_only(self.psycopg.AsyncConnection.connect(*arg, **kw))
+                await_only(creator_fn(*arg, **kw))
             )
 
 
