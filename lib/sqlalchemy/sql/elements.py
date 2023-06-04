@@ -2766,6 +2766,9 @@ class ClauseList(
         self._is_implicitly_boolean = False
         return self
 
+    def __getitem__(self, item) -> ColumnElement[Any]:
+        return self.clauses[item]
+
     def __iter__(self) -> Iterator[ColumnElement[Any]]:
         return iter(self.clauses)
 

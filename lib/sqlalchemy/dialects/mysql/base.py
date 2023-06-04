@@ -1208,6 +1208,15 @@ class MySQLCompiler(compiler.SQLCompiler):
         )
         return f"{clause} WITH ROLLUP"
 
+    def visit_string_agg_func(self, fn, **kw):
+        if len(fn.clauses) > 1:
+            return "group_concat(%s SEPARATOR %s)" % (
+                fn.clauses[0]._compiler_dispatch(self, **kw),
+                fn.clauses[-1]._compiler_dispatch(self, **kw),
+            )
+        else:
+            return "group_concat%s" % self.function_argspec(fn)
+
     def visit_sequence(self, seq, **kw):
         return "nextval(%s)" % self.preparer.format_sequence(seq)
 

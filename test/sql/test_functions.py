@@ -242,6 +242,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             literal_binds=True,
             render_postcompile=True,
         )
+        self.assert_compile(
+            stmt,
+            "SELECT group_concat(t.value SEPARATOR ',') "
+            "AS string_agg_1 FROM t",
+            dialect=mysql.dialect(),
+            literal_binds=True,
+            render_postcompile=True,
+        )
 
     def test_cube_operators(self):
         t = table(
