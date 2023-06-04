@@ -1318,6 +1318,9 @@ class SQLiteCompiler(compiler.SQLCompiler):
     def visit_char_length_func(self, fn, **kw):
         return "length%s" % self.function_argspec(fn)
 
+    def visit_string_agg_func(self, fn, **kw):
+        return "group_concat%s" % self.function_argspec(fn)
+
     def visit_cast(self, cast, **kwargs):
         if self.dialect.supports_cast:
             return super().visit_cast(cast, **kwargs)

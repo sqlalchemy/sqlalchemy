@@ -1045,6 +1045,10 @@ class _FunctionGenerator:
             ...
 
         @property
+        def string_agg(self) -> Type[string_agg[Any]]:
+            ...
+
+        @property
         def sum(self) -> Type[sum[Any]]:  # noqa: A001
             ...
 
@@ -1795,3 +1799,20 @@ class grouping_sets(GenericFunction[_T]):
     """
     _has_args = True
     inherit_cache = True
+
+
+class string_agg(GenericFunction[_T]):
+    r"""Implement the ``STRING_AGG`` aggregation function
+
+    This function will concatenate non-null values into a string and
+    separate the values by a delimeter.
+
+    The return type of this function is :class:`.String`.
+
+    """
+    type = sqltypes.String()
+    _has_args = True
+    inherit_cache = True
+
+    def __init__(self, sep=",", *args, **kwargs):
+        super().__init__(sep, *args, **kwargs)

@@ -26,6 +26,7 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import Text
 from sqlalchemy import true
+from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import oracle
 from sqlalchemy.dialects import postgresql
@@ -214,6 +215,33 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             ("random()", oracle.dialect()),
         ]:
             self.assert_compile(func.random(), ret, dialect=dialect)
+
+    def test_generic_string_agg(self):
+        t = table("t", column("value", String))
+        expr = func.string_agg(t.c.value, ",")
+        is_(expr.type._type_affinity, String)
+        stmt = select(expr)
+
+        self.assert_compile(
+            stmt,
+            "SELECT group_concat(t.value, ?) AS string_agg_1 FROM t",
+            dialect=sqlite.dialect(),
+            checkpositional=(",",),
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT string_agg(t.value, ',') AS string_agg_1 FROM t",
+            dialect=postgresql.dialect(),
+            literal_binds=True,
+            render_postcompile=True,
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT string_agg(t.value, ',') AS string_agg_1 FROM t",
+            dialect=mssql.dialect(),
+            literal_binds=True,
+            render_postcompile=True,
+        )
 
     def test_cube_operators(self):
         t = table(
@@ -1156,6 +1184,46 @@ class ExecuteTest(fixtures.TestBase):
             connection.execute(select(t2.c.value, t2.c.stuff)).first(),
             (9, "foo"),
         )
+
+    @testing.provide_metadata
+    def test_string_agg_execute(self, connection):
+        meta = self.metadata
+        values_t = Table("values", meta, Column("value", String))
+        meta.create_all(connection)
+        connection.execute(
+            values_t.insert(),
+            [
+                {"value": "a"},
+                {"value": "b"},
+                {"value": "c"},
+            ],
+        )
+        rs = connection.execute(select(func.string_agg(values_t.c.value)))
+        row = rs.scalar()
+
+        assert row == "a,b,c"
+        rs.close()
+
+    @testing.provide_metadata
+    def test_string_agg_custom_sep(self, connection):
+        meta = self.metadata
+        values_t = Table("values", meta, Column("value", String))
+        meta.create_all(connection)
+        connection.execute(
+            values_t.insert(),
+            [
+                {"value": "a"},
+                {"value": "b"},
+                {"value": "c"},
+            ],
+        )
+        rs = connection.execute(
+            select(func.string_agg(values_t.c.value, " and "))
+        )
+        row = rs.scalar()
+
+        assert row == "a and b and c"
+        rs.close()
 
     @testing.fails_on_everything_except("postgresql")
     def test_as_from(self, connection):
