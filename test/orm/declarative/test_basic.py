@@ -1151,6 +1151,54 @@ class DeclarativeMultiBaseTest(
         eq_(a1, Address(email="two"))
         eq_(a1.user, User(name="u1"))
 
+    @testing.variation("mora", ["mixin", "abstract"])
+    def test_abstract_and_or_mixin(self, mora):
+        if mora.abstract:
+
+            class Employee(Base):
+                __abstract__ = True
+
+                id = mapped_column(Integer, primary_key=True, sort_order=-1)
+
+            class Manager(Employee):
+                __tablename__ = "manager"
+                name = mapped_column(String(50))
+                manager_data = mapped_column(String(40))
+
+            class Engineer(Employee):
+                __tablename__ = "engineer"
+
+                name = mapped_column(String(50))
+                engineer_info = mapped_column(String(40))
+
+        elif mora.mixin:
+
+            class Mixin:
+                pass
+
+            class EmployeeMixin:
+                id = mapped_column(Integer, primary_key=True, sort_order=-1)
+
+            class Manager(EmployeeMixin, Base):
+                __tablename__ = "manager"
+                name = mapped_column(String(50))
+                manager_data = mapped_column(String(40))
+
+            class Engineer(EmployeeMixin, Base):
+                __tablename__ = "engineer"
+
+                name = mapped_column(String(50))
+                engineer_info = mapped_column(String(40))
+
+        else:
+            mora.fail()
+
+        self.assert_compile(
+            select(Engineer),
+            "SELECT engineer.id, engineer.name, engineer.engineer_info "
+            "FROM engineer",
+        )
+
     def test_back_populates_setup(self):
         class User(Base):
             __tablename__ = "users"
