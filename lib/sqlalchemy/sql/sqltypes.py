@@ -2049,7 +2049,7 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
     """
 
     impl = DateTime
-    epoch = dt.datetime.utcfromtimestamp(0)
+    epoch = dt.datetime.fromtimestamp(0, dt.timezone.utc).replace(tzinfo=None)
     cache_ok = True
 
     def __init__(

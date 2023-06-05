@@ -113,7 +113,7 @@ def _history_mapper(local_mapper):
             Column(
                 "changed",
                 DateTime,
-                default=datetime.datetime.utcnow,
+                default=lambda: datetime.datetime.now(datetime.timezone.utc),
                 info=version_meta,
             )
         )

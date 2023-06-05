@@ -736,7 +736,7 @@ class PoolEventsTest(PoolTestBase):
         assert canary.call_args_list[0][0][0] is dbapi_con
         assert canary.call_args_list[0][0][2] is exc
 
-    @testing.variation("is_asyncio", [True, False])
+    @testing.variation("is_asyncio", [(True, testing.requires.asyncio), False])
     @testing.variation("has_terminate", [True, False])
     def test_checkin_event_gc(self, is_asyncio, has_terminate):
         """tests for #8419, which have been modified for 2.0 in #9237"""
@@ -1704,7 +1704,10 @@ class QueuePoolTest(PoolTestBase):
             exc_cls=TimeoutThing if exc_type.base_exception else Exception,
         )
 
-    @testing.combinations((True,), (False,))
+    @testing.variation(
+        "detach_gced",
+        [("detached_gc", testing.requires.asyncio), "normal_gc"],
+    )
     @testing.emits_warning("The garbage collector")
     def test_userspace_disconnectionerror_weakref_finalizer(self, detach_gced):
         dbapi, pool = self._queuepool_dbapi_fixture(
