@@ -528,6 +528,15 @@ variable may be generated::
 Integrating with Alternate Dataclass Providers such as Pydantic
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. warning::  Pydantic's dataclass layer is **not fully compatible with
+   SQLAlchemy's class instrumentation without additional internal changes, and
+   many features such as related collections may not work correctly.**.
+
+   For Pydantic compatibility, please consider the
+   `SQLModel <https://sqlmodel.tiangolo.com/>` ORM which is built with
+   Pydantic on top of SQLAlchemy ORM, which includes special implementation
+   details which **explicitly resolve** these incompabilities.
+
 SQLAlchemy's :class:`_orm.MappedAsDataclass` class
 and :meth:`_orm.registry.mapped_as_dataclass` method call directly into
 the Python standard library ``dataclasses.dataclass`` class decorator, after
