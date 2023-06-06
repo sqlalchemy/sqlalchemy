@@ -1488,6 +1488,9 @@ class PrePingRealTest(fixtures.TestBase):
 class InvalidateDuringResultTest(fixtures.TestBase):
     __backend__ = True
 
+    # test locks SQLite file databases due to unconsumed results
+    __requires__ = ("ad_hoc_engines",)
+
     def setup_test(self):
         self.engine = engines.reconnecting_engine()
         self.meta = MetaData()
