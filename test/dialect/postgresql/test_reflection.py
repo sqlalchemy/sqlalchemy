@@ -1179,6 +1179,15 @@ class ReflectionTest(
                 where name != 'foo'
             """
         )
+        version = connection.dialect.server_version_info
+        if version >= (15,):
+            connection.exec_driver_sql(
+                """
+                create unique index zz_idx5 on party
+                    (name desc, upper(other))
+                    nulls not distinct
+                """
+            )
 
         expected = [
             {
@@ -1238,7 +1247,23 @@ class ReflectionTest(
                 "dialect_options": {"postgresql_include": []},
             },
         ]
-        if connection.dialect.server_version_info < (11,):
+        if version > (15,):
+            expected.append(
+                {
+                    "name": "zz_idx5",
+                    "column_names": ["name", None],
+                    "expressions": ["name", "upper(other::text)"],
+                    "unique": True,
+                    "include_columns": [],
+                    "dialect_options": {
+                        "postgresql_include": [],
+                        "postgresql_nulls_not_distinct": True,
+                    },
+                    "column_sorting": {"name": ("desc",)},
+                },
+            )
+
+        if version < (11,):
             for index in expected:
                 index.pop("include_columns")
                 index["dialect_options"].pop("postgresql_include")
@@ -1461,6 +1486,72 @@ class ReflectionTest(
             list(t1.indexes)[0].dialect_options["postgresql"]["using"],
             "gin",
         )
+
+    @testing.skip_if("postgresql < 15.0", "nullsnotdistinct not supported")
+    def test_nullsnotdistinct(self, metadata, connection):
+        Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x", ARRAY(Integer)),
+            Column("y", ARRAY(Integer)),
+            Index(
+                "idx1", "x", unique=True, postgresql_nulls_not_distinct=True
+            ),
+            UniqueConstraint(
+                "y", name="unq1", postgresql_nulls_not_distinct=True
+            ),
+        )
+        metadata.create_all(connection)
+
+        ind = inspect(connection).get_indexes("t", None)
+        expected_ind = [
+            {
+                "unique": True,
+                "column_names": ["x"],
+                "name": "idx1",
+                "dialect_options": {
+                    "postgresql_nulls_not_distinct": True,
+                    "postgresql_include": [],
+                },
+                "include_columns": [],
+            },
+            {
+                "unique": True,
+                "column_names": ["y"],
+                "name": "unq1",
+                "dialect_options": {
+                    "postgresql_nulls_not_distinct": True,
+                    "postgresql_include": [],
+                },
+                "include_columns": [],
+                "duplicates_constraint": "unq1",
+            },
+        ]
+        eq_(ind, expected_ind)
+
+        unq = inspect(connection).get_unique_constraints("t", None)
+        expected_unq = [
+            {
+                "column_names": ["y"],
+                "name": "unq1",
+                "dialect_options": {
+                    "postgresql_nulls_not_distinct": True,
+                },
+                "comment": None,
+            }
+        ]
+        eq_(unq, expected_unq)
+
+        m = MetaData()
+        t1 = Table("t", m, autoload_with=connection)
+        eq_(len(t1.indexes), 1)
+        idx_options = list(t1.indexes)[0].dialect_options["postgresql"]
+        eq_(idx_options["nulls_not_distinct"], True)
+
+        cst = {c.name: c for c in t1.constraints}
+        cst_options = cst["unq1"].dialect_options["postgresql"]
+        eq_(cst_options["nulls_not_distinct"], True)
 
     @testing.skip_if("postgresql < 11.0", "indnkeyatts not supported")
     def test_index_reflection_with_include(self, metadata, connection):

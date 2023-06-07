@@ -1,0 +1,10 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 8240
+
+    Added support for PostgreSQL 10 ``NULLS NOT DISTINCT`` feature of
+    unique indexes and unique constraint using the dialect option
+    ``postgresql_nulls_not_distinct``.
+    Updated the reflection logic to also correctly take this option
+    into account.
+    Pull request courtesy of Pavel Siarchenia.
