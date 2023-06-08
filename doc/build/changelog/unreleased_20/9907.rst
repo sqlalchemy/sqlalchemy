@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 9907
+
+    Fixed issue where the :paramref:`.ColumnOperators.like.escape` and similar
+    parameters did not allow an empty string as an argument that would be
+    passed through as the "escape" character; this is a supported syntax by
+    PostgreSQL.  Pull requset courtesy Martin Caslavsky.
