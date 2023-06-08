@@ -5064,7 +5064,7 @@ def make_transient_to_detached(instance: object) -> None:
     if state._deleted:
         del state._deleted
     state._commit_all(state.dict)
-    state._expire_attributes(state.dict, state.unloaded_expirable)
+    state._expire_attributes(state.dict, state.unloaded)
 
 
 def object_session(instance: object) -> Optional[Session]:

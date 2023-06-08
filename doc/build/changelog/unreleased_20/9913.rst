@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9913
+
+    The :attr:`_orm.InstanceState.unloaded_expirable` attribute is a synonym
+    for :attr:`_orm.InstanceState.unloaded`, and is now deprecated; this
+    attribute was always implementation-specific and should not have been
+    public.
