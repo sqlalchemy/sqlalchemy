@@ -824,8 +824,8 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     def unloaded(self) -> Set[str]:
         """Return the set of keys which do not have a loaded value.
 
-        This includes expired attributes and any other attribute that
-        was never populated or modified.
+        This includes expired attributes and any other attribute that was never
+        populated or modified.
 
         """
         return (
@@ -835,11 +835,16 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         )
 
     @property
+    @util.deprecated(
+        "2.0",
+        "The :attr:`.InstanceState.unloaded_expirable` attribute is "
+        "deprecated.  Please use :attr:`.InstanceState.unloaded`.",
+    )
     def unloaded_expirable(self) -> Set[str]:
-        """Return the set of keys which do not have a loaded value.
+        """Synonymous with :attr:`.InstanceState.unloaded`.
 
-        This includes expired attributes and any other attribute that
-        was never populated or modified.
+        This attribute was added as an implementation-specific detail at some
+        point and should be considered to be private.
 
         """
         return self.unloaded

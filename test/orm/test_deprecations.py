@@ -9,6 +9,8 @@ from sqlalchemy import event
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import Identity
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
@@ -391,6 +393,28 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
 
 
 class MiscDeprecationsTest(fixtures.TestBase):
+    def test_unloaded_expirable(self, decl_base):
+        class A(decl_base):
+            __tablename__ = "a"
+            id = mapped_column(Integer, Identity(), primary_key=True)
+            x = mapped_column(
+                Integer,
+            )
+            y = mapped_column(Integer, deferred=True)
+
+        decl_base.metadata.create_all(testing.db)
+        with Session(testing.db) as sess:
+            obj = A(x=1, y=2)
+            sess.add(obj)
+            sess.commit()
+
+        with expect_deprecated(
+            "The InstanceState.unloaded_expirable attribute is deprecated.  "
+            "Please use InstanceState.unloaded."
+        ):
+            eq_(inspect(obj).unloaded, {"id", "x", "y"})
+            eq_(inspect(obj).unloaded_expirable, inspect(obj).unloaded)
+
     def test_evaluator_is_private(self):
         with expect_deprecated(
             "Direct use of 'EvaluatorCompiler' is not supported, and this "
