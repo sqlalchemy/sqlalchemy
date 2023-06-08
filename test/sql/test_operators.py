@@ -3533,6 +3533,13 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"x_1": "a%b_c"},
         )
 
+    def test_like_escape_empty(self):
+        self.assert_compile(
+            column("x").like("y", escape=""),
+            "x LIKE :x_1 ESCAPE ''",
+            checkparams={"x_1": "y"},
+        )
+
     def test_ilike(self):
         self.assert_compile(
             column("x").ilike("y"),
@@ -3545,6 +3552,13 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             column("x").ilike("a%b_c", escape="\\"),
             "lower(x) LIKE lower(:x_1) ESCAPE '\\'",
             checkparams={"x_1": "a%b_c"},
+        )
+
+    def test_ilike_escape_empty(self):
+        self.assert_compile(
+            column("x").ilike("y", escape=""),
+            "lower(x) LIKE lower(:x_1) ESCAPE ''",
+            checkparams={"x_1": "y"},
         )
 
     def test_not_like(self):
@@ -3561,6 +3575,13 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"x_1": "a%b_c"},
         )
 
+    def test_not_like_escape_empty(self):
+        self.assert_compile(
+            column("x").not_like("y", escape=""),
+            "x NOT LIKE :x_1 ESCAPE ''",
+            checkparams={"x_1": "y"},
+        )
+
     def test_not_ilike(self):
         self.assert_compile(
             column("x").not_ilike("y"),
@@ -3573,6 +3594,13 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             column("x").not_ilike("a%b_c", escape="\\"),
             "lower(x) NOT LIKE lower(:x_1) ESCAPE '\\'",
             checkparams={"x_1": "a%b_c"},
+        )
+
+    def test_not_ilike_escape_empty(self):
+        self.assert_compile(
+            column("x").not_ilike("y", escape=""),
+            "lower(x) NOT LIKE lower(:x_1) ESCAPE ''",
+            checkparams={"x_1": "y"},
         )
 
     def test_startswith(self):
