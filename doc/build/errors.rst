@@ -1471,6 +1471,55 @@ attention to the rules applied to `inheritance <dc_superclass_>`_.
 .. _dc_superclass: https://docs.python.org/3/library/dataclasses.html#inheritance
 
 
+.. _error_bupq:
+
+per-row ORM Bulk Update by Primary Key requires that records contain primary key values
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This error occurs when making use of the :ref:`orm_queryguide_bulk_update`
+feature without supplying primary key values in the given records, such as::
+
+
+    >>> session.execute(
+    ...     update(User).where(User.name == bindparam("u_name")),
+    ...     [
+    ...         {"u_name": "spongebob", "fullname": "Spongebob Squarepants"},
+    ...         {"u_name": "patrick", "fullname": "Patrick Star"},
+    ...     ],
+    ... )
+
+Above, the presence of a list of parameter dictionaries combined with usage of
+the :class:`_orm.Session` to execute an ORM-enabled UPDATE statement will
+automatically make use of ORM Bulk Update by Primary Key, which expects
+parameter dictionaries to include primary key values, e.g.::
+
+    >>> session.execute(
+    ...     update(User),
+    ...     [
+    ...         {"id": 1, "fullname": "Spongebob Squarepants"},
+    ...         {"id": 3, "fullname": "Patrick Star"},
+    ...         {"id": 5, "fullname": "Eugene H. Krabs"},
+    ...     ],
+    ... )
+
+To invoke the UPDATE statement without supplying per-record primary key values,
+use :meth:`_orm.Session.connection` to acquire the current :class:`_engine.Connection`,
+then invoke with that::
+
+    >>> session.connection().execute(
+    ...     update(User).where(User.name == bindparam("u_name")),
+    ...     [
+    ...         {"u_name": "spongebob", "fullname": "Spongebob Squarepants"},
+    ...         {"u_name": "patrick", "fullname": "Patrick Star"},
+    ...     ],
+    ... )
+
+
+.. seealso::
+
+        :ref:`orm_queryguide_bulk_update`
+
+        :ref:`orm_queryguide_bulk_update_disabling`
 
 
 

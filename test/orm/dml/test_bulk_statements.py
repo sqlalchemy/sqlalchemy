@@ -375,7 +375,7 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
         eq_(e2.user_name, "e2 new name")
 
 
-class UpdateStmtTest(fixtures.TestBase):
+class UpdateStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
     __backend__ = True
 
     @testing.variation(
@@ -515,6 +515,77 @@ class UpdateStmtTest(fixtures.TestBase):
                     (12, expected_qs[2]),
                 ],
             )
+
+    @testing.variation("add_where", [True, False])
+    @testing.variation("multi_row", ["multirow", "singlerow", "listwsingle"])
+    def test_bulk_update_no_pk(self, decl_base, add_where, multi_row):
+        """test #9917"""
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(
+                primary_key=True, autoincrement=False
+            )
+
+            x: Mapped[int]
+            y: Mapped[int]
+
+        decl_base.metadata.create_all(testing.db)
+
+        s = fixture_session()
+
+        s.add_all(
+            [A(id=1, x=1, y=1), A(id=2, x=2, y=2), A(id=3, x=3, y=3)],
+        )
+        s.commit()
+
+        stmt = update(A)
+        if add_where:
+            stmt = stmt.where(A.x > 1)
+
+        if multi_row.multirow:
+            data = [
+                {"x": 3, "y": 8},
+                {"x": 5, "y": 9},
+                {"x": 12, "y": 15},
+            ]
+
+            stmt = stmt.execution_options(synchronize_session=None)
+        elif multi_row.listwsingle:
+            data = [
+                {"x": 5, "y": 9},
+            ]
+
+            stmt = stmt.execution_options(synchronize_session=None)
+        elif multi_row.singlerow:
+            data = {"x": 5, "y": 9}
+        else:
+            multi_row.fail()
+
+        if multi_row.multirow or multi_row.listwsingle:
+            with expect_raises_message(
+                exc.InvalidRequestError,
+                r"No primary key value supplied for column\(s\) a.id; per-row "
+                "ORM Bulk UPDATE by Primary Key requires that records contain "
+                "primary key values",
+            ):
+                s.execute(stmt, data)
+        else:
+            with self.sql_execution_asserter() as asserter:
+                s.execute(stmt, data)
+
+            if add_where:
+                asserter.assert_(
+                    CompiledSQL(
+                        "UPDATE a SET x=:x, y=:y WHERE a.x > :x_1",
+                        [{"x": 5, "y": 9, "x_1": 1}],
+                    ),
+                )
+            else:
+                asserter.assert_(
+                    CompiledSQL("UPDATE a SET x=:x, y=:y", [{"x": 5, "y": 9}]),
+                )
 
     def test_bulk_update_w_where_one(self, decl_base):
         """test use case in #9595"""

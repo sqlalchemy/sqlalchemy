@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9917
+
+    Fixed bug in new feature which allows a WHERE clause to be used in
+    conjunction with :ref:`orm_queryguide_bulk_update`, added in version 2.0.11
+    as part of :ticket:`9583`, where sending dictionaries that did not include
+    the primary key values for each row would run through the bulk process and
+    include "pk=NULL" for the rows, silently failing.   An exception is now
+    raised if primary key values for bulk UPDATE are not supplied.

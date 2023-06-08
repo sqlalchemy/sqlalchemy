@@ -654,13 +654,16 @@ ORM, using an explicit WHERE clause, which is documented at
 
 For the "bulk" version of UPDATE, a :func:`_dml.update` construct is made in
 terms of an ORM class and passed to the :meth:`_orm.Session.execute` method;
-the resulting :class:`_dml.Update` object should have **no WHERE criteria or
-values**, that is, the :meth:`_dml.Update.where` and :meth:`_dml.Update.values`
-methods are not used. Passing the :class:`_dml.Update` construct along with a
-list of parameter dictionaries which each include a full primary key value will
-invoke **bulk UPDATE by primary key mode** for the statement, generating the
-appropriate WHERE criteria to match each row by primary key, and using
-:term:`executemany` to run each parameter set against the UPDATE statement::
+the resulting :class:`_dml.Update` object should have **no values and typically
+no WHERE criteria**, that is, the :meth:`_dml.Update.values` method is not
+used, and the :meth:`_dml.Update.where` is **usually** not used, but may be
+used in the unusual case that additional filtering criteria would be added.
+
+Passing the :class:`_dml.Update` construct along with a list of parameter
+dictionaries which each include a full primary key value will invoke **bulk
+UPDATE by primary key mode** for the statement, generating the appropriate
+WHERE criteria to match each row by primary key, and using :term:`executemany`
+to run each parameter set against the UPDATE statement::
 
     >>> from sqlalchemy import update
     >>> session.execute(
@@ -675,9 +678,18 @@ appropriate WHERE criteria to match each row by primary key, and using
     [...] [('Spongebob Squarepants', 1), ('Patrick Star', 3), ('Eugene H. Krabs', 5)]
     {stop}<...>
 
+Note that each parameter dictionary **must include a full primary key for
+each record**, else an error is raised.
+
 Like the bulk INSERT feature, heterogeneous parameter lists are supported here
 as well, where the parameters will be grouped into sub-batches of UPDATE
 runs.
+
+.. versionchanged:: 2.0.11  Additional WHERE criteria can be combined with
+   :ref:`orm_queryguide_bulk_update` by using the :meth:`_dml.Update.where`
+   method to add additional criteria.  However this criteria is always in
+   addition to the WHERE criteria that's already made present which includes
+   primary key values.
 
 The RETURNING feature is not available when using the "bulk UPDATE by primary
 key" feature; the list of multiple parameter dictionaries necessarily makes use
@@ -686,12 +698,48 @@ support result rows.
 
 
 .. versionchanged:: 2.0  Passing an :class:`_dml.Update` construct to the
-   :meth:`_orm.Session.execute` method along with a list of parameter dictionaries
-   and no WHERE criteria now invokes a "bulk update", which
-   makes use of the same functionality as the legacy
-   :meth:`_orm.Session.bulk_update_mappings` method.  This is a behavior change
-   compared to the 1.x series where the :class:`_dml.Update` would only be
-   supported with explicit WHERE criteria and inline VALUES.
+   :meth:`_orm.Session.execute` method along with a list of parameter
+   dictionaries now invokes a "bulk update", which makes use of the same
+   functionality as the legacy :meth:`_orm.Session.bulk_update_mappings`
+   method.  This is a behavior change compared to the 1.x series where the
+   :class:`_dml.Update` would only be supported with explicit WHERE criteria
+   and inline VALUES.
+
+.. _orm_queryguide_bulk_update_disabling:
+
+Disabling Bulk ORM Update by Primary Key for an UPDATE statement with multiple parameter sets
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ORM Bulk Update by Primary Key feature, which runs an UPDATE statement
+per record which includes WHERE criteria for each primary key value, is
+automatically used when:
+
+1. the UPDATE statement given is against an ORM entity
+2. the :class:`_orm.Session` is used to execute the statement, and not a
+   Core :class:`_engine.Connection`
+3. The parameters passed are a **list of dictionaries**.
+
+In order to invoke an UPDATE statement without using "ORM Bulk Update by Primary Key",
+invoke the statement against the :class:`_engine.Connection` directly using
+the :meth:`_orm.Session.connection` method to acquire the current
+:class:`_engine.Connection` for the transaction::
+
+
+    >>> from sqlalchemy import bindparam
+    >>> session.connection().execute(
+    ...     update(User).where(User.name == bindparam("u_name")),
+    ...     [
+    ...         {"u_name": "spongebob", "fullname": "Spongebob Squarepants"},
+    ...         {"u_name": "patrick", "fullname": "Patrick Star"},
+    ...     ],
+    ... )
+    {execsql}UPDATE user_account SET fullname=? WHERE user_account.name = ?
+    [...] [('Spongebob Squarepants', 'spongebob'), ('Patrick Star', 'patrick')]
+    {stop}<...>
+
+.. seealso::
+
+    :ref:`error_bupq`
 
 .. _orm_queryguide_bulk_update_joined_inh:
 

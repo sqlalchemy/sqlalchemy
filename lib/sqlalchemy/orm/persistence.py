@@ -554,6 +554,18 @@ def _collect_update_commands(
                     mapper._pk_attr_keys_by_table[table]
                 )
             }
+            if util.NONE_SET.intersection(pk_params.values()):
+                raise sa_exc.InvalidRequestError(
+                    f"No primary key value supplied for column(s) "
+                    f"""{
+                        ', '.join(
+                        str(c) for c in pks if pk_params[c._label] is None)
+                    }; """
+                    "per-row ORM Bulk UPDATE by Primary Key requires that "
+                    "records contain primary key values",
+                    code="bupq",
+                )
+
         else:
             pk_params = {}
             for col in pks:
