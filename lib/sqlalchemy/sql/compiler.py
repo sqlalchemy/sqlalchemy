@@ -3482,7 +3482,7 @@ class SQLCompiler(Compiled):
             binary.right._compiler_dispatch(self, **kw),
         ) + (
             " ESCAPE " + self.render_literal_value(escape, sqltypes.STRINGTYPE)
-            if escape
+            if escape is not None
             else ""
         )
 
@@ -3493,7 +3493,7 @@ class SQLCompiler(Compiled):
             binary.right._compiler_dispatch(self, **kw),
         ) + (
             " ESCAPE " + self.render_literal_value(escape, sqltypes.STRINGTYPE)
-            if escape
+            if escape is not None
             else ""
         )
 

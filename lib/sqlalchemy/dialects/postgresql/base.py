@@ -1789,7 +1789,7 @@ class PGCompiler(compiler.SQLCompiler):
             self.process(binary.right, **kw),
         ) + (
             " ESCAPE " + self.render_literal_value(escape, sqltypes.STRINGTYPE)
-            if escape
+            if escape is not None
             else ""
         )
 
@@ -1800,7 +1800,7 @@ class PGCompiler(compiler.SQLCompiler):
             self.process(binary.right, **kw),
         ) + (
             " ESCAPE " + self.render_literal_value(escape, sqltypes.STRINGTYPE)
-            if escape
+            if escape is not None
             else ""
         )
 

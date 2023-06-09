@@ -24,6 +24,7 @@ from sqlalchemy import schema
 from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import SmallInteger
+from sqlalchemy import sql
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
@@ -2581,6 +2582,30 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(c1.bitwise_xor(c2)),
             "SELECT c1 # c2 AS anon_1",
+        )
+
+    def test_ilike_escaping(self):
+        dialect = postgresql.dialect()
+        self.assert_compile(
+            sql.column("foo").ilike("bar", escape="\\"),
+            "foo ILIKE %(foo_1)s ESCAPE '\\\\'",
+        )
+
+        self.assert_compile(
+            sql.column("foo").ilike("bar", escape=""),
+            "foo ILIKE %(foo_1)s ESCAPE ''",
+            dialect=dialect,
+        )
+
+        self.assert_compile(
+            sql.column("foo").notilike("bar", escape="\\"),
+            "foo NOT ILIKE %(foo_1)s ESCAPE '\\\\'",
+        )
+
+        self.assert_compile(
+            sql.column("foo").notilike("bar", escape=""),
+            "foo NOT ILIKE %(foo_1)s ESCAPE ''",
+            dialect=dialect,
         )
 
 
