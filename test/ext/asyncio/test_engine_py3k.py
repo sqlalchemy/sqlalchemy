@@ -44,7 +44,7 @@ from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
-from sqlalchemy.util.concurrency import greenlet_spawn
+from sqlalchemy.util import greenlet_spawn
 
 
 class AsyncFixture:
@@ -678,13 +678,14 @@ class AsyncEngineTest(EngineFixture):
 
     @async_test
     async def test_create_async_engine_server_side_cursor(self, async_engine):
-        testing.assert_raises_message(
+        with expect_raises_message(
             asyncio_exc.AsyncMethodRequired,
             "Can't set server_side_cursors for async engine globally",
-            create_async_engine,
-            testing.db.url,
-            server_side_cursors=True,
-        )
+        ):
+            create_async_engine(
+                testing.db.url,
+                server_side_cursors=True,
+            )
 
     def test_async_engine_from_config(self):
         config = {
@@ -697,6 +698,79 @@ class AsyncEngineTest(EngineFixture):
         assert engine.url == testing.db.url
         assert engine.echo is True
         assert engine.dialect.is_async is True
+
+    def test_async_creator_and_creator(self):
+        async def ac():
+            return None
+
+        def c():
+            return None
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Can only specify one of 'async_creator' or 'creator', "
+            "not both.",
+        ):
+            create_async_engine(testing.db.url, creator=c, async_creator=ac)
+
+    @async_test
+    async def test_async_creator_invoked(self, async_testing_engine):
+        """test for #8215"""
+
+        existing_creator = testing.db.pool._creator
+
+        async def async_creator():
+            sync_conn = await greenlet_spawn(existing_creator)
+            return sync_conn.driver_connection
+
+        async_creator = mock.Mock(side_effect=async_creator)
+
+        eq_(async_creator.mock_calls, [])
+
+        engine = async_testing_engine(options={"async_creator": async_creator})
+        async with engine.connect() as conn:
+            result = await conn.scalar(select(1))
+            eq_(result, 1)
+
+        eq_(async_creator.mock_calls, [mock.call()])
+
+    @async_test
+    async def test_async_creator_accepts_args_if_called_directly(
+        self, async_testing_engine
+    ):
+        """supplemental test for #8215.
+
+        The "async_creator" passed to create_async_engine() is expected to take
+        no arguments, the same way as "creator" passed to create_engine()
+        works.
+
+        However, the ultimate "async_creator" received by the sync-emulating
+        DBAPI *does* take arguments in its ``.connect()`` method, which will be
+        all the other arguments passed to ``.connect()``.  This functionality
+        is not currently used, however was decided that the creator should
+        internally work this way for improved flexibility; see
+        https://github.com/sqlalchemy/sqlalchemy/issues/8215#issuecomment-1181791539.
+        That contract is tested here.
+
+        """  # noqa: E501
+
+        existing_creator = testing.db.pool._creator
+
+        async def async_creator(x, y, *, z=None):
+            sync_conn = await greenlet_spawn(existing_creator)
+            return sync_conn.driver_connection
+
+        async_creator = mock.Mock(side_effect=async_creator)
+
+        async_dbapi = testing.db.dialect.loaded_dbapi
+
+        conn = await greenlet_spawn(
+            async_dbapi.connect, 5, y=10, z=8, async_creator_fn=async_creator
+        )
+        try:
+            eq_(async_creator.mock_calls, [mock.call(5, y=10, z=8)])
+        finally:
+            await greenlet_spawn(conn.close)
 
 
 class AsyncCreatePoolTest(fixtures.TestBase):
