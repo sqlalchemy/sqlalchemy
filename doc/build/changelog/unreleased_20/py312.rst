@@ -1,5 +1,0 @@
-.. change::
-    :tags: platform, usecase
-
-    Compatibility improvements allowing the complete test suite to pass
-    on Python 3.12.0b1.

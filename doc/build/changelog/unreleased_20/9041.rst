@@ -1,6 +1,0 @@
-.. change::
-    :tags: usecase, postgresql
-    :tickets: 9041
-
-    Unified the custom PostgreSQL operator definitions, since they are
-    shared among multiple different data types.
