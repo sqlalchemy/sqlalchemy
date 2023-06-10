@@ -1,4 +1,5 @@
 .. change::
-    :tags: installation
+    :tags: platform, usecase
 
-    Compatibility improvements to work fully with Python 3.12
+    Compatibility improvements allowing the complete test suite to pass
+    on Python 3.12.0b1.

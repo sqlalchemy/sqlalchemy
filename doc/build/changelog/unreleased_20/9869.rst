@@ -2,6 +2,9 @@
     :tags: bug, orm
     :tickets: 9869
 
-    Added a check to prevent invocation of
-    :meth:`_orm.registry.map_imperatively` using a mapped class as
-    :paramref:`_orm.registry.map_imperatively.local_table`.
+    Improved the argument chacking on the
+    :paramref:`_orm.registry.map_imperatively.local_table` parameter of the
+    :meth:`_orm.registry.map_imperatively` method, ensuring only a
+    :class:`.Table` or other :class:`.FromClause` is passed, and not an
+    existing mapped class, which would lead to undefined behavior as the object
+    were further interpreted for a new mapping.
