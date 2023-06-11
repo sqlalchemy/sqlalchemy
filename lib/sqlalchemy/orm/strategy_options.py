@@ -931,7 +931,10 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             zip(to_chop, path.natural_path)
         ):
             if isinstance(c_token, str):
-                if i == 0 and c_token.endswith(f":{_DEFAULT_TOKEN}"):
+                if i == 0 and (
+                    c_token.endswith(f":{_DEFAULT_TOKEN}")
+                    or c_token.endswith(f":{_WILDCARD_TOKEN}")
+                ):
                     return to_chop
                 elif (
                     c_token != f"{_RELATIONSHIP_TOKEN}:{_WILDCARD_TOKEN}"
