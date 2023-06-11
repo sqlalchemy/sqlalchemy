@@ -9,8 +9,157 @@
 
 
 .. changelog::
-    :version: 2.0.16
+    :version: 2.0.17
     :include_notes_from: unreleased_20
+
+.. changelog::
+    :version: 2.0.16
+    :released: June 10, 2023
+
+    .. change::
+        :tags: usecase, postgresql, reflection
+        :tickets: 9838
+
+        Cast ``NAME`` columns to ``TEXT`` when using ``ARRAY_AGG`` in PostgreSQL
+        reflection. This seems to improve compatibility with some PostgreSQL
+        derivatives that may not support aggregations on the ``NAME`` type.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9862
+
+        Fixed issue where :class:`.DeclarativeBaseNoMeta` declarative base class
+        would not function with non-mapped mixins or abstract classes, raising an
+        ``AttributeError`` instead.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 9828
+
+        Improved :meth:`.DeferredReflection.prepare` to accept arbitrary ``**kw``
+        arguments that are passed to :meth:`_schema.MetaData.reflect`, allowing use
+        cases such as reflection of views as well as dialect-specific arguments to
+        be passed. Additionally, modernized the
+        :paramref:`.DeferredReflection.prepare.bind` argument so that either an
+        :class:`.Engine` or :class:`.Connection` are accepted as the "bind"
+        argument.
+
+    .. change::
+        :tags: usecase, asyncio
+        :tickets: 8215
+
+        Added new :paramref:`_asyncio.create_async_engine.async_creator` parameter
+        to :func:`.create_async_engine`, which accomplishes the same purpose as the
+        :paramref:`.create_engine.creator` parameter of :func:`.create_engine`.
+        This is a no-argument callable that provides a new asyncio connection,
+        using the asyncio database driver directly. The
+        :func:`.create_async_engine` function will wrap the driver-level connection
+        in the appropriate structures. Pull request curtesy of Jack Wotherspoon.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 9820
+
+        Fixed regression in the 2.0 series where the default value of
+        :paramref:`_orm.validates.include_backrefs` got changed to ``False`` for
+        the :func:`_orm.validates` function. This default is now restored to
+        ``True``.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9917
+
+        Fixed bug in new feature which allows a WHERE clause to be used in
+        conjunction with :ref:`orm_queryguide_bulk_update`, added in version 2.0.11
+        as part of :ticket:`9583`, where sending dictionaries that did not include
+        the primary key values for each row would run through the bulk process and
+        include "pk=NULL" for the rows, silently failing.   An exception is now
+        raised if primary key values for bulk UPDATE are not supplied.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 9836
+
+        Use proper precedence on PostgreSQL specific operators, such as ``@>``.
+        Previously the precedence was wrong, leading to wrong parenthesis when
+        rendering against and ``ANY`` or ``ALL`` construct.
+
+    .. change::
+        :tags: bug, orm, dataclasses
+        :tickets: 9879
+
+        Fixed an issue where generating dataclasses fields that specified a
+        ``default`` value and set ``init=False`` would not work.
+        The dataclasses behavior in this case is to set the default
+        value on the class, that's not compatible with the descriptors used
+        by SQLAlchemy. To support this case the default is transformed to
+        a ``default_factory`` when generating the dataclass.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9841
+
+        A deprecation warning is emitted whenever a property is added to a
+        :class:`_orm.Mapper` where an ORM mapped property were already configured,
+        or an attribute is already present on the class. Previously, there was a
+        non-deprecation warning for this case that did not emit consistently. The
+        logic for this warning has been improved so that it detects end-user
+        replacement of attribute while not having false positives for internal
+        Declarative and other cases where replacement of descriptors with new ones
+        is expected.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 9907
+
+        Fixed issue where the :paramref:`.ColumnOperators.like.escape` and similar
+        parameters did not allow an empty string as an argument that would be
+        passed through as the "escape" character; this is a supported syntax by
+        PostgreSQL.  Pull requset courtesy Martin Caslavsky.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9869
+
+        Improved the argument chacking on the
+        :paramref:`_orm.registry.map_imperatively.local_table` parameter of the
+        :meth:`_orm.registry.map_imperatively` method, ensuring only a
+        :class:`.Table` or other :class:`.FromClause` is passed, and not an
+        existing mapped class, which would lead to undefined behavior as the object
+        were further interpreted for a new mapping.
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 9041
+
+        Unified the custom PostgreSQL operator definitions, since they are
+        shared among multiple different data types.
+
+    .. change::
+        :tags: platform, usecase
+
+        Compatibility improvements allowing the complete test suite to pass
+        on Python 3.12.0b1.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9913
+
+        The :attr:`_orm.InstanceState.unloaded_expirable` attribute is a synonym
+        for :attr:`_orm.InstanceState.unloaded`, and is now deprecated; this
+        attribute was always implementation-specific and should not have been
+        public.
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 8240
+
+        Added support for PostgreSQL 10 ``NULLS NOT DISTINCT`` feature of
+        unique indexes and unique constraint using the dialect option
+        ``postgresql_nulls_not_distinct``.
+        Updated the reflection logic to also correctly take this option
+        into account.
+        Pull request courtesy of Pavel Siarchenia.
 
 .. changelog::
     :version: 2.0.15

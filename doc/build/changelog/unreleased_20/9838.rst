@@ -1,7 +1,0 @@
-.. change::
-    :tags: usecase, postgresql, reflection
-    :tickets: 9838
-
-    Cast ``NAME`` columns to ``TEXT`` when using ``ARRAY_AGG`` in PostgreSQL
-    reflection. This seems to improve compatibility with some PostgreSQL
-    derivatives that may not support aggregations on the ``NAME`` type.

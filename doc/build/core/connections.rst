@@ -48,7 +48,7 @@ a textual statement to the database looks like::
     with engine.connect() as connection:
         result = connection.execute(text("select username from users"))
         for row in result:
-            print("username:", row["username"])
+            print("username:", row.username)
 
 Above, the :meth:`_engine.Engine.connect` method returns a :class:`_engine.Connection`
 object, and by using it in a Python context manager (e.g. the ``with:``
