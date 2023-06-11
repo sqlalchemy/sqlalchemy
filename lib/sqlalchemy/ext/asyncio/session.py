@@ -868,6 +868,7 @@ class AsyncSession(ReversibleProxy[Session]):
         self,
         bind_arguments: Optional[_BindArguments] = None,
         execution_options: Optional[_ExecuteOptions] = None,
+        **kw: Any,
     ) -> AsyncConnection:
         r"""Return a :class:`_asyncio.AsyncConnection` object corresponding to
         this :class:`.Session` object's transactional state.
@@ -889,6 +890,7 @@ class AsyncSession(ReversibleProxy[Session]):
             self.sync_session.connection,
             bind_arguments=bind_arguments,
             execution_options=execution_options,
+            **kw,
         )
         return engine.AsyncConnection._retrieve_proxy_for_target(
             sync_connection
