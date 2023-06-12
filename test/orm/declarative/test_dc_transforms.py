@@ -49,6 +49,7 @@ from sqlalchemy.sql.base import _NoArg
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_regex
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
@@ -787,6 +788,38 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(fields["def_no_init"].default, dataclasses.MISSING)
         ne_(fields["def_no_init"].default_factory, dataclasses.MISSING)
         eq_(fields["call_no_init"].default_factory, c20)
+
+    def test_dataclass_default_callable(self, dc_decl_base):
+        """test for #9936"""
+
+        def cd():
+            return 42
+
+        with expect_deprecated(
+            "Callable object passed to the ``default`` parameter for "
+            "attribute 'value' in a ORM-mapped Dataclasses context is "
+            "ambiguous, and this use will raise an error in a future "
+            "release.  If this callable is intended to produce Core level ",
+            "Callable object passed to the ``default`` parameter for "
+            "attribute 'no_init' in a ORM-mapped Dataclasses context is "
+            "ambiguous, and this use will raise an error in a future "
+            "release.  If this callable is intended to produce Core level ",
+        ):
+
+            class A(dc_decl_base):
+                __tablename__ = "a"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                value: Mapped[int] = mapped_column(default=cd)
+                no_init: Mapped[int] = mapped_column(default=cd, init=False)
+
+        a = A(id=100)
+        is_false("no_init" in a.__dict__)
+        eq_(a.value, cd)
+        eq_(a.no_init, None)
+
+        fields = {f.name: f for f in dataclasses.fields(A)}
+        eq_(fields["value"].default, cd)
+        eq_(fields["no_init"].default, cd)
 
 
 class RelationshipDefaultFactoryTest(fixtures.TestBase):
