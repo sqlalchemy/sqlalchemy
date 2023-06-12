@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     from ...engine import Row
     from ...engine import RowMapping
     from ...engine.interfaces import _CoreAnyExecuteParams
-    from ...engine.interfaces import _CoreSingleExecuteParams
+    from ...engine.interfaces import _ExecuteOptions
     from ...engine.result import ScalarResult
     from ...orm._typing import _IdentityKeyType
     from ...orm._typing import _O
@@ -465,7 +465,12 @@ class async_scoped_session(Generic[_AS]):
 
         return await self._proxied.commit()
 
-    async def connection(self, **kw: Any) -> AsyncConnection:
+    async def connection(
+        self,
+        bind_arguments: Optional[_BindArguments] = None,
+        execution_options: Optional[_ExecuteOptions] = None,
+        **kw: Any,
+    ) -> AsyncConnection:
         r"""Return a :class:`_asyncio.AsyncConnection` object corresponding to
         this :class:`.Session` object's transactional state.
 
@@ -488,7 +493,11 @@ class async_scoped_session(Generic[_AS]):
 
         """  # noqa: E501
 
-        return await self._proxied.connection(**kw)
+        return await self._proxied.connection(
+            bind_arguments=bind_arguments,
+            execution_options=execution_options,
+            **kw,
+        )
 
     async def delete(self, instance: object) -> None:
         r"""Mark an instance as deleted.
@@ -978,7 +987,7 @@ class async_scoped_session(Generic[_AS]):
     async def scalar(
         self,
         statement: TypedReturnsRows[Tuple[_T]],
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
@@ -990,7 +999,7 @@ class async_scoped_session(Generic[_AS]):
     async def scalar(
         self,
         statement: Executable,
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
@@ -1001,7 +1010,7 @@ class async_scoped_session(Generic[_AS]):
     async def scalar(
         self,
         statement: Executable,
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
@@ -1033,7 +1042,7 @@ class async_scoped_session(Generic[_AS]):
     async def scalars(
         self,
         statement: TypedReturnsRows[Tuple[_T]],
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
@@ -1045,7 +1054,7 @@ class async_scoped_session(Generic[_AS]):
     async def scalars(
         self,
         statement: Executable,
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
@@ -1056,7 +1065,7 @@ class async_scoped_session(Generic[_AS]):
     async def scalars(
         self,
         statement: Executable,
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
@@ -1149,7 +1158,7 @@ class async_scoped_session(Generic[_AS]):
     async def stream_scalars(
         self,
         statement: TypedReturnsRows[Tuple[_T]],
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
@@ -1161,7 +1170,7 @@ class async_scoped_session(Generic[_AS]):
     async def stream_scalars(
         self,
         statement: Executable,
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
@@ -1172,7 +1181,7 @@ class async_scoped_session(Generic[_AS]):
     async def stream_scalars(
         self,
         statement: Executable,
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
