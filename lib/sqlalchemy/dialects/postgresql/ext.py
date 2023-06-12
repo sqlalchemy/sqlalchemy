@@ -158,6 +158,10 @@ class ExcludeConstraint(ColumnCollectionConstraint):
                 )
             )
 
+        The exclude constraint defined in this example requires the
+        ``btree_gist`` extension, that can be created using the
+        command ``CREATE EXTENSION btree_gist;``.
+
         :param \*elements:
 
           A sequence of two tuples of the form ``(column, operator)`` where
