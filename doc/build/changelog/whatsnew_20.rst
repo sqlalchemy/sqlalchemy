@@ -684,8 +684,8 @@ or ``Mapped[user_fk]`` draw from both the
 ``Annotated`` construct directly in order to re-use pre-established typing
 and column configurations.
 
-Step six - turn mapped classes into dataclasses_
-+++++++++++++++++++++++++++++++++++++++++++++++++
+Optional step - turn mapped classes into dataclasses_
++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 We can turn mapped classes into dataclasses_, where a key advantage
 is that we can build a strictly-typed ``__init__()`` method with explicit
