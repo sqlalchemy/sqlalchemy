@@ -36,4 +36,4 @@ ORM Essential Reference
 
 * :ref:`session_toplevel`
 
-* :doc:`queryguide/index`
+* :doc:`../orm/queryguide/index`
