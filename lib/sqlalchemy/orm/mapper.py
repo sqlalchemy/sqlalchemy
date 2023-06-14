@@ -2154,6 +2154,15 @@ class Mapper(
                 for proxy_col in col.proxy_set:
                     self._columntoproperty[proxy_col] = prop
 
+        if getattr(prop, "key", key) != key:
+            util.warn(
+                f"ORM mapped property {self.class_.__name__}.{prop.key} being "
+                "assigned to attribute "
+                f"{key!r} is already associated with "
+                f"attribute {prop.key!r}. The attribute will be de-associated "
+                f"from {prop.key!r}."
+            )
+
         prop.key = key
 
         if setparent:
