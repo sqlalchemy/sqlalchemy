@@ -1,0 +1,7 @@
+.. change::
+    :tags: pg8000
+    :tickets: 9965
+
+    The pg8000 dialect now supports :class:`_postgresql.Range` types and multirange
+    types. Range and multirange types are supported in the pg8000 driver from version
+    1.29.8.

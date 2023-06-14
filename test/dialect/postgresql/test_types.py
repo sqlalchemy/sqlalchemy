@@ -4636,7 +4636,7 @@ class _RangeTypeRoundTrip(_RangeComparisonFixtures, fixtures.TablesTest):
         )
         self._assert_data(connection)
 
-    @testing.requires.any_psycopg_compatibility
+    @testing.requires.psycopg_or_pg8000_compatibility
     def test_insert_text(self, connection):
         connection.execute(
             self.tables.data_table.insert(), {"range": self._data_str()}
@@ -4653,7 +4653,7 @@ class _RangeTypeRoundTrip(_RangeComparisonFixtures, fixtures.TablesTest):
         data = connection.execute(select(range_ + range_)).fetchall()
         eq_(data, [(self._data_obj(),)])
 
-    @testing.requires.any_psycopg_compatibility
+    @testing.requires.psycopg_or_pg8000_compatibility
     def test_union_result_text(self, connection):
         # insert
         connection.execute(
@@ -4674,7 +4674,7 @@ class _RangeTypeRoundTrip(_RangeComparisonFixtures, fixtures.TablesTest):
         data = connection.execute(select(range_ * range_)).fetchall()
         eq_(data, [(self._data_obj(),)])
 
-    @testing.requires.any_psycopg_compatibility
+    @testing.requires.psycopg_or_pg8000_compatibility
     def test_intersection_result_text(self, connection):
         # insert
         connection.execute(
@@ -4695,7 +4695,7 @@ class _RangeTypeRoundTrip(_RangeComparisonFixtures, fixtures.TablesTest):
         data = connection.execute(select(range_ - range_)).fetchall()
         eq_(data, [(self._data_obj().__class__(empty=True),)])
 
-    @testing.requires.any_psycopg_compatibility
+    @testing.requires.psycopg_or_pg8000_compatibility
     def test_difference_result_text(self, connection):
         # insert
         connection.execute(
@@ -5146,14 +5146,14 @@ class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
         )
         self._assert_data(connection)
 
-    @testing.requires.any_psycopg_compatibility
+    @testing.requires.psycopg_or_pg8000_compatibility
     def test_insert_text(self, connection):
         connection.execute(
             self.tables.data_table.insert(), {"range": self._data_str()}
         )
         self._assert_data(connection)
 
-    @testing.requires.any_psycopg_compatibility
+    @testing.requires.psycopg_or_pg8000_compatibility
     def test_union_result_text(self, connection):
         # insert
         connection.execute(
@@ -5164,7 +5164,7 @@ class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
         data = connection.execute(select(range_ + range_)).fetchall()
         eq_(data, [(self._data_obj(),)])
 
-    @testing.requires.any_psycopg_compatibility
+    @testing.requires.psycopg_or_pg8000_compatibility
     def test_intersection_result_text(self, connection):
         # insert
         connection.execute(
@@ -5175,7 +5175,7 @@ class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
         data = connection.execute(select(range_ * range_)).fetchall()
         eq_(data, [(self._data_obj(),)])
 
-    @testing.requires.any_psycopg_compatibility
+    @testing.requires.psycopg_or_pg8000_compatibility
     def test_difference_result_text(self, connection):
         # insert
         connection.execute(
