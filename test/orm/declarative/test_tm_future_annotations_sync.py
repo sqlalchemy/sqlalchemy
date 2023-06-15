@@ -1511,11 +1511,16 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 class EnumOrLiteralTypeMapTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"
 
-    @testing.variation("use_callable", [True, False])
+    @testing.variation("use_explicit_name", [True, False])
+    @testing.variation("use_individual_values", [True, False])
     @testing.variation("include_generic", [True, False])
     @testing.variation("set_native_enum", ["none", True, False])
     def test_enum_explicit(
-        self, use_callable, include_generic, set_native_enum: Variation
+        self,
+        include_generic,
+        set_native_enum: Variation,
+        use_explicit_name,
+        use_individual_values,
     ):
         global FooEnum
 
@@ -1524,6 +1529,9 @@ class EnumOrLiteralTypeMapTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             bar = enum.auto()
 
         kw = {"length": 500}
+
+        if use_explicit_name:
+            kw["name"] = "my_foo_enum"
 
         if set_native_enum.none:
             expected_native_enum = True
@@ -1536,8 +1544,8 @@ class EnumOrLiteralTypeMapTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         else:
             set_native_enum.fail()
 
-        if use_callable:
-            tam = {FooEnum: Enum(FooEnum, **kw)}
+        if use_individual_values:
+            tam = {FooEnum: Enum("foo", "bar", **kw)}
         else:
             tam = {FooEnum: Enum(FooEnum, **kw)}
 
@@ -1551,9 +1559,18 @@ class EnumOrLiteralTypeMapTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[FooEnum]
 
+        if use_explicit_name:
+            eq_(MyClass.__table__.c.data.type.name, "my_foo_enum")
+        elif use_individual_values:
+            is_(MyClass.__table__.c.data.type.enum_class, None)
+            eq_(MyClass.__table__.c.data.type.name, None)
+        else:
+            is_(MyClass.__table__.c.data.type.enum_class, FooEnum)
+            eq_(MyClass.__table__.c.data.type.name, "fooenum")
+
         is_true(isinstance(MyClass.__table__.c.data.type, Enum))
         eq_(MyClass.__table__.c.data.type.length, 500)
-        is_(MyClass.__table__.c.data.type.enum_class, FooEnum)
+
         is_(MyClass.__table__.c.data.type.native_enum, expected_native_enum)
 
     @testing.variation("set_native_enum", ["none", True, False])
@@ -1620,9 +1637,18 @@ class EnumOrLiteralTypeMapTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_true(isinstance(MyClass.__table__.c.data.type, Enum))
         eq_(MyClass.__table__.c.data.type.length, 9)
         is_(MyClass.__table__.c.data.type.enum_class, FooEnum)
+        eq_(MyClass.__table__.c.data.type.name, "fooenum")  # and not 'enum'
 
     @testing.variation(
-        "sqltype", ["custom", "base_enum", "specific_enum", "string"]
+        "sqltype",
+        [
+            "custom",
+            "base_enum_name_none",
+            "base_enum_default_name",
+            "specific_unnamed_enum",
+            "specific_named_enum",
+            "string",
+        ],
     )
     @testing.variation("indicate_type_explicitly", [True, False])
     def test_pep586_literal(
@@ -1645,11 +1671,20 @@ class EnumOrLiteralTypeMapTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                     self._possible_values = get_args(literal_type)
 
             our_type = mapped_col_type = LiteralSqlType(Status)
-        elif sqltype.specific_enum:
+        elif sqltype.specific_unnamed_enum:
             our_type = mapped_col_type = Enum(
                 "to-do", "in-progress", "done", native_enum=False
             )
-        elif sqltype.base_enum:
+        elif sqltype.specific_named_enum:
+            our_type = mapped_col_type = Enum(
+                "to-do", "in-progress", "done", name="specific_name"
+            )
+        elif sqltype.base_enum_name_none:
+            our_type = Enum(enum.Enum, native_enum=False, name=None)
+            mapped_col_type = Enum(
+                "to-do", "in-progress", "done", native_enum=False
+            )
+        elif sqltype.base_enum_default_name:
             our_type = Enum(enum.Enum, native_enum=False)
             mapped_col_type = Enum(
                 "to-do", "in-progress", "done", native_enum=False
@@ -1678,12 +1713,27 @@ class EnumOrLiteralTypeMapTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 Foo.__table__.c.status.type._possible_values,
                 ("to-do", "in-progress", "done"),
             )
-        elif sqltype.specific_enum or sqltype.base_enum:
+        elif (
+            sqltype.specific_unnamed_enum
+            or sqltype.base_enum_name_none
+            or sqltype.base_enum_default_name
+        ):
             eq_(
                 Foo.__table__.c.status.type.enums,
                 ["to-do", "in-progress", "done"],
             )
             is_(Foo.__table__.c.status.type.native_enum, False)
+        elif sqltype.specific_named_enum:
+            is_(Foo.__table__.c.status.type.native_enum, True)
+
+        if (
+            sqltype.specific_unnamed_enum
+            or sqltype.base_enum_name_none
+            or sqltype.base_enum_default_name
+        ):
+            eq_(Foo.__table__.c.status.type.name, None)
+        elif sqltype.specific_named_enum:
+            eq_(Foo.__table__.c.status.type.name, "specific_name")
 
     @testing.variation("indicate_type_explicitly", [True, False])
     def test_pep586_literal_defaults_to_enum(

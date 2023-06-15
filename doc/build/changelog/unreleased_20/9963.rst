@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 9963
+
+    Fixed issue in support for the :class:`.Enum` datatype in the
+    :paramref:`_orm.registry.type_annotation_map` first added as part of
+    :ticket:`8859` where using a custom :class:`.Enum` with fixed configuration
+    in the map would fail to transfer the :paramref:`.Enum.name` parameter,
+    which among other issues would prevent PostgreSQL enums from working if the
+    enum values were passed as individual values.  Logic has been updated so
+    that "name" is transferred over, but also that the default :class:`.Enum`
+    which is against the plain Python `enum.Enum` class or other "empty" enum
+    won't set a hardcoded name of ``"enum"`` either.
