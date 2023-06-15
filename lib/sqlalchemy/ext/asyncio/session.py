@@ -121,9 +121,9 @@ class AsyncAttrs:
 
         a1 = (await async_session.scalars(select(A).where(A.id == 5))).one()
 
-        # use the lazy loader on ``a1.bs`` via the ``.async_attrs``
+        # use the lazy loader on ``a1.bs`` via the ``.awaitable_attrs``
         # interface, so that it may be awaited
-        for b1 in await a1.async_attrs.bs:
+        for b1 in await a1.awaitable_attrs.bs:
             print(b1)
 
     The :attr:`_asyncio.AsyncAttrs.awaitable_attrs` performs a call against the
@@ -160,8 +160,8 @@ class AsyncAttrs:
 
             a1 = (await async_session.scalars(select(A).where(A.id == 5))).one()
 
-            some_attribute = await a1.async_attrs.some_deferred_attribute
-            some_collection = await a1.async_attrs.some_collection
+            some_attribute = await a1.awaitable_attrs.some_deferred_attribute
+            some_collection = await a1.awaitable_attrs.some_collection
 
         """  # noqa: E501
 
