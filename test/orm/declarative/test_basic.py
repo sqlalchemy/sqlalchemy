@@ -10,6 +10,7 @@ from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Index
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import literal
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -39,6 +40,7 @@ from sqlalchemy.orm import Mapper
 from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import synonym
 from sqlalchemy.orm import synonym_for
 from sqlalchemy.orm.decl_api import add_mapped_attribute
 from sqlalchemy.orm.decl_api import DeclarativeBaseNoMeta
@@ -1440,6 +1442,100 @@ class DeclarativeMultiBaseTest(
                 x = Column("x", String()).collate("some collation")
                 y = Column("y", Integer) + 5
                 z = "im not a sqlalchemy thing"
+
+    @testing.variation(
+        "attr_type",
+        [
+            "column",
+            "mapped_column",
+            "relationship",
+            "synonym",
+            "column_property",
+        ],
+    )
+    def test_attr_assigned_to_multiple_keys(self, attr_type, decl_base):
+        """test #3532"""
+
+        column_warning = expect_warnings(
+            "On class 'A', Column object 'a' named directly multiple "
+            "times, only one will be used: a, b. Consider using "
+            "orm.synonym instead"
+        )
+
+        other_warning = expect_warnings(
+            "ORM mapped property A.a being assigned to attribute 'b' is "
+            "already associated with attribute 'a'. The attribute will be "
+            "de-associated from 'a'."
+        )
+        if attr_type.column:
+            with column_warning:
+
+                class A(decl_base):
+                    __tablename__ = "a"
+
+                    id = Column(Integer, primary_key=True)
+
+                    a = Column(Integer)
+
+                    b = a
+
+        elif attr_type.mapped_column:
+            with column_warning:
+
+                class A(decl_base):
+                    __tablename__ = "a"
+
+                    id = mapped_column(Integer, primary_key=True)
+
+                    a = mapped_column(Integer)
+
+                    b = a
+
+        elif attr_type.relationship:
+            with other_warning:
+
+                class B(decl_base):
+                    __tablename__ = "b"
+
+                    id = mapped_column(Integer, primary_key=True)
+                    aid = mapped_column(ForeignKey("a.id"))
+
+                class A(decl_base):
+                    __tablename__ = "a"
+
+                    id = mapped_column(Integer, primary_key=True)
+
+                    a = relationship("B")
+
+                    b = a
+
+                decl_base.registry.configure()
+        elif attr_type.column_property:
+            with other_warning:
+
+                class A(decl_base):
+                    __tablename__ = "a"
+
+                    id = mapped_column(Integer, primary_key=True)
+
+                    a = column_property(literal("foo") + literal("bar"))
+
+                    b = a
+
+        elif attr_type.synonym:
+            with other_warning:
+
+                class A(decl_base):
+                    __tablename__ = "a"
+
+                    id = mapped_column(Integer, primary_key=True)
+                    g = mapped_column(Integer)
+                    a = synonym("g")
+
+                    b = a
+
+        else:
+            attr_type.fail()
 
     def test_column_named_twice(self):
         with expect_warnings(
