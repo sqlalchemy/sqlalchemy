@@ -51,6 +51,7 @@ from .base import Mapped
 from .base import object_mapper as object_mapper
 from .base import object_state as object_state  # noqa: F401
 from .base import opt_manager_of_class
+from .base import ORMDescriptor
 from .base import state_attribute_str as state_attribute_str  # noqa: F401
 from .base import state_class_str as state_class_str  # noqa: F401
 from .base import state_str as state_str  # noqa: F401
@@ -2347,10 +2348,18 @@ def _extract_mapped_subtype(
             annotated, _MappedAnnotationBase
         ):
             if expect_mapped:
-                if getattr(annotated, "__origin__", None) is typing.ClassVar:
+                if not raiseerr:
                     return None
 
-                if not raiseerr:
+                origin = getattr(annotated, "__origin__", None)
+                if origin is typing.ClassVar:
+                    return None
+
+                # check for other kind of ORM descriptor like AssociationProxy,
+                # don't raise for that (issue #9957)
+                elif isinstance(origin, type) and issubclass(
+                    origin, ORMDescriptor
+                ):
                     return None
 
                 raise sa_exc.ArgumentError(

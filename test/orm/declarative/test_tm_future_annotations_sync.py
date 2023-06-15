@@ -49,6 +49,8 @@ from sqlalchemy import testing
 from sqlalchemy import types
 from sqlalchemy import VARCHAR
 from sqlalchemy.exc import ArgumentError
+from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.associationproxy import AssociationProxy
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import as_declarative
 from sqlalchemy.orm import composite
@@ -1889,6 +1891,58 @@ class MixinTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "SELECT b.id, b.related_id FROM b "
             "JOIN related ON related.id = b.related_id",
         )
+
+    @testing.variation("use_directive", [True, False])
+    @testing.variation("use_annotation", [True, False])
+    def test_supplemental_declared_attr(
+        self, decl_base, use_directive, use_annotation
+    ):
+        """test #9957"""
+
+        class User(decl_base):
+            __tablename__ = "user"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            branch_id: Mapped[int] = mapped_column(ForeignKey("thing.id"))
+
+        class Mixin:
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            @declared_attr
+            def users(self) -> Mapped[List[User]]:
+                return relationship(User)
+
+            if use_directive:
+                if use_annotation:
+
+                    @declared_attr.directive
+                    def user_ids(self) -> AssociationProxy[List[int]]:
+                        return association_proxy("users", "id")
+
+                else:
+
+                    @declared_attr.directive
+                    def user_ids(self):
+                        return association_proxy("users", "id")
+
+            else:
+                if use_annotation:
+
+                    @declared_attr
+                    def user_ids(self) -> AssociationProxy[List[int]]:
+                        return association_proxy("users", "id")
+
+                else:
+
+                    @declared_attr
+                    def user_ids(self):
+                        return association_proxy("users", "id")
+
+        class Thing(Mixin, decl_base):
+            __tablename__ = "thing"
+
+        t1 = Thing()
+        t1.users.extend([User(id=1), User(id=2)])
+        eq_(t1.user_ids, [1, 2])
 
 
 class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):

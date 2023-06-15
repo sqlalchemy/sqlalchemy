@@ -46,6 +46,7 @@ from .attributes import InstrumentedAttribute
 from .base import _inspect_mapped_class
 from .base import _is_mapped_class
 from .base import Mapped
+from .base import ORMDescriptor
 from .decl_base import _add_attribute
 from .decl_base import _as_declarative
 from .decl_base import _ClassScanMapperConfig
@@ -98,7 +99,7 @@ _TypeAnnotationMapType = Mapping[Any, "_TypeEngineArgument[Any]"]
 _MutableTypeAnnotationMapType = Dict[Any, "_TypeEngineArgument[Any]"]
 
 _DeclaredAttrDecorated = Callable[
-    ..., Union[Mapped[_T], SQLCoreOperations[_T]]
+    ..., Union[Mapped[_T], ORMDescriptor[_T], SQLCoreOperations[_T]]
 ]
 
 

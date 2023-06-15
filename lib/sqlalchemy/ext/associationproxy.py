@@ -399,7 +399,7 @@ class AssociationProxy(
             self._attribute_options = _DEFAULT_ATTRIBUTE_OPTIONS
 
     @overload
-    def __get__(self, instance: Any, owner: Literal[None]) -> Self:
+    def __get__(self, instance: Literal[None], owner: Literal[None]) -> Self:
         ...
 
     @overload
