@@ -59,7 +59,8 @@ class _StateChange:
     ) -> NoReturn:
         raise sa_exc.IllegalStateChangeError(
             f"Can't run operation '{operation_name}()' when Session "
-            f"is in state {state!r}"
+            f"is in state {state!r}",
+            code="isce",
         )
 
     @classmethod
@@ -121,13 +122,15 @@ class _StateChange:
                         f"Method '{fn.__name__}()' can't be called here; "
                         f"method '{existing_fn.__name__}()' is already "
                         f"in progress and this would cause an unexpected "
-                        f"state change to {moves_to!r}"
+                        f"state change to {moves_to!r}",
+                        code="isce",
                     )
                 else:
                     raise sa_exc.IllegalStateChangeError(
                         f"Cant run operation '{fn.__name__}()' here; "
                         f"will move to state {moves_to!r} where we are "
-                        f"expecting {next_state!r}"
+                        f"expecting {next_state!r}",
+                        code="isce",
                     )
 
             self._current_fn = fn
@@ -144,7 +147,8 @@ class _StateChange:
                     raise sa_exc.IllegalStateChangeError(
                         f"Method '{fn.__name__}()' failed to "
                         "change state "
-                        f"to {moves_to!r} as expected"
+                        f"to {moves_to!r} as expected",
+                        code="isce",
                     )
                 elif existing_fn:
                     raise sa_exc.IllegalStateChangeError(
@@ -152,12 +156,14 @@ class _StateChange:
                         "running, "
                         f"method '{fn.__name__}()' caused an "
                         "unexpected "
-                        f"state change to {self._state!r}"
+                        f"state change to {self._state!r}",
+                        code="isce",
                     )
                 else:
                     raise sa_exc.IllegalStateChangeError(
                         f"Method '{fn.__name__}()' caused an unexpected "
-                        f"state change to {self._state!r}"
+                        f"state change to {self._state!r}",
+                        code="isce",
                     )
 
             finally:
@@ -186,7 +192,7 @@ class _StateChange:
         else:
             if self._state is not expected:
                 raise sa_exc.IllegalStateChangeError(
-                    f"Unexpected state change to {self._state!r}"
+                    f"Unexpected state change to {self._state!r}", code="isce"
                 )
         finally:
             self._next_state = _StateChangeStates.CHANGE_IN_PROGRESS

@@ -251,10 +251,13 @@ class SessionTransactionState(_StateChangeState):
     COMMITTED = 3
     DEACTIVE = 4
     CLOSED = 5
+    PROVISIONING_CONNECTION = 6
 
 
 # backwards compatibility
-ACTIVE, PREPARED, COMMITTED, DEACTIVE, CLOSED = tuple(SessionTransactionState)
+ACTIVE, PREPARED, COMMITTED, DEACTIVE, CLOSED, PROVISIONING_CONNECTION = tuple(
+    SessionTransactionState
+)
 
 
 class ORMExecuteState(util.MemoizedSlots):
@@ -919,6 +922,12 @@ class SessionTransaction(_StateChange, TransactionalContext):
                 )
         elif state is SessionTransactionState.CLOSED:
             raise sa_exc.ResourceClosedError("This transaction is closed")
+        elif state is SessionTransactionState.PROVISIONING_CONNECTION:
+            raise sa_exc.InvalidRequestError(
+                "This session is provisioning a new connection; concurrent "
+                "operations are not permitted",
+                code="isce",
+            )
         else:
             raise sa_exc.InvalidRequestError(
                 f"This session is in '{state.name.lower()}' state; no "
@@ -1090,80 +1099,89 @@ class SessionTransaction(_StateChange, TransactionalContext):
                 )
             return self._connections[bind][0]
 
+        self._state = SessionTransactionState.PROVISIONING_CONNECTION
+
         local_connect = False
         should_commit = True
 
-        if self._parent:
-            conn = self._parent._connection_for_bind(bind, execution_options)
-            if not self.nested:
-                return conn
-        else:
-            if isinstance(bind, engine.Connection):
-                conn = bind
-                if conn.engine in self._connections:
-                    raise sa_exc.InvalidRequestError(
-                        "Session already has a Connection associated for the "
-                        "given Connection's Engine"
-                    )
-            else:
-                conn = bind.connect()
-                local_connect = True
-
         try:
-            if execution_options:
-                conn = conn.execution_options(**execution_options)
-
-            transaction: Transaction
-            if self.session.twophase and self._parent is None:
-                # TODO: shouldn't we only be here if not
-                # conn.in_transaction() ?
-                # if twophase is set and conn.in_transaction(), validate
-                # that it is in fact twophase.
-                transaction = conn.begin_twophase()
-            elif self.nested:
-                transaction = conn.begin_nested()
-            elif conn.in_transaction():
-                join_transaction_mode = self.session.join_transaction_mode
-
-                if join_transaction_mode == "conditional_savepoint":
-                    if conn.in_nested_transaction():
-                        join_transaction_mode = "create_savepoint"
-                    else:
-                        join_transaction_mode = "rollback_only"
-
-                if join_transaction_mode in (
-                    "control_fully",
-                    "rollback_only",
-                ):
-                    if conn.in_nested_transaction():
-                        transaction = conn._get_required_nested_transaction()
-                    else:
-                        transaction = conn._get_required_transaction()
-                    if join_transaction_mode == "rollback_only":
-                        should_commit = False
-                elif join_transaction_mode == "create_savepoint":
-                    transaction = conn.begin_nested()
-                else:
-                    assert False, join_transaction_mode
+            if self._parent:
+                conn = self._parent._connection_for_bind(
+                    bind, execution_options
+                )
+                if not self.nested:
+                    return conn
             else:
-                transaction = conn.begin()
-        except:
-            # connection will not not be associated with this Session;
-            # close it immediately so that it isn't closed under GC
-            if local_connect:
-                conn.close()
-            raise
-        else:
-            bind_is_connection = isinstance(bind, engine.Connection)
+                if isinstance(bind, engine.Connection):
+                    conn = bind
+                    if conn.engine in self._connections:
+                        raise sa_exc.InvalidRequestError(
+                            "Session already has a Connection associated "
+                            "for the given Connection's Engine"
+                        )
+                else:
+                    conn = bind.connect()
+                    local_connect = True
 
-            self._connections[conn] = self._connections[conn.engine] = (
-                conn,
-                transaction,
-                should_commit,
-                not bind_is_connection,
-            )
-            self.session.dispatch.after_begin(self.session, self, conn)
-            return conn
+            try:
+                if execution_options:
+                    conn = conn.execution_options(**execution_options)
+
+                transaction: Transaction
+                if self.session.twophase and self._parent is None:
+                    # TODO: shouldn't we only be here if not
+                    # conn.in_transaction() ?
+                    # if twophase is set and conn.in_transaction(), validate
+                    # that it is in fact twophase.
+                    transaction = conn.begin_twophase()
+                elif self.nested:
+                    transaction = conn.begin_nested()
+                elif conn.in_transaction():
+                    join_transaction_mode = self.session.join_transaction_mode
+
+                    if join_transaction_mode == "conditional_savepoint":
+                        if conn.in_nested_transaction():
+                            join_transaction_mode = "create_savepoint"
+                        else:
+                            join_transaction_mode = "rollback_only"
+
+                    if join_transaction_mode in (
+                        "control_fully",
+                        "rollback_only",
+                    ):
+                        if conn.in_nested_transaction():
+                            transaction = (
+                                conn._get_required_nested_transaction()
+                            )
+                        else:
+                            transaction = conn._get_required_transaction()
+                        if join_transaction_mode == "rollback_only":
+                            should_commit = False
+                    elif join_transaction_mode == "create_savepoint":
+                        transaction = conn.begin_nested()
+                    else:
+                        assert False, join_transaction_mode
+                else:
+                    transaction = conn.begin()
+            except:
+                # connection will not not be associated with this Session;
+                # close it immediately so that it isn't closed under GC
+                if local_connect:
+                    conn.close()
+                raise
+            else:
+                bind_is_connection = isinstance(bind, engine.Connection)
+
+                self._connections[conn] = self._connections[conn.engine] = (
+                    conn,
+                    transaction,
+                    should_commit,
+                    not bind_is_connection,
+                )
+                self.session.dispatch.after_begin(self.session, self, conn)
+                return conn
+        finally:
+            self._state = SessionTransactionState.ACTIVE
 
     def prepare(self) -> None:
         if self._parent is not None or not self.session.twophase:
@@ -1354,6 +1372,9 @@ class SessionTransaction(_StateChange, TransactionalContext):
 class Session(_SessionClassMethods, EventTarget):
     """Manages persistence operations for ORM-mapped objects.
 
+    The :class:`_orm.Session` is **not safe for use in concurrent threads.**.
+    See :ref:`session_faq_threadsafe` for background.
+
     The Session's usage paradigm is described at :doc:`/orm/session`.
 
 
@@ -1409,7 +1430,7 @@ class Session(_SessionClassMethods, EventTarget):
         autocommit: Literal[False] = False,
         join_transaction_mode: JoinTransactionMode = "conditional_savepoint",
     ):
-        r"""Construct a new Session.
+        r"""Construct a new :class:`_orm.Session`.
 
         See also the :class:`.sessionmaker` function which is used to
         generate a :class:`.Session`-producing callable with a given

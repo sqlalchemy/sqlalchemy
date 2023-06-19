@@ -203,6 +203,9 @@ class AsyncSession(ReversibleProxy[Session]):
     The :class:`_asyncio.AsyncSession` is a proxy for a traditional
     :class:`_orm.Session` instance.
 
+    The :class:`_asyncio.AsyncSession` is **not safe for use in concurrent
+    tasks.**.  See :ref:`session_faq_threadsafe` for background.
+
     .. versionadded:: 1.4
 
     To use an :class:`_asyncio.AsyncSession` with custom :class:`_orm.Session`

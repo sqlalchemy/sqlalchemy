@@ -140,11 +140,21 @@ Synopsis - ORM
 ---------------
 
 Using :term:`2.0 style` querying, the :class:`_asyncio.AsyncSession` class
-provides full ORM functionality. Within the default mode of use, special care
-must be taken to avoid :term:`lazy loading` or other expired-attribute access
-involving ORM relationships and column attributes; the next
-section :ref:`asyncio_orm_avoid_lazyloads` details this.   The example below
-illustrates a complete example including mapper and session configuration::
+provides full ORM functionality.
+
+Within the default mode of use, special care must be taken to avoid :term:`lazy
+loading` or other expired-attribute access involving ORM relationships and
+column attributes; the next section :ref:`asyncio_orm_avoid_lazyloads` details
+this.
+
+.. warning::
+
+    A single instance of :class:`_asyncio.AsyncSession` is **not safe for
+    use in multiple, concurrent tasks**.  See the sections
+    :ref:`asyncio_concurrency` and :ref:`session_faq_threadsafe` for background.
+
+The example below illustrates a complete example including mapper and session
+configuration::
 
     from __future__ import annotations
 
@@ -263,6 +273,21 @@ manager (i.e. ``async with:`` statement) so that it is automatically closed at
 the end of the block; this is equivalent to calling the
 :meth:`_asyncio.AsyncSession.close` method.
 
+
+.. _asyncio_concurrency:
+
+Using AsyncSession with Concurrent Tasks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :class:`_asyncio.AsyncSession` object is a **mutable, stateful object**
+which represents a **single, stateful database transaction in progress**. Using
+concurrent tasks with asyncio, with APIs such as ``asyncio.gather()`` for
+example, should use a **separate** :class:`_asyncio.AsyncSession` **per individual
+task**.
+
+See the section :ref:`session_faq_threadsafe` for a general description of
+the :class:`_orm.Session` and :class:`_asyncio.AsyncSession` with regards to
+how they should be used with concurrent workloads.
 
 .. _asyncio_orm_avoid_lazyloads:
 
