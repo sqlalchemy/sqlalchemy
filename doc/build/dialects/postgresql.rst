@@ -144,8 +144,12 @@ E.g.::
 Range and Multirange Types
 --------------------------
 
-PostgreSQL range and multirange types are supported for the psycopg2,
-psycopg, and asyncpg dialects.
+PostgreSQL range and multirange types are supported for the
+psycopg, pg8000 and asyncpg dialects; the psycopg2 dialect supports the
+range types only.
+
+.. versionadded:: 2.0.17 Added range and multirange support for the pg8000
+   dialect.  pg8000 1.29.8 or greater is required.
 
 Data values being passed to the database may be passed as string
 values or by using the :class:`_postgresql.Range` data object.
@@ -223,9 +227,16 @@ Multiranges
 Multiranges are supported by PostgreSQL 14 and above.  SQLAlchemy's
 multirange datatypes deal in lists of :class:`_postgresql.Range` types.
 
-.. versionadded:: 2.0 Added support for MULTIRANGE datatypes.   In contrast
-   to the ``psycopg`` multirange feature, SQLAlchemy's adaptation represents
-   a multirange datatype as a list of :class:`_postgresql.Range` objects.
+Multiranges are supported on the psycopg, asyncpg, and pg8000 dialects
+**only**.  The psycopg2 dialect, which is SQLAlchemy's default ``postgresql``
+dialect, **does not** support multirange datatypes.
+
+.. versionadded:: 2.0 Added support for MULTIRANGE datatypes.
+   SQLAlchemy represents a multirange value as a list of
+   :class:`_postgresql.Range` objects.
+
+.. versionadded:: 2.0.17 Added multirange support for the pg8000 dialect.
+   pg8000 1.29.8 or greater is required.
 
 The example below illustrates use of the :class:`_postgresql.TSMULTIRANGE`
 datatype::

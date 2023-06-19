@@ -94,6 +94,7 @@ of the :ref:`psycopg2 <psycopg2_isolation_level>` dialect:
 import decimal
 import re
 
+from . import ranges
 from .array import ARRAY as PGARRAY
 from .base import _DECIMAL_TYPES
 from .base import _FLOAT_TYPES
@@ -251,6 +252,70 @@ class _PGOIDVECTOR(_SpaceVector, OIDVECTOR):
     pass
 
 
+class _Pg8000Range(ranges.AbstractRangeImpl):
+    def bind_processor(self, dialect):
+        pg8000_Range = dialect.dbapi.Range
+
+        def to_range(value):
+            if isinstance(value, ranges.Range):
+                value = pg8000_Range(
+                    value.lower, value.upper, value.bounds, value.empty
+                )
+            return value
+
+        return to_range
+
+    def result_processor(self, dialect, coltype):
+        def to_range(value):
+            if value is not None:
+                value = ranges.Range(
+                    value.lower,
+                    value.upper,
+                    bounds=value.bounds,
+                    empty=value.is_empty,
+                )
+            return value
+
+        return to_range
+
+
+class _Pg8000MultiRange(ranges.AbstractMultiRangeImpl):
+    def bind_processor(self, dialect):
+        pg8000_Range = dialect.dbapi.Range
+
+        def to_multirange(value):
+            if isinstance(value, list):
+                mr = []
+                for v in value:
+                    if isinstance(v, ranges.Range):
+                        mr.append(
+                            pg8000_Range(v.lower, v.upper, v.bounds, v.empty)
+                        )
+                    else:
+                        mr.append(v)
+                return mr
+            else:
+                return value
+
+        return to_multirange
+
+    def result_processor(self, dialect, coltype):
+        def to_multirange(value):
+            if value is None:
+                return None
+
+            mr = []
+            for v in value:
+                mr.append(
+                    ranges.Range(
+                        v.lower, v.upper, bounds=v.bounds, empty=v.is_empty
+                    )
+                )
+            return mr
+
+        return to_multirange
+
+
 _server_side_id = util.counter()
 
 
@@ -383,6 +448,18 @@ class PGDialect_pg8000(PGDialect):
             sqltypes.Enum: _PGEnum,
             sqltypes.ARRAY: _PGARRAY,
             OIDVECTOR: _PGOIDVECTOR,
+            ranges.INT4RANGE: _Pg8000Range,
+            ranges.INT8RANGE: _Pg8000Range,
+            ranges.NUMRANGE: _Pg8000Range,
+            ranges.DATERANGE: _Pg8000Range,
+            ranges.TSRANGE: _Pg8000Range,
+            ranges.TSTZRANGE: _Pg8000Range,
+            ranges.INT4MULTIRANGE: _Pg8000MultiRange,
+            ranges.INT8MULTIRANGE: _Pg8000MultiRange,
+            ranges.NUMMULTIRANGE: _Pg8000MultiRange,
+            ranges.DATEMULTIRANGE: _Pg8000MultiRange,
+            ranges.TSMULTIRANGE: _Pg8000MultiRange,
+            ranges.TSTZMULTIRANGE: _Pg8000MultiRange,
         },
     )
 

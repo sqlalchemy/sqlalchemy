@@ -1484,11 +1484,13 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def range_types(self):
-        return only_on(["+psycopg2", "+psycopg", "+asyncpg"])
+        return only_on(["+psycopg2", "+psycopg", "+asyncpg", "+pg8000"])
 
     @property
     def multirange_types(self):
-        return only_on(["+psycopg", "+asyncpg"]) + only_on("postgresql >= 14")
+        return only_on(["+psycopg", "+asyncpg", "+pg8000"]) + only_on(
+            "postgresql >= 14"
+        )
 
     @property
     def async_dialect(self):
