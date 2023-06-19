@@ -1463,7 +1463,11 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
 
         super().__init__(length=length)
 
-        if self.enum_class:
+        # assign name to the given enum class if no other name, and this
+        # enum is not an "empty" enum.  if the enum is "empty" we assume
+        # this is a template enum that will be used to generate
+        # new Enum classes.
+        if self.enum_class and values:
             kw.setdefault("name", self.enum_class.__name__.lower())
         SchemaType.__init__(
             self,
@@ -1549,11 +1553,9 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
             enum_args = self._enums_argument
 
         # make a new Enum that looks like this one.
-        # pop the "name" so that it gets generated based on the enum
         # arguments or other rules
         kw = self._make_enum_kw({})
 
-        kw.pop("name", None)
         if native_enum is False:
             kw["native_enum"] = False
 
@@ -1671,7 +1673,8 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
 
     def _make_enum_kw(self, kw):
         kw.setdefault("validate_strings", self.validate_strings)
-        kw.setdefault("name", self.name)
+        if self.name:
+            kw.setdefault("name", self.name)
         kw.setdefault("schema", self.schema)
         kw.setdefault("inherit_schema", self.inherit_schema)
         kw.setdefault("metadata", self.metadata)
