@@ -3,6 +3,7 @@ from __future__ import annotations
 import typing
 
 from sqlalchemy import ForeignKey
+from sqlalchemy import select
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import DynamicMapped
 from sqlalchemy.orm import Mapped
@@ -80,3 +81,6 @@ with Session() as session:
     u.addresses.append(Address())
 
     session.commit()
+
+    # test #9985
+    stmt = select(User).join(User.addresses)

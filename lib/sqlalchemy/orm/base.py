@@ -912,9 +912,19 @@ class DynamicMapped(_MappedAnnotationBase[_T]):
 
     if TYPE_CHECKING:
 
+        @overload
+        def __get__(
+            self, instance: None, owner: Any
+        ) -> InstrumentedAttribute[_T]:
+            ...
+
+        @overload
+        def __get__(self, instance: object, owner: Any) -> AppenderQuery[_T]:
+            ...
+
         def __get__(
             self, instance: Optional[object], owner: Any
-        ) -> AppenderQuery[_T]:
+        ) -> Union[InstrumentedAttribute[_T], AppenderQuery[_T]]:
             ...
 
         def __set__(self, instance: Any, value: typing.Collection[_T]) -> None:
@@ -954,9 +964,21 @@ class WriteOnlyMapped(_MappedAnnotationBase[_T]):
 
     if TYPE_CHECKING:
 
+        @overload
+        def __get__(
+            self, instance: None, owner: Any
+        ) -> InstrumentedAttribute[_T]:
+            ...
+
+        @overload
+        def __get__(
+            self, instance: object, owner: Any
+        ) -> WriteOnlyCollection[_T]:
+            ...
+
         def __get__(
             self, instance: Optional[object], owner: Any
-        ) -> WriteOnlyCollection[_T]:
+        ) -> Union[InstrumentedAttribute[_T], WriteOnlyCollection[_T]]:
             ...
 
         def __set__(self, instance: Any, value: typing.Collection[_T]) -> None:
