@@ -69,7 +69,9 @@ class MockConnection:
         return self._execute_impl(obj, parameters)
 
 
-def create_mock_engine(url: URL, executor: Any, **kw: Any) -> MockConnection:
+def create_mock_engine(
+    url: Union[str, URL], executor: Any, **kw: Any
+) -> MockConnection:
     """Create a "mock" engine used for echoing DDL.
 
     This is a utility function used for debugging or storing the output of DDL
