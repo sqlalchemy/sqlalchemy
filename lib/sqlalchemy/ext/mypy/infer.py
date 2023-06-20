@@ -11,7 +11,6 @@ from typing import Optional
 from typing import Sequence
 
 from mypy.maptype import map_instance_to_supertype
-from mypy.messages import format_type
 from mypy.nodes import AssignmentStmt
 from mypy.nodes import CallExpr
 from mypy.nodes import Expression
@@ -489,8 +488,8 @@ def _infer_type_from_left_and_inferred_right(
             api,
             msg.format(
                 node.name,
-                format_type(orig_left_hand_type),
-                format_type(effective_type),
+                util.format_type(orig_left_hand_type, api.options),
+                util.format_type(effective_type, api.options),
             ),
             node,
         )

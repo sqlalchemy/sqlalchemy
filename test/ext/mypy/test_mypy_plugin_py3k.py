@@ -207,6 +207,9 @@ class MypyPluginTest(fixtures.TestBase):
         expected_messages = []
         expected_re = re.compile(r"\s*# EXPECTED(_MYPY)?(_RE)?(_TYPE)?: (.+)")
         py_ver_re = re.compile(r"^#\s*PYTHON_VERSION\s?>=\s?(\d+\.\d+)")
+
+        from sqlalchemy.ext.mypy.util import mypy_14
+
         with open(path) as file_:
             current_assert_messages = []
             for num, line in enumerate(file_, 1):
@@ -229,6 +232,7 @@ class MypyPluginTest(fixtures.TestBase):
                     is_type = bool(m.group(3))
 
                     expected_msg = re.sub(r"# noqa[:]? ?.*", "", m.group(4))
+
                     if is_type:
                         if not is_re:
                             # the goal here is that we can cut-and-paste
@@ -267,6 +271,23 @@ class MypyPluginTest(fixtures.TestBase):
 
                         is_mypy = is_re = True
                         expected_msg = f'Revealed type is "{expected_msg}"'
+
+                    if mypy_14:
+                        # skip first character which could be capitalized
+                        # "List item x not found" type of message
+                        expected_msg = expected_msg[0] + re.sub(
+                            r"\b(List|Tuple|Dict|Set)\b"
+                            if is_type
+                            else r"\b(List|Tuple|Dict|Set|Type)\b",
+                            lambda m: m.group(1).lower(),
+                            expected_msg[1:],
+                        )
+
+                        expected_msg = re.sub(
+                            r"Optional\[(.*?)\]",
+                            lambda m: f"{m.group(1)} | None",
+                            expected_msg,
+                        )
                     current_assert_messages.append(
                         (is_mypy, is_re, expected_msg.strip())
                     )
