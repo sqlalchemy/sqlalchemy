@@ -172,6 +172,9 @@ class MypyPluginTest(fixtures.TestBase):
         expected_errors = []
         expected_re = re.compile(r"\s*# EXPECTED(_MYPY)?: (.+)")
         py_ver_re = re.compile(r"^#\s*PYTHON_VERSION\s?>=\s?(\d+\.\d+)")
+
+        from sqlalchemy.ext.mypy.util import mypy_14
+
         with open(path) as file_:
             for num, line in enumerate(file_, 1):
                 m = py_ver_re.match(line)
@@ -191,6 +194,22 @@ class MypyPluginTest(fixtures.TestBase):
                     is_mypy = bool(m.group(1))
                     expected_msg = m.group(2)
                     expected_msg = re.sub(r"# noqa[:]? ?.*", "", m.group(2))
+
+                    if mypy_14:
+                        # skip first character which could be capitalized
+                        # "List item x not found" type of message
+                        expected_msg = expected_msg[0] + re.sub(
+                            r"\b(List|Tuple|Dict|Set|Type)\b",
+                            lambda m: m.group(1).lower(),
+                            expected_msg[1:],
+                        )
+
+                        expected_msg = re.sub(
+                            r"Optional\[(.*?)\]",
+                            lambda m: f"{m.group(1)} | None",
+                            expected_msg,
+                        )
+
                     expected_errors.append(
                         (num, is_mypy, expected_msg.strip())
                     )

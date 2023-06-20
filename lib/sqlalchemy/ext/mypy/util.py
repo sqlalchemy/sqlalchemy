@@ -10,6 +10,8 @@ from typing import Type as TypingType
 from typing import TypeVar
 from typing import Union
 
+from mypy import version
+from mypy.messages import format_type as _mypy_format_type
 from mypy.nodes import ARG_POS
 from mypy.nodes import CallExpr
 from mypy.nodes import ClassDef
@@ -23,6 +25,7 @@ from mypy.nodes import NameExpr
 from mypy.nodes import Statement
 from mypy.nodes import SymbolTableNode
 from mypy.nodes import TypeInfo
+from mypy.options import Options
 from mypy.plugin import ClassDefContext
 from mypy.plugin import DynamicClassDefContext
 from mypy.plugin import SemanticAnalyzerPluginInterface
@@ -34,6 +37,11 @@ from mypy.types import Type
 from mypy.types import TypeVarType
 from mypy.types import UnboundType
 from mypy.types import UnionType
+
+_vers = tuple(
+    [int(x) for x in version.__version__.split(".") if re.match(r"^\d+$", x)]
+)
+mypy_14 = _vers >= (1, 4)
 
 
 _TArgType = TypeVar("_TArgType", bound=Union[CallExpr, NameExpr])
@@ -149,6 +157,13 @@ def get_mapped_attributes(
         attributes.append(attr)
 
     return attributes
+
+
+def format_type(typ_: Type, options: Options) -> str:
+    if mypy_14:
+        return _mypy_format_type(typ_, options)  # type: ignore
+    else:
+        return _mypy_format_type(typ_)  # type: ignore
 
 
 def set_mapped_attributes(
