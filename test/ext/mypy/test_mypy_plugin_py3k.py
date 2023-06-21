@@ -5,6 +5,7 @@ import sys
 import tempfile
 
 from sqlalchemy import testing
+from sqlalchemy import util
 from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -195,7 +196,10 @@ class MypyPluginTest(fixtures.TestBase):
                     expected_msg = m.group(2)
                     expected_msg = re.sub(r"# noqa[:]? ?.*", "", m.group(2))
 
-                    if mypy_14:
+                    if mypy_14 and util.py39:
+                        # use_lowercase_names, py39 and above
+                        # https://github.com/python/mypy/blob/304997bfb85200fb521ac727ee0ce3e6085e5278/mypy/options.py#L363  # noqa: E501
+
                         # skip first character which could be capitalized
                         # "List item x not found" type of message
                         expected_msg = expected_msg[0] + re.sub(
@@ -204,6 +208,9 @@ class MypyPluginTest(fixtures.TestBase):
                             expected_msg[1:],
                         )
 
+                    if mypy_14 and util.py310:
+                        # use_or_syntax, py310 and above
+                        # https://github.com/python/mypy/blob/304997bfb85200fb521ac727ee0ce3e6085e5278/mypy/options.py#L368  # noqa: E501
                         expected_msg = re.sub(
                             r"Optional\[(.*?)\]",
                             lambda m: f"{m.group(1)} | None",
