@@ -2123,7 +2123,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             self.onupdate = onupdate
             l_args.append(onupdate)
         else:
-            self.onpudate = None
+            self.onupdate = None
 
         if server_default is not None:
             if isinstance(server_default, FetchedValue):
