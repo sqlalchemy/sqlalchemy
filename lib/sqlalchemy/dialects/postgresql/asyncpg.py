@@ -47,6 +47,12 @@ in conjunction with :func:`_sa.create_engine`::
     ``json_deserializer`` when creating the engine with
     :func:`create_engine` or :func:`create_async_engine`.
 
+.. _asyncpg_multihost_connecting:
+
+Multihost Connections
+--------------------------
+
+Described in :ref:`psycopg2_multi_host`
 
 .. _asyncpg_prepared_statement_cache:
 
@@ -1060,10 +1066,25 @@ class PGDialect_asyncpg(PGDialect):
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username="user")
+        multihosts, multiports = self._split_multihost_from_url(url)
 
         opts.update(url.query)
+
+        if multihosts:
+            if not all(multihosts):
+                raise exc.ArgumentError(
+                    "Some hosts is not specified in a connection string"
+                )
+            if not all(multiports):
+                raise exc.ArgumentError(
+                    "All ports are required to be present"
+                    " for asyncpg multiple host URL"
+                )
+            opts["host"] = list(multihosts)
+            opts["port"] = list(multiports)
+        else:
+            util.coerce_kw_type(opts, "port", int)
         util.coerce_kw_type(opts, "prepared_statement_cache_size", int)
-        util.coerce_kw_type(opts, "port", int)
         return ([], opts)
 
     def do_ping(self, dbapi_connection):

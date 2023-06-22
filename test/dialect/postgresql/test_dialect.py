@@ -27,6 +27,7 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import TypeDecorator
+from sqlalchemy.dialects.postgresql import asyncpg as asyncpg_dialect
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.dialects.postgresql import JSONB
@@ -240,53 +241,156 @@ $$ LANGUAGE plpgsql;"""
         ),
         (
             "postgresql+psycopg2://USER:PASS@/DB"
-            "?host=hostA&host=hostB:portB&host=hostC:portC",
+            "?host=hostA&host=hostB:222&host=hostC:333",
             {
                 "dbname": "DB",
                 "user": "USER",
                 "password": "PASS",
                 "host": "hostA,hostB,hostC",
-                "port": ",portB,portC",
+                "port": ",222,333",
             },
         ),
         (
             "postgresql+psycopg2://USER:PASS@/DB?"
-            "host=hostA:portA&host=hostB:portB&host=hostC:portC",
+            "host=hostA:111&host=hostB:222&host=hostC:333",
             {
                 "dbname": "DB",
                 "user": "USER",
                 "password": "PASS",
                 "host": "hostA,hostB,hostC",
-                "port": "portA,portB,portC",
+                "port": "111,222,333",
             },
         ),
         (
             "postgresql+psycopg2:///"
-            "?host=hostA:portA&host=hostB:portB&host=hostC:portC",
-            {"host": "hostA,hostB,hostC", "port": "portA,portB,portC"},
+            "?host=hostA:111&host=hostB:222&host=hostC:333",
+            {"host": "hostA,hostB,hostC", "port": "111,222,333"},
         ),
         (
             "postgresql+psycopg2:///"
-            "?host=hostA:portA&host=hostB:portB&host=hostC:portC",
-            {"host": "hostA,hostB,hostC", "port": "portA,portB,portC"},
+            "?host=hostA:111&host=hostB:222&host=hostC:333",
+            {"host": "hostA,hostB,hostC", "port": "111,222,333"},
         ),
         (
             "postgresql+psycopg2:///"
-            "?host=hostA,hostB,hostC&port=portA,portB,portC",
-            {"host": "hostA,hostB,hostC", "port": "portA,portB,portC"},
+            "?host=hostA,hostB,hostC&port=111,222,333",
+            {"host": "hostA,hostB,hostC", "port": "111,222,333"},
         ),
-        argnames="url_string,expected",
+        argnames="url_string,expected_psycopg",
     )
     @testing.combinations(
         psycopg2_dialect.dialect(),
         psycopg_dialect.dialect(),
         argnames="dialect",
     )
-    def test_psycopg_multi_hosts(self, dialect, url_string, expected):
+    def test_multi_hosts(self, dialect, url_string, expected_psycopg):
+        url_string = url_string.replace("psycopg2", dialect.name)
+
+        u = url.make_url(url_string)
+
+        if dialect.driver in ("psycopg", "psycopg2"):
+            cargs, cparams = dialect.create_connect_args(u)
+            eq_(cparams, expected_psycopg)
+            eq_(cargs, [])
+        else:
+            assert False
+
+    @testing.combinations(
+        (
+            "postgresql+asyncpg://USER:PASS@/DB?"
+            "host=hostA:111&host=hostB:222&host=hostC:333",
+            {
+                "database": "DB",
+                "user": "USER",
+                "password": "PASS",
+                "host": ["hostA", "hostB", "hostC"],
+                "port": [111, 222, 333],
+            },
+        ),
+        (
+            "postgresql+asyncpg:///"
+            "?host=hostA:111&host=hostB:222&host=hostC:333",
+            {
+                "host": ["hostA", "hostB", "hostC"],
+                "port": [111, 222, 333],
+            },
+        ),
+        (
+            "postgresql+asyncpg:///"
+            "?host=hostA:111&host=hostB:222&host=hostC:333",
+            {
+                "host": ["hostA", "hostB", "hostC"],
+                "port": [111, 222, 333],
+            },
+        ),
+        (
+            "postgresql+asyncpg:///"
+            "?host=hostA,hostB,hostC&port=111,222,333",
+            {
+                "host": ["hostA", "hostB", "hostC"],
+                "port": [111, 222, 333],
+            },
+        ),
+        argnames="url_string,expected",
+    )
+    def test_asyncpg_multi_hosts(self, url_string, expected):
+        dialect = asyncpg_dialect.dialect()
         u = url.make_url(url_string)
         cargs, cparams = dialect.create_connect_args(u)
-        eq_(cargs, [])
         eq_(cparams, expected)
+        eq_(cargs, [])
+
+    @testing.combinations(
+        (
+            "postgresql+asyncpg://USER:PASS@/DB?host=hostA",
+            "All ports are required to be present"
+            " for asyncpg multiple host URL",
+        ),
+        (
+            "postgresql+asyncpg://USER:PASS@/DB"
+            "?host=hostA&host=hostB&host=hostC",
+            "All ports are required to be present"
+            " for asyncpg multiple host URL",
+        ),
+        (
+            "postgresql+asyncpg://USER:PASS@/DB"
+            "?host=hostA&host=hostB:222&host=hostC:333",
+            "All ports are required to be present"
+            " for asyncpg multiple host URL",
+        ),
+        (
+            "postgresql+asyncpg://USER:PASS@/DB"
+            "?host=hostA,hostB,hostC&port=111,,333",
+            "All ports are required to be present"
+            " for asyncpg multiple host URL",
+        ),
+        (
+            "postgresql+asyncpg://USER:PASS@/DB"
+            "?host=hostA,hostB,&port=111,222,333",
+            "Some hosts is not specified in a connection string",
+        ),
+        (
+            "postgresql+asyncpg://USER:PASS@/DB"
+            "?host=hostA:111&host=:222&host=hostC:333",
+            "Some hosts is not specified in a connection string",
+        ),
+        (
+            "postgresql+asyncpg://USER:PASS@/DB"
+            "?host=hostA:111&host=hostB:vvv&host=hostC:333",
+            "Some of specified ports is not a valid integer",
+        ),
+        (
+            "postgresql+asyncpg://USER:PASS@/DB"
+            "?host=hostA,hostB,hostC&port=111,222",
+            "number of hosts and ports don't match",
+        ),
+        argnames="url_string,expected_message",
+    )
+    def test_asyncpg_multi_hosts_errors(self, url_string, expected_message):
+        dialect = asyncpg_dialect.dialect()
+        with expect_raises_message(exc.ArgumentError, expected_message):
+            u = url.make_url(url_string)
+            dialect.create_connect_args(u)
 
     @testing.combinations(
         "postgresql+psycopg2:///?host=H&host=H&port=5432,5432",
@@ -356,6 +460,29 @@ class BackendDialectTest(fixtures.TestBase):
     def test_connect_psycopg_multiple_hosts(self, pattern):
         """test the fix for #4392"""
 
+        tdb_url = testing.db.url
+
+        host = tdb_url.host
+        if host == "127.0.0.1":
+            host = "localhost"
+        port = str(tdb_url.port) if tdb_url.port else "5432"
+
+        query_str = pattern.replace("H", host).replace("P", port)
+        url_string = (
+            f"{tdb_url.drivername}://{tdb_url.username}:"
+            f"{tdb_url.password}@/{tdb_url.database}?{query_str}"
+        )
+
+        e = create_engine(url_string)
+        with e.connect() as conn:
+            eq_(conn.exec_driver_sql("select 1").scalar(), 1)
+
+    @testing.only_on(["+asyncpg"])
+    @testing.combinations(
+        "host=H:P&host=H:P&host=H:P",
+        "host=H,H,H&port=P,P,P",
+    )
+    def test_connect_asyncpg_multiple_hosts(self, pattern):
         tdb_url = testing.db.url
 
         host = tdb_url.host

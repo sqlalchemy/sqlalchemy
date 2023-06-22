@@ -3086,6 +3086,54 @@ class PGDialect(default.DefaultDialect):
     def get_deferrable(self, connection):
         raise NotImplementedError()
 
+    def _split_multihost_from_url(self, url):
+        hosts = ports = None
+
+        integrated_multihost = False
+
+        if "host" in url.query:
+            if isinstance(url.query["host"], (list, tuple)):
+                integrated_multihost = True
+                hosts, ports = zip(
+                    *[
+                        token.split(":") if ":" in token else (token, None)
+                        for token in url.query["host"]
+                    ]
+                )
+
+            elif isinstance(url.query["host"], str):
+                hosts = tuple(url.query["host"].split(","))
+
+        if "port" in url.query:
+            if integrated_multihost:
+                raise exc.ArgumentError(
+                    "Can't mix 'multihost' formats together; use "
+                    '"host=h1,h2,h3&port=p1,p2,p3" or '
+                    '"host=h1:p1&host=h2:p2&host=h3:p3" separately'
+                )
+            if isinstance(url.query["port"], (list, tuple)):
+                ports = url.query["port"]
+            elif isinstance(url.query["port"], str):
+                ports = tuple(url.query["port"].split(","))
+
+        if ports:
+            try:
+                ports = tuple(int(x) if x else None for x in ports)
+            except ValueError:
+                raise exc.ArgumentError(
+                    f"Some of specified ports is not a "
+                    f"valid integer: `{ports}`"
+                ) from None
+
+        if ports and (not hosts or len(hosts) != len(ports)):
+            raise exc.ArgumentError("number of hosts and ports don't match")
+
+        if hosts is not None:
+            if ports is None:
+                ports = tuple(None for _ in hosts)
+
+        return hosts, ports
+
     def do_begin_twophase(self, connection, xid):
         self.do_begin(connection.connection)
 
