@@ -514,10 +514,9 @@ class PropRegistry(PathRegistry):
         natural_parent: AbstractEntityRegistry = parent
 
         # inherit "is_unnatural" from the parent
-        if parent.parent.is_unnatural:
-            self.is_unnatural = True
-        else:
-            self.is_unnatural = False
+        self.is_unnatural = parent.parent.is_unnatural or bool(
+            parent.mapper.inherits
+        )
 
         if not insp.is_aliased_class or insp._use_mapper_path:  # type: ignore
             parent = natural_parent = parent.parent[prop.parent]
@@ -665,10 +664,13 @@ class AbstractEntityRegistry(CreatesToken):
         # are to avoid the more expensive conditional logic that follows if we
         # know we don't have to do it.   This conditional can just as well be
         # "if parent.path:", it just is more function calls.
+        #
+        # This is basically the only place that the "is_unnatural" flag
+        # actually changes behavior.
         if parent.path and (self.is_aliased_class or parent.is_unnatural):
             # this is an infrequent code path used only for loader strategies
             # that also make use of of_type().
-            if entity.mapper.isa(parent.natural_path[-1].entity):  # type: ignore # noqa: E501
+            if entity.mapper.isa(parent.natural_path[-1].mapper):  # type: ignore # noqa: E501
                 self.natural_path = parent.natural_path + (entity.mapper,)
             else:
                 self.natural_path = parent.natural_path + (
