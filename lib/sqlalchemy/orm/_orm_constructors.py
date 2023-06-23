@@ -246,6 +246,15 @@ def mapped_column(
      :class:`_sql.Insert` construct would use in any case, leading to the same
      end result.
 
+     .. note:: When using Core level column defaults that are callables to
+        be interpreted by the underlying :class:`_schema.Column` in conjunction
+        with :ref:`ORM-mapped dataclasses
+        <orm_declarative_native_dataclasses>`, especially those that are
+        :ref:`context-aware default functions <context_default_functions>`,
+        **the** :paramref:`_orm.mapped_column.insert_default` **parameter must
+        be used instead**.  This is necessary to disambiguate the callable from
+        being interpreted as a dataclass level default.
+
     :param insert_default: Passed directly to the
      :paramref:`_schema.Column.default` parameter; will supersede the value
      of :paramref:`_orm.mapped_column.default` when present, however
