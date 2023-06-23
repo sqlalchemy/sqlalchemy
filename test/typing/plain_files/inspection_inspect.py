@@ -4,16 +4,21 @@ test inspect()
 however this is not really working
 
 """
+from typing import Any
+from typing import Optional
+
 from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapper
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class A(Base):
@@ -30,9 +35,9 @@ e = create_engine("sqlite://")
 # TODO: I can't get these to work, pylance and mypy both don't want
 # to accommodate for different types for the first argument
 
-t: bool = inspect(a1).transient
+t: Optional[Any] = inspect(a1)
 
-m: Mapper = inspect(A)
+m: Mapper[Any] = inspect(A)
 
 inspect(e).get_table_names()
 

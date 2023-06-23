@@ -35,6 +35,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.entities import BasicEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -44,7 +45,7 @@ from sqlalchemy.types import TypeDecorator
 from sqlalchemy.types import VARCHAR
 
 
-class Foo(fixtures.BasicEntity):
+class Foo(BasicEntity):
     pass
 
 
@@ -52,7 +53,7 @@ class SubFoo(Foo):
     pass
 
 
-class Foo2(fixtures.BasicEntity):
+class Foo2(BasicEntity):
     pass
 
 
@@ -68,7 +69,7 @@ class FooWithEq:
         return self.id == other.id
 
 
-class FooWNoHash(fixtures.BasicEntity):
+class FooWNoHash(BasicEntity):
     __hash__ = None
 
 

@@ -29,11 +29,11 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
 
-class Company(fixtures.ComparableEntity):
+class Company(ComparableEntity):
     pass
 
 
-class Person(fixtures.ComparableEntity):
+class Person(ComparableEntity):
     pass
 
 
@@ -49,11 +49,11 @@ class Boss(Manager):
     pass
 
 
-class Machine(fixtures.ComparableEntity):
+class Machine(ComparableEntity):
     pass
 
 
-class Paperwork(fixtures.ComparableEntity):
+class Paperwork(ComparableEntity):
     pass
 
 

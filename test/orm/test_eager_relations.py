@@ -41,6 +41,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -4318,10 +4319,10 @@ class OrderBySecondaryTest(fixtures.MappedTest):
     def test_ordering(self):
         a, m2m, b = (self.tables.a, self.tables.m2m, self.tables.b)
 
-        class A(fixtures.ComparableEntity):
+        class A(ComparableEntity):
             pass
 
-        class B(fixtures.ComparableEntity):
+        class B(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -4361,7 +4362,7 @@ class SelfReferentialEagerTest(fixtures.MappedTest):
     def test_basic(self):
         nodes = self.tables.nodes
 
-        class Node(fixtures.ComparableEntity):
+        class Node(ComparableEntity):
             def append(self, node):
                 self.children.append(node)
 
@@ -4437,7 +4438,7 @@ class SelfReferentialEagerTest(fixtures.MappedTest):
     def test_lazy_fallback_doesnt_affect_eager(self):
         nodes = self.tables.nodes
 
-        class Node(fixtures.ComparableEntity):
+        class Node(ComparableEntity):
             def append(self, node):
                 self.children.append(node)
 
@@ -4484,7 +4485,7 @@ class SelfReferentialEagerTest(fixtures.MappedTest):
     def test_with_deferred(self):
         nodes = self.tables.nodes
 
-        class Node(fixtures.ComparableEntity):
+        class Node(ComparableEntity):
             def append(self, node):
                 self.children.append(node)
 
@@ -4545,7 +4546,7 @@ class SelfReferentialEagerTest(fixtures.MappedTest):
     def test_options(self):
         nodes = self.tables.nodes
 
-        class Node(fixtures.ComparableEntity):
+        class Node(ComparableEntity):
             def append(self, node):
                 self.children.append(node)
 
@@ -4620,7 +4621,7 @@ class SelfReferentialEagerTest(fixtures.MappedTest):
     def test_no_depth(self):
         nodes = self.tables.nodes
 
-        class Node(fixtures.ComparableEntity):
+        class Node(ComparableEntity):
             def append(self, node):
                 self.children.append(node)
 
@@ -4813,7 +4814,7 @@ class SelfReferentialM2MEagerTest(fixtures.MappedTest):
     def test_basic(self):
         widget, widget_rel = self.tables.widget, self.tables.widget_rel
 
-        class Widget(fixtures.ComparableEntity):
+        class Widget(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -5236,12 +5237,12 @@ class SubqueryTest(fixtures.MappedTest):
             self.tables.users_table,
         )
 
-        class User(fixtures.ComparableEntity):
+        class User(ComparableEntity):
             @property
             def prop_score(self):
                 return sum([tag.prop_score for tag in self.tags])
 
-        class Tag(fixtures.ComparableEntity):
+        class Tag(ComparableEntity):
             @property
             def prop_score(self):
                 return self.score1 * self.score2
@@ -5395,10 +5396,10 @@ class CorrelatedSubqueryTest(fixtures.MappedTest):
     def _do_test(self, labeled, ondate, aliasstuff):
         stuff, users = self.tables.stuff, self.tables.users
 
-        class User(fixtures.ComparableEntity):
+        class User(ComparableEntity):
             pass
 
-        class Stuff(fixtures.ComparableEntity):
+        class Stuff(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(Stuff, stuff)

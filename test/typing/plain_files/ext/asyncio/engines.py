@@ -1,31 +1,5 @@
-from sqlalchemy import create_engine
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
-
-
-def regular() -> None:
-    e = create_engine("sqlite://")
-
-    # EXPECTED_TYPE: Engine
-    reveal_type(e)
-
-    with e.connect() as conn:
-        # EXPECTED_TYPE: Connection
-        reveal_type(conn)
-
-        result = conn.execute(text("select * from table"))
-
-        # EXPECTED_TYPE: CursorResult[Any]
-        reveal_type(result)
-
-    with e.begin() as conn:
-        # EXPECTED_TYPE: Connection
-        reveal_type(conn)
-
-        result = conn.execute(text("select * from table"))
-
-        # EXPECTED_TYPE: CursorResult[Any]
-        reveal_type(result)
 
 
 async def asyncio() -> None:

@@ -42,6 +42,8 @@ from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.assertsql import assert_engine
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.entities import BasicEntity
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -334,10 +336,10 @@ class M2ODontOverwriteFKTest(fixtures.MappedTest):
     def _fixture(self, uselist=False):
         a, b = self.tables.a, self.tables.b
 
-        class A(fixtures.BasicEntity):
+        class A(BasicEntity):
             pass
 
-        class B(fixtures.BasicEntity):
+        class B(BasicEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -1720,7 +1722,7 @@ class FKsAsPksTest(fixtures.MappedTest):
         )
         tableC.create(connection)
 
-        class C(fixtures.BasicEntity):
+        class C(BasicEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -1958,10 +1960,10 @@ class RelationshipToSelectableTest(fixtures.MappedTest):
     def test_basic(self):
         items = self.tables.items
 
-        class Container(fixtures.BasicEntity):
+        class Container(BasicEntity):
             pass
 
-        class LineItem(fixtures.BasicEntity):
+        class LineItem(BasicEntity):
             pass
 
         container_select = (
@@ -2050,10 +2052,10 @@ class FKEquatedToConstantTest(fixtures.MappedTest):
     def test_basic(self):
         tag_foo, tags = self.tables.tag_foo, self.tables.tags
 
-        class Tag(fixtures.ComparableEntity):
+        class Tag(ComparableEntity):
             pass
 
-        class TagInstance(fixtures.ComparableEntity):
+        class TagInstance(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -2682,13 +2684,13 @@ class TypeMatchTest(fixtures.MappedTest):
     def test_o2m_oncascade(self):
         a, c, b = (self.tables.a, self.tables.c, self.tables.b)
 
-        class A(fixtures.BasicEntity):
+        class A(BasicEntity):
             pass
 
-        class B(fixtures.BasicEntity):
+        class B(BasicEntity):
             pass
 
-        class C(fixtures.BasicEntity):
+        class C(BasicEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -2716,13 +2718,13 @@ class TypeMatchTest(fixtures.MappedTest):
     def test_o2m_onflush(self):
         a, c, b = (self.tables.a, self.tables.c, self.tables.b)
 
-        class A(fixtures.BasicEntity):
+        class A(BasicEntity):
             pass
 
-        class B(fixtures.BasicEntity):
+        class B(BasicEntity):
             pass
 
-        class C(fixtures.BasicEntity):
+        class C(BasicEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -2747,10 +2749,10 @@ class TypeMatchTest(fixtures.MappedTest):
     def test_o2m_nopoly_onflush(self):
         a, c, b = (self.tables.a, self.tables.c, self.tables.b)
 
-        class A(fixtures.BasicEntity):
+        class A(BasicEntity):
             pass
 
-        class B(fixtures.BasicEntity):
+        class B(BasicEntity):
             pass
 
         class C(B):
@@ -2778,13 +2780,13 @@ class TypeMatchTest(fixtures.MappedTest):
     def test_m2o_nopoly_onflush(self):
         a, b, d = (self.tables.a, self.tables.b, self.tables.d)
 
-        class A(fixtures.BasicEntity):
+        class A(BasicEntity):
             pass
 
         class B(A):
             pass
 
-        class D(fixtures.BasicEntity):
+        class D(BasicEntity):
             pass
 
         self.mapper_registry.map_imperatively(A, a)
@@ -2805,13 +2807,13 @@ class TypeMatchTest(fixtures.MappedTest):
     def test_m2o_oncascade(self):
         a, b, d = (self.tables.a, self.tables.b, self.tables.d)
 
-        class A(fixtures.BasicEntity):
+        class A(BasicEntity):
             pass
 
-        class B(fixtures.BasicEntity):
+        class B(BasicEntity):
             pass
 
-        class D(fixtures.BasicEntity):
+        class D(BasicEntity):
             pass
 
         self.mapper_registry.map_imperatively(A, a)
@@ -2865,10 +2867,10 @@ class TypedAssociationTable(fixtures.MappedTest):
 
         t2, t3, t1 = (self.tables.t2, self.tables.t3, self.tables.t1)
 
-        class T1(fixtures.BasicEntity):
+        class T1(BasicEntity):
             pass
 
-        class T2(fixtures.BasicEntity):
+        class T2(BasicEntity):
             pass
 
         self.mapper_registry.map_imperatively(T2, t2)
@@ -2928,10 +2930,10 @@ class CustomOperatorTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_join_on_custom_op_legacy_is_comparison(self):
-        class A(fixtures.BasicEntity):
+        class A(BasicEntity):
             pass
 
-        class B(fixtures.BasicEntity):
+        class B(BasicEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -2955,10 +2957,10 @@ class CustomOperatorTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_join_on_custom_bool_op(self):
-        class A(fixtures.BasicEntity):
+        class A(BasicEntity):
             pass
 
-        class B(fixtures.BasicEntity):
+        class B(BasicEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -3016,10 +3018,10 @@ class ViewOnlyHistoryTest(fixtures.MappedTest):
         return s
 
     def test_o2m_viewonly_oneside(self):
-        class A(fixtures.ComparableEntity):
+        class A(ComparableEntity):
             pass
 
-        class B(fixtures.ComparableEntity):
+        class B(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -3049,10 +3051,10 @@ class ViewOnlyHistoryTest(fixtures.MappedTest):
         assert b1 not in sess.dirty
 
     def test_m2o_viewonly_oneside(self):
-        class A(fixtures.ComparableEntity):
+        class A(ComparableEntity):
             pass
 
-        class B(fixtures.ComparableEntity):
+        class B(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -3082,10 +3084,10 @@ class ViewOnlyHistoryTest(fixtures.MappedTest):
         assert b1 not in sess.dirty
 
     def test_o2m_viewonly_only(self):
-        class A(fixtures.ComparableEntity):
+        class A(ComparableEntity):
             pass
 
-        class B(fixtures.ComparableEntity):
+        class B(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -3103,10 +3105,10 @@ class ViewOnlyHistoryTest(fixtures.MappedTest):
         self._assert_fk(a1, b1, False)
 
     def test_m2o_viewonly_only(self):
-        class A(fixtures.ComparableEntity):
+        class A(ComparableEntity):
             pass
 
-        class B(fixtures.ComparableEntity):
+        class B(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(A, self.tables.t1)
@@ -3151,10 +3153,10 @@ class ViewOnlyM2MBackrefTest(fixtures.MappedTest):
     def test_viewonly(self):
         t1t2, t2, t1 = (self.tables.t1t2, self.tables.t2, self.tables.t1)
 
-        class A(fixtures.ComparableEntity):
+        class A(ComparableEntity):
             pass
 
-        class B(fixtures.ComparableEntity):
+        class B(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -3226,13 +3228,13 @@ class ViewOnlyOverlappingNames(fixtures.MappedTest):
 
         t2, t3, t1 = (self.tables.t2, self.tables.t3, self.tables.t1)
 
-        class C1(fixtures.BasicEntity):
+        class C1(BasicEntity):
             pass
 
-        class C2(fixtures.BasicEntity):
+        class C2(BasicEntity):
             pass
 
-        class C3(fixtures.BasicEntity):
+        class C3(BasicEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -3360,10 +3362,10 @@ class ViewOnlySyncBackref(fixtures.MappedTest):
     @testing.combinations(True, False, None, argnames="B_a_sync")
     @testing.combinations(True, False, argnames="B_a_view")
     def test_case(self, B_a_view, B_a_sync, A_bs_view, A_bs_sync):
-        class A(fixtures.ComparableEntity):
+        class A(ComparableEntity):
             pass
 
-        class B(fixtures.ComparableEntity):
+        class B(ComparableEntity):
             pass
 
         case = self.cases[(B_a_view, B_a_sync, A_bs_view, A_bs_sync)]
@@ -3490,13 +3492,13 @@ class ViewOnlyUniqueNames(fixtures.MappedTest):
 
         t2, t3, t1 = (self.tables.t2, self.tables.t3, self.tables.t1)
 
-        class C1(fixtures.BasicEntity):
+        class C1(BasicEntity):
             pass
 
-        class C2(fixtures.BasicEntity):
+        class C2(BasicEntity):
             pass
 
-        class C3(fixtures.BasicEntity):
+        class C3(BasicEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -3596,10 +3598,10 @@ class ViewOnlyNonEquijoin(fixtures.MappedTest):
     def test_viewonly_join(self):
         bars, foos = self.tables.bars, self.tables.foos
 
-        class Foo(fixtures.ComparableEntity):
+        class Foo(ComparableEntity):
             pass
 
-        class Bar(fixtures.ComparableEntity):
+        class Bar(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -3669,10 +3671,10 @@ class ViewOnlyRepeatedRemoteColumn(fixtures.MappedTest):
     def test_relationship_on_or(self):
         bars, foos = self.tables.bars, self.tables.foos
 
-        class Foo(fixtures.ComparableEntity):
+        class Foo(ComparableEntity):
             pass
 
-        class Bar(fixtures.ComparableEntity):
+        class Bar(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -3744,10 +3746,10 @@ class ViewOnlyRepeatedLocalColumn(fixtures.MappedTest):
     def test_relationship_on_or(self):
         bars, foos = self.tables.bars, self.tables.foos
 
-        class Foo(fixtures.ComparableEntity):
+        class Foo(ComparableEntity):
             pass
 
-        class Bar(fixtures.ComparableEntity):
+        class Bar(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -4006,7 +4008,7 @@ class RemoteForeignBetweenColsTest(fixtures.DeclarativeMappedTest):
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class Network(fixtures.ComparableEntity, Base):
+        class Network(ComparableEntity, Base):
             __tablename__ = "network"
 
             id = Column(
@@ -4023,7 +4025,7 @@ class RemoteForeignBetweenColsTest(fixtures.DeclarativeMappedTest):
                 viewonly=True,
             )
 
-        class Address(fixtures.ComparableEntity, Base):
+        class Address(ComparableEntity, Base):
             __tablename__ = "address"
 
             ip_addr = Column(Integer, primary_key=True)

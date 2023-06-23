@@ -43,6 +43,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -2117,7 +2118,7 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class A(fixtures.ComparableEntity, Base):
+        class A(ComparableEntity, Base):
             __tablename__ = "a"
             id = Column(Integer, primary_key=True)
             x = Column(Integer)
@@ -2127,7 +2128,7 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
 
             bs = relationship("B", order_by="B.id")
 
-        class A_default(fixtures.ComparableEntity, Base):
+        class A_default(ComparableEntity, Base):
             __tablename__ = "a_default"
             id = Column(Integer, primary_key=True)
             x = Column(Integer)
@@ -2135,7 +2136,7 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
 
             my_expr = query_expression(default_expr=literal(15))
 
-        class B(fixtures.ComparableEntity, Base):
+        class B(ComparableEntity, Base):
             __tablename__ = "b"
             id = Column(Integer, primary_key=True)
             a_id = Column(ForeignKey("a.id"))
@@ -2144,7 +2145,7 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
 
             b_expr = query_expression()
 
-        class C(fixtures.ComparableEntity, Base):
+        class C(ComparableEntity, Base):
             __tablename__ = "c"
             id = Column(Integer, primary_key=True)
             x = Column(Integer)
@@ -2489,7 +2490,7 @@ class RaiseLoadTest(fixtures.DeclarativeMappedTest):
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class A(fixtures.ComparableEntity, Base):
+        class A(ComparableEntity, Base):
             __tablename__ = "a"
             id = Column(Integer, primary_key=True)
             x = Column(Integer)

@@ -46,6 +46,7 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import pickleable
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -53,11 +54,11 @@ from sqlalchemy.testing.util import gc_collect
 from ..orm import _fixtures
 
 
-class A(fixtures.ComparableEntity):
+class A(ComparableEntity):
     pass
 
 
-class B(fixtures.ComparableEntity):
+class B(ComparableEntity):
     pass
 
 
@@ -916,7 +917,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
 
         @profile_memory()
         def go():
-            class A(fixtures.ComparableEntity):
+            class A(ComparableEntity):
                 pass
 
             class B(A):
@@ -997,10 +998,10 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
 
         @profile_memory()
         def go():
-            class A(fixtures.ComparableEntity):
+            class A(ComparableEntity):
                 pass
 
-            class B(fixtures.ComparableEntity):
+            class B(ComparableEntity):
                 pass
 
             self.mapper_registry.map_imperatively(

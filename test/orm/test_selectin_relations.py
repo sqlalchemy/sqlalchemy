@@ -29,7 +29,7 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import assert_engine
 from sqlalchemy.testing.assertsql import CompiledSQL
-from sqlalchemy.testing.fixtures import ComparableEntity
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -1712,10 +1712,10 @@ class OrderBySecondaryTest(fixtures.MappedTest):
     def test_ordering(self):
         a, m2m, b = (self.tables.a, self.tables.m2m, self.tables.b)
 
-        class A(fixtures.ComparableEntity):
+        class A(ComparableEntity):
             pass
 
-        class B(fixtures.ComparableEntity):
+        class B(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -2239,14 +2239,14 @@ class TupleTest(fixtures.DeclarativeMappedTest):
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class A(fixtures.ComparableEntity, Base):
+        class A(ComparableEntity, Base):
             __tablename__ = "a"
             id1 = Column(Integer, primary_key=True)
             id2 = Column(Integer, primary_key=True)
 
             bs = relationship("B", order_by="B.id", back_populates="a")
 
-        class B(fixtures.ComparableEntity, Base):
+        class B(ComparableEntity, Base):
             __tablename__ = "b"
             id = Column(Integer, primary_key=True)
             a_id1 = Column()
@@ -2355,12 +2355,12 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class A(fixtures.ComparableEntity, Base):
+        class A(ComparableEntity, Base):
             __tablename__ = "a"
             id = Column(Integer, primary_key=True)
             bs = relationship("B", order_by="B.id", back_populates="a")
 
-        class B(fixtures.ComparableEntity, Base):
+        class B(ComparableEntity, Base):
             __tablename__ = "b"
             id = Column(Integer, primary_key=True)
             a_id = Column(ForeignKey("a.id"))
@@ -2955,7 +2955,7 @@ class SelfRefInheritanceAliasedTest(
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class Foo(fixtures.ComparableEntity, Base):
+        class Foo(ComparableEntity, Base):
             __tablename__ = "foo"
             id = Column(Integer, primary_key=True)
             type = Column(String(50))
@@ -3203,14 +3203,14 @@ class MissingForeignTest(
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class A(fixtures.ComparableEntity, Base):
+        class A(ComparableEntity, Base):
             __tablename__ = "a"
             id = Column(Integer, primary_key=True)
             b_id = Column(Integer)
             b = relationship("B", primaryjoin="foreign(A.b_id) == B.id")
             q = Column(Integer)
 
-        class B(fixtures.ComparableEntity, Base):
+        class B(ComparableEntity, Base):
             __tablename__ = "b"
             id = Column(Integer, primary_key=True)
             x = Column(Integer)
@@ -3256,7 +3256,7 @@ class M2OWDegradeTest(
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class A(fixtures.ComparableEntity, Base):
+        class A(ComparableEntity, Base):
             __tablename__ = "a"
             id = Column(Integer, primary_key=True)
             b_id = Column(ForeignKey("b.id"))
@@ -3264,7 +3264,7 @@ class M2OWDegradeTest(
             b_no_omit_join = relationship("B", omit_join=False, overlaps="b")
             q = Column(Integer)
 
-        class B(fixtures.ComparableEntity, Base):
+        class B(ComparableEntity, Base):
             __tablename__ = "b"
             id = Column(Integer, primary_key=True)
             x = Column(Integer)

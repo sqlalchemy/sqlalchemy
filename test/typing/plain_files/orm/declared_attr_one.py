@@ -30,7 +30,7 @@ class Employee(Base):
     }
 
     __table_args__ = (
-        Index("my_index", name, type),
+        Index("my_index", name, type.desc()),
         UniqueConstraint(name),
         PrimaryKeyConstraint(id),
         {"prefix": []},

@@ -88,5 +88,9 @@ async def async_main() -> None:
 
         await session.commit()
 
+        trans_ctx = engine.begin()
+        async with trans_ctx as connection:
+            await connection.execute(select(A))
+
 
 asyncio.run(async_main())

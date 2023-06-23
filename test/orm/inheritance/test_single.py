@@ -34,6 +34,7 @@ from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -1693,7 +1694,7 @@ class SingleOnJoinedTest(fixtures.MappedTest):
         )
 
     def test_single_on_joined(self):
-        class Person(fixtures.ComparableEntity):
+        class Person(ComparableEntity):
             pass
 
         class Employee(Person):

@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import abc
+from argparse import Namespace
 import configparser
 import logging
 import os
@@ -51,7 +52,7 @@ file_config = None
 logging = None
 include_tags = set()
 exclude_tags = set()
-options = None
+options: Namespace = None  # type: ignore
 
 
 def setup_options(make_option):

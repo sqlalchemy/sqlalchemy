@@ -51,8 +51,8 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
-from sqlalchemy.testing.fixtures import ComparableEntity
-from sqlalchemy.testing.fixtures import ComparableMixin
+from sqlalchemy.testing.entities import ComparableEntity
+from sqlalchemy.testing.entities import ComparableMixin
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -973,7 +973,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         assert_col = []
 
-        class User(fixtures.ComparableEntity):
+        class User(ComparableEntity):
             def _get_name(self):
                 assert_col.append(("get", self._name))
                 return self._name

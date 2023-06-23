@@ -11,6 +11,7 @@ from sqlalchemy.testing.assertsql import assert_engine
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.assertsql import RegexSQL
+from sqlalchemy.testing.entities import BasicEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -209,7 +210,7 @@ class ExcludedDefaultsTest(fixtures.MappedTest):
     def test_exclude(self):
         dt = self.tables.dt
 
-        class Foo(fixtures.BasicEntity):
+        class Foo(BasicEntity):
             pass
 
         self.mapper_registry.map_imperatively(

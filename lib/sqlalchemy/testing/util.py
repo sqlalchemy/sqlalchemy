@@ -216,22 +216,21 @@ def provide_metadata(fn, *args, **kw):
         # we have to hardcode some of that cleanup ahead of time.
 
         # close ORM sessions
-        fixtures._close_all_sessions()
+        fixtures.close_all_sessions()
 
         # integrate with the "connection" fixture as there are many
         # tests where it is used along with provide_metadata
-        if fixtures._connection_fixture_connection:
+        cfc = fixtures.base._connection_fixture_connection
+        if cfc:
             # TODO: this warning can be used to find all the places
             # this is used with connection fixture
             # warn("mixing legacy provide metadata with connection fixture")
-            drop_all_tables_from_metadata(
-                metadata, fixtures._connection_fixture_connection
-            )
+            drop_all_tables_from_metadata(metadata, cfc)
             # as the provide_metadata fixture is often used with "testing.db",
             # when we do the drop we have to commit the transaction so that
             # the DB is actually updated as the CREATE would have been
             # committed
-            fixtures._connection_fixture_connection.get_transaction().commit()
+            cfc.get_transaction().commit()
         else:
             drop_all_tables_from_metadata(metadata, config.db)
         self.metadata = prev_meta

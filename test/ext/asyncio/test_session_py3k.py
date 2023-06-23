@@ -41,6 +41,7 @@ from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import is_false
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.provision import normalize_sequence
 from .test_engine_py3k import AsyncFixture as _AsyncFixture
 from ...orm import _fixtures
@@ -1023,7 +1024,7 @@ class AsyncAttrsTest(
     def decl_base(self, metadata):
         _md = metadata
 
-        class Base(fixtures.ComparableEntity, AsyncAttrs, DeclarativeBase):
+        class Base(ComparableEntity, AsyncAttrs, DeclarativeBase):
             metadata = _md
             type_annotation_map = {
                 str: String().with_variant(

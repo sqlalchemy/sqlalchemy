@@ -3912,13 +3912,13 @@ class TestOverlyEagerEquivalentCols(fixtures.MappedTest):
             self.tables.sub1,
         )
 
-        class Base(fixtures.ComparableEntity):
+        class Base(ComparableEntity):
             pass
 
-        class Sub1(fixtures.ComparableEntity):
+        class Sub1(ComparableEntity):
             pass
 
-        class Sub2(fixtures.ComparableEntity):
+        class Sub2(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
