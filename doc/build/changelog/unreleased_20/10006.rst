@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 10006
+
+    Fixed issue in ORM loader strategy logic which further allows for long
+    chains of :func:`_orm.contains_eager` loader options across complex
+    inheriting polymorphic / aliased / of_type() relationship chains to take
+    proper effect in queries.
