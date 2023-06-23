@@ -10,7 +10,116 @@
 
 .. changelog::
     :version: 2.0.17
-    :include_notes_from: unreleased_20
+    :released: June 23, 2023
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 9965
+
+        The pg8000 dialect now supports RANGE and MULTIRANGE datatypes, using the
+        existing RANGE API described at :ref:`postgresql_ranges`.  Range and
+        multirange types are supported in the pg8000 driver from version 1.29.8.
+        Pull request courtesy Tony Locke.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 9870
+
+        Fixed regression in the 2.0 series where a query that used
+        :func:`.undefer_group` with :func:`_orm.selectinload` or
+        :func:`_orm.subqueryload` would raise an ``AttributeError``. Pull request
+        courtesy of Matthew Martin.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9957
+
+        Fixed issue in ORM Annotated Declarative which prevented a
+        :class:`_orm.declared_attr` from being used on a mixin which did not return
+        a :class:`.Mapped` datatype, and instead returned a supplemental ORM
+        datatype such as :class:`.AssociationProxy`.  The Declarative runtime would
+        erroneously try to interpret this annotation as needing to be
+        :class:`.Mapped` and raise an error.
+
+
+    .. change::
+        :tags: bug, orm, typing
+        :tickets: 9957
+
+        Fixed typing issue where using the :class:`.AssociationProxy` return type
+        from a :class:`_orm.declared_attr` function was disallowed.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 9936
+
+        Fixed regression introduced in 2.0.16 by :ticket:`9879` where passing a
+        callable to the :paramref:`_orm.mapped_column.default` parameter of
+        :class:`_orm.mapped_column` while also setting ``init=False`` would
+        interpret this value as a Dataclass default value which would be assigned
+        directly to new instances of the object directly, bypassing the default
+        generator taking place as the :paramref:`_schema.Column.default`
+        value generator on the underlying :class:`_schema.Column`.  This condition
+        is now detected so that the previous behavior is maintained, however a
+        deprecation warning for this ambiguous use is emitted; to populate the
+        default generator for a :class:`_schema.Column`, the
+        :paramref:`_orm.mapped_column.insert_default` parameter should be used,
+        which disambiguates from the :paramref:`_orm.mapped_column.default`
+        parameter whose name is fixed as per pep-681.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9973
+
+        Additional hardening and documentation for the ORM :class:`_orm.Session`
+        "state change" system, which detects concurrent use of
+        :class:`_orm.Session` and :class:`_asyncio.AsyncSession` objects; an
+        additional check is added within the process to acquire connections from
+        the underlying engine, which is a critical section with regards to internal
+        connection management.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10006
+
+        Fixed issue in ORM loader strategy logic which further allows for long
+        chains of :func:`_orm.contains_eager` loader options across complex
+        inheriting polymorphic / aliased / of_type() relationship chains to take
+        proper effect in queries.
+
+    .. change::
+        :tags: bug, orm, declarative
+        :tickets: 3532
+
+        A warning is emitted when an ORM :func:`_orm.relationship` and other
+        :class:`.MapperProperty` objects are assigned to two different class
+        attributes at once; only one of the attributes will be mapped.  A warning
+        for this condition was already in place for :class:`_schema.Column` and
+        :class:`_orm.mapped_column` objects.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 9963
+
+        Fixed issue in support for the :class:`.Enum` datatype in the
+        :paramref:`_orm.registry.type_annotation_map` first added as part of
+        :ticket:`8859` where using a custom :class:`.Enum` with fixed configuration
+        in the map would fail to transfer the :paramref:`.Enum.name` parameter,
+        which among other issues would prevent PostgreSQL enums from working if the
+        enum values were passed as individual values.  Logic has been updated so
+        that "name" is transferred over, but also that the default :class:`.Enum`
+        which is against the plain Python `enum.Enum` class or other "empty" enum
+        won't set a hardcoded name of ``"enum"`` either.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 9985
+
+        Fixed typing issue which prevented :class:`_orm.WriteOnlyMapped` and
+        :class:`_orm.DynamicMapped` attributes from being used fully within ORM
+        queries.
 
 .. changelog::
     :version: 2.0.16

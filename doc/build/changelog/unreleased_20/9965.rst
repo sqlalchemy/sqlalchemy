@@ -1,8 +1,0 @@
-.. change::
-    :tags: usecase, postgresql
-    :tickets: 9965
-
-    The pg8000 dialect now supports RANGE and MULTIRANGE datatypes, using the
-    existing RANGE API described at :ref:`postgresql_ranges`.  Range and
-    multirange types are supported in the pg8000 driver from version 1.29.8.
-    Pull request courtesy Tony Locke.

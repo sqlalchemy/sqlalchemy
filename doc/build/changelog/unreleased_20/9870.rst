@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm, regression
-    :tickets: 9870
-
-    Fixed regression in the 2.0 series where a query that used
-    :func:`.undefer_group` with :func:`_orm.selectinload` or
-    :func:`_orm.subqueryload` would raise an ``AttributeError``. Pull request
-    courtesy of Matthew Martin.

@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 9985
-
-    Fixed typing issue which prevented :class:`_orm.WriteOnlyMapped` and
-    :class:`_orm.DynamicMapped` attributes from being used fully within ORM
-    queries.
