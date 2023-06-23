@@ -854,7 +854,23 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         def __getitem__(self, index: Any) -> ColumnElement[Any]:
             ...
 
+        @overload
+        def __lshift__(self: _SQO[int], other: Any) -> ColumnElement[int]:
+            ...
+
+        @overload
         def __lshift__(self, other: Any) -> ColumnElement[Any]:
+            ...
+
+        def __lshift__(self, other: Any) -> ColumnElement[Any]:
+            ...
+
+        @overload
+        def __rshift__(self: _SQO[int], other: Any) -> ColumnElement[int]:
+            ...
+
+        @overload
+        def __rshift__(self, other: Any) -> ColumnElement[Any]:
             ...
 
         def __rshift__(self, other: Any) -> ColumnElement[Any]:

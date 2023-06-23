@@ -111,9 +111,9 @@ def test_issue_9650_bitwise() -> None:
     reveal_type(c2.bitwise_lshift(5))
     # EXPECTED_TYPE: BinaryExpression[Any]
     reveal_type(c2.bitwise_rshift(5))
-    # EXPECTED_TYPE: ColumnElement[Any]
+    # EXPECTED_TYPE: ColumnElement[int]
     reveal_type(c2 << 5)
-    # EXPECTED_TYPE: ColumnElement[Any]
+    # EXPECTED_TYPE: ColumnElement[int]
     reveal_type(c2 >> 5)
 
 
