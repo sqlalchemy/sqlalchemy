@@ -91,6 +91,7 @@ def association_proxy(
     proxy_bulk_set: Optional[_ProxyBulkSetProtocol] = None,
     info: Optional[_InfoType] = None,
     cascade_scalar_deletes: bool = False,
+    create_on_none_assignment: bool = False,
     init: Union[_NoArg, bool] = _NoArg.NO_ARG,
     repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
     default: Optional[Any] = _NoArg.NO_ARG,
@@ -155,6 +156,14 @@ def association_proxy(
         .. seealso::
 
             :ref:`cascade_scalar_deletes` - complete usage example
+
+    :param create_on_none_assignment: when True, indicates that setting
+      the proxied value to ``None`` should **create** the source object
+      if it does not exist, using the creator.  Only applies to scalar
+      attributes.  This is mutually exclusive
+      vs. the :paramref:`.assocation_proxy.cascade_scalar_deletes`.
+
+      .. versionadded:: 2.0.18
 
     :param init: Specific to :ref:`orm_declarative_native_dataclasses`,
      specifies if the mapped attribute should be part of the ``__init__()``
@@ -226,6 +235,7 @@ def association_proxy(
         proxy_bulk_set=proxy_bulk_set,
         info=info,
         cascade_scalar_deletes=cascade_scalar_deletes,
+        create_on_none_assignment=create_on_none_assignment,
         attribute_options=_AttributeOptions(
             init, repr, default, default_factory, compare, kw_only
         ),
@@ -320,6 +330,8 @@ class _AssociationProxyProtocol(Protocol[_T]):
     key: str
     target_collection: str
     value_attr: str
+    cascade_scalar_deletes: bool
+    create_on_none_assignment: bool
     getset_factory: Optional[_GetSetFactoryProtocol]
     proxy_factory: Optional[_ProxyFactoryProtocol]
     proxy_bulk_set: Optional[_ProxyBulkSetProtocol]
@@ -361,6 +373,7 @@ class AssociationProxy(
         proxy_bulk_set: Optional[_ProxyBulkSetProtocol] = None,
         info: Optional[_InfoType] = None,
         cascade_scalar_deletes: bool = False,
+        create_on_none_assignment: bool = False,
         attribute_options: Optional[_AttributeOptions] = None,
     ):
         """Construct a new :class:`.AssociationProxy`.
@@ -378,7 +391,14 @@ class AssociationProxy(
         self.getset_factory = getset_factory
         self.proxy_factory = proxy_factory
         self.proxy_bulk_set = proxy_bulk_set
+
+        if cascade_scalar_deletes and create_on_none_assignment:
+            raise exc.ArgumentError(
+                "The cascade_scalar_deletes and create_on_none_assignment "
+                "parameters are mutually exclusive."
+            )
         self.cascade_scalar_deletes = cascade_scalar_deletes
+        self.create_on_none_assignment = create_on_none_assignment
 
         self.key = "_%s_%s_%s" % (
             type(self).__name__,
@@ -891,7 +911,10 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
             )
             target = getattr(obj, self.target_collection)
             if target is None:
-                if values is None:
+                if (
+                    values is None
+                    and not self.parent.create_on_none_assignment
+                ):
                     return
                 setattr(obj, self.target_collection, creator(values))
             else:

@@ -1,0 +1,10 @@
+.. change::
+    :tags: usecase, ext
+    :tickets: 10013
+
+    Added new option to :func:`.association_proxy`
+    :paramref:`.association_proxy.create_on_none_assignment`; when an
+    association proxy which refers to a scalar relationship is assigned the
+    value ``None``, and the referenced object is not present, a new object is
+    created via the creator.  This was apparently an undefined behavior in the
+    1.2 series that was silently removed.
