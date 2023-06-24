@@ -2969,6 +2969,48 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=sqlite.dialect(),
         )
 
+    @testing.combinations(
+        (
+            "default",
+            None,
+            "SELECT CAST(t1.txt AS VARCHAR(10)) AS txt FROM t1",
+            None,
+        ),
+        (
+            "explicit_mssql",
+            "Latin1_General_CI_AS",
+            "SELECT CAST(t1.txt AS VARCHAR(10)) COLLATE Latin1_General_CI_AS AS txt FROM t1",  # noqa
+            mssql.dialect(),
+        ),
+        (
+            "explicit_mysql",
+            "utf8mb4_unicode_ci",
+            "SELECT CAST(t1.txt AS CHAR(10)) AS txt FROM t1",
+            mysql.dialect(),
+        ),
+        (
+            "explicit_postgresql",
+            "en_US",
+            'SELECT CAST(t1.txt AS VARCHAR(10)) COLLATE "en_US" AS txt FROM t1',  # noqa
+            postgresql.dialect(),
+        ),
+        (
+            "explicit_sqlite",
+            "NOCASE",
+            'SELECT CAST(t1.txt AS VARCHAR(10)) COLLATE "NOCASE" AS txt FROM t1',  # noqa
+            sqlite.dialect(),
+        ),
+        id_="iaaa",
+    )
+    def test_cast_with_collate(self, collation_name, expected_sql, dialect):
+        t1 = Table(
+            "t1",
+            MetaData(),
+            Column("txt", String(10, collation=collation_name)),
+        )
+        stmt = select(func.cast(t1.c.txt, t1.c.txt.type))
+        self.assert_compile(stmt, expected_sql, dialect=dialect)
+
     def test_over(self):
         self.assert_compile(func.row_number().over(), "row_number() OVER ()")
         self.assert_compile(

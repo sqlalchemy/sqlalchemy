@@ -2768,9 +2768,12 @@ class SQLCompiler(Compiled):
         return type_coerce.typed_expression._compiler_dispatch(self, **kw)
 
     def visit_cast(self, cast, **kwargs):
-        return "CAST(%s AS %s)" % (
+        type_clause = cast.typeclause._compiler_dispatch(self, **kwargs)
+        match = re.match("(.*)( COLLATE .*)", type_clause)
+        return "CAST(%s AS %s)%s" % (
             cast.clause._compiler_dispatch(self, **kwargs),
-            cast.typeclause._compiler_dispatch(self, **kwargs),
+            match.group(1) if match else type_clause,
+            match.group(2) if match else "",
         )
 
     def _format_frame_clause(self, range_, **kw):
