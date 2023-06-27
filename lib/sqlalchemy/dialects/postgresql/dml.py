@@ -6,24 +6,38 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
+from typing import Iterable, Mapping, Optional, Union, Any
+
 from . import ext
 from ... import util
 from ...sql import coercions
 from ...sql import roles
 from ...sql import schema
 from ...sql.base import _exclusive_against
-from ...sql.base import _generative
+from ...sql.base import (
+    _generative,
+    ReadOnlyColumnCollection,
+    KeyedColumnElement,
+)
 from ...sql.base import ColumnCollection
 from ...sql.dml import Insert as StandardInsert
-from ...sql.elements import ClauseElement
+from ...sql.elements import ClauseElement, DQLDMLClauseElement
 from ...sql.expression import alias
+from ...sql.schema import ColumnCollectionConstraint
 from ...util.typing import Self
+from ...sql._typing import _DMLTableArgument, _DDLColumnArgument
 
 
 __all__ = ("Insert", "insert")
 
+_ConstraintT = Union[str, ColumnCollectionConstraint, None]
+_IndexElementsT = Optional[Iterable[_DDLColumnArgument]]
+_IndexWhereT = Optional[DQLDMLClauseElement]
+_SetT = Optional[Mapping[Any, Any]]
+_WhereT = Union[DQLDMLClauseElement, str, None]
 
-def insert(table):
+
+def insert(table: _DMLTableArgument) -> "Insert":
     """Construct a PostgreSQL-specific variant :class:`_postgresql.Insert`
     construct.
 
@@ -57,7 +71,9 @@ class Insert(StandardInsert):
     inherit_cache = False
 
     @util.memoized_property
-    def excluded(self):
+    def excluded(
+        self,
+    ) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
         """Provide the ``excluded`` namespace for an ON CONFLICT statement
 
         PG's ON CONFLICT clause allows reference to the row that would
@@ -95,11 +111,11 @@ class Insert(StandardInsert):
     @_on_conflict_exclusive
     def on_conflict_do_update(
         self,
-        constraint=None,
-        index_elements=None,
-        index_where=None,
-        set_=None,
-        where=None,
+        constraint: _ConstraintT = None,
+        index_elements: _IndexElementsT = None,
+        index_where: _IndexWhereT = None,
+        set_: _SetT = None,
+        where: _WhereT = None,
     ) -> Self:
         r"""
         Specifies a DO UPDATE SET action for ON CONFLICT clause.
@@ -161,9 +177,9 @@ class Insert(StandardInsert):
     @_on_conflict_exclusive
     def on_conflict_do_nothing(
         self,
-        constraint=None,
-        index_elements=None,
-        index_where=None,
+        constraint: _ConstraintT = None,
+        index_elements: _IndexElementsT = None,
+        index_where: _IndexWhereT = None,
     ) -> Self:
         """
         Specifies a DO NOTHING action for ON CONFLICT clause.
@@ -198,7 +214,12 @@ class Insert(StandardInsert):
 class OnConflictClause(ClauseElement):
     stringify_dialect = "postgresql"
 
-    def __init__(self, constraint=None, index_elements=None, index_where=None):
+    def __init__(
+        self,
+        constraint: _ConstraintT = None,
+        index_elements: _IndexElementsT = None,
+        index_where: _IndexWhereT = None,
+    ):
         if constraint is not None:
             if not isinstance(constraint, str) and isinstance(
                 constraint,
@@ -249,11 +270,11 @@ class OnConflictDoUpdate(OnConflictClause):
 
     def __init__(
         self,
-        constraint=None,
-        index_elements=None,
-        index_where=None,
-        set_=None,
-        where=None,
+        constraint: _ConstraintT = None,
+        index_elements: _IndexElementsT = None,
+        index_where: _IndexWhereT = None,
+        set_: _SetT = None,
+        where: _WhereT = None,
     ):
         super().__init__(
             constraint=constraint,
