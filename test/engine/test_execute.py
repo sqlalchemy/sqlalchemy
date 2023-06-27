@@ -1250,6 +1250,19 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
 
         return t1, t2, t3
 
+    @testing.fixture
+    def same_named_tables(self, metadata, connection):
+        ts1 = Table(
+            "t1", metadata, Column("x", String(10)), schema=config.test_schema
+        )
+        tsnone = Table("t1", metadata, Column("x", String(10)), schema=None)
+
+        metadata.create_all(connection)
+
+        connection.execute(ts1.insert().values(x="ts1"))
+        connection.execute(tsnone.insert().values(x="tsnone"))
+        return ts1, tsnone
+
     def test_create_table(self, plain_tables, connection):
         map_ = {
             None: config.test_schema,
@@ -1402,6 +1415,133 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
             CompiledSQL("DELETE FROM __[SCHEMA_foo].t2"),
             CompiledSQL("DELETE FROM __[SCHEMA_bar].t3"),
         )
+
+    def test_schema_translate_map_keys_change_name_added(
+        self, same_named_tables, connection
+    ):
+        """test #10024"""
+
+        metadata = MetaData()
+
+        translate_table = Table(
+            "t1", metadata, Column("x", String(10)), schema=config.test_schema
+        )
+
+        eq_(
+            connection.scalar(
+                select(translate_table),
+                execution_options={"schema_translate_map": {"foo": "bar"}},
+            ),
+            "ts1",
+        )
+
+        eq_(
+            connection.scalar(
+                select(translate_table),
+                execution_options={
+                    "schema_translate_map": {
+                        "foo": "bar",
+                        config.test_schema: None,
+                    }
+                },
+            ),
+            "tsnone",
+        )
+
+    def test_schema_translate_map_keys_change_name_removed(
+        self, same_named_tables, connection
+    ):
+        """test #10024"""
+
+        metadata = MetaData()
+
+        translate_table = Table(
+            "t1", metadata, Column("x", String(10)), schema=config.test_schema
+        )
+
+        eq_(
+            connection.scalar(
+                select(translate_table),
+                execution_options={
+                    "schema_translate_map": {
+                        "foo": "bar",
+                        config.test_schema: None,
+                    }
+                },
+            ),
+            "tsnone",
+        )
+
+        eq_(
+            connection.scalar(
+                select(translate_table),
+                execution_options={"schema_translate_map": {"foo": "bar"}},
+            ),
+            "ts1",
+        )
+
+    def test_schema_translate_map_keys_change_none_removed(
+        self, same_named_tables, connection
+    ):
+        """test #10024"""
+
+        connection.engine.clear_compiled_cache()
+
+        metadata = MetaData()
+
+        translate_table = Table("t1", metadata, Column("x", String(10)))
+
+        eq_(
+            connection.scalar(
+                select(translate_table),
+                execution_options={
+                    "schema_translate_map": {None: config.test_schema}
+                },
+            ),
+            "ts1",
+        )
+
+        with expect_raises_message(
+            tsa.exc.StatementError,
+            "schema translate map which previously had `None` "
+            "present as a key now no longer has it present",
+        ):
+            connection.scalar(
+                select(translate_table),
+                execution_options={"schema_translate_map": {"foo": "bar"}},
+            ),
+
+    def test_schema_translate_map_keys_change_none_added(
+        self, same_named_tables, connection
+    ):
+        """test #10024"""
+
+        connection.engine.clear_compiled_cache()
+
+        metadata = MetaData()
+
+        translate_table = Table("t1", metadata, Column("x", String(10)))
+
+        eq_(
+            connection.scalar(
+                select(translate_table),
+                execution_options={"schema_translate_map": {"foo": "bar"}},
+            ),
+            "tsnone",
+        )
+
+        with expect_raises_message(
+            tsa.exc.StatementError,
+            "schema translate map which previously did not have `None` "
+            "present as a key now has `None` present; compiled statement may "
+            "lack adequate placeholders.",
+        ):
+            connection.scalar(
+                select(translate_table),
+                execution_options={
+                    "schema_translate_map": {None: config.test_schema}
+                },
+            ),
 
     def test_crud(self, plain_tables, connection):
         # provided by metadata fixture provided by plain_tables fixture
