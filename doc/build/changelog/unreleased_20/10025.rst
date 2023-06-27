@@ -1,0 +1,17 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 10025
+
+    Adjusted the :paramref:`_sa.create_engine.schema_translate_map` feature
+    such that **all** schema names in the statement are now tokenized,
+    regardless of whether or not a specific name is in the immediate schema
+    translate map given, and to fallback to substituting the original name when
+    the key is not in the actual schema translate map at execution time.  These
+    two changes allow for repeated use of a compiled object with schema
+    schema_translate_maps that include or dont include various keys on each
+    run, allowing cached SQL constructs to continue to function at runtime when
+    schema translate maps with different sets of keys are used each time. In
+    addition, added detection of schema_translate_map dictionaries which gain
+    or lose a ``None`` key across calls for the same statement, which affects
+    compilation of the statement and is not compatible with caching; an
+    exception is raised for these scenarios.
