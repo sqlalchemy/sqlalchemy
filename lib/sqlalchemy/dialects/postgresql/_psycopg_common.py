@@ -131,9 +131,7 @@ class _PGDialect_common_psycopg(PGDialect):
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username="user", database="dbname")
 
-        is_multihost = False
-        if "host" in url.query:
-            is_multihost = isinstance(url.query["host"], (list, tuple))
+        multihosts, multiports = self._split_multihost_from_url(url)
 
         if opts or url.query:
             if not opts:
@@ -141,21 +139,12 @@ class _PGDialect_common_psycopg(PGDialect):
             if "port" in opts:
                 opts["port"] = int(opts["port"])
             opts.update(url.query)
-            if is_multihost:
-                hosts, ports = zip(
-                    *[
-                        token.split(":") if ":" in token else (token, "")
-                        for token in url.query["host"]
-                    ]
-                )
-                opts["host"] = ",".join(hosts)
-                if "port" in opts:
-                    raise exc.ArgumentError(
-                        "Can't mix 'multihost' formats together; use "
-                        '"host=h1,h2,h3&port=p1,p2,p3" or '
-                        '"host=h1:p1&host=h2:p2&host=h3:p3" separately'
-                    )
-                opts["port"] = ",".join(ports)
+
+            if multihosts:
+                opts["host"] = ",".join(multihosts)
+                comma_ports = ",".join(str(p) if p else "" for p in multiports)
+                if comma_ports:
+                    opts["port"] = comma_ports
             return ([], opts)
         else:
             # no connection arguments whatsoever; psycopg2.connect()

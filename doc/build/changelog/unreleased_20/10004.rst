@@ -1,0 +1,11 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 10004
+
+    Added multi-host support for the asyncpg dialect.  General improvements and
+    error checking added to the PostgreSQL URL routines for the "multihost" use
+    case added as well.  Pull request courtesy Ilia Dmitriev.
+
+    .. seealso::
+
+        :ref:`asyncpg_multihost`
