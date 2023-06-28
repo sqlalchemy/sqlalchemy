@@ -24,11 +24,11 @@ from ...sql._typing import _DMLTableArgument
 from ...sql.base import _exclusive_against
 from ...sql.base import _generative
 from ...sql.base import ColumnCollection
-from ...sql.base import KeyedColumnElement
 from ...sql.base import ReadOnlyColumnCollection
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
 from ...sql.elements import DQLDMLClauseElement
+from ...sql.elements import KeyedColumnElement
 from ...sql.expression import alias
 from ...sql.schema import ColumnCollectionConstraint
 from ...util.typing import Self
