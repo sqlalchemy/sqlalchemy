@@ -61,7 +61,7 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
         style: testing.Variation,
         sort_by_parameter_order,
     ):
-        class A(fixtures.ComparableEntity, decl_base):
+        class A(ComparableEntity, decl_base):
             __tablename__ = "a"
             id: Mapped[int] = mapped_column(Identity(), primary_key=True)
             data: Mapped[str]
@@ -1700,7 +1700,7 @@ class BulkDMLReturningJoinedInhTest(
     def setup_classes(cls):
         decl_base = cls.DeclarativeBasic
 
-        class A(fixtures.ComparableEntity, decl_base):
+        class A(ComparableEntity, decl_base):
             __tablename__ = "a"
             id: Mapped[int] = mapped_column(Identity(), primary_key=True)
             type: Mapped[str]
@@ -1814,7 +1814,7 @@ class BulkDMLReturningSingleInhTest(
     def setup_classes(cls):
         decl_base = cls.DeclarativeBasic
 
-        class A(fixtures.ComparableEntity, decl_base):
+        class A(ComparableEntity, decl_base):
             __tablename__ = "a"
             id: Mapped[int] = mapped_column(Identity(), primary_key=True)
             type: Mapped[str]
@@ -1857,7 +1857,7 @@ class BulkDMLReturningConcreteInhTest(
     def setup_classes(cls):
         decl_base = cls.DeclarativeBasic
 
-        class A(fixtures.ComparableEntity, decl_base):
+        class A(ComparableEntity, decl_base):
             __tablename__ = "a"
             id: Mapped[int] = mapped_column(Identity(), primary_key=True)
             type: Mapped[str]
@@ -1897,7 +1897,7 @@ class CTETest(fixtures.DeclarativeMappedTest):
     def setup_classes(cls):
         decl_base = cls.DeclarativeBasic
 
-        class User(fixtures.ComparableEntity, decl_base):
+        class User(ComparableEntity, decl_base):
             __tablename__ = "users"
             id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
             username: Mapped[str]

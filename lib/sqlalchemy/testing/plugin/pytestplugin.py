@@ -11,13 +11,15 @@ import operator
 import os
 import re
 import sys
+from typing import TYPE_CHECKING
 import uuid
 
 import pytest
 
 try:
     # installed by bootstrap.py
-    import sqla_plugin_base as plugin_base
+    if not TYPE_CHECKING:
+        import sqla_plugin_base as plugin_base
 except ImportError:
     # assume we're a package, use traditional import
     from . import plugin_base

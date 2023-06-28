@@ -47,6 +47,7 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_none
 from sqlalchemy.testing import is_not_none
 from sqlalchemy.testing.assertions import expect_raises_message
+from sqlalchemy.testing.entities import ComparableEntity  # noqa
 from sqlalchemy.testing.entities import ComparableMixin  # noqa
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -2511,7 +2512,7 @@ class CompositeAccessTest(fixtures.DeclarativeMappedTest):
                 creator=lambda point: PointData(point=point),
             )
 
-        class PointData(fixtures.ComparableEntity, cls.DeclarativeBasic):
+        class PointData(ComparableEntity, cls.DeclarativeBasic):
             __tablename__ = "point"
 
             id = Column(

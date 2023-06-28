@@ -44,6 +44,8 @@ from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.assertsql import RegexSQL
+from sqlalchemy.testing.entities import BasicEntity
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
@@ -1372,10 +1374,10 @@ class SingleCyclePlusAttributeTest(
     def test_flush_size(self):
         foobars, nodes = self.tables.foobars, self.tables.nodes
 
-        class Node(fixtures.ComparableEntity):
+        class Node(ComparableEntity):
             pass
 
-        class FooBar(fixtures.ComparableEntity):
+        class FooBar(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -1440,7 +1442,7 @@ class SingleCycleM2MTest(
     def test_many_to_many_one(self):
         nodes, node_to_nodes = self.tables.nodes, self.tables.node_to_nodes
 
-        class Node(fixtures.ComparableEntity):
+        class Node(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -1584,10 +1586,10 @@ class RowswitchAccountingTest(fixtures.MappedTest):
     def _fixture(self):
         parent, child = self.tables.parent, self.tables.child
 
-        class Parent(fixtures.BasicEntity):
+        class Parent(BasicEntity):
             pass
 
-        class Child(fixtures.BasicEntity):
+        class Child(BasicEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -1678,13 +1680,13 @@ class RowswitchM2OTest(fixtures.MappedTest):
     def _fixture(self):
         a, b, c = self.tables.a, self.tables.b, self.tables.c
 
-        class A(fixtures.BasicEntity):
+        class A(BasicEntity):
             pass
 
-        class B(fixtures.BasicEntity):
+        class B(BasicEntity):
             pass
 
-        class C(fixtures.BasicEntity):
+        class C(BasicEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -1787,10 +1789,10 @@ class BasicStaleChecksTest(fixtures.MappedTest):
     def _fixture(self, confirm_deleted_rows=True):
         parent, child = self.tables.parent, self.tables.child
 
-        class Parent(fixtures.BasicEntity):
+        class Parent(BasicEntity):
             pass
 
-        class Child(fixtures.BasicEntity):
+        class Child(BasicEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -2081,7 +2083,7 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
 
         t = self.tables.t
 
-        class T(fixtures.ComparableEntity):
+        class T(ComparableEntity):
             pass
 
         mp = self.mapper_registry.map_imperatively(T, t)

@@ -1,4 +1,3 @@
-# NOPLUGINS
 # this should pass typing with no plugins
 
 from typing import Any

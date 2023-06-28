@@ -22,6 +22,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -74,11 +75,11 @@ class DeferredReflectPKFKTest(DeferredReflectBase):
         )
 
     def test_pk_fk(self):
-        class B(DeferredReflection, fixtures.ComparableEntity, Base):
+        class B(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "b"
             a = relationship("A")
 
-        class A(DeferredReflection, fixtures.ComparableEntity, Base):
+        class A(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "a"
 
         DeferredReflection.prepare(testing.db)
@@ -133,11 +134,11 @@ class DeferredReflectionTest(testing.AssertsCompiledSQL, DeferredReflectBase):
             eq_(a1.user, User(name="u1"))
 
     def test_exception_prepare_not_called(self):
-        class User(DeferredReflection, fixtures.ComparableEntity, Base):
+        class User(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "users"
             addresses = relationship("Address", backref="user")
 
-        class Address(DeferredReflection, fixtures.ComparableEntity, Base):
+        class Address(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "addresses"
 
         assert_raises_message(
@@ -152,11 +153,11 @@ class DeferredReflectionTest(testing.AssertsCompiledSQL, DeferredReflectBase):
 
     @testing.variation("bind", ["engine", "connection", "raise_"])
     def test_basic_deferred(self, bind):
-        class User(DeferredReflection, fixtures.ComparableEntity, Base):
+        class User(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "users"
             addresses = relationship("Address", backref="user")
 
-        class Address(DeferredReflection, fixtures.ComparableEntity, Base):
+        class Address(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "addresses"
 
         if bind.engine:
@@ -218,11 +219,11 @@ class DeferredReflectionTest(testing.AssertsCompiledSQL, DeferredReflectBase):
         class OtherDefBase(DeferredReflection, Base):
             __abstract__ = True
 
-        class User(fixtures.ComparableEntity, DefBase):
+        class User(ComparableEntity, DefBase):
             __tablename__ = "users"
             addresses = relationship("Address", backref="user")
 
-        class Address(fixtures.ComparableEntity, DefBase):
+        class Address(ComparableEntity, DefBase):
             __tablename__ = "addresses"
 
         class Fake(OtherDefBase):
@@ -232,11 +233,11 @@ class DeferredReflectionTest(testing.AssertsCompiledSQL, DeferredReflectBase):
         self._roundtrip()
 
     def test_redefine_fk_double(self):
-        class User(DeferredReflection, fixtures.ComparableEntity, Base):
+        class User(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "users"
             addresses = relationship("Address", backref="user")
 
-        class Address(DeferredReflection, fixtures.ComparableEntity, Base):
+        class Address(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "addresses"
             user_id = Column(Integer, ForeignKey("users.id"))
 
@@ -247,7 +248,7 @@ class DeferredReflectionTest(testing.AssertsCompiledSQL, DeferredReflectBase):
         """test that __mapper_args__ is not called until *after*
         table reflection"""
 
-        class User(DeferredReflection, fixtures.ComparableEntity, Base):
+        class User(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "users"
 
             @declared_attr
@@ -277,10 +278,10 @@ class DeferredReflectionTest(testing.AssertsCompiledSQL, DeferredReflectBase):
 
     @testing.requires.predictable_gc
     def test_cls_not_strong_ref(self):
-        class User(DeferredReflection, fixtures.ComparableEntity, Base):
+        class User(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "users"
 
-        class Address(DeferredReflection, fixtures.ComparableEntity, Base):
+        class Address(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "addresses"
 
         eq_(len(_DeferredMapperConfig._configs), 2)
@@ -340,26 +341,26 @@ class DeferredSecondaryReflectionTest(DeferredReflectBase):
             )
 
     def test_string_resolution(self):
-        class User(DeferredReflection, fixtures.ComparableEntity, Base):
+        class User(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "users"
 
             items = relationship("Item", secondary="user_items")
 
-        class Item(DeferredReflection, fixtures.ComparableEntity, Base):
+        class Item(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "items"
 
         DeferredReflection.prepare(testing.db)
         self._roundtrip()
 
     def test_table_resolution(self):
-        class User(DeferredReflection, fixtures.ComparableEntity, Base):
+        class User(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "users"
 
             items = relationship(
                 "Item", secondary=Table("user_items", Base.metadata)
             )
 
-        class Item(DeferredReflection, fixtures.ComparableEntity, Base):
+        class Item(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "items"
 
         DeferredReflection.prepare(testing.db)
@@ -408,7 +409,7 @@ class DeferredSingleInhReflectionTest(DeferredInhReflectBase):
         )
 
     def test_basic(self, decl_base):
-        class Foo(DeferredReflection, fixtures.ComparableEntity, decl_base):
+        class Foo(DeferredReflection, ComparableEntity, decl_base):
             __tablename__ = "foo"
             __mapper_args__ = {
                 "polymorphic_on": "type",
@@ -422,7 +423,7 @@ class DeferredSingleInhReflectionTest(DeferredInhReflectBase):
         self._roundtrip()
 
     def test_add_subclass_column(self, decl_base):
-        class Foo(DeferredReflection, fixtures.ComparableEntity, decl_base):
+        class Foo(DeferredReflection, ComparableEntity, decl_base):
             __tablename__ = "foo"
             __mapper_args__ = {
                 "polymorphic_on": "type",
@@ -437,7 +438,7 @@ class DeferredSingleInhReflectionTest(DeferredInhReflectBase):
         self._roundtrip()
 
     def test_add_subclass_mapped_column(self, decl_base):
-        class Foo(DeferredReflection, fixtures.ComparableEntity, decl_base):
+        class Foo(DeferredReflection, ComparableEntity, decl_base):
             __tablename__ = "foo"
             __mapper_args__ = {
                 "polymorphic_on": "type",
@@ -452,7 +453,7 @@ class DeferredSingleInhReflectionTest(DeferredInhReflectBase):
         self._roundtrip()
 
     def test_subclass_mapped_column_no_existing(self, decl_base):
-        class Foo(DeferredReflection, fixtures.ComparableEntity, decl_base):
+        class Foo(DeferredReflection, ComparableEntity, decl_base):
             __tablename__ = "foo"
             __mapper_args__ = {
                 "polymorphic_on": "type",
@@ -469,7 +470,7 @@ class DeferredSingleInhReflectionTest(DeferredInhReflectBase):
                 bar_data: Mapped[str] = mapped_column(use_existing_column=True)
 
     def test_add_pk_column(self, decl_base):
-        class Foo(DeferredReflection, fixtures.ComparableEntity, decl_base):
+        class Foo(DeferredReflection, ComparableEntity, decl_base):
             __tablename__ = "foo"
             __mapper_args__ = {
                 "polymorphic_on": "type",
@@ -484,7 +485,7 @@ class DeferredSingleInhReflectionTest(DeferredInhReflectBase):
         self._roundtrip()
 
     def test_add_pk_mapped_column(self, decl_base):
-        class Foo(DeferredReflection, fixtures.ComparableEntity, decl_base):
+        class Foo(DeferredReflection, ComparableEntity, decl_base):
             __tablename__ = "foo"
             __mapper_args__ = {
                 "polymorphic_on": "type",
@@ -521,7 +522,7 @@ class DeferredJoinedInhReflectionTest(DeferredInhReflectBase):
         )
 
     def test_basic(self):
-        class Foo(DeferredReflection, fixtures.ComparableEntity, Base):
+        class Foo(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "foo"
             __mapper_args__ = {
                 "polymorphic_on": "type",
@@ -536,7 +537,7 @@ class DeferredJoinedInhReflectionTest(DeferredInhReflectBase):
         self._roundtrip()
 
     def test_add_subclass_column(self):
-        class Foo(DeferredReflection, fixtures.ComparableEntity, Base):
+        class Foo(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "foo"
             __mapper_args__ = {
                 "polymorphic_on": "type",
@@ -552,7 +553,7 @@ class DeferredJoinedInhReflectionTest(DeferredInhReflectBase):
         self._roundtrip()
 
     def test_add_pk_column(self):
-        class Foo(DeferredReflection, fixtures.ComparableEntity, Base):
+        class Foo(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "foo"
             __mapper_args__ = {
                 "polymorphic_on": "type",
@@ -568,7 +569,7 @@ class DeferredJoinedInhReflectionTest(DeferredInhReflectBase):
         self._roundtrip()
 
     def test_add_fk_pk_column(self):
-        class Foo(DeferredReflection, fixtures.ComparableEntity, Base):
+        class Foo(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "foo"
             __mapper_args__ = {
                 "polymorphic_on": "type",

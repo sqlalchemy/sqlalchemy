@@ -31,6 +31,8 @@ from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
+from sqlalchemy.testing.entities import BasicEntity
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
@@ -209,10 +211,10 @@ class UnicodeSchemaTest(fixtures.MappedTest):
     def test_mapping(self):
         t2, t1 = self.tables.t2, self.tables.t1
 
-        class A(fixtures.ComparableEntity):
+        class A(ComparableEntity):
             pass
 
-        class B(fixtures.ComparableEntity):
+        class B(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -251,7 +253,7 @@ class UnicodeSchemaTest(fixtures.MappedTest):
     def test_inheritance_mapping(self):
         t2, t1 = self.tables.t2, self.tables.t1
 
-        class A(fixtures.ComparableEntity):
+        class A(ComparableEntity):
             pass
 
         class B(A):
@@ -1030,7 +1032,7 @@ class ColumnCollisionTest(fixtures.MappedTest):
     def test_naming(self):
         book = self.tables.book
 
-        class Book(fixtures.ComparableEntity):
+        class Book(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(Book, book)
@@ -1909,7 +1911,7 @@ class SaveTest(_fixtures.FixtureTest):
     def test_synonym(self):
         users = self.tables.users
 
-        class SUser(fixtures.BasicEntity):
+        class SUser(BasicEntity):
             def _get_name(self):
                 return "User:" + self.name
 
@@ -2773,7 +2775,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
             self.classes.Item,
         )
 
-        class IKAssociation(fixtures.ComparableEntity):
+        class IKAssociation(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(Keyword, keywords)
@@ -3026,7 +3028,7 @@ class BooleanColTest(fixtures.MappedTest):
         t1_t = self.tables.t1_t
 
         # use the regular mapper
-        class T(fixtures.ComparableEntity):
+        class T(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(T, t1_t)

@@ -136,7 +136,7 @@ def main(cmd: code_writer_cmd) -> None:
 
 
 functions_py = "lib/sqlalchemy/sql/functions.py"
-test_functions_py = "test/ext/mypy/plain_files/functions.py"
+test_functions_py = "test/typing/plain_files/sql/functions.py"
 
 
 if __name__ == "__main__":

@@ -79,6 +79,7 @@ from sqlalchemy.testing.assertions import expect_raises
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertions import is_not_none
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -1321,7 +1322,7 @@ class GetTest(QueryTest):
 
         s = users.outerjoin(addresses)
 
-        class UserThing(fixtures.ComparableEntity):
+        class UserThing(ComparableEntity):
             pass
 
         registry.map_imperatively(

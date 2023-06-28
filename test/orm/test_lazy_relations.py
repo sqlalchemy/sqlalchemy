@@ -32,6 +32,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -1025,10 +1026,10 @@ class GetterStateTest(_fixtures.FixtureTest):
             Column("data", MyHashType()),
         )
 
-        class Category(fixtures.ComparableEntity):
+        class Category(ComparableEntity):
             pass
 
-        class Article(fixtures.ComparableEntity):
+        class Article(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(Category, category)
@@ -1314,10 +1315,10 @@ class CorrelatedTest(fixtures.MappedTest):
     def test_correlated_lazyload(self):
         stuff, user_t = self.tables.stuff, self.tables.user_t
 
-        class User(fixtures.ComparableEntity):
+        class User(ComparableEntity):
             pass
 
-        class Stuff(fixtures.ComparableEntity):
+        class Stuff(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(Stuff, stuff)

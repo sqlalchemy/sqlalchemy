@@ -22,6 +22,7 @@ from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import not_in
 from sqlalchemy.testing.assertions import assert_warns
+from sqlalchemy.testing.entities import BasicEntity
 from sqlalchemy.testing.util import all_partial_orderings
 from sqlalchemy.testing.util import gc_collect
 
@@ -770,10 +771,10 @@ class AttributesTest(fixtures.ORMTest):
     def test_lazyhistory(self):
         """tests that history functions work with lazy-loading attributes"""
 
-        class Foo(fixtures.BasicEntity):
+        class Foo(BasicEntity):
             pass
 
-        class Bar(fixtures.BasicEntity):
+        class Bar(BasicEntity):
             pass
 
         instrumentation.register_class(Foo)
@@ -1737,7 +1738,7 @@ class PendingBackrefTest(fixtures.ORMTest):
 
 class HistoryTest(fixtures.TestBase):
     def _fixture(self, uselist, useobject, active_history, **kw):
-        class Foo(fixtures.BasicEntity):
+        class Foo(BasicEntity):
             pass
 
         instrumentation.register_class(Foo)
@@ -1752,10 +1753,10 @@ class HistoryTest(fixtures.TestBase):
         return Foo
 
     def _two_obj_fixture(self, uselist, active_history=False):
-        class Foo(fixtures.BasicEntity):
+        class Foo(BasicEntity):
             pass
 
-        class Bar(fixtures.BasicEntity):
+        class Bar(BasicEntity):
             def __bool__(self):
                 assert False
 
@@ -2571,10 +2572,10 @@ class HistoryTest(fixtures.TestBase):
     def test_dict_collections(self):
         # TODO: break into individual tests
 
-        class Foo(fixtures.BasicEntity):
+        class Foo(BasicEntity):
             pass
 
-        class Bar(fixtures.BasicEntity):
+        class Bar(BasicEntity):
             pass
 
         instrumentation.register_class(Foo)
@@ -2630,10 +2631,10 @@ class HistoryTest(fixtures.TestBase):
     def test_object_collections_mutate(self):
         # TODO: break into individual tests
 
-        class Foo(fixtures.BasicEntity):
+        class Foo(BasicEntity):
             pass
 
-        class Bar(fixtures.BasicEntity):
+        class Bar(BasicEntity):
             pass
 
         instrumentation.register_class(Foo)
@@ -2818,10 +2819,10 @@ class HistoryTest(fixtures.TestBase):
     def test_collections_via_backref(self):
         # TODO: break into individual tests
 
-        class Foo(fixtures.BasicEntity):
+        class Foo(BasicEntity):
             pass
 
-        class Bar(fixtures.BasicEntity):
+        class Bar(BasicEntity):
             pass
 
         instrumentation.register_class(Foo)
@@ -2890,10 +2891,10 @@ class LazyloadHistoryTest(fixtures.TestBase):
     def test_lazy_backref_collections(self):
         # TODO: break into individual tests
 
-        class Foo(fixtures.BasicEntity):
+        class Foo(BasicEntity):
             pass
 
-        class Bar(fixtures.BasicEntity):
+        class Bar(BasicEntity):
             pass
 
         lazy_load = []
@@ -2949,10 +2950,10 @@ class LazyloadHistoryTest(fixtures.TestBase):
     def test_collections_via_lazyload(self):
         # TODO: break into individual tests
 
-        class Foo(fixtures.BasicEntity):
+        class Foo(BasicEntity):
             pass
 
-        class Bar(fixtures.BasicEntity):
+        class Bar(BasicEntity):
             pass
 
         lazy_load = []
@@ -3012,7 +3013,7 @@ class LazyloadHistoryTest(fixtures.TestBase):
     def test_scalar_via_lazyload(self):
         # TODO: break into individual tests
 
-        class Foo(fixtures.BasicEntity):
+        class Foo(BasicEntity):
             pass
 
         lazy_load = None
@@ -3068,7 +3069,7 @@ class LazyloadHistoryTest(fixtures.TestBase):
     def test_scalar_via_lazyload_with_active(self):
         # TODO: break into individual tests
 
-        class Foo(fixtures.BasicEntity):
+        class Foo(BasicEntity):
             pass
 
         lazy_load = None
@@ -3129,10 +3130,10 @@ class LazyloadHistoryTest(fixtures.TestBase):
     def test_scalar_object_via_lazyload(self):
         # TODO: break into individual tests
 
-        class Foo(fixtures.BasicEntity):
+        class Foo(BasicEntity):
             pass
 
-        class Bar(fixtures.BasicEntity):
+        class Bar(BasicEntity):
             pass
 
         lazy_load = None
@@ -3195,10 +3196,10 @@ class LazyloadHistoryTest(fixtures.TestBase):
 class CollectionKeyTest(fixtures.ORMTest):
     @testing.fixture
     def dict_collection(self):
-        class Foo(fixtures.BasicEntity):
+        class Foo(BasicEntity):
             pass
 
-        class Bar(fixtures.BasicEntity):
+        class Bar(BasicEntity):
             def __init__(self, name):
                 self.name = name
 
@@ -3222,10 +3223,10 @@ class CollectionKeyTest(fixtures.ORMTest):
 
     @testing.fixture
     def list_collection(self):
-        class Foo(fixtures.BasicEntity):
+        class Foo(BasicEntity):
             pass
 
-        class Bar(fixtures.BasicEntity):
+        class Bar(BasicEntity):
             pass
 
         instrumentation.register_class(Foo)

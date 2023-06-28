@@ -28,6 +28,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -147,7 +148,7 @@ class DeclarativeInheritanceTest(
         configure_mappers()
 
     def test_joined(self):
-        class Company(Base, fixtures.ComparableEntity):
+        class Company(Base, ComparableEntity):
             __tablename__ = "companies"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -155,7 +156,7 @@ class DeclarativeInheritanceTest(
             name = Column("name", String(50))
             employees = relationship("Person")
 
-        class Person(Base, fixtures.ComparableEntity):
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -245,7 +246,7 @@ class DeclarativeInheritanceTest(
         self.assert_sql_count(testing.db, go, 1)
 
     def test_add_subcol_after_the_fact(self):
-        class Person(Base, fixtures.ComparableEntity):
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -274,7 +275,7 @@ class DeclarativeInheritanceTest(
         )
 
     def test_add_parentcol_after_the_fact(self):
-        class Person(Base, fixtures.ComparableEntity):
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -303,7 +304,7 @@ class DeclarativeInheritanceTest(
         )
 
     def test_add_sub_parentcol_after_the_fact(self):
-        class Person(Base, fixtures.ComparableEntity):
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -340,7 +341,7 @@ class DeclarativeInheritanceTest(
         )
 
     def test_subclass_mixin(self):
-        class Person(Base, fixtures.ComparableEntity):
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column("id", Integer, primary_key=True)
             name = Column("name", String(50))
@@ -532,7 +533,7 @@ class DeclarativeInheritanceTest(
         """test single inheritance where all the columns are on the base
         class."""
 
-        class Company(Base, fixtures.ComparableEntity):
+        class Company(Base, ComparableEntity):
             __tablename__ = "companies"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -540,7 +541,7 @@ class DeclarativeInheritanceTest(
             name = Column("name", String(50))
             employees = relationship("Person")
 
-        class Person(Base, fixtures.ComparableEntity):
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -604,7 +605,7 @@ class DeclarativeInheritanceTest(
 
         """
 
-        class Company(Base, fixtures.ComparableEntity):
+        class Company(Base, ComparableEntity):
             __tablename__ = "companies"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -612,7 +613,7 @@ class DeclarativeInheritanceTest(
             name = Column("name", String(50))
             employees = relationship("Person")
 
-        class Person(Base, fixtures.ComparableEntity):
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -787,7 +788,7 @@ class DeclarativeInheritanceTest(
     def test_single_constraint_on_sub(self):
         """test the somewhat unusual case of [ticket:3341]"""
 
-        class Person(Base, fixtures.ComparableEntity):
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -1147,7 +1148,7 @@ class DeclarativeInheritanceTest(
         is_(Manager.id.property.columns[0], Person.__table__.c.id)
 
     def test_joined_from_single(self):
-        class Company(Base, fixtures.ComparableEntity):
+        class Company(Base, ComparableEntity):
             __tablename__ = "companies"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -1155,7 +1156,7 @@ class DeclarativeInheritanceTest(
             name = Column("name", String(50))
             employees = relationship("Person")
 
-        class Person(Base, fixtures.ComparableEntity):
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -1220,7 +1221,7 @@ class DeclarativeInheritanceTest(
         )
 
     def test_single_from_joined_colsonsub(self):
-        class Person(Base, fixtures.ComparableEntity):
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -1268,7 +1269,7 @@ class DeclarativeInheritanceTest(
         is_(B.__mapper__.polymorphic_on, A.__table__.c.discriminator)
 
     def test_add_deferred(self):
-        class Person(Base, fixtures.ComparableEntity):
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -1292,7 +1293,7 @@ class DeclarativeInheritanceTest(
 
         """
 
-        class Person(Base, fixtures.ComparableEntity):
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -1306,7 +1307,7 @@ class DeclarativeInheritanceTest(
             primary_language_id = Column(Integer, ForeignKey("languages.id"))
             primary_language = relationship("Language")
 
-        class Language(Base, fixtures.ComparableEntity):
+        class Language(Base, ComparableEntity):
             __tablename__ = "languages"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -1354,7 +1355,7 @@ class DeclarativeInheritanceTest(
         )
 
     def test_single_three_levels(self):
-        class Person(Base, fixtures.ComparableEntity):
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
@@ -1415,7 +1416,7 @@ class DeclarativeInheritanceTest(
         assert_raises(sa.exc.ArgumentError, go)
 
     def test_single_no_special_cols(self):
-        class Person(Base, fixtures.ComparableEntity):
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column("id", Integer, primary_key=True)
             name = Column("name", String(50))
@@ -1431,7 +1432,7 @@ class DeclarativeInheritanceTest(
         assert_raises_message(sa.exc.ArgumentError, "place primary key", go)
 
     def test_single_no_table_args(self):
-        class Person(Base, fixtures.ComparableEntity):
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column("id", Integer, primary_key=True)
             name = Column("name", String(50))

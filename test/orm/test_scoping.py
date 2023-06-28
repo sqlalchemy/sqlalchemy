@@ -17,6 +17,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -49,10 +50,10 @@ class ScopedSessionTest(fixtures.MappedTest):
         class CustomQuery(query.Query):
             pass
 
-        class SomeObject(fixtures.ComparableEntity):
+        class SomeObject(ComparableEntity):
             query = Session.query_property()
 
-        class SomeOtherObject(fixtures.ComparableEntity):
+        class SomeOtherObject(ComparableEntity):
             query = Session.query_property()
             custom_query = Session.query_property(query_cls=CustomQuery)
 

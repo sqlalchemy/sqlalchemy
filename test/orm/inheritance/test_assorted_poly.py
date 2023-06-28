@@ -40,7 +40,7 @@ from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.fixtures import ComparableEntity
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
@@ -1083,7 +1083,7 @@ class RelationshipTest8(fixtures.MappedTest):
         )
 
     def test_selfref_onjoined(self):
-        class Taggable(fixtures.ComparableEntity):
+        class Taggable(ComparableEntity):
             pass
 
         class User(Taggable):
@@ -1880,14 +1880,14 @@ class InheritingEagerTest(fixtures.MappedTest):
         """test that Query uses the full set of mapper._eager_loaders
         when generating SQL"""
 
-        class Person(fixtures.ComparableEntity):
+        class Person(ComparableEntity):
             pass
 
         class Employee(Person):
             def __init__(self, name="bob"):
                 self.name = name
 
-        class Tag(fixtures.ComparableEntity):
+        class Tag(ComparableEntity):
             def __init__(self, label):
                 self.label = label
 

@@ -829,11 +829,11 @@ class LoaderOptionsTest(
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class Parent(fixtures.ComparableEntity, Base):
+        class Parent(ComparableEntity, Base):
             __tablename__ = "parent"
             id = Column(Integer, primary_key=True)
 
-        class Child(fixtures.ComparableEntity, Base):
+        class Child(ComparableEntity, Base):
             __tablename__ = "child"
             id = Column(Integer, primary_key=True)
             parent_id = Column(Integer, ForeignKey("parent.id"))
@@ -850,7 +850,7 @@ class LoaderOptionsTest(
                 "polymorphic_load": "selectin",
             }
 
-        class Other(fixtures.ComparableEntity, Base):
+        class Other(ComparableEntity, Base):
             __tablename__ = "other"
 
             id = Column(Integer, primary_key=True)

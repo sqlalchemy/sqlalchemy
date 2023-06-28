@@ -46,6 +46,8 @@ from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.assertsql import Or
 from sqlalchemy.testing.assertsql import RegexSQL
+from sqlalchemy.testing.entities import BasicEntity
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -188,7 +190,7 @@ class PolyExpressionEagerLoad(fixtures.DeclarativeMappedTest):
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class A(fixtures.ComparableEntity, Base):
+        class A(ComparableEntity, Base):
             __tablename__ = "a"
 
             id = Column(
@@ -782,7 +784,7 @@ class PolymorphicSynonymTest(fixtures.MappedTest):
         )
 
     def test_polymorphic_synonym(self):
-        class T1(fixtures.ComparableEntity):
+        class T1(ComparableEntity):
             def info(self):
                 return "THE INFO IS:" + self._info
 
@@ -1055,16 +1057,16 @@ class CascadeTest(fixtures.MappedTest):
         )
 
     def test_cascade(self):
-        class T1(fixtures.BasicEntity):
+        class T1(BasicEntity):
             pass
 
-        class T2(fixtures.BasicEntity):
+        class T2(BasicEntity):
             pass
 
         class T3(T2):
             pass
 
-        class T4(fixtures.BasicEntity):
+        class T4(BasicEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -1137,7 +1139,7 @@ class M2OUseGetTest(fixtures.MappedTest):
         )
 
         # test [ticket:1186]
-        class Base(fixtures.BasicEntity):
+        class Base(BasicEntity):
             pass
 
         class Sub(Base):
@@ -1405,7 +1407,7 @@ class EagerTargetingTest(fixtures.MappedTest):
     def test_adapt_stringency(self):
         b_table, a_table = self.tables.b_table, self.tables.a_table
 
-        class A(fixtures.ComparableEntity):
+        class A(ComparableEntity):
             pass
 
         class B(A):
@@ -2107,7 +2109,7 @@ class VersioningTest(fixtures.MappedTest):
             self.tables.stuff,
         )
 
-        class Base(fixtures.BasicEntity):
+        class Base(BasicEntity):
             pass
 
         class Sub(Base):
@@ -2171,7 +2173,7 @@ class VersioningTest(fixtures.MappedTest):
     def test_delete(self):
         subtable, base = self.tables.subtable, self.tables.base
 
-        class Base(fixtures.BasicEntity):
+        class Base(BasicEntity):
             pass
 
         class Sub(Base):
@@ -2833,10 +2835,10 @@ class OptimizedLoadTest(fixtures.MappedTest):
     def test_no_optimize_on_map_to_join(self):
         base, sub = self.tables.base, self.tables.sub
 
-        class Base(fixtures.ComparableEntity):
+        class Base(ComparableEntity):
             pass
 
-        class JoinBase(fixtures.ComparableEntity):
+        class JoinBase(ComparableEntity):
             pass
 
         class SubJoinBase(JoinBase):
@@ -2902,7 +2904,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
 
         base, sub = self.tables.base, self.tables.sub
 
-        class Base(fixtures.ComparableEntity):
+        class Base(ComparableEntity):
             pass
 
         class Sub(Base):
@@ -3014,7 +3016,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
 
         base, sub = self.tables.base, self.tables.sub
 
-        class Base(fixtures.ComparableEntity):
+        class Base(ComparableEntity):
             pass
 
         class Sub(Base):
@@ -3050,7 +3052,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
     def test_column_expression(self):
         base, sub = self.tables.base, self.tables.sub
 
-        class Base(fixtures.ComparableEntity):
+        class Base(ComparableEntity):
             pass
 
         class Sub(Base):
@@ -3079,7 +3081,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
     def test_column_expression_joined(self):
         base, sub = self.tables.base, self.tables.sub
 
-        class Base(fixtures.ComparableEntity):
+        class Base(ComparableEntity):
             pass
 
         class Sub(Base):
@@ -3120,7 +3122,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
     def test_composite_column_joined(self):
         base, with_comp = self.tables.base, self.tables.with_comp
 
-        class Base(fixtures.BasicEntity):
+        class Base(BasicEntity):
             pass
 
         class WithComp(Base):
@@ -3168,7 +3170,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
             expected_eager_defaults and testing.db.dialect.insert_returning
         )
 
-        class Base(fixtures.BasicEntity):
+        class Base(BasicEntity):
             pass
 
         class Sub(Base):
@@ -3257,7 +3259,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
     def test_dont_generate_on_none(self):
         base, sub = self.tables.base, self.tables.sub
 
-        class Base(fixtures.BasicEntity):
+        class Base(BasicEntity):
             pass
 
         class Sub(Base):
@@ -3305,7 +3307,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
             self.tables.subsub,
         )
 
-        class Base(fixtures.BasicEntity):
+        class Base(BasicEntity):
             pass
 
         class Sub(Base):
@@ -3820,13 +3822,13 @@ class DeleteOrphanTest(fixtures.MappedTest):
         )
 
     def test_orphan_message(self):
-        class Base(fixtures.BasicEntity):
+        class Base(BasicEntity):
             pass
 
         class SubClass(Base):
             pass
 
-        class Parent(fixtures.BasicEntity):
+        class Parent(BasicEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -3927,11 +3929,11 @@ class DiscriminatorOrPkNoneTest(fixtures.DeclarativeMappedTest):
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class Parent(fixtures.ComparableEntity, Base):
+        class Parent(ComparableEntity, Base):
             __tablename__ = "parent"
             id = Column(Integer, primary_key=True)
 
-        class A(fixtures.ComparableEntity, Base):
+        class A(ComparableEntity, Base):
             __tablename__ = "a"
             id = Column(Integer, primary_key=True)
             parent_id = Column(ForeignKey("parent.id"))
@@ -4019,7 +4021,7 @@ class UnexpectedPolymorphicIdentityTest(fixtures.DeclarativeMappedTest):
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class AJoined(fixtures.ComparableEntity, Base):
+        class AJoined(ComparableEntity, Base):
             __tablename__ = "ajoined"
             id = Column(Integer, primary_key=True)
             type = Column(String(10), nullable=False)
@@ -4038,7 +4040,7 @@ class UnexpectedPolymorphicIdentityTest(fixtures.DeclarativeMappedTest):
             id = Column(ForeignKey("ajoined.id"), primary_key=True)
             __mapper_args__ = {"polymorphic_identity": "subb"}
 
-        class ASingle(fixtures.ComparableEntity, Base):
+        class ASingle(ComparableEntity, Base):
             __tablename__ = "asingle"
             id = Column(Integer, primary_key=True)
             type = Column(String(10), nullable=False)
@@ -4110,7 +4112,7 @@ class CompositeJoinedInTest(fixtures.DeclarativeMappedTest):
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class A(fixtures.ComparableEntity, Base):
+        class A(ComparableEntity, Base):
             __tablename__ = "table_a"
 
             order_id: Mapped[str] = mapped_column(String(50), primary_key=True)

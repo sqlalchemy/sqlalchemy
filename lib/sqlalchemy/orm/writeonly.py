@@ -255,7 +255,7 @@ class WriteOnlyAttributeImpl(
 
         state._modified_event(dict_, self, attributes.NEVER_SET)
 
-        # this is a hack to allow the fixtures.ComparableEntity fixture
+        # this is a hack to allow the entities.ComparableEntity fixture
         # to work
         dict_[self.key] = True
         return state.committed_state[self.key]

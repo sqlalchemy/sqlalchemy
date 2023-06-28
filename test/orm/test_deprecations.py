@@ -58,6 +58,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import CacheKeyFixture
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.fixtures import RemoveORMEventsGlobally
@@ -841,7 +842,7 @@ class DeprecatedMapperTest(
 
         assert_col = []
 
-        class User(fixtures.ComparableEntity):
+        class User(ComparableEntity):
             def _get_name(self):
                 assert_col.append(("get", self._name))
                 return self._name

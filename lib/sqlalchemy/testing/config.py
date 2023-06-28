@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+from argparse import Namespace
 import collections
 import inspect
 import typing
@@ -34,6 +35,7 @@ test_schema_2 = None
 any_async = False
 _current = None
 ident = "main"
+options: Namespace = None  # type: ignore
 
 if typing.TYPE_CHECKING:
     from .plugin.plugin_base import FixtureFunctions

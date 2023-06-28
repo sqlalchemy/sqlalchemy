@@ -30,6 +30,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import not_in
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -3256,13 +3257,13 @@ class DoubleParentO2MOrphanTest(fixtures.MappedTest):
             self.tables.accounts,
         )
 
-        class Customer(fixtures.ComparableEntity):
+        class Customer(ComparableEntity):
             pass
 
-        class Account(fixtures.ComparableEntity):
+        class Account(ComparableEntity):
             pass
 
-        class SalesRep(fixtures.ComparableEntity):
+        class SalesRep(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -3428,13 +3429,13 @@ class DoubleParentM2OOrphanTest(fixtures.MappedTest):
             self.tables.addresses,
         )
 
-        class Address(fixtures.ComparableEntity):
+        class Address(ComparableEntity):
             pass
 
-        class Home(fixtures.ComparableEntity):
+        class Home(ComparableEntity):
             pass
 
-        class Business(fixtures.ComparableEntity):
+        class Business(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(Address, addresses)
@@ -3488,13 +3489,13 @@ class DoubleParentM2OOrphanTest(fixtures.MappedTest):
             self.tables.addresses,
         )
 
-        class Address(fixtures.ComparableEntity):
+        class Address(ComparableEntity):
             pass
 
-        class Home(fixtures.ComparableEntity):
+        class Home(ComparableEntity):
             pass
 
-        class Business(fixtures.ComparableEntity):
+        class Business(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(Address, addresses)
@@ -3546,10 +3547,10 @@ class CollectionAssignmentOrphanTest(fixtures.MappedTest):
     def test_basic(self):
         table_b, table_a = self.tables.table_b, self.tables.table_a
 
-        class A(fixtures.ComparableEntity):
+        class A(ComparableEntity):
             pass
 
-        class B(fixtures.ComparableEntity):
+        class B(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -4044,10 +4045,10 @@ class PartialFlushTest(fixtures.MappedTest):
     def test_o2m_m2o(self):
         base, noninh_child = self.tables.base, self.tables.noninh_child
 
-        class Base(fixtures.ComparableEntity):
+        class Base(ComparableEntity):
             pass
 
-        class Child(fixtures.ComparableEntity):
+        class Child(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -4103,7 +4104,7 @@ class PartialFlushTest(fixtures.MappedTest):
             self.tables.parent,
         )
 
-        class Base(fixtures.ComparableEntity):
+        class Base(ComparableEntity):
             pass
 
         class Parent(Base):
