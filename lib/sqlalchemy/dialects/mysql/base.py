@@ -1067,6 +1067,7 @@ from ...types import BINARY
 from ...types import BLOB
 from ...types import BOOLEAN
 from ...types import DATE
+from ...types import UUID
 from ...types import VARBINARY
 from ...util import topological
 
@@ -1155,6 +1156,7 @@ ischema_names = {
     "tinyblob": TINYBLOB,
     "tinyint": TINYINT,
     "tinytext": TINYTEXT,
+    "uuid": UUID,
     "varbinary": VARBINARY,
     "varchar": VARCHAR,
     "year": YEAR,
