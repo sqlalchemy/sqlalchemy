@@ -35,6 +35,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import provision
+from sqlalchemy.testing.assertions import is_false
 
 
 class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
@@ -653,6 +654,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         for ix in ind:
             if ix["dialect_options"]["mssql_clustered"]:
                 clustered_index = ix["name"]
+                is_false("mssql_columnstore" in ix["dialect_options"])
 
         eq_(clustered_index, "idx_x")
 
@@ -704,12 +706,149 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
 
         for ix in ind:
             assert ix["dialect_options"]["mssql_clustered"] == False
+            is_false("mssql_columnstore" in ix["dialect_options"])
 
         t2 = Table("t", MetaData(), autoload_with=connection)
         idx = list(sorted(t2.indexes, key=lambda idx: idx.name))[0]
 
         self.assert_compile(
             CreateIndex(idx), "CREATE NONCLUSTERED INDEX idx_x ON t (x)"
+        )
+
+    @testing.only_if("mssql>=12")
+    def test_index_reflection_colstore_clustered(self, metadata, connection):
+        t1 = Table(
+            "t",
+            metadata,
+            Column("id", Integer),
+            Column("x", types.String(20)),
+            Column("y", types.Integer),
+            Index("idx_x", mssql_clustered=True, mssql_columnstore=True),
+        )
+        Index("idx_y", t1.c.y)
+        metadata.create_all(connection)
+        ind = testing.db.dialect.get_indexes(connection, "t", None)
+
+        for ix in ind:
+            if ix["name"] == "idx_x":
+                is_true(ix["dialect_options"]["mssql_clustered"])
+                is_true(ix["dialect_options"]["mssql_columnstore"])
+                eq_(ix["dialect_options"]["mssql_include"], [])
+                eq_(ix["column_names"], [])
+            else:
+                is_false(ix["dialect_options"]["mssql_clustered"])
+                is_false("mssql_columnstore" in ix["dialect_options"])
+
+        t2 = Table("t", MetaData(), autoload_with=connection)
+        idx = list(sorted(t2.indexes, key=lambda idx: idx.name))[0]
+
+        self.assert_compile(
+            CreateIndex(idx), "CREATE CLUSTERED COLUMNSTORE INDEX idx_x ON t"
+        )
+
+    @testing.only_if("mssql>=11")
+    def test_index_reflection_colstore_nonclustered(
+        self, metadata, connection
+    ):
+        t1 = Table(
+            "t",
+            metadata,
+            Column("id", Integer),
+            Column("x", types.String(20)),
+            Column("y", types.Integer),
+        )
+        Index("idx_x", t1.c.x, mssql_clustered=False, mssql_columnstore=True)
+        Index("idx_y", t1.c.y)
+        metadata.create_all(connection)
+        ind = testing.db.dialect.get_indexes(connection, "t", None)
+
+        for ix in ind:
+            is_false(ix["dialect_options"]["mssql_clustered"])
+            if ix["name"] == "idx_x":
+                is_true(ix["dialect_options"]["mssql_columnstore"])
+                eq_(ix["dialect_options"]["mssql_include"], [])
+                eq_(ix["column_names"], ["x"])
+            else:
+                is_false("mssql_columnstore" in ix["dialect_options"])
+
+        t2 = Table("t", MetaData(), autoload_with=connection)
+        idx = list(sorted(t2.indexes, key=lambda idx: idx.name))[0]
+
+        self.assert_compile(
+            CreateIndex(idx),
+            "CREATE NONCLUSTERED COLUMNSTORE INDEX idx_x ON t (x)",
+        )
+
+    @testing.only_if("mssql>=11")
+    def test_index_reflection_colstore_nonclustered_none(
+        self, metadata, connection
+    ):
+        t1 = Table(
+            "t",
+            metadata,
+            Column("id", Integer),
+            Column("x", types.String(20)),
+            Column("y", types.Integer),
+        )
+        Index("idx_x", t1.c.x, mssql_columnstore=True)
+        Index("idx_y", t1.c.y)
+        metadata.create_all(connection)
+        ind = testing.db.dialect.get_indexes(connection, "t", None)
+
+        for ix in ind:
+            is_false(ix["dialect_options"]["mssql_clustered"])
+            if ix["name"] == "idx_x":
+                is_true(ix["dialect_options"]["mssql_columnstore"])
+                eq_(ix["dialect_options"]["mssql_include"], [])
+                eq_(ix["column_names"], ["x"])
+            else:
+                is_false("mssql_columnstore" in ix["dialect_options"])
+
+        t2 = Table("t", MetaData(), autoload_with=connection)
+        idx = list(sorted(t2.indexes, key=lambda idx: idx.name))[0]
+
+        self.assert_compile(
+            CreateIndex(idx),
+            "CREATE NONCLUSTERED COLUMNSTORE INDEX idx_x ON t (x)",
+        )
+
+    @testing.only_if("mssql>=11")
+    def test_index_reflection_colstore_nonclustered_multicol(
+        self, metadata, connection
+    ):
+        t1 = Table(
+            "t",
+            metadata,
+            Column("id", Integer),
+            Column("x", types.String(20)),
+            Column("y", types.Integer),
+        )
+        Index(
+            "idx_xid",
+            t1.c.x,
+            t1.c.id,
+            mssql_clustered=False,
+            mssql_columnstore=True,
+        )
+        Index("idx_y", t1.c.y)
+        metadata.create_all(connection)
+        ind = testing.db.dialect.get_indexes(connection, "t", None)
+
+        for ix in ind:
+            is_false(ix["dialect_options"]["mssql_clustered"])
+            if ix["name"] == "idx_xid":
+                is_true(ix["dialect_options"]["mssql_columnstore"])
+                eq_(ix["dialect_options"]["mssql_include"], [])
+                eq_(ix["column_names"], ["x", "id"])
+            else:
+                is_false("mssql_columnstore" in ix["dialect_options"])
+
+        t2 = Table("t", MetaData(), autoload_with=connection)
+        idx = list(sorted(t2.indexes, key=lambda idx: idx.name))[0]
+
+        self.assert_compile(
+            CreateIndex(idx),
+            "CREATE NONCLUSTERED COLUMNSTORE INDEX idx_xid ON t (x, id)",
         )
 
     def test_primary_key_reflection_clustered(self, metadata, connection):
