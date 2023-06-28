@@ -6,26 +6,32 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
-from typing import Iterable, Mapping, Optional, Union, Any
+from __future__ import annotations
+
+from typing import Any
+from typing import Iterable
+from typing import Mapping
+from typing import Optional
+from typing import Union
 
 from . import ext
 from ... import util
 from ...sql import coercions
 from ...sql import roles
 from ...sql import schema
+from ...sql._typing import _DDLColumnArgument
+from ...sql._typing import _DMLTableArgument
 from ...sql.base import _exclusive_against
-from ...sql.base import (
-    _generative,
-    ReadOnlyColumnCollection,
-    KeyedColumnElement,
-)
+from ...sql.base import _generative
 from ...sql.base import ColumnCollection
+from ...sql.base import KeyedColumnElement
+from ...sql.base import ReadOnlyColumnCollection
 from ...sql.dml import Insert as StandardInsert
-from ...sql.elements import ClauseElement, DQLDMLClauseElement
+from ...sql.elements import ClauseElement
+from ...sql.elements import DQLDMLClauseElement
 from ...sql.expression import alias
 from ...sql.schema import ColumnCollectionConstraint
 from ...util.typing import Self
-from ...sql._typing import _DMLTableArgument, _DDLColumnArgument
 
 
 __all__ = ("Insert", "insert")
