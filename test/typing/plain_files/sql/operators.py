@@ -1,5 +1,6 @@
 from decimal import Decimal
 from typing import Any
+from typing import List
 
 from sqlalchemy import ARRAY
 from sqlalchemy import BigInteger
@@ -20,7 +21,7 @@ class A(Base):
     __tablename__ = "a"
     id: Mapped[int]
     string: Mapped[str]
-    arr: Mapped[list[int]] = mapped_column(ARRAY(Integer))
+    arr: Mapped[List[int]] = mapped_column(ARRAY(Integer))
 
 
 lt1: "ColumnElement[bool]" = A.id > A.id
