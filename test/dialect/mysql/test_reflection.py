@@ -242,6 +242,13 @@ class TypeReflectionTest(fixtures.TestBase):
 
         self._run_test(metadata, connection, specs, ["enums"])
 
+    @testing.only_on("mariadb>=10.7")
+    def test_uuid(self, metadata, connection):
+        specs = [
+            (mysql.UUID(), mysql.UUID()),
+        ]
+        self._run_test(metadata, connection, specs, [])
+
 
 class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = "mysql", "mariadb"
