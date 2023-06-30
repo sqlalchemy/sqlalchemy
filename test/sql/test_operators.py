@@ -2868,6 +2868,12 @@ class LikeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "mytable.myid LIKE :myid_1 ESCAPE '\\'",
         )
 
+    def test_like_quote_escape(self):
+        self.assert_compile(
+            self.table1.c.myid.like("somstr", escape="'"),
+            "mytable.myid LIKE :myid_1 ESCAPE ''''",
+        )
+
     def test_like_4(self):
         self.assert_compile(
             ~self.table1.c.myid.like("somstr", escape="\\"),
