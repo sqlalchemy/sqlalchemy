@@ -383,7 +383,10 @@ class CacheKey(namedtuple("CacheKey", ["key", "bindparams"])):
         return repr((sql_str, param_tuple))
 
     def __eq__(self, other):
-        return self.key == other.key
+        return bool(self.key == other.key)
+
+    def __ne__(self, other):
+        return not (self.key == other.key)
 
     @classmethod
     def _diff_tuples(cls, left, right):

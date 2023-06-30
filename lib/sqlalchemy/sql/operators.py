@@ -1037,14 +1037,22 @@ class ColumnOperators(Operators):
 
         :param pattern: The regular expression pattern string or column
           clause.
-        :param flags: Any regular expression string flags to apply. Flags
-          tend to be backend specific. It can be a string or a column clause.
+        :param flags: Any regular expression string flags to apply, passed as
+          plain Python string only.  These flags are backend specific.
           Some backends, like PostgreSQL and MariaDB, may alternatively
           specify the flags as part of the pattern.
           When using the ignore case flag 'i' in PostgreSQL, the ignore case
           regexp match operator ``~*`` or ``!~*`` will be used.
 
         .. versionadded:: 1.4
+
+        .. versionchanged:: 1.4.48, 2.0.18  Note that due to an implementation
+           error, the "flags" parameter previously accepted SQL expression
+           objects such as column expressions in addition to plain Python
+           strings.   This implementation did not work correctly with caching
+           and was removed; strings only should be passed for the "flags"
+           parameter, as these flags are rendered as literal inline values
+           within SQL expressions.
 
         .. seealso::
 
@@ -1080,12 +1088,21 @@ class ColumnOperators(Operators):
         :param pattern: The regular expression pattern string or column
           clause.
         :param pattern: The replacement string or column clause.
-        :param flags: Any regular expression string flags to apply. Flags
-          tend to be backend specific. It can be a string or a column clause.
+        :param flags: Any regular expression string flags to apply, passed as
+          plain Python string only.  These flags are backend specific.
           Some backends, like PostgreSQL and MariaDB, may alternatively
           specify the flags as part of the pattern.
 
         .. versionadded:: 1.4
+
+        .. versionchanged:: 1.4.48, 2.0.18  Note that due to an implementation
+           error, the "flags" parameter previously accepted SQL expression
+           objects such as column expressions in addition to plain Python
+           strings.   This implementation did not work correctly with caching
+           and was removed; strings only should be passed for the "flags"
+           parameter, as these flags are rendered as literal inline values
+           within SQL expressions.
+
 
         .. seealso::
 

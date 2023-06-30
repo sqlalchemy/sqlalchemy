@@ -2391,14 +2391,14 @@ class PGCompiler(compiler.SQLCompiler):
             return self._generate_generic_binary(
                 binary, " %s " % base_op, **kw
             )
-        if isinstance(flags, elements.BindParameter) and flags.value == "i":
+        if flags == "i":
             return self._generate_generic_binary(
                 binary, " %s* " % base_op, **kw
             )
         return "%s %s CONCAT('(?', %s, ')', %s)" % (
             self.process(binary.left, **kw),
             base_op,
-            self.process(flags, **kw),
+            self.render_literal_value(flags, sqltypes.STRINGTYPE),
             self.process(binary.right, **kw),
         )
 
@@ -2410,21 +2410,18 @@ class PGCompiler(compiler.SQLCompiler):
 
     def visit_regexp_replace_op_binary(self, binary, operator, **kw):
         string = self.process(binary.left, **kw)
-        pattern = self.process(binary.right, **kw)
+        pattern_replace = self.process(binary.right, **kw)
         flags = binary.modifiers["flags"]
-        replacement = self.process(binary.modifiers["replacement"], **kw)
         if flags is None:
-            return "REGEXP_REPLACE(%s, %s, %s)" % (
+            return "REGEXP_REPLACE(%s, %s)" % (
                 string,
-                pattern,
-                replacement,
+                pattern_replace,
             )
         else:
-            return "REGEXP_REPLACE(%s, %s, %s, %s)" % (
+            return "REGEXP_REPLACE(%s, %s, %s)" % (
                 string,
-                pattern,
-                replacement,
-                self.process(flags, **kw),
+                pattern_replace,
+                self.render_literal_value(flags, sqltypes.STRINGTYPE),
             )
 
     def visit_empty_set_expr(self, element_types):

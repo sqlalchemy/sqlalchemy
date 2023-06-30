@@ -1210,18 +1210,25 @@ class RegexpCommon(testing.AssertsCompiledSQL):
 class RegexpTestMySql(fixtures.TestBase, RegexpCommon):
     __dialect__ = "mysql"
 
+    def test_regexp_match_flags_safestring(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match("pattern", flags="i'g"),
+            "REGEXP_LIKE(mytable.myid, %s, 'i''g')",
+            checkpositional=("pattern",),
+        )
+
     def test_regexp_match_flags(self):
         self.assert_compile(
             self.table.c.myid.regexp_match("pattern", flags="ig"),
-            "REGEXP_LIKE(mytable.myid, %s, %s)",
-            checkpositional=("pattern", "ig"),
+            "REGEXP_LIKE(mytable.myid, %s, 'ig')",
+            checkpositional=("pattern",),
         )
 
     def test_not_regexp_match_flags(self):
         self.assert_compile(
             ~self.table.c.myid.regexp_match("pattern", flags="ig"),
-            "NOT REGEXP_LIKE(mytable.myid, %s, %s)",
-            checkpositional=("pattern", "ig"),
+            "NOT REGEXP_LIKE(mytable.myid, %s, 'ig')",
+            checkpositional=("pattern",),
         )
 
     def test_regexp_replace_flags(self):
@@ -1229,26 +1236,42 @@ class RegexpTestMySql(fixtures.TestBase, RegexpCommon):
             self.table.c.myid.regexp_replace(
                 "pattern", "replacement", flags="ig"
             ),
-            "REGEXP_REPLACE(mytable.myid, %s, %s, %s)",
-            checkpositional=("pattern", "replacement", "ig"),
+            "REGEXP_REPLACE(mytable.myid, %s, %s, 'ig')",
+            checkpositional=("pattern", "replacement"),
+        )
+
+    def test_regexp_replace_flags_safestring(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace(
+                "pattern", "replacement", flags="i'g"
+            ),
+            "REGEXP_REPLACE(mytable.myid, %s, %s, 'i''g')",
+            checkpositional=("pattern", "replacement"),
         )
 
 
 class RegexpTestMariaDb(fixtures.TestBase, RegexpCommon):
     __dialect__ = "mariadb"
 
+    def test_regexp_match_flags_safestring(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match("pattern", flags="i'g"),
+            "mytable.myid REGEXP CONCAT('(?', 'i''g', ')', %s)",
+            checkpositional=("pattern",),
+        )
+
     def test_regexp_match_flags(self):
         self.assert_compile(
             self.table.c.myid.regexp_match("pattern", flags="ig"),
-            "mytable.myid REGEXP CONCAT('(?', %s, ')', %s)",
-            checkpositional=("ig", "pattern"),
+            "mytable.myid REGEXP CONCAT('(?', 'ig', ')', %s)",
+            checkpositional=("pattern",),
         )
 
     def test_not_regexp_match_flags(self):
         self.assert_compile(
             ~self.table.c.myid.regexp_match("pattern", flags="ig"),
-            "mytable.myid NOT REGEXP CONCAT('(?', %s, ')', %s)",
-            checkpositional=("ig", "pattern"),
+            "mytable.myid NOT REGEXP CONCAT('(?', 'ig', ')', %s)",
+            checkpositional=("pattern",),
         )
 
     def test_regexp_replace_flags(self):
@@ -1256,8 +1279,8 @@ class RegexpTestMariaDb(fixtures.TestBase, RegexpCommon):
             self.table.c.myid.regexp_replace(
                 "pattern", "replacement", flags="ig"
             ),
-            "REGEXP_REPLACE(mytable.myid, CONCAT('(?', %s, ')', %s), %s)",
-            checkpositional=("ig", "pattern", "replacement"),
+            "REGEXP_REPLACE(mytable.myid, CONCAT('(?', 'ig', ')', %s), %s)",
+            checkpositional=("pattern", "replacement"),
         )
 
 

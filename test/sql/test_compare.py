@@ -238,6 +238,14 @@ class CoreFixtures(object):
             column("q").like("somstr", escape="X"),
         ),
         lambda: (
+            column("q").regexp_match("y", flags="ig"),
+            column("q").regexp_match("y", flags="q"),
+            column("q").regexp_match("y"),
+            column("q").regexp_replace("y", "z", flags="ig"),
+            column("q").regexp_replace("y", "z", flags="q"),
+            column("q").regexp_replace("y", "z"),
+        ),
+        lambda: (
             column("q", ARRAY(Integer))[3] == 5,
             column("q", ARRAY(Integer))[3:5] == 5,
         ),
@@ -1107,6 +1115,27 @@ class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
         ).data([(i, "data %s" % i, i * 5) for i in range(500)])
 
         is_(large_v1._generate_cache_key(), None)
+
+    @testing.combinations(
+        (lambda: column("x"), lambda: column("x"), lambda: column("y")),
+        (
+            lambda: func.foo_bar(1, 2, 3),
+            lambda: func.foo_bar(4, 5, 6),
+            lambda: func.foo_bar_bat(1, 2, 3),
+        ),
+    )
+    def test_cache_key_object_comparators(self, lc1, lc2, lc3):
+        """test ne issue detected as part of #10042"""
+        c1 = lc1()
+        c2 = lc2()
+        c3 = lc3()
+
+        eq_(c1._generate_cache_key(), c2._generate_cache_key())
+        ne_(c1._generate_cache_key(), c3._generate_cache_key())
+        is_true(c1._generate_cache_key() == c2._generate_cache_key())
+        is_false(c1._generate_cache_key() != c2._generate_cache_key())
+        is_true(c1._generate_cache_key() != c3._generate_cache_key())
+        is_false(c1._generate_cache_key() == c3._generate_cache_key())
 
     def test_cache_key(self):
         for fixtures_, compare_values in [

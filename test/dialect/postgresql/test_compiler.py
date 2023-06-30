@@ -3182,21 +3182,14 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_regexp_match_flags(self):
         self.assert_compile(
             self.table.c.myid.regexp_match("pattern", flags="ig"),
-            "mytable.myid ~ CONCAT('(?', %(myid_1)s, ')', %(myid_2)s)",
-            checkparams={"myid_2": "pattern", "myid_1": "ig"},
+            "mytable.myid ~ CONCAT('(?', 'ig', ')', %(myid_1)s)",
+            checkparams={"myid_1": "pattern"},
         )
 
     def test_regexp_match_flags_ignorecase(self):
         self.assert_compile(
             self.table.c.myid.regexp_match("pattern", flags="i"),
             "mytable.myid ~* %(myid_1)s",
-            checkparams={"myid_1": "pattern"},
-        )
-
-    def test_regexp_match_flags_col(self):
-        self.assert_compile(
-            self.table.c.myid.regexp_match("pattern", flags=self.table.c.name),
-            "mytable.myid ~ CONCAT('(?', mytable.name, ')', %(myid_1)s)",
             checkparams={"myid_1": "pattern"},
         )
 
@@ -3224,23 +3217,14 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_not_regexp_match_flags(self):
         self.assert_compile(
             ~self.table.c.myid.regexp_match("pattern", flags="ig"),
-            "mytable.myid !~ CONCAT('(?', %(myid_1)s, ')', %(myid_2)s)",
-            checkparams={"myid_2": "pattern", "myid_1": "ig"},
+            "mytable.myid !~ CONCAT('(?', 'ig', ')', %(myid_1)s)",
+            checkparams={"myid_1": "pattern"},
         )
 
     def test_not_regexp_match_flags_ignorecase(self):
         self.assert_compile(
             ~self.table.c.myid.regexp_match("pattern", flags="i"),
             "mytable.myid !~* %(myid_1)s",
-            checkparams={"myid_1": "pattern"},
-        )
-
-    def test_not_regexp_match_flags_col(self):
-        self.assert_compile(
-            ~self.table.c.myid.regexp_match(
-                "pattern", flags=self.table.c.name
-            ),
-            "mytable.myid !~ CONCAT('(?', mytable.name, ')', %(myid_1)s)",
             checkparams={"myid_1": "pattern"},
         )
 
@@ -3277,22 +3261,23 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             self.table.c.myid.regexp_replace(
                 "pattern", "replacement", flags="ig"
             ),
-            "REGEXP_REPLACE(mytable.myid, %(myid_1)s, %(myid_2)s, %(myid_3)s)",
+            "REGEXP_REPLACE(mytable.myid, %(myid_1)s, %(myid_2)s, 'ig')",
             checkparams={
                 "myid_1": "pattern",
                 "myid_2": "replacement",
-                "myid_3": "ig",
             },
         )
 
-    def test_regexp_replace_flags_col(self):
+    def test_regexp_replace_flags_safestring(self):
         self.assert_compile(
             self.table.c.myid.regexp_replace(
-                "pattern", "replacement", flags=self.table.c.name
+                "pattern", "replacement", flags="i'g"
             ),
-            "REGEXP_REPLACE(mytable.myid, %(myid_1)s,"
-            " %(myid_2)s, mytable.name)",
-            checkparams={"myid_1": "pattern", "myid_2": "replacement"},
+            "REGEXP_REPLACE(mytable.myid, %(myid_1)s, %(myid_2)s, 'i''g')",
+            checkparams={
+                "myid_1": "pattern",
+                "myid_2": "replacement",
+            },
         )
 
     @testing.combinations(

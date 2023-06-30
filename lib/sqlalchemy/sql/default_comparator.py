@@ -264,41 +264,41 @@ def _collate_impl(expr, op, other, **kw):
 
 
 def _regexp_match_impl(expr, op, pattern, flags, **kw):
-    if flags is not None:
-        flags = coercions.expect(
-            roles.BinaryElementRole,
-            flags,
-            expr=expr,
-            operator=operators.regexp_replace_op,
-        )
-    return _boolean_compare(
+    return BinaryExpression(
         expr,
+        coercions.expect(
+            roles.BinaryElementRole,
+            pattern,
+            expr=expr,
+            operator=operators.comma_op,
+        ),
         op,
-        pattern,
-        flags=flags,
-        negate=operators.not_regexp_match_op
-        if op is operators.regexp_match_op
-        else operators.regexp_match_op,
-        **kw
+        negate=operators.not_regexp_match_op,
+        modifiers={"flags": flags},
     )
 
 
 def _regexp_replace_impl(expr, op, pattern, replacement, flags, **kw):
-    replacement = coercions.expect(
-        roles.BinaryElementRole,
-        replacement,
-        expr=expr,
-        operator=operators.regexp_replace_op,
-    )
-    if flags is not None:
-        flags = coercions.expect(
-            roles.BinaryElementRole,
-            flags,
-            expr=expr,
-            operator=operators.regexp_replace_op,
-        )
-    return _binary_operate(
-        expr, op, pattern, replacement=replacement, flags=flags, **kw
+    return BinaryExpression(
+        expr,
+        ClauseList(
+            coercions.expect(
+                roles.BinaryElementRole,
+                pattern,
+                expr=expr,
+                operator=operators.comma_op,
+            ),
+            coercions.expect(
+                roles.BinaryElementRole,
+                replacement,
+                expr=expr,
+                operator=operators.comma_op,
+            ),
+            operator=operators.comma_op,
+            group=False,
+        ),
+        op,
+        modifiers={"flags": flags},
     )
 
 
