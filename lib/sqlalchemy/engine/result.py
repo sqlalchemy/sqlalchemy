@@ -1380,6 +1380,11 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
 
         :return: a list of :class:`_engine.Row` objects.
 
+        .. seealso::
+
+            :ref:`engine_stream_results` - How to stream a large result set
+            without loading it completely in python.
+
         """
 
         return self._allrows()

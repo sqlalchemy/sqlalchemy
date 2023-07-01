@@ -949,7 +949,7 @@
         :tags: bug, sql
         :tickets: 3878
 
-        Fixed 1.1 regression where "import *" would not work for
+        Fixed 1.1 regression where ``import *`` would not work for
         sqlalchemy.sql.expression, due to mis-spelled ``any_`` and ``all_``
         functions.
 
