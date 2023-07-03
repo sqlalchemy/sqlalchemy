@@ -1217,7 +1217,7 @@ class OracleCompiler(compiler.SQLCompiler):
             return "REGEXP_LIKE(%s, %s, %s)" % (
                 string,
                 pattern,
-                self.process(flags, **kw),
+                self.render_literal_value(flags, sqltypes.STRINGTYPE),
             )
 
     def visit_not_regexp_match_op_binary(self, binary, operator, **kw):
@@ -1227,21 +1227,18 @@ class OracleCompiler(compiler.SQLCompiler):
 
     def visit_regexp_replace_op_binary(self, binary, operator, **kw):
         string = self.process(binary.left, **kw)
-        pattern = self.process(binary.right, **kw)
-        replacement = self.process(binary.modifiers["replacement"], **kw)
+        pattern_replace = self.process(binary.right, **kw)
         flags = binary.modifiers["flags"]
         if flags is None:
-            return "REGEXP_REPLACE(%s, %s, %s)" % (
+            return "REGEXP_REPLACE(%s, %s)" % (
                 string,
-                pattern,
-                replacement,
+                pattern_replace,
             )
         else:
-            return "REGEXP_REPLACE(%s, %s, %s, %s)" % (
+            return "REGEXP_REPLACE(%s, %s, %s)" % (
                 string,
-                pattern,
-                replacement,
-                self.process(flags, **kw),
+                pattern_replace,
+                self.render_literal_value(flags, sqltypes.STRINGTYPE),
             )
 
 

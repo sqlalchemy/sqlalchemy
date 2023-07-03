@@ -361,24 +361,17 @@ def _regexp_match_impl(
     flags: Optional[str],
     **kw: Any,
 ) -> ColumnElement[Any]:
-    if flags is not None:
-        flags_expr = coercions.expect(
-            roles.BinaryElementRole,
-            flags,
-            expr=expr,
-            operator=operators.regexp_replace_op,
-        )
-    else:
-        flags_expr = None
-    return _boolean_compare(
+    return BinaryExpression(
         expr,
+        coercions.expect(
+            roles.BinaryElementRole,
+            pattern,
+            expr=expr,
+            operator=operators.comma_op,
+        ),
         op,
-        pattern,
-        flags=flags_expr,
-        negate_op=operators.not_regexp_match_op
-        if op is operators.regexp_match_op
-        else operators.regexp_match_op,
-        **kw,
+        negate=operators.not_regexp_match_op,
+        modifiers={"flags": flags},
     )
 
 
@@ -390,23 +383,27 @@ def _regexp_replace_impl(
     flags: Optional[str],
     **kw: Any,
 ) -> ColumnElement[Any]:
-    replacement = coercions.expect(
-        roles.BinaryElementRole,
-        replacement,
-        expr=expr,
-        operator=operators.regexp_replace_op,
-    )
-    if flags is not None:
-        flags_expr = coercions.expect(
-            roles.BinaryElementRole,
-            flags,
-            expr=expr,
-            operator=operators.regexp_replace_op,
-        )
-    else:
-        flags_expr = None
-    return _binary_operate(
-        expr, op, pattern, replacement=replacement, flags=flags_expr, **kw
+    return BinaryExpression(
+        expr,
+        ExpressionClauseList._construct_for_list(
+            operators.comma_op,
+            type_api.NULLTYPE,
+            coercions.expect(
+                roles.BinaryElementRole,
+                pattern,
+                expr=expr,
+                operator=operators.comma_op,
+            ),
+            coercions.expect(
+                roles.BinaryElementRole,
+                replacement,
+                expr=expr,
+                operator=operators.comma_op,
+            ),
+            group=False,
+        ),
+        op,
+        modifiers={"flags": flags},
     )
 
 

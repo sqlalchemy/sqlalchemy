@@ -6366,11 +6366,9 @@ class StrSQLCompiler(SQLCompiler):
         return self._generate_generic_binary(binary, " <not regexp> ", **kw)
 
     def visit_regexp_replace_op_binary(self, binary, operator, **kw):
-        replacement = binary.modifiers["replacement"]
-        return "<regexp replace>(%s, %s, %s)" % (
+        return "<regexp replace>(%s, %s)" % (
             binary.left._compiler_dispatch(self, **kw),
             binary.right._compiler_dispatch(self, **kw),
-            replacement._compiler_dispatch(self, **kw),
         )
 
     def visit_try_cast(self, cast, **kwargs):
