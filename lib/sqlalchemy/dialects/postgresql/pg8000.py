@@ -470,6 +470,13 @@ class PGDialect_pg8000(PGDialect):
         if self._dbapi_version < (1, 16, 6):
             raise NotImplementedError("pg8000 1.16.6 or greater is required")
 
+        if self._native_inet_types:
+            raise NotImplementedError(
+                "The pg8000 dialect does not fully implement "
+                "ipaddress type handling; INET is supported by default, "
+                "CIDR is not"
+            )
+
     @util.memoized_property
     def _dbapi_version(self):
         if self.dbapi and hasattr(self.dbapi, "__version__"):
@@ -612,6 +619,17 @@ class PGDialect_pg8000(PGDialect):
 
             def on_connect(conn):
                 self._set_client_encoding(conn, self.client_encoding)
+
+            fns.append(on_connect)
+
+        if self._native_inet_types is False:
+
+            def on_connect(conn):
+                # inet
+                conn.register_in_adapter(869, lambda s: s)
+
+                # cidr
+                conn.register_in_adapter(650, lambda s: s)
 
             fns.append(on_connect)
 

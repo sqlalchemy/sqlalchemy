@@ -627,6 +627,13 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
     ):
         _PGDialect_common_psycopg.__init__(self, **kwargs)
 
+        if self._native_inet_types:
+            raise NotImplementedError(
+                "The psycopg2 dialect does not implement "
+                "ipaddress type handling; native_inet_types cannot be set "
+                "to ``True`` when using this dialect."
+            )
+
         # Parse executemany_mode argument, allowing it to be only one of the
         # symbol names
         self.executemany_mode = parse_user_argument_for_enum(

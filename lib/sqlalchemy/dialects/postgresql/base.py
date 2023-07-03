@@ -3027,9 +3027,16 @@ class PGDialect(default.DefaultDialect):
     _supports_create_index_concurrently = True
     _supports_drop_index_concurrently = True
 
-    def __init__(self, json_serializer=None, json_deserializer=None, **kwargs):
+    def __init__(
+        self,
+        native_inet_types=None,
+        json_serializer=None,
+        json_deserializer=None,
+        **kwargs,
+    ):
         default.DefaultDialect.__init__(self, **kwargs)
 
+        self._native_inet_types = native_inet_types
         self._json_deserializer = json_deserializer
         self._json_serializer = json_serializer
 

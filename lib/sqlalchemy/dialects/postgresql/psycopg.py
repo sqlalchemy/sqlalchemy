@@ -310,6 +310,16 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
                 self.dbapi.adapters
             )
 
+            if self._native_inet_types is False:
+                import psycopg.types.string
+
+                adapters_map.register_loader(
+                    "inet", psycopg.types.string.TextLoader
+                )
+                adapters_map.register_loader(
+                    "cidr", psycopg.types.string.TextLoader
+                )
+
             if self._json_deserializer:
                 from psycopg.types.json import set_json_loads
 
