@@ -1535,12 +1535,12 @@ class ColumnElement(
         *other: Any,
         **kwargs: Any,
     ) -> ColumnElement[Any]:
-        return op(self.comparator, *other, **kwargs)  # type: ignore[return-value]  # noqa: E501
+        return op(self.comparator, *other, **kwargs)  # type: ignore[return-value,no-any-return]  # noqa: E501
 
     def reverse_operate(
         self, op: operators.OperatorType, other: Any, **kwargs: Any
     ) -> ColumnElement[Any]:
-        return op(other, self.comparator, **kwargs)  # type: ignore[return-value]  # noqa: E501
+        return op(other, self.comparator, **kwargs)  # type: ignore[return-value,no-any-return]  # noqa: E501
 
     def _bind_param(
         self,

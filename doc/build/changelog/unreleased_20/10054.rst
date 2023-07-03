@@ -1,0 +1,6 @@
+.. change::
+    :tags: usecase, typing
+    :tickets: 10054
+
+    Improved typing when using standalone operator functions from
+    ``sqlalchemy.sql.operators`` such as ``sqlalchemy.sql.operators.eq``.
