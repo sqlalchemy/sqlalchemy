@@ -618,7 +618,7 @@ class DefaultDialect(Dialect):
         # inherits the docstring from interfaces.Dialect.create_connect_args
         opts = url.translate_connect_args()
         opts.update(url.query)
-        return [[], opts]
+        return ([], opts)
 
     def set_engine_execution_options(
         self, engine: Engine, opts: Mapping[str, Any]
