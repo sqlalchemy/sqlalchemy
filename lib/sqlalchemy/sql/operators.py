@@ -40,6 +40,7 @@ from typing import cast
 from typing import Dict
 from typing import Generic
 from typing import Optional
+from typing import overload
 from typing import Set
 from typing import Tuple
 from typing import Type
@@ -53,7 +54,9 @@ from ..util.typing import Literal
 from ..util.typing import Protocol
 
 if typing.TYPE_CHECKING:
+    from ._typing import ColumnExpressionArgument
     from .cache_key import CacheConst
+    from .elements import ColumnElement
     from .type_api import TypeEngine
 
 _T = TypeVar("_T", bound=Any)
@@ -67,9 +70,29 @@ class OperatorType(Protocol):
 
     __name__: str
 
+    @overload
+    def __call__(
+        self,
+        left: ColumnExpressionArgument[Any],
+        right: Optional[Any] = None,
+        *other: Any,
+        **kwargs: Any,
+    ) -> ColumnElement[Any]:
+        ...
+
+    @overload
     def __call__(
         self,
         left: Operators,
+        right: Optional[Any] = None,
+        *other: Any,
+        **kwargs: Any,
+    ) -> Operators:
+        ...
+
+    def __call__(
+        self,
+        left: Any,
         right: Optional[Any] = None,
         *other: Any,
         **kwargs: Any,
@@ -436,6 +459,17 @@ class custom_op(OperatorType, Generic[_T]):
             self.return_type._static_cache_key if self.return_type else None,
         )
 
+    @overload
+    def __call__(
+        self,
+        left: ColumnExpressionArgument[Any],
+        right: Optional[Any] = None,
+        *other: Any,
+        **kwargs: Any,
+    ) -> ColumnElement[Any]:
+        ...
+
+    @overload
     def __call__(
         self,
         left: Operators,
@@ -443,8 +477,17 @@ class custom_op(OperatorType, Generic[_T]):
         *other: Any,
         **kwargs: Any,
     ) -> Operators:
+        ...
+
+    def __call__(
+        self,
+        left: Any,
+        right: Optional[Any] = None,
+        *other: Any,
+        **kwargs: Any,
+    ) -> Operators:
         if hasattr(left, "__sa_operate__"):
-            return left.operate(self, right, *other, **kwargs)
+            return left.operate(self, right, *other, **kwargs)  # type: ignore
         elif self.python_impl:
             return self.python_impl(left, right, *other, **kwargs)  # type: ignore  # noqa: E501
         else:

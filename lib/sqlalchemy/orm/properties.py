@@ -475,13 +475,13 @@ class ColumnProperty(
         def operate(
             self, op: OperatorType, *other: Any, **kwargs: Any
         ) -> ColumnElement[Any]:
-            return op(self.__clause_element__(), *other, **kwargs)  # type: ignore[return-value]  # noqa: E501
+            return op(self.__clause_element__(), *other, **kwargs)  # type: ignore[return-value,no-any-return]  # noqa: E501
 
         def reverse_operate(
             self, op: OperatorType, other: Any, **kwargs: Any
         ) -> ColumnElement[Any]:
             col = self.__clause_element__()
-            return op(col._bind_param(op, other), col, **kwargs)  # type: ignore[return-value]  # noqa: E501
+            return op(col._bind_param(op, other), col, **kwargs)  # type: ignore[return-value,no-any-return]  # noqa: E501
 
     def __str__(self) -> str:
         if not self.parent or not self.key:
@@ -639,13 +639,13 @@ class MappedColumn(
     def operate(
         self, op: OperatorType, *other: Any, **kwargs: Any
     ) -> ColumnElement[Any]:
-        return op(self.__clause_element__(), *other, **kwargs)  # type: ignore[return-value]  # noqa: E501
+        return op(self.__clause_element__(), *other, **kwargs)  # type: ignore[return-value,no-any-return]  # noqa: E501
 
     def reverse_operate(
         self, op: OperatorType, other: Any, **kwargs: Any
     ) -> ColumnElement[Any]:
         col = self.__clause_element__()
-        return op(col._bind_param(op, other), col, **kwargs)  # type: ignore[return-value]  # noqa: E501
+        return op(col._bind_param(op, other), col, **kwargs)  # type: ignore[return-value,no-any-return]  # noqa: E501
 
     def found_in_pep593_annotated(self) -> Any:
         # return a blank mapped_column().  This mapped_column()'s

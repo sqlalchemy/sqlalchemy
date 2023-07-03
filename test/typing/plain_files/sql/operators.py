@@ -7,10 +7,12 @@ from sqlalchemy import BigInteger
 from sqlalchemy import column
 from sqlalchemy import ColumnElement
 from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
+from sqlalchemy.sql import operators
 
 
 class Base(DeclarativeBase):
@@ -136,3 +138,8 @@ op_b: "ColumnElement[int]" = col.op("&", return_type=Integer)(1)
 op_c: "ColumnElement[str]" = col.op("&", return_type=String)("1")
 op_d: "ColumnElement[int]" = col.op("&", return_type=BigInteger)("1")
 op_e: "ColumnElement[bool]" = col.bool_op("&")("1")
+
+
+# op functions
+t1 = operators.eq(A.id, 1)
+select().where(t1)
