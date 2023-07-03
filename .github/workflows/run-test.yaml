@@ -32,7 +32,6 @@ jobs:
           - "windows-latest"
           - "macos-latest"
         python-version:
-          - "2.7"
           - "3.6"
           - "3.7"
           - "3.8"
@@ -60,10 +59,6 @@ jobs:
             pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
 
         exclude:
-          # c-extensions fail to build on windows for python 2.7
-          - os: "windows-latest"
-            python-version: "2.7"
-            build-type: "cext"
           # linux and osx do not have x86 python
           - os: "ubuntu-latest"
             architecture: x86
@@ -72,8 +67,6 @@ jobs:
           - os: "macos-latest"
             architecture: x86
           # ubuntu-latest does not have: py27, py36
-          - os: "ubuntu-latest"
-            python-version: "2.7"
           - os: "ubuntu-latest"
             python-version: "3.6"
           # ubuntu-20.04 does not need to test what ubuntu-latest supports

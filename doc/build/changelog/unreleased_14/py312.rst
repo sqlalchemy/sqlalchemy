@@ -1,4 +1,4 @@
 .. change::
-    :tags: installation
+    :tags: platform, usecase
 
     Compatibility improvements to work fully with Python 3.12

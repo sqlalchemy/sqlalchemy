@@ -26,7 +26,6 @@ jobs:
           - "ubuntu-latest"
           - "ubuntu-20.04"
         python-version:
-          - "2.7"
           - "3.10"
         build-type:
           - "cext"
@@ -34,9 +33,6 @@ jobs:
         architecture:
           - x64
         exclude:
-          # ubuntu-latest does not have: py27, py36
-          - os: "ubuntu-latest"
-            python-version: "2.7"
           # ubuntu-20.04 does not need to test what ubuntu-latest supports
           - os: "ubuntu-20.04"
             python-version: "3.10"

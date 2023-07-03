@@ -21,7 +21,7 @@ typedef Py_ssize_t (*lenfunc)(PyObject *);
 typedef intargfunc ssizeargfunc;
 #endif
 
-#if PY_VERSION_HEX > 0x030c0000
+#if PY_VERSION_HEX >= 0x030c0000
 #    define PY_RAISE_SLICE_FOR_MAPPING PyExc_KeyError
 #else
 #    define PY_RAISE_SLICE_FOR_MAPPING PyExc_TypeError
