@@ -1375,6 +1375,42 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateIndex(idx), "CREATE CLUSTERED INDEX foo ON test (id)"
         )
 
+    def test_index_empty(self):
+        metadata = MetaData()
+        idx = Index("foo")
+        Table("test", metadata, Column("id", Integer)).append_constraint(idx)
+        self.assert_compile(
+            schema.CreateIndex(idx), "CREATE INDEX foo ON test"
+        )
+
+    def test_index_colstore_clustering(self):
+        metadata = MetaData()
+        idx = Index("foo", mssql_clustered=True, mssql_columnstore=True)
+        Table("test", metadata, Column("id", Integer)).append_constraint(idx)
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE CLUSTERED COLUMNSTORE INDEX foo ON test",
+        )
+
+    def test_index_colstore_no_clustering(self):
+        metadata = MetaData()
+        tbl = Table("test", metadata, Column("id", Integer))
+        idx = Index(
+            "foo", tbl.c.id, mssql_clustered=False, mssql_columnstore=True
+        )
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE NONCLUSTERED COLUMNSTORE INDEX foo ON test (id)",
+        )
+
+    def test_index_not_colstore_clustering(self):
+        metadata = MetaData()
+        idx = Index("foo", mssql_clustered=True, mssql_columnstore=False)
+        Table("test", metadata, Column("id", Integer)).append_constraint(idx)
+        self.assert_compile(
+            schema.CreateIndex(idx), "CREATE CLUSTERED INDEX foo ON test"
+        )
+
     def test_index_where(self):
         metadata = MetaData()
         tbl = Table("test", metadata, Column("data", Integer))
