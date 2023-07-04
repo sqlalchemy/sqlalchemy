@@ -2477,6 +2477,46 @@ class RelNaturalAliasedJoinsDisamTest(
     )
 
 
+class JoinedInhTest(
+    InheritedTest, _poly_fixtures._Polymorphic, AssertsCompiledSQL
+):
+    __dialect__ = "default"
+
+    def test_load_only_on_sub_table(self):
+        Company = self.classes.Company
+        Engineer = self.classes.Engineer
+
+        e1 = aliased(Engineer, inspect(Engineer).local_table)
+
+        q = select(Company.name, e1.primary_language).join(
+            Company.employees.of_type(e1)
+        )
+
+        self.assert_compile(
+            q,
+            "SELECT companies.name, engineers.primary_language "
+            "FROM companies JOIN engineers "
+            "ON companies.company_id = people.company_id",
+        )
+
+    def test_load_only_on_sub_table_aliased(self):
+        Company = self.classes.Company
+        Engineer = self.classes.Engineer
+
+        e1 = aliased(Engineer, inspect(Engineer).local_table.alias())
+
+        q = select(Company.name, e1.primary_language).join(
+            Company.employees.of_type(e1)
+        )
+
+        self.assert_compile(
+            q,
+            "SELECT companies.name, engineers_1.primary_language "
+            "FROM companies JOIN engineers AS engineers_1 "
+            "ON companies.company_id = people.company_id",
+        )
+
+
 class RawSelectTest(QueryTest, AssertsCompiledSQL):
     """older tests from test_query.   Here, they are converted to use
     future selects with ORM compilation.
