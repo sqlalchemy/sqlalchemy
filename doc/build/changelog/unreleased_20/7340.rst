@@ -1,7 +1,0 @@
-.. change::
-    :tags: usecase, mssql
-    :tickets: 7340
-
-    Added support for creation and reflection of COLUMNSTORE
-    indexes in MSSQL dialect. Can be specified on indexes
-    specifying ``mssql_columnstore=True``.

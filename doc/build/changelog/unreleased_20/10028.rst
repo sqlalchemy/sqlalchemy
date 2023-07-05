@@ -1,7 +1,0 @@
-.. change::
-	:tags: usecase, mariadb, reflection
-	:tickets: 10028
-
-	Allowed reflecting :class:`_types.UUID` columns from MariaDB. This allows
-	Alembic to properly detect the type of such columns in existing MariaDB
-	databases.

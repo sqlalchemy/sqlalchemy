@@ -10,7 +10,106 @@
 
 .. changelog::
     :version: 2.0.18
-    :include_notes_from: unreleased_20
+    :released: July 5, 2023
+
+    .. change::
+        :tags: usecase, typing
+        :tickets: 10054
+
+        Improved typing when using standalone operator functions from
+        ``sqlalchemy.sql.operators`` such as ``sqlalchemy.sql.operators.eq``.
+
+    .. change::
+    	:tags: usecase, mariadb, reflection
+    	:tickets: 10028
+
+    	Allowed reflecting :class:`_types.UUID` columns from MariaDB. This allows
+    	Alembic to properly detect the type of such columns in existing MariaDB
+    	databases.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 9945
+
+        Added new parameter ``native_inet_types=False`` to all PostgreSQL
+        dialects, which indicates converters used by the DBAPI to
+        convert rows from PostgreSQL :class:`.INET` and :class:`.CIDR` columns
+        into Python ``ipaddress`` datatypes should be disabled, returning strings
+        instead.  This allows code written to work with strings for these datatypes
+        to be migrated to asyncpg, psycopg, or pg8000 without code changes
+        other than adding this parameter to the :func:`_sa.create_engine`
+        or :func:`_asyncio.create_async_engine` function call.
+
+        .. seealso::
+
+            :ref:`postgresql_network_datatypes`
+
+    .. change::
+        :tags: usecase, extensions
+        :tickets: 10013
+
+        Added new option to :func:`.association_proxy`
+        :paramref:`.association_proxy.create_on_none_assignment`; when an
+        association proxy which refers to a scalar relationship is assigned the
+        value ``None``, and the referenced object is not present, a new object is
+        created via the creator.  This was apparently an undefined behavior in the
+        1.2 series that was silently removed.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 10061
+
+        Fixed some of the typing within the :func:`_orm.aliased` construct to
+        correctly accept a :class:`.Table` object that's been aliased with
+        :meth:`.Table.alias`, as well as general support for :class:`.FromClause`
+        objects to be passed as the "selectable" argument, since this is all
+        supported.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 10025
+
+        Adjusted the :paramref:`_sa.create_engine.schema_translate_map` feature
+        such that **all** schema names in the statement are now tokenized,
+        regardless of whether or not a specific name is in the immediate schema
+        translate map given, and to fallback to substituting the original name when
+        the key is not in the actual schema translate map at execution time.  These
+        two changes allow for repeated use of a compiled object with schema
+        schema_translate_maps that include or dont include various keys on each
+        run, allowing cached SQL constructs to continue to function at runtime when
+        schema translate maps with different sets of keys are used each time. In
+        addition, added detection of schema_translate_map dictionaries which gain
+        or lose a ``None`` key across calls for the same statement, which affects
+        compilation of the statement and is not compatible with caching; an
+        exception is raised for these scenarios.
+
+    .. change::
+        :tags: bug, mssql, sql
+        :tickets: 9932
+
+        Fixed issue where performing :class:`.Cast` to a string type with an
+        explicit collation would render the COLLATE clause inside the CAST
+        function, which resulted in a syntax error.
+
+    .. change::
+        :tags: usecase, mssql
+        :tickets: 7340
+
+        Added support for creation and reflection of COLUMNSTORE
+        indexes in MSSQL dialect. Can be specified on indexes
+        specifying ``mssql_columnstore=True``.
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 10004
+
+        Added multi-host support for the asyncpg dialect.  General improvements and
+        error checking added to the PostgreSQL URL routines for the "multihost" use
+        case added as well.  Pull request courtesy Ilia Dmitriev.
+
+        .. seealso::
+
+            :ref:`asyncpg_multihost`
 
 .. changelog::
     :version: 2.0.17
