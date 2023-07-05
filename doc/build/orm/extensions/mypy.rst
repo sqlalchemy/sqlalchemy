@@ -6,18 +6,34 @@ Mypy  / Pep-484 Support for ORM Mappings
 Support for :pep:`484` typing annotations as well as the
 MyPy_ type checking tool.
 
+.. deprecated:: 2.0
+
+    **The SQLAlchemy Mypy Plugin is DEPRECATED, and will be removed possibly
+    as early as the SQLAlchemy 2.1 release.  We would urge users to please
+    migrate away from it ASAP.**
+
+    This plugin cannot be maintained across constantly changing releases
+    of mypy and its stability going forward CANNOT be guaranteed.
+
+    Modern SQLAlchemy now offers fully pep-484 compliant mapping syntaxes; see
+    the migration guide in the SQLAlchemy 2.0 documentation for
+    details.
+
 .. topic:: SQLAlchemy Mypy Plugin Status Update
 
-   **Updated February 17, 2022**
+   **Updated July 2023**
+
+   For SQLAlchemy 2.0, the Mypy plugin continues to work at the level at which
+   it reached in the SQLAlchemy 1.4 release.  SQLAlchemy 2.0 however features
+   an all new typing system for ORM Declarative models that removes the need
+   for the Mypy plugin and delivers much more consistent behavior with
+   generally superior capabilities. Note that this new capability is **not part
+   of SQLAlchemy 1.4, it is only in SQLAlchemy 2.0**.
 
    The SQLAlchemy Mypy plugin, while it has technically never left the "alpha"
-   stage, should **now be considered as legacy, even though it is still
-   necessary for full Mypy support when using SQLAlchemy 1.4**. SQLAlchemy
-   version 2.0, when released, will include new constructs that will allow for
-   construction of declarative mappings in place which will support proper
-   typing directly, without the need for plugins. This new feature is **not
-   part of SQLAlchemy 1.4, it is only in SQLAlchemy 2.0, which is not released
-   yet as of Feb 17, 2022**.
+   stage, should **now be considered as deprecated in SQLAlchemy 2.0, even
+   though it is still necessary for full Mypy support when using
+   SQLAlchemy 1.4**.
 
    The Mypy plugin itself does not solve the issue of supplying correct typing
    with other typing tools such as Pylance/Pyright, Pytype, Pycharm, etc, which
@@ -29,24 +45,17 @@ MyPy_ type checking tool.
    patterns which are reported regularly.
 
    For these reasons, new non-regression issues reported against the Mypy
-   plugin are unlikely to be fixed. When SQLAlchemy 2.0 is released, it will
-   continue to include the plugin, which will have been updated to continue to
-   function as well as it does in SQLAlchemy 1.4, when running under SQLAlchemy
-   2.0. **Existing code that passes Mypy checks using the plugin with
-   SQLAlchemy 1.4 installed will continue to pass all checks in SQLAlchemy 2.0
-   without any changes required, provided the plugin is still used. The
-   upcoming API to be released with SQLAlchemy 2.0 is fully backwards
-   compatible with the SQLAlchemy 1.4 API and Mypy plugin behavior.**
+   plugin are unlikely to be fixed.  **Existing code that passes Mypy checks
+   using the plugin with SQLAlchemy 1.4 installed will continue to pass all
+   checks in SQLAlchemy 2.0 without any changes required, provided the plugin
+   is still used. SQLAlchemy 2.0's API is fully
+   backwards compatible with the SQLAlchemy 1.4 API and Mypy plugin behavior.**
 
    End-user code that passes all checks under SQLAlchemy 1.4 with the Mypy
-   plugin will be able to incrementally migrate to the new structures, once
-   that code is running exclusively on SQLAlchemy 2.0. The change consists of
-   altering how the :func:`_orm.declarative_base` construct is produced, and
-   then the replacement of inline Declarative :class:`_schema.Column`
-   structures with a fully cross-compatible ``mapped_column()`` construct. Both
-   constructs can coexist on any declaratively mapped class.
+   plugin may incrementally migrate to the new structures, once
+   that code is running exclusively on SQLAlchemy 2.0.
 
-   Code that is running exclusively on **not-released-yet** SQLAlchemy version
+   Code that is running exclusively on SQLAlchemy version
    2.0 and has fully migrated to the new declarative constructs will enjoy full
    compliance with pep-484 as well as working correctly within IDEs and other
    typing tools, without the need for plugins.
