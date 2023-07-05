@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 9945
+
+    Added new parameter ``native_inet_types=False`` to all PostgreSQL
+    dialects, which indicates converters used by the DBAPI to
+    convert rows from PostgreSQL :class:`.INET` and :class:`.CIDR` columns
+    into Python ``ipaddress`` datatypes should be disabled, returning strings
+    instead.  This allows code written to work with strings for these datatypes
+    to be migrated to asyncpg, psycopg, or pg8000 without code changes
+    other than adding this parameter to the :func:`_sa.create_engine`
+    or :func:`_asyncio.create_async_engine` function call.
+
+    .. seealso::
+
+        :ref:`postgresql_network_datatypes`

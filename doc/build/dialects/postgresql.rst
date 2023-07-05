@@ -304,7 +304,47 @@ The available multirange datatypes are as follows:
 * :class:`_postgresql.TSMULTIRANGE`
 * :class:`_postgresql.TSTZMULTIRANGE`
 
+.. _postgresql_network_datatypes:
 
+Network Data Types
+------------------
+
+The included networking datatypes are :class:`_postgresql.INET`,
+:class:`_postgresql.CIDR`, :class:`_postgresql.MACADDR`.
+
+For :class:`_postgresql.INET` and :class:`_postgresql.CIDR` datatypes,
+conditional support is available for these datatypes to send and retrieve
+Python ``ipaddress`` objects including ``ipaddress.IPv4Network``,
+``ipaddress.IPv6Network``, ``ipaddress.IPv4Address``,
+``ipaddress.IPv6Address``.  This support is currently **the default behavior of
+the DBAPI itself, and varies per DBAPI.  SQLAlchemy does not yet implement its
+own network address conversion logic**.
+
+* The :ref:`postgresql_psycopg` and :ref:`postgresql_asyncpg` support these
+  datatypes fully; objects from the ``ipaddress`` family are returned in rows
+  by default.
+* The :ref:`postgresql_psycopg2` dialect only sends and receives strings.
+* The :ref:`postgresql_pg8000` dialect supports ``ipaddress.IPv4Address`` and
+  ``ipaddress.IPv6Address`` objects for the :class:`_postgresql.INET` datatype,
+  but uses strings for :class:`_postgresql.CIDR` types.
+
+To **normalize all the above DBAPIs to only return strings**, use the
+``native_inet_types`` parameter, passing a value of ``False``::
+
+    e = create_engine(
+        "postgresql+psycopg://scott:tiger@host/dbname", native_inet_types=False
+    )
+
+With the above parameter, the ``psycopg``, ``asyncpg`` and ``pg8000`` dialects
+will disable the DBAPI's adaptation of these types and will return only strings,
+matching the behavior of the older ``psycopg2`` dialect.
+
+The parameter may also be set to ``True``, where it will have the effect of
+raising ``NotImplementedError`` for those backends that don't support, or
+don't yet fully support, conversion of rows to Python ``ipaddress`` datatypes
+(currently psycopg2 and pg8000).
+
+.. versionadded:: 2.0.18 - added the ``native_inet_types`` parameter.
 
 PostgreSQL Data Types
 ---------------------
@@ -553,12 +593,16 @@ psycopg
 
 .. automodule:: sqlalchemy.dialects.postgresql.psycopg
 
+.. _postgresql_pg8000:
+
 pg8000
 ------
 
 .. automodule:: sqlalchemy.dialects.postgresql.pg8000
 
 .. _dialect-postgresql-asyncpg:
+
+.. _postgresql_asyncpg:
 
 asyncpg
 -------

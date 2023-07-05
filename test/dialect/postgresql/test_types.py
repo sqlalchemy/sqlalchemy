@@ -1,6 +1,10 @@
 import datetime
 import decimal
 from enum import Enum as _PY_Enum
+from ipaddress import IPv4Address
+from ipaddress import IPv4Network
+from ipaddress import IPv6Address
+from ipaddress import IPv6Network
 import re
 import uuid
 
@@ -5964,3 +5968,127 @@ class CITextTest(fixtures.TablesTest):
         ).scalar()
 
         assert ret is not None
+
+
+class InetRoundTripTests(fixtures.TestBase):
+    __backend__ = True
+    __only_on__ = "postgresql"
+
+    def _combinations():
+        return testing.combinations(
+            (
+                postgresql.INET,
+                lambda: [
+                    "1.1.1.1",
+                    "192.168.1.1",
+                    "10.1.2.25",
+                    "192.168.22.5",
+                ],
+                IPv4Address,
+            ),
+            (
+                postgresql.INET,
+                lambda: [
+                    "2001:db8::1000",
+                ],
+                IPv6Address,
+            ),
+            (
+                postgresql.CIDR,
+                lambda: [
+                    "10.0.0.0/8",
+                    "192.168.1.0/24",
+                    "192.168.0.0/16",
+                    "192.168.1.25/32",
+                ],
+                IPv4Network,
+            ),
+            (
+                postgresql.CIDR,
+                lambda: [
+                    "::ffff:1.2.3.0/120",
+                ],
+                IPv6Network,
+            ),
+            argnames="datatype,values,pytype",
+        )
+
+    @_combinations()
+    def test_default_native_inet_types(
+        self, datatype, values, pytype, connection, metadata
+    ):
+        t = Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", datatype),
+        )
+        metadata.create_all(connection)
+
+        connection.execute(
+            t.insert(),
+            [
+                {"id": i, "data": val}
+                for i, val in enumerate(values(), start=1)
+            ],
+        )
+
+        if testing.against(["+psycopg", "+asyncpg"]) or (
+            testing.against("+pg8000")
+            and issubclass(datatype, postgresql.INET)
+        ):
+            eq_(
+                connection.scalars(select(t.c.data).order_by(t.c.id)).all(),
+                [pytype(val) for val in values()],
+            )
+        else:
+            eq_(
+                connection.scalars(select(t.c.data).order_by(t.c.id)).all(),
+                values(),
+            )
+
+    @_combinations()
+    def test_str_based_inet_handlers(
+        self, datatype, values, pytype, testing_engine, metadata
+    ):
+        t = Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", datatype),
+        )
+
+        e = testing_engine(options={"native_inet_types": False})
+        with e.begin() as connection:
+            metadata.create_all(connection)
+
+            connection.execute(
+                t.insert(),
+                [
+                    {"id": i, "data": val}
+                    for i, val in enumerate(values(), start=1)
+                ],
+            )
+
+        with e.connect() as connection:
+            eq_(
+                connection.scalars(select(t.c.data).order_by(t.c.id)).all(),
+                values(),
+            )
+
+    @testing.only_on("+psycopg2")
+    def test_not_impl_psycopg2(self, testing_engine):
+        with expect_raises_message(
+            NotImplementedError,
+            "The psycopg2 dialect does not implement ipaddress type handling",
+        ):
+            testing_engine(options={"native_inet_types": True})
+
+    @testing.only_on("+pg8000")
+    def test_not_impl_pg8000(self, testing_engine):
+        with expect_raises_message(
+            NotImplementedError,
+            "The pg8000 dialect does not fully implement "
+            "ipaddress type handling",
+        ):
+            testing_engine(options={"native_inet_types": True})
