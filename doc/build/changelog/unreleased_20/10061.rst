@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 10061
+
+    Fixed some of the typing within the :func:`_orm.aliased` construct to
+    correctly accept a :class:`.Table` object that's been aliased with
+    :meth:`.Table.alias`, as well as general support for :class:`.FromClause`
+    objects to be passed as the "selectable" argument, since this is all
+    supported.

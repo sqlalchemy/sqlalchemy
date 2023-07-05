@@ -9,6 +9,7 @@ from sqlalchemy import delete
 from sqlalchemy import func
 from sqlalchemy import insert
 from sqlalchemy import Integer
+from sqlalchemy import join
 from sqlalchemy import MetaData
 from sqlalchemy import Select
 from sqlalchemy import select
@@ -480,3 +481,25 @@ def t_from_statement() -> None:
     reveal_type(ts2)
 
     select(User).from_statement(ts2)
+
+
+def t_aliased_fromclause() -> None:
+    a1 = aliased(User, user_table)
+
+    a2 = aliased(User, user_table.alias())
+
+    a3 = aliased(User, join(user_table, user_table.alias()))
+
+    a4 = aliased(user_table)
+
+    # EXPECTED_TYPE: Type[User]
+    reveal_type(a1)
+
+    # EXPECTED_TYPE: Type[User]
+    reveal_type(a2)
+
+    # EXPECTED_TYPE: Type[User]
+    reveal_type(a3)
+
+    # EXPECTED_TYPE: FromClause
+    reveal_type(a4)
