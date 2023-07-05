@@ -1,4 +1,0 @@
-.. change::
-    :tags: platform, usecase
-
-    Compatibility improvements to work fully with Python 3.12
