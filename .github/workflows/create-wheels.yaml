@@ -23,7 +23,6 @@ jobs:
           - "windows-latest"
           - "macos-latest"
         python-version:
-          - "2.7"
           - "3.6"
           - "3.7"
           - "3.8"
@@ -249,12 +248,14 @@ jobs:
           pip-wheel-args: "-w ./dist --no-use-pep517 -v --no-deps"
 
       - name: Set up Python
+        if: ${{ matrix.python-version != 'cp27-cp27m' && matrix.python-version != 'cp27-cp27mu' }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ steps.linux-py-version.outputs.python-version }}
           architecture: ${{ matrix.architecture }}
 
       - name: Check created wheel
+        if: ${{ matrix.python-version != 'cp27-cp27m' && matrix.python-version != 'cp27-cp27mu' }}
         # check that the wheel is compatible with the current installation.
         # If it is then does:
         # - install the created wheel without using the pypi index
@@ -272,6 +273,22 @@ jobs:
           else
             echo Not compatible. Skipping install.
           fi
+
+      - name: Check created wheel 27
+        if: ${{ matrix.python-version == 'cp27-cp27m' || matrix.python-version == 'cp27-cp27mu' }}
+        # check that the wheel is compatible with the current installation.
+        # - runs the tests
+        uses: docker://quay.io/pypa/manylinux1_x86_64
+        with:
+          args: |
+            bash -c "
+            export PATH=/opt/python/${{ matrix.python-version }}/bin:$PATH &&
+            python --version &&
+            pip install \"greenlet<2\" \"importlib-metadata;python_version<'3.8'\" &&
+            pip install -f dist --no-index sqlalchemy &&
+            python -c 'from sqlalchemy.util import has_compiled_ext; assert has_compiled_ext()' &&
+            pip install pytest pytest-xdist ${{ matrix.extra-requires }} &&
+            pytest -n2 -q test --nomemory --notimingintensive"
 
       - name: Upload wheels to release
         # upload the generated wheels to the github release
