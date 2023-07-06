@@ -269,12 +269,111 @@ class MultiHostConnectTest(fixtures.TestBase):
                 },
             ),
             (
+                # issue #10069 -if there is just one host as x:y with no
+                # integers, treat it as a hostname, to accommodate as many
+                # third party scenarios as possible
+                "postgresql+psycopg2://USER:PASS@/DB?host=hostA:xyz",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "hostA:xyz",
+                },
+            ),
+            (
+                # also issue #10069 - this parsing is not "defined" right now
+                # but err on the side of single host
+                "postgresql+psycopg2://USER:PASS@/DB?host=hostA:123.456",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "hostA:123.456",
+                },
+            ),
+            (
+                "postgresql+psycopg2://USER:PASS@/DB?host=192.168.1.50",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "192.168.1.50",
+                },
+            ),
+            (
+                "postgresql+psycopg2://USER:PASS@/DB?host=192.168.1.50:",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "192.168.1.50",
+                },
+            ),
+            (
+                "postgresql+psycopg2://USER:PASS@/DB?host=192.168.1.50:5678",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "192.168.1.50",
+                    "port": "5678",
+                },
+            ),
+            (
                 "postgresql+psycopg2://USER:PASS@/DB?host=hostA:",
                 {
                     "dbname": "DB",
                     "user": "USER",
                     "password": "PASS",
                     "host": "hostA",
+                },
+            ),
+            (
+                "postgresql+psycopg2://USER:PASS@/DB?host=HOSTNAME",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "HOSTNAME",
+                },
+            ),
+            (
+                "postgresql+psycopg2://USER:PASS@/DB?host=HOSTNAME:1234",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "HOSTNAME",
+                    "port": "1234",
+                },
+            ),
+            (
+                # issue #10069
+                "postgresql+psycopg2://USER:PASS@/DB?"
+                "host=/cloudsql/my-gcp-project:us-central1:mydbisnstance",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "/cloudsql/my-gcp-project:"
+                    "us-central1:mydbisnstance",
+                },
+            ),
+            (
+                # issue #10069
+                "postgresql+psycopg2://USER:PASS@/DB?"
+                "host=/cloudsql/my-gcp-project:4567",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    # full host,because the "hostname" contains slashes.
+                    # this corresponds to PG's "host" mechanics
+                    # at https://www.postgresql.org/docs/current
+                    # /libpq-connect.html#LIBPQ-PARAMKEYWORDS
+                    # "If a host name looks like an absolute path name, it
+                    # specifies Unix-domain communication "
+                    "host": "/cloudsql/my-gcp-project:4567",
                 },
             ),
             (
@@ -425,8 +524,9 @@ class MultiHostConnectTest(fixtures.TestBase):
             "postgresql+psycopg2://USER:PASS@/DB"
             "?host=hostA:xyz&host=hostB:123",
         ),
-        ("postgresql+psycopg2://USER:PASS@/DB?host=hostA:xyz",),
         ("postgresql+psycopg2://USER:PASS@/DB?host=hostA&port=xyz",),
+        # for single host with :xyz, as of #10069 this is treated as a
+        # hostname by itself, w/ colon plus digits
         argnames="url_string",
     )
     @testing.combinations(

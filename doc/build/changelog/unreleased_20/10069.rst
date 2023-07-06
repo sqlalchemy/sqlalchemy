@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 10069
+
+    Fixed regression caused by improvements to PostgreSQL URL parsing in
+    :ticket:`10004` where "host" query string arguments that had colons in
+    them, to support various third party proxy servers and/or dialects, would
+    not parse correctly as these were evaluted as ``host:port`` combinations.
+    Parsing has been updated to consider a colon as indicating a ``host:port``
+    value only if the hostname contains only alphanumeric characters with dots
+    or dashes only (e.g. no slashes), followed by exactly one colon followed by
+    an all-integer token of zero or more integers.  In all other cases, the
+    full string is taken as a host.

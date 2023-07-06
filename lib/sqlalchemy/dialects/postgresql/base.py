@@ -3120,10 +3120,18 @@ class PGDialect(default.DefaultDialect):
                     and len(hosts) == 1
                     and ":" in hosts[0]
                 ):
-                    integrated_multihost = True
-                    h, p = hosts[0].split(":")
-                    hosts = (h,)
-                    ports = (p,) if p else (None,)
+                    # internet host is alphanumeric plus dots or hyphens.
+                    # this is essentially rfc1123, which refers to rfc952.
+                    # https://stackoverflow.com/questions/3523028/
+                    # valid-characters-of-a-hostname
+                    host_port_match = re.match(
+                        r"^([a-zA-Z0-9\-\.]*)(?:\:(\d*))?$", hosts[0]
+                    )
+                    if host_port_match:
+                        integrated_multihost = True
+                        h, p = host_port_match.group(1, 2)
+                        hosts = (h,)
+                        ports = (p,) if p else (None,)
 
         if "port" in url.query:
             if integrated_multihost:
