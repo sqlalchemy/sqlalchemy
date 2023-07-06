@@ -1089,7 +1089,11 @@ class PGDialect_asyncpg(PGDialect):
 
         if multihosts:
             assert multiports
-            if not all(multihosts):
+            if len(multihosts) == 1:
+                opts["host"] = multihosts[0]
+                if multiports[0] is not None:
+                    opts["port"] = multiports[0]
+            elif not all(multihosts):
                 raise exc.ArgumentError(
                     "All hosts are required to be present"
                     " for asyncpg multiple host URL"
@@ -1099,8 +1103,9 @@ class PGDialect_asyncpg(PGDialect):
                     "All ports are required to be present"
                     " for asyncpg multiple host URL"
                 )
-            opts["host"] = list(multihosts)
-            opts["port"] = list(multiports)
+            else:
+                opts["host"] = list(multihosts)
+                opts["port"] = list(multiports)
         else:
             util.coerce_kw_type(opts, "port", int)
         util.coerce_kw_type(opts, "prepared_statement_cache_size", int)
