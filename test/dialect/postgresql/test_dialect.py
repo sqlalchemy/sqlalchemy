@@ -470,6 +470,69 @@ class MultiHostConnectTest(fixtures.TestBase):
                     " for asyncpg multiple host URL",
                 },
             ),
+            (
+                # fixed host + multihost formats.
+                "postgresql+psycopg2://USER:PASS@hostfixed/DB?port=111",
+                {
+                    "host": "hostfixed",
+                    "port": "111",
+                    "asyncpg_port": 111,
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                },
+            ),
+            (
+                # fixed host + multihost formats.  **silently ignore**
+                # the fixed host.  See #10076
+                "postgresql+psycopg2://USER:PASS@hostfixed/DB?host=hostA:111",
+                {
+                    "host": "hostA",
+                    "port": "111",
+                    "asyncpg_port": 111,
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                },
+            ),
+            (
+                # fixed host + multihost formats.  **silently ignore**
+                # the fixed host.  See #10076
+                "postgresql+psycopg2://USER:PASS@hostfixed/DB"
+                "?host=hostA&port=111",
+                {
+                    "host": "hostA",
+                    "port": "111",
+                    "asyncpg_port": 111,
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                },
+            ),
+            (
+                # fixed host + multihost formats.  **silently ignore**
+                # the fixed host.  See #10076
+                "postgresql+psycopg2://USER:PASS@hostfixed/DB?host=hostA",
+                {
+                    "host": "hostA",
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                },
+            ),
+            (
+                # fixed host + multihost formats.  if there is only one port
+                # or only one host after the query string, assume that's the
+                # host/port
+                "postgresql+psycopg2://USER:PASS@/DB?port=111",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "port": "111",
+                    "asyncpg_port": 111,
+                },
+            ),
         ]
         for url_string, expected_psycopg in psycopg_combinations:
             asyncpg_error = expected_psycopg.pop("asyncpg_error", False)
@@ -560,38 +623,11 @@ class MultiHostConnectTest(fixtures.TestBase):
             dialect.create_connect_args(u)
 
     @testing.combinations(
-        ("postgresql+psycopg2://USER:PASS@hostfixed/DB?port=111",),
-        ("postgresql+psycopg2://USER:PASS@hostfixed/DB?host=hostA:111",),
-        (
-            "postgresql+psycopg2://USER:PASS@hostfixed/DB"
-            "?host=hostA&port=111",
-        ),
-        ("postgresql+psycopg2://USER:PASS@hostfixed/DB" "?host=hostA",),
-        argnames="url_string",
-    )
-    @testing.combinations(
-        psycopg2_dialect.dialect(),
-        psycopg_dialect.dialect(),
-        asyncpg_dialect.dialect(),
-        argnames="dialect",
-    )
-    def test_dont_use_fixed_host(self, dialect, url_string):
-        url_string = url_string.replace("psycopg2", dialect.driver)
-
-        u = url.make_url(url_string)
-        with expect_raises_message(
-            exc.ArgumentError,
-            "Can't combine fixed host and multihost URL formats",
-        ):
-            dialect.create_connect_args(u)
-
-    @testing.combinations(
         (
             "postgresql+psycopg2://USER:PASS@/DB"
             "?host=hostA,hostC&port=111,222,333",
         ),
         ("postgresql+psycopg2://USER:PASS@/DB" "?host=hostA&port=111,222",),
-        ("postgresql+psycopg2://USER:PASS@/DB?port=111",),
         (
             "postgresql+asyncpg://USER:PASS@/DB"
             "?host=hostA,hostB,hostC&port=111,333",

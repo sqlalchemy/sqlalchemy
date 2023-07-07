@@ -88,6 +88,7 @@ connection URI::
         "postgresql+psycopg2://scott:tiger@192.168.0.199:5432/test?sslmode=require"
     )
 
+
 Unix Domain Connections
 ------------------------
 
@@ -103,6 +104,19 @@ was built.  This value can be overridden by passing a pathname to psycopg2,
 using ``host`` as an additional keyword argument::
 
     create_engine("postgresql+psycopg2://user:password@/dbname?host=/var/lib/postgresql")
+
+.. warning::  The format accepted here allows for a hostname in the main URL
+   in addition to the "host" query string argument.  **When using this URL
+   format, the initial host is silently ignored**.  That is, this URL::
+
+        engine = create_engine("postgresql+psycopg2://user:password@myhost1/dbname?host=myhost2")
+
+   Above, the hostname ``myhost1`` is **silently ignored and discarded.**  The
+   host which is connected is the ``myhost2`` host.
+
+   This is to maintain some degree of compatibility with PostgreSQL's own URL
+   format which has been tested to behave the same way and for which tools like
+   PifPaf hardcode two hostnames.
 
 .. seealso::
 

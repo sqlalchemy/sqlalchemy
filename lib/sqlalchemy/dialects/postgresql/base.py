@@ -1405,9 +1405,11 @@ from collections import defaultdict
 from functools import lru_cache
 import re
 from typing import Any
+from typing import cast
 from typing import List
 from typing import Optional
 from typing import Tuple
+from typing import TYPE_CHECKING
 from typing import Union
 
 from . import array as _array
@@ -3098,14 +3100,15 @@ class PGDialect(default.DefaultDialect):
         Tuple[None, None],
         Tuple[Tuple[Optional[str], ...], Tuple[Optional[int], ...]],
     ]:
-        hosts = ports = None
+        hosts: Optional[Tuple[Optional[str], ...]] = None
+        ports_str: Union[str, Tuple[Optional[str], ...], None] = None
 
         integrated_multihost = False
 
         if "host" in url.query:
             if isinstance(url.query["host"], (list, tuple)):
                 integrated_multihost = True
-                hosts, ports = zip(
+                hosts, ports_str = zip(
                     *[
                         token.split(":") if ":" in token else (token, None)
                         for token in url.query["host"]
@@ -3130,8 +3133,13 @@ class PGDialect(default.DefaultDialect):
                     if host_port_match:
                         integrated_multihost = True
                         h, p = host_port_match.group(1, 2)
+                        if TYPE_CHECKING:
+                            assert isinstance(h, str)
+                            assert isinstance(p, str)
                         hosts = (h,)
-                        ports = (p,) if p else (None,)
+                        ports_str = cast(
+                            "Tuple[Optional[str], ...]", (p,) if p else (None,)
+                        )
 
         if "port" in url.query:
             if integrated_multihost:
@@ -3141,31 +3149,36 @@ class PGDialect(default.DefaultDialect):
                     '"host=h1:p1&host=h2:p2&host=h3:p3" separately'
                 )
             if isinstance(url.query["port"], (list, tuple)):
-                ports = url.query["port"]
+                ports_str = url.query["port"]
             elif isinstance(url.query["port"], str):
-                ports = tuple(url.query["port"].split(","))
+                ports_str = tuple(url.query["port"].split(","))
 
-        if ports:
+        ports: Optional[Tuple[Optional[int], ...]] = None
+
+        if ports_str:
             try:
-                ports = tuple(int(x) if x else None for x in ports)
+                ports = tuple(int(x) if x else None for x in ports_str)
             except ValueError:
                 raise exc.ArgumentError(
-                    f"Received non-integer port arguments: {ports}"
+                    f"Received non-integer port arguments: {ports_str}"
                 ) from None
 
-        if (hosts or ports) and url.host:
-            raise exc.ArgumentError(
-                "Can't combine fixed host and multihost URL formats"
+        if ports and (
+            (not hosts and len(ports) > 1)
+            or (
+                hosts
+                and ports
+                and len(hosts) != len(ports)
+                and (len(hosts) > 1 or len(ports) > 1)
             )
-
-        if ports and (not hosts or len(hosts) != len(ports)):
+        ):
             raise exc.ArgumentError("number of hosts and ports don't match")
 
         if hosts is not None:
             if ports is None:
                 ports = tuple(None for _ in hosts)
 
-        return hosts, ports
+        return hosts, ports  # type: ignore
 
     def do_begin_twophase(self, connection, xid):
         self.do_begin(connection.connection)
