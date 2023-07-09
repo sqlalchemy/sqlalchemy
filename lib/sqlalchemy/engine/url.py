@@ -43,7 +43,6 @@ from ..dialects import plugins
 from ..dialects import registry
 
 
-
 class URL(NamedTuple):
     """
     Represent the components of a URL used to connect to a database.
