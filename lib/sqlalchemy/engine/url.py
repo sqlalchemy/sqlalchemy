@@ -35,13 +35,13 @@ from urllib.parse import parse_qsl
 from urllib.parse import quote_plus
 from urllib.parse import unquote
 from unittest.mock import Mock
-from urllib.parse import parse_qsl, quote_plus, unquote
 
+from .interfaces import Dialect
 from .. import exc
 from .. import util
 from ..dialects import plugins
 from ..dialects import registry
-from .interfaces import Dialect
+
 
 
 class URL(NamedTuple):
