@@ -131,10 +131,11 @@ class ExecuteTest(fixtures.TablesTest):
         )
 
     def test_create_engine_url_invalid(self):
-        assert_raises_message(tsa.exc.ArgumentError,
-                              "SQLAlchemy URL must be of string/URL/Mock type, given: <class 'int'>",
-                              create_engine,
-                              42)
+        assert_raises_message(
+            tsa.exc.ArgumentError,
+            "SQLAlchemy URL must be of string/URL/Mock type, given: <class 'int'>",
+            create_engine,
+            42)
 
     def test_raw_named_invalid(self, connection):
         # this is awkward b.c. this is just testing if regular Python
