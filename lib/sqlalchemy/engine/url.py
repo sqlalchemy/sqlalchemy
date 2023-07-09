@@ -18,13 +18,29 @@ from __future__ import annotations
 
 import collections.abc as collections_abc
 import re
-from typing import (Any, Dict, Iterable, List, Mapping, NamedTuple, Optional,
-                    Sequence, Tuple, Type, Union, cast, overload)
+from typing import Any
+from typing import cast
+from typing import Dict
+from typing import Iterable
+from typing import List
+from typing import Mapping
+from typing import NamedTuple
+from typing import Optional
+from typing import overload
+from typing import Sequence
+from typing import Tuple
+from typing import Type
+from typing import Union
+from urllib.parse import parse_qsl
+from urllib.parse import quote_plus
+from urllib.parse import unquote
 from unittest.mock import Mock
 from urllib.parse import parse_qsl, quote_plus, unquote
 
-from .. import exc, util
-from ..dialects import plugins, registry
+from .. import exc
+from .. import util
+from ..dialects import plugins
+from ..dialects import registry
 from .interfaces import Dialect
 
 
