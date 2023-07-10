@@ -34,7 +34,6 @@ from typing import Union
 from urllib.parse import parse_qsl
 from urllib.parse import quote_plus
 from urllib.parse import unquote
-from unittest.mock import Mock
 
 from .interfaces import Dialect
 from .. import exc
@@ -837,11 +836,14 @@ def make_url(name_or_url: Union[str, URL]) -> URL:
 
     if isinstance(name_or_url, str):
         return _parse_url(name_or_url)
-    elif isinstance(name_or_url, (URL, Mock)):
+    elif hasattr(name_or_url, "_instantiate_plugins"):
         return name_or_url
     raise exc.ArgumentError(
-        f"SQLAlchemy URL must be of string/URL/Mock type, given: {type(name_or_url)}"
+        "Invalid SQLAlchemy URL parameter type was passed."
     )
+    # sqlalchemy.url must either be of string type,
+    # or must have the _instantiate_plugins attribute (e.g URL type)
+
 
 
 def _parse_url(name: str) -> URL:
