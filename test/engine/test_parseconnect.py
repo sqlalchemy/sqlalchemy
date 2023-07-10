@@ -323,12 +323,11 @@ class URLTest(fixtures.TestBase):
             url_obj.query["foo"] = "hoho"
 
     def test_create_engine_url_invalid(self):
-        assert_raises_message(
-            tsa.exc.ArgumentError,
-            "Invalid SQLAlchemy URL parameter type was passed.",
-            create_engine,
-            42,
-        )
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Expected string or URL object, got 42",
+        ):
+            create_engine(42)
 
     @testing.combinations(
         (
