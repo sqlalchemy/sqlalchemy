@@ -1132,6 +1132,17 @@ that we can opt to **modify** what values the collection is intended to store,
 by writing our SQL to load a subset of elements for collections or
 scalar attributes.
 
+.. tip::  SQLAlchemy now has a **much simpler way to do this**, by allowing
+   WHERE criteria to be added directly to loader options such as
+   :func:`_orm.joinedload`
+   and :func:`_orm.selectinload` using :meth:`.PropComparator.and_`.  See
+   the section :ref:`loader_option_criteria` for examples.
+
+   The techniques described here still apply if the related collection is
+   to be queried using SQL criteria or modifiers more complex than a simple
+   WHERE clause.
+
+
 As an example, we can load a ``User`` object and eagerly load only particular
 addresses into its ``.addresses`` collection by filtering the joined data,
 routing it using :func:`_orm.contains_eager`, also using
@@ -1172,6 +1183,11 @@ in fact associated with the collection.
    :meth:`.Session.commit`, :meth:`.Session.rollback` methods are used
    assuming default session settings, or the :meth:`.Session.expire_all`
    or :meth:`.Session.expire` methods are used.
+
+.. seealso::
+
+    :ref:`loader_option_criteria` - modern API allowing WHERE criteria directly
+    within any relationship loader option
 
 
 Relationship Loader API
