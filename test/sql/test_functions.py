@@ -216,67 +216,38 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         ]:
             self.assert_compile(func.random(), ret, dialect=dialect)
 
-    def test_return_type_string_agg(self):
+    def test_return_type_aggregate_strings(self):
         t = table("t", column("value", String))
-        expr = func.string_agg(t.c.value, ",")
+        expr = func.aggregate_strings(t.c.value, ",")
         is_(expr.type._type_affinity, String)
 
-    def test_generic_string_agg(self):
+    def test_generic_aggregate_strings(self):
         t = table("t", column("value", String))
-        stmt = select(func.string_agg(t.c.value))
+        stmt = select(func.aggregate_strings(t.c.value, ","))
 
         self.assert_compile(
             stmt,
-            "SELECT group_concat(t.value) AS string_agg_1 FROM t",
-            dialect=sqlite.dialect(),
-        )
-        self.assert_compile(
-            stmt,
-            "SELECT string_agg(t.value) AS string_agg_1 FROM t",
-            dialect=postgresql.dialect(),
-        )
-        self.assert_compile(
-            stmt,
-            "SELECT string_agg(t.value) AS string_agg_1 FROM t",
-            dialect=mssql.dialect(),
-        )
-        self.assert_compile(
-            stmt,
-            "SELECT group_concat(t.value) AS string_agg_1 FROM t",
-            dialect=mysql.dialect(),
-        )
-
-    def test_generic_string_agg_with_delimeter(self):
-        t = table("t", column("value", String))
-        stmt = select(func.string_agg(t.c.value, ","))
-
-        self.assert_compile(
-            stmt,
-            "SELECT group_concat(t.value, ?) AS string_agg_1 FROM t",
+            "SELECT group_concat(t.value, ?) AS aggregate_strings_1 FROM t",
             dialect=sqlite.dialect(),
             checkpositional=(",",),
         )
         self.assert_compile(
             stmt,
-            "SELECT string_agg(t.value, ',') AS string_agg_1 FROM t",
+            "SELECT string_agg(t.value, %(aggregate_strings_2)s) AS "
+            "aggregate_strings_1 FROM t",
             dialect=postgresql.dialect(),
-            literal_binds=True,
-            render_postcompile=True,
         )
         self.assert_compile(
             stmt,
-            "SELECT string_agg(t.value, ',') AS string_agg_1 FROM t",
+            "SELECT string_agg(t.value, :aggregate_strings_2) AS "
+            "aggregate_strings_1 FROM t",
             dialect=mssql.dialect(),
-            literal_binds=True,
-            render_postcompile=True,
         )
         self.assert_compile(
             stmt,
-            "SELECT group_concat(t.value SEPARATOR ',') "
-            "AS string_agg_1 FROM t",
+            "SELECT group_concat(t.value SEPARATOR :aggregate_strings_1) "
+            "AS aggregate_strings_1 FROM t",
             dialect=mysql.dialect(),
-            literal_binds=True,
-            render_postcompile=True,
         )
 
     def test_cube_operators(self):
@@ -1222,27 +1193,7 @@ class ExecuteTest(fixtures.TestBase):
         )
 
     @testing.provide_metadata
-    def test_string_agg_execute(self, connection):
-        meta = self.metadata
-        values_t = Table("values", meta, Column("value", String))
-        meta.create_all(connection)
-        connection.execute(
-            values_t.insert(),
-            [
-                {"value": "a"},
-                {"value": "b"},
-                {"value": "c"},
-                {"value": None},  # ignored
-            ],
-        )
-        rs = connection.execute(select(func.string_agg(values_t.c.value)))
-        row = rs.scalar()
-
-        assert row == "a,b,c"
-        rs.close()
-
-    @testing.provide_metadata
-    def test_string_agg_execute_with_delimeter(self, connection):
+    def test_aggregate_strings_execute(self, connection):
         meta = self.metadata
         values_t = Table("values", meta, Column("value", String))
         meta.create_all(connection)
@@ -1256,7 +1207,7 @@ class ExecuteTest(fixtures.TestBase):
             ],
         )
         rs = connection.execute(
-            select(func.string_agg(values_t.c.value, " and "))
+            select(func.aggregate_strings(values_t.c.value, " and "))
         )
         row = rs.scalar()
 

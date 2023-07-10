@@ -1045,7 +1045,7 @@ class _FunctionGenerator:
             ...
 
         @property
-        def string_agg(self) -> Type[string_agg[Any]]:
+        def aggregate_strings(self) -> Type[aggregate_strings[Any]]:
             ...
 
         @property
@@ -1801,15 +1801,15 @@ class grouping_sets(GenericFunction[_T]):
     inherit_cache = True
 
 
-class string_agg(GenericFunction[_T]):
+class aggregate_strings(GenericFunction[_T]):
     r"""Implement the ``STRING_AGG`` aggregation function
 
     This function will concatenate non-null values into a string and
     separate the values by a delimeter.
 
-    e.g. Example usage with delimeter '.' as the last argument
+    e.g. Example usage with delimeter '.'
 
-    stmt = select(func.string_agg(table.c.str_col, "."))
+    stmt = select(func.aggregate_strings(table.c.str_col, "."))
 
     The return type of this function is :class:`.String`.
 

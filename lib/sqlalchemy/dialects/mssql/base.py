@@ -2057,6 +2057,9 @@ class MSSQLCompiler(compiler.SQLCompiler):
     def visit_char_length_func(self, fn, **kw):
         return "LEN%s" % self.function_argspec(fn, **kw)
 
+    def visit_aggregate_strings_func(self, fn, **kw):
+        return "string_agg%s" % self.function_argspec(fn, **kw)
+
     def visit_concat_op_expression_clauselist(
         self, clauselist, operator, **kw
     ):
