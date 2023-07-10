@@ -327,7 +327,8 @@ class URLTest(fixtures.TestBase):
             tsa.exc.ArgumentError,
             "Invalid SQLAlchemy URL parameter type was passed.",
             create_engine,
-            42)
+            42,
+        )
 
     @testing.combinations(
         (
