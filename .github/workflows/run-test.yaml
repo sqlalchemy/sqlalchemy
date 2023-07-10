@@ -54,8 +54,6 @@ jobs:
           # add aiosqlite on linux
           - os: "ubuntu-latest"
             pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
-          - os: "ubuntu-20.04"
-            pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
 
         exclude:
           # linux and osx do not have x86 python
