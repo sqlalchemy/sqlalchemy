@@ -845,7 +845,6 @@ def make_url(name_or_url: Union[str, URL]) -> URL:
     # or must have the _instantiate_plugins attribute (e.g URL type)
 
 
-
 def _parse_url(name: str) -> URL:
     pattern = re.compile(
         r"""
