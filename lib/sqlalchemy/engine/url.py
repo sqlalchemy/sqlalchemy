@@ -836,12 +836,6 @@ def make_url(name_or_url: Union[str, URL]) -> URL:
 
     if isinstance(name_or_url, str):
         return _parse_url(name_or_url)
-    elif not isinstance(name_or_url, URL) and not hasattr(
-        name_or_url, "_sqla_is_testing_if_this_is_a_mock_object"
-    ):
-        raise exc.ArgumentError(
-            f"Expected string or URL object, got {name_or_url!r}"
-        )
     else:
         return name_or_url
 
