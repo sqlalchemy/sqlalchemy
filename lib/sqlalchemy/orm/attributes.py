@@ -24,6 +24,7 @@ from typing import Callable
 from typing import cast
 from typing import ClassVar
 from typing import Dict
+from typing import Iterable
 from typing import List
 from typing import NamedTuple
 from typing import Optional
@@ -44,6 +45,7 @@ from .base import ATTR_EMPTY
 from .base import ATTR_WAS_SET
 from .base import CALLABLES_OK
 from .base import DEFERRED_HISTORY_LOAD
+from .base import INCLUDE_PENDING_MUTATIONS  # noqa
 from .base import INIT_OK
 from .base import instance_dict as instance_dict
 from .base import instance_state as instance_state
@@ -1678,9 +1680,22 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         passive: PassiveFlag = PASSIVE_OFF,
     ) -> History:
         current = self.get(state, dict_, passive=passive)
+
         if current is PASSIVE_NO_RESULT:
-            return HISTORY_BLANK
+            if (
+                passive & PassiveFlag.INCLUDE_PENDING_MUTATIONS
+                and self.key in state._pending_mutations
+            ):
+                pending = state._pending_mutations[self.key]
+                return pending.merge_with_history(HISTORY_BLANK)
+            else:
+                return HISTORY_BLANK
         else:
+            if passive & PassiveFlag.INCLUDE_PENDING_MUTATIONS:
+                # this collection is loaded / present.  should not be any
+                # pending mutations
+                assert self.key not in state._pending_mutations
+
             return History.from_collection(self, state, current)
 
     def get_all_pending(
@@ -2359,6 +2374,13 @@ class History(NamedTuple):
         """Return True if this :class:`.History` has changes."""
 
         return bool(self.added or self.deleted)
+
+    def _merge(self, added: Iterable[Any], deleted: Iterable[Any]) -> History:
+        return History(
+            list(self.added) + list(added),
+            self.unchanged,
+            list(self.deleted) + list(deleted),
+        )
 
     def as_state(self) -> History:
         return History(

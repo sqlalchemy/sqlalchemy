@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 10090
+
+    Fixed issue where objects that were associated with an unloaded collection
+    via backref, but were not merged into the :class:`_orm.Session` due to the
+    removal of ``cascade_backrefs`` in the 2.0 series, would not emit a warning
+    that these objects were not being included in a flush, even though they
+    were pending members of the collection; in other such cases, a warning is
+    emitted when a collection being flushed contains non-attached objects which
+    will be essentially discarded.  The addition of the warning for
+    backref-pending collection members establishes greater consistency with
+    collections that may be present or non-present and possibly flushed or not
+    flushed at different times based on different relationship loading
+    strategies.
