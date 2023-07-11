@@ -1241,6 +1241,9 @@ class OracleCompiler(compiler.SQLCompiler):
                 self.render_literal_value(flags, sqltypes.STRINGTYPE),
             )
 
+    def visit_aggregate_strings_func(self, fn, **kw):
+        return "LISTAGG%s" % self.function_argspec(fn, **kw)
+
 
 class OracleDDLCompiler(compiler.DDLCompiler):
     def define_constraint_cascades(self, constraint):
