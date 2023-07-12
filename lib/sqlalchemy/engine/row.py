@@ -30,6 +30,7 @@ from typing import TypeVar
 from typing import Union
 
 from ..sql import util as sql_util
+from ..util import deprecated
 from ..util._has_cy import HAS_CYEXTENSION
 
 if TYPE_CHECKING or not HAS_CYEXTENSION:
@@ -82,7 +83,7 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
     def __delattr__(self, name: str) -> NoReturn:
         raise AttributeError("can't delete attribute")
 
-    def tuple(self) -> _TP:
+    def _tuple(self) -> _TP:
         """Return a 'tuple' form of this :class:`.Row`.
 
         At runtime, this method returns "self"; the :class:`.Row` object is
@@ -91,27 +92,66 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
         ``Tuple`` datatype that contains typing information about individual
         elements, supporting typed unpacking and attribute access.
 
-        .. versionadded:: 2.0
+        .. versionadded:: 2.0.19 - The :meth:`.Row._tuple` method supersedes
+           the previous :meth:`.Row.tuple` method, which is now underscored
+           to avoid name conflicts with column names in the same way as other
+           named-tuple methods on :class:`.Row`.
 
         .. seealso::
 
+            :attr:`.Row._t` - shorthand attribute notation
+
             :meth:`.Result.tuples`
 
+
+        """
+        return self  # type: ignore
+
+    @deprecated(
+        "2.0.19",
+        "The :meth:`.Row.tuple` method is deprecated in favor of "
+        ":meth:`.Row._tuple`; all :class:`.Row` "
+        "methods and library-level attributes are intended to be underscored "
+        "to avoid name conflicts.  Please use :meth:`Row._tuple`.",
+    )
+    def tuple(self) -> _TP:
+        """Return a 'tuple' form of this :class:`.Row`.
+
+        .. versionadded:: 2.0
+
+        """
+        return self._tuple()
+
+    @property
+    def _t(self) -> _TP:
+        """A synonym for :meth:`.Row._tuple`.
+
+        .. versionadded:: 2.0.19 - The :attr:`.Row._t` attribute supersedes
+           the previous :attr:`.Row.t` attribute, which is now underscored
+           to avoid name conflicts with column names in the same way as other
+           named-tuple methods on :class:`.Row`.
+
+        .. seealso::
+
+            :attr:`.Result.t`
         """
         return self  # type: ignore
 
     @property
+    @deprecated(
+        "2.0.19",
+        "The :attr:`.Row.t` attribute is deprecated in favor of "
+        ":attr:`.Row._t`; all :class:`.Row` "
+        "methods and library-level attributes are intended to be underscored "
+        "to avoid name conflicts.  Please use :attr:`Row._t`.",
+    )
     def t(self) -> _TP:
-        """a synonym for :attr:`.Row.tuple`
+        """A synonym for :meth:`.Row._tuple`.
 
         .. versionadded:: 2.0
 
-        .. seealso::
-
-            :meth:`.Result.t`
-
         """
-        return self  # type: ignore
+        return self._t
 
     @property
     def _mapping(self) -> RowMapping:

@@ -1243,7 +1243,7 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
 
             :attr:`_engine.Result.t` - shorter synonym
 
-            :attr:`_engine.Row.t` - :class:`_engine.Row` version
+            :attr:`_engine.Row._t` - :class:`_engine.Row` version
 
         """
 
