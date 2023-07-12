@@ -1,3 +1,5 @@
+from typing import List
+
 from sqlalchemy import create_engine
 from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
@@ -54,7 +56,7 @@ reveal_type(inspect(A))
 # EXPECTED_TYPE: Mapper[B]
 reveal_type(inspect(B))
 
-tables: list[str] = inspect(e).get_table_names()
+tables: List[str] = inspect(e).get_table_names()
 
 i: Inspector = inspect(e)
 # EXPECTED_TYPE: Inspector
