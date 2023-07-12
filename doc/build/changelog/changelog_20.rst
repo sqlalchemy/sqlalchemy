@@ -24,12 +24,12 @@
         ``sqlalchemy.sql.operators`` such as ``sqlalchemy.sql.operators.eq``.
 
     .. change::
-    	:tags: usecase, mariadb, reflection
-    	:tickets: 10028
+        :tags: usecase, mariadb, reflection
+        :tickets: 10028
 
-    	Allowed reflecting :class:`_types.UUID` columns from MariaDB. This allows
-    	Alembic to properly detect the type of such columns in existing MariaDB
-    	databases.
+        Allowed reflecting :class:`_types.UUID` columns from MariaDB. This allows
+        Alembic to properly detect the type of such columns in existing MariaDB
+        databases.
 
     .. change::
         :tags: bug, postgresql
