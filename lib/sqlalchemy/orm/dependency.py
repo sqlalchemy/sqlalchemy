@@ -231,7 +231,10 @@ class DependencyProcessor:
 
     def prop_has_changes(self, uowcommit, states, isdelete):
         if not isdelete or self.passive_deletes:
-            passive = attributes.PASSIVE_NO_INITIALIZE
+            passive = (
+                attributes.PASSIVE_NO_INITIALIZE
+                | attributes.INCLUDE_PENDING_MUTATIONS
+            )
         elif self.direction is MANYTOONE:
             # here, we were hoping to optimize having to fetch many-to-one
             # for history and ignore it, if there's no further cascades
@@ -240,7 +243,9 @@ class DependencyProcessor:
             # test_cascade etc. will still fail.
             passive = attributes.PASSIVE_NO_FETCH_RELATED
         else:
-            passive = attributes.PASSIVE_OFF
+            passive = (
+                attributes.PASSIVE_OFF | attributes.INCLUDE_PENDING_MUTATIONS
+            )
 
         for s in states:
             # TODO: add a high speed method
@@ -470,9 +475,15 @@ class OneToManyDP(DependencyProcessor):
             pks_changed = self._pks_changed(uowcommit, state)
 
             if not pks_changed or self.passive_updates:
-                passive = attributes.PASSIVE_NO_INITIALIZE
+                passive = (
+                    attributes.PASSIVE_NO_INITIALIZE
+                    | attributes.INCLUDE_PENDING_MUTATIONS
+                )
             else:
-                passive = attributes.PASSIVE_OFF
+                passive = (
+                    attributes.PASSIVE_OFF
+                    | attributes.INCLUDE_PENDING_MUTATIONS
+                )
 
             history = uowcommit.get_attribute_history(state, self.key, passive)
             if history:
@@ -1121,9 +1132,15 @@ class ManyToManyDP(DependencyProcessor):
                 uowcommit, state
             )
             if need_cascade_pks:
-                passive = attributes.PASSIVE_OFF
+                passive = (
+                    attributes.PASSIVE_OFF
+                    | attributes.INCLUDE_PENDING_MUTATIONS
+                )
             else:
-                passive = attributes.PASSIVE_NO_INITIALIZE
+                passive = (
+                    attributes.PASSIVE_NO_INITIALIZE
+                    | attributes.INCLUDE_PENDING_MUTATIONS
+                )
             history = uowcommit.get_attribute_history(state, self.key, passive)
             if history:
                 for child in history.added:

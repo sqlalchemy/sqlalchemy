@@ -1122,6 +1122,9 @@ class PendingCollection:
         self.deleted_items = util.IdentitySet()
         self.added_items = util.OrderedIdentitySet()
 
+    def merge_with_history(self, history: History) -> History:
+        return history._merge(self.added_items, self.deleted_items)
+
     def append(self, value: Any) -> None:
         if value in self.deleted_items:
             self.deleted_items.remove(value)

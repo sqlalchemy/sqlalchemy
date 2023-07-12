@@ -2682,6 +2682,7 @@ class RequirementsTest(fixtures.MappedTest):
         eq_(s.connection().scalar(select(func.count("*")).select_from(ht1)), 4)
 
         h6 = H6()
+        s.add(h6)
         h6.h1a = h1
         h6.h1b = h1
 
