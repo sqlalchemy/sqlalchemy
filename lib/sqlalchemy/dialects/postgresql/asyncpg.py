@@ -206,6 +206,7 @@ from .base import PGIdentifierPreparer
 from .base import REGCLASS
 from .base import REGCONFIG
 from .types import BYTEA
+from .types import CITEXT
 from ... import exc
 from ... import pool
 from ... import util
@@ -1001,6 +1002,7 @@ class PGDialect_asyncpg(PGDialect):
         {
             sqltypes.String: AsyncpgString,
             sqltypes.ARRAY: AsyncpgARRAY,
+            CITEXT: CITEXT,
             REGCONFIG: AsyncpgREGCONFIG,
             sqltypes.Time: AsyncpgTime,
             sqltypes.Date: AsyncpgDate,
