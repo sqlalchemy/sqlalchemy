@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 10079
+
+    The behavior of the :func:`make_url` has been changed.
+    Now if you pass an incorrect argument type to the :func:`make_url`,
+    an ArgumentError error will be thrown.
+    Correct argument types is: str, URL
