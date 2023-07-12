@@ -78,6 +78,7 @@ from ..util.typing import is_generic
 from ..util.typing import is_literal
 from ..util.typing import is_newtype
 from ..util.typing import Literal
+from ..util.typing import Self
 
 if TYPE_CHECKING:
     from ._typing import _O
@@ -137,7 +138,9 @@ class _DynamicAttributesType(type):
 
 
 class DeclarativeAttributeIntercept(
-    _DynamicAttributesType, inspection.Inspectable[Mapper[Any]]
+    _DynamicAttributesType,
+    # Inspectable is used only by the mypy plugin
+    inspection.Inspectable[Mapper[Any]],
 ):
     """Metaclass that may be used in conjunction with the
     :class:`_orm.DeclarativeBase` class to support addition of class
@@ -163,9 +166,7 @@ class DCTransformDeclarative(DeclarativeAttributeIntercept):
     """metaclass that includes @dataclass_transforms"""
 
 
-class DeclarativeMeta(
-    _DynamicAttributesType, inspection.Inspectable[Mapper[Any]]
-):
+class DeclarativeMeta(DeclarativeAttributeIntercept):
     metadata: MetaData
     registry: RegistryType
 
@@ -633,6 +634,7 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
 
 
 class DeclarativeBase(
+    # Inspectable is used only by the mypy plugin
     inspection.Inspectable[InstanceState[Any]],
     metaclass=DeclarativeAttributeIntercept,
 ):
@@ -748,6 +750,13 @@ class DeclarativeBase(
     """
 
     if typing.TYPE_CHECKING:
+
+        def _sa_inspect_type(self) -> Mapper[Self]:
+            ...
+
+        def _sa_inspect_instance(self) -> InstanceState[Self]:
+            ...
+
         _sa_registry: ClassVar[_RegistryType]
 
         registry: ClassVar[_RegistryType]
@@ -766,6 +775,9 @@ class DeclarativeBase(
 
         __name__: ClassVar[str]
 
+        # this ideally should be Mapper[Self], but mypy as of 1.4.1 does not
+        # like it, and breaks the declared_attr_one test. Pyright/pylance is
+        # ok with it.
         __mapper__: ClassVar[Mapper[Any]]
         """The :class:`_orm.Mapper` object to which a particular class is
         mapped.
@@ -851,7 +863,10 @@ def _check_not_declarative(cls: Type[Any], base: Type[Any]) -> None:
         )
 
 
-class DeclarativeBaseNoMeta(inspection.Inspectable[InstanceState[Any]]):
+class DeclarativeBaseNoMeta(
+    # Inspectable is used only by the mypy plugin
+    inspection.Inspectable[InstanceState[Any]]
+):
     """Same as :class:`_orm.DeclarativeBase`, but does not use a metaclass
     to intercept new attributes.
 
@@ -879,6 +894,9 @@ class DeclarativeBaseNoMeta(inspection.Inspectable[InstanceState[Any]]):
 
     """
 
+    # this ideally should be Mapper[Self], but mypy as of 1.4.1 does not
+    # like it, and breaks the declared_attr_one test. Pyright/pylance is
+    # ok with it.
     __mapper__: ClassVar[Mapper[Any]]
     """The :class:`_orm.Mapper` object to which a particular class is
     mapped.
@@ -903,6 +921,13 @@ class DeclarativeBaseNoMeta(inspection.Inspectable[InstanceState[Any]]):
     """
 
     if typing.TYPE_CHECKING:
+
+        def _sa_inspect_type(self) -> Mapper[Self]:
+            ...
+
+        def _sa_inspect_instance(self) -> InstanceState[Self]:
+            ...
+
         __tablename__: Any
         """String name to assign to the generated
         :class:`_schema.Table` object, if not specified directly via

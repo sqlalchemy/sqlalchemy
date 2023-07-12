@@ -50,6 +50,15 @@ class FirstNameOnly(Base):
     def _name_setter(self, value: str) -> None:
         self.first_name = value
 
+    @name.inplace.deleter
+    def _name_del(self) -> None:
+        self.first_name = ""
+
+    @name.inplace.expression
+    @classmethod
+    def _name_expr(cls) -> ColumnElement[str]:
+        return cls.first_name + "-"
+
 
 class FirstNameLastName(FirstNameOnly):
     last_name: Mapped[str]

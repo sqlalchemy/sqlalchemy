@@ -923,13 +923,13 @@ class _HybridUpdaterType(Protocol[_T_con]):
 
 
 class _HybridDeleterType(Protocol[_T_co]):
-    def __call__(self, instance: Any) -> None:
+    def __call__(s, self: Any) -> None:
         ...
 
 
 class _HybridExprCallableType(Protocol[_T]):
     def __call__(
-        self, cls: Any
+        s, cls: Any
     ) -> Union[_HasClauseElement, SQLColumnExpression[_T]]:
         ...
 
