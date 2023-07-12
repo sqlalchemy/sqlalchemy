@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 10096
+
+    Fixed issue where comparisons to the :class:`_postgresql.CITEXT` datatype
+    would cast the right side to ``VARCHAR``, leading to the right side not
+    being interpreted as a ``CITEXT`` datatype, for the asyncpg, psycopg3 and
+    pg80000 dialects.   This led to the :class:`_postgresql.CITEXT` type being
+    essentially unusable for practical use; this is now fixed and the test
+    suite has been corrected to properly assert that expressions are rendered
+    correctly.

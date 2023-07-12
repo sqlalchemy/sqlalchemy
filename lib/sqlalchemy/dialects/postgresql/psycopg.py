@@ -68,6 +68,7 @@ from .base import REGCONFIG
 from .json import JSON
 from .json import JSONB
 from .json import JSONPathType
+from .types import CITEXT
 from ... import pool
 from ... import util
 from ...engine import AdaptedConnection
@@ -271,6 +272,7 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
             sqltypes.String: _PGString,
             REGCONFIG: _PGREGCONFIG,
             JSON: _PGJSON,
+            CITEXT: CITEXT,
             sqltypes.JSON: _PGJSON,
             JSONB: _PGJSONB,
             sqltypes.JSON.JSONPathType: _PGJSONPathType,

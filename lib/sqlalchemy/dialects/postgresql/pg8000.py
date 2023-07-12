@@ -110,6 +110,7 @@ from .json import JSONB
 from .json import JSONPathType
 from .pg_catalog import _SpaceVector
 from .pg_catalog import OIDVECTOR
+from .types import CITEXT
 from ... import exc
 from ... import util
 from ...engine import processors
@@ -432,6 +433,7 @@ class PGDialect_pg8000(PGDialect):
             sqltypes.Boolean: _PGBoolean,
             sqltypes.NullType: _PGNullType,
             JSONB: _PGJSONB,
+            CITEXT: CITEXT,
             sqltypes.JSON.JSONPathType: _PGJSONPathType,
             sqltypes.JSON.JSONIndexType: _PGJSONIndexType,
             sqltypes.JSON.JSONIntIndexType: _PGJSONIntIndexType,
