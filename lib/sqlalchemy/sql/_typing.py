@@ -8,65 +8,60 @@
 from __future__ import annotations
 
 import operator
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import Mapping
-from typing import NoReturn
-from typing import Set
-from typing import Tuple
-from typing import Type
-from typing import TYPE_CHECKING
-from typing import TypeVar
-from typing import Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Mapping,
+    NoReturn,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
-from . import roles
-from .. import exc
-from .. import util
+from .. import exc, util
 from ..inspection import Inspectable
-from ..util.typing import Literal
-from ..util.typing import Protocol
-from ..util.typing import TypeAlias
+from ..util.typing import Literal, Protocol, TypeAlias
+from . import roles
 
 if TYPE_CHECKING:
-    from datetime import date
-    from datetime import datetime
-    from datetime import time
-    from datetime import timedelta
+    from datetime import date, datetime, time, timedelta
     from decimal import Decimal
     from uuid import UUID
 
-    from .base import Executable
-    from .compiler import Compiled
-    from .compiler import DDLCompiler
-    from .compiler import SQLCompiler
-    from .dml import UpdateBase
-    from .dml import ValuesBase
-    from .elements import ClauseElement
-    from .elements import ColumnElement
-    from .elements import KeyedColumnElement
-    from .elements import quoted_name
-    from .elements import SQLCoreOperations
-    from .elements import TextClause
-    from .lambdas import LambdaElement
-    from .roles import ColumnsClauseRole
-    from .roles import FromClauseRole
-    from .schema import Column
-    from .selectable import Alias
-    from .selectable import CTE
-    from .selectable import FromClause
-    from .selectable import Join
-    from .selectable import NamedFromClause
-    from .selectable import ReturnsRows
-    from .selectable import Select
-    from .selectable import Selectable
-    from .selectable import SelectBase
-    from .selectable import Subquery
-    from .selectable import TableClause
-    from .sqltypes import TableValueType
-    from .sqltypes import TupleType
-    from .type_api import TypeEngine
     from ..util.typing import TypeGuard
+    from .base import Executable
+    from .compiler import Compiled, DDLCompiler, SQLCompiler
+    from .dml import UpdateBase, ValuesBase
+    from .elements import (
+        ClauseElement,
+        ColumnElement,
+        KeyedColumnElement,
+        SQLCoreOperations,
+        TextClause,
+        quoted_name,
+    )
+    from .lambdas import LambdaElement
+    from .roles import ColumnsClauseRole, FromClauseRole
+    from .schema import Column
+    from .selectable import (
+        CTE,
+        Alias,
+        FromClause,
+        Join,
+        NamedFromClause,
+        ReturnsRows,
+        Select,
+        Selectable,
+        SelectBase,
+        Subquery,
+        TableClause,
+    )
+    from .sqltypes import TableValueType, TupleType
+    from .type_api import TypeEngine
 
 _T = TypeVar("_T", bound=Any)
 
@@ -234,7 +229,7 @@ _DMLColumnArgument = Union[
     str,
     _HasClauseElement,
     roles.DMLColumnRole,
-    "SQLCoreOperations",
+    "SQLCoreOperations[Any]",
 ]
 """A DML column expression.  This is a "key" inside of insert().values(),
 update().values(), and related.
