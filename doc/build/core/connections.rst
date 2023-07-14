@@ -2655,7 +2655,7 @@ Result Set API
 
 .. autoclass:: Row
     :members:
-    :private-members: _asdict, _fields, _mapping
+    :private-members: _asdict, _fields, _mapping, _t, _tuple
 
 .. autoclass:: RowMapping
     :members:

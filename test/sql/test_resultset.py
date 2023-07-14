@@ -297,8 +297,20 @@ class CursorResultTest(fixtures.TablesTest):
                 {"user_id": 9, "user_name": "fred"},
             ],
         )
-        r = connection.execute(users.select().order_by(users.c.user_id))
-        eq_([row.t for row in r], [(7, "jack"), (8, "ed"), (9, "fred")])
+        r = connection.execute(users.select().order_by(users.c.user_id)).all()
+        exp = [(7, "jack"), (8, "ed"), (9, "fred")]
+        eq_([row._t for row in r], exp)
+        eq_([row._tuple() for row in r], exp)
+        with assertions.expect_deprecated(
+            r"The Row.t attribute is deprecated in favor of Row._t"
+        ):
+            eq_([row.t for row in r], exp)
+
+        with assertions.expect_deprecated(
+            r"The Row.tuple\(\) method is deprecated in "
+            r"favor of Row._tuple\(\)"
+        ):
+            eq_([row.tuple() for row in r], exp)
 
     def test_row_next(self, connection):
         users = self.tables.users
