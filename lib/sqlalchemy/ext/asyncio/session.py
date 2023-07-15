@@ -974,8 +974,7 @@ class AsyncSession(ReversibleProxy[Session]):
         await greenlet_spawn(self.sync_session.close)
 
     async def aclose(self) -> None:
-        """Call the close() method of :class:`_asyncio.AsyncSession`
-        """
+        """Call the close() method of :class:`_asyncio.AsyncSession`"""
         await self.close()
 
     async def invalidate(self) -> None:

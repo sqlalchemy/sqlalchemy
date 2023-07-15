@@ -477,8 +477,7 @@ class AsyncConnection(
         await greenlet_spawn(self._proxied.close)
 
     async def aclose(self) -> None:
-        """Call the close() method of :class:`_asyncio.AsyncConnection`
-        """
+        """Call the close() method of :class:`_asyncio.AsyncConnection`"""
         await self.close()
 
     async def exec_driver_sql(
