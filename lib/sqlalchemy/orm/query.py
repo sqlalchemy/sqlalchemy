@@ -3179,14 +3179,11 @@ class Query(
 
         delete_ = sql.delete(*self._raw_columns)  # type: ignore
         delete_._where_criteria = self._where_criteria
-        result: CursorResult[Any] = cast(
-            "CursorResult[Any]",
-            self.session.execute(
-                delete_,
-                self._params,
-                execution_options=self._execution_options.union(
-                    {"synchronize_session": synchronize_session}
-                ),
+        result: CursorResult[Any] = self.session.execute(
+            delete_,
+            self._params,
+            execution_options=self._execution_options.union(
+                {"synchronize_session": synchronize_session}
             ),
         )
         bulk_del.result = result  # type: ignore
@@ -3272,14 +3269,11 @@ class Query(
             upd = upd.with_dialect_options(**update_args)
 
         upd._where_criteria = self._where_criteria
-        result: CursorResult[Any] = cast(
-            "CursorResult[Any]",
-            self.session.execute(
-                upd,
-                self._params,
-                execution_options=self._execution_options.union(
-                    {"synchronize_session": synchronize_session}
-                ),
+        result: CursorResult[Any] = self.session.execute(
+            upd,
+            self._params,
+            execution_options=self._execution_options.union(
+                {"synchronize_session": synchronize_session}
             ),
         )
         bulk_ud.result = result  # type: ignore

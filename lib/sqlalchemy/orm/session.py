@@ -127,9 +127,6 @@ if typing.TYPE_CHECKING:
     from ..sql.base import ExecutableOption
     from ..sql.dml import Delete
     from ..sql.dml import Insert
-    from ..sql.dml import ReturningDelete
-    from ..sql.dml import ReturningInsert
-    from ..sql.dml import ReturningUpdate
     from ..sql.dml import Update
     from ..sql.elements import ClauseElement
     from ..sql.roles import TypedColumnsClauseRole
@@ -2166,9 +2163,7 @@ class Session(_SessionClassMethods, EventTarget):
     @overload
     def execute(
         self,
-        statement: ReturningDelete[_T]
-        | ReturningUpdate[_T]
-        | ReturningInsert[_T],
+        statement: TypedReturnsRows[_T],
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
@@ -2189,19 +2184,6 @@ class Session(_SessionClassMethods, EventTarget):
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
     ) -> CursorResult[Any]:
-        ...
-
-    @overload
-    def execute(
-        self,
-        statement: TypedReturnsRows[_T],
-        params: Optional[_CoreAnyExecuteParams] = None,
-        *,
-        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
-    ) -> Result[_T]:
         ...
 
     @overload
