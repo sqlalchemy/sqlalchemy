@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, engine
-    :tickets: 10079
-
-    Added detection for non-string, non-:class:`_engine.URL` objects to the
-    :func:`_engine.make_url` function, allowing ``ArgumentError`` to be thrown
-    immediately, rather than causing failures later on.  Special logic ensures
-    that mock forms of :class:`_engine.URL` are allowed through.  Pull request
-    courtesy Grigoriev Semyon.

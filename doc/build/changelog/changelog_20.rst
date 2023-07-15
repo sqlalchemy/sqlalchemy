@@ -10,7 +10,96 @@
 
 .. changelog::
     :version: 2.0.19
-    :include_notes_from: unreleased_20
+    :released: July 15, 2023
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10089
+
+        Fixed issue where setting a relationship collection directly, where an
+        object in the new collection were already present, would not trigger a
+        cascade event for that object, leading to it not being added to the
+        :class:`_orm.Session` if it were not already present.  This is similar in
+        nature to :ticket:`6471` and is a more apparent issue due to the removal of
+        ``cascade_backrefs`` in the 2.0 series.  The
+        :meth:`_orm.AttributeEvents.append_wo_mutation` event added as part of
+        :ticket:`6471` is now also emitted for existing members of a collection
+        that are present in a bulk set of that same collection.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 10093
+
+        Renamed :attr:`_result.Row.t` and :meth:`_result.Row.tuple` to
+        :attr:`_result.Row._t` and :meth:`_result.Row._tuple`; this is to suit the
+        policy that all methods and pre-defined attributes on :class:`.Row` should
+        be in the style of Python standard library ``namedtuple`` where all fixed
+        names have a leading underscore, to avoid name conflicts with existing
+        column names.   The previous method/attribute is now deprecated and will
+        emit a deprecation warning.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 10069
+
+        Fixed regression caused by improvements to PostgreSQL URL parsing in
+        :ticket:`10004` where "host" query string arguments that had colons in
+        them, to support various third party proxy servers and/or dialects, would
+        not parse correctly as these were evaluted as ``host:port`` combinations.
+        Parsing has been updated to consider a colon as indicating a ``host:port``
+        value only if the hostname contains only alphanumeric characters with dots
+        or dashes only (e.g. no slashes), followed by exactly one colon followed by
+        an all-integer token of zero or more integers.  In all other cases, the
+        full string is taken as a host.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 10079
+
+        Added detection for non-string, non-:class:`_engine.URL` objects to the
+        :func:`_engine.make_url` function, allowing ``ArgumentError`` to be thrown
+        immediately, rather than causing failures later on.  Special logic ensures
+        that mock forms of :class:`_engine.URL` are allowed through.  Pull request
+        courtesy Grigoriev Semyon.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10090
+
+        Fixed issue where objects that were associated with an unloaded collection
+        via backref, but were not merged into the :class:`_orm.Session` due to the
+        removal of ``cascade_backrefs`` in the 2.0 series, would not emit a warning
+        that these objects were not being included in a flush, even though they
+        were pending members of the collection; in other such cases, a warning is
+        emitted when a collection being flushed contains non-attached objects which
+        will be essentially discarded.  The addition of the warning for
+        backref-pending collection members establishes greater consistency with
+        collections that may be present or non-present and possibly flushed or not
+        flushed at different times based on different relationship loading
+        strategies.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 10096
+
+        Fixed issue where comparisons to the :class:`_postgresql.CITEXT` datatype
+        would cast the right side to ``VARCHAR``, leading to the right side not
+        being interpreted as a ``CITEXT`` datatype, for the asyncpg, psycopg3 and
+        pg80000 dialects.   This led to the :class:`_postgresql.CITEXT` type being
+        essentially unusable for practical use; this is now fixed and the test
+        suite has been corrected to properly assert that expressions are rendered
+        correctly.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 10098
+
+        Fixed additional regression caused by :ticket:`9805` where more aggressive
+        propagation of the "ORM" flag on statements could lead to an internal
+        attribute error when embedding an ORM :class:`.Query` construct that
+        nonetheless contained no ORM entities within a Core SQL statement, in this
+        case ORM-enabled UPDATE and DELETE statements.
+
 
 .. changelog::
     :version: 2.0.18
