@@ -13,82 +13,106 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+from enum import IntEnum
 import itertools
 import operator
 import re
 import typing
-from decimal import Decimal
-from enum import IntEnum
-from typing import (
-    TYPE_CHECKING,
-    AbstractSet,
-    Any,
-    Callable,
-    Dict,
-    FrozenSet,
-    Generic,
-    Iterable,
-    Iterator,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Set,
-)
+from typing import AbstractSet
+from typing import Any
+from typing import Callable
+from typing import cast
+from typing import Dict
+from typing import FrozenSet
+from typing import Generic
+from typing import Iterable
+from typing import Iterator
+from typing import List
+from typing import Mapping
+from typing import Optional
+from typing import overload
+from typing import Sequence
+from typing import Set
 from typing import Tuple as typing_Tuple
-from typing import Type, TypeVar, Union, cast, overload
+from typing import Type
+from typing import TYPE_CHECKING
+from typing import TypeVar
+from typing import Union
 
-from .. import exc, inspection, util
-from ..util import HasMemoized_ro_memoized_attribute, TypingOnly
-from ..util.typing import Literal, Self
-from . import coercions, operators, roles, traversals, type_api
-from ._typing import has_schema_attr, is_named_from_clause, is_quoted_name, is_tuple_type
-from .annotation import Annotated, SupportsWrappingAnnotations
-from .base import (
-    NO_ARG,
-    Executable,
-    Generative,
-    HasMemoized,
-    Immutable,
-    SingletonConstant,
-    _clone,
-    _expand_cloned,
-    _generative,
-    _NoArg,
-)
-from .cache_key import NO_CACHE, MemoizedHasCacheKey
+from . import coercions
+from . import operators
+from . import roles
+from . import traversals
+from . import type_api
+from ._typing import has_schema_attr
+from ._typing import is_named_from_clause
+from ._typing import is_quoted_name
+from ._typing import is_tuple_type
+from .annotation import Annotated
+from .annotation import SupportsWrappingAnnotations
+from .base import _clone
+from .base import _expand_cloned
+from .base import _generative
+from .base import _NoArg
+from .base import Executable
+from .base import Generative
+from .base import HasMemoized
+from .base import Immutable
+from .base import NO_ARG
+from .base import SingletonConstant
+from .cache_key import MemoizedHasCacheKey
+from .cache_key import NO_CACHE
 from .coercions import _document_text_coercion  # noqa
 from .operators import ColumnOperators
 from .traversals import HasCopyInternals
-from .visitors import ExternallyTraversible, InternalTraversal, Visitable, cloned_traverse, traverse
+from .visitors import cloned_traverse
+from .visitors import ExternallyTraversible
+from .visitors import InternalTraversal
+from .visitors import traverse
+from .visitors import Visitable
+from .. import exc
+from .. import inspection
+from .. import util
+from ..util import HasMemoized_ro_memoized_attribute
+from ..util import TypingOnly
+from ..util.typing import Literal
+from ..util.typing import Self
 
 if typing.TYPE_CHECKING:
-    from ..engine import Connection, Dialect, Engine
-    from ..engine.interfaces import (
-        CacheStats,
-        CompiledCacheType,
-        CoreExecuteOptionsParameter,
-        SchemaTranslateMapType,
-        _CoreMultiExecuteParams,
-    )
-    from ..engine.result import Result
-    from ..types import NullType
-    from ._typing import (
-        _ColumnExpressionArgument,
-        _ColumnExpressionOrStrLabelArgument,
-        _InfoType,
-        _PropagateAttrsType,
-        _TypeEngineArgument,
-    )
-    from .cache_key import CacheKey, _CacheKeyTraversalType
-    from .compiler import Compiled, SQLCompiler
+    from ._typing import _ColumnExpressionArgument
+    from ._typing import _ColumnExpressionOrStrLabelArgument
+    from ._typing import _InfoType
+    from ._typing import _PropagateAttrsType
+    from ._typing import _TypeEngineArgument
+    from .cache_key import _CacheKeyTraversalType
+    from .cache_key import CacheKey
+    from .compiler import Compiled
+    from .compiler import SQLCompiler
     from .functions import FunctionElement
     from .operators import OperatorType
-    from .schema import Column, DefaultGenerator, FetchedValue, ForeignKey
-    from .selectable import FromClause, NamedFromClause, TextualSelect, _SelectIterable
+    from .schema import Column
+    from .schema import DefaultGenerator
+    from .schema import FetchedValue
+    from .schema import ForeignKey
+    from .selectable import _SelectIterable
+    from .selectable import FromClause
+    from .selectable import NamedFromClause
+    from .selectable import TextualSelect
     from .sqltypes import TupleType
     from .type_api import TypeEngine
-    from .visitors import _CloneCallableType, _TraverseInternalsType
+    from .visitors import _CloneCallableType
+    from .visitors import _TraverseInternalsType
+    from ..engine import Connection
+    from ..engine import Dialect
+    from ..engine import Engine
+    from ..engine.interfaces import _CoreMultiExecuteParams
+    from ..engine.interfaces import CacheStats
+    from ..engine.interfaces import CompiledCacheType
+    from ..engine.interfaces import CoreExecuteOptionsParameter
+    from ..engine.interfaces import SchemaTranslateMapType
+    from ..engine.result import Result
+    from ..types import NullType
 
 _NUMERIC = Union[float, Decimal]
 _NUMBER = Union[float, int, Decimal]
@@ -892,7 +916,23 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         def __getitem__(self, index: Any) -> ColumnElement[Any]:
             ...
 
+        @overload
+        def __lshift__(self: _SQO[int], other: Any) -> ColumnElement[int]:
+            ...
+
+        @overload
         def __lshift__(self, other: Any) -> ColumnElement[Any]:
+            ...
+
+        def __lshift__(self, other: Any) -> ColumnElement[Any]:
+            ...
+
+        @overload
+        def __rshift__(self: _SQO[int], other: Any) -> ColumnElement[int]:
+            ...
+
+        @overload
+        def __rshift__(self, other: Any) -> ColumnElement[Any]:
             ...
 
         def __rshift__(self, other: Any) -> ColumnElement[Any]:
@@ -1098,6 +1138,7 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         @overload
         def __add__(self, other: Any) -> ColumnElement[Any]:
             ...
+
         def __add__(self, other: Any) -> ColumnElement[Any]:
             ...
 
@@ -1576,12 +1617,12 @@ class ColumnElement(
         *other: Any,
         **kwargs: Any,
     ) -> ColumnElement[Any]:
-        return op(self.comparator, *other, **kwargs)  # type: ignore[return-value]  # noqa: E501
+        return op(self.comparator, *other, **kwargs)  # type: ignore[return-value,no-any-return]  # noqa: E501
 
     def reverse_operate(
         self, op: operators.OperatorType, other: Any, **kwargs: Any
     ) -> ColumnElement[Any]:
-        return op(other, self.comparator, **kwargs)  # type: ignore[return-value]  # noqa: E501
+        return op(other, self.comparator, **kwargs)  # type: ignore[return-value,no-any-return]  # noqa: E501
 
     def _bind_param(
         self,
