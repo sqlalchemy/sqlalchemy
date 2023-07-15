@@ -10,124 +10,119 @@
 from __future__ import annotations
 
 import contextlib
-from enum import Enum
 import itertools
 import sys
 import typing
-from typing import Any
-from typing import Callable
-from typing import cast
-from typing import Dict
-from typing import Generic
-from typing import Iterable
-from typing import Iterator
-from typing import List
-from typing import NoReturn
-from typing import Optional
-from typing import overload
-from typing import Sequence
-from typing import Set
-from typing import Tuple
-from typing import Type
-from typing import TYPE_CHECKING
-from typing import TypeVar
-from typing import Union
 import weakref
+from enum import Enum
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    Iterable,
+    Iterator,
+    List,
+    NoReturn,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
-from . import attributes
-from . import bulk_persistence
-from . import context
-from . import descriptor_props
-from . import exc
-from . import identity
-from . import loading
-from . import query
+from .. import engine
+from .. import exc as sa_exc
+from .. import sql, util
+from ..engine import Connection, Engine
+from ..engine.util import TransactionalContext
+from ..event import EventTarget, dispatcher
+from ..inspection import Inspectable, inspect
+from ..sql import Select, TableClause, coercions, dml, roles, visitors
+from ..sql.base import CompileState
+from ..sql.schema import Table
+from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL, ForUpdateArg
+from ..util import IdentitySet
+from ..util.typing import Literal, Protocol
+from . import (
+    attributes,
+    bulk_persistence,
+    context,
+    descriptor_props,
+    exc,
+    identity,
+    loading,
+    query,
+)
 from . import state as statelib
-from ._typing import _O
-from ._typing import insp_is_mapper
-from ._typing import is_composite_class
-from ._typing import is_orm_option
-from ._typing import is_user_defined_option
-from .base import _class_to_mapper
-from .base import _none_set
-from .base import _state_mapper
-from .base import instance_str
-from .base import LoaderCallableStatus
-from .base import object_mapper
-from .base import object_state
-from .base import PassiveFlag
-from .base import state_str
-from .context import FromStatement
-from .context import ORMCompileState
+from ._typing import (
+    _O,
+    insp_is_mapper,
+    is_composite_class,
+    is_orm_option,
+    is_user_defined_option,
+)
+from .base import (
+    LoaderCallableStatus,
+    PassiveFlag,
+    _class_to_mapper,
+    _none_set,
+    _state_mapper,
+    instance_str,
+    object_mapper,
+    object_state,
+    state_str,
+)
+from .context import FromStatement, ORMCompileState
 from .identity import IdentityMap
 from .query import Query
 from .state import InstanceState
-from .state_changes import _StateChange
-from .state_changes import _StateChangeState
-from .state_changes import _StateChangeStates
+from .state_changes import _StateChange, _StateChangeState, _StateChangeStates
 from .unitofwork import UOWTransaction
-from .. import engine
-from .. import exc as sa_exc
-from .. import sql
-from .. import util
-from ..engine import Connection
-from ..engine import Engine
-from ..engine.util import TransactionalContext
-from ..event import dispatcher
-from ..event import EventTarget
-from ..inspection import inspect
-from ..inspection import Inspectable
-from ..sql import coercions
-from ..sql import dml
-from ..sql import roles
-from ..sql import Select
-from ..sql import TableClause
-from ..sql import visitors
-from ..sql.base import CompileState
-from ..sql.schema import Table
-from ..sql.selectable import ForUpdateArg
-from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
-from ..util import IdentitySet
-from ..util.typing import Literal
-from ..util.typing import Protocol
 
 if typing.TYPE_CHECKING:
-    from ._typing import _EntityType
-    from ._typing import _IdentityKeyType
-    from ._typing import _InstanceDict
-    from ._typing import OrmExecuteOptionsParameter
-    from .interfaces import ORMOption
-    from .interfaces import UserDefinedOption
+    from ..engine import CursorResult, Result, Row, RowMapping
+    from ..engine.base import Transaction, TwoPhaseTransaction
+    from ..engine.interfaces import (
+        _CoreAnyExecuteParams,
+        _CoreSingleExecuteParams,
+        _ExecuteOptions,
+    )
+    from ..engine.result import ScalarResult
+    from ..event import _InstanceLevelDispatch
+    from ..sql._typing import (
+        _T0,
+        _T1,
+        _T2,
+        _T3,
+        _T4,
+        _T5,
+        _T6,
+        _T7,
+        _ColumnsClauseArgument,
+        _InfoType,
+    )
+    from ..sql._typing import _TypedColumnClauseArgument as _TCCA
+    from ..sql.base import Executable, ExecutableOption
+    from ..sql.dml import Delete, Insert, Update
+    from ..sql.elements import ClauseElement
+    from ..sql.roles import TypedColumnsClauseRole
+    from ..sql.selectable import ForUpdateParameter, TypedReturnsRows
+    from ._typing import (
+        OrmExecuteOptionsParameter,
+        _EntityType,
+        _IdentityKeyType,
+        _InstanceDict,
+    )
+    from .interfaces import ORMOption, UserDefinedOption
     from .mapper import Mapper
     from .path_registry import PathRegistry
     from .query import RowReturningQuery
-    from ..engine import Result
-    from ..engine import Row
-    from ..engine import RowMapping
-    from ..engine.base import Transaction
-    from ..engine.base import TwoPhaseTransaction
-    from ..engine.interfaces import _CoreAnyExecuteParams
-    from ..engine.interfaces import _CoreSingleExecuteParams
-    from ..engine.interfaces import _ExecuteOptions
-    from ..engine.result import ScalarResult
-    from ..event import _InstanceLevelDispatch
-    from ..sql._typing import _ColumnsClauseArgument
-    from ..sql._typing import _InfoType
-    from ..sql._typing import _T0
-    from ..sql._typing import _T1
-    from ..sql._typing import _T2
-    from ..sql._typing import _T3
-    from ..sql._typing import _T4
-    from ..sql._typing import _T5
-    from ..sql._typing import _T6
-    from ..sql._typing import _T7
-    from ..sql._typing import _TypedColumnClauseArgument as _TCCA
-    from ..sql.base import Executable
-    from ..sql.base import ExecutableOption
-    from ..sql.elements import ClauseElement
-    from ..sql.roles import TypedColumnsClauseRole
-    from ..sql.selectable import ForUpdateParameter
-    from ..sql.selectable import TypedReturnsRows
 
 _T = TypeVar("_T", bound=Any)
 
@@ -2155,6 +2150,19 @@ class Session(_SessionClassMethods, EventTarget):
             return result.scalar()
         else:
             return result
+
+    @overload
+    def execute(
+        self,
+        statement: Delete | Insert | Update,
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        _parent_execute_state: Optional[Any] = None,
+        _add_event: Optional[Any] = None,
+    ) -> CursorResult[Any]:
+        ...
 
     @overload
     def execute(

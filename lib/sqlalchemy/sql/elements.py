@@ -13,105 +13,82 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
-from enum import IntEnum
 import itertools
 import operator
 import re
 import typing
-from typing import AbstractSet
-from typing import Any
-from typing import Callable
-from typing import cast
-from typing import Dict
-from typing import FrozenSet
-from typing import Generic
-from typing import Iterable
-from typing import Iterator
-from typing import List
-from typing import Mapping
-from typing import Optional
-from typing import overload
-from typing import Sequence
-from typing import Set
+from decimal import Decimal
+from enum import IntEnum
+from typing import (
+    TYPE_CHECKING,
+    AbstractSet,
+    Any,
+    Callable,
+    Dict,
+    FrozenSet,
+    Generic,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Set,
+)
 from typing import Tuple as typing_Tuple
-from typing import Type
-from typing import TYPE_CHECKING
-from typing import TypeVar
-from typing import Union
+from typing import Type, TypeVar, Union, cast, overload
 
-from . import coercions
-from . import operators
-from . import roles
-from . import traversals
-from . import type_api
-from ._typing import has_schema_attr
-from ._typing import is_named_from_clause
-from ._typing import is_quoted_name
-from ._typing import is_tuple_type
-from .annotation import Annotated
-from .annotation import SupportsWrappingAnnotations
-from .base import _clone
-from .base import _expand_cloned
-from .base import _generative
-from .base import _NoArg
-from .base import Executable
-from .base import Generative
-from .base import HasMemoized
-from .base import Immutable
-from .base import NO_ARG
-from .base import SingletonConstant
-from .cache_key import MemoizedHasCacheKey
-from .cache_key import NO_CACHE
+from .. import exc, inspection, util
+from ..util import HasMemoized_ro_memoized_attribute, TypingOnly
+from ..util.typing import Literal, Self
+from . import coercions, operators, roles, traversals, type_api
+from ._typing import has_schema_attr, is_named_from_clause, is_quoted_name, is_tuple_type
+from .annotation import Annotated, SupportsWrappingAnnotations
+from .base import (
+    NO_ARG,
+    Executable,
+    Generative,
+    HasMemoized,
+    Immutable,
+    SingletonConstant,
+    _clone,
+    _expand_cloned,
+    _generative,
+    _NoArg,
+)
+from .cache_key import NO_CACHE, MemoizedHasCacheKey
 from .coercions import _document_text_coercion  # noqa
 from .operators import ColumnOperators
 from .traversals import HasCopyInternals
-from .visitors import cloned_traverse
-from .visitors import ExternallyTraversible
-from .visitors import InternalTraversal
-from .visitors import traverse
-from .visitors import Visitable
-from .. import exc
-from .. import inspection
-from .. import util
-from ..util import HasMemoized_ro_memoized_attribute
-from ..util import TypingOnly
-from ..util.typing import Literal
-from ..util.typing import Self
+from .visitors import ExternallyTraversible, InternalTraversal, Visitable, cloned_traverse, traverse
 
 if typing.TYPE_CHECKING:
-    from ._typing import _ColumnExpressionArgument
-    from ._typing import _ColumnExpressionOrStrLabelArgument
-    from ._typing import _InfoType
-    from ._typing import _PropagateAttrsType
-    from ._typing import _TypeEngineArgument
-    from .cache_key import _CacheKeyTraversalType
-    from .cache_key import CacheKey
-    from .compiler import Compiled
-    from .compiler import SQLCompiler
+    from ..engine import Connection, Dialect, Engine
+    from ..engine.interfaces import (
+        CacheStats,
+        CompiledCacheType,
+        CoreExecuteOptionsParameter,
+        SchemaTranslateMapType,
+        _CoreMultiExecuteParams,
+    )
+    from ..engine.result import Result
+    from ..types import NullType
+    from ._typing import (
+        _ColumnExpressionArgument,
+        _ColumnExpressionOrStrLabelArgument,
+        _InfoType,
+        _PropagateAttrsType,
+        _TypeEngineArgument,
+    )
+    from .cache_key import CacheKey, _CacheKeyTraversalType
+    from .compiler import Compiled, SQLCompiler
     from .functions import FunctionElement
     from .operators import OperatorType
-    from .schema import Column
-    from .schema import DefaultGenerator
-    from .schema import FetchedValue
-    from .schema import ForeignKey
-    from .selectable import _SelectIterable
-    from .selectable import FromClause
-    from .selectable import NamedFromClause
-    from .selectable import TextualSelect
+    from .schema import Column, DefaultGenerator, FetchedValue, ForeignKey
+    from .selectable import FromClause, NamedFromClause, TextualSelect, _SelectIterable
     from .sqltypes import TupleType
     from .type_api import TypeEngine
-    from .visitors import _CloneCallableType
-    from .visitors import _TraverseInternalsType
-    from ..engine import Connection
-    from ..engine import Dialect
-    from ..engine import Engine
-    from ..engine.interfaces import _CoreMultiExecuteParams
-    from ..engine.interfaces import CacheStats
-    from ..engine.interfaces import CompiledCacheType
-    from ..engine.interfaces import CoreExecuteOptionsParameter
-    from ..engine.interfaces import SchemaTranslateMapType
-    from ..engine.result import Result
+    from .visitors import _CloneCallableType, _TraverseInternalsType
 
 _NUMERIC = Union[float, Decimal]
 _NUMBER = Union[float, int, Decimal]
@@ -123,11 +100,38 @@ _NT = TypeVar("_NT", bound="_NUMERIC")
 _NMT = TypeVar("_NMT", bound="_NUMBER")
 
 
+@overload
+def literal(
+    value: Any,
+    type_: _TypeEngineArgument[_T],
+    literal_execute: bool = False,
+) -> BindParameter[_T]:
+    ...
+
+
+@overload
+def literal(
+    value: Any,
+    type_: None = None,
+    literal_execute: bool = False,
+) -> BindParameter[NullType]:
+    ...
+
+
+@overload
 def literal(
     value: Any,
     type_: Optional[_TypeEngineArgument[_T]] = None,
     literal_execute: bool = False,
-) -> BindParameter[_T]:
+) -> Union[BindParameter[_T], BindParameter[NullType]]:
+    ...
+
+
+def literal(
+    value: Any,
+    type_: Optional[_TypeEngineArgument[_T]] = None,
+    literal_execute: bool = False,
+) -> Union[BindParameter[_T], BindParameter[NullType]]:
     r"""Return a literal clause, bound to a bind parameter.
 
     Literal clauses are created automatically when non-
@@ -794,14 +798,48 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         ) -> ColumnElement[Any]:
             ...
 
+        @overload
         def op(
             self,
             opstring: str,
             precedence: int = 0,
             is_comparison: bool = False,
-            return_type: Optional[_TypeEngineArgument[_OPT]] = None,
+            *,
+            return_type: _TypeEngineArgument[_OPT],
             python_impl: Optional[Callable[..., Any]] = None,
         ) -> Callable[[Any], BinaryExpression[_OPT]]:
+            ...
+
+        @overload
+        def op(
+            self,
+            opstring: str,
+            precedence: int,
+            is_comparison: bool,
+            return_type: _TypeEngineArgument[_OPT],
+            python_impl: Optional[Callable[..., Any]] = None,
+        ) -> Callable[[Any], BinaryExpression[_OPT]]:
+            ...
+
+        @overload
+        def op(
+            self,
+            opstring: str,
+            precedence: int = 0,
+            is_comparison: bool = False,
+            return_type: Optional[_TypeEngineArgument[Any]] = None,
+            python_impl: Optional[Callable[..., Any]] = None,
+        ) -> Callable[[Any], BinaryExpression[Any]]:
+            ...
+
+        def op(
+            self,
+            opstring: str,
+            precedence: int = 0,
+            is_comparison: bool = False,
+            return_type: Optional[_TypeEngineArgument[Any]] = None,
+            python_impl: Optional[Callable[..., Any]] = None,
+        ) -> Callable[[Any], BinaryExpression[Any]]:
             ...
 
         def bool_op(
@@ -1057,6 +1095,9 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         ) -> ColumnElement[str]:
             ...
 
+        @overload
+        def __add__(self, other: Any) -> ColumnElement[Any]:
+            ...
         def __add__(self, other: Any) -> ColumnElement[Any]:
             ...
 
