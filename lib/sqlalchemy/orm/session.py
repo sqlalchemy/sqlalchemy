@@ -2166,14 +2166,16 @@ class Session(_SessionClassMethods, EventTarget):
     @overload
     def execute(
         self,
-        statement: ReturningDelete | ReturningUpdate | ReturningInsert,
+        statement: ReturningDelete[Any]
+        | ReturningUpdate[Any]
+        | ReturningInsert[Any],
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> CursorResult[Any]:
+    ) -> Result[Any]:
         ...
 
     @overload
