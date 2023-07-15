@@ -63,6 +63,7 @@ class AsyncScopedSessionTest(AsyncFixture):
             "get_nested_transaction",
             "in_transaction",
             "in_nested_transaction",
+            "aclose",
         }
 
         SM = async_scoped_session(

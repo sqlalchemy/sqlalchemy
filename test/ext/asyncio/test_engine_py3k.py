@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import inspect as stdlib_inspect
 from unittest.mock import patch
 
@@ -662,6 +663,18 @@ class AsyncEngineTest(EngineFixture):
         async with engine.connect():
             with expect_raises(exc.TimeoutError):
                 await engine.connect()
+
+    @testing.requires.python310
+    @async_test
+    async def test_engine_aclose(self, async_engine):
+        users = self.tables.users
+        async with contextlib.aclosing(async_engine.connect()) as conn:
+            await conn.start()
+            trans = conn.begin()
+            await trans.start()
+            await conn.execute(delete(users))
+            await trans.commit()
+        assert conn.closed
 
     @testing.requires.queue_pool
     @async_test
