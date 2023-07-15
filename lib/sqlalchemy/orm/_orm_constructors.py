@@ -2182,7 +2182,7 @@ AliasedType = Annotated[Type[_O], "aliased"]
 @overload
 def aliased(
     element: Type[_O],
-    alias: Optional[Union[Alias, Subquery]] = None,
+    alias: Optional[FromClause] = None,
     name: Optional[str] = None,
     flat: bool = False,
     adapt_on_names: bool = False,
@@ -2193,7 +2193,7 @@ def aliased(
 @overload
 def aliased(
     element: Union[AliasedClass[_O], Mapper[_O], AliasedInsp[_O]],
-    alias: Optional[Union[Alias, Subquery]] = None,
+    alias: Optional[FromClause] = None,
     name: Optional[str] = None,
     flat: bool = False,
     adapt_on_names: bool = False,
@@ -2204,7 +2204,7 @@ def aliased(
 @overload
 def aliased(
     element: FromClause,
-    alias: Optional[Union[Alias, Subquery]] = None,
+    alias: None = None,
     name: Optional[str] = None,
     flat: bool = False,
     adapt_on_names: bool = False,
@@ -2214,7 +2214,7 @@ def aliased(
 
 def aliased(
     element: Union[_EntityType[_O], FromClause],
-    alias: Optional[Union[Alias, Subquery]] = None,
+    alias: Optional[FromClause] = None,
     name: Optional[str] = None,
     flat: bool = False,
     adapt_on_names: bool = False,

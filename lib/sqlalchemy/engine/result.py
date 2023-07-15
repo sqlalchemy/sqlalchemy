@@ -1243,7 +1243,7 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
 
             :attr:`_engine.Result.t` - shorter synonym
 
-            :attr:`_engine.Row.t` - :class:`_engine.Row` version
+            :attr:`_engine.Row._t` - :class:`_engine.Row` version
 
         """
 
@@ -1379,6 +1379,11 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
         .. versionadded:: 1.4
 
         :return: a list of :class:`_engine.Row` objects.
+
+        .. seealso::
+
+            :ref:`engine_stream_results` - How to stream a large result set
+            without loading it completely in python.
 
         """
 

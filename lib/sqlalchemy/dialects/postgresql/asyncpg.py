@@ -47,6 +47,29 @@ in conjunction with :func:`_sa.create_engine`::
     ``json_deserializer`` when creating the engine with
     :func:`create_engine` or :func:`create_async_engine`.
 
+.. _asyncpg_multihost:
+
+Multihost Connections
+--------------------------
+
+The asyncpg dialect features support for multiple fallback hosts in the
+same way as that of the psycopg2 and psycopg dialects.  The
+syntax is the same,
+using ``host=<host>:<port>`` combinations as additional query string arguments;
+however, there is no default port, so all hosts must have a complete port number
+present, otherwise an exception is raised::
+
+    engine = create_async_engine(
+        "postgresql+asyncpg://user:password@/dbname?host=HostA:5432&host=HostB:5432&host=HostC:5432"
+    )
+
+For complete background on this syntax, see :ref:`psycopg2_multi_host`.
+
+.. versionadded:: 2.0.18
+
+.. seealso::
+
+    :ref:`psycopg2_multi_host`
 
 .. _asyncpg_prepared_statement_cache:
 
@@ -183,6 +206,7 @@ from .base import PGIdentifierPreparer
 from .base import REGCLASS
 from .base import REGCONFIG
 from .types import BYTEA
+from .types import CITEXT
 from ... import exc
 from ... import pool
 from ... import util
@@ -978,6 +1002,7 @@ class PGDialect_asyncpg(PGDialect):
         {
             sqltypes.String: AsyncpgString,
             sqltypes.ARRAY: AsyncpgARRAY,
+            CITEXT: CITEXT,
             REGCONFIG: AsyncpgREGCONFIG,
             sqltypes.Time: AsyncpgTime,
             sqltypes.Date: AsyncpgDate,
@@ -1060,10 +1085,32 @@ class PGDialect_asyncpg(PGDialect):
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username="user")
+        multihosts, multiports = self._split_multihost_from_url(url)
 
         opts.update(url.query)
+
+        if multihosts:
+            assert multiports
+            if len(multihosts) == 1:
+                opts["host"] = multihosts[0]
+                if multiports[0] is not None:
+                    opts["port"] = multiports[0]
+            elif not all(multihosts):
+                raise exc.ArgumentError(
+                    "All hosts are required to be present"
+                    " for asyncpg multiple host URL"
+                )
+            elif not all(multiports):
+                raise exc.ArgumentError(
+                    "All ports are required to be present"
+                    " for asyncpg multiple host URL"
+                )
+            else:
+                opts["host"] = list(multihosts)
+                opts["port"] = list(multiports)
+        else:
+            util.coerce_kw_type(opts, "port", int)
         util.coerce_kw_type(opts, "prepared_statement_cache_size", int)
-        util.coerce_kw_type(opts, "port", int)
         return ([], opts)
 
     def do_ping(self, dbapi_connection):
@@ -1144,6 +1191,25 @@ class PGDialect_asyncpg(PGDialect):
             format="binary",
         )
 
+    async def _disable_asyncpg_inet_codecs(self, conn):
+        asyncpg_connection = conn._connection
+
+        await asyncpg_connection.set_type_codec(
+            "inet",
+            encoder=lambda s: s,
+            decoder=lambda s: s,
+            schema="pg_catalog",
+            format="text",
+        )
+
+        await asyncpg_connection.set_type_codec(
+            "cidr",
+            encoder=lambda s: s,
+            decoder=lambda s: s,
+            schema="pg_catalog",
+            format="text",
+        )
+
     def on_connect(self):
         """on_connect for asyncpg
 
@@ -1160,6 +1226,9 @@ class PGDialect_asyncpg(PGDialect):
         def connect(conn):
             conn.await_(self.setup_asyncpg_json_codec(conn))
             conn.await_(self.setup_asyncpg_jsonb_codec(conn))
+
+            if self._native_inet_types is False:
+                conn.await_(self._disable_asyncpg_inet_codecs(conn))
             if super_connect is not None:
                 super_connect(conn)
 

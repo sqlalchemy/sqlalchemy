@@ -9,19 +9,31 @@ MyPy_ type checking tool when using SQLAlchemy
 that refer to the :class:`_schema.Column` object directly, rather than
 the :func:`_orm.mapped_column` construct introduced in SQLAlchemy 2.0.
 
+.. deprecated:: 2.0
+
+    **The SQLAlchemy Mypy Plugin is DEPRECATED, and will be removed possibly
+    as early as the SQLAlchemy 2.1 release.  We would urge users to please
+    migrate away from it ASAP.**
+
+    This plugin cannot be maintained across constantly changing releases
+    of mypy and its stability going forward CANNOT be guaranteed.
+
+    Modern SQLAlchemy now offers
+    :ref:`fully pep-484 compliant mapping syntaxes <whatsnew_20_orm_declarative_typing>`;
+    see the linked section for migration details.
+
 .. topic:: SQLAlchemy Mypy Plugin Status Update
 
-   **Updated December 2022**
+   **Updated July 2023**
 
    For SQLAlchemy 2.0, the Mypy plugin continues to work at the level at which
-   it reached in the SQLAlchemy 1.4 release.  However, SQLAlchemy 2.0,
-   when released, will feature an
+   it reached in the SQLAlchemy 1.4 release.  SQLAlchemy 2.0 however features
+   an
    :ref:`all new typing system <whatsnew_20_orm_declarative_typing>`
    for ORM Declarative models that removes the need for the Mypy plugin and
    delivers much more consistent behavior with generally superior capabilities.
    Note that this new capability is **not
-   part of SQLAlchemy 1.4, it is only in SQLAlchemy 2.0, which is out with beta
-   releases as of December 2022**.
+   part of SQLAlchemy 1.4, it is only in SQLAlchemy 2.0**.
 
    The SQLAlchemy Mypy plugin, while it has technically never left the "alpha"
    stage, should **now be considered as deprecated in SQLAlchemy 2.0, even
@@ -38,17 +50,14 @@ the :func:`_orm.mapped_column` construct introduced in SQLAlchemy 2.0.
    patterns which are reported regularly.
 
    For these reasons, new non-regression issues reported against the Mypy
-   plugin are unlikely to be fixed. When SQLAlchemy 2.0 is released, it will
-   continue to include the plugin, which will have been updated to continue to
-   function as well as it does in SQLAlchemy 1.4, when running under SQLAlchemy
-   2.0. **Existing code that passes Mypy checks using the plugin with
-   SQLAlchemy 1.4 installed will continue to pass all checks in SQLAlchemy 2.0
-   without any changes required, provided the plugin is still used. The
-   upcoming API to be released with SQLAlchemy 2.0 is fully backwards
-   compatible with the SQLAlchemy 1.4 API and Mypy plugin behavior.**
+   plugin are unlikely to be fixed.  **Existing code that passes Mypy checks
+   using the plugin with SQLAlchemy 1.4 installed will continue to pass all
+   checks in SQLAlchemy 2.0 without any changes required, provided the plugin
+   is still used. SQLAlchemy 2.0's API is fully
+   backwards compatible with the SQLAlchemy 1.4 API and Mypy plugin behavior.**
 
    End-user code that passes all checks under SQLAlchemy 1.4 with the Mypy
-   plugin will be able to incrementally migrate to the new structures, once
+   plugin may incrementally migrate to the new structures, once
    that code is running exclusively on SQLAlchemy 2.0.  See the section
    :ref:`whatsnew_20_orm_declarative_typing` for background on how this
    migration may proceed.

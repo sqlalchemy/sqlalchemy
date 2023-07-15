@@ -11,6 +11,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import insert
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import literal
 from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import String
@@ -2241,6 +2242,58 @@ class NewStyleExecutionTest(_fixtures.FixtureTest):
 
         is_true(inspect(u1).detached)
         is_(inspect(u1).session, None)
+
+    @testing.variation("construct", ["select", "update", "delete", "insert"])
+    def test_core_sql_w_embedded_orm(self, construct: testing.Variation):
+        """test #10098"""
+        user_table = self.tables.users
+
+        sess = fixture_session()
+
+        subq_1 = (
+            sess.query(user_table.c.id).where(
+                user_table.c.id == 10
+            )  # note user 10 exists but has no addresses, so
+            # this is significant for the test here
+            .scalar_subquery()
+        )
+
+        if construct.update:
+            stmt = (
+                user_table.update()
+                .values(name="xyz")
+                .where(user_table.c.id.in_(subq_1))
+            )
+        elif construct.delete:
+            stmt = user_table.delete().where(user_table.c.id.in_(subq_1))
+        elif construct.select:
+            stmt = select(user_table).where(user_table.c.id.in_(subq_1))
+        elif construct.insert:
+            stmt = insert(user_table).from_select(
+                ["id", "name"], select(subq_1 + 10, literal("xyz"))
+            )
+
+            # force the expected condition for INSERT; can't really get
+            # this to happen "naturally"
+            stmt._propagate_attrs = stmt._propagate_attrs.union(
+                {"compile_state_plugin": "orm", "plugin_subject": None}
+            )
+
+        else:
+            construct.fail()
+
+        # assert that the pre-condition we are specifically testing is
+        # present.  if the implementation changes then this would have
+        # to change also.
+        eq_(
+            stmt._propagate_attrs,
+            {"compile_state_plugin": "orm", "plugin_subject": None},
+        )
+
+        result = sess.execute(stmt)
+
+        if construct.select:
+            result.all()
 
 
 class FlushWarningsTest(fixtures.MappedTest):

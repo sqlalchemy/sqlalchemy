@@ -17,6 +17,10 @@ from ...sql import sqltypes
 from ...sql import type_api
 from ...util.typing import Literal
 
+if TYPE_CHECKING:
+    from ...sql.operators import OperatorType
+    from ...sql.type_api import TypeEngine
+
 _DECIMAL_TYPES = (1231, 1700)
 _FLOAT_TYPES = (700, 701, 1021, 1022)
 _INT_TYPES = (20, 21, 23, 26, 1005, 1007, 1016)
@@ -291,3 +295,8 @@ class CITEXT(sqltypes.TEXT):
     """
 
     __visit_name__ = "CITEXT"
+
+    def coerce_compared_value(
+        self, op: Optional[OperatorType], value: Any
+    ) -> TypeEngine[Any]:
+        return self

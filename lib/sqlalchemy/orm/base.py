@@ -151,6 +151,8 @@ class PassiveFlag(FastIntFlag):
     DEFERRED_HISTORY_LOAD = 256
     """indicates special load of the previous value of an attribute"""
 
+    INCLUDE_PENDING_MUTATIONS = 512
+
     # pre-packaged sets of flags used as inputs
     PASSIVE_OFF = (
         RELATED_OBJECT_OK | NON_PERSISTENT_OK | INIT_OK | CALLABLES_OK | SQL_OK
@@ -191,6 +193,7 @@ class PassiveFlag(FastIntFlag):
     NO_AUTOFLUSH,
     NO_RAISE,
     DEFERRED_HISTORY_LOAD,
+    INCLUDE_PENDING_MUTATIONS,
     PASSIVE_OFF,
     PASSIVE_RETURN_NO_VALUE,
     PASSIVE_NO_INITIALIZE,

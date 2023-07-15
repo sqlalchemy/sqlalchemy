@@ -9,8 +9,204 @@
 
 
 .. changelog::
-    :version: 2.0.18
+    :version: 2.0.20
     :include_notes_from: unreleased_20
+
+.. changelog::
+    :version: 2.0.19
+    :released: July 15, 2023
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10089
+
+        Fixed issue where setting a relationship collection directly, where an
+        object in the new collection were already present, would not trigger a
+        cascade event for that object, leading to it not being added to the
+        :class:`_orm.Session` if it were not already present.  This is similar in
+        nature to :ticket:`6471` and is a more apparent issue due to the removal of
+        ``cascade_backrefs`` in the 2.0 series.  The
+        :meth:`_orm.AttributeEvents.append_wo_mutation` event added as part of
+        :ticket:`6471` is now also emitted for existing members of a collection
+        that are present in a bulk set of that same collection.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 10093
+
+        Renamed :attr:`_result.Row.t` and :meth:`_result.Row.tuple` to
+        :attr:`_result.Row._t` and :meth:`_result.Row._tuple`; this is to suit the
+        policy that all methods and pre-defined attributes on :class:`.Row` should
+        be in the style of Python standard library ``namedtuple`` where all fixed
+        names have a leading underscore, to avoid name conflicts with existing
+        column names.   The previous method/attribute is now deprecated and will
+        emit a deprecation warning.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 10069
+
+        Fixed regression caused by improvements to PostgreSQL URL parsing in
+        :ticket:`10004` where "host" query string arguments that had colons in
+        them, to support various third party proxy servers and/or dialects, would
+        not parse correctly as these were evaluted as ``host:port`` combinations.
+        Parsing has been updated to consider a colon as indicating a ``host:port``
+        value only if the hostname contains only alphanumeric characters with dots
+        or dashes only (e.g. no slashes), followed by exactly one colon followed by
+        an all-integer token of zero or more integers.  In all other cases, the
+        full string is taken as a host.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 10079
+
+        Added detection for non-string, non-:class:`_engine.URL` objects to the
+        :func:`_engine.make_url` function, allowing ``ArgumentError`` to be thrown
+        immediately, rather than causing failures later on.  Special logic ensures
+        that mock forms of :class:`_engine.URL` are allowed through.  Pull request
+        courtesy Grigoriev Semyon.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10090
+
+        Fixed issue where objects that were associated with an unloaded collection
+        via backref, but were not merged into the :class:`_orm.Session` due to the
+        removal of ``cascade_backrefs`` in the 2.0 series, would not emit a warning
+        that these objects were not being included in a flush, even though they
+        were pending members of the collection; in other such cases, a warning is
+        emitted when a collection being flushed contains non-attached objects which
+        will be essentially discarded.  The addition of the warning for
+        backref-pending collection members establishes greater consistency with
+        collections that may be present or non-present and possibly flushed or not
+        flushed at different times based on different relationship loading
+        strategies.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 10096
+
+        Fixed issue where comparisons to the :class:`_postgresql.CITEXT` datatype
+        would cast the right side to ``VARCHAR``, leading to the right side not
+        being interpreted as a ``CITEXT`` datatype, for the asyncpg, psycopg3 and
+        pg80000 dialects.   This led to the :class:`_postgresql.CITEXT` type being
+        essentially unusable for practical use; this is now fixed and the test
+        suite has been corrected to properly assert that expressions are rendered
+        correctly.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 10098
+
+        Fixed additional regression caused by :ticket:`9805` where more aggressive
+        propagation of the "ORM" flag on statements could lead to an internal
+        attribute error when embedding an ORM :class:`.Query` construct that
+        nonetheless contained no ORM entities within a Core SQL statement, in this
+        case ORM-enabled UPDATE and DELETE statements.
+
+
+.. changelog::
+    :version: 2.0.18
+    :released: July 5, 2023
+
+    .. change::
+        :tags: usecase, typing
+        :tickets: 10054
+
+        Improved typing when using standalone operator functions from
+        ``sqlalchemy.sql.operators`` such as ``sqlalchemy.sql.operators.eq``.
+
+    .. change::
+        :tags: usecase, mariadb, reflection
+        :tickets: 10028
+
+        Allowed reflecting :class:`_types.UUID` columns from MariaDB. This allows
+        Alembic to properly detect the type of such columns in existing MariaDB
+        databases.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 9945
+
+        Added new parameter ``native_inet_types=False`` to all PostgreSQL
+        dialects, which indicates converters used by the DBAPI to
+        convert rows from PostgreSQL :class:`.INET` and :class:`.CIDR` columns
+        into Python ``ipaddress`` datatypes should be disabled, returning strings
+        instead.  This allows code written to work with strings for these datatypes
+        to be migrated to asyncpg, psycopg, or pg8000 without code changes
+        other than adding this parameter to the :func:`_sa.create_engine`
+        or :func:`_asyncio.create_async_engine` function call.
+
+        .. seealso::
+
+            :ref:`postgresql_network_datatypes`
+
+    .. change::
+        :tags: usecase, extensions
+        :tickets: 10013
+
+        Added new option to :func:`.association_proxy`
+        :paramref:`.association_proxy.create_on_none_assignment`; when an
+        association proxy which refers to a scalar relationship is assigned the
+        value ``None``, and the referenced object is not present, a new object is
+        created via the creator.  This was apparently an undefined behavior in the
+        1.2 series that was silently removed.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 10061
+
+        Fixed some of the typing within the :func:`_orm.aliased` construct to
+        correctly accept a :class:`.Table` object that's been aliased with
+        :meth:`.Table.alias`, as well as general support for :class:`.FromClause`
+        objects to be passed as the "selectable" argument, since this is all
+        supported.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 10025
+
+        Adjusted the :paramref:`_sa.create_engine.schema_translate_map` feature
+        such that **all** schema names in the statement are now tokenized,
+        regardless of whether or not a specific name is in the immediate schema
+        translate map given, and to fallback to substituting the original name when
+        the key is not in the actual schema translate map at execution time.  These
+        two changes allow for repeated use of a compiled object with schema
+        schema_translate_maps that include or dont include various keys on each
+        run, allowing cached SQL constructs to continue to function at runtime when
+        schema translate maps with different sets of keys are used each time. In
+        addition, added detection of schema_translate_map dictionaries which gain
+        or lose a ``None`` key across calls for the same statement, which affects
+        compilation of the statement and is not compatible with caching; an
+        exception is raised for these scenarios.
+
+    .. change::
+        :tags: bug, mssql, sql
+        :tickets: 9932
+
+        Fixed issue where performing :class:`.Cast` to a string type with an
+        explicit collation would render the COLLATE clause inside the CAST
+        function, which resulted in a syntax error.
+
+    .. change::
+        :tags: usecase, mssql
+        :tickets: 7340
+
+        Added support for creation and reflection of COLUMNSTORE
+        indexes in MSSQL dialect. Can be specified on indexes
+        specifying ``mssql_columnstore=True``.
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 10004
+
+        Added multi-host support for the asyncpg dialect.  General improvements and
+        error checking added to the PostgreSQL URL routines for the "multihost" use
+        case added as well.  Pull request courtesy Ilia Dmitriev.
+
+        .. seealso::
+
+            :ref:`asyncpg_multihost`
 
 .. changelog::
     :version: 2.0.17

@@ -14,8 +14,67 @@ This document details individual issue-level changes made throughout
 
 
 .. changelog::
-    :version: 1.4.49
+    :version: 1.4.50
     :include_notes_from: unreleased_14
+
+.. changelog::
+    :version: 1.4.49
+    :released: July 5, 2023
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 10042
+        :versions: 2.0.18
+
+        Fixed issue where the :meth:`_sql.ColumnOperators.regexp_match`
+        when using "flags" would not produce a "stable" cache key, that
+        is, the cache key would keep changing each time causing cache pollution.
+        The same issue existed for :meth:`_sql.ColumnOperators.regexp_replace`
+        with both the flags and the actual replacement expression.
+        The flags are now represented as fixed modifier strings rendered as
+        safestrings rather than bound parameters, and the replacement
+        expression is established within the primary portion of the "binary"
+        element so that it generates an appropriate cache key.
+
+        Note that as part of this change, the
+        :paramref:`_sql.ColumnOperators.regexp_match.flags` and
+        :paramref:`_sql.ColumnOperators.regexp_replace.flags` have been modified to
+        render as literal strings only, whereas previously they were rendered as
+        full SQL expressions, typically bound parameters.   These parameters should
+        always be passed as plain Python strings and not as SQL expression
+        constructs; it's not expected that SQL expression constructs were used in
+        practice for this parameter, so this is a backwards-incompatible change.
+
+        The change also modifies the internal structure of the expression
+        generated, for :meth:`_sql.ColumnOperators.regexp_replace` with or without
+        flags, and for :meth:`_sql.ColumnOperators.regexp_match` with flags. Third
+        party dialects which may have implemented regexp implementations of their
+        own (no such dialects could be located in a search, so impact is expected
+        to be low) would need to adjust the traversal of the structure to
+        accommodate.
+
+
+    .. change::
+        :tags: bug, sql
+        :versions: 2.0.18
+
+        Fixed issue in mostly-internal :class:`.CacheKey` construct where the
+        ``__ne__()`` operator were not properly implemented, leading to nonsensical
+        results when comparing :class:`.CacheKey` instances to each other.
+
+
+
+
+    .. change::
+        :tags: bug, extensions
+        :versions: 2.0.17
+
+        Fixed issue in mypy plugin for use with mypy 1.4.
+
+    .. change::
+        :tags: platform, usecase
+
+        Compatibility improvements to work fully with Python 3.12
 
 .. changelog::
     :version: 1.4.48

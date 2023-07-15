@@ -1470,6 +1470,42 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
                 sa_exc.SAWarning, "not in session", sess.flush
             )
 
+    def test_m2o_backref_future_child_pending(self):
+        """test #10090"""
+
+        User, Address = self.classes.User, self.classes.Address
+
+        self._one_to_many_fixture(o2m=True, m2o=True, m2o_cascade=False)
+        with Session(testing.db, future=True) as sess:
+            u1 = User(name="u1")
+            sess.add(u1)
+            sess.flush()
+
+            a1 = Address(email_address="a1")
+            a1.user = u1
+            assert a1 not in sess
+            assert_warns_message(
+                sa_exc.SAWarning, "not in session", sess.flush
+            )
+
+    def test_m2m_backref_future_child_pending(self):
+        """test #10090"""
+
+        Item, Keyword = self.classes.Item, self.classes.Keyword
+
+        self._many_to_many_fixture(fwd=True, bkd=True)
+        with Session(testing.db, future=True) as sess:
+            i1 = Item(description="i1")
+            sess.add(i1)
+            sess.flush()
+
+            k1 = Keyword(name="k1")
+            k1.items.append(i1)
+            assert k1 not in sess
+            assert_warns_message(
+                sa_exc.SAWarning, "not in session", sess.flush
+            )
+
     def test_m2o_backref_future_child_expunged(self):
         User, Address = self.classes.User, self.classes.Address
 
@@ -4551,6 +4587,7 @@ class CollectionCascadesNoBackrefTest(fixtures.TestBase):
     @testing.combinations(
         (set, "add"),
         (list, "append"),
+        (list, "assign"),
         (attribute_keyed_dict("key"), "__setitem__"),
         (attribute_keyed_dict("key"), "setdefault"),
         (attribute_keyed_dict("key"), "update_dict"),
@@ -4577,7 +4614,9 @@ class CollectionCascadesNoBackrefTest(fixtures.TestBase):
         assert b1 not in s
         assert b3 not in s
 
-        if methname == "__setitem__":
+        if methname == "assign":
+            a1.bs = [b1, b2]
+        elif methname == "__setitem__":
             meth = getattr(a1.bs, methname)
             meth(b1.key, b1)
             meth(b2.key, b2)

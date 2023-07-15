@@ -1067,6 +1067,7 @@ from ...types import BINARY
 from ...types import BLOB
 from ...types import BOOLEAN
 from ...types import DATE
+from ...types import UUID
 from ...types import VARBINARY
 from ...util import topological
 
@@ -1155,6 +1156,7 @@ ischema_names = {
     "tinyblob": TINYBLOB,
     "tinyint": TINYINT,
     "tinytext": TINYTEXT,
+    "uuid": UUID,
     "varbinary": VARBINARY,
     "varchar": VARCHAR,
     "year": YEAR,
@@ -1703,7 +1705,7 @@ class MySQLCompiler(compiler.SQLCompiler):
 
     def _mariadb_regexp_flags(self, flags, pattern, **kw):
         return "CONCAT('(?', %s, ')', %s)" % (
-            self.process(flags, **kw),
+            self.render_literal_value(flags, sqltypes.STRINGTYPE),
             self.process(pattern, **kw),
         )
 
@@ -1721,7 +1723,7 @@ class MySQLCompiler(compiler.SQLCompiler):
             text = "REGEXP_LIKE(%s, %s, %s)" % (
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
-                self.process(flags, **kw),
+                self.render_literal_value(flags, sqltypes.STRINGTYPE),
             )
             if op_string == " NOT REGEXP ":
                 return "NOT %s" % text
@@ -1736,25 +1738,22 @@ class MySQLCompiler(compiler.SQLCompiler):
 
     def visit_regexp_replace_op_binary(self, binary, operator, **kw):
         flags = binary.modifiers["flags"]
-        replacement = binary.modifiers["replacement"]
         if flags is None:
-            return "REGEXP_REPLACE(%s, %s, %s)" % (
+            return "REGEXP_REPLACE(%s, %s)" % (
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
-                self.process(replacement, **kw),
             )
         elif self.dialect.is_mariadb:
             return "REGEXP_REPLACE(%s, %s, %s)" % (
                 self.process(binary.left, **kw),
-                self._mariadb_regexp_flags(flags, binary.right),
-                self.process(replacement, **kw),
+                self._mariadb_regexp_flags(flags, binary.right.clauses[0]),
+                self.process(binary.right.clauses[1], **kw),
             )
         else:
-            return "REGEXP_REPLACE(%s, %s, %s, %s)" % (
+            return "REGEXP_REPLACE(%s, %s, %s)" % (
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
-                self.process(replacement, **kw),
-                self.process(flags, **kw),
+                self.render_literal_value(flags, sqltypes.STRINGTYPE),
             )
 
 

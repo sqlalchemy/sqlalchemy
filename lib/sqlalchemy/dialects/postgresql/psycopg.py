@@ -68,6 +68,7 @@ from .base import REGCONFIG
 from .json import JSON
 from .json import JSONB
 from .json import JSONPathType
+from .types import CITEXT
 from ... import pool
 from ... import util
 from ...engine import AdaptedConnection
@@ -271,6 +272,7 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
             sqltypes.String: _PGString,
             REGCONFIG: _PGREGCONFIG,
             JSON: _PGJSON,
+            CITEXT: CITEXT,
             sqltypes.JSON: _PGJSON,
             JSONB: _PGJSONB,
             sqltypes.JSON.JSONPathType: _PGJSONPathType,
@@ -309,6 +311,16 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
             self._psycopg_adapters_map = adapters_map = AdaptersMap(
                 self.dbapi.adapters
             )
+
+            if self._native_inet_types is False:
+                import psycopg.types.string
+
+                adapters_map.register_loader(
+                    "inet", psycopg.types.string.TextLoader
+                )
+                adapters_map.register_loader(
+                    "cidr", psycopg.types.string.TextLoader
+                )
 
             if self._json_deserializer:
                 from psycopg.types.json import set_json_loads

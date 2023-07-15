@@ -1,6 +1,10 @@
 import datetime
 import decimal
 from enum import Enum as _PY_Enum
+from ipaddress import IPv4Address
+from ipaddress import IPv4Network
+from ipaddress import IPv6Address
+from ipaddress import IPv6Network
 import re
 import uuid
 
@@ -40,6 +44,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.dialects.postgresql import array_agg
+from sqlalchemy.dialects.postgresql import asyncpg
 from sqlalchemy.dialects.postgresql import base
 from sqlalchemy.dialects.postgresql import CITEXT
 from sqlalchemy.dialects.postgresql import DATEMULTIRANGE
@@ -58,6 +63,7 @@ from sqlalchemy.dialects.postgresql import NamedType
 from sqlalchemy.dialects.postgresql import NUMMULTIRANGE
 from sqlalchemy.dialects.postgresql import NUMRANGE
 from sqlalchemy.dialects.postgresql import pg8000
+from sqlalchemy.dialects.postgresql import psycopg
 from sqlalchemy.dialects.postgresql import psycopg2
 from sqlalchemy.dialects.postgresql import psycopg2cffi
 from sqlalchemy.dialects.postgresql import Range
@@ -5939,9 +5945,10 @@ class JSONBCastSuiteTest(suite.JSONLegacyStringCastIndexTest):
     datatype = JSONB
 
 
-class CITextTest(fixtures.TablesTest):
+class CITextTest(testing.AssertsCompiledSQL, fixtures.TablesTest):
     __requires__ = ("citext",)
     __only_on__ = "postgresql"
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -5952,15 +5959,213 @@ class CITextTest(fixtures.TablesTest):
             Column("caseignore_text", CITEXT),
         )
 
-    def test_citext(self, connection):
+    @testing.variation(
+        "inserts",
+        ["multiple", "single", "insertmanyvalues", "imv_deterministic"],
+    )
+    def test_citext_round_trip(self, connection, inserts):
         ci_test_table = self.tables.ci_test_table
-        connection.execute(
-            ci_test_table.insert(),
+
+        data = [
             {"caseignore_text": "Hello World"},
-        )
+            {"caseignore_text": "greetings all"},
+        ]
+
+        if inserts.single:
+            for d in data:
+                connection.execute(
+                    ci_test_table.insert(),
+                    d,
+                )
+        elif inserts.multiple:
+            connection.execute(ci_test_table.insert(), data)
+        elif inserts.insertmanyvalues:
+            result = connection.execute(
+                ci_test_table.insert().returning(ci_test_table.c.id), data
+            )
+            result.all()
+        elif inserts.imv_deterministic:
+            result = connection.execute(
+                ci_test_table.insert().returning(
+                    ci_test_table.c.id, sort_by_parameter_order=True
+                ),
+                data,
+            )
+            result.all()
+        else:
+            inserts.fail()
 
         ret = connection.execute(
-            select(ci_test_table.c.caseignore_text == "hello world")
+            select(func.count(ci_test_table.c.id)).where(
+                ci_test_table.c.caseignore_text == "hello world"
+            )
         ).scalar()
 
-        assert ret is not None
+        eq_(ret, 1)
+
+        ret = connection.execute(
+            select(func.count(ci_test_table.c.id)).where(
+                ci_test_table.c.caseignore_text == "Greetings All"
+            )
+        ).scalar()
+
+        eq_(ret, 1)
+
+
+class CITextCastTest(testing.AssertsCompiledSQL, fixtures.TestBase):
+    @testing.combinations(
+        (psycopg.dialect(),),
+        (psycopg2.dialect(),),
+        (asyncpg.dialect(),),
+        (pg8000.dialect(),),
+    )
+    def test_cast(self, dialect):
+        ci_test_table = Table(
+            "ci_test_table",
+            MetaData(),
+            Column("id", Integer, primary_key=True),
+            Column("caseignore_text", CITEXT),
+        )
+
+        stmt = select(ci_test_table).where(
+            ci_test_table.c.caseignore_text == "xyz"
+        )
+
+        param = {
+            "format": "%s",
+            "numeric_dollar": "$1",
+            "pyformat": "%(caseignore_text_1)s",
+        }[dialect.paramstyle]
+        expected = (
+            "SELECT ci_test_table.id, ci_test_table.caseignore_text "
+            "FROM ci_test_table WHERE "
+            # currently CITEXT has render_bind_cast turned off.
+            # if there's a need to turn it on, change as follows:
+            # f"ci_test_table.caseignore_text = {param}::CITEXT"
+            f"ci_test_table.caseignore_text = {param}"
+        )
+        self.assert_compile(stmt, expected, dialect=dialect)
+
+
+class InetRoundTripTests(fixtures.TestBase):
+    __backend__ = True
+    __only_on__ = "postgresql"
+
+    def _combinations():
+        return testing.combinations(
+            (
+                postgresql.INET,
+                lambda: [
+                    "1.1.1.1",
+                    "192.168.1.1",
+                    "10.1.2.25",
+                    "192.168.22.5",
+                ],
+                IPv4Address,
+            ),
+            (
+                postgresql.INET,
+                lambda: [
+                    "2001:db8::1000",
+                ],
+                IPv6Address,
+            ),
+            (
+                postgresql.CIDR,
+                lambda: [
+                    "10.0.0.0/8",
+                    "192.168.1.0/24",
+                    "192.168.0.0/16",
+                    "192.168.1.25/32",
+                ],
+                IPv4Network,
+            ),
+            (
+                postgresql.CIDR,
+                lambda: [
+                    "::ffff:1.2.3.0/120",
+                ],
+                IPv6Network,
+            ),
+            argnames="datatype,values,pytype",
+        )
+
+    @_combinations()
+    def test_default_native_inet_types(
+        self, datatype, values, pytype, connection, metadata
+    ):
+        t = Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", datatype),
+        )
+        metadata.create_all(connection)
+
+        connection.execute(
+            t.insert(),
+            [
+                {"id": i, "data": val}
+                for i, val in enumerate(values(), start=1)
+            ],
+        )
+
+        if testing.against(["+psycopg", "+asyncpg"]) or (
+            testing.against("+pg8000")
+            and issubclass(datatype, postgresql.INET)
+        ):
+            eq_(
+                connection.scalars(select(t.c.data).order_by(t.c.id)).all(),
+                [pytype(val) for val in values()],
+            )
+        else:
+            eq_(
+                connection.scalars(select(t.c.data).order_by(t.c.id)).all(),
+                values(),
+            )
+
+    @_combinations()
+    def test_str_based_inet_handlers(
+        self, datatype, values, pytype, testing_engine, metadata
+    ):
+        t = Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", datatype),
+        )
+
+        e = testing_engine(options={"native_inet_types": False})
+        with e.begin() as connection:
+            metadata.create_all(connection)
+
+            connection.execute(
+                t.insert(),
+                [
+                    {"id": i, "data": val}
+                    for i, val in enumerate(values(), start=1)
+                ],
+            )
+
+        with e.connect() as connection:
+            eq_(
+                connection.scalars(select(t.c.data).order_by(t.c.id)).all(),
+                values(),
+            )
+
+    @testing.only_on("+psycopg2")
+    def test_not_impl_psycopg2(self, testing_engine):
+        with expect_raises_message(
+            NotImplementedError,
+            "The psycopg2 dialect does not implement ipaddress type handling",
+        ):
+            testing_engine(options={"native_inet_types": True})
+
+    @testing.only_on("+pg8000")
+    def test_not_impl_pg8000(self, testing_engine):
+        with expect_raises_message(
+            NotImplementedError,
+            "The pg8000 dialect does not fully implement "
+            "ipaddress type handling",
+        ):
+            testing_engine(options={"native_inet_types": True})

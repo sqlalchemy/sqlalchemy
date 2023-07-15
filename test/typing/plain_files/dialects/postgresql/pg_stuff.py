@@ -9,8 +9,10 @@ from sqlalchemy import Integer
 from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import Text
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import array
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase
@@ -68,3 +70,10 @@ reveal_type(t1.data)
 
 # EXPECTED_TYPE: UUID
 reveal_type(t1.ident)
+
+unique = UniqueConstraint(name="my_constraint")
+insert(Test).on_conflict_do_nothing(
+    "foo", [Test.id], Test.id > 0
+).on_conflict_do_update(
+    unique, ["foo"], Test.id > 0, {"id": 42, Test.ident: 99}, Test.id == 22
+).excluded.foo.desc()

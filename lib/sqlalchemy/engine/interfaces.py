@@ -71,7 +71,7 @@ if TYPE_CHECKING:
     from ..sql.type_api import _TypeMemoDict
     from ..sql.type_api import TypeEngine
 
-ConnectArgsType = Tuple[Tuple[str], MutableMapping[str, Any]]
+ConnectArgsType = Tuple[Sequence[str], MutableMapping[str, Any]]
 
 _T = TypeVar("_T", bound="Any")
 
@@ -1233,7 +1233,7 @@ class Dialect(EventTarget):
             def create_connect_args(self, url):
                 opts = url.translate_connect_args()
                 opts.update(url.query)
-                return [[], opts]
+                return ([], opts)
 
         :param url: a :class:`.URL` object
 

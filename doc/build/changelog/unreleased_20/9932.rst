@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, mssql, sql
-    :tickets: 9932
-
-    Fixed issue where performing :class:`.Cast` to a string type with an
-    explicit collation would render the COLLATE clause inside the CAST
-    function, which resulted in a syntax error.

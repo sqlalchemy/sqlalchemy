@@ -1,26 +1,37 @@
+# mysql/dml.py
 # Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
+from __future__ import annotations
 
+from typing import Any
+from typing import List
+from typing import Mapping
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 from ... import exc
 from ... import util
+from ...sql._typing import _DMLTableArgument
 from ...sql.base import _exclusive_against
 from ...sql.base import _generative
 from ...sql.base import ColumnCollection
+from ...sql.base import ReadOnlyColumnCollection
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
+from ...sql.elements import KeyedColumnElement
 from ...sql.expression import alias
+from ...sql.selectable import NamedFromClause
 from ...util.typing import Self
 
 
 __all__ = ("Insert", "insert")
 
 
-def insert(table):
+def insert(table: _DMLTableArgument) -> Insert:
     """Construct a MySQL/MariaDB-specific variant :class:`_mysql.Insert`
     construct.
 
@@ -55,7 +66,9 @@ class Insert(StandardInsert):
     inherit_cache = False
 
     @property
-    def inserted(self):
+    def inserted(
+        self,
+    ) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
         """Provide the "inserted" namespace for an ON DUPLICATE KEY UPDATE
         statement
 
@@ -87,7 +100,7 @@ class Insert(StandardInsert):
         return self.inserted_alias.columns
 
     @util.memoized_property
-    def inserted_alias(self):
+    def inserted_alias(self) -> NamedFromClause:
         return alias(self.table, name="inserted")
 
     @_generative
@@ -98,7 +111,7 @@ class Insert(StandardInsert):
             "has an ON DUPLICATE KEY clause present"
         },
     )
-    def on_duplicate_key_update(self, *args, **kw) -> Self:
+    def on_duplicate_key_update(self, *args: _UpdateArg, **kw: Any) -> Self:
         r"""
         Specifies the ON DUPLICATE KEY UPDATE clause.
 
@@ -157,19 +170,22 @@ class Insert(StandardInsert):
         else:
             values = kw
 
-        inserted_alias = getattr(self, "inserted_alias", None)
-        self._post_values_clause = OnDuplicateClause(inserted_alias, values)
+        self._post_values_clause = OnDuplicateClause(
+            self.inserted_alias, values
+        )
         return self
 
 
 class OnDuplicateClause(ClauseElement):
     __visit_name__ = "on_duplicate_key_update"
 
-    _parameter_ordering = None
+    _parameter_ordering: Optional[List[str]] = None
 
     stringify_dialect = "mysql"
 
-    def __init__(self, inserted_alias, update):
+    def __init__(
+        self, inserted_alias: NamedFromClause, update: _UpdateArg
+    ) -> None:
         self.inserted_alias = inserted_alias
 
         # auto-detect that parameters should be ordered.   This is copied from
@@ -196,3 +212,8 @@ class OnDuplicateClause(ClauseElement):
                 "of a Table object"
             )
         self.update = update
+
+
+_UpdateArg = Union[
+    Mapping[Any, Any], List[Tuple[str, Any]], ColumnCollection[Any, Any]
+]

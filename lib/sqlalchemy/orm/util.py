@@ -114,10 +114,8 @@ if typing.TYPE_CHECKING:
     from ..sql.base import ReadOnlyColumnCollection
     from ..sql.elements import BindParameter
     from ..sql.selectable import _ColumnsClauseElement
-    from ..sql.selectable import Alias
     from ..sql.selectable import Select
     from ..sql.selectable import Selectable
-    from ..sql.selectable import Subquery
     from ..sql.visitors import anon_map
     from ..util.typing import _AnnotationScanType
     from ..util.typing import ArgsTypeProcotol
@@ -1024,7 +1022,7 @@ class AliasedInsp(
     def _alias_factory(
         cls,
         element: Union[_EntityType[_O], FromClause],
-        alias: Optional[Union[Alias, Subquery]] = None,
+        alias: Optional[FromClause] = None,
         name: Optional[str] = None,
         flat: bool = False,
         adapt_on_names: bool = False,

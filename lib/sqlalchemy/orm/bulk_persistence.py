@@ -656,9 +656,9 @@ class BulkUDCompileState(ORMDMLState):
         except KeyError:
             assert False, "statement had 'orm' plugin but no plugin_subject"
         else:
-            bind_arguments["mapper"] = plugin_subject.mapper
-
-        update_options += {"_subject_mapper": plugin_subject.mapper}
+            if plugin_subject:
+                bind_arguments["mapper"] = plugin_subject.mapper
+                update_options += {"_subject_mapper": plugin_subject.mapper}
 
         if "parententity" not in statement.table._annotations:
             update_options += {"_dml_strategy": "core_only"}
@@ -1164,9 +1164,9 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
         except KeyError:
             assert False, "statement had 'orm' plugin but no plugin_subject"
         else:
-            bind_arguments["mapper"] = plugin_subject.mapper
-
-        insert_options += {"_subject_mapper": plugin_subject.mapper}
+            if plugin_subject:
+                bind_arguments["mapper"] = plugin_subject.mapper
+                insert_options += {"_subject_mapper": plugin_subject.mapper}
 
         if not params:
             if insert_options._dml_strategy == "auto":

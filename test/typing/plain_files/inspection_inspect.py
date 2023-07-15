@@ -1,19 +1,12 @@
-"""
-test inspect()
+from typing import List
 
-however this is not really working
-
-"""
-from typing import Any
-from typing import Optional
-
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import inspect
-from sqlalchemy import Integer
-from sqlalchemy import String
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBaseNoMeta
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Mapper
 
 
@@ -24,24 +17,50 @@ class Base(DeclarativeBase):
 class A(Base):
     __tablename__ = "a"
 
-    id = Column(Integer, primary_key=True)
-    data = Column(String)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    data: Mapped[str]
 
+
+class BaseNoMeta(DeclarativeBaseNoMeta):
+    pass
+
+
+class B(BaseNoMeta):
+    __tablename__ = "b"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    data: Mapped[str]
+
+
+# EXPECTED_TYPE: Mapper[Any]
+reveal_type(A.__mapper__)
+# EXPECTED_TYPE: Mapper[Any]
+reveal_type(B.__mapper__)
 
 a1 = A(data="d")
+b1 = B(data="d")
 
 e = create_engine("sqlite://")
 
-# TODO: I can't get these to work, pylance and mypy both don't want
-# to accommodate for different types for the first argument
+insp_a1 = inspect(a1)
 
-t: Optional[Any] = inspect(a1)
+t: bool = insp_a1.transient
+# EXPECTED_TYPE: InstanceState[A]
+reveal_type(insp_a1)
+# EXPECTED_TYPE: InstanceState[B]
+reveal_type(inspect(b1))
 
-m: Mapper[Any] = inspect(A)
+m: Mapper[A] = inspect(A)
+# EXPECTED_TYPE: Mapper[A]
+reveal_type(inspect(A))
+# EXPECTED_TYPE: Mapper[B]
+reveal_type(inspect(B))
 
-inspect(e).get_table_names()
+tables: List[str] = inspect(e).get_table_names()
 
 i: Inspector = inspect(e)
+# EXPECTED_TYPE: Inspector
+reveal_type(inspect(e))
 
 
 with e.connect() as conn:
