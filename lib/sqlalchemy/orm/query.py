@@ -100,6 +100,7 @@ if TYPE_CHECKING:
     from ._typing import _ExternalEntityType
     from ._typing import _InternalEntityType
     from ._typing import SynchronizeSessionArgument
+    from .decl_api import DeclarativeBase
     from .mapper import Mapper
     from .path_registry import PathRegistry
     from .session import _PKIdentityArgument
@@ -144,7 +145,6 @@ if TYPE_CHECKING:
     from ..sql.selectable import FromClause
     from ..sql.selectable import ScalarSelect
     from ..sql.selectable import Subquery
-    from .decl_api import DeclarativeBase
 
 
 __all__ = ["Query", "QueryContext"]
@@ -1791,7 +1791,7 @@ class Query(
             Union[
                 _ColumnExpressionArgument[Any],
                 Sequence[_ColumnExpressionArgument[Any]],
-                type[DeclarativeBase]
+                Type[DeclarativeBase],
             ]
         ] = None,
         skip_locked: bool = False,

@@ -101,7 +101,8 @@ if typing.TYPE_CHECKING:
     from .mapper import Mapper
     from .path_registry import PathRegistry
     from .query import RowReturningQuery
-    from ..engine import Result, CursorResult
+    from ..engine import CursorResult
+    from ..engine import Result
     from ..engine import Row
     from ..engine import RowMapping
     from ..engine.base import Transaction
@@ -124,11 +125,13 @@ if typing.TYPE_CHECKING:
     from ..sql._typing import _TypedColumnClauseArgument as _TCCA
     from ..sql.base import Executable
     from ..sql.base import ExecutableOption
+    from ..sql.dml import Delete
+    from ..sql.dml import Insert
+    from ..sql.dml import Update
     from ..sql.elements import ClauseElement
     from ..sql.roles import TypedColumnsClauseRole
     from ..sql.selectable import ForUpdateParameter
     from ..sql.selectable import TypedReturnsRows
-    from ..sql.dml import Delete, Insert, Update
 
 _T = TypeVar("_T", bound=Any)
 
