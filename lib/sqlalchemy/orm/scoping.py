@@ -69,11 +69,11 @@ if TYPE_CHECKING:
     from ..sql._typing import _T7
     from ..sql._typing import _TypedColumnClauseArgument as _TCCA
     from ..sql.base import Executable
+    from ..sql.dml import UpdateBase
     from ..sql.elements import ClauseElement
     from ..sql.roles import TypedColumnsClauseRole
     from ..sql.selectable import ForUpdateParameter
     from ..sql.selectable import TypedReturnsRows
-    from ...sql.dml import UpdateBase
 
 _T = TypeVar("_T", bound=Any)
 
