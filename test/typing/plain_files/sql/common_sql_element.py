@@ -142,12 +142,12 @@ s9174_6 = select(user_table).with_for_update(
 
 # with_for_update but for query
 session = Session()
-s9174_1 = session.query(User).with_for_update(of=User)
-s9174_2 = session.query(User).with_for_update(of=User.id)
-s9174_3 = session.query(User).with_for_update(of=[User.id, User.email])
-s9174_4 = session.query(user_table).with_for_update(of=user_table)
-s9174_5 = session.query(user_table).with_for_update(of=user_table.c.id)
-s9174_6 = session.query(user_table).with_for_update(
+user = session.query(User).with_for_update(of=User)
+user = session.query(User).with_for_update(of=User.id)
+user = session.query(User).with_for_update(of=[User.id, User.email])
+user = session.query(user_table).with_for_update(of=user_table)
+user = session.query(user_table).with_for_update(of=user_table.c.id)
+user = session.query(user_table).with_for_update(
     of=[user_table.c.id, user_table.c.email]
 )
 
