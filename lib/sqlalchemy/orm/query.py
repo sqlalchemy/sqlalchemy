@@ -100,7 +100,6 @@ if TYPE_CHECKING:
     from ._typing import _ExternalEntityType
     from ._typing import _InternalEntityType
     from ._typing import SynchronizeSessionArgument
-    from .decl_api import DeclarativeBase
     from .mapper import Mapper
     from .path_registry import PathRegistry
     from .session import _PKIdentityArgument
@@ -137,6 +136,7 @@ if TYPE_CHECKING:
     from ..sql.base import ExecutableOption
     from ..sql.elements import ColumnElement
     from ..sql.elements import Label
+    from ..sql.selectable import _ForUpdateOfArgument
     from ..sql.selectable import _JoinTargetElement
     from ..sql.selectable import _SetupJoinsElement
     from ..sql.selectable import Alias
@@ -1787,13 +1787,7 @@ class Query(
         *,
         nowait: bool = False,
         read: bool = False,
-        of: Optional[
-            Union[
-                _ColumnExpressionArgument[Any],
-                Sequence[_ColumnExpressionArgument[Any]],
-                Type[DeclarativeBase],
-            ]
-        ] = None,
+        of: Optional[_ForUpdateOfArgument] = None,
         skip_locked: bool = False,
         key_share: bool = False,
     ) -> Self:

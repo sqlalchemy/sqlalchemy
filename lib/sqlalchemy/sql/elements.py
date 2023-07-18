@@ -112,7 +112,6 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import CoreExecuteOptionsParameter
     from ..engine.interfaces import SchemaTranslateMapType
     from ..engine.result import Result
-    from ..types import NullType
 
 _NUMERIC = Union[float, Decimal]
 _NUMBER = Union[float, int, Decimal]
@@ -135,27 +134,27 @@ def literal(
 
 @overload
 def literal(
-    value: Any,
+    value: _T,
     type_: None = None,
     literal_execute: bool = False,
-) -> BindParameter[NullType]:
+) -> BindParameter[_T]:
     ...
 
 
 @overload
 def literal(
     value: Any,
-    type_: Optional[_TypeEngineArgument[_T]] = None,
+    type_: Optional[_TypeEngineArgument[Any]] = None,
     literal_execute: bool = False,
-) -> Union[BindParameter[_T], BindParameter[NullType]]:
+) -> BindParameter[Any]:
     ...
 
 
 def literal(
     value: Any,
-    type_: Optional[_TypeEngineArgument[_T]] = None,
+    type_: Optional[_TypeEngineArgument[Any]] = None,
     literal_execute: bool = False,
-) -> Union[BindParameter[_T], BindParameter[NullType]]:
+) -> BindParameter[Any]:
     r"""Return a literal clause, bound to a bind parameter.
 
     Literal clauses are created automatically when non-

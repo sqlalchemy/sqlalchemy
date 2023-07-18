@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from .result import AsyncScalarResult
     from .session import AsyncSessionTransaction
     from ...engine import Connection
+    from ...engine import CursorResult
     from ...engine import Engine
     from ...engine import Result
     from ...engine import Row
@@ -55,6 +56,7 @@ if TYPE_CHECKING:
     from ...orm.session import _SessionBind
     from ...sql.base import Executable
     from ...sql.elements import ClauseElement
+    from ...sql.roles import DMLRole
     from ...sql.selectable import ForUpdateParameter
     from ...sql.selectable import TypedReturnsRows
 
@@ -532,6 +534,19 @@ class async_scoped_session(Generic[_AS]):
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
     ) -> Result[_T]:
+        ...
+
+    @overload
+    async def execute(
+        self,
+        statement: DMLRole,
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        _parent_execute_state: Optional[Any] = None,
+        _add_event: Optional[Any] = None,
+    ) -> CursorResult[Any]:
         ...
 
     @overload

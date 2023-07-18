@@ -69,10 +69,8 @@ if TYPE_CHECKING:
     from ..sql._typing import _T7
     from ..sql._typing import _TypedColumnClauseArgument as _TCCA
     from ..sql.base import Executable
-    from ..sql.dml import Delete
-    from ..sql.dml import Insert
-    from ..sql.dml import Update
     from ..sql.elements import ClauseElement
+    from ..sql.roles import DMLRole
     from ..sql.roles import TypedColumnsClauseRole
     from ..sql.selectable import ForUpdateParameter
     from ..sql.selectable import TypedReturnsRows
@@ -646,7 +644,7 @@ class scoped_session(Generic[_S]):
     @overload
     def execute(
         self,
-        statement: Delete | Insert | Update,
+        statement: DMLRole,
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
