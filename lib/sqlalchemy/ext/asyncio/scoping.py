@@ -55,8 +55,8 @@ if TYPE_CHECKING:
     from ...orm.session import _PKIdentityArgument
     from ...orm.session import _SessionBind
     from ...sql.base import Executable
+    from ...sql.dml import UpdateBase
     from ...sql.elements import ClauseElement
-    from ...sql.roles import DMLRole
     from ...sql.selectable import ForUpdateParameter
     from ...sql.selectable import TypedReturnsRows
 
@@ -539,7 +539,7 @@ class async_scoped_session(Generic[_AS]):
     @overload
     async def execute(
         self,
-        statement: DMLRole,
+        statement: UpdateBase,
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
