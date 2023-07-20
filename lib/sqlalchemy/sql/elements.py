@@ -323,7 +323,7 @@ class ClauseElement(
     def description(self) -> Optional[str]:
         return None
 
-    _is_clone_of: Optional[ClauseElement] = None
+    _is_clone_of: Optional[Self] = None
 
     is_clause_element = True
     is_selectable = False
@@ -457,6 +457,11 @@ class ClauseElement(
             s.add(f)
             f = f._is_clone_of
         return s
+
+    def _de_clone(self):
+        while self._is_clone_of is not None:
+            self = self._is_clone_of
+        return self
 
     @property
     def entity_namespace(self):
