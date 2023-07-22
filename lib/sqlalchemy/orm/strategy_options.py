@@ -2319,7 +2319,9 @@ def contains_eager(*keys: _AttrType, **kw: Any) -> _AbstractLoad:
 
 
 @loader_unbound_fn
-def load_only(*attrs: _AttrType, raiseload: bool = False) -> _AbstractLoad:
+def load_only(
+    *attrs: QueryableAttribute[Any], raiseload: bool = False
+) -> _AbstractLoad:
     # TODO: attrs against different classes.  we likely have to
     # add some extra state to Load of some kind
     _, lead_element, _ = _parse_attr_argument(attrs[0])
@@ -2376,7 +2378,9 @@ def defaultload(*keys: _AttrType) -> _AbstractLoad:
 
 @loader_unbound_fn
 def defer(
-    key: _AttrType, *addl_attrs: _AttrType, raiseload: bool = False
+    key: Union[QueryableAttribute[Any], Literal["*"]],
+    *addl_attrs: Union[QueryableAttribute[Any], Literal["*"]],
+    raiseload: bool = False,
 ) -> _AbstractLoad:
     if addl_attrs:
         util.warn_deprecated(
@@ -2395,7 +2399,10 @@ def defer(
 
 
 @loader_unbound_fn
-def undefer(key: _AttrType, *addl_attrs: _AttrType) -> _AbstractLoad:
+def undefer(
+    key: Union[QueryableAttribute[Any], Literal["*"]],
+    *addl_attrs: Union[QueryableAttribute[Any], Literal["*"]],
+) -> _AbstractLoad:
     if addl_attrs:
         util.warn_deprecated(
             "The *addl_attrs on orm.undefer is deprecated.  Please use "
