@@ -1261,6 +1261,29 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert u1 not in sess
         assert object_session(u1) is None
 
+    def test_session_close_final(self):
+        users, User = self.tables.users, self.classes.User
+        self.mapper_registry.map_imperatively(User, users)
+
+        s1 = fixture_session(close_final=True)
+        u1 = User()
+
+        close_all_sessions()
+
+        assert_raises(sa.exc.InvalidRequestError, s1.add, u1)
+
+    def test_session_close_not_final(self):
+        users, User = self.tables.users, self.classes.User
+        self.mapper_registry.map_imperatively(User, users)
+
+        s1 = fixture_session(close_final=False)
+        u1 = User()
+
+        close_all_sessions()
+        s1.add(u1)
+
+        assert u1 in s1
+
 
 class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
     run_inserts = None
