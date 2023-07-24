@@ -878,6 +878,12 @@ class SessionTransaction(_StateChange, TransactionalContext):
         self.nested = nested = origin is SessionTransactionOrigin.BEGIN_NESTED
         self.origin = origin
 
+        if session._is_closed:
+            raise sa_exc.InvalidRequestError(
+                    "This Session has been permanently closed and is unable "
+                    "to handle any more transaction requests."
+                )
+
         if nested:
             if not parent:
                 raise sa_exc.InvalidRequestError(
@@ -1429,6 +1435,7 @@ class Session(_SessionClassMethods, EventTarget):
         query_cls: Optional[Type[Query[Any]]] = None,
         autocommit: Literal[False] = False,
         join_transaction_mode: JoinTransactionMode = "conditional_savepoint",
+        close_final: bool = False
     ):
         r"""Construct a new :class:`_orm.Session`.
 
@@ -1636,6 +1643,8 @@ class Session(_SessionClassMethods, EventTarget):
 
           .. versionadded:: 2.0.0rc1
 
+        :param close_final: Defaults to ``False``. Determines if the the session
+            should be unusable after a call to ``.close()`` is made.
 
         """  # noqa
 
@@ -1668,6 +1677,8 @@ class Session(_SessionClassMethods, EventTarget):
         self.autoflush = autoflush
         self.expire_on_commit = expire_on_commit
         self.enable_baked_queries = enable_baked_queries
+        self.close_final = close_final
+        self._is_closed = False
         if (
             join_transaction_mode
             and join_transaction_mode
@@ -2433,6 +2444,8 @@ class Session(_SessionClassMethods, EventTarget):
         self._close_impl(invalidate=True)
 
     def _close_impl(self, invalidate: bool) -> None:
+        if self.close_final:
+            self._is_closed = True
         self.expunge_all()
         if self._transaction is not None:
             for transaction in self._transaction._iterate_self_and_parents():
