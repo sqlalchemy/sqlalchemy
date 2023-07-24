@@ -880,9 +880,9 @@ class SessionTransaction(_StateChange, TransactionalContext):
 
         if session._is_closed:
             raise sa_exc.InvalidRequestError(
-                    "This Session has been permanently closed and is unable "
-                    "to handle any more transaction requests."
-                )
+                "This Session has been permanently closed and is unable "
+                "to handle any more transaction requests."
+            )
 
         if nested:
             if not parent:
@@ -1435,7 +1435,7 @@ class Session(_SessionClassMethods, EventTarget):
         query_cls: Optional[Type[Query[Any]]] = None,
         autocommit: Literal[False] = False,
         join_transaction_mode: JoinTransactionMode = "conditional_savepoint",
-        close_final: bool = False
+        close_final: bool = False,
     ):
         r"""Construct a new :class:`_orm.Session`.
 
