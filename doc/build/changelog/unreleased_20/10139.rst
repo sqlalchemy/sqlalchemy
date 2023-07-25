@@ -1,0 +1,14 @@
+.. change::
+    :tags: orm, bug
+    :tickets: 10139
+
+    Fixed issue where the ``lazy="immediateload"`` loader strategy would place
+    an internal loading token into the ORM mapped attribute under circumstances
+    where the load should not occur, such as in a recursive self-referential
+    load.   As part of this change, the ``lazy="immediateload"`` strategy now
+    honors the :paramref:`_orm.relationship.join_depth` parameter for
+    self-referential eager loads in the same way as that of other eager
+    loaders, where leaving it unset or set at zero will lead to a
+    self-referential immediateload not occurring, setting it to a value of one
+    or greater will immediateload up until that given depth.
+

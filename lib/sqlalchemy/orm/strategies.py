@@ -1348,7 +1348,11 @@ class PostLoader(AbstractRelationshipLoader):
 
 @relationships.RelationshipProperty.strategy_for(lazy="immediate")
 class ImmediateLoader(PostLoader):
-    __slots__ = ()
+    __slots__ = ("join_depth",)
+
+    def __init__(self, parent, strategy_key):
+        super().__init__(parent, strategy_key)
+        self.join_depth = self.parent_property.join_depth
 
     def init_class_attribute(self, mapper):
         self.parent_property._get_strategy(
@@ -1371,7 +1375,7 @@ class ImmediateLoader(PostLoader):
             run_loader,
             execution_options,
             recursion_depth,
-        ) = self._setup_for_recursion(context, path, loadopt)
+        ) = self._setup_for_recursion(context, path, loadopt, self.join_depth)
         if not run_loader:
             # this will not emit SQL and will only emit for a many-to-one
             # "use get" load.   the "_RELATED" part means it may return
@@ -1430,7 +1434,10 @@ class ImmediateLoader(PostLoader):
                     alternate_effective_path=alternate_effective_path,
                     execution_options=execution_options,
                 )
-                if value is not ATTR_WAS_SET:
+                if value not in (
+                    ATTR_WAS_SET,
+                    LoaderCallableStatus.PASSIVE_NO_RESULT,
+                ):
                     state.get_impl(key).set_committed_value(
                         state, dict_, value
                     )
