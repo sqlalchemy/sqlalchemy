@@ -449,6 +449,7 @@ class TokenRegistry(PathRegistry):
     is_token = True
 
     def generate_for_superclasses(self) -> Iterator[PathRegistry]:
+        # NOTE: this method is no longer used.  consider removal
         parent = self.parent
         if is_root(parent):
             yield self
@@ -473,6 +474,35 @@ class TokenRegistry(PathRegistry):
                 yield TokenRegistry(parent.parent[ent], self.token)
         else:
             yield self
+
+    def _generate_natural_for_superclasses(
+        self,
+    ) -> Iterator[_PathRepresentation]:
+        parent = self.parent
+        if is_root(parent):
+            yield self.natural_path
+            return
+
+        if TYPE_CHECKING:
+            assert isinstance(parent, AbstractEntityRegistry)
+        for mp_ent in parent.mapper.iterate_to_root():
+            yield TokenRegistry(parent.parent[mp_ent], self.token).natural_path
+        if (
+            parent.is_aliased_class
+            and cast(
+                "AliasedInsp[Any]",
+                parent.entity,
+            )._is_with_polymorphic
+        ):
+            yield self.natural_path
+            for ent in cast(
+                "AliasedInsp[Any]", parent.entity
+            )._with_polymorphic_entities:
+                yield (
+                    TokenRegistry(parent.parent[ent], self.token).natural_path
+                )
+        else:
+            yield self.natural_path
 
     def _getitem(self, entity: Any) -> Any:
         try:
@@ -589,7 +619,7 @@ class PropRegistry(PathRegistry):
 
         self._wildcard_path_loader_key = (
             "loader",
-            parent.path + self.prop._wildcard_token,  # type: ignore
+            parent.natural_path + self.prop._wildcard_token,  # type: ignore
         )
         self._default_path_loader_key = self.prop._default_path_loader_key
         self._loader_key = ("loader", self.natural_path)
