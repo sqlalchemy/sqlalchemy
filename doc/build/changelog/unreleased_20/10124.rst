@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 10124
+
+    Fixed issue where internal cloning used by the ORM for expressions like
+    :meth:`_orm.relationship.Comparator.any` to produce correlated EXISTS
+    constructs would interfere with the "cartesian product warning" feature of
+    the SQL compiler, leading the SQL compiler to warn when all elements of the
+    statement were correctly joined.

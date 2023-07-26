@@ -2129,10 +2129,12 @@ class _TokenStrategyLoad(_LoadElement):
         # is set.
 
         return [
-            ("loader", _path.natural_path)
-            for _path in cast(
-                TokenRegistry, effective_path
-            ).generate_for_superclasses()
+            ("loader", natural_path)
+            for natural_path in (
+                cast(
+                    TokenRegistry, effective_path
+                )._generate_natural_for_superclasses()
+            )
         ]
 
 

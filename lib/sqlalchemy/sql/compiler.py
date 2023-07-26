@@ -69,6 +69,7 @@ from . import sqltypes
 from . import util as sql_util
 from ._typing import is_column_element
 from ._typing import is_dml
+from .base import _de_clone
 from .base import _from_objects
 from .base import _NONE_NAME
 from .base import _SentinelDefaultCharacterization
@@ -3289,14 +3290,19 @@ class SQLCompiler(Compiled):
                 enclosing_lateral = kw["enclosing_lateral"]
                 lateral_from_linter.edges.update(
                     itertools.product(
-                        binary.left._from_objects + [enclosing_lateral],
-                        binary.right._from_objects + [enclosing_lateral],
+                        _de_clone(
+                            binary.left._from_objects + [enclosing_lateral]
+                        ),
+                        _de_clone(
+                            binary.right._from_objects + [enclosing_lateral]
+                        ),
                     )
                 )
             else:
                 from_linter.edges.update(
                     itertools.product(
-                        binary.left._from_objects, binary.right._from_objects
+                        _de_clone(binary.left._from_objects),
+                        _de_clone(binary.right._from_objects),
                     )
                 )
 
@@ -4080,7 +4086,7 @@ class SQLCompiler(Compiled):
 
         if asfrom:
             if from_linter:
-                from_linter.froms[cte] = cte_name
+                from_linter.froms[cte._de_clone()] = cte_name
 
             if not is_new_cte and embedded_in_current_named_cte:
                 return self.preparer.format_alias(cte, cte_name)  # type: ignore[no-any-return]  # noqa: E501
@@ -4164,7 +4170,7 @@ class SQLCompiler(Compiled):
             return self.preparer.format_alias(alias, alias_name)
         elif asfrom:
             if from_linter:
-                from_linter.froms[alias] = alias_name
+                from_linter.froms[alias._de_clone()] = alias_name
 
             inner = alias.element._compiler_dispatch(
                 self, asfrom=True, lateral=lateral, **kwargs
@@ -4257,7 +4263,7 @@ class SQLCompiler(Compiled):
 
         if asfrom:
             if from_linter:
-                from_linter.froms[element] = (
+                from_linter.froms[element._de_clone()] = (
                     name if name is not None else "(unnamed VALUES element)"
                 )
 
@@ -5160,7 +5166,8 @@ class SQLCompiler(Compiled):
         if from_linter:
             from_linter.edges.update(
                 itertools.product(
-                    join.left._from_objects, join.right._from_objects
+                    _de_clone(join.left._from_objects),
+                    _de_clone(join.right._from_objects),
                 )
             )
 

@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 10125
+
+    Fixed issue where chaining :func:`_orm.load_only` or other wildcard use of
+    :func:`_orm.defer` from another eager loader using a :func:`_orm.aliased`
+    against a joined inheritance subclass would fail to take effect for columns
+    local to the superclass.
+
