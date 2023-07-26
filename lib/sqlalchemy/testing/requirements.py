@@ -1410,6 +1410,15 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def independent_readonly_connections(self):
+        """
+        Target must support simultaneous, independent database connections
+        that will be used in a readonly fashion.
+
+        """
+        return exclusions.open()
+
+    @property
     def skip_mysql_on_windows(self):
         """Catchall for a large variety of MySQL on Windows failures"""
         return exclusions.open()

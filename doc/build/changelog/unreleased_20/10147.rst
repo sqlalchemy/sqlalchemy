@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 10147
+
+    Fixed critical issue where setting
+    :paramref:`_sa.create_engine.isolation_level` to ``AUTOCOMMIT`` (as opposed
+    to using the :meth:`_engine.Engine.execution_options` method) would fail to
+    restore "autocommit" to a pooled connection if an alternate isolation level
+    were temporarily selected using
+    :paramref:`_engine.Connection.execution_options.isolation_level`.

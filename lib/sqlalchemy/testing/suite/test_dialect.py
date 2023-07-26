@@ -247,6 +247,28 @@ class IsolationLevelTest(fixtures.TestBase):
         ):
             eng.connect()
 
+    @testing.requires.independent_readonly_connections
+    def test_dialect_user_setting_is_restored(self, testing_engine):
+        levels = requirements.get_isolation_levels(config)
+        default = levels["default"]
+        supported = (
+            sorted(
+                set(levels["supported"]).difference([default, "AUTOCOMMIT"])
+            )
+        )[0]
+
+        e = testing_engine(options={"isolation_level": supported})
+
+        with e.connect() as conn:
+            eq_(conn.get_isolation_level(), supported)
+
+        with e.connect() as conn:
+            conn.execution_options(isolation_level=default)
+            eq_(conn.get_isolation_level(), default)
+
+        with e.connect() as conn:
+            eq_(conn.get_isolation_level(), supported)
+
 
 class AutocommitIsolationTest(fixtures.TablesTest):
     run_deletes = "each"
@@ -307,6 +329,34 @@ class AutocommitIsolationTest(fixtures.TablesTest):
             ]
         )
         self._test_conn_autocommits(conn, False)
+
+    @testing.requires.independent_readonly_connections
+    @testing.variation("use_dialect_setting", [True, False])
+    def test_dialect_autocommit_is_restored(
+        self, testing_engine, use_dialect_setting
+    ):
+        """test #10147"""
+
+        if use_dialect_setting:
+            e = testing_engine(options={"isolation_level": "AUTOCOMMIT"})
+        else:
+            e = testing_engine().execution_options(
+                isolation_level="AUTOCOMMIT"
+            )
+
+        levels = requirements.get_isolation_levels(config)
+
+        default = levels["default"]
+
+        with e.connect() as conn:
+            self._test_conn_autocommits(conn, True)
+
+        with e.connect() as conn:
+            conn.execution_options(isolation_level=default)
+            self._test_conn_autocommits(conn, False)
+
+        with e.connect() as conn:
+            self._test_conn_autocommits(conn, True)
 
 
 class EscapingTest(fixtures.TestBase):
