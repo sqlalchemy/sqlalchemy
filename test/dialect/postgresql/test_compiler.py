@@ -3669,6 +3669,13 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={},
         )
 
+    def test_regexp_match_column_concat(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match(self.table.c.name + '$'),
+            "mytable.myid ~ (mytable.name || %(name_1)s)",
+            checkparams={"name_1": "$"},
+        )
+
     def test_regexp_match_str(self):
         self.assert_compile(
             literal("string").regexp_match(self.table.c.name),
