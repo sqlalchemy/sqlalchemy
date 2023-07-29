@@ -476,6 +476,18 @@ class AsyncConnection(
         """
         await greenlet_spawn(self._proxied.close)
 
+    async def aclose(self) -> None:
+        """A synonym for :meth:`_asyncio.AsyncConnection.close`.
+
+        The :meth:`_asyncio.AsyncConnection.aclose` name is specifically
+        to support the Python standard library ``@contextlib.aclosing``
+        context manager function.
+
+        .. versionadded:: 2.0.20
+
+        """
+        await self.close()
+
     async def exec_driver_sql(
         self,
         statement: str,
