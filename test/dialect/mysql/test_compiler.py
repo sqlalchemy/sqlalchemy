@@ -1249,7 +1249,7 @@ class RegexpCommon(testing.AssertsCompiledSQL):
     def test_regexp_match_column_concat(self):
         self.assert_compile(
             self.table.c.myid.regexp_match(self.table.c.name + '$'),
-            "mytable.myid REGEXP concat(mytable.name, %s)",
+            "mytable.myid REGEXP (concat(mytable.name, %s))",
             checkpositional=("$",),
         )
 

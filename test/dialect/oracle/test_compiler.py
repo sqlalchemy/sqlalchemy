@@ -1682,7 +1682,7 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_regexp_match_column_concat(self):
         self.assert_compile(
             self.table.c.myid.regexp_match(self.table.c.name + '$'),
-            "REGEXP_LIKE(mytable.myid, mytable.name || :name_1)",
+            "REGEXP_LIKE(mytable.myid, (mytable.name || :name_1))",
             checkparams={"name_1": "$"},
         )
 

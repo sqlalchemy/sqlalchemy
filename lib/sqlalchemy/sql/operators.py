@@ -2537,7 +2537,7 @@ _PRECEDENCE: Dict[OperatorType, int] = {
     filter_op: 6,
     match_op: 5,
     not_match_op: 5,
-    regexp_match_op: 5,
+    regexp_match_op: 6,
     not_regexp_match_op: 5,
     regexp_replace_op: 5,
     ilike_op: 5,
