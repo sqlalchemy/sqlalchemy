@@ -1,0 +1,9 @@
+.. change::
+    :tags: feature, engine
+    :tickets: 9698
+
+    :func:`.aclose` have been added to :class:`_asyncio.AsyncConnection`
+    and :class:`_asyncio.AsyncSession`.
+    :func:`.aclose` is a synonym for :func:`.close`
+    that is compatible with context managers such as ``@contextlib.aclosing``
+    Patch by Grigoriev Semyon.

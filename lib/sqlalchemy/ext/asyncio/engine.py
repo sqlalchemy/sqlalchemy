@@ -477,7 +477,13 @@ class AsyncConnection(
         await greenlet_spawn(self._proxied.close)
 
     async def aclose(self) -> None:
-        """Call the close() method of :class:`_asyncio.AsyncConnection`"""
+        """This method is a synonym for :func:`.close`
+
+        This method is needed for compatibility with context managers,
+        such as ``@contextlib.aclosing``
+
+        .. versionadded:: 2.0.20
+        """
         await self.close()
 
     async def exec_driver_sql(
