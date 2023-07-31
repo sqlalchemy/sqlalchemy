@@ -2516,6 +2516,28 @@ class JoinedInhTest(
             "ON companies.company_id = people.company_id",
         )
 
+    def test_cte_recursive_handles_dupe_columns(self):
+        """test #10169"""
+        Engineer = self.classes.Engineer
+
+        my_cte = select(Engineer).cte(recursive=True)
+
+        self.assert_compile(
+            select(my_cte),
+            "WITH RECURSIVE anon_1(person_id, person_id_1, company_id, name, "
+            "type, status, "
+            "engineer_name, primary_language) AS (SELECT engineers.person_id "
+            "AS person_id, people.person_id AS person_id_1, people.company_id "
+            "AS company_id, people.name AS name, people.type AS type, "
+            "engineers.status AS status, engineers.engineer_name AS "
+            "engineer_name, engineers.primary_language AS primary_language "
+            "FROM people JOIN engineers ON people.person_id = "
+            "engineers.person_id) SELECT anon_1.person_id, "
+            "anon_1.person_id_1, anon_1.company_id, "
+            "anon_1.name, anon_1.type, anon_1.status, anon_1.engineer_name, "
+            "anon_1.primary_language FROM anon_1",
+        )
+
 
 class RawSelectTest(QueryTest, AssertsCompiledSQL):
     """older tests from test_query.   Here, they are converted to use
