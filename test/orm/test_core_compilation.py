@@ -519,6 +519,33 @@ class DMLTest(QueryTest, AssertsCompiledSQL):
         else:
             stmt_type.fail()
 
+    @testing.variation("stmt_type", ["core", "orm"])
+    def test_add_cte(self, stmt_type: testing.Variation):
+        """test #10167"""
+
+        if stmt_type.orm:
+            User = self.classes.User
+            cte_select = select(User.name).limit(1).cte()
+            cte_insert = insert(User).from_select(["name"], cte_select).cte()
+        elif stmt_type.core:
+            user_table = self.tables.users
+            cte_select = select(user_table.c.name).limit(1).cte()
+            cte_insert = (
+                insert(user_table).from_select(["name"], cte_select).cte()
+            )
+        else:
+            stmt_type.fail()
+
+        select_stmt = select(cte_select).add_cte(cte_insert)
+
+        self.assert_compile(
+            select_stmt,
+            "WITH anon_2 AS (SELECT users.name AS name FROM users LIMIT "
+            ":param_1), anon_1 AS (INSERT INTO users (name) "
+            "SELECT anon_2.name AS name FROM anon_2) "
+            "SELECT anon_2.name FROM anon_2",
+        )
+
 
 class ColumnsClauseFromsTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"

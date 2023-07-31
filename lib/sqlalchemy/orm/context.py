@@ -1604,6 +1604,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         prefixes,
         suffixes,
         group_by,
+        independent_ctes,
+        independent_ctes_opts,
     ):
         statement = Select._create_raw_select(
             _raw_columns=raw_columns,
@@ -1631,6 +1633,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         statement._offset_clause = offset_clause
         statement._fetch_clause = fetch_clause
         statement._fetch_clause_options = fetch_clause_options
+        statement._independent_ctes = independent_ctes
+        statement._independent_ctes_opts = independent_ctes_opts
 
         if prefixes:
             statement._prefixes = prefixes
@@ -2295,6 +2299,10 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             "fetch_clause": self.select_statement._fetch_clause,
             "fetch_clause_options": (
                 self.select_statement._fetch_clause_options
+            ),
+            "independent_ctes": self.select_statement._independent_ctes,
+            "independent_ctes_opts": (
+                self.select_statement._independent_ctes_opts
             ),
         }
 
