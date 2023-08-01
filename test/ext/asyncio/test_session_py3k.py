@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from typing import List
 from typing import Optional
 
@@ -147,6 +148,16 @@ class AsyncSessionQueryTest(AsyncFixture):
 
         result = await async_session.scalar(stmt)
         eq_(result, 7)
+
+    @testing.requires.python310
+    @async_test
+    async def test_session_aclose(self, async_session):
+        User = self.classes.User
+        u = User(name="u")
+        async with contextlib.aclosing(async_session) as session:
+            session.add(u)
+            await session.commit()
+        assert async_session.sync_session.identity_map.values() == []
 
     @testing.combinations(
         ("scalars",), ("stream_scalars",), argnames="filter_"

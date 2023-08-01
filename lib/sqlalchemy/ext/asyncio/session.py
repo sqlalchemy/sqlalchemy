@@ -973,6 +973,18 @@ class AsyncSession(ReversibleProxy[Session]):
         """
         await greenlet_spawn(self.sync_session.close)
 
+    async def aclose(self) -> None:
+        """A synonym for :meth:`_asyncio.AsyncSession.close`.
+
+        The :meth:`_asyncio.AsyncSession.aclose` name is specifically
+        to support the Python standard library ``@contextlib.aclosing``
+        context manager function.
+
+        .. versionadded:: 2.0.20
+
+        """
+        await self.close()
+
     async def invalidate(self) -> None:
         """Close this Session, using connection invalidation.
 

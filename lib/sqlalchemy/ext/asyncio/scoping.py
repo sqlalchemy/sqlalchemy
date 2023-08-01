@@ -69,6 +69,7 @@ _T = TypeVar("_T", bound=Any)
     methods=[
         "__contains__",
         "__iter__",
+        "aclose",
         "add",
         "add_all",
         "begin",
@@ -299,6 +300,25 @@ class async_scoped_session(Generic[_AS]):
         """  # noqa: E501
 
         return self._proxied.__iter__()
+
+    async def aclose(self) -> None:
+        r"""A synonym for :meth:`_asyncio.AsyncSession.close`.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_asyncio.AsyncSession` class on
+            behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
+
+        The :meth:`_asyncio.AsyncSession.aclose` name is specifically
+        to support the Python standard library ``@contextlib.aclosing``
+        context manager function.
+
+        .. versionadded:: 2.0.20
+
+
+        """  # noqa: E501
+
+        return await self._proxied.aclose()
 
     def add(self, instance: object, _warn: bool = True) -> None:
         r"""Place an object into this :class:`_orm.Session`.
