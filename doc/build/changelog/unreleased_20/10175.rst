@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 10175
+
+    Fixed issue where dictionary-based collections such as
+    :func:`_orm.attribute_keyed_dict` did not fully pickle/unpickle correctly,
+    leading to issues when attempting to mutate such a collection after
+    unpickling.
+
