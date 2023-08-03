@@ -23,6 +23,7 @@ from dogpile.cache.api import NO_VALUE
 
 from sqlalchemy import event
 from sqlalchemy.orm import loading
+from sqlalchemy.orm import Query
 from sqlalchemy.orm.interfaces import UserDefinedOption
 
 
@@ -52,7 +53,7 @@ class ORMCache:
                 dogpile_region = self.cache_regions[opt.region]
 
                 our_cache_key = opt._generate_cache_key(
-                    orm_context.statement, orm_context.parameters, self
+                    orm_context.statement, orm_context.parameters or {}, self
                 )
 
                 if opt.ignore_expiration:
@@ -90,7 +91,8 @@ class ORMCache:
     def invalidate(self, statement, parameters, opt):
         """Invalidate the cache value represented by a statement."""
 
-        statement = statement.__clause_element__()
+        if isinstance(statement, Query):
+            statement = statement.__clause_element__()
 
         dogpile_region = self.cache_regions[opt.region]
 
