@@ -23,6 +23,7 @@ from typing import Union
 
 from . import base
 from .collections import collection
+from .collections import collection_adapter
 from .. import exc as sa_exc
 from .. import util
 from ..sql import coercions
@@ -33,6 +34,7 @@ from ..util.typing import Literal
 if TYPE_CHECKING:
     from . import AttributeEventToken
     from . import Mapper
+    from .collections import CollectionAdapter
     from ..sql.elements import ColumnElement
 
 _KT = TypeVar("_KT", bound=Any)
@@ -376,19 +378,31 @@ class KeyFuncDict(Dict[_KT, _VT]):
 
     @classmethod
     def _unreduce(
-        cls, keyfunc: _F, values: Dict[_KT, _KT]
+        cls,
+        keyfunc: _F,
+        values: Dict[_KT, _KT],
+        adapter: Optional[CollectionAdapter] = None,
     ) -> "KeyFuncDict[_KT, _KT]":
         mp: KeyFuncDict[_KT, _KT] = KeyFuncDict(keyfunc)
         mp.update(values)
+        # note that the adapter sets itself up onto this collection
+        # when its `__setstate__` method is called
         return mp
 
     def __reduce__(
         self,
     ) -> Tuple[
         Callable[[_KT, _KT], KeyFuncDict[_KT, _KT]],
-        Tuple[Any, Union[Dict[_KT, _KT], Dict[_KT, _KT]]],
+        Tuple[Any, Union[Dict[_KT, _KT], Dict[_KT, _KT]], CollectionAdapter],
     ]:
-        return (KeyFuncDict._unreduce, (self.keyfunc, dict(self)))
+        return (
+            KeyFuncDict._unreduce,
+            (
+                self.keyfunc,
+                dict(self),
+                collection_adapter(self),
+            ),
+        )
 
     @util.preload_module("sqlalchemy.orm.attributes")
     def _raise_for_unpopulated(
