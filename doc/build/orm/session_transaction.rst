@@ -175,7 +175,7 @@ an error is raised, the savepoint is rolled back and the state of the
 
 This pattern is ideal for situations such as using PostgreSQL and
 catching :class:`.IntegrityError` to detect duplicate rows; PostgreSQL normally
-aborts the entire tranasction when such an error is raised, however when using
+aborts the entire transaction when such an error is raised, however when using
 SAVEPOINT, the outer transaction is maintained.   In the example below
 a list of data is persisted into the database, with the occasional
 "duplicate primary key" record skipped, without rolling back the entire
