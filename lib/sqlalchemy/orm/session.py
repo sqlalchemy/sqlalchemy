@@ -109,6 +109,7 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import _CoreAnyExecuteParams
     from ..engine.interfaces import _CoreSingleExecuteParams
     from ..engine.interfaces import _ExecuteOptions
+    from ..engine.interfaces import CoreExecuteOptionsParameter
     from ..engine.result import ScalarResult
     from ..event import _InstanceLevelDispatch
     from ..sql._typing import _ColumnsClauseArgument
@@ -1089,7 +1090,7 @@ class SessionTransaction(_StateChange, TransactionalContext):
     def _connection_for_bind(
         self,
         bind: _SessionBind,
-        execution_options: Optional[_ExecuteOptions],
+        execution_options: Optional[CoreExecuteOptionsParameter],
     ) -> Connection:
         if bind in self._connections:
             if execution_options:
@@ -1939,7 +1940,7 @@ class Session(_SessionClassMethods, EventTarget):
     def connection(
         self,
         bind_arguments: Optional[_BindArguments] = None,
-        execution_options: Optional[_ExecuteOptions] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> Connection:
         r"""Return a :class:`_engine.Connection` object corresponding to this
         :class:`.Session` object's transactional state.
@@ -1987,7 +1988,7 @@ class Session(_SessionClassMethods, EventTarget):
     def _connection_for_bind(
         self,
         engine: _SessionBind,
-        execution_options: Optional[_ExecuteOptions] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
         **kw: Any,
     ) -> Connection:
         TransactionalContext._trans_ctx_check(self)

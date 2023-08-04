@@ -55,7 +55,7 @@ if TYPE_CHECKING:
     from ..engine import RowMapping
     from ..engine.interfaces import _CoreAnyExecuteParams
     from ..engine.interfaces import _CoreSingleExecuteParams
-    from ..engine.interfaces import _ExecuteOptions
+    from ..engine.interfaces import CoreExecuteOptionsParameter
     from ..engine.result import ScalarResult
     from ..sql._typing import _ColumnsClauseArgument
     from ..sql._typing import _T0
@@ -554,7 +554,7 @@ class scoped_session(Generic[_S]):
     def connection(
         self,
         bind_arguments: Optional[_BindArguments] = None,
-        execution_options: Optional[_ExecuteOptions] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> Connection:
         r"""Return a :class:`_engine.Connection` object corresponding to this
         :class:`.Session` object's transactional state.

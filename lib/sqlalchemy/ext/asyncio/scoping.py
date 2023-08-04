@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     from ...engine import Row
     from ...engine import RowMapping
     from ...engine.interfaces import _CoreAnyExecuteParams
-    from ...engine.interfaces import _ExecuteOptions
+    from ...engine.interfaces import CoreExecuteOptionsParameter
     from ...engine.result import ScalarResult
     from ...orm._typing import _IdentityKeyType
     from ...orm._typing import _O
@@ -488,7 +488,7 @@ class async_scoped_session(Generic[_AS]):
     async def connection(
         self,
         bind_arguments: Optional[_BindArguments] = None,
-        execution_options: Optional[_ExecuteOptions] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
         **kw: Any,
     ) -> AsyncConnection:
         r"""Return a :class:`_asyncio.AsyncConnection` object corresponding to
