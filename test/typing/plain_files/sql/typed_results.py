@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import asyncio
 from typing import cast
+from typing import Optional
+from typing import Tuple
+from typing import Type
 
 from sqlalchemy import Column
 from sqlalchemy import column
@@ -9,6 +12,9 @@ from sqlalchemy import create_engine
 from sqlalchemy import insert
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
+from sqlalchemy import NotNullable
+from sqlalchemy import Nullable
+from sqlalchemy import Select
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
@@ -32,6 +38,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
+    value: Mapped[Optional[str]]
 
 
 t_user = Table(
@@ -665,3 +672,29 @@ async def t_async_session_stream_scalars() -> None:
 
     # EXPECTED_RE_TYPE: typing.Sequence\*?\[builtins.str\*?\]
     reveal_type(data)
+
+
+def test_outerjoin_10173() -> None:
+    class Other(Base):
+        __tablename__ = "other"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        name: Mapped[str]
+
+    stmt: Select[Tuple[User, Other]] = select(User, Other).outerjoin(
+        Other, User.id == Other.id
+    )
+    stmt2: Select[Tuple[User, Optional[Other]]] = select(
+        User, Nullable(Other)
+    ).outerjoin(Other, User.id == Other.id)
+    stmt3: Select[Tuple[int, Optional[str]]] = select(
+        User.id, Nullable(Other.name)
+    ).outerjoin(Other, User.id == Other.id)
+
+    def go(W: Optional[Type[Other]]) -> None:
+        stmt4: Select[Tuple[str, Other]] = select(
+            NotNullable(User.value), NotNullable(W)
+        ).where(User.value.is_not(None))
+        print(stmt4)
+
+    print(stmt, stmt2, stmt3)

@@ -223,5 +223,13 @@ The classes here are generated using the constructors listed at
 .. autoclass:: UnaryExpression
    :members:
 
+Column Element Typing Utilities
+-------------------------------
+
+Standalone utility functions imported from the ``sqlalchemy`` namespace
+to improve support by type checkers.
 
 
+.. autofunction:: sqlalchemy.NotNullable
+
+.. autofunction:: sqlalchemy.Nullable

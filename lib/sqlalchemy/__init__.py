@@ -80,6 +80,8 @@ from .schema import Sequence as Sequence
 from .schema import Table as Table
 from .schema import UniqueConstraint as UniqueConstraint
 from .sql import ColumnExpressionArgument as ColumnExpressionArgument
+from .sql import NotNullable as NotNullable
+from .sql import Nullable as Nullable
 from .sql import SelectLabelStyle as SelectLabelStyle
 from .sql.expression import Alias as Alias
 from .sql.expression import alias as alias

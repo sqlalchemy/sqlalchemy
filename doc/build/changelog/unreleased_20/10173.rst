@@ -1,0 +1,8 @@
+.. change::
+    :tags: typing, usecase
+    :tickets: 10173
+
+    Added new typing only utility functions :func:`.Nullable` and 
+    :func:`.NotNullable` to type a column or ORM class as, respectively,
+    nullable or not nullable.
+    These function are no-op at runtime, returning the input unchanged.
