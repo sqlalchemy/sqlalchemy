@@ -11,10 +11,6 @@ r"""
     :connectstring: mysql+asyncmy://user:password@host:port/dbname[?key=value&key=value...]
     :url: https://github.com/long2ice/asyncmy
 
-.. note:: The asyncmy dialect as of September, 2021 was added to provide
-   MySQL/MariaDB asyncio compatibility given that the :ref:`aiomysql` database
-   driver has become unmaintained, however asyncmy is itself very new.
-
 Using a special asyncio mediation layer, the asyncmy dialect is usable
 as the backend for the :ref:`SQLAlchemy asyncio <asyncio_toplevel>`
 extension package.
