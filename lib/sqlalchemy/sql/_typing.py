@@ -234,7 +234,7 @@ _DMLColumnArgument = Union[
     str,
     _HasClauseElement,
     roles.DMLColumnRole,
-    "SQLCoreOperations",
+    "SQLCoreOperations[Any]",
 ]
 """A DML column expression.  This is a "key" inside of insert().values(),
 update().values(), and related.

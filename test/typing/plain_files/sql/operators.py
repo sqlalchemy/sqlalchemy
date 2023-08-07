@@ -140,6 +140,11 @@ op_d: "ColumnElement[int]" = col.op("&", return_type=BigInteger)("1")
 op_e: "ColumnElement[bool]" = col.bool_op("&")("1")
 
 
+op_a1 = col.op("&")(1)
+# EXPECTED_TYPE: BinaryExpression[Any]
+reveal_type(op_a1)
+
+
 # op functions
 t1 = operators.eq(A.id, 1)
 select().where(t1)

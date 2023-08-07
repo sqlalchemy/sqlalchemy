@@ -440,6 +440,33 @@ def t_dml_insert() -> None:
     reveal_type(r3)
 
 
+def t_dml_bare_insert() -> None:
+    s1 = insert(User)
+    r1 = session.execute(s1)
+    # EXPECTED_TYPE: CursorResult[Any]
+    reveal_type(r1)
+    # EXPECTED_TYPE: int
+    reveal_type(r1.rowcount)
+
+
+def t_dml_bare_update() -> None:
+    s1 = update(User)
+    r1 = session.execute(s1)
+    # EXPECTED_TYPE: CursorResult[Any]
+    reveal_type(r1)
+    # EXPECTED_TYPE: int
+    reveal_type(r1.rowcount)
+
+
+def t_dml_bare_delete() -> None:
+    s1 = delete(User)
+    r1 = session.execute(s1)
+    # EXPECTED_TYPE: CursorResult[Any]
+    reveal_type(r1)
+    # EXPECTED_TYPE: int
+    reveal_type(r1.rowcount)
+
+
 def t_dml_update() -> None:
     s1 = update(User).returning(User.id, User.name)
 
