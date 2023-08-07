@@ -578,7 +578,10 @@ class ORMDMLState(AbstractORMCompileState):
         execution_context = result.context
         compile_state = execution_context.compiled.compile_state
 
-        if compile_state.from_statement_ctx:
+        if (
+            compile_state.from_statement_ctx
+            and not compile_state.from_statement_ctx.compile_options._is_star
+        ):
             load_options = execution_options.get(
                 "_sa_orm_load_options", QueryContext.default_load_options
             )
@@ -1373,6 +1376,16 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
             dml_mapper=emit_insert_mapper,
             use_supplemental_cols=True,
         )
+
+        if (
+            self.from_statement_ctx is not None
+            and self.from_statement_ctx.compile_options._is_star
+        ):
+            raise sa_exc.CompileError(
+                "Can't use RETURNING * with bulk ORM INSERT.  "
+                "Please use a different INSERT form, such as INSERT..VALUES "
+                "or INSERT with a Core Connection"
+            )
 
         self.statement = statement
 

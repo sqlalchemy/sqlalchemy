@@ -193,6 +193,85 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
         )
 
     @testing.requires.insert_returning
+    @testing.requires.returning_star
+    @testing.variation(
+        "insert_type",
+        ["bulk", ("values", testing.requires.multivalues_inserts), "single"],
+    )
+    def test_insert_returning_star(self, decl_base, insert_type):
+        """test #10192"""
+
+        class User(decl_base):
+            __tablename__ = "users"
+
+            id: Mapped[int] = mapped_column(Identity(), primary_key=True)
+
+            name: Mapped[str] = mapped_column()
+            other_thing: Mapped[Optional[str]]
+            server_thing: Mapped[str] = mapped_column(server_default="thing")
+
+        decl_base.metadata.create_all(testing.db)
+        insert_stmt = insert(User).returning(literal_column("*"))
+
+        s = fixture_session()
+
+        if insert_type.bulk or insert_type.single:
+            with expect_raises_message(
+                exc.CompileError,
+                r"Can't use RETURNING \* with bulk ORM INSERT.",
+            ):
+                if insert_type.bulk:
+                    s.execute(
+                        insert_stmt,
+                        [
+                            {"name": "some name 1"},
+                            {"name": "some name 2"},
+                            {"name": "some name 3"},
+                        ],
+                    )
+                else:
+                    s.execute(
+                        insert_stmt,
+                        {"name": "some name 1"},
+                    )
+            return
+        elif insert_type.values:
+            with self.sql_execution_asserter() as asserter:
+                result = s.execute(
+                    insert_stmt.values(
+                        [
+                            {"name": "some name 1"},
+                            {"name": "some name 2"},
+                            {"name": "some name 3"},
+                        ],
+                    )
+                )
+
+            eq_(
+                result.all(),
+                [
+                    (1, "some name 1", None, "thing"),
+                    (2, "some name 2", None, "thing"),
+                    (3, "some name 3", None, "thing"),
+                ],
+            )
+            asserter.assert_(
+                CompiledSQL(
+                    "INSERT INTO users (name) VALUES (:name_m0), "
+                    "(:name_m1), (:name_m2) RETURNING *",
+                    [
+                        {
+                            "name_m0": "some name 1",
+                            "name_m1": "some name 2",
+                            "name_m2": "some name 3",
+                        }
+                    ],
+                ),
+            )
+        else:
+            insert_type.fail()
+
+    @testing.requires.insert_returning
     @testing.skip_if(
         "oracle", "oracle doesn't like the no-FROM SELECT inside of an INSERT"
     )
@@ -586,6 +665,60 @@ class UpdateStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
                 asserter.assert_(
                     CompiledSQL("UPDATE a SET x=:x, y=:y", [{"x": 5, "y": 9}]),
                 )
+
+    @testing.variation("multi_row", ["multirow", "singlerow", "listwsingle"])
+    @testing.requires.update_returning
+    @testing.requires.returning_star
+    def test_bulk_update_returning_star(self, decl_base, multi_row):
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(
+                primary_key=True, autoincrement=False
+            )
+
+            x: Mapped[int]
+            y: Mapped[int]
+
+        decl_base.metadata.create_all(testing.db)
+
+        s = fixture_session()
+
+        s.add_all(
+            [A(id=1, x=1, y=1), A(id=2, x=2, y=2), A(id=3, x=3, y=3)],
+        )
+        s.commit()
+
+        stmt = update(A).returning(literal_column("*"))
+
+        if multi_row.multirow:
+            data = [
+                {"x": 3, "y": 8},
+                {"x": 5, "y": 9},
+                {"x": 12, "y": 15},
+            ]
+
+            stmt = stmt.execution_options(synchronize_session=None)
+        elif multi_row.listwsingle:
+            data = [
+                {"x": 5, "y": 9},
+            ]
+
+            stmt = stmt.execution_options(synchronize_session=None)
+        elif multi_row.singlerow:
+            data = {"x": 5, "y": 9}
+        else:
+            multi_row.fail()
+
+        if multi_row.multirow or multi_row.listwsingle:
+            with expect_raises_message(
+                exc.InvalidRequestError, "No primary key value supplied"
+            ):
+                s.execute(stmt, data)
+                return
+        else:
+            result = s.execute(stmt, data)
+            eq_(result.all(), [(1, 5, 9), (2, 5, 9), (3, 5, 9)])
 
     def test_bulk_update_w_where_one(self, decl_base):
         """test use case in #9595"""

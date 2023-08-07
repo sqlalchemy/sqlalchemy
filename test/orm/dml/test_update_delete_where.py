@@ -10,6 +10,7 @@ from sqlalchemy import insert
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import lambda_stmt
+from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy import select
@@ -1094,6 +1095,31 @@ class UpdateDeleteTest(fixtures.MappedTest):
             list(zip([25, 37, 29, 27])),
         )
 
+    @testing.requires.update_returning
+    @testing.requires.returning_star
+    def test_update_returning_star(self):
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        john, jack, jill, jane = sess.query(User).order_by(User.id).all()
+
+        stmt = (
+            update(User)
+            .where(User.age > 29)
+            .values({"age": User.age - 10})
+            .returning(literal_column("*"))
+        )
+
+        result = sess.execute(stmt)
+        eq_(result.all(), [(2, "jack", 37), (4, "jane", 27)])
+
+        eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
+        eq_(
+            sess.query(User.age).order_by(User.id).all(),
+            list(zip([25, 37, 29, 27])),
+        )
+
     @testing.combinations(True, False, argnames="implicit_returning")
     def test_update_fetch_returning(self, implicit_returning):
         if implicit_returning:
@@ -1254,6 +1280,28 @@ class UpdateDeleteTest(fixtures.MappedTest):
         # note that ComparableEntity sets up __hash__ for mapped objects
         # to point to the class, so you can test eq with sets
         eq_(set(result.all()), expected)
+
+    @testing.requires.delete_returning
+    @testing.requires.returning_star
+    def test_delete_returning_star(self):
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        john, jack, jill, jane = sess.query(User).order_by(User.id).all()
+
+        in_(john, sess)
+        in_(jack, sess)
+
+        stmt = delete(User).where(User.age > 29).returning(literal_column("*"))
+
+        result = sess.execute(stmt)
+        eq_(result.all(), [(2, "jack", 47), (4, "jane", 37)])
+
+        in_(john, sess)
+        not_in(jack, sess)
+        in_(jill, sess)
+        not_in(jane, sess)
 
     @testing.combinations(True, False, argnames="implicit_returning")
     def test_delete_fetch_returning(self, implicit_returning):

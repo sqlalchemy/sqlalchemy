@@ -838,6 +838,13 @@ class ORMFromStatementCompileState(ORMCompileState):
             "plugin_subject", None
         )
         adapter = DMLReturningColFilter(target_mapper, dml_mapper)
+
+        if self.compile_options._is_star and (len(self._entities) != 1):
+            raise sa_exc.CompileError(
+                "Can't generate ORM query that includes multiple expressions "
+                "at the same time as '*'; query for '*' alone if present"
+            )
+
         for entity in self._entities:
             entity.setup_dml_returning_compile_state(self, adapter)
 
@@ -2969,7 +2976,6 @@ class _ColumnEntity(_QueryEntity):
             column = compile_state.compound_eager_adapter.columns[column]
 
         getter = result._getter(column)
-
         ret = getter, self._label_name, self._extra_entities
         self._row_processor = ret
 
@@ -3030,6 +3036,13 @@ class _RawColumnEntity(_ColumnEntity):
 
     def corresponds_to(self, entity):
         return False
+
+    def setup_dml_returning_compile_state(
+        self,
+        compile_state: ORMCompileState,
+        adapter: DMLReturningColFilter,
+    ) -> None:
+        return self.setup_compile_state(compile_state)
 
     def setup_compile_state(self, compile_state):
         current_adapter = compile_state._get_current_adapter()

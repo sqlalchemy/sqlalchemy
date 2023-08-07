@@ -1,9 +1,12 @@
+from sqlalchemy import delete
 from sqlalchemy import exc
+from sqlalchemy import insert
 from sqlalchemy import literal
 from sqlalchemy import literal_column
 from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import update
 from sqlalchemy.orm import loading
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import is_true
@@ -77,7 +80,8 @@ class SelectStarTest(_fixtures.FixtureTest):
         lambda User, star: (star, text("some text")),
         argnames="testcase",
     )
-    def test_no_star_orm_combinations(self, exprtype, testcase):
+    @testing.variation("stmt_type", ["select", "update", "insert", "delete"])
+    def test_no_star_orm_combinations(self, exprtype, testcase, stmt_type):
         """test for #8235"""
         User = self.classes.User
 
@@ -91,7 +95,17 @@ class SelectStarTest(_fixtures.FixtureTest):
             assert False
 
         args = testing.resolve_lambda(testcase, User=User, star=star)
-        stmt = select(*args).select_from(User)
+
+        if stmt_type.select:
+            stmt = select(*args).select_from(User)
+        elif stmt_type.insert:
+            stmt = insert(User).returning(*args)
+        elif stmt_type.update:
+            stmt = update(User).values({"data": "foo"}).returning(*args)
+        elif stmt_type.delete:
+            stmt = delete(User).returning(*args)
+        else:
+            stmt_type.fail()
 
         s = fixture_session()
 

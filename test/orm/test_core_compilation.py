@@ -2834,8 +2834,6 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_update_from_entity(self):
-        from sqlalchemy.sql import update
-
         User = self.classes.User
         self.assert_compile(
             update(User), "UPDATE users SET id=:id, name=:name"
@@ -2854,8 +2852,6 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_delete_from_entity(self):
-        from sqlalchemy.sql import delete
-
         User = self.classes.User
         self.assert_compile(delete(User), "DELETE FROM users")
 
@@ -2866,8 +2862,6 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_insert_from_entity(self):
-        from sqlalchemy.sql import insert
-
         User = self.classes.User
         self.assert_compile(
             insert(User), "INSERT INTO users (id, name) VALUES (:id, :name)"
@@ -2877,6 +2871,27 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
             insert(User).values(name="ed"),
             "INSERT INTO users (name) VALUES (:name)",
             checkparams={"name": "ed"},
+        )
+
+    def test_update_returning_star(self):
+        User = self.classes.User
+        self.assert_compile(
+            update(User).returning(literal_column("*")),
+            "UPDATE users SET id=:id, name=:name RETURNING *",
+        )
+
+    def test_delete_returning_star(self):
+        User = self.classes.User
+        self.assert_compile(
+            delete(User).returning(literal_column("*")),
+            "DELETE FROM users RETURNING *",
+        )
+
+    def test_insert_returning_star(self):
+        User = self.classes.User
+        self.assert_compile(
+            insert(User).returning(literal_column("*")),
+            "INSERT INTO users (id, name) VALUES (:id, :name) RETURNING *",
         )
 
     def test_col_prop_builtin_function(self):
