@@ -965,7 +965,7 @@ class Mapper(
 
     local_table: FromClause
     """The immediate :class:`_expression.FromClause` which this
-    :class:`_orm.Mapper` refers towards.
+    :class:`_orm.Mapper` refers to.
 
     Typically is an instance of :class:`_schema.Table`, may be any
     :class:`.FromClause`.

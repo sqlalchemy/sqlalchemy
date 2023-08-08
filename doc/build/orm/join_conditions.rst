@@ -428,7 +428,7 @@ composite key to ``Writer``.   If we associate an ``Article`` with a
 particular ``Magazine``, but then associate the ``Article`` with a
 ``Writer`` that's  associated  with a *different* ``Magazine``, the ORM
 will overwrite ``Article.magazine_id`` non-deterministically, silently
-changing which magazine we refer towards; it may
+changing which magazine we refer to; it may
 also attempt to place NULL into this column if we de-associate a
 ``Writer`` from an ``Article``.  The warning lets us know this is the case.
 

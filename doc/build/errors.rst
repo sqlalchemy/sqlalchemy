@@ -783,7 +783,7 @@ Above, the SQL selects FROM the ``employee`` table, representing the
 ``Employee`` entity in the query. It then joins to a right-nested join of
 ``employee AS employee_1 JOIN manager AS manager_1``, where the ``employee``
 table is stated again, except as an anonymous alias ``employee_1``. This is the
-"automatic generation of an alias" that the warning message refers towards.
+"automatic generation of an alias" that the warning message refers to.
 
 When SQLAlchemy loads ORM rows that each contain an ``Employee`` and a
 ``Manager`` object, the ORM must adapt rows from what above is the

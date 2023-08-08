@@ -1377,7 +1377,7 @@ Table Types passed to Functions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 PostgreSQL supports passing a table as an argument to a function, which it
-refers towards as a "record" type. SQLAlchemy :class:`_sql.FromClause` objects
+refers to as a "record" type. SQLAlchemy :class:`_sql.FromClause` objects
 such as :class:`_schema.Table` support this special form using the
 :meth:`_sql.FromClause.table_valued` method, which is comparable to the
 :meth:`_functions.FunctionElement.table_valued` method except that the collection

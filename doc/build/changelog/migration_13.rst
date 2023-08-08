@@ -454,9 +454,9 @@ The :class:`.AssociationProxy` object makes lots of decisions based on the
 parent mapped class it is associated with.   While the
 :class:`.AssociationProxy` historically began as a relatively simple "getter",
 it became apparent early on that it also needed to make decisions about what
-kind of attribute it is referring towards, e.g. scalar or collection, mapped
+kind of attribute it is referring to, e.g. scalar or collection, mapped
 object or simple value, and similar.  To achieve this, it needs to inspect the
-mapped attribute or other descriptor or attribute that it refers towards, as
+mapped attribute or other descriptor or attribute that it refers to, as
 referenced from its parent class.   However in Python descriptor mechanics, a
 descriptor only learns about its "parent" class when it is accessed in the
 context of that class, such as calling ``MyClass.some_descriptor``, which calls

@@ -4125,7 +4125,7 @@ class Over(ColumnElement[_T]):
 
     element: ColumnElement[_T]
     """The underlying expression object to which this :class:`.Over`
-    object refers towards."""
+    object refers to."""
 
     range_: Optional[typing_Tuple[int, int]]
 

@@ -948,7 +948,7 @@ These string names are resolved into classes in the mapper resolution stage,
 which is an internal process that occurs typically after all mappings have
 been defined and is normally triggered by the first usage of the mappings
 themselves.     The :class:`_orm.registry` object is the container in which
-these names are stored and resolved to the mapped classes they refer towards.
+these names are stored and resolved to the mapped classes they refer to.
 
 In addition to the main class argument for :func:`_orm.relationship`,
 other arguments which depend upon the columns present on an as-yet

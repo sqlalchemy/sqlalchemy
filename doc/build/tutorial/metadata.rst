@@ -335,7 +335,7 @@ SQLAlchemy :class:`_orm.DeclarativeBase` class::
     >>> class Base(DeclarativeBase):
     ...     pass
 
-Above, the ``Base`` class is what we'll refer towards as the Declarative Base.
+Above, the ``Base`` class is what we'll refer to as the Declarative Base.
 When we make new classes that are subclasses of ``Base``, combined with
 appropriate class-level directives, they will each be established as a new
 **ORM mapped class** at class creation time, each one typically (but not

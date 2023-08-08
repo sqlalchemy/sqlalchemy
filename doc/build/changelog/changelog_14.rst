@@ -1721,7 +1721,7 @@ This document details individual issue-level changes made throughout
         :paramref:`.FunctionElement.table_valued.joins_implicitly`, for the
         :meth:`.FunctionElement.table_valued` construct. This parameter indicates
         that the given table-valued function implicitly joins to the table it
-        refers towards, essentially disabling the "from linting" feature, i.e. the
+        refers to, essentially disabling the "from linting" feature, i.e. the
         "cartesian product" warning, from taking effect due to the presence of this
         parameter. May be used for functions such as ``func.json_each()``.
 
@@ -3993,7 +3993,7 @@ This document details individual issue-level changes made throughout
         :func:`_orm.relationship` that automap will be generating would emit the
         "overlaps" warnings introduced in 1.4 and discussed at :ref:`error_qzyx`.
         While generating this case from automap is still subject to the same
-        caveats that the "overlaps" warning refers towards, as automap is intended
+        caveats that the "overlaps" warning refers to, as automap is intended
         for more ad-hoc use cases, the condition which produces the warning is
         disabled when a many-to-many relationship with this particular pattern is
         generated.
