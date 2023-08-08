@@ -814,7 +814,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
         The above code is not  fundamentally any different in its behavior than
         the following code  which does not use
-        :meth:`_engine.Connection.begin`; the below style is referred towards
+        :meth:`_engine.Connection.begin`; the below style is referred to
         as "commit as you go" style::
 
             with engine.connect() as conn:

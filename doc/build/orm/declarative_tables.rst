@@ -1218,7 +1218,7 @@ The above configuration is often more readable as an inline definition::
 
 A natural effect of the above style is that the ``__table__`` attribute is
 itself defined within the class definition block.   As such it may be
-immediately referred towards within subsequent attributes, such as the example
+immediately referred to within subsequent attributes, such as the example
 below which illustrates referring to the ``type`` column in a polymorphic
 mapper configuration::
 
@@ -1699,7 +1699,7 @@ Similarly::
 will map the ``Address`` class to the ``address_table`` table, including
 all columns present except ``street``, ``city``, ``state``, and ``zip``.
 
-As indicated in the two examples, columns may be referred towards either
+As indicated in the two examples, columns may be referred to either
 by string name or by referring to the :class:`_schema.Column` object
 directly.  Referring to the object directly may be useful for explicitness as
 well as to resolve ambiguities when

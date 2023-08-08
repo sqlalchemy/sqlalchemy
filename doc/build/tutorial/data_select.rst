@@ -255,7 +255,7 @@ when referring to arbitrary SQL expressions in a result row by name:
 .. seealso::
 
     :ref:`tutorial_order_by_label` - the label names we create may also be
-    referred towards in the ORDER BY or GROUP BY clause of the :class:`_sql.Select`.
+    referred to in the ORDER BY or GROUP BY clause of the :class:`_sql.Select`.
 
 .. _tutorial_select_arbitrary_text:
 
@@ -682,7 +682,7 @@ Now that we are selecting from multiple tables and using joins, we quickly
 run into the case where we need to refer to the same table multiple times
 in the FROM clause of a statement.  We accomplish this using SQL **aliases**,
 which are a syntax that supplies an alternative name to a table or subquery
-from which it can be referred towards in the statement.
+from which it can be referred to in the statement.
 
 In the SQLAlchemy Expression Language, these "names" are instead represented by
 :class:`_sql.FromClause` objects known as the :class:`_sql.Alias` construct,
@@ -1163,7 +1163,7 @@ that it has fewer methods.   The :class:`_sql.CompoundSelect` produced by
 To use a :class:`_sql.CompoundSelect` as a subquery, just like :class:`_sql.Select`
 it provides a :meth:`_sql.SelectBase.subquery` method which will produce a
 :class:`_sql.Subquery` object with a :attr:`_sql.FromClause.c`
-collection that may be referred towards in an enclosing :func:`_sql.select`::
+collection that may be referred to in an enclosing :func:`_sql.select`::
 
     >>> u_subq = u.subquery()
     >>> stmt = (
@@ -1422,7 +1422,7 @@ something like :class:`_types.Integer` or :class:`_types.Numeric`, JSON
 accessors in order to work need to be using a type such as
 :class:`_types.JSON`.  Certain classes of functions return entire rows
 instead of column values, where there is a need to refer to specific columns;
-such functions are referred towards
+such functions are referred to
 as :ref:`table valued functions <tutorial_functions_table_valued>`.
 
 The SQL return type of the function may also be significant when executing a
@@ -1676,7 +1676,7 @@ Table-Valued Functions
 Table-valued SQL functions support a scalar representation that contains named
 sub-elements. Often used for JSON and ARRAY-oriented functions as well as
 functions like ``generate_series()``, the table-valued function is specified in
-the FROM clause, and is then referred towards as a table, or sometimes even as
+the FROM clause, and is then referred to as a table, or sometimes even as
 a column. Functions of this form are prominent within the PostgreSQL database,
 however some forms of table valued functions are also supported by SQLite,
 Oracle, and SQL Server.

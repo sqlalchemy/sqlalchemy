@@ -137,7 +137,7 @@ connection, rather than the :meth:`_engine.Engine.connect` method.  This method
 will both manage the scope of the :class:`_engine.Connection` and also
 enclose everything inside of a transaction with COMMIT at the end, assuming
 a successful block, or ROLLBACK in case of exception raise.  This style
-may be referred towards as **begin once**:
+may be referred to as **begin once**:
 
 .. sourcecode:: pycon+sql
 
@@ -301,7 +301,7 @@ Sending Parameters
 SQL statements are usually accompanied by data that is to be passed with the
 statement itself, as we saw in the INSERT example previously. The
 :meth:`_engine.Connection.execute` method therefore also accepts parameters,
-which are referred towards as :term:`bound parameters`.  A rudimentary example
+which are referred to as :term:`bound parameters`.  A rudimentary example
 might be if we wanted to limit our SELECT statement only to rows that meet a
 certain criteria, such as rows where the "y" value were greater than a certain
 value that is passed in to a function.

@@ -89,7 +89,7 @@ the use of a declarative base which is then used in a declarative table mapping:
         nickname: Mapped[Optional[str]]
 
 Above, the :class:`_orm.DeclarativeBase` class is used to generate a new
-base class (within SQLAlchemy's documentation it's typically referred towards
+base class (within SQLAlchemy's documentation it's typically referred to
 as ``Base``, however can have any desired name) from
 which new classes to be mapped may inherit from, as above a new mapped
 class ``User`` is constructed.

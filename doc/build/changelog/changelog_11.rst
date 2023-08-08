@@ -209,7 +209,7 @@
 
         Fixed bug where a descriptor that is elsewhere a mapped column
         or relationship within a hierarchy based on :class:`.AbstractConcreteBase`
-        would be referred towards during a refresh operation, causing an error
+        would be referred to during a refresh operation, causing an error
         as the attribute is not mapped as a mapper property.
         A similar issue can arise for other attributes like the "type" column
         added by :class:`.AbstractConcreteBase` if the class fails to include

@@ -5056,7 +5056,7 @@ This document details individual issue-level changes made throughout
 
         Fixed a critical performance issue where the traversal of a
         :func:`_sql.select` construct would traverse a repetitive product of the
-        represented FROM clauses as they were each referred towards by columns in
+        represented FROM clauses as they were each referred to by columns in
         the columns clause; for a series of nested subqueries with lots of columns
         this could cause a large delay and significant memory growth. This
         traversal is used by a wide variety of SQL and ORM functions, including by
@@ -6518,7 +6518,7 @@ This document details individual issue-level changes made throughout
         with an emphasis on its use within the :func:`_orm.with_loader_criteria`
         feature where it is most prominently used [ticket:5760]:
 
-        * fixed issue where boolean True/False values referred towards in the
+        * fixed issue where boolean True/False values referred to in the
           closure variables of the lambda would cause failures [ticket:5763]
 
         * Repaired a non-working detection for Python functions embedded in the
@@ -6962,7 +6962,7 @@ This document details individual issue-level changes made throughout
         syntaxes supported by PostgreSQL, one of the most commonly requested
         features. Table valued functions are SQL functions that return lists of
         values or rows, and are prevalent in PostgreSQL in the area of JSON
-        functions, where the "table value" is commonly referred towards as the
+        functions, where the "table value" is commonly referred to as the
         "record" datatype. Table valued functions are also supported by Oracle and
         SQL Server.
 

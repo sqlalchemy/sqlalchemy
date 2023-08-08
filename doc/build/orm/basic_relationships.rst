@@ -1140,7 +1140,7 @@ using either a lambda callable or string name is supported, where string
 resolution works by evaluation of given Python expression which links
 identifier names to same-named :class:`_schema.Table` objects that
 are present in the same
-:class:`_schema.MetaData` collection referred towards by the current
+:class:`_schema.MetaData` collection referred to by the current
 :class:`_orm.registry`.
 
 For the example given at :ref:`relationships_many_to_many`, if we assumed

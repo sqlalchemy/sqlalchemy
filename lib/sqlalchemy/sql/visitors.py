@@ -170,7 +170,7 @@ class InternalTraversal(Enum):
     Above, the :class:`.Case` class indicates its internal state as the
     attributes named ``value``, ``whens``, and ``else_``.    They each
     link to an :class:`.InternalTraversal` method which indicates the type
-    of datastructure referred towards.
+    of datastructure referred to.
 
     Using the ``_traverse_internals`` structure, objects of type
     :class:`.InternalTraversible` will have the following methods automatically

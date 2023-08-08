@@ -303,7 +303,7 @@ Setting Alternate Search Paths on Connect
 ------------------------------------------
 
 The PostgreSQL ``search_path`` variable refers to the list of schema names
-that will be implicitly referred towards when a particular table or other
+that will be implicitly referred to when a particular table or other
 object is referenced in a SQL statement.  As detailed in the next section
 :ref:`postgresql_schema_reflection`, SQLAlchemy is generally organized around
 the concept of keeping this variable at its default value of ``public``,

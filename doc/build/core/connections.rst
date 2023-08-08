@@ -107,7 +107,7 @@ to the transaction ending, the :class:`_engine.Connection` waits for the
 :meth:`_engine.Connection.execute` method to be called again, at which point
 it autobegins again.
 
-This calling style is referred towards as **commit as you go**, and is
+This calling style is referred to as **commit as you go**, and is
 illustrated in the example below::
 
     with engine.connect() as connection:
@@ -159,7 +159,7 @@ Begin Once
 ~~~~~~~~~~
 
 The :class:`_engine.Connection` object provides a more explicit transaction
-management style referred towards as **begin once**. In contrast to "commit as
+management style referred to as **begin once**. In contrast to "commit as
 you go", "begin once" allows the start point of the transaction to be
 stated explicitly,
 and allows that the transaction itself may be framed out as a context manager
@@ -2199,7 +2199,7 @@ given exceeds a fixed limit, or when the total number of bound parameters to be
 rendered in a single INSERT statement exceeds a fixed limit (the two fixed
 limits are separate), multiple INSERT statements will be invoked within the
 scope of a single :meth:`_engine.Connection.execute` call, each of which
-accommodate for a portion of the parameter dictionaries, referred towards as a
+accommodate for a portion of the parameter dictionaries, referred to as a
 "batch".  The number of parameter dictionaries represented within each
 "batch" is then known as the "batch size".  For example, a batch size of
 500 means that each INSERT statement emitted will INSERT at most 500 rows.

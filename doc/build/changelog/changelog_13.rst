@@ -2746,7 +2746,7 @@
 
         Fixed a series of quoting issues which all stemmed from the concept of the
         :func:`_expression.literal_column` construct, which when being "proxied" through a
-        subquery to be referred towards by a label that matches its text, the label
+        subquery to be referred to by a label that matches its text, the label
         would not have quoting rules applied to it, even if the string in the
         :class:`.Label` were set up as a :class:`.quoted_name` construct.  Not
         applying quoting to the text of the :class:`.Label` is a bug because this

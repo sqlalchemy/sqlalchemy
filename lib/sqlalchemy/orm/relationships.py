@@ -1613,7 +1613,7 @@ class RelationshipProperty(
     @util.memoized_property
     def entity(self) -> _InternalEntityType[_T]:
         """Return the target mapped entity, which is an inspect() of the
-        class or aliased class that is referred towards.
+        class or aliased class that is referred to.
 
         """
         self.parent._check_configure()
@@ -1989,7 +1989,7 @@ class RelationshipProperty(
                 'and not on the "many" side of a many-to-one or many-to-many '
                 "relationship.  "
                 "To force this relationship to allow a particular "
-                '"%(relatedcls)s" object to be referred towards by only '
+                '"%(relatedcls)s" object to be referred to by only '
                 'a single "%(clsname)s" object at a time via the '
                 "%(rel)s relationship, which "
                 "would allow "

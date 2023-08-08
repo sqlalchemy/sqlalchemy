@@ -56,7 +56,7 @@ are mapped to the ``User`` and ``Address`` classes. As the
 table, the :func:`_orm.relationship` can determine unambiguously that there is
 a :term:`one to many` relationship from the ``User`` class to the ``Address``
 class, along the ``User.addresses`` relationship; one particular row in the
-``user_account`` table may be referred towards by many rows in the ``address``
+``user_account`` table may be referred to by many rows in the ``address``
 table.
 
 All one-to-many relationships naturally correspond to a :term:`many to one`

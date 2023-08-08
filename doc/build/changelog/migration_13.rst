@@ -150,7 +150,7 @@ so that they did not conflict with the existing columns mapped to ``B``, as
 well as it was necessary to define a new primary key.
 
 With the new approach, all of this verbosity goes away, and the additional
-columns are referred towards directly when making the relationship::
+columns are referred to directly when making the relationship::
 
     j = join(B, D, D.b_id == B.id).join(C, C.id == D.c_id)
 

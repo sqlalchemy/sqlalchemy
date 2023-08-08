@@ -84,7 +84,7 @@ Working with Mapped Composite Column Types
 
 With a mapping as illustrated in the top section, we can work with the
 ``Vertex`` class, where the ``.start`` and ``.end`` attributes will
-transparently refer to the columns referred towards by the ``Point`` class, as
+transparently refer to the columns referred to by the ``Point`` class, as
 well as with instances of the ``Vertex`` class, where the ``.start`` and
 ``.end`` attributes will refer to instances of the ``Point`` class. The ``x1``,
 ``y1``, ``x2``, and ``y2`` columns are handled transparently:

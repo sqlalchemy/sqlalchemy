@@ -424,7 +424,7 @@ parameter indicates to :func:`_orm.mapped_column` that it should look for the
 requested :class:`_schema.Column` on the mapped :class:`.Table` for
 ``Employee`` first, and if present, maintain that existing mapping.  If not
 present, :func:`_orm.mapped_column` will map the column normally, adding it
-as one of the columns in the :class:`.Table` referred towards by the
+as one of the columns in the :class:`.Table` referred to by the
 ``Employee`` superclass.
 
 
