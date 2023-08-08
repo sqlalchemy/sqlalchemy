@@ -2530,7 +2530,8 @@ class SymbolTest(fixtures.TestBase):
 
         with expect_raises_message(
             TypeError,
-            "Can't replace canonical symbol for fi_sym1 with new int value 2",
+            "Can't replace canonical symbol for 'fi_sym1' "
+            "with new int value 2",
         ):
 
             class Enum2(FastIntFlag):
