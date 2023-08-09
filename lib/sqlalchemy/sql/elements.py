@@ -1591,6 +1591,9 @@ class ColumnElement(
         else:
             return comparator_factory(self)
 
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
     def __getattr__(self, key: str) -> Any:
         try:
             return getattr(self.comparator, key)

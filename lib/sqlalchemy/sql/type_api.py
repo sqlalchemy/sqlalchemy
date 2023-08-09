@@ -236,9 +236,6 @@ class TypeEngine(Visitable, Generic[_T]):
 
             return op, self.type
 
-        def __reduce__(self) -> Any:
-            return _reconstitute_comparator, (self.expr,)
-
     hashable = True
     """Flag, if False, means values from this type aren't hashable.
 
@@ -2307,10 +2304,6 @@ class Variant(TypeDecorator[_T]):
             "Variant is no longer used in SQLAlchemy; this is a "
             "placeholder symbol for backwards compatibility."
         )
-
-
-def _reconstitute_comparator(expression: Any) -> Any:
-    return expression.comparator
 
 
 @overload
