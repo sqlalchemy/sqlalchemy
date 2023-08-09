@@ -6200,6 +6200,18 @@ class Select(
         :class:`_expression.ColumnElement` objects that are in the
         :attr:`_expression.FromClause.c` collection of the from element.
 
+        A use case for the :attr:`_sql.Select.selected_columns` collection is
+        to allow the existing columns to be referenced when adding additional
+        criteria, e.g.::
+
+            def filter_on_id(my_select, id):
+                return my_select.where(my_select.selected_columns['id'] == id)
+
+            stmt = select(MyModel)
+
+            # adds "WHERE id=:param" to the statement
+            stmt = filter_on_id(stmt, 42)
+
         .. note::
 
             The :attr:`_sql.Select.selected_columns` collection does not
