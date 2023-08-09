@@ -1373,7 +1373,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(t),
             "CREATE TABLE t (y INTEGER GENERATED ALWAYS AS IDENTITY "
             "(INCREMENT BY 7 START WITH 4 NOMINVALUE NOMAXVALUE "
-            "NOORDER NOCYCLE))",
+            "NOCYCLE NOORDER))",
         )
 
     def test_column_identity_no_generated(self):

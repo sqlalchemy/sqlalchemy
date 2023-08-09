@@ -4790,8 +4790,6 @@ class DDLCompiler(Compiled):
             text.append("NO MAXVALUE")
         if identity_options.cache is not None:
             text.append("CACHE %d" % identity_options.cache)
-        if identity_options.order is not None:
-            text.append("ORDER" if identity_options.order else "NO ORDER")
         if identity_options.cycle is not None:
             text.append("CYCLE" if identity_options.cycle else "NO CYCLE")
         return " ".join(text)

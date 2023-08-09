@@ -84,13 +84,21 @@ class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            CreateSequence(Sequence("foo_seq", cache=1000, order=True)),
-            "CREATE SEQUENCE foo_seq START WITH 1 CACHE 1000 ORDER",
+            CreateSequence(Sequence("foo_seq", cache=1000)),
+            "CREATE SEQUENCE foo_seq START WITH 1 CACHE 1000",
         )
 
+        # remove this when the `order` parameter is removed
+        # issue #10207 - ensure ORDER does not render
+        self.assert_compile(
+            CreateSequence(Sequence("foo_seq", order=True)),
+            "CREATE SEQUENCE foo_seq START WITH 1",
+        )
+        # only renders for Oracle
         self.assert_compile(
             CreateSequence(Sequence("foo_seq", order=True)),
             "CREATE SEQUENCE foo_seq START WITH 1 ORDER",
+            dialect="oracle",
         )
 
         self.assert_compile(
