@@ -1720,7 +1720,7 @@ class Query(
             self._where_criteria += (criterion,)
 
     @util.memoized_property
-    def _last_joined_entity(self):
+    def _last_joined_entity(self):  # noqa: F811
         if self._legacy_setup_joins:
             return _legacy_determine_last_joined_entity(
                 self._legacy_setup_joins, self._entity_from_pre_ent_zero()

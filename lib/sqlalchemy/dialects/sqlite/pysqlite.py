@@ -573,7 +573,7 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
 
             fns.append(iso_level)
 
-        def connect(conn):
+        def connect(conn):  # noqa: F811
             for fn in fns:
                 fn(conn)
 
