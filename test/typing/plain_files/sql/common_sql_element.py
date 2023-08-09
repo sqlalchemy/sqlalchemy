@@ -13,6 +13,7 @@ from sqlalchemy import asc
 from sqlalchemy import Column
 from sqlalchemy import desc
 from sqlalchemy import Integer
+from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import SQLColumnExpression
@@ -138,3 +139,24 @@ s9174_5 = select(user_table).with_for_update(of=user_table.c.id)
 s9174_6 = select(user_table).with_for_update(
     of=[user_table.c.id, user_table.c.email]
 )
+
+# with_for_update but for query
+session = Session()
+user = session.query(User).with_for_update(of=User)
+user = session.query(User).with_for_update(of=User.id)
+user = session.query(User).with_for_update(of=[User.id, User.email])
+user = session.query(user_table).with_for_update(of=user_table)
+user = session.query(user_table).with_for_update(of=user_table.c.id)
+user = session.query(user_table).with_for_update(
+    of=[user_table.c.id, user_table.c.email]
+)
+
+# literal
+# EXPECTED_TYPE: BindParameter[str]
+reveal_type(literal("5"))
+# EXPECTED_TYPE: BindParameter[str]
+reveal_type(literal("5", None))
+# EXPECTED_TYPE: BindParameter[int]
+reveal_type(literal("123", Integer))
+# EXPECTED_TYPE: BindParameter[int]
+reveal_type(literal("123", Integer))
