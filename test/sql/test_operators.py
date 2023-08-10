@@ -1,5 +1,6 @@
 import datetime
 import operator
+import pickle
 
 from sqlalchemy import and_
 from sqlalchemy import between
@@ -68,6 +69,7 @@ from sqlalchemy.types import DateTime
 from sqlalchemy.types import Indexable
 from sqlalchemy.types import JSON
 from sqlalchemy.types import MatchType
+from sqlalchemy.types import NullType
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.types import TypeEngine
 from sqlalchemy.types import UserDefinedType
@@ -2249,6 +2251,22 @@ class ComparisonOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_pickle_operators_two(self):
         clause = tuple_(1, 2, 3)
         eq_(str(clause), str(util.pickle.loads(util.pickle.dumps(clause))))
+
+    @testing.combinations(Integer(), String(), JSON(), argnames="typ")
+    @testing.variation("eval_first", [True, False])
+    def test_pickle_comparator(self, typ, eval_first):
+        """test #10213"""
+
+        table1 = Table("t", MetaData(), Column("x", typ))
+        t1 = table1.c.x
+
+        if eval_first:
+            t1.comparator
+
+        t1p = pickle.loads(pickle.dumps(table1.c.x))
+
+        is_not(t1p.comparator.__class__, NullType.Comparator)
+        is_(t1.comparator.__class__, t1p.comparator.__class__)
 
     @testing.combinations(
         (operator.lt, "<", ">"),

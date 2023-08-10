@@ -111,8 +111,12 @@ class TypeEngine(Traversible):
 
             return op, self.type
 
+        # note: this reduce is needed for tests to pass under python 2.
+        # it does not appear to apply to python 3.  It has however been
+        # modified to accommodate issue #10213.  In SQLA 2 this reduce
+        # has been removed.
         def __reduce__(self):
-            return _reconstitute_comparator, (self.expr,)
+            return _reconstitute_comparator, (self.expr, self.expr.type)
 
     hashable = True
     """Flag, if False, means values from this type aren't hashable.
@@ -1945,8 +1949,14 @@ class Variant(TypeDecorator):
         return self.impl.comparator_factory
 
 
-def _reconstitute_comparator(expression):
-    return expression.comparator
+def _reconstitute_comparator(expression, type_=None):
+    # changed for #10213, added type_ argument.
+    # for previous pickles, keep type_ optional
+    if type_ is None:
+        return expression.comparator
+
+    comparator_factory = type_.comparator_factory
+    return comparator_factory(expression)
 
 
 def to_instance(typeobj, *arg, **kw):
