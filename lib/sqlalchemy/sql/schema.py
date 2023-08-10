@@ -43,12 +43,14 @@ from typing import Dict
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Mapping
 from typing import NoReturn
 from typing import Optional
 from typing import overload
 from typing import Sequence as _typing_Sequence
 from typing import Set
 from typing import Tuple
+from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
@@ -85,6 +87,7 @@ from ..util.typing import Final
 from ..util.typing import Literal
 from ..util.typing import Protocol
 from ..util.typing import Self
+from ..util.typing import TypedDict
 from ..util.typing import TypeGuard
 
 if typing.TYPE_CHECKING:
@@ -5283,8 +5286,35 @@ class Index(
         )
 
 
-DEFAULT_NAMING_CONVENTION: util.immutabledict[str, str] = util.immutabledict(
-    {"ix": "ix_%(column_0_label)s"}
+_AllConstraints = Union[
+    Index,
+    UniqueConstraint,
+    CheckConstraint,
+    ForeignKeyConstraint,
+    PrimaryKeyConstraint,
+]
+
+_NamingSchemaCallable = Callable[[_AllConstraints, Table], str]
+
+
+class _NamingSchemaTD(TypedDict, total=False):
+    fk: Union[str, _NamingSchemaCallable]
+    pk: Union[str, _NamingSchemaCallable]
+    ix: Union[str, _NamingSchemaCallable]
+    ck: Union[str, _NamingSchemaCallable]
+    uq: Union[str, _NamingSchemaCallable]
+
+
+_NamingSchemaParameter = Union[
+    _NamingSchemaTD,
+    Mapping[
+        Union[Type[_AllConstraints], str], Union[str, _NamingSchemaCallable]
+    ],
+]
+
+
+DEFAULT_NAMING_CONVENTION: _NamingSchemaParameter = util.immutabledict(
+    {"ix": "ix_%(column_0_label)s"}  # type: ignore[arg-type]
 )
 
 
@@ -5319,7 +5349,7 @@ class MetaData(HasSchemaAttr):
         self,
         schema: Optional[str] = None,
         quote_schema: Optional[bool] = None,
-        naming_convention: Optional[Dict[str, str]] = None,
+        naming_convention: Optional[_NamingSchemaParameter] = None,
         info: Optional[_InfoType] = None,
     ) -> None:
         """Create a new MetaData object.
