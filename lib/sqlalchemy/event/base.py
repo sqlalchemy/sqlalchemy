@@ -24,6 +24,7 @@ from typing import Dict
 from typing import Generic
 from typing import Iterator
 from typing import List
+from typing import Mapping
 from typing import MutableMapping
 from typing import Optional
 from typing import overload
@@ -282,7 +283,7 @@ class _HasEventsDispatch(Generic[_ET]):
 
     @classmethod
     def _create_dispatcher_class(
-        cls, classname: str, bases: Tuple[type, ...], dict_: Dict[str, Any]
+        cls, classname: str, bases: Tuple[type, ...], dict_: Mapping[str, Any]
     ) -> None:
         """Create a :class:`._Dispatch` class corresponding to an
         :class:`.Events` class."""
