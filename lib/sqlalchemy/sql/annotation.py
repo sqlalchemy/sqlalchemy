@@ -242,6 +242,18 @@ class Annotated(object):
 annotated_classes = {}
 
 
+def _safe_annotate(to_annotate, annotations):
+    try:
+        _annotate = to_annotate._annotate
+    except AttributeError:
+        # skip objects that don't actually have an `_annotate`
+        # attribute, namely QueryableAttribute inside of a join
+        # condition
+        return to_annotate
+    else:
+        return _annotate(annotations)
+
+
 def _deep_annotate(
     element, annotations, exclude=None, detect_subquery_cols=False
 ):
@@ -272,9 +284,11 @@ def _deep_annotate(
             newelem = elem._clone(clone=clone, **kw)
         elif annotations != elem._annotations:
             if detect_subquery_cols and elem._is_immutable:
-                newelem = elem._clone(clone=clone, **kw)._annotate(annotations)
+                newelem = _safe_annotate(
+                    elem._clone(clone=clone, **kw), annotations
+                )
             else:
-                newelem = elem._annotate(annotations)
+                newelem = _safe_annotate(elem, annotations)
         else:
             newelem = elem
         newelem._copy_internals(clone=clone)
