@@ -78,6 +78,7 @@ from ..sql import roles
 from ..sql import visitors
 from ..sql._typing import _ColumnExpressionArgument
 from ..sql._typing import _HasClauseElement
+from ..sql.annotation import _safe_annotate
 from ..sql.elements import ColumnClause
 from ..sql.elements import ColumnElement
 from ..sql.util import _deep_annotate
@@ -3297,7 +3298,7 @@ class JoinCondition:
                     parentmapper_for_element is not self.prop.parent
                     and parentmapper_for_element is not self.prop.mapper
                 ):
-                    return elem._annotate(annotations)
+                    return _safe_annotate(elem, annotations)
                 else:
                     return elem
 
