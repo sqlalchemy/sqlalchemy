@@ -1910,11 +1910,12 @@ class SubqueryLoader(PostLoader):
 
         q = query.Query(effective_entity)
 
-        q._execution_options = q._execution_options.union(
+        q._execution_options = context.query._execution_options.merge_with(
+            context.execution_options,
             {
                 ("orig_query", SubqueryLoader): orig_query,
                 ("subquery_paths", None): (subq_path, rewritten_path),
-            }
+            },
         )
 
         q = q._set_enable_single_crit(False)
@@ -2948,6 +2949,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         ) = self._setup_for_recursion(
             context, path, loadopt, join_depth=self.join_depth
         )
+
         if not run_loader:
             return
 

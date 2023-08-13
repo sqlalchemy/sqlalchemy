@@ -1,0 +1,20 @@
+.. change::
+    :tags: orm, bug
+    :tickets: 10231
+
+    Fixed fairly major issue where execution options passed to
+    :meth:`_orm.Session.execute`, as well as execution options local to the ORM
+    executed statement itself, would not be propagated along to eager loaders
+    such as that of :func:`_orm.selectinload`, :func:`_orm.immediateload`, and
+    :meth:`_orm.subqueryload`, making it impossible to do things such as
+    disabling the cache for a single statement or using
+    ``schema_translate_map`` for a single statement, as well as the use of
+    user-custom execution options.   A change has been made where **all**
+    user-facing execution options present for :meth:`_orm.Session.execute` will
+    be propagated along to additional loaders.
+
+    As part of this change, the warning for "excessively deep" eager loaders
+    leading to caching being disabled can be silenced on a per-statement
+    basis by sending ``execution_options={"compiled_cache": None}`` to
+    :meth:`_orm.Session.execute`, which will disable caching for the full
+    series of statements within that scope.

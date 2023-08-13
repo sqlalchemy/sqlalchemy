@@ -494,6 +494,13 @@ class ORMCompileState(AbstractORMCompileState):
         #    this will disable the ResultSetMetadata._adapt_to_context()
         #    step which we don't need, as we have result processors cached
         #    against the original SELECT statement before caching.
+
+        if "sa_top_level_orm_context" in execution_options:
+            ctx = execution_options["sa_top_level_orm_context"]
+            execution_options = ctx.query._execution_options.merge_with(
+                ctx.execution_options, execution_options
+            )
+
         if not execution_options:
             execution_options = _orm_load_exec_options
         else:
@@ -514,7 +521,8 @@ class ORMCompileState(AbstractORMCompileState):
                 "Loader depth for query is excessively deep; caching will "
                 "be disabled for additional loaders.  Consider using the "
                 "recursion_depth feature for deeply nested recursive eager "
-                "loaders."
+                "loaders.  Use the compiled_cache=None execution option to "
+                "skip this warning."
             )
             execution_options = execution_options.union(
                 {"compiled_cache": None}
