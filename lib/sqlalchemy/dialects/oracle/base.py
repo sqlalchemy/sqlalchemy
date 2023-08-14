@@ -10,7 +10,7 @@
 r"""
 .. dialect:: oracle
     :name: Oracle
-    :full_support: 11.2, 18c
+    :full_support: 18c
     :normal_support: 11+
     :best_effort: 9+
 
