@@ -21,8 +21,10 @@ from sqlalchemy import update
 from sqlalchemy import values
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import immediateload
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import synonym
@@ -1119,6 +1121,72 @@ class UpdateDeleteTest(fixtures.MappedTest):
             sess.query(User.age).order_by(User.id).all(),
             list(zip([25, 37, 29, 27])),
         )
+
+    @testing.requires.update_returning
+    @testing.combinations(
+        selectinload,
+        immediateload,
+        argnames="loader_fn",
+    )
+    @testing.variation("opt_location", ["statement", "execute"])
+    def test_update_returning_eagerload_propagate(
+        self, loader_fn, connection, opt_location
+    ):
+        User = self.classes.User
+
+        catch_opts = []
+
+        @event.listens_for(connection, "before_cursor_execute")
+        def before_cursor_execute(
+            conn, cursor, statement, parameters, context, executemany
+        ):
+            catch_opts.append(
+                {
+                    k: v
+                    for k, v in context.execution_options.items()
+                    if isinstance(k, str)
+                    and k[0] != "_"
+                    and k not in ("sa_top_level_orm_context",)
+                }
+            )
+
+        sess = Session(connection)
+
+        stmt = (
+            update(User)
+            .where(User.age > 29)
+            .values({"age": User.age - 10})
+            .returning(User)
+            .options(loader_fn(User.addresses))
+        )
+
+        if opt_location.execute:
+            opts = {
+                "compiled_cache": None,
+                "user_defined": "opt1",
+                "schema_translate_map": {"foo": "bar"},
+            }
+            result = sess.scalars(
+                stmt,
+                execution_options=opts,
+            )
+        elif opt_location.statement:
+            opts = {
+                "user_defined": "opt1",
+                "schema_translate_map": {"foo": "bar"},
+            }
+            stmt = stmt.execution_options(**opts)
+            result = sess.scalars(stmt)
+        else:
+            result = ()
+            opts = None
+            opt_location.fail()
+
+        for u1 in result:
+            u1.addresses
+
+        for elem in catch_opts:
+            eq_(elem, opts)
 
     @testing.combinations(True, False, argnames="implicit_returning")
     def test_update_fetch_returning(self, implicit_returning):

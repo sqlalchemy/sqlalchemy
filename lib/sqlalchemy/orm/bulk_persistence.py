@@ -525,6 +525,7 @@ class ORMDMLState(AbstractORMCompileState):
                 dml_level_statement,
                 _adapt_on_names=False,
             )
+            fs = fs.execution_options(**orm_level_statement._execution_options)
             fs = fs.options(*orm_level_statement._with_options)
             self.select_statement = fs
             self.from_statement_ctx = (
