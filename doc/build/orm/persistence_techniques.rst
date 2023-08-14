@@ -802,6 +802,10 @@ a custom :class:`.Session` which delivers the following rules:
             if mapper and issubclass(mapper.class_, MyOtherClass):
                 return engines["other"]
             elif self._flushing or isinstance(clause, (Update, Delete)):
+                # NOTE: this is for example, however in practice reader/writer
+                # splits are likely more straightforward by using two distinct
+                # Sessions at the top of a "reader" or "writer" operation.
+                # See note below
                 return engines["leader"]
             else:
                 return engines[random.choice(["follower1", "follower2"])]
@@ -814,6 +818,20 @@ argument to :class:`.sessionmaker`::
 This approach can be combined with multiple :class:`_schema.MetaData` objects,
 using an approach such as that of using the declarative ``__abstract__``
 keyword, described at :ref:`declarative_abstract`.
+
+.. note:: While the above example illustrates routing of specific SQL statements
+   to a so-called "leader" or "follower" database based on whether or not the
+   statement expects to write data, this is likely not a practical approach,
+   as it leads to uncoordinated transaction behavior between reading
+   and writing within the same operation.  In practice, it's likely best
+   to construct the :class:`_orm.Session` up front as a "reader" or "writer"
+   session, based on the overall operation / transaction that's proceeding.
+   That way, an operation that will be writing data will also emit its read-queries
+   within the same transaction scope.  See the example at
+   :ref:`session_transaction_isolation_enginewide` for a recipe that sets up
+   one :class:`_orm.sessionmaker` for "read only" operations using autocommit
+   connections, and another for "write" operations which will include DML /
+   COMMIT.
 
 .. seealso::
 
