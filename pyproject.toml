@@ -13,7 +13,13 @@ target-version = ['py37']
 black-line-length = 79
 
 [tool.slotscheck]
-exclude-modules = '^sqlalchemy\.testing'
+exclude-modules = '''
+^sqlalchemy\.(
+  testing
+  |ext\.mypy  # see slotscheck/issues/178
+)
+'''
+
 
 # disable isort, for IDEs that just default isort to be turned on, e.g. vscode.
 # we use flake8-import-order for import sorting, using zimports to actually
