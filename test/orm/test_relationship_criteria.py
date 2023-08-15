@@ -2390,7 +2390,7 @@ class SubqueryCriteriaTest(fixtures.DeclarativeMappedTest):
         class Color(Base):
             __tablename__ = "color"
             id: Mapped[int] = mapped_column(primary_key=True)
-            name: Mapped[str] = mapped_column(unique=True)
+            name: Mapped[str] = mapped_column(String(50))
             temperature_id: Mapped[int] = mapped_column(
                 ForeignKey("temperature.id")
             )
@@ -2418,7 +2418,7 @@ class SubqueryCriteriaTest(fixtures.DeclarativeMappedTest):
         class Room(Base):
             __tablename__ = "room"
             id: Mapped[int] = mapped_column(primary_key=True)
-            token: Mapped[str] = mapped_column(unique=True)
+            token: Mapped[str] = mapped_column(String(50))
             color_id: Mapped[int] = mapped_column(ForeignKey("color.id"))
             color: Mapped[Color] = relationship()
             connected_rooms: Mapped[List["Room"]] = relationship(  # noqa: F821
@@ -2519,7 +2519,7 @@ class SubqueryCriteriaTest(fixtures.DeclarativeMappedTest):
 
         room_result = session.scalars(
             select(Room)
-            .order_by(Room.id)
+            .order_by(Room.id, room_alias.id)
             .join(Room.color.and_(Color.name == "red"))
             .join(
                 room_alias,
