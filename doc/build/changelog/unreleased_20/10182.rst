@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 10182
-
-    Fixed issue in :class:`_orm.Session` and :class:`_asyncio.AsyncSession`
-    methods such as :meth:`_orm.Session.connection` where the
-    :paramref:`_orm.Session.connection.execution_options` parameter were
-    hardcoded to an internal type that is not user-facing.

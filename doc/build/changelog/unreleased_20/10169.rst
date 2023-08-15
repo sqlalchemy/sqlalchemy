@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 10169
-
-    Fixed issue where the ORM's generation of a SELECT from a joined
-    inheritance model with same-named columns in superclass and subclass would
-    somehow not send the correct list of column names to the :class:`.CTE`
-    construct, when the RECURSIVE column list were generated.
-

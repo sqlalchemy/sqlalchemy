@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 10167
-
-    Fixed issue where an ORM-enabled :func:`_sql.select` construct would not
-    render any CTEs added only via the :meth:`_sql.Select.add_cte` method that
-    were not otherwise referenced in the statement.

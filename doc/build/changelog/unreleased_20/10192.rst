@@ -1,9 +1,0 @@
-.. change::
-    :tags: usecase, orm
-    :tickets: 10192
-
-    Implemented the "RETURNING '*'" use case for ORM enabled DML statements.
-    This will render in as many cases as possible and return the unfiltered
-    result set, however is not supported for multi-parameter "ORM bulk INSERT"
-    statements that have specific column rendering requirements.
-
