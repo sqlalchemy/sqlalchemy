@@ -2286,7 +2286,7 @@ class SubqueryCriteriaTest(fixtures.DeclarativeMappedTest):
 
         room_result = session.scalars(
             select(Room)
-            .order_by(Room.id)
+            .order_by(Room.id, room_alias.id)
             .join(Room.color.and_(Color.name == "red"))
             .join(
                 room_alias,
