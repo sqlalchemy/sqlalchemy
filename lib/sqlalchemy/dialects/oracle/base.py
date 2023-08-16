@@ -25,7 +25,7 @@ available, which are the use of IDENTITY columns (Oracle 12 and above only)
 or the association of a SEQUENCE with the column.
 
 Specifying GENERATED AS IDENTITY (Oracle 12 and above)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Starting from version 12 Oracle can make use of identity columns using
 the :class:`_sql.Identity` to specify the autoincrementing behavior::
@@ -50,9 +50,14 @@ The :class:`_schema.Identity` object support many options to control the
 incrementing value, etc.
 In addition to the standard options, Oracle supports setting
 :paramref:`_schema.Identity.always` to ``None`` to use the default
-generated mode, rendering GENERATED AS IDENTITY in the DDL. It also supports
-setting :paramref:`_schema.Identity.on_null` to ``True`` to specify ON NULL
-in conjunction with a 'BY DEFAULT' identity column.
+generated mode, rendering GENERATED AS IDENTITY in the DDL. 
+Oracle also supports two custom options specified using dialect kwargs:
+
+* ``oracle_on_null``: when set to ``True`` renders ``ON NULL`` in conjunction
+  with a 'BY DEFAULT' identity column.
+* ``oracle_order``: when ``True``, renders the ORDER keyword, indicating the
+  identity is definitively ordered. May be necessary to provide deterministic
+  ordering using Oracle RAC.
 
 Using a SEQUENCE (all Oracle versions)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -76,6 +81,13 @@ This step is also required when using table reflection, i.e. autoload_with=engin
         Column('id', Integer, Sequence('id_seq', start=1), primary_key=True),
         autoload_with=engine
   )
+
+In addition to the standard options, Oracle supports the following custom
+option specified using dialect kwargs:
+
+* ``oracle_order``: when ``True``, renders the ORDER keyword, indicating the
+  sequence is definitively ordered. May be necessary to provide deterministic
+  ordering using Oracle RAC.
 
 .. versionchanged::  1.4   Added :class:`_schema.Identity` construct
    in a :class:`_schema.Column` to specify the option of an autoincrementing
@@ -1318,8 +1330,9 @@ class OracleDDLCompiler(compiler.DDLCompiler):
         text = text.replace("NO MINVALUE", "NOMINVALUE")
         text = text.replace("NO MAXVALUE", "NOMAXVALUE")
         text = text.replace("NO CYCLE", "NOCYCLE")
-        if identity_options.order is not None:
-            text += " ORDER" if identity_options.order else " NOORDER"
+        options = identity_options.dialect_options["oracle"]
+        if options.get("order") is not None:
+            text += " ORDER" if options["order"] else " NOORDER"
         return text.strip()
 
     def visit_computed_column(self, generated, **kw):
@@ -1341,7 +1354,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
         else:
             kind = "ALWAYS" if identity.always else "BY DEFAULT"
         text = "GENERATED %s" % kind
-        if identity.on_null:
+        if identity.dialect_options["oracle"].get("on_null"):
             text += " ON NULL"
         text += " AS IDENTITY"
         options = self.get_identity_options(identity)
@@ -1437,6 +1450,8 @@ class OracleDialect(default.DefaultDialect):
             {"resolve_synonyms": False, "on_commit": None, "compress": False},
         ),
         (sa_schema.Index, {"bitmap": False, "compress": False}),
+        (sa_schema.Sequence, {"order": None}),
+        (sa_schema.Identity, {"order": None, "on_null": None}),
     ]
 
     @util.deprecated_params(
@@ -2398,7 +2413,7 @@ class OracleDialect(default.DefaultDialect):
         parts = [p.strip() for p in identity_options.split(",")]
         identity = {
             "always": parts[0] == "ALWAYS",
-            "on_null": default_on_null == "YES",
+            "oracle_on_null": default_on_null == "YES",
         }
 
         for part in parts[1:]:
@@ -2418,7 +2433,7 @@ class OracleDialect(default.DefaultDialect):
             elif "CACHE_SIZE" in option:
                 identity["cache"] = int(value)
             elif "ORDER_FLAG" in option:
-                identity["order"] = value == "Y"
+                identity["oracle_order"] = value == "Y"
         return identity
 
     @reflection.cache
