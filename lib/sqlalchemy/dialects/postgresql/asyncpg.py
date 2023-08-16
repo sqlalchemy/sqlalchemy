@@ -818,9 +818,22 @@ class AsyncAdapt_asyncpg_connection(AdaptedConnection):
 
     def ping(self):
         try:
-            _ = self.await_(self._connection.fetchrow(";"))
+            _ = self.await_(self._async_ping())
         except Exception as error:
             self._handle_exception(error)
+
+    async def _async_ping(self):
+        if self._transaction is None and self.isolation_level != "autocommit":
+            # create a tranasction explicitly to support pgbouncer
+            # transaction mode.   See #10226
+            tr = self._connection.transaction()
+            await tr.start()
+            try:
+                await self._connection.fetchrow(";")
+            finally:
+                await tr.rollback()
+        else:
+            await self._connection.fetchrow(";")
 
     def set_isolation_level(self, level):
         if self._started:

@@ -1,3 +1,4 @@
+import asyncio
 import dataclasses
 import datetime
 import logging
@@ -1137,6 +1138,50 @@ class MiscBackendTest(
 
                 dbapi_conn = conn.connection.dbapi_connection
                 eq_(dbapi_conn.autocommit, autocommit)
+
+    @testing.only_on("+asyncpg")
+    @testing.combinations((True,), (False,), argnames="autocommit")
+    def test_asyncpg_transactional_ping(self, testing_engine, autocommit):
+        """test #10226"""
+
+        engine = testing_engine(
+            options={
+                "isolation_level": "AUTOCOMMIT"
+                if autocommit
+                else "SERIALIZABLE",
+                "pool_pre_ping": True,
+            }
+        )
+        conn = engine.connect()
+        dbapi_conn = conn.connection.dbapi_connection
+        conn.close()
+
+        future = asyncio.Future()
+        future.set_result(None)
+
+        rollback = mock.Mock(return_value=future)
+        transaction = mock.Mock(
+            return_value=mock.Mock(
+                start=mock.Mock(return_value=future),
+                rollback=rollback,
+            )
+        )
+        mock_asyncpg_connection = mock.Mock(
+            fetchrow=mock.Mock(return_value=future), transaction=transaction
+        )
+
+        with mock.patch.object(
+            dbapi_conn, "_connection", mock_asyncpg_connection
+        ):
+            conn = engine.connect()
+            conn.close()
+
+        if autocommit:
+            eq_(transaction.mock_calls, [])
+            eq_(rollback.mock_calls, [])
+        else:
+            eq_(transaction.mock_calls, [mock.call()])
+            eq_(rollback.mock_calls, [mock.call()])
 
     def test_deferrable_flag_engine(self):
         engine = engines.testing_engine(

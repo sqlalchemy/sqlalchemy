@@ -1,0 +1,18 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 10226
+
+    Fixed regression which appeared in 2.0 due to :ticket:`8491` where the
+    revised "ping" used for PostgreSQL dialects when the
+    :paramref:`_sa.create_engine.pool_pre_ping` parameter is in use would
+    interfere with the use of asyncpg with PGBouncer "transaction" mode, as the
+    multiple PostgreSQL commands emitted by asnycpg could be broken out among
+    multiple connections leading to errors, due to the lack of any transaction
+    around this newly revised "ping".   The ping is now invoked within a
+    transaction, in the same way that is implicit with all other backends that
+    are based on the pep-249 DBAPI; this guarantees that the series of PG
+    commands sent by asyncpg for this command are invoked on the same backend
+    connection without it jumping to a different connection mid-command.  The
+    transaction is not used if the asyncpg dialect is used in "AUTOCOMMIT"
+    mode, which remains incompatible with pgbouncer transaction mode.
+
