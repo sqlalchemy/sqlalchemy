@@ -57,9 +57,9 @@ else:
 
 
 _SerializedPath = List[Any]
-
+_StrPathToken = str
 _PathElementType = Union[
-    str, "_InternalEntityType[Any]", "MapperProperty[Any]"
+    _StrPathToken, "_InternalEntityType[Any]", "MapperProperty[Any]"
 ]
 
 # the representation is in fact
@@ -180,7 +180,7 @@ class PathRegistry(HasCacheKey):
         return id(self)
 
     @overload
-    def __getitem__(self, entity: str) -> TokenRegistry:
+    def __getitem__(self, entity: _StrPathToken) -> TokenRegistry:
         ...
 
     @overload
@@ -204,7 +204,11 @@ class PathRegistry(HasCacheKey):
     def __getitem__(
         self,
         entity: Union[
-            str, int, slice, _InternalEntityType[Any], MapperProperty[Any]
+            _StrPathToken,
+            int,
+            slice,
+            _InternalEntityType[Any],
+            MapperProperty[Any],
         ],
     ) -> Union[
         TokenRegistry,
@@ -355,7 +359,7 @@ class CreatesToken(PathRegistry):
     is_aliased_class: bool
     is_root: bool
 
-    def token(self, token: str) -> TokenRegistry:
+    def token(self, token: _StrPathToken) -> TokenRegistry:
         if token.endswith(f":{_WILDCARD_TOKEN}"):
             return TokenRegistry(self, token)
         elif token.endswith(f":{_DEFAULT_TOKEN}"):
@@ -385,7 +389,7 @@ class RootRegistry(CreatesToken):
     ) -> Union[TokenRegistry, AbstractEntityRegistry]:
         if entity in PathToken._intern:
             if TYPE_CHECKING:
-                assert isinstance(entity, str)
+                assert isinstance(entity, _StrPathToken)
             return TokenRegistry(self, PathToken._intern[entity])
         else:
             try:
@@ -433,10 +437,10 @@ class TokenRegistry(PathRegistry):
 
     inherit_cache = True
 
-    token: str
+    token: _StrPathToken
     parent: CreatesToken
 
-    def __init__(self, parent: CreatesToken, token: str):
+    def __init__(self, parent: CreatesToken, token: _StrPathToken):
         token = PathToken.intern(token)
 
         self.token = token
