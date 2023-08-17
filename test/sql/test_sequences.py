@@ -57,10 +57,9 @@ class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "START WITH 1 MAXVALUE 10 CYCLE",
         ),
         (
-            Sequence("foo_seq", cache=1000, order=True),
-            "CACHE 1000 ORDER",
+            Sequence("foo_seq", cache=1000),
+            "CACHE 1000",
         ),
-        (Sequence("foo_seq", order=True), "ORDER"),
         (Sequence("foo_seq", minvalue=42), "MINVALUE 42"),
         (Sequence("foo_seq", minvalue=-42), "MINVALUE -42"),
         (
@@ -74,6 +73,12 @@ class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         (
             Sequence("foo_seq", minvalue=42, increment=-2),
             "INCREMENT BY -2 MINVALUE 42",
+        ),
+        (
+            # remove this when the `order` parameter is removed
+            # issue #10207 - ensure ORDER does not render
+            Sequence("foo_seq", order=True),
+            "",
         ),
         (
             Sequence("foo_seq", minvalue=-42, increment=-2),
