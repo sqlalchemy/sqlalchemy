@@ -3235,6 +3235,28 @@ class RegexpTestStrCompiler(fixtures.TestBase, testing.AssertsCompiledSQL):
             "<regexp replace>(mytable.myid, :myid_1, :myid_2))",
         )
 
+    @testing.combinations(
+        (lambda c, r: c.regexp_match(r), "<regexp>"),
+        (lambda c, r: c.like(r), "LIKE"),
+        (lambda c, r: ~c.regexp_match(r), "<not regexp>"),
+        (lambda c, r: ~c.match(r), "NOT %s MATCH"),
+        (lambda c, r: c.match(r), "MATCH"),
+    )
+    def test_all_match_precedence_against_concat(self, expr, expected):
+        expr = testing.resolve_lambda(
+            expr, c=self.table.c.myid, r=self.table.c.name + "some text"
+        )
+
+        if "%s" in expected:
+            self.assert_compile(
+                expr,
+                f"{expected % ('mytable.myid', )} (mytable.name || :name_1)",
+            )
+        else:
+            self.assert_compile(
+                expr, f"mytable.myid {expected} (mytable.name || :name_1)"
+            )
+
 
 class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"

@@ -531,12 +531,12 @@ class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
         Entity = self.classes.Entity
         self.assert_compile(
             Entity.descendants.property.strategy._lazywhere,
-            "entity.path LIKE :param_1 || :path_1",
+            "entity.path LIKE (:param_1 || :path_1)",
         )
 
         self.assert_compile(
             Entity.descendants.property.strategy._rev_lazywhere,
-            ":param_1 LIKE entity.path || :path_1",
+            ":param_1 LIKE (entity.path || :path_1)",
         )
 
     def test_ancestors_lazyload_clause(self):
@@ -545,12 +545,12 @@ class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
         # :param_1 LIKE (:param_1 || :path_1)
         self.assert_compile(
             Entity.anscestors.property.strategy._lazywhere,
-            ":param_1 LIKE entity.path || :path_1",
+            ":param_1 LIKE (entity.path || :path_1)",
         )
 
         self.assert_compile(
             Entity.anscestors.property.strategy._rev_lazywhere,
-            "entity.path LIKE :param_1 || :path_1",
+            "entity.path LIKE (:param_1 || :path_1)",
         )
 
     def test_descendants_lazyload(self):
@@ -636,7 +636,7 @@ class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
         self.assert_compile(
             sess.query(Entity).join(Entity.descendants.of_type(da)),
             "SELECT entity.path AS entity_path FROM entity JOIN entity AS "
-            "entity_1 ON entity_1.path LIKE entity.path || :path_1",
+            "entity_1 ON entity_1.path LIKE (entity.path || :path_1)",
         )
 
 
@@ -6529,8 +6529,8 @@ class SecondaryIncludesLocalColsTest(fixtures.MappedTest):
             CompiledSQL(
                 "SELECT a.id AS a_id, b.id AS b_id FROM a JOIN "
                 "(SELECT a.id AS "
-                "aid, b.id AS id FROM a JOIN b ON a.b_ids LIKE :id_1 || "
-                "b.id || :param_1) AS anon_1 ON a.id = anon_1.aid "
+                "aid, b.id AS id FROM a JOIN b ON a.b_ids LIKE (:id_1 || "
+                "b.id || :param_1)) AS anon_1 ON a.id = anon_1.aid "
                 "JOIN b ON b.id = anon_1.id ORDER BY a.id, b.id"
             )
         )
@@ -6551,7 +6551,7 @@ class SecondaryIncludesLocalColsTest(fixtures.MappedTest):
             CompiledSQL(
                 "SELECT a.id AS a_id, a.b_ids AS a_b_ids, b_1.id AS b_1_id "
                 "FROM a LEFT OUTER JOIN ((SELECT a.id AS aid, b.id AS id "
-                "FROM a JOIN b ON a.b_ids LIKE :id_1 || b.id || :param_1) "
+                "FROM a JOIN b ON a.b_ids LIKE (:id_1 || b.id || :param_1)) "
                 "AS anon_1 JOIN b AS b_1 ON b_1.id = anon_1.id) "
                 "ON a.id = anon_1.aid WHERE a.id = :id_2",
                 params=[{"id_1": "%", "param_1": "%", "id_2": 2}],
@@ -6570,7 +6570,7 @@ class SecondaryIncludesLocalColsTest(fixtures.MappedTest):
             CompiledSQL(
                 "SELECT a.id AS a_id FROM a WHERE "
                 "EXISTS (SELECT 1 FROM b, (SELECT a.id AS aid, b.id AS id "
-                "FROM a JOIN b ON a.b_ids LIKE :id_1 || b.id || :param_1) "
+                "FROM a JOIN b ON a.b_ids LIKE (:id_1 || b.id || :param_1)) "
                 "AS anon_1 WHERE a.id = anon_1.aid AND b.id = anon_1.id)",
                 params=[],
             )
@@ -6600,7 +6600,7 @@ class SecondaryIncludesLocalColsTest(fixtures.MappedTest):
             CompiledSQL(
                 "SELECT a_1.id AS a_1_id, b.id AS b_id FROM a AS a_1 JOIN "
                 "(SELECT a.id AS aid, b.id AS id FROM a JOIN b ON a.b_ids "
-                "LIKE :id_1 || b.id || :param_1) AS anon_1 "
+                "LIKE (:id_1 || b.id || :param_1)) AS anon_1 "
                 "ON a_1.id = anon_1.aid JOIN b ON b.id = anon_1.id "
                 "WHERE a_1.id IN (__[POSTCOMPILE_primary_keys])",
                 params=[{"id_1": "%", "param_1": "%", "primary_keys": [2]}],
