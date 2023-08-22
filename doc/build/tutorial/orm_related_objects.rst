@@ -48,15 +48,16 @@ and other directives:
 Above, the ``User`` class now has an attribute ``User.addresses`` and the
 ``Address`` class has an attribute ``Address.user``.   The
 :func:`_orm.relationship` construct, in conjunction with the
-:class:`_orm.Mapped` construct to indicate typing behavior, will be used to inspect the table
-relationships between the :class:`_schema.Table` objects that are mapped to the
-``User`` and ``Address`` classes. As the :class:`_schema.Table` object
-representing the
-``address`` table has a :class:`_schema.ForeignKeyConstraint` which refers to
-the ``user_account`` table, the :func:`_orm.relationship` can determine
-unambiguously that there is a :term:`one to many` relationship from
-``User.addresses`` to ``User``; one particular row in the ``user_account``
-table may be referred towards by many rows in the ``address`` table.
+:class:`_orm.Mapped` construct to indicate typing behavior, will be used to
+inspect the table relationships between the :class:`_schema.Table` objects that
+are mapped to the ``User`` and ``Address`` classes. As the
+:class:`_schema.Table` object representing the ``address`` table has a
+:class:`_schema.ForeignKeyConstraint` which refers to the ``user_account``
+table, the :func:`_orm.relationship` can determine unambiguously that there is
+a :term:`one to many` relationship from the ``User`` class to the ``Address``
+class, along the ``User.addresses`` relationship; one particular row in the
+``user_account`` table may be referred towards by many rows in the ``address``
+table.
 
 All one-to-many relationships naturally correspond to a :term:`many to one`
 relationship in the other direction, in this case the one noted by

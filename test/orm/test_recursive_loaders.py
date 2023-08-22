@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import literal_column
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -259,8 +260,9 @@ class DeepRecursiveTest(_NodeTest, fixtures.MappedTest):
 
     @testing.combinations(selectinload, immediateload, argnames="loader_fn")
     @testing.combinations(4, 9, 12, 25, 41, 55, argnames="depth")
+    @testing.variation("disable_cache", [True, False])
     def test_warning_w_no_recursive_opt(
-        self, loader_fn, depth, limited_cache_conn
+        self, loader_fn, depth, limited_cache_conn, disable_cache
     ):
         connection = limited_cache_conn(27)
 
@@ -273,21 +275,34 @@ class DeepRecursiveTest(_NodeTest, fixtures.MappedTest):
                 .options(self._stack_loaders(loader_fn, depth))
             )
 
+            if disable_cache:
+                exec_opts = dict(compiled_cache=None)
+            else:
+                exec_opts = {}
+
             # note this is a magic number, it's not important that it's exact,
             # just that when someone makes a huge recursive thing,
             # it warns
-            if depth > 8:
+            if depth > 8 and not disable_cache:
                 with expect_warnings(
                     "Loader depth for query is excessively deep; "
                     "caching will be disabled for additional loaders."
                 ):
                     with Session(connection) as s:
-                        result = s.scalars(stmt)
+                        result = s.scalars(stmt, execution_options=exec_opts)
                         self._assert_depth(result.one(), depth)
             else:
                 with Session(connection) as s:
-                    result = s.scalars(stmt)
+                    result = s.scalars(stmt, execution_options=exec_opts)
                     self._assert_depth(result.one(), depth)
+
+        if disable_cache:
+            clen = len(connection.engine._compiled_cache)
+            assert clen == 0
+            # limited_cache_conn wants to confirm the cache was used,
+            # so popualte in the case that we know we didn't use it
+            connection.execute(select(1))
+            connection.execute(select(1).where(literal_column("1") == 1))
 
 
 # TODO:

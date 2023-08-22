@@ -10,6 +10,7 @@ from sqlalchemy import insert
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import lambda_stmt
+from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy import select
@@ -20,8 +21,10 @@ from sqlalchemy import update
 from sqlalchemy import values
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import immediateload
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import synonym
@@ -1094,6 +1097,97 @@ class UpdateDeleteTest(fixtures.MappedTest):
             list(zip([25, 37, 29, 27])),
         )
 
+    @testing.requires.update_returning
+    @testing.requires.returning_star
+    def test_update_returning_star(self):
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        john, jack, jill, jane = sess.query(User).order_by(User.id).all()
+
+        stmt = (
+            update(User)
+            .where(User.age > 29)
+            .values({"age": User.age - 10})
+            .returning(literal_column("*"))
+        )
+
+        result = sess.execute(stmt)
+        eq_(result.all(), [(2, "jack", 37), (4, "jane", 27)])
+
+        eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
+        eq_(
+            sess.query(User.age).order_by(User.id).all(),
+            list(zip([25, 37, 29, 27])),
+        )
+
+    @testing.requires.update_returning
+    @testing.combinations(
+        selectinload,
+        immediateload,
+        argnames="loader_fn",
+    )
+    @testing.variation("opt_location", ["statement", "execute"])
+    def test_update_returning_eagerload_propagate(
+        self, loader_fn, connection, opt_location
+    ):
+        User = self.classes.User
+
+        catch_opts = []
+
+        @event.listens_for(connection, "before_cursor_execute")
+        def before_cursor_execute(
+            conn, cursor, statement, parameters, context, executemany
+        ):
+            catch_opts.append(
+                {
+                    k: v
+                    for k, v in context.execution_options.items()
+                    if isinstance(k, str)
+                    and k[0] != "_"
+                    and k not in ("sa_top_level_orm_context",)
+                }
+            )
+
+        sess = Session(connection)
+
+        stmt = (
+            update(User)
+            .where(User.age > 29)
+            .values({"age": User.age - 10})
+            .returning(User)
+            .options(loader_fn(User.addresses))
+        )
+
+        if opt_location.execute:
+            opts = {
+                "compiled_cache": None,
+                "user_defined": "opt1",
+                "schema_translate_map": {"foo": "bar"},
+            }
+            result = sess.scalars(
+                stmt,
+                execution_options=opts,
+            )
+        elif opt_location.statement:
+            opts = {
+                "user_defined": "opt1",
+                "schema_translate_map": {"foo": "bar"},
+            }
+            stmt = stmt.execution_options(**opts)
+            result = sess.scalars(stmt)
+        else:
+            result = ()
+            opts = None
+            opt_location.fail()
+
+        for u1 in result:
+            u1.addresses
+
+        for elem in catch_opts:
+            eq_(elem, opts)
+
     @testing.combinations(True, False, argnames="implicit_returning")
     def test_update_fetch_returning(self, implicit_returning):
         if implicit_returning:
@@ -1254,6 +1348,28 @@ class UpdateDeleteTest(fixtures.MappedTest):
         # note that ComparableEntity sets up __hash__ for mapped objects
         # to point to the class, so you can test eq with sets
         eq_(set(result.all()), expected)
+
+    @testing.requires.delete_returning
+    @testing.requires.returning_star
+    def test_delete_returning_star(self):
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        john, jack, jill, jane = sess.query(User).order_by(User.id).all()
+
+        in_(john, sess)
+        in_(jack, sess)
+
+        stmt = delete(User).where(User.age > 29).returning(literal_column("*"))
+
+        result = sess.execute(stmt)
+        eq_(result.all(), [(2, "jack", 47), (4, "jane", 37)])
+
+        in_(john, sess)
+        not_in(jack, sess)
+        in_(jill, sess)
+        not_in(jane, sess)
 
     @testing.combinations(True, False, argnames="implicit_returning")
     def test_delete_fetch_returning(self, implicit_returning):

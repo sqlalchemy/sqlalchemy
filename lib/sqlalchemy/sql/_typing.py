@@ -13,6 +13,8 @@ from typing import Callable
 from typing import Dict
 from typing import Mapping
 from typing import NoReturn
+from typing import Optional
+from typing import overload
 from typing import Set
 from typing import Tuple
 from typing import Type
@@ -150,7 +152,6 @@ sets; select(...), insert().returning(...), etc.
 _TypedColumnClauseArgument = Union[
     roles.TypedColumnsClauseRole[_T],
     "SQLCoreOperations[_T]",
-    roles.ExpressionElementRole[_T],
     Type[_T],
 ]
 
@@ -234,7 +235,7 @@ _DMLColumnArgument = Union[
     str,
     _HasClauseElement,
     roles.DMLColumnRole,
-    "SQLCoreOperations",
+    "SQLCoreOperations[Any]",
 ]
 """A DML column expression.  This is a "key" inside of insert().values(),
 update().values(), and related.
@@ -374,3 +375,82 @@ def _no_kw() -> exc.ArgumentError:
 def _unexpected_kw(methname: str, kw: Dict[str, Any]) -> NoReturn:
     k = list(kw)[0]
     raise TypeError(f"{methname} got an unexpected keyword argument '{k}'")
+
+
+@overload
+def Nullable(
+    val: "SQLCoreOperations[_T]",
+) -> "SQLCoreOperations[Optional[_T]]":
+    ...
+
+
+@overload
+def Nullable(
+    val: roles.ExpressionElementRole[_T],
+) -> roles.ExpressionElementRole[Optional[_T]]:
+    ...
+
+
+@overload
+def Nullable(val: Type[_T]) -> Type[Optional[_T]]:
+    ...
+
+
+def Nullable(
+    val: _TypedColumnClauseArgument[_T],
+) -> _TypedColumnClauseArgument[Optional[_T]]:
+    """Types a column or ORM class as nullable.
+
+    This can be used in select and other contexts to express that the value of
+    a column can be null, for example due to an outer join::
+
+        stmt1 = select(A, Nullable(B)).outerjoin(A.bs)
+        stmt2 = select(A.data, Nullable(B.data)).outerjoin(A.bs)
+
+    At runtime this method returns the input unchanged.
+
+    .. versionadded:: 2.0.20
+    """
+    return val  # type: ignore
+
+
+@overload
+def NotNullable(
+    val: "SQLCoreOperations[Optional[_T]]",
+) -> "SQLCoreOperations[_T]":
+    ...
+
+
+@overload
+def NotNullable(
+    val: roles.ExpressionElementRole[Optional[_T]],
+) -> roles.ExpressionElementRole[_T]:
+    ...
+
+
+@overload
+def NotNullable(val: Type[Optional[_T]]) -> Type[_T]:
+    ...
+
+
+@overload
+def NotNullable(val: Optional[Type[_T]]) -> Type[_T]:
+    ...
+
+
+def NotNullable(
+    val: Union[_TypedColumnClauseArgument[Optional[_T]], Optional[Type[_T]]],
+) -> _TypedColumnClauseArgument[_T]:
+    """Types a column or ORM class as not nullable.
+
+    This can be used in select and other contexts to express that the value of
+    a column cannot be null, for example due to a where condition on a
+    nullable column::
+
+        stmt = select(NotNullable(A.value)).where(A.value.is_not(None))
+
+    At runtime this method returns the input unchanged.
+
+    .. versionadded:: 2.0.20
+    """
+    return val  # type: ignore

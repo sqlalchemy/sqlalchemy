@@ -9,8 +9,178 @@
 
 
 .. changelog::
-    :version: 2.0.20
+    :version: 2.0.21
     :include_notes_from: unreleased_20
+
+.. changelog::
+    :version: 2.0.20
+    :released: August 15, 2023
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10169
+
+        Fixed issue where the ORM's generation of a SELECT from a joined
+        inheritance model with same-named columns in superclass and subclass would
+        somehow not send the correct list of column names to the :class:`.CTE`
+        construct, when the RECURSIVE column list were generated.
+
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 9185
+
+        Typing improvements:
+
+        * :class:`.CursorResult` is returned for some forms of
+          :meth:`_orm.Session.execute` where DML without RETURNING is used
+        * fixed type for :paramref:`_orm.Query.with_for_update.of` parameter within
+          :meth:`_orm.Query.with_for_update`
+        * improvements to ``_DMLColumnArgument`` type used by some DML methods to
+          pass column expressions
+        * Add overload to :func:`_sql.literal` so that it is inferred that the
+          return type is ``BindParameter[NullType]`` where
+          :paramref:`_sql.literal.type_` param is None
+        * Add overloads to :meth:`_sql.ColumnElement.op` so that the inferred
+          type when :paramref:`_sql.ColumnElement.op.return_type` is not provided
+          is ``Callable[[Any], BinaryExpression[Any]]``
+        * Add missing overload to :meth:`_sql.ColumnElement.__add__`
+
+        Pull request courtesy Mehdi Gmira.
+
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 10192
+
+        Implemented the "RETURNING '*'" use case for ORM enabled DML statements.
+        This will render in as many cases as possible and return the unfiltered
+        result set, however is not supported for multi-parameter "ORM bulk INSERT"
+        statements that have specific column rendering requirements.
+
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 10182
+
+        Fixed issue in :class:`_orm.Session` and :class:`_asyncio.AsyncSession`
+        methods such as :meth:`_orm.Session.connection` where the
+        :paramref:`_orm.Session.connection.execution_options` parameter were
+        hardcoded to an internal type that is not user-facing.
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 10231
+
+        Fixed fairly major issue where execution options passed to
+        :meth:`_orm.Session.execute`, as well as execution options local to the ORM
+        executed statement itself, would not be propagated along to eager loaders
+        such as that of :func:`_orm.selectinload`, :func:`_orm.immediateload`, and
+        :meth:`_orm.subqueryload`, making it impossible to do things such as
+        disabling the cache for a single statement or using
+        ``schema_translate_map`` for a single statement, as well as the use of
+        user-custom execution options.   A change has been made where **all**
+        user-facing execution options present for :meth:`_orm.Session.execute` will
+        be propagated along to additional loaders.
+
+        As part of this change, the warning for "excessively deep" eager loaders
+        leading to caching being disabled can be silenced on a per-statement
+        basis by sending ``execution_options={"compiled_cache": None}`` to
+        :meth:`_orm.Session.execute`, which will disable caching for the full
+        series of statements within that scope.
+
+    .. change::
+        :tags: usecase, asyncio
+        :tickets: 9698
+
+        Added new methods :meth:`_asyncio.AsyncConnection.aclose` as a synonym for
+        :meth:`_asyncio.AsyncConnection.close` and
+        :meth:`_asyncio.AsyncSession.aclose` as a synonym for
+        :meth:`_asyncio.AsyncSession.close` to the
+        :class:`_asyncio.AsyncConnection` and :class:`_asyncio.AsyncSession`
+        objects, to provide compatibility with Python standard library
+        ``@contextlib.aclosing`` construct. Pull request courtesy Grigoriev Semyon.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10124
+
+        Fixed issue where internal cloning used by the ORM for expressions like
+        :meth:`_orm.relationship.Comparator.any` to produce correlated EXISTS
+        constructs would interfere with the "cartesian product warning" feature of
+        the SQL compiler, leading the SQL compiler to warn when all elements of the
+        statement were correctly joined.
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 10139
+
+        Fixed issue where the ``lazy="immediateload"`` loader strategy would place
+        an internal loading token into the ORM mapped attribute under circumstances
+        where the load should not occur, such as in a recursive self-referential
+        load.   As part of this change, the ``lazy="immediateload"`` strategy now
+        honors the :paramref:`_orm.relationship.join_depth` parameter for
+        self-referential eager loads in the same way as that of other eager
+        loaders, where leaving it unset or set at zero will lead to a
+        self-referential immediateload not occurring, setting it to a value of one
+        or greater will immediateload up until that given depth.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10175
+
+        Fixed issue where dictionary-based collections such as
+        :func:`_orm.attribute_keyed_dict` did not fully pickle/unpickle correctly,
+        leading to issues when attempting to mutate such a collection after
+        unpickling.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10125
+
+        Fixed issue where chaining :func:`_orm.load_only` or other wildcard use of
+        :func:`_orm.defer` from another eager loader using a :func:`_orm.aliased`
+        against a joined inheritance subclass would fail to take effect for columns
+        local to the superclass.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10167
+
+        Fixed issue where an ORM-enabled :func:`_sql.select` construct would not
+        render any CTEs added only via the :meth:`_sql.Select.add_cte` method that
+        were not otherwise referenced in the statement.
+
+    .. change::
+        :tags: bug, examples
+
+        The dogpile_caching examples have been updated for 2.0 style queries.
+        Within the "caching query" logic itself there is one conditional added to
+        differentiate between ``Query`` and ``select()`` when performing an
+        invalidation operation.
+
+    .. change::
+        :tags: typing, usecase
+        :tickets: 10173
+
+        Added new typing only utility functions :func:`.Nullable` and
+        :func:`.NotNullable` to type a column or ORM class as, respectively,
+        nullable or not nullable.
+        These function are no-op at runtime, returning the input unchanged.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 10147
+
+        Fixed critical issue where setting
+        :paramref:`_sa.create_engine.isolation_level` to ``AUTOCOMMIT`` (as opposed
+        to using the :meth:`_engine.Engine.execution_options` method) would fail to
+        restore "autocommit" to a pooled connection if an alternate isolation level
+        were temporarily selected using
+        :paramref:`_engine.Connection.execution_options.isolation_level`.
 
 .. changelog::
     :version: 2.0.19

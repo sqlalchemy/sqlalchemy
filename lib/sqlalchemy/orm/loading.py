@@ -745,7 +745,6 @@ def _setup_entity_query(
     for value in poly_properties:
         if only_load_props and value.key not in only_load_props:
             continue
-
         value.setup(
             compile_state,
             query_entity,

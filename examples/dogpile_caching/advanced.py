@@ -1,8 +1,10 @@
 """Illustrate usage of Query combined with the FromCache option,
 including front-end loading, cache invalidation and collection caching.
 
+
 """
 
+from sqlalchemy import select
 from .caching_query import FromCache
 from .caching_query import RelationshipCache
 from .environment import cache
@@ -29,7 +31,7 @@ def load_name_range(start, end, invalidate=False):
     of data within the cache.
     """
     q = (
-        Session.query(Person)
+        select(Person)
         .filter(
             Person.name.between("person %.2d" % start, "person %.2d" % end)
         )
@@ -52,7 +54,7 @@ def load_name_range(start, end, invalidate=False):
         cache.invalidate(q, {}, FromCache("default", "name_range"))
         cache.invalidate(q, {}, RelationshipCache(Person.addresses, "default"))
 
-    return q.all()
+    return Session.scalars(q).all()
 
 
 print("two through twelve, possibly from cache:\n")

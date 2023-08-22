@@ -615,7 +615,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "name=(mytable.name || :name_1) "
             "WHERE "
             "mytable.myid = hoho(:hoho_1) AND "
-            "mytable.name = :param_2 || mytable.name || :param_3",
+            "mytable.name = (:param_2 || mytable.name || :param_3)",
         )
 
     def test_unconsumed_names_kwargs(self):
@@ -676,7 +676,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "myid=do_stuff(mytable.myid, :param_1) "
             "WHERE "
             "mytable.myid = hoho(:hoho_1) AND "
-            "mytable.name = :param_2 || mytable.name || :param_3",
+            "mytable.name = (:param_2 || mytable.name || :param_3)",
         )
 
     def test_update_ordered_parameters_newstyle_2(self):
@@ -706,7 +706,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "myid=do_stuff(mytable.myid, :param_1) "
             "WHERE "
             "mytable.myid = hoho(:hoho_1) AND "
-            "mytable.name = :param_2 || mytable.name || :param_3",
+            "mytable.name = (:param_2 || mytable.name || :param_3)",
         )
 
     def test_update_ordered_parameters_multiple(self):
@@ -776,7 +776,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "name=(mytable.name || :name_1) "
             "WHERE "
             "mytable.myid = hoho(:hoho_1) AND "
-            "mytable.name = :param_2 || mytable.name || :param_3",
+            "mytable.name = (:param_2 || mytable.name || :param_3)",
         )
 
     def test_where_empty(self):

@@ -5774,11 +5774,14 @@ class LoadFromJoinedInhWUnion(
         self.assert_compile(
             q,
             "SELECT anon_1.anon_2_sample_id AS anon_1_anon_2_sample_id, "
+            "anon_1.anon_2_base_data_file_id AS "
+            "anon_1_anon_2_base_data_file_id, "
             "anon_1.anon_2_base_data_file_type "
             "AS anon_1_anon_2_base_data_file_type, "
             "tags_1.id AS tags_1_id, tags_1.name AS tags_1_name, "
             "tags_1.sample_id AS tags_1_sample_id FROM "
             "(SELECT anon_2.sample_id AS anon_2_sample_id, "
+            "anon_2.base_data_file_id AS anon_2_base_data_file_id, "
             "anon_2.base_data_file_type AS anon_2_base_data_file_type "
             "FROM (SELECT sample.id AS sample_id, "
             "base_data_file.id AS base_data_file_id, "
@@ -5807,6 +5810,7 @@ class LoadFromJoinedInhWUnion(
         self.assert_compile(
             q,
             "SELECT anon_1.sample_id AS anon_1_sample_id, "
+            "anon_1.base_data_file_id AS anon_1_base_data_file_id, "
             "anon_1.base_data_file_type AS anon_1_base_data_file_type, "
             "tags_1.id AS tags_1_id, tags_1.name AS tags_1_name, "
             "tags_1.sample_id AS tags_1_sample_id "

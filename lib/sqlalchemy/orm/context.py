@@ -494,6 +494,13 @@ class ORMCompileState(AbstractORMCompileState):
         #    this will disable the ResultSetMetadata._adapt_to_context()
         #    step which we don't need, as we have result processors cached
         #    against the original SELECT statement before caching.
+
+        if "sa_top_level_orm_context" in execution_options:
+            ctx = execution_options["sa_top_level_orm_context"]
+            execution_options = ctx.query._execution_options.merge_with(
+                ctx.execution_options, execution_options
+            )
+
         if not execution_options:
             execution_options = _orm_load_exec_options
         else:
@@ -514,7 +521,8 @@ class ORMCompileState(AbstractORMCompileState):
                 "Loader depth for query is excessively deep; caching will "
                 "be disabled for additional loaders.  Consider using the "
                 "recursion_depth feature for deeply nested recursive eager "
-                "loaders."
+                "loaders.  Use the compiled_cache=None execution option to "
+                "skip this warning."
             )
             execution_options = execution_options.union(
                 {"compiled_cache": None}
@@ -838,6 +846,13 @@ class ORMFromStatementCompileState(ORMCompileState):
             "plugin_subject", None
         )
         adapter = DMLReturningColFilter(target_mapper, dml_mapper)
+
+        if self.compile_options._is_star and (len(self._entities) != 1):
+            raise sa_exc.CompileError(
+                "Can't generate ORM query that includes multiple expressions "
+                "at the same time as '*'; query for '*' alone if present"
+            )
+
         for entity in self._entities:
             entity.setup_dml_returning_compile_state(self, adapter)
 
@@ -1604,6 +1619,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         prefixes,
         suffixes,
         group_by,
+        independent_ctes,
+        independent_ctes_opts,
     ):
         statement = Select._create_raw_select(
             _raw_columns=raw_columns,
@@ -1631,6 +1648,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         statement._offset_clause = offset_clause
         statement._fetch_clause = fetch_clause
         statement._fetch_clause_options = fetch_clause_options
+        statement._independent_ctes = independent_ctes
+        statement._independent_ctes_opts = independent_ctes_opts
 
         if prefixes:
             statement._prefixes = prefixes
@@ -2295,6 +2314,10 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             "fetch_clause": self.select_statement._fetch_clause,
             "fetch_clause_options": (
                 self.select_statement._fetch_clause_options
+            ),
+            "independent_ctes": self.select_statement._independent_ctes,
+            "independent_ctes_opts": (
+                self.select_statement._independent_ctes_opts
             ),
         }
 
@@ -2961,7 +2984,6 @@ class _ColumnEntity(_QueryEntity):
             column = compile_state.compound_eager_adapter.columns[column]
 
         getter = result._getter(column)
-
         ret = getter, self._label_name, self._extra_entities
         self._row_processor = ret
 
@@ -3022,6 +3044,13 @@ class _RawColumnEntity(_ColumnEntity):
 
     def corresponds_to(self, entity):
         return False
+
+    def setup_dml_returning_compile_state(
+        self,
+        compile_state: ORMCompileState,
+        adapter: DMLReturningColFilter,
+    ) -> None:
+        return self.setup_compile_state(compile_state)
 
     def setup_compile_state(self, compile_state):
         current_adapter = compile_state._get_current_adapter()

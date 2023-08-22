@@ -10,7 +10,7 @@
 r"""
 .. dialect:: oracle
     :name: Oracle
-    :full_support: 11.2, 18c
+    :full_support: 18c
     :normal_support: 11+
     :best_effort: 9+
 
@@ -1315,8 +1315,9 @@ class OracleDDLCompiler(compiler.DDLCompiler):
         text = text.replace("NO MINVALUE", "NOMINVALUE")
         text = text.replace("NO MAXVALUE", "NOMAXVALUE")
         text = text.replace("NO CYCLE", "NOCYCLE")
-        text = text.replace("NO ORDER", "NOORDER")
-        return text
+        if identity_options.order is not None:
+            text += " ORDER" if identity_options.order else " NOORDER"
+        return text.strip()
 
     def visit_computed_column(self, generated, **kw):
         text = "GENERATED ALWAYS AS (%s)" % self.sql_compiler.process(

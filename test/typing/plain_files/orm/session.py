@@ -136,3 +136,35 @@ async def test_with_for_update_async() -> None:
 
     await ss.refresh(u1)
     await ss.refresh(u1, with_for_update=True)
+
+
+def test_exec_options() -> None:
+    """test #10182"""
+
+    session = Session()
+
+    session.connection(
+        execution_options={"isolation_level": "REPEATABLE READ"}
+    )
+
+    scoped = scoped_session(sessionmaker())
+
+    scoped.connection(execution_options={"isolation_level": "REPEATABLE READ"})
+
+
+async def async_test_exec_options() -> None:
+    """test #10182"""
+
+    session = AsyncSession()
+
+    await session.connection(
+        execution_options={"isolation_level": "REPEATABLE READ"}
+    )
+
+    scoped = async_scoped_session(
+        async_sessionmaker(), scopefunc=asyncio.current_task
+    )
+
+    await scoped.connection(
+        execution_options={"isolation_level": "REPEATABLE READ"}
+    )

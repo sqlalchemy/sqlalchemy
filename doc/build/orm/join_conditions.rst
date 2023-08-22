@@ -541,6 +541,8 @@ specifies a many-to-many reference using the :paramref:`_orm.relationship.second
 A common situation which involves the usage of :paramref:`_orm.relationship.primaryjoin` and :paramref:`_orm.relationship.secondaryjoin`
 is when establishing a many-to-many relationship from a class to itself, as shown below::
 
+    from typing import List
+
     from sqlalchemy import Integer, ForeignKey, String, Column, Table
     from sqlalchemy.orm import DeclarativeBase
     from sqlalchemy.orm import relationship
@@ -560,14 +562,21 @@ is when establishing a many-to-many relationship from a class to itself, as show
 
     class Node(Base):
         __tablename__ = "node"
-        id = mapped_column(Integer, primary_key=True)
-        label = mapped_column(String)
-        right_nodes = relationship(
+        id: Mapped[int] = mapped_column(primary_key=True)
+        label: Mapped[str]
+        right_nodes: Mapped[List["None"]] = relationship(
             "Node",
             secondary=node_to_node,
             primaryjoin=id == node_to_node.c.left_node_id,
             secondaryjoin=id == node_to_node.c.right_node_id,
-            backref="left_nodes",
+            back_populates="left_nodes",
+        )
+        left_nodes: Mapped[List["None"]] = relationship(
+            "Node",
+            secondary=node_to_node,
+            primaryjoin=id == node_to_node.c.right_node_id,
+            secondaryjoin=id == node_to_node.c.left_node_id,
+            back_populates="right_nodes",
         )
 
 Where above, SQLAlchemy can't know automatically which columns should connect

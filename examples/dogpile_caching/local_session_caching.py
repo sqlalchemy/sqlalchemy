@@ -15,6 +15,7 @@ from dogpile.cache.api import CacheBackend
 from dogpile.cache.api import NO_VALUE
 from dogpile.cache.region import register_backend
 
+from sqlalchemy import select
 from . import environment
 from .caching_query import FromCache
 from .environment import regions
@@ -76,23 +77,23 @@ if __name__ == "__main__":
     # query to load Person by name, with criterion
     # of "person 10"
     q = (
-        Session.query(Person)
+        select(Person)
         .filter(Person.name == "person 10")
         .options(FromCache("local_session"))
     )
 
     # load from DB
-    person10 = q.one()
+    person10 = Session.scalars(q).one()
 
     # next call, the query is cached.
-    person10 = q.one()
+    person10 = Session.scalars(q).one()
 
     # clear out the Session.  The "_cache_dictionary" dictionary
     # disappears with it.
     Session.remove()
 
     # query calls from DB again
-    person10 = q.one()
+    person10 = Session.scalars(q).one()
 
     # identity is preserved - person10 is the *same* object that's
     # ultimately inside the cache.   So it is safe to manipulate
@@ -102,7 +103,7 @@ if __name__ == "__main__":
     # inserts, deletes, or modification to attributes that are
     # part of query criterion, still require careful invalidation.
     cache_key = FromCache("local_session")._generate_cache_key(
-        q._statement_20(), {}, environment.cache
+        q, {}, environment.cache
     )
 
     assert person10 is regions["local_session"].get(cache_key)().scalar()

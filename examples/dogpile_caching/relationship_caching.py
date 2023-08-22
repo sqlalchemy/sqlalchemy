@@ -8,6 +8,7 @@ term cache.
 """
 import os
 
+from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 from .environment import root
 from .environment import Session
@@ -15,9 +16,9 @@ from .model import cache_address_bits
 from .model import Person
 
 
-for p in Session.query(Person).options(
-    joinedload(Person.addresses), cache_address_bits
-):
+for p in Session.scalars(
+    select(Person).options(joinedload(Person.addresses), cache_address_bits)
+).unique():
     print(p.format_full())
 
 

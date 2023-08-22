@@ -462,6 +462,12 @@ class DefaultRequirements(SuiteRequirements):
         return self.computed_columns + skip_if("oracle")
 
     @property
+    def returning_star(self):
+        """backend supports RETURNING *"""
+
+        return skip_if(["oracle", "mssql"])
+
+    @property
     def correlated_outer_joins(self):
         """Target must support an outer join to a subquery which
         correlates to the parent."""

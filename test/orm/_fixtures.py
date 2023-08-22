@@ -279,7 +279,11 @@ class FixtureTest(fixtures.MappedTest):
             Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
-            Column("parent_id", Integer, ForeignKey("nodes.id")),
+            Column(
+                "parent_id",
+                Integer,
+                ForeignKey("nodes.id"),
+            ),
             Column("data", String(30)),
             test_needs_acid=True,
             test_needs_fk=True,

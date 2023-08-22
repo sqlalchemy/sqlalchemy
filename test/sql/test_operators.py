@@ -72,6 +72,7 @@ from sqlalchemy.types import DateTime
 from sqlalchemy.types import Indexable
 from sqlalchemy.types import JSON
 from sqlalchemy.types import MatchType
+from sqlalchemy.types import NullType
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.types import TypeEngine
 from sqlalchemy.types import UserDefinedType
@@ -2614,6 +2615,22 @@ class ComparisonOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         clause = tuple_(1, 2, 3)
         eq_(str(clause), str(pickle.loads(pickle.dumps(clause))))
 
+    @testing.combinations(Integer(), String(), JSON(), argnames="typ")
+    @testing.variation("eval_first", [True, False])
+    def test_pickle_comparator(self, typ, eval_first):
+        """test #10213"""
+
+        table1 = Table("t", MetaData(), Column("x", typ))
+        t1 = table1.c.x
+
+        if eval_first:
+            t1.comparator
+
+        t1p = pickle.loads(pickle.dumps(table1.c.x))
+
+        is_not(t1p.comparator.__class__, NullType.Comparator)
+        is_(t1.comparator.__class__, t1p.comparator.__class__)
+
     @testing.combinations(
         (operator.lt, "<", ">"),
         (operator.gt, ">", "<"),
@@ -3217,6 +3234,28 @@ class RegexpTestStrCompiler(fixtures.TestBase, testing.AssertsCompiledSQL):
             "mytable.myid + ("
             "<regexp replace>(mytable.myid, :myid_1, :myid_2))",
         )
+
+    @testing.combinations(
+        (lambda c, r: c.regexp_match(r), "<regexp>"),
+        (lambda c, r: c.like(r), "LIKE"),
+        (lambda c, r: ~c.regexp_match(r), "<not regexp>"),
+        (lambda c, r: ~c.match(r), "NOT %s MATCH"),
+        (lambda c, r: c.match(r), "MATCH"),
+    )
+    def test_all_match_precedence_against_concat(self, expr, expected):
+        expr = testing.resolve_lambda(
+            expr, c=self.table.c.myid, r=self.table.c.name + "some text"
+        )
+
+        if "%s" in expected:
+            self.assert_compile(
+                expr,
+                f"{expected % ('mytable.myid', )} (mytable.name || :name_1)",
+            )
+        else:
+            self.assert_compile(
+                expr, f"mytable.myid {expected} (mytable.name || :name_1)"
+            )
 
 
 class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):

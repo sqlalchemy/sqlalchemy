@@ -964,12 +964,21 @@ class DefaultDialect(Dialect):
         self.set_isolation_level(dbapi_conn, level)
 
     def reset_isolation_level(self, dbapi_conn):
-        # default_isolation_level is read from the first connection
-        # after the initial set of 'isolation_level', if any, so is
-        # the configured default of this dialect.
-        self._assert_and_set_isolation_level(
-            dbapi_conn, self.default_isolation_level
-        )
+        if self._on_connect_isolation_level is not None:
+            assert (
+                self._on_connect_isolation_level == "AUTOCOMMIT"
+                or self._on_connect_isolation_level
+                == self.default_isolation_level
+            )
+            self._assert_and_set_isolation_level(
+                dbapi_conn, self._on_connect_isolation_level
+            )
+        else:
+            assert self.default_isolation_level is not None
+            self._assert_and_set_isolation_level(
+                dbapi_conn,
+                self.default_isolation_level,
+            )
 
     def normalize_name(self, name):
         if name is None:

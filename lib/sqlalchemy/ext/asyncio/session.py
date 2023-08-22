@@ -42,13 +42,14 @@ if TYPE_CHECKING:
     from .engine import AsyncConnection
     from .engine import AsyncEngine
     from ...engine import Connection
+    from ...engine import CursorResult
     from ...engine import Engine
     from ...engine import Result
     from ...engine import Row
     from ...engine import RowMapping
     from ...engine import ScalarResult
     from ...engine.interfaces import _CoreAnyExecuteParams
-    from ...engine.interfaces import _ExecuteOptions
+    from ...engine.interfaces import CoreExecuteOptionsParameter
     from ...event import dispatcher
     from ...orm._typing import _IdentityKeyType
     from ...orm._typing import _O
@@ -62,6 +63,7 @@ if TYPE_CHECKING:
     from ...orm.session import _SessionBindKey
     from ...sql._typing import _InfoType
     from ...sql.base import Executable
+    from ...sql.dml import UpdateBase
     from ...sql.elements import ClauseElement
     from ...sql.selectable import ForUpdateParameter
     from ...sql.selectable import TypedReturnsRows
@@ -396,6 +398,19 @@ class AsyncSession(ReversibleProxy[Session]):
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
     ) -> Result[_T]:
+        ...
+
+    @overload
+    async def execute(
+        self,
+        statement: UpdateBase,
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        _parent_execute_state: Optional[Any] = None,
+        _add_event: Optional[Any] = None,
+    ) -> CursorResult[Any]:
         ...
 
     @overload
@@ -870,7 +885,7 @@ class AsyncSession(ReversibleProxy[Session]):
     async def connection(
         self,
         bind_arguments: Optional[_BindArguments] = None,
-        execution_options: Optional[_ExecuteOptions] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
         **kw: Any,
     ) -> AsyncConnection:
         r"""Return a :class:`_asyncio.AsyncConnection` object corresponding to
@@ -972,6 +987,18 @@ class AsyncSession(ReversibleProxy[Session]):
 
         """
         await greenlet_spawn(self.sync_session.close)
+
+    async def aclose(self) -> None:
+        """A synonym for :meth:`_asyncio.AsyncSession.close`.
+
+        The :meth:`_asyncio.AsyncSession.aclose` name is specifically
+        to support the Python standard library ``@contextlib.aclosing``
+        context manager function.
+
+        .. versionadded:: 2.0.20
+
+        """
+        await self.close()
 
     async def invalidate(self) -> None:
         """Close this Session, using connection invalidation.

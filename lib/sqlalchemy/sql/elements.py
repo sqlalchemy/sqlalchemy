@@ -123,11 +123,38 @@ _NT = TypeVar("_NT", bound="_NUMERIC")
 _NMT = TypeVar("_NMT", bound="_NUMBER")
 
 
+@overload
 def literal(
     value: Any,
-    type_: Optional[_TypeEngineArgument[_T]] = None,
+    type_: _TypeEngineArgument[_T],
     literal_execute: bool = False,
 ) -> BindParameter[_T]:
+    ...
+
+
+@overload
+def literal(
+    value: _T,
+    type_: None = None,
+    literal_execute: bool = False,
+) -> BindParameter[_T]:
+    ...
+
+
+@overload
+def literal(
+    value: Any,
+    type_: Optional[_TypeEngineArgument[Any]] = None,
+    literal_execute: bool = False,
+) -> BindParameter[Any]:
+    ...
+
+
+def literal(
+    value: Any,
+    type_: Optional[_TypeEngineArgument[Any]] = None,
+    literal_execute: bool = False,
+) -> BindParameter[Any]:
     r"""Return a literal clause, bound to a bind parameter.
 
     Literal clauses are created automatically when non-
@@ -323,7 +350,7 @@ class ClauseElement(
     def description(self) -> Optional[str]:
         return None
 
-    _is_clone_of: Optional[ClauseElement] = None
+    _is_clone_of: Optional[Self] = None
 
     is_clause_element = True
     is_selectable = False
@@ -457,6 +484,11 @@ class ClauseElement(
             s.add(f)
             f = f._is_clone_of
         return s
+
+    def _de_clone(self):
+        while self._is_clone_of is not None:
+            self = self._is_clone_of
+        return self
 
     @property
     def entity_namespace(self):
@@ -794,14 +826,37 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         ) -> ColumnElement[Any]:
             ...
 
+        @overload
+        def op(
+            self,
+            opstring: str,
+            precedence: int = ...,
+            is_comparison: bool = ...,
+            *,
+            return_type: _TypeEngineArgument[_OPT],
+            python_impl: Optional[Callable[..., Any]] = None,
+        ) -> Callable[[Any], BinaryExpression[_OPT]]:
+            ...
+
+        @overload
+        def op(
+            self,
+            opstring: str,
+            precedence: int = ...,
+            is_comparison: bool = ...,
+            return_type: Optional[_TypeEngineArgument[Any]] = ...,
+            python_impl: Optional[Callable[..., Any]] = ...,
+        ) -> Callable[[Any], BinaryExpression[Any]]:
+            ...
+
         def op(
             self,
             opstring: str,
             precedence: int = 0,
             is_comparison: bool = False,
-            return_type: Optional[_TypeEngineArgument[_OPT]] = None,
+            return_type: Optional[_TypeEngineArgument[Any]] = None,
             python_impl: Optional[Callable[..., Any]] = None,
-        ) -> Callable[[Any], BinaryExpression[_OPT]]:
+        ) -> Callable[[Any], BinaryExpression[Any]]:
             ...
 
         def bool_op(
@@ -1071,6 +1126,10 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
             self: _SQO[str],
             other: Any,
         ) -> ColumnElement[str]:
+            ...
+
+        @overload
+        def __add__(self, other: Any) -> ColumnElement[Any]:
             ...
 
         def __add__(self, other: Any) -> ColumnElement[Any]:
@@ -1531,6 +1590,9 @@ class ColumnElement(
             ) from err
         else:
             return comparator_factory(self)
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
 
     def __getattr__(self, key: str) -> Any:
         try:

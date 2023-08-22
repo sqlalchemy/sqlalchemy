@@ -333,6 +333,15 @@ def _expand_cloned(
     return itertools.chain(*[x._cloned_set for x in elements])
 
 
+def _de_clone(
+    elements: Iterable[_CLE],
+) -> Iterable[_CLE]:
+    for x in elements:
+        while x._is_clone_of is not None:
+            x = x._is_clone_of
+        yield x
+
+
 def _cloned_intersection(a: Iterable[_CLE], b: Iterable[_CLE]) -> Set[_CLE]:
     """return the intersection of sets a and b, counting
     any overlap between 'cloned' predecessors.

@@ -1735,6 +1735,69 @@ class InheritanceTest(_Polymorphic):
             "ORDER BY managers.person_id",
         )
 
+    @testing.variation("load", ["contains_eager", "joinedload"])
+    def test_issue_10125(self, load):
+        s = fixture_session()
+
+        employee_alias = aliased(Manager, flat=True)
+        company_alias = aliased(Company)
+
+        if load.contains_eager:
+            q = (
+                s.query(company_alias)
+                .outerjoin(
+                    employee_alias,
+                    company_alias.employees.of_type(employee_alias),
+                )
+                .options(
+                    contains_eager(
+                        company_alias.employees.of_type(employee_alias)
+                    ).load_only(
+                        employee_alias.person_id,
+                    )
+                )
+            )
+        elif load.joinedload:
+            q = s.query(company_alias).options(
+                joinedload(
+                    company_alias.employees.of_type(employee_alias)
+                ).load_only(
+                    employee_alias.person_id,
+                )
+            )
+        else:
+            load.fail()
+
+        if load.contains_eager:
+            self.assert_compile(
+                q,
+                "SELECT people_1.person_id AS people_1_person_id, "
+                "people_1.type AS people_1_type, "
+                "managers_1.person_id AS managers_1_person_id, "
+                "companies_1.company_id AS companies_1_company_id, "
+                "companies_1.name AS companies_1_name "
+                "FROM companies AS companies_1 LEFT OUTER JOIN "
+                "(people AS people_1 JOIN managers AS managers_1 "
+                "ON people_1.person_id = managers_1.person_id) "
+                "ON companies_1.company_id = people_1.company_id",
+            )
+        elif load.joinedload:
+            self.assert_compile(
+                q,
+                "SELECT companies_1.company_id AS companies_1_company_id, "
+                "companies_1.name AS companies_1_name, "
+                "people_1.person_id AS people_1_person_id, "
+                "people_1.type AS people_1_type, "
+                "managers_1.person_id AS managers_1_person_id "
+                "FROM companies AS companies_1 LEFT OUTER JOIN "
+                "(people AS people_1 JOIN managers AS managers_1 "
+                "ON people_1.person_id = managers_1.person_id) "
+                "ON companies_1.company_id = people_1.company_id "
+                "ORDER BY people_1.person_id",
+            )
+        else:
+            load.fail()
+
     def test_load_only_subclass_bound(self):
         s = fixture_session()
         q = (

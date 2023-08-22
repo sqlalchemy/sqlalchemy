@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 9610
+
+    Adjusted the operator precedence for the string concatenation operator to
+    be equal to that of string matching operators, such as
+    :meth:`.ColumnElement.like`, :meth:`.ColumnElement.regexp_match`,
+    :meth:`.ColumnElement.match`, etc., as well as plain ``==`` which has the
+    same precedence as string comparison operators, so that parenthesis will be
+    applied to a string concatenation expression that follows a string match
+    operator. This provides for backends such as PostgreSQL where the "regexp
+    match" operator is apparently of higher precedence than the string
+    concatenation operator.

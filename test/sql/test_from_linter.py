@@ -38,6 +38,35 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
         self.c = self.tables.table_c
         self.d = self.tables.table_d
 
+    @testing.variation(
+        "what_to_clone", ["nothing", "fromclause", "whereclause", "both"]
+    )
+    def test_cloned_aliases(self, what_to_clone):
+        a1 = self.a.alias()
+        b1 = self.b.alias()
+        c = self.c
+
+        j1 = a1.join(b1, a1.c.col_a == b1.c.col_b)
+        j1_from = j1
+        b1_where = b1
+
+        if what_to_clone.fromclause or what_to_clone.both:
+            a1c = a1._clone()
+            b1c = b1._clone()
+            j1_from = a1c.join(b1c, a1c.c.col_a == b1c.c.col_b)
+
+        if what_to_clone.whereclause or what_to_clone.both:
+            b1_where = b1_where._clone()
+
+        query = (
+            select(c)
+            .select_from(c, j1_from)
+            .where(b1_where.c.col_b == c.c.col_c)
+        )
+        for start in None, c:
+            froms, start = find_unmatching_froms(query, start)
+            assert not froms
+
     def test_everything_is_connected(self):
         query = (
             select(self.a)

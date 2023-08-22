@@ -101,6 +101,7 @@ if typing.TYPE_CHECKING:
     from .mapper import Mapper
     from .path_registry import PathRegistry
     from .query import RowReturningQuery
+    from ..engine import CursorResult
     from ..engine import Result
     from ..engine import Row
     from ..engine import RowMapping
@@ -109,6 +110,7 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import _CoreAnyExecuteParams
     from ..engine.interfaces import _CoreSingleExecuteParams
     from ..engine.interfaces import _ExecuteOptions
+    from ..engine.interfaces import CoreExecuteOptionsParameter
     from ..engine.result import ScalarResult
     from ..event import _InstanceLevelDispatch
     from ..sql._typing import _ColumnsClauseArgument
@@ -124,6 +126,7 @@ if typing.TYPE_CHECKING:
     from ..sql._typing import _TypedColumnClauseArgument as _TCCA
     from ..sql.base import Executable
     from ..sql.base import ExecutableOption
+    from ..sql.dml import UpdateBase
     from ..sql.elements import ClauseElement
     from ..sql.roles import TypedColumnsClauseRole
     from ..sql.selectable import ForUpdateParameter
@@ -1095,7 +1098,7 @@ class SessionTransaction(_StateChange, TransactionalContext):
     def _connection_for_bind(
         self,
         bind: _SessionBind,
-        execution_options: Optional[_ExecuteOptions],
+        execution_options: Optional[CoreExecuteOptionsParameter],
     ) -> Connection:
         if bind in self._connections:
             if execution_options:
@@ -1950,7 +1953,7 @@ class Session(_SessionClassMethods, EventTarget):
     def connection(
         self,
         bind_arguments: Optional[_BindArguments] = None,
-        execution_options: Optional[_ExecuteOptions] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> Connection:
         r"""Return a :class:`_engine.Connection` object corresponding to this
         :class:`.Session` object's transactional state.
@@ -1998,7 +2001,7 @@ class Session(_SessionClassMethods, EventTarget):
     def _connection_for_bind(
         self,
         engine: _SessionBind,
-        execution_options: Optional[_ExecuteOptions] = None,
+        execution_options: Optional[CoreExecuteOptionsParameter] = None,
         **kw: Any,
     ) -> Connection:
         TransactionalContext._trans_ctx_check(self)
@@ -2178,6 +2181,19 @@ class Session(_SessionClassMethods, EventTarget):
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
     ) -> Result[_T]:
+        ...
+
+    @overload
+    def execute(
+        self,
+        statement: UpdateBase,
+        params: Optional[_CoreAnyExecuteParams] = None,
+        *,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+        _parent_execute_state: Optional[Any] = None,
+        _add_event: Optional[Any] = None,
+    ) -> CursorResult[Any]:
         ...
 
     @overload

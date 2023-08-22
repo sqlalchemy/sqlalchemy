@@ -1636,7 +1636,7 @@ class symbol(int):
             else:
                 if canonical and canonical != sym:
                     raise TypeError(
-                        f"Can't replace canonical symbol for {name} "
+                        f"Can't replace canonical symbol for {name!r} "
                         f"with new int value {canonical}"
                     )
             return sym

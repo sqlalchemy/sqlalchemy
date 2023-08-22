@@ -519,6 +519,33 @@ class DMLTest(QueryTest, AssertsCompiledSQL):
         else:
             stmt_type.fail()
 
+    @testing.variation("stmt_type", ["core", "orm"])
+    def test_add_cte(self, stmt_type: testing.Variation):
+        """test #10167"""
+
+        if stmt_type.orm:
+            User = self.classes.User
+            cte_select = select(User.name).limit(1).cte()
+            cte_insert = insert(User).from_select(["name"], cte_select).cte()
+        elif stmt_type.core:
+            user_table = self.tables.users
+            cte_select = select(user_table.c.name).limit(1).cte()
+            cte_insert = (
+                insert(user_table).from_select(["name"], cte_select).cte()
+            )
+        else:
+            stmt_type.fail()
+
+        select_stmt = select(cte_select).add_cte(cte_insert)
+
+        self.assert_compile(
+            select_stmt,
+            "WITH anon_2 AS (SELECT users.name AS name FROM users LIMIT "
+            ":param_1), anon_1 AS (INSERT INTO users (name) "
+            "SELECT anon_2.name AS name FROM anon_2) "
+            "SELECT anon_2.name FROM anon_2",
+        )
+
 
 class ColumnsClauseFromsTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"
@@ -2516,6 +2543,28 @@ class JoinedInhTest(
             "ON companies.company_id = people.company_id",
         )
 
+    def test_cte_recursive_handles_dupe_columns(self):
+        """test #10169"""
+        Engineer = self.classes.Engineer
+
+        my_cte = select(Engineer).cte(recursive=True)
+
+        self.assert_compile(
+            select(my_cte),
+            "WITH RECURSIVE anon_1(person_id, person_id_1, company_id, name, "
+            "type, status, "
+            "engineer_name, primary_language) AS (SELECT engineers.person_id "
+            "AS person_id, people.person_id AS person_id_1, people.company_id "
+            "AS company_id, people.name AS name, people.type AS type, "
+            "engineers.status AS status, engineers.engineer_name AS "
+            "engineer_name, engineers.primary_language AS primary_language "
+            "FROM people JOIN engineers ON people.person_id = "
+            "engineers.person_id) SELECT anon_1.person_id, "
+            "anon_1.person_id_1, anon_1.company_id, "
+            "anon_1.name, anon_1.type, anon_1.status, anon_1.engineer_name, "
+            "anon_1.primary_language FROM anon_1",
+        )
+
 
 class RawSelectTest(QueryTest, AssertsCompiledSQL):
     """older tests from test_query.   Here, they are converted to use
@@ -2785,8 +2834,6 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_update_from_entity(self):
-        from sqlalchemy.sql import update
-
         User = self.classes.User
         self.assert_compile(
             update(User), "UPDATE users SET id=:id, name=:name"
@@ -2805,8 +2852,6 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_delete_from_entity(self):
-        from sqlalchemy.sql import delete
-
         User = self.classes.User
         self.assert_compile(delete(User), "DELETE FROM users")
 
@@ -2817,8 +2862,6 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_insert_from_entity(self):
-        from sqlalchemy.sql import insert
-
         User = self.classes.User
         self.assert_compile(
             insert(User), "INSERT INTO users (id, name) VALUES (:id, :name)"
@@ -2828,6 +2871,27 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
             insert(User).values(name="ed"),
             "INSERT INTO users (name) VALUES (:name)",
             checkparams={"name": "ed"},
+        )
+
+    def test_update_returning_star(self):
+        User = self.classes.User
+        self.assert_compile(
+            update(User).returning(literal_column("*")),
+            "UPDATE users SET id=:id, name=:name RETURNING *",
+        )
+
+    def test_delete_returning_star(self):
+        User = self.classes.User
+        self.assert_compile(
+            delete(User).returning(literal_column("*")),
+            "DELETE FROM users RETURNING *",
+        )
+
+    def test_insert_returning_star(self):
+        User = self.classes.User
+        self.assert_compile(
+            insert(User).returning(literal_column("*")),
+            "INSERT INTO users (id, name) VALUES (:id, :name) RETURNING *",
         )
 
     def test_col_prop_builtin_function(self):
