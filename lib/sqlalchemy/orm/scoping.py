@@ -108,6 +108,7 @@ __all__ = ["scoped_session"]
         "begin",
         "begin_nested",
         "close",
+        "reset",
         "commit",
         "connection",
         "delete",
@@ -491,11 +492,16 @@ class scoped_session(Generic[_S]):
 
         .. tip::
 
-            The :meth:`_orm.Session.close` method **does not prevent the
-            Session from being used again**.   The :class:`_orm.Session` itself
-            does not actually have a distinct "closed" state; it merely means
+            In the default running mode the :meth:`_orm.Session.close`
+            method **does not prevent the Session from being used again**.
+            The :class:`_orm.Session` itself does not actually have a
+            distinct "closed" state; it merely means
             the :class:`_orm.Session` will release all database connections
             and ORM objects.
+
+            Setting the parameter :paramref:`_orm.Session.close_resets_only`
+            to ``False`` will instead make the ``close`` final, meaning that
+            any further action on the session will be forbidden.
 
         .. versionchanged:: 1.4  The :meth:`.Session.close` method does not
            immediately create a new :class:`.SessionTransaction` object;
@@ -505,12 +511,48 @@ class scoped_session(Generic[_S]):
         .. seealso::
 
             :ref:`session_closing` - detail on the semantics of
-            :meth:`_orm.Session.close`
+            :meth:`_orm.Session.close` and :meth:`_orm.Session.reset`.
+
+            :meth:`_orm.Session.reset` - a similar method that behaves like
+            ``close()`` with  the parameter
+            :paramref:`_orm.Session.close_resets_only` set to ``True``.
 
 
         """  # noqa: E501
 
         return self._proxied.close()
+
+    def reset(self) -> None:
+        r"""Close out the transactional resources and ORM objects used by this
+        :class:`_orm.Session`, resetting the session to its initial state.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_orm.scoping.scoped_session` class.
+
+        This method provides for same "reset-only" behavior that the
+        :meth:_orm.Session.close method has provided historically, where the
+        state of the :class:`_orm.Session` is reset as though the object were
+        brand new, and ready to be used again.
+        The method may then be useful for :class:`_orm.Session` objects
+        which set :paramref:`_orm.Session.close_resets_only` to ``False``,
+        so that "reset only" behavior is still available from this method.
+
+        .. versionadded:: 2.0.22
+
+        .. seealso::
+
+            :ref:`session_closing` - detail on the semantics of
+            :meth:`_orm.Session.close` and :meth:`_orm.Session.reset`.
+
+            :meth:`_orm.Session.close` - a similar method will additionally
+            prevent re-use of the Session when the parameter
+            :paramref:`_orm.Session.close_resets_only` is set to ``False``.
+
+        """  # noqa: E501
+
+        return self._proxied.reset()
 
     def commit(self) -> None:
         r"""Flush pending changes and commit the current transaction.

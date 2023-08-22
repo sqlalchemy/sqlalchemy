@@ -723,10 +723,22 @@ transactional/connection resources from the :class:`_engine.Engine` object(s)
 to which it is bound.   When connections are returned to the connection pool,
 transactional state is rolled back as well.
 
-When the :class:`_orm.Session` is closed, it is essentially in the
+By default, when the :class:`_orm.Session` is closed, it is essentially in the
 original state as when it was first constructed, and **may be used again**.
 In this sense, the :meth:`_orm.Session.close` method is more like a "reset"
 back to the clean state and not as much like a "database close" method.
+In this mode of operation the method :meth:`_orm.Session.reset` is an alias to
+:meth:`_orm.Session.close` and behaves in the same way.
+
+The default behavior of :meth:`_orm.Session.close` can be changed by setting the
+parameter :paramref:`_orm.Session.close_resets_only` to ``False``, indicating that
+the :class:`_orm.Session` cannot be reused after the method
+:meth:`_orm.Session.close` has been called. In this mode of operation the
+:meth:`_orm.Session.reset` method will allow multiple "reset" of the session,
+behaving like :meth:`_orm.Session.close` when
+:paramref:`_orm.Session.close_resets_only` is set to ``True``.
+
+.. versionadded:: 2.0.22
 
 It's recommended that the scope of a :class:`_orm.Session` be limited by
 a call to :meth:`_orm.Session.close` at the end, especially if the
