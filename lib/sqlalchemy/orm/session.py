@@ -1678,7 +1678,7 @@ class Session(_SessionClassMethods, EventTarget):
         self.expire_on_commit = expire_on_commit
         self.enable_baked_queries = enable_baked_queries
         self.close_final = close_final
-        self._is_closed = False
+        self._is_closed: bool = False
         if (
             join_transaction_mode
             and join_transaction_mode
