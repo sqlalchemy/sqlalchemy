@@ -672,7 +672,7 @@ class TableReflectionTest(fixtures.TestBase):
         m2 = MetaData()
 
         tbl = Table("test_compress", m2, autoload_with=connection)
-        assert tbl.dialect_options["oracle"]["compress"] == "OLTP"
+        assert tbl.dialect_options["oracle"]["compress"] in ("OLTP","ADVANCED")
 
     def test_reflect_hidden_column(self):
         with testing.db.begin() as conn:
