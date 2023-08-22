@@ -2723,6 +2723,12 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         e = Enum("x", "y", "long", native_enum=False, length=42)
         eq_(e.length, 42)
 
+    def test_none_length_non_native(self):
+        e = Enum("x", "y", native_enum=False, length=None)
+        eq_(e.length, None)
+        eq_(repr(e), "Enum('x', 'y', native_enum=False, length=None)")
+        self.assert_compile(e, "VARCHAR", dialect="default")
+
     def test_omit_aliases(self, connection):
         table0 = self.tables["stdlib_enum_table"]
         type0 = table0.c.someenum.type

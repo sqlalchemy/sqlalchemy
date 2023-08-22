@@ -1451,7 +1451,11 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
             self._default_length = length = 0
 
         if length_arg is not NO_ARG:
-            if not _disable_warnings and length_arg < length:
+            if (
+                not _disable_warnings
+                and length_arg is not None
+                and length_arg < length
+            ):
                 raise ValueError(
                     "When provided, length must be larger or equal"
                     " than the length of the longest enum value. %s < %s"
@@ -1658,14 +1662,14 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         )
 
     def as_generic(self, allow_nulltype=False):
-        if hasattr(self, "enums"):
+        try:
             args = self.enums
-        else:
+        except AttributeError:
             raise NotImplementedError(
                 "TypeEngine.as_generic() heuristic "
                 "is undefined for types that inherit Enum but do not have "
                 "an `enums` attribute."
-            )
+            ) from None
 
         return util.constructor_copy(
             self, self._generic_type_affinity, *args, _disable_warnings=True
