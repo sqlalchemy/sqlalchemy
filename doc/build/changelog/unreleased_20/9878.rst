@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 9878
+
+    Fixed the type annotation for ``__class_getitem__()`` as applied to the
+    ``Visitable`` class at the base of expression constructs to accept ``Any``
+    for a key, rather than ``str``, which helps with some IDEs such as PyCharm
+    when attempting to write typing annotations for SQL constructs which
+    include generic selectors.  Pull request courtesy Jordan Macdonald.
+
