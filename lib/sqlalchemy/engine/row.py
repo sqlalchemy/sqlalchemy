@@ -28,6 +28,7 @@ from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
+from typing_extensions import TypeVarTuple, Unpack
 
 from ..sql import util as sql_util
 from ..util import deprecated
@@ -44,10 +45,20 @@ if TYPE_CHECKING:
     from .result import RMKeyView
 
 _T = TypeVar("_T", bound=Any)
-_TP = TypeVar("_TP", bound=Tuple[Any, ...])
+_TP = TypeVarTuple("_TP")
+
+if TYPE_CHECKING:
+
+    class _Row(BaseRow, tuple[Unpack[_TP]]):
+        ...
+
+else:
+
+    class _Row(BaseRow, Generic[Unpack[_TP]]):
+        ...
 
 
-class Row(BaseRow, Sequence[Any], Generic[_TP]):
+class Row(_Row[Unpack[_TP]]):
     """Represent a single result row.
 
     The :class:`.Row` object represents a row of a database result.  It is
