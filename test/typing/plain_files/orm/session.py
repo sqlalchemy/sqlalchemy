@@ -97,6 +97,9 @@ with Session(e) as sess:
         User.id
     ).offset(User.id)
 
+    # EXPECTED_TYPE: Optional[User]
+    reveal_type(sess.query(User).get(1))
+
 # more result tests in typed_results.py
 
 
