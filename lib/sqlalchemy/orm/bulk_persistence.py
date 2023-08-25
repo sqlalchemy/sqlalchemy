@@ -1438,7 +1438,6 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
             self._resolved_values = dict(self._resolved_values)
 
         new_stmt = statement._clone()
-        new_stmt.table = mapper.local_table
 
         # note if the statement has _multi_values, these
         # are passed through to the new statement, which will then raise
@@ -1499,9 +1498,7 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
             # over and over again.   so perhaps if it could be RETURNING just
             # the elements that were based on a SQL expression and not
             # a constant.   For now it doesn't quite seem worth it
-            new_stmt = new_stmt.return_defaults(
-                *(list(mapper.local_table.primary_key))
-            )
+            new_stmt = new_stmt.return_defaults(*new_stmt.table.primary_key)
 
         if toplevel:
             new_stmt = self._setup_orm_returning(
@@ -1860,7 +1857,6 @@ class BulkORMDelete(BulkUDCompileState, DeleteDMLState):
         )
 
         new_stmt = statement._clone()
-        new_stmt.table = mapper.local_table
 
         new_crit = cls._adjust_for_extra_criteria(
             self.global_attributes, mapper

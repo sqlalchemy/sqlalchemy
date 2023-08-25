@@ -19,6 +19,7 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import update
 from sqlalchemy import values
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import immediateload
@@ -831,6 +832,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         sess = fixture_session()
 
         john, jack, jill, jane = sess.query(User).order_by(User.id).all()
+
         sess.query(User).filter(User.age > 29).update(
             {"age": User.age - 10}, synchronize_session="evaluate"
         )
@@ -2278,6 +2280,84 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
             documents,
             properties={"user": relationship(User, backref="documents")},
         )
+
+    @testing.requires.update_from_using_alias
+    @testing.combinations(
+        False,
+        ("fetch", testing.requires.update_returning),
+        ("auto", testing.requires.update_returning),
+        argnames="synchronize_session",
+    )
+    def test_update_from_alias(self, synchronize_session):
+        Document = self.classes.Document
+        s = fixture_session()
+
+        d1 = aliased(Document)
+
+        with self.sql_execution_asserter() as asserter:
+            s.execute(
+                update(d1).where(d1.title == "baz").values(flag=True),
+                execution_options={"synchronize_session": synchronize_session},
+            )
+
+        if True:
+            # TODO: see note in crud.py line 770.  RETURNING should be here
+            # if synchronize_session="fetch" however there are more issues
+            # with this.
+            # if synchronize_session is False:
+            asserter.assert_(
+                CompiledSQL(
+                    "UPDATE documents AS documents_1 SET flag=:flag "
+                    "WHERE documents_1.title = :title_1",
+                    [{"flag": True, "title_1": "baz"}],
+                )
+            )
+        else:
+            asserter.assert_(
+                CompiledSQL(
+                    "UPDATE documents AS documents_1 SET flag=:flag "
+                    "WHERE documents_1.title = :title_1 "
+                    "RETURNING documents_1.id",
+                    [{"flag": True, "title_1": "baz"}],
+                )
+            )
+
+    @testing.requires.delete_using_alias
+    @testing.combinations(
+        False,
+        ("fetch", testing.requires.delete_returning),
+        ("auto", testing.requires.delete_returning),
+        argnames="synchronize_session",
+    )
+    def test_delete_using_alias(self, synchronize_session):
+        Document = self.classes.Document
+        s = fixture_session()
+
+        d1 = aliased(Document)
+
+        with self.sql_execution_asserter() as asserter:
+            s.execute(
+                delete(d1).where(d1.title == "baz"),
+                execution_options={"synchronize_session": synchronize_session},
+            )
+
+        if synchronize_session is False:
+            asserter.assert_(
+                CompiledSQL(
+                    "DELETE FROM documents AS documents_1 "
+                    "WHERE documents_1.title = :title_1",
+                    [{"title_1": "baz"}],
+                )
+            )
+        else:
+            asserter.assert_(
+                CompiledSQL(
+                    "DELETE FROM documents AS documents_1 "
+                    "WHERE documents_1.title = :title_1 "
+                    "RETURNING documents_1.id",
+                    [{"title_1": "baz"}],
+                )
+            )
 
     @testing.requires.update_from
     def test_update_from_joined_subq_test(self):

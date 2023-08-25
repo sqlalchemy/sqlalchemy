@@ -492,11 +492,28 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def update_from_using_alias(self):
+        """Target must support UPDATE..FROM syntax against an alias"""
+
+        return skip_if(
+            ["oracle", "sqlite<3.33.0", "mssql"],
+            "Backend does not support UPDATE..FROM with an alias",
+        )
+
+    @property
     def delete_using(self):
         """Target must support DELETE FROM..FROM or DELETE..USING syntax"""
         return only_on(
             ["postgresql", "mssql", "mysql", "mariadb"],
             "Backend does not support DELETE..USING or equivalent",
+        )
+
+    @property
+    def delete_using_alias(self):
+        """Target must support DELETE FROM against an alias"""
+        return only_on(
+            ["postgresql", "sqlite"],
+            "Backend does not support DELETE..USING/FROM with an alias",
         )
 
     @property

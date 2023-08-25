@@ -647,6 +647,9 @@ def _scan_cols(
 
     compiler_implicit_returning = compiler.implicit_returning
 
+    # TODO - see TODO(return_defaults_columns) below
+    # cols_in_params = set()
+
     for c in cols:
         # scan through every column in the target table
 
@@ -671,6 +674,9 @@ def _scan_cols(
                 insert_null_pk_still_autoincrements,
                 kw,
             )
+
+            # TODO - see TODO(return_defaults_columns) below
+            # cols_in_params.add(c)
 
         elif isinsert:
             # no parameter is present and it's an insert.
@@ -763,6 +769,19 @@ def _scan_cols(
             for c in stmt._supplemental_returning
             if c in remaining_supplemental
         )
+
+    # TODO(return_defaults_columns): there can still be more columns in
+    # _return_defaults_columns in the case that they are from something like an
+    # aliased of the table. we can add them here, however this breaks other ORM
+    # things. so this is for another day. see
+    # test/orm/dml/test_update_delete_where.py -> test_update_from_alias
+
+    # if stmt._return_defaults_columns:
+    #     compiler_implicit_returning.extend(
+    #         set(stmt._return_defaults_columns)
+    #         .difference(compiler_implicit_returning)
+    #         .difference(cols_in_params)
+    #     )
 
     return (use_insertmanyvalues, use_sentinel_columns)
 
