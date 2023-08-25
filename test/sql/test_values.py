@@ -7,8 +7,10 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Table
+from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import true
+from sqlalchemy import values
 from sqlalchemy.engine import default
 from sqlalchemy.sql import func
 from sqlalchemy.sql import select
@@ -17,6 +19,8 @@ from sqlalchemy.sql.compiler import FROM_LINTING
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not
 from sqlalchemy.util import OrderedDict
 
 
@@ -69,6 +73,95 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
             r"Wrong number of elements for 2-tuple: \(1, 'textA', 99\)",
         ):
             str(v1)
+
+    @testing.fixture
+    def _auto_proxy_fixture(self):
+        c1 = column("q", Integer)
+        c2 = column("p", Integer)
+        t = table("t", c1)  # noqa: F841
+
+        v1 = values(c1, c2).data([(1, 2), (3, 4)])
+
+        return c1, c2, t, v1
+
+    def test_auto_proxy_col_ownership(self, _auto_proxy_fixture):
+        """test #10280"""
+
+        c1, c2, t, v1 = _auto_proxy_fixture
+
+        is_(c2, v1.c.p)
+        is_not(c1, v1.c.q)
+
+    def test_auto_proxy_select_c_col(self, _auto_proxy_fixture):
+        """test #10280"""
+
+        c1, c2, t, v1 = _auto_proxy_fixture
+        self.assert_compile(select(t.c.q), "SELECT t.q FROM t")
+        self.assert_compile(
+            select(v1.c.q),
+            "SELECT q FROM (VALUES (:param_1, :param_2), "
+            "(:param_3, :param_4))",
+            checkparams={
+                "param_1": 1,
+                "param_2": 2,
+                "param_3": 3,
+                "param_4": 4,
+            },
+        )
+
+    def test_auto_proxy_select_direct_col(self, _auto_proxy_fixture):
+        """test #10280"""
+
+        c1, c2, t, v1 = _auto_proxy_fixture
+        self.assert_compile(select(c1), "SELECT t.q FROM t")
+
+        # for VALUES, the column does not have its set_parent called up front.
+        # this is to make the construction of values() faster, as the values.c
+        # use case is not required in order to use the construct
+        self.assert_compile(select(c2), "SELECT p")
+
+        # once we call v.c, then it's set up.
+        # patch for #10280 added an extra step to make sure this works
+        # even after the previous compile is called.
+        # is this how it should work?  not sure, just testing how it is
+        # right now
+        v1.c.p
+
+        self.assert_compile(
+            select(c2),
+            "SELECT p FROM (VALUES (:param_1, :param_2), "
+            "(:param_3, :param_4))",
+            checkparams={
+                "param_1": 1,
+                "param_2": 2,
+                "param_3": 3,
+                "param_4": 4,
+            },
+        )
+
+    def test_auto_proxy_make_new_values(self, _auto_proxy_fixture):
+        """test #10280"""
+
+        c1, c2, t, v1 = _auto_proxy_fixture
+
+        self.assert_compile(
+            select(v1.c.p),
+            "SELECT p FROM (VALUES (:param_1, :param_2), "
+            "(:param_3, :param_4))",
+            checkparams={
+                "param_1": 1,
+                "param_2": 2,
+                "param_3": 3,
+                "param_4": 4,
+            },
+        )
+
+        v2 = values(c1, c2).data([(5, 6)])
+        self.assert_compile(
+            select(v2.c.p),
+            "SELECT p FROM (VALUES (:param_1, :param_2))",
+            checkparams={"param_1": 5, "param_2": 6},
+        )
 
     def test_column_quoting(self):
         v1 = Values(
