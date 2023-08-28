@@ -117,6 +117,7 @@ _NUMERIC = Union[float, Decimal]
 _NUMBER = Union[float, int, Decimal]
 
 _T = TypeVar("_T", bound="Any")
+_T_co = TypeVar("_T_co", bound=Any, covariant=True)
 _OPT = TypeVar("_OPT", bound="Any")
 _NT = TypeVar("_NT", bound="_NUMERIC")
 
@@ -804,7 +805,7 @@ class CompilerColumnElement(
 # SQLCoreOperations should be suiting the ExpressionElementRole
 # and ColumnsClauseRole.   however the MRO issues become too elaborate
 # at the moment.
-class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
+class SQLCoreOperations(Generic[_T_co], ColumnOperators, TypingOnly):
     __slots__ = ()
 
     # annotations for comparison methods
@@ -873,7 +874,7 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         def __or__(self, other: Any) -> BooleanClauseList:
             ...
 
-        def __invert__(self) -> ColumnElement[_T]:
+        def __invert__(self) -> ColumnElement[_T_co]:
             ...
 
         def __lt__(self, other: Any) -> ColumnElement[bool]:
@@ -900,7 +901,7 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         def __ge__(self, other: Any) -> ColumnElement[bool]:
             ...
 
-        def __neg__(self) -> UnaryExpression[_T]:
+        def __neg__(self) -> UnaryExpression[_T_co]:
             ...
 
         def __contains__(self, other: Any) -> ColumnElement[bool]:
@@ -961,7 +962,7 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         def bitwise_and(self, other: Any) -> BinaryExpression[Any]:
             ...
 
-        def bitwise_not(self) -> UnaryExpression[_T]:
+        def bitwise_not(self) -> UnaryExpression[_T_co]:
             ...
 
         def bitwise_lshift(self, other: Any) -> BinaryExpression[Any]:
@@ -1074,22 +1075,22 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         ) -> ColumnElement[str]:
             ...
 
-        def desc(self) -> UnaryExpression[_T]:
+        def desc(self) -> UnaryExpression[_T_co]:
             ...
 
-        def asc(self) -> UnaryExpression[_T]:
+        def asc(self) -> UnaryExpression[_T_co]:
             ...
 
-        def nulls_first(self) -> UnaryExpression[_T]:
+        def nulls_first(self) -> UnaryExpression[_T_co]:
             ...
 
-        def nullsfirst(self) -> UnaryExpression[_T]:
+        def nullsfirst(self) -> UnaryExpression[_T_co]:
             ...
 
-        def nulls_last(self) -> UnaryExpression[_T]:
+        def nulls_last(self) -> UnaryExpression[_T_co]:
             ...
 
-        def nullslast(self) -> UnaryExpression[_T]:
+        def nullslast(self) -> UnaryExpression[_T_co]:
             ...
 
         def collate(self, collation: str) -> CollationClause:
@@ -1100,7 +1101,7 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
         ) -> BinaryExpression[bool]:
             ...
 
-        def distinct(self: _SQO[_T]) -> UnaryExpression[_T]:
+        def distinct(self: _SQO[_T_co]) -> UnaryExpression[_T_co]:
             ...
 
         def any_(self) -> CollectionAggregate[Any]:
@@ -1137,10 +1138,6 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
 
         @overload
         def __radd__(self: _SQO[_NT], other: Any) -> ColumnElement[_NT]:
-            ...
-
-        @overload
-        def __radd__(self: _SQO[int], other: Any) -> ColumnElement[int]:
             ...
 
         @overload
@@ -1282,7 +1279,7 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
 
 
 class SQLColumnExpression(
-    SQLCoreOperations[_T], roles.ExpressionElementRole[_T], TypingOnly
+    SQLCoreOperations[_T_co], roles.ExpressionElementRole[_T_co], TypingOnly
 ):
     """A type that may be used to indicate any SQL column element or object
     that acts in place of one.

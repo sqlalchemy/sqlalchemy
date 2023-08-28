@@ -927,10 +927,10 @@ class _HybridDeleterType(Protocol[_T_co]):
         ...
 
 
-class _HybridExprCallableType(Protocol[_T]):
+class _HybridExprCallableType(Protocol[_T_co]):
     def __call__(
         s, cls: Any
-    ) -> Union[_HasClauseElement, SQLColumnExpression[_T]]:
+    ) -> Union[_HasClauseElement, SQLColumnExpression[_T_co]]:
         ...
 
 

@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from .selectable import Subquery
 
 _T = TypeVar("_T", bound=Any)
+_T_co = TypeVar("_T_co", bound=Any, covariant=True)
 
 
 class SQLRole:
@@ -110,7 +111,7 @@ class ColumnsClauseRole(AllowsLambdaRole, UsesInspection, ColumnListRole):
         raise NotImplementedError()
 
 
-class TypedColumnsClauseRole(Generic[_T], SQLRole):
+class TypedColumnsClauseRole(Generic[_T_co], SQLRole):
     """element-typed form of ColumnsClauseRole"""
 
     __slots__ = ()
@@ -162,7 +163,7 @@ class WhereHavingRole(OnClauseRole):
     _role_name = "SQL expression for WHERE/HAVING role"
 
 
-class ExpressionElementRole(TypedColumnsClauseRole[_T]):
+class ExpressionElementRole(TypedColumnsClauseRole[_T_co]):
     # note when using generics for ExpressionElementRole,
     # the generic type needs to be in
     # sqlalchemy.sql.coercions._impl_lookup mapping also.
