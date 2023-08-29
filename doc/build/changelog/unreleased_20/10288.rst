@@ -1,0 +1,20 @@
+.. change::
+    :tags: usecase, orm, typing
+    :tickets: 10288
+
+    Made :class:`.Mapped` covariant. The classes below were made
+    covariant too as :class:`.Mapped` depends on them.
+
+    * :class:`_orm.DynamicMapped`
+    * :class:`_orm.ORMDescriptor`
+    * :class:`_orm.PropComparator`
+    * :class:`_orm.QueryableAttribute`
+    * :class:`_orm.SQLORMExpression`
+    * :class:`_orm.WriteOnlyMapped`
+    * :class:`_orm.base.SQLORMOperations`
+    * :class:`_sql.SQLColumnExpression`
+    * :class:`_sql.elements.SQLCoreOperations`
+    * :class:`_sql.roles.ExpressionElementRole`
+    * :class:`_sql.roles.TypedColumnsClauseRole`
+
+
