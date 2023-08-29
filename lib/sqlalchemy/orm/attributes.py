@@ -120,6 +120,7 @@ if TYPE_CHECKING:
 
 
 _T = TypeVar("_T")
+_T_co = TypeVar("_T_co", bound=Any, covariant=True)
 
 
 _AllPendingType = Sequence[
@@ -132,10 +133,10 @@ _UNKNOWN_ATTR_KEY = object()
 
 @inspection._self_inspects
 class QueryableAttribute(
-    _DeclarativeMapped[_T],
-    SQLORMExpression[_T],
+    _DeclarativeMapped[_T_co],
+    SQLORMExpression[_T_co],
     interfaces.InspectionAttr,
-    interfaces.PropComparator[_T],
+    interfaces.PropComparator[_T_co],
     roles.JoinTargetRole,
     roles.OnClauseRole,
     sql_base.Immutable,
@@ -178,13 +179,13 @@ class QueryableAttribute(
 
     is_attribute = True
 
-    dispatch: dispatcher[QueryableAttribute[_T]]
+    dispatch: dispatcher[QueryableAttribute[_T_co]]
 
     class_: _ExternalEntityType[Any]
     key: str
     parententity: _InternalEntityType[Any]
     impl: AttributeImpl
-    comparator: interfaces.PropComparator[_T]
+    comparator: interfaces.PropComparator[_T_co]
     _of_type: Optional[_InternalEntityType[Any]]
     _extra_criteria: Tuple[ColumnElement[bool], ...]
     _doc: Optional[str]
@@ -198,7 +199,7 @@ class QueryableAttribute(
         class_: _ExternalEntityType[_O],
         key: str,
         parententity: _InternalEntityType[_O],
-        comparator: interfaces.PropComparator[_T],
+        comparator: interfaces.PropComparator[_T_co],
         impl: Optional[AttributeImpl] = None,
         of_type: Optional[_InternalEntityType[Any]] = None,
         extra_criteria: Tuple[ColumnElement[bool], ...] = (),
@@ -314,7 +315,7 @@ class QueryableAttribute(
 
     """
 
-    expression: ColumnElement[_T]
+    expression: ColumnElement[_T_co]
     """The SQL expression object represented by this
     :class:`.QueryableAttribute`.
 
@@ -376,7 +377,7 @@ class QueryableAttribute(
     def _annotations(self) -> _AnnotationDict:
         return self.__clause_element__()._annotations
 
-    def __clause_element__(self) -> ColumnElement[_T]:
+    def __clause_element__(self) -> ColumnElement[_T_co]:
         return self.expression
 
     @property
@@ -443,7 +444,7 @@ class QueryableAttribute(
             extra_criteria=self._extra_criteria,
         )
 
-    def label(self, name: Optional[str]) -> Label[_T]:
+    def label(self, name: Optional[str]) -> Label[_T_co]:
         return self.__clause_element__().label(name)
 
     def operate(

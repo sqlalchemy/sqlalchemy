@@ -56,6 +56,7 @@ if typing.TYPE_CHECKING:
     from ..sql.operators import OperatorType
 
 _T = TypeVar("_T", bound=Any)
+_T_co = TypeVar("_T_co", bound=Any, covariant=True)
 
 _O = TypeVar("_O", bound=object)
 
@@ -678,12 +679,12 @@ class InspectionAttrInfo(InspectionAttr):
         return {}
 
 
-class SQLORMOperations(SQLCoreOperations[_T], TypingOnly):
+class SQLORMOperations(SQLCoreOperations[_T_co], TypingOnly):
     __slots__ = ()
 
     if typing.TYPE_CHECKING:
 
-        def of_type(self, class_: _EntityType[Any]) -> PropComparator[_T]:
+        def of_type(self, class_: _EntityType[Any]) -> PropComparator[_T_co]:
             ...
 
         def and_(
@@ -706,7 +707,7 @@ class SQLORMOperations(SQLCoreOperations[_T], TypingOnly):
             ...
 
 
-class ORMDescriptor(Generic[_T], TypingOnly):
+class ORMDescriptor(Generic[_T_co], TypingOnly):
     """Represent any Python descriptor that provides a SQL expression
     construct at the class level."""
 
@@ -717,26 +718,26 @@ class ORMDescriptor(Generic[_T], TypingOnly):
         @overload
         def __get__(
             self, instance: Any, owner: Literal[None]
-        ) -> ORMDescriptor[_T]:
+        ) -> ORMDescriptor[_T_co]:
             ...
 
         @overload
         def __get__(
             self, instance: Literal[None], owner: Any
-        ) -> SQLCoreOperations[_T]:
+        ) -> SQLCoreOperations[_T_co]:
             ...
 
         @overload
-        def __get__(self, instance: object, owner: Any) -> _T:
+        def __get__(self, instance: object, owner: Any) -> _T_co:
             ...
 
         def __get__(
             self, instance: object, owner: Any
-        ) -> Union[ORMDescriptor[_T], SQLCoreOperations[_T], _T]:
+        ) -> Union[ORMDescriptor[_T_co], SQLCoreOperations[_T_co], _T_co]:
             ...
 
 
-class _MappedAnnotationBase(Generic[_T], TypingOnly):
+class _MappedAnnotationBase(Generic[_T_co], TypingOnly):
     """common class for Mapped and similar ORM container classes.
 
     these are classes that can appear on the left side of an ORM declarative
@@ -749,7 +750,7 @@ class _MappedAnnotationBase(Generic[_T], TypingOnly):
 
 
 class SQLORMExpression(
-    SQLORMOperations[_T], SQLColumnExpression[_T], TypingOnly
+    SQLORMOperations[_T_co], SQLColumnExpression[_T_co], TypingOnly
 ):
     """A type that may be used to indicate any ORM-level attribute or
     object that acts in place of one, in the context of SQL expression
@@ -771,9 +772,9 @@ class SQLORMExpression(
 
 
 class Mapped(
-    SQLORMExpression[_T],
-    ORMDescriptor[_T],
-    _MappedAnnotationBase[_T],
+    SQLORMExpression[_T_co],
+    ORMDescriptor[_T_co],
+    _MappedAnnotationBase[_T_co],
     roles.DDLConstraintColumnRole,
 ):
     """Represent an ORM mapped attribute on a mapped class.
@@ -819,24 +820,24 @@ class Mapped(
         @overload
         def __get__(
             self, instance: None, owner: Any
-        ) -> InstrumentedAttribute[_T]:
+        ) -> InstrumentedAttribute[_T_co]:
             ...
 
         @overload
-        def __get__(self, instance: object, owner: Any) -> _T:
+        def __get__(self, instance: object, owner: Any) -> _T_co:
             ...
 
         def __get__(
             self, instance: Optional[object], owner: Any
-        ) -> Union[InstrumentedAttribute[_T], _T]:
+        ) -> Union[InstrumentedAttribute[_T_co], _T_co]:
             ...
 
         @classmethod
-        def _empty_constructor(cls, arg1: Any) -> Mapped[_T]:
+        def _empty_constructor(cls, arg1: Any) -> Mapped[_T_co]:
             ...
 
         def __set__(
-            self, instance: Any, value: Union[SQLCoreOperations[_T], _T]
+            self, instance: Any, value: Union[SQLCoreOperations[_T_co], _T_co]
         ) -> None:
             ...
 
@@ -844,7 +845,7 @@ class Mapped(
             ...
 
 
-class _MappedAttribute(Generic[_T], TypingOnly):
+class _MappedAttribute(Generic[_T_co], TypingOnly):
     """Mixin for attributes which should be replaced by mapper-assigned
     attributes.
 
@@ -853,7 +854,7 @@ class _MappedAttribute(Generic[_T], TypingOnly):
     __slots__ = ()
 
 
-class _DeclarativeMapped(Mapped[_T], _MappedAttribute[_T]):
+class _DeclarativeMapped(Mapped[_T_co], _MappedAttribute[_T_co]):
     """Mixin for :class:`.MapperProperty` subclasses that allows them to
     be compatible with ORM-annotated declarative mappings.
 
@@ -878,7 +879,7 @@ class _DeclarativeMapped(Mapped[_T], _MappedAttribute[_T]):
         return NotImplemented
 
 
-class DynamicMapped(_MappedAnnotationBase[_T]):
+class DynamicMapped(_MappedAnnotationBase[_T_co]):
     """Represent the ORM mapped attribute type for a "dynamic" relationship.
 
     The :class:`_orm.DynamicMapped` type annotation may be used in an
@@ -918,23 +919,27 @@ class DynamicMapped(_MappedAnnotationBase[_T]):
         @overload
         def __get__(
             self, instance: None, owner: Any
-        ) -> InstrumentedAttribute[_T]:
+        ) -> InstrumentedAttribute[_T_co]:
             ...
 
         @overload
-        def __get__(self, instance: object, owner: Any) -> AppenderQuery[_T]:
+        def __get__(
+            self, instance: object, owner: Any
+        ) -> AppenderQuery[_T_co]:
             ...
 
         def __get__(
             self, instance: Optional[object], owner: Any
-        ) -> Union[InstrumentedAttribute[_T], AppenderQuery[_T]]:
+        ) -> Union[InstrumentedAttribute[_T_co], AppenderQuery[_T_co]]:
             ...
 
-        def __set__(self, instance: Any, value: typing.Collection[_T]) -> None:
+        def __set__(
+            self, instance: Any, value: typing.Collection[_T_co]
+        ) -> None:
             ...
 
 
-class WriteOnlyMapped(_MappedAnnotationBase[_T]):
+class WriteOnlyMapped(_MappedAnnotationBase[_T_co]):
     """Represent the ORM mapped attribute type for a "write only" relationship.
 
     The :class:`_orm.WriteOnlyMapped` type annotation may be used in an
@@ -970,19 +975,21 @@ class WriteOnlyMapped(_MappedAnnotationBase[_T]):
         @overload
         def __get__(
             self, instance: None, owner: Any
-        ) -> InstrumentedAttribute[_T]:
+        ) -> InstrumentedAttribute[_T_co]:
             ...
 
         @overload
         def __get__(
             self, instance: object, owner: Any
-        ) -> WriteOnlyCollection[_T]:
+        ) -> WriteOnlyCollection[_T_co]:
             ...
 
         def __get__(
             self, instance: Optional[object], owner: Any
-        ) -> Union[InstrumentedAttribute[_T], WriteOnlyCollection[_T]]:
+        ) -> Union[InstrumentedAttribute[_T_co], WriteOnlyCollection[_T_co]]:
             ...
 
-        def __set__(self, instance: Any, value: typing.Collection[_T]) -> None:
+        def __set__(
+            self, instance: Any, value: typing.Collection[_T_co]
+        ) -> None:
             ...
