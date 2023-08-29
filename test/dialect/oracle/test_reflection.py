@@ -630,13 +630,7 @@ def all_tables_compression_missing():
 
 
 def all_tables_compress_for_missing():
-    with testing.db.connect() as conn:
-        if (
-            "Enterprise Edition"
-            not in conn.exec_driver_sql("select * from v$version").scalar()
-        ):
-            return True
-        return False
+    return False
 
 
 class TableReflectionTest(fixtures.TestBase):
