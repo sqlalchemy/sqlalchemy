@@ -1,0 +1,10 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 10269
+
+    Adjusted the :class:`_types.Enum` datatype to accept an argument of
+    ``None`` for the :paramref:`_types.Enum.length` parameter, resulting in a
+    VARCHAR or other textual type with no length in the resulting DDL. This
+    allows for new elements of any length to be added to the type after it
+    exists in the schema.  Pull request courtesy Eugene Toder.
+

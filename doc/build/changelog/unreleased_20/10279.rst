@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 10279
+
+    Adjusted the ORM's interpretation of UPDATE/DELETE targets to not interfere
+    with the target table passed to the statement, such as for
+    :class:`_orm.aliased` constructs.   Cases like ORM session synchonize using
+    "SELECT" statements such as with MySQL/ MariaDB will still have issues with
+    UPDATE/DELETE of this form so it's best to disable synchonize_session when
+    using DML statements of this type.

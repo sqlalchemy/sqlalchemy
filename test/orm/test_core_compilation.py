@@ -487,7 +487,7 @@ class PropagateAttrsTest(QueryTest):
 
 
 class DMLTest(QueryTest, AssertsCompiledSQL):
-    __dialect__ = "default"
+    __dialect__ = "default_enhanced"
 
     @testing.variation("stmt_type", ["update", "delete"])
     def test_dml_ctes(self, stmt_type: testing.Variation):
@@ -518,6 +518,45 @@ class DMLTest(QueryTest, AssertsCompiledSQL):
             )
         else:
             stmt_type.fail()
+
+    @testing.variation("stmt_type", ["core", "orm"])
+    def test_aliased_update(self, stmt_type: testing.Variation):
+        """test #10279"""
+        if stmt_type.orm:
+            User = self.classes.User
+            u1 = aliased(User)
+            stmt = update(u1).where(u1.name == "xyz").values(name="newname")
+        elif stmt_type.core:
+            user_table = self.tables.users
+            u1 = user_table.alias()
+            stmt = update(u1).where(u1.c.name == "xyz").values(name="newname")
+        else:
+            stmt_type.fail()
+
+        self.assert_compile(
+            stmt,
+            "UPDATE users AS users_1 SET name=:name "
+            "WHERE users_1.name = :name_1",
+        )
+
+    @testing.variation("stmt_type", ["core", "orm"])
+    def test_aliased_delete(self, stmt_type: testing.Variation):
+        """test #10279"""
+        if stmt_type.orm:
+            User = self.classes.User
+            u1 = aliased(User)
+            stmt = delete(u1).where(u1.name == "xyz")
+        elif stmt_type.core:
+            user_table = self.tables.users
+            u1 = user_table.alias()
+            stmt = delete(u1).where(u1.c.name == "xyz")
+        else:
+            stmt_type.fail()
+
+        self.assert_compile(
+            stmt,
+            "DELETE FROM users AS users_1 " "WHERE users_1.name = :name_1",
+        )
 
     @testing.variation("stmt_type", ["core", "orm"])
     def test_add_cte(self, stmt_type: testing.Variation):
