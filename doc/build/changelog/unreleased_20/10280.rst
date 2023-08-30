@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 10280
+
+    The :class:`.Values` construct will now automatically create a proxy (i.e.
+    a copy) of a :class:`_sql.column` if the column were already associated
+    with an existing FROM clause.  This allows that an expression like
+    ``values_obj.c.colname`` will produce the correct FROM clause even in the
+    case that ``colname`` was passed as a :class:`_sql.column` that was already
+    used with a previous :class:`.Values` or other table construct.
+    Originally this was considered to be a candidate for an error condition,
+    however it's likely this pattern is already in widespread use so it's
+    now added to support.

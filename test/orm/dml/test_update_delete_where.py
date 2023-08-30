@@ -1116,7 +1116,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         )
 
         result = sess.execute(stmt)
-        eq_(result.all(), [(2, "jack", 37), (4, "jane", 27)])
+        eq_(set(result), {(2, "jack", 37), (4, "jane", 27)})
 
         eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
         eq_(

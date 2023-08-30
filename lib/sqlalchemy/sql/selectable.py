@@ -3169,6 +3169,7 @@ class Values(roles.InElementRole, Generative, LateralFromClause):
     ):
         super().__init__()
         self._column_args = columns
+
         if name is None:
             self._unnamed = True
             self.name = _anonymous_label.safe_construct(id(self), "anon")
@@ -3262,6 +3263,13 @@ class Values(roles.InElementRole, Generative, LateralFromClause):
 
     def _populate_column_collection(self) -> None:
         for c in self._column_args:
+            if c.table is not None and c.table is not self:
+                _, c = c._make_proxy(self)
+            else:
+                # if the column was used in other contexts, ensure
+                # no memoizations of other FROM clauses.
+                # see test_values.py -> test_auto_proxy_select_direct_col
+                c._reset_memoizations()
             self._columns.add(c)
             c.table = self
 
