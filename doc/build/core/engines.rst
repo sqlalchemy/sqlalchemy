@@ -505,7 +505,7 @@ namespace of SA loggers that can be turned on is as follows:
   on :paramref:`_sa.create_engine.echo_pool`, respectively.
 
 * ``sqlalchemy.dialects`` - controls custom logging for SQL dialects, to the
-  extend that logging is used within specific dialects, which is generally
+  extent that logging is used within specific dialects, which is generally
   minimal.
 
 * ``sqlalchemy.orm`` - controls logging of various ORM functions to the extent
