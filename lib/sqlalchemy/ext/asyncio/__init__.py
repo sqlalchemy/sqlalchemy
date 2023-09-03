@@ -23,3 +23,7 @@ from .session import AsyncAttrs as AsyncAttrs
 from .session import AsyncSession as AsyncSession
 from .session import AsyncSessionTransaction as AsyncSessionTransaction
 from .session import close_all_sessions as close_all_sessions
+from ...util import concurrency
+
+concurrency._concurrency_shim._initialize()
+del concurrency

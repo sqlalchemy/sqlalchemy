@@ -1,19 +1,25 @@
 import asyncio
 import contextvars
+from multiprocessing import get_context
 import random
 import threading
 
 from sqlalchemy import exc
+from sqlalchemy import testing
 from sqlalchemy.testing import async_test
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing.config import combinations
 from sqlalchemy.util import await_fallback
 from sqlalchemy.util import await_only
 from sqlalchemy.util import greenlet_spawn
 from sqlalchemy.util import queue
+from ._concurrency_fixtures import greenlet_not_imported
+from ._concurrency_fixtures import greenlet_setup_in_ext
+from ._concurrency_fixtures import greenlet_setup_on_call
 
 try:
     from greenlet import greenlet
@@ -264,3 +270,23 @@ class TestAsyncAdaptedQueue(fixtures.TestBase):
         t.join()
 
         is_true(run[0])
+
+
+class GreenletImportTests(fixtures.TestBase):
+    def _run_in_process(self, fn):
+        ctx = get_context("spawn")
+        process = ctx.Process(target=fn)
+        try:
+            process.start()
+            process.join(10)
+            eq_(process.exitcode, 0)
+        finally:
+            process.kill()
+
+    @combinations(
+        greenlet_not_imported,
+        (greenlet_setup_in_ext, testing.requires.greenlet),
+        (greenlet_setup_on_call, testing.requires.greenlet),
+    )
+    def test_concurrency_fn(self, fn):
+        self._run_in_process(fn)
