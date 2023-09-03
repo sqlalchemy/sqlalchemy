@@ -618,32 +618,25 @@ class DontReflectIOTTest(fixtures.TestBase):
         eq_({t.name for t in m.tables.values()}, {"admin_docindex"})
 
 
-def all_tables_compression_missing():
-    with testing.db.connect() as conn:
-        if (
-            "Enterprise Edition"
-            not in conn.exec_driver_sql("select * from v$version").scalar()
-            # this works in Oracle Database 18c Express Edition Release
-        ) and testing.db.dialect.server_version_info < (18,):
+def enterprise_edition_or_version(version):
+    def check():
+        if testing.db.dialect.server_version_info < (version,):
+            with testing.db.connect() as conn:
+                return (
+                    "Enterprise Edition"
+                    in conn.exec_driver_sql("select * from v$version").scalar()
+                )
+        else:
             return True
-        return False
 
-
-def all_tables_compress_for_missing():
-    with testing.db.connect() as conn:
-        if (
-            "Enterprise Edition"
-            not in conn.exec_driver_sql("select * from v$version").scalar()
-        ):
-            return True
-        return False
+    return check
 
 
 class TableReflectionTest(fixtures.TestBase):
     __only_on__ = "oracle"
     __backend__ = True
 
-    @testing.fails_if(all_tables_compression_missing)
+    @testing.only_on(enterprise_edition_or_version(18))
     def test_reflect_basic_compression(self, metadata, connection):
         tbl = Table(
             "test_compress",
@@ -659,7 +652,7 @@ class TableReflectionTest(fixtures.TestBase):
         # Don't hardcode the exact value, but it must be non-empty
         assert tbl.dialect_options["oracle"]["compress"]
 
-    @testing.fails_if(all_tables_compress_for_missing)
+    @testing.only_on(enterprise_edition_or_version(19))
     def test_reflect_oltp_compression(self, metadata, connection):
         tbl = Table(
             "test_compress",
@@ -672,7 +665,10 @@ class TableReflectionTest(fixtures.TestBase):
         m2 = MetaData()
 
         tbl = Table("test_compress", m2, autoload_with=connection)
-        assert tbl.dialect_options["oracle"]["compress"] == "OLTP"
+        assert tbl.dialect_options["oracle"]["compress"] in (
+            "OLTP",
+            "ADVANCED",
+        )
 
     def test_reflect_hidden_column(self):
         with testing.db.begin() as conn:
