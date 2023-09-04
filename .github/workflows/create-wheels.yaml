@@ -49,7 +49,7 @@ jobs:
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Remove tag_build from setup.cfg
         # sqlalchemy has `tag_build` set to `dev` in setup.cfg. We need to remove it before creating the weel
