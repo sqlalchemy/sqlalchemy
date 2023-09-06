@@ -608,14 +608,21 @@ class Numeric(HasExpressionLookup, TypeEngine[_N]):
 
 
 class Float(Numeric[_N]):
-
     """Type representing floating point types, such as ``FLOAT`` or ``REAL``.
 
     This type returns Python ``float`` objects by default, unless the
-    :paramref:`.Float.asdecimal` flag is set to True, in which case they
+    :paramref:`.Float.asdecimal` flag is set to ``True``, in which case they
     are coerced to ``decimal.Decimal`` objects.
 
-
+    When a :paramref:`.Float.precision` is not provided in a
+    :class:`_types.Float` type some backend may compile this type as
+    an 8 bytes / 64 bit float datatype. To use a 4 bytes / 32 bit float
+    datatype a precision <= 24 can usually be provided or the
+    :class:`_types.REAL` type can be used.
+    This is known to be the case in the PostgreSQL and MSSQL dialects
+    that render the type as ``FLOAT`` that's in both an alias of
+    ``DOUBLE PRECISION``. Other third party dialects may have similar
+    behavior.
     """
 
     __visit_name__ = "float"

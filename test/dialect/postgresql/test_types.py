@@ -99,6 +99,8 @@ from ...engine.test_ddlevents import DDLEventWCreateHarness
 
 
 class MiscTypesTest(AssertsCompiledSQL, fixtures.TestBase):
+    __dialect__ = postgresql.dialect()
+
     @testing.combinations(
         ("asyncpg", "x LIKE $1::VARCHAR"),
         ("psycopg", "x LIKE %(x_1)s::VARCHAR"),
@@ -118,6 +120,21 @@ class MiscTypesTest(AssertsCompiledSQL, fixtures.TestBase):
             expected,
             dialect=f"postgresql+{driver}",
         )
+
+    @testing.combinations(
+        ("sa", sqltypes.Float(), "FLOAT"),  # ideally it should render real
+        ("sa", sqltypes.Double(), "DOUBLE PRECISION"),
+        ("sa", sqltypes.FLOAT(), "FLOAT"),
+        ("sa", sqltypes.REAL(), "REAL"),
+        ("sa", sqltypes.DOUBLE(), "DOUBLE"),
+        ("sa", sqltypes.DOUBLE_PRECISION(), "DOUBLE PRECISION"),
+        ("pg", postgresql.FLOAT(), "FLOAT"),
+        ("pg", postgresql.DOUBLE_PRECISION(), "DOUBLE PRECISION"),
+        ("pg", postgresql.REAL(), "REAL"),
+        id_="ira",
+    )
+    def test_float_type_compile(self, type_, sql_text):
+        self.assert_compile(type_, sql_text)
 
 
 class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):

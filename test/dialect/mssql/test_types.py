@@ -1627,3 +1627,22 @@ class BooleanTest(fixtures.TestBase, AssertsCompiledSQL):
             ddl,
         )
         assert isinstance(tbl.c.boo.type.as_generic(), Boolean)
+
+
+class NumberTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = mssql.dialect()
+
+    @testing.combinations(
+        ("sa", sqltypes.Float(), "FLOAT"),  # ideally it should render real
+        ("sa", sqltypes.Double(), "DOUBLE PRECISION"),
+        ("sa", sqltypes.FLOAT(), "FLOAT"),
+        ("sa", sqltypes.REAL(), "REAL"),
+        ("sa", sqltypes.DOUBLE(), "DOUBLE"),
+        ("sa", sqltypes.DOUBLE_PRECISION(), "DOUBLE PRECISION"),
+        ("mssql", mssql.FLOAT(), "FLOAT"),
+        ("mssql", mssql.DOUBLE_PRECISION(), "DOUBLE PRECISION"),
+        ("mssql", mssql.REAL(), "REAL"),
+        id_="ira",
+    )
+    def test_float_type_compile(self, type_, sql_text):
+        self.assert_compile(type_, sql_text)

@@ -462,6 +462,21 @@ class TypeCompileTest(fixtures.TestBase, AssertsCompiledSQL):
             datetime.time(8, 37, 35, 450),
         )
 
+    @testing.combinations(
+        ("sa", sqltypes.Float(), "FLOAT"),
+        ("sa", sqltypes.Double(), "DOUBLE"),
+        ("sa", sqltypes.FLOAT(), "FLOAT"),
+        ("sa", sqltypes.REAL(), "REAL"),
+        ("sa", sqltypes.DOUBLE(), "DOUBLE"),
+        ("sa", sqltypes.DOUBLE_PRECISION(), "DOUBLE PRECISION"),
+        ("mysql", mysql.FLOAT(), "FLOAT"),
+        ("mysql", mysql.DOUBLE(), "DOUBLE"),
+        ("mysql", mysql.REAL(), "REAL"),
+        id_="ira",
+    )
+    def test_float_type_compile(self, type_, sql_text):
+        self.assert_compile(type_, sql_text)
+
 
 class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
     __dialect__ = mysql.dialect()
