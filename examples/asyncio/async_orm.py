@@ -96,7 +96,7 @@ async def async_main():
 
         result = await session.scalars(select(A).order_by(A.id))
 
-        a1 = result.one()
+        a1 = result.first()
 
         a1.data = "new data"
 
