@@ -26,13 +26,16 @@ Creating an engine is just a matter of issuing a single call,
     engine = create_engine("postgresql://scott:tiger@localhost:5432/mydatabase")
 
 The above engine creates a :class:`.Dialect` object tailored towards
-PostgreSQL, as well as a :class:`_pool.Pool` object which will establish a DBAPI
-connection at ``localhost:5432`` when a connection request is first received.
-Note that the :class:`_engine.Engine` and its underlying :class:`_pool.Pool` do **not**
-establish the first actual DBAPI connection until the :meth:`_engine.Engine.connect`
-method is called, or an operation which is dependent on this method such as
-:meth:`_engine.Engine.execute` is invoked. In this way, :class:`_engine.Engine` and
-:class:`_pool.Pool` can be said to have a *lazy initialization* behavior.
+PostgreSQL, as well as a :class:`_pool.Pool` object which will establish a
+DBAPI connection at ``localhost:5432`` when a connection request is first
+received. Note that the :class:`_engine.Engine` and its underlying
+:class:`_pool.Pool` do **not** establish the first actual DBAPI connection
+until the :meth:`_engine.Engine.connect` or :meth:`_engine.Engine.begin`
+methods are called.  Either of these methods may also be invoked by other
+SQLAlchemy :class:`_engine.Engine` dependent objects such as the ORM
+:class:`_orm.Session` object when they first require database connectivity.
+In this way, :class:`_engine.Engine` and :class:`_pool.Pool` can be said to
+have a *lazy initialization* behavior.
 
 The :class:`_engine.Engine`, once created, can either be used directly to interact with the database,
 or can be passed to a :class:`.Session` object to work with the ORM.   This section
