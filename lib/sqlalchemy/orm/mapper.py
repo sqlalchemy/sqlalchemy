@@ -4097,7 +4097,7 @@ class _OptGetColumnsNotAvailable(Exception):
     pass
 
 
-def configure_mappers():
+def configure_mappers() -> None:
     """Initialize the inter-mapper relationships of all mappers that
     have been constructed thus far across all :class:`_orm.registry`
     collections.
