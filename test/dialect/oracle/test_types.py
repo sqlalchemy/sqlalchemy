@@ -191,6 +191,23 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
         expr = column("bar", oracle.INTERVAL) == datetime.timedelta(days=1)
         eq_(expr.right.type._type_affinity, sqltypes.Interval)
 
+    @testing.combinations(
+        ("sa", sqltypes.Float(), "FLOAT"),
+        ("sa", sqltypes.Double(), "DOUBLE PRECISION"),
+        ("sa", sqltypes.FLOAT(), "FLOAT"),
+        ("sa", sqltypes.REAL(), "REAL"),
+        ("sa", sqltypes.DOUBLE(), "DOUBLE"),
+        ("sa", sqltypes.DOUBLE_PRECISION(), "DOUBLE PRECISION"),
+        ("oracle", oracle.FLOAT(), "FLOAT"),
+        ("oracle", oracle.DOUBLE_PRECISION(), "DOUBLE PRECISION"),
+        ("oracle", oracle.REAL(), "REAL"),
+        ("oracle", oracle.BINARY_DOUBLE(), "BINARY_DOUBLE"),
+        ("oracle", oracle.BINARY_FLOAT(), "BINARY_FLOAT"),
+        id_="ira",
+    )
+    def test_float_type_compile(self, type_, sql_text):
+        self.assert_compile(type_, sql_text)
+
 
 class TypesTest(fixtures.TestBase):
     __only_on__ = "oracle"

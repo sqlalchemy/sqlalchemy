@@ -59,4 +59,5 @@ __all__ = (
     "VARCHAR2",
     "NVARCHAR2",
     "ROWID",
+    "REAL",
 )
