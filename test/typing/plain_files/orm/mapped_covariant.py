@@ -1,13 +1,17 @@
 """Tests Mapped covariance."""
 
+from datetime import datetime
 from typing import Protocol
+from typing import Union
 
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
+from sqlalchemy import Nullable
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
-
+from sqlalchemy.sql.elements import SQLCoreOperations
 
 # Protocols
 
@@ -51,3 +55,18 @@ class Child(Base):
 
 
 assert get_parent_name(Child(parent=Parent(name="foo"))) == "foo"
+
+# other test
+
+
+class NullableModel(DeclarativeBase):
+    not_null: Mapped[datetime]
+    nullable: Mapped[Union[datetime, None]]
+
+
+test = NullableModel()
+test.not_null = func.now()
+test.nullable = func.now()
+
+nullable_now: SQLCoreOperations[Union[datetime, None]] = Nullable(func.now())
+test.nullable = Nullable(func.now())
