@@ -22,9 +22,8 @@ from __future__ import annotations
 import platform
 
 from . import asyncio as _test_asyncio
-from . import config
 from . import exclusions
-from . import only_on
+from .exclusions import only_on
 from .. import create_engine
 from .. import util
 from ..pool import QueuePool
@@ -56,6 +55,12 @@ class SuiteRequirements(Requirements):
     @property
     def index_ddl_if_exists(self):
         """target platform supports IF NOT EXISTS / IF EXISTS for indexes."""
+
+        return exclusions.closed()
+
+    @property
+    def uuid_data_type(self):
+        """Return databases that support the UUID datatype."""
 
         return exclusions.closed()
 
@@ -1448,10 +1453,14 @@ class SuiteRequirements(Requirements):
 
     @property
     def timing_intensive(self):
+        from . import config
+
         return config.add_to_marker.timing_intensive
 
     @property
     def memory_intensive(self):
+        from . import config
+
         return config.add_to_marker.memory_intensive
 
     @property

@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, setup
+    :tickets: 10321
+
+    Fixed very old issue where the full extent of SQLAlchemy modules, including
+    ``sqlalchemy.testing.fixtures``, could not be imported outside of a pytest
+    run. This suits inspection utilities such as ``pkgutil`` that attempt to
+    import all installed modules in all packages.

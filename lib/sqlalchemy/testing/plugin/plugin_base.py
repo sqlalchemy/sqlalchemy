@@ -473,9 +473,6 @@ def _setup_requirements(argument):
     from sqlalchemy.testing import config
     from sqlalchemy import testing
 
-    if config.requirements is not None:
-        return
-
     modname, clsname = argument.split(":")
 
     # importlib.import_module() only introduced in 2.7, a little
