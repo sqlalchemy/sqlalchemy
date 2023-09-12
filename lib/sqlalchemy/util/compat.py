@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import base64
 import dataclasses
+import hashlib
 import inspect
 import operator
 import platform
@@ -117,6 +118,18 @@ else:
         gen: AsyncGenerator[_T_co, Any], typ: Any, value: Any, traceback: Any
     ) -> Awaitable[_T_co]:
         return gen.athrow(typ, value, traceback)
+
+
+if py39:
+    # python stubs don't have a public type for this. not worth
+    # making a protocol
+    def md5_not_for_security() -> Any:
+        return hashlib.md5(usedforsecurity=False)
+
+else:
+
+    def md5_not_for_security() -> Any:
+        return hashlib.md5()
 
 
 if typing.TYPE_CHECKING or py38:
