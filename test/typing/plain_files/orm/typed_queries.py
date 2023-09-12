@@ -6,6 +6,7 @@ from sqlalchemy import Column
 from sqlalchemy import column
 from sqlalchemy import create_engine
 from sqlalchemy import delete
+from sqlalchemy import exists
 from sqlalchemy import func
 from sqlalchemy import insert
 from sqlalchemy import Integer
@@ -530,3 +531,8 @@ def t_aliased_fromclause() -> None:
 
     # EXPECTED_TYPE: FromClause
     reveal_type(a4)
+
+
+def test_select_from() -> None:
+    select(1).select_from(User).exists()
+    exists(1).select_from(User).select()

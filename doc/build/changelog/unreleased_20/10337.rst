@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 10337
+
+    Fixed typing issue with :meth:`_sql.Existing.select_from` that
+    prevented its use with ORM classes.

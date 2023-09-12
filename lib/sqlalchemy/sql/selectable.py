@@ -6728,7 +6728,7 @@ class Exists(UnaryExpression[bool]):
         )
         return e
 
-    def select_from(self, *froms: FromClause) -> Self:
+    def select_from(self, *froms: _FromClauseArgument) -> Self:
         """Return a new :class:`_expression.Exists` construct,
         applying the given
         expression to the :meth:`_expression.Select.select_from`
