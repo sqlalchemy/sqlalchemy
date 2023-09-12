@@ -50,7 +50,6 @@ from typing import overload
 from typing import Sequence as _typing_Sequence
 from typing import Set
 from typing import Tuple
-from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
@@ -5286,30 +5285,26 @@ class Index(
         )
 
 
-_AllConstraints = Union[
-    Index,
-    UniqueConstraint,
-    CheckConstraint,
-    ForeignKeyConstraint,
-    PrimaryKeyConstraint,
-]
-
-_NamingSchemaCallable = Callable[[_AllConstraints, Table], str]
+_NamingSchemaCallable = Callable[[Constraint, Table], str]
+_NamingSchemaDirective = Union[str, _NamingSchemaCallable]
 
 
 class _NamingSchemaTD(TypedDict, total=False):
-    fk: Union[str, _NamingSchemaCallable]
-    pk: Union[str, _NamingSchemaCallable]
-    ix: Union[str, _NamingSchemaCallable]
-    ck: Union[str, _NamingSchemaCallable]
-    uq: Union[str, _NamingSchemaCallable]
+    fk: _NamingSchemaDirective
+    pk: _NamingSchemaDirective
+    ix: _NamingSchemaDirective
+    ck: _NamingSchemaDirective
+    uq: _NamingSchemaDirective
 
 
 _NamingSchemaParameter = Union[
+    # it seems like the TypedDict here is useful for pylance typeahead,
+    # and not much else
     _NamingSchemaTD,
-    Mapping[
-        Union[Type[_AllConstraints], str], Union[str, _NamingSchemaCallable]
-    ],
+    # there is no form that allows Union[Type[Any], str] to work in all
+    # cases, including breaking out Mapping[] entries for each combination
+    # even, therefore keys must be `Any` (see #10264)
+    Mapping[Any, _NamingSchemaDirective],
 ]
 
 

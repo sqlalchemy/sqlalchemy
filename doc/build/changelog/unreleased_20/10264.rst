@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 10264, 9284
+
+    Fixed regression introduced in 2.0.20 via :ticket:`9600` fix which
+    attempted to add more formal typing to
+    :paramref:`_schema.MetaData.naming_convention`. This change prevented basic
+    naming convention dictionaries from passing typing and has been adjusted so
+    that a plain dictionary of strings for keys as well as dictionaries that
+    use constraint types as keys or a mix of both, are again accepted.
+
+    As part of this change, lesser used forms of the naming convention
+    dictionary are also typed, including that it currently allows for
+    ``Constraint`` type objects as keys as well.
