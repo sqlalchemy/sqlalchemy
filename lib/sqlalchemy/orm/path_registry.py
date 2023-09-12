@@ -619,7 +619,7 @@ class PropRegistry(PathRegistry):
 
         self._wildcard_path_loader_key = (
             "loader",
-            parent.natural_path + self.prop._wildcard_token,  # type: ignore
+            parent.natural_path + self.prop._wildcard_token,
         )
         self._default_path_loader_key = self.prop._default_path_loader_key
         self._loader_key = ("loader", self.natural_path)

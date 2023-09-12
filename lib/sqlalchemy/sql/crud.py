@@ -491,10 +491,10 @@ def _key_getters_for_crud_column(
             key: Union[ColumnClause[Any], str]
         ) -> Union[str, Tuple[str, str]]:
             str_key = c_key_role(key)
-            if hasattr(key, "table") and key.table in _et:  # type: ignore
+            if hasattr(key, "table") and key.table in _et:
                 return (key.table.name, str_key)  # type: ignore
             else:
-                return str_key  # type: ignore
+                return str_key
 
         def _getattr_col_key(
             col: ColumnClause[Any],
@@ -513,7 +513,7 @@ def _key_getters_for_crud_column(
                 return col.key
 
     else:
-        _column_as_key = functools.partial(  # type: ignore
+        _column_as_key = functools.partial(
             coercions.expect_as_key, roles.DMLColumnRole
         )
         _getattr_col_key = _col_bind_name = operator.attrgetter("key")  # type: ignore  # noqa: E501

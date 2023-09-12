@@ -253,7 +253,7 @@ class _declared_attr_common:
         # which seems to help typing tools interpret the fn as a classmethod
         # for situations where needed
         if isinstance(fn, classmethod):
-            fn = fn.__func__  # type: ignore
+            fn = fn.__func__
 
         self.fget = fn
         self._cascading = cascading
@@ -281,11 +281,11 @@ class _declared_attr_common:
                     "Unmanaged access of declarative attribute %s from "
                     "non-mapped class %s" % (self.fget.__name__, cls.__name__)
                 )
-            return self.fget(cls)  # type: ignore
+            return self.fget(cls)
         elif manager.is_mapped:
             # the class is mapped, which means we're outside of the declarative
             # scan setup, just run the function.
-            return self.fget(cls)  # type: ignore
+            return self.fget(cls)
 
         # here, we are inside of the declarative scan.  use the registry
         # that is tracking the values of these attributes.
@@ -297,10 +297,10 @@ class _declared_attr_common:
         reg = declarative_scan.declared_attr_reg
 
         if self in reg:
-            return reg[self]  # type: ignore
+            return reg[self]
         else:
             reg[self] = obj = self.fget(cls)
-            return obj  # type: ignore
+            return obj
 
 
 class _declared_directive(_declared_attr_common, Generic[_T]):
@@ -558,12 +558,12 @@ def _setup_declarative_base(cls: Type[Any]) -> None:
         reg = registry(
             metadata=metadata, type_annotation_map=type_annotation_map
         )
-        cls.registry = reg  # type: ignore
+        cls.registry = reg
 
-    cls._sa_registry = reg  # type: ignore
+    cls._sa_registry = reg
 
     if "metadata" not in cls.__dict__:
-        cls.metadata = cls.registry.metadata  # type: ignore
+        cls.metadata = cls.registry.metadata
 
     if getattr(cls, "__init__", object.__init__) is object.__init__:
         cls.__init__ = cls.registry.constructor
@@ -609,7 +609,7 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
         current_transforms: _DataclassArguments
 
         if hasattr(cls, "_sa_apply_dc_transforms"):
-            current = cls._sa_apply_dc_transforms  # type: ignore[attr-defined]
+            current = cls._sa_apply_dc_transforms
 
             _ClassScanMapperConfig._assert_dc_arguments(current)
 
@@ -1274,7 +1274,7 @@ class registry:
                 sql_type = sqltypes._type_map_get(pt)  # type: ignore  # noqa: E501
 
             if sql_type is not None:
-                sql_type_inst = sqltypes.to_instance(sql_type)  # type: ignore
+                sql_type_inst = sqltypes.to_instance(sql_type)
 
                 # ... this additional step will reject most
                 # type -> supertype matches, such as if we had

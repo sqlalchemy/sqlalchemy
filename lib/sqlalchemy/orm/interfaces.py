@@ -923,9 +923,7 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
         """
 
-        return self.operate(  # type: ignore
-            PropComparator.any_op, criterion, **kwargs
-        )
+        return self.operate(PropComparator.any_op, criterion, **kwargs)
 
     def has(
         self,
@@ -947,9 +945,7 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
         """
 
-        return self.operate(  # type: ignore
-            PropComparator.has_op, criterion, **kwargs
-        )
+        return self.operate(PropComparator.has_op, criterion, **kwargs)
 
 
 class StrategizedProperty(MapperProperty[_T]):

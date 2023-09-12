@@ -786,7 +786,7 @@ class Mapper(
 
         # interim - polymorphic_on is further refined in
         # _configure_polymorphic_setter
-        self.polymorphic_on = (  # type: ignore
+        self.polymorphic_on = (
             coercions.expect(  # type: ignore
                 roles.ColumnArgumentOrKeyRole,
                 polymorphic_on,
@@ -1400,7 +1400,7 @@ class Mapper(
             self.with_polymorphic = None
 
         if self.with_polymorphic and self.with_polymorphic[1] is not None:
-            self.with_polymorphic = (  # type: ignore
+            self.with_polymorphic = (
                 self.with_polymorphic[0],
                 coercions.expect(
                     roles.StrictFromClauseRole,
@@ -1504,7 +1504,7 @@ class Mapper(
         manager = instrumentation.register_class(
             self.class_,
             mapper=self,
-            expired_attribute_loader=util.partial(  # type: ignore
+            expired_attribute_loader=util.partial(
                 loading.load_scalar_attributes, self
             ),
             # finalize flag means instrument the __init__ method
@@ -1610,7 +1610,7 @@ class Mapper(
                 if isinstance(c, str)
                 else c
                 for c in (
-                    coercions.expect(  # type: ignore
+                    coercions.expect(
                         roles.DDLConstraintColumnRole,
                         coerce_pk,
                         argname="primary_key",

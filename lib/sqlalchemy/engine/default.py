@@ -135,7 +135,7 @@ class DefaultDialect(Dialect):
 
     # most DBAPIs happy with this for execute().
     # not cx_oracle.
-    execute_sequence_format = tuple  # type: ignore
+    execute_sequence_format = tuple
 
     supports_schemas = True
     supports_views = True
@@ -2232,7 +2232,7 @@ class DefaultExecutionContext(ExecutionContext):
             and compile_state._has_multi_parameters
         ):
             if column._is_multiparam_column:
-                index = column.index + 1  # type: ignore
+                index = column.index + 1
                 d = {column.original.key: parameters[column.key]}
             else:
                 d = {column.key: parameters[column.key]}
@@ -2304,7 +2304,7 @@ class DefaultExecutionContext(ExecutionContext):
                     param[param_key] = arg
                 elif is_callable:
                     self.current_column = c
-                    param[param_key] = arg(self)  # type: ignore
+                    param[param_key] = arg(self)
                 else:
                     val = fallback(c)
                     if val is not None:

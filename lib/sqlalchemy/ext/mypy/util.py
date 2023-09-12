@@ -173,7 +173,7 @@ def get_mapped_attributes(
 
 def format_type(typ_: Type, options: Options) -> str:
     if mypy_14:
-        return _mypy_format_type(typ_, options)  # type: ignore
+        return _mypy_format_type(typ_, options)
     else:
         return _mypy_format_type(typ_)  # type: ignore
 

@@ -191,7 +191,7 @@ class TypeEngine(Visitable, Generic[_T]):
             op_fn, addtl_kw = default_comparator.operator_lookup[op.__name__]
             if kwargs:
                 addtl_kw = addtl_kw.union(kwargs)
-            return op_fn(self.expr, op, *other, **addtl_kw)  # type: ignore
+            return op_fn(self.expr, op, *other, **addtl_kw)
 
         @util.preload_module("sqlalchemy.sql.default_comparator")
         def reverse_operate(
@@ -201,7 +201,7 @@ class TypeEngine(Visitable, Generic[_T]):
             op_fn, addtl_kw = default_comparator.operator_lookup[op.__name__]
             if kwargs:
                 addtl_kw = addtl_kw.union(kwargs)
-            return op_fn(self.expr, op, other, reverse=True, **addtl_kw)  # type: ignore  # noqa: E501
+            return op_fn(self.expr, op, other, reverse=True, **addtl_kw)
 
         def _adapt_expression(
             self,
@@ -816,7 +816,7 @@ class TypeEngine(Visitable, Generic[_T]):
         best_uppercase = None
 
         if not isinstance(self, TypeEngine):
-            return self.__class__  # type: ignore  # mypy bug?
+            return self.__class__
 
         for t in self.__class__.__mro__:
             if (
@@ -2323,7 +2323,7 @@ def to_instance(
         return NULLTYPE
 
     if callable(typeobj):
-        return typeobj(*arg, **kw)  # type: ignore  # for pyright
+        return typeobj(*arg, **kw)
     else:
         return typeobj
 

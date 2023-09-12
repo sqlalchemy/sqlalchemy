@@ -4089,7 +4089,7 @@ class SQLCompiler(Compiled):
                 from_linter.froms[cte._de_clone()] = cte_name
 
             if not is_new_cte and embedded_in_current_named_cte:
-                return self.preparer.format_alias(cte, cte_name)  # type: ignore[no-any-return]  # noqa: E501
+                return self.preparer.format_alias(cte, cte_name)
 
             if cte_pre_alias_name:
                 text = self.preparer.format_alias(cte, cte_pre_alias_name)

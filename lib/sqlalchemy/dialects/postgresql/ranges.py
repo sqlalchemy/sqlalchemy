@@ -293,7 +293,7 @@ class Range(Generic[_T]):
             else:
                 return 0
 
-    def __eq__(self, other: Any) -> bool:  # type: ignore[override]  # noqa: E501
+    def __eq__(self, other: Any) -> bool:
         """Compare this range to the `other` taking into account
         bounds inclusivity, returning ``True`` if they are equal.
         """

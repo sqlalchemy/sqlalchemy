@@ -138,7 +138,7 @@ class ClassManager(
     def deferred_scalar_loader(self):
         return self.expired_attribute_loader
 
-    @deferred_scalar_loader.setter  # type: ignore[no-redef]
+    @deferred_scalar_loader.setter
     @util.deprecated(
         "1.4",
         message="The ClassManager.deferred_scalar_loader attribute is now "
@@ -204,7 +204,7 @@ class ClassManager(
         init_method: Optional[Callable[..., None]] = None,
     ) -> None:
         if mapper:
-            self.mapper = mapper  # type: ignore[assignment]
+            self.mapper = mapper  #
         if registry:
             registry._add_manager(self)
         if declarative_scan:
@@ -428,7 +428,7 @@ class ClassManager(
         for key in list(self.originals):
             self.uninstall_member(key)
 
-        self.mapper = None  # type: ignore
+        self.mapper = None
         self.dispatch = None  # type: ignore
         self.new_init = None
         self.info.clear()
@@ -506,11 +506,11 @@ class ClassManager(
         # so that mypy sees that __new__ is present.   currently
         # it's bound to Any as there were other problems not having
         # it that way but these can be revisited
-        instance = self.class_.__new__(self.class_)  # type: ignore
+        instance = self.class_.__new__(self.class_)
         if state is None:
             state = self._state_constructor(instance, self)
         self._state_setter(instance, state)
-        return instance  # type: ignore[no-any-return]
+        return instance
 
     def setup_instance(
         self, instance: _O, state: Optional[InstanceState[_O]] = None

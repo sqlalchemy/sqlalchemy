@@ -230,7 +230,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         cls, init: Callable[..., Any], bind: Union[Engine, Connection]
     ) -> Inspector:
         if hasattr(bind.dialect, "inspector"):
-            cls = bind.dialect.inspector  # type: ignore[attr-defined]
+            cls = bind.dialect.inspector
 
         self = cls.__new__(cls)
         init(self, bind)
@@ -240,7 +240,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         if hasattr(bind, "exec_driver_sql"):
             self._init_connection(bind)  # type: ignore[arg-type]
         else:
-            self._init_engine(bind)  # type: ignore[arg-type]
+            self._init_engine(bind)
 
     def _init_engine(self, engine: Engine) -> None:
         self.bind = self.engine = engine
@@ -1627,9 +1627,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         orig_name = col_d["name"]
 
         table.metadata.dispatch.column_reflect(self, table, col_d)
-        table.dispatch.column_reflect(  # type: ignore[attr-defined]
-            self, table, col_d
-        )
+        table.dispatch.column_reflect(self, table, col_d)
 
         # fetch name again as column_reflect is allowed to
         # change it
@@ -2038,7 +2036,7 @@ class ReflectionDefaults:
 
     @classmethod
     def pk_constraint(cls) -> ReflectedPrimaryKeyConstraint:
-        return {  # type: ignore  # pep-655 not supported
+        return {
             "name": None,
             "constrained_columns": [],
         }

@@ -119,7 +119,7 @@ class _LoaderCallable(Protocol):
 def is_orm_option(
     opt: ExecutableOption,
 ) -> TypeGuard[ORMOption]:
-    return not opt._is_core  # type: ignore
+    return not opt._is_core
 
 
 def is_user_defined_option(

@@ -51,7 +51,7 @@ def _auto_fn(name: str) -> Optional[Callable[[], Type[Dialect]]]:
 
     if hasattr(module, driver):
         module = getattr(module, driver)
-        return lambda: module.dialect  # type: ignore
+        return lambda: module.dialect
     else:
         return None
 

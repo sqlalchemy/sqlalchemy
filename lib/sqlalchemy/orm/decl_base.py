@@ -1609,7 +1609,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                         setattr(cls, k, value)
                         continue
 
-            our_stuff[k] = value  # type: ignore
+            our_stuff[k] = value
 
     def _extract_declared_columns(self) -> None:
         our_stuff = self.properties
@@ -1979,7 +1979,7 @@ class _DeferredMapperConfig(_ClassScanMapperConfig):
 
     # mypy disallows plain property override of variable
     @property  # type: ignore
-    def cls(self) -> Type[Any]:  # type: ignore
+    def cls(self) -> Type[Any]:
         return self._cls()  # type: ignore
 
     @cls.setter
@@ -1999,7 +1999,7 @@ class _DeferredMapperConfig(_ClassScanMapperConfig):
     @classmethod
     def raise_unmapped_for_cls(cls, class_: Type[Any]) -> NoReturn:
         if hasattr(class_, "_sa_raise_deferred_config"):
-            class_._sa_raise_deferred_config()  # type: ignore
+            class_._sa_raise_deferred_config()
 
         raise orm_exc.UnmappedClassError(
             class_,

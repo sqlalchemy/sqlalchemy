@@ -470,7 +470,7 @@ class CreateSchema(_CreateBase):
 
     __visit_name__ = "create_schema"
 
-    stringify_dialect = "default"  # type: ignore
+    stringify_dialect = "default"
 
     def __init__(
         self,
@@ -491,7 +491,7 @@ class DropSchema(_DropBase):
 
     __visit_name__ = "drop_schema"
 
-    stringify_dialect = "default"  # type: ignore
+    stringify_dialect = "default"
 
     def __init__(
         self,

@@ -307,7 +307,7 @@ class Operators:
         )
 
         def against(other: Any) -> Operators:
-            return operator(self, other)  # type: ignore
+            return operator(self, other)
 
         return against
 
@@ -570,7 +570,7 @@ class ColumnOperators(Operators):
         return self.operate(le, other)
 
     # TODO: not sure why we have this
-    __hash__ = Operators.__hash__  # type: ignore
+    __hash__ = Operators.__hash__
 
     def __eq__(self, other: Any) -> ColumnOperators:  # type: ignore[override]
         """Implement the ``==`` operator.

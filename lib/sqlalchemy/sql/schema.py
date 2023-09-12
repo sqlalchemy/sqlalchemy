@@ -1432,7 +1432,7 @@ class Table(
         elif schema is None:
             actual_schema = metadata.schema
         else:
-            actual_schema = schema  # type: ignore
+            actual_schema = schema
         key = _get_table_key(name, actual_schema)
         if key in metadata.tables:
             util.warn(
@@ -2451,14 +2451,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
 
         # Constraint objects plus non-constraint-bound ForeignKey objects
         args: List[SchemaItem] = [
-            c._copy(**kw)
-            for c in self.constraints
-            if not c._type_bound  # type: ignore
-        ] + [
-            c._copy(**kw)  # type: ignore
-            for c in self.foreign_keys
-            if not c.constraint
-        ]
+            c._copy(**kw) for c in self.constraints if not c._type_bound
+        ] + [c._copy(**kw) for c in self.foreign_keys if not c.constraint]
 
         # ticket #5276
         column_kwargs = {}
@@ -3972,7 +3966,7 @@ class FetchedValue(SchemaEventTarget):
         if for_update == self.for_update:
             return self
         else:
-            return self._clone(for_update)  # type: ignore
+            return self._clone(for_update)
 
     def _copy(self) -> FetchedValue:
         return FetchedValue(self.for_update)
@@ -4150,7 +4144,7 @@ class Constraint(DialectKWArgs, HasConditionalDDL, SchemaItem):
         "and will be removed in a future release.",
     )
     def copy(self, **kw: Any) -> Self:
-        return self._copy(**kw)  # type: ignore
+        return self._copy(**kw)
 
     def _copy(self, **kw: Any) -> Self:
         raise NotImplementedError()
@@ -5309,7 +5303,7 @@ _NamingSchemaParameter = Union[
 
 
 DEFAULT_NAMING_CONVENTION: _NamingSchemaParameter = util.immutabledict(
-    {"ix": "ix_%(column_0_label)s"}  # type: ignore[arg-type]
+    {"ix": "ix_%(column_0_label)s"}
 )
 
 

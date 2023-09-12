@@ -69,7 +69,7 @@ def is_exit_exception(e: BaseException) -> bool:
 # Issue for context: https://github.com/python-greenlet/greenlet/issues/173
 
 
-class _AsyncIoGreenlet(greenlet):  # type: ignore
+class _AsyncIoGreenlet(greenlet):
     dead: bool
 
     def __init__(self, fn: Callable[..., Any], driver: greenlet):
@@ -147,7 +147,7 @@ def await_fallback(awaitable: Awaitable[_T]) -> _T:
                 "loop is already running; can't call await_fallback() here. "
                 "Was IO attempted in an unexpected place?"
             )
-        return loop.run_until_complete(awaitable)  # type: ignore[no-any-return]  # noqa: E501
+        return loop.run_until_complete(awaitable)
 
     return current.driver.switch(awaitable)  # type: ignore[no-any-return]
 

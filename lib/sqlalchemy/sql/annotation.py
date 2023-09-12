@@ -300,7 +300,7 @@ class Annotated(SupportsAnnotations):
 
     def _annotate(self, values: _AnnotationDict) -> Self:
         _values = self._annotations.union(values)
-        new = self._with_annotations(_values)  # type: ignore
+        new = self._with_annotations(_values)
         return new
 
     def _with_annotations(self, values: _AnnotationDict) -> Self:

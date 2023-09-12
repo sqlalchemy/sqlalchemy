@@ -48,7 +48,7 @@ def connection_memoize(key: str) -> Callable[[_C], _C]:
             connection.info[key] = val = fn(self, connection)
             return val
 
-    return decorated  # type: ignore
+    return decorated
 
 
 class _TConsSubject(Protocol):

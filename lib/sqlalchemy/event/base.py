@@ -301,7 +301,7 @@ class _HasEventsDispatch(Generic[_ET]):
             "Type[_Dispatch[_ET]]",
             type(
                 "%sDispatch" % classname,
-                (dispatch_base,),  # type: ignore
+                (dispatch_base,),
                 {"__slots__": event_names},
             ),
         )
@@ -323,7 +323,7 @@ class _HasEventsDispatch(Generic[_ET]):
             assert dispatch_target_cls is not None
             if (
                 hasattr(dispatch_target_cls, "__slots__")
-                and "_slots_dispatch" in dispatch_target_cls.__slots__  # type: ignore  # noqa: E501
+                and "_slots_dispatch" in dispatch_target_cls.__slots__
             ):
                 dispatch_target_cls.dispatch = slots_dispatcher(cls)
             else:

@@ -66,14 +66,13 @@ mypy_path = "./lib/"
 show_error_codes = true
 incremental = true
 
-
 [[tool.mypy.overrides]]
 
 module = [
     "sqlalchemy.*"
 ]
 
-warn_unused_ignores = false
+warn_unused_ignores = true
 strict = true
 
 

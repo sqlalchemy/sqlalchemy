@@ -617,8 +617,8 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
             self.class_ = state_dict["class_"]
 
         self.committed_state = state_dict.get("committed_state", {})
-        self._pending_mutations = state_dict.get("_pending_mutations", {})  # type: ignore  # noqa E501
-        self.parents = state_dict.get("parents", {})  # type: ignore
+        self._pending_mutations = state_dict.get("_pending_mutations", {})
+        self.parents = state_dict.get("parents", {})
         self.modified = state_dict.get("modified", False)
         self.expired = state_dict.get("expired", False)
         if "info" in state_dict:

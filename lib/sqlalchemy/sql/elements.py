@@ -1606,12 +1606,12 @@ class ColumnElement(
         *other: Any,
         **kwargs: Any,
     ) -> ColumnElement[Any]:
-        return op(self.comparator, *other, **kwargs)  # type: ignore[return-value,no-any-return]  # noqa: E501
+        return op(self.comparator, *other, **kwargs)  # type: ignore[no-any-return]  # noqa: E501
 
     def reverse_operate(
         self, op: operators.OperatorType, other: Any, **kwargs: Any
     ) -> ColumnElement[Any]:
-        return op(other, self.comparator, **kwargs)  # type: ignore[return-value,no-any-return]  # noqa: E501
+        return op(other, self.comparator, **kwargs)  # type: ignore[no-any-return]  # noqa: E501
 
     def _bind_param(
         self,
@@ -3125,7 +3125,7 @@ class BooleanClauseList(ExpressionClauseList[bool]):
                 }, *args)'.""",
                 version="1.4",
             )
-            return cls._construct_raw(operator)  # type: ignore[no-any-return]
+            return cls._construct_raw(operator)
 
         lcc, convert_clauses = cls._process_clauses_for_boolean(
             operator,
@@ -3155,7 +3155,7 @@ class BooleanClauseList(ExpressionClauseList[bool]):
             assert lcc
             # just one element.  return it as a single boolean element,
             # not a list and discard the operator.
-            return convert_clauses[0]  # type: ignore[no-any-return] # noqa: E501
+            return convert_clauses[0]
 
     @classmethod
     def _construct_for_whereclause(

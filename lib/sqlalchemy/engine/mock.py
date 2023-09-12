@@ -126,6 +126,6 @@ def create_mock_engine(
             dialect_args[k] = kw.pop(k)
 
     # create dialect
-    dialect = dialect_cls(**dialect_args)  # type: ignore
+    dialect = dialect_cls(**dialect_args)
 
     return MockConnection(dialect, executor)
