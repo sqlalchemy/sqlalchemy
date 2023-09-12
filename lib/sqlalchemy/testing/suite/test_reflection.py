@@ -287,6 +287,65 @@ class HasIndexTest(fixtures.TablesTest):
         )
 
 
+class BizarroCharacterFKResolutionTest(fixtures.TestBase):
+    """tests for #10275"""
+
+    __backend__ = True
+
+    @testing.combinations(
+        ("id",), ("(3)",), ("col%p",), ("[brack]",), argnames="columnname"
+    )
+    @testing.variation("use_composite", [True, False])
+    @testing.combinations(
+        ("plain",),
+        ("(2)",),
+        ("per % cent",),
+        ("[brackets]",),
+        argnames="tablename",
+    )
+    def test_fk_ref(
+        self, connection, metadata, use_composite, tablename, columnname
+    ):
+        tt = Table(
+            tablename,
+            metadata,
+            Column(columnname, Integer, key="id", primary_key=True),
+            test_needs_fk=True,
+        )
+        if use_composite:
+            tt.append_column(Column("id2", Integer, primary_key=True))
+
+        if use_composite:
+            Table(
+                "other",
+                metadata,
+                Column("id", Integer, primary_key=True),
+                Column("ref", Integer),
+                Column("ref2", Integer),
+                sa.ForeignKeyConstraint(["ref", "ref2"], [tt.c.id, tt.c.id2]),
+                test_needs_fk=True,
+            )
+        else:
+            Table(
+                "other",
+                metadata,
+                Column("id", Integer, primary_key=True),
+                Column("ref", ForeignKey(tt.c.id)),
+                test_needs_fk=True,
+            )
+
+        metadata.create_all(connection)
+
+        m2 = MetaData()
+
+        o2 = Table("other", m2, autoload_with=connection)
+        t1 = m2.tables[tablename]
+
+        assert o2.c.ref.references(t1.c[0])
+        if use_composite:
+            assert o2.c.ref2.references(t1.c[1])
+
+
 class QuotedNameArgumentTest(fixtures.TablesTest):
     run_create_tables = "once"
     __backend__ = True
@@ -3053,6 +3112,7 @@ __all__ = (
     "ComponentReflectionTestExtra",
     "TableNoColumnsTest",
     "QuotedNameArgumentTest",
+    "BizarroCharacterFKResolutionTest",
     "HasTableTest",
     "HasIndexTest",
     "NormalizedNameTest",

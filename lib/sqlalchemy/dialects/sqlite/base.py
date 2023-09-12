@@ -2444,10 +2444,16 @@ class SQLiteDialect(default.DefaultDialect):
             if table_data is None:
                 # system tables, etc.
                 return
+
+            # note that we already have the FKs from PRAGMA above.  This whole
+            # regexp thing is trying to locate additional detail about the
+            # FKs, namely the name of the constraint and other options.
+            # so parsing the columns is really about matching it up to what
+            # we already have.
             FK_PATTERN = (
                 r"(?:CONSTRAINT (\w+) +)?"
                 r"FOREIGN KEY *\( *(.+?) *\) +"
-                r'REFERENCES +(?:(?:"(.+?)")|([a-z0-9_]+)) *\((.+?)\) *'
+                r'REFERENCES +(?:(?:"(.+?)")|([a-z0-9_]+)) *\( *((?:(?:"[^"]+"|[a-z0-9_]+) *(?:, *)?)+)\) *'  # noqa: E501
                 r"((?:ON (?:DELETE|UPDATE) "
                 r"(?:SET NULL|SET DEFAULT|CASCADE|RESTRICT|NO ACTION) *)*)"
                 r"((?:NOT +)?DEFERRABLE)?"

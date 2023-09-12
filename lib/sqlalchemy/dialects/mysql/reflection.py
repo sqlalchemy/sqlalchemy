@@ -509,7 +509,7 @@ class MySQLTableDefinitionParser:
             r"\((?P<local>[^\)]+?)\) REFERENCES +"
             r"(?P<table>%(iq)s[^%(fq)s]+%(fq)s"
             r"(?:\.%(iq)s[^%(fq)s]+%(fq)s)?) +"
-            r"\((?P<foreign>[^\)]+?)\)"
+            r"\((?P<foreign>(?:%(iq)s[^%(fq)s]+%(fq)s(?: *, *)?)+)\)"
             r"(?: +(?P<match>MATCH \w+))?"
             r"(?: +ON DELETE (?P<ondelete>%(on)s))?"
             r"(?: +ON UPDATE (?P<onupdate>%(on)s))?" % kw
