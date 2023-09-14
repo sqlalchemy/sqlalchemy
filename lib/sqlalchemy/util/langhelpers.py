@@ -15,7 +15,6 @@ from __future__ import annotations
 import collections
 import enum
 from functools import update_wrapper
-import hashlib
 import inspect
 import itertools
 import operator
@@ -87,9 +86,9 @@ else:
 
 def md5_hex(x: Any) -> str:
     x = x.encode("utf-8")
-    m = hashlib.md5()
+    m = compat.md5_not_for_security()
     m.update(x)
-    return m.hexdigest()
+    return cast(str, m.hexdigest())
 
 
 class safe_reraise:
