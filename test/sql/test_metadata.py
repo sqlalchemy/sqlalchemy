@@ -5447,6 +5447,15 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
                 "CONSTRAINT %s PRIMARY KEY (x, y))" % expected_name,
             )
 
+    def test_constraint_classes_for_keys(self):
+        u1 = self._fixture(
+            naming_convention={
+                UniqueConstraint: "uq_%(table_name)s_%(column_0_name)s"
+            }
+        )
+        uq = UniqueConstraint(u1.c.data)
+        eq_(uq.name, "uq_user_data")
+
     def test_uq_name(self):
         u1 = self._fixture(
             naming_convention={"uq": "uq_%(table_name)s_%(column_0_name)s"}

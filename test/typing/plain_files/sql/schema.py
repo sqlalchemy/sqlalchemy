@@ -1,5 +1,6 @@
 from typing import Union
 
+from sqlalchemy import CheckConstraint
 from sqlalchemy import Constraint
 from sqlalchemy import Index
 from sqlalchemy import MetaData
@@ -31,3 +32,37 @@ MetaData(
         "foo": lambda c, t: t.name + str(c.name),
     }
 )
+
+NAMING_CONVENTIONS_ONLY_CALLABLE = {
+    "fk_guid": fk_guid,
+    "foo": lambda c, t: t.name + str(c.name),
+}
+
+MetaData(naming_convention=NAMING_CONVENTIONS_ONLY_CALLABLE)
+
+NAMING_CONVENTIONS_TYPES_FOR_KEYS_ONLY = {
+    CheckConstraint: "%(table_name)s_%(constraint_name)s_ck",
+    Index: "%(column_0_label)s_ix",
+}
+
+MetaData(naming_convention=NAMING_CONVENTIONS_TYPES_FOR_KEYS_ONLY)
+
+NAMING_CONVENTIONS_TYPES_AND_STR_FOR_KEYS = {
+    CheckConstraint: "%(table_name)s_%(constraint_name)s_ck",
+    Index: "%(column_0_label)s_ix",
+    "custom": "custom",
+    "fk": "fk_name",
+}
+
+MetaData(naming_convention=NAMING_CONVENTIONS_TYPES_AND_STR_FOR_KEYS)
+
+
+NAMING_CONVENTIONS_STR = {
+    "ix": "%(column_0_label)s_ix",
+    "uq": "%(table_name)s_%(column_0_name)s_uq",
+    "ck": "%(table_name)s_%(constraint_name)s_ck",
+    "fk": "%(table_name)s_%(column_0_name)s_%(referred_table_name)s_fk",
+    "pk": "%(table_name)s_pk",
+}
+
+MetaData(naming_convention=NAMING_CONVENTIONS_STR)
