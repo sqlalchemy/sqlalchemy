@@ -70,6 +70,8 @@ _PathElementType = Union[
 # chopped at odd intervals as well so this is less flexible
 _PathRepresentation = Tuple[_PathElementType, ...]
 
+# NOTE: these names are weird since the array is 0-indexed,
+# the "_Odd" entries are at 0, 2, 4, etc
 _OddPathRepresentation = Sequence["_InternalEntityType[Any]"]
 _EvenPathRepresentation = Sequence[Union["MapperProperty[Any]", str]]
 
@@ -153,6 +155,9 @@ class PathRegistry(HasCacheKey):
     @property
     def _path_for_compare(self) -> Optional[_PathRepresentation]:
         return self.path
+
+    def odd_element(self, index: int) -> _InternalEntityType[Any]:
+        return self.path[index]  # type: ignore
 
     def set(self, attributes: Dict[Any, Any], key: Any, value: Any) -> None:
         log.debug("set '%s' on path '%s' to '%s'", key, self, value)
@@ -721,7 +726,7 @@ class AbstractEntityRegistry(CreatesToken):
 
     @property
     def root_entity(self) -> _InternalEntityType[Any]:
-        return cast("_InternalEntityType[Any]", self.path[0])
+        return self.odd_element(0)
 
     @property
     def entity_path(self) -> PathRegistry:

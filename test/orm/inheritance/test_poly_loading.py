@@ -281,8 +281,7 @@ class FixtureLoadTest(_Polymorphic, testing.AssertsExecutionResults):
                 CompiledSQL(
                     "SELECT managers.person_id AS managers_person_id, "
                     "people.person_id AS people_person_id, "
-                    "people.company_id AS people_company_id, "
-                    "people.name AS people_name, people.type AS people_type, "
+                    "people.type AS people_type, "
                     "managers.status AS managers_status, "
                     "managers.manager_name AS managers_manager_name "
                     "FROM people JOIN managers "
@@ -294,8 +293,7 @@ class FixtureLoadTest(_Polymorphic, testing.AssertsExecutionResults):
                 CompiledSQL(
                     "SELECT engineers.person_id AS engineers_person_id, "
                     "people.person_id AS people_person_id, "
-                    "people.company_id AS people_company_id, "
-                    "people.name AS people_name, people.type AS people_type, "
+                    "people.type AS people_type, "
                     "engineers.status AS engineers_status, "
                     "engineers.engineer_name AS engineers_engineer_name, "
                     "engineers.primary_language AS engineers_primary_language "
@@ -303,6 +301,80 @@ class FixtureLoadTest(_Polymorphic, testing.AssertsExecutionResults):
                     "ON people.person_id = engineers.person_id "
                     "WHERE people.person_id IN (__[POSTCOMPILE_primary_keys]) "
                     "ORDER BY people.person_id",
+                    {"primary_keys": [1, 2, 5]},
+                ),
+            ),
+        )
+        eq_(result, [self.c1, self.c2])
+
+    def test_load_company_plus_employees_w_paperwork(self):
+        s = fixture_session()
+        q = (
+            s.query(Company)
+            .options(
+                selectinload(Company.employees).options(
+                    selectin_polymorphic(Person, [Engineer, Manager]),
+                    selectinload(Engineer.machines),
+                    # NOTE: if this is selectinload(Person.paperwork),
+                    # we get duplicate loads from the subclasses which is
+                    # not ideal
+                )
+            )
+            .order_by(Company.company_id)
+        )
+
+        result = self.assert_sql_execution(
+            testing.db,
+            q.all,
+            CompiledSQL(
+                "SELECT companies.company_id AS companies_company_id, "
+                "companies.name AS companies_name FROM companies "
+                "ORDER BY companies.company_id",
+                {},
+            ),
+            CompiledSQL(
+                "SELECT people.company_id AS people_company_id, "
+                "people.person_id AS people_person_id, "
+                "people.name AS people_name, people.type AS people_type "
+                "FROM people WHERE people.company_id "
+                "IN (__[POSTCOMPILE_primary_keys]) "
+                "ORDER BY people.person_id",
+                {"primary_keys": [1, 2]},
+            ),
+            AllOf(
+                CompiledSQL(
+                    "SELECT managers.person_id AS managers_person_id, "
+                    "people.person_id AS people_person_id, "
+                    "people.type AS people_type, "
+                    "managers.status AS managers_status, "
+                    "managers.manager_name AS managers_manager_name "
+                    "FROM people JOIN managers "
+                    "ON people.person_id = managers.person_id "
+                    "WHERE people.person_id IN (__[POSTCOMPILE_primary_keys]) "
+                    "ORDER BY people.person_id",
+                    {"primary_keys": [3, 4]},
+                ),
+                CompiledSQL(
+                    "SELECT engineers.person_id AS engineers_person_id, "
+                    "people.person_id AS people_person_id, "
+                    "people.type AS people_type, "
+                    "engineers.status AS engineers_status, "
+                    "engineers.engineer_name AS engineers_engineer_name, "
+                    "engineers.primary_language AS engineers_primary_language "
+                    "FROM people JOIN engineers "
+                    "ON people.person_id = engineers.person_id "
+                    "WHERE people.person_id IN (__[POSTCOMPILE_primary_keys]) "
+                    "ORDER BY people.person_id",
+                    {"primary_keys": [1, 2, 5]},
+                ),
+                CompiledSQL(
+                    "SELECT machines.engineer_id AS machines_engineer_id, "
+                    "machines.machine_id AS machines_machine_id, "
+                    "machines.name AS machines_name "
+                    "FROM machines "
+                    "WHERE machines.engineer_id "
+                    "IN (__[POSTCOMPILE_primary_keys]) "
+                    "ORDER BY machines.machine_id",
                     {"primary_keys": [1, 2, 5]},
                 ),
             ),
@@ -908,7 +980,6 @@ class LoaderOptionsTest(
                 CompiledSQL(
                     "SELECT child_subclass1.id AS child_subclass1_id, "
                     "child.id AS child_id, "
-                    "child.parent_id AS child_parent_id, "
                     "child.type AS child_type "
                     "FROM child JOIN child_subclass1 "
                     "ON child.id = child_subclass1.id "
@@ -955,7 +1026,7 @@ class LoaderOptionsTest(
             ),
             CompiledSQL(
                 "SELECT child_subclass1.id AS child_subclass1_id, "
-                "child.id AS child_id, child.parent_id AS child_parent_id, "
+                "child.id AS child_id, "
                 "child.type AS child_type, other_1.id AS other_1_id, "
                 "other_1.child_subclass_id AS other_1_child_subclass_id "
                 "FROM child JOIN child_subclass1 "
