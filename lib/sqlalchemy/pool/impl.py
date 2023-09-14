@@ -386,7 +386,7 @@ class SingletonThreadPool(Pool):
 
     def _do_return_conn(self, record: ConnectionPoolEntry) -> None:
         try:
-            del self._fairy.current  # type: ignore
+            del self._fairy.current
         except AttributeError:
             pass
 

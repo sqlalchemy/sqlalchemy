@@ -189,7 +189,7 @@ class Properties(Generic[_T]):
         return dir(super()) + [str(k) for k in self._data.keys()]
 
     def __add__(self, other: Properties[_F]) -> List[Union[_T, _F]]:
-        return list(self) + list(other)  # type: ignore
+        return list(self) + list(other)
 
     def __setitem__(self, key: str, obj: _T) -> None:
         self._data[key] = obj
@@ -393,16 +393,16 @@ class UniqueAppender(Generic[_T]):
         self.data = data
         self._unique = {}
         if via:
-            self._data_appender = getattr(data, via)  # type: ignore[assignment]  # noqa: E501
+            self._data_appender = getattr(data, via)
         elif hasattr(data, "append"):
-            self._data_appender = cast("List[_T]", data).append  # type: ignore[assignment]  # noqa: E501
+            self._data_appender = cast("List[_T]", data).append
         elif hasattr(data, "add"):
-            self._data_appender = cast("Set[_T]", data).add  # type: ignore[assignment]  # noqa: E501
+            self._data_appender = cast("Set[_T]", data).add
 
     def append(self, item: _T) -> None:
         id_ = id(item)
         if id_ not in self._unique:
-            self._data_appender(item)  # type: ignore[call-arg]
+            self._data_appender(item)
             self._unique[id_] = True
 
     def __iter__(self) -> Iterator[_T]:
@@ -677,7 +677,7 @@ class ThreadLocalRegistry(ScopedRegistry[_T]):
             return self.registry.value  # type: ignore[no-any-return]
         except AttributeError:
             val = self.registry.value = self.createfunc()
-            return val  # type: ignore[no-any-return]
+            return val
 
     def has(self) -> bool:
         return hasattr(self.registry, "value")

@@ -227,11 +227,11 @@ class OrderedSet(Set[_T]):
                     super().add(e)
 
     def __ior__(self, other: AbstractSet[_S]) -> OrderedSet[Union[_T, _S]]:
-        self.update(other)  # type: ignore
-        return self  # type: ignore
+        self.update(other)
+        return self
 
     def union(self, *other: Iterable[_S]) -> OrderedSet[Union[_T, _S]]:
-        result: OrderedSet[Union[_T, _S]] = self.copy()  # type: ignore
+        result: OrderedSet[Union[_T, _S]] = self.copy()
         result.update(*other)
         return result
 

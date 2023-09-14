@@ -1764,7 +1764,7 @@ class RelationshipProperty(
         argument = de_optionalize_union_types(argument)
 
         if hasattr(argument, "__origin__"):
-            arg_origin = argument.__origin__  # type: ignore
+            arg_origin = argument.__origin__
             if isinstance(arg_origin, type) and issubclass(
                 arg_origin, abc.Collection
             ):
@@ -1786,7 +1786,7 @@ class RelationshipProperty(
 
             if argument.__args__:  # type: ignore
                 if isinstance(arg_origin, type) and issubclass(
-                    arg_origin, typing.Mapping  # type: ignore
+                    arg_origin, typing.Mapping
                 ):
                     type_arg = argument.__args__[-1]  # type: ignore
                 else:
@@ -1804,7 +1804,7 @@ class RelationshipProperty(
                     f"Generic alias {argument} requires an argument"
                 )
         elif hasattr(argument, "__forward_arg__"):
-            argument = argument.__forward_arg__  # type: ignore
+            argument = argument.__forward_arg__
 
             argument = resolve_name_to_real_class_name(
                 argument, originating_module
@@ -1874,7 +1874,7 @@ class RelationshipProperty(
                     % (self.key, type(resolved_argument))
                 )
 
-        self.entity = entity  # type: ignore
+        self.entity = entity
         self.target = self.entity.persist_selectable
 
     def _setup_join_conditions(self) -> None:

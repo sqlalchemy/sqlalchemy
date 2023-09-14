@@ -1440,7 +1440,7 @@ def _offset_or_limit_clause_asint_if_possible(
     if clause is None:
         return None
     if hasattr(clause, "_limit_offset_value"):
-        value = clause._limit_offset_value  # type: ignore
+        value = clause._limit_offset_value
         return util.asint(value)
     else:
         return clause
@@ -1489,13 +1489,11 @@ def _make_slice(
             offset_clause = 0
 
         if start != 0:
-            offset_clause = offset_clause + start  # type: ignore
+            offset_clause = offset_clause + start
 
         if offset_clause == 0:
             offset_clause = None
         else:
-            offset_clause = _offset_or_limit_clause(
-                offset_clause  # type: ignore
-            )
+            offset_clause = _offset_or_limit_clause(offset_clause)
 
-    return limit_clause, offset_clause  # type: ignore
+    return limit_clause, offset_clause

@@ -58,9 +58,7 @@ class ReversibleProxy(Generic[_PT]):
             )
             proxy_ref = weakref.ref(
                 self,
-                functools.partial(  # type: ignore
-                    ReversibleProxy._target_gced, target_ref
-                ),
+                functools.partial(ReversibleProxy._target_gced, target_ref),
             )
             ReversibleProxy._proxy_objects[target_ref] = proxy_ref
 
@@ -124,7 +122,7 @@ class StartableContext(Awaitable[_T_co], abc.ABC):
         return self.start().__await__()
 
     async def __aenter__(self) -> _T_co:
-        return await self.start(is_ctxmanager=True)  # type: ignore
+        return await self.start(is_ctxmanager=True)
 
     @abc.abstractmethod
     async def __aexit__(

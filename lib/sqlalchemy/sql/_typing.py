@@ -411,7 +411,7 @@ def Nullable(
 
     .. versionadded:: 2.0.20
     """
-    return val  # type: ignore
+    return val
 
 
 @overload

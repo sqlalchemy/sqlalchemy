@@ -60,7 +60,7 @@ class AsyncCommon(FilterResult[_R]):
         .. versionadded:: 2.0.0b3
 
         """
-        return self._real_result.closed  # type: ignore
+        return self._real_result.closed
 
 
 class AsyncResult(_WithKeys, AsyncCommon[Row[_TP]]):

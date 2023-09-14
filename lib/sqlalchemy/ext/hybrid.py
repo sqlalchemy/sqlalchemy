@@ -1516,7 +1516,7 @@ class ExprComparator(Comparator[_T]):
     def operate(
         self, op: OperatorType, *other: Any, **kwargs: Any
     ) -> ColumnElement[Any]:
-        return op(self.expression, *other, **kwargs)  # type: ignore
+        return op(self.expression, *other, **kwargs)
 
     def reverse_operate(
         self, op: OperatorType, other: Any, **kwargs: Any

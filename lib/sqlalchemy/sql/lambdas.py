@@ -718,7 +718,7 @@ class LinkedLambdaElement(StatementLambdaElement):
         opts: Union[Type[LambdaOptions], LambdaOptions],
     ):
         self.opts = opts
-        self.fn = fn  # type: ignore[assignment]
+        self.fn = fn
         self.parent_lambda = parent_lambda
 
         self.tracker_key = parent_lambda.tracker_key + (fn.__code__,)

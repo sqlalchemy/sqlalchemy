@@ -131,7 +131,7 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
         if default_dispatch is None and hasattr(
             target, "_no_async_engine_events"
         ):
-            target._no_async_engine_events()  # type: ignore
+            target._no_async_engine_events()
 
         return default_dispatch
 
@@ -640,7 +640,7 @@ class DialectEvents(event.Events[Dialect]):
     _dispatch_target = Dialect
 
     @classmethod
-    def _listen(  # type: ignore
+    def _listen(
         cls,
         event_key: event._EventKey[Dialect],
         *,

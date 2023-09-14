@@ -335,7 +335,7 @@ class QueryableAttribute(
         entity_namespace = self._entity_namespace
         assert isinstance(entity_namespace, HasCacheKey)
 
-        if self.key is _UNKNOWN_ATTR_KEY:  # type: ignore[comparison-overlap]
+        if self.key is _UNKNOWN_ATTR_KEY:
             annotations = {"entity_namespace": entity_namespace}
         else:
             annotations = {
@@ -450,12 +450,12 @@ class QueryableAttribute(
     def operate(
         self, op: OperatorType, *other: Any, **kwargs: Any
     ) -> ColumnElement[Any]:
-        return op(self.comparator, *other, **kwargs)  # type: ignore[return-value,no-any-return]  # noqa: E501
+        return op(self.comparator, *other, **kwargs)  # type: ignore[no-any-return]  # noqa: E501
 
     def reverse_operate(
         self, op: OperatorType, other: Any, **kwargs: Any
     ) -> ColumnElement[Any]:
-        return op(other, self.comparator, **kwargs)  # type: ignore[return-value,no-any-return]  # noqa: E501
+        return op(other, self.comparator, **kwargs)  # type: ignore[no-any-return]  # noqa: E501
 
     def hasparent(
         self, state: InstanceState[Any], optimistic: bool = False
@@ -521,16 +521,16 @@ class InstrumentedAttribute(QueryableAttribute[_T]):
     # InstrumentedAttribute, while still keeping classlevel
     # __doc__ correct
 
-    @util.rw_hybridproperty  # type: ignore
-    def __doc__(self) -> Optional[str]:  # type: ignore
+    @util.rw_hybridproperty
+    def __doc__(self) -> Optional[str]:
         return self._doc
 
     @__doc__.setter  # type: ignore
-    def __doc__(self, value: Optional[str]) -> None:  # type: ignore
+    def __doc__(self, value: Optional[str]) -> None:
         self._doc = value
 
     @__doc__.classlevel  # type: ignore
-    def __doc__(cls) -> Optional[str]:  # type: ignore
+    def __doc__(cls) -> Optional[str]:
         return super().__doc__
 
     def __set__(self, instance: object, value: Any) -> None:
@@ -1941,7 +1941,7 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
                         and "None"
                         or iterable.__class__.__name__
                     )
-                    wanted = self._duck_typed_as.__name__  # type: ignore
+                    wanted = self._duck_typed_as.__name__
                     raise TypeError(
                         "Incompatible collection type: %s is not %s-like"
                         % (given, wanted)

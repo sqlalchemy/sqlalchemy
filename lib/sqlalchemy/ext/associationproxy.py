@@ -1047,7 +1047,7 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
 
         target_assoc = self._unwrap_target_assoc_proxy
         if target_assoc is not None:
-            inner = target_assoc._criterion_exists(  # type: ignore
+            inner = target_assoc._criterion_exists(
                 criterion=criterion, **kwargs
             )
             return self._comparator._criterion_exists(inner)
@@ -1961,7 +1961,7 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
         return set(self).symmetric_difference(__s)
 
     def __xor__(self, s: AbstractSet[_S]) -> MutableSet[Union[_T, _S]]:
-        return self.symmetric_difference(s)  # type: ignore
+        return self.symmetric_difference(s)
 
     def symmetric_difference_update(self, other: Iterable[Any]) -> None:
         want, have = self.symmetric_difference(other), set(self)

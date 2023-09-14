@@ -1204,7 +1204,7 @@ class AliasedInsp(
         # IMO mypy should see this one also as returning the same type
         # we put into it, but it's not
         return (
-            self._adapter.traverse(expr)  # type: ignore
+            self._adapter.traverse(expr)
             ._annotate(d)
             ._set_propagate_attrs(
                 {"compile_state_plugin": "orm", "plugin_subject": self}
@@ -1397,7 +1397,7 @@ class LoaderCriteriaOption(CriteriaOption):
 
             self.deferred_where_criteria = True
             self.where_criteria = lambdas.DeferredLambdaElement(
-                where_criteria,  # type: ignore
+                where_criteria,
                 roles.WhereHavingRole,
                 lambda_args=(_WrapUserEntity(wrap_entity),),
                 opts=lambdas.LambdaOptions(
@@ -2169,9 +2169,9 @@ def _getitem(iterable_query: Query[Any], item: Any) -> Any:
 
         res = iterable_query.slice(start, stop)
         if step is not None:
-            return list(res)[None : None : item.step]  # type: ignore
+            return list(res)[None : None : item.step]
         else:
-            return list(res)  # type: ignore
+            return list(res)
     else:
         if item == -1:
             _no_negative_indexes()
@@ -2380,9 +2380,9 @@ def _extract_mapped_subtype(
             else:
                 return annotated, None
 
-        if len(annotated.__args__) != 1:  # type: ignore
+        if len(annotated.__args__) != 1:
             raise sa_exc.ArgumentError(
                 "Expected sub-type for Mapped[] annotation"
             )
 
-        return annotated.__args__[0], annotated.__origin__  # type: ignore
+        return annotated.__args__[0], annotated.__origin__

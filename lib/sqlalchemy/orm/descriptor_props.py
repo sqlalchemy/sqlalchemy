@@ -425,7 +425,7 @@ class CompositeProperty(
             elif hasattr(self.composite_class, "__composite_values__"):
                 _composite_getters[
                     self.composite_class
-                ] = lambda obj: obj.__composite_values__()  # type: ignore
+                ] = lambda obj: obj.__composite_values__()
 
     @util.preload_module("sqlalchemy.orm.properties")
     @util.preload_module("sqlalchemy.orm.decl_base")
@@ -628,7 +628,7 @@ class CompositeProperty(
 
         proxy_attr = self.parent.class_manager[self.key]
         proxy_attr.impl.dispatch = proxy_attr.dispatch  # type: ignore
-        proxy_attr.impl.dispatch._active_history = self.active_history  # type: ignore  # noqa: E501
+        proxy_attr.impl.dispatch._active_history = self.active_history
 
         # TODO: need a deserialize hook here
 
@@ -806,16 +806,16 @@ class CompositeProperty(
         def __ne__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
             return self._compare(operators.ne, other)
 
-        def __lt__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
+        def __lt__(self, other: Any) -> ColumnElement[bool]:
             return self._compare(operators.lt, other)
 
-        def __gt__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
+        def __gt__(self, other: Any) -> ColumnElement[bool]:
             return self._compare(operators.gt, other)
 
-        def __le__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
+        def __le__(self, other: Any) -> ColumnElement[bool]:
             return self._compare(operators.le, other)
 
-        def __ge__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
+        def __ge__(self, other: Any) -> ColumnElement[bool]:
             return self._compare(operators.ge, other)
 
         # what might be interesting would be if we create
@@ -839,8 +839,8 @@ class CompositeProperty(
             ]
             if self._adapt_to_entity:
                 assert self.adapter is not None
-                comparisons = [self.adapter(x) for x in comparisons]  # type: ignore  # noqa: E501
-            return sql.and_(*comparisons)  # type: ignore
+                comparisons = [self.adapter(x) for x in comparisons]
+            return sql.and_(*comparisons)
 
     def __str__(self) -> str:
         return str(self.parent.class_.__name__) + "." + self.key

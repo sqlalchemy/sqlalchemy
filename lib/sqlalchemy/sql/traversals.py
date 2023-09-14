@@ -56,15 +56,15 @@ def _preconfigure_traversals(target_hierarchy: Type[Any]) -> None:
         if hasattr(cls, "_generate_cache_attrs") and hasattr(
             cls, "_traverse_internals"
         ):
-            cls._generate_cache_attrs()  # type: ignore
+            cls._generate_cache_attrs()
             _copy_internals.generate_dispatch(
-                cls,  # type: ignore
-                cls._traverse_internals,  # type: ignore
+                cls,
+                cls._traverse_internals,
                 "_generated_copy_internals_traversal",
             )
             _get_children.generate_dispatch(
-                cls,  # type: ignore
-                cls._traverse_internals,  # type: ignore
+                cls,
+                cls._traverse_internals,
                 "_generated_get_children_traversal",
             )
 

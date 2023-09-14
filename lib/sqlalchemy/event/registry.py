@@ -241,7 +241,7 @@ class _EventKey(Generic[_ET]):
     ):
         self.target = target
         self.identifier = identifier
-        self.fn = fn  # type: ignore[assignment]
+        self.fn = fn
         if isinstance(fn, types.MethodType):
             self.fn_key = id(fn.__func__), id(fn.__self__)
         else:

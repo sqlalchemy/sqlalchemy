@@ -2,10 +2,10 @@ from datetime import datetime
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import registry
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.functions import now
-from sqlalchemy.testing.schema import mapped_column
 
 mapper_registry: registry = registry()
 e = create_engine("sqlite:///database.db", echo=True)

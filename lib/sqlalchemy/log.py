@@ -75,10 +75,10 @@ def _qual_logger_name_for_cls(cls: Type[Identified]) -> str:
 
 def class_logger(cls: Type[_IT]) -> Type[_IT]:
     logger = logging.getLogger(_qual_logger_name_for_cls(cls))
-    cls._should_log_debug = lambda self: logger.isEnabledFor(  # type: ignore[assignment]  # noqa: E501
+    cls._should_log_debug = lambda self: logger.isEnabledFor(  # type: ignore[method-assign]  # noqa: E501
         logging.DEBUG
     )
-    cls._should_log_info = lambda self: logger.isEnabledFor(  # type: ignore[assignment]  # noqa: E501
+    cls._should_log_info = lambda self: logger.isEnabledFor(  # type: ignore[method-assign]  # noqa: E501
         logging.INFO
     )
     cls.logger = logger

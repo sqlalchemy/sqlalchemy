@@ -82,7 +82,7 @@ class PoolEvents(event.Events[Pool]):
             return None
 
     @classmethod
-    def _listen(  # type: ignore[override]   # would rather keep **kw
+    def _listen(
         cls,
         event_key: event._EventKey[Pool],
         **kw: Any,
