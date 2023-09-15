@@ -5611,7 +5611,9 @@ class MetaData(HasSchemaAttr):
         bind: Union[Engine, Connection],
         schema: Optional[str] = None,
         views: bool = False,
-        only: Optional[_typing_Sequence[str]] = None,
+        only: Union[
+            _typing_Sequence[str], Callable[[str, MetaData], bool], None
+        ] = None,
         extend_existing: bool = False,
         autoload_replace: bool = True,
         resolve_fks: bool = True,
