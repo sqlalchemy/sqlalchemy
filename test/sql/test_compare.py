@@ -378,6 +378,10 @@ class CoreFixtures:
         lambda: (tuple_(1, 2), tuple_(3, 4)),
         lambda: (func.array_agg([1, 2]), func.array_agg([3, 4])),
         lambda: (
+            func.aggregate_strings(table_a.c.b, ","),
+            func.aggregate_strings(table_b_like_a.c.b, ","),
+        ),
+        lambda: (
             func.percentile_cont(0.5).within_group(table_a.c.a),
             func.percentile_cont(0.5).within_group(table_a.c.b),
             func.percentile_cont(0.5).within_group(table_a.c.a, table_a.c.b),

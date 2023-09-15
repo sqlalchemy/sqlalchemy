@@ -1868,6 +1868,9 @@ class PGCompiler(compiler.SQLCompiler):
             value = value.replace("\\", "\\\\")
         return value
 
+    def visit_aggregate_strings_func(self, fn, **kw):
+        return "string_agg%s" % self.function_argspec(fn)
+
     def visit_sequence(self, seq, **kw):
         return "nextval('%s')" % self.preparer.format_sequence(seq)
 

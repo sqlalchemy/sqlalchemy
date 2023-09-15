@@ -917,6 +917,10 @@ class _FunctionGenerator:
         # statically generated** by tools/generate_sql_functions.py
 
         @property
+        def aggregate_strings(self) -> Type[aggregate_strings]:
+            ...
+
+        @property
         def ansifunction(self) -> Type[AnsiFunction[Any]]:
             ...
 
@@ -1795,3 +1799,30 @@ class grouping_sets(GenericFunction[_T]):
     """
     _has_args = True
     inherit_cache = True
+
+
+class aggregate_strings(GenericFunction[str]):
+    """Implement a generic string aggregation function.
+
+    This function will concatenate non-null values into a string and
+    separate the values by a delimiter.
+
+    This function is compiled on a per-backend basis, into functions
+    such as ``group_concat()``, ``string_agg()``, or ``LISTAGG()``.
+
+    e.g. Example usage with delimiter '.'::
+
+        stmt = select(func.aggregate_strings(table.c.str_col, "."))
+
+    The return type of this function is :class:`.String`.
+
+    .. versionadded: 2.0.21
+
+    """
+
+    type = sqltypes.String()
+    _has_args = True
+    inherit_cache = True
+
+    def __init__(self, clause, separator):
+        super().__init__(clause, separator)

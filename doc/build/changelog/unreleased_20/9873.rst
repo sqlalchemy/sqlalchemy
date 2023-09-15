@@ -1,0 +1,10 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 9873
+
+    Added new generic SQL function :class:`_functions.aggregate_strings`, which
+    accepts a SQL expression and a decimeter, concatenating strings on multiple
+    rows into a single aggregate value. The function is compiled on a
+    per-backend basis, into functions such as ``group_concat(),``
+    ``string_agg()``, or ``LISTAGG()``.
+    Pull request courtesy Joshua Morris.

@@ -26,6 +26,7 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import Text
 from sqlalchemy import true
+from sqlalchemy import Unicode
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import oracle
 from sqlalchemy.dialects import postgresql
@@ -214,6 +215,44 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             ("random()", oracle.dialect()),
         ]:
             self.assert_compile(func.random(), ret, dialect=dialect)
+
+    def test_return_type_aggregate_strings(self):
+        t = table("t", column("value", String))
+        expr = func.aggregate_strings(t.c.value, ",")
+        is_(expr.type._type_affinity, String)
+
+    @testing.combinations(
+        (
+            "SELECT group_concat(t.value, ?) AS aggregate_strings_1 FROM t",
+            "sqlite",
+        ),
+        (
+            "SELECT string_agg(t.value, %(aggregate_strings_2)s) AS "
+            "aggregate_strings_1 FROM t",
+            "postgresql",
+        ),
+        (
+            "SELECT string_agg(t.value, "
+            "__[POSTCOMPILE_aggregate_strings_2]) AS "
+            "aggregate_strings_1 FROM t",
+            "mssql",
+        ),
+        (
+            "SELECT group_concat(t.value SEPARATOR %s) "
+            "AS aggregate_strings_1 FROM t",
+            "mysql",
+        ),
+        (
+            "SELECT LISTAGG(t.value, :aggregate_strings_2) AS"
+            " aggregate_strings_1 FROM t",
+            "oracle",
+        ),
+    )
+    def test_aggregate_strings(self, expected_sql, dialect):
+        t = table("t", column("value", String))
+        stmt = select(func.aggregate_strings(t.c.value, ","))
+
+        self.assert_compile(stmt, expected_sql, dialect=dialect)
 
     def test_cube_operators(self):
         t = table(
@@ -1156,6 +1195,51 @@ class ExecuteTest(fixtures.TestBase):
             connection.execute(select(t2.c.value, t2.c.stuff)).first(),
             (9, "foo"),
         )
+
+    @testing.variation("unicode_value", [True, False])
+    @testing.variation("unicode_separator", [True, False])
+    def test_aggregate_strings_execute(
+        self, connection, metadata, unicode_value, unicode_separator
+    ):
+        values_t = Table(
+            "values",
+            metadata,
+            Column("value", String(42)),
+            Column("unicode_value", Unicode(42)),
+        )
+        metadata.create_all(connection)
+        connection.execute(
+            values_t.insert(),
+            [
+                {"value": "a", "unicode_value": "測試"},
+                {"value": "b", "unicode_value": "téble2"},
+                {"value": None, "unicode_value": None},  # ignored
+                {"value": "c", "unicode_value": "🐍 su"},
+            ],
+        )
+
+        if unicode_separator:
+            separator = " 🐍試 "
+        else:
+            separator = " and "
+
+        if unicode_value:
+            col = values_t.c.unicode_value
+            expected = separator.join(["測試", "téble2", "🐍 su"])
+        else:
+            col = values_t.c.value
+            expected = separator.join(["a", "b", "c"])
+
+            # to join on a unicode separator, source string has to be unicode,
+            # so cast().  SQL Server will raise otherwise
+            if unicode_separator:
+                col = cast(col, Unicode(42))
+
+        value = connection.execute(
+            select(func.aggregate_strings(col, separator))
+        ).scalar_one()
+
+        eq_(value, expected)
 
     @testing.fails_on_everything_except("postgresql")
     def test_as_from(self, connection):
