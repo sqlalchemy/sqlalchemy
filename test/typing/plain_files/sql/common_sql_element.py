@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from sqlalchemy import asc
 from sqlalchemy import Column
+from sqlalchemy import column
 from sqlalchemy import desc
 from sqlalchemy import Integer
 from sqlalchemy import literal
@@ -160,3 +161,14 @@ reveal_type(literal("5", None))
 reveal_type(literal("123", Integer))
 # EXPECTED_TYPE: BindParameter[int]
 reveal_type(literal("123", Integer))
+
+
+# hashable (issue #10353):
+
+mydict = {
+    Column("q"): "q",
+    Column("q").desc(): "q",
+    User.id: "q",
+    literal("5"): "q",
+    column("q"): "q",
+}

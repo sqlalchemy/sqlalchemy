@@ -569,8 +569,16 @@ class ColumnOperators(Operators):
         """
         return self.operate(le, other)
 
-    # TODO: not sure why we have this
-    __hash__ = Operators.__hash__
+    # ColumnOperators defines an __eq__ so it must explicitly declare also
+    # an hash or it's set to None by python:
+    # https://docs.python.org/3/reference/datamodel.html#object.__hash__
+    if TYPE_CHECKING:
+
+        def __hash__(self) -> int:
+            ...
+
+    else:
+        __hash__ = Operators.__hash__
 
     def __eq__(self, other: Any) -> ColumnOperators:  # type: ignore[override]
         """Implement the ``==`` operator.

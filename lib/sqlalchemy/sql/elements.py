@@ -883,6 +883,13 @@ class SQLCoreOperations(Generic[_T_co], ColumnOperators, TypingOnly):
         def __le__(self, other: Any) -> ColumnElement[bool]:
             ...
 
+        # declare also that this class has an hash method otherwise
+        # it may be assumed to be None by type checkers since the
+        # object defines __eq__ and python sets it to None in that case:
+        # https://docs.python.org/3/reference/datamodel.html#object.__hash__
+        def __hash__(self) -> int:
+            ...
+
         def __eq__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
             ...
 
