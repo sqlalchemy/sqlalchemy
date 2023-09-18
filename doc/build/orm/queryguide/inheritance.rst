@@ -299,17 +299,17 @@ Applying loader options when selectin_polymorphic is itself a sub-option
 
 .. versionadded:: 2.0.21
 
-The previous section illustrated
-:func:`_orm.selectin_polymorphic` and :func:`_orm.selectinload` used as siblings
-within a call to :func:`_sql.select.options`.   If the target entity is one that
-is already being loaded from a parent relationship, as in the example at
+The previous section illustrated :func:`_orm.selectin_polymorphic` and
+:func:`_orm.selectinload` used as sibling options, both used within a single
+call to :meth:`_sql.select.options`.   If the target entity is one that is
+already being loaded from a parent relationship, as in the example at
 :ref:`polymorphic_selectin_as_loader_option_target`, we can apply this
 "sibling" pattern using the :meth:`_orm.Load.options` method that applies
 sub-options to a parent, as illustrated at
-:ref:`orm_queryguide_relationship_sub_options`.  Below we combine the two examples
-to load `Company.employees`, also loading the attributes for the `Manager` and
-`Engineer` classes, as well as eagerly loading the `Manager.paperwork`
-attribute::
+:ref:`orm_queryguide_relationship_sub_options`.  Below we combine the two
+examples to load ``Company.employees``, also loading the attributes for the
+``Manager`` and ``Engineer`` classes, as well as eagerly loading the
+```Manager.paperwork``` attribute::
 
     >>> from sqlalchemy.orm import selectinload
     >>> stmt = select(Company).options(
