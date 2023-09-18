@@ -4117,9 +4117,13 @@ class PGDialect(default.DefaultDialect):
 
     @util.memoized_property
     def _fk_regex_pattern(self):
+        # optionally quoted token
+        qtoken = '(?:"[^"]+"|[A-Za-z0-9_]+?)'
+
         # https://www.postgresql.org/docs/current/static/sql-createtable.html
         return re.compile(
-            r"FOREIGN KEY \((.*?)\) REFERENCES (?:(.*?)\.)?(.*?)\((.*?)\)"
+            r"FOREIGN KEY \((.*?)\) "
+            rf"REFERENCES (?:({qtoken})\.)?({qtoken})\(((?:{qtoken}(?: *, *)?)+)\)"  # noqa: E501
             r"[\s]?(MATCH (FULL|PARTIAL|SIMPLE)+)?"
             r"[\s]?(ON UPDATE "
             r"(CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT)+)?"

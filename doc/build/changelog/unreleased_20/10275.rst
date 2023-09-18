@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 10275
+
+    Fixed a series of reflection issues affecting the PostgreSQL,
+    MySQL/MariaDB, and SQLite dialects when reflecting foreign key constraints
+    where the target column contained parenthesis in one or both of the table
+    name or column name.
+
