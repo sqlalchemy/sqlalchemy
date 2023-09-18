@@ -34,6 +34,7 @@ from .attributes import QueryableAttribute
 from .base import InspectionAttr
 from .interfaces import LoaderOption
 from .path_registry import _DEFAULT_TOKEN
+from .path_registry import _StrPathToken
 from .path_registry import _WILDCARD_TOKEN
 from .path_registry import AbstractEntityRegistry
 from .path_registry import path_is_property
@@ -77,7 +78,7 @@ if typing.TYPE_CHECKING:
     from ..sql.cache_key import CacheKey
 
 
-_AttrType = Union[str, "QueryableAttribute[Any]"]
+_AttrType = Union[Literal["*"], "QueryableAttribute[Any]"]
 
 _WildcardKeyType = Literal["relationship", "column"]
 _StrategySpec = Dict[str, Any]
@@ -1695,7 +1696,7 @@ class _LoadElement(
     def create(
         cls,
         path: PathRegistry,
-        attr: Optional[_AttrType],
+        attr: Union[_AttrType, _StrPathToken, None],
         strategy: Optional[_StrategyKey],
         wildcard_key: Optional[_WildcardKeyType],
         local_opts: Optional[_OptsType],

@@ -1,0 +1,7 @@
+.. change::
+    :tags: typing, bug
+    :tickets: 10131
+
+    Update type annotations for ORM loading options, restricting them to accept
+    only `"*"` instead of any string for string arguments.  Pull request
+    courtesy Janek Nouvertné.
