@@ -10,7 +10,206 @@
 
 .. changelog::
     :version: 2.0.21
-    :include_notes_from: unreleased_20
+    :released: September 18, 2023
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 9610
+
+        Adjusted the operator precedence for the string concatenation operator to
+        be equal to that of string matching operators, such as
+        :meth:`.ColumnElement.like`, :meth:`.ColumnElement.regexp_match`,
+        :meth:`.ColumnElement.match`, etc., as well as plain ``==`` which has the
+        same precedence as string comparison operators, so that parenthesis will be
+        applied to a string concatenation expression that follows a string match
+        operator. This provides for backends such as PostgreSQL where the "regexp
+        match" operator is apparently of higher precedence than the string
+        concatenation operator.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 10342
+
+        Qualified the use of ``hashlib.md5()`` within the DDL compiler, which is
+        used to generate deterministic four-character suffixes for long index and
+        constraint names in DDL statements, to include the Python 3.9+
+        ``usedforsecurity=False`` parameter so that Python interpreters built for
+        restricted environments such as FIPS do not consider this call to be
+        related to security concerns.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 10226
+
+        Fixed regression which appeared in 2.0 due to :ticket:`8491` where the
+        revised "ping" used for PostgreSQL dialects when the
+        :paramref:`_sa.create_engine.pool_pre_ping` parameter is in use would
+        interfere with the use of asyncpg with PGBouncer "transaction" mode, as the
+        multiple PostgreSQL commands emitted by asnycpg could be broken out among
+        multiple connections leading to errors, due to the lack of any transaction
+        around this newly revised "ping".   The ping is now invoked within a
+        transaction, in the same way that is implicit with all other backends that
+        are based on the pep-249 DBAPI; this guarantees that the series of PG
+        commands sent by asyncpg for this command are invoked on the same backend
+        connection without it jumping to a different connection mid-command.  The
+        transaction is not used if the asyncpg dialect is used in "AUTOCOMMIT"
+        mode, which remains incompatible with pgbouncer transaction mode.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10279
+
+        Adjusted the ORM's interpretation of the "target" entity used within
+        :class:`.Update` and :class:`.Delete` to not interfere with the target
+        "from" object passed to the statement, such as when passing an ORM-mapped
+        :class:`_orm.aliased` construct that should be maintained within a phrase
+        like "UPDATE FROM".  Cases like ORM session synchonize using "SELECT"
+        statements such as with MySQL/ MariaDB will still have issues with
+        UPDATE/DELETE of this form so it's best to disable synchonize_session when
+        using DML statements of this type.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10348
+
+        Added new capability to the :func:`_orm.selectin_polymorphic` loader option
+        which allows other loader options to be bundled as siblings, referring to
+        one of its subclasses, within the sub-options of parent loader option.
+        Previously, this pattern was only supported if the
+        :func:`_orm.selectin_polymorphic` were at the top level of the options for
+        the query.   See new documentation section for example.
+
+        As part of this change, improved the behavior of the
+        :meth:`_orm.Load.selectin_polymorphic` method / loader strategy so that the
+        subclass load does not load most already-loaded columns from the parent
+        table, when the option is used against a class that is already being
+        relationship-loaded.  Previously, the logic to load only the subclass
+        columns worked only for a top level class load.
+
+        .. seealso::
+
+            :ref:`polymorphic_selectin_as_loader_option_target_plus_opts`
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 10264, 9284
+
+        Fixed regression introduced in 2.0.20 via :ticket:`9600` fix which
+        attempted to add more formal typing to
+        :paramref:`_schema.MetaData.naming_convention`. This change prevented basic
+        naming convention dictionaries from passing typing and has been adjusted so
+        that a plain dictionary of strings for keys as well as dictionaries that
+        use constraint types as keys or a mix of both, are again accepted.
+
+        As part of this change, lesser used forms of the naming convention
+        dictionary are also typed, including that it currently allows for
+        ``Constraint`` type objects as keys as well.
+
+    .. change::
+        :tags: usecase, typing
+        :tickets: 10288
+
+        Made the contained type for :class:`.Mapped` covariant; this is to allow
+        greater flexibility for end-user typing scenarios, such as the use of
+        protocols to represent particular mapped class structures that are passed
+        to other functions. As part of this change, the contained type was also
+        made covariant for dependent and related types such as
+        :class:`_orm.base.SQLORMOperations`, :class:`_orm.WriteOnlyMapped`, and
+        :class:`_sql.SQLColumnExpression`. Pull request courtesy Roméo Després.
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 10275
+
+        Fixed a series of reflection issues affecting the PostgreSQL,
+        MySQL/MariaDB, and SQLite dialects when reflecting foreign key constraints
+        where the target column contained parenthesis in one or both of the table
+        name or column name.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 10280
+
+        The :class:`.Values` construct will now automatically create a proxy (i.e.
+        a copy) of a :class:`_sql.column` if the column were already associated
+        with an existing FROM clause.  This allows that an expression like
+        ``values_obj.c.colname`` will produce the correct FROM clause even in the
+        case that ``colname`` was passed as a :class:`_sql.column` that was already
+        used with a previous :class:`.Values` or other table construct.
+        Originally this was considered to be a candidate for an error condition,
+        however it's likely this pattern is already in widespread use so it's
+        now added to support.
+
+    .. change::
+        :tags: bug, setup
+        :tickets: 10321
+
+        Fixed very old issue where the full extent of SQLAlchemy modules, including
+        ``sqlalchemy.testing.fixtures``, could not be imported outside of a pytest
+        run. This suits inspection utilities such as ``pkgutil`` that attempt to
+        import all installed modules in all packages.
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 10269
+
+        Adjusted the :class:`_types.Enum` datatype to accept an argument of
+        ``None`` for the :paramref:`_types.Enum.length` parameter, resulting in a
+        VARCHAR or other textual type with no length in the resulting DDL. This
+        allows for new elements of any length to be added to the type after it
+        exists in the schema.  Pull request courtesy Eugene Toder.
+
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 9878
+
+        Fixed the type annotation for ``__class_getitem__()`` as applied to the
+        ``Visitable`` class at the base of expression constructs to accept ``Any``
+        for a key, rather than ``str``, which helps with some IDEs such as PyCharm
+        when attempting to write typing annotations for SQL constructs which
+        include generic selectors.  Pull request courtesy Jordan Macdonald.
+
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 10353
+
+        Repaired the core "SQL element" class ``SQLCoreOperations`` to support the
+        ``__hash__()`` method from a typing perspective, as objects like
+        :class:`.Column` and ORM :class:`.InstrumentedAttribute` are hashable and
+        are used as dictionary keys in the public API for the :class:`_dml.Update`
+        and :class:`_dml.Insert` constructs.  Previously, type checkers were not
+        aware the root SQL element was hashable.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 10337
+
+        Fixed typing issue with :meth:`_sql.Existing.select_from` that
+        prevented its use with ORM classes.
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 9873
+
+        Added new generic SQL function :class:`_functions.aggregate_strings`, which
+        accepts a SQL expression and a decimeter, concatenating strings on multiple
+        rows into a single aggregate value. The function is compiled on a
+        per-backend basis, into functions such as ``group_concat(),``
+        ``string_agg()``, or ``LISTAGG()``.
+        Pull request courtesy Joshua Morris.
+
+    .. change::
+        :tags: typing, bug
+        :tickets: 10131
+
+        Update type annotations for ORM loading options, restricting them to accept
+        only `"*"` instead of any string for string arguments.  Pull request
+        courtesy Janek Nouvertné.
 
 .. changelog::
     :version: 2.0.20
