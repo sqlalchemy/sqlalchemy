@@ -1246,7 +1246,16 @@ def _load_subclass_via_in(
 
         orig_query = context.query
 
-        options = (enable_opt,) + orig_query._with_options + (disable_opt,)
+        if path.parent:
+            enable_opt_lcl = enable_opt._prepend_path(path)
+            disable_opt_lcl = disable_opt._prepend_path(path)
+        else:
+            enable_opt_lcl = enable_opt
+            disable_opt_lcl = disable_opt
+        options = (
+            (enable_opt_lcl,) + orig_query._with_options + (disable_opt_lcl,)
+        )
+
         q2 = q.options(*options)
 
         q2._compile_options = context.compile_state.default_compile_options

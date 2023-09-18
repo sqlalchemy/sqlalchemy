@@ -2335,7 +2335,9 @@ class JoinedloadOverWPolyAliased(
                 exc.ArgumentError,
                 r'ORM mapped entity or attribute "Sub1.links" does not '
                 r'link from relationship "Link.child".  Did you mean to use '
-                r'"Link.child.of_type\(Sub1\)"\?',
+                r'"Link.child.of_type\(Sub1\)"\ or '
+                r'"loadopt.options'
+                r'\(selectin_polymorphic\(Parent, \[Sub1\]\), ...\)" \?',
             ):
                 session.query(cls).options(
                     joinedload(cls.links)

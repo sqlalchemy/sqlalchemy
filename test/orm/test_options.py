@@ -1234,7 +1234,9 @@ class OptionsNoPropTestInh(_Polymorphic):
             r"ORM mapped entity or attribute "
             r'(?:"Mapper\[Engineer\(engineers\)\]"|"Engineer.engineer_name") '
             r'does not link from relationship "Company.employees".  Did you '
-            r'mean to use "Company.employees.of_type\(Engineer\)"\?',
+            r'mean to use "Company.employees.of_type\(Engineer\)" '
+            r'or "loadopt.options'
+            r'\(selectin_polymorphic\(Person, \[Engineer\]\), ...\)" \?',
         ):
             if use_options:
                 s.query(Company).options(

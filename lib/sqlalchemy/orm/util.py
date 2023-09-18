@@ -100,6 +100,7 @@ if typing.TYPE_CHECKING:
     from .context import _MapperEntity
     from .context import ORMCompileState
     from .mapper import Mapper
+    from .path_registry import AbstractEntityRegistry
     from .query import Query
     from .relationships import RelationshipProperty
     from ..engine import Row
@@ -1124,7 +1125,7 @@ class AliasedInsp(
         return self.mapper.class_
 
     @property
-    def _path_registry(self) -> PathRegistry:
+    def _path_registry(self) -> AbstractEntityRegistry:
         if self._use_mapper_path:
             return self.mapper._path_registry
         else:

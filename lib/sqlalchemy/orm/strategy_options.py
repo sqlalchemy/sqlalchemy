@@ -977,6 +977,7 @@ class Load(_AbstractLoad):
     __slots__ = (
         "path",
         "context",
+        "additional_source_entities",
     )
 
     _traverse_internals = [
@@ -986,11 +987,16 @@ class Load(_AbstractLoad):
             visitors.InternalTraversal.dp_has_cache_key_list,
         ),
         ("propagate_to_loaders", visitors.InternalTraversal.dp_boolean),
+        (
+            "additional_source_entities",
+            visitors.InternalTraversal.dp_has_cache_key_list,
+        ),
     ]
     _cache_key_traversal = None
 
     path: PathRegistry
     context: Tuple[_LoadElement, ...]
+    additional_source_entities: Tuple[_InternalEntityType[Any], ...]
 
     def __init__(self, entity: _EntityType[Any]):
         insp = cast("Union[Mapper[Any], AliasedInsp[Any]]", inspect(entity))
@@ -999,22 +1005,33 @@ class Load(_AbstractLoad):
         self.path = insp._path_registry
         self.context = ()
         self.propagate_to_loaders = False
+        self.additional_source_entities = ()
 
     def __str__(self) -> str:
         return f"Load({self.path[0]})"
 
     @classmethod
-    def _construct_for_existing_path(cls, path: PathRegistry) -> Load:
+    def _construct_for_existing_path(
+        cls, path: AbstractEntityRegistry
+    ) -> Load:
         load = cls.__new__(cls)
         load.path = path
         load.context = ()
         load.propagate_to_loaders = False
+        load.additional_source_entities = ()
         return load
 
     def _adapt_cached_option_to_uncached_option(
         self, context: QueryContext, uncached_opt: ORMOption
     ) -> ORMOption:
         return self._adjust_for_extra_criteria(context)
+
+    def _prepend_path(self, path: PathRegistry) -> Load:
+        cloned = self._clone()
+        cloned.context = tuple(
+            element._prepend_path(path) for element in self.context
+        )
+        return cloned
 
     def _adjust_for_extra_criteria(self, context: QueryContext) -> Load:
         """Apply the current bound parameters in a QueryContext to all
@@ -1116,9 +1133,12 @@ class Load(_AbstractLoad):
 
         assert cloned.propagate_to_loaders == self.propagate_to_loaders
 
-        if not orm_util._entity_corresponds_to_use_path_impl(
-            cast("_InternalEntityType[Any]", parent.path[-1]),
-            cast("_InternalEntityType[Any]", cloned.path[0]),
+        if not any(
+            orm_util._entity_corresponds_to_use_path_impl(
+                elem, cloned.path.odd_element(0)
+            )
+            for elem in (parent.path.odd_element(-1),)
+            + parent.additional_source_entities
         ):
             if len(cloned.path) > 1:
                 attrname = cloned.path[1]
@@ -1137,6 +1157,9 @@ class Load(_AbstractLoad):
 
         if cloned.context:
             parent.context += cloned.context
+            parent.additional_source_entities += (
+                cloned.additional_source_entities
+            )
 
     @_generative
     def options(self, *opts: _AbstractLoad) -> Self:
@@ -1227,6 +1250,10 @@ class Load(_AbstractLoad):
             )
             if load_element:
                 self.context += (load_element,)
+                assert opts is not None
+                self.additional_source_entities += cast(
+                    "Tuple[_InternalEntityType[Any]]", opts["entities"]
+                )
 
         else:
             for attr in attrs:
@@ -1714,9 +1741,7 @@ class _LoadElement(
 
         return cloned
 
-    def _prepend_path_from(
-        self, parent: Union[Load, _LoadElement]
-    ) -> _LoadElement:
+    def _prepend_path_from(self, parent: Load) -> _LoadElement:
         """adjust the path of this :class:`._LoadElement` to be
         a subpath of that of the given parent :class:`_orm.Load` object's
         path.
@@ -1725,22 +1750,30 @@ class _LoadElement(
         which is in turn part of the :meth:`_orm.Load.options` method.
 
         """
+
+        if not any(
+            orm_util._entity_corresponds_to_use_path_impl(
+                elem,
+                self.path.odd_element(0),
+            )
+            for elem in (parent.path.odd_element(-1),)
+            + parent.additional_source_entities
+        ):
+            raise sa_exc.ArgumentError(
+                f'Attribute "{self.path[1]}" does not link '
+                f'from element "{parent.path[-1]}".'
+            )
+
+        return self._prepend_path(parent.path)
+
+    def _prepend_path(self, path: PathRegistry) -> _LoadElement:
         cloned = self._clone()
 
         assert cloned.strategy == self.strategy
         assert cloned.local_opts == self.local_opts
         assert cloned.is_class_strategy == self.is_class_strategy
 
-        if not orm_util._entity_corresponds_to_use_path_impl(
-            cast("_InternalEntityType[Any]", parent.path[-1]),
-            cast("_InternalEntityType[Any]", cloned.path[0]),
-        ):
-            raise sa_exc.ArgumentError(
-                f'Attribute "{cloned.path[1]}" does not link '
-                f'from element "{parent.path[-1]}".'
-            )
-
-        cloned.path = PathRegistry.coerce(parent.path[0:-1] + cloned.path[:])
+        cloned.path = PathRegistry.coerce(path[0:-1] + cloned.path[:])
 
         return cloned
 
@@ -2447,7 +2480,9 @@ def _raise_for_does_not_link(path, attrname, parent_entity):
                 (
                     "  Did you mean to use "
                     f'"{path[-2]}'
-                    f'.of_type({parent_entity_str})"?'
+                    f'.of_type({parent_entity_str})" or "loadopt.options('
+                    f"selectin_polymorphic({path[-2].mapper.class_.__name__}, "
+                    f'[{parent_entity_str}]), ...)" ?'
                     if not path_is_of_type
                     and not path[-1].is_aliased_class
                     and orm_util._entity_corresponds_to(

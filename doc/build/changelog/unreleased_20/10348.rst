@@ -1,0 +1,21 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 10348
+
+    Added new capability to the :func:`_orm.selectin_polymorphic` loader option
+    which allows other loader options to be bundled as siblings, referring to
+    one of its subclasses, within the sub-options of parent loader option.
+    Previously, this pattern was only supported if the
+    :func:`_orm.selectin_polymorphic` were at the top level of the options for
+    the query.   See new documentation section for example.
+
+    As part of this change, improved the behavior of the
+    :meth:`_orm.Load.selectin_polymorphic` method / loader strategy so that the
+    subclass load does not load most already-loaded columns from the parent
+    table, when the option is used against a class that is already being
+    relationship-loaded.  Previously, the logic to load only the subclass
+    columns worked only for a top level class load.
+
+    .. seealso::
+
+        :ref:`polymorphic_selectin_as_loader_option_target_plus_opts`
