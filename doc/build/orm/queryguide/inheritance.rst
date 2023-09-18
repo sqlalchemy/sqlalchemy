@@ -323,7 +323,7 @@ examples to load ``Company.employees``, also loading the attributes for the
     ...     for employee in company.employees:
     ...         if isinstance(employee, Manager):
     ...             print(f"manager: {employee.name} paperwork: {employee.paperwork}")
-    BEGIN (implicit)
+    {execsql}BEGIN (implicit)
     SELECT company.id, company.name
     FROM company
     [...] ()
