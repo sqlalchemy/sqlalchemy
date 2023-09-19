@@ -1828,8 +1828,8 @@ class _ORMJoin(expression.Join):
             prop = None
             on_selectable = None
 
+        left_selectable = left_info.selectable
         if prop:
-            left_selectable = left_info.selectable
             adapt_from: Optional[FromClause]
             if sql_util.clause_is_present(on_selectable, left_selectable):
                 adapt_from = on_selectable
@@ -1866,25 +1866,25 @@ class _ORMJoin(expression.Join):
 
             self._target_adapter = target_adapter
 
-            # we don't use the normal coercions logic for _ORMJoin
-            # (probably should), so do some gymnastics to get the entity.
-            # logic here is for #8721, which was a major bug in 1.4
-            # for almost two years, not reported/fixed until 1.4.43 (!)
-            if is_selectable(left_info):
-                parententity = left_selectable._annotations.get(
-                    "parententity", None
-                )
-            elif insp_is_mapper(left_info) or insp_is_aliased_class(left_info):
-                parententity = left_info
-            else:
-                parententity = None
+        # we don't use the normal coercions logic for _ORMJoin
+        # (probably should), so do some gymnastics to get the entity.
+        # logic here is for #8721, which was a major bug in 1.4
+        # for almost two years, not reported/fixed until 1.4.43 (!)
+        if is_selectable(left_info):
+            parententity = left_selectable._annotations.get(
+                "parententity", None
+            )
+        elif insp_is_mapper(left_info) or insp_is_aliased_class(left_info):
+            parententity = left_info
+        else:
+            parententity = None
 
-            if parententity is not None:
-                self._annotations = self._annotations.union(
-                    {"parententity": parententity}
-                )
+        if parententity is not None:
+            self._annotations = self._annotations.union(
+                {"parententity": parententity}
+            )
 
-        augment_onclause = onclause is None and _extra_criteria
+        augment_onclause = bool(_extra_criteria) and not prop
         expression.Join.__init__(self, left, right, onclause, isouter, full)
 
         assert self.onclause is not None
