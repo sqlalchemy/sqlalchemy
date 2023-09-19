@@ -1737,9 +1737,8 @@ class _ORMJoin(expression.Join):
         else:
             prop = None
 
+        left_selectable = left_info.selectable
         if prop:
-            left_selectable = left_info.selectable
-
             if sql_util.clause_is_present(on_selectable, left_selectable):
                 adapt_from = on_selectable
             else:
@@ -1774,25 +1773,25 @@ class _ORMJoin(expression.Join):
 
             self._target_adapter = target_adapter
 
-            # we don't use the normal coercions logic for _ORMJoin
-            # (probably should), so do some gymnastics to get the entity.
-            # logic here is for #8721, which was a major bug in 1.4
-            # for almost two years, not reported/fixed until 1.4.43 (!)
-            if left_info.is_selectable:
-                parententity = left_selectable._annotations.get(
-                    "parententity", None
-                )
-            elif left_info.is_mapper or left_info.is_aliased_class:
-                parententity = left_info
-            else:
-                parententity = None
+        # we don't use the normal coercions logic for _ORMJoin
+        # (probably should), so do some gymnastics to get the entity.
+        # logic here is for #8721, which was a major bug in 1.4
+        # for almost two years, not reported/fixed until 1.4.43 (!)
+        if left_info.is_selectable:
+            parententity = left_selectable._annotations.get(
+                "parententity", None
+            )
+        elif left_info.is_mapper or left_info.is_aliased_class:
+            parententity = left_info
+        else:
+            parententity = None
 
-            if parententity is not None:
-                self._annotations = self._annotations.union(
-                    {"parententity": parententity}
-                )
+        if parententity is not None:
+            self._annotations = self._annotations.union(
+                {"parententity": parententity}
+            )
 
-        augment_onclause = onclause is None and _extra_criteria
+        augment_onclause = bool(_extra_criteria) and not prop
         expression.Join.__init__(self, left, right, onclause, isouter, full)
 
         if augment_onclause:

@@ -307,6 +307,13 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             .options(with_loader_criteria(User, User.name != "name")),
         ),
         (
+            # issue #10365
+            lambda User, Address: select(Address)
+            .select_from(User)
+            .join(Address, User.id == Address.user_id)
+            .options(with_loader_criteria(User, User.name != "name")),
+        ),
+        (
             lambda User, Address: select(Address)
             .select_from(orm_join(User, Address, User.addresses))
             .options(with_loader_criteria(User, User.name != "name")),
@@ -355,6 +362,13 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             .options(with_loader_criteria(User, User.name != "name")),
         ),
         (
+            # issue #10365 - this seems to have already worked
+            lambda User, Address: select(Address.id, User.id)
+            .select_from(User)
+            .join(Address, User.id == Address.user_id)
+            .options(with_loader_criteria(User, User.name != "name")),
+        ),
+        (
             lambda User, Address: select(Address.id, User.id)
             .select_from(orm_join(User, Address, User.addresses))
             .options(with_loader_criteria(User, User.name != "name")),
@@ -399,6 +413,15 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             lambda User, Address: select(Address)
             .select_from(User)
             .join(User.addresses)
+            .options(
+                with_loader_criteria(Address, Address.email_address != "email")
+            ),
+        ),
+        (
+            # issue #10365
+            lambda User, Address: select(Address)
+            .select_from(User)
+            .join(Address, User.id == Address.user_id)
             .options(
                 with_loader_criteria(Address, Address.email_address != "email")
             ),
