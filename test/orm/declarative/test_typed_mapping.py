@@ -3,8 +3,10 @@ import dataclasses
 import datetime
 from decimal import Decimal
 import enum
+import inspect as _py_inspect
 import typing
 from typing import Any
+from typing import cast
 from typing import ClassVar
 from typing import Dict
 from typing import Generic
@@ -25,6 +27,7 @@ from sqlalchemy import BIGINT
 from sqlalchemy import BigInteger
 from sqlalchemy import Column
 from sqlalchemy import DateTime
+from sqlalchemy import exc
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
@@ -59,10 +62,13 @@ from sqlalchemy.orm import undefer
 from sqlalchemy.orm import WriteOnlyMapped
 from sqlalchemy.orm.collections import attribute_keyed_dict
 from sqlalchemy.orm.collections import KeyFuncDict
+from sqlalchemy.orm.properties import MappedColumn
 from sqlalchemy.schema import CreateTable
+from sqlalchemy.sql.base import _NoArg
 from sqlalchemy.sql.sqltypes import Enum
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
@@ -115,6 +121,15 @@ class DeclarativeBaseTest(fixtures.TestBase):
 
         with expect_raises(AttributeError):
             Tab.non_existent
+
+
+_annotated_names_tested = set()
+
+
+def annotated_name_test_cases(*cases, **kw):
+    _annotated_names_tested.update([case[0] for case in cases])
+
+    return testing.combinations_list(cases, **kw)
 
 
 class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
@@ -628,6 +643,235 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         eq_(MyClass.__table__.c.data_two.type.length, 30)
         is_true(MyClass.__table__.c.data_two.nullable)
         eq_(MyClass.__table__.c.data_three.type.length, 50)
+
+    @testing.requires.python310
+    def test_we_got_all_attrs_test_annotated(self):
+        argnames = _py_inspect.getfullargspec(mapped_column)
+        assert _annotated_names_tested.issuperset(argnames.kwonlyargs), (
+            f"annotated attributes were not tested: "
+            f"{set(argnames.kwonlyargs).difference(_annotated_names_tested)}"
+        )
+
+    @annotated_name_test_cases(
+        ("sort_order", 100, lambda sort_order: sort_order == 100),
+        ("nullable", False, lambda column: column.nullable is False),
+        (
+            "active_history",
+            True,
+            lambda column_property: column_property.active_history is True,
+        ),
+        (
+            "deferred",
+            True,
+            lambda column_property: column_property.deferred is True,
+        ),
+        (
+            "deferred",
+            _NoArg.NO_ARG,
+            lambda column_property: column_property is None,
+        ),
+        (
+            "deferred_group",
+            "mygroup",
+            lambda column_property: column_property.deferred is True
+            and column_property.group == "mygroup",
+        ),
+        (
+            "deferred_raiseload",
+            True,
+            lambda column_property: column_property.deferred is True
+            and column_property.raiseload is True,
+        ),
+        (
+            "server_default",
+            "25",
+            lambda column: column.server_default.arg == "25",
+        ),
+        (
+            "server_onupdate",
+            "25",
+            lambda column: column.server_onupdate.arg == "25",
+        ),
+        (
+            "default",
+            25,
+            lambda column: column.default.arg == 25,
+        ),
+        (
+            "insert_default",
+            25,
+            lambda column: column.default.arg == 25,
+        ),
+        (
+            "onupdate",
+            25,
+            lambda column: column.onupdate.arg == 25,
+        ),
+        ("doc", "some doc", lambda column: column.doc == "some doc"),
+        (
+            "comment",
+            "some comment",
+            lambda column: column.comment == "some comment",
+        ),
+        ("index", True, lambda column: column.index is True),
+        ("index", _NoArg.NO_ARG, lambda column: column.index is None),
+        ("unique", True, lambda column: column.unique is True),
+        ("autoincrement", True, lambda column: column.autoincrement is True),
+        ("system", True, lambda column: column.system is True),
+        ("primary_key", True, lambda column: column.primary_key is True),
+        ("type_", BIGINT, lambda column: isinstance(column.type, BIGINT)),
+        ("info", {"foo": "bar"}, lambda column: column.info == {"foo": "bar"}),
+        (
+            "use_existing_column",
+            True,
+            lambda mc: mc._use_existing_column is True,
+        ),
+        (
+            "quote",
+            True,
+            exc.SADeprecationWarning(
+                "Can't use the 'key' or 'name' arguments in Annotated "
+            ),
+        ),
+        (
+            "key",
+            "mykey",
+            exc.SADeprecationWarning(
+                "Can't use the 'key' or 'name' arguments in Annotated "
+            ),
+        ),
+        (
+            "name",
+            "mykey",
+            exc.SADeprecationWarning(
+                "Can't use the 'key' or 'name' arguments in Annotated "
+            ),
+        ),
+        (
+            "kw_only",
+            True,
+            exc.SADeprecationWarning(
+                "Argument 'kw_only' is a dataclass argument "
+            ),
+            testing.requires.python310,
+        ),
+        (
+            "compare",
+            True,
+            exc.SADeprecationWarning(
+                "Argument 'compare' is a dataclass argument "
+            ),
+            testing.requires.python310,
+        ),
+        (
+            "default_factory",
+            lambda: 25,
+            exc.SADeprecationWarning(
+                "Argument 'default_factory' is a dataclass argument "
+            ),
+        ),
+        (
+            "repr",
+            True,
+            exc.SADeprecationWarning(
+                "Argument 'repr' is a dataclass argument "
+            ),
+        ),
+        (
+            "init",
+            True,
+            exc.SADeprecationWarning(
+                "Argument 'init' is a dataclass argument"
+            ),
+        ),
+        argnames="argname, argument, assertion",
+    )
+    @testing.variation("use_annotated", [True, False, "control"])
+    def test_names_encountered_for_annotated(
+        self, argname, argument, assertion, use_annotated, decl_base
+    ):
+        # anno only: global myint
+
+        if argument is not _NoArg.NO_ARG:
+            kw = {argname: argument}
+
+            if argname == "quote":
+                kw["name"] = "somename"
+        else:
+            kw = {}
+
+        is_warning = isinstance(assertion, exc.SADeprecationWarning)
+        is_dataclass = argname in (
+            "kw_only",
+            "init",
+            "repr",
+            "compare",
+            "default_factory",
+        )
+
+        if is_dataclass:
+
+            class Base(MappedAsDataclass, decl_base):
+                __abstract__ = True
+
+        else:
+            Base = decl_base
+
+        if use_annotated.control:
+            # test in reverse; that kw set on the main mapped_column() takes
+            # effect when the Annotated is there also and does not have the
+            # kw
+            amc = mapped_column()
+            myint = Annotated[int, amc]
+
+            mc = mapped_column(**kw)
+
+            class User(Base):
+                __tablename__ = "user"
+                id: Mapped[int] = mapped_column(primary_key=True)
+                myname: Mapped[myint] = mc
+
+        elif use_annotated:
+            amc = mapped_column(**kw)
+            myint = Annotated[int, amc]
+
+            mc = mapped_column()
+
+            if is_warning:
+                with expect_deprecated(assertion.args[0]):
+
+                    class User(Base):
+                        __tablename__ = "user"
+                        id: Mapped[int] = mapped_column(primary_key=True)
+                        myname: Mapped[myint] = mc
+
+            else:
+
+                class User(Base):
+                    __tablename__ = "user"
+                    id: Mapped[int] = mapped_column(primary_key=True)
+                    myname: Mapped[myint] = mc
+
+        else:
+            mc = cast(MappedColumn, mapped_column(**kw))
+
+        mapper_prop = mc.mapper_property_to_assign
+        column_to_assign, sort_order = mc.columns_to_assign[0]
+
+        if not is_warning:
+            assert_result = testing.resolve_lambda(
+                assertion,
+                sort_order=sort_order,
+                column_property=mapper_prop,
+                column=column_to_assign,
+                mc=mc,
+            )
+            assert assert_result
+        elif is_dataclass and (not use_annotated or use_annotated.control):
+            eq_(
+                getattr(mc._attribute_options, f"dataclasses_{argname}"),
+                argument,
+            )
 
     def test_pep484_newtypes_as_typemap_keys(
         self, decl_base: Type[DeclarativeBase]
