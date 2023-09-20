@@ -964,8 +964,8 @@ class Mapper(
     version_id_generator: Optional[Union[Literal[False], Callable[[Any], Any]]]
 
     local_table: FromClause
-    """The immediate :class:`_expression.FromClause` which this
-    :class:`_orm.Mapper` refers towards.
+    """The immediate :class:`_expression.FromClause` to which this
+    :class:`_orm.Mapper` refers.
 
     Typically is an instance of :class:`_schema.Table`, may be any
     :class:`.FromClause`.

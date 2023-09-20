@@ -1719,11 +1719,12 @@ This document details individual issue-level changes made throughout
 
         Added new parameter
         :paramref:`.FunctionElement.table_valued.joins_implicitly`, for the
-        :meth:`.FunctionElement.table_valued` construct. This parameter indicates
-        that the given table-valued function implicitly joins to the table it
-        refers towards, essentially disabling the "from linting" feature, i.e. the
-        "cartesian product" warning, from taking effect due to the presence of this
-        parameter. May be used for functions such as ``func.json_each()``.
+        :meth:`.FunctionElement.table_valued` construct. This parameter
+        indicates that the table-valued function provided will automatically
+        perform an implicit join with the referenced table. This effectively
+        disables the 'from linting' feature, such as the 'cartesian product'
+        warning, from triggering due to the presence of this parameter.  May be
+        used for functions such as ``func.json_each()``.
 
     .. change::
         :tags: usecase, engine
@@ -3990,14 +3991,14 @@ This document details individual issue-level changes made throughout
         Fixed regression in :mod:`sqlalchemy.ext.automap` extension such that the
         use case of creating an explicit mapped class to a table that is also the
         :paramref:`_orm.relationship.secondary` element of a
-        :func:`_orm.relationship` that automap will be generating would emit the
-        "overlaps" warnings introduced in 1.4 and discussed at :ref:`error_qzyx`.
-        While generating this case from automap is still subject to the same
-        caveats that the "overlaps" warning refers towards, as automap is intended
-        for more ad-hoc use cases, the condition which produces the warning is
-        disabled when a many-to-many relationship with this particular pattern is
+        :func:`_orm.relationship` that automap will be generating would emit
+        the "overlaps" warnings introduced in 1.4 and discussed at
+        :ref:`error_qzyx`. While generating this case from automap is still
+        subject to the same caveats mentioned in the 'overlaps' warning,
+        since automap is primarily intended for more ad-hoc
+        use cases, the condition triggering the warning is disabled when a
+        many-to-many relationship with this specific pattern is
         generated.
-
 
 
     .. change::
@@ -5056,7 +5057,7 @@ This document details individual issue-level changes made throughout
 
         Fixed a critical performance issue where the traversal of a
         :func:`_sql.select` construct would traverse a repetitive product of the
-        represented FROM clauses as they were each referred towards by columns in
+        represented FROM clauses as they were each referenced by columns in
         the columns clause; for a series of nested subqueries with lots of columns
         this could cause a large delay and significant memory growth. This
         traversal is used by a wide variety of SQL and ORM functions, including by
@@ -6518,8 +6519,9 @@ This document details individual issue-level changes made throughout
         with an emphasis on its use within the :func:`_orm.with_loader_criteria`
         feature where it is most prominently used [ticket:5760]:
 
-        * fixed issue where boolean True/False values referred towards in the
-          closure variables of the lambda would cause failures [ticket:5763]
+        * Fixed the issue where boolean True/False values, which were referred
+          to in the closure variables of the lambda, would cause failures.
+          [ticket:5763]
 
         * Repaired a non-working detection for Python functions embedded in the
           lambda that produce bound values; this case is likely not supportable
@@ -6962,7 +6964,7 @@ This document details individual issue-level changes made throughout
         syntaxes supported by PostgreSQL, one of the most commonly requested
         features. Table valued functions are SQL functions that return lists of
         values or rows, and are prevalent in PostgreSQL in the area of JSON
-        functions, where the "table value" is commonly referred towards as the
+        functions, where the "table value" is commonly referred to as the
         "record" datatype. Table valued functions are also supported by Oracle and
         SQL Server.
 

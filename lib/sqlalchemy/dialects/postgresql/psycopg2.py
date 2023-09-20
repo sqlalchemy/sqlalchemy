@@ -254,7 +254,7 @@ equivalent to psycopg2's ``execute_values()`` handler; an overview of this
 feature and its configuration are at :ref:`engine_insertmanyvalues`.
 
 .. versionadded:: 2.0 Replaced psycopg2's ``execute_values()`` fast execution
-   helper with a native SQLAlchemy mechanism referred towards as
+   helper with a native SQLAlchemy mechanism known as
    :ref:`insertmanyvalues <engine_insertmanyvalues>`.
 
 The psycopg2 dialect retains the ability to use the psycopg2-specific

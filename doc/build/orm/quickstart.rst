@@ -103,10 +103,10 @@ of the key.  In the above example, the ``User.id`` and ``Address.id``
 columns are marked as primary key.
 
 Taken together, the combination of a string table name as well as a list
-of column declarations is referred towards in SQLAlchemy as :term:`table metadata`.
+of column declarations is known in SQLAlchemy as :term:`table metadata`.
 Setting up table metadata using both Core and ORM approaches is introduced
 in the :ref:`unified_tutorial` at :ref:`tutorial_working_with_metadata`.
-The above mapping is an example of what's referred towards as
+The above mapping is an example of what's known as
 :ref:`Annotated Declarative Table <orm_declarative_mapped_column>`
 configuration.
 

@@ -2744,19 +2744,20 @@
         :tags: bug, sql
         :tickets: 4730
 
-        Fixed a series of quoting issues which all stemmed from the concept of the
-        :func:`_expression.literal_column` construct, which when being "proxied" through a
-        subquery to be referred towards by a label that matches its text, the label
-        would not have quoting rules applied to it, even if the string in the
-        :class:`.Label` were set up as a :class:`.quoted_name` construct.  Not
-        applying quoting to the text of the :class:`.Label` is a bug because this
-        text is strictly a SQL identifier name and not a SQL expression, and the
-        string should not have quotes embedded into it already unlike the
-        :func:`_expression.literal_column` which it may be applied towards.   The existing
-        behavior of a non-labeled :func:`_expression.literal_column` being propagated as is on
-        the outside of a subquery is maintained in order to help with manual
-        quoting schemes, although it's not clear if valid SQL can be generated for
-        such a construct in any case.
+        Addressed a range of quoting issues originating from the use of the
+        :func:`_expression.literal_column`` construct. When this construct is
+        "proxied" through a subquery and referred to by a label matching its
+        text, the label does not have quoting rules applied to it, even if the
+        string in the :class:`.Label` was set up using a :class:`.quoted_name``
+        construct. Not applying quoting to the text of the :class:`.Label` is a
+        bug because this text is strictly a SQL identifier name and not a SQL
+        expression, and the string should not have quotes embedded into it
+        already unlike the :func:`_expression.literal_column` which it may be
+        applied towards.   The existing behavior of a non-labeled
+        :func:`_expression.literal_column` being propagated as is on the
+        outside of a subquery is maintained in order to help with manual
+        quoting schemes, although it's not clear if valid SQL can be generated
+        for such a construct in any case.
 
 .. changelog::
     :version: 1.3.4

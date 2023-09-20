@@ -945,10 +945,10 @@ the :func:`_orm.relationship` construct::
     )
 
 These string names are resolved into classes in the mapper resolution stage,
-which is an internal process that occurs typically after all mappings have
-been defined and is normally triggered by the first usage of the mappings
-themselves.     The :class:`_orm.registry` object is the container in which
-these names are stored and resolved to the mapped classes they refer towards.
+which is an internal process that occurs typically after all mappings have been
+defined and is normally triggered by the first usage of the mappings
+themselves.  The :class:`_orm.registry` object is the container where these
+names are stored and resolved to the mapped classes to which they refer.
 
 In addition to the main class argument for :func:`_orm.relationship`,
 other arguments which depend upon the columns present on an as-yet
@@ -1140,7 +1140,7 @@ using either a lambda callable or string name is supported, where string
 resolution works by evaluation of given Python expression which links
 identifier names to same-named :class:`_schema.Table` objects that
 are present in the same
-:class:`_schema.MetaData` collection referred towards by the current
+:class:`_schema.MetaData` collection referenced by the current
 :class:`_orm.registry`.
 
 For the example given at :ref:`relationships_many_to_many`, if we assumed

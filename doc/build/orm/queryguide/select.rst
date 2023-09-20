@@ -798,7 +798,7 @@ applied to more than one :func:`_orm.aliased` construct at once, and
 used in the same :class:`.Select` construct in terms of each entity separately.
 The rendered SQL will continue to treat all such :func:`_orm.aliased`
 constructs as the same subquery, however from the ORM / Python perspective
-the different return values and object attributes can be referred towards
+the different return values and object attributes can be referenced
 by using the appropriate :func:`_orm.aliased` construct.
 
 Given for example a subquery that refers to both ``User`` and ``Address``::
@@ -1049,7 +1049,7 @@ in terms of the target :func:`_orm.relationship`.
 
 * **An object has a particular parent from a one-to-many perspective** - the
   :func:`_orm.with_parent` function produces a comparison that returns rows
-  which are referred towards by a given parent, this is essentially the
+  which are referenced by a given parent, this is essentially the
   same as using the ``==`` operator with the many-to-one side::
 
       >>> from sqlalchemy.orm import with_parent

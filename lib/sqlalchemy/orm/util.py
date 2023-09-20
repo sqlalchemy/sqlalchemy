@@ -936,7 +936,7 @@ class AliasedInsp(
     """the AliasedClass that refers to this AliasedInsp"""
 
     _target: Union[Type[_O], AliasedClass[_O]]
-    """the thing referred towards by the AliasedClass/AliasedInsp.
+    """the thing referenced by the AliasedClass/AliasedInsp.
 
     In the vast majority of cases, this is the mapped class.  However
     it may also be another AliasedClass (alias of alias).

@@ -678,7 +678,7 @@ construct::
 The above pattern also allows an arbitrary selectable, such as
 a Core :class:`_sql.Join` or :class:`_sql.Alias` object,
 however there is no automatic adaptation of this element, meaning the
-Core element would need to be referred towards directly::
+Core element would need to be referenced directly::
 
     a1 = Address.__table__.alias()
 
@@ -783,7 +783,7 @@ Above, the SQL selects FROM the ``employee`` table, representing the
 ``Employee`` entity in the query. It then joins to a right-nested join of
 ``employee AS employee_1 JOIN manager AS manager_1``, where the ``employee``
 table is stated again, except as an anonymous alias ``employee_1``. This is the
-"automatic generation of an alias" that the warning message refers towards.
+'automatic generation of an alias' to which the warning message refers.
 
 When SQLAlchemy loads ORM rows that each contain an ``Employee`` and a
 ``Manager`` object, the ORM must adapt rows from what above is the
@@ -1196,7 +1196,7 @@ relationship X will copy column Q to column P, which conflicts with relationship
 This warning refers to the case when two or more relationships will write data
 to the same columns on flush, but the ORM does not have any means of
 coordinating these relationships together. Depending on specifics, the solution
-may be that two relationships need to be referred towards one another using
+may be that two relationships need to be referenced by one another using
 :paramref:`_orm.relationship.back_populates`, or that one or more of the
 relationships should be configured with :paramref:`_orm.relationship.viewonly`
 to prevent conflicting writes, or sometimes that the configuration is fully

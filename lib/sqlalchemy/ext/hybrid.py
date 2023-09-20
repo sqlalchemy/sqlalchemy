@@ -200,7 +200,7 @@ Using ``inplace`` to create pep-484 compliant hybrid properties
 
 In the previous section, a :class:`.hybrid_property` decorator is illustrated
 which includes two separate method-level functions being decorated, both
-to produce a single object attribute referred towards as ``Interval.radius``.
+to produce a single object attribute referenced as ``Interval.radius``.
 There are actually several different modifiers we can use for
 :class:`.hybrid_property` including :meth:`.hybrid_property.expression`,
 :meth:`.hybrid_property.setter` and :meth:`.hybrid_property.update_expression`.

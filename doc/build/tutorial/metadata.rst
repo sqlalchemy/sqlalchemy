@@ -335,7 +335,7 @@ SQLAlchemy :class:`_orm.DeclarativeBase` class::
     >>> class Base(DeclarativeBase):
     ...     pass
 
-Above, the ``Base`` class is what we'll refer towards as the Declarative Base.
+Above, the ``Base`` class is what we'll call the Declarative Base.
 When we make new classes that are subclasses of ``Base``, combined with
 appropriate class-level directives, they will each be established as a new
 **ORM mapped class** at class creation time, each one typically (but not
@@ -415,7 +415,7 @@ types::
     ...     def __repr__(self) -> str:
     ...         return f"Address(id={self.id!r}, email_address={self.email_address!r})"
 
-The two classes above, ``User`` and ``Address``, are now referred towards
+The two classes above, ``User`` and ``Address``, are now called
 as **ORM Mapped Classes**, and are available for use in
 ORM persistence and query operations, which will be described later.  Details
 about these classes include:
@@ -427,7 +427,7 @@ about these classes include:
   from the :attr:`_orm.DeclarativeBase.__table__` attribute.
 
 * As mentioned previously, this form
-  is referred towards as :ref:`orm_declarative_table_configuration`.  One
+  is known as :ref:`orm_declarative_table_configuration`.  One
   of several alternative declaration styles would instead have us
   build the :class:`_schema.Table` object directly, and **assign** it
   directly to :attr:`_orm.DeclarativeBase.__table__`.  This style

@@ -303,7 +303,7 @@ Setting Alternate Search Paths on Connect
 ------------------------------------------
 
 The PostgreSQL ``search_path`` variable refers to the list of schema names
-that will be implicitly referred towards when a particular table or other
+that will be implicitly referenced when a particular table or other
 object is referenced in a SQL statement.  As detailed in the next section
 :ref:`postgresql_schema_reflection`, SQLAlchemy is generally organized around
 the concept of keeping this variable at its default value of ``public``,
@@ -1376,8 +1376,8 @@ Built-in support for rendering a ``ROW`` may be approximated using
 Table Types passed to Functions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-PostgreSQL supports passing a table as an argument to a function, which it
-refers towards as a "record" type. SQLAlchemy :class:`_sql.FromClause` objects
+PostgreSQL supports passing a table as an argument to a function, which is
+known as a "record" type. SQLAlchemy :class:`_sql.FromClause` objects
 such as :class:`_schema.Table` support this special form using the
 :meth:`_sql.FromClause.table_valued` method, which is comparable to the
 :meth:`_functions.FunctionElement.table_valued` method except that the collection

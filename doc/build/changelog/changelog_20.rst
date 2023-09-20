@@ -2564,7 +2564,7 @@
 
         Fixed regression related to the implementation for the new
         "insertmanyvalues" feature where an internal ``TypeError`` would occur in
-        arrangements where a :func:`_sql.insert` would be referred towards inside
+        arrangements where a :func:`_sql.insert` would be referenced inside
         of another :func:`_sql.insert` via a CTE; made additional repairs for this
         use case for positional dialects such as asyncpg when using
         "insertmanyvalues".

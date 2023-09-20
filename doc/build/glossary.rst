@@ -304,7 +304,7 @@ Glossary
         aggregate the single row from each INSERT execution together.
 
         To overcome this limitation, SQLAlchemy as of the 2.0 series implements
-        an alternative form of "executemany" which is referred towards as
+        an alternative form of "executemany" which is known as
         :ref:`engine_insertmanyvalues`. This feature makes use of
         ``cursor.execute()`` to invoke an INSERT statement that will proceed
         with multiple parameter sets in one round trip, thus producing the same

@@ -161,16 +161,17 @@ class InternalTraversal(Enum):
     the ``_traverse_internals`` collection.   Such as, the :class:`.Case`
     object defines ``_traverse_internals`` as ::
 
-        _traverse_internals = [
-            ("value", InternalTraversal.dp_clauseelement),
-            ("whens", InternalTraversal.dp_clauseelement_tuples),
-            ("else_", InternalTraversal.dp_clauseelement),
-        ]
+        class Case(ColumnElement[_T]):
+            _traverse_internals = [
+                ("value", InternalTraversal.dp_clauseelement),
+                ("whens", InternalTraversal.dp_clauseelement_tuples),
+                ("else_", InternalTraversal.dp_clauseelement),
+            ]
 
     Above, the :class:`.Case` class indicates its internal state as the
     attributes named ``value``, ``whens``, and ``else_``.    They each
     link to an :class:`.InternalTraversal` method which indicates the type
-    of datastructure referred towards.
+    of datastructure to which each attribute refers.
 
     Using the ``_traverse_internals`` structure, objects of type
     :class:`.InternalTraversible` will have the following methods automatically

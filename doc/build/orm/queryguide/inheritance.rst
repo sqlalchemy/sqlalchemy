@@ -408,7 +408,7 @@ In contrast to :func:`_orm.selectin_polymorphic` which affects only the loading
 of objects, the :func:`_orm.with_polymorphic` construct affects how the SQL
 query for a polymorphic structure is rendered, most commonly as a series of
 LEFT OUTER JOINs to each of the included sub-tables. This join structure is
-referred towards as the **polymorphic selectable**. By providing for a view of
+known as the **polymorphic selectable**. By providing for a view of
 several sub-tables at once, :func:`_orm.with_polymorphic` offers a means of
 writing a SELECT statement across several inherited classes at once with the
 ability to add filtering criteria based on individual sub-tables.
@@ -509,7 +509,7 @@ statement.
 To use this feature with a joined inheritance mapping, we typically want to
 pass two parameters, :paramref:`_orm.with_polymorphic.aliased` as well as
 :paramref:`_orm.with_polymorphic.flat`.  The :paramref:`_orm.with_polymorphic.aliased`
-parameter indicates that the polymorphic selectable should be referred towards
+parameter indicates that the polymorphic selectable should be referenced
 by an alias name that is unique to this construct.   The
 :paramref:`_orm.with_polymorphic.flat` parameter is specific to the default
 LEFT OUTER JOIN polymorphic selectable and indicates that a more optimized

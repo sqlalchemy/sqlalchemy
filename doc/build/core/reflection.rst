@@ -215,7 +215,7 @@ schemas will not require that the schema name be present (while at the same time
 it's also perfectly fine if the schema name *is* present).
 
 Since most relational databases therefore have the concept of a particular
-table object which can be referred towards both in a schema-qualified way, as
+table object which can be referenced both in a schema-qualified way, as
 well as an "implicit" way where no schema is present, this presents a
 complexity for SQLAlchemy's reflection
 feature.  Reflecting a table in

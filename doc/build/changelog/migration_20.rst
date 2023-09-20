@@ -1525,7 +1525,7 @@ following the table, and may include additional notes not summarized here.
           )
 
           # or
-          
+
           session.scalar(
             select(func.count(User.id))
           )
@@ -2007,7 +2007,7 @@ The new approach makes use of the :func:`_orm.aliased` construct so that the
 ORM internals don't need to guess which entities and columns should be adapted
 and in what way; in the example above, the ``ua`` and ``aa`` objects, both
 of which are :class:`_orm.AliasedClass` instances, provide to the internals
-an unambiguous marker as to where the subquery should be referred towards
+an unambiguous marker as to where the subquery should be referenced
 as well as what entity column or relationship is being considered for a given
 component of the query.
 

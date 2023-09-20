@@ -843,7 +843,7 @@ Reflecting internal schema tables
 ----------------------------------
 
 Reflection methods that return lists of tables will omit so-called
-"SQLite internal schema object" names, which are referred towards by SQLite
+"SQLite internal schema object" names, which are considered by SQLite
 as any object name that is prefixed with ``sqlite_``.  An example of
 such an object is the ``sqlite_sequence`` table that's generated when
 the ``AUTOINCREMENT`` column parameter is used.   In order to return
