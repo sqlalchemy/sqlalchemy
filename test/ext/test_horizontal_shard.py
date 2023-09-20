@@ -196,7 +196,7 @@ class ShardTest:
         toronto = WeatherLocation("North America", "Toronto")
         london = WeatherLocation("Europe", "London")
         dublin = WeatherLocation("Europe", "Dublin")
-        brasilia = WeatherLocation("South America", "Brasila")
+        brasilia = WeatherLocation("South America", "Brasilia")
         quito = WeatherLocation("South America", "Quito")
         tokyo.reports.append(Report(80.0, id_=1))
         newyork.reports.append(Report(75, id_=1))
@@ -225,6 +225,16 @@ class ShardTest:
 
         t2 = sess.get(WeatherLocation, 1)
         is_(t2, tokyo)
+
+    def test_get_one(self):
+        sess = self._fixture_data()
+        brasilia = sess.get_one(WeatherLocation, 6)
+        eq_(brasilia.id, 6)
+        eq_(brasilia.city, "Brasilia")
+
+        toronto = sess.get_one(WeatherLocation, 3)
+        eq_(toronto.id, 3)
+        eq_(toronto.city, "Toronto")
 
     def test_get_explicit_shard(self):
         sess = self._fixture_data()

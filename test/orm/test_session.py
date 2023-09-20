@@ -609,6 +609,24 @@ class SessionUtilTest(_fixtures.FixtureTest):
 
         is_true(called)
 
+    def test_get_one_no_result(self):
+        users, User = self.tables.users, self.classes.User
+        self.mapper_registry.map_imperatively(User, users)
+
+        sess = fixture_session()
+        user1 = User(id=1, name="u1")
+
+        sess.add(user1)
+        sess.commit()
+
+        u1 = sess.get_one(User, user1.id)
+        assert user1.name == u1.name
+
+        with expect_raises_message(
+            sa.exc.NoResultFound, "No row was found when one was required"
+        ):
+            sess.get_one(User, 2)
+
 
 class SessionStateTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -1928,7 +1946,14 @@ class SessionInterface(fixtures.MappedTest):
     def _public_session_methods(self):
         Session = sa.orm.session.Session
 
-        blocklist = {"begin", "query", "bind_mapper", "get", "bind_table"}
+        blocklist = {
+            "begin",
+            "query",
+            "bind_mapper",
+            "get",
+            "get_one",
+            "bind_table",
+        }
         specials = {"__iter__", "__contains__"}
         ok = set()
         for name in dir(Session):

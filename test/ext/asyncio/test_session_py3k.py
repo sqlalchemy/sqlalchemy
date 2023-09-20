@@ -193,6 +193,25 @@ class AsyncSessionQueryTest(AsyncFixture):
         u3 = await async_session.get(User, 12)
         is_(u3, None)
 
+
+    @async_test
+    async def test_get_one(self, async_session):
+        User = self.classes.User
+
+        u1 = await async_session.get_one(User, 7)
+        u2 = await async_session.get_one(User, 10)
+        u3 = await async_session.get_one(User, 7)
+
+        is_(u1, u3)
+        eq_(u1.name, "jack")
+        eq_(u2.name, "chuck")
+
+        with testing.expect_raises_message(
+                exc.NoResultFound,
+                "No row was found when one was required",
+        ):
+            await async_session.get_one(User, 12)
+
     @async_test
     async def test_force_a_lazyload(self, async_session):
         """test for #9298"""
