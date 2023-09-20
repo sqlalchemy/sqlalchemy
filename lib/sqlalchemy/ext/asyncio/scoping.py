@@ -256,6 +256,45 @@ class async_scoped_session(Generic[_AS]):
         )
         return return_value
 
+    async def get_one(
+        self,
+        entity: _EntityBindKey[_O],
+        ident: _PKIdentityArgument,
+        *,
+        options: Optional[Sequence[ORMOption]] = None,
+        populate_existing: bool = False,
+        with_for_update: ForUpdateParameter = None,
+        identity_token: Optional[Any] = None,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
+    ) -> Optional[_O]:
+        r"""Return an instance based on the given primary key identifier,
+         or raise an exception.
+
+         Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects
+         no rows.
+
+        .. container:: class_bases
+            Proxied for the :class:`_asyncio.AsyncSession` class on
+            behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
+        """  # noqa: E501
+
+        return_value = await self._proxied.get(
+            entity,
+            ident,
+            options=options,
+            populate_existing=populate_existing,
+            with_for_update=with_for_update,
+            identity_token=identity_token,
+            execution_options=execution_options,
+        )
+
+        if not return_value:
+            raise sa_exc.NoResultFound(
+                "No row was found when one was required"
+            )
+
+        return return_value
+
     # START PROXY METHODS async_scoped_session
 
     # code within this block is **programmatically,

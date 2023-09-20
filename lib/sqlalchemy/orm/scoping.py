@@ -1028,6 +1028,134 @@ class scoped_session(Generic[_S]):
             bind_arguments=bind_arguments,
         )
 
+    def get_one(
+        self,
+        entity: _EntityBindKey[_O],
+        ident: _PKIdentityArgument,
+        *,
+        options: Optional[Sequence[ORMOption]] = None,
+        populate_existing: bool = False,
+        with_for_update: ForUpdateParameter = None,
+        identity_token: Optional[Any] = None,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+    ) -> Optional[_O]:
+        r"""Return exactly one instance based on the given primary key identifier,
+        or raise an exception.
+
+        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects
+        no rows.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_orm.scoping.scoped_session` class.
+
+        E.g.::
+
+            my_user = session.get_one(User, 5)
+
+            some_object = session.get_one(VersionedFoo, (5, 10))
+
+            some_object = session.get_one(
+                VersionedFoo,
+                {"id": 5, "version_id": 10}
+            )
+
+        :meth:`_orm.Session.get_one` is special in that it provides direct
+        access to the identity map of the :class:`.Session`.
+        If the given primary key identifier is present
+        in the local identity map, the object is returned
+        directly from this collection and no SQL is emitted,
+        unless the object has been marked fully expired.
+        If not present,
+        a SELECT is performed in order to locate the object.
+
+        :meth:`_orm.Session.get_one` also will perform a check if
+        the object is present in the identity map and
+        marked as expired - a SELECT
+        is emitted to refresh the object as well as to
+        ensure that the row is still present.
+        If not, :class:`~sqlalchemy.orm.exc.ObjectDeletedError` is raised.
+
+        :param entity: a mapped class or :class:`.Mapper` indicating the
+         type of entity to be loaded.
+
+        :param ident: A scalar, tuple, or dictionary representing the
+         primary key.  For a composite (e.g. multiple column) primary key,
+         a tuple or dictionary should be passed.
+
+         For a single-column primary key, the scalar calling form is typically
+         the most expedient.  If the primary key of a row is the value "7",
+         the call looks like::
+
+            my_object = session.get_one(SomeClass, 7)
+
+         The tuple form contains primary key values typically in
+         the order in which they correspond to the mapped
+         :class:`_schema.Table`
+         object's primary key columns, or if the
+         :paramref:`_orm.Mapper.primary_key` configuration parameter were
+         used, in
+         the order used for that parameter. For example, if the primary key
+         of a row is represented by the integer
+         digits "5, 10" the call would look like::
+
+             my_object = session.get_one(SomeClass, (5, 10))
+
+         The dictionary form should include as keys the mapped attribute names
+         corresponding to each element of the primary key.  If the mapped class
+         has the attributes ``id``, ``version_id`` as the attributes which
+         store the object's primary key value, the call would look like::
+
+            my_object = session.get_one(SomeClass, {"id": 5, "version_id": 10})
+
+        :param options: optional sequence of loader options which will be
+         applied to the query, if one is emitted.
+
+        :param populate_existing: causes the method to unconditionally emit
+         a SQL query and refresh the object with the newly loaded data,
+         regardless of whether or not the object is already present.
+
+        :param with_for_update: optional boolean ``True`` indicating FOR UPDATE
+          should be used, or may be a dictionary containing flags to
+          indicate a more specific set of FOR UPDATE flags for the SELECT;
+          flags should match the parameters of
+          :meth:`_query.Query.with_for_update`.
+          Supersedes the :paramref:`.Session.refresh.lockmode` parameter.
+
+        :param execution_options: optional dictionary of execution options,
+         which will be associated with the query execution if one is emitted.
+         This dictionary can provide a subset of the options that are
+         accepted by :meth:`_engine.Connection.execution_options`, and may
+         also provide additional options understood only in an ORM context.
+
+        :param bind_arguments: dictionary of additional arguments to determine
+         the bind.  May include "mapper", "bind", or other custom arguments.
+         Contents of this dictionary are passed to the
+         :meth:`.Session.get_bind` method.
+
+        :return: The object instance.
+        """  # noqa: E501
+
+        impl = self._proxied.get(
+            entity,
+            ident,
+            options=options,
+            populate_existing=populate_existing,
+            with_for_update=with_for_update,
+            identity_token=identity_token,
+            execution_options=execution_options,
+            bind_arguments=bind_arguments,
+        )
+
+        if not impl:
+            raise sa_exc.NoResultFound(
+                "No row was found when one was required"
+            )
+
+        return impl
+
     def get_bind(
         self,
         mapper: Optional[_EntityBindKey[_O]] = None,

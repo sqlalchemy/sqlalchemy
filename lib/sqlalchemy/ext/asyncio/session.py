@@ -31,6 +31,7 @@ from .base import StartableContext
 from .result import _ensure_sync_result
 from .result import AsyncResult
 from .result import AsyncScalarResult
+from ... import exc as async_exc
 from ... import util
 from ...orm import object_session
 from ...orm import Session
@@ -610,6 +611,41 @@ class AsyncSession(ReversibleProxy[Session]):
             with_for_update=with_for_update,
             identity_token=identity_token,
         )
+        return result_obj
+
+    async def get_one(
+        self,
+        entity: _EntityBindKey[_O],
+        ident: _PKIdentityArgument,
+        *,
+        options: Optional[Sequence[ORMOption]] = None,
+        populate_existing: bool = False,
+        with_for_update: ForUpdateParameter = None,
+        identity_token: Optional[Any] = None,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
+    ) -> Optional[_O]:
+        """Return an instance based on the given primary key identifier,
+         or raise an exception.
+
+         Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects
+         no rows.
+        """
+
+        result_obj = await greenlet_spawn(
+            cast("Callable[..., _O]", self.sync_session.get),
+            entity,
+            ident,
+            options=options,
+            populate_existing=populate_existing,
+            with_for_update=with_for_update,
+            identity_token=identity_token,
+        )
+
+        if not result_obj:
+            raise async_exc.NoResultFound(
+                "No row was found when one was required"
+            )
+
         return result_obj
 
     @overload
