@@ -8,6 +8,7 @@ from types import MappingProxyType
 
 from sqlalchemy import bindparam
 from sqlalchemy import column
+from sqlalchemy.util.langhelpers import load_uncompiled_module
 
 
 def test_case(fn=None, *, number=None):
@@ -48,7 +49,7 @@ class Case:
         try:
             return fn()
         except Exception as e:
-            print(f"Error loading {fn}: {e}")
+            print(f"Error loading {fn}: {e!r}")
 
     @classmethod
     def import_object(cls):
@@ -92,7 +93,7 @@ class Case:
 
         results = defaultdict(dict)
         for name, impl in objects:
-            print(f"Running {name} ", end="", flush=True)
+            print(f"Running {name:<10} ", end="", flush=True)
             impl_case = cls(impl)
             fails = []
             for m in methods:
@@ -121,9 +122,11 @@ class Case:
 class ImmutableDict(Case):
     @staticmethod
     def python():
-        from sqlalchemy.util._py_collections import immutabledict
+        from sqlalchemy.util import _immutabledict_cy
 
-        return immutabledict
+        py_immutabledict = load_uncompiled_module(_immutabledict_cy)
+        assert not py_immutabledict._is_compiled()
+        return py_immutabledict.immutabledict
 
     @staticmethod
     def c():
@@ -133,9 +136,10 @@ class ImmutableDict(Case):
 
     @staticmethod
     def cython():
-        from sqlalchemy.cyextension.immutabledict import immutabledict
+        from sqlalchemy.util import _immutabledict_cy
 
-        return immutabledict
+        assert _immutabledict_cy._is_compiled()
+        return _immutabledict_cy.immutabledict
 
     IMPLEMENTATIONS = {
         "python": python.__func__,
@@ -179,6 +183,7 @@ class ImmutableDict(Case):
     @test_case
     def union(self):
         self.d1.union(self.small)
+        self.d1.union(self.small.items())
 
     @test_case
     def union_large(self):
@@ -187,6 +192,7 @@ class ImmutableDict(Case):
     @test_case
     def merge_with(self):
         self.d1.merge_with(self.small)
+        self.d1.merge_with(self.small.items())
 
     @test_case
     def merge_with_large(self):
@@ -263,12 +269,14 @@ class ImmutableDict(Case):
         self.d1 != "foo"
 
 
-class Processor(Case):
+class Processors(Case):
     @staticmethod
     def python():
-        from sqlalchemy.engine import processors
+        from sqlalchemy.engine import _processors_cy
 
-        return processors
+        py_processors = load_uncompiled_module(_processors_cy)
+        assert not py_processors._is_compiled()
+        return py_processors
 
     @staticmethod
     def c():
@@ -282,13 +290,10 @@ class Processor(Case):
 
     @staticmethod
     def cython():
-        from sqlalchemy.cyextension import processors as mod
+        from sqlalchemy.engine import _processors_cy
 
-        mod.to_decimal_processor_factory = (
-            lambda t, s: mod.DecimalResultProcessor(t, "%%.%df" % s).process
-        )
-
-        return mod
+        assert _processors_cy._is_compiled()
+        return _processors_cy
 
     IMPLEMENTATIONS = {
         "python": python.__func__,
@@ -298,10 +303,7 @@ class Processor(Case):
     NUMBER = 500_000
 
     def init_objects(self):
-        self.to_dec = self.impl.to_decimal_processor_factory(Decimal, 10)
-
-        self.bytes = token_urlsafe(2048).encode()
-        self.text = token_urlsafe(2048)
+        self.to_dec = self.impl.to_decimal_processor_factory(Decimal, 3)
 
     @classmethod
     def update_results(cls, results):
@@ -323,6 +325,7 @@ class Processor(Case):
         self.impl.to_str(123)
         self.impl.to_str(True)
         self.impl.to_str(self)
+        self.impl.to_str("self")
 
     @test_case
     def to_float(self):
@@ -332,6 +335,9 @@ class Processor(Case):
         self.impl.to_float(42)
         self.impl.to_float(0)
         self.impl.to_float(42.0)
+        self.impl.to_float("nan")
+        self.impl.to_float("42")
+        self.impl.to_float("42.0")
 
     @test_case
     def str_to_datetime(self):
@@ -351,11 +357,16 @@ class Processor(Case):
         self.impl.str_to_date("2020-01-01")
 
     @test_case
-    def to_decimal(self):
-        self.to_dec(None) is None
+    def to_decimal_call(self):
+        assert self.to_dec(None) is None
         self.to_dec(123.44)
         self.to_dec(99)
-        self.to_dec(99)
+        self.to_dec(1 / 3)
+
+    @test_case
+    def to_decimal_pf_make(self):
+        self.impl.to_decimal_processor_factory(Decimal, 3)
+        self.impl.to_decimal_processor_factory(Decimal, 7)
 
 
 class DistillParam(Case):
@@ -363,15 +374,18 @@ class DistillParam(Case):
 
     @staticmethod
     def python():
-        from sqlalchemy.engine import _py_util
+        from sqlalchemy.engine import _util_cy
 
-        return _py_util
+        py_util = load_uncompiled_module(_util_cy)
+        assert not py_util._is_compiled()
+        return py_util
 
     @staticmethod
     def cython():
-        from sqlalchemy.cyextension import util as mod
+        from sqlalchemy.engine import _util_cy
 
-        return mod
+        assert _util_cy._is_compiled()
+        return _util_cy
 
     IMPLEMENTATIONS = {
         "python": python.__func__,
@@ -458,15 +472,18 @@ class IdentitySet(Case):
 
     @staticmethod
     def python():
-        from sqlalchemy.util._py_collections import IdentitySet
+        from sqlalchemy.util import _collections_cy
 
-        return IdentitySet
+        py_coll = load_uncompiled_module(_collections_cy)
+        assert not py_coll._is_compiled()
+        return py_coll.IdentitySet
 
     @staticmethod
     def cython():
-        from sqlalchemy.cyextension import collections
+        from sqlalchemy.util import _collections_cy
 
-        return collections.IdentitySet
+        assert _collections_cy._is_compiled()
+        return _collections_cy.IdentitySet
 
     IMPLEMENTATIONS = {
         "set": set_fn.__func__,
@@ -478,7 +495,6 @@ class IdentitySet(Case):
     def init_objects(self):
         self.val1 = list(range(10))
         self.val2 = list(wrap(token_urlsafe(4 * 2048), 4))
-
         self.imp_1 = self.impl(self.val1)
         self.imp_2 = self.impl(self.val2)
 
@@ -488,45 +504,41 @@ class IdentitySet(Case):
         cls._divide_results(results, "cython", "python", "cy / py")
         cls._divide_results(results, "cython", "set", "cy / set")
 
-    @test_case
+    @test_case(number=2_500_000)
     def init_empty(self):
-        i = self.impl
-        for _ in range(10000):
-            i()
+        self.impl()
 
-    @test_case
+    @test_case(number=2_500)
     def init(self):
-        i, v = self.impl, self.val2
-        for _ in range(500):
-            i(v)
+        self.impl(self.val1)
+        self.impl(self.val2)
 
-    @test_case
+    @test_case(number=5_000)
     def init_from_impl(self):
-        for _ in range(500):
-            self.impl(self.imp_2)
+        self.impl(self.imp_2)
 
-    @test_case
+    @test_case(number=100)
     def add(self):
         ii = self.impl()
-        for _ in range(10):
-            for i in range(1000):
-                ii.add(str(i))
+        x = 25_000
+        for i in range(x):
+            ii.add(str(i % (x / 2)))
 
     @test_case
     def contains(self):
         ii = self.impl(self.val2)
-        for _ in range(500):
+        for _ in range(1_000):
             for x in self.val1 + self.val2:
                 x in ii
 
-    @test_case
+    @test_case(number=200)
     def remove(self):
         v = [str(i) for i in range(7500)]
         ii = self.impl(v)
         for x in v[:5000]:
             ii.remove(x)
 
-    @test_case
+    @test_case(number=200)
     def discard(self):
         v = [str(i) for i in range(7500)]
         ii = self.impl(v)
@@ -535,7 +547,7 @@ class IdentitySet(Case):
 
     @test_case
     def pop(self):
-        for x in range(1000):
+        for x in range(50_000):
             ii = self.impl(self.val1)
             for x in self.val1:
                 ii.pop()
@@ -543,152 +555,137 @@ class IdentitySet(Case):
     @test_case
     def clear(self):
         i, v = self.impl, self.val1
-        for _ in range(5000):
+        for _ in range(125_000):
             ii = i(v)
             ii.clear()
 
-    @test_case
+    @test_case(number=2_500_000)
     def eq(self):
-        for x in range(1000):
-            self.imp_1 == self.imp_1
-            self.imp_1 == self.imp_2
-            self.imp_1 == self.val2
+        self.imp_1 == self.imp_1
+        self.imp_1 == self.imp_2
+        self.imp_1 == self.val2
 
-    @test_case
+    @test_case(number=2_500_000)
     def ne(self):
-        for x in range(1000):
-            self.imp_1 != self.imp_1
-            self.imp_1 != self.imp_2
-            self.imp_1 != self.val2
+        self.imp_1 != self.imp_1
+        self.imp_1 != self.imp_2
+        self.imp_1 != self.val2
 
-    @test_case
+    @test_case(number=20_000)
     def issubset(self):
-        for _ in range(250):
-            self.imp_1.issubset(self.imp_1)
-            self.imp_1.issubset(self.imp_2)
-            self.imp_1.issubset(self.val1)
-            self.imp_1.issubset(self.val2)
+        self.imp_1.issubset(self.imp_1)
+        self.imp_1.issubset(self.imp_2)
+        self.imp_1.issubset(self.val1)
+        self.imp_1.issubset(self.val2)
 
-    @test_case
+    @test_case(number=50_000)
     def le(self):
-        for x in range(1000):
-            self.imp_1 <= self.imp_1
-            self.imp_1 <= self.imp_2
-            self.imp_2 <= self.imp_1
-            self.imp_2 <= self.imp_2
+        self.imp_1 <= self.imp_1
+        self.imp_1 <= self.imp_2
+        self.imp_2 <= self.imp_1
+        self.imp_2 <= self.imp_2
 
-    @test_case
+    @test_case(number=2_500_000)
     def lt(self):
-        for x in range(2500):
-            self.imp_1 < self.imp_1
-            self.imp_1 < self.imp_2
-            self.imp_2 < self.imp_1
-            self.imp_2 < self.imp_2
+        self.imp_1 < self.imp_1
+        self.imp_1 < self.imp_2
+        self.imp_2 < self.imp_1
+        self.imp_2 < self.imp_2
 
-    @test_case
+    @test_case(number=20_000)
     def issuperset(self):
-        for _ in range(250):
-            self.imp_1.issuperset(self.imp_1)
-            self.imp_1.issuperset(self.imp_2)
-            self.imp_1.issubset(self.val1)
-            self.imp_1.issubset(self.val2)
+        self.imp_1.issuperset(self.imp_1)
+        self.imp_1.issuperset(self.imp_2)
+        self.imp_1.issubset(self.val1)
+        self.imp_1.issubset(self.val2)
 
-    @test_case
+    @test_case(number=50_000)
     def ge(self):
-        for x in range(1000):
-            self.imp_1 >= self.imp_1
-            self.imp_1 >= self.imp_2
-            self.imp_2 >= self.imp_1
-            self.imp_2 >= self.imp_2
+        self.imp_1 >= self.imp_1
+        self.imp_1 >= self.imp_2
+        self.imp_2 >= self.imp_1
+        self.imp_2 >= self.imp_2
 
-    @test_case
+    @test_case(number=2_500_000)
     def gt(self):
-        for x in range(2500):
-            self.imp_1 > self.imp_1
-            self.imp_2 > self.imp_2
-            self.imp_2 > self.imp_1
-            self.imp_2 > self.imp_2
+        self.imp_1 > self.imp_1
+        self.imp_2 > self.imp_2
+        self.imp_2 > self.imp_1
+        self.imp_2 > self.imp_2
 
-    @test_case
+    @test_case(number=10_000)
     def union(self):
-        for _ in range(250):
-            self.imp_1.union(self.imp_2)
+        self.imp_1.union(self.imp_2)
 
-    @test_case
+    @test_case(number=10_000)
     def or_test(self):
-        for _ in range(250):
-            self.imp_1 | self.imp_2
+        self.imp_1 | self.imp_2
 
     @test_case
     def update(self):
         ii = self.impl(self.val1)
-        for _ in range(250):
+        for _ in range(1_000):
             ii.update(self.imp_2)
 
     @test_case
     def ior(self):
         ii = self.impl(self.val1)
-        for _ in range(250):
+        for _ in range(1_000):
             ii |= self.imp_2
 
     @test_case
     def difference(self):
-        for _ in range(250):
+        for _ in range(2_500):
             self.imp_1.difference(self.imp_2)
             self.imp_1.difference(self.val2)
 
-    @test_case
+    @test_case(number=250_000)
     def sub(self):
-        for _ in range(500):
-            self.imp_1 - self.imp_2
+        self.imp_1 - self.imp_2
 
     @test_case
     def difference_update(self):
         ii = self.impl(self.val1)
-        for _ in range(250):
+        for _ in range(2_500):
             ii.difference_update(self.imp_2)
             ii.difference_update(self.val2)
 
     @test_case
     def isub(self):
         ii = self.impl(self.val1)
-        for _ in range(500):
+        for _ in range(250_000):
             ii -= self.imp_2
 
-    @test_case
+    @test_case(number=20_000)
     def intersection(self):
-        for _ in range(250):
-            self.imp_1.intersection(self.imp_2)
-            self.imp_1.intersection(self.val2)
+        self.imp_1.intersection(self.imp_2)
+        self.imp_1.intersection(self.val2)
 
-    @test_case
+    @test_case(number=250_000)
     def and_test(self):
-        for _ in range(500):
-            self.imp_1 & self.imp_2
+        self.imp_1 & self.imp_2
 
     @test_case
     def intersection_up(self):
         ii = self.impl(self.val1)
-        for _ in range(250):
+        for _ in range(2_500):
             ii.intersection_update(self.imp_2)
             ii.intersection_update(self.val2)
 
     @test_case
     def iand(self):
         ii = self.impl(self.val1)
-        for _ in range(500):
+        for _ in range(250_000):
             ii &= self.imp_2
 
-    @test_case
+    @test_case(number=2_500)
     def symmetric_diff(self):
-        for _ in range(125):
-            self.imp_1.symmetric_difference(self.imp_2)
-            self.imp_1.symmetric_difference(self.val2)
+        self.imp_1.symmetric_difference(self.imp_2)
+        self.imp_1.symmetric_difference(self.val2)
 
-    @test_case
+    @test_case(number=2_500)
     def xor(self):
-        for _ in range(250):
-            self.imp_1 ^ self.imp_2
+        self.imp_1 ^ self.imp_2
 
     @test_case
     def symmetric_diff_up(self):
@@ -703,29 +700,25 @@ class IdentitySet(Case):
         for _ in range(250):
             ii ^= self.imp_2
 
-    @test_case
+    @test_case(number=25_000)
     def copy(self):
-        for _ in range(250):
-            self.imp_1.copy()
-            self.imp_2.copy()
+        self.imp_1.copy()
+        self.imp_2.copy()
 
-    @test_case
+    @test_case(number=2_500_000)
     def len(self):
-        for x in range(5000):
-            len(self.imp_1)
-            len(self.imp_2)
+        len(self.imp_1)
+        len(self.imp_2)
 
-    @test_case
+    @test_case(number=25_000)
     def iter(self):
-        for _ in range(2000):
-            list(self.imp_1)
-            list(self.imp_2)
+        list(self.imp_1)
+        list(self.imp_2)
 
-    @test_case
+    @test_case(number=10_000)
     def repr(self):
-        for _ in range(250):
-            str(self.imp_1)
-            str(self.imp_2)
+        str(self.imp_1)
+        str(self.imp_2)
 
 
 class OrderedSet(IdentitySet):
@@ -735,15 +728,18 @@ class OrderedSet(IdentitySet):
 
     @staticmethod
     def python():
-        from sqlalchemy.util._py_collections import OrderedSet
+        from sqlalchemy.util import _collections_cy
 
-        return OrderedSet
+        py_coll = load_uncompiled_module(_collections_cy)
+        assert not py_coll._is_compiled()
+        return py_coll.OrderedSet
 
     @staticmethod
     def cython():
-        from sqlalchemy.cyextension import collections
+        from sqlalchemy.util import _collections_cy
 
-        return collections.OrderedSet
+        assert _collections_cy._is_compiled()
+        return _collections_cy.OrderedSet
 
     @staticmethod
     def ordered_lib():
@@ -768,22 +764,87 @@ class OrderedSet(IdentitySet):
     def add_op(self):
         ii = self.impl(self.val1)
         v2 = self.impl(self.val2)
-        for _ in range(1000):
+        for _ in range(500):
             ii + v2
 
     @test_case
     def getitem(self):
         ii = self.impl(self.val1)
-        for _ in range(1000):
+        for _ in range(250_000):
             for i in range(len(self.val1)):
                 ii[i]
 
     @test_case
     def insert(self):
-        ii = self.impl(self.val1)
         for _ in range(5):
-            for i in range(1000):
-                ii.insert(-i % 2, 1)
+            ii = self.impl(self.val1)
+            for i in range(5_000):
+                ii.insert(i // 2, i)
+                ii.insert(-i % 2, i)
+
+
+class UniqueList(Case):
+    @staticmethod
+    def python():
+        from sqlalchemy.util import _collections_cy
+
+        py_coll = load_uncompiled_module(_collections_cy)
+        assert not py_coll._is_compiled()
+        return py_coll.unique_list
+
+    @staticmethod
+    def cython():
+        from sqlalchemy.util import _collections_cy
+
+        assert _collections_cy._is_compiled()
+        return _collections_cy.unique_list
+
+    IMPLEMENTATIONS = {
+        "python": python.__func__,
+        "cython": cython.__func__,
+    }
+
+    @classmethod
+    def update_results(cls, results):
+        cls._divide_results(results, "cython", "python", "cy / py")
+
+    def init_objects(self):
+        self.int_small = list(range(10))
+        self.int_vlarge = list(range(25_000)) * 2
+        d = wrap(token_urlsafe(100 * 2048), 4)
+        assert len(d) > 50_000
+        self.vlarge = d[:50_000]
+        self.large = d[:500]
+        self.small = d[:15]
+
+    @test_case
+    def small_str(self):
+        self.impl(self.small)
+
+    @test_case(number=50_000)
+    def large_str(self):
+        self.impl(self.large)
+
+    @test_case(number=250)
+    def vlarge_str(self):
+        self.impl(self.vlarge)
+
+    @test_case
+    def small_range(self):
+        self.impl(range(10))
+
+    @test_case
+    def small_int(self):
+        self.impl(self.int_small)
+
+    @test_case(number=25_000)
+    def large_int(self):
+        self.impl([1, 1, 1, 2, 3] * 100)
+        self.impl(range(1000))
+
+    @test_case(number=250)
+    def vlarge_int(self):
+        self.impl(self.int_vlarge)
 
 
 class TupleGetter(Case):
@@ -791,9 +852,11 @@ class TupleGetter(Case):
 
     @staticmethod
     def python():
-        from sqlalchemy.engine._py_row import tuplegetter
+        from sqlalchemy.engine import _util_cy
 
-        return tuplegetter
+        py_util = load_uncompiled_module(_util_cy)
+        assert not py_util._is_compiled()
+        return py_util.tuplegetter
 
     @staticmethod
     def c():
@@ -803,9 +866,10 @@ class TupleGetter(Case):
 
     @staticmethod
     def cython():
-        from sqlalchemy.cyextension import resultproxy
+        from sqlalchemy.engine import _util_cy
 
-        return resultproxy.tuplegetter
+        assert _util_cy._is_compiled()
+        return _util_cy.tuplegetter
 
     IMPLEMENTATIONS = {
         "python": python.__func__,
@@ -855,9 +919,11 @@ class TupleGetter(Case):
 class BaseRow(Case):
     @staticmethod
     def python():
-        from sqlalchemy.engine._py_row import BaseRow
+        from sqlalchemy.engine import _row_cy
 
-        return BaseRow
+        py_res = load_uncompiled_module(_row_cy)
+        assert not py_res._is_compiled()
+        return py_res.BaseRow
 
     @staticmethod
     def c():
@@ -867,9 +933,10 @@ class BaseRow(Case):
 
     @staticmethod
     def cython():
-        from sqlalchemy.cyextension import resultproxy
+        from sqlalchemy.engine import _row_cy
 
-        return resultproxy.BaseRow
+        assert _row_cy._is_compiled()
+        return _row_cy.BaseRow
 
     IMPLEMENTATIONS = {
         "python": python.__func__,
@@ -909,9 +976,11 @@ class BaseRow(Case):
         self.row_long_state = self.row_long.__getstate__()
 
         assert len(ascii_letters) == 52
+        _proc = [None, int, float, None, str] * 10
+        _proc += [int, float]
         self.parent_proc = SimpleResultMetaData(
             tuple(ascii_letters),
-            _processors=[None, int, float, None, str] * 10,  # cut the last 2
+            _processors=_proc,
         )
         self.row_proc_args = (
             self.parent_proc,
@@ -1024,7 +1093,7 @@ class BaseRow(Case):
         self.row_long.x
         self.row_long.y
 
-    @test_case(number=50_000)
+    @test_case(number=25_000)
     def get_by_key_recreate(self):
         self.init_objects()
         row = self.row
@@ -1041,7 +1110,7 @@ class BaseRow(Case):
             l_row._get_by_key_impl_mapping("w")
             l_row._get_by_key_impl_mapping("o")
 
-    @test_case(number=50_000)
+    @test_case(number=10_000)
     def getattr_recreate(self):
         self.init_objects()
         row = self.row
@@ -1059,18 +1128,21 @@ class BaseRow(Case):
             l_row.o
 
 
-class CacheAnonMap(Case):
+class AnonMap(Case):
     @staticmethod
     def python():
-        from sqlalchemy.sql._py_util import cache_anon_map
+        from sqlalchemy.sql import _util_cy
 
-        return cache_anon_map
+        py_util = load_uncompiled_module(_util_cy)
+        assert not py_util._is_compiled()
+        return py_util.anon_map
 
     @staticmethod
     def cython():
-        from sqlalchemy.cyextension.util import cache_anon_map
+        from sqlalchemy.sql import _util_cy
 
-        return cache_anon_map
+        assert _util_cy._is_compiled()
+        return _util_cy.anon_map
 
     IMPLEMENTATIONS = {"python": python.__func__, "cython": cython.__func__}
 
@@ -1090,34 +1162,41 @@ class CacheAnonMap(Case):
         cls._divide_results(results, "cython", "python", "cy / py")
 
     @test_case
-    def test_get_anon_non_present(self):
+    def test_make(self):
+        self.impl()
+
+    @test_case
+    def test_get_anon_np(self):
         self.impl_w_non_present.get_anon(self.object_1)
 
     @test_case
-    def test_get_anon_present(self):
+    def test_get_anon_p(self):
         self.impl_w_present.get_anon(self.object_1)
 
     @test_case
-    def test_has_key_non_present(self):
+    def test_has_key_np(self):
         id(self.object_1) in self.impl_w_non_present
 
     @test_case
-    def test_has_key_present(self):
+    def test_has_key_p(self):
         id(self.object_1) in self.impl_w_present
 
 
 class PrefixAnonMap(Case):
     @staticmethod
     def python():
-        from sqlalchemy.sql._py_util import prefix_anon_map
+        from sqlalchemy.sql import _util_cy
 
-        return prefix_anon_map
+        py_util = load_uncompiled_module(_util_cy)
+        assert not py_util._is_compiled()
+        return py_util.prefix_anon_map
 
     @staticmethod
     def cython():
-        from sqlalchemy.cyextension.util import prefix_anon_map
+        from sqlalchemy.sql import _util_cy
 
-        return prefix_anon_map
+        assert _util_cy._is_compiled()
+        return _util_cy.prefix_anon_map
 
     IMPLEMENTATIONS = {"python": python.__func__, "cython": cython.__func__}
 
@@ -1137,11 +1216,15 @@ class PrefixAnonMap(Case):
         cls._divide_results(results, "cython", "python", "cy / py")
 
     @test_case
-    def test_apply_non_present(self):
+    def test_make(self):
+        self.impl()
+
+    @test_case
+    def test_apply_np(self):
         self.name.apply_map(self.impl_w_non_present)
 
     @test_case
-    def test_apply_present(self):
+    def test_apply_p(self):
         self.name.apply_map(self.impl_w_present)
 
 

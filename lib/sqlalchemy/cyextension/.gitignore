@@ -1,5 +1,0 @@
-# cython complied files
-*.c
-*.o
-# cython annotated output
-*.html

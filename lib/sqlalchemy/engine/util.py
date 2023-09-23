@@ -7,28 +7,17 @@
 
 from __future__ import annotations
 
-import typing
 from typing import Any
 from typing import Callable
 from typing import Optional
 from typing import Protocol
 from typing import TypeVar
 
+from ._util_cy import _distill_params_20 as _distill_params_20  # noqa: F401
+from ._util_cy import _distill_raw_params as _distill_raw_params  # noqa: F401
 from .. import exc
 from .. import util
-from ..util._has_cy import HAS_CYEXTENSION
 from ..util.typing import Self
-
-if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
-    from ._py_util import _distill_params_20 as _distill_params_20
-    from ._py_util import _distill_raw_params as _distill_raw_params
-else:
-    from sqlalchemy.cyextension.util import (  # noqa: F401
-        _distill_params_20 as _distill_params_20,
-    )
-    from sqlalchemy.cyextension.util import (  # noqa: F401
-        _distill_raw_params as _distill_raw_params,
-    )
 
 _C = TypeVar("_C", bound=Callable[[], Any])
 

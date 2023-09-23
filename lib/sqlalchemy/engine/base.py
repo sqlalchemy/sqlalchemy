@@ -1449,9 +1449,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     ) -> Any:
         """Execute a schema.ColumnDefault object."""
 
-        execution_options = self._execution_options.merge_with(
-            execution_options
-        )
+        exec_opts = self._execution_options.merge_with(execution_options)
 
         event_multiparams: Optional[_CoreMultiExecuteParams]
         event_params: Optional[_CoreAnyExecuteParams]
@@ -1467,7 +1465,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 event_multiparams,
                 event_params,
             ) = self._invoke_before_exec_event(
-                default, distilled_parameters, execution_options
+                default, distilled_parameters, exec_opts
             )
         else:
             event_multiparams = event_params = None
@@ -1479,7 +1477,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
             dialect = self.dialect
             ctx = dialect.execution_ctx_cls._init_default(
-                dialect, self, conn, execution_options
+                dialect, self, conn, exec_opts
             )
         except (exc.PendingRollbackError, exc.ResourceClosedError):
             raise
@@ -1494,7 +1492,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 default,
                 event_multiparams,
                 event_params,
-                execution_options,
+                exec_opts,
                 ret,
             )
 
@@ -1603,7 +1601,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     ) -> CursorResult[Unpack[TupleAny]]:
         """Execute a sql.ClauseElement object."""
 
-        execution_options = elem._execution_options.merge_with(
+        exec_opts = elem._execution_options.merge_with(
             self._execution_options, execution_options
         )
 
@@ -1615,7 +1613,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 event_multiparams,
                 event_params,
             ) = self._invoke_before_exec_event(
-                elem, distilled_parameters, execution_options
+                elem, distilled_parameters, exec_opts
             )
 
         if distilled_parameters:
@@ -1629,11 +1627,9 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
         dialect = self.dialect
 
-        schema_translate_map = execution_options.get(
-            "schema_translate_map", None
-        )
+        schema_translate_map = exec_opts.get("schema_translate_map", None)
 
-        compiled_cache: Optional[CompiledCacheType] = execution_options.get(
+        compiled_cache: Optional[CompiledCacheType] = exec_opts.get(
             "compiled_cache", self.engine._compiled_cache
         )
 
@@ -1650,7 +1646,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             dialect.execution_ctx_cls._init_compiled,
             compiled_sql,
             distilled_parameters,
-            execution_options,
+            exec_opts,
             compiled_sql,
             distilled_parameters,
             elem,
@@ -1663,7 +1659,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 elem,
                 event_multiparams,
                 event_params,
-                execution_options,
+                exec_opts,
                 ret,
             )
         return ret
@@ -1680,7 +1676,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
         """
 
-        execution_options = compiled.execution_options.merge_with(
+        exec_opts = compiled.execution_options.merge_with(
             self._execution_options, execution_options
         )
 
@@ -1691,7 +1687,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 event_multiparams,
                 event_params,
             ) = self._invoke_before_exec_event(
-                compiled, distilled_parameters, execution_options
+                compiled, distilled_parameters, exec_opts
             )
 
         dialect = self.dialect
@@ -1701,7 +1697,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             dialect.execution_ctx_cls._init_compiled,
             compiled,
             distilled_parameters,
-            execution_options,
+            exec_opts,
             compiled,
             distilled_parameters,
             None,
@@ -1713,7 +1709,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 compiled,
                 event_multiparams,
                 event_params,
-                execution_options,
+                exec_opts,
                 ret,
             )
         return ret
@@ -1779,9 +1775,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
         distilled_parameters = _distill_raw_params(parameters)
 
-        execution_options = self._execution_options.merge_with(
-            execution_options
-        )
+        exec_opts = self._execution_options.merge_with(execution_options)
 
         dialect = self.dialect
         ret = self._execute_context(
@@ -1789,7 +1783,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             dialect.execution_ctx_cls._init_statement,
             statement,
             None,
-            execution_options,
+            exec_opts,
             statement,
             distilled_parameters,
         )

@@ -1553,14 +1553,15 @@ class InstrumentedDict(Dict[_KT, _VT]):
     """An instrumented version of the built-in dict."""
 
 
-__canned_instrumentation: util.immutabledict[Any, _CollectionFactoryType] = (
+__canned_instrumentation = cast(
+    util.immutabledict[Any, _CollectionFactoryType],
     util.immutabledict(
         {
             list: InstrumentedList,
             set: InstrumentedSet,
             dict: InstrumentedDict,
         }
-    )
+    ),
 )
 
 __interfaces: util.immutabledict[

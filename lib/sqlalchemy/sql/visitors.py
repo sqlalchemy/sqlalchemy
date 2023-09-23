@@ -35,27 +35,17 @@ from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
+from ._util_cy import anon_map as anon_map
+from ._util_cy import prefix_anon_map as prefix_anon_map  # noqa: F401
 from .. import exc
 from .. import util
 from ..util import langhelpers
-from ..util._has_cy import HAS_CYEXTENSION
 from ..util.typing import Literal
 from ..util.typing import Self
 
 if TYPE_CHECKING:
     from .annotation import _AnnotationDict
     from .elements import ColumnElement
-
-if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
-    from ._py_util import prefix_anon_map as prefix_anon_map
-    from ._py_util import cache_anon_map as anon_map
-else:
-    from sqlalchemy.cyextension.util import (  # noqa: F401,E501
-        prefix_anon_map as prefix_anon_map,
-    )
-    from sqlalchemy.cyextension.util import (  # noqa: F401,E501
-        cache_anon_map as anon_map,
-    )
 
 
 __all__ = [

@@ -15,6 +15,7 @@ from __future__ import annotations
 import collections
 import enum
 from functools import update_wrapper
+import importlib.util
 import inspect
 import itertools
 import operator
@@ -24,6 +25,7 @@ import textwrap
 import threading
 import types
 from types import CodeType
+from types import ModuleType
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -47,18 +49,14 @@ import warnings
 
 from . import _collections
 from . import compat
-from ._has_cy import HAS_CYEXTENSION
 from .typing import Literal
 from .. import exc
 
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
 _F = TypeVar("_F", bound=Callable[..., Any])
-_MP = TypeVar("_MP", bound="memoized_property[Any]")
 _MA = TypeVar("_MA", bound="HasMemoized.memoized_attribute[Any]")
-_HP = TypeVar("_HP", bound="hybridproperty[Any]")
-_HM = TypeVar("_HM", bound="hybridmethod[Any]")
-
+_M = TypeVar("_M", bound=ModuleType)
 
 if compat.py310:
 
@@ -2200,6 +2198,8 @@ def repr_tuple_names(names: List[str]) -> Optional[str]:
 
 
 def has_compiled_ext(raise_=False):
+    from ._has_cython import HAS_CYEXTENSION
+
     if HAS_CYEXTENSION:
         return True
     elif raise_:
@@ -2209,3 +2209,27 @@ def has_compiled_ext(raise_=False):
         )
     else:
         return False
+
+
+def load_uncompiled_module(module: _M) -> _M:
+    """Load the non-compied version of a module that is also
+    compiled with cython.
+    """
+    full_name = module.__name__
+    assert module.__spec__
+    parent_name = module.__spec__.parent
+    assert parent_name
+    parent_module = sys.modules[parent_name]
+    assert parent_module.__spec__
+    package_path = parent_module.__spec__.origin
+    assert package_path and package_path.endswith("__init__.py")
+
+    name = full_name.split(".")[-1]
+    module_path = package_path.replace("__init__.py", f"{name}.py")
+
+    py_spec = importlib.util.spec_from_file_location(full_name, module_path)
+    assert py_spec
+    py_module = importlib.util.module_from_spec(py_spec)
+    assert py_spec.loader
+    py_spec.loader.exec_module(py_module)
+    return cast(_M, py_module)

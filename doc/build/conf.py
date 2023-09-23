@@ -25,8 +25,6 @@ sys.path.insert(0, os.path.abspath("../.."))  # examples
 # sys.path.insert(0, os.path.abspath("."))
 
 
-os.environ["DISABLE_SQLALCHEMY_CEXT_RUNTIME"] = "true"
-
 # -- General configuration --------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.

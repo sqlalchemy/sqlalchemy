@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
+from ._util_cy import tuplegetter as tuplegetter
 from .row import Row
 from .row import RowMapping
 from .. import exc
@@ -43,17 +44,11 @@ from ..sql.base import InPlaceGenerative
 from ..util import deprecated
 from ..util import HasMemoized_ro_memoized_attribute
 from ..util import NONE_SET
-from ..util._has_cy import HAS_CYEXTENSION
 from ..util.typing import Literal
 from ..util.typing import Self
 from ..util.typing import TupleAny
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
-
-if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
-    from ._py_row import tuplegetter as tuplegetter
-else:
-    from sqlalchemy.cyextension.resultproxy import tuplegetter as tuplegetter
 
 if typing.TYPE_CHECKING:
     from ..sql.schema import Column
@@ -103,7 +98,7 @@ class ResultMetaData:
     _keymap: _KeyMapType
     _keys: Sequence[str]
     _processors: Optional[_ProcessorsType]
-    _key_to_index: Mapping[_KeyType, int]
+    _key_to_index: Dict[_KeyType, int]
 
     @property
     def keys(self) -> RMKeyView:
@@ -183,7 +178,7 @@ class ResultMetaData:
 
     def _make_key_to_index(
         self, keymap: Mapping[_KeyType, Sequence[Any]], index: int
-    ) -> Mapping[_KeyType, int]:
+    ) -> Dict[_KeyType, int]:
         return {
             key: rec[index]
             for key, rec in keymap.items()
@@ -462,7 +457,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                 def process_row(
                     metadata: ResultMetaData,
                     processors: Optional[_ProcessorsType],
-                    key_to_index: Mapping[_KeyType, int],
+                    key_to_index: Dict[_KeyType, int],
                     scalar_obj: Any,
                 ) -> Row[Unpack[TupleAny]]:
                     return _proc(

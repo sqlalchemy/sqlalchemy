@@ -283,7 +283,7 @@ class MemUsageTest(EnsureZeroed):
     def test_DecimalResultProcessor_init(self):
         @profile_memory()
         def go():
-            to_decimal_processor_factory({}, 10)
+            to_decimal_processor_factory(dict, 10)
 
         go()
 

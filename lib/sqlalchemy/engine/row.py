@@ -25,18 +25,12 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import TYPE_CHECKING
-from typing import TypeVar
 
+from ._row_cy import BaseRow as BaseRow
 from ..sql import util as sql_util
 from ..util import deprecated
-from ..util._has_cy import HAS_CYEXTENSION
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
-
-if TYPE_CHECKING or not HAS_CYEXTENSION:
-    from ._py_row import BaseRow as BaseRow
-else:
-    from sqlalchemy.cyextension.resultproxy import BaseRow as BaseRow
 
 if TYPE_CHECKING:
     from typing import Tuple as _RowBase
@@ -48,7 +42,6 @@ else:
     _RowBase = Sequence
 
 
-_T = TypeVar("_T", bound=Any)
 _Ts = TypeVarTuple("_Ts")
 
 

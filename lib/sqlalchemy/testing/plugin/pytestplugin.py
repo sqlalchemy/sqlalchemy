@@ -136,7 +136,7 @@ def _log_sqlalchemy_info(session):
     import sqlalchemy
     from sqlalchemy import __version__
     from sqlalchemy.util import has_compiled_ext
-    from sqlalchemy.util._has_cy import _CYEXTENSION_MSG
+    from sqlalchemy.util._has_cython import _CYEXTENSION_MSG
 
     greet = "sqlalchemy installation"
     site = "no user site" if sys.flags.no_user_site else "user site loaded"
@@ -146,9 +146,9 @@ def _log_sqlalchemy_info(session):
     ]
 
     if has_compiled_ext():
-        from sqlalchemy.cyextension import util
+        from sqlalchemy.engine import _util_cy
 
-        msgs.append(f"compiled extension enabled, e.g. {util.__file__} ")
+        msgs.append(f"compiled extension enabled, e.g. {_util_cy.__file__} ")
     else:
         msgs.append(f"compiled extension not enabled; {_CYEXTENSION_MSG}")
 

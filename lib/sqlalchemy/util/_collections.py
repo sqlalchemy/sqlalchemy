@@ -35,32 +35,14 @@ from typing import Union
 from typing import ValuesView
 import weakref
 
-from ._has_cy import HAS_CYEXTENSION
+from ._collections_cy import IdentitySet as IdentitySet
+from ._collections_cy import OrderedSet as OrderedSet
+from ._collections_cy import unique_list as unique_list  # noqa: F401
+from ._immutabledict_cy import immutabledict as immutabledict
+from ._immutabledict_cy import ImmutableDictBase as ImmutableDictBase
+from ._immutabledict_cy import ReadOnlyContainer as ReadOnlyContainer
 from .typing import is_non_string_iterable
 from .typing import Literal
-
-if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
-    from ._py_collections import immutabledict as immutabledict
-    from ._py_collections import IdentitySet as IdentitySet
-    from ._py_collections import ReadOnlyContainer as ReadOnlyContainer
-    from ._py_collections import ImmutableDictBase as ImmutableDictBase
-    from ._py_collections import OrderedSet as OrderedSet
-    from ._py_collections import unique_list as unique_list
-else:
-    from sqlalchemy.cyextension.immutabledict import (
-        ReadOnlyContainer as ReadOnlyContainer,
-    )
-    from sqlalchemy.cyextension.immutabledict import (
-        ImmutableDictBase as ImmutableDictBase,
-    )
-    from sqlalchemy.cyextension.immutabledict import (
-        immutabledict as immutabledict,
-    )
-    from sqlalchemy.cyextension.collections import IdentitySet as IdentitySet
-    from sqlalchemy.cyextension.collections import OrderedSet as OrderedSet
-    from sqlalchemy.cyextension.collections import (  # noqa
-        unique_list as unique_list,
-    )
 
 
 _T = TypeVar("_T", bound=Any)
@@ -144,7 +126,7 @@ class FacadeDict(ImmutableDictBase[_KT, _VT]):
     """A dictionary that is not publicly mutable."""
 
     def __new__(cls, *args: Any) -> FacadeDict[Any, Any]:
-        new = ImmutableDictBase.__new__(cls)
+        new: FacadeDict[Any, Any] = ImmutableDictBase.__new__(cls)
         return new
 
     def copy(self) -> NoReturn:
@@ -320,13 +302,7 @@ class WeakSequence(Sequence[_T]):
             return obj()
 
 
-class OrderedIdentitySet(IdentitySet):
-    def __init__(self, iterable: Optional[Iterable[Any]] = None):
-        IdentitySet.__init__(self)
-        self._members = OrderedDict()
-        if iterable:
-            for o in iterable:
-                self.add(o)
+OrderedIdentitySet = IdentitySet
 
 
 class PopulateDict(Dict[_KT, _VT]):

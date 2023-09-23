@@ -40,3 +40,9 @@ test/test_schema.db
 /db_idents.txt
 .DS_Store
 .vs
+
+# cython complied files
+/lib/**/*.c
+/lib/**/*.cpp
+# cython annotated output
+/lib/**/*.html
