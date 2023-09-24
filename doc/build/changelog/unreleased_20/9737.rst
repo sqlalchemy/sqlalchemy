@@ -1,0 +1,9 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 9737
+
+    Added literal_processor methods to Interval Module 
+    for Oracle and PostgreSQL :meth:`_oracle.Interval.literal_processor` and
+    :meth:`_postgresql.Interval.literal_processor`.
+    Allowing use of timedelta based literal queries for these Databases.
+    Pull request courtesy Indivar Mishra.

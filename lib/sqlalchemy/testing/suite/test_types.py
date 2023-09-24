@@ -28,6 +28,7 @@ from ... import Date
 from ... import DateTime
 from ... import Float
 from ... import Integer
+from ... import Interval
 from ... import JSON
 from ... import literal
 from ... import literal_column
@@ -450,6 +451,123 @@ class StringTest(_LiteralRoundTripFixture, fixtures.TestBase):
             connection.scalar(select(literal("a") + "b" + "c" + "d" + "e")),
             "abcde",
         )
+
+
+class IntervalTest(_LiteralRoundTripFixture, fixtures.TablesTest):
+    __requires__ = ("datetime_interval",)
+    __backend__ = True
+    compare = None
+    datatype = Interval
+    data = datetime.timedelta(days=1, seconds=4)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        class Decorated(TypeDecorator):
+            impl = cls.datatype
+            cache_ok = True
+
+        Table(
+            "interval_table",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("interval_data", cls.datatype),
+            Column("date_data", DateTime),
+            Column("decorated_interval_data", Decorated),
+        )
+
+    @testing.combinations(
+        (
+            datetime.timedelta(days=1, seconds=4),
+            datetime.timedelta(days=1, seconds=4),
+        ),
+        argnames="input_, compare_",
+    )
+    def test_render_literal_interval(
+        self, literal_round_trip, input_, compare_
+    ):
+        literal_round_trip(Interval(), [input_], [compare_])
+
+    def test_select_direct_literal_interval(self, connection):
+        row = connection.execute(
+            select(literal(self.data, literal_execute=True))
+        ).first()
+        eq_(row, (self.data,))
+
+    # NOTE: There seems to be inconsistence in the behaviour for literal
+    #        for datetime.datetime, if literal_execute=True and
+    #        it works for oracle but doesn't work for postgres because it
+    #        processes query directly, when literal_execute is not provided
+    #        microseconds are not rendered properly for postgres.
+    #        For now, Skipping tests for oracle.
+    @testing.requires.datetime_microseconds
+    def test_arithmetic_operation_literal_interval(self, connection):
+        now = datetime.datetime.now()
+        # Able to subtract
+        row = connection.execute(
+            select(literal(now) - literal(self.data, literal_execute=True))
+        ).first()
+        eq_(row[0], (now - self.data))
+
+        # Able to Add
+        row = connection.execute(
+            select(literal(now) + literal(self.data, literal_execute=True))
+        ).first()
+        eq_(row[0], (now + self.data))
+
+    def test_arithmetic_operation_table_interval_and_literal_interval(
+        self, connection
+    ):
+        interval_table = self.tables.interval_table
+        data = datetime.timedelta(days=2, seconds=5)
+        connection.execute(
+            interval_table.insert(), {"id": 1, "interval_data": data}
+        )
+        # Subtraction Operation
+        row = connection.execute(
+            select(
+                interval_table.c.interval_data
+                - literal(self.data, literal_execute=True)
+            )
+        ).first()
+        eq_(row[0], (datetime.timedelta(days=1, seconds=1)))
+        # Addition Operation
+        row = connection.execute(
+            select(
+                interval_table.c.interval_data
+                + literal(self.data, literal_execute=True)
+            )
+        ).first()
+        eq_(row[0], (datetime.timedelta(days=3, seconds=9)))
+
+    # NOTE: When Fetching from date column from table microseconds are
+    #        not being received so skipping this one for now.
+    @testing.requires.datetime_microseconds
+    def test_arithmetic_operation_table_date_and_literal_interval(
+        self, connection
+    ):
+        interval_table = self.tables.interval_table
+        now = datetime.datetime.now()
+        connection.execute(
+            interval_table.insert(), {"id": 1, "date_data": now}
+        )
+        # Subtraction Operation
+        row = connection.execute(
+            select(
+                interval_table.c.date_data
+                - literal(self.data, literal_execute=True)
+            )
+        ).first()
+        eq_(row[0], (now - self.data))
+        # Addition Operation
+        row = connection.execute(
+            select(
+                interval_table.c.date_data
+                + literal(self.data, literal_execute=True)
+            )
+        ).first()
+        eq_(row[0], (now + self.data))
 
 
 class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
@@ -1940,6 +2058,7 @@ __all__ = (
     "TextTest",
     "NumericTest",
     "IntegerTest",
+    "IntervalTest",
     "CastTypeDecoratorTest",
     "DateTimeHistoricTest",
     "DateTimeCoercedToDateTimeTest",

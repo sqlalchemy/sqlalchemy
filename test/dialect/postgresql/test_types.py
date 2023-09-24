@@ -3180,6 +3180,31 @@ class TimestampTest(fixtures.TestBase, AssertsExecutionResults):
         expr = column("bar", postgresql.INTERVAL) == datetime.timedelta(days=1)
         eq_(expr.right.type._type_affinity, types.Interval)
 
+    def test_interval_literal_processor(self, connection):
+        result = connection.execute(
+            select(
+                literal(
+                    datetime.timedelta(days=1, minutes=3, seconds=4),
+                    literal_execute=True,
+                )
+                - literal(
+                    datetime.timedelta(days=0, minutes=1, seconds=4),
+                    literal_execute=True,
+                )
+            )
+        ).one()
+        eq_(result[0], datetime.timedelta(days=1, seconds=120))
+
+    def test_interval(self, connection):
+        """#9737"""
+        stmt = text("select :parameter")
+        result = connection.execute(
+            stmt.bindparams(
+                parameter=datetime.timedelta(days=1, minutes=3, seconds=4),
+            )
+        ).one()
+        eq_(result[0], datetime.timedelta(days=1, minutes=3, seconds=4))
+
 
 class SpecialTypesCompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "postgresql"
@@ -6186,3 +6211,24 @@ class InetRoundTripTests(fixtures.TestBase):
             "ipaddress type handling",
         ):
             testing_engine(options={"native_inet_types": True})
+
+
+class TestCompiledIntervalForLiteral(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = postgresql.dialect()
+
+    @testing.combinations(
+        (
+            text("select :parameter").bindparams(
+                parameter=datetime.timedelta(days=2)
+            ),
+            ("select make_interval(secs=>172800.0)"),
+        ),
+        (
+            text("select :parameter").bindparams(
+                parameter=datetime.timedelta(days=730, seconds=2323213392),
+            ),
+            ("select make_interval(secs=>2386285392.0)"),
+        ),
+    )
+    def test_interval_literal_processor(self, type_, expected):
+        self.assert_compile(type_, expected, literal_binds=True)

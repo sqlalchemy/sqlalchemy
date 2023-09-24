@@ -4,11 +4,23 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
+from __future__ import annotations
+
+import datetime as dt
+from typing import Callable
+from typing import no_type_check
+from typing import Optional
+from typing import Type
+from typing import TYPE_CHECKING
+
 
 from ... import exc
 from ...sql import sqltypes
 from ...types import NVARCHAR
 from ...types import VARCHAR
+
+if TYPE_CHECKING:
+    from ...engine.interfaces import Dialect
 
 
 class RAW(sqltypes._Binary):
@@ -213,6 +225,21 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
             second_precision=self.second_precision,
             day_precision=self.day_precision,
         )
+
+    @property
+    def python_type(self) -> Type[dt.timedelta]:
+        return dt.timedelta
+
+    @no_type_check
+    def literal_processor(
+        self, dialect: Optional[Dialect]
+    ) -> Callable[[Optional[dt.timedelta]], Optional[str]]:
+        def process(value: Optional[dt.timedelta]) -> Optional[str]:
+            if value is not None:
+                return f"NUMTODSINTERVAL({value.total_seconds()}, 'SECOND')"
+            return None
+
+        return process
 
 
 class TIMESTAMP(sqltypes.TIMESTAMP):

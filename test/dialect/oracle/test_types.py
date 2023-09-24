@@ -208,6 +208,33 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_float_type_compile(self, type_, sql_text):
         self.assert_compile(type_, sql_text)
 
+    @testing.combinations(
+        (
+            text("select :parameter from dual").bindparams(
+                parameter=datetime.timedelta(days=2)
+            ),
+            "select NUMTODSINTERVAL(172800.0, 'SECOND') from dual",
+        ),
+        (
+            text("SELECT :parameter from dual").bindparams(
+                parameter=datetime.timedelta(days=1, minutes=3, seconds=4)
+            ),
+            "SELECT NUMTODSINTERVAL(86584.0, 'SECOND') from dual",
+        ),
+        (
+            text("select :parameter - :parameter2 from dual").bindparams(
+                parameter=datetime.timedelta(days=1, minutes=3, seconds=4),
+                parameter2=datetime.timedelta(days=0, minutes=1, seconds=4),
+            ),
+            (
+                "select NUMTODSINTERVAL(86584.0, 'SECOND') - "
+                "NUMTODSINTERVAL(64.0, 'SECOND') from dual"
+            ),
+        ),
+    )
+    def test_interval_literal_processor(self, type_, expected):
+        self.assert_compile(type_, expected, literal_binds=True)
+
 
 class TypesTest(fixtures.TestBase):
     __only_on__ = "oracle"
@@ -322,6 +349,31 @@ class TypesTest(fixtures.TestBase):
             row._mapping["day_interval"],
             datetime.timedelta(days=35, seconds=5743),
         )
+
+    def test_interval_literal_processor(self, connection):
+        result = connection.execute(
+            select(
+                literal(
+                    datetime.timedelta(days=1, minutes=3, seconds=4),
+                    literal_execute=True,
+                )
+                - literal(
+                    datetime.timedelta(days=0, minutes=1, seconds=4),
+                    literal_execute=True,
+                )
+            )
+        ).one()
+        eq_(result[0], datetime.timedelta(days=1, seconds=120))
+
+    def test_interval_value(self, connection):
+        """#9737"""
+        stmt = text("select :parameter from dual")
+        result = connection.execute(
+            stmt.bindparams(
+                parameter=datetime.timedelta(days=1, minutes=3, seconds=4),
+            )
+        ).one()
+        eq_(result[0], datetime.timedelta(days=1, minutes=3, seconds=4))
 
     def test_no_decimal_float_precision(self):
         with expect_raises_message(
