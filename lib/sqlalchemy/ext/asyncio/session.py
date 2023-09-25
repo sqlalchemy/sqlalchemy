@@ -625,14 +625,14 @@ class AsyncSession(ReversibleProxy[Session]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
     ) -> _O:
         """Return an instance based on the given primary key identifier,
-         or raise an exception.
+        or raise an exception.
 
-         Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects
-         no rows.
+        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects
+        no rows.
         """
 
         result_obj = await greenlet_spawn(
-            cast("Callable[..., _O]", self.sync_session.get),
+            self.sync_session.get_one,
             entity,
             ident,
             options=options,
@@ -640,12 +640,6 @@ class AsyncSession(ReversibleProxy[Session]):
             with_for_update=with_for_update,
             identity_token=identity_token,
         )
-
-        if result_obj is None:
-            raise async_exc.NoResultFound(
-                "No row was found when one was required"
-            )
-
         return result_obj
 
     @overload
