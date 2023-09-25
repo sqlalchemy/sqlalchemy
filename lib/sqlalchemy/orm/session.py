@@ -3591,7 +3591,7 @@ class Session(_SessionClassMethods, EventTarget):
         identity_token: Optional[Any] = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
-    ) -> Optional[_O]:
+    ) -> _O:
         """Return exactly one instance based on the given primary key identifier,
            or raise an exception.
 
@@ -3601,9 +3601,9 @@ class Session(_SessionClassMethods, EventTarget):
 
             my_user = session.get_one(User, 5)
 
-            some_object = session.get(VersionedFoo, (5, 10))
+            some_object = session.get_one(VersionedFoo, (5, 10))
 
-            some_object = session.get(
+            some_object = session.get_one(
                 VersionedFoo,
                 {"id": 5, "version_id": 10}
             )
@@ -3635,7 +3635,7 @@ class Session(_SessionClassMethods, EventTarget):
          the most expedient.  If the primary key of a row is the value "5",
          the call looks like::
 
-            my_object = session.get(SomeClass, 5)
+            my_object = session.get_one(SomeClass, 5)
 
          The tuple form contains primary key values typically in
          the order in which they correspond to the mapped
@@ -3647,14 +3647,14 @@ class Session(_SessionClassMethods, EventTarget):
          of a row is represented by the integer
          digits "5, 10" the call would look like::
 
-             my_object = session.get(SomeClass, (5, 10))
+             my_object = session.get_one(SomeClass, (5, 10))
 
          The dictionary form should include as keys the mapped attribute names
          corresponding to each element of the primary key.  If the mapped class
          has the attributes ``id``, ``version_id`` as the attributes which
          store the object's primary key value, the call would look like::
 
-            my_object = session.get(SomeClass, {"id": 5, "version_id": 10})
+            my_object = session.get_one(SomeClass, {"id": 5, "version_id": 10})
 
         :param options: optional sequence of loader options which will be
          applied to the query, if one is emitted.
@@ -3696,7 +3696,7 @@ class Session(_SessionClassMethods, EventTarget):
             bind_arguments=bind_arguments,
         )
 
-        if not impl:
+        if impl is None:
             raise sa_exc.NoResultFound(
                 "No row was found when one was required"
             )

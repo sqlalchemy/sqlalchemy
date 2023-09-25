@@ -623,7 +623,7 @@ class AsyncSession(ReversibleProxy[Session]):
         with_for_update: ForUpdateParameter = None,
         identity_token: Optional[Any] = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-    ) -> Optional[_O]:
+    ) -> _O:
         """Return an instance based on the given primary key identifier,
          or raise an exception.
 
@@ -641,7 +641,7 @@ class AsyncSession(ReversibleProxy[Session]):
             identity_token=identity_token,
         )
 
-        if not result_obj:
+        if result_obj is None:
             raise async_exc.NoResultFound(
                 "No row was found when one was required"
             )
