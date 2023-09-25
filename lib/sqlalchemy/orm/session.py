@@ -3580,6 +3580,57 @@ class Session(_SessionClassMethods, EventTarget):
             bind_arguments=bind_arguments,
         )
 
+    def get_one(
+        self,
+        entity: _EntityBindKey[_O],
+        ident: _PKIdentityArgument,
+        *,
+        options: Optional[Sequence[ORMOption]] = None,
+        populate_existing: bool = False,
+        with_for_update: ForUpdateParameter = None,
+        identity_token: Optional[Any] = None,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[_BindArguments] = None,
+    ) -> _O:
+        """Return exactly one instance based on the given primary key
+        identifier, or raise an exception if not found.
+
+        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query
+        selects no rows.
+
+        For a detailed documentation of the arguments see the
+        method :meth:`.Session.get`.
+
+        ..versionadded: 2.0.22
+
+        :return: The object instance, or ``None``.
+
+        .. seealso::
+
+            :meth:`.Session.get` - equivalent method that instead
+              returns ``None`` if no row was found with the provided primary
+              key
+
+        """
+
+        instance = self.get(
+            entity,
+            ident,
+            options=options,
+            populate_existing=populate_existing,
+            with_for_update=with_for_update,
+            identity_token=identity_token,
+            execution_options=execution_options,
+            bind_arguments=bind_arguments,
+        )
+
+        if instance is None:
+            raise sa_exc.NoResultFound(
+                "No row was found when one was required"
+            )
+
+        return instance
+
     def _get_impl(
         self,
         entity: _EntityBindKey[_O],

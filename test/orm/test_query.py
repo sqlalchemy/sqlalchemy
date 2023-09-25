@@ -1213,18 +1213,6 @@ class GetTest(QueryTest):
             {"i": 1, "j": "2", "k": 3},
         )
 
-    def test_get(self):
-        User = self.classes.User
-
-        s = fixture_session()
-        assert s.get(User, 19) is None
-        u = s.get(User, 7)
-        u2 = s.get(User, 7)
-        assert u is u2
-        s.expunge_all()
-        u2 = s.get(User, 7)
-        assert u is not u2
-
     def test_get_synonym_direct_name(self, decl_base):
         """test #8753"""
 

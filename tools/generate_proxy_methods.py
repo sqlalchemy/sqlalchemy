@@ -99,6 +99,7 @@ def create_proxy_methods(
     classmethods: Iterable[str] = (),
     methods: Iterable[str] = (),
     attributes: Iterable[str] = (),
+    use_intermediate_variable: Iterable[str] = (),
 ) -> Callable[[Type[_T]], Type[_T]]:
     """A class decorator that will copy attributes to a proxy class.
 
@@ -120,6 +121,7 @@ def create_proxy_methods(
             classmethods,
             methods,
             attributes,
+            use_intermediate_variable,
             cls,
         )
         return cls
@@ -180,6 +182,7 @@ def process_class(
     classmethods: Iterable[str],
     methods: Iterable[str],
     attributes: Iterable[str],
+    use_intermediate_variable: Iterable[str],
     cls: Type[Any],
 ):
     sphinx_symbol_match = re.match(r":class:`(.+)`", target_cls_sphinx_name)
@@ -191,6 +194,8 @@ def process_class(
         )
 
     sphinx_symbol = sphinx_symbol_match.group(1)
+
+    require_intermediate = set(use_intermediate_variable)
 
     def instrument(buf: TextIO, name: str, clslevel: bool = False) -> None:
         fn = getattr(target_cls, name)
@@ -255,19 +260,34 @@ def process_class(
             ).lstrip(),
         }
 
+        if fn.__name__ in require_intermediate:
+            metadata["line_prefix"] = "result ="
+            metadata["after_line"] = "return result\n"
+        else:
+            metadata["line_prefix"] = "return"
+            metadata["after_line"] = ""
+
         if clslevel:
             code = (
-                "@classmethod\n"
-                "%(async)sdef %(name)s%(grouped_args)s:\n"
-                '    r"""%(doc)s\n    """  # noqa: E501\n\n'
-                "    return %(await)s%(target_cls_name)s.%(name)s(%(apply_kw_proxied)s)\n\n"  # noqa: E501
+                '''\
+@classmethod
+%(async)sdef %(name)s%(grouped_args)s:
+    r"""%(doc)s\n    """  # noqa: E501
+
+    %(line_prefix)s %(await)s%(target_cls_name)s.%(name)s(%(apply_kw_proxied)s)
+    %(after_line)s
+'''
                 % metadata
             )
         else:
             code = (
-                "%(async)sdef %(name)s%(grouped_args)s:\n"
-                '    r"""%(doc)s\n    """  # noqa: E501\n\n'
-                "    return %(await)s%(self_arg)s._proxied.%(name)s(%(apply_kw_proxied)s)\n\n"  # noqa: E501
+                '''\
+%(async)sdef %(name)s%(grouped_args)s:
+    r"""%(doc)s\n    """  # noqa: E501
+
+    %(line_prefix)s %(await)s%(self_arg)s._proxied.%(name)s(%(apply_kw_proxied)s)
+    %(after_line)s
+'''  # noqa: E501
                 % metadata
             )
 

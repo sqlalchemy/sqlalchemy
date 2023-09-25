@@ -509,7 +509,7 @@ class AsyncSession(ReversibleProxy[Session]):
         else:
             execution_options = _EXECUTE_OPTIONS
 
-        result = await greenlet_spawn(
+        return await greenlet_spawn(
             self.sync_session.scalar,
             statement,
             params=params,
@@ -517,7 +517,6 @@ class AsyncSession(ReversibleProxy[Session]):
             bind_arguments=bind_arguments,
             **kw,
         )
-        return result
 
     @overload
     async def scalars(
@@ -588,7 +587,7 @@ class AsyncSession(ReversibleProxy[Session]):
         with_for_update: ForUpdateParameter = None,
         identity_token: Optional[Any] = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-    ) -> Optional[_O]:
+    ) -> Union[_O, None]:
         """Return an instance based on the given primary key identifier,
         or ``None`` if not found.
 
@@ -599,9 +598,7 @@ class AsyncSession(ReversibleProxy[Session]):
 
         """
 
-        # result_obj = self.sync_session.get(entity, ident)
-
-        result_obj = await greenlet_spawn(
+        return await greenlet_spawn(
             cast("Callable[..., _O]", self.sync_session.get),
             entity,
             ident,
@@ -609,8 +606,44 @@ class AsyncSession(ReversibleProxy[Session]):
             populate_existing=populate_existing,
             with_for_update=with_for_update,
             identity_token=identity_token,
+            execution_options=execution_options,
         )
-        return result_obj
+
+    async def get_one(
+        self,
+        entity: _EntityBindKey[_O],
+        ident: _PKIdentityArgument,
+        *,
+        options: Optional[Sequence[ORMOption]] = None,
+        populate_existing: bool = False,
+        with_for_update: ForUpdateParameter = None,
+        identity_token: Optional[Any] = None,
+        execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
+    ) -> _O:
+        """Return an instance based on the given primary key identifier,
+        or raise an exception if not found.
+
+        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects
+        no rows.
+
+        ..versionadded: 2.0.22
+
+        .. seealso::
+
+            :meth:`_orm.Session.get_one` - main documentation for get_one
+
+        """
+
+        return await greenlet_spawn(
+            cast("Callable[..., _O]", self.sync_session.get_one),
+            entity,
+            ident,
+            options=options,
+            populate_existing=populate_existing,
+            with_for_update=with_for_update,
+            identity_token=identity_token,
+            execution_options=execution_options,
+        )
 
     @overload
     async def stream(

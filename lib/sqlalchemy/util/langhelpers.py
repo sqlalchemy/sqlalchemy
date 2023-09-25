@@ -690,6 +690,7 @@ def create_proxy_methods(
     classmethods: Sequence[str] = (),
     methods: Sequence[str] = (),
     attributes: Sequence[str] = (),
+    use_intermediate_variable: Sequence[str] = (),
 ) -> Callable[[_T], _T]:
     """A class decorator indicating attributes should refer to a proxy
     class.

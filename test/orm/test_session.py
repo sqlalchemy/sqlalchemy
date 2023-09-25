@@ -609,6 +609,59 @@ class SessionUtilTest(_fixtures.FixtureTest):
 
         is_true(called)
 
+    def test_get(self):
+        users, User = self.tables.users, self.classes.User
+        self.mapper_registry.map_imperatively(User, users)
+
+        s = fixture_session()
+        s.execute(
+            insert(self.tables.users),
+            [{"id": 7, "name": "7"}, {"id": 19, "name": "19"}],
+        )
+        assertions.is_not_none(s.get(User, 19))
+        u = s.get(User, 7)
+        u2 = s.get(User, 7)
+        assertions.is_not_none(u)
+        is_(u, u2)
+        s.expunge_all()
+        u2 = s.get(User, 7)
+        is_not(u, u2)
+
+    def test_get_one(self):
+        users, User = self.tables.users, self.classes.User
+        self.mapper_registry.map_imperatively(User, users)
+
+        s = fixture_session()
+        s.execute(
+            insert(self.tables.users),
+            [{"id": 7, "name": "7"}, {"id": 19, "name": "19"}],
+        )
+        u = s.get_one(User, 7)
+        u2 = s.get_one(User, 7)
+        assertions.is_not_none(u)
+        is_(u, u2)
+        s.expunge_all()
+        u2 = s.get_one(User, 7)
+        is_not(u, u2)
+
+    def test_get_one_2(self):
+        users, User = self.tables.users, self.classes.User
+        self.mapper_registry.map_imperatively(User, users)
+
+        sess = fixture_session()
+        user1 = User(id=1, name="u1")
+
+        sess.add(user1)
+        sess.commit()
+
+        u1 = sess.get_one(User, user1.id)
+        eq_(user1.name, u1.name)
+
+        with expect_raises_message(
+            sa.exc.NoResultFound, "No row was found when one was required"
+        ):
+            sess.get_one(User, 2)
+
 
 class SessionStateTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -1928,7 +1981,14 @@ class SessionInterface(fixtures.MappedTest):
     def _public_session_methods(self):
         Session = sa.orm.session.Session
 
-        blocklist = {"begin", "query", "bind_mapper", "get", "bind_table"}
+        blocklist = {
+            "begin",
+            "query",
+            "bind_mapper",
+            "get",
+            "get_one",
+            "bind_table",
+        }
         specials = {"__iter__", "__contains__"}
         ok = set()
         for name in dir(Session):
