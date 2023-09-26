@@ -3684,7 +3684,7 @@ class Session(_SessionClassMethods, EventTarget):
         :return: The object instance.
         """
 
-        impl = self._get_impl(
+        instance = self._get_impl(
             entity,
             ident,
             loading.load_on_pk_identity,
@@ -3696,12 +3696,12 @@ class Session(_SessionClassMethods, EventTarget):
             bind_arguments=bind_arguments,
         )
 
-        if impl is None:
+        if instance is None:
             raise sa_exc.NoResultFound(
                 "No row was found when one was required"
             )
 
-        return impl
+        return instance
 
     def _get_impl(
         self,
