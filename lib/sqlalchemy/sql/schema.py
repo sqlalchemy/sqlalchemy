@@ -2522,6 +2522,15 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         if self.primary_key:
             other.primary_key = True
 
+        if self.autoincrement != "auto" and other.autoincrement == "auto":
+            other.autoincrement = self.autoincrement
+
+        if self.system:
+            other.system = self.system
+
+        if self.info:
+            other.info.update(self.info)
+
         type_ = self.type
         if not type_._isnull and other.type._isnull:
             if isinstance(type_, SchemaEventTarget):
@@ -2566,6 +2575,12 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
 
         if self.index and not other.index:
             other.index = True
+
+        if self.doc and other.doc is None:
+            other.doc = self.doc
+
+        if self.comment and other.comment is None:
+            other.comment = self.comment
 
         if self.unique and not other.unique:
             other.unique = True

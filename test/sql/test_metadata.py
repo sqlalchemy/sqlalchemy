@@ -4381,6 +4381,11 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
         ("unique", True),
         ("type", BigInteger()),
         ("type", Enum("one", "two", "three", create_constraint=True)),
+        ("doc", "some doc"),
+        ("comment", "some comment"),
+        ("system", True),
+        ("autoincrement", True),
+        ("info", {"foo": "bar"}),
         argnames="paramname, value",
     )
     def test_merge_column(
@@ -4434,6 +4439,8 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
                 # so here it's getting mutated in place.   this is a bug
                 is_(default.column, target_copy)
 
+            elif paramname in ("info",):
+                eq_(col.info, value)
             elif paramname == "type":
                 assert type(col.type) is type(value)
 
