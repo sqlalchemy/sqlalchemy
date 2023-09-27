@@ -609,7 +609,7 @@ class SessionUtilTest(_fixtures.FixtureTest):
 
         is_true(called)
 
-    def test_get_one_no_result(self):
+    def test_get_one(self):
         users, User = self.tables.users, self.classes.User
         self.mapper_registry.map_imperatively(User, users)
 

@@ -5,6 +5,7 @@ from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import delete
 from sqlalchemy import event
+from sqlalchemy import exc
 from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import inspect
@@ -32,6 +33,7 @@ from sqlalchemy.sql import operators
 from sqlalchemy.sql import Select
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_deprecated
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import provision
@@ -235,6 +237,11 @@ class ShardTest:
         toronto = sess.get_one(WeatherLocation, 3)
         eq_(toronto.id, 3)
         eq_(toronto.city, "Toronto")
+
+        with expect_raises_message(
+            exc.NoResultFound, "No row was found when one was required"
+        ):
+            sess.get_one(WeatherLocation, 25)
 
     def test_get_explicit_shard(self):
         sess = self._fixture_data()

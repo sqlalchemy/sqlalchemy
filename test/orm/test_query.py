@@ -1225,17 +1225,6 @@ class GetTest(QueryTest):
         u2 = s.get(User, 7)
         assert u is not u2
 
-    def test_get_one(self):
-        User = self.classes.User
-
-        s = fixture_session()
-        u = s.get_one(User, 7)
-        u2 = s.get_one(User, 7)
-        assert u is u2
-        s.expunge_all()
-        u2 = s.get_one(User, 7)
-        assert u is not u2
-
     def test_get_synonym_direct_name(self, decl_base):
         """test #8753"""
 
