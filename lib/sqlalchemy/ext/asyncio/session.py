@@ -609,6 +609,7 @@ class AsyncSession(ReversibleProxy[Session]):
             populate_existing=populate_existing,
             with_for_update=with_for_update,
             identity_token=identity_token,
+            execution_options=execution_options,
         )
         return result_obj
 

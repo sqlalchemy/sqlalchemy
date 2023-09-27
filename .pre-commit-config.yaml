@@ -21,6 +21,7 @@ repos:
           - flake8-builtins
           - flake8-future-annotations>=0.0.5
           - flake8-docstrings>=1.6.0
+          - flake8-unused-arguments
           - flake8-rst-docstrings
           # flake8-rst-docstrings dependency, leaving it here
           # in case it requires a version pin
