@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import builtins
 import re
 import sys
 import typing
@@ -234,6 +235,12 @@ def eval_name_only(
 ) -> Any:
     if "." in name:
         return eval_expression(name, module_name, locals_=locals_)
+
+    # Try builtins first, to handle `list`, `set` or `dict`, etc.
+    try:
+        return builtins.__dict__[name]
+    except KeyError:
+        pass
 
     try:
         base_globals: Dict[str, Any] = sys.modules[module_name].__dict__
