@@ -1995,7 +1995,7 @@ class CursorResult(Result[_T]):
            * :attr:`_engine.CursorResult.rowcount`
              is *only* useful in conjunction
              with an UPDATE or DELETE statement.  Contrary to what the Python
-             DBAPI says, it does *not* return the
+             DBAPI says, it does *not* reliably return the
              number of rows available from the results of a SELECT statement
              as DBAPIs cannot support this functionality when rows are
              unbuffered.

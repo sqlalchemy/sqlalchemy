@@ -978,8 +978,8 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     driver = "cx_oracle"
 
-    colspecs = OracleDialect.colspecs
-    colspecs.update(
+    colspecs = util.update_copy(
+        OracleDialect.colspecs,
         {
             sqltypes.TIMESTAMP: _CXOracleTIMESTAMP,
             sqltypes.Numeric: _OracleNumeric,
@@ -1006,7 +1006,7 @@ class OracleDialect_cx_oracle(OracleDialect):
             sqltypes.Uuid: _OracleUUID,
             oracle.NCLOB: _OracleUnicodeTextNCLOB,
             oracle.ROWID: _OracleRowid,
-        }
+        },
     )
 
     execute_sequence_format = list

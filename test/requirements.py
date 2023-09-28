@@ -1246,14 +1246,16 @@ class DefaultRequirements(SuiteRequirements):
 
         """
 
-        # mariadbconnector works.  pyodbc we dont know, not supported in
-        # testing.
+        # this may have worked with mariadbconnector at some point, but
+        # this now seems to not be the case.   Since no other mysql driver
+        # supports these tests, that's fine
         return exclusions.fails_on(
             [
                 "+mysqldb",
                 "+pymysql",
                 "+asyncmy",
                 "+mysqlconnector",
+                "+mariadbconnector",
                 "+cymysql",
                 "+aiomysql",
             ]

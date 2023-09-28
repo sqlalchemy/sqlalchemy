@@ -394,7 +394,7 @@ class ReturningTest(fixtures.TablesTest):
             True,
             testing.requires.float_or_double_precision_behaves_generically,
         ),
-        (Float(), 8.5514, False),
+        (Float(), 8.5514, True),
         (
             Float(8),
             8.5514,
