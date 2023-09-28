@@ -271,6 +271,9 @@ class _RelationshipArg(Generic[_T1, _T2]):
             self.resolved = attr_value
 
 
+_RelationshipOrderByArg = Union[Literal[False], Tuple[ColumnElement[Any], ...]]
+
+
 class _RelationshipArgs(NamedTuple):
     """stores user-passed parameters that are resolved at mapper configuration
     time.
@@ -289,10 +292,7 @@ class _RelationshipArgs(NamedTuple):
         Optional[_RelationshipJoinConditionArgument],
         Optional[ColumnElement[Any]],
     ]
-    order_by: _RelationshipArg[
-        _ORMOrderByArgument,
-        Union[Literal[None, False], Tuple[ColumnElement[Any], ...]],
-    ]
+    order_by: _RelationshipArg[_ORMOrderByArgument, _RelationshipOrderByArg]
     foreign_keys: _RelationshipArg[
         Optional[_ORMColCollectionArgument], Set[ColumnElement[Any]]
     ]
@@ -341,7 +341,7 @@ class RelationshipProperty(
     secondaryjoin: Optional[ColumnElement[bool]]
     secondary: Optional[FromClause]
     _join_condition: JoinCondition
-    order_by: Union[Literal[False], Tuple[ColumnElement[Any], ...]]
+    order_by: _RelationshipOrderByArg
 
     _user_defined_foreign_keys: Set[ColumnElement[Any]]
     _calculated_foreign_keys: Set[ColumnElement[Any]]
