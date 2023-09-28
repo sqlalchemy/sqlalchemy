@@ -2411,8 +2411,17 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
                 decl_base.registry.configure()
 
-    def test_14_style_anno_accepted_w_allow_unmapped(self):
-        """test for #8692"""
+    @testing.variation(
+        "collection_type",
+        [
+            ("list", testing.requires.python310),
+            "List",
+            ("set", testing.requires.python310),
+            "Set",
+        ],
+    )
+    def test_14_style_anno_accepted_w_allow_unmapped(self, collection_type):
+        """test for #8692 and #10385"""
 
         class Base(DeclarativeBase):
             __allow_unmapped__ = True
@@ -2422,7 +2431,29 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             data: str = Column(String)
-            bs: List["B"] = relationship("B", back_populates="a")  # noqa: F821
+
+            if collection_type.list:
+                bs: list["B"] = relationship(  # noqa: F821
+                    "B",
+                    back_populates="a",
+                )
+            elif collection_type.List:
+                bs: List["B"] = relationship(  # noqa: F821
+                    "B",
+                    back_populates="a",
+                )
+            elif collection_type.set:
+                bs: set["B"] = relationship(  # noqa: F821
+                    "B",
+                    back_populates="a",
+                )
+            elif collection_type.Set:
+                bs: Set["B"] = relationship(  # noqa: F821
+                    "B",
+                    back_populates="a",
+                )
+            else:
+                collection_type.fail()
 
         class B(Base):
             __tablename__ = "b"
