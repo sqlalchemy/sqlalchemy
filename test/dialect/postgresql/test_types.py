@@ -3151,7 +3151,9 @@ class HashableFlagORMTest(fixtures.TestBase):
         )
 
 
-class TimestampTest(fixtures.TestBase, AssertsExecutionResults):
+class TimestampTest(
+    fixtures.TestBase, AssertsCompiledSQL, AssertsExecutionResults
+):
     __only_on__ = "postgresql"
     __backend__ = True
 
@@ -3180,6 +3182,41 @@ class TimestampTest(fixtures.TestBase, AssertsExecutionResults):
     def test_interval_coercion_literal(self):
         expr = column("bar", postgresql.INTERVAL) == datetime.timedelta(days=1)
         eq_(expr.right.type._type_affinity, types.Interval)
+
+    def test_interval_literal_processor(self, connection):
+        stmt = text("select :parameter - :parameter2")
+        result = connection.execute(
+            stmt.bindparams(
+                bindparam(
+                    "parameter",
+                    datetime.timedelta(days=1, minutes=3, seconds=4),
+                    literal_execute=True,
+                ),
+                bindparam(
+                    "parameter2",
+                    datetime.timedelta(days=0, minutes=1, seconds=4),
+                    literal_execute=True,
+                ),
+            )
+        ).one()
+        eq_(result[0], datetime.timedelta(days=1, seconds=120))
+
+    @testing.combinations(
+        (
+            text("select :parameter").bindparams(
+                parameter=datetime.timedelta(days=2)
+            ),
+            ("select make_interval(secs=>172800.0)"),
+        ),
+        (
+            text("select :parameter").bindparams(
+                parameter=datetime.timedelta(days=730, seconds=2323213392),
+            ),
+            ("select make_interval(secs=>2386285392.0)"),
+        ),
+    )
+    def test_interval_literal_processor_compiled(self, type_, expected):
+        self.assert_compile(type_, expected, literal_binds=True)
 
 
 class SpecialTypesCompileTest(fixtures.TestBase, AssertsCompiledSQL):

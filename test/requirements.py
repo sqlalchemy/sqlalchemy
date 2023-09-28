@@ -1203,6 +1203,14 @@ class DefaultRequirements(SuiteRequirements):
         return self.json_type
 
     @property
+    def datetime_interval(self):
+        """target dialect supports rendering of a datetime.timedelta as a
+        literal string, e.g. via the TypeEngine.literal_processor() method.
+        Added for Oracle and Postgresql as of now.
+        """
+        return only_on(["oracle", "postgresql"])
+
+    @property
     def datetime_literals(self):
         """target dialect supports rendering of a date, time, or datetime as a
         literal string, e.g. via the TypeEngine.literal_processor() method.
