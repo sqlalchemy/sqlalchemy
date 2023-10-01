@@ -5,6 +5,7 @@ from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import delete
 from sqlalchemy import event
+from sqlalchemy import exc
 from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import inspect
@@ -35,6 +36,7 @@ from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import provision
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.engines import testing_reaper
 
@@ -196,7 +198,7 @@ class ShardTest:
         toronto = WeatherLocation("North America", "Toronto")
         london = WeatherLocation("Europe", "London")
         dublin = WeatherLocation("Europe", "Dublin")
-        brasilia = WeatherLocation("South America", "Brasila")
+        brasilia = WeatherLocation("South America", "Brasilia")
         quito = WeatherLocation("South America", "Quito")
         tokyo.reports.append(Report(80.0, id_=1))
         newyork.reports.append(Report(75, id_=1))
@@ -225,6 +227,21 @@ class ShardTest:
 
         t2 = sess.get(WeatherLocation, 1)
         is_(t2, tokyo)
+
+    def test_get_one(self):
+        sess = self._fixture_data()
+        brasilia = sess.get_one(WeatherLocation, 6)
+        eq_(brasilia.id, 6)
+        eq_(brasilia.city, "Brasilia")
+
+        toronto = sess.get_one(WeatherLocation, 3)
+        eq_(toronto.id, 3)
+        eq_(toronto.city, "Toronto")
+
+        with expect_raises_message(
+            exc.NoResultFound, "No row was found when one was required"
+        ):
+            sess.get_one(WeatherLocation, 25)
 
     def test_get_explicit_shard(self):
         sess = self._fixture_data()
