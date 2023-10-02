@@ -4,14 +4,20 @@ from sqlalchemy import any_
 from sqlalchemy import Boolean
 from sqlalchemy import cast
 from sqlalchemy import Column
+from sqlalchemy import Computed
+from sqlalchemy import exc
 from sqlalchemy import false
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import MetaData
 from sqlalchemy import or_
+from sqlalchemy import schema
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import true
+from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import combinations
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
@@ -255,3 +261,47 @@ class AnyAllTest(fixtures.TablesTest):
         stmt = select(4 == any_(select(stuff.c.value).scalar_subquery()))
 
         is_(connection.execute(stmt).scalar(), True)
+
+
+class ComputedTest(fixtures.TestBase):
+    __only_on__ = "mysql >= 5.7", "mariadb"
+    __backend__ = True
+
+    @combinations(
+        (True),
+        (False),
+        (None),
+        ("unset"),
+        argnames="nullable",
+    )
+    def test_column_computed_for_nullable(self, connection, nullable):
+        """test #10056
+
+        we want to make sure that nullable is always set to True for computed
+        column as it is not supported for mariaDB
+        ref: https://mariadb.com/kb/en/generated-columns/#statement-support
+
+        """
+        m = MetaData()
+        kwargs = {"nullable": nullable} if nullable != "unset" else {}
+        t = Table(
+            "t",
+            m,
+            Column("x", Integer),
+            Column("y", Integer, Computed("x + 2"), **kwargs),
+        )
+        if connection.engine.dialect.name == "mariadb" and nullable in (
+            False,
+            None,
+        ):
+            assert_raises(
+                exc.ProgrammingError,
+                connection.execute,
+                schema.CreateTable(t),
+            )
+            # If assertion happens table won't be created so
+            #  return from test
+            return
+        # Create and then drop table
+        connection.execute(schema.CreateTable(t))
+        connection.execute(schema.DropTable(t))

@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 10056
+
+    mariaDB does not support setting NOT NULL for generated column
+    ref: https://mariadb.com/kb/en/generated-columns/#statement-support
+    added a check in `get_column_specification` for mariadb, checking
+    if user has not specified nullable set it as True for computed column.

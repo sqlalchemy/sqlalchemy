@@ -1063,6 +1063,7 @@ from ...sql import roles
 from ...sql import sqltypes
 from ...sql import util as sql_util
 from ...sql.compiler import InsertmanyvaluesSentinelOpts
+from ...sql.schema import SchemaConst
 from ...types import BINARY
 from ...types import BLOB
 from ...types import BOOLEAN
@@ -1070,6 +1071,7 @@ from ...types import DATE
 from ...types import UUID
 from ...types import VARBINARY
 from ...util import topological
+
 
 SET_RE = re.compile(
     r"\s*SET\s+(?:(?:GLOBAL|SESSION)\s+)?\w", re.I | re.UNICODE
@@ -1766,7 +1768,12 @@ class MySQLCompiler(compiler.SQLCompiler):
 class MySQLDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kw):
         """Builds column DDL."""
-
+        if (
+            self.dialect.is_mariadb is True
+            and column.computed is not None
+            and column._user_defined_nullable is SchemaConst.NULL_UNSPECIFIED
+        ):
+            column.nullable = True
         colspec = [
             self.preparer.format_column(column),
             self.dialect.type_compiler_instance.process(
