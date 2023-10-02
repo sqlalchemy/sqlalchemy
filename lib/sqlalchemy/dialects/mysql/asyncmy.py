@@ -37,6 +37,8 @@ from ...util.concurrency import await_only
 
 
 class AsyncAdapt_asyncmy_cursor:
+    # TODO: base on connectors/asyncio.py
+    # see #10415
     server_side = False
     __slots__ = (
         "_adapt_connection",
@@ -141,6 +143,8 @@ class AsyncAdapt_asyncmy_cursor:
 
 
 class AsyncAdapt_asyncmy_ss_cursor(AsyncAdapt_asyncmy_cursor):
+    # TODO: base on connectors/asyncio.py
+    # see #10415
     __slots__ = ()
     server_side = True
 
@@ -171,6 +175,8 @@ class AsyncAdapt_asyncmy_ss_cursor(AsyncAdapt_asyncmy_cursor):
 
 
 class AsyncAdapt_asyncmy_connection(AdaptedConnection):
+    # TODO: base on connectors/asyncio.py
+    # see #10415
     await_ = staticmethod(await_only)
     __slots__ = ("dbapi", "_execute_mutex")
 
