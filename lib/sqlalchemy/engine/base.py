@@ -1403,6 +1403,10 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         :return: a :class:`_engine.Result` object.
 
         """
+        if isinstance(parameters, list) and not parameters:
+            raise exc.ArgumentError(
+                "Empty list of parameters passed; no statement to execute"
+            )
         distilled_parameters = _distill_params_20(parameters)
         try:
             meth = statement._execute_on_connection

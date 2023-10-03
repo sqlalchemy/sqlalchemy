@@ -272,6 +272,17 @@ class ExecuteTest(fixtures.TablesTest):
             (4, "sally"),
         ]
 
+    @testing.requires.named_paramstyle
+    def test_raw_insert_with_empty_list(self, connection):
+        conn = connection
+        assert_raises_message(
+            tsa.exc.ProgrammingError,
+            "Incorrect number of bindings supplied. The current statement uses 2, and there are 0 supplied",
+            conn.exec_driver_sql,
+            "insert into users (user_id, user_name) values (:id, :name)",
+            [],
+        )
+
     def test_raw_tuple_params(self, connection):
         """test #7820
 
@@ -639,11 +650,18 @@ class ExecuteTest(fixtures.TablesTest):
         """test that execute() interprets [] as a list with no params"""
         users_autoinc = self.tables.users_autoinc
 
-        connection.execute(
-            users_autoinc.insert().values(user_name=bindparam("name", None)),
-            [],
-        )
-        eq_(connection.execute(users_autoinc.select()).fetchall(), [(1, None)])
+        with expect_raises_message(
+            tsa.exc.ArgumentError,
+            "Empty list of parameters passed; no statement to execute",
+        ):
+            connection.execute(
+                users_autoinc.insert().values(
+                    user_name=bindparam("name", None)
+                ),
+                [],
+            )
+
+        eq_(connection.execute(users_autoinc.select()).fetchall(), [])
 
     @testing.only_on("sqlite")
     def test_execute_compiled_favors_compiled_paramstyle(self):

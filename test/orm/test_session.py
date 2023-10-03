@@ -128,6 +128,24 @@ class ExecutionTest(_fixtures.FixtureTest):
             ):
                 sess.scalar("select id from users where id=:id", {"id": 7})
 
+    def test_empty_list_execute(self, connection):
+        users = self.tables.users
+        sess = Session(bind=testing.db)
+        sess.execute(users.insert(), {"id": 10, "name": "u10"})
+
+        with expect_raises_message(
+            sa.exc.ArgumentError,
+            "Empty list of parameters passed; no statement to execute",
+        ):
+            sess.execute(users.insert(), [])
+
+        eq_(
+            sess.execute(
+                sa.select(users.c.id).order_by(users.c.id)
+            ).fetchall(),
+            [(10,)],
+        )
+
 
 class TransScopingTest(_fixtures.FixtureTest):
     run_inserts = None
