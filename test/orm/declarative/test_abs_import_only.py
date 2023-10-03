@@ -6,6 +6,8 @@ mappings while guaranteeing that the Mapped name is not locally present
 
 from __future__ import annotations
 
+import typing
+
 import sqlalchemy
 from sqlalchemy import orm
 import sqlalchemy.orm
@@ -44,4 +46,43 @@ class MappedColumnTest(
         self.assert_compile(
             sqlalchemy.select(Foo),
             "SELECT foo.id, foo.data, foo.data2, foo.data3 FROM foo",
+        )
+
+    @sqlalchemy.testing.variation(
+        "construct", ["Mapped", "WriteOnlyMapped", "DynamicMapped"]
+    )
+    def test_fully_qualified_writeonly_mapped_name(self, decl_base, construct):
+        """futher variation in issue #10412"""
+
+        class Foo(decl_base):
+            __tablename__ = "foo"
+
+            id: sqlalchemy.orm.Mapped[int] = sqlalchemy.orm.mapped_column(
+                primary_key=True
+            )
+
+            if construct.Mapped:
+                bars: orm.Mapped[typing.List[Bar]] = orm.relationship()
+            elif construct.WriteOnlyMapped:
+                bars: orm.WriteOnlyMapped[
+                    typing.List[Bar]
+                ] = orm.relationship()
+            elif construct.DynamicMapped:
+                bars: orm.DynamicMapped[typing.List[Bar]] = orm.relationship()
+            else:
+                construct.fail()
+
+        class Bar(decl_base):
+            __tablename__ = "bar"
+
+            id: sqlalchemy.orm.Mapped[int] = sqlalchemy.orm.mapped_column(
+                primary_key=True
+            )
+            foo_id: sqlalchemy.orm.Mapped[int] = sqlalchemy.orm.mapped_column(
+                sqlalchemy.ForeignKey("foo.id")
+            )
+
+        self.assert_compile(
+            sqlalchemy.select(Foo).join(Foo.bars),
+            "SELECT foo.id FROM foo JOIN bar ON foo.id = bar.foo_id",
         )

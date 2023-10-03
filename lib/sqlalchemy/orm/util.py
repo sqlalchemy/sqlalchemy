@@ -45,6 +45,7 @@ from .base import _never_set as _never_set  # noqa: F401
 from .base import _none_set as _none_set  # noqa: F401
 from .base import attribute_str as attribute_str  # noqa: F401
 from .base import class_mapper as class_mapper
+from .base import DynamicMapped
 from .base import InspectionAttr as InspectionAttr
 from .base import instance_str as instance_str  # noqa: F401
 from .base import Mapped
@@ -55,6 +56,7 @@ from .base import ORMDescriptor
 from .base import state_attribute_str as state_attribute_str  # noqa: F401
 from .base import state_class_str as state_class_str  # noqa: F401
 from .base import state_str as state_str  # noqa: F401
+from .base import WriteOnlyMapped
 from .interfaces import CriteriaOption
 from .interfaces import MapperProperty as MapperProperty
 from .interfaces import ORMColumnsClauseRole
@@ -138,7 +140,14 @@ all_cascades = frozenset(
 
 
 _de_stringify_partial = functools.partial(
-    functools.partial, locals_=util.immutabledict({"Mapped": Mapped})
+    functools.partial,
+    locals_=util.immutabledict(
+        {
+            "Mapped": Mapped,
+            "WriteOnlyMapped": WriteOnlyMapped,
+            "DynamicMapped": DynamicMapped,
+        }
+    ),
 )
 
 # partial is practically useless as we have to write out the whole
