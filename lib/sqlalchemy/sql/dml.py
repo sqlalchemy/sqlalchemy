@@ -211,7 +211,11 @@ class DMLState(CompileState):
         primary_table = all_tables[0]
         seen = {primary_table}
 
-        for crit in statement._where_criteria:
+        consider = statement._where_criteria
+        if self._dict_parameters:
+            consider += tuple(self._dict_parameters.values())
+
+        for crit in consider:
             for item in _from_objects(crit):
                 if not seen.intersection(item._cloned_set):
                     froms.append(item)

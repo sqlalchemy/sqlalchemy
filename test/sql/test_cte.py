@@ -18,6 +18,7 @@ from sqlalchemy.sql import column
 from sqlalchemy.sql import cte
 from sqlalchemy.sql import exists
 from sqlalchemy.sql import func
+from sqlalchemy.sql import insert
 from sqlalchemy.sql import literal
 from sqlalchemy.sql import select
 from sqlalchemy.sql import table
@@ -1417,6 +1418,31 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
                 "SELECT delete_cte.id, delete_cte.val FROM delete_cte",
                 dialect=dialect,
             )
+
+    def test_insert_update_w_add_cte(self):
+        """test #10408"""
+        a = table(
+            "a", column("id"), column("x"), column("y"), column("next_id")
+        )
+
+        insert_a_cte = (insert(a).values(x=10, y=15).returning(a.c.id)).cte(
+            "insert_a_cte"
+        )
+
+        update_query = (
+            update(a)
+            .values(next_id=insert_a_cte.c.id)
+            .where(a.c.id == 10)
+            .add_cte(insert_a_cte)
+        )
+
+        self.assert_compile(
+            update_query,
+            "WITH insert_a_cte AS (INSERT INTO a (x, y) "
+            "VALUES (:param_1, :param_2) RETURNING a.id) "
+            "UPDATE a SET next_id=insert_a_cte.id "
+            "FROM insert_a_cte WHERE a.id = :id_1",
+        )
 
     def test_anon_update_cte(self):
         orders = table("orders", column("region"))
