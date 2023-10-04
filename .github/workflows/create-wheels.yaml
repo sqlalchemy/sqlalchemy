@@ -22,7 +22,7 @@ jobs:
         python:
           - "cp37-* cp38-*"
           - "cp39-* cp310-*"
-          - "cp311-*"
+          - "cp311-* cp312-*"
         wheel_mode:
           - compiled
         os:
@@ -84,7 +84,7 @@ jobs:
       - name: Set up Python for twine and pure-python wheel
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Build pure-python wheel
         if: ${{ matrix.wheel_mode == 'pure-python' && runner.os == 'Linux' }}
