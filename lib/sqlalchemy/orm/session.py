@@ -83,6 +83,7 @@ from ..sql import roles
 from ..sql import Select
 from ..sql import TableClause
 from ..sql import visitors
+from ..sql.base import _NoArg
 from ..sql.base import CompileState
 from ..sql.schema import Table
 from ..sql.selectable import ForUpdateArg
@@ -881,6 +882,12 @@ class SessionTransaction(_StateChange, TransactionalContext):
         self.nested = nested = origin is SessionTransactionOrigin.BEGIN_NESTED
         self.origin = origin
 
+        if session._close_state is _SessionCloseState.CLOSED:
+            raise sa_exc.InvalidRequestError(
+                "This Session has been permanently closed and is unable "
+                "to handle any more transaction requests."
+            )
+
         if nested:
             if not parent:
                 raise sa_exc.InvalidRequestError(
@@ -1372,6 +1379,12 @@ class SessionTransaction(_StateChange, TransactionalContext):
         return self._state not in (COMMITTED, CLOSED)
 
 
+class _SessionCloseState(Enum):
+    ACTIVE = 1
+    CLOSED = 2
+    CLOSE_IS_RESET = 3
+
+
 class Session(_SessionClassMethods, EventTarget):
     """Manages persistence operations for ORM-mapped objects.
 
@@ -1416,6 +1429,7 @@ class Session(_SessionClassMethods, EventTarget):
     twophase: bool
     join_transaction_mode: JoinTransactionMode
     _query_cls: Type[Query[Any]]
+    _close_state: _SessionCloseState
 
     def __init__(
         self,
@@ -1432,6 +1446,7 @@ class Session(_SessionClassMethods, EventTarget):
         query_cls: Optional[Type[Query[Any]]] = None,
         autocommit: Literal[False] = False,
         join_transaction_mode: JoinTransactionMode = "conditional_savepoint",
+        close_resets_only: Union[bool, _NoArg] = _NoArg.NO_ARG,
     ):
         r"""Construct a new :class:`_orm.Session`.
 
@@ -1639,6 +1654,18 @@ class Session(_SessionClassMethods, EventTarget):
 
           .. versionadded:: 2.0.0rc1
 
+        :param close_resets_only: Defaults to ``True``. Determines if
+          the session should reset itself after calling ``.close()``
+          or should pass in a no longer usable state, disabling re-use.
+
+          .. versionadded:: 2.0.22 added flag ``close_resets_only``.
+            A future SQLAlchemy version may change the default value of
+            this flag to ``False``.
+
+          .. seealso::
+
+            :ref:`session_closing` - Detail on the semantics of
+            :meth:`_orm.Session.close` and :meth:`_orm.Session.reset`.
 
         """  # noqa
 
@@ -1671,6 +1698,13 @@ class Session(_SessionClassMethods, EventTarget):
         self.autoflush = autoflush
         self.expire_on_commit = expire_on_commit
         self.enable_baked_queries = enable_baked_queries
+
+        # the idea is that at some point NO_ARG will warn that in the future
+        # the default will switch to close_resets_only=False.
+        if close_resets_only or close_resets_only is _NoArg.NO_ARG:
+            self._close_state = _SessionCloseState.CLOSE_IS_RESET
+        else:
+            self._close_state = _SessionCloseState.ACTIVE
         if (
             join_transaction_mode
             and join_transaction_mode
@@ -2393,11 +2427,16 @@ class Session(_SessionClassMethods, EventTarget):
 
         .. tip::
 
-            The :meth:`_orm.Session.close` method **does not prevent the
-            Session from being used again**.   The :class:`_orm.Session` itself
-            does not actually have a distinct "closed" state; it merely means
+            In the default running mode the :meth:`_orm.Session.close`
+            method **does not prevent the Session from being used again**.
+            The :class:`_orm.Session` itself does not actually have a
+            distinct "closed" state; it merely means
             the :class:`_orm.Session` will release all database connections
             and ORM objects.
+
+            Setting the parameter :paramref:`_orm.Session.close_resets_only`
+            to ``False`` will instead make the ``close`` final, meaning that
+            any further action on the session will be forbidden.
 
         .. versionchanged:: 1.4  The :meth:`.Session.close` method does not
            immediately create a new :class:`.SessionTransaction` object;
@@ -2407,10 +2446,39 @@ class Session(_SessionClassMethods, EventTarget):
         .. seealso::
 
             :ref:`session_closing` - detail on the semantics of
-            :meth:`_orm.Session.close`
+            :meth:`_orm.Session.close` and :meth:`_orm.Session.reset`.
+
+            :meth:`_orm.Session.reset` - a similar method that behaves like
+            ``close()`` with  the parameter
+            :paramref:`_orm.Session.close_resets_only` set to ``True``.
 
         """
         self._close_impl(invalidate=False)
+
+    def reset(self) -> None:
+        """Close out the transactional resources and ORM objects used by this
+        :class:`_orm.Session`, resetting the session to its initial state.
+
+        This method provides for same "reset-only" behavior that the
+        :meth:_orm.Session.close method has provided historically, where the
+        state of the :class:`_orm.Session` is reset as though the object were
+        brand new, and ready to be used again.
+        The method may then be useful for :class:`_orm.Session` objects
+        which set :paramref:`_orm.Session.close_resets_only` to ``False``,
+        so that "reset only" behavior is still available from this method.
+
+        .. versionadded:: 2.0.22
+
+        .. seealso::
+
+            :ref:`session_closing` - detail on the semantics of
+            :meth:`_orm.Session.close` and :meth:`_orm.Session.reset`.
+
+            :meth:`_orm.Session.close` - a similar method will additionally
+            prevent re-use of the Session when the parameter
+            :paramref:`_orm.Session.close_resets_only` is set to ``False``.
+        """
+        self._close_impl(invalidate=False, is_reset=True)
 
     def invalidate(self) -> None:
         """Close this Session, using connection invalidation.
@@ -2448,7 +2516,9 @@ class Session(_SessionClassMethods, EventTarget):
         """
         self._close_impl(invalidate=True)
 
-    def _close_impl(self, invalidate: bool) -> None:
+    def _close_impl(self, invalidate: bool, is_reset: bool = False) -> None:
+        if not is_reset and self._close_state is _SessionCloseState.ACTIVE:
+            self._close_state = _SessionCloseState.CLOSED
         self.expunge_all()
         if self._transaction is not None:
             for transaction in self._transaction._iterate_self_and_parents():

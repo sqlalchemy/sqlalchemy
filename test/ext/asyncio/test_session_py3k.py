@@ -909,6 +909,11 @@ class AsyncProxyTest(AsyncFixture):
 
         is_(async_object_session(u3), None)
 
+        await s2.reset()
+        is_(async_object_session(u2), None)
+        s2.add(u2)
+
+        is_(async_object_session(u2), s2)
         await s2.close()
         is_(async_object_session(u2), None)
 

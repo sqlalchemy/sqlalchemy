@@ -77,6 +77,7 @@ _T = TypeVar("_T", bound=Any)
         "begin",
         "begin_nested",
         "close",
+        "reset",
         "commit",
         "connection",
         "delete",
@@ -407,33 +408,44 @@ class async_scoped_session(Generic[_AS]):
             Proxied for the :class:`_asyncio.AsyncSession` class on
             behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
 
-        This expunges all ORM objects associated with this
-        :class:`_asyncio.AsyncSession`, ends any transaction in progress and
-        :term:`releases` any :class:`_asyncio.AsyncConnection` objects which
-        this :class:`_asyncio.AsyncSession` itself has checked out from
-        associated :class:`_asyncio.AsyncEngine` objects. The operation then
-        leaves the :class:`_asyncio.AsyncSession` in a state which it may be
-        used again.
-
-        .. tip::
-
-            The :meth:`_asyncio.AsyncSession.close` method **does not prevent
-            the Session from being used again**. The
-            :class:`_asyncio.AsyncSession` itself does not actually have a
-            distinct "closed" state; it merely means the
-            :class:`_asyncio.AsyncSession` will release all database
-            connections and ORM objects.
-
-
         .. seealso::
 
+            :meth:`_orm.Session.close` - main documentation for
+            "close"
+
             :ref:`session_closing` - detail on the semantics of
-            :meth:`_asyncio.AsyncSession.close`
+            :meth:`_asyncio.AsyncSession.close` and
+            :meth:`_asyncio.AsyncSession.reset`.
 
 
         """  # noqa: E501
 
         return await self._proxied.close()
+
+    async def reset(self) -> None:
+        r"""Close out the transactional resources and ORM objects used by this
+        :class:`_orm.Session`, resetting the session to its initial state.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_asyncio.AsyncSession` class on
+            behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
+
+        .. versionadded:: 2.0.22
+
+        .. seealso::
+
+            :meth:`_orm.Session.reset` - main documentation for
+            "reset"
+
+            :ref:`session_closing` - detail on the semantics of
+            :meth:`_asyncio.AsyncSession.close` and
+            :meth:`_asyncio.AsyncSession.reset`.
+
+
+        """  # noqa: E501
+
+        return await self._proxied.reset()
 
     async def commit(self) -> None:
         r"""Commit the current transaction in progress.
@@ -442,6 +454,11 @@ class async_scoped_session(Generic[_AS]):
 
             Proxied for the :class:`_asyncio.AsyncSession` class on
             behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
+
+        .. seealso::
+
+            :meth:`_orm.Session.commit` - main documentation for
+            "commit"
 
         """  # noqa: E501
 
@@ -973,6 +990,11 @@ class async_scoped_session(Generic[_AS]):
 
             Proxied for the :class:`_asyncio.AsyncSession` class on
             behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
+
+        .. seealso::
+
+            :meth:`_orm.Session.rollback` - main documentation for
+            "rollback"
 
         """  # noqa: E501
 

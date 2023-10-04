@@ -984,42 +984,58 @@ class AsyncSession(ReversibleProxy[Session]):
         return AsyncSessionTransaction(self, nested=True)
 
     async def rollback(self) -> None:
-        """Rollback the current transaction in progress."""
+        """Rollback the current transaction in progress.
+
+        .. seealso::
+
+            :meth:`_orm.Session.rollback` - main documentation for
+            "rollback"
+        """
         await greenlet_spawn(self.sync_session.rollback)
 
     async def commit(self) -> None:
-        """Commit the current transaction in progress."""
+        """Commit the current transaction in progress.
+
+        .. seealso::
+
+            :meth:`_orm.Session.commit` - main documentation for
+            "commit"
+        """
         await greenlet_spawn(self.sync_session.commit)
 
     async def close(self) -> None:
         """Close out the transactional resources and ORM objects used by this
         :class:`_asyncio.AsyncSession`.
 
-        This expunges all ORM objects associated with this
-        :class:`_asyncio.AsyncSession`, ends any transaction in progress and
-        :term:`releases` any :class:`_asyncio.AsyncConnection` objects which
-        this :class:`_asyncio.AsyncSession` itself has checked out from
-        associated :class:`_asyncio.AsyncEngine` objects. The operation then
-        leaves the :class:`_asyncio.AsyncSession` in a state which it may be
-        used again.
-
-        .. tip::
-
-            The :meth:`_asyncio.AsyncSession.close` method **does not prevent
-            the Session from being used again**. The
-            :class:`_asyncio.AsyncSession` itself does not actually have a
-            distinct "closed" state; it merely means the
-            :class:`_asyncio.AsyncSession` will release all database
-            connections and ORM objects.
-
-
         .. seealso::
 
+            :meth:`_orm.Session.close` - main documentation for
+            "close"
+
             :ref:`session_closing` - detail on the semantics of
-            :meth:`_asyncio.AsyncSession.close`
+            :meth:`_asyncio.AsyncSession.close` and
+            :meth:`_asyncio.AsyncSession.reset`.
 
         """
         await greenlet_spawn(self.sync_session.close)
+
+    async def reset(self) -> None:
+        """Close out the transactional resources and ORM objects used by this
+        :class:`_orm.Session`, resetting the session to its initial state.
+
+        .. versionadded:: 2.0.22
+
+        .. seealso::
+
+            :meth:`_orm.Session.reset` - main documentation for
+            "reset"
+
+            :ref:`session_closing` - detail on the semantics of
+            :meth:`_asyncio.AsyncSession.close` and
+            :meth:`_asyncio.AsyncSession.reset`.
+
+        """
+        await greenlet_spawn(self.sync_session.reset)
 
     async def aclose(self) -> None:
         """A synonym for :meth:`_asyncio.AsyncSession.close`.
