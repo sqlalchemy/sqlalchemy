@@ -24,18 +24,13 @@ jobs:
       matrix:
         os:
           - "ubuntu-latest"
-          - "ubuntu-20.04"
         python-version:
-          - "3.10"
+          - "3.11"
         build-type:
           - "cext"
           - "nocext"
         architecture:
           - x64
-        exclude:
-          # ubuntu-20.04 does not need to test what ubuntu-latest supports
-          - os: "ubuntu-20.04"
-            python-version: "3.10"
 
       # abort all jobs as soon as one fails
       fail-fast: true
@@ -69,7 +64,7 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
-          - "3.10"
+          - "3.11"
 
       fail-fast: false
 
@@ -102,7 +97,7 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
-          - "3.10"
+          - "3.11"
 
       fail-fast: false
 

@@ -28,7 +28,8 @@ jobs:
           - "3.8"
           - "3.9"
           - "3.10"
-          - "3.11.0-rc - 3.11"
+          - "3.11"
+          - "3.12"
         architecture:
           - x64
           - x86
@@ -139,6 +140,7 @@ jobs:
           - cp39-cp39
           - cp310-cp310
           - cp311-cp311
+          - cp312-cp312
         architecture:
           - x64
 
@@ -167,6 +169,8 @@ jobs:
             python-version: cp310-cp310
           - os: "ubuntu-20.04"
             python-version: cp311-cp311
+          - os: "ubuntu-20.04"
+            python-version: cp312-cp312
 
       fail-fast: false
 
@@ -200,11 +204,11 @@ jobs:
           (cat setup.cfg) | %{$_ -replace "tag_build.?=.?dev",""} | set-content setup.cfg
 
       - name: Create wheel for manylinux1 and manylinux2010 for py3
-        if: ${{ matrix.python-version != 'cp27-cp27m' && matrix.python-version != 'cp27-cp27mu' && matrix.python-version != 'cp311-cp311' }}
+        if: ${{ matrix.python-version != 'cp27-cp27m' && matrix.python-version != 'cp27-cp27mu' && matrix.python-version != 'cp311-cp311' && matrix.python-version != 'cp312-cp312' }}
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used
-        uses: RalfG/python-wheels-manylinux-build@v0.5.0-manylinux2010_x86_64
+        uses: RalfG/python-wheels-manylinux-build@v0.7.1-manylinux2010_x86_64
         # this action generates 3 wheels in dist/. linux, manylinux1 and manylinux2010
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
@@ -220,7 +224,7 @@ jobs:
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used
-        uses: RalfG/python-wheels-manylinux-build@v0.5.0-manylinux2014_x86_64
+        uses: RalfG/python-wheels-manylinux-build@v0.7.1-manylinux2014_x86_64
         # this action generates 2 wheels in dist/. linux and manylinux2014
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
@@ -236,7 +240,7 @@ jobs:
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used
-        uses: RalfG/python-wheels-manylinux-build@v0.5.0-manylinux1_x86_64
+        uses: RalfG/python-wheels-manylinux-build@v0.7.1-manylinux1_x86_64
         # this action generates 2 wheels in dist/. linux and manylinux1
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
@@ -301,7 +305,7 @@ jobs:
         # twine on py2 is very old and is no longer updated, so we change to python 3.8 before upload
         uses: actions/setup-python@v4
         with:
-          python-version: "3.8"
+          python-version: "3.11"
 
       - name: Publish wheel
         # the action https://github.com/marketplace/actions/pypi-publish runs only on linux and we cannot specify
@@ -334,6 +338,7 @@ jobs:
           - cp39-cp39
           - cp310-cp310
           - cp311-cp311
+          - cp312-cp312
         exclude:
           # ubuntu-latest does not have: py27, py36
           - os: "ubuntu-latest"
@@ -349,6 +354,8 @@ jobs:
             python-version: cp310-cp310
           - os: "ubuntu-20.04"
             python-version: cp311-cp311
+          - os: "ubuntu-20.04"
+            python-version: cp312-cp312
 
       fail-fast: false
 
@@ -377,7 +384,7 @@ jobs:
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2014 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used
-        uses: RalfG/python-wheels-manylinux-build@v0.5.0-manylinux2014_aarch64
+        uses: RalfG/python-wheels-manylinux-build@v0.7.1-manylinux2014_aarch64
         # this action generates 2 wheels in dist/. linux and manylinux2014
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp37-cp37mu
@@ -415,7 +422,7 @@ jobs:
         # twine on py2 is very old and is no longer updated, so we change to python 3.8 before upload
         uses: actions/setup-python@v4
         with:
-          python-version: "3.8"
+          python-version: "3.11"
 
       - name: Publish wheel
         # the action https://github.com/marketplace/actions/pypi-publish runs only on linux and we cannot specify

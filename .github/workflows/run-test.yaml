@@ -27,6 +27,7 @@ jobs:
       # run this job using this matrix, excluding some combinations below.
       matrix:
         os:
+          - "ubuntu-20.04"
           - "ubuntu-latest"
           - "windows-latest"
           - "macos-latest"
@@ -36,7 +37,8 @@ jobs:
           - "3.8"
           - "3.9"
           - "3.10"
-          - "3.11.0-rc - 3.11"
+          - "3.11"
+          - "3.12"
           # waiting on https://foss.heptapod.net/pypy/pypy/-/issues/3690
           # which also seems to be in 3.9
           # - "pypy-3.9"
@@ -76,7 +78,9 @@ jobs:
           - os: "ubuntu-20.04"
             python-version: "3.10"
           - os: "ubuntu-20.04"
-            python-version: "3.11.0-rc - 3.11"
+            python-version: "3.11"
+          - os: "ubuntu-20.04"
+            python-version: "3.12"
           # pypy does not have cext
           # - python-version: "pypy-3.9"
           #   build-type: "cext"
@@ -154,6 +158,7 @@ jobs:
           - cp39-cp39
           - cp310-cp310
           - cp311-cp311
+          - cp312-cp312
         build-type:
           - "cext"
           - "nocext"
@@ -204,29 +209,17 @@ jobs:
       matrix:
         os:
           - "ubuntu-latest"
-          - "ubuntu-20.04"
         python-version:
-          - "3.6"
           - "3.7"
           - "3.8"
           - "3.9"
           - "3.10"
-          - "3.11.0-rc - 3.11"
-        exclude:
+          - "3.11"
+          - "3.12"
+        include:
           # ubuntu-latest does not have: py27, py36
-          - os: "ubuntu-latest"
+          - os: "ubuntu-20.04"
             python-version: "3.6"
-          # ubuntu-20.04 does not need to test what ubuntu-latest supports
-          - os: "ubuntu-20.04"
-            python-version: "3.7"
-          - os: "ubuntu-20.04"
-            python-version: "3.8"
-          - os: "ubuntu-20.04"
-            python-version: "3.9"
-          - os: "ubuntu-20.04"
-            python-version: "3.10"
-          - os: "ubuntu-20.04"
-            python-version: "3.11.0-rc - 3.11"
       fail-fast: false
 
     # steps to run in each job. Some are github actions, others run shell commands
@@ -257,7 +250,7 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
-          - "3.10"
+          - "3.11"
 
       fail-fast: false
 
