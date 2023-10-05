@@ -32,6 +32,7 @@ from .result import _ensure_sync_result
 from .result import AsyncResult
 from .result import AsyncScalarResult
 from ... import util
+from ...orm import close_all_sessions
 from ...orm import object_session
 from ...orm import Session
 from ...orm import SessionTransaction
@@ -1057,9 +1058,9 @@ class AsyncSession(ReversibleProxy[Session]):
         await greenlet_spawn(self.sync_session.invalidate)
 
     @classmethod
-    async def close_all(self) -> None:
+    async def close_all(cls) -> None:
         """Close all :class:`_asyncio.AsyncSession` sessions."""
-        await greenlet_spawn(self.sync_session.close_all)
+        await greenlet_spawn(close_all_sessions)
 
     async def __aenter__(self: _AS) -> _AS:
         return self

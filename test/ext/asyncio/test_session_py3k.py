@@ -122,6 +122,15 @@ class AsyncSessionTest(AsyncFixture):
                     sync_connection.dialect.default_sequence_base,
                 )
 
+    @async_test
+    async def test_close_all(self, async_session):
+        User = self.classes.User
+        u = User(name="u")
+        async_session.add(u)
+        await async_session.commit()
+        await AsyncSession.close_all()
+        assert async_session.sync_session.identity_map.values() == []
+
 
 class AsyncSessionQueryTest(AsyncFixture):
     @async_test
