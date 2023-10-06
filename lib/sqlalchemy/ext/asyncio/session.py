@@ -1059,7 +1059,11 @@ class AsyncSession(ReversibleProxy[Session]):
 
     @classmethod
     async def close_all(cls) -> None:
-        """Close all :class:`_asyncio.AsyncSession` sessions."""
+        """Close all :class:`_asyncio.AsyncSession` sessions.
+
+        .. deprecated:: 2.0 The :meth:`.AsyncSession.close_all` method is deprecated and will be removed in a future release.  Please refer to :func:`.session.close_all_sessions`.
+
+        """  # noqa: E501
         await greenlet_spawn(close_all_sessions)
 
     async def __aenter__(self: _AS) -> _AS:
