@@ -128,7 +128,11 @@ class AsyncSessionTest(AsyncFixture):
         u = User(name="u")
         async_session.add(u)
         await async_session.commit()
-        await AsyncSession.close_all()
+        with expect_deprecated(
+            r"The AsyncSession.close_all\(\) method is deprecated and will "
+            "be removed in a future release. "
+        ):
+            await AsyncSession.close_all()
         assert async_session.sync_session.identity_map.values() == []
 
 
