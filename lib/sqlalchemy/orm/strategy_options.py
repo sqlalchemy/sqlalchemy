@@ -542,7 +542,12 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         )
 
     def defaultload(self, attr: _AttrType) -> Self:
-        """Indicate an attribute should load using its default loader style.
+        """Indicate an attribute should load using its predefined loader style.
+
+        The behavior of this loading option is to not change the current
+        loading style of the attribute, meaning that the previously configured
+        one is used or, if no previous style was selected, the default
+        loading will be used.
 
         This method is used to link to other loader options further into
         a chain of attributes without altering the loader style of the links
