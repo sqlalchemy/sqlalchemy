@@ -67,7 +67,7 @@ _T = TypeVar("_T", bound=Any)
     AsyncSession,
     ":class:`_asyncio.AsyncSession`",
     ":class:`_asyncio.scoping.async_scoped_session`",
-    classmethods=["close_all", "object_session", "identity_key"],
+    classmethods=["object_session", "identity_key"],
     methods=[
         "__contains__",
         "__iter__",
@@ -1542,21 +1542,6 @@ class async_scoped_session(Generic[_AS]):
         """  # noqa: E501
 
         return self._proxied.info
-
-    @classmethod
-    async def close_all(cls) -> None:
-        r"""Close all :class:`_asyncio.AsyncSession` sessions.
-
-        .. container:: class_bases
-
-            Proxied for the :class:`_asyncio.AsyncSession` class on
-            behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
-
-        .. deprecated:: 2.0 The :meth:`.AsyncSession.close_all` method is deprecated and will be removed in a future release.  Please refer to :func:`.session.close_all_sessions`.
-
-        """  # noqa: E501
-
-        return await AsyncSession.close_all()
 
     @classmethod
     def object_session(cls, instance: object) -> Optional[Session]:
