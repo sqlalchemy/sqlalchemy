@@ -1554,7 +1554,6 @@ class async_scoped_session(Generic[_AS]):
 
         .. deprecated:: 2.0 The :meth:`.AsyncSession.close_all` method is deprecated and will be removed in a future release.  Please refer to :func:`.session.close_all_sessions`.
 
-
         """  # noqa: E501
 
         return await AsyncSession.close_all()
