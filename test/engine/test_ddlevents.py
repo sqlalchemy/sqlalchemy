@@ -1028,8 +1028,15 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             ._should_execute(tbl, cx)
         )
 
-    def test_repr(self):
+    @testing.combinations("context", [None, {}, {"foo": 1}])
+    def test_repr(self, context):
         sql = "SELECT :foo"
-        context = {"foo": 1}
+
         ddl = DDL(sql, context=context)
-        assert repr(ddl) == f"<DDL@{id(ddl)}; '{sql}', context={context}>"
+
+        if context:
+            expected_context = f", context={context}"
+        else:
+            expected_context = ""
+
+        assert repr(ddl) == f"<DDL@{id(ddl)}; '{sql}'{expected_context}>"
