@@ -1027,3 +1027,9 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             )
             ._should_execute(tbl, cx)
         )
+
+    def test_repr(self):
+        sql = "SELECT :foo"
+        context = {"foo": 1}
+        ddl = DDL(sql, context=context)
+        assert repr(ddl) == f"<DDL@{id(ddl)}; '{sql}', context={context}>"
