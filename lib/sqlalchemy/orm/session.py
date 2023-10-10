@@ -3671,7 +3671,7 @@ class Session(_SessionClassMethods, EventTarget):
         For a detailed documentation of the arguments see the
         method :meth:`.Session.get`.
 
-        ..versionadded: 2.0.22
+        .. versionadded:: 2.0.22
 
         :return: The object instance, or ``None``.
 
