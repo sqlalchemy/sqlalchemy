@@ -5526,7 +5526,7 @@ class MetaData(HasSchemaAttr):
 
     def _remove_table(self, name: str, schema: Optional[str]) -> None:
         key = _get_table_key(name, schema)
-        removed = dict.pop(self.tables, key, None)  # type: ignore
+        removed = dict.pop(self.tables, key, None)
         if removed is not None:
             for fk in removed.foreign_keys:
                 fk._remove_from_metadata(self)

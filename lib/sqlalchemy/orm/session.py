@@ -511,7 +511,8 @@ class ORMExecuteState(util.MemoizedSlots):
 
 
         """
-        return self.bind_arguments.get("mapper", None)
+        mp: Optional[Mapper[Any]] = self.bind_arguments.get("mapper", None)
+        return mp
 
     @property
     def all_mappers(self) -> Sequence[Mapper[Any]]:
@@ -719,9 +720,14 @@ class ORMExecuteState(util.MemoizedSlots):
                 "This ORM execution is not against a SELECT statement "
                 "so there are no load options."
             )
-        return self.execution_options.get(
+
+        lo: Union[
+            context.QueryContext.default_load_options,
+            Type[context.QueryContext.default_load_options],
+        ] = self.execution_options.get(
             "_sa_orm_load_options", context.QueryContext.default_load_options
         )
+        return lo
 
     @property
     def update_delete_options(
@@ -738,10 +744,14 @@ class ORMExecuteState(util.MemoizedSlots):
                 "This ORM execution is not against an UPDATE or DELETE "
                 "statement so there are no update options."
             )
-        return self.execution_options.get(
+        uo: Union[
+            bulk_persistence.BulkUDCompileState.default_update_options,
+            Type[bulk_persistence.BulkUDCompileState.default_update_options],
+        ] = self.execution_options.get(
             "_sa_orm_update_options",
             bulk_persistence.BulkUDCompileState.default_update_options,
         )
+        return uo
 
     @property
     def _non_compile_orm_options(self) -> Sequence[ORMOption]:
