@@ -71,6 +71,7 @@ if typing.TYPE_CHECKING:
     from types import ModuleType
 
     from .base import Engine
+    from .cursor import ResultFetchStrategy
     from .interfaces import _CoreMultiExecuteParams
     from .interfaces import _CoreSingleExecuteParams
     from .interfaces import _DBAPICursorDescription
@@ -1853,7 +1854,7 @@ class DefaultExecutionContext(ExecutionContext):
     def _setup_dml_or_text_result(self):
         compiled = cast(SQLCompiler, self.compiled)
 
-        strategy = self.cursor_fetch_strategy
+        strategy: ResultFetchStrategy = self.cursor_fetch_strategy
 
         if self.isinsert:
             if (
@@ -1882,9 +1883,15 @@ class DefaultExecutionContext(ExecutionContext):
             strategy = _cursor.BufferedRowCursorFetchStrategy(
                 self.cursor, self.execution_options
             )
-        cursor_description = (
-            strategy.alternate_cursor_description or self.cursor.description
-        )
+
+        if strategy is _cursor._NO_CURSOR_DML:
+            cursor_description = None
+        else:
+            cursor_description = (
+                strategy.alternate_cursor_description
+                or self.cursor.description
+            )
+
         if cursor_description is None:
             strategy = _cursor._NO_CURSOR_DML
         elif self._num_sentinel_cols:

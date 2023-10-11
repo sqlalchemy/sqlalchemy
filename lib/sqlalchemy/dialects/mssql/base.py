@@ -1942,6 +1942,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
             row = self.cursor.fetchall()[0]
             self._lastrowid = int(row[0])
 
+            self.cursor_fetch_strategy = _cursor._NO_CURSOR_DML
         elif (
             self.compiled is not None
             and is_sql_compiler(self.compiled)

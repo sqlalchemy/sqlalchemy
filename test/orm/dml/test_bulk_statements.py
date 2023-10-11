@@ -48,18 +48,21 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
     @testing.variation(
         "style",
         [
+            ("default", testing.requires.insert_returning),
             "no_executemany",
             ("no_sort_by", testing.requires.insert_returning),
             ("all_enabled", testing.requires.insert_returning),
         ],
     )
     @testing.variation("sort_by_parameter_order", [True, False])
+    @testing.variation("enable_implicit_returning", [True, False])
     def test_no_returning_error(
         self,
         decl_base,
         testing_engine,
         style: testing.Variation,
         sort_by_parameter_order,
+        enable_implicit_returning,
     ):
         class A(ComparableEntity, decl_base):
             __tablename__ = "a"
@@ -67,22 +70,30 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
             data: Mapped[str]
             x: Mapped[Optional[int]] = mapped_column("xcol")
 
+            if not enable_implicit_returning:
+                __table_args__ = {"implicit_returning": False}
+
         engine = testing_engine()
 
-        if style.no_executemany:
+        if style.default:
+            pass
+        elif style.no_executemany:
             engine.dialect.use_insertmanyvalues = False
+            engine.dialect.use_insertmanyvalues_wo_returning = False
             engine.dialect.insert_executemany_returning = False
             engine.dialect.insert_executemany_returning_sort_by_parameter_order = (  # noqa: E501
                 False
             )
         elif style.no_sort_by:
             engine.dialect.use_insertmanyvalues = True
+            engine.dialect.use_insertmanyvalues_wo_returning = True
             engine.dialect.insert_executemany_returning = True
             engine.dialect.insert_executemany_returning_sort_by_parameter_order = (  # noqa: E501
                 False
             )
         elif style.all_enabled:
             engine.dialect.use_insertmanyvalues = True
+            engine.dialect.use_insertmanyvalues_wo_returning = True
             engine.dialect.insert_executemany_returning = True
             engine.dialect.insert_executemany_returning_sort_by_parameter_order = (  # noqa: E501
                 True
@@ -93,8 +104,10 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
         decl_base.metadata.create_all(engine)
         s = Session(engine)
 
-        if style.all_enabled or (
-            style.no_sort_by and not sort_by_parameter_order
+        if (
+            style.all_enabled
+            or (style.no_sort_by and not sort_by_parameter_order)
+            or style.default
         ):
             result = s.scalars(
                 insert(A).returning(

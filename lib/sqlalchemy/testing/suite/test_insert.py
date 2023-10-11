@@ -105,6 +105,15 @@ class InsertBehaviorTest(fixtures.TablesTest):
             Column("data", String(50)),
         )
         Table(
+            "no_implicit_returning",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", String(50)),
+            implicit_returning=False,
+        )
+        Table(
             "includes_defaults",
             metadata,
             Column(
@@ -118,6 +127,33 @@ class InsertBehaviorTest(fixtures.TablesTest):
                 default=literal_column("2", type_=Integer) + literal(2),
             ),
         )
+
+    @testing.variation("style", ["plain", "return_defaults"])
+    @testing.variation("executemany", [True, False])
+    def test_no_results_for_non_returning_insert(
+        self, connection, style, executemany
+    ):
+        """test another INSERT issue found during #10453"""
+
+        table = self.tables.no_implicit_returning
+
+        stmt = table.insert()
+        if style.return_defaults:
+            stmt = stmt.return_defaults()
+
+        if executemany:
+            data = [
+                {"data": "d1"},
+                {"data": "d2"},
+                {"data": "d3"},
+                {"data": "d4"},
+                {"data": "d5"},
+            ]
+        else:
+            data = {"data": "d1"}
+
+        r = connection.execute(stmt, data)
+        assert not r.returns_rows
 
     @requirements.autoincrement_insert
     def test_autoclose_on_insert(self, connection):

@@ -1578,7 +1578,11 @@ def _get_returning_modifiers(compiler, stmt, compile_state, toplevel):
         should_implicit_return_defaults = (
             implicit_returning and stmt._return_defaults
         )
-        explicit_returning = should_implicit_return_defaults or stmt._returning
+        explicit_returning = (
+            should_implicit_return_defaults
+            or stmt._returning
+            or stmt._supplemental_returning
+        )
         use_insertmanyvalues = (
             toplevel
             and compiler.for_executemany

@@ -566,6 +566,7 @@ class AsyncAdapt_asyncpg_cursor:
     async def _executemany(self, operation, seq_of_parameters):
         adapt_connection = self._adapt_connection
 
+        self.description = None
         async with adapt_connection._execute_mutex:
             await adapt_connection._check_type_cache_invalidation(
                 self._invalidate_schema_cache_asof
