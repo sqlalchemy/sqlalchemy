@@ -469,6 +469,24 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             ["b.a", "b.b"],
         )
 
+    def test_fk_callable(self):
+        meta = MetaData()
+
+        a = Table(
+            "a",
+            meta,
+            Column("id", Integer, primary_key=True),
+        )
+
+        b = Table(
+            "b",
+            meta,
+            Column("id", Integer, primary_key=True),
+            Column("a_id", ForeignKey(lambda: a.c.id), nullable=False),
+        )
+
+        assert b.c.a_id.references(a.c.id)
+
     def test_pickle_metadata_sequence_restated(self):
         m1 = MetaData()
         Table(

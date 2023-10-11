@@ -176,6 +176,11 @@ _ORMOrderByArgument = Union[
     Callable[[], Iterable[_ColumnExpressionArgument[Any]]],
     Iterable[Union[str, _ColumnExpressionArgument[Any]]],
 ]
+_RelationshipBackPopulatesArgument = Union[
+    str,
+    PropComparator[Any],
+    Callable[[], "_RelationshipBackPopulatesArgument"],
+]
 ORMBackrefArgument = Union[str, Tuple[str, Dict[str, Any]]]
 
 _ORMColCollectionElement = Union[
@@ -274,6 +279,18 @@ class _RelationshipArg(Generic[_T1, _T2]):
 _RelationshipOrderByArg = Union[Literal[False], Tuple[ColumnElement[Any], ...]]
 
 
+@dataclasses.dataclass
+class _StringRelationshipArg(_RelationshipArg[_T1, _T2]):
+    def _resolve_against_registry(
+        self, clsregistry_resolver: Callable[[str, bool], _class_resolver]
+    ) -> None:
+        attr_value = self.argument
+
+        if callable(attr_value):
+            self.resolved = attr_value()
+        else:
+            self.resolved = attr_value
+
 class _RelationshipArgs(NamedTuple):
     """stores user-passed parameters that are resolved at mapper configuration
     time.
@@ -298,6 +315,9 @@ class _RelationshipArgs(NamedTuple):
     ]
     remote_side: _RelationshipArg[
         Optional[_ORMColCollectionArgument], Set[ColumnElement[Any]]
+    ]
+    back_populates: _StringRelationshipArg[
+        Optional[_RelationshipBackPopulatesArgument], str
     ]
 
 
@@ -369,7 +389,7 @@ class RelationshipProperty(
         ] = None,
         primaryjoin: Optional[_RelationshipJoinConditionArgument] = None,
         secondaryjoin: Optional[_RelationshipJoinConditionArgument] = None,
-        back_populates: Optional[str] = None,
+        back_populates: Optional[_RelationshipBackPopulatesArgument] = None,
         order_by: _ORMOrderByArgument = False,
         backref: Optional[ORMBackrefArgument] = None,
         overlaps: Optional[str] = None,
@@ -414,6 +434,7 @@ class RelationshipProperty(
             _RelationshipArg("order_by", order_by, None),
             _RelationshipArg("foreign_keys", foreign_keys, None),
             _RelationshipArg("remote_side", remote_side, None),
+            _StringRelationshipArg("back_populates", back_populates, None),
         )
 
         self.post_update = post_update
@@ -1669,6 +1690,7 @@ class RelationshipProperty(
             "secondary",
             "foreign_keys",
             "remote_side",
+            "back_populates",
         ):
             rel_arg = getattr(init_args, attr)
 
@@ -2054,7 +2076,10 @@ class RelationshipProperty(
 
         if self.parent.non_primary:
             return
-        if self.backref is not None and not self.back_populates:
+
+        resolve_back_populates = self._init_args.back_populates.resolved
+
+        if self.backref is not None and not resolve_back_populates:
             kwargs: Dict[str, Any]
             if isinstance(self.backref, str):
                 backref_key, kwargs = self.backref, {}
@@ -2125,8 +2150,18 @@ class RelationshipProperty(
                 backref_key, relationship, warn_for_existing=True
             )
 
-        if self.back_populates:
-            self._add_reverse_property(self.back_populates)
+        if resolve_back_populates:
+            if isinstance(resolve_back_populates, PropComparator):
+                back_populates = resolve_back_populates.prop.key
+            elif isinstance(resolve_back_populates, str):
+                back_populates = resolve_back_populates
+            else:
+                # need test coverage for this case as well
+                raise sa_exc.ArgumentError(
+                    r"Invalid back_populates value: {resolve_back_populates!r}"
+                )
+
+            self._add_reverse_property(back_populates)
 
     @util.preload_module("sqlalchemy.orm.dependency")
     def _post_init(self) -> None:

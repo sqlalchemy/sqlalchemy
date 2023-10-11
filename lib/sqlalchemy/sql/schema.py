@@ -2766,9 +2766,11 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
     _table_column: Optional[Column[Any]]
 
+    _colspec: Union[str, Column[Any], Callable[[], _DDLColumnArgument]]
+
     def __init__(
         self,
-        column: _DDLColumnArgument,
+        column: Union[_DDLColumnArgument, Callable[[], _DDLColumnArgument]],
         _constraint: Optional[ForeignKeyConstraint] = None,
         use_alter: bool = False,
         name: _ConstraintNameArgument = None,
@@ -2854,12 +2856,18 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
         """
 
-        self._colspec = coercions.expect(roles.DDLReferredColumnRole, column)
+        if not callable(column):
+            self._colspec = coercions.expect(
+                roles.DDLReferredColumnRole, column
+            )
+        else:
+            self._colspec = column
         self._unresolvable = _unresolvable
 
-        if isinstance(self._colspec, str):
+        if isinstance(self._colspec, str) or callable(self._colspec):
             self._table_column = None
         else:
+            assert isinstance(self._colspec, ColumnClause)
             self._table_column = self._colspec
 
             if not isinstance(
@@ -2952,6 +2960,16 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         argument first passed to the object's constructor.
 
         """
+
+        effective_table_column: Optional[Column[Any]]
+
+        if callable(self._colspec):
+            resolved = self._colspec()
+            column = coercions.expect(roles.DDLReferredColumnRole, resolved)
+            effective_table_column = column
+        else:
+            effective_table_column = self._table_column
+
         if schema not in (None, RETAIN_SCHEMA):
             _schema, tname, colname = self._column_tokens
             if table_name is not None:
@@ -2966,18 +2984,18 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                 return "%s.%s.%s" % (schema, table_name, colname)
             else:
                 return "%s.%s" % (table_name, colname)
-        elif self._table_column is not None:
-            if self._table_column.table is None:
+        elif effective_table_column is not None:
+            if effective_table_column.table is None:
                 if _is_copy:
                     raise exc.InvalidRequestError(
                         f"Can't copy ForeignKey object which refers to "
-                        f"non-table bound Column {self._table_column!r}"
+                        f"non-table bound Column {effective_table_column!r}"
                     )
                 else:
-                    return self._table_column.key
+                    return effective_table_column.key
             return "%s.%s" % (
-                self._table_column.table.fullname,
-                self._table_column.key,
+                effective_table_column.table.fullname,
+                effective_table_column.key,
             )
         else:
             assert isinstance(self._colspec, str)
@@ -3203,6 +3221,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             _column = self._colspec.__clause_element__()
             return _column
         else:
+            assert isinstance(self._colspec, Column)
             _column = self._colspec
             return _column
 
@@ -3255,7 +3274,9 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         table.foreign_keys.add(self)
         # set up remote ".column" attribute, or a note to pick it
         # up when the other Table/Column shows up
-        if isinstance(self._colspec, str):
+        colspec = self._get_colspec()
+
+        if isinstance(colspec, str):
             parenttable, table_key, colname = self._resolve_col_tokens()
             fk_key = (table_key, colname)
             if table_key in parenttable.metadata.tables:
@@ -3271,11 +3292,11 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                     self._set_target_column(_column)
 
             parenttable.metadata._fk_memos[fk_key].append(self)
-        elif hasattr(self._colspec, "__clause_element__"):
-            _column = self._colspec.__clause_element__()
+        elif hasattr(colspec, "__clause_element__"):
+            _column = colspec.__clause_element__()
             self._set_target_column(_column)
         else:
-            _column = self._colspec
+            _column = colspec
             self._set_target_column(_column)
 
 

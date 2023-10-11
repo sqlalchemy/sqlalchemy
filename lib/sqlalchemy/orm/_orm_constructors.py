@@ -28,6 +28,7 @@ from .properties import MappedColumn
 from .properties import MappedSQLExpression
 from .query import AliasOption
 from .relationships import _RelationshipArgumentType
+from .relationships import _RelationshipBackPopulatesArgument
 from .relationships import _RelationshipSecondaryArgument
 from .relationships import Relationship
 from .relationships import RelationshipProperty
@@ -917,7 +918,7 @@ def relationship(
     ] = None,
     primaryjoin: Optional[_RelationshipJoinConditionArgument] = None,
     secondaryjoin: Optional[_RelationshipJoinConditionArgument] = None,
-    back_populates: Optional[str] = None,
+    back_populates: Optional[_RelationshipBackPopulatesArgument] = None,
     order_by: _ORMOrderByArgument = False,
     backref: Optional[ORMBackrefArgument] = None,
     overlaps: Optional[str] = None,

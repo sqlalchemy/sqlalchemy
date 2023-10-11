@@ -2296,6 +2296,48 @@ class ManualBackrefTest(_fixtures.FixtureTest):
         assert a1.user is u1
         assert a1 in u1.addresses
 
+    def test_o2m_with_callable(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    Address, back_populates=lambda: Address.user
+                )
+            },
+        )
+
+        self.mapper_registry.map_imperatively(
+            Address,
+            addresses,
+            properties={
+                "user": relationship(
+                    User, back_populates=lambda: User.addresses
+                )
+            },
+        )
+
+        sess = fixture_session()
+
+        u1 = User(name="u1")
+        a1 = Address(email_address="foo")
+        u1.addresses.append(a1)
+        assert a1.user is u1
+
+        sess.add(u1)
+        sess.flush()
+        sess.expire_all()
+        assert sess.query(Address).one() is a1
+        assert a1.user is u1
+        assert a1 in u1.addresses
+
     def test_invalid_key(self):
         users, Address, addresses, User = (
             self.tables.users,
