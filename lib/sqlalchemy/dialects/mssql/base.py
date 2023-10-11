@@ -2125,6 +2125,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             or (
                 # limit can use TOP with is by itself. fetch only uses TOP
                 # when it needs to because of PERCENT and/or WITH TIES
+                # TODO: Why?  shouldn't we use TOP always ?
                 select._simple_int_clause(select._fetch_clause)
                 and (
                     select._fetch_clause_options["percent"]
@@ -2385,10 +2386,13 @@ class MSSQLCompiler(compiler.SQLCompiler):
         return ""
 
     def order_by_clause(self, select, **kw):
-        # MSSQL only allows ORDER BY in subqueries if there is a LIMIT
+        # MSSQL only allows ORDER BY in subqueries if there is a LIMIT:
+        # "The ORDER BY clause is invalid in views, inline functions,
+        # derived tables, subqueries, and common table expressions,
+        # unless TOP, OFFSET or FOR XML is also specified."
         if (
             self.is_subquery()
-            and not select._limit
+            and not self._use_top(select)
             and (
                 select._offset is None
                 or not self.dialect._supports_offset_fetch
