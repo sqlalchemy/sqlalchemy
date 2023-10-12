@@ -624,15 +624,11 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
 
         eq_(q.column_descriptions, asserted)
 
-    def test_unhashable_type_legacy(self):
-        class MyType(TypeDecorator):
-            impl = Integer
-            hashable = False
-            cache_ok = True
-
-            def process_result_value(self, value, dialect):
-                return [value]
-
+    @testing.variation("use_future", [True, False])
+    @testing.variation(
+        "type_style", ["unhashable", "unknown_hashable", "unknown_unhashable"]
+    )
+    def test_unhashable_types(self, use_future, type_style):
         User, users = self.classes.User, self.tables.users
         Address, addresses = self.classes.Address, self.tables.addresses
         self.mapper_registry.map_imperatively(
@@ -640,158 +636,72 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
         )
         self.mapper_registry.map_imperatively(Address, addresses)
 
-        s = fixture_session()
-        q = (
-            s.query(User, type_coerce(users.c.id, MyType).label("foo"))
-            .filter(User.id.in_([7, 8]))
-            .join(User.addresses)
-            .order_by(User.id)
-        )
+        if type_style.unknown_hashable:
+            expression = type_coerce("Some Unique String", NullType)
+        else:
 
-        result = q.all()
+            class MyType(TypeDecorator):
+                impl = Integer
 
-        # uniquing basically does not occur because we can't hash on
-        # MyType
-        eq_(
-            result,
-            [
-                (User(id=7), [7]),
-                (User(id=8), [8]),
-                (User(id=8), [8]),
-                (User(id=8), [8]),
-            ],
-        )
+                if type_style.unhashable:
+                    hashable = False
+                elif type_style.unknown_unhashable:
+                    _isnull = True
+                cache_ok = True
 
-    def test_unhashable_type_future(self):
-        class MyType(TypeDecorator):
-            impl = Integer
-            hashable = False
-            cache_ok = True
+                def process_result_value(self, value, dialect):
+                    return [value]
 
-            def process_result_value(self, value, dialect):
-                return [value]
-
-        User, users = self.classes.User, self.tables.users
-        Address, addresses = self.classes.Address, self.tables.addresses
-        self.mapper_registry.map_imperatively(
-            User, users, properties={"addresses": relationship(Address)}
-        )
-        self.mapper_registry.map_imperatively(Address, addresses)
+            expression = type_coerce(users.c.id, MyType)
 
         s = fixture_session()
 
-        stmt = (
-            select(User, type_coerce(users.c.id, MyType).label("foo"))
-            .filter(User.id.in_([7, 8]))
-            .join(User.addresses)
-            .order_by(User.id)
-        )
-
-        result = s.execute(stmt).unique()
-
-        with expect_raises_message(
-            sa_exc.InvalidRequestError,
-            r"Can't apply uniqueness to row tuple "
-            r"containing value of type MyType\(\)",
-        ):
-            result.all()
-
-    def test_unknown_type_assume_not_hashable_legacy(self):
-        User, users = self.classes.User, self.tables.users
-
-        User, users = self.classes.User, self.tables.users
-        Address, addresses = self.classes.Address, self.tables.addresses
-        self.mapper_registry.map_imperatively(
-            User, users, properties={"addresses": relationship(Address)}
-        )
-        self.mapper_registry.map_imperatively(Address, addresses)
-
-        s = fixture_session()
+        if not use_future:
+            q = s.query(User, expression.label("foo"))
+        else:
+            q = select(User, expression.label("foo"))
 
         q = (
-            s.query(
-                User, type_coerce("Some Unique String", NullType).label("foo")
+            q.filter(User.id.in_([7, 8]))
+            .join(User.addresses)
+            .order_by(User.id)
+        )
+
+        if type_style.unknown_hashable:
+            if not use_future:
+                result = q.all()
+            else:
+                result = s.execute(q).unique().all()
+            eq_(
+                result,
+                [
+                    (User(id=7, name="jack"), "Some Unique String"),
+                    (User(id=8, name="ed"), "Some Unique String"),
+                ],
             )
-            .filter(User.id.in_([7, 8]))
-            .join(User.addresses)
-            .order_by(User.id)
-        )
-
-        result = q.all()
-
-        eq_(
-            result,
-            [
-                (User(id=7, name="jack"), "Some Unique String"),
-                (User(id=8, name="ed"), "Some Unique String"),
-                (User(id=8, name="ed"), "Some Unique String"),
-                (User(id=8, name="ed"), "Some Unique String"),
-            ],
-        )
-
-    def test_unknown_type_assume_hashable_future(self):
-        User, users = self.classes.User, self.tables.users
-
-        User, users = self.classes.User, self.tables.users
-        Address, addresses = self.classes.Address, self.tables.addresses
-        self.mapper_registry.map_imperatively(
-            User, users, properties={"addresses": relationship(Address)}
-        )
-        self.mapper_registry.map_imperatively(Address, addresses)
-
-        s = fixture_session()
-
-        # TODO: it's also unusual I need a label() for type_coerce
-        stmt = (
-            select(
-                User, type_coerce("Some Unique String", NullType).label("foo")
-            )
-            .filter(User.id.in_([7, 8]))
-            .join(User.addresses)
-            .order_by(User.id)
-        )
-
-        result = s.execute(stmt).unique()
-
-        eq_(
-            result.all(),
-            [
-                (User(id=7, name="jack"), "Some Unique String"),
-                (User(id=8, name="ed"), "Some Unique String"),
-            ],
-        )
-
-    def test_unknown_type_truly_not_hashable_future(self):
-        User, users = self.classes.User, self.tables.users
-
-        User, users = self.classes.User, self.tables.users
-        Address, addresses = self.classes.Address, self.tables.addresses
-        self.mapper_registry.map_imperatively(
-            User, users, properties={"addresses": relationship(Address)}
-        )
-        self.mapper_registry.map_imperatively(Address, addresses)
-
-        class MyType(TypeDecorator):
-            impl = Integer
-            hashable = True  # which is wrong
-            cache_ok = True
-
-            def process_result_value(self, value, dialect):
-                return [value]
-
-        s = fixture_session()
-
-        stmt = (
-            select(User, type_coerce(User.id, MyType).label("foo"))
-            .filter(User.id.in_([7, 8]))
-            .join(User.addresses)
-            .order_by(User.id)
-        )
-
-        result = s.execute(stmt).unique()
-
-        with expect_raises_message(TypeError, "unhashable type"):
-            result.all()
+        else:
+            uncertain = bool(type_style.unknown_unhashable)
+            if not use_future:
+                result = q.all()
+                eq_(
+                    result,
+                    [
+                        (User(id=7, name="jack"), [7]),
+                        (User(id=8, name="ed"), [8]),
+                        (User(id=8, name="ed"), [8]),
+                        (User(id=8, name="ed"), [8]),
+                    ],
+                )
+            else:
+                with expect_raises_message(
+                    sa_exc.InvalidRequestError,
+                    r"Can't apply uniqueness to row tuple "
+                    r"containing value of type MyType\(\); "
+                    rf"""{'the values returned appear to be'
+                        if uncertain else 'this datatype produces'} """
+                    r"non-hashable values",
+                ):
+                    result = s.execute(q).unique().all()
 
 
 class RowLabelingTest(QueryTest):

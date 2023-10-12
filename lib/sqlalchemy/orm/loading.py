@@ -137,40 +137,64 @@ def instances(cursor: CursorResult[Any], context: QueryContext) -> Result[Any]:
             "Can't use the ORM yield_per feature in conjunction with unique()"
         )
 
-    def _not_hashable(datatype):
-        def go(obj):
-            raise sa_exc.InvalidRequestError(
-                "Can't apply uniqueness to row tuple containing value of "
-                "type %r; this datatype produces non-hashable values"
-                % datatype
-            )
+    def _not_hashable(datatype, *, legacy=False, uncertain=False):
+        if not legacy:
 
-        return go
+            def go(obj):
+                if uncertain:
+                    try:
+                        return hash(obj)
+                    except:
+                        pass
 
-    if context.load_options._legacy_uniquing:
-        unique_filters = [
-            _no_unique
-            if context.yield_per
-            else id
-            if (
-                ent.use_id_for_hash
-                or ent._non_hashable_value
-                or ent._null_column_type
-            )
-            else None
-            for ent in context.compile_state._entities
-        ]
-    else:
-        unique_filters = [
-            _no_unique
-            if context.yield_per
-            else _not_hashable(ent.column.type)  # type: ignore
-            if (not ent.use_id_for_hash and ent._non_hashable_value)
-            else id
-            if ent.use_id_for_hash
-            else None
-            for ent in context.compile_state._entities
-        ]
+                raise sa_exc.InvalidRequestError(
+                    "Can't apply uniqueness to row tuple containing value of "
+                    f"""type {datatype!r}; {'the values returned appear to be'
+                    if uncertain else 'this datatype produces'} """
+                    "non-hashable values"
+                )
+
+            return go
+        elif not uncertain:
+            return id
+        else:
+            _use_id = False
+
+            def go(obj):
+                nonlocal _use_id
+
+                if not _use_id:
+                    try:
+                        return hash(obj)
+                    except:
+                        pass
+
+                    # in #10459, we considered using a warning here, however
+                    # as legacy query uses result.unique() in all cases, this
+                    # would lead to too many warning cases.
+                    _use_id = True
+
+                return id(obj)
+
+            return go
+
+    unique_filters = [
+        _no_unique
+        if context.yield_per
+        else _not_hashable(
+            ent.column.type,  # type: ignore
+            legacy=context.load_options._legacy_uniquing,
+            uncertain=ent._null_column_type,
+        )
+        if (
+            not ent.use_id_for_hash
+            and (ent._non_hashable_value or ent._null_column_type)
+        )
+        else id
+        if ent.use_id_for_hash
+        else None
+        for ent in context.compile_state._entities
+    ]
 
     row_metadata = SimpleResultMetaData(
         labels, extra, _unique_filters=unique_filters
