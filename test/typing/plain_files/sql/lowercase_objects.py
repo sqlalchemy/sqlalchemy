@@ -1,3 +1,5 @@
+# PYTHON_VERSION >= 3.10
+
 import sqlalchemy as sa
 
 Book = sa.table(
