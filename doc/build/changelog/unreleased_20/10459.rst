@@ -9,9 +9,9 @@
     internally when the returned values were not actually hashable. The
     behavior is repaired to test the objects as they are received for
     hashability in this case, raising an informative error message if not. Note
-    that for values of "known unhashability", such as when the :class:`.JSON`
-    or :class:`.ARRAY` types are used directly, an informative error message
-    was already raised.
+    that for values of "known unhashability", such as when the
+    :class:`_types.JSON` or :class:`_types.ARRAY` types are used directly, an
+    informative error message was already raised.
 
     The "hashabiltiy testing" fix here is applied to legacy :class:`.Query` as
     well, however in the legacy case, :meth:`_engine.Result.unique` is used for
