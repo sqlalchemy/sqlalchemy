@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 10451
-
-    Fixed typing issue where the argument list passed to :class:`.Values` was
-    too-restrictively tied to ``List`` rather than ``Sequence``.  Pull request
-    courtesy Iuri de Silvio.

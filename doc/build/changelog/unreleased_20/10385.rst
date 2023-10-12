@@ -1,9 +1,0 @@
-.. change::
-    :tags: orm, bug
-    :tickets: 10385
-
-    Fixed issue with ``__allow_unmapped__`` declarative option
-    where types that were declared using collection types such as
-    ``list[SomeClass]`` vs. the typing construct ``List[SomeClass]``
-    would fail to be recognized correctly.  Pull request courtesy
-    Pascal Corpet.

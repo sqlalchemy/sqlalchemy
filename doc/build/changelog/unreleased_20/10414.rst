@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, engine
-    :tickets: 10414
-
-    Fixed issue where under some garbage collection / exception scenarios the
-    connection pool's cleanup routine would raise an error due to an unexpected
-    set of state, which can be reproduced under specific conditions.
