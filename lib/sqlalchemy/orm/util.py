@@ -2250,14 +2250,17 @@ def _cleanup_mapped_str_annotation(
             "outside of TYPE_CHECKING blocks"
         ) from ne
 
-    try:
-        if issubclass(obj, _MappedAnnotationBase):
-            real_symbol = obj.__name__
-        else:
+    if obj is typing.ClassVar:
+        real_symbol = "ClassVar"
+    else:
+        try:
+            if issubclass(obj, _MappedAnnotationBase):
+                real_symbol = obj.__name__
+            else:
+                return annotation
+        except TypeError:
+            # avoid isinstance(obj, type) check, just catch TypeError
             return annotation
-    except TypeError:
-        # avoid isinstance(obj, type) check, just catch TypeError
-        return annotation
 
     # note: if one of the codepaths above didn't define real_symbol and
     # then didn't return, real_symbol raises UnboundLocalError

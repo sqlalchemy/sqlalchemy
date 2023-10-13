@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 10472
+
+    Fixed bug in ORM annotated declarative where using a ``ClassVar`` that
+    nonetheless referred in some way to an ORM mapped class name would fail to
+    be interpreted as a ``ClassVar`` that's not mapped.
