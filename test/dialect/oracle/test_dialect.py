@@ -51,21 +51,21 @@ class CxOracleDialectTest(fixtures.TestBase):
             dialect._load_version(dbapi)
             return dialect.cx_oracle_ver
 
-        eq_(check("7.2"), (7, 2))
-        eq_(check("7.0.1"), (7, 0, 1))
+        eq_(check("8.2"), (8, 2))
+        eq_(check("8.0.1"), (8, 0, 1))
         eq_(check("9.0b1"), (9, 0))
 
     def test_minimum_version(self):
         with expect_raises_message(
             exc.InvalidRequestError,
-            "cx_Oracle version 7 and above are supported",
+            "cx_Oracle version 8 and above are supported",
         ):
             cx_oracle.OracleDialect_cx_oracle(dbapi=Mock(version="5.1.5"))
 
         dialect = cx_oracle.OracleDialect_cx_oracle(
-            dbapi=Mock(version="7.1.0")
+            dbapi=Mock(version="8.1.0")
         )
-        eq_(dialect.cx_oracle_ver, (7, 1, 0))
+        eq_(dialect.cx_oracle_ver, (8, 1, 0))
 
 
 class OracleDbDialectTest(fixtures.TestBase):
@@ -323,7 +323,7 @@ class EncodingErrorsTest(fixtures.TestBase):
             FIXED_CHAR=self.cx_Oracle_FIXED_CHAR,
             CLOB=self.cx_Oracle_CLOB,
             NCLOB=self.cx_Oracle_NCLOB,
-            version="7.0.1",
+            version="8.0.1",
             __future__=mock.Mock(),
         )
 
