@@ -67,7 +67,7 @@ _T = TypeVar("_T", bound=Any)
     AsyncSession,
     ":class:`_asyncio.AsyncSession`",
     ":class:`_asyncio.scoping.async_scoped_session`",
-    classmethods=["close_all", "object_session", "identity_key"],
+    classmethods=["object_session", "identity_key"],
     methods=[
         "__contains__",
         "__iter__",
