@@ -567,7 +567,8 @@ class UpdateBase(
 
         3. :meth:`.UpdateBase.return_defaults` can be called against any
            backend. Backends that don't support RETURNING will skip the usage
-           of the feature, rather than raising an exception. The return value
+           of the feature, rather than raising an exception, *unless*
+           ``supplemental_cols`` is passed. The return value
            of :attr:`_engine.CursorResult.returned_defaults` will be ``None``
            for backends that don't support RETURNING or for which the target
            :class:`.Table` sets :paramref:`.Table.implicit_returning` to

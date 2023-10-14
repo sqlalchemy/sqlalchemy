@@ -1630,12 +1630,18 @@ class Bundle(
         )
 
     @property
-    def mapper(self) -> Mapper[Any]:
-        return self.exprs[0]._annotations.get("parentmapper", None)
+    def mapper(self) -> Optional[Mapper[Any]]:
+        mp: Optional[Mapper[Any]] = self.exprs[0]._annotations.get(
+            "parentmapper", None
+        )
+        return mp
 
     @property
-    def entity(self) -> _InternalEntityType[Any]:
-        return self.exprs[0]._annotations.get("parententity", None)
+    def entity(self) -> Optional[_InternalEntityType[Any]]:
+        ie: Optional[_InternalEntityType[Any]] = self.exprs[
+            0
+        ]._annotations.get("parententity", None)
+        return ie
 
     @property
     def entity_namespace(
@@ -2244,14 +2250,17 @@ def _cleanup_mapped_str_annotation(
             "outside of TYPE_CHECKING blocks"
         ) from ne
 
-    try:
-        if issubclass(obj, _MappedAnnotationBase):
-            real_symbol = obj.__name__
-        else:
+    if obj is typing.ClassVar:
+        real_symbol = "ClassVar"
+    else:
+        try:
+            if issubclass(obj, _MappedAnnotationBase):
+                real_symbol = obj.__name__
+            else:
+                return annotation
+        except TypeError:
+            # avoid isinstance(obj, type) check, just catch TypeError
             return annotation
-    except TypeError:
-        # avoid isinstance(obj, type) check, just catch TypeError
-        return annotation
 
     # note: if one of the codepaths above didn't define real_symbol and
     # then didn't return, real_symbol raises UnboundLocalError

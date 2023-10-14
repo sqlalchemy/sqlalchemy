@@ -403,17 +403,14 @@ class DDL(ExecutableDDLElement):
         self.context = context or {}
 
     def __repr__(self):
+        parts = [repr(self.statement)]
+        if self.context:
+            parts.append(f"context={self.context}")
+
         return "<%s@%s; %s>" % (
             type(self).__name__,
             id(self),
-            ", ".join(
-                [repr(self.statement)]
-                + [
-                    "%s=%r" % (key, getattr(self, key))
-                    for key in ("on", "context")
-                    if getattr(self, key)
-                ]
-            ),
+            ", ".join(parts),
         )
 
 

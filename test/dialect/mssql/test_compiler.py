@@ -485,6 +485,74 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "foo.myid = mytable.myid",
         )
 
+    @testing.variation("style", ["plain", "ties", "percent"])
+    def test_noorderby_insubquery_fetch(self, style):
+        """test "no ORDER BY in subqueries unless TOP / LIMIT / OFFSET"
+        present; test issue #10458"""
+
+        table1 = table(
+            "mytable",
+            column("myid", Integer),
+            column("name", String),
+            column("description", String),
+        )
+
+        if style.plain:
+            q = (
+                select(table1.c.myid)
+                .order_by(table1.c.myid)
+                .fetch(count=10)
+                .alias("foo")
+            )
+        elif style.ties:
+            q = (
+                select(table1.c.myid)
+                .order_by(table1.c.myid)
+                .fetch(count=10, with_ties=True)
+                .alias("foo")
+            )
+        elif style.percent:
+            q = (
+                select(table1.c.myid)
+                .order_by(table1.c.myid)
+                .fetch(count=10, percent=True)
+                .alias("foo")
+            )
+        else:
+            style.fail()
+
+        crit = q.c.myid == table1.c.myid
+
+        if style.plain:
+            # the "plain" style of fetch doesnt use TOP right now, so
+            # there's an order_by implicit in the row_number part of it
+            self.assert_compile(
+                select("*").where(crit),
+                "SELECT * FROM (SELECT anon_1.myid AS myid FROM "
+                "(SELECT mytable.myid AS myid, ROW_NUMBER() OVER "
+                "(ORDER BY mytable.myid) AS mssql_rn FROM mytable) AS anon_1 "
+                "WHERE mssql_rn <= :param_1) AS foo, mytable "
+                "WHERE foo.myid = mytable.myid",
+            )
+        elif style.ties:
+            # issue #10458 is that when TIES/PERCENT were used, and it just
+            # generates TOP, ORDER BY would be omitted.
+            self.assert_compile(
+                select("*").where(crit),
+                "SELECT * FROM (SELECT TOP __[POSTCOMPILE_param_1] WITH "
+                "TIES mytable.myid AS myid FROM mytable "
+                "ORDER BY mytable.myid) AS foo, mytable "
+                "WHERE foo.myid = mytable.myid",
+            )
+        elif style.percent:
+            self.assert_compile(
+                select("*").where(crit),
+                "SELECT * FROM (SELECT TOP __[POSTCOMPILE_param_1] "
+                "PERCENT mytable.myid AS myid FROM mytable "
+                "ORDER BY mytable.myid) AS foo, mytable "
+                "WHERE foo.myid = mytable.myid",
+            )
+
     @testing.combinations(10, 0)
     def test_noorderby_insubquery_offset_oldstyle(self, offset):
         """test "no ORDER BY in subqueries unless TOP / LIMIT / OFFSET"

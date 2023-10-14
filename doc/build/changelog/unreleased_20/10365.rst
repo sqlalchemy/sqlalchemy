@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 10365
-
-    Fixed bug where ORM :func:`_orm.with_loader_criteria` would not apply
-    itself to a :meth:`_sql.Select.join` where the ON clause were given as a
-    plain SQL comparison, rather than as a relationship target or similar.

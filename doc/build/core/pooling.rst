@@ -584,7 +584,7 @@ typically the most common).
 The SQLAlchemy :class:`_engine.Engine` object refers to a connection pool of existing
 database connections.  So when this object is replicated to a child process,
 the goal is to ensure that no database connections are carried over.  There
-are three general approaches to this:
+are four general approaches to this:
 
 1. Disable pooling using :class:`.NullPool`.  This is the most simplistic,
    one shot system that prevents the :class:`_engine.Engine` from using any connection
@@ -687,7 +687,7 @@ Using a pool instance directly
 ------------------------------
 
 A pool implementation can be used directly without an engine. This could be used
-in applications that just whish to use the pool behavior without all other
+in applications that just wish to use the pool behavior without all other
 SQLAlchemy features.
 In the example below the default pool for the ``MySQLdb`` dialect is obtained using
 :func:`_sa.create_pool_from_url`::

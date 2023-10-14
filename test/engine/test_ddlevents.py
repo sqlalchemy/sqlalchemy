@@ -1027,3 +1027,15 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             )
             ._should_execute(tbl, cx)
         )
+
+    @testing.variation("include_context", [True, False])
+    def test_repr(self, include_context):
+        sql = "SELECT :foo"
+
+        if include_context:
+            context = {"foo": 1}
+            ddl = DDL(sql, context=context)
+            eq_(repr(ddl), f"<DDL@{id(ddl)}; '{sql}', context={context}>")
+        else:
+            ddl = DDL(sql)
+            eq_(repr(ddl), f"<DDL@{id(ddl)}; '{sql}'>")

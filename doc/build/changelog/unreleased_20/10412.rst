@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 10412
-
-    Fixed issue where :class:`.Mapped` symbols like :class:`.WriteOnlyMapped`
-    and :class:`.DynamicMapped` could not be correctly resolved when referenced
-    as an element of a sub-module in the given annotation, assuming
-    string-based or "future annotations" style annotations.

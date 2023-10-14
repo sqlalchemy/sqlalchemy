@@ -3149,7 +3149,7 @@ class Values(roles.InElementRole, Generative, LateralFromClause):
 
     __visit_name__ = "values"
 
-    _data: Tuple[List[Tuple[Any, ...]], ...] = ()
+    _data: Tuple[Sequence[Tuple[Any, ...]], ...] = ()
 
     _unnamed: bool
     _traverse_internals: _TraverseInternalsType = [
@@ -3233,7 +3233,7 @@ class Values(roles.InElementRole, Generative, LateralFromClause):
         return self
 
     @_generative
-    def data(self, values: List[Tuple[Any, ...]]) -> Self:
+    def data(self, values: Sequence[Tuple[Any, ...]]) -> Self:
         """Return a new :class:`_expression.Values` construct,
         adding the given data to the data list.
 
@@ -3300,7 +3300,7 @@ class ScalarValues(roles.InElementRole, GroupedElement, ColumnElement[Any]):
     def __init__(
         self,
         columns: Sequence[ColumnClause[Any]],
-        data: Tuple[List[Tuple[Any, ...]], ...],
+        data: Tuple[Sequence[Tuple[Any, ...]], ...],
         literal_binds: bool,
     ):
         super().__init__()

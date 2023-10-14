@@ -8,15 +8,20 @@ the ``test_tm_future_annotations_sync`` by the ``sync_test_file`` script.
 
 from __future__ import annotations
 
+from typing import ClassVar
+from typing import Dict
 from typing import List
+from typing import Optional
 from typing import TYPE_CHECKING
 from typing import TypeVar
 import uuid
 
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import select
+from sqlalchemy import testing
 from sqlalchemy import Uuid
 import sqlalchemy.orm
 from sqlalchemy.orm import attribute_keyed_dict
@@ -180,6 +185,41 @@ class MappedColumnTest(_MappedColumnTest):
 
                 id: Mapped[int] = mapped_column(primary_key=True)
                 data: Mapped[fake]  # noqa
+
+    @testing.variation(
+        "reference_type",
+        [
+            "plain",
+            "plain_optional",
+            "container_w_local_mapped",
+            "container_w_remote_mapped",
+        ],
+    )
+    def test_i_have_a_classvar_on_my_class(self, decl_base, reference_type):
+        if reference_type.container_w_remote_mapped:
+
+            class MyOtherClass(decl_base):
+                __tablename__ = "myothertable"
+
+                id: Mapped[int] = mapped_column(primary_key=True)
+
+        class MyClass(decl_base):
+            __tablename__ = "mytable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str] = mapped_column(default="some default")
+
+            if reference_type.container_w_remote_mapped:
+                status: ClassVar[Dict[str, MyOtherClass]]
+            elif reference_type.container_w_local_mapped:
+                status: ClassVar[Dict[str, MyClass]]
+            elif reference_type.plain_optional:
+                status: ClassVar[Optional[int]]
+            elif reference_type.plain:
+                status: ClassVar[int]
+
+        m1 = MyClass(id=1, data=5)
+        assert "status" not in inspect(m1).mapper.attrs
 
 
 class MappedOneArg(KeyFuncDict[str, _R]):

@@ -1040,7 +1040,9 @@ def _finalize_fairy(
     # test/engine/test_pool.py::PoolEventsTest::test_checkin_event_gc[True]
     # which actually started failing when pytest warnings plugin was
     # turned on, due to util.warn() above
-    fairy.dbapi_connection = fairy._connection_record = None  # type: ignore
+    if fairy is not None:
+        fairy.dbapi_connection = None  # type: ignore
+        fairy._connection_record = None
     del dbapi_connection
     del connection_record
     del fairy

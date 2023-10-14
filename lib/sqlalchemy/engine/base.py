@@ -205,7 +205,11 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
     @property
     def _schema_translate_map(self) -> Optional[SchemaTranslateMapType]:
-        return self._execution_options.get("schema_translate_map", None)
+        schema_translate_map: Optional[
+            SchemaTranslateMapType
+        ] = self._execution_options.get("schema_translate_map", None)
+
+        return schema_translate_map
 
     def schema_for_object(self, obj: HasSchemaAttr) -> Optional[str]:
         """Return the schema name for the given schema item taking into

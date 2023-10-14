@@ -1082,7 +1082,7 @@ def _emit_insert_statements(
             records = list(records)
 
             if returning_is_required_anyway or (
-                not hasvalue and len(records) > 1
+                table.implicit_returning and not hasvalue and len(records) > 1
             ):
                 if (
                     deterministic_results_reqd

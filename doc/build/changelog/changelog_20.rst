@@ -9,8 +9,206 @@
 
 
 .. changelog::
-    :version: 2.0.22
+    :version: 2.0.23
     :include_notes_from: unreleased_20
+
+.. changelog::
+    :version: 2.0.22
+    :released: October 12, 2023
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10369, 10046
+
+        Fixed a wide range of :func:`_orm.mapped_column` parameters that were not
+        being transferred when using the :func:`_orm.mapped_column` object inside
+        of a pep-593 ``Annotated`` object, including
+        :paramref:`_orm.mapped_column.sort_order`,
+        :paramref:`_orm.mapped_column.deferred`,
+        :paramref:`_orm.mapped_column.autoincrement`,
+        :paramref:`_orm.mapped_column.system`, :paramref:`_orm.mapped_column.info`
+        etc.
+
+        Additionally, it remains not supported to have dataclass arguments, such as
+        :paramref:`_orm.mapped_column.kw_only`,
+        :paramref:`_orm.mapped_column.default_factory` etc. indicated within the
+        :func:`_orm.mapped_column` received by ``Annotated``, as this is not
+        supported with pep-681 Dataclass Transforms.  A warning is now emitted when
+        these parameters are used within ``Annotated`` in this way (and they
+        continue to be ignored).
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10459
+
+        Fixed issue where calling :meth:`_engine.Result.unique` with a new-style
+        :func:`.select` query in the ORM, where one or more columns yields values
+        that are of "unknown hashability", typically when using JSON functions like
+        ``func.json_build_object()`` without providing a type, would fail
+        internally when the returned values were not actually hashable. The
+        behavior is repaired to test the objects as they are received for
+        hashability in this case, raising an informative error message if not. Note
+        that for values of "known unhashability", such as when the
+        :class:`_types.JSON` or :class:`_types.ARRAY` types are used directly, an
+        informative error message was already raised.
+
+        The "hashabiltiy testing" fix here is applied to legacy :class:`.Query` as
+        well, however in the legacy case, :meth:`_engine.Result.unique` is used for
+        nearly all queries, so no new warning is emitted here; the legacy behavior
+        of falling back to using ``id()`` in this case is maintained, with the
+        improvement that an unknown type that turns out to be hashable will now be
+        uniqufied, whereas previously it would not.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10453
+
+        Fixed regression in recently revised "insertmanyvalues" feature (likely
+        issue :ticket:`9618`) where the ORM would inadvertently attempt to
+        interpret a non-RETURNING result as one with RETURNING, in the case where
+        the ``implicit_returning=False`` parameter were applied to the mapped
+        :class:`.Table`, indicating that "insertmanyvalues" cannot be used if the
+        primary key values are not provided.
+
+    .. change::
+        :tags: bug, engine
+
+        Fixed issue within some dialects where the dialect could incorrectly return
+        an empty result set for an INSERT statement that does not actually return
+        rows at all, due to artfacts from pre- or post-fetching the primary key of
+        the row or rows still being present.  Affected dialects included asyncpg,
+        all mssql dialects.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 10451
+
+        Fixed typing issue where the argument list passed to :class:`.Values` was
+        too-restrictively tied to ``List`` rather than ``Sequence``.  Pull request
+        courtesy Iuri de Silvio.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10365
+
+        Fixed bug where ORM :func:`_orm.with_loader_criteria` would not apply
+        itself to a :meth:`_sql.Select.join` where the ON clause were given as a
+        plain SQL comparison, rather than as a relationship target or similar.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 10408
+
+        Fixed issue where referring to a FROM entry in the SET clause of an UPDATE
+        statement would not include it in the FROM clause of the UPDATE statement,
+        if that entry were nowhere else in the statement; this occurs currently for
+        CTEs that were added using :meth:`.Update.add_cte` to provide the desired
+        CTE at the top of the statement.
+
+    .. change::
+        :tags: bug, mariadb
+        :tickets: 10396
+
+        Modified the mariadb-connector driver to pre-load the ``cursor.rowcount``
+        value for all queries, to suit tools such as Pandas that hardcode to
+        calling :attr:`.Result.rowcount` in this way. SQLAlchemy normally pre-loads
+        ``cursor.rowcount`` only for UPDATE/DELETE statements and otherwise passes
+        through to the DBAPI where it can return -1 if no value is available.
+        However, mariadb-connector does not support invoking ``cursor.rowcount``
+        after the cursor itself is closed, raising an error instead.  Generic test
+        support has been added to ensure all backends support the allowing
+        :attr:`.Result.rowcount` to succceed (that is, returning an integer
+        value with -1 for "not available") after the result is closed.
+
+
+
+    .. change::
+        :tags: bug, mariadb
+
+        Additional fixes for the mariadb-connector dialect to support UUID data
+        values in the result in INSERT..RETURNING statements.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 10458
+
+        Fixed bug where the rule that prevents ORDER BY from emitting within
+        subqueries on SQL Server was not being disabled in the case where the
+        :meth:`.select.fetch` method were used to limit rows in conjunction with
+        WITH TIES or PERCENT, preventing valid subqueries with TOP / ORDER BY from
+        being used.
+
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 10443
+
+        Fixed 2.0 regression where the :class:`.DDL` construct would no longer
+        ``__repr__()`` due to the removed ``on`` attribute not being accommodated.
+        Pull request courtesy Iuri de Silvio.
+
+    .. change::
+        :tags: orm, usecase
+        :tickets: 10202
+
+        Added method :meth:`_orm.Session.get_one` that behaves like
+        :meth:`_orm.Session.get` but raises an exception instead of returning
+        ``None`` if no instance was found with the provided primary key.
+        Pull request courtesy of Carlos Sousa.
+
+
+    .. change::
+        :tags: asyncio, bug
+
+        Fixed the :paramref:`_asyncio.AsyncSession.get.execution_options` parameter
+        which was not being propagated to the underlying :class:`_orm.Session` and
+        was instead being ignored.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10412
+
+        Fixed issue where :class:`.Mapped` symbols like :class:`.WriteOnlyMapped`
+        and :class:`.DynamicMapped` could not be correctly resolved when referenced
+        as an element of a sub-module in the given annotation, assuming
+        string-based or "future annotations" style annotations.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 10414
+
+        Fixed issue where under some garbage collection / exception scenarios the
+        connection pool's cleanup routine would raise an error due to an unexpected
+        set of state, which can be reproduced under specific conditions.
+
+    .. change::
+        :tags: bug, typing
+
+        Updates to the codebase to support Mypy 1.6.0.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 7787
+
+        Added an option to permanently close sessions.
+        Set to ``False`` the new parameter :paramref:`_orm.Session.close_resets_only`
+        will prevent a :class:`_orm.Session` from performing any other
+        operation after :meth:`_orm.Session.close` has been called.
+
+        Added new method :meth:`_orm.Session.reset` that will reset a :class:`_orm.Session`
+        to its initial state. This is an alias of :meth:`_orm.Session.close`,
+        unless :paramref:`_orm.Session.close_resets_only` is set to ``False``.
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 10385
+
+        Fixed issue with ``__allow_unmapped__`` declarative option
+        where types that were declared using collection types such as
+        ``list[SomeClass]`` vs. the typing construct ``List[SomeClass]``
+        would fail to be recognized correctly.  Pull request courtesy
+        Pascal Corpet.
 
 .. changelog::
     :version: 2.0.21

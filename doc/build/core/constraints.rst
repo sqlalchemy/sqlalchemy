@@ -775,6 +775,14 @@ The above schema will produce:
         CONSTRAINT ck_foo_flag CHECK (flag IN (0, 1))
     )
 
+Using Naming Conventions with ORM Declarative Mixins
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When using the naming convention feature with :ref:`ORM Declarative Mixins
+<orm_mixins_toplevel>`, individual constraint objects must exist for each
+actual table-mapped subclass.  See the section
+:ref:`orm_mixins_named_constraints` for background and examples.
+
 Constraints API
 ---------------
 

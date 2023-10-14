@@ -532,8 +532,8 @@ class LRUCache(typing.MutableMapping[_KT, _VT]):
     def get(
         self, key: _KT, default: Optional[Union[_VT, _T]] = None
     ) -> Optional[Union[_VT, _T]]:
-        item = self._data.get(key, default)
-        if item is not default and item is not None:
+        item = self._data.get(key)
+        if item is not None:
             item[2][0] = self._inc_counter()
             return item[1]
         else:

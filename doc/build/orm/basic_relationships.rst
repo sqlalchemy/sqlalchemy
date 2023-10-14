@@ -344,13 +344,40 @@ are specific :ref:`cascade <unitofwork_cascades>` behaviors set up.
   row back.  If more than one row is returned, the ORM will emit a warning.
 
   However, the ``Child.parent`` side of the above relationship remains as a
-  "many-to-one" relationship and is unchanged, and there is no intrinsic system
-  within the ORM itself that prevents more than one ``Child`` object to be
-  created against the same ``Parent`` during persistence.  Instead, techniques
-  such as :ref:`unique constraints <schema_unique_constraint>` may be used in
-  the actual database schema to enforce this arrangement, where a unique
-  constraint on the ``Child.parent_id`` column would ensure that only
-  one ``Child`` row may refer to a particular ``Parent`` row at a time.
+  "many-to-one" relationship.  By itself, it will not detect assignment
+  of more than one ``Child``, unless the :paramref:`_orm.relationship.single_parent`
+  parameter is set, which may be useful::
+
+    class Child(Base):
+        __tablename__ = "child_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        parent_id: Mapped[int] = mapped_column(ForeignKey("parent_table.id"))
+        parent: Mapped["Parent"] = relationship(back_populates="child", single_parent=True)
+
+  Outside of setting this parameter, the "one-to-many" side (which here is
+  one-to-one by convention) will also not reliably detect if more than one
+  ``Child`` is associated with a single ``Parent``, such as in the case where
+  the multiple ``Child`` objects are pending and not database-persistent.
+
+  Whether or not :paramref:`_orm.relationship.single_parent` is used, it is
+  recommended that the database schema include a :ref:`unique constraint
+  <schema_unique_constraint>` to indicate that the ``Child.parent_id`` column
+  should be unique, to ensure at the database level that only one ``Child`` row may refer
+  to a particular ``Parent`` row at a time (see :ref:`orm_declarative_table_configuration`
+  for background on the ``__table_args__`` tuple syntax)::
+
+    from sqlalchemy import UniqueConstraint
+
+
+    class Child(Base):
+        __tablename__ = "child_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        parent_id: Mapped[int] = mapped_column(ForeignKey("parent_table.id"))
+        parent: Mapped["Parent"] = relationship(back_populates="child")
+
+        __table_args__ = (UniqueConstraint("parent_id"),)
 
 .. versionadded:: 2.0  The :func:`_orm.relationship` construct can derive
    the effective value of the :paramref:`_orm.relationship.uselist`
