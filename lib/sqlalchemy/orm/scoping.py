@@ -1099,7 +1099,7 @@ class scoped_session(Generic[_S]):
 
         .. versionadded:: 2.0.22
 
-        :return: The object instance, or ``None``.
+        :return: The object instance.
 
         .. seealso::
 
