@@ -266,6 +266,8 @@ used for :class:`.PrimaryKeyConstraint`, :class:`.UniqueConstraint`, etc.
 
 """
 
+_DDLColumnReferenceArgument = _DDLColumnArgument
+
 _DMLTableArgument = Union[
     "TableClause",
     "Join",

@@ -92,6 +92,7 @@ from ..util.typing import TypeGuard
 if typing.TYPE_CHECKING:
     from ._typing import _AutoIncrementType
     from ._typing import _DDLColumnArgument
+    from ._typing import _DDLColumnReferenceArgument
     from ._typing import _InfoType
     from ._typing import _TextCoercedExpressionArgument
     from ._typing import _TypeEngineArgument
@@ -2768,9 +2769,11 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
     _table_column: Optional[Column[Any]]
 
+    _colspec: Union[str, Column[Any]]
+
     def __init__(
         self,
-        column: _DDLColumnArgument,
+        column: _DDLColumnReferenceArgument,
         _constraint: Optional[ForeignKeyConstraint] = None,
         use_alter: bool = False,
         name: _ConstraintNameArgument = None,
@@ -2856,21 +2859,11 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
         """
 
-        self._colspec = coercions.expect(roles.DDLReferredColumnRole, column)
         self._unresolvable = _unresolvable
 
-        if isinstance(self._colspec, str):
-            self._table_column = None
-        else:
-            self._table_column = self._colspec
-
-            if not isinstance(
-                self._table_column.table, (type(None), TableClause)
-            ):
-                raise exc.ArgumentError(
-                    "ForeignKey received Column not bound "
-                    "to a Table, got: %r" % self._table_column.table
-                )
+        self._colspec, self._table_column = self._parse_colspec_argument(
+            column
+        )
 
         # the linked ForeignKeyConstraint.
         # ForeignKey will create this when parent Column
@@ -2894,6 +2887,33 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         if info:
             self.info = info
         self._unvalidated_dialect_kw = dialect_kw
+
+    def _resolve_colspec_argument(
+        self,
+    ) -> Tuple[Union[str, Column[Any]], Optional[Column[Any]],]:
+        argument = self._colspec
+
+        return self._parse_colspec_argument(argument)
+
+    def _parse_colspec_argument(
+        self,
+        argument: _DDLColumnArgument,
+    ) -> Tuple[Union[str, Column[Any]], Optional[Column[Any]],]:
+        _colspec = coercions.expect(roles.DDLReferredColumnRole, argument)
+
+        if isinstance(_colspec, str):
+            _table_column = None
+        else:
+            assert isinstance(_colspec, ColumnClause)
+            _table_column = _colspec
+
+            if not isinstance(_table_column.table, (type(None), TableClause)):
+                raise exc.ArgumentError(
+                    "ForeignKey received Column not bound "
+                    "to a Table, got: %r" % _table_column.table
+                )
+
+        return _colspec, _table_column
 
     def __repr__(self) -> str:
         return "ForeignKey(%r)" % self._get_colspec()
@@ -2954,6 +2974,9 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         argument first passed to the object's constructor.
 
         """
+
+        _colspec, effective_table_column = self._resolve_colspec_argument()
+
         if schema not in (None, RETAIN_SCHEMA):
             _schema, tname, colname = self._column_tokens
             if table_name is not None:
@@ -2968,28 +2991,30 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                 return "%s.%s.%s" % (schema, table_name, colname)
             else:
                 return "%s.%s" % (table_name, colname)
-        elif self._table_column is not None:
-            if self._table_column.table is None:
+        elif effective_table_column is not None:
+            if effective_table_column.table is None:
                 if _is_copy:
                     raise exc.InvalidRequestError(
                         f"Can't copy ForeignKey object which refers to "
-                        f"non-table bound Column {self._table_column!r}"
+                        f"non-table bound Column {effective_table_column!r}"
                     )
                 else:
-                    return self._table_column.key
+                    return effective_table_column.key
             return "%s.%s" % (
-                self._table_column.table.fullname,
-                self._table_column.key,
+                effective_table_column.table.fullname,
+                effective_table_column.key,
             )
         else:
-            assert isinstance(self._colspec, str)
-            return self._colspec
+            assert isinstance(_colspec, str)
+            return _colspec
 
     @property
     def _referred_schema(self) -> Optional[str]:
         return self._column_tokens[0]
 
-    def _table_key(self) -> Any:
+    def _table_key_within_construction(self) -> Any:
+        """get the table key but only safely"""
+
         if self._table_column is not None:
             if self._table_column.table is None:
                 return None
@@ -3028,10 +3053,6 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         """parse a string-based _colspec into its component parts."""
 
         m = self._get_colspec().split(".")
-        if m is None:
-            raise exc.ArgumentError(
-                f"Invalid foreign key column specification: {self._colspec}"
-            )
         if len(m) == 1:
             tname = m.pop()
             colname = None
@@ -3121,7 +3142,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         if _column is None:
             raise exc.NoReferencedColumnError(
                 "Could not initialize target column "
-                f"for ForeignKey '{self._colspec}' "
+                f"for ForeignKey '{self._get_colspec()}' "
                 f"on table '{parenttable.name}': "
                 f"table '{table.name}' has no column named '{key}'",
                 table.name,
@@ -3157,7 +3178,6 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         is raised.
 
         """
-
         return self._resolve_column()
 
     @overload
@@ -3175,7 +3195,9 @@ class ForeignKey(DialectKWArgs, SchemaItem):
     ) -> Optional[Column[Any]]:
         _column: Column[Any]
 
-        if isinstance(self._colspec, str):
+        _colspec, effective_table_column = self._resolve_colspec_argument()
+
+        if isinstance(_colspec, str):
             parenttable, tablekey, colname = self._resolve_col_tokens()
 
             if self._unresolvable or tablekey not in parenttable.metadata:
@@ -3201,11 +3223,12 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                     parenttable, table, colname
                 )
 
-        elif hasattr(self._colspec, "__clause_element__"):
-            _column = self._colspec.__clause_element__()
+        elif hasattr(_colspec, "__clause_element__"):
+            _column = _colspec.__clause_element__()
             return _column
         else:
-            _column = self._colspec
+            assert isinstance(_colspec, Column)
+            _column = _colspec
             return _column
 
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
@@ -3257,7 +3280,9 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         table.foreign_keys.add(self)
         # set up remote ".column" attribute, or a note to pick it
         # up when the other Table/Column shows up
-        if isinstance(self._colspec, str):
+
+        _colspec, _ = self._resolve_colspec_argument()
+        if isinstance(_colspec, str):
             parenttable, table_key, colname = self._resolve_col_tokens()
             fk_key = (table_key, colname)
             if table_key in parenttable.metadata.tables:
@@ -3273,12 +3298,11 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                     self._set_target_column(_column)
 
             parenttable.metadata._fk_memos[fk_key].append(self)
-        elif hasattr(self._colspec, "__clause_element__"):
-            _column = self._colspec.__clause_element__()
+        elif hasattr(_colspec, "__clause_element__"):
+            _column = _colspec.__clause_element__()
             self._set_target_column(_column)
         else:
-            _column = self._colspec
-            self._set_target_column(_column)
+            self._set_target_column(_colspec)
 
 
 if TYPE_CHECKING:
@@ -4603,7 +4627,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
     def __init__(
         self,
         columns: _typing_Sequence[_DDLColumnArgument],
-        refcolumns: _typing_Sequence[_DDLColumnArgument],
+        refcolumns: _typing_Sequence[_DDLColumnReferenceArgument],
         name: _ConstraintNameArgument = None,
         onupdate: Optional[str] = None,
         ondelete: Optional[str] = None,
@@ -4789,7 +4813,9 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         return self.elements[0].column.table
 
     def _validate_dest_table(self, table: Table) -> None:
-        table_keys = {elem._table_key() for elem in self.elements}
+        table_keys = {
+            elem._table_key_within_construction() for elem in self.elements
+        }
         if None not in table_keys and len(table_keys) > 1:
             elem0, elem1 = sorted(table_keys)[0:2]
             raise exc.ArgumentError(
@@ -4862,7 +4888,8 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
                     schema=schema,
                     table_name=target_table.name
                     if target_table is not None
-                    and x._table_key() == x.parent.table.key
+                    and x._table_key_within_construction()
+                    == x.parent.table.key
                     else None,
                     _is_copy=True,
                 )

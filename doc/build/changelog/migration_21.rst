@@ -34,3 +34,33 @@ need to be aware of this extra installation dependency.
 
 :ticket:`10197`
 
+
+.. _change_10050:
+
+ORM Relationship allows callable for back_populates
+---------------------------------------------------
+
+To help produce code that is more amenable to IDE-level linting and type
+checking, the :paramref:`_orm.relationship.back_populates` parameter now
+accepts both direct references to a class-bound attribute as well as
+lambdas which do the same::
+
+    class A(Base):
+        __tablename__ = "a"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+
+        # use a lambda: to link to B.a directly when it exists
+        bs: Mapped[list[B]] = relationship(back_populates=lambda: B.a)
+
+
+    class B(Base):
+        __tablename__ = "b"
+        id: Mapped[int] = mapped_column(primary_key=True)
+        a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+
+        # A.bs already exists, so can link directly
+        a: Mapped[A] = relationship(back_populates=A.bs)
+
+:ticket:`10050`
+
