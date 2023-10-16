@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 10479
+
+    Fixed 2.0 regression caused by :ticket:`7744` where chains of expressions
+    involving PostgreSQL JSON operators combined with other operators such as
+    string concatenation would lose correct parenthesization, due to an
+    implementation detail specific to the PostgreSQL dialect.

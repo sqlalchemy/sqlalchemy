@@ -2742,6 +2742,7 @@ class SQLCompiler(Compiled):
         except KeyError as err:
             raise exc.UnsupportedCompilationError(self, operator_) from err
         else:
+            kw["_in_operator_expression"] = True
             return self._generate_delimited_list(
                 clauselist.clauses, opstring, **kw
             )
@@ -3370,9 +3371,9 @@ class SQLCompiler(Compiled):
     def _generate_generic_binary(
         self, binary, opstring, eager_grouping=False, **kw
     ):
-        _in_binary = kw.get("_in_binary", False)
+        _in_operator_expression = kw.get("_in_operator_expression", False)
 
-        kw["_in_binary"] = True
+        kw["_in_operator_expression"] = True
         kw["_binary_op"] = binary.operator
         text = (
             binary.left._compiler_dispatch(
@@ -3384,7 +3385,7 @@ class SQLCompiler(Compiled):
             )
         )
 
-        if _in_binary and eager_grouping:
+        if _in_operator_expression and eager_grouping:
             text = "(%s)" % text
         return text
 

@@ -43,6 +43,7 @@ from sqlalchemy.dialects.postgresql import array_agg as pg_array_agg
 from sqlalchemy.dialects.postgresql import DOMAIN
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import JSONPATH
 from sqlalchemy.dialects.postgresql import Range
@@ -2555,6 +2556,23 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT jsonb_path_exists(data.x, CAST(%(param_1)s AS JSONPATH)) "
             "AS jsonb_path_exists_1 FROM data",
         )
+
+    @testing.combinations(
+        (lambda col: col["foo"] + " ", "(x -> %(x_1)s) || %(param_1)s"),
+        (
+            lambda col: col["foo"] + " " + col["bar"],
+            "(x -> %(x_1)s) || %(param_1)s || (x -> %(x_2)s)",
+        ),
+        argnames="expr, expected",
+    )
+    @testing.combinations((JSON(),), (JSONB(),), argnames="type_")
+    def test_eager_grouping_flag(self, expr, expected, type_):
+        """test #10479"""
+        col = Column("x", type_)
+
+        expr = testing.resolve_lambda(expr, col=col)
+
+        self.assert_compile(expr, expected)
 
     def test_custom_object_hook(self):
         # See issue #8884

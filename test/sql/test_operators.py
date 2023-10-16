@@ -1010,6 +1010,21 @@ class JSONIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_(col[5]["foo"].type._type_affinity, JSON)
         is_(col[("a", "b", "c")].type._type_affinity, JSON)
 
+    @testing.combinations(
+        (lambda col: col["foo"] + " ", "(x -> :x_1) || :param_1"),
+        (
+            lambda col: col["foo"] + " " + col["bar"],
+            "(x -> :x_1) || :param_1 || (x -> :x_2)",
+        ),
+    )
+    def test_eager_grouping_flag(self, expr, expected):
+        """test #10479"""
+        col = Column("x", self.MyType())
+
+        expr = testing.resolve_lambda(expr, col=col)
+
+        self.assert_compile(expr, expected)
+
     def test_getindex_literal_integer(self):
         col = Column("x", self.MyType())
 
