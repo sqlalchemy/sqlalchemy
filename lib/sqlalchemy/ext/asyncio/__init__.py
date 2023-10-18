@@ -22,3 +22,4 @@ from .session import async_sessionmaker as async_sessionmaker
 from .session import AsyncAttrs as AsyncAttrs
 from .session import AsyncSession as AsyncSession
 from .session import AsyncSessionTransaction as AsyncSessionTransaction
+from .session import close_all_sessions as close_all_sessions

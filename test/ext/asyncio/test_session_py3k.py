@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import async_object_session
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import close_all_sessions
 from sqlalchemy.ext.asyncio import exc as async_exc
 from sqlalchemy.ext.asyncio.base import ReversibleProxy
 from sqlalchemy.orm import DeclarativeBase
@@ -123,17 +124,52 @@ class AsyncSessionTest(AsyncFixture):
                 )
 
     @async_test
-    async def test_close_all(self, async_session):
-        User = self.classes.User
-        u = User(name="u")
-        async_session.add(u)
-        await async_session.commit()
+    async def test_close_all(self, async_engine):
+        users, User = self.tables.users, self.classes.User
+
+        self.mapper_registry.map_imperatively(User, users)
+
+        s1 = AsyncSession(async_engine)
+        u1 = User()
+        s1.add(u1)
+
+        s2 = AsyncSession(async_engine)
+        u2 = User()
+        s2.add(u2)
+
+        assert u1 in s1
+        assert u2 in s2
+
+        await close_all_sessions()
+
+        assert u1 not in s1
+        assert u2 not in s2
+
+    @async_test
+    async def test_session_close_all_deprecated(self, async_engine):
+        users, User = self.tables.users, self.classes.User
+
+        self.mapper_registry.map_imperatively(User, users)
+
+        s1 = AsyncSession(async_engine)
+        u1 = User()
+        s1.add(u1)
+
+        s2 = AsyncSession(async_engine)
+        u2 = User()
+        s2.add(u2)
+
+        assert u1 in s1
+        assert u2 in s2
+
         with expect_deprecated(
             r"The AsyncSession.close_all\(\) method is deprecated and will "
             "be removed in a future release. "
         ):
             await AsyncSession.close_all()
-        assert async_session.sync_session.identity_map.values() == []
+
+        assert u1 not in s1
+        assert u2 not in s2
 
 
 class AsyncSessionQueryTest(AsyncFixture):
