@@ -1632,8 +1632,9 @@ class Session(_SessionClassMethods, EventTarget):
 
             .. tip:: When using SQLite, the SQLite driver included through
                Python 3.11 does not handle SAVEPOINTs correctly in all cases
-               without workarounds. See the section
-               :ref:`pysqlite_serializable` for details on current workarounds.
+               without workarounds. See the sections
+               :ref:`pysqlite_serializable` and :ref:`aiosqlite_serializable`
+               for details on current workarounds.
 
           * ``"control_fully"`` - the :class:`_orm.Session` will take
             control of the given transaction as its own;
@@ -1902,7 +1903,8 @@ class Session(_SessionClassMethods, EventTarget):
 
             :ref:`pysqlite_serializable` - special workarounds required
             with the SQLite driver in order for SAVEPOINT to work
-            correctly.
+            correctly. For asyncio use cases, see the section
+            :ref:`aiosqlite_serializable`.
 
         """
         return self.begin(nested=True)

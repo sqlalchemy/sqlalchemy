@@ -979,6 +979,12 @@ class AsyncSession(ReversibleProxy[Session]):
         For a general description of ORM begin nested, see
         :meth:`_orm.Session.begin_nested`.
 
+        .. seealso::
+
+            :ref:`aiosqlite_serializable` - special workarounds required
+            with the SQLite asyncio driver in order for SAVEPOINT to work
+            correctly.
+
         """
 
         return AsyncSessionTransaction(self, nested=True)
