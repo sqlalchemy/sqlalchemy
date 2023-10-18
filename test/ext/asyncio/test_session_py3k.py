@@ -99,9 +99,7 @@ class AsyncSessionTest(AsyncFixture):
     async def test_sequence_execute(
         self, async_session: AsyncSession, metadata, use_scalar
     ):
-        seq = normalize_sequence(
-            config, Sequence("some_sequence", metadata=metadata)
-        )
+        seq = normalize_sequence(config, Sequence("some_sequence", metadata=metadata))
 
         sync_connection = (await async_session.connection()).sync_connection
 
@@ -125,9 +123,7 @@ class AsyncSessionTest(AsyncFixture):
 
     @async_test
     async def test_close_all(self, async_engine):
-        users, User = self.tables.users, self.classes.User
-
-        self.mapper_registry.map_imperatively(User, users)
+        User = self.classes.User
 
         s1 = AsyncSession(async_engine)
         u1 = User()
@@ -147,9 +143,7 @@ class AsyncSessionTest(AsyncFixture):
 
     @async_test
     async def test_session_close_all_deprecated(self, async_engine):
-        users, User = self.tables.users, self.classes.User
-
-        self.mapper_registry.map_imperatively(User, users)
+        User = self.classes.User
 
         s1 = AsyncSession(async_engine)
         u1 = User()
@@ -180,11 +174,7 @@ class AsyncSessionQueryTest(AsyncFixture):
     async def test_execute(self, async_session, kw):
         User = self.classes.User
 
-        stmt = (
-            select(User)
-            .options(selectinload(User.addresses))
-            .order_by(User.id)
-        )
+        stmt = select(User).options(selectinload(User.addresses)).order_by(User.id)
 
         result = await async_session.execute(stmt, **kw)
         eq_(result.scalars().all(), self.static.user_address_result)
@@ -208,18 +198,12 @@ class AsyncSessionQueryTest(AsyncFixture):
             await session.commit()
         assert async_session.sync_session.identity_map.values() == []
 
-    @testing.combinations(
-        ("scalars",), ("stream_scalars",), argnames="filter_"
-    )
+    @testing.combinations(("scalars",), ("stream_scalars",), argnames="filter_")
     @async_test
     async def test_scalars(self, async_session, filter_):
         User = self.classes.User
 
-        stmt = (
-            select(User)
-            .options(selectinload(User.addresses))
-            .order_by(User.id)
-        )
+        stmt = select(User).options(selectinload(User.addresses)).order_by(User.id)
 
         if filter_ == "scalars":
             result = (await async_session.scalars(stmt)).all()
@@ -279,9 +263,7 @@ class AsyncSessionQueryTest(AsyncFixture):
     async def test_get_loader_options(self, async_session):
         User = self.classes.User
 
-        u = await async_session.get(
-            User, 7, options=[selectinload(User.addresses)]
-        )
+        u = await async_session.get(User, 7, options=[selectinload(User.addresses)])
 
         eq_(u.name, "jack")
         eq_(len(u.__dict__["addresses"]), 1)
@@ -294,11 +276,7 @@ class AsyncSessionQueryTest(AsyncFixture):
     async def test_stream_partitions(self, async_session, kw):
         User = self.classes.User
 
-        stmt = (
-            select(User)
-            .options(selectinload(User.addresses))
-            .order_by(User.id)
-        )
+        stmt = select(User).options(selectinload(User.addresses)).order_by(User.id)
 
         result = await async_session.stream(stmt, **kw)
 
@@ -363,9 +341,7 @@ class AsyncSessionTransactionTest(AsyncFixture):
         assert not session.in_transaction()
 
         async with maker() as session:
-            result = await session.execute(
-                select(User).where(User.name == "u1")
-            )
+            result = await session.execute(select(User).where(User.name == "u1"))
 
             u1 = result.scalar_one()
 
@@ -384,9 +360,7 @@ class AsyncSessionTransactionTest(AsyncFixture):
         assert not session.in_transaction()
 
         async with maker() as session:
-            result = await session.execute(
-                select(User).where(User.name == "u1")
-            )
+            result = await session.execute(select(User).where(User.name == "u1"))
 
             u1 = result.scalar_one()
 
@@ -407,9 +381,7 @@ class AsyncSessionTransactionTest(AsyncFixture):
         assert not session.in_transaction()
 
         async with maker() as session:
-            result = await session.execute(
-                select(User).where(User.name == "u1")
-            )
+            result = await session.execute(select(User).where(User.name == "u1"))
 
             u1 = result.scalar_one()
 
@@ -428,9 +400,7 @@ class AsyncSessionTransactionTest(AsyncFixture):
         assert not session.in_transaction()
 
         async with maker() as session:
-            result = await session.execute(
-                select(User).where(User.name == "u1")
-            )
+            result = await session.execute(select(User).where(User.name == "u1"))
 
             u1 = result.scalar_one()
 
@@ -628,9 +598,7 @@ class AsyncSessionTransactionTest(AsyncFixture):
 
     @testing.requires.savepoints
     @async_test
-    async def test_join_to_external_transaction_with_savepoints(
-        self, async_engine
-    ):
+    async def test_join_to_external_transaction_with_savepoints(self, async_engine):
         """This is the full 'join to an external transaction' recipe
         implemented for async using savepoints.
 
@@ -648,9 +616,7 @@ class AsyncSessionTransactionTest(AsyncFixture):
 
             async_session = AsyncSession(conn)
 
-            @event.listens_for(
-                async_session.sync_session, "after_transaction_end"
-            )
+            @event.listens_for(async_session.sync_session, "after_transaction_end")
             def end_savepoint(session, transaction):
                 """here's an event.  inside the event we write blocking
                 style code.    wow will this be fun to try to explain :)
@@ -726,9 +692,7 @@ class AsyncCascadesTest(AsyncFixture):
             User,
             users,
             properties={
-                "addresses": relationship(
-                    Address, cascade="all, delete-orphan"
-                )
+                "addresses": relationship(Address, cascade="all, delete-orphan")
             },
         )
         cls.mapper(
@@ -753,9 +717,7 @@ class AsyncCascadesTest(AsyncFixture):
 
         eq_(
             (
-                await async_session.execute(
-                    select(func.count()).select_from(Address)
-                )
+                await async_session.execute(select(func.count()).select_from(Address))
             ).scalar(),
             0,
         )
@@ -773,9 +735,7 @@ class AsyncORMBehaviorsTest(AsyncFixture):
                 b = relationship(
                     "B",
                     uselist=False,
-                    _legacy_inactive_history_style=(
-                        legacy_inactive_history_style
-                    ),
+                    _legacy_inactive_history_style=(legacy_inactive_history_style),
                 )
 
             @registry.mapped
@@ -824,9 +784,7 @@ class AsyncORMBehaviorsTest(AsyncFixture):
             # pytest warnings and we might need to just skip for aiomysql
             # here, which is also raising StatementError w/ MissingGreenlet
             # inside of it
-            with testing.expect_raises(
-                (exc.StatementError, exc.MissingGreenlet)
-            ):
+            with testing.expect_raises((exc.StatementError, exc.MissingGreenlet)):
                 a1.b = b2
 
         else:
@@ -839,9 +797,7 @@ class AsyncORMBehaviorsTest(AsyncFixture):
             eq_(
                 (
                     await async_session.execute(
-                        select(func.count())
-                        .where(B.id == b1.id)
-                        .where(B.a_id == None)
+                        select(func.count()).where(B.id == b1.id).where(B.a_id == None)
                     )
                 ).scalar(),
                 1,
@@ -1098,9 +1054,7 @@ class OverrideSyncSession(AsyncFixture):
         is_(ass.sync_session_class, Session)
 
 
-class AsyncAttrsTest(
-    testing.AssertsExecutionResults, _AsyncFixture, fixtures.TestBase
-):
+class AsyncAttrsTest(testing.AssertsExecutionResults, _AsyncFixture, fixtures.TestBase):
     __requires__ = ("async_dialect",)
 
     @config.fixture
@@ -1110,9 +1064,7 @@ class AsyncAttrsTest(
         class Base(ComparableEntity, AsyncAttrs, DeclarativeBase):
             metadata = _md
             type_annotation_map = {
-                str: String().with_variant(
-                    String(50), "mysql", "mariadb", "oracle"
-                )
+                str: String().with_variant(String(50), "mysql", "mariadb", "oracle")
             }
 
         yield Base
@@ -1175,17 +1127,13 @@ class AsyncAttrsTest(
             await session.commit()
 
         async with AsyncSession(async_engine) as session:
-            a1 = (
-                await session.scalars(select(A).options(selectinload(A.bs)))
-            ).one()
+            a1 = (await session.scalars(select(A).options(selectinload(A.bs)))).one()
 
             with self.assert_statement_count(async_engine.sync_engine, 0):
                 eq_(await a1.awaitable_attrs.bs, [b1, b2, b3])
 
     @async_test
-    async def test_the_famous_lazyloader_gotcha(
-        self, async_engine, ab_fixture
-    ):
+    async def test_the_famous_lazyloader_gotcha(self, async_engine, ab_fixture):
         A, B = ab_fixture
 
         async with AsyncSession(async_engine) as session:
