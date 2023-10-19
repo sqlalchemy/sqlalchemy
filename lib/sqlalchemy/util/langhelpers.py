@@ -265,6 +265,13 @@ def decorator(target: Callable[..., Any]) -> Callable[[_Fn], _Fn]:
         metadata.update(format_argspec_plus(spec, grouped=False))
         metadata["name"] = fn.__name__
 
+        if inspect.iscoroutinefunction(fn):
+            metadata["prefix"] = "async "
+            metadata["target_prefix"] = "await "
+        else:
+            metadata["prefix"] = ""
+            metadata["target_prefix"] = ""
+
         # look for __ positional arguments.  This is a convention in
         # SQLAlchemy that arguments should be passed positionally
         # rather than as keyword
@@ -276,16 +283,16 @@ def decorator(target: Callable[..., Any]) -> Callable[[_Fn], _Fn]:
         if "__" in repr(spec[0]):
             code = (
                 """\
-def %(name)s%(grouped_args)s:
-    return %(target)s(%(fn)s, %(apply_pos)s)
+%(prefix)sdef %(name)s%(grouped_args)s:
+    return %(target_prefix)s%(target)s(%(fn)s, %(apply_pos)s)
 """
                 % metadata
             )
         else:
             code = (
                 """\
-def %(name)s%(grouped_args)s:
-    return %(target)s(%(fn)s, %(apply_kw)s)
+%(prefix)sdef %(name)s%(grouped_args)s:
+    return %(target_prefix)s%(target)s(%(fn)s, %(apply_kw)s)
 """
                 % metadata
             )
