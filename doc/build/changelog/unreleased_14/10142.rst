@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 10142
+    :versions: 2.0.23
+
+    Fixed issue where using the same bound parameter more than once with
+    ``literal_execute=True`` in some combinations with other literal rendering
+    parameters would cause the wrong values to render due to an iteration
+    issue.

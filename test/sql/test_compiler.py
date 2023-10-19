@@ -4285,6 +4285,21 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             {"myid_1": 20, "myid_2": 18},
         )
 
+    @testing.combinations("default", "default_qmark", argnames="dialect")
+    def test_literal_execute_combinations(self, dialect):
+        """test #10142"""
+
+        a = bindparam("a", value="abc", literal_execute=True)
+        b = bindparam("b", value="def", literal_execute=True)
+        c = bindparam("c", value="ghi", literal_execute=True)
+        self.assert_compile(
+            select(a, b, a, c),
+            "SELECT 'abc' AS anon_1, 'def' AS anon_2, 'abc' AS anon__1, "
+            "'ghi' AS anon_3",
+            render_postcompile=True,
+            dialect=dialect,
+        )
+
     def test_tuple_expanding_in_no_values(self):
         expr = tuple_(table1.c.myid, table1.c.name).in_(
             [(1, "foo"), (5, "bar")]

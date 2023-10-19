@@ -1218,14 +1218,12 @@ class SQLCompiler(Compiled):
             parameter = self.binds[name]
             if parameter in self.literal_execute_params:
                 if escaped_name not in replacement_expressions:
-                    value = parameters.pop(name)
-
-                replacement_expressions[
-                    escaped_name
-                ] = self.render_literal_bindparam(
-                    parameter,
-                    render_literal_value=value,
-                )
+                    replacement_expressions[
+                        escaped_name
+                    ] = self.render_literal_bindparam(
+                        parameter,
+                        render_literal_value=parameters.pop(escaped_name),
+                    )
                 continue
 
             if parameter in self.post_compile_params:
