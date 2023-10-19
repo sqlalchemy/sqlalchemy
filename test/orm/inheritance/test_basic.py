@@ -171,6 +171,7 @@ class ColExpressionsTest(fixtures.DeclarativeMappedTest):
         rows = (
             s.query(B.id.expressions[0], B.id.expressions[1], func.sum(B.data))
             .group_by(*B.id.expressions)
+            .order_by(B.id.expressions[0])
             .all()
         )
         eq_(rows, [(1, 1, 5), (2, 2, 7)])

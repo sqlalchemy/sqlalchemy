@@ -303,13 +303,18 @@ class MaterializedViewReflectionTest(
 
     def test_get_view_definition(self, connection):
         insp = inspect(connection)
+
+        def normalize(definition):
+            # pg16 returns "SELECT" without qualifying tablename.
+            # older pgs include it
+            definition = re.sub(
+                r"testtable\.(\w+)", lambda m: m.group(1), definition
+            )
+            return re.sub(r"[\n\t ]+", " ", definition.strip())
+
         eq_(
-            re.sub(
-                r"[\n\t ]+",
-                " ",
-                insp.get_view_definition("test_mview").strip(),
-            ),
-            "SELECT testtable.id, testtable.data FROM testtable;",
+            normalize(insp.get_view_definition("test_mview")),
+            "SELECT id, data FROM testtable;",
         )
 
 
