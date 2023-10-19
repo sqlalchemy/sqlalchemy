@@ -1,0 +1,12 @@
+.. change::
+    :tags: usecase, mssql
+    :tickets: 6521
+
+    Added support for the ``aioodbc`` driver implemented for SQL Server,
+    which builds on top of the pyodbc and general aio* dialect architecture.
+
+    .. seealso::
+
+        :ref:`mssql_aioodbc` - in the SQL Server dialect documentation.
+
+

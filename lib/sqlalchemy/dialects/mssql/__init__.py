@@ -6,6 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
+from . import aioodbc  # noqa
 from . import base  # noqa
 from . import pymssql  # noqa
 from . import pyodbc  # noqa

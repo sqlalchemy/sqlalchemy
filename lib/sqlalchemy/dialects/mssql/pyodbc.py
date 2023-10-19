@@ -586,12 +586,18 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
                 try:
                     # fetchall() ensures the cursor is consumed
                     # without closing it (FreeTDS particularly)
-                    row = self.cursor.fetchall()[0]
-                    break
+                    rows = self.cursor.fetchall()
                 except self.dialect.dbapi.Error:
                     # no way around this - nextset() consumes the previous set
                     # so we need to just keep flipping
                     self.cursor.nextset()
+                else:
+                    if not rows:
+                        # async adapter drivers just return None here
+                        self.cursor.nextset()
+                        continue
+                    row = rows[0]
+                    break
 
             self._lastrowid = int(row[0])
 

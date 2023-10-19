@@ -60,6 +60,9 @@ from ...util.concurrency import await_only
 
 
 class AsyncAdapt_aiosqlite_cursor:
+    # TODO: base on connectors/asyncio.py
+    # see #10415
+
     __slots__ = (
         "_adapt_connection",
         "_connection",
@@ -151,6 +154,8 @@ class AsyncAdapt_aiosqlite_cursor:
 
 
 class AsyncAdapt_aiosqlite_ss_cursor(AsyncAdapt_aiosqlite_cursor):
+    # TODO: base on connectors/asyncio.py
+    # see #10415
     __slots__ = "_cursor"
 
     server_side = True
