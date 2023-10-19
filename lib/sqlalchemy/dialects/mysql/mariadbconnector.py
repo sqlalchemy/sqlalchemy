@@ -80,6 +80,8 @@ class MySQLExecutionContext_mariadbconnector(MySQLExecutionContext):
         return self._dbapi_connection.cursor(buffered=True)
 
     def post_exec(self):
+        super().post_exec()
+
         self._rowcount = self.cursor.rowcount
 
         if self.isinsert and self.compiled.postfetch_lastrowid:
