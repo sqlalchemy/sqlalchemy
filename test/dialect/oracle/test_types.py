@@ -183,6 +183,10 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
             oracle.INTERVAL(day_precision=2, second_precision=5),
             "INTERVAL DAY(2) TO SECOND(5)",
         ),
+        (
+            sqltypes.Interval(day_precision=9, second_precision=3),
+            "INTERVAL DAY(9) TO SECOND(3)",
+        ),
     )
     def test_interval(self, type_, expected):
         self.assert_compile(type_, expected)
