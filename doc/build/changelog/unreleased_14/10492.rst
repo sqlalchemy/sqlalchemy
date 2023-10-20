@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 10492
+    :versions: 2.0.23
+
+    Repaired a new incompatibility in the MySQL "pre-ping" routine where the
+    ``False`` argument passed to ``connection.ping()``, which is intended to
+    disable an unwanted "automatic reconnect" feature,  is being deprecated in
+    MySQL drivers and backends, and is producing warnings for some versions of
+    MySQL's native client drivers.  It's removed for mysqlclient, whereas for
+    PyMySQL and drivers based on PyMySQL, the parameter will be deprecated and
+    removed at some point, so API introspection is used to future proof against
+    these various stages of removal.
