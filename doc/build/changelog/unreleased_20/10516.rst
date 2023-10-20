@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 10516
+
+    Fixed issue where the ``__allow_unmapped__`` directive failed to allow for
+    legacy :class:`.Column` / :func:`.deferred` mappings that nonetheless had
+    annotations such as ``Any`` or a specific type without ``Mapped[]`` as
+    their type, without errors related to locating the attribute name.

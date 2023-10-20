@@ -373,6 +373,45 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             status: int
 
+    @testing.variation("annotation", ["none", "any", "datatype"])
+    @testing.variation("explicit_name", [True, False])
+    @testing.variation("attribute", ["column", "deferred"])
+    def test_allow_unmapped_cols(self, annotation, explicit_name, attribute):
+        class Base(DeclarativeBase):
+            __allow_unmapped__ = True
+
+        if attribute.column:
+            if explicit_name:
+                attr = Column("data_one", Integer)
+            else:
+                attr = Column(Integer)
+        elif attribute.deferred:
+            if explicit_name:
+                attr = deferred(Column("data_one", Integer))
+            else:
+                attr = deferred(Column(Integer))
+        else:
+            attribute.fail()
+
+        class MyClass(Base):
+            __tablename__ = "mytable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            if annotation.none:
+                data = attr
+            elif annotation.any:
+                data: Any = attr
+            elif annotation.datatype:
+                data: int = attr
+            else:
+                annotation.fail()
+
+        if explicit_name:
+            eq_(MyClass.__table__.c.keys(), ["id", "data_one"])
+        else:
+            eq_(MyClass.__table__.c.keys(), ["id", "data"])
+
     def test_column_default(self, decl_base):
         class MyClass(decl_base):
             __tablename__ = "mytable"
