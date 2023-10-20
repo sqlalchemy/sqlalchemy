@@ -847,7 +847,11 @@ class IdentityReflectionTest(fixtures.TablesTest):
                     ),
                 ),
                 Column("id2", Integer, Identity()),
-                Column("id3", sqltypes.BigInteger, Identity()),
+                Column(
+                    "id3",
+                    sqltypes.BigInteger,
+                    Identity(start=-9223372036854775808),
+                ),
                 Column("id4", sqltypes.SmallInteger, Identity()),
                 Column("id5", sqltypes.Numeric, Identity()),
             ]
@@ -869,7 +873,10 @@ class IdentityReflectionTest(fixtures.TablesTest):
                 eq_(type(col["identity"]["start"]), int)
                 eq_(type(col["identity"]["increment"]), int)
             elif col["name"] == "id3":
-                eq_(col["identity"], {"start": 1, "increment": 1})
+                eq_(
+                    col["identity"],
+                    {"start": -9223372036854775808, "increment": 1},
+                )
                 eq_(type(col["identity"]["start"]), util.compat.long_type)
                 eq_(type(col["identity"]["increment"]), util.compat.long_type)
             elif col["name"] == "id4":

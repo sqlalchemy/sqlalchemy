@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, mssql, reflection
+    :tickets: 10504
+    :versions: 2.0.23
+
+    Fixed issue where identity column reflection would fail
+    for a bigint column with a large identity start value
+    (more than 18 digits).
