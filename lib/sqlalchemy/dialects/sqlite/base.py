@@ -215,7 +215,7 @@ by *not even emitting BEGIN* until the first write operation.
     SQLite's transactional scope is impacted by unresolved
     issues in the pysqlite driver, which defers BEGIN statements to a greater
     degree than is often feasible. See the section :ref:`pysqlite_serializable`
-    for techniques to work around this behavior.
+    or :ref:`aiosqlite_serializable` for techniques to work around this behavior.
 
 .. seealso::
 
@@ -273,8 +273,9 @@ won't work at all with pysqlite unless workarounds are taken.
 .. warning::
 
     SQLite's SAVEPOINT feature is impacted by unresolved
-    issues in the pysqlite driver, which defers BEGIN statements to a greater
-    degree than is often feasible. See the section :ref:`pysqlite_serializable`
+    issues in the pysqlite and aiosqlite drivers, which defer BEGIN statements
+    to a greater degree than is often feasible. See the sections
+    :ref:`pysqlite_serializable` and :ref:`aiosqlite_serializable`
     for techniques to work around this behavior.
 
 Transactional DDL
