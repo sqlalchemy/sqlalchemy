@@ -1434,9 +1434,9 @@ class _ClassScanMapperConfig(_MapperConfig):
             cls, "_sa_decl_prepare_nocascade", strict=True
         )
 
+        allow_unmapped_annotations = self.allow_unmapped_annotations
         expect_annotations_wo_mapped = (
-            self.allow_unmapped_annotations
-            or self.is_dataclass_prior_to_mapping
+            allow_unmapped_annotations or self.is_dataclass_prior_to_mapping
         )
 
         look_for_dataclass_things = bool(self.dataclass_setup_arguments)
@@ -1531,7 +1531,15 @@ class _ClassScanMapperConfig(_MapperConfig):
                     # Mapped[] etc. were not used.  If annotation is None,
                     # do declarative_scan so that the property can raise
                     # for required
-                    if mapped_container is not None or annotation is None:
+                    if (
+                        mapped_container is not None
+                        or annotation is None
+                        # issue #10516: need to do declarative_scan even with
+                        # a non-Mapped annotation if we are doing
+                        # __allow_unmapped__, for things like col.name
+                        # assignment
+                        or allow_unmapped_annotations
+                    ):
                         try:
                             value.declarative_scan(
                                 self,
