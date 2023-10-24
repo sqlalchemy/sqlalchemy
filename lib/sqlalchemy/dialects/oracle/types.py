@@ -212,6 +212,15 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
             second_precision=interval.second_precision,
         )
 
+    @classmethod
+    def adapt_emulated_to_native(
+        cls, interval: sqltypes.Interval, **kw  # type: ignore[override]
+    ):
+        return INTERVAL(
+            day_precision=interval.day_precision,
+            second_precision=interval.second_precision,
+        )
+
     @property
     def _type_affinity(self):
         return sqltypes.Interval

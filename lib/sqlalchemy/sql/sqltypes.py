@@ -2048,8 +2048,8 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
     """A type for ``datetime.timedelta()`` objects.
 
     The Interval type deals with ``datetime.timedelta`` objects.  In
-    PostgreSQL, the native ``INTERVAL`` type is used; for others, the
-    value is stored as a date which is relative to the "epoch"
+    PostgreSQL and Oracle, the native ``INTERVAL`` type is used; for others,
+    the value is stored as a date which is relative to the "epoch"
     (Jan. 1, 1970).
 
     Note that the ``Interval`` type does not currently provide date arithmetic
