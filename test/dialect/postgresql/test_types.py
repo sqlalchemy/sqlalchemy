@@ -46,6 +46,7 @@ from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.dialects.postgresql import array_agg
 from sqlalchemy.dialects.postgresql import asyncpg
 from sqlalchemy.dialects.postgresql import base
+from sqlalchemy.dialects.postgresql import BYTEA
 from sqlalchemy.dialects.postgresql import CITEXT
 from sqlalchemy.dialects.postgresql import DATEMULTIRANGE
 from sqlalchemy.dialects.postgresql import DATERANGE
@@ -6186,3 +6187,70 @@ class InetRoundTripTests(fixtures.TestBase):
             "ipaddress type handling",
         ):
             testing_engine(options={"native_inet_types": True})
+
+
+class PGInsertManyValuesTest(fixtures.TestBase):
+    """test pg-specific types for insertmanyvalues"""
+
+    __only_on__ = "postgresql"
+    __backend__ = True
+
+    @testing.combinations(
+        ("PG BYTEA", BYTEA(), b"7\xe7\x9f"),
+        argnames="type_,value",
+        id_="iaa",
+    )
+    @testing.variation("sort_by_parameter_order", [True, False])
+    @testing.variation("multiple_rows", [True, False])
+    @testing.requires.insert_returning
+    def test_imv_returning_datatypes(
+        self,
+        connection,
+        metadata,
+        sort_by_parameter_order,
+        type_,
+        value,
+        multiple_rows,
+    ):
+        """test #9739, #9808 (similar to #9701) for PG specific types
+
+        this tests insertmanyvalues in conjunction with various datatypes.
+
+        These tests are particularly for the asyncpg driver which needs
+        most types to be explicitly cast for the new IMV format
+
+        """
+        t = Table(
+            "d_t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("value", type_),
+        )
+
+        t.create(connection)
+
+        result = connection.execute(
+            t.insert().returning(
+                t.c.id,
+                t.c.value,
+                sort_by_parameter_order=bool(sort_by_parameter_order),
+            ),
+            [{"value": value} for i in range(10)]
+            if multiple_rows
+            else {"value": value},
+        )
+
+        if multiple_rows:
+            i_range = range(1, 11)
+        else:
+            i_range = range(1, 2)
+
+        eq_(
+            set(result),
+            {(id_, value) for id_ in i_range},
+        )
+
+        eq_(
+            set(connection.scalars(select(t.c.value))),
+            {value},
+        )
