@@ -116,38 +116,36 @@ class LONG(sqltypes.Text):
 class _OracleDateLiteralRender:
     def _literal_processor_datetime(self, dialect):
         def process(value):
-            if value is not None:
-                if getattr(value, "microsecond", None):
-                    value = (
-                        f"""TO_TIMESTAMP"""
-                        f"""('{value.isoformat().replace("T", " ")}', """
-                        """'YYYY-MM-DD HH24:MI:SS.FF')"""
-                    )
-                else:
-                    value = (
-                        f"""TO_DATE"""
-                        f"""('{value.isoformat().replace("T", " ")}', """
-                        """'YYYY-MM-DD HH24:MI:SS')"""
-                    )
+            if getattr(value, "microsecond", None):
+                value = (
+                    f"""TO_TIMESTAMP"""
+                    f"""('{value.isoformat().replace("T", " ")}', """
+                    """'YYYY-MM-DD HH24:MI:SS.FF')"""
+                )
+            else:
+                value = (
+                    f"""TO_DATE"""
+                    f"""('{value.isoformat().replace("T", " ")}', """
+                    """'YYYY-MM-DD HH24:MI:SS')"""
+                )
             return value
 
         return process
 
     def _literal_processor_date(self, dialect):
         def process(value):
-            if value is not None:
-                if getattr(value, "microsecond", None):
-                    value = (
-                        f"""TO_TIMESTAMP"""
-                        f"""('{value.isoformat().split("T")[0]}', """
-                        """'YYYY-MM-DD')"""
-                    )
-                else:
-                    value = (
-                        f"""TO_DATE"""
-                        f"""('{value.isoformat().split("T")[0]}', """
-                        """'YYYY-MM-DD')"""
-                    )
+            if getattr(value, "microsecond", None):
+                value = (
+                    f"""TO_TIMESTAMP"""
+                    f"""('{value.isoformat().split("T")[0]}', """
+                    """'YYYY-MM-DD')"""
+                )
+            else:
+                value = (
+                    f"""TO_DATE"""
+                    f"""('{value.isoformat().split("T")[0]}', """
+                    """'YYYY-MM-DD')"""
+                )
             return value
 
         return process

@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 10535
+
+    Added compiler-level None/NULL handling for the "literal processors" of all
+    datatypes that include literal processing, that is, where a value is
+    rendered inline within a SQL statement rather than as a bound parameter,
+    for all those types that do not feature explicit "null value" handling.
+    Previously this behavior was undefined and inconsistent.

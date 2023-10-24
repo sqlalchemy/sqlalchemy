@@ -3766,6 +3766,12 @@ class SQLCompiler(Compiled):
 
         """
 
+        if value is None and not type_.should_evaluate_none:
+            # issue #10535 - handle NULL in the compiler without placing
+            # this onto each type, except for "evaluate None" types
+            # (e.g. JSON)
+            return self.process(elements.Null._instance())
+
         processor = type_._cached_literal_processor(self.dialect)
         if processor:
             try:
