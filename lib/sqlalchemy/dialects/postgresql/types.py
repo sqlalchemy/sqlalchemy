@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import datetime as dt
 from typing import Any
-from typing import no_type_check
 from typing import Optional
 from typing import overload
 from typing import Type
@@ -250,7 +249,6 @@ class INTERVAL(type_api.NativeForEmulated, sqltypes._AbstractInterval):
     def python_type(self) -> Type[dt.timedelta]:
         return dt.timedelta
 
-    @no_type_check
     def literal_processor(
         self, dialect: Dialect
     ) -> Optional[_LiteralProcessorType[dt.timedelta]]:
