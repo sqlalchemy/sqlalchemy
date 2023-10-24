@@ -1537,28 +1537,22 @@ class MSUUid(sqltypes.Uuid):
         if self.native_uuid:
 
             def process(value):
-                if value is not None:
-                    value = f"""'{str(value).replace("''", "'")}'"""
-                return value
+                return f"""'{str(value).replace("''", "'")}'"""
 
             return process
         else:
             if self.as_uuid:
 
                 def process(value):
-                    if value is not None:
-                        value = f"""'{value.hex}'"""
-                    return value
+                    return f"""'{value.hex}'"""
 
                 return process
             else:
 
                 def process(value):
-                    if value is not None:
-                        value = f"""'{
+                    return f"""'{
                             value.replace("-", "").replace("'", "''")
                         }'"""
-                    return value
 
                 return process
 

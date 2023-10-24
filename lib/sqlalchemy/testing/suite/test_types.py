@@ -82,6 +82,11 @@ class _LiteralRoundTripFixture:
                 )
                 connection.execute(ins)
 
+            ins = t.insert().values(
+                x=literal(None, type_, literal_execute=True)
+            )
+            connection.execute(ins)
+
             if support_whereclause and self.supports_whereclause:
                 if compare:
                     stmt = t.select().where(
@@ -108,7 +113,7 @@ class _LiteralRoundTripFixture:
                         )
                     )
             else:
-                stmt = t.select()
+                stmt = t.select().where(t.c.x.is_not(None))
 
             rows = connection.execute(stmt).all()
             assert rows, "No rows returned"
@@ -117,6 +122,10 @@ class _LiteralRoundTripFixture:
                 if filter_ is not None:
                     value = filter_(value)
                 assert value in output
+
+            stmt = t.select().where(t.c.x.is_(None))
+            rows = connection.execute(stmt).all()
+            eq_(rows, [(None,)])
 
         return run
 
