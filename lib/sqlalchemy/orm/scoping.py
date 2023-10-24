@@ -468,7 +468,8 @@ class scoped_session(Generic[_S]):
 
             :ref:`pysqlite_serializable` - special workarounds required
             with the SQLite driver in order for SAVEPOINT to work
-            correctly.
+            correctly. For asyncio use cases, see the section
+            :ref:`aiosqlite_serializable`.
 
 
         """  # noqa: E501
