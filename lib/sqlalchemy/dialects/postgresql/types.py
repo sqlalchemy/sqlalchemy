@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import datetime as dt
 from typing import Any
+from typing import no_type_check
 from typing import Optional
 from typing import overload
 from typing import Type
@@ -18,7 +19,9 @@ from ...sql import type_api
 from ...util.typing import Literal
 
 if TYPE_CHECKING:
+    from ...engine.interfaces import Dialect
     from ...sql.operators import OperatorType
+    from ...sql.type_api import _LiteralProcessorType
     from ...sql.type_api import TypeEngine
 
 _DECIMAL_TYPES = (1231, 1700)
@@ -246,6 +249,15 @@ class INTERVAL(type_api.NativeForEmulated, sqltypes._AbstractInterval):
     @property
     def python_type(self) -> Type[dt.timedelta]:
         return dt.timedelta
+
+    @no_type_check
+    def literal_processor(
+        self, dialect: Dialect
+    ) -> Optional[_LiteralProcessorType[dt.timedelta]]:
+        def process(value: dt.timedelta) -> str:
+            return f"make_interval(secs=>{value.total_seconds()})"
+
+        return process
 
 
 PGInterval = INTERVAL
