@@ -14,6 +14,7 @@ from argparse import Namespace
 import configparser
 import logging
 import os
+from pathlib import Path
 import re
 import sys
 from typing import Any
@@ -320,6 +321,10 @@ def _log(opt_str, value, parser):
 
 
 def _list_dbs(*args):
+    if file_config is None:
+        # assume the current working directory is the one containing the
+        # setup file
+        read_config(Path.cwd())
     print("Available --db options (use --dburi to override)")
     for macro in sorted(file_config.options("db")):
         print("%20s\t%s" % (macro, file_config.get("db", macro)))
