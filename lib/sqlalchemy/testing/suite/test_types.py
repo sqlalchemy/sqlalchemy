@@ -465,7 +465,7 @@ class StringTest(_LiteralRoundTripFixture, fixtures.TestBase):
 class IntervalTest(_LiteralRoundTripFixture, fixtures.TestBase):
     __requires__ = ("datetime_interval",)
     __backend__ = True
-    compare = None
+
     datatype = Interval
     data = datetime.timedelta(days=1, seconds=4)
 
@@ -518,16 +518,16 @@ class IntervalTest(_LiteralRoundTripFixture, fixtures.TestBase):
             interval_table.insert(), {"id": 1, "interval_data": data}
         )
         # Subtraction Operation
-        row = connection.execute(
+        value = connection.execute(
             select(interval_table.c.interval_data - literal(self.data))
         ).scalar()
-        eq_(row, datetime.timedelta(days=1, seconds=1))
+        eq_(value, data - self.data)
 
         # Addition Operation
-        row = connection.execute(
+        value = connection.execute(
             select(interval_table.c.interval_data + literal(self.data))
         ).scalar()
-        eq_(row, datetime.timedelta(days=3, seconds=9))
+        eq_(value, data + self.data)
 
     def test_arithmetic_operation_table_date_and_literal_interval(
         self, connection, arithmetic_table_fixture
@@ -538,16 +538,24 @@ class IntervalTest(_LiteralRoundTripFixture, fixtures.TestBase):
             interval_table.insert(), {"id": 1, "date_data": now}
         )
         # Subtraction Operation
-        row = connection.execute(
+        value = connection.execute(
             select(interval_table.c.date_data - literal(self.data))
         ).scalar()
-        eq_(row, (now - self.data))
+        eq_(value, (now - self.data))
 
         # Addition Operation
-        row = connection.execute(
+        value = connection.execute(
             select(interval_table.c.date_data + literal(self.data))
         ).scalar()
-        eq_(row, (now + self.data))
+        eq_(value, (now + self.data))
+
+
+class PrecisionIntervalTest(IntervalTest):
+    __requires__ = ("datetime_interval",)
+    __backend__ = True
+
+    datatype = Interval(day_precision=9, second_precision=9)
+    data = datetime.timedelta(days=103, seconds=4)
 
 
 class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
@@ -2039,6 +2047,7 @@ __all__ = (
     "NumericTest",
     "IntegerTest",
     "IntervalTest",
+    "PrecisionIntervalTest",
     "CastTypeDecoratorTest",
     "DateTimeHistoricTest",
     "DateTimeCoercedToDateTimeTest",
