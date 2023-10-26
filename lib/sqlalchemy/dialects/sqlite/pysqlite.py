@@ -544,7 +544,7 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
                 return None
             return re.search(a, b) is not None
 
-        if util.py38 and self._get_server_version_info(None) >= (3, 9):
+        if util.py38 and self._get_server_version_info(None) >= (3, 9) and self.driver != 'pysqlcipher':
             # sqlite must be greater than 3.8.3 for deterministic=True
             # https://docs.python.org/3/library/sqlite3.html#sqlite3.Connection.create_function
             # the check is more conservative since there were still issues
