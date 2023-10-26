@@ -46,6 +46,7 @@ from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.dialects.postgresql import array_agg
 from sqlalchemy.dialects.postgresql import asyncpg
 from sqlalchemy.dialects.postgresql import base
+from sqlalchemy.dialects.postgresql import BIT
 from sqlalchemy.dialects.postgresql import BYTEA
 from sqlalchemy.dialects.postgresql import CITEXT
 from sqlalchemy.dialects.postgresql import DATEMULTIRANGE
@@ -6233,7 +6234,8 @@ class PGInsertManyValuesTest(fixtures.TestBase):
     __backend__ = True
 
     @testing.combinations(
-        ("PG BYTEA", BYTEA(), b"7\xe7\x9f"),
+        ("BYTEA", BYTEA(), b"7\xe7\x9f"),
+        ("BIT", BIT(3), "011"),
         argnames="type_,value",
         id_="iaa",
     )
@@ -6265,6 +6267,11 @@ class PGInsertManyValuesTest(fixtures.TestBase):
         )
 
         t.create(connection)
+
+        if type_._type_affinity is BIT and testing.against("+asyncpg"):
+            import asyncpg
+
+            value = asyncpg.BitString(value)
 
         result = connection.execute(
             t.insert().returning(
