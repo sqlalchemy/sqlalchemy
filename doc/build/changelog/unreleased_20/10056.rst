@@ -1,8 +1,10 @@
 .. change::
-    :tags: bug, sql
+    :tags: bug, mariadb
     :tickets: 10056
 
-    mariaDB does not support setting NOT NULL for generated column
-    ref: https://mariadb.com/kb/en/generated-columns/#statement-support
-    added a check in `get_column_specification` for mariadb, checking
-    if user has not specified nullable set it as True for computed column.
+    Adjusted the MySQL / MariaDB dialects to default a generated column to NULL
+    when using MariaDB, if :paramref:`_schema.Column.nullable` was not
+    specified with an explicit ``True`` or ``False`` value, as MariaDB does not
+    support the "NOT NULL" phrase with a generated column.  Pull request
+    courtesy Indivar.
+

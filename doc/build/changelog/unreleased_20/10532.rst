@@ -5,7 +5,7 @@
     Fixed SQL handling for "insertmanyvalues" when using the
     :class:`.postgresql.BIT` datatype with the asyncpg backend.  The
     :class:`.postgresql.BIT` on asyncpg apparently requires the use of an
-    asyncpg-specific `BitString` type which is currently exposed when using
+    asyncpg-specific ``BitString`` type which is currently exposed when using
     this DBAPI, making it incompatible with other PostgreSQL DBAPIs that all
     work with plain bitstrings here.  A future fix in version 2.1 will
     normalize this datatype across all PG backends.   Pull request courtesy
