@@ -546,6 +546,9 @@ class CacheKey(NamedTuple):
     def _apply_params_to_element(
         self, original_cache_key: CacheKey, target_element: ClauseElement
     ) -> ClauseElement:
+        if target_element._is_immutable:
+            return target_element
+
         translate = {
             k.key: v.value
             for k, v in zip(original_cache_key.bindparams, self.bindparams)

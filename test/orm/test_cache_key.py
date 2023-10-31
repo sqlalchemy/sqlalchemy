@@ -3,6 +3,7 @@ import random
 import sqlalchemy as sa
 from sqlalchemy import Column
 from sqlalchemy import column
+from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
@@ -28,6 +29,7 @@ from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import Load
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm import Query
+from sqlalchemy.orm import query_expression
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
@@ -44,6 +46,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import int_within_variance
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing.entities import ComparableMixin
 from sqlalchemy.testing.fixtures import DeclarativeMappedTest
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.util import count_cache_key_tuples
@@ -1171,3 +1174,66 @@ class EmbeddedSubqTest(
                 int_within_variance(29796, total_size(ck), 0.05)
             else:
                 testing.skip_test("python platform not available")
+
+
+class WithExpresionLoaderOptTest(DeclarativeMappedTest):
+    """test #10570"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(ComparableMixin, Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            data = Column(String(30))
+            bs = relationship("B")
+
+        class B(ComparableMixin, Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+            boolean = query_expression()
+            data = Column(String(30))
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, B = cls.classes("A", "B")
+
+        with Session(connection) as s:
+            s.add(A(bs=[B(data="a"), B(data="b"), B(data="c")]))
+            s.commit()
+
+    @testing.combinations(
+        joinedload, lazyload, defaultload, selectinload, subqueryload
+    )
+    def test_from_opt(self, loadopt):
+        A, B = self.classes("A", "B")
+
+        def go(value):
+            with Session(testing.db) as sess:
+                objects = sess.execute(
+                    select(A).options(
+                        loadopt(A.bs).options(
+                            with_expression(B.boolean, B.data == value)
+                        )
+                    )
+                ).scalars()
+                if loadopt is joinedload:
+                    objects = objects.unique()
+                eq_(
+                    objects.all(),
+                    [
+                        A(
+                            bs=[
+                                B(data="a", boolean=value == "a"),
+                                B(data="b", boolean=value == "b"),
+                                B(data="c", boolean=value == "c"),
+                            ]
+                        )
+                    ],
+                )
+
+        go("b")
+        go("c")

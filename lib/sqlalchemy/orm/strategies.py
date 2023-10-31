@@ -306,8 +306,9 @@ class ExpressionColumnLoader(ColumnLoader):
         **kwargs,
     ):
         columns = None
-        if loadopt and "expression" in loadopt.local_opts:
-            columns = [loadopt.local_opts["expression"]]
+        if loadopt and loadopt._extra_criteria:
+            columns = loadopt._extra_criteria
+
         elif self._have_default_expression:
             columns = self.parent_property.columns
 
@@ -343,8 +344,8 @@ class ExpressionColumnLoader(ColumnLoader):
     ):
         # look through list of columns represented here
         # to see which, if any, is present in the row.
-        if loadopt and "expression" in loadopt.local_opts:
-            columns = [loadopt.local_opts["expression"]]
+        if loadopt and loadopt._extra_criteria:
+            columns = loadopt._extra_criteria
 
             for col in columns:
                 if adapter:

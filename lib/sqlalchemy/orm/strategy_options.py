@@ -747,7 +747,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         )
 
         return self._set_column_strategy(
-            (key,), {"query_expression": True}, opts={"expression": expression}
+            (key,), {"query_expression": True}, extra_criteria=(expression,)
         )
 
     def selectin_polymorphic(self, classes: Iterable[Type[Any]]) -> Self:
@@ -819,6 +819,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         attrs: Tuple[_AttrType, ...],
         strategy: Optional[_StrategySpec],
         opts: Optional[_OptsType] = None,
+        extra_criteria: Optional[Tuple[Any, ...]] = None,
     ) -> Self:
         strategy_key = self._coerce_strat(strategy)
 
@@ -828,6 +829,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             _COLUMN_TOKEN,
             opts=opts,
             attr_group=attrs,
+            extra_criteria=extra_criteria,
         )
         return self
 
@@ -884,6 +886,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         attr_group: Optional[_AttrGroupType] = None,
         propagate_to_loaders: bool = True,
         reconcile_to_other: Optional[bool] = None,
+        extra_criteria: Optional[Tuple[Any, ...]] = None,
     ) -> Self:
         raise NotImplementedError()
 
@@ -1052,16 +1055,10 @@ class Load(_AbstractLoad):
         found_crit = False
 
         def process(opt: _LoadElement) -> _LoadElement:
-            if not opt._extra_criteria:
-                return opt
-
             nonlocal orig_cache_key, replacement_cache_key, found_crit
 
             found_crit = True
 
-            # avoid generating cache keys for the queries if we don't
-            # actually have any extra_criteria options, which is the
-            # common case
             if orig_cache_key is None or replacement_cache_key is None:
                 orig_cache_key = orig_query._generate_cache_key()
                 replacement_cache_key = context.query._generate_cache_key()
@@ -1075,8 +1072,12 @@ class Load(_AbstractLoad):
                 )
                 for crit in opt._extra_criteria
             )
+
             return opt
 
+        # avoid generating cache keys for the queries if we don't
+        # actually have any extra_criteria options, which is the
+        # common case
         new_context = tuple(
             process(value._clone()) if value._extra_criteria else value
             for value in self.context
@@ -1220,6 +1221,7 @@ class Load(_AbstractLoad):
         attr_group: Optional[_AttrGroupType] = None,
         propagate_to_loaders: bool = True,
         reconcile_to_other: Optional[bool] = None,
+        extra_criteria: Optional[Tuple[Any, ...]] = None,
     ) -> Self:
         # for individual strategy that needs to propagate, set the whole
         # Load container to also propagate, so that it shows up in
@@ -1253,6 +1255,7 @@ class Load(_AbstractLoad):
                 propagate_to_loaders,
                 attr_group=attr_group,
                 reconcile_to_other=reconcile_to_other,
+                extra_criteria=extra_criteria,
             )
             if load_element:
                 self.context += (load_element,)
@@ -1273,6 +1276,7 @@ class Load(_AbstractLoad):
                         propagate_to_loaders,
                         attr_group=attr_group,
                         reconcile_to_other=reconcile_to_other,
+                        extra_criteria=extra_criteria,
                     )
                 else:
                     load_element = _AttributeStrategyLoad.create(
@@ -1284,6 +1288,7 @@ class Load(_AbstractLoad):
                         propagate_to_loaders,
                         attr_group=attr_group,
                         reconcile_to_other=reconcile_to_other,
+                        extra_criteria=extra_criteria,
                     )
 
                 if load_element:
@@ -1347,6 +1352,7 @@ class _WildcardLoad(_AbstractLoad):
         attr_group=None,
         propagate_to_loaders=True,
         reconcile_to_other=None,
+        extra_criteria=None,
     ):
         assert attrs is not None
         attr = attrs[0]
@@ -1362,6 +1368,8 @@ class _WildcardLoad(_AbstractLoad):
         self.path = (attr,)
         if opts:
             self.local_opts = util.immutabledict(opts)
+
+        assert extra_criteria is None
 
     def options(self, *opts: _AbstractLoad) -> Self:
         raise NotImplementedError("Star option does not support sub-options")
@@ -1649,7 +1657,9 @@ class _LoadElement(
 
         return effective_path
 
-    def _init_path(self, path, attr, wildcard_key, attr_group, raiseerr):
+    def _init_path(
+        self, path, attr, wildcard_key, attr_group, raiseerr, extra_criteria
+    ):
         """Apply ORM attributes and/or wildcard to an existing path, producing
         a new path.
 
@@ -1709,6 +1719,7 @@ class _LoadElement(
         raiseerr: bool = True,
         attr_group: Optional[_AttrGroupType] = None,
         reconcile_to_other: Optional[bool] = None,
+        extra_criteria: Optional[Tuple[Any, ...]] = None,
     ) -> _LoadElement:
         """Create a new :class:`._LoadElement` object."""
 
@@ -1728,7 +1739,9 @@ class _LoadElement(
         else:
             opt._reconcile_to_other = None
 
-        path = opt._init_path(path, attr, wildcard_key, attr_group, raiseerr)
+        path = opt._init_path(
+            path, attr, wildcard_key, attr_group, raiseerr, extra_criteria
+        )
 
         if not path:
             return None  # type: ignore
@@ -1828,7 +1841,7 @@ class _LoadElement(
             replacement.local_opts = replacement.local_opts.union(
                 existing.local_opts
             )
-            replacement._extra_criteria += replacement._extra_criteria
+            replacement._extra_criteria += existing._extra_criteria
             return replacement
         elif replacement.path.is_token:
             # use 'last one wins' logic for wildcard options.  this is also
@@ -1870,7 +1883,9 @@ class _AttributeStrategyLoad(_LoadElement):
     is_class_strategy = False
     is_token_strategy = False
 
-    def _init_path(self, path, attr, wildcard_key, attr_group, raiseerr):
+    def _init_path(
+        self, path, attr, wildcard_key, attr_group, raiseerr, extra_criteria
+    ):
         assert attr is not None
         self._of_type = None
         self._path_with_polymorphic_path = None
@@ -1916,7 +1931,11 @@ class _AttributeStrategyLoad(_LoadElement):
         # from an attribute.   This appears to have been an artifact of how
         # _UnboundLoad / Load interacted together, which was opaque and
         # poorly defined.
-        self._extra_criteria = attr._extra_criteria
+        if extra_criteria:
+            assert not attr._extra_criteria
+            self._extra_criteria = extra_criteria
+        else:
+            self._extra_criteria = attr._extra_criteria
 
         if getattr(attr, "_of_type", None):
             ac = attr._of_type
@@ -2109,7 +2128,9 @@ class _TokenStrategyLoad(_LoadElement):
     is_class_strategy = False
     is_token_strategy = True
 
-    def _init_path(self, path, attr, wildcard_key, attr_group, raiseerr):
+    def _init_path(
+        self, path, attr, wildcard_key, attr_group, raiseerr, extra_criteria
+    ):
         # assert isinstance(attr, str) or attr is None
         if attr is not None:
             default_token = attr.endswith(_DEFAULT_TOKEN)
@@ -2195,7 +2216,9 @@ class _ClassStrategyLoad(_LoadElement):
 
     __visit_name__ = "class_strategy_load_element"
 
-    def _init_path(self, path, attr, wildcard_key, attr_group, raiseerr):
+    def _init_path(
+        self, path, attr, wildcard_key, attr_group, raiseerr, extra_criteria
+    ):
         return path
 
     def _prepare_for_compile_state(
