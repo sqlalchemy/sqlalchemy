@@ -1097,6 +1097,8 @@ ORM Session API Documentation
 
 .. autofunction:: async_session
 
+.. autofunction:: close_all_sessions
+
 .. autoclass:: async_sessionmaker
    :members:
    :inherited-members:

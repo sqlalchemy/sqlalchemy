@@ -32,6 +32,7 @@ from .result import _ensure_sync_result
 from .result import AsyncResult
 from .result import AsyncScalarResult
 from ... import util
+from ...orm import close_all_sessions as _sync_close_all_sessions
 from ...orm import object_session
 from ...orm import Session
 from ...orm import SessionTransaction
@@ -979,6 +980,12 @@ class AsyncSession(ReversibleProxy[Session]):
         For a general description of ORM begin nested, see
         :meth:`_orm.Session.begin_nested`.
 
+        .. seealso::
+
+            :ref:`aiosqlite_serializable` - special workarounds required
+            with the SQLite asyncio driver in order for SAVEPOINT to work
+            correctly.
+
         """
 
         return AsyncSessionTransaction(self, nested=True)
@@ -1057,9 +1064,15 @@ class AsyncSession(ReversibleProxy[Session]):
         await greenlet_spawn(self.sync_session.invalidate)
 
     @classmethod
-    async def close_all(self) -> None:
+    @util.deprecated(
+        "2.0",
+        "The :meth:`.AsyncSession.close_all` method is deprecated and will be "
+        "removed in a future release.  Please refer to "
+        ":func:`_asyncio.close_all_sessions`.",
+    )
+    async def close_all(cls) -> None:
         """Close all :class:`_asyncio.AsyncSession` sessions."""
-        await greenlet_spawn(self.sync_session.close_all)
+        await close_all_sessions()
 
     async def __aenter__(self: _AS) -> _AS:
         return self
@@ -1909,6 +1922,19 @@ def async_session(session: Session) -> Optional[AsyncSession]:
 
     """
     return AsyncSession._retrieve_proxy_for_target(session, regenerate=False)
+
+
+async def close_all_sessions() -> None:
+    """Close all :class:`_asyncio.AsyncSession` sessions.
+
+    .. versionadded:: 2.0.23
+
+    .. seealso::
+
+        :func:`.session.close_all_sessions`
+
+    """
+    await greenlet_spawn(_sync_close_all_sessions)
 
 
 _instance_state._async_provider = async_session  # type: ignore

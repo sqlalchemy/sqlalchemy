@@ -1163,12 +1163,7 @@ Many-to-many relationships make use of the
 :paramref:`_orm.relationship.secondary` parameter, which ordinarily
 indicates a reference to a typically non-mapped :class:`_schema.Table`
 object or other Core selectable object.  Late evaluation
-using either a lambda callable or string name is supported, where string
-resolution works by evaluation of given Python expression which links
-identifier names to same-named :class:`_schema.Table` objects that
-are present in the same
-:class:`_schema.MetaData` collection referenced by the current
-:class:`_orm.registry`.
+using a lambda callable is typical.
 
 For the example given at :ref:`relationships_many_to_many`, if we assumed
 that the ``association_table`` :class:`.Table` object would be defined at a point later on in the
@@ -1183,9 +1178,16 @@ using a lambda as::
             "Child", secondary=lambda: association_table
         )
 
-Or to illustrate locating the same :class:`.Table` object by name,
-the name of the :class:`.Table` is used as the argument.
-From a Python perspective, this is a Python expression evaluated as a variable
+As a shortcut for table names that are also **valid Python identifiers**, the
+:paramref:`_orm.relationship.secondary` parameter may also be passed as a
+string, where resolution works by evaluation of the string as a Python
+expression, with simple identifier names linked to same-named
+:class:`_schema.Table` objects that are present in the same
+:class:`_schema.MetaData` collection referenced by the current
+:class:`_orm.registry`.
+
+In the example below, the expression
+``"association_table"`` is evaluated as a variable
 named "association_table" that is resolved against the table names within
 the :class:`.MetaData` collection::
 
@@ -1195,8 +1197,17 @@ the :class:`.MetaData` collection::
         id: Mapped[int] = mapped_column(primary_key=True)
         children: Mapped[List["Child"]] = relationship(secondary="association_table")
 
+.. note:: When passed as a string, the name passed to
+    :paramref:`_orm.relationship.secondary` **must be a valid Python identifier**
+    starting with a letter and containing only alphanumeric characters or
+    underscores.   Other characters such as dashes etc. will be interpreted
+    as Python operators which will not resolve to the name given.  Please consider
+    using lambda expressions rather than strings for improved clarity.
+
 .. warning:: When passed as a string,
     :paramref:`_orm.relationship.secondary` argument is interpreted using Python's
     ``eval()`` function, even though it's typically the name of a table.
     **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
+
+
 

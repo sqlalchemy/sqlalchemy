@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import async_object_session
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import close_all_sessions
 from sqlalchemy.ext.asyncio import exc as async_exc
 from sqlalchemy.ext.asyncio.base import ReversibleProxy
 from sqlalchemy.orm import DeclarativeBase
@@ -41,7 +42,9 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import expect_deprecated
+from sqlalchemy.testing.assertions import in_
 from sqlalchemy.testing.assertions import is_false
+from sqlalchemy.testing.assertions import not_in
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.provision import normalize_sequence
 from .test_engine_py3k import AsyncFixture as _AsyncFixture
@@ -121,6 +124,50 @@ class AsyncSessionTest(AsyncFixture):
                     await async_session.execute(seq),
                     sync_connection.dialect.default_sequence_base,
                 )
+
+    @async_test
+    async def test_close_all(self, async_engine):
+        User = self.classes.User
+
+        s1 = AsyncSession(async_engine)
+        u1 = User()
+        s1.add(u1)
+
+        s2 = AsyncSession(async_engine)
+        u2 = User()
+        s2.add(u2)
+
+        in_(u1, s1)
+        in_(u2, s2)
+
+        await close_all_sessions()
+
+        not_in(u1, s1)
+        not_in(u2, s2)
+
+    @async_test
+    async def test_session_close_all_deprecated(self, async_engine):
+        User = self.classes.User
+
+        s1 = AsyncSession(async_engine)
+        u1 = User()
+        s1.add(u1)
+
+        s2 = AsyncSession(async_engine)
+        u2 = User()
+        s2.add(u2)
+
+        in_(u1, s1)
+        in_(u2, s2)
+
+        with expect_deprecated(
+            r"The AsyncSession.close_all\(\) method is deprecated and will "
+            "be removed in a future release. "
+        ):
+            await AsyncSession.close_all()
+
+        not_in(u1, s1)
+        not_in(u2, s2)
 
 
 class AsyncSessionQueryTest(AsyncFixture):

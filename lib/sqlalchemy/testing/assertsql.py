@@ -50,6 +50,7 @@ class CursorSQL(SQLMatchRule):
         if self.statement != stmt.statement or (
             self.params is not None and self.params != stmt.parameters
         ):
+            self.consume_statement = True
             self.errormessage = (
                 "Testing for exact SQL %s parameters %s received %s %s"
                 % (

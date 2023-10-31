@@ -1446,7 +1446,7 @@ class MyPickleType(types.TypeDecorator):
 
     def process_bind_param(self, value, dialect):
         if value:
-            value.stuff = "BIND" + value.stuff
+            value = pickleable.Foo(value.moredata, stuff="BIND" + value.stuff)
         return value
 
     def process_result_value(self, value, dialect):

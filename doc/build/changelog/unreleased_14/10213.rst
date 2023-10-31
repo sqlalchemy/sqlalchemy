@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 10213
-    :versions: 2.0.20
-
-    Fixed issue where unpickling of a :class:`_schema.Column` or other
-    :class:`_sql.ColumnElement` would fail to restore the correct "comparator"
-    object, which is used to generate SQL expressions specific to the type
-    object.

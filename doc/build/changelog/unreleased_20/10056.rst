@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, mariadb
+    :tickets: 10056
+
+    Adjusted the MySQL / MariaDB dialects to default a generated column to NULL
+    when using MariaDB, if :paramref:`_schema.Column.nullable` was not
+    specified with an explicit ``True`` or ``False`` value, as MariaDB does not
+    support the "NOT NULL" phrase with a generated column.  Pull request
+    courtesy Indivar.
+

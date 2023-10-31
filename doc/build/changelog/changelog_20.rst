@@ -934,7 +934,7 @@
         This is a no-argument callable that provides a new asyncio connection,
         using the asyncio database driver directly. The
         :func:`.create_async_engine` function will wrap the driver-level connection
-        in the appropriate structures. Pull request curtesy of Jack Wotherspoon.
+        in the appropriate structures. Pull request courtesy of Jack Wotherspoon.
 
     .. change::
         :tags: bug, orm, regression
@@ -3100,7 +3100,7 @@
         * ``@?`` using :meth:`_postgresql.JSONB.Comparator.path_exists`
         * ``#-`` using :meth:`_postgresql.JSONB.Comparator.delete_path`
 
-        Pull request curtesy of Guilherme Martins Crocetti.
+        Pull request courtesy of Guilherme Martins Crocetti.
 
 .. changelog::
     :version: 2.0.0rc1

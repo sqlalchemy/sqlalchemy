@@ -740,16 +740,12 @@ class _RenderISO8601NoT:
         if _portion is not None:
 
             def process(value):
-                if value is not None:
-                    value = f"""'{value.isoformat().split("T")[_portion]}'"""
-                return value
+                return f"""'{value.isoformat().split("T")[_portion]}'"""
 
         else:
 
             def process(value):
-                if value is not None:
-                    value = f"""'{value.isoformat().replace("T", " ")}'"""
-                return value
+                return f"""'{value.isoformat().replace("T", " ")}'"""
 
         return process
 
@@ -2052,8 +2048,8 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
     """A type for ``datetime.timedelta()`` objects.
 
     The Interval type deals with ``datetime.timedelta`` objects.  In
-    PostgreSQL, the native ``INTERVAL`` type is used; for others, the
-    value is stored as a date which is relative to the "epoch"
+    PostgreSQL and Oracle, the native ``INTERVAL`` type is used; for others,
+    the value is stored as a date which is relative to the "epoch"
     (Jan. 1, 1970).
 
     Note that the ``Interval`` type does not currently provide date arithmetic
@@ -2484,6 +2480,9 @@ class JSON(Indexable, TypeEngine[Any]):
                     value = int_processor(value)
                 elif string_processor and isinstance(value, str):
                     value = string_processor(value)
+                else:
+                    raise NotImplementedError()
+
                 return value
 
             return process
@@ -3706,28 +3705,20 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
         if not self.as_uuid:
 
             def process(value):
-                if value is not None:
-                    value = (
-                        f"""'{value.replace("-", "").replace("'", "''")}'"""
-                    )
-                return value
+                return f"""'{value.replace("-", "").replace("'", "''")}'"""
 
             return process
         else:
             if character_based_uuid:
 
                 def process(value):
-                    if value is not None:
-                        value = f"""'{value.hex}'"""
-                    return value
+                    return f"""'{value.hex}'"""
 
                 return process
             else:
 
                 def process(value):
-                    if value is not None:
-                        value = f"""'{str(value).replace("'", "''")}'"""
-                    return value
+                    return f"""'{str(value).replace("'", "''")}'"""
 
                 return process
 

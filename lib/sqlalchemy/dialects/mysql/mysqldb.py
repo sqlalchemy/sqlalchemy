@@ -168,7 +168,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
         return on_connect
 
     def do_ping(self, dbapi_connection):
-        dbapi_connection.ping(False)
+        dbapi_connection.ping()
         return True
 
     def do_executemany(self, cursor, statement, parameters, context=None):

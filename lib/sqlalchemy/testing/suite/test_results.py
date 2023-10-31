@@ -254,7 +254,7 @@ class ServerSideCursorsTest(
         elif self.engine.dialect.driver == "pymysql":
             sscursor = __import__("pymysql.cursors").cursors.SSCursor
             return isinstance(cursor, sscursor)
-        elif self.engine.dialect.driver in ("aiomysql", "asyncmy"):
+        elif self.engine.dialect.driver in ("aiomysql", "asyncmy", "aioodbc"):
             return cursor.server_side
         elif self.engine.dialect.driver == "mysqldb":
             sscursor = __import__("MySQLdb.cursors").cursors.SSCursor
@@ -311,7 +311,7 @@ class ServerSideCursorsTest(
             True,
             "SELECT 1 FOR UPDATE",
             True,
-            testing.skip_if("sqlite"),
+            testing.skip_if(["sqlite", "mssql"]),
         ),
         ("text_no_ss", False, text("select 42"), False),
         (

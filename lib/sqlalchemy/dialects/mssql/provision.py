@@ -26,7 +26,7 @@ def generate_driver_url(url, driver, query_str):
 
     new_url = url.set(drivername="%s+%s" % (backend, driver))
 
-    if driver != "pyodbc":
+    if driver not in ("pyodbc", "aioodbc"):
         new_url = new_url.set(query="")
 
     if query_str:

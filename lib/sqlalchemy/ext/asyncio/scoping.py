@@ -394,6 +394,12 @@ class async_scoped_session(Generic[_AS]):
         For a general description of ORM begin nested, see
         :meth:`_orm.Session.begin_nested`.
 
+        .. seealso::
+
+            :ref:`aiosqlite_serializable` - special workarounds required
+            with the SQLite asyncio driver in order for SAVEPOINT to work
+            correctly.
+
 
         """  # noqa: E501
 
@@ -1544,13 +1550,15 @@ class async_scoped_session(Generic[_AS]):
         return self._proxied.info
 
     @classmethod
-    async def close_all(self) -> None:
+    async def close_all(cls) -> None:
         r"""Close all :class:`_asyncio.AsyncSession` sessions.
 
         .. container:: class_bases
 
             Proxied for the :class:`_asyncio.AsyncSession` class on
             behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
+
+        .. deprecated:: 2.0 The :meth:`.AsyncSession.close_all` method is deprecated and will be removed in a future release.  Please refer to :func:`_asyncio.close_all_sessions`.
 
         """  # noqa: E501
 

@@ -211,7 +211,7 @@ class NumericSqlVariant(TypeDecorator):
     cache_ok = True
 
     def column_expression(self, colexpr):
-        return cast(colexpr, Numeric)
+        return cast(colexpr, Numeric(38, 0))
 
 
 identity_columns = Table(

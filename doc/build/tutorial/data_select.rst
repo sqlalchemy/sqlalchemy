@@ -1236,7 +1236,7 @@ organized into a subquery using :meth:`_sql.CompoundSelect.subquery`, which
 then links to ORM objects using the :func:`_orm.aliased` function. This works
 in the same way introduced at :ref:`tutorial_subqueries_orm_aliased`, to first
 create an ad-hoc "mapping" of our desired entity to the subquery, then
-selecting from that that new entity as though it were any other mapped class.
+selecting from that new entity as though it were any other mapped class.
 In the example below, we are able to add additional criteria such as ORDER BY
 outside of the UNION itself, as we can filter or order by the columns exported
 by the subquery::

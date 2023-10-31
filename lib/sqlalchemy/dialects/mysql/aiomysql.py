@@ -37,6 +37,8 @@ from ...util.concurrency import await_only
 
 
 class AsyncAdapt_aiomysql_cursor:
+    # TODO: base on connectors/asyncio.py
+    # see #10415
     server_side = False
     __slots__ = (
         "_adapt_connection",
@@ -139,6 +141,8 @@ class AsyncAdapt_aiomysql_cursor:
 
 
 class AsyncAdapt_aiomysql_ss_cursor(AsyncAdapt_aiomysql_cursor):
+    # TODO: base on connectors/asyncio.py
+    # see #10415
     __slots__ = ()
     server_side = True
 
@@ -167,6 +171,8 @@ class AsyncAdapt_aiomysql_ss_cursor(AsyncAdapt_aiomysql_cursor):
 
 
 class AsyncAdapt_aiomysql_connection(AdaptedConnection):
+    # TODO: base on connectors/asyncio.py
+    # see #10415
     await_ = staticmethod(await_only)
     __slots__ = ("dbapi", "_execute_mutex")
 
@@ -202,6 +208,8 @@ class AsyncAdapt_aiomysql_connection(AdaptedConnection):
 
 
 class AsyncAdaptFallback_aiomysql_connection(AsyncAdapt_aiomysql_connection):
+    # TODO: base on connectors/asyncio.py
+    # see #10415
     __slots__ = ()
 
     await_ = staticmethod(await_fallback)

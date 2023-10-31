@@ -2080,14 +2080,12 @@ class SQLCompiler(Compiled):
 
             if parameter in self.literal_execute_params:
                 if escaped_name not in replacement_expressions:
-                    value = parameters.pop(escaped_name)
-
-                replacement_expressions[
-                    escaped_name
-                ] = self.render_literal_bindparam(
-                    parameter,
-                    render_literal_value=value,
-                )
+                    replacement_expressions[
+                        escaped_name
+                    ] = self.render_literal_bindparam(
+                        parameter,
+                        render_literal_value=parameters.pop(escaped_name),
+                    )
                 continue
 
             if parameter in self.post_compile_params:
@@ -2742,6 +2740,7 @@ class SQLCompiler(Compiled):
         except KeyError as err:
             raise exc.UnsupportedCompilationError(self, operator_) from err
         else:
+            kw["_in_operator_expression"] = True
             return self._generate_delimited_list(
                 clauselist.clauses, opstring, **kw
             )
@@ -3370,9 +3369,9 @@ class SQLCompiler(Compiled):
     def _generate_generic_binary(
         self, binary, opstring, eager_grouping=False, **kw
     ):
-        _in_binary = kw.get("_in_binary", False)
+        _in_operator_expression = kw.get("_in_operator_expression", False)
 
-        kw["_in_binary"] = True
+        kw["_in_operator_expression"] = True
         kw["_binary_op"] = binary.operator
         text = (
             binary.left._compiler_dispatch(
@@ -3384,7 +3383,7 @@ class SQLCompiler(Compiled):
             )
         )
 
-        if _in_binary and eager_grouping:
+        if _in_operator_expression and eager_grouping:
             text = "(%s)" % text
         return text
 
@@ -3766,6 +3765,12 @@ class SQLCompiler(Compiled):
         of the DBAPI.
 
         """
+
+        if value is None and not type_.should_evaluate_none:
+            # issue #10535 - handle NULL in the compiler without placing
+            # this onto each type, except for "evaluate None" types
+            # (e.g. JSON)
+            return self.process(elements.Null._instance())
 
         processor = type_._cached_literal_processor(self.dialect)
         if processor:

@@ -205,6 +205,7 @@ from .base import PGExecutionContext
 from .base import PGIdentifierPreparer
 from .base import REGCLASS
 from .base import REGCONFIG
+from .types import BIT
 from .types import BYTEA
 from .types import CITEXT
 from ... import exc
@@ -234,6 +235,10 @@ class AsyncpgREGCONFIG(REGCONFIG):
 
 
 class AsyncpgTime(sqltypes.Time):
+    render_bind_cast = True
+
+
+class AsyncpgBit(BIT):
     render_bind_cast = True
 
 
@@ -1016,6 +1021,7 @@ class PGDialect_asyncpg(PGDialect):
         {
             sqltypes.String: AsyncpgString,
             sqltypes.ARRAY: AsyncpgARRAY,
+            BIT: AsyncpgBit,
             CITEXT: CITEXT,
             REGCONFIG: AsyncpgREGCONFIG,
             sqltypes.Time: AsyncpgTime,

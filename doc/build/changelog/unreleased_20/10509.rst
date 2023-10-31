@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 10509
+
+    Fixed issue in :class:`.Interval` datatype where the Oracle implementation
+    was not being used for DDL generation, leading to the ``day_precision`` and
+    ``second_precision`` parameters to be ignored, despite being supported by
+    this dialect.  Pull request courtesy Indivar.

@@ -18,7 +18,6 @@ from ... import literal_column
 from ... import Numeric
 from ... import select
 from ... import String
-from ...dialects.postgresql import BYTEA
 from ...types import LargeBinary
 from ...types import UUID
 from ...types import Uuid
@@ -553,7 +552,6 @@ class ReturningTest(fixtures.TablesTest):
             b"this is binary",
         ),
         ("LargeBinary2", LargeBinary(), b"7\xe7\x9f"),
-        ("PG BYTEA", BYTEA(), b"7\xe7\x9f", testing.only_on("postgresql")),
         argnames="type_,value",
         id_="iaa",
     )

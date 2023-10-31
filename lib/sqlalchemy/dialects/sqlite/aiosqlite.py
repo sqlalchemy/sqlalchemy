@@ -44,6 +44,36 @@ User-Defined Functions
 aiosqlite extends pysqlite to support async, so we can create our own user-defined functions (UDFs)
 in Python and use them directly in SQLite queries as described here: :ref:`pysqlite_udfs`.
 
+.. _aiosqlite_serializable:
+
+Serializable isolation / Savepoints / Transactional DDL (asyncio version)
+-------------------------------------------------------------------------
+
+Similarly to pysqlite, aiosqlite does not support SAVEPOINT feature.
+
+The solution is similar to :ref:`pysqlite_serializable`. This is achieved by the event listeners in async::
+
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    engine = create_async_engine("sqlite+aiosqlite:///myfile.db")
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def do_connect(dbapi_connection, connection_record):
+        # disable aiosqlite's emitting of the BEGIN statement entirely.
+        # also stops it from emitting COMMIT before any DDL.
+        dbapi_connection.isolation_level = None
+
+    @event.listens_for(engine.sync_engine, "begin")
+    def do_begin(conn):
+        # emit our own BEGIN
+        conn.exec_driver_sql("BEGIN")
+
+.. warning:: When using the above recipe, it is advised to not use the
+   :paramref:`.Connection.execution_options.isolation_level` setting on
+   :class:`_engine.Connection` and :func:`_sa.create_engine`
+   with the SQLite driver,
+   as this function necessarily will also alter the ".isolation_level" setting.
 
 """  # noqa
 
@@ -60,6 +90,9 @@ from ...util.concurrency import await_only
 
 
 class AsyncAdapt_aiosqlite_cursor:
+    # TODO: base on connectors/asyncio.py
+    # see #10415
+
     __slots__ = (
         "_adapt_connection",
         "_connection",
@@ -151,6 +184,8 @@ class AsyncAdapt_aiosqlite_cursor:
 
 
 class AsyncAdapt_aiosqlite_ss_cursor(AsyncAdapt_aiosqlite_cursor):
+    # TODO: base on connectors/asyncio.py
+    # see #10415
     __slots__ = "_cursor"
 
     server_side = True
