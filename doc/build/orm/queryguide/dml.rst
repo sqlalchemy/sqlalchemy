@@ -257,6 +257,111 @@ three INSERT statements, grouped along the specific sets of keys
 in each dictionary while still maintaining row order, i.e.
 ``("name", "fullname", "species")``, ``("name", "species")``, ``("name","fullname", "species")``.
 
+.. _orm_queryguide_insert_null_params:
+
+Sending NULL values in ORM bulk INSERT statements
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The bulk ORM insert feature draws upon a behavior that is also present
+in the legacy "bulk" insert behavior, as well as in the ORM unit of work
+overall, which is that rows which contain NULL values are INSERTed using
+a statement that does not refer to those columns; the rationale here is so
+that backends and schemas which contain server-side INSERT defaults that may
+be sensitive to the presence of a NULL value vs. no value present will
+produce a server side value as expected.  This default behavior
+has the effect of breaking up the bulk inserted batches into more
+batches of fewer rows::
+
+    >>> session.execute(
+    ...     insert(User),
+    ...     [
+    ...         {
+    ...             "name": "name_a",
+    ...             "fullname": "Employee A",
+    ...             "species": "Squid",
+    ...         },
+    ...         {
+    ...             "name": "name_b",
+    ...             "fullname": "Employee B",
+    ...             "species": "Squirrel",
+    ...         },
+    ...         {
+    ...             "name": "name_c",
+    ...             "fullname": "Employee C",
+    ...             "species": None,
+    ...         },
+    ...         {
+    ...             "name": "name_d",
+    ...             "fullname": "Employee D",
+    ...             "species": "Bluefish",
+    ...         },
+    ...     ],
+    ... )
+    {execsql}INSERT INTO user_account (name, fullname, species) VALUES (?, ?, ?)
+    [...] [('name_a', 'Employee A', 'Squid'), ('name_b', 'Employee B', 'Squirrel')]
+    INSERT INTO user_account (name, fullname) VALUES (?, ?)
+    [...] ('name_c', 'Employee C')
+    INSERT INTO user_account (name, fullname, species) VALUES (?, ?, ?)
+    [...] ('name_d', 'Employee D', 'Bluefish')
+    ...
+
+..  Setup code, not for display
+
+  >>> session.rollback()
+  ROLLBACK...
+  >>> session.connection()
+  BEGIN (implicit)...
+
+Above, the bulk INSERT of four rows is broken into three separate statements,
+the second statement reformatted to not refer to the NULL column for the single
+parameter dictionary that contains a ``None`` value.    This default
+behavior may be undesirable when many rows in the dataset contain random NULL
+values, as it causes the "executemany" operation to be broken into a larger
+number of smaller operations; particularly when relying upon
+:ref:`insertmanyvalues <engine_insertmanyvalues>` to reduce the overall number
+of statements, this can have a bigger performance impact.
+
+To disable the handling of ``None`` values in the parameters into separate
+batches, pass the execution option ``render_nulls=True``; this will cause
+all parameter dictionaries to be treated equivalently, assuming the same
+set of keys in each dictionary::
+
+    >>> session.execute(
+    ...     insert(User).execution_options(render_nulls=True),
+    ...     [
+    ...         {
+    ...             "name": "name_a",
+    ...             "fullname": "Employee A",
+    ...             "species": "Squid",
+    ...         },
+    ...         {
+    ...             "name": "name_b",
+    ...             "fullname": "Employee B",
+    ...             "species": "Squirrel",
+    ...         },
+    ...         {
+    ...             "name": "name_c",
+    ...             "fullname": "Employee C",
+    ...             "species": None,
+    ...         },
+    ...         {
+    ...             "name": "name_d",
+    ...             "fullname": "Employee D",
+    ...             "species": "Bluefish",
+    ...         },
+    ...     ],
+    ... )
+    {execsql}INSERT INTO user_account (name, fullname, species) VALUES (?, ?, ?)
+    [...] [('name_a', 'Employee A', 'Squid'), ('name_b', 'Employee B', 'Squirrel'), ('name_c', 'Employee C', None), ('name_d', 'Employee D', 'Bluefish')]
+    ...
+
+Above, all parameter dictionaries are sent in a single INSERT batch, including
+the ``None`` value present in the third parameter dictionary.
+
+.. versionadded:: 2.0.23  Added the ``render_nulls`` execution option which
+   mirrors the behavior of the legacy
+   :paramref:`_orm.Session.bulk_insert_mappings.render_nulls` parameter.
+
 .. _orm_queryguide_insert_joined_table_inheritance:
 
 Bulk INSERT for Joined Table Inheritance

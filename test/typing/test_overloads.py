@@ -37,6 +37,7 @@ orm_dml_execution_options = {
     "dml_strategy": "DMLStrategyArgument",
     "is_delete_using": "bool",
     "is_update_from": "bool",
+    "render_nulls": "bool",
 }
 
 orm_execution_options = {

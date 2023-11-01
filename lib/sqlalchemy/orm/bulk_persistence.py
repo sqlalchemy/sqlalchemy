@@ -1158,7 +1158,7 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
             execution_options,
         ) = BulkORMInsert.default_insert_options.from_execution_options(
             "_sa_orm_insert_options",
-            {"dml_strategy", "autoflush", "populate_existing"},
+            {"dml_strategy", "autoflush", "populate_existing", "render_nulls"},
             execution_options,
             statement._execution_options,
         )

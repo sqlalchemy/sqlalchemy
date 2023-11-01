@@ -141,6 +141,67 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
                     ],
                 )
 
+    @testing.variation("render_nulls", [True, False])
+    def test_render_nulls(self, decl_base, render_nulls):
+        """test #10575"""
+
+        class A(decl_base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(Identity(), primary_key=True)
+            data: Mapped[str]
+            x: Mapped[Optional[int]]
+
+        decl_base.metadata.create_all(testing.db)
+        s = fixture_session()
+
+        with self.sql_execution_asserter() as asserter:
+            stmt = insert(A)
+            if render_nulls:
+                stmt = stmt.execution_options(render_nulls=True)
+
+            s.execute(
+                stmt,
+                [
+                    {"data": "d3", "x": 5},
+                    {"data": "d4", "x": 6},
+                    {"data": "d5", "x": 6},
+                    {"data": "d6", "x": None},
+                    {"data": "d7", "x": 6},
+                ],
+            )
+
+        if render_nulls:
+            asserter.assert_(
+                CompiledSQL(
+                    "INSERT INTO a (data, x) VALUES (:data, :x)",
+                    [
+                        {"data": "d3", "x": 5},
+                        {"data": "d4", "x": 6},
+                        {"data": "d5", "x": 6},
+                        {"data": "d6", "x": None},
+                        {"data": "d7", "x": 6},
+                    ],
+                ),
+            )
+        else:
+            asserter.assert_(
+                CompiledSQL(
+                    "INSERT INTO a (data, x) VALUES (:data, :x)",
+                    [
+                        {"data": "d3", "x": 5},
+                        {"data": "d4", "x": 6},
+                        {"data": "d5", "x": 6},
+                    ],
+                ),
+                CompiledSQL(
+                    "INSERT INTO a (data) VALUES (:data)", [{"data": "d6"}]
+                ),
+                CompiledSQL(
+                    "INSERT INTO a (data, x) VALUES (:data, :x)",
+                    [{"data": "d7", "x": 6}],
+                ),
+            )
+
     def test_omit_returning_ok(self, decl_base):
         class A(decl_base):
             __tablename__ = "a"

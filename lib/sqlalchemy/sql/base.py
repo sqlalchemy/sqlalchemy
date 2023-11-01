@@ -1176,6 +1176,7 @@ class Executable(roles.StatementRole):
         autoflush: bool = False,
         synchronize_session: SynchronizeSessionArgument = ...,
         dml_strategy: DMLStrategyArgument = ...,
+        render_nulls: bool = ...,
         is_delete_using: bool = ...,
         is_update_from: bool = ...,
         **opt: Any,

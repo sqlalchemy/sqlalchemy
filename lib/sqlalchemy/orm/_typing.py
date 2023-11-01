@@ -93,6 +93,7 @@ class _OrmKnownExecutionOptions(_CoreKnownExecutionOptions, total=False):
     dml_strategy: DMLStrategyArgument
     is_delete_using: bool
     is_update_from: bool
+    render_nulls: bool
 
 
 OrmExecuteOptionsParameter = Union[
