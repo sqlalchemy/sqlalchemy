@@ -1,14 +1,19 @@
 from unittest.mock import call
 from unittest.mock import Mock
 
+from sqlalchemy import Column
 from sqlalchemy import exc
+from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import collections
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import validates
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
@@ -447,3 +452,74 @@ class ValidatorTest(_fixtures.FixtureTest):
                         call("user", User(addresses=[])),
                     ],
                 )
+
+    def test_validator_inheritance_override_validator(self):
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            data = Column(String)
+            foo = Column(String)
+
+            @validates("data")
+            def validate_data(self, key, value):
+                return "Call from A : " + value
+
+            @validates("foo")
+            def validate_foo(self, key, value):
+                ne_(value, "exclude for A", "Message raised from A")
+                return value
+
+        class B(A):
+            foo2 = Column(String)
+            bar = Column(String)
+
+            @validates("data")
+            def validate_data(self, key, value):
+                return "Call from B : " + value
+
+            @validates("foo")
+            def validate_foo(self, key, value):
+                # Test Calling both validators
+                value = super().validate_foo(key, value)
+                ne_(value, "exclude for B", "Message raised from B")
+                return value
+
+            @validates("foo2", "bar")
+            def validate_foobar(self, key, value):
+                if key == "foo2":
+                    return value + "_"
+                return "_" + value
+
+        class C(B):
+            @validates("foo2", "bar")
+            def validate_foobar(self, key, value):
+                if key == "foo2":
+                    return value + "-"
+                return "-" + value
+
+        obj = A(data="ed")
+        eq_(obj.data, "Call from A : ed")
+        with expect_raises_message(AssertionError, "Message raised from A"):
+            obj.foo = "exclude for A"
+        obj.foo = "exclude for B"
+
+        obj = B(data="ed")
+        eq_(obj.data, "Call from B : ed")
+        # Should call A's Validator
+        with expect_raises_message(AssertionError, "Message raised from A"):
+            obj.foo = "exclude for A"
+        # Should call B's Validator
+        with expect_raises_message(AssertionError, "Message raised from B"):
+            obj.foo = "exclude for B"
+        obj.foo = "Some other value"
+
+        obj.foo2 = "foo"
+        obj.bar = "bar"
+        eq_(obj.foo2 + obj.bar, "foo__bar")
+
+        obj = C(data="ed")
+        obj.foo2 = "foo"
+        obj.bar = "bar"
+        eq_(obj.foo2 + obj.bar, "foo--bar")
