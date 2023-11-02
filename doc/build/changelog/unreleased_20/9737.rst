@@ -1,7 +1,0 @@
-.. change::
-    :tags: usecase, sql
-    :tickets: 9737
-
-    Implemented "literal value processing" for the :class:`.Interval` datatype
-    for both the PostgreSQL and Oracle dialects, allowing literal rendering of
-    interval values.  Pull request courtesy Indivar Mishra.

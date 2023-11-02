@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, asyncio
-    :tickets: 10421
-
-    Fixed bug with method :meth:`_asyncio.AsyncSession.close_all`
-    that was not working correctly.
-    Also added function :func:`_asyncio.close_all_sessions` that's
-    the equivalent of :func:`_orm.close_all_sessions`.
-    Pull request courtesy of Bryan不可思议.

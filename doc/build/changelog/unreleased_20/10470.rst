@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, oracle
-    :tickets: 10470
-
-    Fixed issue where the cx_Oracle dialect claimed to support a lower
-    cx_Oracle version (7.x) than was actually supported in practice within the
-    2.0 series of SQLAlchemy. The dialect imports symbols that are only in
-    cx_Oracle 8 or higher, so runtime dialect checks as well as setup.cfg
-    requirements have been updated to reflect this compatibility.

@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 10570
-
-    Fixed caching bug where using the :func:`_orm.with_expression` construct in
-    conjunction with loader options :func:`_orm.selectinload`,
-    :func:`_orm.lazyload` would fail to substitute bound parameter values
-    correctly on subsequent caching runs.

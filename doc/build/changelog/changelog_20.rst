@@ -10,7 +10,163 @@
 
 .. changelog::
     :version: 2.0.23
-    :include_notes_from: unreleased_20
+    :released: November 2, 2023
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 10509
+
+        Fixed issue in :class:`.Interval` datatype where the Oracle implementation
+        was not being used for DDL generation, leading to the ``day_precision`` and
+        ``second_precision`` parameters to be ignored, despite being supported by
+        this dialect.  Pull request courtesy Indivar.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10516
+
+        Fixed issue where the ``__allow_unmapped__`` directive failed to allow for
+        legacy :class:`.Column` / :func:`.deferred` mappings that nonetheless had
+        annotations such as ``Any`` or a specific type without ``Mapped[]`` as
+        their type, without errors related to locating the attribute name.
+
+    .. change::
+        :tags: bug, mariadb
+        :tickets: 10056
+
+        Adjusted the MySQL / MariaDB dialects to default a generated column to NULL
+        when using MariaDB, if :paramref:`_schema.Column.nullable` was not
+        specified with an explicit ``True`` or ``False`` value, as MariaDB does not
+        support the "NOT NULL" phrase with a generated column.  Pull request
+        courtesy Indivar.
+
+
+    .. change::
+        :tags: bug, mariadb, regression
+        :tickets: 10505
+
+        Established a workaround for what seems to be an intrinsic issue across
+        MySQL/MariaDB drivers where a RETURNING result for DELETE DML which returns
+        no rows using SQLAlchemy's "empty IN" criteria fails to provide a
+        cursor.description, which then yields result that returns no rows,
+        leading to regressions for the ORM that in the 2.0 series uses RETURNING
+        for bulk DELETE statements for the "synchronize session" feature. To
+        resolve, when the specific case of "no description when RETURNING was
+        given" is detected, an "empty result" with a correct cursor description is
+        generated and used in place of the non-working cursor.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10570
+
+        Fixed caching bug where using the :func:`_orm.with_expression` construct in
+        conjunction with loader options :func:`_orm.selectinload`,
+        :func:`_orm.lazyload` would fail to substitute bound parameter values
+        correctly on subsequent caching runs.
+
+    .. change::
+        :tags: usecase, mssql
+        :tickets: 6521
+
+        Added support for the ``aioodbc`` driver implemented for SQL Server,
+        which builds on top of the pyodbc and general aio* dialect architecture.
+
+        .. seealso::
+
+            :ref:`mssql_aioodbc` - in the SQL Server dialect documentation.
+
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 10535
+
+        Added compiler-level None/NULL handling for the "literal processors" of all
+        datatypes that include literal processing, that is, where a value is
+        rendered inline within a SQL statement rather than as a bound parameter,
+        for all those types that do not feature explicit "null value" handling.
+        Previously this behavior was undefined and inconsistent.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 10575
+
+        Implemented the :paramref:`_orm.Session.bulk_insert_mappings.render_nulls`
+        parameter for new style bulk ORM inserts, allowing ``render_nulls=True`` as
+        an execution option.   This allows for bulk ORM inserts with a mixture of
+        ``None`` values in the parameter dictionaries to use a single batch of rows
+        for a given set of dicationary keys, rather than breaking up into batches
+        that omit the NULL columns from each INSERT.
+
+        .. seealso::
+
+            :ref:`orm_queryguide_insert_null_params`
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 10479
+
+        Fixed 2.0 regression caused by :ticket:`7744` where chains of expressions
+        involving PostgreSQL JSON operators combined with other operators such as
+        string concatenation would lose correct parenthesization, due to an
+        implementation detail specific to the PostgreSQL dialect.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 10532
+
+        Fixed SQL handling for "insertmanyvalues" when using the
+        :class:`.postgresql.BIT` datatype with the asyncpg backend.  The
+        :class:`.postgresql.BIT` on asyncpg apparently requires the use of an
+        asyncpg-specific ``BitString`` type which is currently exposed when using
+        this DBAPI, making it incompatible with other PostgreSQL DBAPIs that all
+        work with plain bitstrings here.  A future fix in version 2.1 will
+        normalize this datatype across all PG backends.   Pull request courtesy
+        Sören Oldag.
+
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 9737
+
+        Implemented "literal value processing" for the :class:`.Interval` datatype
+        for both the PostgreSQL and Oracle dialects, allowing literal rendering of
+        interval values.  Pull request courtesy Indivar Mishra.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 10470
+
+        Fixed issue where the cx_Oracle dialect claimed to support a lower
+        cx_Oracle version (7.x) than was actually supported in practice within the
+        2.0 series of SQLAlchemy. The dialect imports symbols that are only in
+        cx_Oracle 8 or higher, so runtime dialect checks as well as setup.cfg
+        requirements have been updated to reflect this compatibility.
+
+    .. change::
+        :tags: sql
+
+        Removed unused placeholder method :meth:`.TypeEngine.compare_against_backend`
+        This method was used by very old versions of Alembic.
+        See https://github.com/sqlalchemy/alembic/issues/1293 for details.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10472
+
+        Fixed bug in ORM annotated declarative where using a ``ClassVar`` that
+        nonetheless referred in some way to an ORM mapped class name would fail to
+        be interpreted as a ``ClassVar`` that's not mapped.
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 10421
+
+        Fixed bug with method :meth:`_asyncio.AsyncSession.close_all`
+        that was not working correctly.
+        Also added function :func:`_asyncio.close_all_sessions` that's
+        the equivalent of :func:`_orm.close_all_sessions`.
+        Pull request courtesy of Bryan不可思议.
 
 .. changelog::
     :version: 2.0.22
