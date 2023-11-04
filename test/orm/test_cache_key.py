@@ -5,6 +5,7 @@ from sqlalchemy import Column
 from sqlalchemy import column
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import Identity
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
@@ -1186,13 +1187,13 @@ class WithExpresionLoaderOptTest(DeclarativeMappedTest):
         class A(ComparableMixin, Base):
             __tablename__ = "a"
 
-            id = Column(Integer, primary_key=True)
+            id = Column(Integer, Identity(), primary_key=True)
             data = Column(String(30))
             bs = relationship("B")
 
         class B(ComparableMixin, Base):
             __tablename__ = "b"
-            id = Column(Integer, primary_key=True)
+            id = Column(Integer, Identity(), primary_key=True)
             a_id = Column(ForeignKey("a.id"))
             boolean = query_expression()
             data = Column(String(30))
@@ -1207,6 +1208,10 @@ class WithExpresionLoaderOptTest(DeclarativeMappedTest):
 
     @testing.combinations(
         joinedload, lazyload, defaultload, selectinload, subqueryload
+    )
+    @testing.only_on(
+        ["sqlite", "postgresql"],
+        "in-place boolean not generally available (Oracle, SQL Server)",
     )
     def test_from_opt(self, loadopt):
         A, B = self.classes("A", "B")
