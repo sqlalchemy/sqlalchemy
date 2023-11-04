@@ -3337,7 +3337,7 @@
        :tags: change, orm
        :tickets: 4412
 
-       Added a new function :func:`.close_all_sessions` which takes
+       Added a new function :func:`_orm.close_all_sessions` which takes
        over the task of the :meth:`.Session.close_all` method, which
        is now deprecated as this is confusing as a classmethod.
        Pull request courtesy Augustin Trancart.
