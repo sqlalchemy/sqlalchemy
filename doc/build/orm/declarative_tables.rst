@@ -856,8 +856,23 @@ datatype::
             Status: sqlalchemy.Enum(Status, length=50, native_enum=False)
         }
 
+By default :class:`_sqltypes.Enum` that are automatically generated are not
+associated with the :class:`_sql.MetaData` instance used by the ``Base``, so if
+the metadata defines a schema it will not be automatically associated with the
+enum. To automatically associate the enum with the schema in the metadata or
+table they belong to the :paramref:`_sqltypes.Enum.inherit_schema` can be set::
+
+    from enum import Enum
+    import sqlalchemy as sa
+    from sqlalchemy.orm import DeclarativeBase
+
+
+    class Base(DeclarativeBase):
+        metadata = sa.MetaData(schema="my_schema")
+        type_annotation_map = {Enum: sa.Enum(Enum, inherit_schema=True)}
+
 Linking Specific ``enum.Enum`` or ``typing.Literal`` to other datatypes
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 The above examples feature the use of an :class:`_sqltypes.Enum` that is
 automatically configuring itself to the arguments / attributes present on
