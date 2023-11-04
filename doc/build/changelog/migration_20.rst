@@ -1687,7 +1687,7 @@ ORM-specific compiler plugins receive the
 :class:`_sql.Select` construct and interpret its contents in terms of an
 ORM-style query, before passing off to the core-level compiler in order to
 create a SQL string.  With the advent of the new
-`SQL compilation caching system <change_4639>`,
+:ref:`SQL compilation caching system <change_4639>`,
 the majority of this ORM logic is also cached.
 
 
