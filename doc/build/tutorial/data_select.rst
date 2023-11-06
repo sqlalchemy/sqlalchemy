@@ -130,7 +130,7 @@ for a :func:`_sql.select` by using a tuple of string names::
     FROM user_account
 
 .. versionadded:: 2.0 Added tuple-accessor capability to the
-   :attr`.FromClause.c` collection
+   :attr:`.FromClause.c` collection
 
 
 .. _tutorial_selecting_orm_entities:
