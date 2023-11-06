@@ -1701,18 +1701,18 @@ class _AssociationDict(_AssociationCollection[_VT], MutableMapping[_KT, _VT]):
         return repr(dict(self))
 
     @overload
-    def get(self, __key: _KT) -> Optional[_VT]:
+    def get(self, __key: _KT, /) -> Optional[_VT]:
         ...
 
     @overload
-    def get(self, __key: _KT, default: Union[_VT, _T]) -> Union[_VT, _T]:
+    def get(self, __key: _KT, /, default: Union[_VT, _T]) -> Union[_VT, _T]:
         ...
 
     def get(
-        self, key: _KT, default: Optional[Union[_VT, _T]] = None
+        self, __key: _KT, /, default: Optional[Union[_VT, _T]] = None
     ) -> Union[_VT, _T, None]:
         try:
-            return self[key]
+            return self[__key]
         except KeyError:
             return default
 
@@ -1738,14 +1738,16 @@ class _AssociationDict(_AssociationCollection[_VT], MutableMapping[_KT, _VT]):
         return ValuesView(self)
 
     @overload
-    def pop(self, __key: _KT) -> _VT:
+    def pop(self, __key: _KT, /) -> _VT:
         ...
 
     @overload
-    def pop(self, __key: _KT, default: Union[_VT, _T] = ...) -> Union[_VT, _T]:
+    def pop(
+        self, __key: _KT, /, default: Union[_VT, _T] = ...
+    ) -> Union[_VT, _T]:
         ...
 
-    def pop(self, __key: _KT, *arg: Any, **kw: Any) -> Union[_VT, _T]:
+    def pop(self, __key: _KT, /, *arg: Any, **kw: Any) -> Union[_VT, _T]:
         member = self.col.pop(__key, *arg, **kw)
         return self._get(member)
 
@@ -1842,19 +1844,19 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
             yield self._get(member)
         return
 
-    def add(self, __element: _T) -> None:
+    def add(self, __element: _T, /) -> None:
         if __element not in self:
             self.col.add(self._create(__element))
 
     # for discard and remove, choosing a more expensive check strategy rather
     # than call self.creator()
-    def discard(self, __element: _T) -> None:
+    def discard(self, __element: _T, /) -> None:
         for member in self.col:
             if self._get(member) == __element:
                 self.col.discard(member)
                 break
 
-    def remove(self, __element: _T) -> None:
+    def remove(self, __element: _T, /) -> None:
         for member in self.col:
             if self._get(member) == __element:
                 self.col.discard(member)

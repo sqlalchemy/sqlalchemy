@@ -1515,6 +1515,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         __type_pos: Optional[
             Union[_TypeEngineArgument[_T], SchemaEventTarget]
         ] = None,
+        /,
         *args: SchemaEventTarget,
         name: Optional[str] = None,
         type_: Optional[_TypeEngineArgument[_T]] = None,

@@ -1831,7 +1831,7 @@ class RelationshipProperty(
             self.argument = cast("_RelationshipArgumentType[_T]", argument)
 
     @util.preload_module("sqlalchemy.orm.mapper")
-    def _setup_entity(self, __argument: Any = None) -> None:
+    def _setup_entity(self, __argument: Any = None, /) -> None:
         if "entity" in self.__dict__:
             return
 

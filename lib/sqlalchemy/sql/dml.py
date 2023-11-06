@@ -1294,7 +1294,11 @@ class Insert(ValuesBase):
 
         @overload
         def returning(
-            self, __ent0: _TCCA[_T0], *, sort_by_parameter_order: bool = False
+            self,
+            __ent0: _TCCA[_T0],
+            /,
+            *,
+            sort_by_parameter_order: bool = False,
         ) -> ReturningInsert[Tuple[_T0]]:
             ...
 
@@ -1303,6 +1307,7 @@ class Insert(ValuesBase):
             self,
             __ent0: _TCCA[_T0],
             __ent1: _TCCA[_T1],
+            /,
             *,
             sort_by_parameter_order: bool = False,
         ) -> ReturningInsert[Tuple[_T0, _T1]]:
@@ -1314,6 +1319,7 @@ class Insert(ValuesBase):
             __ent0: _TCCA[_T0],
             __ent1: _TCCA[_T1],
             __ent2: _TCCA[_T2],
+            /,
             *,
             sort_by_parameter_order: bool = False,
         ) -> ReturningInsert[Tuple[_T0, _T1, _T2]]:
@@ -1326,6 +1332,7 @@ class Insert(ValuesBase):
             __ent1: _TCCA[_T1],
             __ent2: _TCCA[_T2],
             __ent3: _TCCA[_T3],
+            /,
             *,
             sort_by_parameter_order: bool = False,
         ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3]]:
@@ -1339,6 +1346,7 @@ class Insert(ValuesBase):
             __ent2: _TCCA[_T2],
             __ent3: _TCCA[_T3],
             __ent4: _TCCA[_T4],
+            /,
             *,
             sort_by_parameter_order: bool = False,
         ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4]]:
@@ -1353,6 +1361,7 @@ class Insert(ValuesBase):
             __ent3: _TCCA[_T3],
             __ent4: _TCCA[_T4],
             __ent5: _TCCA[_T5],
+            /,
             *,
             sort_by_parameter_order: bool = False,
         ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
@@ -1368,6 +1377,7 @@ class Insert(ValuesBase):
             __ent4: _TCCA[_T4],
             __ent5: _TCCA[_T5],
             __ent6: _TCCA[_T6],
+            /,
             *,
             sort_by_parameter_order: bool = False,
         ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
@@ -1384,6 +1394,7 @@ class Insert(ValuesBase):
             __ent5: _TCCA[_T5],
             __ent6: _TCCA[_T6],
             __ent7: _TCCA[_T7],
+            /,
             *,
             sort_by_parameter_order: bool = False,
         ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
@@ -1596,18 +1607,20 @@ class Update(DMLWhereBase, ValuesBase):
         # statically generated** by tools/generate_tuple_map_overloads.py
 
         @overload
-        def returning(self, __ent0: _TCCA[_T0]) -> ReturningUpdate[Tuple[_T0]]:
+        def returning(
+            self, __ent0: _TCCA[_T0], /
+        ) -> ReturningUpdate[Tuple[_T0]]:
             ...
 
         @overload
         def returning(
-            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
+            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], /
         ) -> ReturningUpdate[Tuple[_T0, _T1]]:
             ...
 
         @overload
         def returning(
-            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
+            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2], /
         ) -> ReturningUpdate[Tuple[_T0, _T1, _T2]]:
             ...
 
@@ -1618,6 +1631,7 @@ class Update(DMLWhereBase, ValuesBase):
             __ent1: _TCCA[_T1],
             __ent2: _TCCA[_T2],
             __ent3: _TCCA[_T3],
+            /,
         ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3]]:
             ...
 
@@ -1629,6 +1643,7 @@ class Update(DMLWhereBase, ValuesBase):
             __ent2: _TCCA[_T2],
             __ent3: _TCCA[_T3],
             __ent4: _TCCA[_T4],
+            /,
         ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3, _T4]]:
             ...
 
@@ -1641,6 +1656,7 @@ class Update(DMLWhereBase, ValuesBase):
             __ent3: _TCCA[_T3],
             __ent4: _TCCA[_T4],
             __ent5: _TCCA[_T5],
+            /,
         ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
             ...
 
@@ -1654,6 +1670,7 @@ class Update(DMLWhereBase, ValuesBase):
             __ent4: _TCCA[_T4],
             __ent5: _TCCA[_T5],
             __ent6: _TCCA[_T6],
+            /,
         ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
             ...
 
@@ -1668,6 +1685,7 @@ class Update(DMLWhereBase, ValuesBase):
             __ent5: _TCCA[_T5],
             __ent6: _TCCA[_T6],
             __ent7: _TCCA[_T7],
+            /,
         ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
             ...
 
@@ -1734,18 +1752,20 @@ class Delete(DMLWhereBase, UpdateBase):
         # statically generated** by tools/generate_tuple_map_overloads.py
 
         @overload
-        def returning(self, __ent0: _TCCA[_T0]) -> ReturningDelete[Tuple[_T0]]:
+        def returning(
+            self, __ent0: _TCCA[_T0], /
+        ) -> ReturningDelete[Tuple[_T0]]:
             ...
 
         @overload
         def returning(
-            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
+            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], /
         ) -> ReturningDelete[Tuple[_T0, _T1]]:
             ...
 
         @overload
         def returning(
-            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
+            self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2], /
         ) -> ReturningDelete[Tuple[_T0, _T1, _T2]]:
             ...
 
@@ -1756,6 +1776,7 @@ class Delete(DMLWhereBase, UpdateBase):
             __ent1: _TCCA[_T1],
             __ent2: _TCCA[_T2],
             __ent3: _TCCA[_T3],
+            /,
         ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3]]:
             ...
 
@@ -1767,6 +1788,7 @@ class Delete(DMLWhereBase, UpdateBase):
             __ent2: _TCCA[_T2],
             __ent3: _TCCA[_T3],
             __ent4: _TCCA[_T4],
+            /,
         ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3, _T4]]:
             ...
 
@@ -1779,6 +1801,7 @@ class Delete(DMLWhereBase, UpdateBase):
             __ent3: _TCCA[_T3],
             __ent4: _TCCA[_T4],
             __ent5: _TCCA[_T5],
+            /,
         ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
             ...
 
@@ -1792,6 +1815,7 @@ class Delete(DMLWhereBase, UpdateBase):
             __ent4: _TCCA[_T4],
             __ent5: _TCCA[_T5],
             __ent6: _TCCA[_T6],
+            /,
         ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
             ...
 
@@ -1806,6 +1830,7 @@ class Delete(DMLWhereBase, UpdateBase):
             __ent5: _TCCA[_T5],
             __ent6: _TCCA[_T6],
             __ent7: _TCCA[_T7],
+            /,
         ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
             ...
 

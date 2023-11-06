@@ -4150,6 +4150,7 @@ class GenerativeSelect(SelectBase, Generative):
             Literal[None, _NoArg.NO_ARG],
             _ColumnExpressionOrStrLabelArgument[Any],
         ] = _NoArg.NO_ARG,
+        /,
         *clauses: _ColumnExpressionOrStrLabelArgument[Any],
     ) -> Self:
         r"""Return a new selectable with the given list of ORDER BY
@@ -4197,6 +4198,7 @@ class GenerativeSelect(SelectBase, Generative):
             Literal[None, _NoArg.NO_ARG],
             _ColumnExpressionOrStrLabelArgument[Any],
         ] = _NoArg.NO_ARG,
+        /,
         *clauses: _ColumnExpressionOrStrLabelArgument[Any],
     ) -> Self:
         r"""Return a new selectable with the given list of GROUP BY
@@ -6633,6 +6635,7 @@ class Exists(UnaryExpression[bool]):
         __argument: Optional[
             Union[_ColumnsClauseArgument[Any], SelectBase, ScalarSelect[Any]]
         ] = None,
+        /,
     ):
         s: ScalarSelect[Any]
 

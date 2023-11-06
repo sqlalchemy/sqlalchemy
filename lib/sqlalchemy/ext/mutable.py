@@ -828,15 +828,15 @@ class MutableDict(Mutable, Dict[_KT, _VT]):
     if TYPE_CHECKING:
 
         @overload
-        def pop(self, __key: _KT) -> _VT:
+        def pop(self, __key: _KT, /) -> _VT:
             ...
 
         @overload
-        def pop(self, __key: _KT, __default: _VT | _T) -> _VT | _T:
+        def pop(self, __key: _KT, default: _VT | _T, /) -> _VT | _T:
             ...
 
         def pop(
-            self, __key: _KT, __default: _VT | _T | None = None
+            self, __key: _KT, __default: _VT | _T | None = None, /
         ) -> _VT | _T:
             ...
 

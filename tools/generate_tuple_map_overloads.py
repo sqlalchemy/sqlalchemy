@@ -83,25 +83,22 @@ def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
 
                 for num_args in range(start_index, end_index + 1):
                     combinations = [
-                        [
-                            f"__ent{arg}: _TCCA[_T{arg}]"
-                            for arg in range(num_args)
-                        ]
+                        f"__ent{arg}: _TCCA[_T{arg}]"
+                        for arg in range(num_args)
                     ]
-                    for combination in combinations:
-                        buf.write(
-                            textwrap.indent(
-                                f"""
+                    buf.write(
+                        textwrap.indent(
+                            f"""
 @overload
 def {current_fnname}(
-    {'self, ' if use_self else ''}{", ".join(combination)}{extra_args}
+    {'self, ' if use_self else ''}{", ".join(combinations)},/{extra_args}
 ) -> {return_type}[Tuple[{', '.join(f'_T{i}' for i in range(num_args))}]]:
     ...
 
 """,  # noqa: E501
-                                indent,
-                            )
+                            indent,
                         )
+                    )
 
             if in_block and line.startswith(
                 f"{indent}# END OVERLOADED FUNCTIONS {given_fnname}"

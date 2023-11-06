@@ -289,7 +289,7 @@ sort_dictionary = _ordered_dictionary_sort
 
 
 class WeakSequence(Sequence[_T]):
-    def __init__(self, __elements: Sequence[_T] = ()):
+    def __init__(self, __elements: Sequence[_T] = (), /):
         # adapted from weakref.WeakKeyDictionary, prevent reference
         # cycles in the collection itself
         def _remove(item, selfref=weakref.ref(self)):
