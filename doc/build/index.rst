@@ -52,11 +52,20 @@ SQLAlchemy Documentation
 
   .. container::
 
-    Users coming from older versions of SQLAlchemy, especially those transitioning
-    from the 1.x style of working, will want to review this documentation.
+    Users coming SQLAlchemy version 2.0 will want to read:
+
+    * :doc:`What's New in SQLAlchemy 2.1? <changelog/migration_21>` - New features and behaviors in version 2.1
+
+    Users transitioning from 1.x versions of SQLAlchemy, such as version 1.4, will want to
+    transition to version 2.0 overall before making any additional changes needed for
+    the much smaller transition from 2.0 to 2.1.   Key documentation for the 1.x to 2.x
+    transition:
 
     * :doc:`Migrating to SQLAlchemy 2.0 <changelog/migration_20>` - Complete background on migrating from 1.3 or 1.4 to 2.0
     * :doc:`What's New in SQLAlchemy 2.0? <changelog/whatsnew_20>` - New 2.0 features and behaviors beyond the 1.x migration
+
+    An index of all changelogs and migration documentation is at:
+
     * :doc:`Changelog catalog <changelog/index>` - Detailed changelogs for all SQLAlchemy Versions
 
 

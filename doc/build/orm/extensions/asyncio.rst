@@ -9,7 +9,7 @@ included, using asyncio-compatible dialects.
 .. versionadded:: 1.4
 
 .. warning:: Please read :ref:`asyncio_install` for important platform
-   installation notes for many platforms, including **Apple M1 Architecture**.
+   installation notes on **all** platforms.
 
 .. seealso::
 
@@ -20,25 +20,14 @@ included, using asyncio-compatible dialects.
 
 .. _asyncio_install:
 
-Asyncio Platform Installation Notes (Including Apple M1)
----------------------------------------------------------
+Asyncio Platform Installation Notes
+-----------------------------------
 
-The asyncio extension requires Python 3 only. It also depends
+The asyncio extension depends
 upon the `greenlet <https://pypi.org/project/greenlet/>`_ library. This
-dependency is installed by default on common machine platforms including:
+dependency is **not installed by default**.
 
-.. sourcecode:: text
-
-    x86_64 aarch64 ppc64le amd64 win32
-
-For the above platforms, ``greenlet`` is known to supply pre-built wheel files.
-For other platforms, **greenlet does not install by default**;
-the current file listing for greenlet can be seen at
-`Greenlet - Download Files <https://pypi.org/project/greenlet/#files>`_.
-Note that **there are many architectures omitted, including Apple M1**.
-
-To install SQLAlchemy while ensuring the ``greenlet`` dependency is present
-regardless of what platform is in use, the
+To install SQLAlchemy while ensuring the ``greenlet`` dependency is present, the
 ``[asyncio]`` `setuptools extra <https://packaging.python.org/en/latest/tutorials/installing-packages/#installing-setuptools-extras>`_
 may be installed
 as follows, which will include also instruct ``pip`` to install ``greenlet``:
@@ -50,6 +39,9 @@ as follows, which will include also instruct ``pip`` to install ``greenlet``:
 Note that installation of ``greenlet`` on platforms that do not have a pre-built
 wheel file means that ``greenlet`` will be built from source, which requires
 that Python's development libraries also be present.
+
+.. versionchanged:: 2.1  ``greenlet`` is no longer installed by default; to
+   use the asyncio extension, the ``sqlalchemy[asyncio]`` target must be used.
 
 
 Synopsis - Core
