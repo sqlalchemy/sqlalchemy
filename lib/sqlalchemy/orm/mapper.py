@@ -3058,7 +3058,7 @@ class Mapper(
 
         2. For each class, yield the attributes in the order in which they
            appear in ``__dict__``, with the exception of those in step
-           3 below.  In Python 3.6 and above this ordering will be the
+           3 below.  The order will be the
            same as that of the class' construction, with the exception
            of attributes that were added after the fact by the application
            or the mapper.

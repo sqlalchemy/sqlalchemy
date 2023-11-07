@@ -2739,19 +2739,7 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "mytable", column("myid", Integer), column("name", String)
         )
 
-    def _only_on_py38_w_sqlite_39():
-        """in python 3.9 and above you can actually do::
-
-            @(testing.requires.python38 + testing.only_on("sqlite > 3.9"))
-            def test_determinsitic_parameter(self):
-                ...
-
-        that'll be cool.  until then...
-
-        """
-        return testing.requires.python38 + testing.only_on("sqlite >= 3.9")
-
-    @_only_on_py38_w_sqlite_39()
+    @testing.only_on("sqlite >= 3.9")
     def test_determinsitic_parameter(self):
         """for #9379, make sure that "deterministic=True" is used when we are
         on python 3.8 with modern SQLite version.

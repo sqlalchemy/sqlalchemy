@@ -7,7 +7,7 @@
 
 [tool.black]
 line-length = 79
-target-version = ['py37']
+target-version = ['py38']
 
 [tool.zimports]
 black-line-length = 79
@@ -83,9 +83,9 @@ test-requires = "pytest pytest-xdist"
 test-command = "python -s -m pytest -c {project}/pyproject.toml -n2 -q --nomemory --notimingintensive --nomypy {project}/test"
 
 build = "*"
-# python 3.6 is no longer supported by sqlalchemy
+# python 3.6, 3.7 are no longer supported by sqlalchemy
 # pypy uses the universal wheel fallback, since it does not use any compiled extension
-skip = "cp36-* pp*"
+skip = "cp36-* cp37-* pp*"
 # TODO: remove this skip once action support arm macs
 test-skip = "*-macosx_arm64"
 

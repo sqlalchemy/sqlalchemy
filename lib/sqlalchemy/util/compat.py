@@ -13,6 +13,7 @@ from __future__ import annotations
 import base64
 import dataclasses
 import hashlib
+from importlib import metadata as importlib_metadata
 import inspect
 import operator
 import platform
@@ -33,12 +34,10 @@ from typing import Tuple
 from typing import Type
 from typing import TypeVar
 
-
 py312 = sys.version_info >= (3, 12)
 py311 = sys.version_info >= (3, 11)
 py310 = sys.version_info >= (3, 10)
 py39 = sys.version_info >= (3, 9)
-py38 = sys.version_info >= (3, 8)
 pypy = platform.python_implementation() == "PyPy"
 cpython = platform.python_implementation() == "CPython"
 
@@ -130,12 +129,6 @@ else:
 
     def md5_not_for_security() -> Any:
         return hashlib.md5()
-
-
-if typing.TYPE_CHECKING or py38:
-    from importlib import metadata as importlib_metadata
-else:
-    import importlib_metadata  # noqa
 
 
 if typing.TYPE_CHECKING or py39:

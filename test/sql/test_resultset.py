@@ -1,4 +1,3 @@
-import collections
 import collections.abc as collections_abc
 from contextlib import contextmanager
 import csv
@@ -1474,10 +1473,7 @@ class CursorResultTest(fixtures.TablesTest):
         row = result.first()
         dict_row = row._asdict()
 
-        # dictionaries aren't ordered in Python 3 until 3.7
-        odict_row = collections.OrderedDict(
-            [("user_id", 1), ("user_name", "foo")]
-        )
+        odict_row = dict([("user_id", 1), ("user_name", "foo")])
         eq_(dict_row, odict_row)
 
         mapping_row = row._mapping

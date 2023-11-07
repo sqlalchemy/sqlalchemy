@@ -15,20 +15,20 @@ Advanced Tox Options
 
 For more elaborate CI-style test running, the tox script provided will
 run against various Python / database targets.   For a basic run against
-Python 3.8 using an in-memory SQLite database::
+Python 3.11 using an in-memory SQLite database::
 
-    tox -e py38-sqlite
+    tox -e py311-sqlite
 
 The tox runner contains a series of target combinations that can run
 against various combinations of databases.  The test suite can be
 run against SQLite with "backend" tests also running against a PostgreSQL
 database::
 
-    tox -e py38-sqlite-postgresql
+    tox -e py311-sqlite-postgresql
 
 Or to run just "backend" tests against a MySQL database::
 
-    tox -e py38-mysql-backendonly
+    tox -e py311-mysql-backendonly
 
 Running against backends other than SQLite requires that a database of that
 vendor be available at a specific URL.  See "Setting Up Databases" below
@@ -137,7 +137,7 @@ with the tox runner also::
     [db]
     postgresql=postgresql+psycopg2://username:pass@hostname/dbname
 
-Now when we run ``tox -e py38-postgresql``, it will use our custom URL instead
+Now when we run ``tox -e py311-postgresql``, it will use our custom URL instead
 of the fixed one in setup.cfg.
 
 Database Configuration

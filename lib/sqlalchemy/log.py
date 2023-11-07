@@ -30,18 +30,13 @@ from typing import TypeVar
 from typing import Union
 
 from .util import py311
-from .util import py38
 from .util.typing import Literal
 
 
-if py38:
-    STACKLEVEL = True
-    # needed as of py3.11.0b1
-    # #8019
-    STACKLEVEL_OFFSET = 2 if py311 else 1
-else:
-    STACKLEVEL = False
-    STACKLEVEL_OFFSET = 0
+STACKLEVEL = True
+# needed as of py3.11.0b1
+# #8019
+STACKLEVEL_OFFSET = 2 if py311 else 1
 
 _IT = TypeVar("_IT", bound="Identified")
 

@@ -87,7 +87,7 @@ Or for a ``set``, illustrated in the same
         child_id: Mapped[int] = mapped_column(primary_key=True)
         parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
 
-.. note::  If using Python 3.7 or 3.8, annotations for collections need
+.. note::  If using Python 3.8, annotations for collections need
    to use ``typing.List`` or ``typing.Set``, e.g. ``Mapped[List["Child"]]`` or
    ``Mapped[Set["Child"]]``; the ``list`` and ``set`` Python built-ins
    don't yet support generic annotation in these Python versions, such as::

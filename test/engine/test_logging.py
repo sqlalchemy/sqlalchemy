@@ -893,14 +893,12 @@ class TransactionContextLoggingTest(fixtures.TestBase):
             ]
         )
 
-    @testing.requires.python38
     def test_log_messages_have_correct_metadata_plain(
         self, plain_logging_engine
     ):
         """test #7612"""
         self._test_log_messages_have_correct_metadata(plain_logging_engine)
 
-    @testing.requires.python38
     def test_log_messages_have_correct_metadata_echo(self, logging_engine):
         """test #7612"""
         self._test_log_messages_have_correct_metadata(logging_engine)
