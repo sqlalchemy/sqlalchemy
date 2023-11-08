@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.abspath("../../lib"))
 sys.path.insert(0, os.path.abspath("../.."))  # examples
 
 # was never needed, does not work as of python 3.12 due to conflicts
-#sys.path.insert(0, os.path.abspath("."))
+# sys.path.insert(0, os.path.abspath("."))
 
 
 # -- General configuration --------------------------------------------------
