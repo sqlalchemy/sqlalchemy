@@ -20,7 +20,9 @@ import sys
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath("../../lib"))
 sys.path.insert(0, os.path.abspath("../.."))  # examples
-sys.path.insert(0, os.path.abspath("."))
+
+# was never needed, does not work as of python 3.12 due to conflicts
+#sys.path.insert(0, os.path.abspath("."))
 
 
 # -- General configuration --------------------------------------------------
