@@ -2408,3 +2408,11 @@ def _extract_mapped_subtype(
             )
 
         return annotated.__args__[0], annotated.__origin__
+
+
+def _mapper_property_as_plain_name(prop: Type[Any]) -> str:
+    if hasattr(prop, "_mapper_property_name"):
+        name = prop._mapper_property_name()
+    else:
+        name = None
+    return util.clsname_as_plain_name(prop, name)
