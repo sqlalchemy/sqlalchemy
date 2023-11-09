@@ -149,13 +149,17 @@ class ORMColumnDescription(TypedDict):
 class _IntrospectsAnnotations:
     __slots__ = ()
 
+    @classmethod
+    def _mapper_property_name(cls) -> str:
+        return cls.__name__
+
     def found_in_pep593_annotated(self) -> Any:
         """return a copy of this object to use in declarative when the
         object is found inside of an Annotated object."""
 
         raise NotImplementedError(
-            f"Use of the {self.__class__} construct inside of an "
-            f"Annotated object is not yet supported."
+            f"Use of the {self._mapper_property_name()!r} "
+            "construct inside of an Annotated object is not yet supported."
         )
 
     def declarative_scan(
@@ -181,7 +185,8 @@ class _IntrospectsAnnotations:
         raise sa_exc.ArgumentError(
             f"Python typing annotation is required for attribute "
             f'"{cls.__name__}.{key}" when primary argument(s) for '
-            f'"{self.__class__.__name__}" construct are None or not present'
+            f'"{self._mapper_property_name()}" '
+            "construct are None or not present"
         )
 
 

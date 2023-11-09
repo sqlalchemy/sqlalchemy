@@ -174,10 +174,11 @@ def string_or_unprintable(element: Any) -> str:
             return "unprintable element %r" % element
 
 
-def clsname_as_plain_name(cls: Type[Any]) -> str:
-    return " ".join(
-        n.lower() for n in re.findall(r"([A-Z][a-z]+|SQL)", cls.__name__)
-    )
+def clsname_as_plain_name(
+    cls: Type[Any], use_name: Optional[str] = None
+) -> str:
+    name = use_name or cls.__name__
+    return " ".join(n.lower() for n in re.findall(r"([A-Z][a-z]+|SQL)", name))
 
 
 def method_is_overridden(
