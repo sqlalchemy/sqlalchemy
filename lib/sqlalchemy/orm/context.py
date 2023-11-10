@@ -519,9 +519,9 @@ class ORMCompileState(AbstractORMCompileState):
         ):
             util.warn(
                 "Loader depth for query is excessively deep; caching will "
-                "be disabled for additional loaders.  Consider using the "
-                "recursion_depth feature for deeply nested recursive eager "
-                "loaders.  Use the compiled_cache=None execution option to "
+                "be disabled for additional loaders.   For recursive eager "
+                "loaders consider using the recursion_depth feature.  "
+                "Use the compiled_cache=None execution option to "
                 "skip this warning."
             )
             execution_options = execution_options.union(

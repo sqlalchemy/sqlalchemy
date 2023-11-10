@@ -2908,6 +2908,13 @@ class ARRAY(
                 return operators.getitem, index, return_type
 
         def contains(self, *arg, **kw):
+            """``ARRAY.contains()`` not implemented for the base ARRAY type.
+            Use the dialect-specific ARRAY type.
+
+            .. seealso::
+
+                :class:`_postgresql.ARRAY` - PostgreSQL specific version.
+            """
             raise NotImplementedError(
                 "ARRAY.contains() not implemented for the base "
                 "ARRAY type; please use the dialect-specific ARRAY type"

@@ -11,6 +11,7 @@ import enum
 from itertools import zip_longest
 import typing
 from typing import Any
+from typing import Callable
 from typing import Dict
 from typing import Iterable
 from typing import Iterator
@@ -43,7 +44,7 @@ if typing.TYPE_CHECKING:
 class _CacheKeyTraversalDispatchType(Protocol):
     def __call__(
         s, self: HasCacheKey, visitor: _CacheKeyTraversal
-    ) -> CacheKey:
+    ) -> _CacheKeyTraversalDispatchTypeReturn:
         ...
 
 
@@ -74,6 +75,18 @@ class CacheTraverseTarget(enum.Enum):
     PROPAGATE_ATTRS,
     ANON_NAME,
 ) = tuple(CacheTraverseTarget)
+
+_CacheKeyTraversalDispatchTypeReturn = Sequence[
+    Tuple[
+        str,
+        Any,
+        Union[
+            Callable[..., Tuple[Any, ...]],
+            CacheTraverseTarget,
+            InternalTraversal,
+        ],
+    ]
+]
 
 
 class HasCacheKey:
@@ -324,7 +337,7 @@ class HasCacheKey:
                             ),
                         )
                     else:
-                        result += meth(
+                        result += meth(  # type: ignore
                             attrname, obj, self, anon_map, bindparams
                         )
         return result
