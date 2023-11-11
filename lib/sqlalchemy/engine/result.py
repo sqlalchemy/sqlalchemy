@@ -64,7 +64,7 @@ _KeyMapRecType = Any
 _KeyMapType = Mapping[_KeyType, _KeyMapRecType]
 
 
-_RowData = Union[Row, RowMapping, Any]
+_RowData = Union[Row[Any], RowMapping, Any]
 """A generic form of "row" that accommodates for the different kinds of
 "rows" that different result objects return, including row, row mapping, and
 scalar values"""
@@ -82,7 +82,7 @@ across all the result types
 
 """
 
-_InterimSupportsScalarsRowType = Union[Row, Any]
+_InterimSupportsScalarsRowType = Union[Row[Any], Any]
 
 _ProcessorsType = Sequence[Optional["_ResultProcessorType[Any]"]]
 _TupleGetterType = Callable[[Sequence[Any]], Sequence[Any]]
