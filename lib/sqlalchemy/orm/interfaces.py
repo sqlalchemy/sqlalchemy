@@ -754,7 +754,7 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
         self._adapt_to_entity = adapt_to_entity
 
     @util.non_memoized_property
-    def property(self) -> MapperProperty[_T]:
+    def property(self) -> MapperProperty[_T_co]:
         """Return the :class:`.MapperProperty` associated with this
         :class:`.PropComparator`.
 
@@ -784,7 +784,7 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
     def adapt_to_entity(
         self, adapt_to_entity: AliasedInsp[Any]
-    ) -> PropComparator[_T]:
+    ) -> PropComparator[_T_co]:
         """Return a copy of this PropComparator which will use the given
         :class:`.AliasedInsp` to produce corresponding expressions.
         """
@@ -846,7 +846,7 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
         ) -> ColumnElement[Any]:
             ...
 
-    def of_type(self, class_: _EntityType[Any]) -> PropComparator[_T]:
+    def of_type(self, class_: _EntityType[Any]) -> PropComparator[_T_co]:
         r"""Redefine this object in terms of a polymorphic subclass,
         :func:`_orm.with_polymorphic` construct, or :func:`_orm.aliased`
         construct.

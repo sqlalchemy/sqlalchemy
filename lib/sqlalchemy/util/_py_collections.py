@@ -148,12 +148,16 @@ class immutabledict(ImmutableDictBase[_KT, _VT]):
     def __or__(  # type: ignore[override]
         self, __value: Mapping[_KT, _VT]
     ) -> immutabledict[_KT, _VT]:
-        return immutabledict(super().__or__(__value))
+        return immutabledict(
+            super().__or__(__value),  # type: ignore[call-overload]
+        )
 
     def __ror__(  # type: ignore[override]
         self, __value: Mapping[_KT, _VT]
     ) -> immutabledict[_KT, _VT]:
-        return immutabledict(super().__ror__(__value))
+        return immutabledict(
+            super().__ror__(__value),  # type: ignore[call-overload]
+        )
 
 
 class OrderedSet(Set[_T]):

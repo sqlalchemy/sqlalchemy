@@ -296,8 +296,8 @@ class ROMappingView(ABC):
     def __init__(
         self, mapping: Mapping["_KeyType", Any], items: Sequence[Any]
     ):
-        self._mapping = mapping
-        self._items = items
+        self._mapping = mapping  # type: ignore[misc]
+        self._items = items  # type: ignore[misc]
 
     def __len__(self) -> int:
         return len(self._items)
@@ -321,11 +321,11 @@ class ROMappingView(ABC):
 class ROMappingKeysValuesView(
     ROMappingView, typing.KeysView["_KeyType"], typing.ValuesView[Any]
 ):
-    __slots__ = ("_items",)
+    __slots__ = ("_items",)  # mapping slot is provided by KeysView
 
 
 class ROMappingItemsView(ROMappingView, typing.ItemsView["_KeyType", Any]):
-    __slots__ = ("_items",)
+    __slots__ = ("_items",)  # mapping slot is provided by ItemsView
 
 
 class RowMapping(BaseRow, typing.Mapping["_KeyType", Any]):

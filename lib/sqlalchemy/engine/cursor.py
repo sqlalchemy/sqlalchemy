@@ -120,7 +120,7 @@ _CursorKeyMapRecType = Tuple[
     List[Any],  # MD_OBJECTS
     str,  # MD_LOOKUP_KEY
     str,  # MD_RENDERED_NAME
-    Optional["_ResultProcessorType"],  # MD_PROCESSOR
+    Optional["_ResultProcessorType[Any]"],  # MD_PROCESSOR
     Optional[str],  # MD_UNTRANSLATED
 ]
 
@@ -134,7 +134,7 @@ _NonAmbigCursorKeyMapRecType = Tuple[
     List[Any],
     str,
     str,
-    Optional["_ResultProcessorType"],
+    Optional["_ResultProcessorType[Any]"],
     str,
 ]
 
@@ -1438,6 +1438,7 @@ class CursorResult(Result[_T]):
 
             metadata = self._init_metadata(context, cursor_description)
 
+            _make_row: Any
             _make_row = functools.partial(
                 Row,
                 metadata,

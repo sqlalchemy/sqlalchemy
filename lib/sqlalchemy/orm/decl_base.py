@@ -1130,9 +1130,9 @@ class _ClassScanMapperConfig(_MapperConfig):
         defaults = {}
         for item in field_list:
             if len(item) == 2:
-                name, tp = item  # type: ignore
+                name, tp = item
             elif len(item) == 3:
-                name, tp, spec = item  # type: ignore
+                name, tp, spec = item
                 defaults[name] = spec
             else:
                 assert False
