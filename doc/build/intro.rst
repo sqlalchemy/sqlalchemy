@@ -42,7 +42,7 @@ augmented by ORM-specific automations and object-centric querying capabilities.
 Whereas working with Core and the SQL Expression language presents a
 schema-centric view of the database, along with a programming paradigm that is
 oriented around immutability, the ORM builds on top of this a domain-centric
-view of the database with a programming paradigm that is more explcitly
+view of the database with a programming paradigm that is more explicitly
 object-oriented and reliant upon mutability.  Since a relational database is
 itself a mutable service, the difference is that Core/SQL Expression language
 is command oriented whereas the ORM is state oriented.
