@@ -58,6 +58,15 @@ class AsyncAdapt_aioodbc_connection(AsyncAdapt_dbapi_connection):
 
         self._connection._conn.autocommit = value
 
+    def ping(self, reconnect):
+        return self.await_(self._connection.ping(reconnect))
+
+    def add_output_converter(self, *arg, **kw):
+        self._connection.add_output_converter(*arg, **kw)
+
+    def character_set_name(self):
+        return self._connection.character_set_name()
+
     def cursor(self, server_side=False):
         # aioodbc sets connection=None when closed and just fails with
         # AttributeError here.  Here we use the same ProgrammingError +
