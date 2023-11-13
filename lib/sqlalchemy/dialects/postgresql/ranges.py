@@ -151,7 +151,7 @@ class Range(Generic[_T]):
         return not self.empty and self.upper is None
 
     @property
-    def __sa_type_engine__(self) -> AbstractRange[Range[_T]]:
+    def __sa_type_engine__(self) -> AbstractRange[_T]:
         return AbstractRange()
 
     def _contains_value(self, value: _T) -> bool:
@@ -856,7 +856,7 @@ class AbstractRange(sqltypes.TypeEngine[Range[_T]]):
             return self.expr.operate(operators.mul, other)
 
 
-class AbstractRangeImpl(AbstractRange[Range[_T]]):
+class AbstractRangeImpl(AbstractRange[_T]):
     """Marker for AbstractRange that will apply a subclass-specific
     adaptation"""
 
@@ -867,80 +867,78 @@ class AbstractMultiRange(AbstractRange[Range[_T]]):
     __abstract__ = True
 
 
-class AbstractMultiRangeImpl(
-    AbstractRangeImpl[Range[_T]], AbstractMultiRange[Range[_T]]
-):
+class AbstractMultiRangeImpl(AbstractRangeImpl[_T], AbstractMultiRange[_T]):
     """Marker for AbstractRange that will apply a subclass-specific
     adaptation"""
 
 
-class INT4RANGE(AbstractRange[Range[int]]):
+class INT4RANGE(AbstractRange[int]):
     """Represent the PostgreSQL INT4RANGE type."""
 
     __visit_name__ = "INT4RANGE"
 
 
-class INT8RANGE(AbstractRange[Range[int]]):
+class INT8RANGE(AbstractRange[int]):
     """Represent the PostgreSQL INT8RANGE type."""
 
     __visit_name__ = "INT8RANGE"
 
 
-class NUMRANGE(AbstractRange[Range[Decimal]]):
+class NUMRANGE(AbstractRange[Decimal]):
     """Represent the PostgreSQL NUMRANGE type."""
 
     __visit_name__ = "NUMRANGE"
 
 
-class DATERANGE(AbstractRange[Range[date]]):
+class DATERANGE(AbstractRange[date]):
     """Represent the PostgreSQL DATERANGE type."""
 
     __visit_name__ = "DATERANGE"
 
 
-class TSRANGE(AbstractRange[Range[datetime]]):
+class TSRANGE(AbstractRange[datetime]):
     """Represent the PostgreSQL TSRANGE type."""
 
     __visit_name__ = "TSRANGE"
 
 
-class TSTZRANGE(AbstractRange[Range[datetime]]):
+class TSTZRANGE(AbstractRange[datetime]):
     """Represent the PostgreSQL TSTZRANGE type."""
 
     __visit_name__ = "TSTZRANGE"
 
 
-class INT4MULTIRANGE(AbstractMultiRange[Range[int]]):
+class INT4MULTIRANGE(AbstractMultiRange[int]):
     """Represent the PostgreSQL INT4MULTIRANGE type."""
 
     __visit_name__ = "INT4MULTIRANGE"
 
 
-class INT8MULTIRANGE(AbstractMultiRange[Range[int]]):
+class INT8MULTIRANGE(AbstractMultiRange[int]):
     """Represent the PostgreSQL INT8MULTIRANGE type."""
 
     __visit_name__ = "INT8MULTIRANGE"
 
 
-class NUMMULTIRANGE(AbstractMultiRange[Range[Decimal]]):
+class NUMMULTIRANGE(AbstractMultiRange[Decimal]):
     """Represent the PostgreSQL NUMMULTIRANGE type."""
 
     __visit_name__ = "NUMMULTIRANGE"
 
 
-class DATEMULTIRANGE(AbstractMultiRange[Range[date]]):
+class DATEMULTIRANGE(AbstractMultiRange[date]):
     """Represent the PostgreSQL DATEMULTIRANGE type."""
 
     __visit_name__ = "DATEMULTIRANGE"
 
 
-class TSMULTIRANGE(AbstractMultiRange[Range[datetime]]):
+class TSMULTIRANGE(AbstractMultiRange[datetime]):
     """Represent the PostgreSQL TSRANGE type."""
 
     __visit_name__ = "TSMULTIRANGE"
 
 
-class TSTZMULTIRANGE(AbstractMultiRange[Range[datetime]]):
+class TSTZMULTIRANGE(AbstractMultiRange[datetime]):
     """Represent the PostgreSQL TSTZRANGE type."""
 
     __visit_name__ = "TSTZMULTIRANGE"
