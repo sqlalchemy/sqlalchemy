@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 10597
+
+    Fixed issue where use of :func:`_orm.foreign` annotation on a
+    non-initialized :func:`_orm.mapped_column` construct would produce an
+    expression without a type, which was then not updated at initialization
+    time of the actual column, leading to issues such as relationships not
+    determining ``use_get`` appropriately.
+

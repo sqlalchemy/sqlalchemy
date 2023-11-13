@@ -5223,6 +5223,20 @@ def _corresponding_column_or_error(fromclause, column, require_embedded=False):
     return c
 
 
+class _memoized_property_but_not_nulltype(
+    util.memoized_property["TypeEngine[_T]"]
+):
+    """memoized property, but dont memoize NullType"""
+
+    def __get__(self, obj, cls):
+        if obj is None:
+            return self
+        result = self.fget(obj)
+        if not result._isnull:
+            obj.__dict__[self.__name__] = result
+        return result
+
+
 class AnnotatedColumnElement(Annotated):
     _Annotated__element: ColumnElement[Any]
 
@@ -5234,6 +5248,7 @@ class AnnotatedColumnElement(Annotated):
             "_tq_key_label",
             "_tq_label",
             "_non_anon_label",
+            "type",
         ):
             self.__dict__.pop(attr, None)
         for attr in ("name", "key", "table"):
@@ -5249,6 +5264,20 @@ class AnnotatedColumnElement(Annotated):
     def name(self):
         """pull 'name' from parent, if not present"""
         return self._Annotated__element.name
+
+    @_memoized_property_but_not_nulltype
+    def type(self):
+        """pull 'type' from parent and don't cache if null.
+
+        type is routinely changed on existing columns within the
+        mapped_column() initialization process, and "type" is also consulted
+        during the creation of SQL expressions.  Therefore it can change after
+        it was already retrieved.  At the same time we don't want annotated
+        objects having overhead when expressions are produced, so continue
+        to memoize, but only when we have a non-null type.
+
+        """
+        return self._Annotated__element.type
 
     @util.memoized_property
     def table(self):
