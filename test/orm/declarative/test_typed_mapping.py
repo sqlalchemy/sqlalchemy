@@ -53,10 +53,12 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import DynamicMapped
+from sqlalchemy.orm import foreign
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import MappedAsDataclass
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import remote
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import undefer
 from sqlalchemy.orm import WriteOnlyMapped
@@ -167,6 +169,43 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         is_(MyClass.__table__.c.data.type, typ)
         is_true(MyClass.__table__.c.id.primary_key)
+
+    @testing.variation("style", ["none", "lambda_", "string", "direct"])
+    def test_foreign_annotation_propagates_correctly(self, decl_base, style):
+        """test #10597"""
+
+        class Parent(decl_base):
+            __tablename__ = "parent"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+        class Child(decl_base):
+            __tablename__ = "child"
+
+            name: Mapped[str] = mapped_column(primary_key=True)
+
+            if style.none:
+                parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
+            else:
+                parent_id: Mapped[int] = mapped_column()
+
+            if style.lambda_:
+                parent: Mapped[Parent] = relationship(
+                    primaryjoin=lambda: remote(Parent.id)
+                    == foreign(Child.parent_id),
+                )
+            elif style.string:
+                parent: Mapped[Parent] = relationship(
+                    primaryjoin="remote(Parent.id) == "
+                    "foreign(Child.parent_id)",
+                )
+            elif style.direct:
+                parent: Mapped[Parent] = relationship(
+                    primaryjoin=remote(Parent.id) == foreign(parent_id),
+                )
+            elif style.none:
+                parent: Mapped[Parent] = relationship()
+
+        assert Child.__mapper__.attrs.parent.strategy.use_get
 
     @testing.combinations(
         (BIGINT(),),

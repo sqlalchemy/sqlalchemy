@@ -41,6 +41,7 @@ from sqlalchemy.sql import elements
 from sqlalchemy.sql import LABEL_STYLE_DISAMBIGUATE_ONLY
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql import operators
+from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import visitors
@@ -3022,6 +3023,37 @@ class AnnotationsTest(fixtures.TestBase):
         eq_(whereclause._annotations, {"foo": "bar"})
         eq_(whereclause.left._annotations, {"foo": "bar"})
         eq_(whereclause.right._annotations, {"foo": "bar"})
+
+    @testing.variation("use_col_ahead_of_time", [True, False])
+    def test_set_type_on_column(self, use_col_ahead_of_time):
+        """test related to #10597"""
+
+        col = Column()
+
+        col_anno = col._annotate({"foo": "bar"})
+
+        if use_col_ahead_of_time:
+            expr = col_anno == bindparam("foo")
+
+            # this could only be fixed if we put some kind of a container
+            # that receives the type directly rather than using NullType;
+            # like a PendingType or something
+
+            is_(expr.right.type._type_affinity, sqltypes.NullType)
+
+        assert "type" not in col_anno.__dict__
+
+        col.name = "name"
+        col._set_type(Integer())
+
+        eq_(col_anno.name, "name")
+        is_(col_anno.type._type_affinity, Integer)
+
+        expr = col_anno == bindparam("foo")
+
+        is_(expr.right.type._type_affinity, Integer)
+
+        assert "type" in col_anno.__dict__
 
     @testing.combinations(True, False, None)
     def test_setup_inherit_cache(self, inherit_cache_value):

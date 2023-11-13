@@ -2204,6 +2204,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
     identity: Optional[Identity]
 
     def _set_type(self, type_: TypeEngine[Any]) -> None:
+        assert self.type._isnull or type_ is self.type
+
         self.type = type_
         if isinstance(self.type, SchemaEventTarget):
             self.type._set_parent_with_dispatch(self)
