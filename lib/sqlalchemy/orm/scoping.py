@@ -32,6 +32,7 @@ from ..util import ThreadLocalRegistry
 from ..util import warn
 from ..util import warn_deprecated
 from ..util.typing import Protocol
+from ..util.typing import Unpack
 
 if TYPE_CHECKING:
     from ._typing import _EntityType
@@ -708,7 +709,7 @@ class scoped_session(Generic[_S]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Any]:
+    ) -> Result[Unpack[Tuple[Any, ...]]]:
         ...
 
     def execute(
@@ -720,7 +721,7 @@ class scoped_session(Generic[_S]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Any]:
+    ) -> Result[Unpack[Tuple[Any, ...]]]:
         r"""Execute a SQL expression construct.
 
         .. container:: class_bases

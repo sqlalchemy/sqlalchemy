@@ -38,6 +38,7 @@ from ...orm import Session
 from ...orm import SessionTransaction
 from ...orm import state as _instance_state
 from ...util.concurrency import greenlet_spawn
+from ...util.typing import Unpack
 
 if TYPE_CHECKING:
     from .engine import AsyncConnection
@@ -424,7 +425,7 @@ class AsyncSession(ReversibleProxy[Session]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Any]:
+    ) -> Result[Unpack[Tuple[Any, ...]]]:
         ...
 
     async def execute(
@@ -435,7 +436,7 @@ class AsyncSession(ReversibleProxy[Session]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> Result[Any]:
+    ) -> Result[Unpack[Tuple[Any, ...]]]:
         """Execute a statement and return a buffered
         :class:`_engine.Result` object.
 

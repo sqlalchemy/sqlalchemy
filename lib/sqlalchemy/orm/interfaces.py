@@ -72,6 +72,8 @@ from ..sql.type_api import TypeEngine
 from ..util import warn_deprecated
 from ..util.typing import RODescriptorReference
 from ..util.typing import TypedDict
+from ..util.typing import Unpack
+
 
 if typing.TYPE_CHECKING:
     from ._typing import _EntityType
@@ -486,7 +488,7 @@ class MapperProperty(
         query_entity: _MapperEntity,
         path: AbstractEntityRegistry,
         mapper: Mapper[Any],
-        result: Result[Any],
+        result: Result[Unpack[Tuple[Any, ...]]],
         adapter: Optional[ORMAdapter],
         populators: _PopulatorDict,
     ) -> None:
@@ -1056,7 +1058,7 @@ class StrategizedProperty(MapperProperty[_T]):
         query_entity: _MapperEntity,
         path: AbstractEntityRegistry,
         mapper: Mapper[Any],
-        result: Result[Any],
+        result: Result[Unpack[Tuple[Any, ...]]],
         adapter: Optional[ORMAdapter],
         populators: _PopulatorDict,
     ) -> None:
@@ -1447,7 +1449,7 @@ class LoaderStrategy:
         path: AbstractEntityRegistry,
         loadopt: Optional[_LoadElement],
         mapper: Mapper[Any],
-        result: Result[Any],
+        result: Result[Unpack[Tuple[Any, ...]]],
         adapter: Optional[ORMAdapter],
         populators: _PopulatorDict,
     ) -> None:

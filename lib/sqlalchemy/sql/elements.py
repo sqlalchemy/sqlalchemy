@@ -78,6 +78,7 @@ from ..util import HasMemoized_ro_memoized_attribute
 from ..util import TypingOnly
 from ..util.typing import Literal
 from ..util.typing import Self
+from ..util.typing import Unpack
 
 if typing.TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
@@ -509,7 +510,7 @@ class ClauseElement(
         connection: Connection,
         distilled_params: _CoreMultiExecuteParams,
         execution_options: CoreExecuteOptionsParameter,
-    ) -> Result[Any]:
+    ) -> Result[Unpack[typing_Tuple[Any, ...]]]:
         if self.supports_execution:
             if TYPE_CHECKING:
                 assert isinstance(self, Executable)

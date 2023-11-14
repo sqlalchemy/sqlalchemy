@@ -417,7 +417,7 @@ _NO_ROW = _NoRow._NO_ROW
 class ResultInternal(InPlaceGenerative, Generic[_R]):
     __slots__ = ()
 
-    _real_result: Optional[Result[Any]] = None
+    _real_result: Optional[Result[Unpack[Tuple[Any, ...]]]] = None
     _generate_rows: bool = True
     _row_logging_fn: Optional[Callable[[Any], Any]]
 
@@ -450,10 +450,10 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
     @HasMemoized_ro_memoized_attribute
     def _row_getter(self) -> Optional[Callable[..., _R]]:
-        real_result: Result[Any] = (
+        real_result: Result[Unpack[Tuple[Any, ...]]] = (
             self._real_result
             if self._real_result
-            else cast("Result[Any]", self)
+            else cast("Result[Unpack[Tuple[Any, ...]]]", self)
         )
 
         if real_result._source_supports_scalars:
@@ -517,7 +517,9 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         if self._unique_filter_state:
             uniques, strategy = self._unique_strategy
 
-            def iterrows(self: Result[Any]) -> Iterator[_R]:
+            def iterrows(
+                self: Result[Unpack[Tuple[Any, ...]]]
+            ) -> Iterator[_R]:
                 for raw_row in self._fetchiter_impl():
                     obj: _InterimRowType[Any] = (
                         make_row(raw_row) if make_row else raw_row
@@ -532,7 +534,9 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
         else:
 
-            def iterrows(self: Result[Any]) -> Iterator[_R]:
+            def iterrows(
+                self: Result[Unpack[Tuple[Any, ...]]]
+            ) -> Iterator[_R]:
                 for raw_row in self._fetchiter_impl():
                     row: _InterimRowType[Any] = (
                         make_row(raw_row) if make_row else raw_row
@@ -597,7 +601,9 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         if self._unique_filter_state:
             uniques, strategy = self._unique_strategy
 
-            def onerow(self: Result[Any]) -> Union[_NoRow, _R]:
+            def onerow(
+                self: Result[Unpack[Tuple[Any, ...]]]
+            ) -> Union[_NoRow, _R]:
                 _onerow = self._fetchone_impl
                 while True:
                     row = _onerow()
@@ -618,7 +624,9 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
         else:
 
-            def onerow(self: Result[Any]) -> Union[_NoRow, _R]:
+            def onerow(
+                self: Result[Unpack[Tuple[Any, ...]]]
+            ) -> Union[_NoRow, _R]:
                 row = self._fetchone_impl()
                 if row is None:
                     return _NO_ROW
@@ -678,7 +686,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                     real_result = (
                         self._real_result
                         if self._real_result
-                        else cast("Result[Any]", self)
+                        else cast("Result[Unpack[Tuple[Any, ...]]]", self)
                     )
                     if real_result._yield_per:
                         num_required = num = real_result._yield_per
@@ -718,7 +726,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                     real_result = (
                         self._real_result
                         if self._real_result
-                        else cast("Result[Any]", self)
+                        else cast("Result[Unpack[Tuple[Any, ...]]]", self)
                     )
                     num = real_result._yield_per
 
@@ -850,7 +858,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         real_result = (
             self._real_result
             if self._real_result
-            else cast("Result[Any]", self)
+            else cast("Result[Unpack[Tuple[Any, ...]]]", self)
         )
 
         if not real_result._source_supports_scalars or len(indexes) != 1:
@@ -868,7 +876,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         real_result = (
             self._real_result
             if self._real_result is not None
-            else cast("Result[Any]", self)
+            else cast("Result[Unpack[Tuple[Any, ...]]]", self)
         )
 
         if not strategy and self._metadata._unique_filters:
@@ -1629,7 +1637,7 @@ class FilterResult(ResultInternal[_R]):
 
     _post_creational_filter: Optional[Callable[[Any], Any]]
 
-    _real_result: Result[Any]
+    _real_result: Result[Unpack[Tuple[Any, ...]]]
 
     def __enter__(self) -> Self:
         return self

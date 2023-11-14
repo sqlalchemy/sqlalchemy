@@ -91,6 +91,9 @@ from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util import IdentitySet
 from ..util.typing import Literal
 from ..util.typing import Protocol
+from ..util.typing import TypeVarTuple
+from ..util.typing import Unpack
+
 
 if typing.TYPE_CHECKING:
     from ._typing import _EntityType
@@ -134,6 +137,7 @@ if typing.TYPE_CHECKING:
     from ..sql.selectable import TypedReturnsRows
 
 _T = TypeVar("_T", bound=Any)
+_Ts = TypeVarTuple("_Ts")
 
 __all__ = [
     "Session",
@@ -385,7 +389,7 @@ class ORMExecuteState(util.MemoizedSlots):
         params: Optional[_CoreAnyExecuteParams] = None,
         execution_options: Optional[OrmExecuteOptionsParameter] = None,
         bind_arguments: Optional[_BindArguments] = None,
-    ) -> Result[Any]:
+    ) -> Result[Unpack[Tuple[Any, ...]]]:
         """Execute the statement represented by this
         :class:`.ORMExecuteState`, without re-invoking events that have
         already proceeded.
@@ -2071,7 +2075,7 @@ class Session(_SessionClassMethods, EventTarget):
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
         _scalar_result: bool = ...,
-    ) -> Result[Any]:
+    ) -> Result[Unpack[Tuple[Any, ...]]]:
         ...
 
     def _execute_internal(
@@ -2147,7 +2151,9 @@ class Session(_SessionClassMethods, EventTarget):
             )
             for idx, fn in enumerate(events_todo):
                 orm_exec_state._starting_event_idx = idx
-                fn_result: Optional[Result[Any]] = fn(orm_exec_state)
+                fn_result: Optional[Result[Unpack[Tuple[Any, ...]]]] = fn(
+                    orm_exec_state
+                )
                 if fn_result:
                     if _scalar_result:
                         return fn_result.scalar()
@@ -2187,7 +2193,9 @@ class Session(_SessionClassMethods, EventTarget):
             )
 
         if compile_state_cls:
-            result: Result[Any] = compile_state_cls.orm_execute_statement(
+            result: Result[
+                Unpack[Tuple[Any, ...]]
+            ] = compile_state_cls.orm_execute_statement(
                 self,
                 statement,
                 params or {},
@@ -2208,14 +2216,14 @@ class Session(_SessionClassMethods, EventTarget):
     @overload
     def execute(
         self,
-        statement: TypedReturnsRows[_T],
+        statement: TypedReturnsRows[Tuple[Unpack[_Ts]]],
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[_T]:
+    ) -> Result[Unpack[_Ts]]:
         ...
 
     @overload
@@ -2228,7 +2236,7 @@ class Session(_SessionClassMethods, EventTarget):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> CursorResult[Any]:
+    ) -> CursorResult[Unpack[Tuple[Any, ...]]]:
         ...
 
     @overload
@@ -2241,7 +2249,7 @@ class Session(_SessionClassMethods, EventTarget):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Any]:
+    ) -> Result[Unpack[Tuple[Any, ...]]]:
         ...
 
     def execute(
@@ -2253,7 +2261,7 @@ class Session(_SessionClassMethods, EventTarget):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Any]:
+    ) -> Result[Unpack[Tuple[Any, ...]]]:
         r"""Execute a SQL expression construct.
 
         Returns a :class:`_engine.Result` object representing

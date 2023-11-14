@@ -31,6 +31,7 @@ from ...util import create_proxy_methods
 from ...util import ScopedRegistry
 from ...util import warn
 from ...util import warn_deprecated
+from ...util.typing import Unpack
 
 if TYPE_CHECKING:
     from .engine import AsyncConnection
@@ -562,7 +563,7 @@ class async_scoped_session(Generic[_AS]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Any]:
+    ) -> Result[Unpack[Tuple[Any, ...]]]:
         ...
 
     async def execute(
@@ -573,7 +574,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> Result[Any]:
+    ) -> Result[Unpack[Tuple[Any, ...]]]:
         r"""Execute a statement and return a buffered
         :class:`_engine.Result` object.
 
