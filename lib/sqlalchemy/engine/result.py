@@ -45,8 +45,8 @@ from ..util import NONE_SET
 from ..util._has_cy import HAS_CYEXTENSION
 from ..util.typing import Literal
 from ..util.typing import Self
-from ..util.typing import Unpack
 from ..util.typing import TypeVarTuple
+from ..util.typing import Unpack
 
 if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_row import tuplegetter as tuplegetter
@@ -1352,7 +1352,9 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         else:
             return row
 
-    def fetchmany(self, size: Optional[int] = None) -> Sequence[Row[Unpack[_Ts]]]:
+    def fetchmany(
+        self, size: Optional[int] = None
+    ) -> Sequence[Row[Unpack[_Ts]]]:
         """Fetch many rows.
 
         When all rows are exhausted, returns an empty list.
@@ -1588,7 +1590,9 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
 
         return FrozenResult(self)
 
-    def merge(self, *others: Result[Any]) -> MergedResult[Unpack[_Ts]]:
+    def merge(
+        self, *others: Result[Unpack[_RawRowType]]
+    ) -> MergedResult[Unpack[_RawRowType]]:
         """Merge this :class:`_engine.Result` with other compatible result
         objects.
 
@@ -1723,7 +1727,9 @@ class ScalarResult(FilterResult[_R]):
 
     _post_creational_filter: Optional[Callable[[Any], Any]]
 
-    def __init__(self, real_result: Result[Unpack[_RawRowType]], index: _KeyIndexType):
+    def __init__(
+        self, real_result: Result[Unpack[_RawRowType]], index: _KeyIndexType
+    ):
         self._real_result = real_result
 
         if real_result._source_supports_scalars:
@@ -2381,7 +2387,9 @@ class MergedResult(IteratorResult[Unpack[_Ts]]):
     rowcount: Optional[int]
 
     def __init__(
-        self, cursor_metadata: ResultMetaData, results: Sequence[Result[Unpack[_Ts]]]
+        self,
+        cursor_metadata: ResultMetaData,
+        results: Sequence[Result[Unpack[_Ts]]],
     ):
         self._results = results
         super().__init__(

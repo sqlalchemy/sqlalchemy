@@ -22,18 +22,16 @@ from typing import List
 from typing import Mapping
 from typing import NoReturn
 from typing import Optional
-from typing import overload
 from typing import Sequence
 from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import TypeVar
-from typing import Union
 
 from ..sql import util as sql_util
 from ..util import deprecated
+from ..util._has_cy import HAS_CYEXTENSION
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
-from ..util._has_cy import HAS_CYEXTENSION
 
 if TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_row import BaseRow as BaseRow
@@ -41,10 +39,11 @@ else:
     from sqlalchemy.cyextension.resultproxy import BaseRow as BaseRow
 
 if TYPE_CHECKING:
+    from typing import Tuple as _RowBase
+
     from .result import _KeyType
     from .result import _ProcessorsType
     from .result import RMKeyView
-    from typing import Tuple as _RowBase
 else:
     _RowBase = Sequence
 

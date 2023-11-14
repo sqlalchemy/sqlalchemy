@@ -69,7 +69,6 @@ if TYPE_CHECKING:
     from ..orm.session import ORMExecuteState
     from ..orm.state import InstanceState
     from ..sql import Executable
-    from ..sql._typing import _TP
     from ..sql.elements import ClauseElement
 
 __all__ = ["ShardedSession", "ShardedQuery"]
