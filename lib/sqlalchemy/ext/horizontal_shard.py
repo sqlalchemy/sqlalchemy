@@ -50,6 +50,9 @@ from ..orm.session import _PKIdentityArgument
 from ..orm.session import Session
 from ..util.typing import Protocol
 from ..util.typing import Self
+from ..util.typing import TypeVarTuple
+from ..util.typing import Unpack
+
 
 if TYPE_CHECKING:
     from ..engine.base import Connection
@@ -72,6 +75,7 @@ if TYPE_CHECKING:
 __all__ = ["ShardedSession", "ShardedQuery"]
 
 _T = TypeVar("_T", bound=Any)
+_Ts = TypeVarTuple("_Ts")
 
 
 ShardIdentifier = str
@@ -427,7 +431,7 @@ class set_shard_id(ORMOption):
 
 def execute_and_instances(
     orm_context: ORMExecuteState,
-) -> Union[Result[_T], IteratorResult[_TP]]:
+) -> Union[Result[Unpack[_Ts]], IteratorResult[Unpack[_Ts]]]:
     active_options: Union[
         None,
         QueryContext.default_load_options,
@@ -449,7 +453,7 @@ def execute_and_instances(
 
     def iter_for_shard(
         shard_id: ShardIdentifier,
-    ) -> Union[Result[_T], IteratorResult[_TP]]:
+    ) -> Union[Result[Unpack[_Ts]], IteratorResult[Unpack[_Ts]]]:
         bind_arguments = dict(orm_context.bind_arguments)
         bind_arguments["shard_id"] = shard_id
 

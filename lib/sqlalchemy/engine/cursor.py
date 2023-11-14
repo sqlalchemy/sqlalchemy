@@ -53,6 +53,8 @@ from ..sql.type_api import TypeEngine
 from ..util import compat
 from ..util.typing import Literal
 from ..util.typing import Self
+from ..util.typing import TypeVarTuple
+from ..util.typing import Unpack
 
 
 if typing.TYPE_CHECKING:
@@ -71,7 +73,7 @@ if typing.TYPE_CHECKING:
     from ..sql.type_api import _ResultProcessorType
 
 
-_T = TypeVar("_T", bound=Any)
+_Ts = TypeVarTuple("_Ts")
 
 
 # metadata entry tuple indexes.
@@ -1375,7 +1377,7 @@ def null_dml_result() -> IteratorResult[Any]:
     return it
 
 
-class CursorResult(Result[_T]):
+class CursorResult(Result[Unpack[_Ts]]):
     """A Result that is representing state from a DBAPI cursor.
 
     .. versionchanged:: 1.4  The :class:`.CursorResult``
@@ -2108,7 +2110,7 @@ class CursorResult(Result[_T]):
     def _raw_row_iterator(self):
         return self._fetchiter_impl()
 
-    def merge(self, *others: Result[Any]) -> MergedResult[Any]:
+    def merge(self, *others: Result[Unpack[Tuple[Any, ...]]]) -> MergedResult[Unpack[Tuple[Any, ...]]]:
         merged_result = super().merge(*others)
         setup_rowcounts = self.context._has_rowcount
         if setup_rowcounts:

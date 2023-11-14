@@ -66,6 +66,8 @@ from ..sql.compiler import SQLCompiler
 from ..sql.elements import quoted_name
 from ..util.typing import Final
 from ..util.typing import Literal
+from ..util.typing import Unpack
+
 
 if typing.TYPE_CHECKING:
     from types import ModuleType
@@ -1181,7 +1183,7 @@ class DefaultExecutionContext(ExecutionContext):
     result_column_struct: Optional[
         Tuple[List[ResultColumnsEntry], bool, bool, bool, bool]
     ] = None
-    returned_default_rows: Optional[Sequence[Row[Any]]] = None
+    returned_default_rows: Optional[Sequence[Row[Unpack[Tuple[Any, ...]]]]] = None
 
     execution_options: _ExecuteOptions = util.EMPTY_DICT
 
