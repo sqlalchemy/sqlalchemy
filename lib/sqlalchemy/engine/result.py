@@ -66,7 +66,7 @@ _KeyMapRecType = Any
 _KeyMapType = Mapping[_KeyType, _KeyMapRecType]
 
 
-_RowData = Union[Row[Any], RowMapping, Any]
+_RowData = Union[Row[Unpack[Tuple[Any, ...]]], RowMapping, Any]
 """A generic form of "row" that accommodates for the different kinds of
 "rows" that different result objects return, including row, row mapping, and
 scalar values"""
@@ -85,7 +85,7 @@ across all the result types
 
 """
 
-_InterimSupportsScalarsRowType = Union[Row[Any], Any]
+_InterimSupportsScalarsRowType = Union[Row[Unpack[_RawRowType]], Any]
 
 _ProcessorsType = Sequence[Optional["_ResultProcessorType[Any]"]]
 _TupleGetterType = Callable[[Sequence[Any]], Sequence[Any]]
@@ -171,7 +171,7 @@ class ResultMetaData:
 
     def _getter(
         self, key: Any, raiseerr: bool = True
-    ) -> Optional[Callable[[Row[Any]], Any]]:
+    ) -> Optional[Callable[[Row[Unpack[Tuple[Any, ...]]]], Any]]:
         index = self._index_for_key(key, raiseerr)
 
         if index is not None:
@@ -332,7 +332,7 @@ class SimpleResultMetaData(ResultMetaData):
             _tuplefilter=_tuplefilter,
         )
 
-    def _contains(self, value: Any, row: Row[Any]) -> bool:
+    def _contains(self, value: Any, row: Row[Unpack[_RawRowType]]) -> bool:
         return value in row._data
 
     def _index_for_key(self, key: Any, raiseerr: bool = True) -> int:
@@ -429,20 +429,24 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
     _source_supports_scalars: bool
 
-    def _fetchiter_impl(self) -> Iterator[_InterimRowType[Row[Any]]]:
+    def _fetchiter_impl(
+        self,
+    ) -> Iterator[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
         raise NotImplementedError()
 
     def _fetchone_impl(
         self, hard_close: bool = False
-    ) -> Optional[_InterimRowType[Row[Any]]]:
+    ) -> Optional[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
         raise NotImplementedError()
 
     def _fetchmany_impl(
         self, size: Optional[int] = None
-    ) -> List[_InterimRowType[Row[Any]]]:
+    ) -> List[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
         raise NotImplementedError()
 
-    def _fetchall_impl(self) -> List[_InterimRowType[Row[Any]]]:
+    def _fetchall_impl(
+        self,
+    ) -> List[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
         raise NotImplementedError()
 
     def _soft_close(self, hard: bool = False) -> None:
@@ -467,7 +471,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                     processors: Optional[_ProcessorsType],
                     key_to_index: Mapping[_KeyType, int],
                     scalar_obj: Any,
-                ) -> Row[Any]:
+                ) -> Row[Unpack[_RawRowType]]:
                     return _proc(
                         metadata, processors, key_to_index, (scalar_obj,)
                     )
@@ -491,7 +495,9 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
             fixed_tf = tf
 
-            def make_row(row: _InterimRowType[Row[Any]]) -> _R:
+            def make_row(
+                row: _InterimRowType[Row[Unpack[Tuple[Any, ...]]]]
+            ) -> _R:
                 return _make_row_orig(fixed_tf(row))
 
         else:
@@ -503,7 +509,9 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
             _log_row = real_result._row_logging_fn
             _make_row = make_row
 
-            def make_row(row: _InterimRowType[Row[Any]]) -> _R:
+            def make_row(
+                row: _InterimRowType[Row[Unpack[Tuple[Any, ...]]]]
+            ) -> _R:
                 return _log_row(_make_row(row))  # type: ignore
 
         return make_row
@@ -948,7 +956,9 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
 
     __slots__ = ("_metadata", "__dict__")
 
-    _row_logging_fn: Optional[Callable[[Row[Any]], Row[Any]]] = None
+    _row_logging_fn: Optional[
+        Callable[[Row[Unpack[Tuple[Any, ...]]]], Row[Unpack[Tuple[Any, ...]]]]
+    ] = None
 
     _source_supports_scalars: bool = False
 
@@ -1183,7 +1193,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
 
     def _getter(
         self, key: _KeyIndexType, raiseerr: bool = True
-    ) -> Optional[Callable[[Row[Any]], Any]]:
+    ) -> Optional[Callable[[Row[Unpack[Tuple[Any, ...]]]], Any]]:
         """return a callable that will retrieve the given key from a
         :class:`_engine.Row`.
 
@@ -1696,20 +1706,24 @@ class FilterResult(ResultInternal[_R]):
     def _attributes(self) -> Dict[Any, Any]:
         return self._real_result._attributes
 
-    def _fetchiter_impl(self) -> Iterator[_InterimRowType[Row[Any]]]:
+    def _fetchiter_impl(
+        self,
+    ) -> Iterator[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
         return self._real_result._fetchiter_impl()
 
     def _fetchone_impl(
         self, hard_close: bool = False
-    ) -> Optional[_InterimRowType[Row[Any]]]:
+    ) -> Optional[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
         return self._real_result._fetchone_impl(hard_close=hard_close)
 
-    def _fetchall_impl(self) -> List[_InterimRowType[Row[Any]]]:
+    def _fetchall_impl(
+        self,
+    ) -> List[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
         return self._real_result._fetchall_impl()
 
     def _fetchmany_impl(
         self, size: Optional[int] = None
-    ) -> List[_InterimRowType[Row[Any]]]:
+    ) -> List[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
         return self._real_result._fetchmany_impl(size=size)
 
 
@@ -2292,7 +2306,7 @@ class IteratorResult(Result[Unpack[_Ts]]):
 
     def _fetchone_impl(
         self, hard_close: bool = False
-    ) -> Optional[_InterimRowType[Row[Any]]]:
+    ) -> Optional[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
         if self._hard_closed:
             self._raise_hard_closed()
 
@@ -2303,7 +2317,9 @@ class IteratorResult(Result[Unpack[_Ts]]):
         else:
             return row
 
-    def _fetchall_impl(self) -> List[_InterimRowType[Row[Any]]]:
+    def _fetchall_impl(
+        self,
+    ) -> List[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
         if self._hard_closed:
             self._raise_hard_closed()
         try:
@@ -2313,7 +2329,7 @@ class IteratorResult(Result[Unpack[_Ts]]):
 
     def _fetchmany_impl(
         self, size: Optional[int] = None
-    ) -> List[_InterimRowType[Row[Any]]]:
+    ) -> List[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
         if self._hard_closed:
             self._raise_hard_closed()
 
@@ -2375,7 +2391,7 @@ class ChunkedIteratorResult(IteratorResult[Unpack[_Ts]]):
 
     def _fetchmany_impl(
         self, size: Optional[int] = None
-    ) -> List[_InterimRowType[Row[Any]]]:
+    ) -> List[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
         if self.dynamic_yield_per:
             self.iterator = itertools.chain.from_iterable(self.chunks(size))
         return super()._fetchmany_impl(size=size)

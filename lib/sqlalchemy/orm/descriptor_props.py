@@ -56,6 +56,8 @@ from ..sql.elements import BindParameter
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_pep593
 from ..util.typing import typing_get_args
+from ..util.typing import Unpack
+
 
 if typing.TYPE_CHECKING:
     from ._typing import _InstanceDict
@@ -714,10 +716,10 @@ class CompositeProperty(
         def create_row_processor(
             self,
             query: Select[Any],
-            procs: Sequence[Callable[[Row[Any]], Any]],
+            procs: Sequence[Callable[[Row[Unpack[Tuple[Any, ...]]]], Any]],
             labels: Sequence[str],
-        ) -> Callable[[Row[Any]], Any]:
-            def proc(row: Row[Any]) -> Any:
+        ) -> Callable[[Row[Unpack[Tuple[Any, ...]]]], Any]:
+            def proc(row: Row[Unpack[Tuple[Any, ...]]]) -> Any:
                 return self.property.composite_class(
                     *[proc(row) for proc in procs]
                 )
