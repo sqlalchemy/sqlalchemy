@@ -52,6 +52,7 @@ from sqlalchemy.dialects.postgresql import TSQUERY
 from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
+from sqlalchemy.dialects.postgresql.ranges import MultiRange
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import Session
@@ -2588,7 +2589,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(expr, expected)
 
-    def test_custom_object_hook(self):
+    def test_range_custom_object_hook(self):
         # See issue #8884
         from datetime import date
 
@@ -2606,6 +2607,30 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             stmt,
             "SELECT sum(usages.amount) AS sum_1 FROM usages "
             "WHERE usages.date <@ %(date_1)s::DATERANGE",
+        )
+
+    def test_multirange_custom_object_hook(self):
+        from datetime import date
+
+        usages = table(
+            "usages",
+            column("id", Integer),
+            column("date", Date),
+            column("amount", Integer),
+        )
+        period = MultiRange(
+            [
+                Range(date(2022, 1, 1), (2023, 1, 1)),
+                Range(date(2024, 1, 1), (2025, 1, 1)),
+            ]
+        )
+        stmt = select(func.sum(usages.c.amount)).where(
+            usages.c.date.op("<@")(period)
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT sum(usages.amount) AS sum_1 FROM usages "
+            "WHERE usages.date <@ %(date_1)s::DATEMULTIRANGE",
         )
 
     def test_bitwise_xor(self):

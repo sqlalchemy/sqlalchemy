@@ -253,7 +253,7 @@ class _PGOIDVECTOR(_SpaceVector, OIDVECTOR):
     pass
 
 
-class _Pg8000Range(ranges.AbstractRangeImpl):
+class _Pg8000Range(ranges.AbstractSingleRangeImpl):
     def bind_processor(self, dialect):
         pg8000_Range = dialect.dbapi.Range
 
@@ -304,15 +304,13 @@ class _Pg8000MultiRange(ranges.AbstractMultiRangeImpl):
         def to_multirange(value):
             if value is None:
                 return None
-
-            mr = []
-            for v in value:
-                mr.append(
+            else:
+                return ranges.MultiRange(
                     ranges.Range(
                         v.lower, v.upper, bounds=v.bounds, empty=v.is_empty
                     )
+                    for v in value
                 )
-            return mr
 
         return to_multirange
 
