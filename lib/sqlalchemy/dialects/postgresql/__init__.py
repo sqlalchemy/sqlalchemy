@@ -57,12 +57,14 @@ from .named_types import ENUM
 from .named_types import NamedType
 from .ranges import AbstractMultiRange
 from .ranges import AbstractRange
+from .ranges import AbstractSingleRange
 from .ranges import DATEMULTIRANGE
 from .ranges import DATERANGE
 from .ranges import INT4MULTIRANGE
 from .ranges import INT4RANGE
 from .ranges import INT8MULTIRANGE
 from .ranges import INT8RANGE
+from .ranges import MultiRange
 from .ranges import NUMMULTIRANGE
 from .ranges import NUMRANGE
 from .ranges import Range
