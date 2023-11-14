@@ -1590,13 +1590,13 @@ class scoped_session(Generic[_S]):
 
     @overload
     def query(
-        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
+        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], /
     ) -> RowReturningQuery[Tuple[_T0, _T1]]:
         ...
 
     @overload
     def query(
-        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
+        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2], /
     ) -> RowReturningQuery[Tuple[_T0, _T1, _T2]]:
         ...
 
@@ -1607,6 +1607,7 @@ class scoped_session(Generic[_S]):
         __ent1: _TCCA[_T1],
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
+        /,
     ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3]]:
         ...
 
@@ -1618,6 +1619,7 @@ class scoped_session(Generic[_S]):
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
+        /,
     ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4]]:
         ...
 
@@ -1630,6 +1632,7 @@ class scoped_session(Generic[_S]):
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
+        /,
     ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
         ...
 
@@ -1643,6 +1646,7 @@ class scoped_session(Generic[_S]):
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
+        /,
     ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
         ...
 
@@ -1657,6 +1661,7 @@ class scoped_session(Generic[_S]):
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
         __ent7: _TCCA[_T7],
+        /,
     ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
         ...
 

@@ -2811,13 +2811,13 @@ class Session(_SessionClassMethods, EventTarget):
 
     @overload
     def query(
-        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
+        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], /
     ) -> RowReturningQuery[Tuple[_T0, _T1]]:
         ...
 
     @overload
     def query(
-        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
+        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2], /
     ) -> RowReturningQuery[Tuple[_T0, _T1, _T2]]:
         ...
 
@@ -2828,6 +2828,7 @@ class Session(_SessionClassMethods, EventTarget):
         __ent1: _TCCA[_T1],
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
+        /,
     ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3]]:
         ...
 
@@ -2839,6 +2840,7 @@ class Session(_SessionClassMethods, EventTarget):
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
+        /,
     ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4]]:
         ...
 
@@ -2851,6 +2853,7 @@ class Session(_SessionClassMethods, EventTarget):
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
+        /,
     ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
         ...
 
@@ -2864,6 +2867,7 @@ class Session(_SessionClassMethods, EventTarget):
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
+        /,
     ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
         ...
 
@@ -2878,6 +2882,7 @@ class Session(_SessionClassMethods, EventTarget):
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
         __ent7: _TCCA[_T7],
+        /,
     ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
         ...
 

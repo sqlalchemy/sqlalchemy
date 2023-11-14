@@ -1578,13 +1578,14 @@ class registry:
         ),
     )
     @overload
-    def mapped_as_dataclass(self, __cls: Type[_O]) -> Type[_O]:
+    def mapped_as_dataclass(self, __cls: Type[_O], /) -> Type[_O]:
         ...
 
     @overload
     def mapped_as_dataclass(
         self,
         __cls: Literal[None] = ...,
+        /,
         *,
         init: Union[_NoArg, bool] = ...,
         repr: Union[_NoArg, bool] = ...,  # noqa: A002
@@ -1600,6 +1601,7 @@ class registry:
     def mapped_as_dataclass(
         self,
         __cls: Optional[Type[_O]] = None,
+        /,
         *,
         init: Union[_NoArg, bool] = _NoArg.NO_ARG,
         repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
