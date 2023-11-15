@@ -31,6 +31,7 @@ from ...util import create_proxy_methods
 from ...util import ScopedRegistry
 from ...util import warn
 from ...util import warn_deprecated
+from ...util.typing import TypeVarTuple
 from ...util.typing import Unpack
 
 if TYPE_CHECKING:
@@ -62,6 +63,7 @@ if TYPE_CHECKING:
     from ...sql.selectable import TypedReturnsRows
 
 _T = TypeVar("_T", bound=Any)
+_Ts = TypeVarTuple("_Ts")
 
 
 @create_proxy_methods(
@@ -530,14 +532,14 @@ class async_scoped_session(Generic[_AS]):
     @overload
     async def execute(
         self,
-        statement: TypedReturnsRows[_T],
+        statement: TypedReturnsRows[Tuple[Unpack[_Ts]]],
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[_T]:
+    ) -> Result[Unpack[_Ts]]:
         ...
 
     @overload

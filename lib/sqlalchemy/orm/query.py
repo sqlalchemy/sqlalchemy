@@ -74,7 +74,6 @@ from ..sql import Select
 from ..sql import util as sql_util
 from ..sql import visitors
 from ..sql._typing import _FromClauseArgument
-from ..sql._typing import _TP
 from ..sql.annotation import SupportsCloneAnnotations
 from ..sql.base import _entity_namespace_key
 from ..sql.base import _generative
@@ -93,6 +92,8 @@ from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..sql.selectable import SelectLabelStyle
 from ..util.typing import Literal
 from ..util.typing import Self
+from ..util.typing import TypeVarTuple
+from ..util.typing import Unpack
 
 
 if TYPE_CHECKING:
@@ -150,6 +151,7 @@ if TYPE_CHECKING:
 __all__ = ["Query", "QueryContext"]
 
 _T = TypeVar("_T", bound=Any)
+_Ts = TypeVarTuple("_Ts")
 
 
 @inspection._self_inspects
@@ -533,7 +535,9 @@ class Query(
 
         return stmt
 
-    def _final_statement(self, legacy_query_style: bool = True) -> Select[Any]:
+    def _final_statement(
+        self, legacy_query_style: bool = True
+    ) -> Select[Unpack[Tuple[Any, ...]]]:
         """Return the 'final' SELECT statement for this :class:`.Query`.
 
         This is used by the testing suite only and is fairly inefficient.
@@ -822,7 +826,7 @@ class Query(
     @overload
     def only_return_tuples(
         self: Query[_O], value: Literal[True]
-    ) -> RowReturningQuery[Tuple[_O]]:
+    ) -> RowReturningQuery[_O]:
         ...
 
     @overload
@@ -1493,13 +1497,13 @@ class Query(
     @overload
     def with_entities(
         self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
-    ) -> RowReturningQuery[Tuple[_T0, _T1]]:
+    ) -> RowReturningQuery[_T0, _T1]:
         ...
 
     @overload
     def with_entities(
         self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2]]:
+    ) -> RowReturningQuery[_T0, _T1, _T2]:
         ...
 
     @overload
@@ -1509,7 +1513,7 @@ class Query(
         __ent1: _TCCA[_T1],
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3]]:
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3]:
         ...
 
     @overload
@@ -1520,7 +1524,7 @@ class Query(
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4]]:
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4]:
         ...
 
     @overload
@@ -1532,7 +1536,7 @@ class Query(
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5]:
         ...
 
     @overload
@@ -1545,7 +1549,7 @@ class Query(
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5, _T6]:
         ...
 
     @overload
@@ -1559,7 +1563,7 @@ class Query(
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
         __ent7: _TCCA[_T7],
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]:
         ...
 
     # END OVERLOADED FUNCTIONS self.with_entities
@@ -3407,8 +3411,8 @@ class BulkDelete(BulkUD):
     """BulkUD which handles DELETEs."""
 
 
-class RowReturningQuery(Query[Row[_TP]]):
+class RowReturningQuery(Query[Row[Unpack[_Ts]]]):
     if TYPE_CHECKING:
 
-        def tuples(self) -> Query[_TP]:  # type: ignore
+        def tuples(self) -> Query[tuple[Unpack[_Ts]]]:  # type: ignore
             ...

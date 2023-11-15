@@ -1261,7 +1261,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     @overload
     def scalar(
         self,
-        statement: TypedReturnsRows[Tuple[_T]],
+        statement: TypedReturnsRows[_T],
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
@@ -1310,7 +1310,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     @overload
     def scalars(
         self,
-        statement: TypedReturnsRows[Tuple[_T]],
+        statement: TypedReturnsRows[_T],
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
@@ -1355,7 +1355,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     @overload
     def execute(
         self,
-        statement: TypedReturnsRows[Tuple[Unpack[_Ts]]],
+        statement: TypedReturnsRows[Unpack[_Ts]],
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,

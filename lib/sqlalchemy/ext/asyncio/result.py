@@ -454,12 +454,14 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[Unpack[_Ts]]]):
 
     @overload
     def scalars(
-        self: AsyncResult[Tuple[_T]], index: Literal[0]
+        self: AsyncResult[_T, Unpack[Tuple[Any, ...]]], index: Literal[0]
     ) -> AsyncScalarResult[_T]:
         ...
 
     @overload
-    def scalars(self: AsyncResult[Tuple[_T]]) -> AsyncScalarResult[_T]:
+    def scalars(
+        self: AsyncResult[_T, Unpack[Tuple[Any, ...]]],
+    ) -> AsyncScalarResult[_T]:
         ...
 
     @overload

@@ -29,6 +29,7 @@ from ..inspection import Inspectable
 from ..util.typing import Literal
 from ..util.typing import Protocol
 from ..util.typing import TypeAlias
+from ..util.typing import Unpack
 
 if TYPE_CHECKING:
     from datetime import date
@@ -319,7 +320,7 @@ if TYPE_CHECKING:
 
     def is_select_statement(
         t: Union[Executable, ReturnsRows]
-    ) -> TypeGuard[Select[Any]]:
+    ) -> TypeGuard[Select[Unpack[Tuple[Any, ...]]]]:
         ...
 
     def is_table(t: FromClause) -> TypeGuard[TableClause]:

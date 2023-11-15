@@ -38,7 +38,9 @@ from ...orm import Session
 from ...orm import SessionTransaction
 from ...orm import state as _instance_state
 from ...util.concurrency import greenlet_spawn
+from ...util.typing import TypeVarTuple
 from ...util.typing import Unpack
+
 
 if TYPE_CHECKING:
     from .engine import AsyncConnection
@@ -73,7 +75,7 @@ if TYPE_CHECKING:
 _AsyncSessionBind = Union["AsyncEngine", "AsyncConnection"]
 
 _T = TypeVar("_T", bound=Any)
-
+_Ts = TypeVarTuple("_Ts")
 
 _EXECUTE_OPTIONS = util.immutabledict({"prebuffer_rows": True})
 _STREAM_OPTIONS = util.immutabledict({"stream_results": True})
@@ -392,14 +394,14 @@ class AsyncSession(ReversibleProxy[Session]):
     @overload
     async def execute(
         self,
-        statement: TypedReturnsRows[_T],
+        statement: TypedReturnsRows[Tuple[Unpack[_Ts]]],
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[_T]:
+    ) -> Result[Unpack[_Ts]]:
         ...
 
     @overload

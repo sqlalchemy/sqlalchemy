@@ -95,7 +95,7 @@ def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
 @overload
 def {current_fnname}(
     {'self, ' if use_self else ''}{", ".join(combination)}{extra_args}
-) -> {return_type}[Tuple[{', '.join(f'_T{i}' for i in range(num_args))}]]:
+) -> {return_type}[{', '.join(f'_T{i}' for i in range(num_args))}]:
     ...
 
 """,  # noqa: E501

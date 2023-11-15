@@ -58,7 +58,7 @@ def t_select_1() -> None:
 
     result = session.execute(stmt)
 
-    # EXPECTED_TYPE: Result[Tuple[int, str]]
+    # EXPECTED_TYPE: Result[int, str]
     reveal_type(result)
 
 
@@ -82,7 +82,7 @@ def t_select_2() -> None:
 
     result = session.execute(stmt)
 
-    # EXPECTED_TYPE: Result[Tuple[User]]
+    # EXPECTED_TYPE: Result[User]
     reveal_type(result)
 
 
@@ -107,7 +107,7 @@ def t_select_3() -> None:
 
     result = session.execute(stmt)
 
-    # EXPECTED_TYPE: Result[Tuple[int, str]]
+    # EXPECTED_TYPE: Result[int, str]
     reveal_type(result)
 
 
@@ -120,7 +120,7 @@ def t_select_4() -> None:
 
     result = session.execute(stmt)
 
-    # EXPECTED_TYPE: Result[Tuple[User, User]]
+    # EXPECTED_TYPE: Result[User, User]
     reveal_type(result)
 
 

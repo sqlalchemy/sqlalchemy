@@ -1584,7 +1584,7 @@ class scoped_session(Generic[_S]):
     @overload
     def query(
         self, _colexpr: TypedColumnsClauseRole[_T]
-    ) -> RowReturningQuery[Tuple[_T]]:
+    ) -> RowReturningQuery[_T]:
         ...
 
     # START OVERLOADED FUNCTIONS self.query RowReturningQuery 2-8
@@ -1595,13 +1595,13 @@ class scoped_session(Generic[_S]):
     @overload
     def query(
         self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
-    ) -> RowReturningQuery[Tuple[_T0, _T1]]:
+    ) -> RowReturningQuery[_T0, _T1]:
         ...
 
     @overload
     def query(
         self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2]]:
+    ) -> RowReturningQuery[_T0, _T1, _T2]:
         ...
 
     @overload
@@ -1611,7 +1611,7 @@ class scoped_session(Generic[_S]):
         __ent1: _TCCA[_T1],
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3]]:
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3]:
         ...
 
     @overload
@@ -1622,7 +1622,7 @@ class scoped_session(Generic[_S]):
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4]]:
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4]:
         ...
 
     @overload
@@ -1634,7 +1634,7 @@ class scoped_session(Generic[_S]):
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5]:
         ...
 
     @overload
@@ -1647,7 +1647,7 @@ class scoped_session(Generic[_S]):
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5, _T6]:
         ...
 
     @overload
@@ -1661,7 +1661,7 @@ class scoped_session(Generic[_S]):
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
         __ent7: _TCCA[_T7],
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]:
         ...
 
     # END OVERLOADED FUNCTIONS self.query

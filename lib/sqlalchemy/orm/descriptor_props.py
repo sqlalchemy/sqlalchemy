@@ -715,7 +715,7 @@ class CompositeProperty(
 
         def create_row_processor(
             self,
-            query: Select[Any],
+            query: Select[Unpack[Tuple[Any, ...]]],
             procs: Sequence[Callable[[Row[Unpack[Tuple[Any, ...]]]], Any]],
             labels: Sequence[str],
         ) -> Callable[[Row[Unpack[Tuple[Any, ...]]]], Any]:

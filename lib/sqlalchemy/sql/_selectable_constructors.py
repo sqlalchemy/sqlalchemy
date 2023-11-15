@@ -32,6 +32,7 @@ from .selectable import Select
 from .selectable import TableClause
 from .selectable import TableSample
 from .selectable import Values
+from ..util.typing import Unpack
 
 if TYPE_CHECKING:
     from ._typing import _FromClauseArgument
@@ -330,19 +331,19 @@ def outerjoin(
 
 
 @overload
-def select(__ent0: _TCCA[_T0]) -> Select[Tuple[_T0]]:
+def select(__ent0: _TCCA[_T0]) -> Select[_T0]:
     ...
 
 
 @overload
-def select(__ent0: _TCCA[_T0], __ent1: _TCCA[_T1]) -> Select[Tuple[_T0, _T1]]:
+def select(__ent0: _TCCA[_T0], __ent1: _TCCA[_T1]) -> Select[_T0, _T1]:
     ...
 
 
 @overload
 def select(
     __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
-) -> Select[Tuple[_T0, _T1, _T2]]:
+) -> Select[_T0, _T1, _T2]:
     ...
 
 
@@ -352,7 +353,7 @@ def select(
     __ent1: _TCCA[_T1],
     __ent2: _TCCA[_T2],
     __ent3: _TCCA[_T3],
-) -> Select[Tuple[_T0, _T1, _T2, _T3]]:
+) -> Select[_T0, _T1, _T2, _T3]:
     ...
 
 
@@ -363,7 +364,7 @@ def select(
     __ent2: _TCCA[_T2],
     __ent3: _TCCA[_T3],
     __ent4: _TCCA[_T4],
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4]]:
+) -> Select[_T0, _T1, _T2, _T3, _T4]:
     ...
 
 
@@ -375,7 +376,7 @@ def select(
     __ent3: _TCCA[_T3],
     __ent4: _TCCA[_T4],
     __ent5: _TCCA[_T5],
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
+) -> Select[_T0, _T1, _T2, _T3, _T4, _T5]:
     ...
 
 
@@ -388,7 +389,7 @@ def select(
     __ent4: _TCCA[_T4],
     __ent5: _TCCA[_T5],
     __ent6: _TCCA[_T6],
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
+) -> Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6]:
     ...
 
 
@@ -402,7 +403,7 @@ def select(
     __ent5: _TCCA[_T5],
     __ent6: _TCCA[_T6],
     __ent7: _TCCA[_T7],
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
+) -> Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]:
     ...
 
 
@@ -417,7 +418,7 @@ def select(
     __ent6: _TCCA[_T6],
     __ent7: _TCCA[_T7],
     __ent8: _TCCA[_T8],
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]]:
+) -> Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]:
     ...
 
 
@@ -433,7 +434,7 @@ def select(
     __ent7: _TCCA[_T7],
     __ent8: _TCCA[_T8],
     __ent9: _TCCA[_T9],
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9]]:
+) -> Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9]:
     ...
 
 
@@ -441,11 +442,15 @@ def select(
 
 
 @overload
-def select(*entities: _ColumnsClauseArgument[Any], **__kw: Any) -> Select[Any]:
+def select(
+    *entities: _ColumnsClauseArgument[Any], **__kw: Any
+) -> Select[Unpack[Tuple[Any, ...]]]:
     ...
 
 
-def select(*entities: _ColumnsClauseArgument[Any], **__kw: Any) -> Select[Any]:
+def select(
+    *entities: _ColumnsClauseArgument[Any], **__kw: Any
+) -> Select[Unpack[Tuple[Any, ...]]]:
     r"""Construct a new :class:`_expression.Select`.
 
 
