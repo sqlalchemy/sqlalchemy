@@ -57,7 +57,6 @@ if True:  # zimports removes the tailing comments
 
 
 _T = TypeVar("_T", bound=Any)
-_Ts = TypeVarTuple("_Ts")
 _KT = TypeVar("_KT")
 _KT_co = TypeVar("_KT_co", covariant=True)
 _KT_contra = TypeVar("_KT_contra", contravariant=True)

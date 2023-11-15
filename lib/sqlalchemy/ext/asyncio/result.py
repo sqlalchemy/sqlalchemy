@@ -40,7 +40,6 @@ if TYPE_CHECKING:
     from ...engine.result import _UniqueFilterType
 
 _T = TypeVar("_T", bound=Any)
-_TP = TypeVar("_TP", bound=Tuple[Any, ...])
 _Ts = TypeVarTuple("_Ts")
 
 

@@ -76,7 +76,6 @@ _RawRowType = Tuple[Any, ...]
 
 _R = TypeVar("_R", bound=_RowData)
 _T = TypeVar("_T", bound=Any)
-_TP = TypeVar("_TP", bound=Tuple[Any, ...])
 _Ts = TypeVarTuple("_Ts")
 
 _InterimRowType = Union[_R, _RawRowType]

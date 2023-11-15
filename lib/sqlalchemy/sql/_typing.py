@@ -156,8 +156,6 @@ _TypedColumnClauseArgument = Union[
     Type[_T],
 ]
 
-_TP = TypeVar("_TP", bound=Tuple[Any, ...])
-
 _T0 = TypeVar("_T0", bound=Any)
 _T1 = TypeVar("_T1", bound=Any)
 _T2 = TypeVar("_T2", bound=Any)
