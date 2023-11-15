@@ -24,6 +24,7 @@ from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
+from typing import Union
 
 from . import annotation
 from . import coercions
@@ -62,11 +63,13 @@ from .. import util
 
 
 if TYPE_CHECKING:
+    from ._typing import _ColumnExpressionArgument
     from ._typing import _TypeEngineArgument
     from ..engine.base import Connection
     from ..engine.cursor import CursorResult
     from ..engine.interfaces import _CoreMultiExecuteParams
     from ..engine.interfaces import CoreExecuteOptionsParameter
+    from ..util.typing import Self
 
 _T = TypeVar("_T", bound=Any)
 
@@ -449,7 +452,21 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         """
         return WithinGroup(self, *order_by)
 
-    def filter(self, *criterion):
+    @overload
+    def filter(self) -> Self:
+        ...
+
+    @overload
+    def filter(
+        self,
+        __criterion0: _ColumnExpressionArgument[bool],
+        *criterion: _ColumnExpressionArgument[bool],
+    ) -> FunctionFilter[_T]:
+        ...
+
+    def filter(
+        self, *criterion: _ColumnExpressionArgument[bool]
+    ) -> Union[Self, FunctionFilter[_T]]:
         """Produce a FILTER clause against this function.
 
         Used against aggregate and window functions,

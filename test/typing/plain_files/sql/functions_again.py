@@ -21,3 +21,9 @@ func.row_number().over(order_by=[Foo.a.desc(), Foo.b.desc()])
 func.row_number().over(partition_by=[Foo.a.desc(), Foo.b.desc()])
 func.row_number().over(order_by="a", partition_by=("a", "b"))
 func.row_number().over(partition_by="a", order_by=("a", "b"))
+
+
+# EXPECTED_TYPE: Function[Any]
+reveal_type(func.row_number().filter())
+# EXPECTED_TYPE: FunctionFilter[Any]
+reveal_type(func.row_number().filter(Foo.a > 0))

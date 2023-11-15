@@ -4408,7 +4408,7 @@ class FunctionFilter(ColumnElement[_T]):
         self.func = func
         self.filter(*criterion)
 
-    def filter(self, *criterion):
+    def filter(self, *criterion: _ColumnExpressionArgument[bool]) -> Self:
         """Produce an additional FILTER against the function.
 
         This method adds additional criteria to the initial criteria
@@ -4472,15 +4472,21 @@ class FunctionFilter(ColumnElement[_T]):
             rows=rows,
         )
 
-    def self_group(self, against=None):
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> Union[Self, Grouping[_T]]:
         if operators.is_precedent(operators.filter_op, against):
             return Grouping(self)
         else:
             return self
 
-    @util.memoized_property
-    def type(self):
-        return self.func.type
+    type: TypeEngine[_T]
+
+    if not TYPE_CHECKING:
+        # A001 is a false-positive here, type is a class member
+        @util.memoized_property
+        def type(self) -> TypeEngine[_T]:  # noqa: A001
+            return self.func.type
 
     @util.ro_non_memoized_property
     def _from_objects(self) -> List[FromClause]:
