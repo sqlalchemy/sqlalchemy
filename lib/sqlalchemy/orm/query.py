@@ -1496,13 +1496,13 @@ class Query(
 
     @overload
     def with_entities(
-        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
+        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], /
     ) -> RowReturningQuery[_T0, _T1]:
         ...
 
     @overload
     def with_entities(
-        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
+        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2], /
     ) -> RowReturningQuery[_T0, _T1, _T2]:
         ...
 
@@ -1513,6 +1513,7 @@ class Query(
         __ent1: _TCCA[_T1],
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
+        /,
     ) -> RowReturningQuery[_T0, _T1, _T2, _T3]:
         ...
 
@@ -1524,6 +1525,7 @@ class Query(
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
+        /,
     ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4]:
         ...
 
@@ -1536,6 +1538,7 @@ class Query(
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
+        /,
     ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5]:
         ...
 
@@ -1549,6 +1552,7 @@ class Query(
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
+        /,
     ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5, _T6]:
         ...
 
@@ -1563,6 +1567,7 @@ class Query(
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
         __ent7: _TCCA[_T7],
+        /,
     ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]:
         ...
 
@@ -1858,7 +1863,7 @@ class Query(
 
     @_generative
     def params(
-        self, __params: Optional[Dict[str, Any]] = None, **kw: Any
+        self, __params: Optional[Dict[str, Any]] = None, /, **kw: Any
     ) -> Self:
         r"""Add values for bind parameters which may have been
         specified in filter().
@@ -2017,6 +2022,7 @@ class Query(
             Literal[None, False, _NoArg.NO_ARG],
             _ColumnExpressionOrStrLabelArgument[Any],
         ] = _NoArg.NO_ARG,
+        /,
         *clauses: _ColumnExpressionOrStrLabelArgument[Any],
     ) -> Self:
         """Apply one or more ORDER BY criteria to the query and return
@@ -2068,6 +2074,7 @@ class Query(
             Literal[None, False, _NoArg.NO_ARG],
             _ColumnExpressionOrStrLabelArgument[Any],
         ] = _NoArg.NO_ARG,
+        /,
         *clauses: _ColumnExpressionOrStrLabelArgument[Any],
     ) -> Self:
         """Apply one or more GROUP BY criterion to the query and return

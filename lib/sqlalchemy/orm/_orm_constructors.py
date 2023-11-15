@@ -101,6 +101,7 @@ def mapped_column(
     __type_pos: Optional[
         Union[_TypeEngineArgument[Any], SchemaEventTarget]
     ] = None,
+    /,
     *args: SchemaEventTarget,
     init: Union[_NoArg, bool] = _NoArg.NO_ARG,
     repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
@@ -544,6 +545,7 @@ def column_property(
 @overload
 def composite(
     _class_or_attr: _CompositeAttrType[Any],
+    /,
     *attrs: _CompositeAttrType[Any],
     group: Optional[str] = None,
     deferred: bool = False,
@@ -566,6 +568,7 @@ def composite(
 @overload
 def composite(
     _class_or_attr: Type[_CC],
+    /,
     *attrs: _CompositeAttrType[Any],
     group: Optional[str] = None,
     deferred: bool = False,
@@ -588,6 +591,7 @@ def composite(
 @overload
 def composite(
     _class_or_attr: Callable[..., _CC],
+    /,
     *attrs: _CompositeAttrType[Any],
     group: Optional[str] = None,
     deferred: bool = False,
@@ -611,6 +615,7 @@ def composite(
     _class_or_attr: Union[
         None, Type[_CC], Callable[..., _CC], _CompositeAttrType[Any]
     ] = None,
+    /,
     *attrs: _CompositeAttrType[Any],
     group: Optional[str] = None,
     deferred: bool = False,

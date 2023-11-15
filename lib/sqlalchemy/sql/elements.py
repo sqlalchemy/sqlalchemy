@@ -561,6 +561,7 @@ class ClauseElement(
     def unique_params(
         self,
         __optionaldict: Optional[Dict[str, Any]] = None,
+        /,
         **kwargs: Any,
     ) -> Self:
         """Return a copy with :func:`_expression.bindparam` elements
@@ -577,6 +578,7 @@ class ClauseElement(
     def params(
         self,
         __optionaldict: Optional[Mapping[str, Any]] = None,
+        /,
         **kwargs: Any,
     ) -> Self:
         """Return a copy with :func:`_expression.bindparam` elements
