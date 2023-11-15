@@ -96,7 +96,7 @@ def {key}(self) -> Type[{fn_class.__name__}{
                         fn_class.type, TypeEngine
                     ):
                         python_type = fn_class.type.python_type
-                        python_expr = rf"Tuple\[.*{python_type.__name__}\]"
+                        python_expr = rf".*{python_type.__name__}"
                         argspec = inspect.getfullargspec(fn_class)
                         args = ", ".join(
                             'column("x")' for elem in argspec.args[1:]
