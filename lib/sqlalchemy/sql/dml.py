@@ -1610,9 +1610,7 @@ class Update(DMLWhereBase, ValuesBase):
         # statically generated** by tools/generate_tuple_map_overloads.py
 
         @overload
-        def returning(
-            self, __ent0: _TCCA[_T0], /
-        ) -> ReturningUpdate[_T0]:
+        def returning(self, __ent0: _TCCA[_T0], /) -> ReturningUpdate[_T0]:
             ...
 
         @overload
@@ -1755,9 +1753,7 @@ class Delete(DMLWhereBase, UpdateBase):
         # statically generated** by tools/generate_tuple_map_overloads.py
 
         @overload
-        def returning(
-            self, __ent0: _TCCA[_T0], /
-        ) -> ReturningDelete[_T0]:
+        def returning(self, __ent0: _TCCA[_T0], /) -> ReturningDelete[_T0]:
             ...
 
         @overload

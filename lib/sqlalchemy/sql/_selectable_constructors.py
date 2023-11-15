@@ -337,9 +337,7 @@ def select(__ent0: _TCCA[_T0], /) -> Select[_T0]:
 
 
 @overload
-def select(
-    __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], /
-) -> Select[_T0, _T1]:
+def select(__ent0: _TCCA[_T0], __ent1: _TCCA[_T1], /) -> Select[_T0, _T1]:
     ...
 
 
