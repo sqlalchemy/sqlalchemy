@@ -326,7 +326,7 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[Unpack[_Ts]]]):
         return await greenlet_spawn(self._only_one_row, True, False, False)
 
     @overload
-    async def scalar_one(self: AsyncResult[Tuple[_T]]) -> _T:
+    async def scalar_one(self: AsyncResult[_T]) -> _T:
         ...
 
     @overload
@@ -350,7 +350,7 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[Unpack[_Ts]]]):
 
     @overload
     async def scalar_one_or_none(
-        self: AsyncResult[Tuple[_T]],
+        self: AsyncResult[_T],
     ) -> Optional[_T]:
         ...
 
@@ -405,7 +405,7 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[Unpack[_Ts]]]):
         return await greenlet_spawn(self._only_one_row, True, True, False)
 
     @overload
-    async def scalar(self: AsyncResult[Tuple[_T]]) -> Optional[_T]:
+    async def scalar(self: AsyncResult[_T]) -> Optional[_T]:
         ...
 
     @overload
@@ -428,7 +428,7 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[Unpack[_Ts]]]):
         """
         return await greenlet_spawn(self._only_one_row, False, False, True)
 
-    async def freeze(self) -> FrozenResult[Tuple[Unpack[_Ts]]]:
+    async def freeze(self) -> FrozenResult[Unpack[_Ts]]:
         """Return a callable object that will produce copies of this
         :class:`_asyncio.AsyncResult` when invoked.
 

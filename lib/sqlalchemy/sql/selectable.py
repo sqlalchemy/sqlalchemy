@@ -5788,19 +5788,19 @@ class Select(
     # statically generated** by tools/generate_sel_v1_overloads.py
 
     @overload
-    def with_only_columns(self, __ent0: _TCCA[_T0]) -> Select[Tuple[_T0]]:
+    def with_only_columns(self, __ent0: _TCCA[_T0]) -> Select[_T0]:
         ...
 
     @overload
     def with_only_columns(
         self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
-    ) -> Select[Tuple[_T0, _T1]]:
+    ) -> Select[_T0, _T1]:
         ...
 
     @overload
     def with_only_columns(
         self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
-    ) -> Select[Tuple[_T0, _T1, _T2]]:
+    ) -> Select[_T0, _T1, _T2]:
         ...
 
     @overload
@@ -5810,7 +5810,7 @@ class Select(
         __ent1: _TCCA[_T1],
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
-    ) -> Select[Tuple[_T0, _T1, _T2, _T3]]:
+    ) -> Select[_T0, _T1, _T2, _T3]:
         ...
 
     @overload
@@ -5821,7 +5821,7 @@ class Select(
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
-    ) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4]]:
+    ) -> Select[_T0, _T1, _T2, _T3, _T4]:
         ...
 
     @overload
@@ -5833,7 +5833,7 @@ class Select(
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
-    ) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
+    ) -> Select[_T0, _T1, _T2, _T3, _T4, _T5]:
         ...
 
     @overload
@@ -5846,7 +5846,7 @@ class Select(
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
-    ) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
+    ) -> Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6]:
         ...
 
     @overload
@@ -5860,7 +5860,7 @@ class Select(
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
         __ent7: _TCCA[_T7],
-    ) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
+    ) -> Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]:
         ...
 
     # END OVERLOADED FUNCTIONS self.with_only_columns

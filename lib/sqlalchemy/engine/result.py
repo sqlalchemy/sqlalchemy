@@ -1476,7 +1476,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         )
 
     @overload
-    def scalar_one(self: Result[Tuple[_T]]) -> _T:
+    def scalar_one(self: Result[_T]) -> _T:
         ...
 
     @overload
@@ -1501,7 +1501,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         )
 
     @overload
-    def scalar_one_or_none(self: Result[Tuple[_T]]) -> Optional[_T]:
+    def scalar_one_or_none(self: Result[_T]) -> Optional[_T]:
         ...
 
     @overload
@@ -1559,7 +1559,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         )
 
     @overload
-    def scalar(self: Result[Tuple[_T]]) -> Optional[_T]:
+    def scalar(self: Result[_T]) -> Optional[_T]:
         ...
 
     @overload

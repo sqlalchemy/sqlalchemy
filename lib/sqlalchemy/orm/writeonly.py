@@ -587,7 +587,7 @@ class WriteOnlyCollection(AbstractCollectionWriter[_T]):
             "produce a SQL statement and execute it with session.scalars()."
         )
 
-    def select(self) -> Select[Tuple[_T]]:
+    def select(self) -> Select[_T]:
         """Produce a :class:`_sql.Select` construct that represents the
         rows within this instance-local :class:`_orm.WriteOnlyCollection`.
 

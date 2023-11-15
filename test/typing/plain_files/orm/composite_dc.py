@@ -38,7 +38,7 @@ v1 = Vertex(start=Point(3, 4), end=Point(5, 6))
 
 stmt = select(Vertex).where(Vertex.start.in_([Point(3, 4)]))
 
-# EXPECTED_TYPE: Select[Tuple[Vertex]]
+# EXPECTED_TYPE: Select[Vertex]
 reveal_type(stmt)
 
 # EXPECTED_TYPE: composite.Point
