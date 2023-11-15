@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 from typing import cast
 from typing import Optional
-from typing import Tuple
 from typing import Type
 
 from sqlalchemy import Column
