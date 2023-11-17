@@ -87,6 +87,7 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
 
         try:
             Connection = __import__("pymysql.connections").Connection
+            getattr(Connection, "ping")
         except (ImportError, AttributeError):
             return True
         else:
