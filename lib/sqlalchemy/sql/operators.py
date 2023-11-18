@@ -2582,9 +2582,13 @@ _PRECEDENCE: Dict[OperatorType, int] = {
 }
 
 
-def is_precedent(operator: OperatorType, against: OperatorType) -> bool:
+def is_precedent(
+    operator: OperatorType, against: Optional[OperatorType]
+) -> bool:
     if operator is against and is_natural_self_precedent(operator):
         return False
+    elif against is None:
+        return True
     else:
         return bool(
             _PRECEDENCE.get(
