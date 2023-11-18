@@ -225,7 +225,7 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
                 except AttributeError as err:
                     raise exc.ArgumentError(
                         "'SchemaItem' object, such as a 'Column' or a "
-                        "'Constraint' expected, got %r" % item
+                        f"'Constraint' expected, got {item!r}"
                     ) from err
                 else:
                     spwd(self, **kw)
@@ -466,11 +466,11 @@ class Table(
         if key in metadata.tables:
             if not keep_existing and not extend_existing and bool(args):
                 raise exc.InvalidRequestError(
-                    "Table '%s' is already defined for this MetaData "
+                    f"Table '{key}' is already defined for this MetaData "
                     "instance.  Specify 'extend_existing=True' "
                     "to redefine "
                     "options and columns on an "
-                    "existing Table object." % key
+                    "existing Table object."
                 )
             table = metadata.tables[key]
             if extend_existing:
@@ -478,7 +478,7 @@ class Table(
             return table
         else:
             if must_exist:
-                raise exc.InvalidRequestError("Table '%s' not defined" % (key))
+                raise exc.InvalidRequestError(f"Table '{key}' not defined")
             table = object.__new__(cls)
             table.dispatch.before_parent_attach(table, metadata)
             metadata._add_table(name, schema, table)
@@ -955,8 +955,8 @@ class Table(
 
         if schema and schema != self.schema:
             raise exc.ArgumentError(
-                "Can't change schema of existing table from '%s' to '%s'",
-                (self.schema, schema),
+                f"Can't change schema of existing table "
+                f"from '{self.schema}' to '{schema}'",
             )
 
         include_columns = kwargs.pop("include_columns", None)
@@ -1436,8 +1436,8 @@ class Table(
         key = _get_table_key(name, actual_schema)
         if key in metadata.tables:
             util.warn(
-                "Table '%s' already exists within the given "
-                "MetaData - not copying." % self.description
+                f"Table '{self.description}' already exists within the given "
+                "MetaData - not copying."
             )
             return metadata.tables[key]
 
@@ -2318,8 +2318,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         existing = getattr(self, "table", None)
         if existing is not None and existing is not table:
             raise exc.ArgumentError(
-                "Column object '%s' already assigned to Table '%s'"
-                % (self.key, existing.description)
+                f"Column object '{self.key}' already "
+                f"assigned to Table '{existing.description}'"
             )
 
         extra_remove = None
@@ -2379,9 +2379,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             table.primary_key._replace(self)
         elif self.key in table.primary_key:
             raise exc.ArgumentError(
-                "Trying to redefine primary-key column '%s' as a "
-                "non-primary-key column on table '%s'"
-                % (self.key, table.fullname)
+                f"Trying to redefine primary-key column '{self.key}' as a "
+                f"non-primary-key column on table '{table.fullname}'"
             )
 
         if self.index:
@@ -3031,7 +3030,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         m = self._get_colspec().split(".")
         if m is None:
             raise exc.ArgumentError(
-                "Invalid foreign key column specification: %s" % self._colspec
+                f"Invalid foreign key column specification: {self._colspec}"
             )
         if len(m) == 1:
             tname = m.pop()
@@ -3122,9 +3121,9 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         if _column is None:
             raise exc.NoReferencedColumnError(
                 "Could not initialize target column "
-                "for ForeignKey '%s' on table '%s': "
-                "table '%s' has no column named '%s'"
-                % (self._colspec, parenttable.name, table.name, key),
+                f"for ForeignKey '{self._colspec}' "
+                f"on table '{parenttable.name}': "
+                f"table '{table.name}' has no column named '{key}'",
                 table.name,
                 key,
             )
@@ -3183,18 +3182,18 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                 if not raiseerr:
                     return None
                 raise exc.NoReferencedTableError(
-                    "Foreign key associated with column '%s' could not find "
-                    "table '%s' with which to generate a "
-                    "foreign key to target column '%s'"
-                    % (self.parent, tablekey, colname),
+                    f"Foreign key associated with column "
+                    f"'{self.parent}' could not find "
+                    f"table '{tablekey}' with which to generate a "
+                    f"foreign key to target column '{colname}'",
                     tablekey,
                 )
             elif parenttable.key not in parenttable.metadata:
                 if not raiseerr:
                     return None
                 raise exc.InvalidRequestError(
-                    "Table %s is no longer associated with its "
-                    "parent MetaData" % parenttable
+                    f"Table {parenttable} is no longer associated with its "
+                    "parent MetaData"
                 )
             else:
                 table = parenttable.metadata.tables[tablekey]
@@ -3941,10 +3940,10 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
 
     def _not_a_column_expr(self) -> NoReturn:
         raise exc.InvalidRequestError(
-            "This %s cannot be used directly "
+            f"This {self.__class__.__name__} cannot be used directly "
             "as a column expression.  Use func.next_value(sequence) "
             "to produce a 'next value' function that's usable "
-            "as a column element." % self.__class__.__name__
+            "as a column element."
         )
 
 
@@ -4268,12 +4267,11 @@ class ColumnCollectionMixin:
             table = columns[0].table
             others = [c for c in columns[1:] if c.table is not table]
             if others:
+                # black could not format this inline
+                other_str = ", ".join("'%s'" % c for c in others)
                 raise exc.ArgumentError(
-                    "Column(s) %s are not part of table '%s'."
-                    % (
-                        ", ".join("'%s'" % c for c in others),
-                        table.description,
-                    )
+                    f"Column(s) {other_str} "
+                    f"are not part of table '{table.description}'."
                 )
 
     @util.ro_memoized_property
@@ -4758,9 +4756,9 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         if None not in table_keys and len(table_keys) > 1:
             elem0, elem1 = sorted(table_keys)[0:2]
             raise exc.ArgumentError(
-                "ForeignKeyConstraint on %s(%s) refers to "
-                "multiple remote tables: %s and %s"
-                % (table.fullname, self._col_description, elem0, elem1)
+                f"ForeignKeyConstraint on "
+                f"{table.fullname}({self._col_description}) refers to "
+                f"multiple remote tables: {elem0} and {elem1}"
             )
 
     @property
@@ -4946,17 +4944,20 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
             and table_pks
             and set(table_pks) != set(self._columns)
         ):
+            # black could not format these inline
+            table_pk_str = ", ".join("'%s'" % c.name for c in table_pks)
+            col_str = ", ".join("'%s'" % c.name for c in self._columns)
+
             util.warn(
-                "Table '%s' specifies columns %s as primary_key=True, "
-                "not matching locally specified columns %s; setting the "
-                "current primary key columns to %s. This warning "
-                "may become an exception in a future release"
-                % (
-                    table.name,
-                    ", ".join("'%s'" % c.name for c in table_pks),
-                    ", ".join("'%s'" % c.name for c in self._columns),
-                    ", ".join("'%s'" % c.name for c in self._columns),
-                )
+                f"Table '{table.name}' specifies columns "
+                f"{table_pk_str} as "
+                f"primary_key=True, "
+                f"not matching locally specified columns {col_str}; "
+                f"setting the "
+                f"current primary key columns to "
+                f"{col_str}. "
+                f"This warning "
+                f"may become an exception in a future release"
             )
             table_pks[:] = []
 
@@ -5023,8 +5024,8 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
             ):
                 if autoinc_true:
                     raise exc.ArgumentError(
-                        "Column type %s on column '%s' is not "
-                        "compatible with autoincrement=True" % (col.type, col)
+                        f"Column type {col.type} on column '{col}' is not "
+                        f"compatible with autoincrement=True"
                     )
                 else:
                     return False
@@ -5067,9 +5068,9 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
                     _validate_autoinc(col, True)
                     if autoinc is not None:
                         raise exc.ArgumentError(
-                            "Only one Column may be marked "
-                            "autoincrement=True, found both %s and %s."
-                            % (col.name, autoinc.name)
+                            f"Only one Column may be marked "
+                            f"autoincrement=True, found both "
+                            f"{col.name} and {autoinc.name}."
                         )
                     else:
                         autoinc = col
@@ -5240,9 +5241,9 @@ class Index(
 
         if self.table is not None and table is not self.table:
             raise exc.ArgumentError(
-                "Index '%s' is against table '%s', and "
-                "cannot be associated with table '%s'."
-                % (self.name, self.table.description, table.description)
+                f"Index '{self.name}' is against table "
+                f"'{self.table.description}', and "
+                f"cannot be associated with table '{table.description}'."
             )
         self.table = table
         table.indexes.add(self)
@@ -5777,9 +5778,10 @@ class MetaData(HasSchemaAttr):
                 missing = [name for name in only if name not in available]
                 if missing:
                     s = schema and (" schema '%s'" % schema) or ""
+                    missing_str = ", ".join(missing)
                     raise exc.InvalidRequestError(
-                        "Could not reflect: requested table(s) not available "
-                        "in %r%s: (%s)" % (bind.engine, s, ", ".join(missing))
+                        f"Could not reflect: requested table(s) not available "
+                        f"in {bind.engine!r}{s}: ({missing_str})"
                     )
                 load = [
                     name
@@ -5802,7 +5804,7 @@ class MetaData(HasSchemaAttr):
                 try:
                     Table(name, self, **reflect_opts)
                 except exc.UnreflectableTableError as uerr:
-                    util.warn("Skipping table %s: %s" % (name, uerr))
+                    util.warn(f"Skipping table {name}: {uerr}")
 
     def create_all(
         self,

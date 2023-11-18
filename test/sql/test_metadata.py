@@ -1777,6 +1777,18 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
             12,
         )
 
+        assert_raises_message(
+            tsa.exc.ArgumentError,
+            "'SchemaItem' object, such as a 'Column' or a "
+            "'Constraint' expected, got "
+            r"\(Column\('q', Integer\(\), table=None\), "
+            r"Column\('p', Integer\(\), table=None\)\)",
+            Table,
+            "asdf",
+            MetaData(),
+            (Column("q", Integer), Column("p", Integer)),
+        )
+
     def test_reset_exported_passes(self):
         m = MetaData()
 
