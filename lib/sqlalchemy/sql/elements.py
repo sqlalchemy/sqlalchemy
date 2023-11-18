@@ -2694,9 +2694,11 @@ class Null(SingletonConstant, roles.ConstExprRole[None], ColumnElement[None]):
     _traverse_internals: _TraverseInternalsType = []
     _singleton: Null
 
-    @util.memoized_property
-    def type(self):
-        return type_api.NULLTYPE
+    if not TYPE_CHECKING:
+
+        @util.memoized_property
+        def type(self) -> TypeEngine[_T]:  # noqa: A001
+            return type_api.NULLTYPE
 
     @classmethod
     def _instance(cls) -> Null:
@@ -2722,9 +2724,11 @@ class False_(
     _traverse_internals: _TraverseInternalsType = []
     _singleton: False_
 
-    @util.memoized_property
-    def type(self):
-        return type_api.BOOLEANTYPE
+    if not TYPE_CHECKING:
+
+        @util.memoized_property
+        def type(self) -> TypeEngine[_T]:  # noqa: A001
+            return type_api.BOOLEANTYPE
 
     def _negate(self) -> True_:
         return True_._singleton
@@ -2750,9 +2754,11 @@ class True_(SingletonConstant, roles.ConstExprRole[bool], ColumnElement[bool]):
     _traverse_internals: _TraverseInternalsType = []
     _singleton: True_
 
-    @util.memoized_property
-    def type(self):
-        return type_api.BOOLEANTYPE
+    if not TYPE_CHECKING:
+
+        @util.memoized_property
+        def type(self) -> TypeEngine[_T]:  # noqa: A001
+            return type_api.BOOLEANTYPE
 
     def _negate(self) -> False_:
         return False_._singleton
@@ -4266,9 +4272,11 @@ class Over(ColumnElement[_T]):
 
         return lower, upper
 
-    @util.memoized_property
-    def type(self):
-        return self.element.type
+    if not TYPE_CHECKING:
+
+        @util.memoized_property
+        def type(self) -> TypeEngine[_T]:  # noqa: A001
+            return self.element.type
 
     @util.ro_non_memoized_property
     def _from_objects(self) -> List[FromClause]:
@@ -4341,13 +4349,15 @@ class WithinGroup(ColumnElement[_T]):
             rows=rows,
         )
 
-    @util.memoized_property
-    def type(self):
-        wgt = self.element.within_group_type(self)
-        if wgt is not None:
-            return wgt
-        else:
-            return self.element.type
+    if not TYPE_CHECKING:
+
+        @util.memoized_property
+        def type(self) -> TypeEngine[_T]:  # noqa: A001
+            wgt = self.element.within_group_type(self)
+            if wgt is not None:
+                return wgt
+            else:
+                return self.element.type
 
     @util.ro_non_memoized_property
     def _from_objects(self) -> List[FromClause]:
@@ -4397,7 +4407,7 @@ class FunctionFilter(ColumnElement[_T]):
         self.func = func
         self.filter(*criterion)
 
-    def filter(self, *criterion):
+    def filter(self, *criterion: _ColumnExpressionArgument[bool]) -> Self:
         """Produce an additional FILTER against the function.
 
         This method adds additional criteria to the initial criteria
@@ -4461,15 +4471,19 @@ class FunctionFilter(ColumnElement[_T]):
             rows=rows,
         )
 
-    def self_group(self, against=None):
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> Union[Self, Grouping[_T]]:
         if operators.is_precedent(operators.filter_op, against):
             return Grouping(self)
         else:
             return self
 
-    @util.memoized_property
-    def type(self):
-        return self.func.type
+    if not TYPE_CHECKING:
+
+        @util.memoized_property
+        def type(self) -> TypeEngine[_T]:  # noqa: A001
+            return self.func.type
 
     @util.ro_non_memoized_property
     def _from_objects(self) -> List[FromClause]:
