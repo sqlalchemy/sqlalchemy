@@ -62,7 +62,6 @@ from .sqltypes import TableValueType
 from .type_api import TypeEngine
 from .visitors import InternalTraversal
 from .. import util
-from ..util.typing import Self
 
 
 if TYPE_CHECKING:
@@ -79,6 +78,7 @@ if TYPE_CHECKING:
     from ..engine.cursor import CursorResult
     from ..engine.interfaces import _CoreMultiExecuteParams
     from ..engine.interfaces import CoreExecuteOptionsParameter
+    from ..util.typing import Self
 
 _T = TypeVar("_T", bound=Any)
 _S = TypeVar("_S", bound=Any)
@@ -483,6 +483,18 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
         """
         return WithinGroup(self, *order_by)
+
+    @overload
+    def filter(self) -> Self:
+        ...
+
+    @overload
+    def filter(
+        self,
+        __criterion0: _ColumnExpressionArgument[bool],
+        *criterion: _ColumnExpressionArgument[bool],
+    ) -> FunctionFilter[_T]:
+        ...
 
     def filter(
         self, *criterion: _ColumnExpressionArgument[bool]
