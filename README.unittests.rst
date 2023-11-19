@@ -97,8 +97,8 @@ a pre-set URL.  These can be seen using --dbs::
                    mssql    mssql+pyodbc://scott:tiger^5HHH@mssql2017:1433/test?driver=ODBC+Driver+13+for+SQL+Server
            mssql_pymssql    mssql+pymssql://scott:tiger@ms_2008
                    mysql    mysql+mysqldb://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4
-                  oracle    oracle+cx_oracle://scott:tiger@oracle18c
-         oracle_oracledb    oracle+oracledb://scott:tiger@oracle18c
+                  oracle    oracle+cx_oracle://scott:tiger@oracle23c
+         oracle_oracledb    oracle+oracledb://scott:tiger@oracle23c
                   pg8000    postgresql+pg8000://scott:tiger@127.0.0.1:5432/test
               postgresql    postgresql+psycopg2://scott:tiger@127.0.0.1:5432/test
     postgresql_psycopg2cffi postgresql+psycopg2cffi://scott:tiger@127.0.0.1:5432/test
@@ -307,11 +307,11 @@ be used with pytest by using ``--db docker_mssql``.
 **Oracle configuration**::
 
     # create the container with the proper configuration for sqlalchemy
-    docker run --rm --name oracle -p 127.0.0.1:1521:1521 -d -e ORACLE_PASSWORD=tiger -e ORACLE_DATABASE=test -e APP_USER=scott -e APP_USER_PASSWORD=tiger gvenzl/oracle-xe:21-slim
+    docker run --rm --name oracle -p 127.0.0.1:1521:1521 -d -e ORACLE_PASSWORD=tiger -e ORACLE_DATABASE=test -e APP_USER=scott -e APP_USER_PASSWORD=tiger gvenzl/oracle-free:23-slim
 
     # enter the database container and run the command
     docker exec -ti oracle bash
-    >> sqlplus system/tiger@//localhost/XEPDB1 <<EOF
+    >> sqlplus system/tiger@//localhost/FREEPDB1 <<EOF
     CREATE USER test_schema IDENTIFIED BY tiger;
     GRANT DBA TO SCOTT;
     GRANT CREATE TABLE TO scott;
@@ -319,16 +319,16 @@ be used with pytest by using ``--db docker_mssql``.
     GRANT UNLIMITED TABLESPACE TO scott;
     GRANT UNLIMITED TABLESPACE TO test_schema;
     GRANT CREATE SESSION TO test_schema;
-    CREATE PUBLIC DATABASE LINK test_link CONNECT TO scott IDENTIFIED BY tiger USING 'XEPDB1';
-    CREATE PUBLIC DATABASE LINK test_link2 CONNECT TO test_schema IDENTIFIED BY tiger USING 'XEPDB1';
+    CREATE PUBLIC DATABASE LINK test_link CONNECT TO scott IDENTIFIED BY tiger USING 'FREEPDB1';
+    CREATE PUBLIC DATABASE LINK test_link2 CONNECT TO test_schema IDENTIFIED BY tiger USING 'FREEPDB1';
     EOF
 
     # To stop the container. It will also remove it.
     docker stop oracle
 
 NOTE: with this configuration the url to use is
-``oracle+cx_oracle://scott:tiger@127.0.0.1:1521/?service_name=XEPDB1``.  It can
-be used with pytest by using ``--dburi oracle+cx_oracle://scott:tiger@127.0.0.1:1521/?service_name=XEPDB1``.
+``oracle+cx_oracle://scott:tiger@127.0.0.1:1521/?service_name=FREEPDB1``.  It can
+be used with pytest by using ``--dburi oracle+cx_oracle://scott:tiger@127.0.0.1:1521/?service_name=FREEPDB1``.
 
 CONFIGURING LOGGING
 -------------------
