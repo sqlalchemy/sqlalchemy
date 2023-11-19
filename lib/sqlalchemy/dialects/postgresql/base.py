@@ -3049,15 +3049,18 @@ class PGDialect(default.DefaultDialect):
         super().initialize(connection)
 
         # https://www.postgresql.org/docs/9.3/static/release-9-2.html#AEN116689
-        self.supports_smallserial = self.server_version_info >= (9, 2)
+        self.supports_smallserial = self.server_version_info and self.server_version_info >= (9, 2)
 
-        self._set_backslash_escapes(connection)
+        try: 
+            self._set_backslash_escapes(connection)
+        except:
+            pass
 
-        self._supports_drop_index_concurrently = self.server_version_info >= (
+        self._supports_drop_index_concurrently = self.server_version_info and self.server_version_info >= (
             9,
             2,
         )
-        self.supports_identity_columns = self.server_version_info >= (10,)
+        self.supports_identity_columns = self.server_version_info and self.server_version_info >= (10,)
 
     def get_isolation_level_values(self, dbapi_conn):
         # note the generic dialect doesn't have AUTOCOMMIT, however

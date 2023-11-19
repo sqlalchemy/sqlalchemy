@@ -514,20 +514,20 @@ class DefaultDialect(Dialect):
             self.server_version_info = self._get_server_version_info(
                 connection
             )
-        except NotImplementedError:
+        except :
             self.server_version_info = None
         try:
             self.default_schema_name = self._get_default_schema_name(
                 connection
             )
-        except NotImplementedError:
+        except :
             self.default_schema_name = None
 
         try:
             self.default_isolation_level = self.get_default_isolation_level(
                 connection.connection.dbapi_connection
             )
-        except NotImplementedError:
+        except :
             self.default_isolation_level = None
 
         if not self._user_defined_max_identifier_length:
