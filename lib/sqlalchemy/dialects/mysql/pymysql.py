@@ -91,7 +91,9 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
         """  # noqa: E501
 
         try:
-            Connection = __import__("pymysql.connections").Connection
+            Connection = __import__(
+                "pymysql.connections"
+            ).connections.Connection
         except (ImportError, AttributeError):
             return True
         else:
