@@ -993,6 +993,52 @@ For a DELETE, an example of deleting rows based on criteria::
     >>> session.connection()
     BEGIN (implicit)...
 
+.. warning:: Please read the following section :ref:`orm_queryguide_update_delete_caveats`
+   for important notes regarding how the functionality of ORM-Enabled UPDATE and DELETE
+   diverges from that of ORM :term:`unit-of-work` features, such
+   as using the :meth:`_orm.Session.delete` method to delete individual objects.
+
+
+.. _orm_queryguide_update_delete_caveats:
+
+Important Notes and Caveats for ORM-Enabled Update and Delete
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ORM-enabled UPDATE and DELETE features bypass ORM :term:`unit-of-work`
+automation in favor being able to emit a single UPDATE or DELETE statement
+that matches multiple rows at once without complexity.
+
+* The operations do not offer in-Python cascading of relationships - it is
+  assumed that ON UPDATE CASCADE and/or ON DELETE CASCADE is configured for any
+  foreign key references which require it, otherwise the database may emit an
+  integrity violation if foreign key references are being enforced. See the
+  notes at :ref:`passive_deletes` for some examples.
+
+* After the UPDATE or DELETE, dependent objects in the :class:`.Session` which
+  were impacted by an ON UPDATE CASCADE or ON DELETE CASCADE on related tables,
+  particularly objects that refer to rows that have now been deleted, may still
+  reference those objects.  This issue is resolved once the :class:`.Session`
+  is expired, which normally occurs upon :meth:`.Session.commit` or can be
+  forced by using :meth:`.Session.expire_all`.
+
+* ORM-enabled UPDATEs and DELETEs do not handle joined table inheritance
+  automatically.   See the section :ref:`orm_queryguide_update_delete_joined_inh`
+  for notes on how to work with joined-inheritance mappings.
+
+* The WHERE criteria needed in order to limit the polymorphic identity to
+  specific subclasses for single-table-inheritance mappings **is included
+  automatically** .   This only applies to a subclass mapper that has no table of
+  its own.
+
+* The :func:`_orm.with_loader_criteria` option **is supported** by ORM
+  update and delete operations; criteria here will be added to that of the UPDATE
+  or DELETE statement being emitted, as well as taken into account during the
+  "synchronize" process.
+
+* In order to intercept ORM-enabled UPDATE and DELETE operations with event
+  handlers, use the :meth:`_orm.SessionEvents.do_orm_execute` event.
+
+
 .. _orm_queryguide_update_delete_sync:
 
 
