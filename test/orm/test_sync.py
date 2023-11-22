@@ -145,7 +145,7 @@ class SyncTest(
         eq_(b1.obj().__dict__["id"], 8)
         assert_raises_message(
             AssertionError,
-            "Dependency rule tried to blank-out primary key "
+            "Dependency rule on column 't1.id' tried to blank-out primary key "
             "column 't2.id' on instance '<B",
             sync.clear,
             b1,
