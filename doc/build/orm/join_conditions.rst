@@ -564,14 +564,14 @@ is when establishing a many-to-many relationship from a class to itself, as show
         __tablename__ = "node"
         id: Mapped[int] = mapped_column(primary_key=True)
         label: Mapped[str]
-        right_nodes: Mapped[List["None"]] = relationship(
+        right_nodes: Mapped[List["Node"]] = relationship(
             "Node",
             secondary=node_to_node,
             primaryjoin=id == node_to_node.c.left_node_id,
             secondaryjoin=id == node_to_node.c.right_node_id,
             back_populates="left_nodes",
         )
-        left_nodes: Mapped[List["None"]] = relationship(
+        left_nodes: Mapped[List["Node"]] = relationship(
             "Node",
             secondary=node_to_node,
             primaryjoin=id == node_to_node.c.right_node_id,
