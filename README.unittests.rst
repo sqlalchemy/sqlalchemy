@@ -97,8 +97,8 @@ a pre-set URL.  These can be seen using --dbs::
                    mssql    mssql+pyodbc://scott:tiger^5HHH@mssql2017:1433/test?driver=ODBC+Driver+13+for+SQL+Server
            mssql_pymssql    mssql+pymssql://scott:tiger@ms_2008
                    mysql    mysql+mysqldb://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4
-                  oracle    oracle+cx_oracle://scott:tiger@oracle23c
-         oracle_oracledb    oracle+oracledb://scott:tiger@oracle23c
+                  oracle    oracle+cx_oracle://scott:tiger@oracle18c
+         oracle_oracledb    oracle+oracledb://scott:tiger@oracle18c
                   pg8000    postgresql+pg8000://scott:tiger@127.0.0.1:5432/test
               postgresql    postgresql+psycopg2://scott:tiger@127.0.0.1:5432/test
     postgresql_psycopg2cffi postgresql+psycopg2cffi://scott:tiger@127.0.0.1:5432/test
