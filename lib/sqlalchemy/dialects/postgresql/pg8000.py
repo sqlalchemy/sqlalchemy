@@ -584,8 +584,8 @@ class PGDialect_pg8000(PGDialect):
         cursor = dbapi_connection.cursor()
         cursor.execute(
             f"""SET CLIENT_ENCODING TO '{
-            client_encoding.replace("'", "''")
-        }'"""
+                client_encoding.replace("'", "''")
+            }'"""
         )
         cursor.execute("COMMIT")
         cursor.close()

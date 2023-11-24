@@ -2067,15 +2067,16 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             if self._echo:
                 self._log_info(sql_util._long_statement(sub_stmt))
 
-                imv_stats = f""" {
-                            imv_batch.batchnum}/{imv_batch.total_batches} ({
-                            'ordered'
-                            if imv_batch.rows_sorted else 'unordered'
-                        }{
-                            '; batch not supported'
-                            if imv_batch.is_downgraded
-                            else ''
-                        })"""
+                imv_stats = f""" {imv_batch.batchnum}/{
+                            imv_batch.total_batches
+                } ({
+                    'ordered'
+                    if imv_batch.rows_sorted else 'unordered'
+                }{
+                    '; batch not supported'
+                    if imv_batch.is_downgraded
+                    else ''
+                })"""
 
                 if imv_batch.batchnum == 1:
                     stats += imv_stats

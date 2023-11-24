@@ -1706,10 +1706,10 @@ class PGCompiler(compiler.SQLCompiler):
             # see #9511
             dbapi_type = sqltypes.STRINGTYPE
         return f"""{sqltext}::{
-                self.dialect.type_compiler_instance.process(
-                    dbapi_type, identifier_preparer=self.preparer
-                )
-            }"""
+            self.dialect.type_compiler_instance.process(
+                dbapi_type, identifier_preparer=self.preparer
+            )
+        }"""
 
     def visit_array(self, element, **kw):
         return "ARRAY[%s]" % self.visit_clauselist(element, **kw)

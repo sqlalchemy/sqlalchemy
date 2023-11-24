@@ -2060,7 +2060,7 @@ class IMVSentinelTest(fixtures.TestBase):
                 collection_cls(r),
                 collection_cls(
                     [
-                        (uuids[i], f"d{i+1}", "some_server_default")
+                        (uuids[i], f"d{i + 1}", "some_server_default")
                         for i in range(5)
                     ]
                 ),
@@ -2072,7 +2072,7 @@ class IMVSentinelTest(fixtures.TestBase):
                 collection_cls(
                     [
                         (
-                            f"d{i+1}",
+                            f"d{i + 1}",
                             "some_server_default",
                         )
                         for i in range(5)

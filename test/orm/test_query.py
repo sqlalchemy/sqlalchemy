@@ -697,8 +697,10 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
                     sa_exc.InvalidRequestError,
                     r"Can't apply uniqueness to row tuple "
                     r"containing value of type MyType\(\); "
-                    rf"""{'the values returned appear to be'
-                        if uncertain else 'this datatype produces'} """
+                    rf"""{
+                        'the values returned appear to be'
+                        if uncertain else 'this datatype produces'
+                    } """
                     r"non-hashable values",
                 ):
                     result = s.execute(q).unique().all()

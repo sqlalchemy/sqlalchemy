@@ -1551,8 +1551,8 @@ class MSUUid(sqltypes.Uuid):
 
                 def process(value):
                     return f"""'{
-                            value.replace("-", "").replace("'", "''")
-                        }'"""
+                        value.replace("-", "").replace("'", "''")
+                    }'"""
 
                 return process
 
