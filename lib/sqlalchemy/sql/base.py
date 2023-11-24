@@ -220,7 +220,7 @@ class SingletonConstant(Immutable):
         raise NotImplementedError()
 
     @classmethod
-    def _create_singleton(cls):
+    def _create_singleton(cls) -> None:
         obj = object.__new__(cls)
         obj.__init__()  # type: ignore
 

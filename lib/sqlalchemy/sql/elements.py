@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: allow-untyped-defs, allow-untyped-calls
 
 """Core SQL expression elements, including :class:`_expression.ClauseElement`,
 :class:`_expression.ColumnElement`, and derived classes.
@@ -80,11 +79,16 @@ from ..util.typing import Literal
 from ..util.typing import Self
 
 if typing.TYPE_CHECKING:
+    from re import Match
+    from typing import NoReturn
+
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
     from ._typing import _InfoType
     from ._typing import _PropagateAttrsType
     from ._typing import _TypeEngineArgument
+    from .annotation import SupportsAnnotations
+    from .base import _EntityNamespace
     from .cache_key import _CacheKeyTraversalType
     from .cache_key import CacheKey
     from .compiler import Compiled
@@ -99,10 +103,14 @@ if typing.TYPE_CHECKING:
     from .selectable import FromClause
     from .selectable import NamedFromClause
     from .selectable import TextualSelect
+    from .sqltypes import Boolean
+    from .sqltypes import NullType
+    from .sqltypes import String
     from .sqltypes import TupleType
     from .type_api import TypeEngine
     from .visitors import _CloneCallableType
     from .visitors import _TraverseInternalsType
+    from .visitors import anon_map
     from ..engine import Connection
     from ..engine import Dialect
     from ..engine import Engine
@@ -433,7 +441,11 @@ class ClauseElement(
         c._is_clone_of = cc if cc is not None else self
         return c
 
-    def _negate_in_binary(self, negated_op, original_op):
+    def _negate_in_binary(
+        self,
+        negated_op: OperatorType,
+        original_op: OperatorType,
+    ) -> Self:
         """a hook to allow the right side of a binary expression to respond
         to a negation of the binary expression.
 
@@ -442,7 +454,7 @@ class ClauseElement(
         """
         return self
 
-    def _with_binary_element_type(self, type_):
+    def _with_binary_element_type(self, type_: Any) -> Any:
         """in the context of binary expression, convert the type of this
         object to the one given.
 
@@ -452,7 +464,7 @@ class ClauseElement(
         return self
 
     @property
-    def _constructor(self):
+    def _constructor(self) -> Any:
         """return the 'constructor' for this ClauseElement.
 
         This is for the purposes for creating a new object of
@@ -464,7 +476,7 @@ class ClauseElement(
         return self.__class__
 
     @HasMemoized.memoized_attribute
-    def _cloned_set(self):
+    def _cloned_set(self) -> Set[ClauseElement]:
         """Return the set consisting all cloned ancestors of this
         ClauseElement.
 
@@ -492,13 +504,13 @@ class ClauseElement(
         return self
 
     @property
-    def entity_namespace(self):
+    def entity_namespace(self) -> Union[_EntityNamespace, NoReturn]:
         raise AttributeError(
             "This SQL expression has no entity namespace "
             "with which to filter from."
         )
 
-    def __getstate__(self):
+    def __getstate__(self) -> Dict[str, Any]:
         d = self.__dict__.copy()
         d.pop("_is_clone_of", None)
         d.pop("_generate_cache_key", None)
@@ -734,7 +746,7 @@ class ClauseElement(
 
         return compiled_sql, extracted_params, cache_hit
 
-    def __invert__(self):
+    def __invert__(self) -> Union[operators.Operators, ClauseElement]:
         # undocumented element currently used by the ORM for
         # relationship.contains()
         if hasattr(self, "negation_clause"):
@@ -747,10 +759,10 @@ class ClauseElement(
         assert isinstance(grouped, ColumnElement)
         return UnaryExpression(grouped, operator=operators.inv)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         raise TypeError("Boolean value of this clause is not defined")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         friendly = self.description
         if friendly is None:
             return object.__repr__(self)
@@ -1506,7 +1518,7 @@ class ColumnElement(
         """
         return getattr(self, "name", None)
 
-    _render_label_in_columns_clause = True
+    _render_label_in_columns_clause: bool = True
     """A flag used by select._columns_plus_names that helps to determine
     we are actually going to render in terms of "SELECT <col> AS <label>".
     This flag can be returned as False for some Column objects that want
@@ -1692,7 +1704,9 @@ class ColumnElement(
 
         return bool(self.proxy_set.intersection(othercolumn.proxy_set))
 
-    def _compare_name_for_result(self, other: ColumnElement[Any]) -> bool:
+    def _compare_name_for_result(
+        self, other: ColumnElement[Any]
+    ) -> Union[bool, FrozenSet[ColumnElement[Any]]]:
         """Return True if the given column element compares to this one
         when targeting within a result row."""
 
@@ -2000,7 +2014,7 @@ class WrapsColumnExpression(ColumnElement[_T]):
             return self._dedupe_anon_tq_label_idx(idx)
 
     @property
-    def _proxy_key(self):
+    def _proxy_key(self) -> Optional[str]:
         wce = self.wrapped_column_expression
 
         if not wce._is_text_clause:
@@ -2150,9 +2164,15 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
         else:
             self.type = type_
 
-    def _with_value(self, value, maintain_key=False, required=NO_ARG):
+    def _with_value(
+        self,
+        value: Optional[_T],
+        maintain_key: bool = False,
+        required: Union[bool, _NoArg] = NO_ARG,
+    ) -> BindParameter[_T]:
         """Return a copy of this :class:`.BindParameter` with the given value
         set.
+
         """
         cloned = self._clone(maintain_key=maintain_key)
         cloned.value = value
@@ -2203,7 +2223,9 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
         c.literal_execute = True
         return c
 
-    def _negate_in_binary(self, negated_op, original_op):
+    def _negate_in_binary(
+        self, negated_op: OperatorType, original_op: OperatorType
+    ) -> BindParameter[_T]:
         if self.expand_op is original_op:
             bind = self._clone()
             bind.expand_op = negated_op
@@ -2211,7 +2233,7 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
         else:
             return self
 
-    def _with_binary_element_type(self, type_):
+    def _with_binary_element_type(self, type_: Any) -> ClauseElement:
         c = ClauseElement._clone(self)
         c.type = type_
         return c
@@ -2233,7 +2255,11 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
             )
         return c
 
-    def _gen_cache_key(self, anon_map, bindparams):
+    def _gen_cache_key(
+        self,
+        anon_map: anon_map,
+        bindparams: List[BindParameter[_T]],
+    ) -> Optional[typing_Tuple[Any, ...]]:
         _gen_cache_ok = self.__class__.__dict__.get("inherit_cache", False)
 
         if not _gen_cache_ok:
@@ -2256,14 +2282,14 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
             self.literal_execute,
         )
 
-    def _convert_to_unique(self):
+    def _convert_to_unique(self) -> None:
         if not self.unique:
             self.unique = True
             self.key = _anonymous_label.safe_construct(
                 id(self), self._orig_key or "param", sanitize_key=True
             )
 
-    def __getstate__(self):
+    def __getstate__(self) -> Dict[str, Any]:
         """execute a deferred value for serialization purposes."""
 
         d = self.__dict__.copy()
@@ -2274,14 +2300,14 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
         d["value"] = v
         return d
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: Dict[str, Any]) -> None:
         if state.get("unique", False):
             state["key"] = _anonymous_label.safe_construct(
                 id(self), state.get("_orig_key", "param"), sanitize_key=True
             )
         self.__dict__.update(state)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s(%r, %r, type_=%r)" % (
             self.__class__.__name__,
             self.key,
@@ -2303,7 +2329,7 @@ class TypeClause(DQLDMLClauseElement):
         ("type", InternalTraversal.dp_type)
     ]
 
-    def __init__(self, type_):
+    def __init__(self, type_: Any) -> None:
         self.type = type_
 
 
@@ -2364,7 +2390,9 @@ class TextClause(
     def _hide_froms(self) -> Iterable[FromClause]:
         return ()
 
-    def __and__(self, other):
+    def __and__(
+        self, other: _ColumnExpressionArgument[bool]
+    ) -> ColumnElement[bool]:
         # support use in select.where(), query.filter()
         return and_(self, other)
 
@@ -2380,13 +2408,13 @@ class TextClause(
     _allow_label_resolve = False
 
     @property
-    def _is_star(self):
+    def _is_star(self) -> bool:
         return self.text == "*"
 
-    def __init__(self, text: str):
+    def __init__(self, text: str) -> None:
         self._bindparams: Dict[str, BindParameter[Any]] = {}
 
-        def repl(m):
+        def repl(m: Match[Any]) -> str:
             self._bindparams[m.group(1)] = BindParameter(m.group(1))
             return ":%s" % m.group(1)
 
@@ -2675,7 +2703,9 @@ class TextClause(
         # be using this method.
         return self.type.comparator_factory(self)  # type: ignore
 
-    def self_group(self, against=None):
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> Union[Grouping[TextClause], TextClause]:
         if against is operators.in_op:
             return Grouping(self)
         else:
@@ -2696,7 +2726,7 @@ class Null(SingletonConstant, roles.ConstExprRole[None], ColumnElement[None]):
     _singleton: Null
 
     @util.memoized_property
-    def type(self):
+    def type(self) -> NullType:
         return type_api.NULLTYPE
 
     @classmethod
@@ -2724,7 +2754,7 @@ class False_(
     _singleton: False_
 
     @util.memoized_property
-    def type(self):
+    def type(self) -> Boolean:
         return type_api.BOOLEANTYPE
 
     def _negate(self) -> True_:
@@ -2752,7 +2782,7 @@ class True_(SingletonConstant, roles.ConstExprRole[bool], ColumnElement[bool]):
     _singleton: True_
 
     @util.memoized_property
-    def type(self):
+    def type(self) -> Boolean:
         return type_api.BOOLEANTYPE
 
     def _negate(self) -> False_:
@@ -2808,7 +2838,7 @@ class ClauseList(
         group: bool = True,
         group_contents: bool = True,
         _literal_as_text_role: Type[roles.SQLRole] = roles.WhereHavingRole,
-    ):
+    ) -> None:
         self.operator = operator
         self.group = group
         self.group_contents = group_contents
@@ -2858,7 +2888,7 @@ class ClauseList(
             [elem._select_iterable for elem in self.clauses]
         )
 
-    def append(self, clause):
+    def append(self, clause: Any) -> None:
         if self.group_contents:
             self.clauses.append(
                 coercions.expect(self._text_converter_role, clause).self_group(
@@ -2874,7 +2904,9 @@ class ClauseList(
     def _from_objects(self) -> List[FromClause]:
         return list(itertools.chain(*[c._from_objects for c in self.clauses]))
 
-    def self_group(self, against=None):
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> ClauseElement:
         if self.group and operators.is_precedent(self.operator, against):
             return Grouping(self)
         else:
@@ -2894,10 +2926,12 @@ class OperatorExpression(ColumnElement[_T]):
     group: bool = True
 
     @property
-    def is_comparison(self):
+    def is_comparison(self) -> bool:
         return operators.is_comparison(self.operator)
 
-    def self_group(self, against=None):
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> ColumnElement[Any]:
         if (
             self.group
             and operators.is_precedent(self.operator, against)
@@ -3059,7 +3093,7 @@ class BooleanClauseList(ExpressionClauseList[bool]):
     __visit_name__ = "expression_clauselist"
     inherit_cache = True
 
-    def __init__(self, *arg, **kw):
+    def __init__(self, *arg: Any, **kw: Any):
         raise NotImplementedError(
             "BooleanClauseList has a private constructor"
         )
@@ -3252,7 +3286,9 @@ class BooleanClauseList(ExpressionClauseList[bool]):
     def _select_iterable(self) -> _SelectIterable:
         return (self,)
 
-    def self_group(self, against=None):
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> ColumnElement[Any]:
         if not self.clauses:
             return self
         else:
@@ -3309,7 +3345,13 @@ class Tuple(ClauseList, ColumnElement[typing_Tuple[Any, ...]]):
     def _select_iterable(self) -> _SelectIterable:
         return (self,)
 
-    def _bind_param(self, operator, obj, type_=None, expanding=False):
+    def _bind_param(
+        self,
+        operator: OperatorType,
+        obj: List[typing_Tuple[int, str]],
+        type_: Optional[_TypeEngineArgument[_T]] = None,
+        expanding: bool = False,
+    ) -> BindParameter[_T]:
         if expanding:
             return BindParameter(
                 None,
@@ -3335,7 +3377,7 @@ class Tuple(ClauseList, ColumnElement[typing_Tuple[Any, ...]]):
                 ]
             )
 
-    def self_group(self, against=None):
+    def self_group(self, against: Optional[OperatorType] = None) -> Tuple:
         # Tuple is parenthesized by definition.
         return self
 
@@ -3490,7 +3532,11 @@ class Cast(WrapsColumnExpression[_T]):
         return self.clause._from_objects
 
     @property
-    def wrapped_column_expression(self):
+    def wrapped_column_expression(
+        self,
+    ) -> Union[
+        BindParameter[Any], ColumnClause[Any], ColumnElement[Any], Column[Any]
+    ]:
         return self.clause
 
 
@@ -3552,7 +3598,7 @@ class TypeCoerce(WrapsColumnExpression[_T]):
         return self.clause._from_objects
 
     @HasMemoized.memoized_attribute
-    def typed_expression(self):
+    def typed_expression(self) -> Any:
         if isinstance(self.clause, BindParameter):
             bp = self.clause._clone()
             bp.type = self.type
@@ -3561,10 +3607,12 @@ class TypeCoerce(WrapsColumnExpression[_T]):
             return self.clause
 
     @property
-    def wrapped_column_expression(self):
+    def wrapped_column_expression(self) -> ColumnElement[Any]:
         return self.clause
 
-    def self_group(self, against=None):
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> TypeCoerce[_T]:
         grouped = self.clause.self_group(against=against)
         if grouped is not self.clause:
             return TypeCoerce(grouped, self.type)
@@ -3668,7 +3716,7 @@ class UnaryExpression(ColumnElement[_T]):
         element: ColumnElement[Any],
         operator: Optional[OperatorType] = None,
         modifier: Optional[OperatorType] = None,
-        type_: Optional[_TypeEngineArgument[_T]] = None,
+        type_: Optional[Union[_TypeEngineArgument[_T], Boolean]] = None,
         wraps_column_expression: bool = False,
     ):
         self.operator = operator
@@ -3768,7 +3816,7 @@ class UnaryExpression(ColumnElement[_T]):
     def _from_objects(self) -> List[FromClause]:
         return self.element._from_objects
 
-    def _negate(self):
+    def _negate(self) -> ClauseElement:
         if self.type._type_affinity is type_api.BOOLEANTYPE._type_affinity:
             return UnaryExpression(
                 self.self_group(against=operators.inv),
@@ -3779,7 +3827,9 @@ class UnaryExpression(ColumnElement[_T]):
         else:
             return ClauseElement._negate(self)
 
-    def self_group(self, against=None):
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> ColumnElement[Any]:
         if self.operator and operators.is_precedent(self.operator, against):
             return Grouping(self)
         else:
@@ -3833,7 +3883,9 @@ class CollectionAggregate(UnaryExpression[_T]):
     # operate and reverse_operate are hardwired to
     # dispatch onto the type comparator directly, so that we can
     # ensure "reversed" behavior.
-    def operate(self, op, *other, **kwargs):
+    def operate(
+        self, op: OperatorType, *other: Any, **kwargs: Any
+    ) -> ColumnElement[_T]:
         if not operators.is_comparison(op):
             raise exc.ArgumentError(
                 "Only comparison operators may be used with ANY/ALL"
@@ -3841,7 +3893,9 @@ class CollectionAggregate(UnaryExpression[_T]):
         kwargs["reverse"] = kwargs["_any_all_expr"] = True
         return self.comparator.operate(operators.mirror(op), *other, **kwargs)
 
-    def reverse_operate(self, op, other, **kwargs):
+    def reverse_operate(
+        self, op: OperatorType, other: Any, **kwargs: Any
+    ) -> NoReturn:
         # comparison operators should never call reverse_operate
         assert not operators.is_comparison(op)
         raise exc.ArgumentError(
@@ -3852,7 +3906,9 @@ class CollectionAggregate(UnaryExpression[_T]):
 class AsBoolean(WrapsColumnExpression[bool], UnaryExpression[bool]):
     inherit_cache = True
 
-    def __init__(self, element, operator, negate):
+    def __init__(
+        self, element: Any, operator: OperatorType, negate: OperatorType
+    ) -> None:
         self.element = element
         self.type = type_api.BOOLEANTYPE
         self.operator = operator
@@ -3862,13 +3918,13 @@ class AsBoolean(WrapsColumnExpression[bool], UnaryExpression[bool]):
         self._is_implicitly_boolean = element._is_implicitly_boolean
 
     @property
-    def wrapped_column_expression(self):
+    def wrapped_column_expression(self) -> ColumnClause[Any]:
         return self.element
 
-    def self_group(self, against=None):
+    def self_group(self, against: Optional[OperatorType] = None) -> AsBoolean:
         return self
 
-    def _negate(self):
+    def _negate(self) -> Union[AsBoolean, False_, True_]:
         if isinstance(self.element, (True_, False_)):
             return self.element._negate()
         else:
@@ -3966,7 +4022,7 @@ class BinaryExpression(OperatorExpression[_T]):
     ) -> typing_Tuple[ColumnElement[Any], ...]:
         return (self.left, self.right)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         """Implement Python-side "bool" for BinaryExpression as a
         simple "identity" check for the left and right attributes,
         if the operator is "eq" or "ne".  Otherwise the expression
@@ -4015,7 +4071,7 @@ class BinaryExpression(OperatorExpression[_T]):
     def _from_objects(self) -> List[FromClause]:
         return self.left._from_objects + self.right._from_objects
 
-    def _negate(self):
+    def _negate(self) -> Any:
         if self.negate is not None:
             return BinaryExpression(
                 self.left,
@@ -4045,7 +4101,13 @@ class Slice(ColumnElement[Any]):
         ("step", InternalTraversal.dp_clauseelement),
     ]
 
-    def __init__(self, start, stop, step, _name=None):
+    def __init__(
+        self,
+        start: int,
+        stop: int,
+        step: Optional[int],
+        _name: Union[None, quoted_name, str] = None,
+    ) -> None:
         self.start = coercions.expect(
             roles.ExpressionElementRole,
             start,
@@ -4066,7 +4128,7 @@ class Slice(ColumnElement[Any]):
         )
         self.type = type_api.NULLTYPE
 
-    def self_group(self, against=None):
+    def self_group(self, against: Optional[OperatorType] = None) -> Slice:
         assert against is operator.getitem
         return self
 
@@ -4085,10 +4147,12 @@ class GroupedElement(DQLDMLClauseElement):
 
     element: ClauseElement
 
-    def self_group(self, against=None):
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> ClauseElement:
         return self
 
-    def _ungroup(self):
+    def _ungroup(self) -> ClauseElement:
         return self.element._ungroup()
 
 
@@ -4115,11 +4179,13 @@ class Grouping(GroupedElement, ColumnElement[_T]):
         self.type = getattr(element, "type", type_api.NULLTYPE)  # type: ignore
         self._propagate_attrs = element._propagate_attrs
 
-    def _with_binary_element_type(self, type_):
+    def _with_binary_element_type(
+        self, type_: Union[String, TupleType]
+    ) -> Grouping[_T]:
         return self.__class__(self.element._with_binary_element_type(type_))
 
     @util.memoized_property
-    def _is_implicitly_boolean(self):
+    def _is_implicitly_boolean(self) -> bool:
         return self.element._is_implicitly_boolean
 
     @util.non_memoized_property
@@ -4139,13 +4205,13 @@ class Grouping(GroupedElement, ColumnElement[_T]):
     def _from_objects(self) -> List[FromClause]:
         return self.element._from_objects
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str) -> Any:
         return getattr(self.element, attr)
 
-    def __getstate__(self):
+    def __getstate__(self) -> dict[str, Any]:
         return {"element": self.element, "type": self.type}
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: dict[str, Any]) -> None:
         self.element = state["element"]
         self.type = state["type"]
 
@@ -4231,7 +4297,18 @@ class Over(ColumnElement[_T]):
         else:
             self.rows = self.range_ = None
 
-    def __reduce__(self):
+    def __reduce__(
+        self,
+    ) -> typing_Tuple[
+        Type[Over[_T]],
+        typing_Tuple[
+            ColumnElement[_T],
+            Optional[ClauseList],
+            Optional[ClauseList],
+            Optional[typing_Tuple[int, int]],
+            Optional[typing_Tuple[int, int]],
+        ],
+    ]:
         return self.__class__, (
             self.element,
             self.partition_by,
@@ -4278,7 +4355,7 @@ class Over(ColumnElement[_T]):
         return lower, upper
 
     @util.memoized_property
-    def type(self):
+    def type(self) -> TypeEngine[_T]:
         return self.element.type
 
     @util.ro_non_memoized_property
@@ -4331,12 +4408,23 @@ class WithinGroup(ColumnElement[_T]):
                 *util.to_list(order_by), _literal_as_text_role=roles.ByOfRole
             )
 
-    def __reduce__(self):
+    def __reduce__(
+        self,
+    ) -> typing_Tuple[
+        Type[WithinGroup[_T]],
+        typing_Tuple[Union[FunctionElement[_T], ColumnElement[Any]], ...],
+    ]:
         return self.__class__, (self.element,) + (
             tuple(self.order_by) if self.order_by is not None else ()
         )
 
-    def over(self, partition_by=None, order_by=None, range_=None, rows=None):
+    def over(
+        self,
+        partition_by: Optional[ColumnClause[_T]] = None,
+        order_by: Optional[ColumnClause[_T]] = None,
+        range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+        rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+    ) -> Over[_T]:
         """Produce an OVER clause against this :class:`.WithinGroup`
         construct.
 
@@ -4353,7 +4441,7 @@ class WithinGroup(ColumnElement[_T]):
         )
 
     @util.memoized_property
-    def type(self):
+    def type(self) -> TypeEngine[_T]:
         wgt = self.element.within_group_type(self)
         if wgt is not None:
             return wgt
@@ -4408,7 +4496,9 @@ class FunctionFilter(ColumnElement[_T]):
         self.func = func
         self.filter(*criterion)
 
-    def filter(self, *criterion):
+    def filter(
+        self, *criterion: _ColumnExpressionArgument[bool]
+    ) -> FunctionFilter[_T]:
         """Produce an additional FILTER against the function.
 
         This method adds additional criteria to the initial criteria
@@ -4472,14 +4562,16 @@ class FunctionFilter(ColumnElement[_T]):
             rows=rows,
         )
 
-    def self_group(self, against=None):
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> ColumnElement[_T]:
         if operators.is_precedent(operators.filter_op, against):
             return Grouping(self)
         else:
             return self
 
     @util.memoized_property
-    def type(self):
+    def type(self) -> TypeEngine[_T]:
         return self.func.type
 
     @util.ro_non_memoized_property
@@ -4501,7 +4593,9 @@ class NamedColumn(KeyedColumnElement[_T]):
     name: str
     key: str
 
-    def _compare_name_for_result(self, other):
+    def _compare_name_for_result(
+        self, other: ColumnElement[Any]
+    ) -> Union[bool, FrozenSet[ColumnElement[Any]]]:
         return (hasattr(other, "name") and self.name == other.name) or (
             hasattr(other, "_label") and self._label == other._label
         )
@@ -4511,7 +4605,7 @@ class NamedColumn(KeyedColumnElement[_T]):
         return self.name
 
     @HasMemoized.memoized_attribute
-    def _tq_key_label(self):
+    def _tq_key_label(self) -> Optional[str]:
         """table qualified label based on column key.
 
         for table-bound columns this is <tablename>_<column key/proxy key>;
@@ -4536,11 +4630,11 @@ class NamedColumn(KeyedColumnElement[_T]):
         return self._gen_tq_label(self.name)
 
     @HasMemoized.memoized_attribute
-    def _render_label_in_columns_clause(self):
+    def _render_label_in_columns_clause(self) -> bool:
         return True
 
     @HasMemoized.memoized_attribute
-    def _non_anon_label(self):
+    def _non_anon_label(self) -> Optional[str]:
         return self.name
 
     def _gen_tq_label(
@@ -4661,14 +4755,24 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
 
         self._proxies = [element]
 
-    def __reduce__(self):
+    def __reduce__(
+        self,
+    ) -> typing_Tuple[
+        Type[Any], typing_Tuple[str, ColumnElement[_T], TypeEngine[_T]]
+    ]:
         return self.__class__, (self.name, self._element, self.type)
 
     @HasMemoized.memoized_attribute
-    def _render_label_in_columns_clause(self):
+    def _render_label_in_columns_clause(self) -> bool:
         return True
 
-    def _bind_param(self, operator, obj, type_=None, expanding=False):
+    def _bind_param(
+        self,
+        operator: OperatorType,
+        obj: Union[List[str], int, str],
+        type_: Optional[_TypeEngineArgument[_T]] = None,
+        expanding: bool = False,
+    ) -> BindParameter[_T]:
         return BindParameter(
             None,
             obj,
@@ -4680,28 +4784,30 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
         )
 
     @util.memoized_property
-    def _is_implicitly_boolean(self):
+    def _is_implicitly_boolean(self) -> bool:
         return self.element._is_implicitly_boolean
 
     @HasMemoized.memoized_attribute
-    def _allow_label_resolve(self):
+    def _allow_label_resolve(self) -> bool:
         return self.element._allow_label_resolve
 
     @property
-    def _order_by_label_element(self):
+    def _order_by_label_element(self) -> Label[_T]:
         return self
 
     @HasMemoized.memoized_attribute
     def element(self) -> ColumnElement[_T]:
         return self._element.self_group(against=operators.as_)
 
-    def self_group(self, against=None):
+    def self_group(self, against: Optional[OperatorType] = None) -> Label[_T]:
         return self._apply_to_inner(self._element.self_group, against=against)
 
-    def _negate(self):
+    def _negate(self) -> ColumnElement[Any]:
         return self._apply_to_inner(self._element._negate)
 
-    def _apply_to_inner(self, fn, *arg, **kw):
+    def _apply_to_inner(
+        self, fn: Callable[..., Any], *arg: Any, **kw: Any
+    ) -> Label[_T]:
         sub_element = fn(*arg, **kw)
         if sub_element is not self._element:
             return Label(self.name, sub_element, type_=self.type)
@@ -4709,11 +4815,11 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
             return self
 
     @property
-    def primary_key(self):
+    def primary_key(self) -> bool:
         return self.element.primary_key
 
     @property
-    def foreign_keys(self):
+    def foreign_keys(self) -> AbstractSet[ForeignKey]:
         return self.element.foreign_keys
 
     def _copy_internals(
@@ -4840,7 +4946,7 @@ class ColumnClause(
     _is_multiparam_column = False
 
     @property
-    def _is_star(self):
+    def _is_star(self) -> bool:
         return self.is_literal and self.name == "*"
 
     def __init__(
@@ -4859,20 +4965,22 @@ class ColumnClause(
 
         self.is_literal = is_literal
 
-    def get_children(self, *, column_tables=False, **kw):
+    def get_children(
+        self, *, column_tables: bool = False, **kw: Any
+    ) -> List[Any]:
         # override base get_children() to not return the Table
         # or selectable that is parent to this column.  Traversals
         # expect the columns of tables and subqueries to be leaf nodes.
         return []
 
     @property
-    def entity_namespace(self):
+    def entity_namespace(self) -> Union[_EntityNamespace, NoReturn]:
         if self.table is not None:
             return self.table.entity_namespace
         else:
             return super().entity_namespace
 
-    def _clone(self, detect_subquery_cols=False, **kw):
+    def _clone(self, detect_subquery_cols: bool = False, **kw: Any) -> Any:
         if (
             detect_subquery_cols
             and self.table is not None
@@ -4894,14 +5002,16 @@ class ColumnClause(
             return []
 
     @HasMemoized.memoized_attribute
-    def _render_label_in_columns_clause(self):
+    def _render_label_in_columns_clause(self) -> bool:
         return self.table is not None
 
     @property
-    def _ddl_label(self):
+    def _ddl_label(self) -> Optional[str]:
         return self._gen_tq_label(self.name, dedupe_on_key=False)
 
-    def _compare_name_for_result(self, other):
+    def _compare_name_for_result(
+        self, other: ColumnElement[Any]
+    ) -> Union[bool, FrozenSet[ColumnElement[Any]]]:
         if (
             self.is_literal
             or self.table is None
@@ -5071,14 +5181,14 @@ class CollationClause(ColumnElement[str]):
             type_=expr.type,
         )
 
-    def __init__(self, collation):
+    def __init__(self, collation: str) -> None:
         self.collation = collation
 
 
 class _IdentifiedClause(Executable, ClauseElement):
     __visit_name__ = "identified"
 
-    def __init__(self, ident):
+    def __init__(self, ident: Any) -> None:
         self.ident = ident
 
 
@@ -5180,16 +5290,18 @@ class quoted_name(util.MemoizedSlots, str):
         self.quote = quote
         return self
 
-    def __reduce__(self):
+    def __reduce__(
+        self,
+    ) -> typing_Tuple[Type[quoted_name], typing_Tuple[str, Optional[bool]]]:
         return quoted_name, (str(self), self.quote)
 
-    def _memoized_method_lower(self):
+    def _memoized_method_lower(self) -> str:
         if self.quote:
             return self
         else:
             return str(self).lower()
 
-    def _memoized_method_upper(self):
+    def _memoized_method_upper(self) -> Union[quoted_name, str]:
         if self.quote:
             return self
         else:
@@ -5204,7 +5316,7 @@ def _find_columns(clause: ClauseElement) -> Set[ColumnClause[Any]]:
     return cols
 
 
-def _type_from_args(args):
+def _type_from_args(args: Iterable[Any]) -> Union[Any, NullType]:
     for a in args:
         if not a.type._isnull:
             return a.type
@@ -5212,7 +5324,11 @@ def _type_from_args(args):
         return type_api.NULLTYPE
 
 
-def _corresponding_column_or_error(fromclause, column, require_embedded=False):
+def _corresponding_column_or_error(
+    fromclause: FromClause,
+    column: KeyedColumnElement[_T],
+    require_embedded: bool = False,
+) -> Optional[KeyedColumnElement[_T]]:
     c = fromclause.corresponding_column(
         column, require_embedded=require_embedded
     )
@@ -5242,7 +5358,7 @@ class _memoized_property_but_not_nulltype(
 class AnnotatedColumnElement(Annotated):
     _Annotated__element: ColumnElement[Any]
 
-    def __init__(self, element, values):
+    def __init__(self, element: Any, values: Mapping[str, Any]) -> None:
         Annotated.__init__(self, element, values)
         for attr in (
             "comparator",
@@ -5257,13 +5373,15 @@ class AnnotatedColumnElement(Annotated):
             if self.__dict__.get(attr, False) is None:
                 self.__dict__.pop(attr)
 
-    def _with_annotations(self, values):
+    def _with_annotations(
+        self, values: Mapping[str, Any]
+    ) -> SupportsAnnotations:
         clone = super()._with_annotations(values)
         clone.__dict__.pop("comparator", None)
         return clone
 
     @util.memoized_property
-    def name(self):
+    def name(self) -> Any:
         """pull 'name' from parent, if not present"""
         return self._Annotated__element.name
 
@@ -5282,12 +5400,12 @@ class AnnotatedColumnElement(Annotated):
         return self._Annotated__element.type
 
     @util.memoized_property
-    def table(self):
+    def table(self) -> Any:
         """pull 'table' from parent, if not present"""
         return self._Annotated__element.table
 
     @util.memoized_property
-    def key(self):
+    def key(self) -> Union[str, None]:
         """pull 'key' from parent, if not present"""
         return self._Annotated__element.key
 
@@ -5401,7 +5519,7 @@ class _anonymous_label(_truncated_label):
 
         return _anonymous_label(label)
 
-    def __add__(self, other):
+    def __add__(self, other: Any) -> _anonymous_label:
         if "%" in other and not isinstance(other, _anonymous_label):
             other = str(other).replace("%", "%%")
         else:
@@ -5414,7 +5532,7 @@ class _anonymous_label(_truncated_label):
             )
         )
 
-    def __radd__(self, other):
+    def __radd__(self, other: str) -> _anonymous_label:
         if "%" in other and not isinstance(other, _anonymous_label):
             other = str(other).replace("%", "%%")
         else:
@@ -5427,7 +5545,7 @@ class _anonymous_label(_truncated_label):
             )
         )
 
-    def apply_map(self, map_):
+    def apply_map(self, map_: Mapping[str, Any]) -> str:
         if self.quote is not None:
             # preserve quoting only if necessary
             return quoted_name(self % map_, self.quote)
