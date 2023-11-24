@@ -1227,7 +1227,7 @@ class TypeReflectionTest(fixtures.TestBase):
             for attr in attributes:
                 r_attr = getattr(reflected_type, attr)
                 e_attr = getattr(expected_spec, attr)
-                col = f"c{i+1}"
+                col = f"c{i + 1}"
                 eq_(
                     r_attr,
                     e_attr,

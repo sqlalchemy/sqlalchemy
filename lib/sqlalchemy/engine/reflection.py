@@ -1843,7 +1843,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
                     if not expressions:
                         util.warn(
                             f"Skipping {flavor} {name!r} because key "
-                            f"{index+1} reflected as None but no "
+                            f"{index + 1} reflected as None but no "
                             "'expressions' were returned"
                         )
                         break

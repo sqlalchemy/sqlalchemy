@@ -149,9 +149,11 @@ def instances(cursor: CursorResult[Any], context: QueryContext) -> Result[Any]:
 
                 raise sa_exc.InvalidRequestError(
                     "Can't apply uniqueness to row tuple containing value of "
-                    f"""type {datatype!r}; {'the values returned appear to be'
-                    if uncertain else 'this datatype produces'} """
-                    "non-hashable values"
+                    f"""type {datatype!r}; {
+                        'the values returned appear to be'
+                        if uncertain
+                        else 'this datatype produces'
+                    } non-hashable values"""
                 )
 
             return go
