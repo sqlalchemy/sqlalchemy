@@ -173,7 +173,7 @@ else:
 
 def importlib_metadata_get(group):
     ep = importlib_metadata.entry_points()
-    if hasattr(ep, "select"):
+    if typing.TYPE_CHECKING or hasattr(ep, "select"):
         return ep.select(group=group)
     else:
         return ep.get(group, ())
