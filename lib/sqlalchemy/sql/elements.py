@@ -80,6 +80,7 @@ from ..util.typing import Literal
 from ..util.typing import Self
 
 if typing.TYPE_CHECKING:
+    from ._typing import _ByArgument
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
     from ._typing import _InfoType
@@ -4189,18 +4190,8 @@ class Over(ColumnElement[_T]):
     def __init__(
         self,
         element: ColumnElement[_T],
-        partition_by: Optional[
-            Union[
-                Iterable[_ColumnExpressionArgument[Any]],
-                _ColumnExpressionArgument[Any],
-            ]
-        ] = None,
-        order_by: Optional[
-            Union[
-                Iterable[_ColumnExpressionArgument[Any]],
-                _ColumnExpressionArgument[Any],
-            ]
-        ] = None,
+        partition_by: Optional[_ByArgument] = None,
+        order_by: Optional[_ByArgument] = None,
         range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
         rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
     ):
@@ -5202,12 +5193,12 @@ def _find_columns(clause: ClauseElement) -> Set[ColumnClause[Any]]:
     return cols
 
 
-def _type_from_args(args):
+def _type_from_args(args: Sequence[ColumnElement[_T]]) -> TypeEngine[_T]:
     for a in args:
         if not a.type._isnull:
             return a.type
     else:
-        return type_api.NULLTYPE
+        return type_api.NULLTYPE  # type: ignore
 
 
 def _corresponding_column_or_error(fromclause, column, require_embedded=False):

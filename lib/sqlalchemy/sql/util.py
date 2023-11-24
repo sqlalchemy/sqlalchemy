@@ -367,7 +367,7 @@ def find_tables(
     return tables
 
 
-def unwrap_order_by(clause):
+def unwrap_order_by(clause: Any) -> Any:
     """Break up an 'order by' expression into individual column-expressions,
     without DESC/ASC/NULLS FIRST/NULLS LAST"""
 
