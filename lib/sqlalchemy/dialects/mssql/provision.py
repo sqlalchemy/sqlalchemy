@@ -29,6 +29,9 @@ def generate_driver_url(url, driver, query_str):
     if driver not in ("pyodbc", "aioodbc"):
         new_url = new_url.set(query="")
 
+    if driver == "aioodbc":
+        new_url = new_url.update_query_dict({"MARS_Connection": "Yes"})
+
     if query_str:
         new_url = new_url.update_query_string(query_str)
 
@@ -37,6 +40,7 @@ def generate_driver_url(url, driver, query_str):
     except exc.NoSuchModuleError:
         return None
     else:
+        print(f"NEW URL!!!!! {new_url}")
         return new_url
 
 
