@@ -40,7 +40,6 @@ def generate_driver_url(url, driver, query_str):
     except exc.NoSuchModuleError:
         return None
     else:
-        print(f"NEW URL!!!!! {new_url}")
         return new_url
 
 
