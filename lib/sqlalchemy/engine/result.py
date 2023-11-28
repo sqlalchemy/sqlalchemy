@@ -270,6 +270,7 @@ class SimpleResultMetaData(ResultMetaData):
         self._translated_indexes = _translated_indexes
         self._unique_filters = _unique_filters
         if extra:
+            assert len(self._keys) == len(extra)
             recs_names = [
                 (
                     (name,) + (extras if extras else ()),

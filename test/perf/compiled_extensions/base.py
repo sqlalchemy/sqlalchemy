@@ -120,4 +120,4 @@ class Case:
                 print("\t", f)
 
         cls.update_results(results)
-        return results
+        return results, [name for name, _ in objects]
