@@ -73,6 +73,7 @@ from sqlalchemy.dialects.postgresql import TSMULTIRANGE
 from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.dialects.postgresql import TSTZMULTIRANGE
 from sqlalchemy.dialects.postgresql import TSTZRANGE
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.dialects.postgresql.ranges import MultiRange
 from sqlalchemy.exc import CompileError
 from sqlalchemy.exc import DBAPIError
@@ -1075,7 +1076,7 @@ class NamedTypeTest(
                 connection, "fourfivesixtype"
             )
 
-    def test_reflection(self, metadata, connection):
+    def test_enum_type_reflection(self, metadata, connection):
         etype = Enum(
             "four", "five", "six", name="fourfivesixtype", metadata=metadata
         )
@@ -1095,6 +1096,19 @@ class NamedTypeTest(
         eq_(t2.c.value.type.name, "onetwothreetype")
         eq_(t2.c.value2.type.enums, ["four", "five", "six"])
         eq_(t2.c.value2.type.name, "fourfivesixtype")
+
+    def test_domain_type_reflection(self, metadata, connection):
+        positive_int = DOMAIN(
+            "positive_int", Integer(), check="value > 0", not_null=True
+        )
+        Table("table", metadata, Column("value", positive_int))
+
+        metadata.create_all(connection)
+        m2 = MetaData()
+        t2 = Table("table", m2, autoload_with=connection)
+
+        eq_(t2.c.value.type.name, "positive_int")
+        eq_(str(t2.c.value.type.check), "VALUE > 0")
 
     def test_schema_reflection(self, metadata, connection):
         etype = Enum(
@@ -1227,6 +1241,174 @@ class NamedTypeTest(
         assert "my_enum" not in [
             e["name"] for e in inspect(connection).get_enums()
         ]
+
+
+class DomainTest(
+    AssertsCompiledSQL, fixtures.TestBase, AssertsExecutionResults
+):
+    __backend__ = True
+    __only_on__ = "postgresql > 8.3"
+
+    def test_domain_create_table(self, metadata, connection):
+        metadata = self.metadata
+        Email = DOMAIN(
+            name="email",
+            data_type=Text,
+            check=r"VALUE ~ '[^@]+@[^@]+\.[^@]+'",
+        )
+        PosInt = DOMAIN(
+            name="pos_int",
+            data_type=Integer,
+            not_null=True,
+            check=r"VALUE > 0",
+        )
+        t1 = Table(
+            "table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("email", Email),
+            Column("number", PosInt),
+        )
+        t1.create(connection)
+        t1.create(connection, checkfirst=True)  # check the create
+        connection.execute(
+            t1.insert(), {"email": "test@example.com", "number": 42}
+        )
+        connection.execute(t1.insert(), {"email": "a@b.c", "number": 1})
+        connection.execute(
+            t1.insert(), {"email": "example@gmail.co.uk", "number": 99}
+        )
+        eq_(
+            connection.execute(t1.select().order_by(t1.c.id)).fetchall(),
+            [
+                (1, "test@example.com", 42),
+                (2, "a@b.c", 1),
+                (3, "example@gmail.co.uk", 99),
+            ],
+        )
+
+    @testing.combinations(
+        tuple(
+            [
+                DOMAIN(
+                    name="mytype",
+                    data_type=Text,
+                    check=r"VALUE ~ '[^@]+@[^@]+\.[^@]+'",
+                    create_type=True,
+                ),
+            ]
+        ),
+        tuple(
+            [
+                DOMAIN(
+                    name="mytype",
+                    data_type=Text,
+                    check=r"VALUE ~ '[^@]+@[^@]+\.[^@]+'",
+                    create_type=False,
+                ),
+            ]
+        ),
+        argnames="domain",
+    )
+    def test_create_drop_domain_with_table(self, connection, metadata, domain):
+        table = Table("e1", metadata, Column("e1", domain))
+
+        def _domain_names():
+            return {d["name"] for d in inspect(connection).get_domains()}
+
+        assert "mytype" not in _domain_names()
+
+        if domain.create_type:
+            table.create(connection)
+            assert "mytype" in _domain_names()
+        else:
+            with expect_raises(exc.ProgrammingError):
+                table.create(connection)
+            connection.rollback()
+
+            domain.create(connection)
+            assert "mytype" in _domain_names()
+            table.create(connection)
+
+        table.drop(connection)
+        if domain.create_type:
+            assert "mytype" not in _domain_names()
+
+    @testing.combinations(
+        (Integer, "value > 0", 4),
+        (String, "value != ''", "hello world"),
+        (
+            UUID,
+            "value != '{00000000-0000-0000-0000-000000000000}'",
+            uuid.uuid4(),
+        ),
+        (
+            DateTime,
+            "value >= '2020-01-01T00:00:00'",
+            datetime.datetime.fromisoformat("2021-01-01T00:00:00.000"),
+        ),
+        argnames="domain_datatype, domain_check, value",
+    )
+    def test_domain_roundtrip(
+        self, metadata, connection, domain_datatype, domain_check, value
+    ):
+        table = Table(
+            "domain_roundtrip_test",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column(
+                "value",
+                DOMAIN("valuedomain", domain_datatype, check=domain_check),
+            ),
+        )
+        table.create(connection)
+
+        connection.execute(table.insert(), {"value": value})
+
+        results = connection.execute(
+            table.select().order_by(table.c.id)
+        ).fetchall()
+        eq_(results, [(1, value)])
+
+    @testing.combinations(
+        (DOMAIN("pos_int", Integer, check="VALUE > 0", not_null=True), 4, -4),
+        (
+            DOMAIN("email", String, check=r"VALUE ~ '[^@]+@[^@]+\.[^@]+'"),
+            "e@xample.com",
+            "fred",
+        ),
+        argnames="domain,pass_value,fail_value",
+    )
+    def test_check_constraint(
+        self, metadata, connection, domain, pass_value, fail_value
+    ):
+        table = Table("table", metadata, Column("value", domain))
+        table.create(connection)
+
+        connection.execute(table.insert(), {"value": pass_value})
+
+        # psycopg/psycopg2 raise IntegrityError, while pg8000 raises
+        # ProgrammingError
+        with expect_raises(exc.DatabaseError):
+            connection.execute(table.insert(), {"value": fail_value})
+
+    @testing.combinations(
+        (DOMAIN("nullable_domain", Integer, not_null=True), 1),
+        (DOMAIN("non_nullable_domain", Integer, not_null=False), 1),
+        argnames="domain,pass_value",
+    )
+    def test_domain_nullable(self, metadata, connection, domain, pass_value):
+        table = Table("table", metadata, Column("value", domain))
+        table.create(connection)
+        connection.execute(table.insert(), {"value": pass_value})
+
+        if domain.not_null:
+            # psycopg/psycopg2 raise IntegrityError, while pg8000 raises
+            # ProgrammingError
+            with expect_raises(exc.DatabaseError):
+                connection.execute(table.insert(), {"value": None})
+        else:
+            connection.execute(table.insert(), {"value": None})
 
 
 class DomainDDLEventTest(DDLEventWCreateHarness, fixtures.TestBase):
@@ -1557,6 +1739,10 @@ class TimePrecisionTest(fixtures.TestBase):
         t1.create(connection)
         m2 = MetaData()
         t2 = Table("t1", m2, autoload_with=connection)
+
+        eq_(t1.c.c1.type.__class__, postgresql.TIME)
+        eq_(t1.c.c4.type.__class__, postgresql.TIMESTAMP)
+
         eq_(t2.c.c1.type.precision, None)
         eq_(t2.c.c2.type.precision, 5)
         eq_(t2.c.c3.type.precision, 5)
