@@ -48,7 +48,6 @@ from .. import exc
 from .. import inspect
 from .. import orm
 from .. import util
-from ..orm import collections
 from ..orm import InspectionAttrExtensionType
 from ..orm import interfaces
 from ..orm import ORMDescriptor
@@ -1616,8 +1615,8 @@ class _AssociationList(_AssociationSingleItem[_T], MutableSequence[_T]):
         # is more plausibly useful than copying the backing objects.
         if n == 0:
             self.clear()
-        elif n > 1:
-            self.extend(list(self) * (n - 1))
+        elif int(n) > 1:
+            self.extend(list(self) * (int(n) - 1))
         return self
 
     if typing.TYPE_CHECKING:
