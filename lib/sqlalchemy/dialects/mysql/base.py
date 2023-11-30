@@ -1,4 +1,4 @@
-# mysql/base.py
+# dialects/mysql/base.py
 # Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
