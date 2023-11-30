@@ -169,6 +169,11 @@ def _safe_cancel_awaitable(awaitable: Awaitable[Any]) -> None:
         awaitable.close()
 
 
+def in_greenlet() -> bool:
+    current = _concurrency_shim.getcurrent()
+    return isinstance(current, _concurrency_shim._AsyncIoGreenlet)
+
+
 def await_only(awaitable: Awaitable[_T]) -> _T:
     """Awaits an async function in a sync method.
 
