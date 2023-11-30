@@ -1,4 +1,4 @@
-# mysql/mysqlconnector.py
+# dialects/mysql/mysqlconnector.py
 # Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #

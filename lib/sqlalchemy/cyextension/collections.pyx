@@ -1,3 +1,9 @@
+# cyextension/collections.pyx
+# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 cimport cython
 from cpython.long cimport PyLong_FromLongLong
 from cpython.set cimport PySet_Add

@@ -1,4 +1,4 @@
-# sql/types_api.py
+# sql/type_api.py
 # Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
