@@ -99,6 +99,11 @@ def _safe_cancel_awaitable(awaitable: Awaitable[Any]) -> None:
         awaitable.close()
 
 
+def in_greenlet() -> bool:
+    current = getcurrent()
+    return isinstance(current, _AsyncIoGreenlet)
+
+
 def await_only(awaitable: Awaitable[_T]) -> _T:
     """Awaits an async function in a sync method.
 

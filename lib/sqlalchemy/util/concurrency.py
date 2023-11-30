@@ -22,6 +22,7 @@ else:
     have_greenlet = True
     from ._concurrency_py3k import await_only as await_only
     from ._concurrency_py3k import await_fallback as await_fallback
+    from ._concurrency_py3k import in_greenlet as in_greenlet
     from ._concurrency_py3k import greenlet_spawn as greenlet_spawn
     from ._concurrency_py3k import is_exit_exception as is_exit_exception
     from ._concurrency_py3k import AsyncAdaptedLock as AsyncAdaptedLock
@@ -55,6 +56,9 @@ if not typing.TYPE_CHECKING and not have_greenlet:
 
     def await_fallback(thing):  # type: ignore  # noqa: F811
         return thing
+
+    def in_greenlet():  # type: ignore  # noqa: F811
+        _not_implemented()
 
     def greenlet_spawn(fn, *args, **kw):  # type: ignore  # noqa: F811
         _not_implemented()
