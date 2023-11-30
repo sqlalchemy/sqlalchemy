@@ -2035,7 +2035,14 @@ class SessionEvents(event.Events[Session]):
         transaction: SessionTransaction,
         connection: Connection,
     ) -> None:
-        """Execute after a transaction is begun on a connection
+        """Execute after a transaction is begun on a connection.
+
+        .. note:: This event is called within the process of the
+          :class:`_orm.Session` modifying its own internal state.
+          To invoke SQL operations within this hook, use the
+          :class:`_engine.Connection` provided to the event;
+          do not run SQL operations using the :class:`_orm.Session`
+          directly.
 
         :param session: The target :class:`.Session`.
         :param transaction: The :class:`.SessionTransaction`.
