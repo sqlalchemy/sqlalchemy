@@ -194,7 +194,7 @@ class DBAPICursor(Protocol):
     def executemany(
         self,
         operation: Any,
-        parameters: Sequence[_DBAPIMultiExecuteParams],
+        parameters: _DBAPIMultiExecuteParams,
     ) -> Any:
         ...
 

@@ -4,7 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: allow-untyped-defs, allow-untyped-calls
+
 
 """SQL function API, factories, and built-in functions.
 
@@ -17,13 +17,16 @@ import decimal
 from typing import Any
 from typing import cast
 from typing import Dict
+from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import overload
+from typing import Sequence
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
+from typing import Union
 
 from . import annotation
 from . import coercions
@@ -63,20 +66,32 @@ from ..util.typing import Unpack
 
 
 if TYPE_CHECKING:
+    from ._typing import _ByArgument
+    from ._typing import _ColumnExpressionArgument
+    from ._typing import _ColumnExpressionOrLiteralArgument
     from ._typing import _TypeEngineArgument
+    from .base import _EntityNamespace
+    from .elements import ClauseElement
+    from .elements import KeyedColumnElement
+    from .elements import TableValuedColumn
+    from .operators import OperatorType
     from ..engine.base import Connection
     from ..engine.cursor import CursorResult
     from ..engine.interfaces import _CoreMultiExecuteParams
     from ..engine.interfaces import CoreExecuteOptionsParameter
+    from ..util.typing import Self
 
 _T = TypeVar("_T", bound=Any)
+_S = TypeVar("_S", bound=Any)
 
 _registry: util.defaultdict[
     str, Dict[str, Type[Function[Any]]]
 ] = util.defaultdict(dict)
 
 
-def register_function(identifier, fn, package="_default"):
+def register_function(
+    identifier: str, fn: Type[Function[Any]], package: str = "_default"
+) -> None:
     """Associate a callable with a particular func. name.
 
     This is normally called by GenericFunction, but is also
@@ -139,7 +154,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
     clause_expr: Grouping[Any]
 
-    def __init__(self, *clauses: Any):
+    def __init__(self, *clauses: _ColumnExpressionOrLiteralArgument[Any]):
         r"""Construct a :class:`.FunctionElement`.
 
         :param \*clauses: list of column expressions that form the arguments
@@ -155,7 +170,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             :class:`.Function`
 
         """
-        args = [
+        args: Sequence[_ColumnExpressionArgument[Any]] = [
             coercions.expect(
                 roles.ExpressionElementRole,
                 c,
@@ -172,7 +187,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
     _non_anon_label = None
 
     @property
-    def _proxy_key(self):
+    def _proxy_key(self) -> Any:
         return super()._proxy_key or getattr(self, "name", None)
 
     def _execute_on_connection(
@@ -185,7 +200,9 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             self, distilled_params, execution_options
         )
 
-    def scalar_table_valued(self, name, type_=None):
+    def scalar_table_valued(
+        self, name: str, type_: Optional[_TypeEngineArgument[_T]] = None
+    ) -> ScalarFunctionColumn[_T]:
         """Return a column expression that's against this
         :class:`_functions.FunctionElement` as a scalar
         table-valued expression.
@@ -218,7 +235,9 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
         return ScalarFunctionColumn(self, name, type_)
 
-    def table_valued(self, *expr, **kw):
+    def table_valued(
+        self, *expr: _ColumnExpressionArgument[Any], **kw: Any
+    ) -> TableValuedAlias:
         r"""Return a :class:`_sql.TableValuedAlias` representation of this
         :class:`_functions.FunctionElement` with table-valued expressions added.
 
@@ -304,7 +323,9 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
         return new_func.alias(name=name, joins_implicitly=joins_implicitly)
 
-    def column_valued(self, name=None, joins_implicitly=False):
+    def column_valued(
+        self, name: Optional[str] = None, joins_implicitly: bool = False
+    ) -> TableValuedColumn[_T]:
         """Return this :class:`_functions.FunctionElement` as a column expression that
         selects from itself as a FROM clause.
 
@@ -346,7 +367,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         return self.alias(name=name, joins_implicitly=joins_implicitly).column
 
     @util.ro_non_memoized_property
-    def columns(self):
+    def columns(self) -> ColumnCollection[str, KeyedColumnElement[Any]]:  # type: ignore[override]  # noqa: E501
         r"""The set of columns exported by this :class:`.FunctionElement`.
 
         This is a placeholder collection that allows the function to be
@@ -372,7 +393,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         return self.c
 
     @util.ro_memoized_property
-    def c(self):
+    def c(self) -> ColumnCollection[str, KeyedColumnElement[Any]]:  # type: ignore[override]  # noqa: E501
         """synonym for :attr:`.FunctionElement.columns`."""
 
         return ColumnCollection(
@@ -380,16 +401,21 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         )
 
     @property
-    def _all_selected_columns(self):
+    def _all_selected_columns(self) -> Sequence[KeyedColumnElement[Any]]:
         if is_table_value_type(self.type):
-            cols = self.type._elements
+            # TODO: this might not be fully accurate
+            cols = cast(
+                "Sequence[KeyedColumnElement[Any]]", self.type._elements
+            )
         else:
             cols = [self.label(None)]
 
         return cols
 
     @property
-    def exported_columns(self):
+    def exported_columns(  # type: ignore[override]
+        self,
+    ) -> ColumnCollection[str, KeyedColumnElement[Any]]:
         return self.columns
 
     @HasMemoized.memoized_attribute
@@ -400,7 +426,14 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         """
         return cast(ClauseList, self.clause_expr.element)
 
-    def over(self, partition_by=None, order_by=None, rows=None, range_=None):
+    def over(
+        self,
+        *,
+        partition_by: Optional[_ByArgument] = None,
+        order_by: Optional[_ByArgument] = None,
+        rows: Optional[Tuple[Optional[int], Optional[int]]] = None,
+        range_: Optional[Tuple[Optional[int], Optional[int]]] = None,
+    ) -> Over[_T]:
         """Produce an OVER clause against this function.
 
         Used against aggregate or so-called "window" functions,
@@ -432,7 +465,9 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             range_=range_,
         )
 
-    def within_group(self, *order_by):
+    def within_group(
+        self, *order_by: _ColumnExpressionArgument[Any]
+    ) -> WithinGroup[_T]:
         """Produce a WITHIN GROUP (ORDER BY expr) clause against this function.
 
         Used against so-called "ordered set aggregate" and "hypothetical
@@ -450,7 +485,21 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         """
         return WithinGroup(self, *order_by)
 
-    def filter(self, *criterion):
+    @overload
+    def filter(self) -> Self:
+        ...
+
+    @overload
+    def filter(
+        self,
+        __criterion0: _ColumnExpressionArgument[bool],
+        *criterion: _ColumnExpressionArgument[bool],
+    ) -> FunctionFilter[_T]:
+        ...
+
+    def filter(
+        self, *criterion: _ColumnExpressionArgument[bool]
+    ) -> Union[Self, FunctionFilter[_T]]:
         """Produce a FILTER clause against this function.
 
         Used against aggregate and window functions,
@@ -480,7 +529,9 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             return self
         return FunctionFilter(self, *criterion)
 
-    def as_comparison(self, left_index, right_index):
+    def as_comparison(
+        self, left_index: int, right_index: int
+    ) -> FunctionAsBinary:
         """Interpret this expression as a boolean comparison between two
         values.
 
@@ -555,10 +606,12 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         return FunctionAsBinary(self, left_index, right_index)
 
     @property
-    def _from_objects(self):
+    def _from_objects(self) -> Any:
         return self.clauses._from_objects
 
-    def within_group_type(self, within_group):
+    def within_group_type(
+        self, within_group: WithinGroup[_S]
+    ) -> Optional[TypeEngine[_S]]:
         """For types that define their return type as based on the criteria
         within a WITHIN GROUP (ORDER BY) expression, called by the
         :class:`.WithinGroup` construct.
@@ -570,7 +623,9 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
         return None
 
-    def alias(self, name=None, joins_implicitly=False):
+    def alias(
+        self, name: Optional[str] = None, joins_implicitly: bool = False
+    ) -> TableValuedAlias:
         r"""Produce a :class:`_expression.Alias` construct against this
         :class:`.FunctionElement`.
 
@@ -662,7 +717,14 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             s = s.execution_options(**self._execution_options)
         return s
 
-    def _bind_param(self, operator, obj, type_=None, **kw):
+    def _bind_param(
+        self,
+        operator: OperatorType,
+        obj: Any,
+        type_: Optional[TypeEngine[_T]] = None,
+        expanding: bool = False,
+        **kw: Any,
+    ) -> BindParameter[_T]:
         return BindParameter(
             None,
             obj,
@@ -670,10 +732,11 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             _compared_to_type=self.type,
             unique=True,
             type_=type_,
+            expanding=expanding,
             **kw,
         )
 
-    def self_group(self, against=None):
+    def self_group(self, against: Optional[OperatorType] = None) -> ClauseElement:  # type: ignore[override]  # noqa E501
         # for the moment, we are parenthesizing all array-returning
         # expressions against getitem.  This may need to be made
         # more portable if in the future we support other DBs
@@ -686,7 +749,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             return super().self_group(against=against)
 
     @property
-    def entity_namespace(self):
+    def entity_namespace(self) -> _EntityNamespace:
         """overrides FromClause.entity_namespace as functions are generally
         column expressions and not FromClauses.
 
@@ -708,7 +771,7 @@ class FunctionAsBinary(BinaryExpression[Any]):
     left_index: int
     right_index: int
 
-    def _gen_cache_key(self, anon_map, bindparams):
+    def _gen_cache_key(self, anon_map: Any, bindparams: Any) -> Any:
         return ColumnElement._gen_cache_key(self, anon_map, bindparams)
 
     def __init__(
@@ -861,8 +924,8 @@ class _FunctionGenerator:
 
     """  # noqa
 
-    def __init__(self, **opts):
-        self.__names = []
+    def __init__(self, **opts: Any):
+        self.__names: List[str] = []
         self.opts = opts
 
     def __getattr__(self, name: str) -> _FunctionGenerator:
@@ -937,8 +1000,33 @@ class _FunctionGenerator:
         def char_length(self) -> Type[char_length]:
             ...
 
-        @property
-        def coalesce(self) -> Type[coalesce[Any]]:
+        # appease mypy which seems to not want to accept _T from
+        # _ColumnExpressionArgument, as it includes non-generic types
+
+        @overload
+        def coalesce(
+            self,
+            col: ColumnElement[_T],
+            *args: _ColumnExpressionArgument[Any],
+            **kwargs: Any,
+        ) -> coalesce[_T]:
+            ...
+
+        @overload
+        def coalesce(
+            self,
+            col: _ColumnExpressionArgument[_T],
+            *args: _ColumnExpressionArgument[Any],
+            **kwargs: Any,
+        ) -> coalesce[_T]:
+            ...
+
+        def coalesce(
+            self,
+            col: _ColumnExpressionArgument[_T],
+            *args: _ColumnExpressionArgument[Any],
+            **kwargs: Any,
+        ) -> coalesce[_T]:
             ...
 
         @property
@@ -993,12 +1081,62 @@ class _FunctionGenerator:
         def localtimestamp(self) -> Type[localtimestamp]:
             ...
 
-        @property
-        def max(self) -> Type[max[Any]]:  # noqa: A001
+        # appease mypy which seems to not want to accept _T from
+        # _ColumnExpressionArgument, as it includes non-generic types
+
+        @overload
+        def max(  # noqa: A001
+            self,
+            col: ColumnElement[_T],
+            *args: _ColumnExpressionArgument[Any],
+            **kwargs: Any,
+        ) -> max[_T]:
             ...
 
-        @property
-        def min(self) -> Type[min[Any]]:  # noqa: A001
+        @overload
+        def max(  # noqa: A001
+            self,
+            col: _ColumnExpressionArgument[_T],
+            *args: _ColumnExpressionArgument[Any],
+            **kwargs: Any,
+        ) -> max[_T]:
+            ...
+
+        def max(  # noqa: A001
+            self,
+            col: _ColumnExpressionArgument[_T],
+            *args: _ColumnExpressionArgument[Any],
+            **kwargs: Any,
+        ) -> max[_T]:
+            ...
+
+        # appease mypy which seems to not want to accept _T from
+        # _ColumnExpressionArgument, as it includes non-generic types
+
+        @overload
+        def min(  # noqa: A001
+            self,
+            col: ColumnElement[_T],
+            *args: _ColumnExpressionArgument[Any],
+            **kwargs: Any,
+        ) -> min[_T]:
+            ...
+
+        @overload
+        def min(  # noqa: A001
+            self,
+            col: _ColumnExpressionArgument[_T],
+            *args: _ColumnExpressionArgument[Any],
+            **kwargs: Any,
+        ) -> min[_T]:
+            ...
+
+        def min(  # noqa: A001
+            self,
+            col: _ColumnExpressionArgument[_T],
+            *args: _ColumnExpressionArgument[Any],
+            **kwargs: Any,
+        ) -> min[_T]:
             ...
 
         @property
@@ -1038,10 +1176,6 @@ class _FunctionGenerator:
             ...
 
         @property
-        def returntypefromargs(self) -> Type[ReturnTypeFromArgs[Any]]:
-            ...
-
-        @property
         def rollup(self) -> Type[rollup[Any]]:
             ...
 
@@ -1049,8 +1183,33 @@ class _FunctionGenerator:
         def session_user(self) -> Type[session_user]:
             ...
 
-        @property
-        def sum(self) -> Type[sum[Any]]:  # noqa: A001
+        # appease mypy which seems to not want to accept _T from
+        # _ColumnExpressionArgument, as it includes non-generic types
+
+        @overload
+        def sum(  # noqa: A001
+            self,
+            col: ColumnElement[_T],
+            *args: _ColumnExpressionArgument[Any],
+            **kwargs: Any,
+        ) -> sum[_T]:
+            ...
+
+        @overload
+        def sum(  # noqa: A001
+            self,
+            col: _ColumnExpressionArgument[_T],
+            *args: _ColumnExpressionArgument[Any],
+            **kwargs: Any,
+        ) -> sum[_T]:
+            ...
+
+        def sum(  # noqa: A001
+            self,
+            col: _ColumnExpressionArgument[_T],
+            *args: _ColumnExpressionArgument[Any],
+            **kwargs: Any,
+        ) -> sum[_T]:
             ...
 
         @property
@@ -1132,10 +1291,30 @@ class Function(FunctionElement[_T]):
 
     """
 
+    @overload
     def __init__(
         self,
         name: str,
-        *clauses: Any,
+        *clauses: _ColumnExpressionOrLiteralArgument[_T],
+        type_: None = ...,
+        packagenames: Optional[Tuple[str, ...]] = ...,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self,
+        name: str,
+        *clauses: _ColumnExpressionOrLiteralArgument[Any],
+        type_: _TypeEngineArgument[_T] = ...,
+        packagenames: Optional[Tuple[str, ...]] = ...,
+    ):
+        ...
+
+    def __init__(
+        self,
+        name: str,
+        *clauses: _ColumnExpressionOrLiteralArgument[Any],
         type_: Optional[_TypeEngineArgument[_T]] = None,
         packagenames: Optional[Tuple[str, ...]] = None,
     ):
@@ -1154,7 +1333,14 @@ class Function(FunctionElement[_T]):
 
         FunctionElement.__init__(self, *clauses)
 
-    def _bind_param(self, operator, obj, type_=None, **kw):
+    def _bind_param(
+        self,
+        operator: OperatorType,
+        obj: Any,
+        type_: Optional[TypeEngine[_T]] = None,
+        expanding: bool = False,
+        **kw: Any,
+    ) -> BindParameter[_T]:
         return BindParameter(
             self.name,
             obj,
@@ -1162,6 +1348,7 @@ class Function(FunctionElement[_T]):
             _compared_to_type=self.type,
             type_=type_,
             unique=True,
+            expanding=expanding,
             **kw,
         )
 
@@ -1307,7 +1494,9 @@ class GenericFunction(Function[_T]):
             # Set _register to True to register child classes by default
             cls._register = True
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self, *args: _ColumnExpressionOrLiteralArgument[Any], **kwargs: Any
+    ):
         parsed_args = kwargs.pop("_parsed_args", None)
         if parsed_args is None:
             parsed_args = [
@@ -1333,8 +1522,8 @@ class GenericFunction(Function[_T]):
         )
 
 
-register_function("cast", Cast)
-register_function("extract", Extract)
+register_function("cast", Cast)  # type: ignore
+register_function("extract", Extract)  # type: ignore
 
 
 class next_value(GenericFunction[int]):
@@ -1354,7 +1543,7 @@ class next_value(GenericFunction[int]):
         ("sequence", InternalTraversal.dp_named_ddl_element)
     ]
 
-    def __init__(self, seq, **kw):
+    def __init__(self, seq: schema.Sequence, **kw: Any):
         assert isinstance(
             seq, schema.Sequence
         ), "next_value() accepts a Sequence object as input."
@@ -1363,14 +1552,14 @@ class next_value(GenericFunction[int]):
             seq.data_type or getattr(self, "type", None)
         )
 
-    def compare(self, other, **kw):
+    def compare(self, other: Any, **kw: Any) -> bool:
         return (
             isinstance(other, next_value)
             and self.sequence.name == other.sequence.name
         )
 
     @property
-    def _from_objects(self):
+    def _from_objects(self) -> Any:
         return []
 
 
@@ -1379,7 +1568,7 @@ class AnsiFunction(GenericFunction[_T]):
 
     inherit_cache = True
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: _ColumnExpressionArgument[Any], **kwargs: Any):
         GenericFunction.__init__(self, *args, **kwargs)
 
 
@@ -1388,8 +1577,29 @@ class ReturnTypeFromArgs(GenericFunction[_T]):
 
     inherit_cache = True
 
-    def __init__(self, *args, **kwargs):
-        fn_args = [
+    # appease mypy which seems to not want to accept _T from
+    # _ColumnExpressionArgument, as it includes non-generic types
+
+    @overload
+    def __init__(
+        self,
+        col: ColumnElement[_T],
+        *args: _ColumnExpressionArgument[Any],
+        **kwargs: Any,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self,
+        col: _ColumnExpressionArgument[_T],
+        *args: _ColumnExpressionArgument[Any],
+        **kwargs: Any,
+    ):
+        ...
+
+    def __init__(self, *args: _ColumnExpressionArgument[Any], **kwargs: Any):
+        fn_args: Sequence[ColumnElement[Any]] = [
             coercions.expect(
                 roles.ExpressionElementRole,
                 c,
@@ -1470,7 +1680,7 @@ class char_length(GenericFunction[int]):
     type = sqltypes.Integer()
     inherit_cache = True
 
-    def __init__(self, arg, **kw):
+    def __init__(self, arg: _ColumnExpressionArgument[str], **kw: Any):
         # slight hack to limit to just one positional argument
         # not sure why this one function has this special treatment
         super().__init__(arg, **kw)
@@ -1507,7 +1717,11 @@ class count(GenericFunction[int]):
     type = sqltypes.Integer()
     inherit_cache = True
 
-    def __init__(self, expression=None, **kwargs):
+    def __init__(
+        self,
+        expression: Optional[_ColumnExpressionArgument[Any]] = None,
+        **kwargs: Any,
+    ):
         if expression is None:
             expression = literal_column("*")
         super().__init__(expression, **kwargs)
@@ -1596,8 +1810,8 @@ class array_agg(GenericFunction[_T]):
 
     inherit_cache = True
 
-    def __init__(self, *args, **kwargs):
-        fn_args = [
+    def __init__(self, *args: _ColumnExpressionArgument[Any], **kwargs: Any):
+        fn_args: Sequence[ColumnElement[Any]] = [
             coercions.expect(
                 roles.ExpressionElementRole, c, apply_propagate_attrs=self
             )
@@ -1625,9 +1839,13 @@ class OrderedSetAgg(GenericFunction[_T]):
     array_for_multi_clause = False
     inherit_cache = True
 
-    def within_group_type(self, within_group):
+    def within_group_type(
+        self, within_group: WithinGroup[Any]
+    ) -> TypeEngine[Any]:
         func_clauses = cast(ClauseList, self.clause_expr.element)
-        order_by = sqlutil.unwrap_order_by(within_group.order_by)
+        order_by: Sequence[ColumnElement[Any]] = sqlutil.unwrap_order_by(
+            within_group.order_by
+        )
         if self.array_for_multi_clause and len(func_clauses.clauses) > 1:
             return sqltypes.ARRAY(order_by[0].type)
         else:
@@ -1825,5 +2043,5 @@ class aggregate_strings(GenericFunction[str]):
     _has_args = True
     inherit_cache = True
 
-    def __init__(self, clause, separator):
+    def __init__(self, clause: _ColumnExpressionArgument[Any], separator: str):
         super().__init__(clause, separator)

@@ -84,140 +84,27 @@ from .base import SQLiteExecutionContext
 from .pysqlite import SQLiteDialect_pysqlite
 from ... import pool
 from ... import util
-from ...engine import AdaptedConnection
+from ...connectors.asyncio import AsyncAdapt_dbapi_connection
+from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
+from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
+from ...connectors.asyncio import AsyncAdaptFallback_dbapi_connection
 from ...util.concurrency import await_fallback
 from ...util.concurrency import await_only
 
 
-class AsyncAdapt_aiosqlite_cursor:
-    # TODO: base on connectors/asyncio.py
-    # see #10415
-
-    __slots__ = (
-        "_adapt_connection",
-        "_connection",
-        "description",
-        "await_",
-        "_rows",
-        "arraysize",
-        "rowcount",
-        "lastrowid",
-    )
-
-    server_side = False
-
-    def __init__(self, adapt_connection):
-        self._adapt_connection = adapt_connection
-        self._connection = adapt_connection._connection
-        self.await_ = adapt_connection.await_
-        self.arraysize = 1
-        self.rowcount = -1
-        self.description = None
-        self._rows = []
-
-    def close(self):
-        self._rows[:] = []
-
-    def execute(self, operation, parameters=None):
-        try:
-            _cursor = self.await_(self._connection.cursor())
-
-            if parameters is None:
-                self.await_(_cursor.execute(operation))
-            else:
-                self.await_(_cursor.execute(operation, parameters))
-
-            if _cursor.description:
-                self.description = _cursor.description
-                self.lastrowid = self.rowcount = -1
-
-                if not self.server_side:
-                    self._rows = self.await_(_cursor.fetchall())
-            else:
-                self.description = None
-                self.lastrowid = _cursor.lastrowid
-                self.rowcount = _cursor.rowcount
-
-            if not self.server_side:
-                self.await_(_cursor.close())
-            else:
-                self._cursor = _cursor
-        except Exception as error:
-            self._adapt_connection._handle_exception(error)
-
-    def executemany(self, operation, seq_of_parameters):
-        try:
-            _cursor = self.await_(self._connection.cursor())
-            self.await_(_cursor.executemany(operation, seq_of_parameters))
-            self.description = None
-            self.lastrowid = _cursor.lastrowid
-            self.rowcount = _cursor.rowcount
-            self.await_(_cursor.close())
-        except Exception as error:
-            self._adapt_connection._handle_exception(error)
-
-    def setinputsizes(self, *inputsizes):
-        pass
-
-    def __iter__(self):
-        while self._rows:
-            yield self._rows.pop(0)
-
-    def fetchone(self):
-        if self._rows:
-            return self._rows.pop(0)
-        else:
-            return None
-
-    def fetchmany(self, size=None):
-        if size is None:
-            size = self.arraysize
-
-        retval = self._rows[0:size]
-        self._rows[:] = self._rows[size:]
-        return retval
-
-    def fetchall(self):
-        retval = self._rows[:]
-        self._rows[:] = []
-        return retval
+class AsyncAdapt_aiosqlite_cursor(AsyncAdapt_dbapi_cursor):
+    __slots__ = ()
 
 
-class AsyncAdapt_aiosqlite_ss_cursor(AsyncAdapt_aiosqlite_cursor):
-    # TODO: base on connectors/asyncio.py
-    # see #10415
-    __slots__ = "_cursor"
-
-    server_side = True
-
-    def __init__(self, *arg, **kw):
-        super().__init__(*arg, **kw)
-        self._cursor = None
-
-    def close(self):
-        if self._cursor is not None:
-            self.await_(self._cursor.close())
-            self._cursor = None
-
-    def fetchone(self):
-        return self.await_(self._cursor.fetchone())
-
-    def fetchmany(self, size=None):
-        if size is None:
-            size = self.arraysize
-        return self.await_(self._cursor.fetchmany(size=size))
-
-    def fetchall(self):
-        return self.await_(self._cursor.fetchall())
+class AsyncAdapt_aiosqlite_ss_cursor(AsyncAdapt_dbapi_ss_cursor):
+    __slots__ = ()
 
 
-class AsyncAdapt_aiosqlite_connection(AdaptedConnection):
-    await_ = staticmethod(await_only)
-    __slots__ = ("dbapi",)
+class AsyncAdapt_aiosqlite_connection(AsyncAdapt_dbapi_connection):
+    __slots__ = ()
 
-    def __init__(self, dbapi, connection):
-        self.dbapi = dbapi
-        self._connection = connection
+    _cursor_cls = AsyncAdapt_aiosqlite_cursor
+    _ss_cursor_cls = AsyncAdapt_aiosqlite_ss_cursor
 
     @property
     def isolation_level(self):
@@ -249,26 +136,13 @@ class AsyncAdapt_aiosqlite_connection(AdaptedConnection):
         except Exception as error:
             self._handle_exception(error)
 
-    def cursor(self, server_side=False):
-        if server_side:
-            return AsyncAdapt_aiosqlite_ss_cursor(self)
-        else:
-            return AsyncAdapt_aiosqlite_cursor(self)
-
-    def execute(self, *args, **kw):
-        return self.await_(self._connection.execute(*args, **kw))
-
     def rollback(self):
-        try:
-            self.await_(self._connection.rollback())
-        except Exception as error:
-            self._handle_exception(error)
+        if self._connection._connection:
+            super().rollback()
 
     def commit(self):
-        try:
-            self.await_(self._connection.commit())
-        except Exception as error:
-            self._handle_exception(error)
+        if self._connection._connection:
+            super().commit()
 
     def close(self):
         try:
@@ -287,21 +161,19 @@ class AsyncAdapt_aiosqlite_connection(AdaptedConnection):
             self._handle_exception(error)
 
     def _handle_exception(self, error):
-        if (
-            isinstance(error, ValueError)
-            and error.args[0] == "no active connection"
+        if isinstance(error, ValueError) and error.args[0].lower() in (
+            "no active connection",
+            "connection closed",
         ):
-            raise self.dbapi.sqlite.OperationalError(
-                "no active connection"
-            ) from error
+            raise self.dbapi.sqlite.OperationalError(error.args[0]) from error
         else:
-            raise error
+            super()._handle_exception(error)
 
 
-class AsyncAdaptFallback_aiosqlite_connection(AsyncAdapt_aiosqlite_connection):
+class AsyncAdaptFallback_aiosqlite_connection(
+    AsyncAdaptFallback_dbapi_connection, AsyncAdapt_aiosqlite_connection
+):
     __slots__ = ()
-
-    await_ = staticmethod(await_fallback)
 
 
 class AsyncAdapt_aiosqlite_dbapi:
@@ -382,10 +254,13 @@ class SQLiteDialect_aiosqlite(SQLiteDialect_pysqlite):
             return pool.StaticPool
 
     def is_disconnect(self, e, connection, cursor):
-        if isinstance(
-            e, self.dbapi.OperationalError
-        ) and "no active connection" in str(e):
-            return True
+        if isinstance(e, self.dbapi.OperationalError):
+            err_lower = str(e).lower()
+            if (
+                "no active connection" in err_lower
+                or "connection closed" in err_lower
+            ):
+                return True
 
         return super().is_disconnect(e, connection, cursor)
 

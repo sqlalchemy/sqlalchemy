@@ -559,7 +559,8 @@ def _collect_update_commands(
                     f"No primary key value supplied for column(s) "
                     f"""{
                         ', '.join(
-                        str(c) for c in pks if pk_params[c._label] is None)
+                            str(c) for c in pks if pk_params[c._label] is None
+                        )
                     }; """
                     "per-row ORM Bulk UPDATE by Primary Key requires that "
                     "records contain primary key values",

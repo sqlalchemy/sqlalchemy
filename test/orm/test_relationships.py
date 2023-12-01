@@ -1334,7 +1334,8 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
             # this happens
             assert_raises_message(
                 AssertionError,
-                "Dependency rule tried to blank-out primary key column "
+                "Dependency rule on column 'employee_t.company_id' "
+                "tried to blank-out primary key column "
                 "'employee_t.company_id'",
                 sess.flush,
             )
@@ -1669,7 +1670,7 @@ class FKsAsPksTest(fixtures.MappedTest):
 
             assert_raises_message(
                 AssertionError,
-                "Dependency rule tried to blank-out "
+                "Dependency rule on column 'tableA.id' tried to blank-out "
                 "primary key column 'tableB.id' on instance ",
                 sess.flush,
             )
@@ -1696,7 +1697,7 @@ class FKsAsPksTest(fixtures.MappedTest):
             b1.a = None
             assert_raises_message(
                 AssertionError,
-                "Dependency rule tried to blank-out "
+                "Dependency rule on column 'tableA.id' tried to blank-out "
                 "primary key column 'tableB.id' on instance ",
                 sess.flush,
             )

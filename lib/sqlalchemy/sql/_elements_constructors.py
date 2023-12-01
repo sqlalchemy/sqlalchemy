@@ -10,7 +10,6 @@ from __future__ import annotations
 import typing
 from typing import Any
 from typing import Callable
-from typing import Iterable
 from typing import Mapping
 from typing import Optional
 from typing import overload
@@ -49,6 +48,7 @@ from .functions import FunctionElement
 from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
+    from ._typing import _ByArgument
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrLiteralArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
@@ -1483,18 +1483,8 @@ if not TYPE_CHECKING:
 
 def over(
     element: FunctionElement[_T],
-    partition_by: Optional[
-        Union[
-            Iterable[_ColumnExpressionArgument[Any]],
-            _ColumnExpressionArgument[Any],
-        ]
-    ] = None,
-    order_by: Optional[
-        Union[
-            Iterable[_ColumnExpressionArgument[Any]],
-            _ColumnExpressionArgument[Any],
-        ]
-    ] = None,
+    partition_by: Optional[_ByArgument] = None,
+    order_by: Optional[_ByArgument] = None,
     range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
     rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
 ) -> Over[_T]:

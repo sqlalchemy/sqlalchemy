@@ -389,7 +389,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
     ):
         """test #8035"""
 
-        tname = f"##foo{random.randint(1,1000000)}"
+        tname = f"##foo{random.randint(1, 1000000)}"
 
         with temp_db_alt_collation_fixture.connect() as conn:
             conn.exec_driver_sql(f"CREATE TABLE {tname} (id int primary key)")

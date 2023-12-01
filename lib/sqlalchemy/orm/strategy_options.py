@@ -1611,9 +1611,10 @@ class _LoadElement(
                 f"Mapped class {path[0]} does not apply to any of the "
                 f"root entities in this query, e.g. "
                 f"""{
-                    ", ".join(str(x.entity_zero)
-                    for x in mapper_entities if x.entity_zero
-                )}. Please """
+                    ", ".join(
+                        str(x.entity_zero)
+                        for x in mapper_entities if x.entity_zero
+                    )}. Please """
                 "specify the full path "
                 "from one of the root entities to the target "
                 "attribute. "

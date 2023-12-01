@@ -38,7 +38,7 @@ def generate_table(meta: sa.MetaData, min_cols, max_cols, dialect_name):
             args.append(sa.ForeignKey(f"table_{target}.table_{target}_col_1"))
         cols.append(
             sa.Column(
-                f"table_{table_num}_col_{i+1}",
+                f"table_{table_num}_col_{i + 1}",
                 *args,
                 primary_key=i == 0,
                 comment=f"primary key of table_{table_num}"

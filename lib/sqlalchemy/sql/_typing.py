@@ -11,6 +11,7 @@ import operator
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Iterable
 from typing import Mapping
 from typing import NoReturn
 from typing import Optional
@@ -196,6 +197,12 @@ overall which brings in the TextClause object also.
 _ColumnExpressionOrLiteralArgument = Union[Any, _ColumnExpressionArgument[_T]]
 
 _ColumnExpressionOrStrLabelArgument = Union[str, _ColumnExpressionArgument[_T]]
+
+_ByArgument = Union[
+    Iterable[_ColumnExpressionOrStrLabelArgument[Any]],
+    _ColumnExpressionOrStrLabelArgument[Any],
+]
+"""Used for keyword-based ``order_by`` and ``partition_by`` parameters."""
 
 
 _InfoType = Dict[Any, Any]
