@@ -95,7 +95,7 @@ class URLTest(fixtures.TestBase):
         eq_(str(u), "dbtype://user:***@host/dbname")
         eq_(
             u.render_as_string(hide_password=False),
-            "dbtype://user:pass word + other%3Awords@host/dbname",
+            "dbtype://user:pass+word+%2B+other%3Awords@host/dbname",
         )
 
         u = url.make_url(
@@ -491,6 +491,41 @@ class URLTest(fixtures.TestBase):
             res = u.translate_connect_args(["foo"])
             is_true("foo" in res)
             eq_(res["foo"], u.host)
+
+    @testing.combinations(
+        "dbtype://username:password@hostspec:110//usr/db_file.db",
+        "dbtype://username:password@hostspec/database",
+        "dbtype+apitype://username:password@hostspec/database",
+        "dbtype://username:password@hostspec",
+        "dbtype://username:password@/database",
+        "dbtype://username@hostspec",
+        "dbtype://username:password@127.0.0.1:1521",
+        "dbtype://hostspec/database",
+        "dbtype://hostspec",
+        "dbtype://hostspec/?arg1=val1&arg2=val2",
+        "dbtype+apitype:///database",
+        "dbtype:///:memory:",
+        "dbtype:///foo/bar/im/a/file",
+        "dbtype:///E:/work/src/LEM/db/hello.db",
+        "dbtype:///E:/work/src/LEM/db/hello.db?foo=bar&hoho=lala",
+        "dbtype:///E:/work/src/LEM/db/hello.db?foo=bar&hoho=lala&hoho=bat",
+        "dbtype://",
+        "dbtype://username:password@/database",
+        "dbtype:////usr/local/_xtest@example.com/members.db",
+        "dbtype://username:apples%2Foranges@hostspec/database",
+        "dbtype://username:password@[2001:da8:2004:1000:202:116:160:90]"
+        "/database?foo=bar",
+        "dbtype://username:password@[2001:da8:2004:1000:202:116:160:90]:80"
+        "/database?foo=bar",
+        "dbtype://username:password@hostspec/test database with@atsign",
+        "dbtype://username:password@hostspec?query=but_no_db",
+        "dbtype://username:password@hostspec:450?query=but_no_db",
+        "dbtype://user%25%26%7Cname:pass%25%26%7Cword@hostspec:499?query=but_no_db",
+    )
+    def test_render_as_string(self, text):
+        u = url.make_url(text)
+
+        eq_(text, u.render_as_string(hide_password=False))
 
 
 class DialectImportTest(fixtures.TestBase):
