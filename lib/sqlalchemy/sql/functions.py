@@ -62,7 +62,6 @@ from .sqltypes import TableValueType
 from .type_api import TypeEngine
 from .visitors import InternalTraversal
 from .. import util
-from ..util.typing import Unpack
 
 
 if TYPE_CHECKING:
@@ -703,7 +702,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             joins_implicitly=joins_implicitly,
         )
 
-    def select(self) -> Select[Unpack[Tuple[Any, ...]]]:
+    def select(self) -> Select[_T]:
         """Produce a :func:`_expression.select` construct
         against this :class:`.FunctionElement`.
 
@@ -712,7 +711,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             s = select(function_element)
 
         """
-        s: Select[Unpack[Tuple[Any, ...]]] = Select(self)
+        s: Select[_T] = Select(self)
         if self._execution_options:
             s = s.execution_options(**self._execution_options)
         return s
