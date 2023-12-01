@@ -156,7 +156,7 @@ def {key}(self) -> Type[{_type}]:{_reserved_word}
                                 rf"""
 stmt{count} = select(func.{key}(column('x', Integer)))
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*int\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*int\]
 reveal_type(stmt{count})
 
 """,
@@ -170,7 +170,7 @@ reveal_type(stmt{count})
                                 rf"""
 stmt{count} = select(func.{key}(column('x', String), ','))
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*str\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*str\]
 reveal_type(stmt{count})
 
 """,
