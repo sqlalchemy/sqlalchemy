@@ -1005,7 +1005,7 @@ Important Notes and Caveats for ORM-Enabled Update and Delete
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The ORM-enabled UPDATE and DELETE features bypass ORM :term:`unit-of-work`
-automation in favor being able to emit a single UPDATE or DELETE statement
+automation in favor of being able to emit a single UPDATE or DELETE statement
 that matches multiple rows at once without complexity.
 
 * The operations do not offer in-Python cascading of relationships - it is
