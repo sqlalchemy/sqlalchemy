@@ -156,7 +156,7 @@ denormalize::
 
         def process_bind_param(self, value, dialect):
             if value is not None:
-                if not value.tzinfo:
+                if not value.tzinfo or value.tzinfo.utcoffset(value) is None:
                     raise TypeError("tzinfo is required")
                 value = value.astimezone(datetime.timezone.utc).replace(tzinfo=None)
             return value
