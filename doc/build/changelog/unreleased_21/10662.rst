@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 10662
+
+    Fixed URL-encoding of the username and password components of
+    :class:`.engine.URL` objects when converting them to string using the
+    :meth:`_engine.URL.render_as_string` method, by using Python standard
+    library ``urllib.parse.quote_plus``, rather than the legacy home-grown
+    routine from many years ago. Pull request courtesy of Xavier NUNN.
