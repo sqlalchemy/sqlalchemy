@@ -35,6 +35,7 @@ from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import MappedAsDataclass
 from sqlalchemy.orm import MappedColumn
 from sqlalchemy.orm import Mapper
 from sqlalchemy.orm import registry
@@ -929,6 +930,57 @@ class DeclarativeBaseSetupsTest(fixtures.TestBase):
 
         # Check to see if __init_subclass__ works in supported versions
         eq_(UserType._set_random_keyword_used_here, True)
+
+    def test_kw_support_in_declarative_init_subclass(self):
+        # This will not fail if DeclarativeBase __init_subclass__
+        # supports **kw
+        class Base(DeclarativeBase):
+            pass
+
+        class Mixin:
+            def __init_subclass__(cls, random_keyword: bool, **kw) -> None:
+                super().__init_subclass__(**kw)
+                cls._set_random_keyword_used_here = random_keyword
+
+        class User(Base, Mixin, random_keyword=True):
+            __tablename__ = "user"
+            id_ = Column(Integer, primary_key=True)
+
+        eq_(User._set_random_keyword_used_here, True)
+
+    def test_kw_support_in_declarative_no_meta_init_subclass(self):
+        # This will not fail if DeclarativeBaseNoMeta __init_subclass__
+        # supports **kw
+        class Base(DeclarativeBaseNoMeta):
+            pass
+
+        class Mixin:
+            def __init_subclass__(cls, random_keyword: bool, **kw) -> None:
+                super().__init_subclass__(**kw)
+                cls._set_random_keyword_used_here = random_keyword
+
+        class User(Base, Mixin, random_keyword=True):
+            __tablename__ = "user"
+            id_ = Column(Integer, primary_key=True)
+
+        eq_(User._set_random_keyword_used_here, True)
+
+    def test_kw_support_in_mapped_as_dataclass_init_subclass(self):
+        # This will not fail if MappedAsDataclass __init_subclass__
+        # supports **kw
+        class Base(MappedAsDataclass):
+            pass
+
+        class Mixin:
+            def __init_subclass__(cls, random_keyword: bool, **kw) -> None:
+                super().__init_subclass__(**kw)
+                cls._set_random_keyword_used_here = random_keyword
+
+        class User(Base, Mixin, random_keyword=True):
+            __tablename__ = "user"
+            id_ = Column(Integer, primary_key=True)
+
+        eq_(User._set_random_keyword_used_here, True)
 
     def test_declarative_base_bad_registry(self):
         with assertions.expect_raises_message(
