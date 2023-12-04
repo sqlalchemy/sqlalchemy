@@ -1,4 +1,4 @@
-# sqlite/dml.py
+# dialects/sqlite/dml.py
 # Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #

@@ -1,5 +1,5 @@
 # ext/mypy/infer.py
-# Copyright (C) 2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2021-2023 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
