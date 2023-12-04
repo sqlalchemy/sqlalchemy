@@ -62,17 +62,17 @@ class URLTest(fixtures.TestBase):
         "dbtype://username:password@hostspec/test database with@atsign",
         "dbtype://username:password@hostspec?query=but_no_db",
         "dbtype://username:password@hostspec:450?query=but_no_db",
-        "dbtype://user%25%26%7Cname:pass%25%26%7Cword@hostspec:499?query=but_no_db",
+        "dbtype://user%25%26%7C:pass%25%26%7C@hostspec:499?query=but_no_db",
     )
     def test_rfc1738(self, text):
         u = url.make_url(text)
 
         assert u.drivername in ("dbtype", "dbtype+apitype")
-        assert u.username in ("username", "user%&|name", None)
+        assert u.username in ("username", "user%&|", None)
         assert u.password in (
             "password",
             "apples/oranges",
-            "pass%&|word",
+            "pass%&|",
             None,
         )
         assert u.host in (
