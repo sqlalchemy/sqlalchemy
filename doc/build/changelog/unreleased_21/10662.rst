@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 10662
+
+    Fixed URL-encoding of the username and password components of
+    `sqalchemy.engine.url.URL` objects when converting them to string
+    using the `render_as_string` method.
