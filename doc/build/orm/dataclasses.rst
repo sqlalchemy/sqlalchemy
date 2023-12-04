@@ -705,6 +705,15 @@ which itself is specified within the ``__mapper_args__`` dictionary, so that it
 is passed to the constructor for :class:`_orm.Mapper`. An alternative to this
 approach is in the next example.
 
+
+.. warning::
+    Declaring a dataclass ``field()`` setting a ``default`` together with ``init=False``
+    will not work as would be expected with a totally plain dataclass,
+    since the SQLAlchemy class instrumentation will replace
+    the default value set on the class by the dataclass creation process.
+    Use ``default_factory`` instead. This adaptation is done automatically when
+    making use of :ref:`orm_declarative_native_dataclasses`.
+
 .. _orm_declarative_dataclasses_declarative_table:
 
 Mapping pre-existing dataclasses using Declarative-style fields
@@ -908,6 +917,9 @@ variables::
     )
 
     mapper_registry.map_imperatively(Address, address)
+
+The same warning mentioned in :ref:`orm_declarative_dataclasses_imperative_table`
+applies when using this mapping style.
 
 .. _orm_declarative_attrs_imperative_table:
 
