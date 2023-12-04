@@ -631,7 +631,7 @@ class URL(NamedTuple):
             s += "@"
         if self.host is not None:
             if ":" in self.host:
-                s += "[%s]" % self.host
+                s += f"[{self.host}]"
             else:
                 s += self.host
         if self.port is not None:
@@ -642,7 +642,7 @@ class URL(NamedTuple):
             keys = list(self.query)
             keys.sort()
             s += "?" + "&".join(
-                "%s=%s" % (_sqla_url_quote(k), _sqla_url_quote(element))
+                f"{_sqla_url_quote(k)}={_sqla_url_quote(element)}"
                 for k in keys
                 for element in util.to_list(self.query[k])
             )
