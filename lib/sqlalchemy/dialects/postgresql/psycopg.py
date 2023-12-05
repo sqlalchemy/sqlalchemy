@@ -70,15 +70,12 @@ from .json import JSON
 from .json import JSONB
 from .json import JSONPathType
 from .types import CITEXT
-from ... import pool
 from ... import util
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
-from ...connectors.asyncio import AsyncAdaptFallback_dbapi_connection
 from ...sql import sqltypes
-from ...util.concurrency import await_fallback
-from ...util.concurrency import await_only
+from ...util.concurrency import await_
 
 if TYPE_CHECKING:
     from typing import Iterable
@@ -585,7 +582,7 @@ class AsyncAdapt_psycopg_ss_cursor(
         iterator = self._cursor.__aiter__()
         while True:
             try:
-                yield self.await_(iterator.__anext__())
+                yield await_(iterator.__anext__())
             except StopAsyncIteration:
                 break
 
@@ -632,28 +629,22 @@ class AsyncAdapt_psycopg_connection(AsyncAdapt_dbapi_connection):
         self.set_autocommit(value)
 
     def set_autocommit(self, value):
-        self.await_(self._connection.set_autocommit(value))
+        await_(self._connection.set_autocommit(value))
 
     def set_isolation_level(self, value):
-        self.await_(self._connection.set_isolation_level(value))
+        await_(self._connection.set_isolation_level(value))
 
     def set_read_only(self, value):
-        self.await_(self._connection.set_read_only(value))
+        await_(self._connection.set_read_only(value))
 
     def set_deferrable(self, value):
-        self.await_(self._connection.set_deferrable(value))
+        await_(self._connection.set_deferrable(value))
 
     def cursor(self, name=None, /):
         if name:
             return AsyncAdapt_psycopg_ss_cursor(self, name)
         else:
             return AsyncAdapt_psycopg_cursor(self)
-
-
-class AsyncAdaptFallback_psycopg_connection(
-    AsyncAdaptFallback_dbapi_connection, AsyncAdapt_psycopg_connection
-):
-    __slots__ = ()
 
 
 class PsycopgAdaptDBAPI:
@@ -666,18 +657,12 @@ class PsycopgAdaptDBAPI:
                 self.__dict__[k] = v
 
     def connect(self, *arg, **kw):
-        async_fallback = kw.pop("async_fallback", False)
         creator_fn = kw.pop(
             "async_creator_fn", self.psycopg.AsyncConnection.connect
         )
-        if util.asbool(async_fallback):
-            return AsyncAdaptFallback_psycopg_connection(
-                self, await_fallback(creator_fn(*arg, **kw))
-            )
-        else:
-            return AsyncAdapt_psycopg_connection(
-                self, await_only(creator_fn(*arg, **kw))
-            )
+        return AsyncAdapt_psycopg_connection(
+            self, await_(creator_fn(*arg, **kw))
+        )
 
 
 class PGDialectAsync_psycopg(PGDialect_psycopg):
@@ -691,20 +676,11 @@ class PGDialectAsync_psycopg(PGDialect_psycopg):
 
         return PsycopgAdaptDBAPI(psycopg, ExecStatus)
 
-    @classmethod
-    def get_pool_class(cls, url):
-        async_fallback = url.query.get("async_fallback", False)
-
-        if util.asbool(async_fallback):
-            return pool.FallbackAsyncAdaptedQueuePool
-        else:
-            return pool.AsyncAdaptedQueuePool
-
     def _type_info_fetch(self, connection, name):
         from psycopg.types import TypeInfo
 
         adapted = connection.connection
-        return adapted.await_(TypeInfo.fetch(adapted.driver_connection, name))
+        return await_(TypeInfo.fetch(adapted.driver_connection, name))
 
     def _do_isolation_level(self, connection, autocommit, isolation_level):
         connection.set_autocommit(autocommit)

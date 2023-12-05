@@ -25,7 +25,6 @@ from typing import Union
 from . import mock
 from . import requirements as _requirements
 from .util import fail
-from .. import util
 
 # default requirements; this is replaced by plugin_base when pytest
 # is run
@@ -330,9 +329,7 @@ class Config:
         self.test_schema = "test_schema"
         self.test_schema_2 = "test_schema_2"
 
-        self.is_async = db.dialect.is_async and not util.asbool(
-            db.url.query.get("async_fallback", False)
-        )
+        self.is_async = db.dialect.is_async
 
     _stack = collections.deque()
     _configs = set()

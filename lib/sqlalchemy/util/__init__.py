@@ -49,7 +49,6 @@ from ._collections import WeakPopulateDict as WeakPopulateDict
 from ._collections import WeakSequence as WeakSequence
 from .compat import anext_ as anext_
 from .compat import arm as arm
-from .compat import athrow as athrow
 from .compat import b as b
 from .compat import b64decode as b64decode
 from .compat import b64encode as b64encode
@@ -69,7 +68,7 @@ from .compat import py312 as py312
 from .compat import py39 as py39
 from .compat import pypy as pypy
 from .compat import win32 as win32
-from .concurrency import await_fallback as await_fallback
+from .concurrency import await_ as await_
 from .concurrency import await_only as await_only
 from .concurrency import greenlet_spawn as greenlet_spawn
 from .concurrency import is_exit_exception as is_exit_exception
