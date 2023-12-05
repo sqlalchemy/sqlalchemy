@@ -16,6 +16,7 @@ from typing import Mapping
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Set
 from typing import Tuple
 from typing import Type
@@ -28,7 +29,6 @@ from .. import exc
 from .. import util
 from ..inspection import Inspectable
 from ..util.typing import Literal
-from ..util.typing import Protocol
 from ..util.typing import TypeAlias
 
 if TYPE_CHECKING:

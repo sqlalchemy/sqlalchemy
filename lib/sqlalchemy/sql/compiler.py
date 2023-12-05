@@ -49,11 +49,13 @@ from typing import NamedTuple
 from typing import NoReturn
 from typing import Optional
 from typing import Pattern
+from typing import Protocol
 from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypedDict
 from typing import Union
 
 from . import base
@@ -86,8 +88,6 @@ from .. import exc
 from .. import util
 from ..util import FastIntFlag
 from ..util.typing import Literal
-from ..util.typing import Protocol
-from ..util.typing import TypedDict
 
 if typing.TYPE_CHECKING:
     from .annotation import _AnnotationDict

@@ -679,6 +679,7 @@ from typing import List
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Set
 from typing import Tuple
 from typing import Type
@@ -697,7 +698,6 @@ from ..orm.mapper import _CONFIGURE_MUTEX
 from ..schema import ForeignKeyConstraint
 from ..sql import and_
 from ..util import Properties
-from ..util.typing import Protocol
 
 if TYPE_CHECKING:
     from ..engine.base import Engine

@@ -23,10 +23,12 @@ from typing import Mapping
 from typing import NewType
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Sequence
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypedDict
 from typing import TypeVar
 from typing import Union
 
@@ -37,9 +39,7 @@ from .operators import ColumnOperators
 from .visitors import Visitable
 from .. import exc
 from .. import util
-from ..util.typing import Protocol
 from ..util.typing import Self
-from ..util.typing import TypedDict
 from ..util.typing import TypeGuard
 
 # these are back-assigned by sqltypes.

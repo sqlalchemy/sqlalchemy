@@ -23,11 +23,13 @@ from typing import List
 from typing import Mapping
 from typing import MutableMapping
 from typing import Optional
+from typing import Protocol
 from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypedDict
 from typing import TypeVar
 from typing import Union
 
@@ -43,8 +45,6 @@ from ..util import immutabledict
 from ..util.concurrency import await_only
 from ..util.typing import Literal
 from ..util.typing import NotRequired
-from ..util.typing import Protocol
-from ..util.typing import TypedDict
 
 if TYPE_CHECKING:
     from .base import Connection

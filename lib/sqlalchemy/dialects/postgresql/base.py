@@ -1410,6 +1410,7 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import TYPE_CHECKING
+from typing import TypedDict
 from typing import Union
 
 from . import array as _array
@@ -1487,7 +1488,6 @@ from ...types import SMALLINT
 from ...types import TEXT
 from ...types import UUID as UUID
 from ...types import VARCHAR
-from ...util.typing import TypedDict
 
 IDX_USING = re.compile(r"^(?:btree|hash|gist|gin|[\w_]+)$", re.I)
 

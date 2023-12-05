@@ -27,6 +27,7 @@ from typing import Mapping
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Sequence
 from typing import Set
 from typing import Tuple
@@ -37,7 +38,6 @@ import weakref
 
 from ._has_cy import HAS_CYEXTENSION
 from .typing import Literal
-from .typing import Protocol
 
 if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_collections import immutabledict as immutabledict

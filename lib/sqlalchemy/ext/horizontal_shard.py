@@ -30,6 +30,7 @@ from typing import Callable
 from typing import Dict
 from typing import Iterable
 from typing import Optional
+from typing import Protocol
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
@@ -48,7 +49,6 @@ from ..orm.query import Query
 from ..orm.session import _BindArguments
 from ..orm.session import _PKIdentityArgument
 from ..orm.session import Session
-from ..util.typing import Protocol
 from ..util.typing import Self
 
 if TYPE_CHECKING:

@@ -11,7 +11,6 @@ from __future__ import annotations
 import builtins
 import re
 import sys
-import typing
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -24,6 +23,7 @@ from typing import NewType
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Set
 from typing import Tuple
 from typing import Type
@@ -34,22 +34,19 @@ from typing import Union
 from . import compat
 
 if True:  # zimports removes the tailing comments
-    from typing_extensions import Annotated as Annotated  # 3.8
+    from typing_extensions import Annotated as Annotated  # 3.9
     from typing_extensions import Concatenate as Concatenate  # 3.10
     from typing_extensions import (
         dataclass_transform as dataclass_transform,  # 3.11,
     )
-    from typing_extensions import Final as Final  # 3.8
-    from typing_extensions import final as final  # 3.8
     from typing_extensions import get_args as get_args  # 3.10
     from typing_extensions import get_origin as get_origin  # 3.10
-    from typing_extensions import Literal as Literal  # 3.8
+    from typing_extensions import (
+        Literal as Literal,
+    )  # 3.8 but has bugs before 3.10
     from typing_extensions import NotRequired as NotRequired  # 3.11
     from typing_extensions import ParamSpec as ParamSpec  # 3.10
-    from typing_extensions import Protocol as Protocol  # 3.8
-    from typing_extensions import SupportsIndex as SupportsIndex  # 3.8
     from typing_extensions import TypeAlias as TypeAlias  # 3.10
-    from typing_extensions import TypedDict as TypedDict  # 3.8
     from typing_extensions import TypeGuard as TypeGuard  # 3.10
     from typing_extensions import Self as Self  # 3.11
 

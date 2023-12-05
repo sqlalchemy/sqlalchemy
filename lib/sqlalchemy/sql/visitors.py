@@ -28,6 +28,7 @@ from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
@@ -39,7 +40,6 @@ from .. import util
 from ..util import langhelpers
 from ..util._has_cy import HAS_CYEXTENSION
 from ..util.typing import Literal
-from ..util.typing import Protocol
 from ..util.typing import Self
 
 if TYPE_CHECKING:

@@ -25,6 +25,7 @@ from typing import Iterator
 from typing import List
 from typing import Match
 from typing import Optional
+from typing import Protocol
 from typing import Sequence
 from typing import Tuple
 from typing import Type
@@ -91,7 +92,6 @@ from ..util.typing import (
 from ..util.typing import eval_name_only as _eval_name_only
 from ..util.typing import is_origin_of_cls
 from ..util.typing import Literal
-from ..util.typing import Protocol
 from ..util.typing import typing_get_origin
 
 if typing.TYPE_CHECKING:

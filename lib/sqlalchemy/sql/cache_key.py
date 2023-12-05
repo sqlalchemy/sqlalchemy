@@ -19,6 +19,7 @@ from typing import List
 from typing import MutableMapping
 from typing import NamedTuple
 from typing import Optional
+from typing import Protocol
 from typing import Sequence
 from typing import Tuple
 from typing import Union
@@ -32,7 +33,6 @@ from .. import util
 from ..inspection import inspect
 from ..util import HasMemoized
 from ..util.typing import Literal
-from ..util.typing import Protocol
 
 if typing.TYPE_CHECKING:
     from .elements import BindParameter

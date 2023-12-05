@@ -22,10 +22,12 @@ from typing import Mapping
 from typing import NamedTuple
 from typing import NoReturn
 from typing import Optional
+from typing import Protocol
 from typing import Sequence
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypedDict
 from typing import TypeVar
 from typing import Union
 import weakref
@@ -67,8 +69,6 @@ from ..util import topological
 from ..util.typing import _AnnotationScanType
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_literal
-from ..util.typing import Protocol
-from ..util.typing import TypedDict
 from ..util.typing import typing_get_args
 
 if TYPE_CHECKING:
