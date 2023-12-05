@@ -616,6 +616,14 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
     # assemble connection arguments
     (cargs_tup, cparams) = dialect.create_connect_args(u)
     cparams.update(pop_kwarg("connect_args", {}))
+
+    if "async_fallback" in cparams and util.asbool(cparams["async_fallback"]):
+        util.warn_deprecated(
+            "The async_fallback dialect argument is deprecated and will be "
+            "removed in SQLAlchemy 2.1.",
+            "2.0",
+        )
+
     cargs = list(cargs_tup)  # allow mutability
 
     # look for existing pool or create
