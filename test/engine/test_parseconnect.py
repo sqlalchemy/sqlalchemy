@@ -62,13 +62,33 @@ class URLTest(fixtures.TestBase):
         "dbtype://username:password@hostspec/test database with@atsign",
         "dbtype://username:password@hostspec?query=but_no_db",
         "dbtype://username:password@hostspec:450?query=but_no_db",
+        "dbtype://username:password with spaces@hostspec:450?query=but_no_db",
+        "dbtype+apitype://username with space+and+plus:"
+        "password with space+and+plus@"
+        "hostspec:450?query=but_no_db",
+        "dbtype://user%25%26%7C:pass%25%26%7C@hostspec:499?query=but_no_db",
+        "dbtype://user🐍測試:pass🐍測試@hostspec:499?query=but_no_db",
     )
     def test_rfc1738(self, text):
         u = url.make_url(text)
 
         assert u.drivername in ("dbtype", "dbtype+apitype")
-        assert u.username in ("username", None)
-        assert u.password in ("password", "apples/oranges", None)
+        assert u.username in (
+            "username",
+            "user%&|",
+            "username with space+and+plus",
+            "user🐍測試",
+            None,
+        )
+        assert u.password in (
+            "password",
+            "password with spaces",
+            "password with space+and+plus",
+            "apples/oranges",
+            "pass%&|",
+            "pass🐍測試",
+            None,
+        )
         assert u.host in (
             "hostspec",
             "127.0.0.1",
@@ -87,7 +107,8 @@ class URLTest(fixtures.TestBase):
             "E:/work/src/LEM/db/hello.db",
             None,
         ), u.database
-        eq_(u.render_as_string(hide_password=False), text)
+
+        eq_(url.make_url(u.render_as_string(hide_password=False)), u)
 
     def test_rfc1738_password(self):
         u = url.make_url("dbtype://user:pass word + other%3Awords@host/dbname")
