@@ -62,13 +62,19 @@ class URLTest(fixtures.TestBase):
         "dbtype://username:password@hostspec/test database with@atsign",
         "dbtype://username:password@hostspec?query=but_no_db",
         "dbtype://username:password@hostspec:450?query=but_no_db",
+        "dbtype://user%25%26%7C:pass%25%26%7C@hostspec:499?query=but_no_db",
     )
     def test_rfc1738(self, text):
         u = url.make_url(text)
 
         assert u.drivername in ("dbtype", "dbtype+apitype")
-        assert u.username in ("username", None)
-        assert u.password in ("password", "apples/oranges", None)
+        assert u.username in ("username", "user%&|", None)
+        assert u.password in (
+            "password",
+            "apples/oranges",
+            "pass%&|",
+            None,
+        )
         assert u.host in (
             "hostspec",
             "127.0.0.1",
@@ -95,7 +101,7 @@ class URLTest(fixtures.TestBase):
         eq_(str(u), "dbtype://user:***@host/dbname")
         eq_(
             u.render_as_string(hide_password=False),
-            "dbtype://user:pass word + other%3Awords@host/dbname",
+            "dbtype://user:pass+word+%2B+other%3Awords@host/dbname",
         )
 
         u = url.make_url(
