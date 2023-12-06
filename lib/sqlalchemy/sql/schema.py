@@ -3650,7 +3650,7 @@ class IdentityOptions(DialectKWArgs):
         :param order: optional boolean value; if ``True``, renders the
          ORDER keyword.
 
-         .. deprecated:: 2.0.21 Use ``oracle_order`` instead.
+         .. deprecated:: 2.1 Use ``oracle_order`` instead.
 
         """
         self.start = start
@@ -3678,7 +3678,7 @@ class IdentityOptions(DialectKWArgs):
     def order(self) -> Optional[bool]:
         """Alias of the ``dialect_kwargs`` ``'oracle_order'``.
 
-        .. deprecated:: 2.0.21 The 'order' attribute is deprecated.
+        .. deprecated:: 2.1 The 'order' attribute is deprecated.
         """
         value: Optional[bool] = self.dialect_kwargs.get("oracle_order")
         return value
@@ -6135,7 +6135,7 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
     def on_null(self) -> Optional[bool]:
         """Alias of the ``dialect_kwargs`` ``'oracle_on_null'``.
 
-        .. deprecated:: 2.0.21 The 'on_null' attribute is deprecated.
+        .. deprecated:: 2.1 The 'on_null' attribute is deprecated.
         """
         value: Optional[bool] = self.dialect_kwargs.get("oracle_on_null")
         return value
