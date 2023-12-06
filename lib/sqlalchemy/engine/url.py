@@ -32,6 +32,7 @@ from typing import Tuple
 from typing import Type
 from typing import Union
 from urllib.parse import parse_qsl
+from urllib.parse import quote
 from urllib.parse import quote_plus
 from urllib.parse import unquote
 
@@ -621,17 +622,17 @@ class URL(NamedTuple):
         """
         s = self.drivername + "://"
         if self.username is not None:
-            s += _sqla_url_quote(self.username)
+            s += quote(self.username, safe=" +")
             if self.password is not None:
                 s += ":" + (
                     "***"
                     if hide_password
-                    else _sqla_url_quote(str(self.password))
+                    else quote(str(self.password), safe=" +")
                 )
             s += "@"
         if self.host is not None:
             if ":" in self.host:
-                s += "[%s]" % self.host
+                s += f"[{self.host}]"
             else:
                 s += self.host
         if self.port is not None:
@@ -642,7 +643,7 @@ class URL(NamedTuple):
             keys = list(self.query)
             keys.sort()
             s += "?" + "&".join(
-                "%s=%s" % (quote_plus(k), quote_plus(element))
+                f"{quote_plus(k)}={quote_plus(element)}"
                 for k in keys
                 for element in util.to_list(self.query[k])
             )
@@ -885,10 +886,10 @@ def _parse_url(name: str) -> URL:
         components["query"] = query
 
         if components["username"] is not None:
-            components["username"] = _sqla_url_unquote(components["username"])
+            components["username"] = unquote(components["username"])
 
         if components["password"] is not None:
-            components["password"] = _sqla_url_unquote(components["password"])
+            components["password"] = unquote(components["password"])
 
         ipv4host = components.pop("ipv4host")
         ipv6host = components.pop("ipv6host")
@@ -904,10 +905,3 @@ def _parse_url(name: str) -> URL:
         raise exc.ArgumentError(
             "Could not parse SQLAlchemy URL from string '%s'" % name
         )
-
-
-def _sqla_url_quote(text: str) -> str:
-    return re.sub(r"[:@/]", lambda m: "%%%X" % ord(m.group(0)), text)
-
-
-_sqla_url_unquote = unquote
