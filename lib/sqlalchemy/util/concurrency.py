@@ -84,6 +84,10 @@ class _concurrency_shim_cls:
             from greenlet import getcurrent
             from greenlet import greenlet
         except ImportError as e:
+            if not TYPE_CHECKING:
+                # set greenlet in the global scope to prevent re-init
+                greenlet = None
+
             self._initialize_no_greenlet()
             if raise_:
                 raise ImportError(_ERROR_MESSAGE) from e
@@ -313,7 +317,6 @@ def _util_async_run(fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
     """for test suite/ util only"""
 
     _util_async_run = _concurrency_shim._util_async_run
-
     return _util_async_run(fn, *args, **kwargs)
 
 

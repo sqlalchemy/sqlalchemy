@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, tests
+    :tickets: 10747
+
+    Improvements to the test suite to further harden its ability to run
+    when Python ``greenlet`` is not installed.   There is now a tox
+    target that includes the token "nogreenlet" that will run the suite
+    with greenlet not installed (note that it still temporarily installs
+    greenlet as part of the tox config, however).
