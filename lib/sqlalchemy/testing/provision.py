@@ -74,6 +74,7 @@ def setup_config(db_url, options, file_config, follower_ident):
     # hooks
 
     dialect = sa_url.make_url(db_url).get_dialect()
+
     dialect.load_provisioning()
 
     if follower_ident:
