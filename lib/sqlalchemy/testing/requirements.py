@@ -1610,6 +1610,18 @@ class SuiteRequirements(Requirements):
         return self.greenlet
 
     @property
+    def no_greenlet(self):
+        def go(config):
+            try:
+                import greenlet  # noqa: F401
+            except ImportError:
+                return True
+            else:
+                return False
+
+        return exclusions.only_if(go)
+
+    @property
     def greenlet(self):
         def go(config):
             if not _test_asyncio.ENABLE_ASYNCIO:

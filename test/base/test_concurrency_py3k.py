@@ -264,3 +264,18 @@ class TestAsyncAdaptedQueue(fixtures.TestBase):
         t.join()
 
         is_true(run[0])
+
+
+class GracefulNoGreenletTest(fixtures.TestBase):
+    __requires__ = ("no_greenlet",)
+
+    def test_await_only_graceful(self):
+        async def async_fn():
+            pass
+
+        with expect_raises_message(
+            ValueError,
+            "the greenlet library is required to use this "
+            "function. No module named 'greenlet'",
+        ):
+            await_only(async_fn())
