@@ -290,3 +290,18 @@ class GreenletImportTests(fixtures.TestBase):
     )
     def test_concurrency_fn(self, fn):
         self._run_in_process(fn)
+
+
+class GracefulNoGreenletTest(fixtures.TestBase):
+    __requires__ = ("no_greenlet",)
+
+    def test_await_only_graceful(self):
+        async def async_fn():
+            pass
+
+        with expect_raises_message(
+            ImportError,
+            "The SQLAlchemy asyncio module requires that the Python "
+            "'greenlet' library is installed",
+        ):
+            await_only(async_fn())

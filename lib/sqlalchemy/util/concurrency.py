@@ -15,6 +15,7 @@ from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import Coroutine
+from typing import NoReturn
 from typing import Optional
 from typing import Protocol
 from typing import TYPE_CHECKING
@@ -62,6 +63,10 @@ if TYPE_CHECKING:
         ...
 
 
+def _not_implemented(*arg: Any, **kw: Any) -> NoReturn:
+    raise ImportError(_ERROR_MESSAGE)
+
+
 class _concurrency_shim_cls:
     """Late import shim for greenlet"""
 
@@ -78,7 +83,8 @@ class _concurrency_shim_cls:
             return
 
         if not TYPE_CHECKING:
-            global getcurrent, greenlet, _AsyncIoGreenlet, _has_gr_context
+            global getcurrent, greenlet, _AsyncIoGreenlet
+            global _has_gr_context, _greenlet_error
 
         try:
             from greenlet import getcurrent
@@ -120,6 +126,9 @@ class _concurrency_shim_cls:
 
     def _initialize_no_greenlet(self):
         self._util_async_run = self._no_greenlet_util_async_run
+        self.getcurrent = _not_implemented
+        self.greenlet = _not_implemented  # type: ignore
+        self._AsyncIoGreenlet = _not_implemented  # type: ignore
 
     def __getattr__(self, key: str) -> Any:
         if key in self.__slots__:
