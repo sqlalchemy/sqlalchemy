@@ -5974,6 +5974,53 @@ class StringifySpecialTest(fixtures.TestBase):
         ):
             eq_(str(Grouping(Widget())), "(widget)")
 
+    def test_dialect_sub_compile_has_stack(self):
+        """test #10753"""
+
+        class Widget(ColumnElement):
+            __visit_name__ = "widget"
+            stringify_dialect = "sqlite"
+
+        def visit_widget(self, element, **kw):
+            assert self.stack
+            return "widget"
+
+        with mock.patch(
+            "sqlalchemy.dialects.sqlite.base.SQLiteCompiler.visit_widget",
+            visit_widget,
+            create=True,
+        ):
+            eq_(str(select(Widget())), "SELECT widget AS anon_1")
+
+    def test_dialect_sub_compile_has_stack_pg_specific(self):
+        """test #10753"""
+        my_table = table(
+            "my_table", column("id"), column("data"), column("user_email")
+        )
+
+        from sqlalchemy.dialects.postgresql import insert
+
+        insert_stmt = insert(my_table).values(
+            id="some_existing_id", data="inserted value"
+        )
+
+        do_update_stmt = insert_stmt.on_conflict_do_update(
+            index_elements=["id"], set_=dict(data="updated value")
+        )
+
+        # note!  two different bound parameter formats.   It's weird yes,
+        # but this is what I want.  They are stringifying without using the
+        # correct dialect.   We could use the PG compiler at the point of
+        # the insert() but that still would not accommodate params in other
+        # parts of the statement.
+        eq_ignore_whitespace(
+            str(select(do_update_stmt.cte())),
+            "WITH anon_1 AS (INSERT INTO my_table (id, data) "
+            "VALUES (:param_1, :param_2) "
+            "ON CONFLICT (id) "
+            "DO UPDATE SET data = %(param_3)s) SELECT FROM anon_1",
+        )
+
     def test_dialect_sub_compile_w_binds(self):
         """test sub-compile into a new compiler where
         state != CompilerState.COMPILING, but we have to render a bindparam

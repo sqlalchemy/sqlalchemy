@@ -1343,6 +1343,7 @@ class SQLCompiler(Compiled):
         column_keys: Optional[Sequence[str]] = None,
         for_executemany: bool = False,
         linting: Linting = NO_LINTING,
+        _supporting_against: Optional[SQLCompiler] = None,
         **kwargs: Any,
     ):
         """Construct a new :class:`.SQLCompiler` object.
@@ -1444,6 +1445,24 @@ class SQLCompiler(Compiled):
                     self.inline = True
 
         self.bindtemplate = BIND_TEMPLATES[dialect.paramstyle]
+
+        if _supporting_against:
+            self.__dict__.update(
+                {
+                    k: v
+                    for k, v in _supporting_against.__dict__.items()
+                    if k
+                    not in {
+                        "state",
+                        "dialect",
+                        "preparer",
+                        "positional",
+                        "_numeric_binds",
+                        "compilation_bindtemplate",
+                        "bindtemplate",
+                    }
+                }
+            )
 
         if self.state is CompilerState.STRING_APPLIED:
             if self.positional:
@@ -5595,13 +5614,19 @@ class SQLCompiler(Compiled):
             )
             batchnum += 1
 
-    def visit_insert(self, insert_stmt, visited_bindparam=None, **kw):
+    def visit_insert(
+        self, insert_stmt, visited_bindparam=None, visiting_cte=None, **kw
+    ):
         compile_state = insert_stmt._compile_state_factory(
             insert_stmt, self, **kw
         )
         insert_stmt = compile_state.statement
 
-        toplevel = not self.stack
+        if visiting_cte is not None:
+            kw["visiting_cte"] = visiting_cte
+            toplevel = False
+        else:
+            toplevel = not self.stack
 
         if toplevel:
             self.isinsert = True
@@ -5629,14 +5654,12 @@ class SQLCompiler(Compiled):
         # params inside them.   After multiple attempts to figure this out,
         # this very simplistic "count after" works and is
         # likely the least amount of callcounts, though looks clumsy
-        if self.positional:
+        if self.positional and visiting_cte is None:
             # if we are inside a CTE, don't count parameters
             # here since they wont be for insertmanyvalues. keep
             # visited_bindparam at None so no counting happens.
             # see #9173
-            has_visiting_cte = "visiting_cte" in kw
-            if not has_visiting_cte:
-                visited_bindparam = []
+            visited_bindparam = []
 
         crud_params_struct = crud._get_crud_params(
             self,
@@ -5990,13 +6013,18 @@ class SQLCompiler(Compiled):
             "criteria within UPDATE"
         )
 
-    def visit_update(self, update_stmt, **kw):
+    def visit_update(self, update_stmt, visiting_cte=None, **kw):
         compile_state = update_stmt._compile_state_factory(
             update_stmt, self, **kw
         )
         update_stmt = compile_state.statement
 
-        toplevel = not self.stack
+        if visiting_cte is not None:
+            kw["visiting_cte"] = visiting_cte
+            toplevel = False
+        else:
+            toplevel = not self.stack
+
         if toplevel:
             self.isupdate = True
             if not self.dml_compile_state:
@@ -6147,13 +6175,18 @@ class SQLCompiler(Compiled):
             self, asfrom=True, iscrud=True, **kw
         )
 
-    def visit_delete(self, delete_stmt, **kw):
+    def visit_delete(self, delete_stmt, visiting_cte=None, **kw):
         compile_state = delete_stmt._compile_state_factory(
             delete_stmt, self, **kw
         )
         delete_stmt = compile_state.statement
 
-        toplevel = not self.stack
+        if visiting_cte is not None:
+            kw["visiting_cte"] = visiting_cte
+            toplevel = False
+        else:
+            toplevel = not self.stack
+
         if toplevel:
             self.isdelete = True
             if not self.dml_compile_state:
@@ -6312,9 +6345,11 @@ class StrSQLCompiler(SQLCompiler):
             url = util.preloaded.engine_url
             dialect = url.URL.create(element.stringify_dialect).get_dialect()()
 
-            compiler = dialect.statement_compiler(dialect, None)
+            compiler = dialect.statement_compiler(
+                dialect, None, _supporting_against=self
+            )
             if not isinstance(compiler, StrSQLCompiler):
-                return compiler.process(element)
+                return compiler.process(element, **kw)
 
         return super().visit_unsupported_compilation(element, err)
 
