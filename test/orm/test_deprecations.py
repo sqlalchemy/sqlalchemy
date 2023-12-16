@@ -61,7 +61,6 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import CacheKeyFixture
 from sqlalchemy.testing.fixtures import fixture_session
-from sqlalchemy.testing.fixtures import RemoveORMEventsGlobally
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from . import _fixtures
@@ -1787,70 +1786,6 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             assert self.static.user_order_result == result
 
         self.assert_sql_count(testing.db, go, 1)
-
-
-class SessionEventsTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
-    run_inserts = None
-
-    def test_on_bulk_update_hook(self):
-        User, users = self.classes.User, self.tables.users
-
-        sess = fixture_session()
-        canary = Mock()
-
-        event.listen(sess, "after_bulk_update", canary.after_bulk_update)
-
-        def legacy(ses, qry, ctx, res):
-            canary.after_bulk_update_legacy(ses, qry, ctx, res)
-
-        event.listen(sess, "after_bulk_update", legacy)
-
-        self.mapper_registry.map_imperatively(User, users)
-
-        with testing.expect_deprecated(
-            'The argument signature for the "SessionEvents.after_bulk_update" '
-            "event listener"
-        ):
-            sess.query(User).update({"name": "foo"})
-
-        eq_(canary.after_bulk_update.call_count, 1)
-
-        upd = canary.after_bulk_update.mock_calls[0][1][0]
-        eq_(upd.session, sess)
-        eq_(
-            canary.after_bulk_update_legacy.mock_calls,
-            [call(sess, upd.query, None, upd.result)],
-        )
-
-    def test_on_bulk_delete_hook(self):
-        User, users = self.classes.User, self.tables.users
-
-        sess = fixture_session()
-        canary = Mock()
-
-        event.listen(sess, "after_bulk_delete", canary.after_bulk_delete)
-
-        def legacy(ses, qry, ctx, res):
-            canary.after_bulk_delete_legacy(ses, qry, ctx, res)
-
-        event.listen(sess, "after_bulk_delete", legacy)
-
-        self.mapper_registry.map_imperatively(User, users)
-
-        with testing.expect_deprecated(
-            'The argument signature for the "SessionEvents.after_bulk_delete" '
-            "event listener"
-        ):
-            sess.query(User).delete()
-
-        eq_(canary.after_bulk_delete.call_count, 1)
-
-        upd = canary.after_bulk_delete.mock_calls[0][1][0]
-        eq_(upd.session, sess)
-        eq_(
-            canary.after_bulk_delete_legacy.mock_calls,
-            [call(sess, upd.query, None, upd.result)],
-        )
 
 
 class ImmediateTest(_fixtures.FixtureTest):

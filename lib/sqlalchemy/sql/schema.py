@@ -3608,7 +3608,7 @@ class CallableColumnDefault(ColumnDefault):
             )
 
 
-class IdentityOptions:
+class IdentityOptions(DialectKWArgs):
     """Defines options for a named database sequence or an identity column.
 
     .. versionadded:: 1.3.18
@@ -3630,6 +3630,7 @@ class IdentityOptions:
         cycle: Optional[bool] = None,
         cache: Optional[int] = None,
         order: Optional[bool] = None,
+        **dialect_kw: Any,
     ) -> None:
         """Construct a :class:`.IdentityOptions` object.
 
@@ -3649,6 +3650,8 @@ class IdentityOptions:
         :param order: optional boolean value; if ``True``, renders the
          ORDER keyword.
 
+         .. deprecated:: 2.1 Use ``oracle_order`` instead.
+
         """
         self.start = start
         self.increment = increment
@@ -3658,11 +3661,43 @@ class IdentityOptions:
         self.nomaxvalue = nomaxvalue
         self.cycle = cycle
         self.cache = cache
-        self.order = order
+        if order is not None:
+            if "oracle_order" in dialect_kw:
+                raise exc.ArgumentError(
+                    "Cannot specify both 'order' and 'oracle_order'. "
+                    "Plese use only 'oracle_order'."
+                )
+            dialect_kw["oracle_order"] = order
+        self._validate_dialect_kwargs(dialect_kw)
 
     @property
     def _increment_is_negative(self) -> bool:
         return self.increment is not None and self.increment < 0
+
+    @property
+    def order(self) -> Optional[bool]:
+        """Alias of the ``dialect_kwargs`` ``'oracle_order'``.
+
+        .. deprecated:: 2.1 The 'order' attribute is deprecated.
+        """
+        value: Optional[bool] = self.dialect_kwargs.get("oracle_order")
+        return value
+
+    def _as_dict(self) -> Dict[str, Any]:
+        return {
+            k: v
+            for k, v in {
+                "start": self.start,
+                "increment": self.increment,
+                "minvalue": self.minvalue,
+                "maxvalue": self.maxvalue,
+                "nominvalue": self.nominvalue,
+                "nomaxvalue": self.nomaxvalue,
+                "cycle": self.cycle,
+                "cache": self.cache,
+            }.items()
+            if v != None
+        }
 
 
 class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
@@ -3705,6 +3740,13 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
     column: Optional[Column[Any]]
     data_type: Optional[TypeEngine[int]]
 
+    @util.deprecated_params(
+        order=(
+            "2.1",
+            "This parameter is supported only by Oracle, "
+            "use ``oracle_order`` instead.",
+        )
+    )
     def __init__(
         self,
         name: str,
@@ -3724,6 +3766,7 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
         metadata: Optional[MetaData] = None,
         quote_schema: Optional[bool] = None,
         for_update: bool = False,
+        **dialect_kw: Any,
     ) -> None:
         """Construct a :class:`.Sequence` object.
 
@@ -3868,6 +3911,7 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
             cycle=cycle,
             cache=cache,
             order=order,
+            **dialect_kw,
         )
         self.column = None
         self.name = quoted_name(name, quote)
@@ -3905,20 +3949,13 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
     def _copy(self) -> Sequence:
         return Sequence(
             name=self.name,
-            start=self.start,
-            increment=self.increment,
-            minvalue=self.minvalue,
-            maxvalue=self.maxvalue,
-            nominvalue=self.nominvalue,
-            nomaxvalue=self.nomaxvalue,
-            cycle=self.cycle,
             schema=self.schema,
-            cache=self.cache,
-            order=self.order,
             data_type=self.data_type,
             optional=self.optional,
             metadata=self.metadata,
             for_update=self.for_update,
+            **self._as_dict(),
+            **self.dialect_kwargs,
         )
 
     def _set_table(self, column: Column[Any], table: Table) -> None:
@@ -5997,9 +6034,21 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
 
     is_identity = True
 
+    @util.deprecated_params(
+        order=(
+            "2.1",
+            "This parameter is supported only by Oracle, "
+            "use ``oracle_order`` instead.",
+        ),
+        on_null=(
+            "2.1",
+            "This parameter is supported only by Oracle, "
+            "use ``oracle_on_null`` instead.",
+        ),
+    )
     def __init__(
         self,
-        always: bool = False,
+        always: Optional[bool] = False,
         on_null: Optional[bool] = None,
         start: Optional[int] = None,
         increment: Optional[int] = None,
@@ -6010,6 +6059,7 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
         cycle: Optional[bool] = None,
         cache: Optional[int] = None,
         order: Optional[bool] = None,
+        **dialect_kw: Any,
     ) -> None:
         """Construct a GENERATED { ALWAYS | BY DEFAULT } AS IDENTITY DDL
         construct to accompany a :class:`_schema.Column`.
@@ -6056,6 +6106,15 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
          ORDER keyword.
 
         """
+        self.dialect_options
+        if on_null is not None:
+            if "oracle_on_null" in dialect_kw:
+                raise exc.ArgumentError(
+                    "Cannot specify both 'on_null' and 'oracle_on_null'. "
+                    "Plese use only 'oracle_on_null'."
+                )
+            dialect_kw["oracle_on_null"] = on_null
+
         IdentityOptions.__init__(
             self,
             start=start,
@@ -6067,10 +6126,19 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
             cycle=cycle,
             cache=cache,
             order=order,
+            **dialect_kw,
         )
         self.always = always
-        self.on_null = on_null
         self.column = None
+
+    @property
+    def on_null(self) -> Optional[bool]:
+        """Alias of the ``dialect_kwargs`` ``'oracle_on_null'``.
+
+        .. deprecated:: 2.1 The 'on_null' attribute is deprecated.
+        """
+        value: Optional[bool] = self.dialect_kwargs.get("oracle_on_null")
+        return value
 
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         assert isinstance(parent, Column)
@@ -6106,18 +6174,13 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
         return self._copy(**kw)
 
     def _copy(self, **kw: Any) -> Identity:
-        i = Identity(
-            always=self.always,
-            on_null=self.on_null,
-            start=self.start,
-            increment=self.increment,
-            minvalue=self.minvalue,
-            maxvalue=self.maxvalue,
-            nominvalue=self.nominvalue,
-            nomaxvalue=self.nomaxvalue,
-            cycle=self.cycle,
-            cache=self.cache,
-            order=self.order,
-        )
+        i = Identity(**self._as_dict(), **self.dialect_kwargs)
 
         return self._schema_item_copy(i)
+
+    def _as_dict(self) -> Dict[str, Any]:
+        return {
+            # always=None means something different than always=False
+            "always": self.always,
+            **super()._as_dict(),
+        }

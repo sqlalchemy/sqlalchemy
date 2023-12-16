@@ -995,7 +995,7 @@ For a DELETE, an example of deleting rows based on criteria::
 
 .. warning:: Please read the following section :ref:`orm_queryguide_update_delete_caveats`
    for important notes regarding how the functionality of ORM-Enabled UPDATE and DELETE
-   diverges from that of ORM :term:`unit-of-work` features, such
+   diverges from that of ORM :term:`unit of work` features, such
    as using the :meth:`_orm.Session.delete` method to delete individual objects.
 
 
@@ -1004,8 +1004,8 @@ For a DELETE, an example of deleting rows based on criteria::
 Important Notes and Caveats for ORM-Enabled Update and Delete
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ORM-enabled UPDATE and DELETE features bypass ORM :term:`unit-of-work`
-automation in favor being able to emit a single UPDATE or DELETE statement
+The ORM-enabled UPDATE and DELETE features bypass ORM :term:`unit of work`
+automation in favor of being able to emit a single UPDATE or DELETE statement
 that matches multiple rows at once without complexity.
 
 * The operations do not offer in-Python cascading of relationships - it is

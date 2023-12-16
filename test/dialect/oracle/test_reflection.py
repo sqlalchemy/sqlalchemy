@@ -1314,8 +1314,14 @@ class IdentityReflectionTest(fixtures.TablesTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        Table("t1", metadata, Column("id1", Integer, Identity(on_null=True)))
-        Table("t2", metadata, Column("id2", Integer, Identity(order=True)))
+        Table(
+            "t1",
+            metadata,
+            Column("id1", Integer, Identity(oracle_on_null=True)),
+        )
+        Table(
+            "t2", metadata, Column("id2", Integer, Identity(oracle_order=True))
+        )
 
     def test_reflect_identity(self):
         insp = inspect(testing.db)
@@ -1323,23 +1329,23 @@ class IdentityReflectionTest(fixtures.TablesTest):
             "always": False,
             "start": 1,
             "increment": 1,
-            "on_null": False,
+            "oracle_on_null": False,
             "maxvalue": 10**28 - 1,
             "minvalue": 1,
             "cycle": False,
             "cache": 20,
-            "order": False,
+            "oracle_order": False,
         }
         for col in insp.get_columns("t1") + insp.get_columns("t2"):
             if col["name"] == "id1":
                 is_true("identity" in col)
                 exp = common.copy()
-                exp["on_null"] = True
+                exp["oracle_on_null"] = True
                 eq_(col["identity"], exp)
             if col["name"] == "id2":
                 is_true("identity" in col)
                 exp = common.copy()
-                exp["order"] = True
+                exp["oracle_order"] = True
                 eq_(col["identity"], exp)
 
 

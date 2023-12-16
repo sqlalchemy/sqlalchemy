@@ -2035,7 +2035,14 @@ class SessionEvents(event.Events[Session]):
         transaction: SessionTransaction,
         connection: Connection,
     ) -> None:
-        """Execute after a transaction is begun on a connection
+        """Execute after a transaction is begun on a connection.
+
+        .. note:: This event is called within the process of the
+          :class:`_orm.Session` modifying its own internal state.
+          To invoke SQL operations within this hook, use the
+          :class:`_engine.Connection` provided to the event;
+          do not run SQL operations using the :class:`_orm.Session`
+          directly.
 
         :param session: The target :class:`.Session`.
         :param transaction: The :class:`.SessionTransaction`.
@@ -2094,16 +2101,6 @@ class SessionEvents(event.Events[Session]):
 
         """
 
-    @event._legacy_signature(
-        "0.9",
-        ["session", "query", "query_context", "result"],
-        lambda update_context: (
-            update_context.session,
-            update_context.query,
-            None,
-            update_context.result,
-        ),
-    )
     def after_bulk_update(self, update_context: _O) -> None:
         """Event for after the legacy :meth:`_orm.Query.update` method
         has been called.
@@ -2140,16 +2137,6 @@ class SessionEvents(event.Events[Session]):
 
         """
 
-    @event._legacy_signature(
-        "0.9",
-        ["session", "query", "query_context", "result"],
-        lambda delete_context: (
-            delete_context.session,
-            delete_context.query,
-            None,
-            delete_context.result,
-        ),
-    )
     def after_bulk_delete(self, delete_context: _O) -> None:
         """Event for after the legacy :meth:`_orm.Query.delete` method
         has been called.

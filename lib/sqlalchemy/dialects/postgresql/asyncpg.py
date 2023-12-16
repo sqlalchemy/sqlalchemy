@@ -182,6 +182,7 @@ client using this setting passed to :func:`_asyncio.create_async_engine`::
 
 from __future__ import annotations
 
+import asyncio
 import collections
 import decimal
 import json as _py_json
@@ -941,7 +942,23 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
         self.await_(self._connection.close())
 
     def terminate(self):
-        self._connection.terminate()
+        if util.concurrency.in_greenlet():
+            # in a greenlet; this is the connection was invalidated
+            # case.
+            try:
+                # try to gracefully close; see #10717
+                # timeout added in asyncpg 0.14.0 December 2017
+                self.await_(self._connection.close(timeout=2))
+            except asyncio.TimeoutError:
+                # in the case where we are recycling an old connection
+                # that may have already been disconnected, close() will
+                # fail with the above timeout.  in this case, terminate
+                # the connection without any further waiting.
+                # see issue #8419
+                self._connection.terminate()
+        else:
+            # not in a greenlet; this is the gc cleanup case
+            self._connection.terminate()
         self._started = False
 
     @staticmethod

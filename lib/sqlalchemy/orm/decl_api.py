@@ -594,6 +594,7 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
         dataclass_callable: Union[
             _NoArg, Callable[..., Type[Any]]
         ] = _NoArg.NO_ARG,
+        **kw: Any,
     ) -> None:
         apply_dc_transforms: _DataclassArguments = {
             "init": init,
@@ -622,7 +623,7 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
                 current_transforms
             ) = apply_dc_transforms
 
-        super().__init_subclass__()
+        super().__init_subclass__(**kw)
 
         if not _is_mapped_class(cls):
             new_anno = (
@@ -839,13 +840,13 @@ class DeclarativeBase(
         def __init__(self, **kw: Any):
             ...
 
-    def __init_subclass__(cls) -> None:
+    def __init_subclass__(cls, **kw: Any) -> None:
         if DeclarativeBase in cls.__bases__:
             _check_not_declarative(cls, DeclarativeBase)
             _setup_declarative_base(cls)
         else:
             _as_declarative(cls._sa_registry, cls, cls.__dict__)
-        super().__init_subclass__()
+        super().__init_subclass__(**kw)
 
 
 def _check_not_declarative(cls: Type[Any], base: Type[Any]) -> None:
@@ -964,12 +965,13 @@ class DeclarativeBaseNoMeta(
         def __init__(self, **kw: Any):
             ...
 
-    def __init_subclass__(cls) -> None:
+    def __init_subclass__(cls, **kw: Any) -> None:
         if DeclarativeBaseNoMeta in cls.__bases__:
             _check_not_declarative(cls, DeclarativeBaseNoMeta)
             _setup_declarative_base(cls)
         else:
             _as_declarative(cls._sa_registry, cls, cls.__dict__)
+        super().__init_subclass__(**kw)
 
 
 def add_mapped_attribute(
