@@ -28,6 +28,7 @@ from ...engine.result import ResultMetaData
 from ...engine.row import Row
 from ...engine.row import RowMapping
 from ...sql.base import _generative
+from ...util import deprecated
 from ...util.concurrency import greenlet_spawn
 from ...util.typing import Literal
 from ...util.typing import Self
@@ -105,6 +106,11 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[Unpack[_Ts]]]):
             )
 
     @property
+    @deprecated(
+        "2.1.0",
+        "The :attr:`.AsyncResult.t` attribute is deprecated, :class:`.Row` "
+        "now behaves like a tuple and can unpack types directly.",
+    )
     def t(self) -> AsyncTupleResult[Tuple[Unpack[_Ts]]]:
         """Apply a "typed tuple" typing filter to returned rows.
 
@@ -116,6 +122,12 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[Unpack[_Ts]]]):
         """
         return self  # type: ignore
 
+    @deprecated(
+        "2.1.0",
+        "The :method:`.AsyncResult.tuples` method is deprecated, "
+        ":class:`.Row` now behaves like a tuple and can unpack types "
+        "directly.",
+    )
     def tuples(self) -> AsyncTupleResult[Tuple[Unpack[_Ts]]]:
         """Apply a "typed tuple" typing filter to returned rows.
 

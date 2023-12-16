@@ -40,6 +40,7 @@ from .. import util
 from ..sql.base import _generative
 from ..sql.base import HasMemoized
 from ..sql.base import InPlaceGenerative
+from ..util import deprecated
 from ..util import HasMemoized_ro_memoized_attribute
 from ..util import NONE_SET
 from ..util._has_cy import HAS_CYEXTENSION
@@ -1232,6 +1233,11 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         return MappingResult(self)
 
     @property
+    @deprecated(
+        "2.1.0",
+        "The :attr:`.Result.t` method is deprecated, :class:`.Row` "
+        "now behaves like a tuple and can unpack types directly.",
+    )
     def t(self) -> TupleResult[Tuple[Unpack[_Ts]]]:
         """Apply a "typed tuple" typing filter to returned rows.
 
@@ -1243,6 +1249,11 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         """
         return self  # type: ignore
 
+    @deprecated(
+        "2.1.0",
+        "The :method:`.Result.tuples` method is deprecated, :class:`.Row` "
+        "now behaves like a tuple and can unpack types directly.",
+    )
     def tuples(self) -> TupleResult[Tuple[Unpack[_Ts]]]:
         """Apply a "typed tuple" typing filter to returned rows.
 

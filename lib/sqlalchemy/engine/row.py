@@ -88,6 +88,11 @@ class Row(BaseRow, _RowBase[Unpack[_Ts]], Generic[Unpack[_Ts]]):
     def __delattr__(self, name: str) -> NoReturn:
         raise AttributeError("can't delete attribute")
 
+    @deprecated(
+        "2.1.0",
+        "The :meth:`.Row._tuple` method is deprecated, :class:`.Row` "
+        "now behaves like a tuple and can unpack types directly.",
+    )
     def _tuple(self) -> Tuple[Unpack[_Ts]]:
         """Return a 'tuple' form of this :class:`.Row`.
 
@@ -128,6 +133,11 @@ class Row(BaseRow, _RowBase[Unpack[_Ts]], Generic[Unpack[_Ts]]):
         return self._tuple()
 
     @property
+    @deprecated(
+        "2.1.0",
+        "The :attr:`.Row._t` attribute is deprecated, :class:`.Row` "
+        "now behaves like a tuple and can unpack types directly.",
+    )
     def _t(self) -> Tuple[Unpack[_Ts]]:
         """A synonym for :meth:`.Row._tuple`.
 

@@ -90,6 +90,7 @@ from ..sql.selectable import HasPrefixes
 from ..sql.selectable import HasSuffixes
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..sql.selectable import SelectLabelStyle
+from ..util import deprecated
 from ..util.typing import Literal
 from ..util.typing import Self
 from ..util.typing import TypeVarTuple
@@ -297,6 +298,11 @@ class Query(
             for ent in util.to_list(entities)
         ]
 
+    @deprecated(
+        "2.1.0",
+        "The :method:`.Query.tuples` method is deprecated, :class:`.Row` "
+        "now behaves like a tuple and can unpack types directly.",
+    )
     def tuples(self: Query[_O]) -> Query[Tuple[_O]]:
         """return a tuple-typed form of this :class:`.Query`.
 
