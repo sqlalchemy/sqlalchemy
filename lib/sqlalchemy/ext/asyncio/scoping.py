@@ -15,6 +15,7 @@ from typing import Iterator
 from typing import Optional
 from typing import overload
 from typing import Sequence
+from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -30,7 +31,6 @@ from ...util import create_proxy_methods
 from ...util import ScopedRegistry
 from ...util import warn
 from ...util import warn_deprecated
-from ...util.typing import TupleAny
 from ...util.typing import TypeVarTuple
 from ...util.typing import Unpack
 
@@ -565,7 +565,7 @@ class async_scoped_session(Generic[_AS]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Unpack[TupleAny]]:
+    ) -> Result[Unpack[Tuple[Any, ...]]]:
         ...
 
     async def execute(
@@ -576,7 +576,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> Result[Unpack[TupleAny]]:
+    ) -> Result[Unpack[Tuple[Any, ...]]]:
         r"""Execute a statement and return a buffered
         :class:`_engine.Result` object.
 
@@ -1593,10 +1593,10 @@ class async_scoped_session(Generic[_AS]):
     def identity_key(
         cls,
         class_: Optional[Type[Any]] = None,
-        ident: Union[Any, TupleAny] = None,
+        ident: Union[Any, Tuple[Any, ...]] = None,
         *,
         instance: Optional[Any] = None,
-        row: Optional[Union[Row[Unpack[TupleAny]], RowMapping]] = None,
+        row: Optional[Union[Row[Unpack[Tuple[Any, ...]]], RowMapping]] = None,
         identity_token: Optional[Any] = None,
     ) -> _IdentityKeyType[Any]:
         r"""Return an identity key.
