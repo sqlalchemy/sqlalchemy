@@ -87,6 +87,7 @@ from .. import util
 from ..util import FastIntFlag
 from ..util.typing import Literal
 from ..util.typing import Protocol
+from ..util.typing import TupleAny
 from ..util.typing import TypedDict
 from ..util.typing import Unpack
 
@@ -406,7 +407,7 @@ class _CompilerStackEntry(_BaseCompilerStackEntry, total=False):
     need_result_map_for_nested: bool
     need_result_map_for_compound: bool
     select_0: ReturnsRows
-    insert_from_select: Select[Unpack[Tuple[Any, ...]]]
+    insert_from_select: Select[Unpack[TupleAny]]
 
 
 class ExpandedState(NamedTuple):
@@ -4787,7 +4788,7 @@ class SQLCompiler(Compiled):
         return text
 
     def _setup_select_hints(
-        self, select: Select[Unpack[Tuple[Any, ...]]]
+        self, select: Select[Unpack[TupleAny]]
     ) -> Tuple[str, _FromHintsType]:
         byfrom = {
             from_: hinttext

@@ -46,6 +46,7 @@ from ..util import NONE_SET
 from ..util._has_cy import HAS_CYEXTENSION
 from ..util.typing import Literal
 from ..util.typing import Self
+from ..util.typing import TupleAny
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
 
@@ -67,7 +68,7 @@ _KeyMapRecType = Any
 _KeyMapType = Mapping[_KeyType, _KeyMapRecType]
 
 
-_RowData = Union[Row[Unpack[Tuple[Any, ...]]], RowMapping, Any]
+_RowData = Union[Row[Unpack[TupleAny]], RowMapping, Any]
 """A generic form of "row" that accommodates for the different kinds of
 "rows" that different result objects return, including row, row mapping, and
 scalar values"""
@@ -171,7 +172,7 @@ class ResultMetaData:
 
     def _getter(
         self, key: Any, raiseerr: bool = True
-    ) -> Optional[Callable[[Row[Unpack[Tuple[Any, ...]]]], Any]]:
+    ) -> Optional[Callable[[Row[Unpack[TupleAny]]], Any]]:
         index = self._index_for_key(key, raiseerr)
 
         if index is not None:
@@ -417,7 +418,7 @@ _NO_ROW = _NoRow._NO_ROW
 class ResultInternal(InPlaceGenerative, Generic[_R]):
     __slots__ = ()
 
-    _real_result: Optional[Result[Unpack[Tuple[Any, ...]]]] = None
+    _real_result: Optional[Result[Unpack[TupleAny]]] = None
     _generate_rows: bool = True
     _row_logging_fn: Optional[Callable[[Any], Any]]
 
@@ -431,22 +432,22 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
     def _fetchiter_impl(
         self,
-    ) -> Iterator[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
+    ) -> Iterator[_InterimRowType[Row[Unpack[TupleAny]]]]:
         raise NotImplementedError()
 
     def _fetchone_impl(
         self, hard_close: bool = False
-    ) -> Optional[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
+    ) -> Optional[_InterimRowType[Row[Unpack[TupleAny]]]]:
         raise NotImplementedError()
 
     def _fetchmany_impl(
         self, size: Optional[int] = None
-    ) -> List[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
+    ) -> List[_InterimRowType[Row[Unpack[TupleAny]]]]:
         raise NotImplementedError()
 
     def _fetchall_impl(
         self,
-    ) -> List[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
+    ) -> List[_InterimRowType[Row[Unpack[TupleAny]]]]:
         raise NotImplementedError()
 
     def _soft_close(self, hard: bool = False) -> None:
@@ -454,10 +455,10 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
     @HasMemoized_ro_memoized_attribute
     def _row_getter(self) -> Optional[Callable[..., _R]]:
-        real_result: Result[Unpack[Tuple[Any, ...]]] = (
+        real_result: Result[Unpack[TupleAny]] = (
             self._real_result
             if self._real_result
-            else cast("Result[Unpack[Tuple[Any, ...]]]", self)
+            else cast("Result[Unpack[TupleAny]]", self)
         )
 
         if real_result._source_supports_scalars:
@@ -495,9 +496,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
             fixed_tf = tf
 
-            def make_row(
-                row: _InterimRowType[Row[Unpack[Tuple[Any, ...]]]]
-            ) -> _R:
+            def make_row(row: _InterimRowType[Row[Unpack[TupleAny]]]) -> _R:
                 return _make_row_orig(fixed_tf(row))
 
         else:
@@ -509,9 +508,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
             _log_row = real_result._row_logging_fn
             _make_row = make_row
 
-            def make_row(
-                row: _InterimRowType[Row[Unpack[Tuple[Any, ...]]]]
-            ) -> _R:
+            def make_row(row: _InterimRowType[Row[Unpack[TupleAny]]]) -> _R:
                 return _log_row(_make_row(row))  # type: ignore
 
         return make_row
@@ -525,9 +522,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         if self._unique_filter_state:
             uniques, strategy = self._unique_strategy
 
-            def iterrows(
-                self: Result[Unpack[Tuple[Any, ...]]]
-            ) -> Iterator[_R]:
+            def iterrows(self: Result[Unpack[TupleAny]]) -> Iterator[_R]:
                 for raw_row in self._fetchiter_impl():
                     obj: _InterimRowType[Any] = (
                         make_row(raw_row) if make_row else raw_row
@@ -542,9 +537,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
         else:
 
-            def iterrows(
-                self: Result[Unpack[Tuple[Any, ...]]]
-            ) -> Iterator[_R]:
+            def iterrows(self: Result[Unpack[TupleAny]]) -> Iterator[_R]:
                 for raw_row in self._fetchiter_impl():
                     row: _InterimRowType[Any] = (
                         make_row(raw_row) if make_row else raw_row
@@ -609,9 +602,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         if self._unique_filter_state:
             uniques, strategy = self._unique_strategy
 
-            def onerow(
-                self: Result[Unpack[Tuple[Any, ...]]]
-            ) -> Union[_NoRow, _R]:
+            def onerow(self: Result[Unpack[TupleAny]]) -> Union[_NoRow, _R]:
                 _onerow = self._fetchone_impl
                 while True:
                     row = _onerow()
@@ -632,9 +623,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
         else:
 
-            def onerow(
-                self: Result[Unpack[Tuple[Any, ...]]]
-            ) -> Union[_NoRow, _R]:
+            def onerow(self: Result[Unpack[TupleAny]]) -> Union[_NoRow, _R]:
                 row = self._fetchone_impl()
                 if row is None:
                     return _NO_ROW
@@ -694,7 +683,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                     real_result = (
                         self._real_result
                         if self._real_result
-                        else cast("Result[Unpack[Tuple[Any, ...]]]", self)
+                        else cast("Result[Unpack[TupleAny]]", self)
                     )
                     if real_result._yield_per:
                         num_required = num = real_result._yield_per
@@ -734,7 +723,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                     real_result = (
                         self._real_result
                         if self._real_result
-                        else cast("Result[Unpack[Tuple[Any, ...]]]", self)
+                        else cast("Result[Unpack[TupleAny]]", self)
                     )
                     num = real_result._yield_per
 
@@ -866,7 +855,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         real_result = (
             self._real_result
             if self._real_result
-            else cast("Result[Unpack[Tuple[Any, ...]]]", self)
+            else cast("Result[Unpack[TupleAny]]", self)
         )
 
         if not real_result._source_supports_scalars or len(indexes) != 1:
@@ -884,7 +873,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         real_result = (
             self._real_result
             if self._real_result is not None
-            else cast("Result[Unpack[Tuple[Any, ...]]]", self)
+            else cast("Result[Unpack[TupleAny]]", self)
         )
 
         if not strategy and self._metadata._unique_filters:
@@ -957,7 +946,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
     __slots__ = ("_metadata", "__dict__")
 
     _row_logging_fn: Optional[
-        Callable[[Row[Unpack[Tuple[Any, ...]]]], Row[Unpack[Tuple[Any, ...]]]]
+        Callable[[Row[Unpack[TupleAny]]], Row[Unpack[TupleAny]]]
     ] = None
 
     _source_supports_scalars: bool = False
@@ -1193,7 +1182,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
 
     def _getter(
         self, key: _KeyIndexType, raiseerr: bool = True
-    ) -> Optional[Callable[[Row[Unpack[Tuple[Any, ...]]]], Any]]:
+    ) -> Optional[Callable[[Row[Unpack[TupleAny]]], Any]]:
         """return a callable that will retrieve the given key from a
         :class:`_engine.Row`.
 
@@ -1657,7 +1646,7 @@ class FilterResult(ResultInternal[_R]):
 
     _post_creational_filter: Optional[Callable[[Any], Any]]
 
-    _real_result: Result[Unpack[Tuple[Any, ...]]]
+    _real_result: Result[Unpack[TupleAny]]
 
     def __enter__(self) -> Self:
         return self
@@ -1718,22 +1707,22 @@ class FilterResult(ResultInternal[_R]):
 
     def _fetchiter_impl(
         self,
-    ) -> Iterator[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
+    ) -> Iterator[_InterimRowType[Row[Unpack[TupleAny]]]]:
         return self._real_result._fetchiter_impl()
 
     def _fetchone_impl(
         self, hard_close: bool = False
-    ) -> Optional[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
+    ) -> Optional[_InterimRowType[Row[Unpack[TupleAny]]]]:
         return self._real_result._fetchone_impl(hard_close=hard_close)
 
     def _fetchall_impl(
         self,
-    ) -> List[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
+    ) -> List[_InterimRowType[Row[Unpack[TupleAny]]]]:
         return self._real_result._fetchall_impl()
 
     def _fetchmany_impl(
         self, size: Optional[int] = None
-    ) -> List[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
+    ) -> List[_InterimRowType[Row[Unpack[TupleAny]]]]:
         return self._real_result._fetchmany_impl(size=size)
 
 
@@ -2316,7 +2305,7 @@ class IteratorResult(Result[Unpack[_Ts]]):
 
     def _fetchone_impl(
         self, hard_close: bool = False
-    ) -> Optional[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
+    ) -> Optional[_InterimRowType[Row[Unpack[TupleAny]]]]:
         if self._hard_closed:
             self._raise_hard_closed()
 
@@ -2329,7 +2318,7 @@ class IteratorResult(Result[Unpack[_Ts]]):
 
     def _fetchall_impl(
         self,
-    ) -> List[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
+    ) -> List[_InterimRowType[Row[Unpack[TupleAny]]]]:
         if self._hard_closed:
             self._raise_hard_closed()
         try:
@@ -2339,7 +2328,7 @@ class IteratorResult(Result[Unpack[_Ts]]):
 
     def _fetchmany_impl(
         self, size: Optional[int] = None
-    ) -> List[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
+    ) -> List[_InterimRowType[Row[Unpack[TupleAny]]]]:
         if self._hard_closed:
             self._raise_hard_closed()
 
@@ -2401,7 +2390,7 @@ class ChunkedIteratorResult(IteratorResult[Unpack[_Ts]]):
 
     def _fetchmany_impl(
         self, size: Optional[int] = None
-    ) -> List[_InterimRowType[Row[Unpack[Tuple[Any, ...]]]]]:
+    ) -> List[_InterimRowType[Row[Unpack[TupleAny]]]]:
         if self.dynamic_yield_per:
             self.iterator = itertools.chain.from_iterable(self.chunks(size))
         return super()._fetchmany_impl(size=size)

@@ -46,6 +46,7 @@ from .. import inspection
 from .. import util
 from ..util.typing import Literal
 from ..util.typing import Protocol
+from ..util.typing import TupleAny
 from ..util.typing import Unpack
 
 if TYPE_CHECKING:
@@ -97,7 +98,7 @@ class _InstallLoaderCallableProto(Protocol[_O]):
         self,
         state: InstanceState[_O],
         dict_: _InstanceDict,
-        row: Row[Unpack[Tuple[Any, ...]]],
+        row: Row[Unpack[TupleAny]],
     ) -> None:
         ...
 
@@ -679,7 +680,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
             def _set_callable(
                 state: InstanceState[_O],
                 dict_: _InstanceDict,
-                row: Row[Unpack[Tuple[Any, ...]]],
+                row: Row[Unpack[TupleAny]],
             ) -> None:
                 if "callables" not in state.__dict__:
                     state.callables = {}
@@ -693,7 +694,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
             def _set_callable(
                 state: InstanceState[_O],
                 dict_: _InstanceDict,
-                row: Row[Unpack[Tuple[Any, ...]]],
+                row: Row[Unpack[TupleAny]],
             ) -> None:
                 if "callables" not in state.__dict__:
                     state.callables = {}

@@ -93,6 +93,7 @@ from ..sql.selectable import SelectLabelStyle
 from ..util import deprecated
 from ..util.typing import Literal
 from ..util.typing import Self
+from ..util.typing import TupleAny
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
 
@@ -543,7 +544,7 @@ class Query(
 
     def _final_statement(
         self, legacy_query_style: bool = True
-    ) -> Select[Unpack[Tuple[Any, ...]]]:
+    ) -> Select[Unpack[TupleAny]]:
         """Return the 'final' SELECT statement for this :class:`.Query`.
 
         This is used by the testing suite only and is fairly inefficient.

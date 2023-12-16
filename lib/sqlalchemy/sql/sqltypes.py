@@ -61,6 +61,7 @@ from ..util import langhelpers
 from ..util import OrderedDict
 from ..util.typing import is_literal
 from ..util.typing import Literal
+from ..util.typing import TupleAny
 from ..util.typing import typing_get_args
 
 if TYPE_CHECKING:
@@ -3162,7 +3163,7 @@ class ARRAY(
             )
 
 
-class TupleType(TypeEngine[Tuple[Any, ...]]):
+class TupleType(TypeEngine[TupleAny]):
     """represent the composite type of a Tuple."""
 
     _is_tuple_type = True

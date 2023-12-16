@@ -25,6 +25,7 @@ from .interfaces import Dialect
 from .. import event
 from .. import exc
 from ..util.typing import Literal
+from ..util.typing import TupleAny
 from ..util.typing import Unpack
 
 if typing.TYPE_CHECKING:
@@ -271,7 +272,7 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
         multiparams: _CoreMultiExecuteParams,
         params: _CoreSingleExecuteParams,
         execution_options: _ExecuteOptions,
-        result: Result[Unpack[Tuple[Any, ...]]],
+        result: Result[Unpack[TupleAny]],
     ) -> None:
         """Intercept high level execute() events after execute.
 

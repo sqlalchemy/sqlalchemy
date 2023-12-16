@@ -65,6 +65,7 @@ from .visitors import InternalTraversal
 from .. import exc
 from .. import util
 from ..util.typing import Self
+from ..util.typing import TupleAny
 from ..util.typing import TypeGuard
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
@@ -963,7 +964,7 @@ class ValuesBase(UpdateBase):
 
     _supports_multi_parameters = False
 
-    select: Optional[Select[Unpack[Tuple[Any, ...]]]] = None
+    select: Optional[Select[Unpack[TupleAny]]] = None
     """SELECT statement for INSERT .. FROM SELECT"""
 
     _post_values_clause: Optional[ClauseElement] = None
@@ -1838,12 +1839,12 @@ class Delete(DMLWhereBase, UpdateBase):
         @overload
         def returning(
             self, *cols: _ColumnsClauseArgument[Any], **__kw: Any
-        ) -> ReturningDelete[Unpack[Tuple[Any, ...]]]:
+        ) -> ReturningDelete[Unpack[TupleAny]]:
             ...
 
         def returning(
             self, *cols: _ColumnsClauseArgument[Any], **__kw: Any
-        ) -> ReturningDelete[Unpack[Tuple[Any, ...]]]:
+        ) -> ReturningDelete[Unpack[TupleAny]]:
             ...
 
 

@@ -32,6 +32,7 @@ from ..util import ThreadLocalRegistry
 from ..util import warn
 from ..util import warn_deprecated
 from ..util.typing import Protocol
+from ..util.typing import TupleAny
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
 
@@ -699,7 +700,7 @@ class scoped_session(Generic[_S]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> CursorResult[Unpack[Tuple[Any, ...]]]:
+    ) -> CursorResult[Unpack[TupleAny]]:
         ...
 
     @overload
@@ -712,7 +713,7 @@ class scoped_session(Generic[_S]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Unpack[Tuple[Any, ...]]]:
+    ) -> Result[Unpack[TupleAny]]:
         ...
 
     def execute(
@@ -724,7 +725,7 @@ class scoped_session(Generic[_S]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Unpack[Tuple[Any, ...]]]:
+    ) -> Result[Unpack[TupleAny]]:
         r"""Execute a SQL expression construct.
 
         .. container:: class_bases
@@ -2162,7 +2163,7 @@ class scoped_session(Generic[_S]):
         ident: Union[Any, Tuple[Any, ...]] = None,
         *,
         instance: Optional[Any] = None,
-        row: Optional[Union[Row[Unpack[Tuple[Any, ...]]], RowMapping]] = None,
+        row: Optional[Union[Row[Unpack[TupleAny]], RowMapping]] = None,
         identity_token: Optional[Any] = None,
     ) -> _IdentityKeyType[Any]:
         r"""Return an identity key.

@@ -63,6 +63,8 @@ _KT_contra = TypeVar("_KT_contra", contravariant=True)
 _VT = TypeVar("_VT")
 _VT_co = TypeVar("_VT_co", covariant=True)
 
+TupleAny = Tuple[Any, ...]
+
 
 if compat.py310:
     # why they took until py310 to put this in stdlib is beyond me,

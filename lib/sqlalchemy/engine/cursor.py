@@ -52,6 +52,7 @@ from ..sql.type_api import TypeEngine
 from ..util import compat
 from ..util.typing import Literal
 from ..util.typing import Self
+from ..util.typing import TupleAny
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
 
@@ -345,7 +346,7 @@ class CursorResultMetaData(ResultMetaData):
 
     def __init__(
         self,
-        parent: CursorResult[Unpack[Tuple[Any, ...]]],
+        parent: CursorResult[Unpack[TupleAny]],
         cursor_description: _DBAPICursorDescription,
     ):
         context = parent.context
@@ -930,21 +931,21 @@ class ResultFetchStrategy:
 
     def soft_close(
         self,
-        result: CursorResult[Unpack[Tuple[Any, ...]]],
+        result: CursorResult[Unpack[TupleAny]],
         dbapi_cursor: Optional[DBAPICursor],
     ) -> None:
         raise NotImplementedError()
 
     def hard_close(
         self,
-        result: CursorResult[Unpack[Tuple[Any, ...]]],
+        result: CursorResult[Unpack[TupleAny]],
         dbapi_cursor: Optional[DBAPICursor],
     ) -> None:
         raise NotImplementedError()
 
     def yield_per(
         self,
-        result: CursorResult[Unpack[Tuple[Any, ...]]],
+        result: CursorResult[Unpack[TupleAny]],
         dbapi_cursor: Optional[DBAPICursor],
         num: int,
     ) -> None:
@@ -952,7 +953,7 @@ class ResultFetchStrategy:
 
     def fetchone(
         self,
-        result: CursorResult[Unpack[Tuple[Any, ...]]],
+        result: CursorResult[Unpack[TupleAny]],
         dbapi_cursor: DBAPICursor,
         hard_close: bool = False,
     ) -> Any:
@@ -960,7 +961,7 @@ class ResultFetchStrategy:
 
     def fetchmany(
         self,
-        result: CursorResult[Unpack[Tuple[Any, ...]]],
+        result: CursorResult[Unpack[TupleAny]],
         dbapi_cursor: DBAPICursor,
         size: Optional[int] = None,
     ) -> Any:
@@ -968,14 +969,14 @@ class ResultFetchStrategy:
 
     def fetchall(
         self,
-        result: CursorResult[Unpack[Tuple[Any, ...]]],
+        result: CursorResult[Unpack[TupleAny]],
         dbapi_cursor: DBAPICursor,
     ) -> Any:
         raise NotImplementedError()
 
     def handle_exception(
         self,
-        result: CursorResult[Unpack[Tuple[Any, ...]]],
+        result: CursorResult[Unpack[TupleAny]],
         dbapi_cursor: Optional[DBAPICursor],
         err: BaseException,
     ) -> NoReturn:
@@ -2114,8 +2115,8 @@ class CursorResult(Result[Unpack[_Ts]]):
         return self._fetchiter_impl()
 
     def merge(
-        self, *others: Result[Unpack[Tuple[Any, ...]]]
-    ) -> MergedResult[Unpack[Tuple[Any, ...]]]:
+        self, *others: Result[Unpack[TupleAny]]
+    ) -> MergedResult[Unpack[TupleAny]]:
         merged_result = super().merge(*others)
         setup_rowcounts = self.context._has_rowcount
         if setup_rowcounts:

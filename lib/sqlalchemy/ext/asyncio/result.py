@@ -32,6 +32,7 @@ from ...util import deprecated
 from ...util.concurrency import greenlet_spawn
 from ...util.typing import Literal
 from ...util.typing import Self
+from ...util.typing import TupleAny
 from ...util.typing import TypeVarTuple
 from ...util.typing import Unpack
 
@@ -47,7 +48,7 @@ _Ts = TypeVarTuple("_Ts")
 class AsyncCommon(FilterResult[_R]):
     __slots__ = ()
 
-    _real_result: Result[Unpack[Tuple[Any, ...]]]
+    _real_result: Result[Unpack[TupleAny]]
     _metadata: ResultMetaData
 
     async def close(self) -> None:  # type: ignore[override]
@@ -465,13 +466,13 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[Unpack[_Ts]]]):
 
     @overload
     def scalars(
-        self: AsyncResult[_T, Unpack[Tuple[Any, ...]]], index: Literal[0]
+        self: AsyncResult[_T, Unpack[TupleAny]], index: Literal[0]
     ) -> AsyncScalarResult[_T]:
         ...
 
     @overload
     def scalars(
-        self: AsyncResult[_T, Unpack[Tuple[Any, ...]]],
+        self: AsyncResult[_T, Unpack[TupleAny]],
     ) -> AsyncScalarResult[_T]:
         ...
 
@@ -531,7 +532,7 @@ class AsyncScalarResult(AsyncCommon[_R]):
 
     def __init__(
         self,
-        real_result: Result[Unpack[Tuple[Any, ...]]],
+        real_result: Result[Unpack[TupleAny]],
         index: _KeyIndexType,
     ):
         self._real_result = real_result
@@ -664,7 +665,7 @@ class AsyncMappingResult(_WithKeys, AsyncCommon[RowMapping]):
 
     _post_creational_filter = operator.attrgetter("_mapping")
 
-    def __init__(self, result: Result[Unpack[Tuple[Any, ...]]]):
+    def __init__(self, result: Result[Unpack[TupleAny]]):
         self._real_result = result
         self._unique_filter_state = result._unique_filter_state
         self._metadata = result._metadata
@@ -964,7 +965,7 @@ class AsyncTupleResult(AsyncCommon[_R], util.TypingOnly):
             ...
 
 
-_RT = TypeVar("_RT", bound="Result[Unpack[Tuple[Any, ...]]]")
+_RT = TypeVar("_RT", bound="Result[Unpack[TupleAny]]")
 
 
 async def _ensure_sync_result(result: _RT, calling_method: Any) -> _RT:

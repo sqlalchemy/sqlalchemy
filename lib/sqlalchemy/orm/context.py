@@ -67,6 +67,7 @@ from ..sql.selectable import SelectLabelStyle
 from ..sql.selectable import SelectState
 from ..sql.selectable import TypedReturnsRows
 from ..sql.visitors import InternalTraversal
+from ..util.typing import TupleAny
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
 
@@ -151,8 +152,8 @@ class QueryContext:
         self,
         compile_state: CompileState,
         statement: Union[
-            Select[Unpack[Tuple[Any, ...]]],
-            FromStatement[Unpack[Tuple[Any, ...]]],
+            Select[Unpack[TupleAny]],
+            FromStatement[Unpack[TupleAny]],
         ],
         params: _CoreSingleExecuteParams,
         session: Session,
@@ -407,11 +408,9 @@ class ORMCompileState(AbstractORMCompileState):
     attributes: Dict[Any, Any]
     global_attributes: Dict[Any, Any]
 
-    statement: Union[
-        Select[Unpack[Tuple[Any, ...]]], FromStatement[Unpack[Tuple[Any, ...]]]
-    ]
+    statement: Union[Select[Unpack[TupleAny]], FromStatement[Unpack[TupleAny]]]
     select_statement: Union[
-        Select[Unpack[Tuple[Any, ...]]], FromStatement[Unpack[Tuple[Any, ...]]]
+        Select[Unpack[TupleAny]], FromStatement[Unpack[TupleAny]]
     ]
     _entities: List[_QueryEntity]
     _polymorphic_adapters: Dict[_InternalEntityType, ORMAdapter]
@@ -426,7 +425,7 @@ class ORMCompileState(AbstractORMCompileState):
     dedupe_columns: Set[ColumnElement[Any]]
     create_eager_joins: List[
         # TODO: this structure is set up by JoinedLoader
-        Tuple[Any, ...]
+        TupleAny
     ]
     current_path: PathRegistry = _path_registry
     _has_mapper_entities = False
@@ -2444,9 +2443,7 @@ def _column_descriptions(
 
 
 def _legacy_filter_by_entity_zero(
-    query_or_augmented_select: Union[
-        Query[Any], Select[Unpack[Tuple[Any, ...]]]
-    ]
+    query_or_augmented_select: Union[Query[Any], Select[Unpack[TupleAny]]]
 ) -> Optional[_InternalEntityType[Any]]:
     self = query_or_augmented_select
     if self._setup_joins:
@@ -2461,9 +2458,7 @@ def _legacy_filter_by_entity_zero(
 
 
 def _entity_from_pre_ent_zero(
-    query_or_augmented_select: Union[
-        Query[Any], Select[Unpack[Tuple[Any, ...]]]
-    ]
+    query_or_augmented_select: Union[Query[Any], Select[Unpack[TupleAny]]]
 ) -> Optional[_InternalEntityType[Any]]:
     self = query_or_augmented_select
     if not self._raw_columns:

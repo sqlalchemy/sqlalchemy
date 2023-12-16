@@ -89,6 +89,7 @@ from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util import HasMemoized
 from ..util import HasMemoized_ro_memoized_attribute
 from ..util.typing import Literal
+from ..util.typing import TupleAny
 from ..util.typing import Unpack
 
 if TYPE_CHECKING:
@@ -3429,7 +3430,7 @@ class Mapper(
 
     def identity_key_from_row(
         self,
-        row: Optional[Union[Row[Unpack[Tuple[Any, ...]]], RowMapping]],
+        row: Optional[Union[Row[Unpack[TupleAny]], RowMapping]],
         identity_token: Optional[Any] = None,
         adapter: Optional[ORMAdapter] = None,
     ) -> _IdentityKeyType[_O]:

@@ -92,6 +92,7 @@ from ..util.typing import eval_name_only as _eval_name_only
 from ..util.typing import is_origin_of_cls
 from ..util.typing import Literal
 from ..util.typing import Protocol
+from ..util.typing import TupleAny
 from ..util.typing import typing_get_origin
 from ..util.typing import Unpack
 
@@ -427,7 +428,7 @@ def identity_key(
     ident: Union[Any, Tuple[Any, ...]] = None,
     *,
     instance: Optional[_T] = None,
-    row: Optional[Union[Row[Unpack[Tuple[Any, ...]]], RowMapping]] = None,
+    row: Optional[Union[Row[Unpack[TupleAny]], RowMapping]] = None,
     identity_token: Optional[Any] = None,
 ) -> _IdentityKeyType[_T]:
     r"""Generate "identity key" tuples, as are used as keys in the
@@ -1722,10 +1723,10 @@ class Bundle(
 
     def create_row_processor(
         self,
-        query: Select[Unpack[Tuple[Any, ...]]],
-        procs: Sequence[Callable[[Row[Unpack[Tuple[Any, ...]]]], Any]],
+        query: Select[Unpack[TupleAny]],
+        procs: Sequence[Callable[[Row[Unpack[TupleAny]]], Any]],
         labels: Sequence[str],
-    ) -> Callable[[Row[Unpack[Tuple[Any, ...]]]], Any]:
+    ) -> Callable[[Row[Unpack[TupleAny]]], Any]:
         """Produce the "row processing" function for this :class:`.Bundle`.
 
         May be overridden by subclasses to provide custom behaviors when
@@ -1761,7 +1762,7 @@ class Bundle(
         """
         keyed_tuple = result_tuple(labels, [() for l in labels])
 
-        def proc(row: Row[Unpack[Tuple[Any, ...]]]) -> Any:
+        def proc(row: Row[Unpack[TupleAny]]) -> Any:
             return keyed_tuple([proc(row) for proc in procs])
 
         return proc

@@ -10,7 +10,6 @@ from __future__ import annotations
 from typing import Any
 from typing import Optional
 from typing import overload
-from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
@@ -32,6 +31,7 @@ from .selectable import Select
 from .selectable import TableClause
 from .selectable import TableSample
 from .selectable import Values
+from ..util.typing import TupleAny
 from ..util.typing import Unpack
 
 if TYPE_CHECKING:
@@ -452,13 +452,13 @@ def select(
 @overload
 def select(
     *entities: _ColumnsClauseArgument[Any], **__kw: Any
-) -> Select[Unpack[Tuple[Any, ...]]]:
+) -> Select[Unpack[TupleAny]]:
     ...
 
 
 def select(
     *entities: _ColumnsClauseArgument[Any], **__kw: Any
-) -> Select[Unpack[Tuple[Any, ...]]]:
+) -> Select[Unpack[TupleAny]]:
     r"""Construct a new :class:`_expression.Select`.
 
 

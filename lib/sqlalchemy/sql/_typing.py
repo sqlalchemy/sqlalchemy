@@ -17,7 +17,6 @@ from typing import NoReturn
 from typing import Optional
 from typing import overload
 from typing import Set
-from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -29,6 +28,7 @@ from .. import util
 from ..inspection import Inspectable
 from ..util.typing import Literal
 from ..util.typing import Protocol
+from ..util.typing import TupleAny
 from ..util.typing import TypeAlias
 from ..util.typing import Unpack
 
@@ -325,7 +325,7 @@ if TYPE_CHECKING:
 
     def is_select_statement(
         t: Union[Executable, ReturnsRows]
-    ) -> TypeGuard[Select[Unpack[Tuple[Any, ...]]]]:
+    ) -> TypeGuard[Select[Unpack[TupleAny]]]:
         ...
 
     def is_table(t: FromClause) -> TypeGuard[TableClause]:
