@@ -1,0 +1,6 @@
+.. change::
+    :tags: typing
+    :tickets: 10635
+
+    Add pep-646 integration and deprecate the old tuple-workaround.
+    Patch provided by Yurii Karabas.
