@@ -31,6 +31,7 @@ from ...util import create_proxy_methods
 from ...util import ScopedRegistry
 from ...util import warn
 from ...util import warn_deprecated
+from ...util.typing import TupleAny
 from ...util.typing import TypeVarTuple
 from ...util.typing import Unpack
 
@@ -1596,7 +1597,7 @@ class async_scoped_session(Generic[_AS]):
         ident: Union[Any, Tuple[Any, ...]] = None,
         *,
         instance: Optional[Any] = None,
-        row: Optional[Union[Row[Unpack[Tuple[Any, ...]]], RowMapping]] = None,
+        row: Optional[Union[Row[Unpack[TupleAny]], RowMapping]] = None,
         identity_token: Optional[Any] = None,
     ) -> _IdentityKeyType[Any]:
         r"""Return an identity key.
