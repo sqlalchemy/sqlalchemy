@@ -82,17 +82,26 @@ def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
                 )
 
                 for num_args in range(start_index, end_index + 1):
+                    ret_suffix = ""
                     combinations = [
                         f"__ent{arg}: _TCCA[_T{arg}]"
                         for arg in range(num_args)
                     ]
+
+                    if num_args == end_index:
+                        ret_suffix = ", Unpack[TupleAny]"
+                        extra_args = (
+                            f", *entities: _ColumnsClauseArgument[Any]"
+                            f"{extra_args.replace(', *', '')}"
+                        )
+
                     buf.write(
                         textwrap.indent(
                             f"""
 @overload
 def {current_fnname}(
     {'self, ' if use_self else ''}{", ".join(combinations)},/{extra_args}
-) -> {return_type}[{', '.join(f'_T{i}' for i in range(num_args))}]:
+) -> {return_type}[{', '.join(f'_T{i}' for i in range(num_args))}{ret_suffix}]:
     ...
 
 """,  # noqa: E501

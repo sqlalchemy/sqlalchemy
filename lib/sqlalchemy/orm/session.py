@@ -2892,7 +2892,10 @@ class Session(_SessionClassMethods, EventTarget):
         __ent6: _TCCA[_T6],
         __ent7: _TCCA[_T7],
         /,
-    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]:
+        *entities: _ColumnsClauseArgument[Any],
+    ) -> RowReturningQuery[
+        _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, Unpack[TupleAny]
+    ]:
         ...
 
     # END OVERLOADED FUNCTIONS self.query

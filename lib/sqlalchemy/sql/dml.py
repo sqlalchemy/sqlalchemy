@@ -1399,9 +1399,11 @@ class Insert(ValuesBase):
             __ent6: _TCCA[_T6],
             __ent7: _TCCA[_T7],
             /,
-            *,
+            *entities: _ColumnsClauseArgument[Any],
             sort_by_parameter_order: bool = False,
-        ) -> ReturningInsert[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]:
+        ) -> ReturningInsert[
+            _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, Unpack[TupleAny]
+        ]:
             ...
 
         # END OVERLOADED FUNCTIONS self.returning
@@ -1688,7 +1690,10 @@ class Update(DMLWhereBase, ValuesBase):
             __ent6: _TCCA[_T6],
             __ent7: _TCCA[_T7],
             /,
-        ) -> ReturningUpdate[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]:
+            *entities: _ColumnsClauseArgument[Any],
+        ) -> ReturningUpdate[
+            _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, Unpack[TupleAny]
+        ]:
             ...
 
         # END OVERLOADED FUNCTIONS self.returning
@@ -1831,7 +1836,10 @@ class Delete(DMLWhereBase, UpdateBase):
             __ent6: _TCCA[_T6],
             __ent7: _TCCA[_T7],
             /,
-        ) -> ReturningDelete[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]:
+            *entities: _ColumnsClauseArgument[Any],
+        ) -> ReturningDelete[
+            _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, Unpack[TupleAny]
+        ]:
             ...
 
         # END OVERLOADED FUNCTIONS self.returning

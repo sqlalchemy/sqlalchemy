@@ -442,7 +442,10 @@ def select(
     __ent8: _TCCA[_T8],
     __ent9: _TCCA[_T9],
     /,
-) -> Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9]:
+    *entities: _ColumnsClauseArgument[Any],
+) -> Select[
+    _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9, Unpack[TupleAny]
+]:
     ...
 
 
