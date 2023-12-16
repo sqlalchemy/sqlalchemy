@@ -415,7 +415,7 @@ class AsyncSession(ReversibleProxy[Session]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> CursorResult[Any]:
+    ) -> CursorResult[Unpack[TupleAny]]:
         ...
 
     @overload
@@ -428,7 +428,7 @@ class AsyncSession(ReversibleProxy[Session]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Unpack[Tuple[Any, ...]]]:
+    ) -> Result[Unpack[TupleAny]]:
         ...
 
     async def execute(
@@ -439,7 +439,7 @@ class AsyncSession(ReversibleProxy[Session]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> Result[Unpack[Tuple[Any, ...]]]:
+    ) -> Result[Unpack[TupleAny]]:
         """Execute a statement and return a buffered
         :class:`_engine.Result` object.
 
@@ -671,7 +671,7 @@ class AsyncSession(ReversibleProxy[Session]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> AsyncResult[Any]:
+    ) -> AsyncResult[Unpack[TupleAny]]:
         ...
 
     async def stream(
@@ -682,7 +682,7 @@ class AsyncSession(ReversibleProxy[Session]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> AsyncResult[Any]:
+    ) -> AsyncResult[Unpack[TupleAny]]:
         """Execute a statement and return a streaming
         :class:`_asyncio.AsyncResult` object.
 

@@ -553,7 +553,7 @@ class async_scoped_session(Generic[_AS]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> CursorResult[Any]:
+    ) -> CursorResult[Unpack[TupleAny]]:
         ...
 
     @overload
@@ -566,7 +566,7 @@ class async_scoped_session(Generic[_AS]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Unpack[Tuple[Any, ...]]]:
+    ) -> Result[Unpack[TupleAny]]:
         ...
 
     async def execute(
@@ -577,7 +577,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> Result[Unpack[Tuple[Any, ...]]]:
+    ) -> Result[Unpack[TupleAny]]:
         r"""Execute a statement and return a buffered
         :class:`_engine.Result` object.
 
@@ -1229,7 +1229,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> AsyncResult[Any]:
+    ) -> AsyncResult[Unpack[TupleAny]]:
         ...
 
     async def stream(
@@ -1240,7 +1240,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> AsyncResult[Any]:
+    ) -> AsyncResult[Unpack[TupleAny]]:
         r"""Execute a statement and return a streaming
         :class:`_asyncio.AsyncResult` object.
 

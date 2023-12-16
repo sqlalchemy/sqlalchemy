@@ -14,20 +14,20 @@ async def asyncio() -> None:
 
         result = await conn.execute(text("select * from table"))
 
-        # EXPECTED_TYPE: CursorResult[Any]
+        # EXPECTED_TYPE: CursorResult[Unpack[.*tuple[Any, ...]]]
         reveal_type(result)
 
         # stream with direct await
         async_result = await conn.stream(text("select * from table"))
 
-        # EXPECTED_TYPE: AsyncResult[Any]
+        # EXPECTED_TYPE: AsyncResult[Unpack[.*tuple[Any, ...]]]
         reveal_type(async_result)
 
         # stream with context manager
         async with conn.stream(
             text("select * from table")
         ) as ctx_async_result:
-            # EXPECTED_TYPE: AsyncResult[Any]
+            # EXPECTED_TYPE: AsyncResult[Unpack[.*tuple[Any, ...]]]
             reveal_type(ctx_async_result)
 
         # stream_scalars with direct await
@@ -51,5 +51,5 @@ async def asyncio() -> None:
 
         result = await conn.execute(text("select * from table"))
 
-        # EXPECTED_TYPE: CursorResult[Any]
+        # EXPECTED_TYPE: CursorResult[Unpack[.*tuple[Any, ...]]]
         reveal_type(result)
