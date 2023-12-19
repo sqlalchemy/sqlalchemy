@@ -12,6 +12,7 @@ from typing import Any
 from typing import Dict
 from typing import Mapping
 from typing import Optional
+from typing import Protocol
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
@@ -26,7 +27,6 @@ from ..sql._orm_types import (
 )
 from ..sql._typing import _HasClauseElement
 from ..sql.elements import ColumnElement
-from ..util.typing import Protocol
 from ..util.typing import TypeGuard
 
 if TYPE_CHECKING:

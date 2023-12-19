@@ -46,6 +46,7 @@ from typing import MutableMapping
 from typing import MutableSequence
 from typing import NoReturn
 from typing import Optional
+from typing import Protocol
 from typing import Sequence
 from typing import Set
 from typing import Tuple
@@ -62,7 +63,6 @@ from .registry import _ListenerFnType
 from .. import exc
 from .. import util
 from ..util.concurrency import AsyncAdaptedLock
-from ..util.typing import Protocol
 
 _T = TypeVar("_T", bound=Any)
 

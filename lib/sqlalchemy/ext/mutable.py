@@ -368,6 +368,7 @@ from typing import List
 from typing import Optional
 from typing import overload
 from typing import Set
+from typing import SupportsIndex
 from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -394,7 +395,6 @@ from ..sql.base import SchemaEventTarget
 from ..sql.schema import Column
 from ..sql.type_api import TypeEngine
 from ..util import memoized_property
-from ..util.typing import SupportsIndex
 from ..util.typing import TypeGuard
 
 _KT = TypeVar("_KT")  # Key type.

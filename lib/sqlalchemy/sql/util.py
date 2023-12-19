@@ -26,6 +26,7 @@ from typing import Iterator
 from typing import List
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Sequence
 from typing import Tuple
 from typing import TYPE_CHECKING
@@ -69,7 +70,6 @@ from .visitors import _ET
 from .. import exc
 from .. import util
 from ..util.typing import Literal
-from ..util.typing import Protocol
 
 if typing.TYPE_CHECKING:
     from ._typing import _EquivalentColumnMap

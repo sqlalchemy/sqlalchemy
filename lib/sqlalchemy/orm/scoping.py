@@ -15,6 +15,7 @@ from typing import Iterable
 from typing import Iterator
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Sequence
 from typing import Tuple
 from typing import Type
@@ -31,7 +32,6 @@ from ..util import ScopedRegistry
 from ..util import ThreadLocalRegistry
 from ..util import warn
 from ..util import warn_deprecated
-from ..util.typing import Protocol
 
 if TYPE_CHECKING:
     from ._typing import _EntityType

@@ -30,6 +30,7 @@ from typing import NamedTuple
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Sequence
 from typing import Set
 from typing import Tuple
@@ -98,7 +99,6 @@ from .. import exc
 from .. import util
 from ..util import HasMemoized_ro_memoized_attribute
 from ..util.typing import Literal
-from ..util.typing import Protocol
 from ..util.typing import Self
 
 and_ = BooleanClauseList.and_

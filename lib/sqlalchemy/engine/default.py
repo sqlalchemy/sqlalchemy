@@ -26,6 +26,7 @@ from typing import Any
 from typing import Callable
 from typing import cast
 from typing import Dict
+from typing import Final
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
@@ -64,7 +65,6 @@ from ..sql.compiler import DDLCompiler
 from ..sql.compiler import InsertmanyvaluesSentinelOpts
 from ..sql.compiler import SQLCompiler
 from ..sql.elements import quoted_name
-from ..util.typing import Final
 from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:

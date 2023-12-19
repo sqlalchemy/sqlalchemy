@@ -834,6 +834,7 @@ from typing import Generic
 from typing import List
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Sequence
 from typing import Tuple
 from typing import Type
@@ -854,7 +855,6 @@ from ..sql.elements import SQLCoreOperations
 from ..util.typing import Concatenate
 from ..util.typing import Literal
 from ..util.typing import ParamSpec
-from ..util.typing import Protocol
 from ..util.typing import Self
 
 if TYPE_CHECKING:

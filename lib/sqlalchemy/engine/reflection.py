@@ -35,6 +35,7 @@ from typing import Any
 from typing import Callable
 from typing import Collection
 from typing import Dict
+from typing import final
 from typing import Generator
 from typing import Iterable
 from typing import List
@@ -59,7 +60,6 @@ from ..sql.elements import TextClause
 from ..sql.type_api import TypeEngine
 from ..sql.visitors import InternalTraversal
 from ..util import topological
-from ..util.typing import final
 
 if TYPE_CHECKING:
     from .interfaces import Dialect

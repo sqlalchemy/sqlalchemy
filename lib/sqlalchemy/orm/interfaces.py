@@ -37,6 +37,7 @@ from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypedDict
 from typing import TypeVar
 from typing import Union
 
@@ -71,7 +72,6 @@ from ..sql.schema import Column
 from ..sql.type_api import TypeEngine
 from ..util import warn_deprecated
 from ..util.typing import RODescriptorReference
-from ..util.typing import TypedDict
 
 if typing.TYPE_CHECKING:
     from ._typing import _EntityType

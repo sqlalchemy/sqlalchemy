@@ -40,6 +40,7 @@ from typing import Callable
 from typing import cast
 from typing import Collection
 from typing import Dict
+from typing import Final
 from typing import Iterable
 from typing import Iterator
 from typing import List
@@ -47,10 +48,12 @@ from typing import Mapping
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Sequence as _typing_Sequence
 from typing import Set
 from typing import Tuple
 from typing import TYPE_CHECKING
+from typing import TypedDict
 from typing import TypeVar
 from typing import Union
 
@@ -82,11 +85,8 @@ from .. import exc
 from .. import inspection
 from .. import util
 from ..util import HasMemoized
-from ..util.typing import Final
 from ..util.typing import Literal
-from ..util.typing import Protocol
 from ..util.typing import Self
-from ..util.typing import TypedDict
 from ..util.typing import TypeGuard
 
 if typing.TYPE_CHECKING:
