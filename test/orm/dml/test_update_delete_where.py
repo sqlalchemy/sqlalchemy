@@ -21,6 +21,7 @@ from sqlalchemy import update
 from sqlalchemy import values
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import immediateload
 from sqlalchemy.orm import joinedload
@@ -1349,6 +1350,45 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         # note that ComparableEntity sets up __hash__ for mapped objects
         # to point to the class, so you can test eq with sets
+        eq_(set(result.all()), expected)
+
+    @testing.requires.update_returning
+    @testing.variation("crud_type", ["update", "delete"])
+    @testing.combinations(
+        "auto",
+        "evaluate",
+        "fetch",
+        False,
+        argnames="synchronize_session",
+    )
+    def test_crud_returning_bundle(self, crud_type, synchronize_session):
+        """test #10776"""
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        if crud_type.update:
+            stmt = (
+                update(User)
+                .filter(User.age > 29)
+                .values({"age": User.age - 10})
+                .execution_options(synchronize_session=synchronize_session)
+                .returning(Bundle("mybundle", User.id, User.age), User.name)
+            )
+            expected = {((4, 27), "jane"), ((2, 37), "jack")}
+        elif crud_type.delete:
+            stmt = (
+                delete(User)
+                .filter(User.age > 29)
+                .execution_options(synchronize_session=synchronize_session)
+                .returning(Bundle("mybundle", User.id, User.age), User.name)
+            )
+            expected = {((2, 47), "jack"), ((4, 37), "jane")}
+        else:
+            crud_type.fail()
+
+        result = sess.execute(stmt)
+
         eq_(set(result.all()), expected)
 
     @testing.requires.delete_returning

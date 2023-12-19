@@ -2865,6 +2865,13 @@ class _BundleEntity(_QueryEntity):
         for ent in self._entities:
             ent.setup_compile_state(compile_state)
 
+    def setup_dml_returning_compile_state(
+        self,
+        compile_state: ORMCompileState,
+        adapter: DMLReturningColFilter,
+    ) -> None:
+        return self.setup_compile_state(compile_state)
+
     def row_processor(self, context, result):
         procs, labels, extra = zip(
             *[ent.row_processor(context, result) for ent in self._entities]
