@@ -2197,6 +2197,30 @@ class ReflectionTest(
             ],
         )
 
+    def test_reflect_with_no_inherit_check_constraint(self):
+        rows = [
+            ("foo", "some name", "CHECK ((a IS NOT NULL)) NO INHERIT", None)
+        ]
+        conn = mock.Mock(
+            execute=lambda *arg, **kw: mock.MagicMock(
+                fetchall=lambda: rows, __iter__=lambda self: iter(rows)
+            )
+        )
+        check_constraints = testing.db.dialect.get_check_constraints(
+            conn, "foo"
+        )
+        eq_(
+            check_constraints,
+            [
+                {
+                    "name": "some name",
+                    "sqltext": "a IS NOT NULL",
+                    "dialect_options": {"no_inherit": True},
+                    "comment": None,
+                }
+            ],
+        )
+
     def _apply_stm(self, connection, use_map):
         if use_map:
             return connection.execution_options(

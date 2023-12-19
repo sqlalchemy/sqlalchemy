@@ -4696,9 +4696,10 @@ class PGDialect(default.DefaultDialect):
             # "CHECK (((a > 1) AND (a < 5))) NOT VALID"
             # "CHECK (some_boolean_function(a))"
             # "CHECK (((a\n < 1)\n OR\n (a\n >= 5))\n)"
+            # "CHECK (a NOT NULL) NO INHERIT"
 
             m = re.match(
-                r"^CHECK *\((.+)\)( NOT VALID)?$", src, flags=re.DOTALL
+                r"^CHECK *\((.+)\)( NOT VALID)?( NO INHERIT)?$", src, flags=re.DOTALL
             )
             if not m:
                 util.warn("Could not parse CHECK constraint text: %r" % src)
