@@ -2199,7 +2199,8 @@ class ReflectionTest(
 
     def test_reflect_with_no_inherit_check_constraint(self):
         rows = [
-            ("foo", "some name", "CHECK ((a IS NOT NULL)) NO INHERIT", None)
+            ("foo", "some name", "CHECK ((a IS NOT NULL)) NO INHERIT", None),
+            ("foo", "some name", "CHECK ((a IS NOT NULL)) NO INHERIT NOT VALID", None),
         ]
         conn = mock.Mock(
             execute=lambda *arg, **kw: mock.MagicMock(
@@ -2215,9 +2216,14 @@ class ReflectionTest(
                 {
                     "name": "some name",
                     "sqltext": "a IS NOT NULL",
-                    "dialect_options": {"no_inherit": True},
                     "comment": None,
-                }
+                },
+                {
+                    "name": "some name",
+                    "sqltext": "a IS NOT NULL",
+                    "dialect_options": {"not_valid": True},
+                    "comment": None,
+                },
             ],
         )
 
