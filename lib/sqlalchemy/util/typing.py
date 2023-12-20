@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import builtins
+import collections.abc as collections_abc
 import re
 import sys
 import typing
@@ -294,6 +295,12 @@ def de_stringify_union_elements(
 
 def is_pep593(type_: Optional[_AnnotationScanType]) -> bool:
     return type_ is not None and typing_get_origin(type_) is Annotated
+
+
+def is_non_string_iterable(obj: Any) -> TypeGuard[Iterable[Any]]:
+    return isinstance(obj, collections_abc.Iterable) and not isinstance(
+        obj, (str, bytes)
+    )
 
 
 def is_literal(type_: _AnnotationScanType) -> bool:
