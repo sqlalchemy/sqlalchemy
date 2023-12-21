@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 10782
+    :versions: 2.0.24, 1.4.51
+
+    Improved a fix first implemented for :ticket:`3208` released in version
+    0.9.8, where the registry of classes used internally by declarative could
+    be subject to a race condition in the case where individual mapped classes
+    are being garbage collected at the same time while new mapped classes are
+    being constructed, as can happen in some test suite configurations or
+    dynamic class creation environments.   In addition to the weakref check
+    already added, the list of items being iterated is also copied first to
+    avoid "list changed while iterating" errors.  Pull request courtesy Yilei
+    Yang.
+
