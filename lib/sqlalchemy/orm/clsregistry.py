@@ -242,7 +242,7 @@ class _MultipleClassMarker(ClsRegistryToken):
         # [ticket:3208] and [ticket:10782]
         modules = {
             cls.__module__
-            for cls in [ref() for ref in self.contents.copy()]
+            for cls in [ref() for ref in list(self.contents)]
             if cls is not None
         }
         if item.__module__ in modules:
