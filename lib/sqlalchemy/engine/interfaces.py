@@ -271,6 +271,7 @@ class _CoreKnownExecutionOptions(TypedDict, total=False):
     insertmanyvalues_page_size: int
     schema_translate_map: Optional[SchemaTranslateMapType]
     preserve_rowcount: bool
+    driver_column_names: bool
 
 
 _ExecuteOptions = immutabledict[str, Any]

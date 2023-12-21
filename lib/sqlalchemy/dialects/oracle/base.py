@@ -50,7 +50,7 @@ The :class:`_schema.Identity` object support many options to control the
 incrementing value, etc.
 In addition to the standard options, Oracle supports setting
 :paramref:`_schema.Identity.always` to ``None`` to use the default
-generated mode, rendering GENERATED AS IDENTITY in the DDL. 
+generated mode, rendering GENERATED AS IDENTITY in the DDL.
 Oracle also supports two custom options specified using dialect kwargs:
 
 * ``oracle_on_null``: when set to ``True`` renders ``ON NULL`` in conjunction

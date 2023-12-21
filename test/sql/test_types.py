@@ -787,13 +787,20 @@ class UserDefinedRoundTripTest(_UserDefinedTypeFixture, fixtures.TablesTest):
             ),
         )
 
-    def test_processing(self, connection):
+    @testing.variation("use_driver_cols", [True, False])
+    def test_processing(self, connection, use_driver_cols):
         users = self.tables.users
         self._data_fixture(connection)
 
-        result = connection.execute(
-            users.select().order_by(users.c.user_id)
-        ).fetchall()
+        if use_driver_cols:
+            result = connection.execute(
+                users.select().order_by(users.c.user_id),
+                execution_options={"driver_column_names": True},
+            ).fetchall()
+        else:
+            result = connection.execute(
+                users.select().order_by(users.c.user_id)
+            ).fetchall()
         eq_(
             result,
             [

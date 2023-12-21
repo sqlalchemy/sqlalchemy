@@ -17,6 +17,7 @@ from ..schema import Table
 from ... import DateTime
 from ... import func
 from ... import Integer
+from ... import quoted_name
 from ... import select
 from ... import sql
 from ... import String
@@ -116,6 +117,165 @@ class RowFetchTest(fixtures.TablesTest):
         row = connection.execute(s2).first()
 
         eq_(row.somelabel, datetime.datetime(2006, 5, 12, 12, 0, 0))
+
+
+class NameDenormalizeTest(fixtures.TablesTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        cls.tables.denormalize_table = Table(
+            "denormalize_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("all_lowercase", Integer),
+            Column("ALL_UPPERCASE", Integer),
+            Column("MixedCase", Integer),
+            Column(quoted_name("all_lowercase_quoted", quote=True), Integer),
+            Column(quoted_name("ALL_UPPERCASE_QUOTED", quote=True), Integer),
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.denormalize_table.insert(),
+            {
+                "id": 1,
+                "all_lowercase": 5,
+                "ALL_UPPERCASE": 6,
+                "MixedCase": 7,
+                "all_lowercase_quoted": 8,
+                "ALL_UPPERCASE_QUOTED": 9,
+            },
+        )
+
+    def _assert_row_mapping(self, row, mapping, include_cols=None):
+        eq_(row._mapping, mapping)
+
+        for k in mapping:
+            eq_(row._mapping[k], mapping[k])
+            eq_(getattr(row, k), mapping[k])
+
+        for idx, k in enumerate(mapping):
+            eq_(row[idx], mapping[k])
+
+        if include_cols:
+            for col, (idx, k) in zip(include_cols, enumerate(mapping)):
+                eq_(row._mapping[col], mapping[k])
+
+    @testing.variation(
+        "stmt_type", ["driver_sql", "text_star", "core_select", "text_cols"]
+    )
+    @testing.variation("use_driver_cols", [True, False])
+    def test_cols_driver_cols(self, connection, stmt_type, use_driver_cols):
+        if stmt_type.driver_sql or stmt_type.text_star or stmt_type.text_cols:
+            stmt = select("*").select_from(self.tables.denormalize_table)
+            text_stmt = str(stmt.compile(connection))
+
+            if stmt_type.text_star or stmt_type.text_cols:
+                stmt = text(text_stmt)
+
+                if stmt_type.text_cols:
+                    stmt = stmt.columns(*self.tables.denormalize_table.c)
+        elif stmt_type.core_select:
+            stmt = select(self.tables.denormalize_table)
+        else:
+            stmt_type.fail()
+
+        if use_driver_cols:
+            execution_options = {"driver_column_names": True}
+        else:
+            execution_options = {}
+
+        if stmt_type.driver_sql:
+            row = connection.exec_driver_sql(
+                text_stmt, execution_options=execution_options
+            ).one()
+        else:
+            row = connection.execute(
+                stmt,
+                execution_options=execution_options,
+            ).one()
+
+        if (
+            stmt_type.core_select and not use_driver_cols
+        ) or not testing.requires.denormalized_names.enabled:
+            self._assert_row_mapping(
+                row,
+                {
+                    "id": 1,
+                    "all_lowercase": 5,
+                    "ALL_UPPERCASE": 6,
+                    "MixedCase": 7,
+                    "all_lowercase_quoted": 8,
+                    "ALL_UPPERCASE_QUOTED": 9,
+                },
+            )
+
+        if testing.requires.denormalized_names.enabled:
+            # with driver column names, raw cursor.description
+            # is used.  this is clearly not useful for non-quoted names.
+            if use_driver_cols:
+                self._assert_row_mapping(
+                    row,
+                    {
+                        "ID": 1,
+                        "ALL_LOWERCASE": 5,
+                        "ALL_UPPERCASE": 6,
+                        "MixedCase": 7,
+                        "all_lowercase_quoted": 8,
+                        "ALL_UPPERCASE_QUOTED": 9,
+                    },
+                )
+            else:
+                if stmt_type.core_select:
+                    self._assert_row_mapping(
+                        row,
+                        {
+                            "id": 1,
+                            "all_lowercase": 5,
+                            "ALL_UPPERCASE": 6,
+                            "MixedCase": 7,
+                            "all_lowercase_quoted": 8,
+                            "ALL_UPPERCASE_QUOTED": 9,
+                        },
+                        include_cols=self.tables.denormalize_table.c,
+                    )
+                else:
+                    self._assert_row_mapping(
+                        row,
+                        {
+                            "id": 1,
+                            "all_lowercase": 5,
+                            "all_uppercase": 6,
+                            "MixedCase": 7,
+                            "all_lowercase_quoted": 8,
+                            "all_uppercase_quoted": 9,
+                        },
+                        include_cols=(
+                            self.tables.denormalize_table.c
+                            if stmt_type.text_cols
+                            else None
+                        ),
+                    )
+
+        else:
+            self._assert_row_mapping(
+                row,
+                {
+                    "id": 1,
+                    "all_lowercase": 5,
+                    "ALL_UPPERCASE": 6,
+                    "MixedCase": 7,
+                    "all_lowercase_quoted": 8,
+                    "ALL_UPPERCASE_QUOTED": 9,
+                },
+                include_cols=(
+                    self.tables.denormalize_table.c
+                    if stmt_type.core_select or stmt_type.text_cols
+                    else None
+                ),
+            )
 
 
 class PercentSchemaNamesTest(fixtures.TablesTest):
