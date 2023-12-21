@@ -170,18 +170,5 @@ class aiodbcConnector(PyODBCConnector):
         else:
             return pool.AsyncAdaptedQueuePool
 
-    def _do_isolation_level(self, connection, autocommit, isolation_level):
-        connection.set_autocommit(autocommit)
-        connection.set_isolation_level(isolation_level)
-
-    def _do_autocommit(self, connection, value):
-        connection.set_autocommit(value)
-
-    def set_readonly(self, connection, value):
-        connection.set_read_only(value)
-
-    def set_deferrable(self, connection, value):
-        connection.set_deferrable(value)
-
     def get_driver_connection(self, connection):
         return connection._connection

@@ -50,6 +50,7 @@ from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.util import b
+from sqlalchemy.util.concurrency import await_fallback
 
 
 def exec_sql(conn, sql, *args, **kwargs):
@@ -998,13 +999,23 @@ class LOBFetchTest(fixtures.TablesTest):
         for i in range(1, 11):
             connection.execute(binary_table.insert(), dict(id=i, data=stream))
 
+    def _read_lob(self, engine, row):
+        if engine.dialect.is_async:
+            data = await_fallback(row._mapping["data"].read())
+            bindata = await_fallback(row._mapping["bindata"].read())
+        else:
+            data = row._mapping["data"].read()
+            bindata = row._mapping["bindata"].read()
+        return data, bindata
+
     def test_lobs_without_convert(self):
         engine = testing_engine(options=dict(auto_convert_lobs=False))
         t = self.tables.z_test
         with engine.begin() as conn:
             row = conn.execute(t.select().where(t.c.id == 1)).first()
-            eq_(row._mapping["data"].read(), "this is text 1")
-            eq_(row._mapping["bindata"].read(), b("this is binary 1"))
+            data, bindata = self._read_lob(engine, row)
+            eq_(data, "this is text 1")
+            eq_(bindata, b("this is binary 1"))
 
     def test_lobs_with_convert(self, connection):
         t = self.tables.z_test
@@ -1028,17 +1039,13 @@ class LOBFetchTest(fixtures.TablesTest):
         results = result.fetchall()
 
         def go():
-            eq_(
-                [
-                    dict(
-                        id=row._mapping["id"],
-                        data=row._mapping["data"].read(),
-                        bindata=row._mapping["bindata"].read(),
-                    )
-                    for row in results
-                ],
-                self.data,
-            )
+            actual = []
+            for row in results:
+                data, bindata = self._read_lob(engine, row)
+                actual.append(
+                    dict(id=row._mapping["id"], data=data, bindata=bindata)
+                )
+            eq_(actual, self.data)
 
         # this comes from cx_Oracle because these are raw
         # cx_Oracle.Variable objects
