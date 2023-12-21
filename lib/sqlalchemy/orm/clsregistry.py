@@ -164,11 +164,11 @@ class _MultipleClassMarker(object):
     def add_item(self, item):
         # protect against class registration race condition against
         # asynchronous garbage collection calling _remove_item,
-        # [ticket:3208]
+        # [ticket:3208] and [ticket:10782]
         modules = set(
             [
                 cls.__module__
-                for cls in [ref() for ref in self.contents]
+                for cls in [ref() for ref in list(self.contents)]
                 if cls is not None
             ]
         )
