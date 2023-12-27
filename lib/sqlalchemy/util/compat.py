@@ -19,8 +19,6 @@ import platform
 import sys
 import typing
 from typing import Any
-from typing import AsyncGenerator
-from typing import Awaitable
 from typing import Callable
 from typing import Dict
 from typing import Iterable
@@ -100,24 +98,6 @@ def inspect_getfullargspec(func: Callable[..., Any]) -> FullArgSpec:
         func.__kwdefaults__,
         func.__annotations__,
     )
-
-
-if py312:
-    # we are 95% certain this form of athrow works in former Python
-    # versions, however we are unable to get confirmation;
-    # see https://github.com/python/cpython/issues/105269 where have
-    # been unable to get a straight answer so far
-    def athrow(  # noqa
-        gen: AsyncGenerator[_T_co, Any], typ: Any, value: Any, traceback: Any
-    ) -> Awaitable[_T_co]:
-        return gen.athrow(value)
-
-else:
-
-    def athrow(  # noqa
-        gen: AsyncGenerator[_T_co, Any], typ: Any, value: Any, traceback: Any
-    ) -> Awaitable[_T_co]:
-        return gen.athrow(typ, value, traceback)
 
 
 if py39:

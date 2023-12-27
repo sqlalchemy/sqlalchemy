@@ -500,3 +500,21 @@ class ImplicitReturningFlagTest(fixtures.TestBase):
                 )
 
             # parameter has no effect
+
+
+class AsyncFallbackDeprecationTest(fixtures.TestBase):
+    __requires__ = ("greenlet",)
+
+    def test_async_fallback_deprecated(self):
+        with assertions.expect_deprecated(
+            "The async_fallback dialect argument is deprecated and will be "
+            "removed in SQLAlchemy 2.1.",
+        ):
+            create_engine(
+                "postgresql+asyncpg://?async_fallback=True", module=mock.Mock()
+            )
+
+    def test_async_fallback_false_is_ok(self):
+        create_engine(
+            "postgresql+asyncpg://?async_fallback=False", module=mock.Mock()
+        )

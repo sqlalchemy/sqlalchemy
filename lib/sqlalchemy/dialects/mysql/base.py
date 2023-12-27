@@ -1571,7 +1571,7 @@ class MySQLCompiler(compiler.SQLCompiler):
     def get_select_precolumns(self, select, **kw):
         """Add special MySQL keywords in place of DISTINCT.
 
-        .. deprecated:: 1.4 This usage is deprecated.
+        .. deprecated:: 1.4  This usage is deprecated.
            :meth:`_expression.Select.prefix_with` should be used for special
            keywords at the start of a SELECT.
 

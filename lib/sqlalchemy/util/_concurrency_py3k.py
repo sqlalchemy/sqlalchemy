@@ -138,6 +138,11 @@ def await_fallback(awaitable: Awaitable[_T]) -> _T:
 
     :param awaitable: The coroutine to call.
 
+    .. deprecated:: 2.0.24 The ``await_fallback()`` function will be removed
+       in SQLAlchemy 2.1.  Use :func:`_util.await_only` instead, running the
+       function / program / etc. within a top-level greenlet that is set up
+       using :func:`_util.greenlet_spawn`.
+
     """
 
     # this is called in the context greenlet while running fn
