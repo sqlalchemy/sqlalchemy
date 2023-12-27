@@ -20,6 +20,7 @@ from typing import TypeVar
 from typing import Union
 
 from .compat import py311
+from .compat import py312
 from .langhelpers import memoized_property
 from .typing import Literal
 from .typing import Self
@@ -239,7 +240,7 @@ class AsyncAdaptedLock:
         self.mutex.release()
 
 
-if py311:
+if py311 or (TYPE_CHECKING and not py312):
     _Runner = asyncio.Runner
 else:
 
