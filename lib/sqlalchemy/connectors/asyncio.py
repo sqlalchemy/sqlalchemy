@@ -25,8 +25,7 @@ from ..engine import AdaptedConnection
 from ..engine.interfaces import _DBAPICursorDescription
 from ..engine.interfaces import _DBAPIMultiExecuteParams
 from ..engine.interfaces import _DBAPISingleExecuteParams
-from ..util.concurrency import await_fallback
-from ..util.concurrency import await_only
+from ..util.concurrency import await_
 from ..util.typing import Self
 
 
@@ -121,7 +120,6 @@ class AsyncAdapt_dbapi_cursor:
     __slots__ = (
         "_adapt_connection",
         "_connection",
-        "await_",
         "_cursor",
         "_rows",
     )
@@ -134,12 +132,11 @@ class AsyncAdapt_dbapi_cursor:
     def __init__(self, adapt_connection: AsyncAdapt_dbapi_connection):
         self._adapt_connection = adapt_connection
         self._connection = adapt_connection._connection
-        self.await_ = adapt_connection.await_
 
         cursor = self._make_new_cursor(self._connection)
 
         try:
-            self._cursor = self.await_(cursor.__aenter__())
+            self._cursor = await_(cursor.__aenter__())
         except Exception as error:
             self._adapt_connection._handle_exception(error)
 
@@ -181,7 +178,7 @@ class AsyncAdapt_dbapi_cursor:
         parameters: Optional[_DBAPISingleExecuteParams] = None,
     ) -> Any:
         try:
-            return self.await_(self._execute_async(operation, parameters))
+            return await_(self._execute_async(operation, parameters))
         except Exception as error:
             self._adapt_connection._handle_exception(error)
 
@@ -191,7 +188,7 @@ class AsyncAdapt_dbapi_cursor:
         seq_of_parameters: _DBAPIMultiExecuteParams,
     ) -> Any:
         try:
-            return self.await_(
+            return await_(
                 self._executemany_async(operation, seq_of_parameters)
             )
         except Exception as error:
@@ -223,18 +220,16 @@ class AsyncAdapt_dbapi_cursor:
             return await self._cursor.executemany(operation, seq_of_parameters)
 
     def nextset(self) -> None:
-        self.await_(self._cursor.nextset())
+        await_(self._cursor.nextset())
         if self._cursor.description and not self.server_side:
-            self._rows = collections.deque(
-                self.await_(self._cursor.fetchall())
-            )
+            self._rows = collections.deque(await_(self._cursor.fetchall()))
 
     def setinputsizes(self, *inputsizes: Any) -> None:
         # NOTE: this is overrridden in aioodbc due to
         # see https://github.com/aio-libs/aioodbc/issues/451
         # right now
 
-        return self.await_(self._cursor.setinputsizes(*inputsizes))
+        return await_(self._cursor.setinputsizes(*inputsizes))
 
     def __enter__(self) -> Self:
         return self
@@ -273,24 +268,23 @@ class AsyncAdapt_dbapi_ss_cursor(AsyncAdapt_dbapi_cursor):
 
     def close(self) -> None:
         if self._cursor is not None:
-            self.await_(self._cursor.close())
+            await_(self._cursor.close())
             self._cursor = None  # type: ignore
 
     def fetchone(self) -> Optional[Any]:
-        return self.await_(self._cursor.fetchone())
+        return await_(self._cursor.fetchone())
 
     def fetchmany(self, size: Optional[int] = None) -> Any:
-        return self.await_(self._cursor.fetchmany(size=size))
+        return await_(self._cursor.fetchmany(size=size))
 
     def fetchall(self) -> Sequence[Any]:
-        return self.await_(self._cursor.fetchall())
+        return await_(self._cursor.fetchall())
 
 
 class AsyncAdapt_dbapi_connection(AdaptedConnection):
     _cursor_cls = AsyncAdapt_dbapi_cursor
     _ss_cursor_cls = AsyncAdapt_dbapi_ss_cursor
 
-    await_ = staticmethod(await_only)
     __slots__ = ("dbapi", "_execute_mutex")
 
     _connection: AsyncIODBAPIConnection
@@ -323,21 +317,15 @@ class AsyncAdapt_dbapi_connection(AdaptedConnection):
 
     def rollback(self) -> None:
         try:
-            self.await_(self._connection.rollback())
+            await_(self._connection.rollback())
         except Exception as error:
             self._handle_exception(error)
 
     def commit(self) -> None:
         try:
-            self.await_(self._connection.commit())
+            await_(self._connection.commit())
         except Exception as error:
             self._handle_exception(error)
 
     def close(self) -> None:
-        self.await_(self._connection.close())
-
-
-class AsyncAdaptFallback_dbapi_connection(AsyncAdapt_dbapi_connection):
-    __slots__ = ()
-
-    await_ = staticmethod(await_fallback)
+        await_(self._connection.close())

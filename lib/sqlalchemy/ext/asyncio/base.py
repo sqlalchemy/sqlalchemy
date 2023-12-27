@@ -182,7 +182,7 @@ class GeneratorStartableContext(StartableContext[_T_co]):
                 # tell if we get the same exception back
                 value = typ()
             try:
-                await util.athrow(self.gen, typ, value, traceback)
+                await self.gen.athrow(value)
             except StopAsyncIteration as exc:
                 # Suppress StopIteration *unless* it's the same exception that
                 # was passed to throw().  This prevents a StopIteration

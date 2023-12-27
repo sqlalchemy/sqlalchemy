@@ -23,7 +23,7 @@ from .util import decorator
 from .util import gc_collect
 from .. import event
 from .. import pool
-from ..util import await_only
+from ..util import await_
 from ..util.typing import Literal
 
 
@@ -112,7 +112,7 @@ class ConnectionKiller:
                         self._safe(proxy_ref._checkin)
 
             if hasattr(rec, "sync_engine"):
-                await_only(rec.dispose())
+                await_(rec.dispose())
             else:
                 rec.dispose()
         eng.clear()

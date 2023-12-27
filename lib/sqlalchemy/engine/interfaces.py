@@ -42,7 +42,7 @@ from ..sql.compiler import Compiled  # noqa
 from ..sql.compiler import TypeCompiler as TypeCompiler
 from ..sql.compiler import TypeCompiler  # noqa
 from ..util import immutabledict
-from ..util.concurrency import await_only
+from ..util.concurrency import await_
 from ..util.typing import Literal
 from ..util.typing import NotRequired
 
@@ -3400,7 +3400,7 @@ class AdaptedConnection:
             :ref:`asyncio_events_run_async`
 
         """
-        return await_only(fn(self._connection))
+        return await_(fn(self._connection))
 
     def __repr__(self) -> str:
         return "<AdaptedConnection %s>" % self._connection

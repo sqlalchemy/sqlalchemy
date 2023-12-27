@@ -257,10 +257,6 @@ class AsyncAdaptedQueuePool(QueuePool):
     _dialect = _AsyncConnDialect()
 
 
-class FallbackAsyncAdaptedQueuePool(AsyncAdaptedQueuePool):
-    _queue_class = sqla_queue.FallbackAsyncAdaptedQueue
-
-
 class NullPool(Pool):
 
     """A Pool which does not pool connections.

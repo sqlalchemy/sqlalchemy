@@ -484,7 +484,13 @@ class DefaultDialect(Dialect):
 
     @classmethod
     def get_pool_class(cls, url: URL) -> Type[Pool]:
-        return getattr(cls, "poolclass", pool.QueuePool)
+        default: Type[pool.Pool]
+        if cls.is_async:
+            default = pool.AsyncAdaptedQueuePool
+        else:
+            default = pool.QueuePool
+
+        return getattr(cls, "poolclass", default)
 
     def get_dialect_pool_class(self, url: URL) -> Type[Pool]:
         return self.get_pool_class(url)

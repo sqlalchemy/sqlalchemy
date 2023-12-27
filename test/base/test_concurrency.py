@@ -13,8 +13,7 @@ from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing.config import combinations
-from sqlalchemy.util import await_fallback
-from sqlalchemy.util import await_only
+from sqlalchemy.util import await_
 from sqlalchemy.util import greenlet_spawn
 from sqlalchemy.util import queue
 from ._concurrency_fixtures import greenlet_not_imported
@@ -36,7 +35,7 @@ async def run2():
 
 
 def go(*fns):
-    return sum(await_only(fn()) for fn in fns)
+    return sum(await_(fn()) for fn in fns)
 
 
 class TestAsyncioCompat(fixtures.TestBase):
@@ -64,7 +63,7 @@ class TestAsyncioCompat(fixtures.TestBase):
 
         def sync_meth():
             try:
-                await_only(async_meth_raise())
+                await_(async_meth_raise())
             except:
                 cleanup.append(True)
                 raise
@@ -80,15 +79,11 @@ class TestAsyncioCompat(fixtures.TestBase):
     @async_test
     async def test_sync_error(self):
         def go():
-            await_only(run1())
+            await_(run1())
             raise ValueError("sync error")
 
         with expect_raises_message(ValueError, "sync error"):
             await greenlet_spawn(go)
-
-    def test_await_fallback_no_greenlet(self):
-        to_await = run1()
-        await_fallback(to_await)
 
     @async_test
     async def test_await_only_no_greenlet(self):
@@ -96,40 +91,17 @@ class TestAsyncioCompat(fixtures.TestBase):
         with expect_raises_message(
             exc.MissingGreenlet,
             "greenlet_spawn has not been called; "
-            r"can't call await_only\(\) here.",
+            r"can't call await_\(\) here.",
         ):
-            await_only(to_await)
+            await_(to_await)
 
         # existing awaitable is done
         with expect_raises(RuntimeError):
-            await greenlet_spawn(await_fallback, to_await)
+            await greenlet_spawn(await_, to_await)
 
         # no warning for a new one...
         to_await = run1()
-        await greenlet_spawn(await_fallback, to_await)
-
-    @async_test
-    async def test_await_fallback_error(self):
-        to_await = run1()
-
-        await to_await
-
-        async def inner_await():
-            nonlocal to_await
-            to_await = run1()
-            await_fallback(to_await)
-
-        def go():
-            await_fallback(inner_await())
-
-        with expect_raises_message(
-            exc.MissingGreenlet,
-            "greenlet_spawn has not been called and asyncio event loop",
-        ):
-            await greenlet_spawn(go)
-
-        with expect_raises(RuntimeError):
-            await to_await
+        await greenlet_spawn(await_, to_await)
 
     @async_test
     async def test_await_only_error(self):
@@ -140,15 +112,15 @@ class TestAsyncioCompat(fixtures.TestBase):
         async def inner_await():
             nonlocal to_await
             to_await = run1()
-            await_only(to_await)
+            await_(to_await)
 
         def go():
-            await_only(inner_await())
+            await_(inner_await())
 
         with expect_raises_message(
             exc.InvalidRequestError,
             "greenlet_spawn has not been called; "
-            r"can't call await_only\(\) here.",
+            r"can't call await_\(\) here.",
         ):
             await greenlet_spawn(go)
 
@@ -172,22 +144,22 @@ class TestAsyncioCompat(fixtures.TestBase):
             var.set(val)
 
         def inner(val):
-            retval = await_only(async_inner(val))
+            retval = await_(async_inner(val))
             eq_(val, var.get())
             eq_(retval, val)
 
             # set the value in a sync function
             newval = val + concurrency
             var.set(newval)
-            syncset = await_only(async_inner(newval))
+            syncset = await_(async_inner(newval))
             eq_(newval, var.get())
             eq_(syncset, newval)
 
             # set the value in an async function
             retval = val + 2 * concurrency
-            await_only(async_set(retval))
+            await_(async_set(retval))
             eq_(var.get(), retval)
-            eq_(await_only(async_inner(retval)), retval)
+            eq_(await_(async_inner(retval)), retval)
 
             return retval
 
@@ -304,4 +276,4 @@ class GracefulNoGreenletTest(fixtures.TestBase):
             "The SQLAlchemy asyncio module requires that the Python "
             "'greenlet' library is installed",
         ):
-            await_only(async_fn())
+            await_(async_fn())

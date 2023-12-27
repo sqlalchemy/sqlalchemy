@@ -351,9 +351,9 @@ class AsyncEngineTest(EngineFixture):
             pool_connection = await conn.get_raw_connection()
             return pool_connection
 
-        from sqlalchemy.util.concurrency import await_only
+        from sqlalchemy.util.concurrency import await_
 
-        pool_connection = await_only(go())
+        pool_connection = await_(go())
 
         rec = pool_connection._connection_record
         ref = rec.fairy_ref

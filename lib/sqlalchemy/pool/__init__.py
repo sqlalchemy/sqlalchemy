@@ -35,9 +35,6 @@ from .base import reset_none as reset_none
 from .base import reset_rollback as reset_rollback
 from .impl import AssertionPool as AssertionPool
 from .impl import AsyncAdaptedQueuePool as AsyncAdaptedQueuePool
-from .impl import (
-    FallbackAsyncAdaptedQueuePool as FallbackAsyncAdaptedQueuePool,
-)
 from .impl import NullPool as NullPool
 from .impl import QueuePool as QueuePool
 from .impl import SingletonThreadPool as SingletonThreadPool
