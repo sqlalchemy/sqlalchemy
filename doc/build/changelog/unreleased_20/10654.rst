@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, schema
-    :tickets: 10654
-
-    Fixed issue where error reporting for unexpected schema item when creating
-    objects like :class:`_schema.Table` would incorrectly handle an argument
-    that was itself passed as a tuple, leading to a formatting error.  The
-    error message has been modernized to use f-strings.
