@@ -239,11 +239,11 @@ class AsyncAdaptedLock:
         self.mutex.release()
 
 
-if py311:
+if not TYPE_CHECKING and py311:
     _Runner = asyncio.Runner
 else:
 
-    class _Runner:  # type: ignore[no-redef]
+    class _Runner:
         """Runner implementation for test only"""
 
         _loop: Union[None, asyncio.AbstractEventLoop, Literal[False]]
