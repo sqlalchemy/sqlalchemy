@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 10668
-
-    Improved the error message produced when the unit of work process sets the
-    value of a primary key column to NULL due to a related object with a
-    dependency rule on that column being deleted, to include not just the
-    destination object and column name but also the source column from which
-    the NULL value is originating.  Pull request courtesy Jan Vollmer.

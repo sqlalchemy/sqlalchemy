@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 10784
-
-    Fixed 2.0 regression in :class:`.MutableList` where a routine that detects
-    sequences would not correctly filter out string or bytes instances, making
-    it impossible to assign a string value to a specific index (while
-    non-sequence values would work fine).
