@@ -2029,3 +2029,89 @@ class QuotedBindVersioningTest(fixtures.MappedTest):
             fixture_session.commit()
 
         eq_(f1.version, 2)
+
+
+class PostUpdateVersioningTest(fixtures.DeclarativeMappedTest):
+    """test for #10800"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class User(Base):
+            __tablename__ = "user"
+
+            id = Column(Integer, primary_key=True)
+
+        class Parent(Base):
+            __tablename__ = "parent"
+
+            id = Column(Integer, primary_key=True)
+            version_id = Column(Integer)
+            updated_by_id = Column(
+                Integer,
+                ForeignKey("user.id"),
+            )
+
+            updated_by = relationship(
+                "User",
+                foreign_keys=[updated_by_id],
+                post_update=True,
+            )
+
+            __mapper_args__ = {
+                "version_id_col": version_id,
+            }
+
+    def test_bumped_version_id(self):
+        User, Parent = self.classes("User", "Parent")
+
+        session = fixture_session()
+        u1 = User(id=1)
+        u2 = User(id=2)
+        p1 = Parent(id=1, updated_by=u1)
+        session.add(u1)
+        session.add(u2)
+        session.add(p1)
+
+        u2id = u2.id
+        session.commit()
+        session.close()
+
+        p1 = session.get(Parent, 1)
+        p1.updated_by
+        p1.version_id = p1.version_id
+        p1.updated_by_id = u2id
+        assert "version_id" in inspect(p1).committed_state
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+            session.commit()
+
+        asserter.assert_(
+            CompiledSQL(
+                "UPDATE parent SET version_id=:version_id, "
+                "updated_by_id=:updated_by_id WHERE parent.id = :parent_id "
+                "AND parent.version_id = :parent_version_id",
+                [
+                    {
+                        "version_id": 2,
+                        "updated_by_id": 2,
+                        "parent_id": 1,
+                        "parent_version_id": 1,
+                    }
+                ],
+            ),
+            CompiledSQL(
+                "UPDATE parent SET version_id=:version_id, "
+                "updated_by_id=:updated_by_id WHERE parent.id = :parent_id "
+                "AND parent.version_id = :parent_version_id",
+                [
+                    {
+                        "version_id": 3,
+                        "updated_by_id": 2,
+                        "parent_id": 1,
+                        "parent_version_id": 2,
+                    }
+                ],
+            ),
+        )
