@@ -329,9 +329,6 @@ class SimpleResultMetaData(ResultMetaData):
             _tuplefilter=_tuplefilter,
         )
 
-    def _contains(self, value: Any, row: Row[Any]) -> bool:
-        return value in row._data
-
     def _index_for_key(self, key: Any, raiseerr: bool = True) -> int:
         if int in key.__class__.__mro__:
             key = self._keys[key]
