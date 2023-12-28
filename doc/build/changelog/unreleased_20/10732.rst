@@ -1,9 +1,9 @@
 .. change::
     :tags: bug, orm
-    :tickets: 10668
+    :tickets: 10732
 
     Modified the ``__init_subclass__()`` method used by
-    :class:`_orm.MappedAsDataclass`, :class:`_orm.DeclarativeBase`` and
+    :class:`_orm.MappedAsDataclass`, :class:`_orm.DeclarativeBase` and
     :class:`_orm.DeclarativeBaseNoMeta` to accept arbitrary ``**kw`` and to
     propagate them to the ``super()`` call, allowing greater flexibility in
     arranging custom superclasses and mixins which make use of
