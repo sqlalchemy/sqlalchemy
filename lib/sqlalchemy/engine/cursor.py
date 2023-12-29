@@ -200,11 +200,14 @@ class CursorResultMetaData(ResultMetaData):
         new_obj._key_to_index = self._make_key_to_index(keymap, MD_INDEX)
         return new_obj
 
-    def _remove_processors(self) -> Self:
-        assert not self._tuplefilter
+    def _remove_processors_and_tuple_filter(self) -> Self:
+        if self._tuplefilter:
+            proc = self._tuplefilter(self._processors)
+        else:
+            proc = self._processors
         return self._make_new_metadata(
             unpickled=self._unpickled,
-            processors=[None] * len(self._processors),
+            processors=[None] * len(proc),
             tuplefilter=None,
             translated_indexes=None,
             keymap={
@@ -217,8 +220,6 @@ class CursorResultMetaData(ResultMetaData):
         )
 
     def _splice_horizontally(self, other: CursorResultMetaData) -> Self:
-        assert not self._tuplefilter
-
         keymap = dict(self._keymap)
         offset = len(self._keys)
         keymap.update(
@@ -236,12 +237,25 @@ class CursorResultMetaData(ResultMetaData):
                 for key, value in other._keymap.items()
             }
         )
+        self_tf = self._tuplefilter
+        other_tf = other._tuplefilter
+
+        proc: List[Any] = []
+        for pp, tf in [
+            (self._processors, self_tf),
+            (other._processors, other_tf),
+        ]:
+            proc.extend(pp if tf is None else tf(pp))
+
+        new_keys = [*self._keys, *other._keys]
+        assert len(proc) == len(new_keys)
+
         return self._make_new_metadata(
             unpickled=self._unpickled,
-            processors=self._processors + other._processors,  # type: ignore
+            processors=proc,
             tuplefilter=None,
             translated_indexes=None,
-            keys=self._keys + other._keys,  # type: ignore
+            keys=new_keys,
             keymap=keymap,
             safe_for_cache=self._safe_for_cache,
             keymap_by_result_column_idx={
@@ -323,7 +337,6 @@ class CursorResultMetaData(ResultMetaData):
                 for metadata_entry in self._keymap.values()
             }
 
-        assert not self._tuplefilter
         return self._make_new_metadata(
             keymap=self._keymap
             | {
@@ -335,7 +348,7 @@ class CursorResultMetaData(ResultMetaData):
             },
             unpickled=self._unpickled,
             processors=self._processors,
-            tuplefilter=None,
+            tuplefilter=self._tuplefilter,
             translated_indexes=None,
             keys=self._keys,
             safe_for_cache=self._safe_for_cache,
@@ -348,9 +361,17 @@ class CursorResultMetaData(ResultMetaData):
         cursor_description: _DBAPICursorDescription,
         *,
         driver_column_names: bool = False,
+        num_sentinel_cols: int = 0,
     ):
         context = parent.context
-        self._tuplefilter = None
+        if num_sentinel_cols > 0:
+            # this is slightly faster than letting tuplegetter use the indexes
+            self._tuplefilter = tuplefilter = operator.itemgetter(
+                slice(-num_sentinel_cols)
+            )
+            cursor_description = tuplefilter(cursor_description)
+        else:
+            self._tuplefilter = tuplefilter = None
         self._translated_indexes = None
         self._safe_for_cache = self._unpickled = False
 
@@ -362,6 +383,8 @@ class CursorResultMetaData(ResultMetaData):
                 ad_hoc_textual,
                 loose_column_name_matching,
             ) = context.result_column_struct
+            if tuplefilter is not None:
+                result_columns = tuplefilter(result_columns)
             num_ctx_cols = len(result_columns)
         else:
             result_columns = cols_are_ordered = (  # type: ignore
@@ -389,6 +412,10 @@ class CursorResultMetaData(ResultMetaData):
         self._processors = [
             metadata_entry[MD_PROCESSOR] for metadata_entry in raw
         ]
+        if num_sentinel_cols > 0:
+            # add the number of sentinel columns since these are passed
+            # to the tuplefilters before being used
+            self._processors.extend([None] * num_sentinel_cols)
 
         # this is used when using this ResultMetaData in a Core-only cache
         # retrieval context.  it's initialized on first cache retrieval
@@ -951,7 +978,7 @@ class CursorResultMetaData(ResultMetaData):
         self, keys: Sequence[Any]
     ) -> Iterator[_NonAmbigCursorKeyMapRecType]:
         for key in keys:
-            if int in key.__class__.__mro__:
+            if isinstance(key, int):
                 key = self._keys[key]
 
             try:
@@ -995,10 +1022,11 @@ class CursorResultMetaData(ResultMetaData):
         self._keys = state["_keys"]
         self._unpickled = True
         if state["_translated_indexes"]:
-            self._translated_indexes = cast(
-                "List[int]", state["_translated_indexes"]
-            )
-            self._tuplefilter = tuplegetter(*self._translated_indexes)
+            translated_indexes: List[Any]
+            self._translated_indexes = translated_indexes = state[
+                "_translated_indexes"
+            ]
+            self._tuplefilter = tuplegetter(*translated_indexes)
         else:
             self._translated_indexes = self._tuplefilter = None
 
@@ -1537,20 +1565,19 @@ class CursorResult(Result[Unpack[_Ts]]):
             metadata = self._init_metadata(context, cursor_description)
 
             _make_row: Any
+            proc = metadata._effective_processors
+            tf = metadata._tuplefilter
             _make_row = functools.partial(
                 Row,
                 metadata,
-                metadata._effective_processors,
+                proc if tf is None or proc is None else tf(proc),
                 metadata._key_to_index,
             )
-
-            if context._num_sentinel_cols:
-                sentinel_filter = operator.itemgetter(
-                    slice(-context._num_sentinel_cols)
-                )
+            if tf is not None:
+                _fixed_tf = tf  # needed to make mypy happy...
 
                 def _sliced_row(raw_data):
-                    return _make_row(sentinel_filter(raw_data))
+                    return _make_row(_fixed_tf(raw_data))
 
                 sliced_row = _sliced_row
             else:
@@ -1577,7 +1604,11 @@ class CursorResult(Result[Unpack[_Ts]]):
             assert context._num_sentinel_cols == 0
             self._metadata = self._no_result_metadata
 
-    def _init_metadata(self, context, cursor_description):
+    def _init_metadata(
+        self,
+        context: DefaultExecutionContext,
+        cursor_description: _DBAPICursorDescription,
+    ) -> CursorResultMetaData:
         driver_column_names = context.execution_options.get(
             "driver_column_names", False
         )
@@ -1587,14 +1618,25 @@ class CursorResult(Result[Unpack[_Ts]]):
             metadata: CursorResultMetaData
 
             if driver_column_names:
+                # TODO: test this case
                 metadata = CursorResultMetaData(
-                    self, cursor_description, driver_column_names=True
+                    self,
+                    cursor_description,
+                    driver_column_names=True,
+                    num_sentinel_cols=context._num_sentinel_cols,
                 )
                 assert not metadata._safe_for_cache
             elif compiled._cached_metadata:
                 metadata = compiled._cached_metadata
             else:
-                metadata = CursorResultMetaData(self, cursor_description)
+                metadata = CursorResultMetaData(
+                    self,
+                    cursor_description,
+                    # the number of sentinel columns is stored on the context
+                    # but it's a characteristic of the compiled object
+                    # so it's ok to apply it to a cacheable metadata.
+                    num_sentinel_cols=context._num_sentinel_cols,
+                )
                 if metadata._safe_for_cache:
                     compiled._cached_metadata = metadata
 
@@ -1618,7 +1660,7 @@ class CursorResult(Result[Unpack[_Ts]]):
                 )
                 and compiled._result_columns
                 and context.cache_hit is context.dialect.CACHE_HIT
-                and compiled.statement is not context.invoked_statement
+                and compiled.statement is not context.invoked_statement  # type: ignore[comparison-overlap] # noqa: E501
             ):
                 metadata = metadata._adapt_to_context(context)
 
@@ -1838,7 +1880,9 @@ class CursorResult(Result[Unpack[_Ts]]):
         """
         return self.context.returned_default_rows
 
-    def splice_horizontally(self, other):
+    def splice_horizontally(
+        self, other: CursorResult[Any]
+    ) -> CursorResult[Any]:
         """Return a new :class:`.CursorResult` that "horizontally splices"
         together the rows of this :class:`.CursorResult` with that of another
         :class:`.CursorResult`.
@@ -1893,16 +1937,22 @@ class CursorResult(Result[Unpack[_Ts]]):
 
         """  # noqa: E501
 
-        clone = self._generate()
+        clone: CursorResult[Any] = self._generate()
+        assert clone is self  # just to note
+        assert isinstance(other._metadata, CursorResultMetaData)
+        assert isinstance(self._metadata, CursorResultMetaData)
+        self_tf = self._metadata._tuplefilter
+        other_tf = other._metadata._tuplefilter
+        clone._metadata = self._metadata._splice_horizontally(other._metadata)
+
         total_rows = [
-            tuple(r1) + tuple(r2)
+            tuple(r1 if self_tf is None else self_tf(r1))
+            + tuple(r2 if other_tf is None else other_tf(r2))
             for r1, r2 in zip(
                 list(self._raw_row_iterator()),
                 list(other._raw_row_iterator()),
             )
         ]
-
-        clone._metadata = clone._metadata._splice_horizontally(other._metadata)
 
         clone.cursor_strategy = FullyBufferedCursorFetchStrategy(
             None,
@@ -1951,6 +2001,9 @@ class CursorResult(Result[Unpack[_Ts]]):
         :meth:`.Insert.return_defaults` along with the
         "supplemental columns" feature.
 
+        NOTE: this method has not effect then an unique filter is applied
+        to the result, meaning that no row will be returned.
+
         """
 
         if self._echo:
@@ -1963,7 +2016,7 @@ class CursorResult(Result[Unpack[_Ts]]):
         # rows
         self._metadata = cast(
             CursorResultMetaData, self._metadata
-        )._remove_processors()
+        )._remove_processors_and_tuple_filter()
 
         self.cursor_strategy = FullyBufferedCursorFetchStrategy(
             None,

@@ -340,7 +340,7 @@ def merge_frozen_result(session, statement, frozen_result, load=True):
         )
 
         result = []
-        for newrow in frozen_result.rewrite_rows():
+        for newrow in frozen_result._rewrite_rows():
             for i in mapped_entities:
                 if newrow[i] is not None:
                     newrow[i] = session._merge(

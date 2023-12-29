@@ -1204,6 +1204,10 @@ class DefaultRequirements(SuiteRequirements):
     def sqlite_memory(self):
         return only_on(self._sqlite_memory_db)
 
+    @property
+    def sqlite_file(self):
+        return only_on(self._sqlite_file_db)
+
     def _sqlite_partial_idx(self, config):
         if not against(config, "sqlite"):
             return False
