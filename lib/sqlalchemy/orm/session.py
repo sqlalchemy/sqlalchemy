@@ -2472,12 +2472,12 @@ class Session(_SessionClassMethods, EventTarget):
         :class:`_orm.Session`, resetting the session to its initial state.
 
         This method provides for same "reset-only" behavior that the
-        :meth:_orm.Session.close method has provided historically, where the
+        :meth:`_orm.Session.close` method has provided historically, where the
         state of the :class:`_orm.Session` is reset as though the object were
         brand new, and ready to be used again.
-        The method may then be useful for :class:`_orm.Session` objects
+        This method may then be useful for :class:`_orm.Session` objects
         which set :paramref:`_orm.Session.close_resets_only` to ``False``,
-        so that "reset only" behavior is still available from this method.
+        so that "reset only" behavior is still available.
 
         .. versionadded:: 2.0.22
 
