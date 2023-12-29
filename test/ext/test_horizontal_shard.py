@@ -1128,3 +1128,88 @@ class LazyLoadIdentityKeyTest(fixtures.DeclarativeMappedTest):
 
         # second lazy load uses correct state
         eq_(book2.pages[0].title, "book 2 page 1")
+
+
+class UseAssocProxForM2MTest(fixtures.DeclarativeMappedTest):
+    """illustrate the test case for #4376"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        from sqlalchemy.ext.associationproxy import association_proxy
+
+        class Book(Base):
+            __tablename__ = "book"
+            id = Column(Integer, primary_key=True)
+            authors = association_proxy(
+                "book_authors",
+                "author",
+                creator=lambda author: BookAuthor(author=author),
+            )
+            book_authors = relationship("BookAuthor", back_populates="book")
+
+        class BookAuthor(Base):
+            __tablename__ = "book_author"
+            authorid = Column(ForeignKey("author.id"), primary_key=True)
+            bookid = Column(ForeignKey("book.id"), primary_key=True)
+
+            book = relationship("Book", back_populates="book_authors")
+            author = relationship("Author", back_populates="book_authors")
+
+        class Author(Base):
+            __tablename__ = "author"
+            id = Column(Integer, primary_key=True)
+
+            books = association_proxy(
+                "book_authors",
+                "book",
+                creator=lambda book: BookAuthor(book=book),
+            )
+
+            book_authors = relationship(BookAuthor, back_populates="author")
+
+    def test_update_many_to_many_sharded(self):
+        session = ShardedSession(
+            shards={"test": testing.db},
+            shard_chooser=self.shard_chooser,
+            identity_chooser=lambda *args: None,
+            execute_chooser=lambda *args: ["test"],
+        )
+
+        Book, Author = self.classes("Book", "Author")
+        book = Book()
+        book.authors.append(Author())
+
+        session.add(book)
+        session.commit()
+
+    def test_update_many_to_many_sharded__save_junction_table_directly(self):
+        session = ShardedSession(
+            shards={"test": testing.db},
+            shard_chooser=self.shard_chooser,
+            identity_chooser=lambda *args: None,
+            execute_chooser=lambda *args: ["test"],
+        )
+
+        Book, Author, BookAuthor = self.classes("Book", "Author", "BookAuthor")
+
+        book = Book()
+        author = Author()
+
+        session.add(book)
+        session.add(author)
+        session.commit()
+
+        book_author = BookAuthor()
+        book_author.bookid = book.id
+        book_author.authorid = author.id
+
+        session.add(book_author)
+        session.commit()
+
+    def shard_chooser(self, mapper, instance, clause=None):
+        if not instance and not clause:
+            raise Exception("Cannot determine shard")
+
+        return "test"
