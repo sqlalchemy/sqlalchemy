@@ -763,14 +763,6 @@ complexity is kept within the middle.
 Relationship to Aliased Class
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. versionadded:: 1.3
-    The :class:`.AliasedClass` construct can now be specified as the
-    target of a :func:`_orm.relationship`, replacing the previous approach
-    of using non-primary mappers, which had limitations such that they did
-    not inherit sub-relationships of the mapped entity as well as that they
-    required complex configuration against an alternate selectable.  The
-    recipes in this section are now updated to use :class:`.AliasedClass`.
-
 In the previous section, we illustrated a technique where we used
 :paramref:`_orm.relationship.secondary` in order to place additional
 tables within a join condition.   There is one complex join case where
@@ -846,6 +838,81 @@ With the above mapping, a simple join looks like:
 
     {execsql}SELECT a.id AS a_id, a.b_id AS a_b_id
     FROM a JOIN (b JOIN d ON d.b_id = b.id JOIN c ON c.id = d.c_id) ON a.b_id = b.id
+
+Integrating AliasedClass Mappings with Typing and Avoiding Early Mapper Configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The creation of the :func:`_orm.aliased` construct against a mapped class
+forces the :func:`_orm.configure_mappers` step to proceed, which will resolve
+all current classes and their relationships.  This may be problematic if
+unrelated mapped classes needed by the current mappings have not yet been
+declared, or if the configuration of the relationship itself needs access
+to as-yet undeclared classes.  Additionally, SQLAlchemy's Declarative pattern
+works with Python typing most effectively when relationships are declared
+up front.
+
+To organize the construction of the relationship to work with these issues, a
+configure level event hook like :meth:`.MapperEvents.before_mapper_configured`
+may be used, which will invoke the configuration code only when all mappings
+are ready for configuration::
+
+    from sqlalchemy import event
+
+
+    class A(Base):
+        __tablename__ = "a"
+
+        id = mapped_column(Integer, primary_key=True)
+        b_id = mapped_column(ForeignKey("b.id"))
+
+
+    @event.listens_for(A, "before_mapper_configured")
+    def _configure_ab_relationship(mapper, cls):
+        # do the above configuration in a configuration hook
+
+        j = join(B, D, D.b_id == B.id).join(C, C.id == D.c_id)
+        B_viacd = aliased(B, j, flat=True)
+        A.b = relationship(B_viacd, primaryjoin=A.b_id == j.c.b_id)
+
+Above, the function ``_configure_ab_relationship()`` will be invoked only
+when a fully configured version of ``A`` is requested, at which point the
+classes ``B``, ``D`` and ``C`` would be available.
+
+For an approach that integrates with inline typing, a similar technique can be
+used to effectively generate a "singleton" creation pattern for the aliased
+class where it is late-initialized as a global variable, which can then be used
+in the relationship inline::
+
+    from typing import Any
+
+    B_viacd: Any = None
+    b_viacd_join: Any = None
+
+
+    class A(Base):
+        __tablename__ = "a"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        b_id: Mapped[int] = mapped_column(ForeignKey("b.id"))
+
+        # 1. the relationship can be declared using lambdas, allowing it to resolve
+        #    to targets that are late-configured
+        b: Mapped[B] = relationship(
+            lambda: B_viacd, primaryjoin=lambda: A.b_id == b_viacd_join.c.b_id
+        )
+
+
+    # 2. configure the targets of the relationship using a before_mapper_configured
+    #    hook.
+    @event.listens_for(A, "before_mapper_configured")
+    def _configure_ab_relationship(mapper, cls):
+        # 3. set up the join() and AliasedClass as globals from within
+        #    the configuration hook.
+
+        global B_viacd, b_viacd_join
+
+        b_viacd_join = join(B, D, D.b_id == B.id).join(C, C.id == D.c_id)
+        B_viacd = aliased(B, b_viacd_join, flat=True)
 
 Using the AliasedClass target in Queries
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
