@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 10800
+
+    Fixed issue where when making use of the
+    :paramref:`_orm.relationship.post_update` feature at the same time as using
+    a mapper version_id_col could lead to a situation where the second UPDATE
+    statement emitted by the post-update feature would fail to make use of the
+    correct version identifier, assuming an UPDATE was already emitted in that
+    flush which had already bumped the version counter.
