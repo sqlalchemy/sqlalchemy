@@ -1,5 +1,5 @@
 # dialects/postgresql/ranges.py
-# Copyright (C) 2013-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2013-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
