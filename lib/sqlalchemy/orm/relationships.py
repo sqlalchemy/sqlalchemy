@@ -179,7 +179,10 @@ _ORMOrderByArgument = Union[
 ORMBackrefArgument = Union[str, Tuple[str, Dict[str, Any]]]
 
 _ORMColCollectionElement = Union[
-    ColumnClause[Any], _HasClauseElement, roles.DMLColumnRole, "Mapped[Any]"
+    ColumnClause[Any],
+    _HasClauseElement[Any],
+    roles.DMLColumnRole,
+    "Mapped[Any]",
 ]
 _ORMColCollectionArgument = Union[
     str,

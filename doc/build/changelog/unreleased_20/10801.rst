@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 10801
+
+    Further enhancements to pep-484 typing to allow SQL functions from
+    :attr:`_sql.func` derived elements to work more effectively with ORM-mapped
+    attributes.

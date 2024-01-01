@@ -78,7 +78,7 @@ _IdentityKeyType = Tuple[Type[_T], Tuple[Any, ...], Optional[Any]]
 
 _ORMColumnExprArgument = Union[
     ColumnElement[_T],
-    _HasClauseElement,
+    _HasClauseElement[_T],
     roles.ExpressionElementRole[_T],
 ]
 

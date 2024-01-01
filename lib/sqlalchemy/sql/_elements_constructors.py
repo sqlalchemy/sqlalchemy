@@ -436,10 +436,8 @@ def outparam(
     return BindParameter(key, None, type_=type_, unique=False, isoutparam=True)
 
 
-# mypy insists that BinaryExpression and _HasClauseElement protocol overlap.
-# they do not.  at all.  bug in mypy?
 @overload
-def not_(clause: BinaryExpression[_T]) -> BinaryExpression[_T]:  # type: ignore
+def not_(clause: BinaryExpression[_T]) -> BinaryExpression[_T]:
     ...
 
 
