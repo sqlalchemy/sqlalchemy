@@ -1,3 +1,9 @@
+# testing/plugin/reinvent_fixtures_py2k.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 """
 invent a quick version of pytest autouse fixtures as pytest's unacceptably slow
 collection/high memory use in pytest 4.6.11, which is the highest version that
