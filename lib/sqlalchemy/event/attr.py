@@ -259,13 +259,25 @@ class _EmptyListener(_InstanceLevelDispatch):
 
 
 class _CompoundListener(_InstanceLevelDispatch):
-    __slots__ = "_exec_once_mutex", "_exec_once", "_exec_w_sync_once"
+    __slots__ = (
+        "_exec_once_mutex",
+        "_exec_once",
+        "_exec_w_sync_once",
+        "_is_asyncio",
+    )
+
+    def __init__(self, *arg, **kw):
+        super(_CompoundListener, self).__init__(*arg, **kw)
+        self._is_asyncio = False
 
     def _set_asyncio(self):
-        self._exec_once_mutex = AsyncAdaptedLock()
+        self._is_asyncio = True
 
     def _memoized_attr__exec_once_mutex(self):
-        return threading.Lock()
+        if self._is_asyncio:
+            return AsyncAdaptedLock()
+        else:
+            return threading.Lock()
 
     def _exec_once_impl(self, retry_on_exception, *args, **kw):
         with self._exec_once_mutex:
@@ -365,6 +377,7 @@ class _ListenerCollection(_CompoundListener):
     )
 
     def __init__(self, parent, target_cls):
+        super(_ListenerCollection, self).__init__()
         if target_cls not in parent._clslevel:
             parent.update_subclass(target_cls)
         self._exec_once = False
@@ -400,6 +413,9 @@ class _ListenerCollection(_CompoundListener):
         ]
 
         existing_listeners.extend(other_listeners)
+
+        if other._is_asyncio:
+            self._set_asyncio()
 
         to_associate = other.propagate.union(other_listeners)
         registry._stored_in_collection_multi(self, other, to_associate)

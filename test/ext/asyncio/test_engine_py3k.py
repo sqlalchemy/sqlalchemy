@@ -1169,3 +1169,23 @@ class AsyncProxyTest(EngineFixture, fixtures.TestBase):
 
         async_t2 = async_conn.get_transaction()
         is_(async_t1, async_t2)
+
+
+class PoolRegenTest(EngineFixture):
+    @testing.requires.queue_pool
+    @async_test
+    @testing.variation("do_dispose", [True, False])
+    async def test_gather_after_dispose(self, testing_engine, do_dispose):
+        engine = testing_engine(
+            asyncio=True, options=dict(pool_size=10, max_overflow=10)
+        )
+
+        async def thing(engine):
+            async with engine.connect() as conn:
+                await conn.exec_driver_sql("select 1")
+
+        if do_dispose:
+            await engine.dispose()
+
+        tasks = [thing(engine) for _ in range(10)]
+        await asyncio.gather(*tasks)
