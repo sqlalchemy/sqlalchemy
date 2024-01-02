@@ -36,6 +36,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing.assertions import expect_raises_message
+from sqlalchemy.testing.assertions import is_
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.testing.schema import Table
@@ -69,6 +70,8 @@ class CxOracleDialectTest(fixtures.TestBase):
 
 
 class OracleDbDialectTest(fixtures.TestBase):
+    __only_on__ = "oracle+oracledb"
+
     def test_oracledb_version_parse(self):
         dialect = oracledb.OracleDialect_oracledb()
 
@@ -84,12 +87,27 @@ class OracleDbDialectTest(fixtures.TestBase):
     def test_minimum_version(self):
         with expect_raises_message(
             exc.InvalidRequestError,
-            "oracledb version 1 and above are supported",
+            r"oracledb version \(1,\) and above are supported",
         ):
             oracledb.OracleDialect_oracledb(dbapi=Mock(version="0.1.5"))
 
         dialect = oracledb.OracleDialect_oracledb(dbapi=Mock(version="7.1.0"))
         eq_(dialect.oracledb_ver, (7, 1, 0))
+
+    def test_get_dialect(self):
+        u = url.URL.create("oracle://")
+        d = oracledb.OracleDialect_oracledb.get_dialect_cls(u)
+        is_(d, oracledb.OracleDialect_oracledb)
+        d = oracledb.OracleDialect_oracledb.get_async_dialect_cls(u)
+        is_(d, oracledb.OracleDialectAsync_oracledb)
+        d = oracledb.OracleDialectAsync_oracledb.get_dialect_cls(u)
+        is_(d, oracledb.OracleDialectAsync_oracledb)
+        d = oracledb.OracleDialectAsync_oracledb.get_dialect_cls(u)
+        is_(d, oracledb.OracleDialectAsync_oracledb)
+
+    def test_async_version(self):
+        e = create_engine("oracle+oracledb_async://")
+        is_true(isinstance(e.dialect, oracledb.OracleDialectAsync_oracledb))
 
 
 class OracledbMode(fixtures.TestBase):
@@ -97,6 +115,8 @@ class OracledbMode(fixtures.TestBase):
     __only_on__ = "oracle+oracledb"
 
     def _run_in_process(self, fn, fn_kw=None):
+        if config.db.dialect.is_async:
+            config.skip_test("thick mode unsupported in async mode")
         ctx = get_context("spawn")
         queue = ctx.Queue()
         process = ctx.Process(
@@ -202,6 +222,7 @@ class DialectWBackendTest(fixtures.TestBase):
                 testing.db.dialect.get_isolation_level(dbapi_conn),
                 "READ COMMITTED",
             )
+            conn.close()
 
     def test_graceful_failure_isolation_level_not_available(self):
         engine = engines.testing_engine()

@@ -815,6 +815,8 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
 
                             out_parameters[name] = self.cursor.var(
                                 dbtype,
+                                # this is fine also in oracledb_async since
+                                # the driver will await the read coroutine
                                 outconverter=lambda value: value.read(),
                                 arraysize=len_params,
                             )

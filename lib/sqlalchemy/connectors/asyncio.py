@@ -134,13 +134,15 @@ class AsyncAdapt_dbapi_cursor:
         self._connection = adapt_connection._connection
 
         cursor = self._make_new_cursor(self._connection)
-
-        try:
-            self._cursor = await_(cursor.__aenter__())
-        except Exception as error:
-            self._adapt_connection._handle_exception(error)
+        self._cursor = self._aenter_cursor(cursor)
 
         self._rows = collections.deque()
+
+    def _aenter_cursor(self, cursor: AsyncIODBAPICursor) -> AsyncIODBAPICursor:
+        try:
+            return await_(cursor.__aenter__())  # type: ignore[no-any-return]
+        except Exception as error:
+            self._adapt_connection._handle_exception(error)
 
     def _make_new_cursor(
         self, connection: AsyncIODBAPIConnection
@@ -204,10 +206,6 @@ class AsyncAdapt_dbapi_cursor:
                 result = await self._cursor.execute(operation, parameters)
 
             if self._cursor.description and not self.server_side:
-                # aioodbc has a "fake" async result, so we have to pull it out
-                # of that here since our default result is not async.
-                # we could just as easily grab "_rows" here and be done with it
-                # but this is safer.
                 self._rows = collections.deque(await self._cursor.fetchall())
             return result
 
