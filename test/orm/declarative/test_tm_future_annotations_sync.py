@@ -25,12 +25,14 @@ from typing import Optional
 from typing import Set
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypedDict
 from typing import TypeVar
 from typing import Union
 import uuid
 
 from typing_extensions import get_args as get_args
 from typing_extensions import Literal as Literal
+from typing_extensions import TypeAlias as TypeAlias
 
 from sqlalchemy import BIGINT
 from sqlalchemy import BigInteger
@@ -91,6 +93,31 @@ from sqlalchemy.testing import Variation
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.util import compat
 from sqlalchemy.util.typing import Annotated
+
+
+class _SomeDict1(TypedDict):
+    type: Literal["1"]
+
+
+class _SomeDict2(TypedDict):
+    type: Literal["2"]
+
+
+_UnionTypeAlias: TypeAlias = Union[_SomeDict1, _SomeDict2]
+
+_StrTypeAlias: TypeAlias = str
+
+_StrPep695: TypeAlias = Union[_SomeDict1, _SomeDict2]
+_UnionPep695: TypeAlias = str
+
+if compat.py312:
+    exec(
+        """
+type _UnionPep695 = _SomeDict1 | _SomeDict2
+type _StrPep695 = str
+""",
+        globals(),
+    )
 
 
 def expect_annotation_syntax_error(name):
@@ -730,6 +757,41 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         eq_(MyClass.__table__.c.data_two.type.length, 30)
         is_true(MyClass.__table__.c.data_two.nullable)
         eq_(MyClass.__table__.c.data_three.type.length, 50)
+
+    def test_plain_typealias_as_typemap_keys(
+        self, decl_base: Type[DeclarativeBase]
+    ):
+        decl_base.registry.update_type_annotation_map(
+            {_UnionTypeAlias: JSON, _StrTypeAlias: String(30)}
+        )
+
+        class Test(decl_base):
+            __tablename__ = "test"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[_StrTypeAlias]
+            structure: Mapped[_UnionTypeAlias]
+
+        eq_(Test.__table__.c.data.type.length, 30)
+        is_(Test.__table__.c.structure.type._type_affinity, JSON)
+
+    @testing.requires.python312
+    def test_pep695_typealias_as_typemap_keys(
+        self, decl_base: Type[DeclarativeBase]
+    ):
+        """test #10807"""
+
+        decl_base.registry.update_type_annotation_map(
+            {_UnionPep695: JSON, _StrPep695: String(30)}
+        )
+
+        class Test(decl_base):
+            __tablename__ = "test"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[_StrPep695]  # type: ignore
+            structure: Mapped[_UnionPep695]  # type: ignore
+
+        eq_(Test.__table__.c.data.type.length, 30)
+        is_(Test.__table__.c.structure.type._type_affinity, JSON)
 
     @testing.requires.python310
     def test_we_got_all_attrs_test_annotated(self):

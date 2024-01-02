@@ -50,7 +50,7 @@ if True:  # zimports removes the tailing comments
     from typing_extensions import TypeAlias as TypeAlias  # 3.10
     from typing_extensions import TypeGuard as TypeGuard  # 3.10
     from typing_extensions import Self as Self  # 3.11
-
+    from typing_extensions import TypeAliasType as TypeAliasType  # 3.12
 
 _T = TypeVar("_T", bound=Any)
 _KT = TypeVar("_KT")
@@ -74,7 +74,7 @@ typing_get_origin = get_origin
 
 
 _AnnotationScanType = Union[
-    Type[Any], str, ForwardRef, NewType, "GenericProtocol[Any]"
+    Type[Any], str, ForwardRef, NewType, TypeAliasType, "GenericProtocol[Any]"
 ]
 
 
@@ -314,6 +314,10 @@ def is_newtype(type_: Optional[_AnnotationScanType]) -> TypeGuard[NewType]:
 
 def is_generic(type_: _AnnotationScanType) -> TypeGuard[GenericProtocol[Any]]:
     return hasattr(type_, "__args__") and hasattr(type_, "__origin__")
+
+
+def is_pep695(type_: _AnnotationScanType) -> TypeGuard[TypeAliasType]:
+    return isinstance(type_, TypeAliasType)
 
 
 def flatten_newtype(type_: NewType) -> Type[Any]:
