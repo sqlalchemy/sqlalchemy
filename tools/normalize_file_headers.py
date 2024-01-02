@@ -49,7 +49,7 @@ def run_file(cmd: code_writer_cmd, file: Path, update_year: bool):
 
 def run(cmd: code_writer_cmd, update_year: bool):
     i = 0
-    for ext in ('py', 'pyx', 'pxd'):
+    for ext in ("py", "pyx", "pxd"):
         for file in sa_path.glob(f"**/*.{ext}"):
             run_file(cmd, file, update_year)
             i += 1
