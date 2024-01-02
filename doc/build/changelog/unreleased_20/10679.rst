@@ -1,0 +1,8 @@
+.. change::
+    :tags: oracle, asyncio
+    :tickets: 10679
+
+    Added support for :ref:`oracledb` in async mode.
+    The current implementation has some limitation, preventing
+    the support for :meth:`_asyncio.AsyncConnection.stream`.
+    Improved support if planned for the 2.1 release of SQLAlchemy.

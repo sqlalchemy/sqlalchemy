@@ -79,6 +79,8 @@ from ...util.concurrency import await_only
 if TYPE_CHECKING:
     from typing import Iterable
 
+    from psycopg import AsyncConnection
+
 logger = logging.getLogger("sqlalchemy.dialects.postgresql")
 
 
@@ -619,6 +621,7 @@ class AsyncAdapt_psycopg_ss_cursor(AsyncAdapt_psycopg_cursor):
 
 
 class AsyncAdapt_psycopg_connection(AdaptedConnection):
+    _connection: AsyncConnection
     __slots__ = ()
     await_ = staticmethod(await_only)
 
