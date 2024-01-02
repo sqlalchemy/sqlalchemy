@@ -41,7 +41,7 @@ decorator.
    limited and is currently known to be supported by Pyright_ as well
    as Mypy_ as of **version 1.2**.  Note that Mypy 1.1.1 introduced
    :pep:`681` support but did not correctly accommodate Python descriptors
-   which will lead to errors when using SQLAlhcemy's ORM mapping scheme.
+   which will lead to errors when using SQLAlchemy's ORM mapping scheme.
 
    .. seealso::
 
