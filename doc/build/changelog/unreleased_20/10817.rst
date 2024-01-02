@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 10817
+
+    Improved compilation of :func:`_sql.any_` / :func:`_sql.all_` in the
+    context of a negation of boolean comparison, will now render ``NOT (expr)``
+    rather than reversing the equality operator to not equals, allowing
+    finer-grained control of negations for these non-typical operators.
