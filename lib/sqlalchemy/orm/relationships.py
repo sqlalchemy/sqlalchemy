@@ -1814,15 +1814,12 @@ class RelationshipProperty(
                 argument, originating_module
             )
 
-            # we don't allow the collection class to be a
-            # __forward_arg__ right now, so if we see a forward arg here,
-            # we know there was no collection class either
-            if (
-                self.collection_class is None
-                and not is_write_only
-                and not is_dynamic
-            ):
-                self.uselist = False
+        if (
+            self.collection_class is None
+            and not is_write_only
+            and not is_dynamic
+        ):
+            self.uselist = False
 
         # ticket #8759
         # if a lead argument was given to relationship(), like

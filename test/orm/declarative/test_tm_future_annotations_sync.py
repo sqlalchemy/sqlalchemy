@@ -2750,7 +2750,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_false(B.__mapper__.attrs["a"].uselist)
         is_false(B.__mapper__.attrs["a_warg"].uselist)
 
-    def test_one_to_one_example(self, decl_base: Type[DeclarativeBase]):
+    def test_one_to_one_example_quoted(self, decl_base: Type[DeclarativeBase]):
         """test example in the relationship docs will derive uselist=False
         correctly"""
 
@@ -2768,6 +2768,32 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped[int] = mapped_column(primary_key=True)
             parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
             parent: Mapped["Parent"] = relationship(back_populates="child")
+
+        c1 = Child()
+        p1 = Parent(child=c1)
+        is_(p1.child, c1)
+        is_(c1.parent, p1)
+
+    def test_one_to_one_example_non_quoted(
+        self, decl_base: Type[DeclarativeBase]
+    ):
+        """test example in the relationship docs will derive uselist=False
+        correctly"""
+
+        class Child(decl_base):
+            __tablename__ = "child"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
+            parent: Mapped["Parent"] = relationship(back_populates="child")
+
+        class Parent(decl_base):
+            __tablename__ = "parent"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            child: Mapped[Child] = relationship(  # noqa: F821
+                back_populates="parent"
+            )
 
         c1 = Child()
         p1 = Parent(child=c1)
