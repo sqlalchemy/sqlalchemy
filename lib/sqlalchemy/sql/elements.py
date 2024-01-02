@@ -801,6 +801,7 @@ class CompilerColumnElement(
     __slots__ = ()
 
     _propagate_attrs = util.EMPTY_DICT
+    _is_collection_aggregate = False
 
 
 # SQLCoreOperations should be suiting the ExpressionElementRole
@@ -1405,6 +1406,7 @@ class ColumnElement(
     _is_column_element = True
     _insert_sentinel: bool = False
     _omit_from_statements = False
+    _is_collection_aggregate = False
 
     foreign_keys: AbstractSet[ForeignKey] = frozenset()
 
@@ -2359,6 +2361,8 @@ class TextClause(
 
     _omit_from_statements = False
 
+    _is_collection_aggregate = False
+
     @property
     def _hide_froms(self) -> Iterable[FromClause]:
         return ()
@@ -2963,6 +2967,9 @@ class OperatorExpression(ColumnElement[_T]):
                     type_,
                     *(left_flattened + right_flattened),
                 )
+
+        if right._is_collection_aggregate:
+            negate = None
 
         return BinaryExpression(
             left, right, op, type_=type_, negate=negate, modifiers=modifiers
@@ -3802,6 +3809,7 @@ class CollectionAggregate(UnaryExpression[_T]):
     """
 
     inherit_cache = True
+    _is_collection_aggregate = True
 
     @classmethod
     def _create_any(
@@ -3843,7 +3851,7 @@ class CollectionAggregate(UnaryExpression[_T]):
             raise exc.ArgumentError(
                 "Only comparison operators may be used with ANY/ALL"
             )
-        kwargs["reverse"] = kwargs["_any_all_expr"] = True
+        kwargs["reverse"] = True
         return self.comparator.operate(operators.mirror(op), *other, **kwargs)
 
     def reverse_operate(self, op, other, **kwargs):
@@ -4031,7 +4039,7 @@ class BinaryExpression(OperatorExpression[_T]):
                 modifiers=self.modifiers,
             )
         else:
-            return super()._negate()
+            return self.self_group()._negate()
 
 
 class Slice(ColumnElement[Any]):
