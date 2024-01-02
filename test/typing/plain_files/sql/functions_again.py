@@ -15,6 +15,7 @@ class Foo(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     a: Mapped[int]
     b: Mapped[int]
+    c: Mapped[str]
 
 
 func.row_number().over(order_by=Foo.a, partition_by=Foo.b.desc())
@@ -41,3 +42,15 @@ stmt1 = select(
 ).group_by(Foo.a)
 # EXPECTED_TYPE: Select[Tuple[int, int]]
 reveal_type(stmt1)
+
+# test #10818
+# EXPECTED_TYPE: coalesce[str]
+reveal_type(func.coalesce(Foo.c, "a", "b"))
+
+
+stmt2 = select(
+    Foo.a,
+    func.coalesce(Foo.c, "a", "b"),
+).group_by(Foo.a)
+# EXPECTED_TYPE: Select[Tuple[int, str]]
+reveal_type(stmt2)
