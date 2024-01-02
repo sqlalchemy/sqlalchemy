@@ -39,6 +39,7 @@ from .. import exc
 from .. import util
 from ..util.typing import Protocol
 from ..util.typing import Self
+from ..util.typing import TypeAliasType
 from ..util.typing import TypedDict
 from ..util.typing import TypeGuard
 
@@ -67,7 +68,9 @@ _O = TypeVar("_O", bound=object)
 _TE = TypeVar("_TE", bound="TypeEngine[Any]")
 _CT = TypeVar("_CT", bound=Any)
 
-_MatchedOnType = Union["GenericProtocol[Any]", NewType, Type[Any]]
+_MatchedOnType = Union[
+    "GenericProtocol[Any]", TypeAliasType, NewType, Type[Any]
+]
 
 
 class _NoValueInList(Enum):
