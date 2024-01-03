@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, mysql
-    :tickets: 10650
-    :versions: 2.0.24
-
-    Fixed regression introduced by the fix in ticket :ticket:`10492` when using
-    pool pre-ping with PyMySQL version older than 1.0.
