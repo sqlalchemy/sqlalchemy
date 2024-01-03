@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 10815
-
-    Fixed issue where ORM Annotated Declarative would mis-interpret the left
-    hand side of a relationship without any collection specified as
-    uselist=True if the left type were given as a class and not a string,
-    without using future-style annotations.

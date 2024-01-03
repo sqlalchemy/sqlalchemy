@@ -1,7 +1,0 @@
-.. change::
-    :tags: usecase, orm
-    :tickets: 10807
-
-    Added preliminary support for Python 3.12 pep-695 type alias structures,
-    when resolving custom type maps for ORM Annotated Declarative mappings.
-
