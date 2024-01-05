@@ -140,6 +140,17 @@ this value can be supported::
     # it to use the return value
     listen(UserContact.phone, "set", validate_phone, retval=True)
 
+Multiprocessing Support
+-----------------------
+
+The event system supports multiprocessing in a limited manner.
+The parent process can listen to events from within itself or child processes,
+assuming the child process was spawned after the parent has begun listening.
+
+If its desired to share events across two unrelated processes,
+this should be handled through an external mechanism,
+such as a messaging system.
+
 Event Reference
 ---------------
 
