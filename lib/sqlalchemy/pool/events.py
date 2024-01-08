@@ -173,7 +173,7 @@ class PoolEvents(event.Events[Pool]):
 
     def checkin(
         self,
-        dbapi_connection: DBAPIConnection,
+        dbapi_connection: Optional[DBAPIConnection],
         connection_record: ConnectionPoolEntry,
     ) -> None:
         """Called when a connection returns to the pool.
