@@ -15,12 +15,6 @@ class TupleGetter(Case):
         return py_util.tuplegetter
 
     @staticmethod
-    def c():
-        from sqlalchemy import cresultproxy
-
-        return cresultproxy.tuplegetter
-
-    @staticmethod
     def cython():
         from sqlalchemy.engine import _util_cy
 
@@ -29,7 +23,6 @@ class TupleGetter(Case):
 
     IMPLEMENTATIONS = {
         "python": python.__func__,
-        "c": c.__func__,
         "cython": cython.__func__,
     }
 

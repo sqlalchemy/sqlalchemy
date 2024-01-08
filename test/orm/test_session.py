@@ -129,6 +129,24 @@ class ExecutionTest(_fixtures.FixtureTest):
             ):
                 sess.scalar("select id from users where id=:id", {"id": 7})
 
+    @testing.skip_if(
+        "oracle", "missing SELECT keyword [SQL: INSERT INTO tbl () VALUES ()]"
+    )
+    def test_empty_list_execute(self, metadata, connection):
+        t = Table("tbl", metadata, Column("col", sa.Integer))
+        t.create(connection)
+        sess = Session(bind=connection)
+        sess.execute(t.insert(), {"col": 42})
+
+        with assertions.expect_deprecated(
+            r"Empty parameter sequence passed to execute\(\). "
+            "This use is deprecated and will raise an exception in a "
+            "future SQLAlchemy release"
+        ):
+            sess.execute(t.insert(), [])
+
+        eq_(len(sess.execute(sa.select(t.c.col)).all()), 2)
+
 
 class TransScopingTest(_fixtures.FixtureTest):
     run_inserts = None

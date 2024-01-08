@@ -204,7 +204,7 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
         )
 
     def _assert_result(
-        self, connection, select, result, params=(), set_=False
+        self, connection, select, result, params=None, set_=False
     ):
         if set_:
             query_res = connection.execute(select, params).fetchall()
@@ -214,7 +214,7 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
         else:
             eq_(connection.execute(select, params).fetchall(), result)
 
-    def _assert_result_str(self, select, result, params=()):
+    def _assert_result_str(self, select, result, params=None):
         with config.db.connect() as conn:
             eq_(conn.exec_driver_sql(select, params).fetchall(), result)
 
@@ -734,7 +734,7 @@ class SameNamedSchemaTableTest(fixtures.TablesTest):
 class JoinTest(fixtures.TablesTest):
     __backend__ = True
 
-    def _assert_result(self, select, result, params=()):
+    def _assert_result(self, select, result, params=None):
         with config.db.connect() as conn:
             eq_(conn.execute(select, params).fetchall(), result)
 
@@ -856,7 +856,7 @@ class CompoundSelectTest(fixtures.TablesTest):
             ],
         )
 
-    def _assert_result(self, select, result, params=()):
+    def _assert_result(self, select, result, params=None):
         with config.db.connect() as conn:
             eq_(conn.execute(select, params).fetchall(), result)
 
@@ -1121,7 +1121,7 @@ class ExpandingBoundInTest(fixtures.TablesTest):
             ],
         )
 
-    def _assert_result(self, select, result, params=()):
+    def _assert_result(self, select, result, params=None):
         with config.db.connect() as conn:
             eq_(conn.execute(select, params).fetchall(), result)
 

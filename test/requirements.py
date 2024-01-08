@@ -463,7 +463,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def returning_star(self):
-        """backend supports RETURNING *"""
+        """backend supports ``RETURNING *``"""
 
         return skip_if(["oracle", "mssql"])
 
@@ -1869,13 +1869,6 @@ class DefaultRequirements(SuiteRequirements):
             )
 
         return only_if(go)
-
-    @property
-    def oracle5x(self):
-        return only_if(
-            lambda config: against(config, "oracle+cx_oracle")
-            and config.db.dialect.cx_oracle_ver < (6,)
-        )
 
     @property
     def fail_on_oracledb_thin(self):

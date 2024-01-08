@@ -51,6 +51,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
@@ -637,14 +638,37 @@ class ExecuteTest(fixtures.TablesTest):
             conn.close()
 
     def test_empty_insert(self, connection):
-        """test that execute() interprets [] as a list with no params"""
+        """test that execute() interprets [] as a list with no params and
+        warns since it has nothing to do with such an executemany.
+        """
         users_autoinc = self.tables.users_autoinc
 
-        connection.execute(
-            users_autoinc.insert().values(user_name=bindparam("name", None)),
-            [],
-        )
-        eq_(connection.execute(users_autoinc.select()).fetchall(), [(1, None)])
+        with expect_deprecated(
+            r"Empty parameter sequence passed to execute\(\). "
+            "This use is deprecated and will raise an exception in a "
+            "future SQLAlchemy release"
+        ):
+            connection.execute(
+                users_autoinc.insert().values(
+                    user_name=bindparam("name", None)
+                ),
+                [],
+            )
+
+        eq_(len(connection.execute(users_autoinc.select()).all()), 1)
+
+    @testing.only_on("sqlite")
+    def test_raw_insert_with_empty_list(self, connection):
+        """exec_driver_sql instead does not raise if an empty list is passed.
+        Let the driver do that if it wants to.
+        """
+        conn = connection
+        with expect_raises_message(
+            tsa.exc.ProgrammingError, "Incorrect number of bindings supplied"
+        ):
+            conn.exec_driver_sql(
+                "insert into users (user_id, user_name) values (?, ?)", []
+            )
 
     @testing.only_on("sqlite")
     def test_execute_compiled_favors_compiled_paramstyle(self):

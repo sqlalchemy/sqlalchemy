@@ -41,7 +41,7 @@ class DeprecatedCompoundSelectTest(fixtures.TablesTest):
             ],
         )
 
-    def _assert_result(self, conn, select, result, params=()):
+    def _assert_result(self, conn, select, result, params=None):
         eq_(conn.execute(select, params).fetchall(), result)
 
     def test_plain_union(self, connection):

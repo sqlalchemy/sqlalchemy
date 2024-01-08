@@ -10,6 +10,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_none
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.util import immutabledict
 
 
@@ -144,8 +145,13 @@ class _DistillArgsTest(fixtures.TestBase):
         eq_(self.module._distill_params_20(None), ())
 
     def test_distill_20_empty_sequence(self):
-        eq_(self.module._distill_params_20(()), ())
-        eq_(self.module._distill_params_20([]), [])
+        with expect_deprecated(
+            r"Empty parameter sequence passed to execute\(\). "
+            "This use is deprecated and will raise an exception in a "
+            "future SQLAlchemy release"
+        ):
+            eq_(self.module._distill_params_20(()), ())
+            eq_(self.module._distill_params_20([]), [])
 
     def test_distill_20_sequence_sequence(self):
         eq_(self.module._distill_params_20(((1, 2, 3),)), ((1, 2, 3),))

@@ -11,11 +11,11 @@ from collections.abc import Mapping
 import operator
 from typing import Any
 from typing import Optional
-from typing import Sequence
 from typing import Tuple
 from typing import TYPE_CHECKING
 
-from sqlalchemy import exc
+from .. import exc
+from ..util import warn_deprecated
 
 if TYPE_CHECKING:
     from .interfaces import _CoreAnyExecuteParams
@@ -47,7 +47,7 @@ _Empty_Tuple: Tuple[Any, ...] = cython.declare(tuple, ())
 
 @cython.inline
 @cython.cfunc
-def _is_mapping_or_tuple(value: object) -> cython.bint:
+def _is_mapping_or_tuple(value: object, /) -> cython.bint:
     return (
         isinstance(value, dict)
         or isinstance(value, tuple)
@@ -57,22 +57,7 @@ def _is_mapping_or_tuple(value: object) -> cython.bint:
     )
 
 
-@cython.inline
-@cython.cfunc
-@cython.exceptval(0)
-def _validate_execute_many_item(params: Sequence[Any]) -> cython.bint:
-    ret: cython.bint = 1
-    if len(params) > 0:
-        if not _is_mapping_or_tuple(params[0]):
-            ret = 0
-            raise exc.ArgumentError(
-                "List argument must consist only of tuples or dictionaries"
-            )
-    return ret
-
-
-# _is_mapping_or_tuple and _validate_execute_many_item could be
-# inlined if pure python perf is a problem
+# _is_mapping_or_tuple could be inlined if pure python perf is a problem
 def _distill_params_20(
     params: Optional[_CoreAnyExecuteParams],
 ) -> _CoreMultiExecuteParams:
@@ -81,7 +66,17 @@ def _distill_params_20(
     # Assume list is more likely than tuple
     elif isinstance(params, list) or isinstance(params, tuple):
         # collections_abc.MutableSequence # avoid abc.__instancecheck__
-        _validate_execute_many_item(params)
+        if len(params) == 0:
+            warn_deprecated(
+                "Empty parameter sequence passed to execute(). "
+                "This use is deprecated and will raise an exception in a "
+                "future SQLAlchemy release",
+                "2.1",
+            )
+        elif not _is_mapping_or_tuple(params[0]):
+            raise exc.ArgumentError(
+                "List argument must consist only of tuples or dictionaries"
+            )
         return params
     elif isinstance(params, dict) or isinstance(params, Mapping):
         # only do immutabledict or abc.__instancecheck__ for Mapping after
@@ -98,7 +93,10 @@ def _distill_raw_params(
         return _Empty_Tuple
     elif isinstance(params, list):
         # collections_abc.MutableSequence # avoid abc.__instancecheck__
-        _validate_execute_many_item(params)
+        if len(params) > 0 and not _is_mapping_or_tuple(params[0]):
+            raise exc.ArgumentError(
+                "List argument must consist only of tuples or dictionaries"
+            )
         return params
     elif _is_mapping_or_tuple(params):
         return [params]  # type: ignore[return-value]

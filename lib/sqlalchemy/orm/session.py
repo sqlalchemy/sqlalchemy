@@ -2252,7 +2252,7 @@ class Session(_SessionClassMethods, EventTarget):
             )
         else:
             result = conn.execute(
-                statement, params or {}, execution_options=execution_options
+                statement, params, execution_options=execution_options
             )
 
         if _scalar_result:
