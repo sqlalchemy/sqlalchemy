@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug
+    :tickets: 10843
+
+    Enhanced case() to derive the ultimate type by scanning the given
+    expressions for the last non-NULL expression, rather than hardcoding to
+    the last WHEN case.

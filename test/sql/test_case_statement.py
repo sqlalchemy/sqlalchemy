@@ -13,6 +13,7 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy.sql import column
 from sqlalchemy.sql import table
+from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -294,3 +295,40 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             ("two", 2),
             ("other", 3),
         ]
+
+    def test_type_of_case_expression_with_all_nulls(self):
+        expr = case(
+            (info_table.c.pk < 0, None),
+            (info_table.c.pk > 9, None),
+        )
+
+        assert isinstance(expr.type, NullType)
+
+    def test_type_of_case_expression_with_all_nulls_with_else(self):
+        expr = case(
+            (info_table.c.pk < 0, None),
+            (info_table.c.pk > 9, None),
+            else_=column("q"),
+        )
+
+        assert isinstance(expr.type, NullType)
+
+    def test_type_of_case_expression_with_null_case_and_no_else_clause(self):
+        expr = case(
+            (info_table.c.pk < 0, None),
+            # This mixing of types is not legal in most DBMSs, but we want to
+            # test that types of later cases take priority over earlier ones
+            (info_table.c.pk < 5, "five"),
+            (info_table.c.pk <= 9, info_table.c.pk),
+            (info_table.c.pk > 9, None),
+        )
+
+        assert isinstance(expr.type, Integer)
+
+    def test_type_of_case_expression_with_null_case_and_else_clause(self):
+        expr = case(
+            (info_table.c.pk < 0, None),
+            else_=info_table.c.pk,
+        )
+
+        assert isinstance(expr.type, Integer)
