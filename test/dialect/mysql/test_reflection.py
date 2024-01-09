@@ -792,6 +792,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                 ["s TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"],
                 ["t TIMESTAMP"],
                 ["u TIMESTAMP DEFAULT CURRENT_TIMESTAMP"],
+                ["v INTEGER GENERATED ALWAYS AS (4711) VIRTUAL NOT NULL"],
             ]
         ):
             Table("nn_t%d" % idx, meta)  # to allow DROP
@@ -859,6 +860,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                     else False,
                     "default": current_timestamp,
                 },
+                {"name": "v", "nullable": False, "default": None},
             ],
         )
 
