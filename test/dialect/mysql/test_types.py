@@ -478,6 +478,18 @@ class TypeCompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(type_, sql_text)
 
 
+class TypeCompileUUIDMariaDBTest(fixtures.TestBase, AssertsCompiledSQL):
+    __only_on__ = "mariadb"
+
+    @testing.only_if("mariadb>=10.7")
+    def test_uuid(self):
+        self.assert_compile(sqltypes.Uuid(), "UUID")
+
+    @testing.only_if("mariadb<10.7")
+    def test_uuid_char(self):
+        self.assert_compile(sqltypes.Uuid(), "CHAR(32)")
+
+
 class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
     __dialect__ = mysql.dialect()
     __only_on__ = "mysql", "mariadb"
