@@ -143,13 +143,20 @@ this value can be supported::
 Multiprocessing Support
 -----------------------
 
-The event system supports multiprocessing in a limited manner.
-The parent process can listen to events from within itself or child processes,
-assuming the child process was spawned after the parent has begun listening.
+.. tip::
 
-If its desired to share events across two unrelated processes,
-this should be handled through an external mechanism,
-such as a messaging system.
+  Note that events and propagation via hooks occur locally to a Python process.
+  In other words, events only propagate objects within the originating Python process.
+  Thus, when using Python multiprocessing
+  (or other approaches to create separate Python processes),
+  there is no means by which a SQLAlchemy event gets transmitted to other processes.
+
+  What happens if one forks the current Python process?
+  If a Python process forks a new child process,
+  existing event listeners will be copied to the child process at that point,
+  along with the rest of the Python interpreter state,
+  but there is no intrinsic mechanism for event listener registration
+  to propagate to other already existing processes.
 
 Event Reference
 ---------------
