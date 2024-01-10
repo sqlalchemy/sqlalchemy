@@ -1498,7 +1498,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     ) -> CursorResult[Any]:
         """Execute a schema.DDL object."""
 
-        execution_options = ddl._execution_options.merge_with(
+        exec_opts = ddl._execution_options.merge_with(
             self._execution_options, execution_options
         )
 
@@ -1512,12 +1512,11 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 event_multiparams,
                 event_params,
             ) = self._invoke_before_exec_event(
-                ddl, distilled_parameters, execution_options
+                ddl, distilled_parameters, exec_opts
             )
         else:
             event_multiparams = event_params = None
 
-        exec_opts = self._execution_options.merge_with(execution_options)
         schema_translate_map = exec_opts.get("schema_translate_map", None)
 
         dialect = self.dialect
@@ -1530,7 +1529,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             dialect.execution_ctx_cls._init_ddl,
             compiled,
             None,
-            execution_options,
+            exec_opts,
             compiled,
         )
         if self._has_events or self.engine._has_events:
@@ -1539,7 +1538,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 ddl,
                 event_multiparams,
                 event_params,
-                execution_options,
+                exec_opts,
                 ret,
             )
         return ret
