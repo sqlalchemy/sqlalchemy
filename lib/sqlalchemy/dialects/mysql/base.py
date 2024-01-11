@@ -2446,6 +2446,9 @@ class MySQLDialect(default.DefaultDialect):
     supports_for_update_of = False  # default for MySQL ...
     # ... may be updated to True for MySQL 8+ in initialize()
 
+    supports_notnull_generated_columns = False  # Only available ...
+    # ... in MySQL 5.7+
+
     _requires_alias_for_on_duplicate_key = False  # Only available ...
     # ... in MySQL 8+
 
@@ -2844,6 +2847,10 @@ class MySQLDialect(default.DefaultDialect):
 
         self.supports_for_update_of = (
             self._is_mysql and self.server_version_info >= (8,)
+        )
+
+        self.supports_notnull_generated_columns = (
+            self._is_mysql and self.server_version_info >= (5, 7)
         )
 
         self._needs_correct_for_88718_96365 = (

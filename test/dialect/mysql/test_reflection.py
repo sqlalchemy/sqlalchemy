@@ -778,23 +778,26 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         ).first()
         explicit_defaults_for_timestamp = row[1].lower() in ("on", "1", "true")
 
-        reflected = []
-        for idx, cols in enumerate(
+        test_cases = [
             [
-                [
-                    "x INTEGER NULL",
-                    "y INTEGER NOT NULL",
-                    "z INTEGER",
-                    "q TIMESTAMP NULL",
-                ],
-                ["p TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP"],
-                ["r TIMESTAMP NOT NULL"],
-                ["s TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"],
-                ["t TIMESTAMP"],
-                ["u TIMESTAMP DEFAULT CURRENT_TIMESTAMP"],
-                ["v INTEGER GENERATED ALWAYS AS (4711) VIRTUAL NOT NULL"],
-            ]
-        ):
+                "x INTEGER NULL",
+                "y INTEGER NOT NULL",
+                "z INTEGER",
+                "q TIMESTAMP NULL",
+            ],
+            ["p TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP"],
+            ["r TIMESTAMP NOT NULL"],
+            ["s TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"],
+            ["t TIMESTAMP"],
+            ["u TIMESTAMP DEFAULT CURRENT_TIMESTAMP"],
+            ["v INTEGER GENERATED ALWAYS AS (4711) VIRTUAL NOT NULL"],
+        ]
+        if connection.dialect.supports_notnull_generated_columns:
+            test_cases.append(
+                ["v INTEGER GENERATED ALWAYS AS (4711) VIRTUAL NOT NULL"])
+
+        reflected = []
+        for idx, cols in enumerate(test_cases):
             Table("nn_t%d" % idx, meta)  # to allow DROP
 
             connection.exec_driver_sql(
