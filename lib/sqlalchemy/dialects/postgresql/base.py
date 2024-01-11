@@ -4696,9 +4696,13 @@ class PGDialect(default.DefaultDialect):
             # "CHECK (((a > 1) AND (a < 5))) NOT VALID"
             # "CHECK (some_boolean_function(a))"
             # "CHECK (((a\n < 1)\n OR\n (a\n >= 5))\n)"
+            # "CHECK (a NOT NULL) NO INHERIT"
+            # "CHECK (a NOT NULL) NO INHERIT NOT VALID"
 
             m = re.match(
-                r"^CHECK *\((.+)\)( NOT VALID)?$", src, flags=re.DOTALL
+                r"^CHECK *\((.+)\)( NO INHERIT)?( NOT VALID)?$",
+                src,
+                flags=re.DOTALL,
             )
             if not m:
                 util.warn("Could not parse CHECK constraint text: %r" % src)
@@ -4712,8 +4716,14 @@ class PGDialect(default.DefaultDialect):
                 "sqltext": sqltext,
                 "comment": comment,
             }
-            if m and m.group(2):
-                entry["dialect_options"] = {"not_valid": True}
+            if m:
+                do = {}
+                if " NOT VALID" in m.groups():
+                    do["not_valid"] = True
+                if " NO INHERIT" in m.groups():
+                    do["no_inherit"] = True
+                if do:
+                    entry["dialect_options"] = do
 
             check_constraints[(schema, table_name)].append(entry)
         return check_constraints.items()
