@@ -34,10 +34,6 @@ jobs:
           - x64
           - x86
 
-        include:
-          - python-version: "2.7"
-            extra-requires: "mock"
-
         exclude:
           - os: "macos-latest"
             architecture: x86
