@@ -7,6 +7,7 @@ a database connection, inserts the row, commits and closes.
 from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import create_engine
+from sqlalchemy import Identity
 from sqlalchemy import Integer
 from sqlalchemy import pool
 from sqlalchemy import String
@@ -21,7 +22,7 @@ engine = None
 
 class Customer(Base):
     __tablename__ = "customer"
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, Identity(), primary_key=True)
     name = Column(String(255))
     description = Column(String(255))
 
