@@ -105,7 +105,7 @@ class OracleDialect_oracledb(_OracleDialect_cx_oracle):
         self,
         auto_convert_lobs=True,
         coerce_to_decimal=True,
-        arraysize=50,
+        arraysize=None,
         encoding_errors=None,
         thick_mode=None,
         **kwargs,

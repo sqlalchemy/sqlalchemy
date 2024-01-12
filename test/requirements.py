@@ -784,7 +784,7 @@ class DefaultRequirements(SuiteRequirements):
         #8221.
 
         """
-        return fails_if(["mssql", "oracle>=12"])
+        return fails_if(["mssql", "oracle < 23"])
 
     @property
     def parens_in_union_contained_select_w_limit_offset(self):
