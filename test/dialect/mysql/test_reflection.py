@@ -792,7 +792,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             ["u TIMESTAMP DEFAULT CURRENT_TIMESTAMP"],
             ["v INTEGER GENERATED ALWAYS AS (4711) VIRTUAL NOT NULL"],
         ]
-        if connection.dialect.supports_notnull_generated_columns:
+        if connection.dialect._supports_notnull_generated_columns:
             test_cases.append(
                 ["v INTEGER GENERATED ALWAYS AS (4711) VIRTUAL NOT NULL"])
 
