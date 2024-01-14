@@ -68,9 +68,12 @@ class AsyncAdapt_aiomysql_connection(AsyncAdapt_dbapi_connection):
     def autocommit(self, value):
         await_(self._connection.autocommit(value))
 
-    def close(self):
+    def terminate(self):
         # it's not awaitable.
         self._connection.close()
+
+    def close(self) -> None:
+        await_(self._connection.ensure_closed())
 
 
 class AsyncAdapt_aiomysql_dbapi:
@@ -136,12 +139,16 @@ class MySQLDialect_aiomysql(MySQLDialect_pymysql):
     _sscursor = AsyncAdapt_aiomysql_ss_cursor
 
     is_async = True
+    has_terminate = True
 
     @classmethod
     def import_dbapi(cls):
         return AsyncAdapt_aiomysql_dbapi(
             __import__("aiomysql"), __import__("pymysql")
         )
+
+    def do_terminate(self, dbapi_connection) -> None:
+        dbapi_connection.terminate()
 
     def create_connect_args(self, url):
         return super().create_connect_args(
