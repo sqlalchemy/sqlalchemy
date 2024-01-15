@@ -322,7 +322,7 @@ class OrderingListTest(fixtures.MappedTest):
         s1 = Slide("Slide #1")
 
         # 1, 2, 3
-        s1.bullets[0:3] = b[0:3]
+        s1.bullets[0:3] = iter(b[0:3])
         for i in 0, 1, 2:
             self.assert_(s1.bullets[i].position == i)
             self.assert_(s1.bullets[i] == b[i])
@@ -480,6 +480,20 @@ class OrderingListTest(fixtures.MappedTest):
             self.assert_(copy == olist)
             self.assert_(copy.__dict__ == olist.__dict__)
 
+    def test_index_to_int(self):
+        self._setup(ordering_list("position"))
+
+        s1 = Slide("Slide #1")
+        s1.bullets.append(Bullet("1"))
+        s1.bullets.append(Bullet("2"))
+
+        b3 = Bullet("3")
+        b3.position = 2
+        index_value = MockIndex(0)
+        s1.bullets[index_value] = b3
+        assert s1.bullets[0].text == "3"
+        assert s1.bullets[0].position == 0
+
 
 class DummyItem:
     def __init__(self, order=None):
@@ -490,3 +504,11 @@ class DummyItem:
 
     def __ne__(self, other):
         return not (self == other)
+
+
+class MockIndex:
+    def __init__(self, value):
+        self.value = value
+
+    def __index__(self):
+        return self.value
