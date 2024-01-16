@@ -1,5 +1,5 @@
 # orm/instrumentation.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -42,6 +42,7 @@ from typing import Generic
 from typing import Iterable
 from typing import List
 from typing import Optional
+from typing import Protocol
 from typing import Set
 from typing import Tuple
 from typing import Type
@@ -61,7 +62,6 @@ from .. import util
 from ..event import EventTarget
 from ..util import HasMemoized
 from ..util.typing import Literal
-from ..util.typing import Protocol
 
 if TYPE_CHECKING:
     from ._typing import _RegistryType

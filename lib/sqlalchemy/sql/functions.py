@@ -1,5 +1,5 @@
 # sql/functions.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -999,14 +999,16 @@ class _FunctionGenerator:
         def char_length(self) -> Type[char_length]:
             ...
 
-        # appease mypy which seems to not want to accept _T from
-        # _ColumnExpressionArgument, as it includes non-generic types
+        # set ColumnElement[_T] as a separate overload, to appease mypy
+        # which seems to not want to accept _T from _ColumnExpressionArgument.
+        # this is even if all non-generic types are removed from it, so
+        # reasons remain unclear for why this does not work
 
         @overload
         def coalesce(
             self,
             col: ColumnElement[_T],
-            *args: _ColumnExpressionArgument[Any],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> coalesce[_T]:
             ...
@@ -1015,15 +1017,24 @@ class _FunctionGenerator:
         def coalesce(
             self,
             col: _ColumnExpressionArgument[_T],
-            *args: _ColumnExpressionArgument[Any],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> coalesce[_T]:
+            ...
+
+        @overload
+        def coalesce(
+            self,
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> coalesce[_T]:
             ...
 
         def coalesce(
             self,
-            col: _ColumnExpressionArgument[_T],
-            *args: _ColumnExpressionArgument[Any],
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> coalesce[_T]:
             ...
@@ -1080,14 +1091,16 @@ class _FunctionGenerator:
         def localtimestamp(self) -> Type[localtimestamp]:
             ...
 
-        # appease mypy which seems to not want to accept _T from
-        # _ColumnExpressionArgument, as it includes non-generic types
+        # set ColumnElement[_T] as a separate overload, to appease mypy
+        # which seems to not want to accept _T from _ColumnExpressionArgument.
+        # this is even if all non-generic types are removed from it, so
+        # reasons remain unclear for why this does not work
 
         @overload
         def max(  # noqa: A001
             self,
             col: ColumnElement[_T],
-            *args: _ColumnExpressionArgument[Any],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> max[_T]:
             ...
@@ -1096,27 +1109,38 @@ class _FunctionGenerator:
         def max(  # noqa: A001
             self,
             col: _ColumnExpressionArgument[_T],
-            *args: _ColumnExpressionArgument[Any],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> max[_T]:
+            ...
+
+        @overload
+        def max(  # noqa: A001
+            self,
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> max[_T]:
             ...
 
         def max(  # noqa: A001
             self,
-            col: _ColumnExpressionArgument[_T],
-            *args: _ColumnExpressionArgument[Any],
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> max[_T]:
             ...
 
-        # appease mypy which seems to not want to accept _T from
-        # _ColumnExpressionArgument, as it includes non-generic types
+        # set ColumnElement[_T] as a separate overload, to appease mypy
+        # which seems to not want to accept _T from _ColumnExpressionArgument.
+        # this is even if all non-generic types are removed from it, so
+        # reasons remain unclear for why this does not work
 
         @overload
         def min(  # noqa: A001
             self,
             col: ColumnElement[_T],
-            *args: _ColumnExpressionArgument[Any],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> min[_T]:
             ...
@@ -1125,15 +1149,24 @@ class _FunctionGenerator:
         def min(  # noqa: A001
             self,
             col: _ColumnExpressionArgument[_T],
-            *args: _ColumnExpressionArgument[Any],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> min[_T]:
+            ...
+
+        @overload
+        def min(  # noqa: A001
+            self,
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> min[_T]:
             ...
 
         def min(  # noqa: A001
             self,
-            col: _ColumnExpressionArgument[_T],
-            *args: _ColumnExpressionArgument[Any],
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> min[_T]:
             ...
@@ -1182,14 +1215,16 @@ class _FunctionGenerator:
         def session_user(self) -> Type[session_user]:
             ...
 
-        # appease mypy which seems to not want to accept _T from
-        # _ColumnExpressionArgument, as it includes non-generic types
+        # set ColumnElement[_T] as a separate overload, to appease mypy
+        # which seems to not want to accept _T from _ColumnExpressionArgument.
+        # this is even if all non-generic types are removed from it, so
+        # reasons remain unclear for why this does not work
 
         @overload
         def sum(  # noqa: A001
             self,
             col: ColumnElement[_T],
-            *args: _ColumnExpressionArgument[Any],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> sum[_T]:
             ...
@@ -1198,15 +1233,24 @@ class _FunctionGenerator:
         def sum(  # noqa: A001
             self,
             col: _ColumnExpressionArgument[_T],
-            *args: _ColumnExpressionArgument[Any],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> sum[_T]:
+            ...
+
+        @overload
+        def sum(  # noqa: A001
+            self,
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> sum[_T]:
             ...
 
         def sum(  # noqa: A001
             self,
-            col: _ColumnExpressionArgument[_T],
-            *args: _ColumnExpressionArgument[Any],
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
         ) -> sum[_T]:
             ...
@@ -1576,14 +1620,16 @@ class ReturnTypeFromArgs(GenericFunction[_T]):
 
     inherit_cache = True
 
-    # appease mypy which seems to not want to accept _T from
-    # _ColumnExpressionArgument, as it includes non-generic types
+    # set ColumnElement[_T] as a separate overload, to appease mypy which seems
+    # to not want to accept _T from _ColumnExpressionArgument.  this is even if
+    # all non-generic types are removed from it, so reasons remain unclear for
+    # why this does not work
 
     @overload
     def __init__(
         self,
         col: ColumnElement[_T],
-        *args: _ColumnExpressionArgument[Any],
+        *args: _ColumnExpressionOrLiteralArgument[Any],
         **kwargs: Any,
     ):
         ...
@@ -1592,12 +1638,23 @@ class ReturnTypeFromArgs(GenericFunction[_T]):
     def __init__(
         self,
         col: _ColumnExpressionArgument[_T],
-        *args: _ColumnExpressionArgument[Any],
+        *args: _ColumnExpressionOrLiteralArgument[Any],
         **kwargs: Any,
     ):
         ...
 
-    def __init__(self, *args: _ColumnExpressionArgument[Any], **kwargs: Any):
+    @overload
+    def __init__(
+        self,
+        col: _ColumnExpressionOrLiteralArgument[_T],
+        *args: _ColumnExpressionOrLiteralArgument[Any],
+        **kwargs: Any,
+    ):
+        ...
+
+    def __init__(
+        self, *args: _ColumnExpressionOrLiteralArgument[Any], **kwargs: Any
+    ):
         fn_args: Sequence[ColumnElement[Any]] = [
             coercions.expect(
                 roles.ExpressionElementRole,

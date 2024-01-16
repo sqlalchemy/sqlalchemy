@@ -1,5 +1,5 @@
 # orm/interfaces.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -37,6 +37,7 @@ from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypedDict
 from typing import TypeVar
 from typing import Union
 
@@ -72,7 +73,6 @@ from ..sql.type_api import TypeEngine
 from ..util import warn_deprecated
 from ..util.typing import RODescriptorReference
 from ..util.typing import TupleAny
-from ..util.typing import TypedDict
 from ..util.typing import Unpack
 
 

@@ -1,5 +1,5 @@
 # __init__.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -47,9 +47,6 @@ from .engine import URL as URL
 from .inspection import inspect as inspect
 from .pool import AssertionPool as AssertionPool
 from .pool import AsyncAdaptedQueuePool as AsyncAdaptedQueuePool
-from .pool import (
-    FallbackAsyncAdaptedQueuePool as FallbackAsyncAdaptedQueuePool,
-)
 from .pool import NullPool as NullPool
 from .pool import Pool as Pool
 from .pool import PoolProxiedConnection as PoolProxiedConnection

@@ -1,5 +1,5 @@
 # util/concurrency.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -9,21 +9,22 @@
 from __future__ import annotations
 
 import asyncio
-from contextvars import Context
 import sys
 from typing import Any
 from typing import Awaitable
 from typing import Callable
 from typing import Coroutine
 from typing import NoReturn
-from typing import Optional
-from typing import Protocol
 from typing import TYPE_CHECKING
 from typing import TypeVar
+from typing import Union
 
+from .compat import py311
 from .langhelpers import memoized_property
+from .typing import Literal
+from .typing import Self
+from .typing import TypeGuard
 from .. import exc
-from ..util.typing import TypeGuard
 
 _T = TypeVar("_T")
 
@@ -44,25 +45,6 @@ _ERROR_MESSAGE = (
 )
 
 
-if TYPE_CHECKING:
-
-    class greenlet(Protocol):
-        dead: bool
-        gr_context: Optional[Context]
-
-        def __init__(self, fn: Callable[..., Any], driver: greenlet):
-            ...
-
-        def throw(self, *arg: Any) -> Any:
-            return None
-
-        def switch(self, value: Any) -> Any:
-            return None
-
-    def getcurrent() -> greenlet:
-        ...
-
-
 def _not_implemented(*arg: Any, **kw: Any) -> NoReturn:
     raise ImportError(_ERROR_MESSAGE)
 
@@ -71,10 +53,10 @@ class _concurrency_shim_cls:
     """Late import shim for greenlet"""
 
     __slots__ = (
+        "_has_greenlet",
         "greenlet",
         "_AsyncIoGreenlet",
         "getcurrent",
-        "_util_async_run",
     )
 
     def _initialize(self, *, raise_: bool = True) -> None:
@@ -84,7 +66,7 @@ class _concurrency_shim_cls:
 
         if not TYPE_CHECKING:
             global getcurrent, greenlet, _AsyncIoGreenlet
-            global _has_gr_context, _greenlet_error
+            global _has_gr_context
 
         try:
             from greenlet import getcurrent
@@ -93,72 +75,45 @@ class _concurrency_shim_cls:
             if not TYPE_CHECKING:
                 # set greenlet in the global scope to prevent re-init
                 greenlet = None
-
+            self._has_greenlet = False
             self._initialize_no_greenlet()
             if raise_:
                 raise ImportError(_ERROR_MESSAGE) from e
         else:
-            self._initialize_greenlet()
+            self._has_greenlet = True
+            # If greenlet.gr_context is present in current version of greenlet,
+            # it will be set with the current context on creation.
+            # Refs: https://github.com/python-greenlet/greenlet/pull/198
+            _has_gr_context = hasattr(getcurrent(), "gr_context")
 
-    def _initialize_greenlet(self) -> None:
-        # If greenlet.gr_context is present in current version of greenlet,
-        # it will be set with the current context on creation.
-        # Refs: https://github.com/python-greenlet/greenlet/pull/198
-        _has_gr_context = hasattr(getcurrent(), "gr_context")
+            # implementation based on snaury gist at
+            # https://gist.github.com/snaury/202bf4f22c41ca34e56297bae5f33fef
+            # Issue for context: https://github.com/python-greenlet/greenlet/issues/173 # noqa: E501
 
-        # implementation based on snaury gist at
-        # https://gist.github.com/snaury/202bf4f22c41ca34e56297bae5f33fef
-        # Issue for context: https://github.com/python-greenlet/greenlet/issues/173 # noqa: E501
+            class _AsyncIoGreenlet(greenlet):
+                dead: bool
 
-        class _AsyncIoGreenlet(greenlet):
-            dead: bool
+                def __init__(self, fn: Callable[..., Any], driver: greenlet):
+                    greenlet.__init__(self, fn, driver)
+                    self.driver = driver
+                    if _has_gr_context:
+                        self.gr_context = driver.gr_context
 
-            def __init__(self, fn: Callable[..., Any], driver: greenlet):
-                greenlet.__init__(self, fn, driver)
-                self.driver = driver
-                if _has_gr_context:
-                    self.gr_context = driver.gr_context
-
-        self.greenlet = greenlet
-        self.getcurrent = getcurrent
-        self._AsyncIoGreenlet = _AsyncIoGreenlet
-        self._util_async_run = self._greenlet_util_async_run
+            self.greenlet = greenlet
+            self.getcurrent = getcurrent
+            self._AsyncIoGreenlet = _AsyncIoGreenlet
 
     def _initialize_no_greenlet(self):
-        self._util_async_run = self._no_greenlet_util_async_run
         self.getcurrent = _not_implemented
-        self.greenlet = _not_implemented  # type: ignore
-        self._AsyncIoGreenlet = _not_implemented  # type: ignore
+        self.greenlet = _not_implemented  # type: ignore[assignment]
+        self._AsyncIoGreenlet = _not_implemented  # type: ignore[assignment]
 
     def __getattr__(self, key: str) -> Any:
         if key in self.__slots__:
-            self._initialize(raise_=not key.startswith("_util"))
+            self._initialize()
             return getattr(self, key)
         else:
             raise AttributeError(key)
-
-    def _greenlet_util_async_run(
-        self, fn: Callable[..., Any], *args: Any, **kwargs: Any
-    ) -> Any:
-        """for test suite/ util only"""
-
-        loop = get_event_loop()
-        if not loop.is_running():
-            return loop.run_until_complete(greenlet_spawn(fn, *args, **kwargs))
-        else:
-            # allow for a wrapped test function to call another
-            assert isinstance(
-                _concurrency_shim.getcurrent(),
-                _concurrency_shim._AsyncIoGreenlet,
-            )
-            return fn(*args, **kwargs)
-
-    def _no_greenlet_util_async_run(
-        self, fn: Callable[..., Any], *args: Any, **kwargs: Any
-    ) -> Any:
-        """for test suite/ util only"""
-
-        return fn(*args, **kwargs)
 
 
 _concurrency_shim = _concurrency_shim_cls()
@@ -187,11 +142,11 @@ def in_greenlet() -> bool:
     return isinstance(current, _concurrency_shim._AsyncIoGreenlet)
 
 
-def await_only(awaitable: Awaitable[_T]) -> _T:
+def await_(awaitable: Awaitable[_T]) -> _T:
     """Awaits an async function in a sync method.
 
     The sync method must be inside a :func:`greenlet_spawn` context.
-    :func:`await_only` calls cannot be nested.
+    :func:`await_` calls cannot be nested.
 
     :param awaitable: The coroutine to call.
 
@@ -202,7 +157,7 @@ def await_only(awaitable: Awaitable[_T]) -> _T:
         _safe_cancel_awaitable(awaitable)
 
         raise exc.MissingGreenlet(
-            "greenlet_spawn has not been called; can't call await_only() "
+            "greenlet_spawn has not been called; can't call await_() "
             "here. Was IO attempted in an unexpected place?"
         )
 
@@ -213,31 +168,7 @@ def await_only(awaitable: Awaitable[_T]) -> _T:
     return current.driver.switch(awaitable)  # type: ignore[no-any-return]
 
 
-def await_fallback(awaitable: Awaitable[_T]) -> _T:
-    """Awaits an async function in a sync method.
-
-    The sync method must be inside a :func:`greenlet_spawn` context.
-    :func:`await_fallback` calls cannot be nested.
-
-    :param awaitable: The coroutine to call.
-
-    """
-
-    # this is called in the context greenlet while running fn
-    current = _concurrency_shim.getcurrent()
-    if not isinstance(current, _concurrency_shim._AsyncIoGreenlet):
-        loop = get_event_loop()
-        if loop.is_running():
-            _safe_cancel_awaitable(awaitable)
-
-            raise exc.MissingGreenlet(
-                "greenlet_spawn has not been called and asyncio event "
-                "loop is already running; can't call await_fallback() here. "
-                "Was IO attempted in an unexpected place?"
-            )
-        return loop.run_until_complete(awaitable)
-
-    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+await_only = await_  # old name. deprecated on 2.2
 
 
 async def greenlet_spawn(
@@ -248,7 +179,7 @@ async def greenlet_spawn(
 ) -> _T:
     """Runs a sync function ``fn`` in a new greenlet.
 
-    The sync function can then use :func:`await_only` to wait for async
+    The sync function can then use :func:`await_` to wait for async
     functions.
 
     :param fn: The sync callable to call.
@@ -261,7 +192,7 @@ async def greenlet_spawn(
         fn, _concurrency_shim.getcurrent()
     )
     # runs the function synchronously in gl greenlet. If the execution
-    # is interrupted by await_only, context is not dead and result is a
+    # is interrupted by await_, context is not dead and result is a
     # coroutine to wait. If the context is dead the function has
     # returned, and its result can be returned.
     switch_occurred = False
@@ -270,7 +201,7 @@ async def greenlet_spawn(
         while not context.dead:
             switch_occurred = True
             try:
-                # wait for a coroutine from await_only and then return its
+                # wait for a coroutine from await_ and then return its
                 # result back to it.
                 value = await result
             except BaseException:
@@ -302,42 +233,92 @@ class AsyncAdaptedLock:
     def __enter__(self) -> bool:
         # await is used to acquire the lock only after the first calling
         # coroutine has created the mutex.
-        return await_fallback(self.mutex.acquire())
+        return await_(self.mutex.acquire())
 
     def __exit__(self, *arg: Any, **kw: Any) -> None:
         self.mutex.release()
 
 
-def _util_async_run_coroutine_function(
-    fn: Callable[..., Any], *args: Any, **kwargs: Any
-) -> Any:
-    """for test suite/ util only"""
+if not TYPE_CHECKING and py311:
+    _Runner = asyncio.Runner
+else:
 
-    loop = get_event_loop()
-    if loop.is_running():
-        raise Exception(
-            "for async run coroutine we expect that no greenlet or event "
-            "loop is running when we start out"
-        )
-    return loop.run_until_complete(fn(*args, **kwargs))
+    class _Runner:
+        """Runner implementation for test only"""
+
+        _loop: Union[None, asyncio.AbstractEventLoop, Literal[False]]
+
+        def __init__(self) -> None:
+            self._loop = None
+
+        def __enter__(self) -> Self:
+            self._lazy_init()
+            return self
+
+        def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+            self.close()
+
+        def close(self) -> None:
+            if self._loop:
+                try:
+                    self._loop.run_until_complete(
+                        self._loop.shutdown_asyncgens()
+                    )
+                finally:
+                    self._loop.close()
+                    self._loop = False
+
+        def get_loop(self) -> asyncio.AbstractEventLoop:
+            """Return embedded event loop."""
+            self._lazy_init()
+            assert self._loop
+            return self._loop
+
+        def run(self, coro: Coroutine[Any, Any, _T]) -> _T:
+            self._lazy_init()
+            assert self._loop
+            return self._loop.run_until_complete(coro)
+
+        def _lazy_init(self) -> None:
+            if self._loop is False:
+                raise RuntimeError("Runner is closed")
+            if self._loop is None:
+                self._loop = asyncio.new_event_loop()
 
 
-def _util_async_run(fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
-    """for test suite/ util only"""
+class _AsyncUtil:
+    """Asyncio util for test suite/ util only"""
 
-    _util_async_run = _concurrency_shim._util_async_run
-    return _util_async_run(fn, *args, **kwargs)
+    def __init__(self) -> None:
+        self.runner = _Runner()  # runner it lazy so it can be created here
 
+    def run(
+        self,
+        fn: Callable[..., Coroutine[Any, Any, _T]],
+        *args: Any,
+        **kwargs: Any,
+    ) -> _T:
+        """Run coroutine on the loop"""
+        return self.runner.run(fn(*args, **kwargs))
 
-def get_event_loop() -> asyncio.AbstractEventLoop:
-    """vendor asyncio.get_event_loop() for python 3.7 and above.
+    def run_in_greenlet(
+        self, fn: Callable[..., _T], *args: Any, **kwargs: Any
+    ) -> _T:
+        """Run sync function in greenlet. Support nested calls"""
+        _concurrency_shim._initialize(raise_=False)
 
-    Python 3.10 deprecates get_event_loop() as a standalone.
+        if _concurrency_shim._has_greenlet:
+            if self.runner.get_loop().is_running():
+                # allow for a wrapped test function to call another
+                assert isinstance(
+                    _concurrency_shim.getcurrent(),
+                    _concurrency_shim._AsyncIoGreenlet,
+                )
+                return fn(*args, **kwargs)
+            else:
+                return self.runner.run(greenlet_spawn(fn, *args, **kwargs))
+        else:
+            return fn(*args, **kwargs)
 
-    """
-    try:
-        return asyncio.get_running_loop()
-    except RuntimeError:
-        # avoid "During handling of the above exception, another exception..."
-        pass
-    return asyncio.get_event_loop_policy().get_event_loop()
+    def close(self) -> None:
+        self.runner.close()

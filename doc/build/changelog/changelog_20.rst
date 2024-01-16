@@ -9,8 +9,210 @@
 
 
 .. changelog::
-    :version: 2.0.24
+    :version: 2.0.26
     :include_notes_from: unreleased_20
+
+.. changelog::
+    :version: 2.0.25
+    :released: January 2, 2024
+
+    .. change::
+        :tags: oracle, asyncio
+        :tickets: 10679
+
+        Added support for :ref:`oracledb` in asyncio mode, using the newly released
+        version of the ``oracledb`` DBAPI that includes asyncio support. For the
+        2.0 series, this is a preview release, where the current implementation
+        does not yet have include support for
+        :meth:`_asyncio.AsyncConnection.stream`. Improved support is planned for
+        the 2.1 release of SQLAlchemy.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10800
+
+        Fixed issue where when making use of the
+        :paramref:`_orm.relationship.post_update` feature at the same time as using
+        a mapper version_id_col could lead to a situation where the second UPDATE
+        statement emitted by the post-update feature would fail to make use of the
+        correct version identifier, assuming an UPDATE was already emitted in that
+        flush which had already bumped the version counter.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 10801, 10818
+
+        Fixed regressions caused by typing added to the ``sqlalchemy.sql.functions``
+        module in version 2.0.24, as part of :ticket:`6810`:
+
+        * Further enhancements to pep-484 typing to allow SQL functions from
+          :attr:`_sql.func` derived elements to work more effectively with ORM-mapped
+          attributes (:ticket:`10801`)
+
+        * Fixed the argument types passed to functions so that literal expressions
+          like strings and ints are again interpreted correctly (:ticket:`10818`)
+
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 10807
+
+        Added preliminary support for Python 3.12 pep-695 type alias structures,
+        when resolving custom type maps for ORM Annotated Declarative mappings.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10815
+
+        Fixed issue where ORM Annotated Declarative would mis-interpret the left
+        hand side of a relationship without any collection specified as
+        uselist=True if the left type were given as a class and not a string,
+        without using future-style annotations.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 10817
+
+        Improved compilation of :func:`_sql.any_` / :func:`_sql.all_` in the
+        context of a negation of boolean comparison, will now render ``NOT (expr)``
+        rather than reversing the equality operator to not equals, allowing
+        finer-grained control of negations for these non-typical operators.
+
+.. changelog::
+    :version: 2.0.24
+    :released: December 28, 2023
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10597
+
+        Fixed issue where use of :func:`_orm.foreign` annotation on a
+        non-initialized :func:`_orm.mapped_column` construct would produce an
+        expression without a type, which was then not updated at initialization
+        time of the actual column, leading to issues such as relationships not
+        determining ``use_get`` appropriately.
+
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 10654
+
+        Fixed issue where error reporting for unexpected schema item when creating
+        objects like :class:`_schema.Table` would incorrectly handle an argument
+        that was itself passed as a tuple, leading to a formatting error.  The
+        error message has been modernized to use f-strings.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 10662
+
+        Fixed URL-encoding of the username and password components of
+        :class:`.engine.URL` objects when converting them to string using the
+        :meth:`_engine.URL.render_as_string` method, by using Python standard
+        library ``urllib.parse.quote`` while allowing for plus signs and spaces to
+        remain unchanged as supported by SQLAlchemy's non-standard URL parsing,
+        rather than the legacy home-grown routine from many years ago. Pull request
+        courtesy of Xavier NUNN.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10668
+
+        Improved the error message produced when the unit of work process sets the
+        value of a primary key column to NULL due to a related object with a
+        dependency rule on that column being deleted, to include not just the
+        destination object and column name but also the source column from which
+        the NULL value is originating.  Pull request courtesy Jan Vollmer.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 10717
+
+        Adjusted the asyncpg dialect such that when the ``terminate()`` method is
+        used to discard an invalidated connection, the dialect will first attempt
+        to gracefully close the connection using ``.close()`` with a timeout, if
+        the operation is proceeding within an async event loop context only. This
+        allows the asyncpg driver to attend to finalizing a ``TimeoutError``
+        including being able to close a long-running query server side, which
+        otherwise can keep running after the program has exited.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10732
+
+        Modified the ``__init_subclass__()`` method used by
+        :class:`_orm.MappedAsDataclass`, :class:`_orm.DeclarativeBase` and
+        :class:`_orm.DeclarativeBaseNoMeta` to accept arbitrary ``**kw`` and to
+        propagate them to the ``super()`` call, allowing greater flexibility in
+        arranging custom superclasses and mixins which make use of
+        ``__init_subclass__()`` keyword arguments.  Pull request courtesy Michael
+        Oliver.
+
+
+    .. change::
+        :tags: bug, tests
+        :tickets: 10747
+
+        Improvements to the test suite to further harden its ability to run
+        when Python ``greenlet`` is not installed.   There is now a tox
+        target that includes the token "nogreenlet" that will run the suite
+        with greenlet not installed (note that it still temporarily installs
+        greenlet as part of the tox config, however).
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 10753
+
+        Fixed issue in stringify for SQL elements, where a specific dialect is not
+        passed,  where a dialect-specific element such as the PostgreSQL "on
+        conflict do update" construct is encountered and then fails to provide for
+        a stringify dialect with the appropriate state to render the construct,
+        leading to internal errors.
+
+    .. change::
+        :tags: bug, sql
+
+        Fixed issue where stringifying or compiling a :class:`.CTE` that was
+        against a DML construct such as an :func:`_sql.insert` construct would fail
+        to stringify, due to a mis-detection that the statement overall is an
+        INSERT, leading to internal errors.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10776
+
+        Ensured the use case of :class:`.Bundle` objects used in the
+        ``returning()`` portion of ORM-enabled INSERT, UPDATE and DELETE statements
+        is tested and works fully.   This was never explicitly implemented or
+        tested previously and did not work correctly in the 1.4 series; in the 2.0
+        series, ORM UPDATE/DELETE with WHERE criteria was missing an implementation
+        method preventing :class:`.Bundle` objects from working.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10784
+
+        Fixed 2.0 regression in :class:`.MutableList` where a routine that detects
+        sequences would not correctly filter out string or bytes instances, making
+        it impossible to assign a string value to a specific index (while
+        non-sequence values would work fine).
+
+    .. change::
+        :tags: change, asyncio
+
+        The ``async_fallback`` dialect argument is now deprecated, and will be
+        removed in SQLAlchemy 2.1.   This flag has not been used for SQLAlchemy's
+        test suite for some time.   asyncio dialects can still run in a synchronous
+        style by running code within a greenlet using :func:`_util.greenlet_spawn`.
+
+    .. change::
+       :tags: bug, typing
+       :tickets: 6810
+
+       Completed pep-484 typing for the ``sqlalchemy.sql.functions`` module.
+       :func:`_sql.select` constructs made against ``func`` elements should now
+       have filled-in return types.
 
 .. changelog::
     :version: 2.0.23

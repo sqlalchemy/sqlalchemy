@@ -1,5 +1,5 @@
 # orm/relationships.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -179,7 +179,10 @@ _ORMOrderByArgument = Union[
 ORMBackrefArgument = Union[str, Tuple[str, Dict[str, Any]]]
 
 _ORMColCollectionElement = Union[
-    ColumnClause[Any], _HasClauseElement, roles.DMLColumnRole, "Mapped[Any]"
+    ColumnClause[Any],
+    _HasClauseElement[Any],
+    roles.DMLColumnRole,
+    "Mapped[Any]",
 ]
 _ORMColCollectionArgument = Union[
     str,
@@ -1811,15 +1814,12 @@ class RelationshipProperty(
                 argument, originating_module
             )
 
-            # we don't allow the collection class to be a
-            # __forward_arg__ right now, so if we see a forward arg here,
-            # we know there was no collection class either
-            if (
-                self.collection_class is None
-                and not is_write_only
-                and not is_dynamic
-            ):
-                self.uselist = False
+        if (
+            self.collection_class is None
+            and not is_write_only
+            and not is_dynamic
+        ):
+            self.uselist = False
 
         # ticket #8759
         # if a lead argument was given to relationship(), like

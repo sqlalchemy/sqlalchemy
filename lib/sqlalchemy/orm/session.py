@@ -1,5 +1,5 @@
 # orm/session.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -25,6 +25,7 @@ from typing import List
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Sequence
 from typing import Set
 from typing import Tuple
@@ -90,7 +91,6 @@ from ..sql.selectable import ForUpdateArg
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util import IdentitySet
 from ..util.typing import Literal
-from ..util.typing import Protocol
 from ..util.typing import TupleAny
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
@@ -2481,12 +2481,12 @@ class Session(_SessionClassMethods, EventTarget):
         :class:`_orm.Session`, resetting the session to its initial state.
 
         This method provides for same "reset-only" behavior that the
-        :meth:_orm.Session.close method has provided historically, where the
+        :meth:`_orm.Session.close` method has provided historically, where the
         state of the :class:`_orm.Session` is reset as though the object were
         brand new, and ready to be used again.
-        The method may then be useful for :class:`_orm.Session` objects
+        This method may then be useful for :class:`_orm.Session` objects
         which set :paramref:`_orm.Session.close_resets_only` to ``False``,
-        so that "reset only" behavior is still available from this method.
+        so that "reset only" behavior is still available.
 
         .. versionadded:: 2.0.22
 

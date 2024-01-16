@@ -1,5 +1,5 @@
 # engine/result.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -855,7 +855,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         real_result = (
             self._real_result
             if self._real_result
-            else cast("Result[Unpack[TupleAny]]", self)
+            else cast("Result[Any]", self)
         )
 
         if not real_result._source_supports_scalars or len(indexes) != 1:

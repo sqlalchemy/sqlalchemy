@@ -1,5 +1,5 @@
 # ext/associationproxy.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -36,7 +36,9 @@ from typing import MutableSet
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Set
+from typing import SupportsIndex
 from typing import Tuple
 from typing import Type
 from typing import TypeVar
@@ -60,9 +62,7 @@ from ..sql import operators
 from ..sql import or_
 from ..sql.base import _NoArg
 from ..util.typing import Literal
-from ..util.typing import Protocol
 from ..util.typing import Self
-from ..util.typing import SupportsIndex
 from ..util.typing import SupportsKeysAndGetItem
 
 if typing.TYPE_CHECKING:

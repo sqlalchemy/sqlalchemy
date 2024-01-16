@@ -1,5 +1,5 @@
 # pool/base.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -25,6 +25,7 @@ from typing import Deque
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Protocol
 from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import Union
@@ -35,7 +36,6 @@ from .. import exc
 from .. import log
 from .. import util
 from ..util.typing import Literal
-from ..util.typing import Protocol
 
 if TYPE_CHECKING:
     from ..engine.interfaces import DBAPIConnection

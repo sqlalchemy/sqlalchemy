@@ -1,5 +1,5 @@
 # sql/sqltypes.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -2925,7 +2925,7 @@ class ARRAY(
         def any(self, other, operator=None):
             """Return ``other operator ANY (array)`` clause.
 
-            .. note:: This method is an :class:`_types.ARRAY` - specific
+            .. legacy:: This method is an :class:`_types.ARRAY` - specific
                 construct that is now superseded by the :func:`_sql.any_`
                 function, which features a different calling style. The
                 :func:`_sql.any_` function is also mirrored at the method level
@@ -2959,9 +2959,8 @@ class ARRAY(
 
             arr_type = self.type
 
-            # send plain BinaryExpression so that negate remains at None,
-            # leading to NOT expr for negation.
-            return elements.BinaryExpression(
+            return elements.CollectionAggregate._create_any(self.expr).operate(
+                operators.mirror(operator),
                 coercions.expect(
                     roles.BinaryElementRole,
                     element=other,
@@ -2969,19 +2968,17 @@ class ARRAY(
                     expr=self.expr,
                     bindparam_type=arr_type.item_type,
                 ),
-                elements.CollectionAggregate._create_any(self.expr),
-                operator,
             )
 
         @util.preload_module("sqlalchemy.sql.elements")
         def all(self, other, operator=None):
             """Return ``other operator ALL (array)`` clause.
 
-            .. note:: This method is an :class:`_types.ARRAY` - specific
-                construct that is now superseded by the :func:`_sql.any_`
+            .. legacy:: This method is an :class:`_types.ARRAY` - specific
+                construct that is now superseded by the :func:`_sql.all_`
                 function, which features a different calling style. The
-                :func:`_sql.any_` function is also mirrored at the method level
-                via the :meth:`_sql.ColumnOperators.any_` method.
+                :func:`_sql.all_` function is also mirrored at the method level
+                via the :meth:`_sql.ColumnOperators.all_` method.
 
             Usage of array-specific :meth:`_types.ARRAY.Comparator.all`
             is as follows::
@@ -3011,9 +3008,8 @@ class ARRAY(
 
             arr_type = self.type
 
-            # send plain BinaryExpression so that negate remains at None,
-            # leading to NOT expr for negation.
-            return elements.BinaryExpression(
+            return elements.CollectionAggregate._create_all(self.expr).operate(
+                operators.mirror(operator),
                 coercions.expect(
                     roles.BinaryElementRole,
                     element=other,
@@ -3021,8 +3017,6 @@ class ARRAY(
                     expr=self.expr,
                     bindparam_type=arr_type.item_type,
                 ),
-                elements.CollectionAggregate._create_all(self.expr),
-                operator,
             )
 
     comparator_factory = Comparator

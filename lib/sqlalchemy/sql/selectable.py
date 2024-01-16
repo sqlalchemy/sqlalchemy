@@ -1,5 +1,5 @@
 # sql/selectable.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -30,6 +30,7 @@ from typing import NamedTuple
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Sequence
 from typing import Set
 from typing import Tuple
@@ -97,7 +98,6 @@ from .. import exc
 from .. import util
 from ..util import HasMemoized_ro_memoized_attribute
 from ..util.typing import Literal
-from ..util.typing import Protocol
 from ..util.typing import Self
 from ..util.typing import TupleAny
 from ..util.typing import TypeVarTuple

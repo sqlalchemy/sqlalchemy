@@ -62,14 +62,16 @@ def process_functions(filename: str, cmd: code_writer_cmd) -> str:
                             textwrap.indent(
                                 f"""
 
-# appease mypy which seems to not want to accept _T from
-# _ColumnExpressionArgument, as it includes non-generic types
+# set ColumnElement[_T] as a separate overload, to appease mypy
+# which seems to not want to accept _T from _ColumnExpressionArgument.
+# this is even if all non-generic types are removed from it, so
+# reasons remain unclear for why this does not work
 
 @overload
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     self,
     col: ColumnElement[_T],
-    *args: _ColumnExpressionArgument[Any],
+    *args: _ColumnExpressionOrLiteralArgument[Any],
     **kwargs: Any,
 ) -> {fn_class.__name__}[_T]:
     ...
@@ -78,15 +80,26 @@ def {key}( {'  # noqa: A001' if is_reserved_word else ''}
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     self,
     col: _ColumnExpressionArgument[_T],
-    *args: _ColumnExpressionArgument[Any],
+    *args: _ColumnExpressionOrLiteralArgument[Any],
     **kwargs: Any,
 ) -> {fn_class.__name__}[_T]:
         ...
 
+
+@overload
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     self,
-    col: _ColumnExpressionArgument[_T],
-    *args: _ColumnExpressionArgument[Any],
+    col: _ColumnExpressionOrLiteralArgument[_T],
+    *args: _ColumnExpressionOrLiteralArgument[Any],
+    **kwargs: Any,
+) -> {fn_class.__name__}[_T]:
+        ...
+
+
+def {key}( {'  # noqa: A001' if is_reserved_word else ''}
+    self,
+    col: _ColumnExpressionOrLiteralArgument[_T],
+    *args: _ColumnExpressionOrLiteralArgument[Any],
     **kwargs: Any,
 ) -> {fn_class.__name__}[_T]:
     ...

@@ -1,5 +1,5 @@
 # sql/default_comparator.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -56,7 +56,6 @@ def _boolean_compare(
     negate_op: Optional[OperatorType] = None,
     reverse: bool = False,
     _python_is_types: Tuple[Type[Any], ...] = (type(None), bool),
-    _any_all_expr: bool = False,
     result_type: Optional[TypeEngine[bool]] = None,
     **kwargs: Any,
 ) -> OperatorExpression[bool]:
@@ -90,7 +89,7 @@ def _boolean_compare(
                 negate=negate_op,
                 modifiers=kwargs,
             )
-        elif _any_all_expr:
+        elif expr._is_collection_aggregate:
             obj = coercions.expect(
                 roles.ConstExprRole, element=obj, operator=op, expr=expr
             )

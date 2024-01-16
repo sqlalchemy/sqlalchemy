@@ -1,5 +1,5 @@
 # sql/type_api.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -23,10 +23,12 @@ from typing import Mapping
 from typing import NewType
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Sequence
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypedDict
 from typing import TypeVar
 from typing import Union
 
@@ -37,9 +39,8 @@ from .operators import ColumnOperators
 from .visitors import Visitable
 from .. import exc
 from .. import util
-from ..util.typing import Protocol
 from ..util.typing import Self
-from ..util.typing import TypedDict
+from ..util.typing import TypeAliasType
 from ..util.typing import TypeGuard
 
 # these are back-assigned by sqltypes.
@@ -67,7 +68,9 @@ _O = TypeVar("_O", bound=object)
 _TE = TypeVar("_TE", bound="TypeEngine[Any]")
 _CT = TypeVar("_CT", bound=Any)
 
-_MatchedOnType = Union["GenericProtocol[Any]", NewType, Type[Any]]
+_MatchedOnType = Union[
+    "GenericProtocol[Any]", TypeAliasType, NewType, Type[Any]
+]
 
 
 class _NoValueInList(Enum):

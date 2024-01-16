@@ -1,5 +1,5 @@
 # inspection.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -36,13 +36,13 @@ from typing import Dict
 from typing import Generic
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Type
 from typing import TypeVar
 from typing import Union
 
 from . import exc
 from .util.typing import Literal
-from .util.typing import Protocol
 
 _T = TypeVar("_T", bound=Any)
 _TCov = TypeVar("_TCov", bound=Any, covariant=True)

@@ -1,5 +1,5 @@
 # sql/ddl.py
-# Copyright (C) 2009-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2009-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -20,6 +20,7 @@ from typing import Callable
 from typing import Iterable
 from typing import List
 from typing import Optional
+from typing import Protocol
 from typing import Sequence as typing_Sequence
 from typing import Tuple
 
@@ -31,7 +32,6 @@ from .elements import ClauseElement
 from .. import exc
 from .. import util
 from ..util import topological
-from ..util.typing import Protocol
 from ..util.typing import Self
 
 if typing.TYPE_CHECKING:

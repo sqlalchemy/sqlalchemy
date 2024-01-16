@@ -1,5 +1,5 @@
 # sql/coercions.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -851,9 +851,7 @@ class InElementImpl(RoleImpl):
         )
 
     def _literal_coercion(self, element, expr, operator, **kw):
-        if isinstance(element, collections_abc.Iterable) and not isinstance(
-            element, str
-        ):
+        if util.is_non_string_iterable(element):
             non_literal_expressions: Dict[
                 Optional[operators.ColumnOperators],
                 operators.ColumnOperators,

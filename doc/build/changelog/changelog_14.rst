@@ -14,8 +14,48 @@ This document details individual issue-level changes made throughout
 
 
 .. changelog::
-    :version: 1.4.51
+    :version: 1.4.52
     :include_notes_from: unreleased_14
+
+.. changelog::
+    :version: 1.4.51
+    :released: January 2, 2024
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 10650
+        :versions: 2.0.24
+
+        Fixed regression introduced by the fix in ticket :ticket:`10492` when using
+        pool pre-ping with PyMySQL version older than 1.0.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10782
+        :versions: 2.0.24, 1.4.51
+
+        Improved a fix first implemented for :ticket:`3208` released in version
+        0.9.8, where the registry of classes used internally by declarative could
+        be subject to a race condition in the case where individual mapped classes
+        are being garbage collected at the same time while new mapped classes are
+        being constructed, as can happen in some test suite configurations or
+        dynamic class creation environments.   In addition to the weakref check
+        already added, the list of items being iterated is also copied first to
+        avoid "list changed while iterating" errors.  Pull request courtesy Yilei
+        Yang.
+
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 10813
+        :versions: 1.4.51, 2.0.25
+
+        Fixed critical issue in asyncio version of the connection pool where
+        calling :meth:`_asyncio.AsyncEngine.dispose` would produce a new connection
+        pool that did not fully re-establish the use of asyncio-compatible mutexes,
+        leading to the use of a plain ``threading.Lock()`` which would then cause
+        deadlocks in an asyncio context when using concurrency features like
+        ``asyncio.gather()``.
 
 .. changelog::
     :version: 1.4.50

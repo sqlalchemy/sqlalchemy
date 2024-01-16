@@ -23,6 +23,7 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import update
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm import Mapped
@@ -380,6 +381,68 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
         result = s.scalars(insert_stmt)
 
         eq_(result.all(), [User(id=1, name="John", age=30)])
+
+    @testing.requires.insert_returning
+    @testing.variation(
+        "insert_type",
+        ["bulk", ("values", testing.requires.multivalues_inserts), "single"],
+    )
+    def test_insert_returning_bundle(self, decl_base, insert_type):
+        """test #10776"""
+
+        class User(decl_base):
+            __tablename__ = "users"
+
+            id: Mapped[int] = mapped_column(Identity(), primary_key=True)
+
+            name: Mapped[str] = mapped_column()
+            x: Mapped[int]
+            y: Mapped[int]
+
+        decl_base.metadata.create_all(testing.db)
+        insert_stmt = insert(User).returning(
+            User.name, Bundle("mybundle", User.id, User.x, User.y)
+        )
+
+        s = fixture_session()
+
+        if insert_type.bulk:
+            result = s.execute(
+                insert_stmt,
+                [
+                    {"name": "some name 1", "x": 1, "y": 2},
+                    {"name": "some name 2", "x": 2, "y": 3},
+                    {"name": "some name 3", "x": 3, "y": 4},
+                ],
+            )
+        elif insert_type.values:
+            result = s.execute(
+                insert_stmt.values(
+                    [
+                        {"name": "some name 1", "x": 1, "y": 2},
+                        {"name": "some name 2", "x": 2, "y": 3},
+                        {"name": "some name 3", "x": 3, "y": 4},
+                    ],
+                )
+            )
+        elif insert_type.single:
+            result = s.execute(
+                insert_stmt, {"name": "some name 1", "x": 1, "y": 2}
+            )
+        else:
+            insert_type.fail()
+
+        if insert_type.single:
+            eq_(result.all(), [("some name 1", (1, 1, 2))])
+        else:
+            eq_(
+                result.all(),
+                [
+                    ("some name 1", (1, 1, 2)),
+                    ("some name 2", (2, 2, 3)),
+                    ("some name 3", (3, 3, 4)),
+                ],
+            )
 
     @testing.variation(
         "use_returning", [(True, testing.requires.insert_returning), False]
@@ -793,6 +856,34 @@ class UpdateStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
         else:
             result = s.execute(stmt, data)
             eq_(result.all(), [(1, 5, 9), (2, 5, 9), (3, 5, 9)])
+
+    @testing.requires.update_returning
+    def test_bulk_update_returning_bundle(self, decl_base):
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(
+                primary_key=True, autoincrement=False
+            )
+
+            x: Mapped[int]
+            y: Mapped[int]
+
+        decl_base.metadata.create_all(testing.db)
+
+        s = fixture_session()
+
+        s.add_all(
+            [A(id=1, x=1, y=1), A(id=2, x=2, y=2), A(id=3, x=3, y=3)],
+        )
+        s.commit()
+
+        stmt = update(A).returning(Bundle("mybundle", A.id, A.x), A.y)
+
+        data = {"x": 5, "y": 9}
+
+        result = s.execute(stmt, data)
+        eq_(result.all(), [((1, 5), 9), ((2, 5), 9), ((3, 5), 9)])
 
     def test_bulk_update_w_where_one(self, decl_base):
         """test use case in #9595"""

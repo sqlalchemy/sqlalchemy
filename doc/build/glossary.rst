@@ -811,6 +811,19 @@ Glossary
 
             :ref:`session_basics`
 
+    flush
+    flushing
+    flushed
+
+        This refers to the actual process used by the :term:`unit of work`
+        to emit changes to a database.  In SQLAlchemy this process occurs
+        via the :class:`_orm.Session` object and is usually automatic, but
+        can also be controlled manually.
+
+        .. seealso::
+
+            :ref:`session_flushing`
+
     expire
     expired
     expires

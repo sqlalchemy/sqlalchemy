@@ -1,5 +1,5 @@
 # orm/clsregistry.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -239,10 +239,10 @@ class _MultipleClassMarker(ClsRegistryToken):
     def add_item(self, item: Type[Any]) -> None:
         # protect against class registration race condition against
         # asynchronous garbage collection calling _remove_item,
-        # [ticket:3208]
+        # [ticket:3208] and [ticket:10782]
         modules = {
             cls.__module__
-            for cls in [ref() for ref in self.contents]
+            for cls in [ref() for ref in list(self.contents)]
             if cls is not None
         }
         if item.__module__ in modules:

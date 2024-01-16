@@ -1,5 +1,5 @@
 # orm/context.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -2873,6 +2873,13 @@ class _BundleEntity(_QueryEntity):
     def setup_compile_state(self, compile_state):
         for ent in self._entities:
             ent.setup_compile_state(compile_state)
+
+    def setup_dml_returning_compile_state(
+        self,
+        compile_state: ORMCompileState,
+        adapter: DMLReturningColFilter,
+    ) -> None:
+        return self.setup_compile_state(compile_state)
 
     def row_processor(self, context, result):
         procs, labels, extra = zip(

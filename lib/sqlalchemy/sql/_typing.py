@@ -1,5 +1,5 @@
 # sql/_typing.py
-# Copyright (C) 2022-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2022-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -11,11 +11,13 @@ import operator
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Generic
 from typing import Iterable
 from typing import Mapping
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Set
 from typing import Type
 from typing import TYPE_CHECKING
@@ -27,7 +29,6 @@ from .. import exc
 from .. import util
 from ..inspection import Inspectable
 from ..util.typing import Literal
-from ..util.typing import Protocol
 from ..util.typing import TupleAny
 from ..util.typing import TypeAlias
 from ..util.typing import Unpack
@@ -53,7 +54,6 @@ if TYPE_CHECKING:
     from .elements import SQLCoreOperations
     from .elements import TextClause
     from .lambdas import LambdaElement
-    from .roles import ColumnsClauseRole
     from .roles import FromClauseRole
     from .schema import Column
     from .selectable import Alias
@@ -73,6 +73,7 @@ if TYPE_CHECKING:
     from ..util.typing import TypeGuard
 
 _T = TypeVar("_T", bound=Any)
+_T_co = TypeVar("_T_co", bound=Any, covariant=True)
 
 
 _CE = TypeVar("_CE", bound="ColumnElement[Any]")
@@ -80,10 +81,10 @@ _CE = TypeVar("_CE", bound="ColumnElement[Any]")
 _CLE = TypeVar("_CLE", bound="ClauseElement")
 
 
-class _HasClauseElement(Protocol):
+class _HasClauseElement(Protocol, Generic[_T_co]):
     """indicates a class that has a __clause_element__() method"""
 
-    def __clause_element__(self) -> ColumnsClauseRole:
+    def __clause_element__(self) -> roles.ExpressionElementRole[_T_co]:
         ...
 
 
@@ -113,8 +114,8 @@ _MAYBE_ENTITY = TypeVar(
     roles.ColumnsClauseRole,
     Literal["*", 1],
     Type[Any],
-    Inspectable[_HasClauseElement],
-    _HasClauseElement,
+    Inspectable[_HasClauseElement[Any]],
+    _HasClauseElement[Any],
 )
 
 
@@ -128,7 +129,7 @@ _TextCoercedExpressionArgument = Union[
     str,
     "TextClause",
     "ColumnElement[_T]",
-    _HasClauseElement,
+    _HasClauseElement[_T],
     roles.ExpressionElementRole[_T],
 ]
 
@@ -138,8 +139,8 @@ _ColumnsClauseArgument = Union[
     "SQLCoreOperations[_T]",
     Literal["*", 1],
     Type[_T],
-    Inspectable[_HasClauseElement],
-    _HasClauseElement,
+    Inspectable[_HasClauseElement[_T]],
+    _HasClauseElement[_T],
 ]
 """open-ended SELECT columns clause argument.
 
@@ -171,7 +172,7 @@ _T9 = TypeVar("_T9", bound=Any)
 
 _ColumnExpressionArgument = Union[
     "ColumnElement[_T]",
-    _HasClauseElement,
+    _HasClauseElement[_T],
     "SQLCoreOperations[_T]",
     roles.ExpressionElementRole[_T],
     Callable[[], "ColumnElement[_T]"],
@@ -211,8 +212,8 @@ _InfoType = Dict[Any, Any]
 _FromClauseArgument = Union[
     roles.FromClauseRole,
     Type[Any],
-    Inspectable[_HasClauseElement],
-    _HasClauseElement,
+    Inspectable[_HasClauseElement[Any]],
+    _HasClauseElement[Any],
 ]
 """A FROM clause, like we would send to select().select_from().
 
@@ -239,7 +240,7 @@ _SelectStatementForCompoundArgument = Union[
 
 _DMLColumnArgument = Union[
     str,
-    _HasClauseElement,
+    _HasClauseElement[Any],
     roles.DMLColumnRole,
     "SQLCoreOperations[Any]",
 ]
@@ -270,8 +271,8 @@ _DMLTableArgument = Union[
     "Alias",
     "CTE",
     Type[Any],
-    Inspectable[_HasClauseElement],
-    _HasClauseElement,
+    Inspectable[_HasClauseElement[Any]],
+    _HasClauseElement[Any],
 ]
 
 _PropagateAttrsType = util.immutabledict[str, Any]
@@ -363,7 +364,7 @@ def is_quoted_name(s: str) -> TypeGuard[quoted_name]:
     return hasattr(s, "quote")
 
 
-def is_has_clause_element(s: object) -> TypeGuard[_HasClauseElement]:
+def is_has_clause_element(s: object) -> TypeGuard[_HasClauseElement[Any]]:
     return hasattr(s, "__clause_element__")
 
 

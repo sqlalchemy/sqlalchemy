@@ -1,5 +1,5 @@
 # pool/events.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -173,7 +173,7 @@ class PoolEvents(event.Events[Pool]):
 
     def checkin(
         self,
-        dbapi_connection: DBAPIConnection,
+        dbapi_connection: Optional[DBAPIConnection],
         connection_record: ConnectionPoolEntry,
     ) -> None:
         """Called when a connection returns to the pool.

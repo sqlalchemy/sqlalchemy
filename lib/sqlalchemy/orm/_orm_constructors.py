@@ -1,5 +1,5 @@
 # orm/_orm_constructors.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -1693,19 +1693,10 @@ def relationship(
       the full set of related objects, to prevent modifications of the
       collection from resulting in persistence operations.
 
-      When using the :paramref:`_orm.relationship.viewonly` flag in
-      conjunction with backrefs, the originating relationship for a
-      particular state change will not produce state changes within the
-      viewonly relationship.   This is the behavior implied by
-      :paramref:`_orm.relationship.sync_backref` being set to False.
-
-      .. versionchanged:: 1.3.17 - the
-         :paramref:`_orm.relationship.sync_backref` flag is set to False
-             when using viewonly in conjunction with backrefs.
-
       .. seealso::
 
-        :paramref:`_orm.relationship.sync_backref`
+        :ref:`relationship_viewonly_notes` - more details on best practices
+        when using :paramref:`_orm.relationship.viewonly`.
 
     :param sync_backref:
       A boolean that enables the events used to synchronize the in-Python

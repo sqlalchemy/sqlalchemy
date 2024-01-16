@@ -1,5 +1,5 @@
 # pool/impl.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -255,10 +255,6 @@ class AsyncAdaptedQueuePool(QueuePool):
     ] = sqla_queue.AsyncAdaptedQueue
 
     _dialect = _AsyncConnDialect()
-
-
-class FallbackAsyncAdaptedQueuePool(AsyncAdaptedQueuePool):
-    _queue_class = sqla_queue.FallbackAsyncAdaptedQueue
 
 
 class NullPool(Pool):

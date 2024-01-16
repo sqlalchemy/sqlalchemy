@@ -1,5 +1,5 @@
 # dialects/postgresql/asyncpg.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors <see AUTHORS
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors <see AUTHORS
 # file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -24,17 +24,6 @@ This dialect should normally be used only with the
 
     from sqlalchemy.ext.asyncio import create_async_engine
     engine = create_async_engine("postgresql+asyncpg://user:pass@hostname/dbname")
-
-The dialect can also be run as a "synchronous" dialect within the
-:func:`_sa.create_engine` function, which will pass "await" calls into
-an ad-hoc event loop.  This mode of operation is of **limited use**
-and is for special testing scenarios only.  The mode can be enabled by
-adding the SQLAlchemy-specific flag ``async_fallback`` to the URL
-in conjunction with :func:`_sa.create_engine`::
-
-    # for testing purposes only; do not use in production!
-    engine = create_engine("postgresql+asyncpg://user:pass@hostname/dbname?async_fallback=true")
-
 
 .. versionadded:: 1.4
 
@@ -217,15 +206,13 @@ from .types import BIT
 from .types import BYTEA
 from .types import CITEXT
 from ... import exc
-from ... import pool
 from ... import util
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
 from ...engine import processors
 from ...sql import sqltypes
-from ...util.concurrency import await_fallback
-from ...util.concurrency import await_only
+from ...util.concurrency import await_
 
 if TYPE_CHECKING:
     from ...engine.interfaces import _DBAPICursorDescription
@@ -556,7 +543,6 @@ class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
     def __init__(self, adapt_connection: AsyncAdapt_asyncpg_connection):
         self._adapt_connection = adapt_connection
         self._connection = adapt_connection._connection
-        self.await_ = adapt_connection.await_
         self._cursor = None
         self._rows = collections.deque()
         self._description = None
@@ -654,14 +640,10 @@ class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
                 self._handle_exception(error)
 
     def execute(self, operation, parameters=None):
-        self._adapt_connection.await_(
-            self._prepare_and_execute(operation, parameters)
-        )
+        await_(self._prepare_and_execute(operation, parameters))
 
     def executemany(self, operation, seq_of_parameters):
-        return self._adapt_connection.await_(
-            self._executemany(operation, seq_of_parameters)
-        )
+        return await_(self._executemany(operation, seq_of_parameters))
 
     def setinputsizes(self, *inputsizes):
         raise NotImplementedError()
@@ -683,7 +665,7 @@ class AsyncAdapt_asyncpg_ss_cursor(
 
     def _buffer_rows(self):
         assert self._cursor is not None
-        new_rows = self._adapt_connection.await_(self._cursor.fetch(50))
+        new_rows = await_(self._cursor.fetch(50))
         self._rowbuffer = collections.deque(new_rows)
 
     def __aiter__(self):
@@ -721,9 +703,7 @@ class AsyncAdapt_asyncpg_ss_cursor(
         buf = list(self._rowbuffer)
         lb = len(buf)
         if size > lb:
-            buf.extend(
-                self._adapt_connection.await_(self._cursor.fetch(size - lb))
-            )
+            buf.extend(await_(self._cursor.fetch(size - lb)))
 
         result = buf[0:size]
         self._rowbuffer = collections.deque(buf[size:])
@@ -732,9 +712,7 @@ class AsyncAdapt_asyncpg_ss_cursor(
     def fetchall(self):
         assert self._rowbuffer is not None
 
-        ret = list(self._rowbuffer) + list(
-            self._adapt_connection.await_(self._all())
-        )
+        ret = list(self._rowbuffer) + list(await_(self._all()))
         self._rowbuffer.clear()
         return ret
 
@@ -876,7 +854,7 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
 
     def ping(self):
         try:
-            _ = self.await_(self._async_ping())
+            _ = await_(self._async_ping())
         except Exception as error:
             self._handle_exception(error)
 
@@ -918,7 +896,7 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
         if self._started:
             assert self._transaction is not None
             try:
-                self.await_(self._transaction.rollback())
+                await_(self._transaction.rollback())
             except Exception as error:
                 self._handle_exception(error)
             finally:
@@ -929,7 +907,7 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
         if self._started:
             assert self._transaction is not None
             try:
-                self.await_(self._transaction.commit())
+                await_(self._transaction.commit())
             except Exception as error:
                 self._handle_exception(error)
             finally:
@@ -939,7 +917,7 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
     def close(self):
         self.rollback()
 
-        self.await_(self._connection.close())
+        await_(self._connection.close())
 
     def terminate(self):
         if util.concurrency.in_greenlet():
@@ -948,8 +926,8 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
             try:
                 # try to gracefully close; see #10717
                 # timeout added in asyncpg 0.14.0 December 2017
-                self.await_(self._connection.close(timeout=2))
-            except asyncio.TimeoutError:
+                await_(self._connection.close(timeout=2))
+            except (asyncio.TimeoutError, OSError, self.dbapi.PostgresError):
                 # in the case where we are recycling an old connection
                 # that may have already been disconnected, close() will
                 # fail with the above timeout.  in this case, terminate
@@ -966,19 +944,12 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
         return None
 
 
-class AsyncAdaptFallback_asyncpg_connection(AsyncAdapt_asyncpg_connection):
-    __slots__ = ()
-
-    await_ = staticmethod(await_fallback)
-
-
 class AsyncAdapt_asyncpg_dbapi:
     def __init__(self, asyncpg):
         self.asyncpg = asyncpg
         self.paramstyle = "numeric_dollar"
 
     def connect(self, *arg, **kw):
-        async_fallback = kw.pop("async_fallback", False)
         creator_fn = kw.pop("async_creator_fn", self.asyncpg.connect)
         prepared_statement_cache_size = kw.pop(
             "prepared_statement_cache_size", 100
@@ -987,20 +958,12 @@ class AsyncAdapt_asyncpg_dbapi:
             "prepared_statement_name_func", None
         )
 
-        if util.asbool(async_fallback):
-            return AsyncAdaptFallback_asyncpg_connection(
-                self,
-                await_fallback(creator_fn(*arg, **kw)),
-                prepared_statement_cache_size=prepared_statement_cache_size,
-                prepared_statement_name_func=prepared_statement_name_func,
-            )
-        else:
-            return AsyncAdapt_asyncpg_connection(
-                self,
-                await_only(creator_fn(*arg, **kw)),
-                prepared_statement_cache_size=prepared_statement_cache_size,
-                prepared_statement_name_func=prepared_statement_name_func,
-            )
+        return AsyncAdapt_asyncpg_connection(
+            self,
+            await_(creator_fn(*arg, **kw)),
+            prepared_statement_cache_size=prepared_statement_cache_size,
+            prepared_statement_name_func=prepared_statement_name_func,
+        )
 
     class Error(Exception):
         pass
@@ -1201,15 +1164,6 @@ class PGDialect_asyncpg(PGDialect):
         dbapi_connection.ping()
         return True
 
-    @classmethod
-    def get_pool_class(cls, url):
-        async_fallback = url.query.get("async_fallback", False)
-
-        if util.asbool(async_fallback):
-            return pool.FallbackAsyncAdaptedQueuePool
-        else:
-            return pool.AsyncAdaptedQueuePool
-
     def is_disconnect(self, e, connection, cursor):
         if connection:
             return connection._connection.is_closed()
@@ -1308,11 +1262,11 @@ class PGDialect_asyncpg(PGDialect):
         super_connect = super().on_connect()
 
         def connect(conn):
-            conn.await_(self.setup_asyncpg_json_codec(conn))
-            conn.await_(self.setup_asyncpg_jsonb_codec(conn))
+            await_(self.setup_asyncpg_json_codec(conn))
+            await_(self.setup_asyncpg_jsonb_codec(conn))
 
             if self._native_inet_types is False:
-                conn.await_(self._disable_asyncpg_inet_codecs(conn))
+                await_(self._disable_asyncpg_inet_codecs(conn))
             if super_connect is not None:
                 super_connect(conn)
 

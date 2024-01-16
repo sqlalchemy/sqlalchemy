@@ -1,5 +1,5 @@
 # orm/scoping.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -15,6 +15,7 @@ from typing import Iterable
 from typing import Iterator
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Sequence
 from typing import Tuple
 from typing import Type
@@ -31,7 +32,6 @@ from ..util import ScopedRegistry
 from ..util import ThreadLocalRegistry
 from ..util import warn
 from ..util import warn_deprecated
-from ..util.typing import Protocol
 from ..util.typing import TupleAny
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
@@ -539,12 +539,12 @@ class scoped_session(Generic[_S]):
             behalf of the :class:`_orm.scoping.scoped_session` class.
 
         This method provides for same "reset-only" behavior that the
-        :meth:_orm.Session.close method has provided historically, where the
+        :meth:`_orm.Session.close` method has provided historically, where the
         state of the :class:`_orm.Session` is reset as though the object were
         brand new, and ready to be used again.
-        The method may then be useful for :class:`_orm.Session` objects
+        This method may then be useful for :class:`_orm.Session` objects
         which set :paramref:`_orm.Session.close_resets_only` to ``False``,
-        so that "reset only" behavior is still available from this method.
+        so that "reset only" behavior is still available.
 
         .. versionadded:: 2.0.22
 

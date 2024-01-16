@@ -1,5 +1,5 @@
 # util/typing.py
-# Copyright (C) 2022-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2022-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -9,9 +9,9 @@
 from __future__ import annotations
 
 import builtins
+import collections.abc as collections_abc
 import re
 import sys
-import typing
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -24,6 +24,7 @@ from typing import NewType
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Set
 from typing import Tuple
 from typing import Type
@@ -34,25 +35,23 @@ from typing import Union
 from . import compat
 
 if True:  # zimports removes the tailing comments
-    from typing_extensions import Annotated as Annotated  # 3.8
+    from typing_extensions import Annotated as Annotated  # 3.9
     from typing_extensions import Concatenate as Concatenate  # 3.10
     from typing_extensions import (
         dataclass_transform as dataclass_transform,  # 3.11,
     )
-    from typing_extensions import Final as Final  # 3.8
-    from typing_extensions import final as final  # 3.8
     from typing_extensions import get_args as get_args  # 3.10
     from typing_extensions import get_origin as get_origin  # 3.10
-    from typing_extensions import Literal as Literal  # 3.8
+    from typing_extensions import (
+        Literal as Literal,
+    )  # 3.8 but has bugs before 3.10
     from typing_extensions import NotRequired as NotRequired  # 3.11
     from typing_extensions import ParamSpec as ParamSpec  # 3.10
-    from typing_extensions import Protocol as Protocol  # 3.8
-    from typing_extensions import SupportsIndex as SupportsIndex  # 3.8
     from typing_extensions import TypeAlias as TypeAlias  # 3.10
-    from typing_extensions import TypedDict as TypedDict  # 3.8
     from typing_extensions import TypeGuard as TypeGuard  # 3.10
     from typing_extensions import TypeVarTuple as TypeVarTuple  # 3.11
     from typing_extensions import Self as Self  # 3.11
+    from typing_extensions import TypeAliasType as TypeAliasType  # 3.12
     from typing_extensions import Unpack as Unpack  # 3.11
 
 
@@ -80,7 +79,7 @@ typing_get_origin = get_origin
 
 
 _AnnotationScanType = Union[
-    Type[Any], str, ForwardRef, NewType, "GenericProtocol[Any]"
+    Type[Any], str, ForwardRef, NewType, TypeAliasType, "GenericProtocol[Any]"
 ]
 
 
@@ -300,6 +299,12 @@ def is_pep593(type_: Optional[_AnnotationScanType]) -> bool:
     return type_ is not None and typing_get_origin(type_) is Annotated
 
 
+def is_non_string_iterable(obj: Any) -> TypeGuard[Iterable[Any]]:
+    return isinstance(obj, collections_abc.Iterable) and not isinstance(
+        obj, (str, bytes)
+    )
+
+
 def is_literal(type_: _AnnotationScanType) -> bool:
     return get_origin(type_) is Literal
 
@@ -314,6 +319,10 @@ def is_newtype(type_: Optional[_AnnotationScanType]) -> TypeGuard[NewType]:
 
 def is_generic(type_: _AnnotationScanType) -> TypeGuard[GenericProtocol[Any]]:
     return hasattr(type_, "__args__") and hasattr(type_, "__origin__")
+
+
+def is_pep695(type_: _AnnotationScanType) -> TypeGuard[TypeAliasType]:
+    return isinstance(type_, TypeAliasType)
 
 
 def flatten_newtype(type_: NewType) -> Type[Any]:

@@ -1,5 +1,5 @@
 # sql/base.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -34,6 +34,7 @@ from typing import NamedTuple
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Sequence
 from typing import Set
 from typing import Tuple
@@ -56,8 +57,6 @@ from .. import exc
 from .. import util
 from ..util import HasMemoized as HasMemoized
 from ..util import hybridmethod
-from ..util import typing as compat_typing
-from ..util.typing import Protocol
 from ..util.typing import Self
 from ..util.typing import TypeGuard
 
@@ -260,7 +259,7 @@ def _select_iterables(
 _SelfGenerativeType = TypeVar("_SelfGenerativeType", bound="_GenerativeType")
 
 
-class _GenerativeType(compat_typing.Protocol):
+class _GenerativeType(Protocol):
     def _generate(self) -> Self:
         ...
 

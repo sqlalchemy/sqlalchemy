@@ -1,5 +1,5 @@
 # orm/collections.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -117,6 +117,7 @@ from typing import Iterable
 from typing import List
 from typing import NoReturn
 from typing import Optional
+from typing import Protocol
 from typing import Set
 from typing import Tuple
 from typing import Type
@@ -130,7 +131,6 @@ from .. import exc as sa_exc
 from .. import util
 from ..sql.base import NO_ARG
 from ..util.compat import inspect_getfullargspec
-from ..util.typing import Protocol
 
 if typing.TYPE_CHECKING:
     from .attributes import AttributeEventToken

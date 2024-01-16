@@ -1,5 +1,5 @@
 # util/_collections.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -9,7 +9,6 @@
 """Collection classes and helpers."""
 from __future__ import annotations
 
-import collections.abc as collections_abc
 import operator
 import threading
 import types
@@ -27,6 +26,7 @@ from typing import Mapping
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Sequence
 from typing import Set
 from typing import Tuple
@@ -36,8 +36,8 @@ from typing import ValuesView
 import weakref
 
 from ._has_cy import HAS_CYEXTENSION
+from .typing import is_non_string_iterable
 from .typing import Literal
-from .typing import Protocol
 
 if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_collections import immutabledict as immutabledict
@@ -419,9 +419,7 @@ def coerce_generator_arg(arg: Any) -> List[Any]:
 def to_list(x: Any, default: Optional[List[Any]] = None) -> List[Any]:
     if x is None:
         return default  # type: ignore
-    if not isinstance(x, collections_abc.Iterable) or isinstance(
-        x, (str, bytes)
-    ):
+    if not is_non_string_iterable(x):
         return [x]
     elif isinstance(x, list):
         return x

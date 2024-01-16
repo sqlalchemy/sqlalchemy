@@ -1,5 +1,5 @@
 # engine/default.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -26,6 +26,7 @@ from typing import Any
 from typing import Callable
 from typing import cast
 from typing import Dict
+from typing import Final
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
@@ -64,7 +65,6 @@ from ..sql.compiler import DDLCompiler
 from ..sql.compiler import InsertmanyvaluesSentinelOpts
 from ..sql.compiler import SQLCompiler
 from ..sql.elements import quoted_name
-from ..util.typing import Final
 from ..util.typing import Literal
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
@@ -487,7 +487,13 @@ class DefaultDialect(Dialect):
 
     @classmethod
     def get_pool_class(cls, url: URL) -> Type[Pool]:
-        return getattr(cls, "poolclass", pool.QueuePool)
+        default: Type[pool.Pool]
+        if cls.is_async:
+            default = pool.AsyncAdaptedQueuePool
+        else:
+            default = pool.QueuePool
+
+        return getattr(cls, "poolclass", default)
 
     def get_dialect_pool_class(self, url: URL) -> Type[Pool]:
         return self.get_pool_class(url)

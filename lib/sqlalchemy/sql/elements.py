@@ -1,5 +1,5 @@
 # sql/elements.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -805,6 +805,7 @@ class CompilerColumnElement(
     __slots__ = ()
 
     _propagate_attrs = util.EMPTY_DICT
+    _is_collection_aggregate = False
 
 
 # SQLCoreOperations should be suiting the ExpressionElementRole
@@ -1409,6 +1410,7 @@ class ColumnElement(
     _is_column_element = True
     _insert_sentinel: bool = False
     _omit_from_statements = False
+    _is_collection_aggregate = False
 
     foreign_keys: AbstractSet[ForeignKey] = frozenset()
 
@@ -2361,6 +2363,8 @@ class TextClause(
 
     _omit_from_statements = False
 
+    _is_collection_aggregate = False
+
     @property
     def _hide_froms(self) -> Iterable[FromClause]:
         return ()
@@ -2966,6 +2970,9 @@ class OperatorExpression(ColumnElement[_T]):
                     *(left_flattened + right_flattened),
                 )
 
+        if right._is_collection_aggregate:
+            negate = None
+
         return BinaryExpression(
             left, right, op, type_=type_, negate=negate, modifiers=modifiers
         )
@@ -3404,7 +3411,7 @@ class Case(ColumnElement[_T]):
         except TypeError:
             pass
 
-        whenlist = [
+        self.whens = [
             (
                 coercions.expect(
                     roles.ExpressionElementRole,
@@ -3416,23 +3423,27 @@ class Case(ColumnElement[_T]):
             for (c, r) in new_whens
         ]
 
-        if whenlist:
-            type_ = whenlist[-1][-1].type
-        else:
-            type_ = None
-
         if value is None:
             self.value = None
         else:
             self.value = coercions.expect(roles.ExpressionElementRole, value)
 
-        self.type = cast(_T, type_)
-        self.whens = whenlist
-
         if else_ is not None:
             self.else_ = coercions.expect(roles.ExpressionElementRole, else_)
         else:
             self.else_ = None
+
+        type_ = next(
+            (
+                then.type
+                # Iterate `whens` in reverse to match previous behaviour
+                # where type of final element took priority
+                for *_, then in reversed(self.whens)
+                if not then.type._isnull
+            ),
+            self.else_.type if self.else_ is not None else type_api.NULLTYPE,
+        )
+        self.type = cast(_T, type_)
 
     @util.ro_non_memoized_property
     def _from_objects(self) -> List[FromClause]:
@@ -3804,6 +3815,7 @@ class CollectionAggregate(UnaryExpression[_T]):
     """
 
     inherit_cache = True
+    _is_collection_aggregate = True
 
     @classmethod
     def _create_any(
@@ -3845,7 +3857,7 @@ class CollectionAggregate(UnaryExpression[_T]):
             raise exc.ArgumentError(
                 "Only comparison operators may be used with ANY/ALL"
             )
-        kwargs["reverse"] = kwargs["_any_all_expr"] = True
+        kwargs["reverse"] = True
         return self.comparator.operate(operators.mirror(op), *other, **kwargs)
 
     def reverse_operate(self, op, other, **kwargs):
@@ -4033,7 +4045,7 @@ class BinaryExpression(OperatorExpression[_T]):
                 modifiers=self.modifiers,
             )
         else:
-            return super()._negate()
+            return self.self_group()._negate()
 
 
 class Slice(ColumnElement[Any]):

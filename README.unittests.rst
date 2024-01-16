@@ -83,13 +83,10 @@ a pre-set URL.  These can be seen using --dbs::
     $ pytest --dbs
     Available --db options (use --dburi to override)
                 aiomysql    mysql+aiomysql://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4
-       aiomysql_fallback    mysql+aiomysql://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4&async_fallback=true
                aiosqlite    sqlite+aiosqlite:///:memory:
           aiosqlite_file    sqlite+aiosqlite:///async_querytest.db
                  asyncmy    mysql+asyncmy://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4
-        asyncmy_fallback    mysql+asyncmy://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4&async_fallback=true
                  asyncpg    postgresql+asyncpg://scott:tiger@127.0.0.1:5432/test
-        asyncpg_fallback    postgresql+asyncpg://scott:tiger@127.0.0.1:5432/test?async_fallback=true
                  default    sqlite:///:memory:
             docker_mssql    mssql+pymssql://scott:tiger^5HHH@127.0.0.1:1433/test
                  mariadb    mariadb+mysqldb://scott:tiger@127.0.0.1:3306/test
@@ -105,7 +102,6 @@ a pre-set URL.  These can be seen using --dbs::
                  psycopg    postgresql+psycopg://scott:tiger@127.0.0.1:5432/test
                 psycopg2    postgresql+psycopg2://scott:tiger@127.0.0.1:5432/test
            psycopg_async    postgresql+psycopg_async://scott:tiger@127.0.0.1:5432/test
-    psycopg_async_fallback  postgresql+psycopg_async://scott:tiger@127.0.0.1:5432/test?async_fallback=true
                  pymysql    mysql+pymysql://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4
         pysqlcipher_file    sqlite+pysqlcipher://:test@/querytest.db.enc
                   sqlite    sqlite:///:memory:

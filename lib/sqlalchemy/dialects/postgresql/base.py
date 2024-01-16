@@ -1,5 +1,5 @@
 # dialects/postgresql/base.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -1410,6 +1410,7 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import TYPE_CHECKING
+from typing import TypedDict
 from typing import Union
 
 from . import array as _array
@@ -1487,7 +1488,6 @@ from ...types import SMALLINT
 from ...types import TEXT
 from ...types import UUID as UUID
 from ...types import VARCHAR
-from ...util.typing import TypedDict
 
 IDX_USING = re.compile(r"^(?:btree|hash|gist|gin|[\w_]+)$", re.I)
 
@@ -4696,9 +4696,13 @@ class PGDialect(default.DefaultDialect):
             # "CHECK (((a > 1) AND (a < 5))) NOT VALID"
             # "CHECK (some_boolean_function(a))"
             # "CHECK (((a\n < 1)\n OR\n (a\n >= 5))\n)"
+            # "CHECK (a NOT NULL) NO INHERIT"
+            # "CHECK (a NOT NULL) NO INHERIT NOT VALID"
 
             m = re.match(
-                r"^CHECK *\((.+)\)( NOT VALID)?$", src, flags=re.DOTALL
+                r"^CHECK *\((.+)\)( NO INHERIT)?( NOT VALID)?$",
+                src,
+                flags=re.DOTALL,
             )
             if not m:
                 util.warn("Could not parse CHECK constraint text: %r" % src)
@@ -4712,8 +4716,14 @@ class PGDialect(default.DefaultDialect):
                 "sqltext": sqltext,
                 "comment": comment,
             }
-            if m and m.group(2):
-                entry["dialect_options"] = {"not_valid": True}
+            if m:
+                do = {}
+                if " NOT VALID" in m.groups():
+                    do["not_valid"] = True
+                if " NO INHERIT" in m.groups():
+                    do["no_inherit"] = True
+                if do:
+                    entry["dialect_options"] = do
 
             check_constraints[(schema, table_name)].append(entry)
         return check_constraints.items()
