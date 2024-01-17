@@ -2297,6 +2297,98 @@ class ManualBackrefTest(_fixtures.FixtureTest):
         assert a1.user is u1
         assert a1 in u1.addresses
 
+    @testing.variation(
+        "argtype", ["str", "callable_str", "prop", "callable_prop"]
+    )
+    def test_o2m_with_callable(self, argtype):
+        """test #10050"""
+
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        if argtype.str:
+            abp, ubp = "user", "addresses"
+        elif argtype.callable_str:
+            abp, ubp = lambda: "user", lambda: "addresses"
+        elif argtype.prop:
+            abp, ubp = lambda: "user", lambda: "addresses"
+        elif argtype.callable_prop:
+            abp, ubp = lambda: Address.user, lambda: User.addresses
+        else:
+            argtype.fail()
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(Address, back_populates=abp)
+            },
+        )
+
+        if argtype.prop:
+            ubp = User.addresses
+
+        self.mapper_registry.map_imperatively(
+            Address,
+            addresses,
+            properties={"user": relationship(User, back_populates=ubp)},
+        )
+
+        sess = fixture_session()
+
+        u1 = User(name="u1")
+        a1 = Address(email_address="foo")
+        u1.addresses.append(a1)
+        assert a1.user is u1
+
+        sess.add(u1)
+        sess.flush()
+        sess.expire_all()
+        assert sess.query(Address).one() is a1
+        assert a1.user is u1
+        assert a1 in u1.addresses
+
+    @testing.variation("argtype", ["plain", "callable"])
+    def test_invalid_backref_type(self, argtype):
+        """test #10050"""
+
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        if argtype.plain:
+            abp, ubp = object(), "addresses"
+        elif argtype.callable:
+            abp, ubp = lambda: object(), lambda: "addresses"
+        else:
+            argtype.fail()
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(Address, back_populates=abp)
+            },
+        )
+
+        self.mapper_registry.map_imperatively(
+            Address,
+            addresses,
+            properties={"user": relationship(User, back_populates=ubp)},
+        )
+
+        with expect_raises_message(
+            exc.ArgumentError, r"Invalid back_populates value: <object"
+        ):
+            self.mapper_registry.configure()
+
     def test_invalid_key(self):
         users, Address, addresses, User = (
             self.tables.users,

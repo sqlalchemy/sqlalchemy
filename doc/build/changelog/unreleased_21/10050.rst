@@ -1,0 +1,17 @@
+.. change::
+    :tags: feature, orm
+    :tickets: 10050
+
+    The :paramref:`_orm.relationship.back_populates` argument to
+    :func:`_orm.relationship` may now be passed as a Python callable, which
+    resolves to either the direct linked ORM attribute, or a string value as
+    before.  ORM attributes are also accepted directly by
+    :paramref:`_orm.relationship.back_populates`.   This change allows type
+    checkers and IDEs to confirm the argument for
+    :paramref:`_orm.relationship.back_populates` is valid. Thanks to Priyanshu
+    Parikh for the help on suggesting and helping to implement this feature.
+
+    .. seealso::
+
+        :ref:`change_10050`
+
