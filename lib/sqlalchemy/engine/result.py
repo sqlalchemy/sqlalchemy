@@ -73,20 +73,18 @@ _RowData = Union[Row[Unpack[TupleAny]], RowMapping, Any]
 "rows" that different result objects return, including row, row mapping, and
 scalar values"""
 
-_RawRowType = Tuple[Any, ...]
-"""represents the kind of row we get from a DBAPI cursor"""
 
 _R = TypeVar("_R", bound=_RowData)
 _T = TypeVar("_T", bound=Any)
 _Ts = TypeVarTuple("_Ts")
 
-_InterimRowType = Union[_R, _RawRowType]
+_InterimRowType = Union[_R, TupleAny]
 """a catchall "anything" kind of return type that can be applied
 across all the result types
 
 """
 
-_InterimSupportsScalarsRowType = Union[Row[Unpack[_RawRowType]], Any]
+_InterimSupportsScalarsRowType = Union[Row[Unpack[TupleAny]], Any]
 
 _ProcessorsType = Sequence[Optional["_ResultProcessorType[Any]"]]
 _TupleGetterType = Callable[[Sequence[Any]], Sequence[Any]]
@@ -333,9 +331,6 @@ class SimpleResultMetaData(ResultMetaData):
             _tuplefilter=_tuplefilter,
         )
 
-    def _contains(self, value: Any, row: Row[Unpack[_RawRowType]]) -> bool:
-        return value in row._data
-
     def _index_for_key(self, key: Any, raiseerr: bool = True) -> int:
         if int in key.__class__.__mro__:
             key = self._keys[key]
@@ -398,7 +393,7 @@ class SimpleResultMetaData(ResultMetaData):
 
 def result_tuple(
     fields: Sequence[str], extra: Optional[Any] = None
-) -> Callable[[Iterable[Any]], Row[Unpack[_RawRowType]]]:
+) -> Callable[[Iterable[Any]], Row[Unpack[TupleAny]]]:
     parent = SimpleResultMetaData(fields, extra)
     return functools.partial(
         Row, parent, parent._effective_processors, parent._key_to_index
@@ -472,7 +467,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                     processors: Optional[_ProcessorsType],
                     key_to_index: Mapping[_KeyType, int],
                     scalar_obj: Any,
-                ) -> Row[Unpack[_RawRowType]]:
+                ) -> Row[Unpack[TupleAny]]:
                     return _proc(
                         metadata, processors, key_to_index, (scalar_obj,)
                     )
@@ -1142,12 +1137,12 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         return self._column_slices(col_expressions)
 
     @overload
-    def scalars(self: Result[_T, Unpack[_RawRowType]]) -> ScalarResult[_T]:
+    def scalars(self: Result[_T, Unpack[TupleAny]]) -> ScalarResult[_T]:
         ...
 
     @overload
     def scalars(
-        self: Result[_T, Unpack[_RawRowType]], index: Literal[0]
+        self: Result[_T, Unpack[TupleAny]], index: Literal[0]
     ) -> ScalarResult[_T]:
         ...
 
@@ -1608,8 +1603,8 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         return FrozenResult(self)
 
     def merge(
-        self, *others: Result[Unpack[_RawRowType]]
-    ) -> MergedResult[Unpack[_RawRowType]]:
+        self, *others: Result[Unpack[TupleAny]]
+    ) -> MergedResult[Unpack[TupleAny]]:
         """Merge this :class:`_engine.Result` with other compatible result
         objects.
 
@@ -1749,7 +1744,7 @@ class ScalarResult(FilterResult[_R]):
     _post_creational_filter: Optional[Callable[[Any], Any]]
 
     def __init__(
-        self, real_result: Result[Unpack[_RawRowType]], index: _KeyIndexType
+        self, real_result: Result[Unpack[TupleAny]], index: _KeyIndexType
     ):
         self._real_result = real_result
 
@@ -2043,7 +2038,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
 
     _post_creational_filter = operator.attrgetter("_mapping")
 
-    def __init__(self, result: Result[Unpack[_RawRowType]]):
+    def __init__(self, result: Result[Unpack[TupleAny]]):
         self._real_result = result
         self._unique_filter_state = result._unique_filter_state
         self._metadata = result._metadata
