@@ -40,7 +40,7 @@ def get_messages() -> Sequence[Message]:
         message_query = select(Message)
 
         if TYPE_CHECKING:
-            # EXPECTED_TYPE: Select[Tuple[Message]]
+            # EXPECTED_TYPE: Select[Message]
             reveal_type(message_query)
 
         return session.scalars(message_query).all()
@@ -57,7 +57,7 @@ def get_poly_messages() -> Sequence[Message]:
         poly_query = select(PolymorphicMessage)
 
         if TYPE_CHECKING:
-            # EXPECTED_TYPE: Select[Tuple[Message]]
+            # EXPECTED_TYPE: Select[Message]
             reveal_type(poly_query)
 
         return session.scalars(poly_query).all()

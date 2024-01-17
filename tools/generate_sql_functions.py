@@ -169,7 +169,7 @@ def {key}(self) -> Type[{_type}]:{_reserved_word}
                                 rf"""
 stmt{count} = select(func.{key}(column('x', Integer)))
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*int\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*int\]
 reveal_type(stmt{count})
 
 """,
@@ -183,7 +183,7 @@ reveal_type(stmt{count})
                                 rf"""
 stmt{count} = select(func.{key}(column('x', String), ','))
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*str\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*str\]
 reveal_type(stmt{count})
 
 """,
@@ -195,7 +195,7 @@ reveal_type(stmt{count})
                         fn_class.type, TypeEngine
                     ):
                         python_type = fn_class.type.python_type
-                        python_expr = rf"Tuple\[.*{python_type.__name__}\]"
+                        python_expr = rf".*{python_type.__name__}"
                         argspec = inspect.getfullargspec(fn_class)
                         if fn_class.__name__ == "next_value":
                             args = "Sequence('x_seq')"

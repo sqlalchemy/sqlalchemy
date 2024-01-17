@@ -40,7 +40,7 @@ stmt1 = select(
     Foo.a,
     func.min(Foo.b),
 ).group_by(Foo.a)
-# EXPECTED_TYPE: Select[Tuple[int, int]]
+# EXPECTED_TYPE: Select[int, int]
 reveal_type(stmt1)
 
 # test #10818
@@ -52,5 +52,5 @@ stmt2 = select(
     Foo.a,
     func.coalesce(Foo.c, "a", "b"),
 ).group_by(Foo.a)
-# EXPECTED_TYPE: Select[Tuple[int, str]]
+# EXPECTED_TYPE: Select[int, str]
 reveal_type(stmt2)

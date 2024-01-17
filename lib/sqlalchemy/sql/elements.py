@@ -78,6 +78,8 @@ from ..util import HasMemoized_ro_memoized_attribute
 from ..util import TypingOnly
 from ..util.typing import Literal
 from ..util.typing import Self
+from ..util.typing import TupleAny
+from ..util.typing import Unpack
 
 if typing.TYPE_CHECKING:
     from ._typing import _ByArgument
@@ -510,7 +512,7 @@ class ClauseElement(
         connection: Connection,
         distilled_params: _CoreMultiExecuteParams,
         execution_options: CoreExecuteOptionsParameter,
-    ) -> Result[Any]:
+    ) -> Result[Unpack[TupleAny]]:
         if self.supports_execution:
             if TYPE_CHECKING:
                 assert isinstance(self, Executable)
@@ -2144,12 +2146,10 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
                 else:
                     check_value = value
                 cast(
-                    "BindParameter[typing_Tuple[Any, ...]]", self
+                    "BindParameter[TupleAny]", self
                 ).type = type_._resolve_values_to_types(check_value)
             else:
-                cast(
-                    "BindParameter[typing_Tuple[Any, ...]]", self
-                ).type = type_
+                cast("BindParameter[TupleAny]", self).type = type_
         else:
             self.type = type_
 
@@ -3277,7 +3277,7 @@ and_ = BooleanClauseList.and_
 or_ = BooleanClauseList.or_
 
 
-class Tuple(ClauseList, ColumnElement[typing_Tuple[Any, ...]]):
+class Tuple(ClauseList, ColumnElement[TupleAny]):
     """Represent a SQL tuple."""
 
     __visit_name__ = "tuple"

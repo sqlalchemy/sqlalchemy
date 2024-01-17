@@ -66,7 +66,7 @@ reveal_type(e1)
 
 stmt = select(e1)
 
-# EXPECTED_TYPE: Select[Tuple[bool]]
+# EXPECTED_TYPE: Select[bool]
 reveal_type(stmt)
 
 stmt = stmt.where(e1)
@@ -79,7 +79,7 @@ reveal_type(e2)
 
 stmt = select(e2)
 
-# EXPECTED_TYPE: Select[Tuple[bool]]
+# EXPECTED_TYPE: Select[bool]
 reveal_type(stmt)
 
 stmt = stmt.where(e2)
@@ -89,14 +89,14 @@ stmt2 = select(User.id).order_by("id", "email").group_by("email", "id")
 stmt2 = (
     select(User.id).order_by(asc("id"), desc("email")).group_by("email", "id")
 )
-# EXPECTED_TYPE: Select[Tuple[int]]
+# EXPECTED_TYPE: Select[int]
 reveal_type(stmt2)
 
 stmt2 = select(User.id).order_by(User.id).group_by(User.email)
 stmt2 = (
     select(User.id).order_by(User.id, User.email).group_by(User.email, User.id)
 )
-# EXPECTED_TYPE: Select[Tuple[int]]
+# EXPECTED_TYPE: Select[int]
 reveal_type(stmt2)
 
 
@@ -118,7 +118,7 @@ receives_bool_col_expr(user_table.c.email == "x")
 
 q1 = Session().query(User.id).order_by("email").group_by("email")
 q1 = Session().query(User.id).order_by("id", "email").group_by("email", "id")
-# EXPECTED_TYPE: RowReturningQuery[Tuple[int]]
+# EXPECTED_TYPE: RowReturningQuery[int]
 reveal_type(q1)
 
 q1 = Session().query(User.id).order_by(User.id).group_by(User.email)
@@ -128,7 +128,7 @@ q1 = (
     .order_by(User.id, User.email)
     .group_by(User.email, User.id)
 )
-# EXPECTED_TYPE: RowReturningQuery[Tuple[int]]
+# EXPECTED_TYPE: RowReturningQuery[int]
 reveal_type(q1)
 
 # test 9174

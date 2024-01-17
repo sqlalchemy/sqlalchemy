@@ -7,6 +7,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import expect_raises
 from sqlalchemy.testing.util import picklers
 from sqlalchemy.util import compat
@@ -331,6 +332,7 @@ class ResultTest(fixtures.TestBase):
         eq_(m1.fetchone(), {"a": 1, "b": 1, "c": 1})
         eq_(r1.fetchone(), (2, 1, 2))
 
+    @expect_deprecated(".*is deprecated, Row now behaves like a tuple.*")
     def test_tuples_plus_base(self):
         r1 = self._fixture()
 

@@ -32,7 +32,6 @@ from typing import Union
 from . import coercions
 from . import roles
 from . import util as sql_util
-from ._typing import _TP
 from ._typing import _unexpected_kw
 from ._typing import is_column_element
 from ._typing import is_named_from_clause
@@ -66,7 +65,11 @@ from .visitors import InternalTraversal
 from .. import exc
 from .. import util
 from ..util.typing import Self
+from ..util.typing import TupleAny
 from ..util.typing import TypeGuard
+from ..util.typing import TypeVarTuple
+from ..util.typing import Unpack
+
 
 if TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
@@ -107,6 +110,7 @@ else:
 
 
 _T = TypeVar("_T", bound=Any)
+_Ts = TypeVarTuple("_Ts")
 
 _DMLColumnElement = Union[str, ColumnClause[Any]]
 _DMLTableElement = Union[TableClause, Alias, Join]
@@ -960,7 +964,7 @@ class ValuesBase(UpdateBase):
 
     _supports_multi_parameters = False
 
-    select: Optional[Select[Any]] = None
+    select: Optional[Select[Unpack[TupleAny]]] = None
     """SELECT statement for INSERT .. FROM SELECT"""
 
     _post_values_clause: Optional[ClauseElement] = None
@@ -1299,7 +1303,7 @@ class Insert(ValuesBase):
             /,
             *,
             sort_by_parameter_order: bool = False,
-        ) -> ReturningInsert[Tuple[_T0]]:
+        ) -> ReturningInsert[_T0]:
             ...
 
         @overload
@@ -1310,7 +1314,7 @@ class Insert(ValuesBase):
             /,
             *,
             sort_by_parameter_order: bool = False,
-        ) -> ReturningInsert[Tuple[_T0, _T1]]:
+        ) -> ReturningInsert[_T0, _T1]:
             ...
 
         @overload
@@ -1322,7 +1326,7 @@ class Insert(ValuesBase):
             /,
             *,
             sort_by_parameter_order: bool = False,
-        ) -> ReturningInsert[Tuple[_T0, _T1, _T2]]:
+        ) -> ReturningInsert[_T0, _T1, _T2]:
             ...
 
         @overload
@@ -1335,7 +1339,7 @@ class Insert(ValuesBase):
             /,
             *,
             sort_by_parameter_order: bool = False,
-        ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3]]:
+        ) -> ReturningInsert[_T0, _T1, _T2, _T3]:
             ...
 
         @overload
@@ -1349,7 +1353,7 @@ class Insert(ValuesBase):
             /,
             *,
             sort_by_parameter_order: bool = False,
-        ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4]]:
+        ) -> ReturningInsert[_T0, _T1, _T2, _T3, _T4]:
             ...
 
         @overload
@@ -1364,7 +1368,7 @@ class Insert(ValuesBase):
             /,
             *,
             sort_by_parameter_order: bool = False,
-        ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
+        ) -> ReturningInsert[_T0, _T1, _T2, _T3, _T4, _T5]:
             ...
 
         @overload
@@ -1380,7 +1384,7 @@ class Insert(ValuesBase):
             /,
             *,
             sort_by_parameter_order: bool = False,
-        ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
+        ) -> ReturningInsert[_T0, _T1, _T2, _T3, _T4, _T5, _T6]:
             ...
 
         @overload
@@ -1395,9 +1399,11 @@ class Insert(ValuesBase):
             __ent6: _TCCA[_T6],
             __ent7: _TCCA[_T7],
             /,
-            *,
+            *entities: _ColumnsClauseArgument[Any],
             sort_by_parameter_order: bool = False,
-        ) -> ReturningInsert[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
+        ) -> ReturningInsert[
+            _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, Unpack[TupleAny]
+        ]:
             ...
 
         # END OVERLOADED FUNCTIONS self.returning
@@ -1420,7 +1426,7 @@ class Insert(ValuesBase):
             ...
 
 
-class ReturningInsert(Insert, TypedReturnsRows[_TP]):
+class ReturningInsert(Insert, TypedReturnsRows[Unpack[_Ts]]):
     """Typing-only class that establishes a generic type form of
     :class:`.Insert` which tracks returned column types.
 
@@ -1607,21 +1613,19 @@ class Update(DMLWhereBase, ValuesBase):
         # statically generated** by tools/generate_tuple_map_overloads.py
 
         @overload
-        def returning(
-            self, __ent0: _TCCA[_T0], /
-        ) -> ReturningUpdate[Tuple[_T0]]:
+        def returning(self, __ent0: _TCCA[_T0], /) -> ReturningUpdate[_T0]:
             ...
 
         @overload
         def returning(
             self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], /
-        ) -> ReturningUpdate[Tuple[_T0, _T1]]:
+        ) -> ReturningUpdate[_T0, _T1]:
             ...
 
         @overload
         def returning(
             self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2], /
-        ) -> ReturningUpdate[Tuple[_T0, _T1, _T2]]:
+        ) -> ReturningUpdate[_T0, _T1, _T2]:
             ...
 
         @overload
@@ -1632,7 +1636,7 @@ class Update(DMLWhereBase, ValuesBase):
             __ent2: _TCCA[_T2],
             __ent3: _TCCA[_T3],
             /,
-        ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3]]:
+        ) -> ReturningUpdate[_T0, _T1, _T2, _T3]:
             ...
 
         @overload
@@ -1644,7 +1648,7 @@ class Update(DMLWhereBase, ValuesBase):
             __ent3: _TCCA[_T3],
             __ent4: _TCCA[_T4],
             /,
-        ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3, _T4]]:
+        ) -> ReturningUpdate[_T0, _T1, _T2, _T3, _T4]:
             ...
 
         @overload
@@ -1657,7 +1661,7 @@ class Update(DMLWhereBase, ValuesBase):
             __ent4: _TCCA[_T4],
             __ent5: _TCCA[_T5],
             /,
-        ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
+        ) -> ReturningUpdate[_T0, _T1, _T2, _T3, _T4, _T5]:
             ...
 
         @overload
@@ -1671,7 +1675,7 @@ class Update(DMLWhereBase, ValuesBase):
             __ent5: _TCCA[_T5],
             __ent6: _TCCA[_T6],
             /,
-        ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
+        ) -> ReturningUpdate[_T0, _T1, _T2, _T3, _T4, _T5, _T6]:
             ...
 
         @overload
@@ -1686,7 +1690,10 @@ class Update(DMLWhereBase, ValuesBase):
             __ent6: _TCCA[_T6],
             __ent7: _TCCA[_T7],
             /,
-        ) -> ReturningUpdate[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
+            *entities: _ColumnsClauseArgument[Any],
+        ) -> ReturningUpdate[
+            _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, Unpack[TupleAny]
+        ]:
             ...
 
         # END OVERLOADED FUNCTIONS self.returning
@@ -1703,7 +1710,7 @@ class Update(DMLWhereBase, ValuesBase):
             ...
 
 
-class ReturningUpdate(Update, TypedReturnsRows[_TP]):
+class ReturningUpdate(Update, TypedReturnsRows[Unpack[_Ts]]):
     """Typing-only class that establishes a generic type form of
     :class:`.Update` which tracks returned column types.
 
@@ -1752,21 +1759,19 @@ class Delete(DMLWhereBase, UpdateBase):
         # statically generated** by tools/generate_tuple_map_overloads.py
 
         @overload
-        def returning(
-            self, __ent0: _TCCA[_T0], /
-        ) -> ReturningDelete[Tuple[_T0]]:
+        def returning(self, __ent0: _TCCA[_T0], /) -> ReturningDelete[_T0]:
             ...
 
         @overload
         def returning(
             self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], /
-        ) -> ReturningDelete[Tuple[_T0, _T1]]:
+        ) -> ReturningDelete[_T0, _T1]:
             ...
 
         @overload
         def returning(
             self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2], /
-        ) -> ReturningDelete[Tuple[_T0, _T1, _T2]]:
+        ) -> ReturningDelete[_T0, _T1, _T2]:
             ...
 
         @overload
@@ -1777,7 +1782,7 @@ class Delete(DMLWhereBase, UpdateBase):
             __ent2: _TCCA[_T2],
             __ent3: _TCCA[_T3],
             /,
-        ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3]]:
+        ) -> ReturningDelete[_T0, _T1, _T2, _T3]:
             ...
 
         @overload
@@ -1789,7 +1794,7 @@ class Delete(DMLWhereBase, UpdateBase):
             __ent3: _TCCA[_T3],
             __ent4: _TCCA[_T4],
             /,
-        ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3, _T4]]:
+        ) -> ReturningDelete[_T0, _T1, _T2, _T3, _T4]:
             ...
 
         @overload
@@ -1802,7 +1807,7 @@ class Delete(DMLWhereBase, UpdateBase):
             __ent4: _TCCA[_T4],
             __ent5: _TCCA[_T5],
             /,
-        ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
+        ) -> ReturningDelete[_T0, _T1, _T2, _T3, _T4, _T5]:
             ...
 
         @overload
@@ -1816,7 +1821,7 @@ class Delete(DMLWhereBase, UpdateBase):
             __ent5: _TCCA[_T5],
             __ent6: _TCCA[_T6],
             /,
-        ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
+        ) -> ReturningDelete[_T0, _T1, _T2, _T3, _T4, _T5, _T6]:
             ...
 
         @overload
@@ -1831,7 +1836,10 @@ class Delete(DMLWhereBase, UpdateBase):
             __ent6: _TCCA[_T6],
             __ent7: _TCCA[_T7],
             /,
-        ) -> ReturningDelete[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
+            *entities: _ColumnsClauseArgument[Any],
+        ) -> ReturningDelete[
+            _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, Unpack[TupleAny]
+        ]:
             ...
 
         # END OVERLOADED FUNCTIONS self.returning
@@ -1839,16 +1847,16 @@ class Delete(DMLWhereBase, UpdateBase):
         @overload
         def returning(
             self, *cols: _ColumnsClauseArgument[Any], **__kw: Any
-        ) -> ReturningDelete[Any]:
+        ) -> ReturningDelete[Unpack[TupleAny]]:
             ...
 
         def returning(
             self, *cols: _ColumnsClauseArgument[Any], **__kw: Any
-        ) -> ReturningDelete[Any]:
+        ) -> ReturningDelete[Unpack[TupleAny]]:
             ...
 
 
-class ReturningDelete(Update, TypedReturnsRows[_TP]):
+class ReturningDelete(Update, TypedReturnsRows[Unpack[_Ts]]):
     """Typing-only class that establishes a generic type form of
     :class:`.Delete` which tracks returned column types.
 

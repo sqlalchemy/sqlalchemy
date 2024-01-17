@@ -19,7 +19,6 @@ from typing import Optional
 from typing import overload
 from typing import Protocol
 from typing import Set
-from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -30,7 +29,9 @@ from .. import exc
 from .. import util
 from ..inspection import Inspectable
 from ..util.typing import Literal
+from ..util.typing import TupleAny
 from ..util.typing import TypeAlias
+from ..util.typing import Unpack
 
 if TYPE_CHECKING:
     from datetime import date
@@ -156,8 +157,6 @@ _TypedColumnClauseArgument = Union[
     "SQLCoreOperations[_T]",
     Type[_T],
 ]
-
-_TP = TypeVar("_TP", bound=Tuple[Any, ...])
 
 _T0 = TypeVar("_T0", bound=Any)
 _T1 = TypeVar("_T1", bound=Any)
@@ -329,7 +328,7 @@ if TYPE_CHECKING:
 
     def is_select_statement(
         t: Union[Executable, ReturnsRows]
-    ) -> TypeGuard[Select[Any]]:
+    ) -> TypeGuard[Select[Unpack[TupleAny]]]:
         ...
 
     def is_table(t: FromClause) -> TypeGuard[TableClause]:

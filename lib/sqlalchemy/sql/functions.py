@@ -702,7 +702,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             joins_implicitly=joins_implicitly,
         )
 
-    def select(self) -> Select[Tuple[_T]]:
+    def select(self) -> Select[_T]:
         """Produce a :func:`_expression.select` construct
         against this :class:`.FunctionElement`.
 
@@ -711,7 +711,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             s = select(function_element)
 
         """
-        s: Select[Any] = Select(self)
+        s: Select[_T] = Select(self)
         if self._execution_options:
             s = s.execution_options(**self._execution_options)
         return s

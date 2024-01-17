@@ -75,6 +75,7 @@ from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import assert_warns_message
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import expect_raises
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertions import is_not_none
@@ -188,6 +189,7 @@ class OnlyReturnTuplesTest(QueryTest):
         assert isinstance(row, collections_abc.Sequence)
         assert isinstance(row._mapping, collections_abc.Mapping)
 
+    @expect_deprecated(".*is deprecated, Row now behaves like a tuple.*")
     def test_single_entity_tuples(self):
         User = self.classes.User
         query = fixture_session().query(User).tuples()
@@ -214,6 +216,7 @@ class OnlyReturnTuplesTest(QueryTest):
         assert isinstance(row, collections_abc.Sequence)
         assert isinstance(row._mapping, collections_abc.Mapping)
 
+    @expect_deprecated(".*is deprecated, Row now behaves like a tuple.*")
     def test_multiple_entity_true_tuples(self):
         User = self.classes.User
         query = fixture_session().query(User.id, User).tuples()
