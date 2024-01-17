@@ -81,9 +81,12 @@ class AsyncAdapt_asyncmy_connection(AsyncAdapt_dbapi_connection):
     def autocommit(self, value):
         await_(self._connection.autocommit(value))
 
-    def close(self):
+    def terminate(self):
         # it's not awaitable.
         self._connection.close()
+
+    def close(self) -> None:
+        await_(self._connection.ensure_closed())
 
 
 def _Binary(x):
@@ -137,10 +140,14 @@ class MySQLDialect_asyncmy(MySQLDialect_pymysql):
     _sscursor = AsyncAdapt_asyncmy_ss_cursor
 
     is_async = True
+    has_terminate = True
 
     @classmethod
     def import_dbapi(cls):
         return AsyncAdapt_asyncmy_dbapi(__import__("asyncmy"))
+
+    def do_terminate(self, dbapi_connection) -> None:
+        dbapi_connection.terminate()
 
     def create_connect_args(self, url):
         return super().create_connect_args(
