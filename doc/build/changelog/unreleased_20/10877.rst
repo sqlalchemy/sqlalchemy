@@ -1,0 +1,7 @@
+.. change::
+    :tags: oracle
+    :tickets: 10877
+
+    Changed the default arraysize of the Oracle dialects so that the value set
+    by the driver is used, that is 100 at the time of writing for both
+    cx_oracle and oracledb. Previously the value was set to 50 by default.
