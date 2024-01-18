@@ -183,6 +183,46 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         else:
             eq_(Foo.__table__.c.data.default.arg, 5)
 
+    def test_type_inline_declaration(self, decl_base):
+        """test #10899"""
+
+        class User(decl_base):
+            __tablename__ = "user"
+
+            class Role(enum.Enum):
+                admin = "admin"
+                user = "user"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            role: Mapped[Role]
+
+        is_true(isinstance(User.__table__.c.role.type, Enum))
+        eq_(User.__table__.c.role.type.length, 5)
+        is_(User.__table__.c.role.type.enum_class, User.Role)
+        eq_(User.__table__.c.role.type.name, "role")  # and not 'enum'
+
+    def test_type_uses_inner_when_present(self, decl_base):
+        """test #10899, that we use inner name when appropriate"""
+
+        class Role(enum.Enum):
+            foo = "foo"
+            bar = "bar"
+
+        class User(decl_base):
+            __tablename__ = "user"
+
+            class Role(enum.Enum):
+                admin = "admin"
+                user = "user"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            role: Mapped[Role]
+
+        is_true(isinstance(User.__table__.c.role.type, Enum))
+        eq_(User.__table__.c.role.type.length, 5)
+        is_(User.__table__.c.role.type.enum_class, User.Role)
+        eq_(User.__table__.c.role.type.name, "role")  # and not 'enum'
+
     def test_legacy_declarative_base(self):
         typ = VARCHAR(50)
         Base = declarative_base(type_annotation_map={str: typ})
