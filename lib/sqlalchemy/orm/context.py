@@ -517,15 +517,14 @@ class ORMCompileState(AbstractORMCompileState):
             and len(statement._compile_options._current_path) > 10
             and execution_options.get("compiled_cache", True) is not None
         ):
-            util.warn(
-                "Loader depth for query is excessively deep; caching will "
-                "be disabled for additional loaders.   For recursive eager "
-                "loaders consider using the recursion_depth feature.  "
-                "Use the compiled_cache=None execution option to "
-                "skip this warning."
-            )
-            execution_options = execution_options.union(
-                {"compiled_cache": None}
+            execution_options: util.immutabledict[
+                str, Any
+            ] = execution_options.union(
+                {
+                    "compiled_cache": None,
+                    "_cache_disable_reason": "excess depth for "
+                    "ORM loader options",
+                }
             )
 
         bind_arguments["clause"] = statement
