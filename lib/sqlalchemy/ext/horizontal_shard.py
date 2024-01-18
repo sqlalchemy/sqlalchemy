@@ -50,6 +50,7 @@ from ..orm.session import _BindArguments
 from ..orm.session import _PKIdentityArgument
 from ..orm.session import Session
 from ..util.typing import Self
+from ..util.typing import TupleAny
 from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
 
@@ -430,7 +431,7 @@ class set_shard_id(ORMOption):
 
 def execute_and_instances(
     orm_context: ORMExecuteState,
-) -> Union[Result[Unpack[_Ts]], IteratorResult[Unpack[_Ts]]]:
+) -> Union[Result[Unpack[TupleAny]], IteratorResult[Unpack[TupleAny]]]:
     active_options: Union[
         None,
         QueryContext.default_load_options,
@@ -452,7 +453,7 @@ def execute_and_instances(
 
     def iter_for_shard(
         shard_id: ShardIdentifier,
-    ) -> Union[Result[Unpack[_Ts]], IteratorResult[Unpack[_Ts]]]:
+    ) -> Result[Unpack[TupleAny]]:
         bind_arguments = dict(orm_context.bind_arguments)
         bind_arguments["shard_id"] = shard_id
 

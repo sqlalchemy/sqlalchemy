@@ -3431,5 +3431,5 @@ class BulkDelete(BulkUD):
 class RowReturningQuery(Query[Row[Unpack[_Ts]]]):
     if TYPE_CHECKING:
 
-        def tuples(self) -> Query[tuple[Unpack[_Ts]]]:  # type: ignore
+        def tuples(self) -> Query[Tuple[Unpack[_Ts]]]:  # type: ignore
             ...

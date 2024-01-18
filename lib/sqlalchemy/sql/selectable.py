@@ -3482,7 +3482,7 @@ class SelectBase(
         "first in order to create "
         "a subquery, which then can be selected.",
     )
-    def select(self, *arg: Any, **kw: Any) -> Select[Unpack[Tuple[Any, ...]]]:
+    def select(self, *arg: Any, **kw: Any) -> Select[Unpack[TupleAny]]:
         return self._implicit_subquery.select(*arg, **kw)
 
     @HasMemoized.memoized_attribute
@@ -4497,7 +4497,7 @@ class SelectState(util.MemoizedSlots, CompileState):
 
     def __init__(
         self,
-        statement: Select[Unpack[Tuple[Any, ...]]],
+        statement: Select[Unpack[TupleAny]],
         compiler: Optional[SQLCompiler],
         **kw: Any,
     ):
@@ -4525,7 +4525,7 @@ class SelectState(util.MemoizedSlots, CompileState):
 
     @classmethod
     def get_column_descriptions(
-        cls, statement: Select[Unpack[Tuple[Any, ...]]]
+        cls, statement: Select[Unpack[TupleAny]]
     ) -> List[Dict[str, Any]]:
         return [
             {
