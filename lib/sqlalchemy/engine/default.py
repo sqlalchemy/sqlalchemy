@@ -1583,7 +1583,13 @@ class DefaultExecutionContext(ExecutionContext):
         elif ch is CACHE_MISS:
             return "generated in %.5fs" % (now - gen_time,)
         elif ch is CACHING_DISABLED:
-            return "caching disabled %.5fs" % (now - gen_time,)
+            if "_cache_disable_reason" in self.execution_options:
+                return "caching disabled (%s) %.5fs " % (
+                    self.execution_options["_cache_disable_reason"],
+                    now - gen_time,
+                )
+            else:
+                return "caching disabled %.5fs" % (now - gen_time,)
         elif ch is NO_DIALECT_SUPPORT:
             return "dialect %s+%s does not support caching %.5fs" % (
                 self.dialect.name,
