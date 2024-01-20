@@ -1349,7 +1349,7 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
     def fetchmany(self, size: Optional[int] = None) -> Sequence[Row[_TP]]:
         """Fetch many rows.
 
-        When all rows are exhausted, returns an empty list.
+        When all rows are exhausted, returns an empty sequence.
 
         This method is provided for backwards compatibility with
         SQLAlchemy 1.x.x.
@@ -1357,7 +1357,7 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
         To fetch rows in groups, use the :meth:`_engine.Result.partitions`
         method.
 
-        :return: a list of :class:`_engine.Row` objects.
+        :return: a sequence of :class:`_engine.Row` objects.
 
         .. seealso::
 
@@ -1368,14 +1368,14 @@ class Result(_WithKeys, ResultInternal[Row[_TP]]):
         return self._manyrow_getter(self, size)
 
     def all(self) -> Sequence[Row[_TP]]:
-        """Return all rows in a list.
+        """Return all rows in a sequence.
 
         Closes the result set after invocation.   Subsequent invocations
-        will return an empty list.
+        will return an empty sequence.
 
         .. versionadded:: 1.4
 
-        :return: a list of :class:`_engine.Row` objects.
+        :return: a sequence of :class:`_engine.Row` objects.
 
         .. seealso::
 
@@ -1773,7 +1773,7 @@ class ScalarResult(FilterResult[_R]):
         return self._manyrow_getter(self, size)
 
     def all(self) -> Sequence[_R]:
-        """Return all scalar values in a list.
+        """Return all scalar values in a sequence.
 
         Equivalent to :meth:`_engine.Result.all` except that
         scalar values, rather than :class:`_engine.Row` objects,
@@ -1877,7 +1877,7 @@ class TupleResult(FilterResult[_R], util.TypingOnly):
             ...
 
         def all(self) -> Sequence[_R]:  # noqa: A001
-            """Return all scalar values in a list.
+            """Return all scalar values in a sequence.
 
             Equivalent to :meth:`_engine.Result.all` except that
             tuple values, rather than :class:`_engine.Row` objects,
@@ -2083,7 +2083,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
         return self._manyrow_getter(self, size)
 
     def all(self) -> Sequence[RowMapping]:
-        """Return all scalar values in a list.
+        """Return all scalar values in a sequence.
 
         Equivalent to :meth:`_engine.Result.all` except that
         :class:`_engine.RowMapping` values, rather than :class:`_engine.Row`
