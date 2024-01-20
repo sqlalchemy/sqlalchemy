@@ -4,3 +4,4 @@
 
     Support the ``USING <method>`` option for PostgreSQL ``CREATE TABLE`` to
     specify the access method to use to store the contents for the new table.
+    Pull request courtesy Edgar Ramírez-Mondragón.
