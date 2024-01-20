@@ -609,7 +609,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateTable(tbl),
             "CREATE TABLE atable (id INTEGER) USING heap WITHOUT OIDS "
-            "ON COMMIT PRESERVE ROWS TABLESPACE sometablespace"
+            "ON COMMIT PRESERVE ROWS TABLESPACE sometablespace",
         )
 
     def test_create_partial_index(self):
