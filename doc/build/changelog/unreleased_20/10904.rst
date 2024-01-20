@@ -1,0 +1,6 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 10904
+
+    Support the ``USING <method>`` option for PostgreSQL ``CREATE TABLE`` to
+    specify the access method to use to store the contents for the new table.
