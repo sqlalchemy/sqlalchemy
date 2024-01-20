@@ -591,7 +591,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             postgresql_using="heap",
         )
         self.assert_compile(
-            schema.CreateTable(tbl), "CREATE TABLE atable (id INTEGER) USING heap"
+            schema.CreateTable(tbl),
+            "CREATE TABLE atable (id INTEGER) USING heap",
         )
 
     def test_create_table_with_multiple_options(self):
