@@ -2395,6 +2395,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
         if pg_opts["partition_by"]:
             table_opts.append("\n PARTITION BY %s" % pg_opts["partition_by"])
 
+        if pg_opts["using"]:
+            table_opts.append("\n USING %s" % pg_opts["using"])
+
         if pg_opts["with_oids"] is True:
             table_opts.append("\n WITH OIDS")
         elif pg_opts["with_oids"] is False:
@@ -2409,9 +2412,6 @@ class PGDDLCompiler(compiler.DDLCompiler):
             table_opts.append(
                 "\n TABLESPACE %s" % self.preparer.quote(tablespace_name)
             )
-
-        if pg_opts["using"]:
-            table_opts.append("\n USING %s" % pg_opts["using"])
 
         return "".join(table_opts)
 
