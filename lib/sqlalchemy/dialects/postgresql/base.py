@@ -2410,6 +2410,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
                 "\n TABLESPACE %s" % self.preparer.quote(tablespace_name)
             )
 
+        if pg_opts["using"]:
+            table_opts.append("\n USING %s" % pg_opts["using"])
+
         return "".join(table_opts)
 
     def visit_computed_column(self, generated, **kw):
@@ -3006,6 +3009,7 @@ class PGDialect(default.DefaultDialect):
                 "with_oids": None,
                 "on_commit": None,
                 "inherits": None,
+                "using": None,
             },
         ),
         (
