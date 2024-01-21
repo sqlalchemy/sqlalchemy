@@ -778,94 +778,140 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         ).first()
         explicit_defaults_for_timestamp = row[1].lower() in ("on", "1", "true")
 
-        test_cases = [
-            [
-                "x INTEGER NULL",
-                "y INTEGER NOT NULL",
-                "z INTEGER",
-                "q TIMESTAMP NULL",
-            ],
-            ["p TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP"],
-            ["r TIMESTAMP NOT NULL"],
-            ["s TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"],
-            ["t TIMESTAMP"],
-            ["u TIMESTAMP DEFAULT CURRENT_TIMESTAMP"],
-            ["v INTEGER GENERATED ALWAYS AS (4711) VIRTUAL NOT NULL"],
-        ]
-        if connection.dialect._supports_notnull_generated_columns:
-            test_cases.append(
-                ["v INTEGER GENERATED ALWAYS AS (4711) VIRTUAL NOT NULL"])
-
-        reflected = []
-        for idx, cols in enumerate(test_cases):
-            Table("nn_t%d" % idx, meta)  # to allow DROP
-
-            connection.exec_driver_sql(
-                """
-                    CREATE TABLE nn_t%d (
-                        %s
-                    )
-                """
-                % (idx, ", \n".join(cols))
-            )
-
-            reflected.extend(
-                {
-                    "name": d["name"],
-                    "nullable": d["nullable"],
-                    "default": d["default"],
-                }
-                for d in inspect(connection).get_columns("nn_t%d" % idx)
-            )
-
         if connection.dialect._is_mariadb_102:
             current_timestamp = "current_timestamp()"
         else:
             current_timestamp = "CURRENT_TIMESTAMP"
 
-        eq_(
-            reflected,
-            [
-                {"name": "x", "nullable": True, "default": None},
-                {"name": "y", "nullable": False, "default": None},
-                {"name": "z", "nullable": True, "default": None},
-                {"name": "q", "nullable": True, "default": None},
-                {"name": "p", "nullable": True, "default": current_timestamp},
+        test_cases = [
+            {
+                "ddl_columns": [
+                    "x INTEGER NULL",
+                    "y INTEGER NOT NULL",
+                    "z INTEGER",
+                    "q TIMESTAMP NULL",
+                ],
+                "expected_reflected": [
+                    {"name": "x", "nullable": True, "default": None},
+                    {"name": "y", "nullable": False, "default": None},
+                    {"name": "z", "nullable": True, "default": None},
+                    {"name": "q", "nullable": True, "default": None},
+                ],
+            },
+            {
+                "ddl_columns": ["p TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP"],
+                "expected_reflected": [
+                    {
+                        "name": "p",
+                        "nullable": True,
+                        "default": current_timestamp,
+                    }
+                ],
+            },
+            {
+                "ddl_columns": ["r TIMESTAMP NOT NULL"],
+                "expected_reflected": [
+                    {
+                        "name": "r",
+                        "nullable": False,
+                        "default": None
+                        if explicit_defaults_for_timestamp
+                        else (
+                            "%(current_timestamp)s "
+                            "ON UPDATE %(current_timestamp)s"
+                        )
+                        % {"current_timestamp": current_timestamp},
+                    }
+                ],
+            },
+            {
+                "ddl_columns": [
+                    "s TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"
+                ],
+                "expected_reflected": [
+                    {
+                        "name": "s",
+                        "nullable": False,
+                        "default": current_timestamp,
+                    }
+                ],
+            },
+            {
+                "ddl_columns": ["t TIMESTAMP"],
+                "expected_reflected": [
+                    {
+                        "name": "t",
+                        "nullable": True
+                        if explicit_defaults_for_timestamp
+                        else False,
+                        "default": None
+                        if explicit_defaults_for_timestamp
+                        else (
+                            "%(current_timestamp)s "
+                            "ON UPDATE %(current_timestamp)s"
+                        )
+                        % {"current_timestamp": current_timestamp},
+                    }
+                ],
+            },
+            {
+                "ddl_columns": ["u TIMESTAMP DEFAULT CURRENT_TIMESTAMP"],
+                "expected_reflected": [
+                    {
+                        "name": "u",
+                        "nullable": True
+                        if explicit_defaults_for_timestamp
+                        else False,
+                        "default": current_timestamp,
+                    }
+                ],
+            },
+        ]
+
+        if connection.dialect._supports_notnull_generated_columns:
+            test_cases.append(
                 {
-                    "name": "r",
-                    "nullable": False,
-                    "default": None
-                    if explicit_defaults_for_timestamp
-                    else (
-                        "%(current_timestamp)s "
-                        "ON UPDATE %(current_timestamp)s"
+                    "ddl_columns": [
+                        "v INTEGER GENERATED ALWAYS AS (4711) VIRTUAL NOT NULL"
+                    ],
+                    "expected_reflected": [
+                        {
+                            "name": "v",
+                            "nullable": False,
+                            "default": None,
+                        }
+                    ],
+                }
+            )
+
+        reflected = []
+        expected_reflected = []
+        for idx, case in enumerate(test_cases):
+            table_name = "nn_t%d" % idx
+            Table(table_name, meta)  # to allow DROP
+
+            connection.exec_driver_sql(
+                """
+                    CREATE TABLE %s (
+                        %s
                     )
-                    % {"current_timestamp": current_timestamp},
-                },
-                {"name": "s", "nullable": False, "default": current_timestamp},
-                {
-                    "name": "t",
-                    "nullable": True
-                    if explicit_defaults_for_timestamp
-                    else False,
-                    "default": None
-                    if explicit_defaults_for_timestamp
-                    else (
-                        "%(current_timestamp)s "
-                        "ON UPDATE %(current_timestamp)s"
-                    )
-                    % {"current_timestamp": current_timestamp},
-                },
-                {
-                    "name": "u",
-                    "nullable": True
-                    if explicit_defaults_for_timestamp
-                    else False,
-                    "default": current_timestamp,
-                },
-                {"name": "v", "nullable": False, "default": None},
-            ],
-        )
+                """
+                % (table_name, ", \n".join(case["ddl_columns"]))
+            )
+
+            reflected.append(
+                [
+                    {
+                        "name": d["name"],
+                        "nullable": d["nullable"],
+                        "default": d["default"],
+                    }
+                    for d in inspect(connection).get_columns(table_name)
+                ]
+            )
+            expected_reflected.append(case["expected_reflected"])
+
+        eq_(reflected, expected_reflected)
 
     def test_reflection_with_unique_constraint(self, metadata, connection):
         insp = inspect(connection)

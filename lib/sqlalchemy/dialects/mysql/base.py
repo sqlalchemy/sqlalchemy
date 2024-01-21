@@ -2903,7 +2903,7 @@ class MySQLDialect(default.DefaultDialect):
             10,
             2,
         )
-    
+
     @property
     def _supports_notnull_generated_columns(self):
         return self._is_mysql and self.server_version_info >= (5, 7)
