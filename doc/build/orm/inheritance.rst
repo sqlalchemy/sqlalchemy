@@ -638,7 +638,7 @@ using :paramref:`_orm.Mapper.polymorphic_abstract` as follows::
     class SysAdmin(Technologist):
         """a systems administrator"""
 
-        __mapper_args__ = {"polymorphic_identity": "engineer"}
+        __mapper_args__ = {"polymorphic_identity": "sysadmin"}
 
 In the above example, the new classes ``Technologist`` and ``Executive``
 are ordinary mapped classes, and also indicate new columns to be added to the
