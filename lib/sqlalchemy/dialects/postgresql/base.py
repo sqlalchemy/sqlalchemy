@@ -1112,15 +1112,34 @@ PostgreSQL Table Options
 Several options for CREATE TABLE are supported directly by the PostgreSQL
 dialect in conjunction with the :class:`_schema.Table` construct:
 
+* ``INHERITS``::
+
+    Table("some_table", metadata, ..., postgresql_inherits="some_supertable")
+
+    Table("some_table", metadata, ..., postgresql_inherits=("t1", "t2", ...))
+
+* ``ON COMMIT``::
+
+    Table("some_table", metadata, ..., postgresql_on_commit='PRESERVE ROWS')
+
+* ``PARTITION BY``::
+
+    Table("some_table", metadata, ...,
+          postgresql_partition_by='LIST (part_column)')
+
+    .. versionadded:: 1.2.6
+
 * ``TABLESPACE``::
 
     Table("some_table", metadata, ..., postgresql_tablespace='some_tablespace')
 
   The above option is also available on the :class:`.Index` construct.
 
-* ``ON COMMIT``::
+* ``USING``::
 
-    Table("some_table", metadata, ..., postgresql_on_commit='PRESERVE ROWS')
+    Table("some_table", metadata, ..., postgresql_using='heap')
+
+    .. versionadded:: 2.0.26
 
 * ``WITH OIDS``::
 
@@ -1129,19 +1148,6 @@ dialect in conjunction with the :class:`_schema.Table` construct:
 * ``WITHOUT OIDS``::
 
     Table("some_table", metadata, ..., postgresql_with_oids=False)
-
-* ``INHERITS``::
-
-    Table("some_table", metadata, ..., postgresql_inherits="some_supertable")
-
-    Table("some_table", metadata, ..., postgresql_inherits=("t1", "t2", ...))
-
-* ``PARTITION BY``::
-
-    Table("some_table", metadata, ...,
-          postgresql_partition_by='LIST (part_column)')
-
-    .. versionadded:: 1.2.6
 
 .. seealso::
 
