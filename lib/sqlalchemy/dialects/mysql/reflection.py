@@ -290,6 +290,9 @@ class MySQLTableDefinitionParser:
         # this can be "NULL" in the case of TIMESTAMP
         if spec.get("notnull", False) == "NOT NULL":
             col_kw["nullable"] = False
+        # For generated columns, the nullability is marked in a different place
+        if spec.get("notnull_generated", False) == "NOT NULL":
+            col_kw["nullable"] = False
 
         # AUTO_INCREMENT
         if spec.get("autoincr", False):
@@ -452,7 +455,9 @@ class MySQLTableDefinitionParser:
             r"(?: +ON UPDATE [\-\w\.\(\)]+)?)"
             r"))?"
             r"(?: +(?:GENERATED ALWAYS)? ?AS +(?P<generated>\("
-            r".*\))? ?(?P<persistence>VIRTUAL|STORED)?)?"
+            r".*\))? ?(?P<persistence>VIRTUAL|STORED)?"
+            r"(?: +(?P<notnull_generated>(?:NOT )?NULL))?"
+            r")?"
             r"(?: +(?P<autoincr>AUTO_INCREMENT))?"
             r"(?: +COMMENT +'(?P<comment>(?:''|[^'])*)')?"
             r"(?: +COLUMN_FORMAT +(?P<colfmt>\w+))?"
