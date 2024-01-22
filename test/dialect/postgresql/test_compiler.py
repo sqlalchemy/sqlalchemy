@@ -582,6 +582,19 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TABLE atable (id INTEGER) ON COMMIT DROP",
         )
 
+    def test_create_table_with_using_option(self):
+        m = MetaData()
+        tbl = Table(
+            "atable",
+            m,
+            Column("id", Integer),
+            postgresql_using="heap",
+        )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE atable (id INTEGER) USING heap",
+        )
+
     def test_create_table_with_multiple_options(self):
         m = MetaData()
         tbl = Table(
@@ -591,10 +604,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             postgresql_tablespace="sometablespace",
             postgresql_with_oids=False,
             postgresql_on_commit="preserve_rows",
+            postgresql_using="heap",
         )
         self.assert_compile(
             schema.CreateTable(tbl),
-            "CREATE TABLE atable (id INTEGER) WITHOUT OIDS "
+            "CREATE TABLE atable (id INTEGER) USING heap WITHOUT OIDS "
             "ON COMMIT PRESERVE ROWS TABLESPACE sometablespace",
         )
 
