@@ -37,12 +37,10 @@ needs_sphinx = "5.0.1"
 
 extensions = [
     "sphinx.ext.autodoc",
-    "zzzeeksphinx",
     "changelog",
     "sphinx_paramlinks",
     "sphinx_copybutton",
 ]
-needs_extensions = {"zzzeeksphinx": "1.2.1"}
 
 # Add any paths that contain templates here, relative to this directory.
 # not sure why abspath() is needed here, some users
@@ -129,7 +127,6 @@ autodoc_default_options = {
 
 # enable "annotation" indicator.  doesn't actually use this
 # link right now, it's just a png image
-zzzeeksphinx_annotation_key = "glossary#annotated-example"
 
 # to use this, we need:
 # 1. fix sphinx-paramlinks to work with "description" typing
@@ -295,7 +292,7 @@ gettext_compact = False
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = "zzzeeksphinx"
+html_theme = "furo"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -308,7 +305,6 @@ html_theme = "zzzeeksphinx"
 # The style sheet to use for HTML and HTML Help pages. A file of that name
 # must exist either in Sphinx' static/ path, or in one of the custom paths
 # given in html_static_path.
-html_style = "default.css"
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -329,7 +325,6 @@ html_title = "%s %s Documentation" % (project, version)
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = []
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
@@ -344,7 +339,6 @@ html_last_updated_fmt = "%m/%d/%Y %H:%M:%S"
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
-html_additional_pages = {"notfound": "notfound.html"}
 
 # If false, no module index is generated.
 html_domain_indices = False
