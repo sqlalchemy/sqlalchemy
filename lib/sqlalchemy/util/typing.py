@@ -49,8 +49,11 @@ if True:  # zimports removes the tailing comments
     from typing_extensions import ParamSpec as ParamSpec  # 3.10
     from typing_extensions import TypeAlias as TypeAlias  # 3.10
     from typing_extensions import TypeGuard as TypeGuard  # 3.10
+    from typing_extensions import TypeVarTuple as TypeVarTuple  # 3.11
     from typing_extensions import Self as Self  # 3.11
     from typing_extensions import TypeAliasType as TypeAliasType  # 3.12
+    from typing_extensions import Unpack as Unpack  # 3.11
+
 
 _T = TypeVar("_T", bound=Any)
 _KT = TypeVar("_KT")
@@ -58,6 +61,8 @@ _KT_co = TypeVar("_KT_co", covariant=True)
 _KT_contra = TypeVar("_KT_contra", contravariant=True)
 _VT = TypeVar("_VT")
 _VT_co = TypeVar("_VT_co", covariant=True)
+
+TupleAny = Tuple[Any, ...]
 
 
 if compat.py310:

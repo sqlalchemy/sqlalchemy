@@ -46,7 +46,6 @@ from ..sql import expression
 from ..sql import roles
 from ..sql import util as sql_util
 from ..sql import visitors
-from ..sql._typing import _TP
 from ..sql._typing import is_dml
 from ..sql._typing import is_insert_update
 from ..sql._typing import is_select_base
@@ -68,6 +67,10 @@ from ..sql.selectable import SelectLabelStyle
 from ..sql.selectable import SelectState
 from ..sql.selectable import TypedReturnsRows
 from ..sql.visitors import InternalTraversal
+from ..util.typing import TupleAny
+from ..util.typing import TypeVarTuple
+from ..util.typing import Unpack
+
 
 if TYPE_CHECKING:
     from ._typing import _InternalEntityType
@@ -91,6 +94,7 @@ if TYPE_CHECKING:
     from ..sql.type_api import TypeEngine
 
 _T = TypeVar("_T", bound=Any)
+_Ts = TypeVarTuple("_Ts")
 _path_registry = PathRegistry.root
 
 _EMPTY_DICT = util.immutabledict()
@@ -147,7 +151,10 @@ class QueryContext:
     def __init__(
         self,
         compile_state: CompileState,
-        statement: Union[Select[Any], FromStatement[Any]],
+        statement: Union[
+            Select[Unpack[TupleAny]],
+            FromStatement[Unpack[TupleAny]],
+        ],
         params: _CoreSingleExecuteParams,
         session: Session,
         load_options: Union[
@@ -401,8 +408,10 @@ class ORMCompileState(AbstractORMCompileState):
     attributes: Dict[Any, Any]
     global_attributes: Dict[Any, Any]
 
-    statement: Union[Select[Any], FromStatement[Any]]
-    select_statement: Union[Select[Any], FromStatement[Any]]
+    statement: Union[Select[Unpack[TupleAny]], FromStatement[Unpack[TupleAny]]]
+    select_statement: Union[
+        Select[Unpack[TupleAny]], FromStatement[Unpack[TupleAny]]
+    ]
     _entities: List[_QueryEntity]
     _polymorphic_adapters: Dict[_InternalEntityType, ORMAdapter]
     compile_options: Union[
@@ -416,7 +425,7 @@ class ORMCompileState(AbstractORMCompileState):
     dedupe_columns: Set[ColumnElement[Any]]
     create_eager_joins: List[
         # TODO: this structure is set up by JoinedLoader
-        Tuple[Any, ...]
+        TupleAny
     ]
     current_path: PathRegistry = _path_registry
     _has_mapper_entities = False
@@ -856,7 +865,7 @@ class ORMFromStatementCompileState(ORMCompileState):
             entity.setup_dml_returning_compile_state(self, adapter)
 
 
-class FromStatement(GroupedElement, Generative, TypedReturnsRows[_TP]):
+class FromStatement(GroupedElement, Generative, TypedReturnsRows[Unpack[_Ts]]):
     """Core construct that represents a load of ORM objects from various
     :class:`.ReturnsRows` and other classes including:
 
@@ -2433,7 +2442,7 @@ def _column_descriptions(
 
 
 def _legacy_filter_by_entity_zero(
-    query_or_augmented_select: Union[Query[Any], Select[Any]]
+    query_or_augmented_select: Union[Query[Any], Select[Unpack[TupleAny]]]
 ) -> Optional[_InternalEntityType[Any]]:
     self = query_or_augmented_select
     if self._setup_joins:
@@ -2448,7 +2457,7 @@ def _legacy_filter_by_entity_zero(
 
 
 def _entity_from_pre_ent_zero(
-    query_or_augmented_select: Union[Query[Any], Select[Any]]
+    query_or_augmented_select: Union[Query[Any], Select[Unpack[TupleAny]]]
 ) -> Optional[_InternalEntityType[Any]]:
     self = query_or_augmented_select
     if not self._raw_columns:

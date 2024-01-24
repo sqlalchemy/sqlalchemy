@@ -43,6 +43,9 @@ from .. import log
 from .. import util
 from ..sql import compiler
 from ..sql import util as sql_util
+from ..util.typing import TupleAny
+from ..util.typing import TypeVarTuple
+from ..util.typing import Unpack
 
 if typing.TYPE_CHECKING:
     from . import CursorResult
@@ -80,6 +83,7 @@ if typing.TYPE_CHECKING:
 
 
 _T = TypeVar("_T", bound=Any)
+_Ts = TypeVarTuple("_Ts")
 _EMPTY_EXECUTION_OPTS: _ExecuteOptions = util.EMPTY_DICT
 NO_OPTIONS: Mapping[str, Any] = util.EMPTY_DICT
 
@@ -1258,7 +1262,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     @overload
     def scalar(
         self,
-        statement: TypedReturnsRows[Tuple[_T]],
+        statement: TypedReturnsRows[_T],
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
@@ -1307,7 +1311,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     @overload
     def scalars(
         self,
-        statement: TypedReturnsRows[Tuple[_T]],
+        statement: TypedReturnsRows[_T],
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
@@ -1352,11 +1356,11 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     @overload
     def execute(
         self,
-        statement: TypedReturnsRows[_T],
+        statement: TypedReturnsRows[Unpack[_Ts]],
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> CursorResult[_T]:
+    ) -> CursorResult[Unpack[_Ts]]:
         ...
 
     @overload
@@ -1366,7 +1370,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> CursorResult[Any]:
+    ) -> CursorResult[Unpack[TupleAny]]:
         ...
 
     def execute(
@@ -1375,7 +1379,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> CursorResult[Any]:
+    ) -> CursorResult[Unpack[TupleAny]]:
         r"""Executes a SQL statement construct and returns a
         :class:`_engine.CursorResult`.
 
@@ -1424,7 +1428,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         func: FunctionElement[Any],
         distilled_parameters: _CoreMultiExecuteParams,
         execution_options: CoreExecuteOptionsParameter,
-    ) -> CursorResult[Any]:
+    ) -> CursorResult[Unpack[TupleAny]]:
         """Execute a sql.FunctionElement object."""
 
         return self._execute_clauseelement(
@@ -1495,7 +1499,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         ddl: ExecutableDDLElement,
         distilled_parameters: _CoreMultiExecuteParams,
         execution_options: CoreExecuteOptionsParameter,
-    ) -> CursorResult[Any]:
+    ) -> CursorResult[Unpack[TupleAny]]:
         """Execute a schema.DDL object."""
 
         exec_opts = ddl._execution_options.merge_with(
@@ -1590,7 +1594,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         elem: Executable,
         distilled_parameters: _CoreMultiExecuteParams,
         execution_options: CoreExecuteOptionsParameter,
-    ) -> CursorResult[Any]:
+    ) -> CursorResult[Unpack[TupleAny]]:
         """Execute a sql.ClauseElement object."""
 
         execution_options = elem._execution_options.merge_with(
@@ -1663,7 +1667,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         compiled: Compiled,
         distilled_parameters: _CoreMultiExecuteParams,
         execution_options: CoreExecuteOptionsParameter = _EMPTY_EXECUTION_OPTS,
-    ) -> CursorResult[Any]:
+    ) -> CursorResult[Unpack[TupleAny]]:
         """Execute a sql.Compiled object.
 
         TODO: why do we have this?   likely deprecate or remove
@@ -1713,7 +1717,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         statement: str,
         parameters: Optional[_DBAPIAnyExecuteParams] = None,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> CursorResult[Any]:
+    ) -> CursorResult[Unpack[TupleAny]]:
         r"""Executes a string SQL statement on the DBAPI cursor directly,
         without any SQL compilation steps.
 
@@ -1795,7 +1799,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         execution_options: _ExecuteOptions,
         *args: Any,
         **kw: Any,
-    ) -> CursorResult[Any]:
+    ) -> CursorResult[Unpack[TupleAny]]:
         """Create an :class:`.ExecutionContext` and execute, returning
         a :class:`_engine.CursorResult`."""
 
@@ -1854,7 +1858,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         context: ExecutionContext,
         statement: Union[str, Compiled],
         parameters: Optional[_AnyMultiExecuteParams],
-    ) -> CursorResult[Any]:
+    ) -> CursorResult[Unpack[TupleAny]]:
         """continue the _execute_context() method for a single DBAPI
         cursor.execute() or cursor.executemany() call.
 
@@ -1994,7 +1998,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         self,
         dialect: Dialect,
         context: ExecutionContext,
-    ) -> CursorResult[Any]:
+    ) -> CursorResult[Unpack[TupleAny]]:
         """continue the _execute_context() method for an "insertmanyvalues"
         operation, which will invoke DBAPI
         cursor.execute() one or more times with individual log and

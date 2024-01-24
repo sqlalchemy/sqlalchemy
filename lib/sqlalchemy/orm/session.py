@@ -91,6 +91,10 @@ from ..sql.selectable import ForUpdateArg
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util import IdentitySet
 from ..util.typing import Literal
+from ..util.typing import TupleAny
+from ..util.typing import TypeVarTuple
+from ..util.typing import Unpack
+
 
 if typing.TYPE_CHECKING:
     from ._typing import _EntityType
@@ -134,6 +138,7 @@ if typing.TYPE_CHECKING:
     from ..sql.selectable import TypedReturnsRows
 
 _T = TypeVar("_T", bound=Any)
+_Ts = TypeVarTuple("_Ts")
 
 __all__ = [
     "Session",
@@ -222,7 +227,7 @@ class _SessionClassMethods:
         ident: Union[Any, Tuple[Any, ...]] = None,
         *,
         instance: Optional[Any] = None,
-        row: Optional[Union[Row[Any], RowMapping]] = None,
+        row: Optional[Union[Row[Unpack[TupleAny]], RowMapping]] = None,
         identity_token: Optional[Any] = None,
     ) -> _IdentityKeyType[Any]:
         """Return an identity key.
@@ -385,7 +390,7 @@ class ORMExecuteState(util.MemoizedSlots):
         params: Optional[_CoreAnyExecuteParams] = None,
         execution_options: Optional[OrmExecuteOptionsParameter] = None,
         bind_arguments: Optional[_BindArguments] = None,
-    ) -> Result[Any]:
+    ) -> Result[Unpack[TupleAny]]:
         """Execute the statement represented by this
         :class:`.ORMExecuteState`, without re-invoking events that have
         already proceeded.
@@ -2071,7 +2076,7 @@ class Session(_SessionClassMethods, EventTarget):
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
         _scalar_result: bool = ...,
-    ) -> Result[Any]:
+    ) -> Result[Unpack[TupleAny]]:
         ...
 
     def _execute_internal(
@@ -2147,7 +2152,9 @@ class Session(_SessionClassMethods, EventTarget):
             )
             for idx, fn in enumerate(events_todo):
                 orm_exec_state._starting_event_idx = idx
-                fn_result: Optional[Result[Any]] = fn(orm_exec_state)
+                fn_result: Optional[Result[Unpack[TupleAny]]] = fn(
+                    orm_exec_state
+                )
                 if fn_result:
                     if _scalar_result:
                         return fn_result.scalar()
@@ -2187,7 +2194,9 @@ class Session(_SessionClassMethods, EventTarget):
             )
 
         if compile_state_cls:
-            result: Result[Any] = compile_state_cls.orm_execute_statement(
+            result: Result[
+                Unpack[TupleAny]
+            ] = compile_state_cls.orm_execute_statement(
                 self,
                 statement,
                 params or {},
@@ -2208,14 +2217,14 @@ class Session(_SessionClassMethods, EventTarget):
     @overload
     def execute(
         self,
-        statement: TypedReturnsRows[_T],
+        statement: TypedReturnsRows[Unpack[_Ts]],
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[_T]:
+    ) -> Result[Unpack[_Ts]]:
         ...
 
     @overload
@@ -2228,7 +2237,7 @@ class Session(_SessionClassMethods, EventTarget):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> CursorResult[Any]:
+    ) -> CursorResult[Unpack[TupleAny]]:
         ...
 
     @overload
@@ -2241,7 +2250,7 @@ class Session(_SessionClassMethods, EventTarget):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Any]:
+    ) -> Result[Unpack[TupleAny]]:
         ...
 
     def execute(
@@ -2253,7 +2262,7 @@ class Session(_SessionClassMethods, EventTarget):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Any]:
+    ) -> Result[Unpack[TupleAny]]:
         r"""Execute a SQL expression construct.
 
         Returns a :class:`_engine.Result` object representing
@@ -2317,7 +2326,7 @@ class Session(_SessionClassMethods, EventTarget):
     @overload
     def scalar(
         self,
-        statement: TypedReturnsRows[Tuple[_T]],
+        statement: TypedReturnsRows[_T],
         params: Optional[_CoreSingleExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
@@ -2367,7 +2376,7 @@ class Session(_SessionClassMethods, EventTarget):
     @overload
     def scalars(
         self,
-        statement: TypedReturnsRows[Tuple[_T]],
+        statement: TypedReturnsRows[_T],
         params: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
@@ -2801,7 +2810,7 @@ class Session(_SessionClassMethods, EventTarget):
     @overload
     def query(
         self, _colexpr: TypedColumnsClauseRole[_T]
-    ) -> RowReturningQuery[Tuple[_T]]:
+    ) -> RowReturningQuery[_T]:
         ...
 
     # START OVERLOADED FUNCTIONS self.query RowReturningQuery 2-8
@@ -2812,13 +2821,13 @@ class Session(_SessionClassMethods, EventTarget):
     @overload
     def query(
         self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], /
-    ) -> RowReturningQuery[Tuple[_T0, _T1]]:
+    ) -> RowReturningQuery[_T0, _T1]:
         ...
 
     @overload
     def query(
         self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2], /
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2]]:
+    ) -> RowReturningQuery[_T0, _T1, _T2]:
         ...
 
     @overload
@@ -2829,7 +2838,7 @@ class Session(_SessionClassMethods, EventTarget):
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
         /,
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3]]:
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3]:
         ...
 
     @overload
@@ -2841,7 +2850,7 @@ class Session(_SessionClassMethods, EventTarget):
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
         /,
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4]]:
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4]:
         ...
 
     @overload
@@ -2854,7 +2863,7 @@ class Session(_SessionClassMethods, EventTarget):
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
         /,
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5]:
         ...
 
     @overload
@@ -2868,7 +2877,7 @@ class Session(_SessionClassMethods, EventTarget):
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
         /,
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5, _T6]:
         ...
 
     @overload
@@ -2883,7 +2892,10 @@ class Session(_SessionClassMethods, EventTarget):
         __ent6: _TCCA[_T6],
         __ent7: _TCCA[_T7],
         /,
-    ) -> RowReturningQuery[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
+        *entities: _ColumnsClauseArgument[Any],
+    ) -> RowReturningQuery[
+        _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, Unpack[TupleAny]
+    ]:
         ...
 
     # END OVERLOADED FUNCTIONS self.query
@@ -3124,7 +3136,7 @@ class Session(_SessionClassMethods, EventTarget):
 
         with_for_update = ForUpdateArg._from_argument(with_for_update)
 
-        stmt: Select[Any] = sql.select(object_mapper(instance))
+        stmt: Select[Unpack[TupleAny]] = sql.select(object_mapper(instance))
         if (
             loading.load_on_ident(
                 self,

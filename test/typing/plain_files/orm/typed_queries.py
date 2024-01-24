@@ -53,12 +53,12 @@ connection = e.connect()
 def t_select_1() -> None:
     stmt = select(User.id, User.name).filter(User.id == 5)
 
-    # EXPECTED_TYPE: Select[Tuple[int, str]]
+    # EXPECTED_TYPE: Select[int, str]
     reveal_type(stmt)
 
     result = session.execute(stmt)
 
-    # EXPECTED_TYPE: Result[Tuple[int, str]]
+    # EXPECTED_TYPE: .*Result[int, str].*
     reveal_type(result)
 
 
@@ -77,12 +77,12 @@ def t_select_2() -> None:
         .fetch(User.id)
     )
 
-    # EXPECTED_TYPE: Select[Tuple[User]]
+    # EXPECTED_TYPE: Select[User]
     reveal_type(stmt)
 
     result = session.execute(stmt)
 
-    # EXPECTED_TYPE: Result[Tuple[User]]
+    # EXPECTED_TYPE: .*Result[User].*
     reveal_type(result)
 
 
@@ -102,12 +102,12 @@ def t_select_3() -> None:
 
     stmt = select(ua.id, ua.name).filter(User.id == 5)
 
-    # EXPECTED_TYPE: Select[Tuple[int, str]]
+    # EXPECTED_TYPE: Select[int, str]
     reveal_type(stmt)
 
     result = session.execute(stmt)
 
-    # EXPECTED_TYPE: Result[Tuple[int, str]]
+    # EXPECTED_TYPE: .*Result[int, str].*
     reveal_type(result)
 
 
@@ -115,12 +115,12 @@ def t_select_4() -> None:
     ua = aliased(User)
     stmt = select(ua, User).filter(User.id == 5)
 
-    # EXPECTED_TYPE: Select[Tuple[User, User]]
+    # EXPECTED_TYPE: Select[User, User]
     reveal_type(stmt)
 
     result = session.execute(stmt)
 
-    # EXPECTED_TYPE: Result[Tuple[User, User]]
+    # EXPECTED_TYPE: Result[User, User]
     reveal_type(result)
 
 
@@ -137,7 +137,7 @@ def t_legacy_query_single_entity() -> None:
     reveal_type(q1.all())
 
     # mypy switches to builtins.list for some reason here
-    # EXPECTED_RE_TYPE: .*\.[Ll]ist\[.*Row\*?\[Tuple\[.*User\]\]\]
+    # EXPECTED_RE_TYPE: .*\.[Ll]ist\[.*Row\*?\[.*User\].*\]
     reveal_type(q1.only_return_tuples(True).all())
 
     # EXPECTED_TYPE: List[Tuple[User]]
@@ -147,15 +147,15 @@ def t_legacy_query_single_entity() -> None:
 def t_legacy_query_cols_1() -> None:
     q1 = session.query(User.id, User.name).filter(User.id == 5)
 
-    # EXPECTED_TYPE: RowReturningQuery[Tuple[int, str]]
+    # EXPECTED_TYPE: RowReturningQuery[int, str]
     reveal_type(q1)
 
-    # EXPECTED_TYPE: Row[Tuple[int, str]]
+    # EXPECTED_TYPE: .*Row[int, str].*
     reveal_type(q1.one())
 
     r1 = q1.one()
 
-    x, y = r1.t
+    x, y = r1
 
     # EXPECTED_TYPE: int
     reveal_type(x)
@@ -167,7 +167,7 @@ def t_legacy_query_cols_1() -> None:
 def t_legacy_query_cols_tupleq_1() -> None:
     q1 = session.query(User.id, User.name).filter(User.id == 5)
 
-    # EXPECTED_TYPE: RowReturningQuery[Tuple[int, str]]
+    # EXPECTED_TYPE: RowReturningQuery[int, str]
     reveal_type(q1)
 
     q2 = q1.tuples()
@@ -194,15 +194,15 @@ def t_legacy_query_cols_1_with_entities() -> None:
 
     q2 = q1.with_entities(User.id, User.name)
 
-    # EXPECTED_TYPE: RowReturningQuery[Tuple[int, str]]
+    # EXPECTED_TYPE: RowReturningQuery[int, str]
     reveal_type(q2)
 
-    # EXPECTED_TYPE: Row[Tuple[int, str]]
+    # EXPECTED_TYPE: .*Row[int, str].*
     reveal_type(q2.one())
 
     r1 = q2.one()
 
-    x, y = r1.t
+    x, y = r1
 
     # EXPECTED_TYPE: int
     reveal_type(x)
@@ -214,20 +214,20 @@ def t_legacy_query_cols_1_with_entities() -> None:
 def t_select_with_only_cols() -> None:
     q1 = select(User).where(User.id == 5)
 
-    # EXPECTED_TYPE: Select[Tuple[User]]
+    # EXPECTED_TYPE: Select[User]
     reveal_type(q1)
 
     q2 = q1.with_only_columns(User.id, User.name)
 
-    # EXPECTED_TYPE: Select[Tuple[int, str]]
+    # EXPECTED_TYPE: Select[int, str]
     reveal_type(q2)
 
     row = connection.execute(q2).one()
 
-    # EXPECTED_TYPE: Row[Tuple[int, str]]
+    # EXPECTED_TYPE: .*Row[int, str].*
     reveal_type(row)
 
-    x, y = row.t
+    x, y = row
 
     # EXPECTED_TYPE: int
     reveal_type(x)
@@ -240,15 +240,15 @@ def t_legacy_query_cols_2() -> None:
     a1 = aliased(User)
     q1 = session.query(User, a1, User.name).filter(User.id == 5)
 
-    # EXPECTED_TYPE: RowReturningQuery[Tuple[User, User, str]]
+    # EXPECTED_TYPE: RowReturningQuery[User, User, str]
     reveal_type(q1)
 
-    # EXPECTED_TYPE: Row[Tuple[User, User, str]]
+    # EXPECTED_TYPE: .*Row[User, User, str].*
     reveal_type(q1.one())
 
     r1 = q1.one()
 
-    x, y, z = r1.t
+    x, y, z = r1
 
     # EXPECTED_TYPE: User
     reveal_type(x)
@@ -269,15 +269,15 @@ def t_legacy_query_cols_2_with_entities() -> None:
     a1 = aliased(User)
     q2 = q1.with_entities(User, a1, User.name).filter(User.id == 5)
 
-    # EXPECTED_TYPE: RowReturningQuery[Tuple[User, User, str]]
+    # EXPECTED_TYPE: RowReturningQuery[User, User, str]
     reveal_type(q2)
 
-    # EXPECTED_TYPE: Row[Tuple[User, User, str]]
+    # EXPECTED_TYPE: .*Row[User, User, str].*
     reveal_type(q2.one())
 
     r1 = q2.one()
 
-    x, y, z = r1.t
+    x, y, z = r1
 
     # EXPECTED_TYPE: User
     reveal_type(x)
@@ -295,7 +295,7 @@ def t_select_add_col_loses_type() -> None:
     q2 = q1.add_columns(User.data)
 
     # note this should not match Select
-    # EXPECTED_TYPE: Select[Any]
+    # EXPECTED_TYPE: Select[Unpack[.*tuple[Any, ...]]]
     reveal_type(q2)
 
 
@@ -388,7 +388,7 @@ def t_select_w_core_selectables() -> None:
     # mypy would downgrade to Any rather than picking the basemost type.
     # with typing integrated into Select etc. we can at least get a Select
     # object back.
-    # EXPECTED_TYPE: Select[Any]
+    # EXPECTED_TYPE: Select[Unpack[.*tuple[Any, ...]]]
     reveal_type(s2)
 
     # so a fully explicit type may be given
@@ -400,7 +400,7 @@ def t_select_w_core_selectables() -> None:
     # plain FromClause etc we at least get Select
     s3 = select(s1)
 
-    # EXPECTED_TYPE: Select[Any]
+    # EXPECTED_TYPE: Select[Unpack[.*tuple[Any, ...]]]
     reveal_type(s3)
 
     t1 = User.__table__
@@ -411,7 +411,7 @@ def t_select_w_core_selectables() -> None:
 
     s4 = select(t1)
 
-    # EXPECTED_TYPE: Select[Any]
+    # EXPECTED_TYPE: Select[Unpack[.*tuple[Any, ...]]]
     reveal_type(s4)
 
 
@@ -420,31 +420,31 @@ def t_dml_insert() -> None:
 
     r1 = session.execute(s1)
 
-    # EXPECTED_TYPE: Result[Tuple[int, str]]
+    # EXPECTED_TYPE: Result[int, str]
     reveal_type(r1)
 
     s2 = insert(User).returning(User)
 
     r2 = session.execute(s2)
 
-    # EXPECTED_TYPE: Result[Tuple[User]]
+    # EXPECTED_TYPE: Result[User]
     reveal_type(r2)
 
     s3 = insert(User).returning(func.foo(), column("q"))
 
-    # EXPECTED_TYPE: ReturningInsert[Any]
+    # EXPECTED_TYPE: ReturningInsert[Unpack[.*tuple[Any, ...]]]
     reveal_type(s3)
 
     r3 = session.execute(s3)
 
-    # EXPECTED_TYPE: Result[Any]
+    # EXPECTED_TYPE: Result[Unpack[.*tuple[Any, ...]]]
     reveal_type(r3)
 
 
 def t_dml_bare_insert() -> None:
     s1 = insert(User)
     r1 = session.execute(s1)
-    # EXPECTED_TYPE: CursorResult[Any]
+    # EXPECTED_TYPE: CursorResult[Unpack[.*tuple[Any, ...]]]
     reveal_type(r1)
     # EXPECTED_TYPE: int
     reveal_type(r1.rowcount)
@@ -453,7 +453,7 @@ def t_dml_bare_insert() -> None:
 def t_dml_bare_update() -> None:
     s1 = update(User)
     r1 = session.execute(s1)
-    # EXPECTED_TYPE: CursorResult[Any]
+    # EXPECTED_TYPE: CursorResult[Unpack[.*tuple[Any, ...]]]
     reveal_type(r1)
     # EXPECTED_TYPE: int
     reveal_type(r1.rowcount)
@@ -462,7 +462,7 @@ def t_dml_bare_update() -> None:
 def t_dml_update_with_values() -> None:
     s1 = update(User).values({User.id: 123, User.data: "value"})
     r1 = session.execute(s1)
-    # EXPECTED_TYPE: CursorResult[Any]
+    # EXPECTED_TYPE: CursorResult[Unpack[.*tuple[Any, ...]]]
     reveal_type(r1)
     # EXPECTED_TYPE: int
     reveal_type(r1.rowcount)
@@ -471,7 +471,7 @@ def t_dml_update_with_values() -> None:
 def t_dml_bare_delete() -> None:
     s1 = delete(User)
     r1 = session.execute(s1)
-    # EXPECTED_TYPE: CursorResult[Any]
+    # EXPECTED_TYPE: CursorResult[Unpack[.*tuple[Any, ...]]]
     reveal_type(r1)
     # EXPECTED_TYPE: int
     reveal_type(r1.rowcount)
@@ -482,7 +482,7 @@ def t_dml_update() -> None:
 
     r1 = session.execute(s1)
 
-    # EXPECTED_TYPE: Result[Tuple[int, str]]
+    # EXPECTED_TYPE: Result[int, str]
     reveal_type(r1)
 
 
@@ -491,7 +491,7 @@ def t_dml_delete() -> None:
 
     r1 = session.execute(s1)
 
-    # EXPECTED_TYPE: Result[Tuple[int, str]]
+    # EXPECTED_TYPE: Result[int, str]
     reveal_type(r1)
 
 

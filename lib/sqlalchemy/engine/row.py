@@ -22,16 +22,16 @@ from typing import List
 from typing import Mapping
 from typing import NoReturn
 from typing import Optional
-from typing import overload
 from typing import Sequence
 from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import TypeVar
-from typing import Union
 
 from ..sql import util as sql_util
 from ..util import deprecated
 from ..util._has_cy import HAS_CYEXTENSION
+from ..util.typing import TypeVarTuple
+from ..util.typing import Unpack
 
 if TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_row import BaseRow as BaseRow
@@ -39,15 +39,20 @@ else:
     from sqlalchemy.cyextension.resultproxy import BaseRow as BaseRow
 
 if TYPE_CHECKING:
+    from typing import Tuple as _RowBase
+
     from .result import _KeyType
     from .result import _ProcessorsType
     from .result import RMKeyView
+else:
+    _RowBase = Sequence
+
 
 _T = TypeVar("_T", bound=Any)
-_TP = TypeVar("_TP", bound=Tuple[Any, ...])
+_Ts = TypeVarTuple("_Ts")
 
 
-class Row(BaseRow, Sequence[Any], Generic[_TP]):
+class Row(BaseRow, _RowBase[Unpack[_Ts]], Generic[Unpack[_Ts]]):
     """Represent a single result row.
 
     The :class:`.Row` object represents a row of a database result.  It is
@@ -83,7 +88,12 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
     def __delattr__(self, name: str) -> NoReturn:
         raise AttributeError("can't delete attribute")
 
-    def _tuple(self) -> _TP:
+    @deprecated(
+        "2.1.0",
+        "The :meth:`.Row._tuple` method is deprecated, :class:`.Row` "
+        "now behaves like a tuple and can unpack types directly.",
+    )
+    def _tuple(self) -> Tuple[Unpack[_Ts]]:
         """Return a 'tuple' form of this :class:`.Row`.
 
         At runtime, this method returns "self"; the :class:`.Row` object is
@@ -99,13 +109,16 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
 
         .. seealso::
 
+            :ref:`change_10635` - describes a migration path from this
+            workaround for SQLAlchemy 2.1.
+
             :attr:`.Row._t` - shorthand attribute notation
 
             :meth:`.Result.tuples`
 
 
         """
-        return self  # type: ignore
+        return self
 
     @deprecated(
         "2.0.19",
@@ -114,16 +127,26 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
         "methods and library-level attributes are intended to be underscored "
         "to avoid name conflicts.  Please use :meth:`Row._tuple`.",
     )
-    def tuple(self) -> _TP:
+    def tuple(self) -> Tuple[Unpack[_Ts]]:
         """Return a 'tuple' form of this :class:`.Row`.
 
         .. versionadded:: 2.0
+
+        .. seealso::
+
+            :ref:`change_10635` - describes a migration path from this
+            workaround for SQLAlchemy 2.1.
 
         """
         return self._tuple()
 
     @property
-    def _t(self) -> _TP:
+    @deprecated(
+        "2.1.0",
+        "The :attr:`.Row._t` attribute is deprecated, :class:`.Row` "
+        "now behaves like a tuple and can unpack types directly.",
+    )
+    def _t(self) -> Tuple[Unpack[_Ts]]:
         """A synonym for :meth:`.Row._tuple`.
 
         .. versionadded:: 2.0.19 - The :attr:`.Row._t` attribute supersedes
@@ -133,9 +156,12 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
 
         .. seealso::
 
+            :ref:`change_10635` - describes a migration path from this
+            workaround for SQLAlchemy 2.1.
+
             :attr:`.Result.t`
         """
-        return self  # type: ignore
+        return self
 
     @property
     @deprecated(
@@ -145,10 +171,15 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
         "methods and library-level attributes are intended to be underscored "
         "to avoid name conflicts.  Please use :attr:`Row._t`.",
     )
-    def t(self) -> _TP:
+    def t(self) -> Tuple[Unpack[_Ts]]:
         """A synonym for :meth:`.Row._tuple`.
 
         .. versionadded:: 2.0
+
+        .. seealso::
+
+            :ref:`change_10635` - describes a migration path from this
+            workaround for SQLAlchemy 2.1.
 
         """
         return self._t
@@ -172,7 +203,7 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
 
     def _filter_on_values(
         self, processor: Optional[_ProcessorsType]
-    ) -> Row[Any]:
+    ) -> Row[Unpack[_Ts]]:
         return Row(self._parent, processor, self._key_to_index, self._data)
 
     if not TYPE_CHECKING:
@@ -209,19 +240,6 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
         )
 
     __hash__ = BaseRow.__hash__
-
-    if TYPE_CHECKING:
-
-        @overload
-        def __getitem__(self, index: int) -> Any:
-            ...
-
-        @overload
-        def __getitem__(self, index: slice) -> Sequence[Any]:
-            ...
-
-        def __getitem__(self, index: Union[int, slice]) -> Any:
-            ...
 
     def __lt__(self, other: Any) -> bool:
         return self._op(other, operator.lt)
