@@ -54,3 +54,9 @@ stmt2 = select(
 ).group_by(Foo.a)
 # EXPECTED_TYPE: Select[Tuple[int, str]]
 reveal_type(stmt2)
+
+
+# EXPECTED_TYPE: TableValuedAlias
+reveal_type(func.json_each().table_valued("key", "value"))
+# EXPECTED_TYPE: TableValuedAlias
+reveal_type(func.json_each().table_valued(Foo.a, Foo.b))

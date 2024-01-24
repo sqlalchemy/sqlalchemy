@@ -68,6 +68,7 @@ if TYPE_CHECKING:
     from ._typing import _ByArgument
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrLiteralArgument
+    from ._typing import _ColumnExpressionOrStrLabelArgument
     from ._typing import _TypeEngineArgument
     from .base import _EntityNamespace
     from .elements import ClauseElement
@@ -235,7 +236,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         return ScalarFunctionColumn(self, name, type_)
 
     def table_valued(
-        self, *expr: _ColumnExpressionArgument[Any], **kw: Any
+        self, *expr: _ColumnExpressionOrStrLabelArgument[Any], **kw: Any
     ) -> TableValuedAlias:
         r"""Return a :class:`_sql.TableValuedAlias` representation of this
         :class:`_functions.FunctionElement` with table-valued expressions added.
