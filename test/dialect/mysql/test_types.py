@@ -21,6 +21,7 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import types as sqltypes
 from sqlalchemy import UnicodeText
 from sqlalchemy.dialects.mysql import base as mysql
+from sqlalchemy.dialects.mysql.mariadb import MariaDBDialect
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -488,6 +489,22 @@ class TypeCompileUUIDMariaDBTest(fixtures.TestBase, AssertsCompiledSQL):
     @testing.only_if("mariadb<10.7")
     def test_uuid_char(self):
         self.assert_compile(sqltypes.Uuid(), "CHAR(32)")
+
+    @testing.combinations(
+        (sqltypes.Uuid(), (10, 6, 5), True, "CHAR(32)"),
+        (sqltypes.Uuid(), (10, 6, 5), False, "CHAR(32)"),
+        (sqltypes.Uuid(), (10, 7, 0), True, "UUID"),
+        (sqltypes.Uuid(), (10, 7, 0), False, "CHAR(32)"),
+        (sqltypes.UUID(), (10, 6, 5), True, "UUID"),
+        (sqltypes.UUID(), (10, 6, 5), False, "UUID"),
+        (sqltypes.UUID(), (10, 7, 0), True, "UUID"),
+        (sqltypes.UUID(), (10, 7, 0), False, "UUID"),
+    )
+    def test_uuid_combinations(self, type_, version, native_uuid, res):
+        dialect = MariaDBDialect()
+        dialect.server_version_info = version
+        type_.native_uuid = native_uuid
+        self.assert_compile(type_, res, dialect=dialect)
 
 
 class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
