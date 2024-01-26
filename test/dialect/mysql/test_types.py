@@ -21,6 +21,7 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import types as sqltypes
 from sqlalchemy import UnicodeText
 from sqlalchemy.dialects.mysql import base as mysql
+from sqlalchemy.dialects.mysql.mariadb import MariaDBDialect
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -472,6 +473,48 @@ class TypeCompileTest(fixtures.TestBase, AssertsCompiledSQL):
     )
     def test_float_type_compile(self, type_, sql_text):
         self.assert_compile(type_, sql_text)
+
+
+class MariaDBUUIDTest(fixtures.TestBase, AssertsCompiledSQL):
+    __only_on__ = "mysql", "mariadb"
+    __backend__ = True
+
+    def test_requirements(self):
+        if testing.against("mariadb>=10.7"):
+            assert testing.requires.uuid_data_type.enabled
+        else:
+            assert not testing.requires.uuid_data_type.enabled
+
+    def test_compile_generic(self):
+        if testing.against("mariadb>=10.7"):
+            self.assert_compile(sqltypes.Uuid(), "UUID")
+        else:
+            self.assert_compile(sqltypes.Uuid(), "CHAR(32)")
+
+    def test_compile_upper(self):
+        self.assert_compile(sqltypes.UUID(), "UUID")
+
+    @testing.combinations(
+        (sqltypes.Uuid(), (10, 6, 5), "CHAR(32)"),
+        (sqltypes.Uuid(native_uuid=False), (10, 6, 5), "CHAR(32)"),
+        (sqltypes.Uuid(), (10, 7, 0), "UUID"),
+        (sqltypes.Uuid(native_uuid=False), (10, 7, 0), "CHAR(32)"),
+        (sqltypes.UUID(), (10, 6, 5), "UUID"),
+        (sqltypes.UUID(), (10, 7, 0), "UUID"),
+    )
+    def test_mariadb_uuid_combinations(self, type_, version, res):
+        dialect = MariaDBDialect()
+        dialect.server_version_info = version
+        dialect.supports_native_uuid = version >= (10, 7)
+        self.assert_compile(type_, res, dialect=dialect)
+
+    @testing.combinations(
+        (sqltypes.Uuid(),),
+        (sqltypes.Uuid(native_uuid=False),),
+    )
+    def test_mysql_uuid_combinations(self, type_):
+        dialect = mysql.MySQLDialect()
+        self.assert_compile(type_, "CHAR(32)", dialect=dialect)
 
 
 class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):

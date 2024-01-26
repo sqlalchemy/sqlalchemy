@@ -29,6 +29,7 @@ from .base import BIT
 from .base import MySQLCompiler
 from .base import MySQLDialect
 from .base import MySQLIdentifierPreparer
+from .mariadb import MariaDBDialect
 from ... import util
 
 
@@ -176,4 +177,12 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
             super()._set_isolation_level(connection, level)
 
 
+class MariaDBDialect_mysqlconnector(
+    MariaDBDialect, MySQLDialect_mysqlconnector
+):
+    supports_statement_cache = True
+    _allows_uuid_binds = False
+
+
 dialect = MySQLDialect_mysqlconnector
+mariadb_dialect = MariaDBDialect_mysqlconnector

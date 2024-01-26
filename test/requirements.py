@@ -1527,8 +1527,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def async_dialect(self):
-        """dialect makes use of await_() to invoke operations on
-        the DBAPI."""
+        """dialect makes use of await_() to invoke operations on the DBAPI."""
 
         return self.asyncio + only_on(
             LambdaPredicate(

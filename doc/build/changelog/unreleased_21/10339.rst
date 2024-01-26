@@ -1,0 +1,16 @@
+.. change::
+    :tags: usecase, mariadb
+    :tickets: 10339
+
+    Modified the MariaDB dialect so that when using the :class:`_sqltypes.Uuid`
+    datatype with  MariaDB >= 10.7, leaving the
+    :paramref:`_sqltypes.Uuid.native_uuid` parameter at its default of True,
+    the native ``UUID`` datatype will be rendered in DDL and used for database
+    communication, rather than ``CHAR(32)`` (the non-native UUID type) as was
+    the case previously.   This is a behavioral change since 2.0, where the
+    generic :class:`_sqltypes.Uuid` datatype delivered ``CHAR(32)`` for all
+    MySQL and MariaDB variants.   Support for all major DBAPIs is implemented
+    including support for less common "insertmanyvalues" scenarios where UUID
+    values are generated in different ways for primary keys.   Thanks much to
+    Volodymyr Kochetkov for delivering the PR.
+
