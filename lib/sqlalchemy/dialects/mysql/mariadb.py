@@ -12,10 +12,13 @@ from .base import MySQLTypeCompiler
 
 class MariaDBTypeCompiler(MySQLTypeCompiler):
     def visit_uuid(self, type_, **kw):
-        if self.dialect.server_version_info >= (10, 7) and type_.native_uuid:
-            return self.visit_UUID(type_, **kw)
-        else:
+        if (
+            self.dialect.server_version_info is not None
+            and self.dialect.server_version_info < (10, 7)
+        ) or not type_.native_uuid:
             return super().visit_uuid(type_, **kw)
+        else:
+            return self.visit_UUID(type_, **kw)
 
 
 class MariaDBDialect(MySQLDialect):
