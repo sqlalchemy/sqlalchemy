@@ -8,6 +8,7 @@
 
 from types import ModuleType
 
+from . import array as arraylib  # noqa # must be above base and other dialects
 from . import asyncpg  # noqa
 from . import base
 from . import pg8000  # noqa
@@ -85,6 +86,7 @@ from .types import TIME
 from .types import TIMESTAMP
 from .types import TSQUERY
 from .types import TSVECTOR
+
 
 # Alias psycopg also as psycopg_async
 psycopg_async = type(

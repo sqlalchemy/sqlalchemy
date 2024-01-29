@@ -1419,13 +1419,13 @@ from typing import TYPE_CHECKING
 from typing import TypedDict
 from typing import Union
 
-from . import array as _array
-from . import hstore as _hstore
+from . import arraylib as _array
 from . import json as _json
 from . import pg_catalog
 from . import ranges as _ranges
 from .ext import _regconfig_fn
 from .ext import aggregate_order_by
+from .hstore import HSTORE
 from .named_types import CreateDomainType as CreateDomainType  # noqa: F401
 from .named_types import CreateEnumType as CreateEnumType  # noqa: F401
 from .named_types import DOMAIN as DOMAIN  # noqa: F401
@@ -1614,7 +1614,7 @@ colspecs = {
 
 ischema_names = {
     "_array": _array.ARRAY,
-    "hstore": _hstore.HSTORE,
+    "hstore": HSTORE,
     "json": _json.JSON,
     "jsonb": _json.JSONB,
     "int4range": _ranges.INT4RANGE,
