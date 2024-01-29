@@ -3228,7 +3228,6 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
 
 
 class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
-
     """Test 'DISTINCT' with SQL expression language and orm.Query with
     an emphasis on PG's 'DISTINCT ON' syntax.
 
@@ -3382,7 +3381,6 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
 
 
 class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
-
     """Tests for full text searching"""
 
     __dialect__ = postgresql.dialect()

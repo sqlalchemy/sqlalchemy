@@ -1346,9 +1346,11 @@ class RelationshipProperty(
                 state,
                 dict_,
                 column,
-                passive=PassiveFlag.PASSIVE_OFF
-                if state.persistent
-                else PassiveFlag.PASSIVE_NO_FETCH ^ PassiveFlag.INIT_OK,
+                passive=(
+                    PassiveFlag.PASSIVE_OFF
+                    if state.persistent
+                    else PassiveFlag.PASSIVE_NO_FETCH ^ PassiveFlag.INIT_OK
+                ),
             )
 
             if current_value is LoaderCallableStatus.NEVER_SET:
@@ -2039,9 +2041,11 @@ class RelationshipProperty(
                 "the single_parent=True flag."
                 % {
                     "rel": self,
-                    "direction": "many-to-one"
-                    if self.direction is MANYTOONE
-                    else "many-to-many",
+                    "direction": (
+                        "many-to-one"
+                        if self.direction is MANYTOONE
+                        else "many-to-many"
+                    ),
                     "clsname": self.parent.class_.__name__,
                     "relatedcls": self.mapper.class_.__name__,
                 },
@@ -3105,9 +3109,9 @@ class JoinCondition:
 
     def _setup_pairs(self) -> None:
         sync_pairs: _MutableColumnPairs = []
-        lrp: util.OrderedSet[
-            Tuple[ColumnElement[Any], ColumnElement[Any]]
-        ] = util.OrderedSet([])
+        lrp: util.OrderedSet[Tuple[ColumnElement[Any], ColumnElement[Any]]] = (
+            util.OrderedSet([])
+        )
         secondary_sync_pairs: _MutableColumnPairs = []
 
         def go(
@@ -3184,9 +3188,9 @@ class JoinCondition:
             # level configuration that benefits from this warning.
 
             if to_ not in self._track_overlapping_sync_targets:
-                self._track_overlapping_sync_targets[
-                    to_
-                ] = weakref.WeakKeyDictionary({self.prop: from_})
+                self._track_overlapping_sync_targets[to_] = (
+                    weakref.WeakKeyDictionary({self.prop: from_})
+                )
             else:
                 other_props = []
                 prop_to_from = self._track_overlapping_sync_targets[to_]
@@ -3419,9 +3423,7 @@ class JoinCondition:
             dest_selectable,
         )
 
-    def create_lazy_clause(
-        self, reverse_direction: bool = False
-    ) -> Tuple[
+    def create_lazy_clause(self, reverse_direction: bool = False) -> Tuple[
         ColumnElement[bool],
         Dict[str, ColumnElement[Any]],
         Dict[ColumnElement[Any], ColumnElement[Any]],

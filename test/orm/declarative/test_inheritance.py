@@ -1067,7 +1067,6 @@ class DeclarativeInheritanceTest(
             target_id = Column(Integer, primary_key=True)
 
         class Engineer(Person):
-
             """single table inheritance"""
 
             if decl_type.legacy:
@@ -1084,7 +1083,6 @@ class DeclarativeInheritanceTest(
                 )
 
         class Manager(Person):
-
             """single table inheritance"""
 
             if decl_type.legacy:
@@ -1468,7 +1466,6 @@ class DeclarativeInheritanceTest(
 
 
 class OverlapColPrecedenceTest(DeclarativeTestBase):
-
     """test #1892 cases when declarative does column precedence."""
 
     def _run_test(self, Engineer, e_id, p_id):

@@ -320,9 +320,11 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         loader = self._set_relationship_strategy(
             attr,
             {"lazy": "joined"},
-            opts={"innerjoin": innerjoin}
-            if innerjoin is not None
-            else util.EMPTY_DICT,
+            opts=(
+                {"innerjoin": innerjoin}
+                if innerjoin is not None
+                else util.EMPTY_DICT
+            ),
         )
         return loader
 
@@ -777,12 +779,10 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         return self
 
     @overload
-    def _coerce_strat(self, strategy: _StrategySpec) -> _StrategyKey:
-        ...
+    def _coerce_strat(self, strategy: _StrategySpec) -> _StrategyKey: ...
 
     @overload
-    def _coerce_strat(self, strategy: Literal[None]) -> None:
-        ...
+    def _coerce_strat(self, strategy: Literal[None]) -> None: ...
 
     def _coerce_strat(
         self, strategy: Optional[_StrategySpec]
@@ -2081,9 +2081,9 @@ class _AttributeStrategyLoad(_LoadElement):
         d["_extra_criteria"] = ()
 
         if self._path_with_polymorphic_path:
-            d[
-                "_path_with_polymorphic_path"
-            ] = self._path_with_polymorphic_path.serialize()
+            d["_path_with_polymorphic_path"] = (
+                self._path_with_polymorphic_path.serialize()
+            )
 
         if self._of_type:
             if self._of_type.is_aliased_class:

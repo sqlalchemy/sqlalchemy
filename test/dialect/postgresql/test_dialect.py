@@ -1219,9 +1219,9 @@ class MiscBackendTest(
     def test_autocommit_pre_ping(self, testing_engine, autocommit):
         engine = testing_engine(
             options={
-                "isolation_level": "AUTOCOMMIT"
-                if autocommit
-                else "SERIALIZABLE",
+                "isolation_level": (
+                    "AUTOCOMMIT" if autocommit else "SERIALIZABLE"
+                ),
                 "pool_pre_ping": True,
             }
         )
@@ -1239,9 +1239,9 @@ class MiscBackendTest(
 
         engine = testing_engine(
             options={
-                "isolation_level": "AUTOCOMMIT"
-                if autocommit
-                else "SERIALIZABLE",
+                "isolation_level": (
+                    "AUTOCOMMIT" if autocommit else "SERIALIZABLE"
+                ),
                 "pool_pre_ping": True,
             }
         )

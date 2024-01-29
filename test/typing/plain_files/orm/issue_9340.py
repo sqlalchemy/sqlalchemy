@@ -10,8 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import with_polymorphic
 
 
-class Base(DeclarativeBase):
-    ...
+class Base(DeclarativeBase): ...
 
 
 class Message(Base):

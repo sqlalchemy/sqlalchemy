@@ -1,4 +1,5 @@
 """Generic mapping to Select statements"""
+
 import sqlalchemy as sa
 from sqlalchemy import column
 from sqlalchemy import Integer

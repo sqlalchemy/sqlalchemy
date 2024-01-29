@@ -58,9 +58,9 @@ def scan_declarative_assignments_and_apply_types(
     elif cls.fullname.startswith("builtins"):
         return None
 
-    mapped_attributes: Optional[
-        List[util.SQLAlchemyAttribute]
-    ] = util.get_mapped_attributes(info, api)
+    mapped_attributes: Optional[List[util.SQLAlchemyAttribute]] = (
+        util.get_mapped_attributes(info, api)
+    )
 
     # used by assign.add_additional_orm_attributes among others
     util.establish_as_sqlalchemy(info)

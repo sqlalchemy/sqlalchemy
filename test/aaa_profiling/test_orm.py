@@ -142,7 +142,6 @@ class MergeTest(NoCache, fixtures.MappedTest):
 
 
 class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
-
     """test overhead associated with many-to-one fetches.
 
     Prior to the refactor of LoadLazyAttribute and

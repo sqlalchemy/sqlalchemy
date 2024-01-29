@@ -402,8 +402,7 @@ class AsyncSession(ReversibleProxy[Session]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Unpack[_Ts]]:
-        ...
+    ) -> Result[Unpack[_Ts]]: ...
 
     @overload
     async def execute(
@@ -415,8 +414,7 @@ class AsyncSession(ReversibleProxy[Session]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> CursorResult[Unpack[TupleAny]]:
-        ...
+    ) -> CursorResult[Unpack[TupleAny]]: ...
 
     @overload
     async def execute(
@@ -428,8 +426,7 @@ class AsyncSession(ReversibleProxy[Session]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Unpack[TupleAny]]:
-        ...
+    ) -> Result[Unpack[TupleAny]]: ...
 
     async def execute(
         self,
@@ -475,8 +472,7 @@ class AsyncSession(ReversibleProxy[Session]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> Optional[_T]:
-        ...
+    ) -> Optional[_T]: ...
 
     @overload
     async def scalar(
@@ -487,8 +483,7 @@ class AsyncSession(ReversibleProxy[Session]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     async def scalar(
         self,
@@ -532,8 +527,7 @@ class AsyncSession(ReversibleProxy[Session]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> ScalarResult[_T]:
-        ...
+    ) -> ScalarResult[_T]: ...
 
     @overload
     async def scalars(
@@ -544,8 +538,7 @@ class AsyncSession(ReversibleProxy[Session]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> ScalarResult[Any]:
-        ...
+    ) -> ScalarResult[Any]: ...
 
     async def scalars(
         self,
@@ -659,8 +652,7 @@ class AsyncSession(ReversibleProxy[Session]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> AsyncResult[Unpack[_Ts]]:
-        ...
+    ) -> AsyncResult[Unpack[_Ts]]: ...
 
     @overload
     async def stream(
@@ -671,8 +663,7 @@ class AsyncSession(ReversibleProxy[Session]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> AsyncResult[Unpack[TupleAny]]:
-        ...
+    ) -> AsyncResult[Unpack[TupleAny]]: ...
 
     async def stream(
         self,
@@ -714,8 +705,7 @@ class AsyncSession(ReversibleProxy[Session]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> AsyncScalarResult[_T]:
-        ...
+    ) -> AsyncScalarResult[_T]: ...
 
     @overload
     async def stream_scalars(
@@ -726,8 +716,7 @@ class AsyncSession(ReversibleProxy[Session]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> AsyncScalarResult[Any]:
-        ...
+    ) -> AsyncScalarResult[Any]: ...
 
     async def stream_scalars(
         self,
@@ -1690,8 +1679,7 @@ class async_sessionmaker(Generic[_AS]):
         expire_on_commit: bool = ...,
         info: Optional[_InfoType] = ...,
         **kw: Any,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -1702,8 +1690,7 @@ class async_sessionmaker(Generic[_AS]):
         expire_on_commit: bool = ...,
         info: Optional[_InfoType] = ...,
         **kw: Any,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,

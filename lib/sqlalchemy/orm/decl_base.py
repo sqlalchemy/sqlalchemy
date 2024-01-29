@@ -98,8 +98,7 @@ class MappedClassProtocol(Protocol[_O]):
     __mapper__: Mapper[_O]
     __table__: FromClause
 
-    def __call__(self, **kw: Any) -> _O:
-        ...
+    def __call__(self, **kw: Any) -> _O: ...
 
 
 class _DeclMappedClassProtocol(MappedClassProtocol[_O], Protocol):
@@ -111,11 +110,9 @@ class _DeclMappedClassProtocol(MappedClassProtocol[_O], Protocol):
 
     _sa_apply_dc_transforms: Optional[_DataclassArguments]
 
-    def __declare_first__(self) -> None:
-        ...
+    def __declare_first__(self) -> None: ...
 
-    def __declare_last__(self) -> None:
-        ...
+    def __declare_last__(self) -> None: ...
 
 
 class _DataclassArguments(TypedDict):
@@ -908,9 +905,9 @@ class _ClassScanMapperConfig(_MapperConfig):
                                     "@declared_attr.cascading; "
                                     "skipping" % (name, cls)
                                 )
-                            collected_attributes[name] = column_copies[
-                                obj
-                            ] = ret = obj.__get__(obj, cls)
+                            collected_attributes[name] = column_copies[obj] = (
+                                ret
+                            ) = obj.__get__(obj, cls)
                             setattr(cls, name, ret)
                         else:
                             if is_dataclass_field:
@@ -947,9 +944,9 @@ class _ClassScanMapperConfig(_MapperConfig):
                             ):
                                 ret = ret.descriptor
 
-                            collected_attributes[name] = column_copies[
-                                obj
-                            ] = ret
+                            collected_attributes[name] = column_copies[obj] = (
+                                ret
+                            )
 
                         if (
                             isinstance(ret, (Column, MapperProperty))

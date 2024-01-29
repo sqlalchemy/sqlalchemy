@@ -205,12 +205,12 @@ class Predicate:
         if negate:
             bool_ = not negate
         return self.description % {
-            "driver": config.db.url.get_driver_name()
-            if config
-            else "<no driver>",
-            "database": config.db.url.get_backend_name()
-            if config
-            else "<no database>",
+            "driver": (
+                config.db.url.get_driver_name() if config else "<no driver>"
+            ),
+            "database": (
+                config.db.url.get_backend_name() if config else "<no database>"
+            ),
             "doesnt_support": "doesn't support" if bool_ else "does support",
             "does_support": "does support" if bool_ else "doesn't support",
         }

@@ -86,8 +86,7 @@ class ShardChooser(Protocol):
         mapper: Optional[Mapper[_T]],
         instance: Any,
         clause: Optional[ClauseElement],
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 
 class IdentityChooser(Protocol):
@@ -100,8 +99,7 @@ class IdentityChooser(Protocol):
         execution_options: OrmExecuteOptionsParameter,
         bind_arguments: _BindArguments,
         **kw: Any,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 
 class ShardedQuery(Query[_T]):

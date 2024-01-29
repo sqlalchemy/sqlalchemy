@@ -165,8 +165,7 @@ class _DeStringifyAnnotation(Protocol):
         *,
         str_cleanup_fn: Optional[Callable[[str, str], str]] = None,
         include_generic: bool = False,
-    ) -> Type[Any]:
-        ...
+    ) -> Type[Any]: ...
 
 
 de_stringify_annotation = cast(
@@ -182,8 +181,7 @@ class _DeStringifyUnionElements(Protocol):
         originating_module: str,
         *,
         str_cleanup_fn: Optional[Callable[[str, str], str]] = None,
-    ) -> Type[Any]:
-        ...
+    ) -> Type[Any]: ...
 
 
 de_stringify_union_elements = cast(
@@ -193,8 +191,7 @@ de_stringify_union_elements = cast(
 
 
 class _EvalNameOnly(Protocol):
-    def __call__(self, name: str, module_name: str) -> Any:
-        ...
+    def __call__(self, name: str, module_name: str) -> Any: ...
 
 
 eval_name_only = cast(_EvalNameOnly, _de_stringify_partial(_eval_name_only))
@@ -757,12 +754,16 @@ class AliasedClass(
             insp,
             alias,
             name,
-            with_polymorphic_mappers
-            if with_polymorphic_mappers
-            else mapper.with_polymorphic_mappers,
-            with_polymorphic_discriminator
-            if with_polymorphic_discriminator is not None
-            else mapper.polymorphic_on,
+            (
+                with_polymorphic_mappers
+                if with_polymorphic_mappers
+                else mapper.with_polymorphic_mappers
+            ),
+            (
+                with_polymorphic_discriminator
+                if with_polymorphic_discriminator is not None
+                else mapper.polymorphic_on
+            ),
             base_alias,
             use_mapper_path,
             adapt_on_names,
@@ -973,9 +974,9 @@ class AliasedInsp(
 
         self._weak_entity = weakref.ref(entity)
         self.mapper = mapper
-        self.selectable = (
-            self.persist_selectable
-        ) = self.local_table = selectable
+        self.selectable = self.persist_selectable = self.local_table = (
+            selectable
+        )
         self.name = name
         self.polymorphic_on = polymorphic_on
         self._base_alias = weakref.ref(_base_alias or self)
@@ -1231,8 +1232,7 @@ class AliasedInsp(
             self,
             obj: _CE,
             key: Optional[str] = None,
-        ) -> _CE:
-            ...
+        ) -> _CE: ...
 
     else:
         _orm_adapt_element = _adapt_element

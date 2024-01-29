@@ -93,9 +93,11 @@ class SimpleUpdateDeleteTest(fixtures.TablesTest):
 
         eq_(
             connection.execute(t.select().order_by(t.c.id)).fetchall(),
-            [(1, "d1"), (2, "d2_new"), (3, "d3")]
-            if criteria.rows
-            else [(1, "d1"), (2, "d2"), (3, "d3")],
+            (
+                [(1, "d1"), (2, "d2_new"), (3, "d3")]
+                if criteria.rows
+                else [(1, "d1"), (2, "d2"), (3, "d3")]
+            ),
         )
 
     @testing.variation("criteria", ["rows", "norows", "emptyin"])
@@ -126,9 +128,11 @@ class SimpleUpdateDeleteTest(fixtures.TablesTest):
 
         eq_(
             connection.execute(t.select().order_by(t.c.id)).fetchall(),
-            [(1, "d1"), (3, "d3")]
-            if criteria.rows
-            else [(1, "d1"), (2, "d2"), (3, "d3")],
+            (
+                [(1, "d1"), (3, "d3")]
+                if criteria.rows
+                else [(1, "d1"), (2, "d2"), (3, "d3")]
+            ),
         )
 
 

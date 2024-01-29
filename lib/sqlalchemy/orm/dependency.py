@@ -167,9 +167,11 @@ class DependencyProcessor:
             sum_ = state.manager[self.key].impl.get_all_pending(
                 state,
                 state.dict,
-                self._passive_delete_flag
-                if isdelete
-                else attributes.PASSIVE_NO_INITIALIZE,
+                (
+                    self._passive_delete_flag
+                    if isdelete
+                    else attributes.PASSIVE_NO_INITIALIZE
+                ),
             )
 
             if not sum_:

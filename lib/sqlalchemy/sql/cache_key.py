@@ -44,8 +44,7 @@ if typing.TYPE_CHECKING:
 class _CacheKeyTraversalDispatchType(Protocol):
     def __call__(
         s, self: HasCacheKey, visitor: _CacheKeyTraversal
-    ) -> _CacheKeyTraversalDispatchTypeReturn:
-        ...
+    ) -> _CacheKeyTraversalDispatchTypeReturn: ...
 
 
 class CacheConst(enum.Enum):
@@ -303,11 +302,13 @@ class HasCacheKey:
                         result += (
                             attrname,
                             obj["compile_state_plugin"],
-                            obj["plugin_subject"]._gen_cache_key(
-                                anon_map, bindparams
-                            )
-                            if obj["plugin_subject"]
-                            else None,
+                            (
+                                obj["plugin_subject"]._gen_cache_key(
+                                    anon_map, bindparams
+                                )
+                                if obj["plugin_subject"]
+                                else None
+                            ),
                         )
                     elif meth is InternalTraversal.dp_annotations_key:
                         # obj is here is the _annotations dict.  Table uses
@@ -619,9 +620,9 @@ class _CacheKeyTraversal(HasTraversalDispatch):
         InternalTraversal.dp_memoized_select_entities
     )
 
-    visit_string = (
-        visit_boolean
-    ) = visit_operator = visit_plain_obj = CACHE_IN_PLACE
+    visit_string = visit_boolean = visit_operator = visit_plain_obj = (
+        CACHE_IN_PLACE
+    )
     visit_statement_hint_list = CACHE_IN_PLACE
     visit_type = STATIC_CACHE_KEY
     visit_anon_name = ANON_NAME
@@ -668,9 +669,11 @@ class _CacheKeyTraversal(HasTraversalDispatch):
     ) -> Tuple[Any, ...]:
         return (
             attrname,
-            obj._gen_cache_key(anon_map, bindparams)
-            if isinstance(obj, HasCacheKey)
-            else obj,
+            (
+                obj._gen_cache_key(anon_map, bindparams)
+                if isinstance(obj, HasCacheKey)
+                else obj
+            ),
         )
 
     def visit_multi_list(
@@ -684,9 +687,11 @@ class _CacheKeyTraversal(HasTraversalDispatch):
         return (
             attrname,
             tuple(
-                elem._gen_cache_key(anon_map, bindparams)
-                if isinstance(elem, HasCacheKey)
-                else elem
+                (
+                    elem._gen_cache_key(anon_map, bindparams)
+                    if isinstance(elem, HasCacheKey)
+                    else elem
+                )
                 for elem in obj
             ),
         )
@@ -847,12 +852,16 @@ class _CacheKeyTraversal(HasTraversalDispatch):
         return tuple(
             (
                 target._gen_cache_key(anon_map, bindparams),
-                onclause._gen_cache_key(anon_map, bindparams)
-                if onclause is not None
-                else None,
-                from_._gen_cache_key(anon_map, bindparams)
-                if from_ is not None
-                else None,
+                (
+                    onclause._gen_cache_key(anon_map, bindparams)
+                    if onclause is not None
+                    else None
+                ),
+                (
+                    from_._gen_cache_key(anon_map, bindparams)
+                    if from_ is not None
+                    else None
+                ),
                 tuple([(key, flags[key]) for key in sorted(flags)]),
             )
             for (target, onclause, from_, flags) in obj
@@ -946,9 +955,11 @@ class _CacheKeyTraversal(HasTraversalDispatch):
             tuple(
                 (
                     key,
-                    value._gen_cache_key(anon_map, bindparams)
-                    if isinstance(value, HasCacheKey)
-                    else value,
+                    (
+                        value._gen_cache_key(anon_map, bindparams)
+                        if isinstance(value, HasCacheKey)
+                        else value
+                    ),
                 )
                 for key, value in [(key, obj[key]) for key in sorted(obj)]
             ),
@@ -994,9 +1005,11 @@ class _CacheKeyTraversal(HasTraversalDispatch):
             attrname,
             tuple(
                 (
-                    key._gen_cache_key(anon_map, bindparams)
-                    if hasattr(key, "__clause_element__")
-                    else key,
+                    (
+                        key._gen_cache_key(anon_map, bindparams)
+                        if hasattr(key, "__clause_element__")
+                        else key
+                    ),
                     value._gen_cache_key(anon_map, bindparams),
                 )
                 for key, value in obj
@@ -1017,9 +1030,11 @@ class _CacheKeyTraversal(HasTraversalDispatch):
             attrname,
             tuple(
                 (
-                    k._gen_cache_key(anon_map, bindparams)
-                    if hasattr(k, "__clause_element__")
-                    else k,
+                    (
+                        k._gen_cache_key(anon_map, bindparams)
+                        if hasattr(k, "__clause_element__")
+                        else k
+                    ),
                     obj[k]._gen_cache_key(anon_map, bindparams),
                 )
                 for k in obj

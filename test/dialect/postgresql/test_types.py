@@ -1155,7 +1155,7 @@ class NamedTypeTest(
                 "one",
                 "two",
                 "three",
-                native_enum=True  # make sure this is True because
+                native_enum=True,  # make sure this is True because
                 # it should *not* take effect due to
                 # the variant
             ).with_variant(
@@ -3234,7 +3234,6 @@ class SpecialTypesCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
-
     """test DDL and reflection of PG-specific types"""
 
     __only_on__ = ("postgresql >= 8.3.0",)
@@ -3325,7 +3324,6 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
 
 
 class UUIDTest(fixtures.TestBase):
-
     """Test postgresql-specific UUID cases.
 
     See also generic UUID tests in testing/suite/test_types
@@ -3969,9 +3967,11 @@ class _RangeTypeCompilation(
         self._test_clause(
             fn(self.col, self._data_str()),
             f"data_table.range {op} %(range_1)s",
-            self.col.type
-            if op in self._not_compare_op
-            else sqltypes.BOOLEANTYPE,
+            (
+                self.col.type
+                if op in self._not_compare_op
+                else sqltypes.BOOLEANTYPE
+            ),
         )
 
     @testing.combinations(*_all_fns, id_="as")
@@ -3979,9 +3979,11 @@ class _RangeTypeCompilation(
         self._test_clause(
             fn(self.col, self._data_obj()),
             f"data_table.range {op} %(range_1)s::{self._col_str}",
-            self.col.type
-            if op in self._not_compare_op
-            else sqltypes.BOOLEANTYPE,
+            (
+                self.col.type
+                if op in self._not_compare_op
+                else sqltypes.BOOLEANTYPE
+            ),
         )
 
     @testing.combinations(*_comparisons, id_="as")
@@ -3989,9 +3991,11 @@ class _RangeTypeCompilation(
         self._test_clause(
             fn(self.col, any_(array([self._data_str()]))),
             f"data_table.range {op} ANY (ARRAY[%(param_1)s])",
-            self.col.type
-            if op in self._not_compare_op
-            else sqltypes.BOOLEANTYPE,
+            (
+                self.col.type
+                if op in self._not_compare_op
+                else sqltypes.BOOLEANTYPE
+            ),
         )
 
     def test_where_is_null(self):
@@ -6279,9 +6283,11 @@ class PGInsertManyValuesTest(fixtures.TestBase):
                 t.c.value,
                 sort_by_parameter_order=bool(sort_by_parameter_order),
             ),
-            [{"value": value} for i in range(10)]
-            if multiple_rows
-            else {"value": value},
+            (
+                [{"value": value} for i in range(10)]
+                if multiple_rows
+                else {"value": value}
+            ),
         )
 
         if multiple_rows:

@@ -80,16 +80,13 @@ class HasShallowCopy(HasTraverseInternals):
 
     if typing.TYPE_CHECKING:
 
-        def _generated_shallow_copy_traversal(self, other: Self) -> None:
-            ...
+        def _generated_shallow_copy_traversal(self, other: Self) -> None: ...
 
         def _generated_shallow_from_dict_traversal(
             self, d: Dict[str, Any]
-        ) -> None:
-            ...
+        ) -> None: ...
 
-        def _generated_shallow_to_dict_traversal(self) -> Dict[str, Any]:
-            ...
+        def _generated_shallow_to_dict_traversal(self) -> Dict[str, Any]: ...
 
     @classmethod
     def _generate_shallow_copy(
@@ -312,9 +309,11 @@ class _CopyInternalsTraversal(HasTraversalDispatch):
         # sequence of 2-tuples
         return [
             (
-                clone(key, **kw)
-                if hasattr(key, "__clause_element__")
-                else key,
+                (
+                    clone(key, **kw)
+                    if hasattr(key, "__clause_element__")
+                    else key
+                ),
                 clone(value, **kw),
             )
             for key, value in element
@@ -336,9 +335,11 @@ class _CopyInternalsTraversal(HasTraversalDispatch):
         def copy(elem):
             if isinstance(elem, (list, tuple)):
                 return [
-                    clone(value, **kw)
-                    if hasattr(value, "__clause_element__")
-                    else value
+                    (
+                        clone(value, **kw)
+                        if hasattr(value, "__clause_element__")
+                        else value
+                    )
                     for value in elem
                 ]
             elif isinstance(elem, dict):

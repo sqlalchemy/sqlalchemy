@@ -413,9 +413,11 @@ class LambdaElementTest(
             stmt = lambda_stmt(lambda: select(tab))
 
             stmt = stmt.add_criteria(
-                lambda s: s.where(tab.c.col > parameter)
-                if add_criteria
-                else s.where(tab.c.col == parameter),
+                lambda s: (
+                    s.where(tab.c.col > parameter)
+                    if add_criteria
+                    else s.where(tab.c.col == parameter)
+                ),
             )
 
             stmt += lambda s: s.order_by(tab.c.id)
@@ -437,9 +439,11 @@ class LambdaElementTest(
             stmt = lambda_stmt(lambda: select(tab))
 
             stmt = stmt.add_criteria(
-                lambda s: s.where(tab.c.col > parameter)
-                if add_criteria
-                else s.where(tab.c.col == parameter),
+                lambda s: (
+                    s.where(tab.c.col > parameter)
+                    if add_criteria
+                    else s.where(tab.c.col == parameter)
+                ),
                 track_on=[add_criteria],
             )
 
@@ -1945,9 +1949,9 @@ class DeferredLambdaElementTest(
         # lambda produces either "t1 IN vv" or "t2 IN qq" based on the
         # argument.  will not produce a consistent cache key
         elem = lambdas.DeferredLambdaElement(
-            lambda tab: tab.c.q.in_(vv)
-            if tab.name == "t1"
-            else tab.c.q.in_(qq),
+            lambda tab: (
+                tab.c.q.in_(vv) if tab.name == "t1" else tab.c.q.in_(qq)
+            ),
             roles.WhereHavingRole,
             lambda_args=(t1,),
             opts=lambdas.LambdaOptions(track_closure_variables=False),

@@ -165,8 +165,7 @@ def expect(
     role: Type[roles.TruncatedLabelRole],
     element: Any,
     **kw: Any,
-) -> str:
-    ...
+) -> str: ...
 
 
 @overload
@@ -176,8 +175,7 @@ def expect(
     *,
     as_key: Literal[True] = ...,
     **kw: Any,
-) -> str:
-    ...
+) -> str: ...
 
 
 @overload
@@ -185,8 +183,7 @@ def expect(
     role: Type[roles.LiteralValueRole],
     element: Any,
     **kw: Any,
-) -> BindParameter[Any]:
-    ...
+) -> BindParameter[Any]: ...
 
 
 @overload
@@ -194,8 +191,7 @@ def expect(
     role: Type[roles.DDLReferredColumnRole],
     element: Any,
     **kw: Any,
-) -> Column[Any]:
-    ...
+) -> Column[Any]: ...
 
 
 @overload
@@ -203,8 +199,7 @@ def expect(
     role: Type[roles.DDLConstraintColumnRole],
     element: Any,
     **kw: Any,
-) -> Union[Column[Any], str]:
-    ...
+) -> Union[Column[Any], str]: ...
 
 
 @overload
@@ -212,8 +207,7 @@ def expect(
     role: Type[roles.StatementOptionRole],
     element: Any,
     **kw: Any,
-) -> DQLDMLClauseElement:
-    ...
+) -> DQLDMLClauseElement: ...
 
 
 @overload
@@ -221,8 +215,7 @@ def expect(
     role: Type[roles.LabeledColumnExprRole[Any]],
     element: _ColumnExpressionArgument[_T],
     **kw: Any,
-) -> NamedColumn[_T]:
-    ...
+) -> NamedColumn[_T]: ...
 
 
 @overload
@@ -234,8 +227,7 @@ def expect(
     ],
     element: _ColumnExpressionArgument[_T],
     **kw: Any,
-) -> ColumnElement[_T]:
-    ...
+) -> ColumnElement[_T]: ...
 
 
 @overload
@@ -249,8 +241,7 @@ def expect(
     ],
     element: Any,
     **kw: Any,
-) -> ColumnElement[Any]:
-    ...
+) -> ColumnElement[Any]: ...
 
 
 @overload
@@ -258,8 +249,7 @@ def expect(
     role: Type[roles.DMLTableRole],
     element: _DMLTableArgument,
     **kw: Any,
-) -> _DMLTableElement:
-    ...
+) -> _DMLTableElement: ...
 
 
 @overload
@@ -267,8 +257,7 @@ def expect(
     role: Type[roles.HasCTERole],
     element: HasCTE,
     **kw: Any,
-) -> HasCTE:
-    ...
+) -> HasCTE: ...
 
 
 @overload
@@ -276,8 +265,7 @@ def expect(
     role: Type[roles.SelectStatementRole],
     element: SelectBase,
     **kw: Any,
-) -> SelectBase:
-    ...
+) -> SelectBase: ...
 
 
 @overload
@@ -285,8 +273,7 @@ def expect(
     role: Type[roles.FromClauseRole],
     element: _FromClauseArgument,
     **kw: Any,
-) -> FromClause:
-    ...
+) -> FromClause: ...
 
 
 @overload
@@ -296,8 +283,7 @@ def expect(
     *,
     explicit_subquery: Literal[True] = ...,
     **kw: Any,
-) -> Subquery:
-    ...
+) -> Subquery: ...
 
 
 @overload
@@ -305,8 +291,7 @@ def expect(
     role: Type[roles.ColumnsClauseRole],
     element: _ColumnsClauseArgument[Any],
     **kw: Any,
-) -> _ColumnsClauseElement:
-    ...
+) -> _ColumnsClauseElement: ...
 
 
 @overload
@@ -314,8 +299,7 @@ def expect(
     role: Type[roles.JoinTargetRole],
     element: _JoinTargetProtocol,
     **kw: Any,
-) -> _JoinTargetProtocol:
-    ...
+) -> _JoinTargetProtocol: ...
 
 
 # catchall for not-yet-implemented overloads
@@ -324,8 +308,7 @@ def expect(
     role: Type[_SR],
     element: Any,
     **kw: Any,
-) -> Any:
-    ...
+) -> Any: ...
 
 
 def expect(
@@ -870,9 +853,11 @@ class InElementImpl(RoleImpl):
             if non_literal_expressions:
                 return elements.ClauseList(
                     *[
-                        non_literal_expressions[o]
-                        if o in non_literal_expressions
-                        else expr._bind_param(operator, o)
+                        (
+                            non_literal_expressions[o]
+                            if o in non_literal_expressions
+                            else expr._bind_param(operator, o)
+                        )
                         for o in element
                     ]
                 )
@@ -1150,9 +1135,9 @@ class ColumnsClauseImpl(_SelectIsNotFrom, _CoerceLiterals, RoleImpl):
             % {
                 "column": util.ellipses_string(element),
                 "argname": "for argument %s" % (argname,) if argname else "",
-                "literal_column": "literal_column"
-                if guess_is_literal
-                else "column",
+                "literal_column": (
+                    "literal_column" if guess_is_literal else "column"
+                ),
             }
         )
 

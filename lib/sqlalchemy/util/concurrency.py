@@ -123,8 +123,7 @@ if TYPE_CHECKING:
 
     def iscoroutine(
         awaitable: Awaitable[_T_co],
-    ) -> TypeGuard[Coroutine[Any, Any, _T_co]]:
-        ...
+    ) -> TypeGuard[Coroutine[Any, Any, _T_co]]: ...
 
 else:
     iscoroutine = asyncio.iscoroutine

@@ -1234,7 +1234,6 @@ class AutoIncrementTest(fixtures.TestBase):
 
 
 class SpecialTypePKTest(fixtures.TestBase):
-
     """test process_result_value in conjunction with primary key columns.
 
     Also tests that "autoincrement" checks are against

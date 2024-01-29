@@ -1777,8 +1777,7 @@ and associating the :class:`_engine.Engine` with the
     Base = declarative_base(metadata=metadata_obj)
 
 
-    class MyClass(Base):
-        ...
+    class MyClass(Base): ...
 
 
     session = Session()
@@ -1796,8 +1795,7 @@ engine::
     Base = declarative_base()
 
 
-    class MyClass(Base):
-        ...
+    class MyClass(Base): ...
 
 
     session = Session()

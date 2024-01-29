@@ -257,9 +257,9 @@ class OnConflictClause(ClauseElement):
             self.inferred_target_elements = index_elements
             self.inferred_target_whereclause = index_where
         elif constraint is None:
-            self.constraint_target = (
-                self.inferred_target_elements
-            ) = self.inferred_target_whereclause = None
+            self.constraint_target = self.inferred_target_elements = (
+                self.inferred_target_whereclause
+            ) = None
 
 
 class OnConflictDoNothing(OnConflictClause):

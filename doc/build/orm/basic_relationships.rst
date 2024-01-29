@@ -1116,15 +1116,13 @@ class were available, we could also apply it afterwards::
     # we create a Parent class which knows nothing about Child
 
 
-    class Parent(Base):
-        ...
+    class Parent(Base): ...
 
 
     # ... later, in Module B, which is imported after module A:
 
 
-    class Child(Base):
-        ...
+    class Child(Base): ...
 
 
     from module_a import Parent

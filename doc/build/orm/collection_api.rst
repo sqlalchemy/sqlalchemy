@@ -533,8 +533,7 @@ methods can be changed as well:
             ...
 
         @collection.iterator
-        def hey_use_this_instead_for_iteration(self):
-            ...
+        def hey_use_this_instead_for_iteration(self): ...
 
 There is no requirement to be "list-like" or "set-like" at all. Collection classes
 can be any shape, so long as they have the append, remove and iterate

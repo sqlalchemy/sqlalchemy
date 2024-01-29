@@ -84,9 +84,9 @@ if TYPE_CHECKING:
 _T = TypeVar("_T", bound=Any)
 _S = TypeVar("_S", bound=Any)
 
-_registry: util.defaultdict[
-    str, Dict[str, Type[Function[Any]]]
-] = util.defaultdict(dict)
+_registry: util.defaultdict[str, Dict[str, Type[Function[Any]]]] = (
+    util.defaultdict(dict)
+)
 
 
 def register_function(
@@ -486,16 +486,14 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         return WithinGroup(self, *order_by)
 
     @overload
-    def filter(self) -> Self:
-        ...
+    def filter(self) -> Self: ...
 
     @overload
     def filter(
         self,
         __criterion0: _ColumnExpressionArgument[bool],
         *criterion: _ColumnExpressionArgument[bool],
-    ) -> FunctionFilter[_T]:
-        ...
+    ) -> FunctionFilter[_T]: ...
 
     def filter(
         self, *criterion: _ColumnExpressionArgument[bool]
@@ -945,12 +943,10 @@ class _FunctionGenerator:
     @overload
     def __call__(
         self, *c: Any, type_: _TypeEngineArgument[_T], **kwargs: Any
-    ) -> Function[_T]:
-        ...
+    ) -> Function[_T]: ...
 
     @overload
-    def __call__(self, *c: Any, **kwargs: Any) -> Function[Any]:
-        ...
+    def __call__(self, *c: Any, **kwargs: Any) -> Function[Any]: ...
 
     def __call__(self, *c: Any, **kwargs: Any) -> Function[Any]:
         o = self.opts.copy()
@@ -981,24 +977,19 @@ class _FunctionGenerator:
         # statically generated** by tools/generate_sql_functions.py
 
         @property
-        def aggregate_strings(self) -> Type[aggregate_strings]:
-            ...
+        def aggregate_strings(self) -> Type[aggregate_strings]: ...
 
         @property
-        def ansifunction(self) -> Type[AnsiFunction[Any]]:
-            ...
+        def ansifunction(self) -> Type[AnsiFunction[Any]]: ...
 
         @property
-        def array_agg(self) -> Type[array_agg[Any]]:
-            ...
+        def array_agg(self) -> Type[array_agg[Any]]: ...
 
         @property
-        def cast(self) -> Type[Cast[Any]]:
-            ...
+        def cast(self) -> Type[Cast[Any]]: ...
 
         @property
-        def char_length(self) -> Type[char_length]:
-            ...
+        def char_length(self) -> Type[char_length]: ...
 
         # set ColumnElement[_T] as a separate overload, to appease mypy
         # which seems to not want to accept _T from _ColumnExpressionArgument.
@@ -1011,8 +1002,7 @@ class _FunctionGenerator:
             col: ColumnElement[_T],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
-        ) -> coalesce[_T]:
-            ...
+        ) -> coalesce[_T]: ...
 
         @overload
         def coalesce(
@@ -1020,8 +1010,7 @@ class _FunctionGenerator:
             col: _ColumnExpressionArgument[_T],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
-        ) -> coalesce[_T]:
-            ...
+        ) -> coalesce[_T]: ...
 
         @overload
         def coalesce(
@@ -1029,68 +1018,53 @@ class _FunctionGenerator:
             col: _ColumnExpressionOrLiteralArgument[_T],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
-        ) -> coalesce[_T]:
-            ...
+        ) -> coalesce[_T]: ...
 
         def coalesce(
             self,
             col: _ColumnExpressionOrLiteralArgument[_T],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
-        ) -> coalesce[_T]:
-            ...
+        ) -> coalesce[_T]: ...
 
         @property
-        def concat(self) -> Type[concat]:
-            ...
+        def concat(self) -> Type[concat]: ...
 
         @property
-        def count(self) -> Type[count]:
-            ...
+        def count(self) -> Type[count]: ...
 
         @property
-        def cube(self) -> Type[cube[Any]]:
-            ...
+        def cube(self) -> Type[cube[Any]]: ...
 
         @property
-        def cume_dist(self) -> Type[cume_dist]:
-            ...
+        def cume_dist(self) -> Type[cume_dist]: ...
 
         @property
-        def current_date(self) -> Type[current_date]:
-            ...
+        def current_date(self) -> Type[current_date]: ...
 
         @property
-        def current_time(self) -> Type[current_time]:
-            ...
+        def current_time(self) -> Type[current_time]: ...
 
         @property
-        def current_timestamp(self) -> Type[current_timestamp]:
-            ...
+        def current_timestamp(self) -> Type[current_timestamp]: ...
 
         @property
-        def current_user(self) -> Type[current_user]:
-            ...
+        def current_user(self) -> Type[current_user]: ...
 
         @property
-        def dense_rank(self) -> Type[dense_rank]:
-            ...
+        def dense_rank(self) -> Type[dense_rank]: ...
 
         @property
-        def extract(self) -> Type[Extract]:
-            ...
+        def extract(self) -> Type[Extract]: ...
 
         @property
-        def grouping_sets(self) -> Type[grouping_sets[Any]]:
-            ...
+        def grouping_sets(self) -> Type[grouping_sets[Any]]: ...
 
         @property
-        def localtime(self) -> Type[localtime]:
-            ...
+        def localtime(self) -> Type[localtime]: ...
 
         @property
-        def localtimestamp(self) -> Type[localtimestamp]:
-            ...
+        def localtimestamp(self) -> Type[localtimestamp]: ...
 
         # set ColumnElement[_T] as a separate overload, to appease mypy
         # which seems to not want to accept _T from _ColumnExpressionArgument.
@@ -1103,8 +1077,7 @@ class _FunctionGenerator:
             col: ColumnElement[_T],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
-        ) -> max[_T]:
-            ...
+        ) -> max[_T]: ...
 
         @overload
         def max(  # noqa: A001
@@ -1112,8 +1085,7 @@ class _FunctionGenerator:
             col: _ColumnExpressionArgument[_T],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
-        ) -> max[_T]:
-            ...
+        ) -> max[_T]: ...
 
         @overload
         def max(  # noqa: A001
@@ -1121,16 +1093,14 @@ class _FunctionGenerator:
             col: _ColumnExpressionOrLiteralArgument[_T],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
-        ) -> max[_T]:
-            ...
+        ) -> max[_T]: ...
 
         def max(  # noqa: A001
             self,
             col: _ColumnExpressionOrLiteralArgument[_T],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
-        ) -> max[_T]:
-            ...
+        ) -> max[_T]: ...
 
         # set ColumnElement[_T] as a separate overload, to appease mypy
         # which seems to not want to accept _T from _ColumnExpressionArgument.
@@ -1143,8 +1113,7 @@ class _FunctionGenerator:
             col: ColumnElement[_T],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
-        ) -> min[_T]:
-            ...
+        ) -> min[_T]: ...
 
         @overload
         def min(  # noqa: A001
@@ -1152,8 +1121,7 @@ class _FunctionGenerator:
             col: _ColumnExpressionArgument[_T],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
-        ) -> min[_T]:
-            ...
+        ) -> min[_T]: ...
 
         @overload
         def min(  # noqa: A001
@@ -1161,60 +1129,47 @@ class _FunctionGenerator:
             col: _ColumnExpressionOrLiteralArgument[_T],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
-        ) -> min[_T]:
-            ...
+        ) -> min[_T]: ...
 
         def min(  # noqa: A001
             self,
             col: _ColumnExpressionOrLiteralArgument[_T],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
-        ) -> min[_T]:
-            ...
+        ) -> min[_T]: ...
 
         @property
-        def mode(self) -> Type[mode[Any]]:
-            ...
+        def mode(self) -> Type[mode[Any]]: ...
 
         @property
-        def next_value(self) -> Type[next_value]:
-            ...
+        def next_value(self) -> Type[next_value]: ...
 
         @property
-        def now(self) -> Type[now]:
-            ...
+        def now(self) -> Type[now]: ...
 
         @property
-        def orderedsetagg(self) -> Type[OrderedSetAgg[Any]]:
-            ...
+        def orderedsetagg(self) -> Type[OrderedSetAgg[Any]]: ...
 
         @property
-        def percent_rank(self) -> Type[percent_rank]:
-            ...
+        def percent_rank(self) -> Type[percent_rank]: ...
 
         @property
-        def percentile_cont(self) -> Type[percentile_cont[Any]]:
-            ...
+        def percentile_cont(self) -> Type[percentile_cont[Any]]: ...
 
         @property
-        def percentile_disc(self) -> Type[percentile_disc[Any]]:
-            ...
+        def percentile_disc(self) -> Type[percentile_disc[Any]]: ...
 
         @property
-        def random(self) -> Type[random]:
-            ...
+        def random(self) -> Type[random]: ...
 
         @property
-        def rank(self) -> Type[rank]:
-            ...
+        def rank(self) -> Type[rank]: ...
 
         @property
-        def rollup(self) -> Type[rollup[Any]]:
-            ...
+        def rollup(self) -> Type[rollup[Any]]: ...
 
         @property
-        def session_user(self) -> Type[session_user]:
-            ...
+        def session_user(self) -> Type[session_user]: ...
 
         # set ColumnElement[_T] as a separate overload, to appease mypy
         # which seems to not want to accept _T from _ColumnExpressionArgument.
@@ -1227,8 +1182,7 @@ class _FunctionGenerator:
             col: ColumnElement[_T],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
-        ) -> sum[_T]:
-            ...
+        ) -> sum[_T]: ...
 
         @overload
         def sum(  # noqa: A001
@@ -1236,8 +1190,7 @@ class _FunctionGenerator:
             col: _ColumnExpressionArgument[_T],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
-        ) -> sum[_T]:
-            ...
+        ) -> sum[_T]: ...
 
         @overload
         def sum(  # noqa: A001
@@ -1245,24 +1198,20 @@ class _FunctionGenerator:
             col: _ColumnExpressionOrLiteralArgument[_T],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
-        ) -> sum[_T]:
-            ...
+        ) -> sum[_T]: ...
 
         def sum(  # noqa: A001
             self,
             col: _ColumnExpressionOrLiteralArgument[_T],
             *args: _ColumnExpressionOrLiteralArgument[Any],
             **kwargs: Any,
-        ) -> sum[_T]:
-            ...
+        ) -> sum[_T]: ...
 
         @property
-        def sysdate(self) -> Type[sysdate]:
-            ...
+        def sysdate(self) -> Type[sysdate]: ...
 
         @property
-        def user(self) -> Type[user]:
-            ...
+        def user(self) -> Type[user]: ...
 
         # END GENERATED FUNCTION ACCESSORS
 
@@ -1342,8 +1291,7 @@ class Function(FunctionElement[_T]):
         *clauses: _ColumnExpressionOrLiteralArgument[_T],
         type_: None = ...,
         packagenames: Optional[Tuple[str, ...]] = ...,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -1352,8 +1300,7 @@ class Function(FunctionElement[_T]):
         *clauses: _ColumnExpressionOrLiteralArgument[Any],
         type_: _TypeEngineArgument[_T] = ...,
         packagenames: Optional[Tuple[str, ...]] = ...,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,
@@ -1632,8 +1579,7 @@ class ReturnTypeFromArgs(GenericFunction[_T]):
         col: ColumnElement[_T],
         *args: _ColumnExpressionOrLiteralArgument[Any],
         **kwargs: Any,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -1641,8 +1587,7 @@ class ReturnTypeFromArgs(GenericFunction[_T]):
         col: _ColumnExpressionArgument[_T],
         *args: _ColumnExpressionOrLiteralArgument[Any],
         **kwargs: Any,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -1650,8 +1595,7 @@ class ReturnTypeFromArgs(GenericFunction[_T]):
         col: _ColumnExpressionOrLiteralArgument[_T],
         *args: _ColumnExpressionOrLiteralArgument[Any],
         **kwargs: Any,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self, *args: _ColumnExpressionOrLiteralArgument[Any], **kwargs: Any
@@ -1771,6 +1715,7 @@ class count(GenericFunction[int]):
 
 
     """
+
     type = sqltypes.Integer()
     inherit_cache = True
 
@@ -2023,6 +1968,7 @@ class cube(GenericFunction[_T]):
     .. versionadded:: 1.2
 
     """
+
     _has_args = True
     inherit_cache = True
 
@@ -2040,6 +1986,7 @@ class rollup(GenericFunction[_T]):
     .. versionadded:: 1.2
 
     """
+
     _has_args = True
     inherit_cache = True
 
@@ -2073,6 +2020,7 @@ class grouping_sets(GenericFunction[_T]):
     .. versionadded:: 1.2
 
     """
+
     _has_args = True
     inherit_cache = True
 

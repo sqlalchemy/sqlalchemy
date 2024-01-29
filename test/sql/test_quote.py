@@ -858,7 +858,6 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class PreparerTest(fixtures.TestBase):
-
     """Test the db-agnostic quoting services of IdentifierPreparer."""
 
     def test_unformat(self):

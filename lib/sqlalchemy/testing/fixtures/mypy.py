@@ -86,9 +86,11 @@ class MypyTest(TestBase):
                 "--config-file",
                 os.path.join(
                     use_cachedir,
-                    "sqla_mypy_config.cfg"
-                    if use_plugin
-                    else "plain_mypy_config.cfg",
+                    (
+                        "sqla_mypy_config.cfg"
+                        if use_plugin
+                        else "plain_mypy_config.cfg"
+                    ),
                 ),
             ]
 
@@ -208,9 +210,11 @@ class MypyTest(TestBase):
                         # skip first character which could be capitalized
                         # "List item x not found" type of message
                         expected_msg = expected_msg[0] + re.sub(
-                            r"\b(List|Tuple|Dict|Set)\b"
-                            if is_type
-                            else r"\b(List|Tuple|Dict|Set|Type)\b",
+                            (
+                                r"\b(List|Tuple|Dict|Set)\b"
+                                if is_type
+                                else r"\b(List|Tuple|Dict|Set|Type)\b"
+                            ),
                             lambda m: m.group(1).lower(),
                             expected_msg[1:],
                         )

@@ -2204,11 +2204,13 @@ class BindSensitiveStringifyTest(fixtures.MappedTest):
 
         eq_ignore_whitespace(
             str(q),
-            "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users WHERE users.id = ?"
-            if expect_bound
-            else "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users WHERE users.id = :id_1",
+            (
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users WHERE users.id = ?"
+                if expect_bound
+                else "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users WHERE users.id = :id_1"
+            ),
         )
 
     def test_query_bound_session(self):
@@ -2242,7 +2244,6 @@ class DeprecationScopedSessionTest(fixtures.MappedTest):
 
 
 class RequirementsTest(fixtures.MappedTest):
-
     """Tests the contract for user classes."""
 
     @classmethod

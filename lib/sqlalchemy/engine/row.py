@@ -377,8 +377,7 @@ class RowMapping(BaseRow, typing.Mapping["_KeyType", Any]):
 
     if TYPE_CHECKING:
 
-        def __getitem__(self, key: _KeyType) -> Any:
-            ...
+        def __getitem__(self, key: _KeyType) -> Any: ...
 
     else:
         __getitem__ = BaseRow._get_by_key_impl_mapping

@@ -46,7 +46,6 @@ def All(other, arrexpr, operator=operators.eq):
 
 
 class array(expression.ExpressionClauseList[_T]):
-
     """A PostgreSQL ARRAY literal.
 
     This is used to produce ARRAY literals in SQL expressions, e.g.::
@@ -110,17 +109,17 @@ class array(expression.ExpressionClauseList[_T]):
         main_type = (
             type_arg
             if type_arg is not None
-            else self._type_tuple[0]
-            if self._type_tuple
-            else sqltypes.NULLTYPE
+            else self._type_tuple[0] if self._type_tuple else sqltypes.NULLTYPE
         )
 
         if isinstance(main_type, ARRAY):
             self.type = ARRAY(
                 main_type.item_type,
-                dimensions=main_type.dimensions + 1
-                if main_type.dimensions is not None
-                else 2,
+                dimensions=(
+                    main_type.dimensions + 1
+                    if main_type.dimensions is not None
+                    else 2
+                ),
             )
         else:
             self.type = ARRAY(main_type)
@@ -226,7 +225,6 @@ class ARRAY(sqltypes.ARRAY):
     """
 
     class Comparator(sqltypes.ARRAY.Comparator):
-
         """Define comparison operations for :class:`_types.ARRAY`.
 
         Note that these operations are in addition to those provided

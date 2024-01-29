@@ -118,8 +118,7 @@ class ResultMetaData:
     @overload
     def _key_fallback(
         self, key: Any, err: Optional[Exception], raiseerr: Literal[True] = ...
-    ) -> NoReturn:
-        ...
+    ) -> NoReturn: ...
 
     @overload
     def _key_fallback(
@@ -127,14 +126,12 @@ class ResultMetaData:
         key: Any,
         err: Optional[Exception],
         raiseerr: Literal[False] = ...,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
     def _key_fallback(
         self, key: Any, err: Optional[Exception], raiseerr: bool = ...
-    ) -> Optional[NoReturn]:
-        ...
+    ) -> Optional[NoReturn]: ...
 
     def _key_fallback(
         self, key: Any, err: Optional[Exception], raiseerr: bool = True
@@ -737,8 +734,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         raise_for_second_row: bool,
         raise_for_none: Literal[True],
         scalar: bool,
-    ) -> _R:
-        ...
+    ) -> _R: ...
 
     @overload
     def _only_one_row(
@@ -746,8 +742,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         raise_for_second_row: bool,
         raise_for_none: bool,
         scalar: bool,
-    ) -> Optional[_R]:
-        ...
+    ) -> Optional[_R]: ...
 
     def _only_one_row(
         self,
@@ -1137,18 +1132,15 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         return self._column_slices(col_expressions)
 
     @overload
-    def scalars(self: Result[_T, Unpack[TupleAny]]) -> ScalarResult[_T]:
-        ...
+    def scalars(self: Result[_T, Unpack[TupleAny]]) -> ScalarResult[_T]: ...
 
     @overload
     def scalars(
         self: Result[_T, Unpack[TupleAny]], index: Literal[0]
-    ) -> ScalarResult[_T]:
-        ...
+    ) -> ScalarResult[_T]: ...
 
     @overload
-    def scalars(self, index: _KeyIndexType = 0) -> ScalarResult[Any]:
-        ...
+    def scalars(self, index: _KeyIndexType = 0) -> ScalarResult[Any]: ...
 
     def scalars(self, index: _KeyIndexType = 0) -> ScalarResult[Any]:
         """Return a :class:`_engine.ScalarResult` filtering object which
@@ -1479,12 +1471,10 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         )
 
     @overload
-    def scalar_one(self: Result[_T]) -> _T:
-        ...
+    def scalar_one(self: Result[_T]) -> _T: ...
 
     @overload
-    def scalar_one(self) -> Any:
-        ...
+    def scalar_one(self) -> Any: ...
 
     def scalar_one(self) -> Any:
         """Return exactly one scalar result or raise an exception.
@@ -1504,12 +1494,10 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         )
 
     @overload
-    def scalar_one_or_none(self: Result[_T]) -> Optional[_T]:
-        ...
+    def scalar_one_or_none(self: Result[_T]) -> Optional[_T]: ...
 
     @overload
-    def scalar_one_or_none(self) -> Optional[Any]:
-        ...
+    def scalar_one_or_none(self) -> Optional[Any]: ...
 
     def scalar_one_or_none(self) -> Optional[Any]:
         """Return exactly one scalar result or ``None``.
@@ -1562,12 +1550,10 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         )
 
     @overload
-    def scalar(self: Result[_T]) -> Optional[_T]:
-        ...
+    def scalar(self: Result[_T]) -> Optional[_T]: ...
 
     @overload
-    def scalar(self) -> Any:
-        ...
+    def scalar(self) -> Any: ...
 
     def scalar(self) -> Any:
         """Fetch the first column of the first row, and close the result set.
@@ -1922,11 +1908,9 @@ class TupleResult(FilterResult[_R], util.TypingOnly):
             """
             ...
 
-        def __iter__(self) -> Iterator[_R]:
-            ...
+        def __iter__(self) -> Iterator[_R]: ...
 
-        def __next__(self) -> _R:
-            ...
+        def __next__(self) -> _R: ...
 
         def first(self) -> Optional[_R]:
             """Fetch the first object or ``None`` if no object is present.
@@ -1960,12 +1944,10 @@ class TupleResult(FilterResult[_R], util.TypingOnly):
             ...
 
         @overload
-        def scalar_one(self: TupleResult[Tuple[_T]]) -> _T:
-            ...
+        def scalar_one(self: TupleResult[Tuple[_T]]) -> _T: ...
 
         @overload
-        def scalar_one(self) -> Any:
-            ...
+        def scalar_one(self) -> Any: ...
 
         def scalar_one(self) -> Any:
             """Return exactly one scalar result or raise an exception.
@@ -1983,12 +1965,12 @@ class TupleResult(FilterResult[_R], util.TypingOnly):
             ...
 
         @overload
-        def scalar_one_or_none(self: TupleResult[Tuple[_T]]) -> Optional[_T]:
-            ...
+        def scalar_one_or_none(
+            self: TupleResult[Tuple[_T]],
+        ) -> Optional[_T]: ...
 
         @overload
-        def scalar_one_or_none(self) -> Optional[Any]:
-            ...
+        def scalar_one_or_none(self) -> Optional[Any]: ...
 
         def scalar_one_or_none(self) -> Optional[Any]:
             """Return exactly one or no scalar result.
@@ -2006,12 +1988,10 @@ class TupleResult(FilterResult[_R], util.TypingOnly):
             ...
 
         @overload
-        def scalar(self: TupleResult[Tuple[_T]]) -> Optional[_T]:
-            ...
+        def scalar(self: TupleResult[Tuple[_T]]) -> Optional[_T]: ...
 
         @overload
-        def scalar(self) -> Any:
-            ...
+        def scalar(self) -> Any: ...
 
         def scalar(self) -> Any:
             """Fetch the first column of the first row, and close the result

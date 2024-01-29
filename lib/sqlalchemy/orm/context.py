@@ -441,8 +441,7 @@ class ORMCompileState(AbstractORMCompileState):
             statement: Union[Select, FromStatement],
             compiler: Optional[SQLCompiler],
             **kw: Any,
-        ) -> ORMCompileState:
-            ...
+        ) -> ORMCompileState: ...
 
     def _append_dedupe_col_collection(self, obj, col_collection):
         dedupe = self.dedupe_columns
@@ -526,14 +525,14 @@ class ORMCompileState(AbstractORMCompileState):
             and len(statement._compile_options._current_path) > 10
             and execution_options.get("compiled_cache", True) is not None
         ):
-            execution_options: util.immutabledict[
-                str, Any
-            ] = execution_options.union(
-                {
-                    "compiled_cache": None,
-                    "_cache_disable_reason": "excess depth for "
-                    "ORM loader options",
-                }
+            execution_options: util.immutabledict[str, Any] = (
+                execution_options.union(
+                    {
+                        "compiled_cache": None,
+                        "_cache_disable_reason": "excess depth for "
+                        "ORM loader options",
+                    }
+                )
             )
 
         bind_arguments["clause"] = statement
@@ -759,9 +758,11 @@ class ORMFromStatementCompileState(ORMCompileState):
             self.statement = statement
 
         self._label_convention = self._column_naming_convention(
-            statement._label_style
-            if not statement._is_textual and not statement.is_dml
-            else LABEL_STYLE_NONE,
+            (
+                statement._label_style
+                if not statement._is_textual and not statement.is_dml
+                else LABEL_STYLE_NONE
+            ),
             self.use_legacy_query_style,
         )
 
@@ -807,9 +808,9 @@ class ORMFromStatementCompileState(ORMCompileState):
             for entity in self._entities:
                 entity.setup_compile_state(self)
 
-            compiler._ordered_columns = (
-                compiler._textual_ordered_columns
-            ) = False
+            compiler._ordered_columns = compiler._textual_ordered_columns = (
+                False
+            )
 
             # enable looser result column matching.  this is shown to be
             # needed by test_query.py::TextTest
@@ -1376,11 +1377,15 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
     def get_columns_clause_froms(cls, statement):
         return cls._normalize_froms(
             itertools.chain.from_iterable(
-                element._from_objects
-                if "parententity" not in element._annotations
-                else [
-                    element._annotations["parententity"].__clause_element__()
-                ]
+                (
+                    element._from_objects
+                    if "parententity" not in element._annotations
+                    else [
+                        element._annotations[
+                            "parententity"
+                        ].__clause_element__()
+                    ]
+                )
                 for element in statement._raw_columns
             )
         )
@@ -1509,9 +1514,11 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             # the original expressions outside of the label references
             # in order to have them render.
             unwrapped_order_by = [
-                elem.element
-                if isinstance(elem, sql.elements._label_reference)
-                else elem
+                (
+                    elem.element
+                    if isinstance(elem, sql.elements._label_reference)
+                    else elem
+                )
                 for elem in self.order_by
             ]
 
@@ -2430,9 +2437,12 @@ def _column_descriptions(
             "type": ent.type,
             "aliased": getattr(insp_ent, "is_aliased_class", False),
             "expr": ent.expr,
-            "entity": getattr(insp_ent, "entity", None)
-            if ent.entity_zero is not None and not insp_ent.is_clause_element
-            else None,
+            "entity": (
+                getattr(insp_ent, "entity", None)
+                if ent.entity_zero is not None
+                and not insp_ent.is_clause_element
+                else None
+            ),
         }
         for ent, insp_ent in [
             (_ent, _ent.entity_zero) for _ent in ctx._entities

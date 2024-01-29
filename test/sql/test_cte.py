@@ -613,7 +613,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
                 stmt,
                 "WITH anon_1 AS (SELECT test.a AS b FROM test %s b) "
                 "SELECT (SELECT anon_1.b FROM anon_1) AS c"
-                % ("ORDER BY" if order_by == "order_by" else "GROUP BY")
+                % ("ORDER BY" if order_by == "order_by" else "GROUP BY"),
                 # prior to the fix, the use_object version came out as:
                 # "WITH anon_1 AS (SELECT test.a AS b FROM test "
                 # "ORDER BY test.a) "

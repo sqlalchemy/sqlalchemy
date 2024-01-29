@@ -437,13 +437,11 @@ def outparam(
 
 
 @overload
-def not_(clause: BinaryExpression[_T]) -> BinaryExpression[_T]:
-    ...
+def not_(clause: BinaryExpression[_T]) -> BinaryExpression[_T]: ...
 
 
 @overload
-def not_(clause: _ColumnExpressionArgument[_T]) -> ColumnElement[_T]:
-    ...
+def not_(clause: _ColumnExpressionArgument[_T]) -> ColumnElement[_T]: ...
 
 
 def not_(clause: _ColumnExpressionArgument[_T]) -> ColumnElement[_T]:

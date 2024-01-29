@@ -44,12 +44,10 @@ class ReversibleProxy(Generic[_PT]):
     __slots__ = ("__weakref__",)
 
     @overload
-    def _assign_proxied(self, target: _PT) -> _PT:
-        ...
+    def _assign_proxied(self, target: _PT) -> _PT: ...
 
     @overload
-    def _assign_proxied(self, target: None) -> None:
-        ...
+    def _assign_proxied(self, target: None) -> None: ...
 
     def _assign_proxied(self, target: Optional[_PT]) -> Optional[_PT]:
         if target is not None:
@@ -82,15 +80,13 @@ class ReversibleProxy(Generic[_PT]):
         cls,
         target: _PT,
         regenerate: Literal[True] = ...,
-    ) -> Self:
-        ...
+    ) -> Self: ...
 
     @overload
     @classmethod
     def _retrieve_proxy_for_target(
         cls, target: _PT, regenerate: bool = True
-    ) -> Optional[Self]:
-        ...
+    ) -> Optional[Self]: ...
 
     @classmethod
     def _retrieve_proxy_for_target(

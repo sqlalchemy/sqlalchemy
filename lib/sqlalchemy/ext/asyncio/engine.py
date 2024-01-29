@@ -418,12 +418,10 @@ class AsyncConnection(
         insertmanyvalues_page_size: int = ...,
         schema_translate_map: Optional[SchemaTranslateMapType] = ...,
         **opt: Any,
-    ) -> AsyncConnection:
-        ...
+    ) -> AsyncConnection: ...
 
     @overload
-    async def execution_options(self, **opt: Any) -> AsyncConnection:
-        ...
+    async def execution_options(self, **opt: Any) -> AsyncConnection: ...
 
     async def execution_options(self, **opt: Any) -> AsyncConnection:
         r"""Set non-SQL options for the connection which take effect
@@ -521,8 +519,7 @@ class AsyncConnection(
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> GeneratorStartableContext[AsyncResult[Unpack[_Ts]]]:
-        ...
+    ) -> GeneratorStartableContext[AsyncResult[Unpack[_Ts]]]: ...
 
     @overload
     def stream(
@@ -531,8 +528,7 @@ class AsyncConnection(
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> GeneratorStartableContext[AsyncResult[Unpack[TupleAny]]]:
-        ...
+    ) -> GeneratorStartableContext[AsyncResult[Unpack[TupleAny]]]: ...
 
     @asyncstartablecontext
     async def stream(
@@ -608,8 +604,7 @@ class AsyncConnection(
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> CursorResult[Unpack[_Ts]]:
-        ...
+    ) -> CursorResult[Unpack[_Ts]]: ...
 
     @overload
     async def execute(
@@ -618,8 +613,7 @@ class AsyncConnection(
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> CursorResult[Unpack[TupleAny]]:
-        ...
+    ) -> CursorResult[Unpack[TupleAny]]: ...
 
     async def execute(
         self,
@@ -675,8 +669,7 @@ class AsyncConnection(
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> Optional[_T]:
-        ...
+    ) -> Optional[_T]: ...
 
     @overload
     async def scalar(
@@ -685,8 +678,7 @@ class AsyncConnection(
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     async def scalar(
         self,
@@ -717,8 +709,7 @@ class AsyncConnection(
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> ScalarResult[_T]:
-        ...
+    ) -> ScalarResult[_T]: ...
 
     @overload
     async def scalars(
@@ -727,8 +718,7 @@ class AsyncConnection(
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> ScalarResult[Any]:
-        ...
+    ) -> ScalarResult[Any]: ...
 
     async def scalars(
         self,
@@ -760,8 +750,7 @@ class AsyncConnection(
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> GeneratorStartableContext[AsyncScalarResult[_T]]:
-        ...
+    ) -> GeneratorStartableContext[AsyncScalarResult[_T]]: ...
 
     @overload
     def stream_scalars(
@@ -770,8 +759,7 @@ class AsyncConnection(
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> GeneratorStartableContext[AsyncScalarResult[Any]]:
-        ...
+    ) -> GeneratorStartableContext[AsyncScalarResult[Any]]: ...
 
     @asyncstartablecontext
     async def stream_scalars(
@@ -1108,12 +1096,10 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):
         insertmanyvalues_page_size: int = ...,
         schema_translate_map: Optional[SchemaTranslateMapType] = ...,
         **opt: Any,
-    ) -> AsyncEngine:
-        ...
+    ) -> AsyncEngine: ...
 
     @overload
-    def execution_options(self, **opt: Any) -> AsyncEngine:
-        ...
+    def execution_options(self, **opt: Any) -> AsyncEngine: ...
 
     def execution_options(self, **opt: Any) -> AsyncEngine:
         """Return a new :class:`_asyncio.AsyncEngine` that will provide
@@ -1426,15 +1412,13 @@ class AsyncTransaction(
 
 
 @overload
-def _get_sync_engine_or_connection(async_engine: AsyncEngine) -> Engine:
-    ...
+def _get_sync_engine_or_connection(async_engine: AsyncEngine) -> Engine: ...
 
 
 @overload
 def _get_sync_engine_or_connection(
     async_engine: AsyncConnection,
-) -> Connection:
-    ...
+) -> Connection: ...
 
 
 def _get_sync_engine_or_connection(

@@ -140,11 +140,13 @@ def post_update(base_mapper, states, uowtransaction, post_update_cols):
                 state_dict,
                 sub_mapper,
                 connection,
-                mapper._get_committed_state_attr_by_column(
-                    state, state_dict, mapper.version_id_col
-                )
-                if mapper.version_id_col is not None
-                else None,
+                (
+                    mapper._get_committed_state_attr_by_column(
+                        state, state_dict, mapper.version_id_col
+                    )
+                    if mapper.version_id_col is not None
+                    else None
+                ),
             )
             for state, state_dict, sub_mapper, connection in states_to_update
             if table in sub_mapper._pks_by_table
@@ -703,10 +705,10 @@ def _collect_delete_commands(
 
         params = {}
         for col in mapper._pks_by_table[table]:
-            params[
-                col.key
-            ] = value = mapper._get_committed_state_attr_by_column(
-                state, state_dict, col
+            params[col.key] = value = (
+                mapper._get_committed_state_attr_by_column(
+                    state, state_dict, col
+                )
             )
             if value is None:
                 raise orm_exc.FlushError(
@@ -934,9 +936,11 @@ def _emit_update_statements(
                             c.context.compiled_parameters[0],
                             value_params,
                             True,
-                            c.returned_defaults
-                            if not c.context.executemany
-                            else None,
+                            (
+                                c.returned_defaults
+                                if not c.context.executemany
+                                else None
+                            ),
                         )
 
         if check_rowcount:
@@ -1069,9 +1073,11 @@ def _emit_insert_statements(
                             last_inserted_params,
                             value_params,
                             False,
-                            result.returned_defaults
-                            if not result.context.executemany
-                            else None,
+                            (
+                                result.returned_defaults
+                                if not result.context.executemany
+                                else None
+                            ),
                         )
                     else:
                         _postfetch_bulk_save(mapper_rec, state_dict, table)
@@ -1261,9 +1267,11 @@ def _emit_insert_statements(
                                 result.context.compiled_parameters[0],
                                 value_params,
                                 False,
-                                result.returned_defaults
-                                if not result.context.executemany
-                                else None,
+                                (
+                                    result.returned_defaults
+                                    if not result.context.executemany
+                                    else None
+                                ),
                             )
                         else:
                             _postfetch_bulk_save(mapper_rec, state_dict, table)

@@ -391,16 +391,14 @@ class _EmptyListener(_InstanceLevelDispatch[_ET]):
 
 
 class _MutexProtocol(Protocol):
-    def __enter__(self) -> bool:
-        ...
+    def __enter__(self) -> bool: ...
 
     def __exit__(
         self,
         exc_type: Optional[Type[BaseException]],
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
-    ) -> Optional[bool]:
-        ...
+    ) -> Optional[bool]: ...
 
 
 class _CompoundListener(_InstanceLevelDispatch[_ET]):

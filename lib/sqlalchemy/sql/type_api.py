@@ -83,23 +83,19 @@ _NO_VALUE_IN_LIST = _NoValueInList.NO_VALUE_IN_LIST
 
 
 class _LiteralProcessorType(Protocol[_T_co]):
-    def __call__(self, value: Any) -> str:
-        ...
+    def __call__(self, value: Any) -> str: ...
 
 
 class _BindProcessorType(Protocol[_T_con]):
-    def __call__(self, value: Optional[_T_con]) -> Any:
-        ...
+    def __call__(self, value: Optional[_T_con]) -> Any: ...
 
 
 class _ResultProcessorType(Protocol[_T_co]):
-    def __call__(self, value: Any) -> Optional[_T_co]:
-        ...
+    def __call__(self, value: Any) -> Optional[_T_co]: ...
 
 
 class _SentinelProcessorType(Protocol[_T_co]):
-    def __call__(self, value: Any) -> Optional[_T_co]:
-        ...
+    def __call__(self, value: Any) -> Optional[_T_co]: ...
 
 
 class _BaseTypeMemoDict(TypedDict):
@@ -115,8 +111,9 @@ class _TypeMemoDict(_BaseTypeMemoDict, total=False):
 
 
 class _ComparatorFactory(Protocol[_T]):
-    def __call__(self, expr: ColumnElement[_T]) -> TypeEngine.Comparator[_T]:
-        ...
+    def __call__(
+        self, expr: ColumnElement[_T]
+    ) -> TypeEngine.Comparator[_T]: ...
 
 
 class TypeEngine(Visitable, Generic[_T]):
@@ -300,9 +297,9 @@ class TypeEngine(Visitable, Generic[_T]):
 
     """
 
-    _variant_mapping: util.immutabledict[
-        str, TypeEngine[Any]
-    ] = util.EMPTY_DICT
+    _variant_mapping: util.immutabledict[str, TypeEngine[Any]] = (
+        util.EMPTY_DICT
+    )
 
     def evaluates_none(self) -> Self:
         """Return a copy of this type which has the
@@ -1002,9 +999,11 @@ class TypeEngine(Visitable, Generic[_T]):
         return (self.__class__,) + tuple(
             (
                 k,
-                self.__dict__[k]._static_cache_key
-                if isinstance(self.__dict__[k], TypeEngine)
-                else self.__dict__[k],
+                (
+                    self.__dict__[k]._static_cache_key
+                    if isinstance(self.__dict__[k], TypeEngine)
+                    else self.__dict__[k]
+                ),
             )
             for k in names
             if k in self.__dict__
@@ -1013,12 +1012,12 @@ class TypeEngine(Visitable, Generic[_T]):
         )
 
     @overload
-    def adapt(self, cls: Type[_TE], **kw: Any) -> _TE:
-        ...
+    def adapt(self, cls: Type[_TE], **kw: Any) -> _TE: ...
 
     @overload
-    def adapt(self, cls: Type[TypeEngineMixin], **kw: Any) -> TypeEngine[Any]:
-        ...
+    def adapt(
+        self, cls: Type[TypeEngineMixin], **kw: Any
+    ) -> TypeEngine[Any]: ...
 
     def adapt(
         self, cls: Type[Union[TypeEngine[Any], TypeEngineMixin]], **kw: Any
@@ -1111,26 +1110,21 @@ class TypeEngineMixin:
         @util.memoized_property
         def _static_cache_key(
             self,
-        ) -> Union[CacheConst, Tuple[Any, ...]]:
-            ...
+        ) -> Union[CacheConst, Tuple[Any, ...]]: ...
 
         @overload
-        def adapt(self, cls: Type[_TE], **kw: Any) -> _TE:
-            ...
+        def adapt(self, cls: Type[_TE], **kw: Any) -> _TE: ...
 
         @overload
         def adapt(
             self, cls: Type[TypeEngineMixin], **kw: Any
-        ) -> TypeEngine[Any]:
-            ...
+        ) -> TypeEngine[Any]: ...
 
         def adapt(
             self, cls: Type[Union[TypeEngine[Any], TypeEngineMixin]], **kw: Any
-        ) -> TypeEngine[Any]:
-            ...
+        ) -> TypeEngine[Any]: ...
 
-        def dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
-            ...
+        def dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]: ...
 
 
 class ExternalType(TypeEngineMixin):
@@ -1432,12 +1426,12 @@ class Emulated(TypeEngineMixin):
         return super().adapt(impltype, **kw)
 
     @overload
-    def adapt(self, cls: Type[_TE], **kw: Any) -> _TE:
-        ...
+    def adapt(self, cls: Type[_TE], **kw: Any) -> _TE: ...
 
     @overload
-    def adapt(self, cls: Type[TypeEngineMixin], **kw: Any) -> TypeEngine[Any]:
-        ...
+    def adapt(
+        self, cls: Type[TypeEngineMixin], **kw: Any
+    ) -> TypeEngine[Any]: ...
 
     def adapt(
         self, cls: Type[Union[TypeEngine[Any], TypeEngineMixin]], **kw: Any
@@ -2283,13 +2277,13 @@ class Variant(TypeDecorator[_T]):
 
 
 @overload
-def to_instance(typeobj: Union[Type[_TE], _TE], *arg: Any, **kw: Any) -> _TE:
-    ...
+def to_instance(
+    typeobj: Union[Type[_TE], _TE], *arg: Any, **kw: Any
+) -> _TE: ...
 
 
 @overload
-def to_instance(typeobj: None, *arg: Any, **kw: Any) -> TypeEngine[None]:
-    ...
+def to_instance(typeobj: None, *arg: Any, **kw: Any) -> TypeEngine[None]: ...
 
 
 def to_instance(

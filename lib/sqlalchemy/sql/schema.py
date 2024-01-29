@@ -160,15 +160,15 @@ class SchemaConst(Enum):
     """
 
 
-RETAIN_SCHEMA: Final[
-    Literal[SchemaConst.RETAIN_SCHEMA]
-] = SchemaConst.RETAIN_SCHEMA
-BLANK_SCHEMA: Final[
-    Literal[SchemaConst.BLANK_SCHEMA]
-] = SchemaConst.BLANK_SCHEMA
-NULL_UNSPECIFIED: Final[
-    Literal[SchemaConst.NULL_UNSPECIFIED]
-] = SchemaConst.NULL_UNSPECIFIED
+RETAIN_SCHEMA: Final[Literal[SchemaConst.RETAIN_SCHEMA]] = (
+    SchemaConst.RETAIN_SCHEMA
+)
+BLANK_SCHEMA: Final[Literal[SchemaConst.BLANK_SCHEMA]] = (
+    SchemaConst.BLANK_SCHEMA
+)
+NULL_UNSPECIFIED: Final[Literal[SchemaConst.NULL_UNSPECIFIED]] = (
+    SchemaConst.NULL_UNSPECIFIED
+)
 
 
 def _get_table_key(name: str, schema: Optional[str]) -> str:
@@ -345,12 +345,10 @@ class Table(
     if TYPE_CHECKING:
 
         @util.ro_non_memoized_property
-        def primary_key(self) -> PrimaryKeyConstraint:
-            ...
+        def primary_key(self) -> PrimaryKeyConstraint: ...
 
         @util.ro_non_memoized_property
-        def foreign_keys(self) -> Set[ForeignKey]:
-            ...
+        def foreign_keys(self) -> Set[ForeignKey]: ...
 
     _columns: DedupeColumnCollection[Column[Any]]
 
@@ -402,18 +400,15 @@ class Table(
     if TYPE_CHECKING:
 
         @util.ro_non_memoized_property
-        def columns(self) -> ReadOnlyColumnCollection[str, Column[Any]]:
-            ...
+        def columns(self) -> ReadOnlyColumnCollection[str, Column[Any]]: ...
 
         @util.ro_non_memoized_property
         def exported_columns(
             self,
-        ) -> ReadOnlyColumnCollection[str, Column[Any]]:
-            ...
+        ) -> ReadOnlyColumnCollection[str, Column[Any]]: ...
 
         @util.ro_non_memoized_property
-        def c(self) -> ReadOnlyColumnCollection[str, Column[Any]]:
-            ...
+        def c(self) -> ReadOnlyColumnCollection[str, Column[Any]]: ...
 
     def _gen_cache_key(
         self, anon_map: anon_map, bindparams: List[BindParameter[Any]]
@@ -2465,9 +2460,9 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                 dialect_option_key,
                 dialect_option_value,
             ) in dialect_options.items():
-                column_kwargs[
-                    dialect_name + "_" + dialect_option_key
-                ] = dialect_option_value
+                column_kwargs[dialect_name + "_" + dialect_option_key] = (
+                    dialect_option_value
+                )
 
         server_default = self.server_default
         server_onupdate = self.server_onupdate
@@ -2638,19 +2633,23 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             )
         try:
             c = self._constructor(
-                coercions.expect(
-                    roles.TruncatedLabelRole, name if name else self.name
-                )
-                if name_is_truncatable
-                else (name or self.name),
+                (
+                    coercions.expect(
+                        roles.TruncatedLabelRole, name if name else self.name
+                    )
+                    if name_is_truncatable
+                    else (name or self.name)
+                ),
                 self.type,
                 # this may actually be ._proxy_key when the key is incoming
                 key=key if key else name if name else self.key,
                 primary_key=self.primary_key,
                 nullable=self.nullable,
-                _proxies=list(compound_select_cols)
-                if compound_select_cols
-                else [self],
+                _proxies=(
+                    list(compound_select_cols)
+                    if compound_select_cols
+                    else [self]
+                ),
                 *fk,
             )
         except TypeError as err:
@@ -2715,9 +2714,9 @@ def insert_sentinel(
     return Column(
         name=name,
         type_=type_api.INTEGERTYPE if type_ is None else type_,
-        default=default
-        if default is not None
-        else _InsertSentinelColumnDefault(),
+        default=(
+            default if default is not None else _InsertSentinelColumnDefault()
+        ),
         _omit_from_statements=omit_from_statements,
         insert_sentinel=True,
     )
@@ -2890,7 +2889,10 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
     def _resolve_colspec_argument(
         self,
-    ) -> Tuple[Union[str, Column[Any]], Optional[Column[Any]],]:
+    ) -> Tuple[
+        Union[str, Column[Any]],
+        Optional[Column[Any]],
+    ]:
         argument = self._colspec
 
         return self._parse_colspec_argument(argument)
@@ -2898,7 +2900,10 @@ class ForeignKey(DialectKWArgs, SchemaItem):
     def _parse_colspec_argument(
         self,
         argument: _DDLColumnArgument,
-    ) -> Tuple[Union[str, Column[Any]], Optional[Column[Any]],]:
+    ) -> Tuple[
+        Union[str, Column[Any]],
+        Optional[Column[Any]],
+    ]:
         _colspec = coercions.expect(roles.DDLReferredColumnRole, argument)
 
         if isinstance(_colspec, str):
@@ -3181,14 +3186,14 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         return self._resolve_column()
 
     @overload
-    def _resolve_column(self, *, raiseerr: Literal[True] = ...) -> Column[Any]:
-        ...
+    def _resolve_column(
+        self, *, raiseerr: Literal[True] = ...
+    ) -> Column[Any]: ...
 
     @overload
     def _resolve_column(
         self, *, raiseerr: bool = ...
-    ) -> Optional[Column[Any]]:
-        ...
+    ) -> Optional[Column[Any]]: ...
 
     def _resolve_column(
         self, *, raiseerr: bool = True
@@ -3309,18 +3314,15 @@ if TYPE_CHECKING:
 
     def default_is_sequence(
         obj: Optional[DefaultGenerator],
-    ) -> TypeGuard[Sequence]:
-        ...
+    ) -> TypeGuard[Sequence]: ...
 
     def default_is_clause_element(
         obj: Optional[DefaultGenerator],
-    ) -> TypeGuard[ColumnElementColumnDefault]:
-        ...
+    ) -> TypeGuard[ColumnElementColumnDefault]: ...
 
     def default_is_scalar(
         obj: Optional[DefaultGenerator],
-    ) -> TypeGuard[ScalarElementColumnDefault]:
-        ...
+    ) -> TypeGuard[ScalarElementColumnDefault]: ...
 
 else:
     default_is_sequence = operator.attrgetter("is_sequence")
@@ -3420,21 +3422,18 @@ class ColumnDefault(DefaultGenerator, ABC):
     @overload
     def __new__(
         cls, arg: Callable[..., Any], for_update: bool = ...
-    ) -> CallableColumnDefault:
-        ...
+    ) -> CallableColumnDefault: ...
 
     @overload
     def __new__(
         cls, arg: ColumnElement[Any], for_update: bool = ...
-    ) -> ColumnElementColumnDefault:
-        ...
+    ) -> ColumnElementColumnDefault: ...
 
     # if I return ScalarElementColumnDefault here, which is what's actually
     # returned, mypy complains that
     # overloads overlap w/ incompatible return types.
     @overload
-    def __new__(cls, arg: object, for_update: bool = ...) -> ColumnDefault:
-        ...
+    def __new__(cls, arg: object, for_update: bool = ...) -> ColumnDefault: ...
 
     def __new__(
         cls, arg: Any = None, for_update: bool = False
@@ -3576,8 +3575,7 @@ class ColumnElementColumnDefault(ColumnDefault):
 
 
 class _CallableColumnDefaultProtocol(Protocol):
-    def __call__(self, context: ExecutionContext) -> Any:
-        ...
+    def __call__(self, context: ExecutionContext) -> Any: ...
 
 
 class CallableColumnDefault(ColumnDefault):
@@ -4247,8 +4245,7 @@ class ColumnCollectionMixin:
 
         def _set_parent_with_dispatch(
             self, parent: SchemaEventTarget, **kw: Any
-        ) -> None:
-            ...
+        ) -> None: ...
 
     def __init__(
         self,
@@ -4461,9 +4458,9 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
                 dialect_option_key,
                 dialect_option_value,
             ) in dialect_options.items():
-                constraint_kwargs[
-                    dialect_name + "_" + dialect_option_key
-                ] = dialect_option_value
+                constraint_kwargs[dialect_name + "_" + dialect_option_key] = (
+                    dialect_option_value
+                )
 
         assert isinstance(self.parent, Table)
         c = self.__class__(
@@ -4886,11 +4883,13 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
             [
                 x._get_colspec(
                     schema=schema,
-                    table_name=target_table.name
-                    if target_table is not None
-                    and x._table_key_within_construction()
-                    == x.parent.table.key
-                    else None,
+                    table_name=(
+                        target_table.name
+                        if target_table is not None
+                        and x._table_key_within_construction()
+                        == x.parent.table.key
+                        else None
+                    ),
                     _is_copy=True,
                 )
                 for x in self.elements
@@ -5554,9 +5553,9 @@ class MetaData(HasSchemaAttr):
             self.info = info
         self._schemas: Set[str] = set()
         self._sequences: Dict[str, Sequence] = {}
-        self._fk_memos: Dict[
-            Tuple[str, Optional[str]], List[ForeignKey]
-        ] = collections.defaultdict(list)
+        self._fk_memos: Dict[Tuple[str, Optional[str]], List[ForeignKey]] = (
+            collections.defaultdict(list)
+        )
 
     tables: util.FacadeDict[str, Table]
     """A dictionary of :class:`_schema.Table`

@@ -43,7 +43,6 @@ if typing.TYPE_CHECKING:
 
 
 class QueuePool(Pool):
-
     """A :class:`_pool.Pool`
     that imposes a limit on the number of open connections.
 
@@ -55,9 +54,9 @@ class QueuePool(Pool):
 
     _is_asyncio = False  # type: ignore[assignment]
 
-    _queue_class: Type[
-        sqla_queue.QueueCommon[ConnectionPoolEntry]
-    ] = sqla_queue.Queue
+    _queue_class: Type[sqla_queue.QueueCommon[ConnectionPoolEntry]] = (
+        sqla_queue.Queue
+    )
 
     _pool: sqla_queue.QueueCommon[ConnectionPoolEntry]
 
@@ -250,15 +249,14 @@ class QueuePool(Pool):
 
 class AsyncAdaptedQueuePool(QueuePool):
     _is_asyncio = True  # type: ignore[assignment]
-    _queue_class: Type[
-        sqla_queue.QueueCommon[ConnectionPoolEntry]
-    ] = sqla_queue.AsyncAdaptedQueue
+    _queue_class: Type[sqla_queue.QueueCommon[ConnectionPoolEntry]] = (
+        sqla_queue.AsyncAdaptedQueue
+    )
 
     _dialect = _AsyncConnDialect()
 
 
 class NullPool(Pool):
-
     """A Pool which does not pool connections.
 
     Instead it literally opens and closes the underlying DB-API connection
@@ -298,7 +296,6 @@ class NullPool(Pool):
 
 
 class SingletonThreadPool(Pool):
-
     """A Pool that maintains one connection per thread.
 
     Maintains one connection per each thread, never moving a connection to a
@@ -418,7 +415,6 @@ class SingletonThreadPool(Pool):
 
 
 class StaticPool(Pool):
-
     """A Pool of exactly one connection, used for all requests.
 
     Reconnect-related functions such as ``recycle`` and connection
@@ -482,7 +478,6 @@ class StaticPool(Pool):
 
 
 class AssertionPool(Pool):
-
     """A :class:`_pool.Pool` that allows at most one checked out connection at
     any given time.
 

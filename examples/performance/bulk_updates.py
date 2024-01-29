@@ -3,6 +3,7 @@ of rows in bulk (under construction! there's just one test at the moment)
 
 
 """
+
 from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import Identity

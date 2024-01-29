@@ -760,7 +760,6 @@ class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
 
 
 class ExtendedEventsTest(_ExtBase, fixtures.ORMTest):
-
     """Allow custom Events implementations."""
 
     @modifies_instrumentation_finders
