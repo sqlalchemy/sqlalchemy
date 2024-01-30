@@ -1,16 +1,128 @@
 [build-system]
     build-backend = "setuptools.build_meta"
     requires = [
-        "setuptools>=47",
+        "setuptools>=61.2",
         "cython>=0.29.24; python_implementation == 'CPython'", # Skip cython when using pypy
     ]
+
+
+[project]
+name = "SQLAlchemy"
+description = "Database Abstraction Library"
+readme = "README.rst"
+authors = [{name = "Mike Bayer", email = "mike_mp@zzzcomputing.com"}]
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Database :: Front-Ends",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "typing-extensions >= 4.6.0",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://www.sqlalchemy.org"
+Documentation = "https://docs.sqlalchemy.org"
+Changelog = "https://docs.sqlalchemy.org/latest/changelog/index.html"
+"Source Code" = "https://github.com/sqlalchemy/sqlalchemy"
+"Issue Tracker" = "https://github.com/sqlalchemy/sqlalchemy/issues"
+Discussions = "https://github.com/sqlalchemy/sqlalchemy/discussions"
+
+[project.optional-dependencies]
+asyncio = ["greenlet!=0.4.17"]
+mypy = [
+    "mypy >= 1.7",
+    "types-greenlet >= 2"
+]
+mssql = ["pyodbc"]
+mssql-pymssql = ["pymssql"]
+mssql-pyodbc = ["pyodbc"]
+mysql = ["mysqlclient>=1.4.0"]
+mysql-connector = ["mysql-connector-python"]
+mariadb-connector = ["mariadb>=1.0.1,!=1.1.2,!=1.1.5"]
+oracle = ["cx_oracle>=8"]
+oracle-oracledb = ["oracledb>=1.0.1"]
+postgresql = ["psycopg2>=2.7"]
+postgresql-pg8000 = ["pg8000>=1.29.3"]
+postgresql-asyncpg = [
+    "sqlalchemy[asyncio]",
+    "asyncpg",
+]
+postgresql-psycopg2binary = ["psycopg2-binary"]
+postgresql-psycopg2cffi = ["psycopg2cffi"]
+postgresql-psycopg = ["psycopg>=3.0.7,!=3.1.15"]
+postgresql-psycopgbinary = ["psycopg[binary]>=3.0.7,!=3.1.15"]
+pymysql = ["pymysql"]
+aiomysql = [
+    "sqlalchemy[asyncio]",
+    "aiomysql",
+]
+aioodbc = [
+    "sqlalchemy[asyncio]",
+    "aioodbc",
+]
+asyncmy = [
+    "sqlalchemy[asyncio]",
+    "asyncmy>=0.2.3,!=0.2.4,!=0.2.6",
+]
+aiosqlite = [
+    "sqlalchemy[asyncio]",
+    "aiosqlite",
+]
+sqlcipher = ["sqlcipher3_binary"]
+
+# legacy pre-pep-685 names. These are ignored by pip >= 23.3.0
+mssql_pymssql = ["sqlalchemy[mssql-pymssql]"]
+mssql_pyodbc = ["sqlalchemy[mssql-pyodbc]"]
+mysql_connector = ["sqlalchemy[mysql-connector]"]
+mariadb_connector = ["sqlalchemy[mariadb-connector]"]
+oracle_oracledb = ["sqlalchemy[oracle-oracledb]"]
+postgresql_pg8000 = ["sqlalchemy[postgresql-pg8000]"]
+postgresql_asyncpg = ["sqlalchemy[postgresql-asyncpg]"]
+postgresql_psycopg2binary = ["sqlalchemy[postgresql-psycopg2binary]"]
+postgresql_psycopg2cffi = ["sqlalchemy[postgresql-psycopg2cffi]"]
+postgresql_psycopg = ["sqlalchemy[postgresql-psycopg]"]
+postgresql_psycopgbinary = ["sqlalchemy[postgresql-psycopgbinary]"]
+
+[tool.setuptools]
+include-package-data = true
+license-files = ["LICENSE"]
+
+[tool.setuptools.packages.find]
+where = ["lib"]
+namespaces = false
+
+[tool.setuptools.dynamic]
+version = {attr = "sqlalchemy.__version__"}
+
+
+[tool.distutils.egg_info]
+# ref https://github.com/pypa/setuptools/discussions/3348#discussioncomment-6556887
+tag-build = "dev"
+
 
 [tool.black]
 line-length = 79
 target-version = ['py38']
 
+
 [tool.zimports]
 black-line-length = 79
+
 
 [tool.slotscheck]
 exclude-modules = '''
@@ -54,12 +166,14 @@ markers = [
     "sparse_backend: tests that should run on multiple backends, not necessarily all",
 ]
 
+
 [tool.pyright]
 
 reportPrivateUsage = "none"
 reportUnusedClass = "none"
 reportUnusedFunction = "none"
 reportTypedDictNotRequiredAccess = "warning"
+
 
 [tool.mypy]
 mypy_path = "./lib/"
