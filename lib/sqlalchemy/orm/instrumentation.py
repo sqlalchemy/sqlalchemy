@@ -85,13 +85,11 @@ class _ExpiredAttributeLoaderProto(Protocol):
         state: state.InstanceState[Any],
         toload: Set[str],
         passive: base.PassiveFlag,
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 class _ManagerFactory(Protocol):
-    def __call__(self, class_: Type[_O]) -> ClassManager[_O]:
-        ...
+    def __call__(self, class_: Type[_O]) -> ClassManager[_O]: ...
 
 
 class ClassManager(

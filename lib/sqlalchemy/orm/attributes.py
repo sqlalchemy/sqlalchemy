@@ -542,12 +542,12 @@ class InstrumentedAttribute(QueryableAttribute[_T]):
         self.impl.delete(instance_state(instance), instance_dict(instance))
 
     @overload
-    def __get__(self, instance: None, owner: Any) -> InstrumentedAttribute[_T]:
-        ...
+    def __get__(
+        self, instance: None, owner: Any
+    ) -> InstrumentedAttribute[_T]: ...
 
     @overload
-    def __get__(self, instance: object, owner: Any) -> _T:
-        ...
+    def __get__(self, instance: object, owner: Any) -> _T: ...
 
     def __get__(
         self, instance: Optional[object], owner: Any
@@ -1538,8 +1538,7 @@ class HasCollectionAdapter:
         dict_: _InstanceDict,
         user_data: Literal[None] = ...,
         passive: Literal[PassiveFlag.PASSIVE_OFF] = ...,
-    ) -> CollectionAdapter:
-        ...
+    ) -> CollectionAdapter: ...
 
     @overload
     def get_collection(
@@ -1548,8 +1547,7 @@ class HasCollectionAdapter:
         dict_: _InstanceDict,
         user_data: _AdaptedCollectionProtocol = ...,
         passive: PassiveFlag = ...,
-    ) -> CollectionAdapter:
-        ...
+    ) -> CollectionAdapter: ...
 
     @overload
     def get_collection(
@@ -1560,8 +1558,7 @@ class HasCollectionAdapter:
         passive: PassiveFlag = ...,
     ) -> Union[
         Literal[LoaderCallableStatus.PASSIVE_NO_RESULT], CollectionAdapter
-    ]:
-        ...
+    ]: ...
 
     def get_collection(
         self,
@@ -1592,8 +1589,7 @@ if TYPE_CHECKING:
 
     def _is_collection_attribute_impl(
         impl: AttributeImpl,
-    ) -> TypeGuard[CollectionAttributeImpl]:
-        ...
+    ) -> TypeGuard[CollectionAttributeImpl]: ...
 
 else:
     _is_collection_attribute_impl = operator.attrgetter("collection")
@@ -2049,8 +2045,7 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         dict_: _InstanceDict,
         user_data: Literal[None] = ...,
         passive: Literal[PassiveFlag.PASSIVE_OFF] = ...,
-    ) -> CollectionAdapter:
-        ...
+    ) -> CollectionAdapter: ...
 
     @overload
     def get_collection(
@@ -2059,8 +2054,7 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         dict_: _InstanceDict,
         user_data: _AdaptedCollectionProtocol = ...,
         passive: PassiveFlag = ...,
-    ) -> CollectionAdapter:
-        ...
+    ) -> CollectionAdapter: ...
 
     @overload
     def get_collection(
@@ -2071,8 +2065,7 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         passive: PassiveFlag = PASSIVE_OFF,
     ) -> Union[
         Literal[LoaderCallableStatus.PASSIVE_NO_RESULT], CollectionAdapter
-    ]:
-        ...
+    ]: ...
 
     def get_collection(
         self,

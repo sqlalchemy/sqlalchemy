@@ -411,11 +411,11 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         assert_data = [
             {
                 "start": d["start"] if "start" in d else None,
-                "end": d["end"]
-                if "end" in d
-                else Point(d["x2"], d["y2"])
-                if "x2" in d
-                else None,
+                "end": (
+                    d["end"]
+                    if "end" in d
+                    else Point(d["x2"], d["y2"]) if "x2" in d else None
+                ),
                 "graph_id": d["graph_id"],
             }
             for d in data
@@ -916,9 +916,11 @@ class EventsEtcTest(fixtures.MappedTest):
                 mock.call(
                     e1,
                     Point(5, 6),
-                    LoaderCallableStatus.NO_VALUE
-                    if not active_history
-                    else None,
+                    (
+                        LoaderCallableStatus.NO_VALUE
+                        if not active_history
+                        else None
+                    ),
                     Edge.start.impl,
                 )
             ],
@@ -965,9 +967,11 @@ class EventsEtcTest(fixtures.MappedTest):
                 mock.call(
                     e1,
                     Point(7, 8),
-                    LoaderCallableStatus.NO_VALUE
-                    if not active_history
-                    else Point(5, 6),
+                    (
+                        LoaderCallableStatus.NO_VALUE
+                        if not active_history
+                        else Point(5, 6)
+                    ),
                     Edge.start.impl,
                 )
             ],
@@ -1019,9 +1023,11 @@ class EventsEtcTest(fixtures.MappedTest):
             [
                 mock.call(
                     e1,
-                    LoaderCallableStatus.NO_VALUE
-                    if not active_history
-                    else Point(5, 6),
+                    (
+                        LoaderCallableStatus.NO_VALUE
+                        if not active_history
+                        else Point(5, 6)
+                    ),
                     Edge.start.impl,
                 )
             ],

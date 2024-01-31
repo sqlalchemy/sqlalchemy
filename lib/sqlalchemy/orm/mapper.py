@@ -132,9 +132,9 @@ _WithPolymorphicArg = Union[
 ]
 
 
-_mapper_registries: weakref.WeakKeyDictionary[
-    _RegistryType, bool
-] = weakref.WeakKeyDictionary()
+_mapper_registries: weakref.WeakKeyDictionary[_RegistryType, bool] = (
+    weakref.WeakKeyDictionary()
+)
 
 
 def _all_registries() -> Set[registry]:
@@ -1606,9 +1606,11 @@ class Mapper(
 
         if self._primary_key_argument:
             coerced_pk_arg = [
-                self._str_arg_to_mapped_col("primary_key", c)
-                if isinstance(c, str)
-                else c
+                (
+                    self._str_arg_to_mapped_col("primary_key", c)
+                    if isinstance(c, str)
+                    else c
+                )
                 for c in (
                     coercions.expect(
                         roles.DDLConstraintColumnRole,
@@ -2465,9 +2467,11 @@ class Mapper(
         return "Mapper[%s%s(%s)]" % (
             self.class_.__name__,
             self.non_primary and " (non-primary)" or "",
-            self.local_table.description
-            if self.local_table is not None
-            else self.persist_selectable.description,
+            (
+                self.local_table.description
+                if self.local_table is not None
+                else self.persist_selectable.description
+            ),
         )
 
     def _is_orphan(self, state: InstanceState[_O]) -> bool:

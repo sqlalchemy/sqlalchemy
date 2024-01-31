@@ -308,29 +308,23 @@ def _assertions(
 
 if TYPE_CHECKING:
 
-    def manager_of_class(cls: Type[_O]) -> ClassManager[_O]:
-        ...
+    def manager_of_class(cls: Type[_O]) -> ClassManager[_O]: ...
 
     @overload
-    def opt_manager_of_class(cls: AliasedClass[Any]) -> None:
-        ...
+    def opt_manager_of_class(cls: AliasedClass[Any]) -> None: ...
 
     @overload
     def opt_manager_of_class(
         cls: _ExternalEntityType[_O],
-    ) -> Optional[ClassManager[_O]]:
-        ...
+    ) -> Optional[ClassManager[_O]]: ...
 
     def opt_manager_of_class(
         cls: _ExternalEntityType[_O],
-    ) -> Optional[ClassManager[_O]]:
-        ...
+    ) -> Optional[ClassManager[_O]]: ...
 
-    def instance_state(instance: _O) -> InstanceState[_O]:
-        ...
+    def instance_state(instance: _O) -> InstanceState[_O]: ...
 
-    def instance_dict(instance: object) -> Dict[str, Any]:
-        ...
+    def instance_dict(instance: object) -> Dict[str, Any]: ...
 
 else:
     # these can be replaced by sqlalchemy.ext.instrumentation
@@ -512,8 +506,7 @@ def _entity_descriptor(entity: _EntityType[Any], key: str) -> Any:
 
 if TYPE_CHECKING:
 
-    def _state_mapper(state: InstanceState[_O]) -> Mapper[_O]:
-        ...
+    def _state_mapper(state: InstanceState[_O]) -> Mapper[_O]: ...
 
 else:
     _state_mapper = util.dottedgetter("manager.mapper")
@@ -684,27 +677,25 @@ class SQLORMOperations(SQLCoreOperations[_T_co], TypingOnly):
 
     if typing.TYPE_CHECKING:
 
-        def of_type(self, class_: _EntityType[Any]) -> PropComparator[_T_co]:
-            ...
+        def of_type(
+            self, class_: _EntityType[Any]
+        ) -> PropComparator[_T_co]: ...
 
         def and_(
             self, *criteria: _ColumnExpressionArgument[bool]
-        ) -> PropComparator[bool]:
-            ...
+        ) -> PropComparator[bool]: ...
 
         def any(  # noqa: A001
             self,
             criterion: Optional[_ColumnExpressionArgument[bool]] = None,
             **kwargs: Any,
-        ) -> ColumnElement[bool]:
-            ...
+        ) -> ColumnElement[bool]: ...
 
         def has(
             self,
             criterion: Optional[_ColumnExpressionArgument[bool]] = None,
             **kwargs: Any,
-        ) -> ColumnElement[bool]:
-            ...
+        ) -> ColumnElement[bool]: ...
 
 
 class ORMDescriptor(Generic[_T_co], TypingOnly):
@@ -718,23 +709,19 @@ class ORMDescriptor(Generic[_T_co], TypingOnly):
         @overload
         def __get__(
             self, instance: Any, owner: Literal[None]
-        ) -> ORMDescriptor[_T_co]:
-            ...
+        ) -> ORMDescriptor[_T_co]: ...
 
         @overload
         def __get__(
             self, instance: Literal[None], owner: Any
-        ) -> SQLCoreOperations[_T_co]:
-            ...
+        ) -> SQLCoreOperations[_T_co]: ...
 
         @overload
-        def __get__(self, instance: object, owner: Any) -> _T_co:
-            ...
+        def __get__(self, instance: object, owner: Any) -> _T_co: ...
 
         def __get__(
             self, instance: object, owner: Any
-        ) -> Union[ORMDescriptor[_T_co], SQLCoreOperations[_T_co], _T_co]:
-            ...
+        ) -> Union[ORMDescriptor[_T_co], SQLCoreOperations[_T_co], _T_co]: ...
 
 
 class _MappedAnnotationBase(Generic[_T_co], TypingOnly):
@@ -820,29 +807,23 @@ class Mapped(
         @overload
         def __get__(
             self, instance: None, owner: Any
-        ) -> InstrumentedAttribute[_T_co]:
-            ...
+        ) -> InstrumentedAttribute[_T_co]: ...
 
         @overload
-        def __get__(self, instance: object, owner: Any) -> _T_co:
-            ...
+        def __get__(self, instance: object, owner: Any) -> _T_co: ...
 
         def __get__(
             self, instance: Optional[object], owner: Any
-        ) -> Union[InstrumentedAttribute[_T_co], _T_co]:
-            ...
+        ) -> Union[InstrumentedAttribute[_T_co], _T_co]: ...
 
         @classmethod
-        def _empty_constructor(cls, arg1: Any) -> Mapped[_T_co]:
-            ...
+        def _empty_constructor(cls, arg1: Any) -> Mapped[_T_co]: ...
 
         def __set__(
             self, instance: Any, value: Union[SQLCoreOperations[_T_co], _T_co]
-        ) -> None:
-            ...
+        ) -> None: ...
 
-        def __delete__(self, instance: Any) -> None:
-            ...
+        def __delete__(self, instance: Any) -> None: ...
 
 
 class _MappedAttribute(Generic[_T_co], TypingOnly):
@@ -919,24 +900,20 @@ class DynamicMapped(_MappedAnnotationBase[_T_co]):
         @overload
         def __get__(
             self, instance: None, owner: Any
-        ) -> InstrumentedAttribute[_T_co]:
-            ...
+        ) -> InstrumentedAttribute[_T_co]: ...
 
         @overload
         def __get__(
             self, instance: object, owner: Any
-        ) -> AppenderQuery[_T_co]:
-            ...
+        ) -> AppenderQuery[_T_co]: ...
 
         def __get__(
             self, instance: Optional[object], owner: Any
-        ) -> Union[InstrumentedAttribute[_T_co], AppenderQuery[_T_co]]:
-            ...
+        ) -> Union[InstrumentedAttribute[_T_co], AppenderQuery[_T_co]]: ...
 
         def __set__(
             self, instance: Any, value: typing.Collection[_T_co]
-        ) -> None:
-            ...
+        ) -> None: ...
 
 
 class WriteOnlyMapped(_MappedAnnotationBase[_T_co]):
@@ -975,21 +952,19 @@ class WriteOnlyMapped(_MappedAnnotationBase[_T_co]):
         @overload
         def __get__(
             self, instance: None, owner: Any
-        ) -> InstrumentedAttribute[_T_co]:
-            ...
+        ) -> InstrumentedAttribute[_T_co]: ...
 
         @overload
         def __get__(
             self, instance: object, owner: Any
-        ) -> WriteOnlyCollection[_T_co]:
-            ...
+        ) -> WriteOnlyCollection[_T_co]: ...
 
         def __get__(
             self, instance: Optional[object], owner: Any
-        ) -> Union[InstrumentedAttribute[_T_co], WriteOnlyCollection[_T_co]]:
-            ...
+        ) -> Union[
+            InstrumentedAttribute[_T_co], WriteOnlyCollection[_T_co]
+        ]: ...
 
         def __set__(
             self, instance: Any, value: typing.Collection[_T_co]
-        ) -> None:
-            ...
+        ) -> None: ...

@@ -904,13 +904,11 @@ class HybridExtensionType(InspectionAttrExtensionType):
 
 
 class _HybridGetterType(Protocol[_T_co]):
-    def __call__(s, self: Any) -> _T_co:
-        ...
+    def __call__(s, self: Any) -> _T_co: ...
 
 
 class _HybridSetterType(Protocol[_T_con]):
-    def __call__(s, self: Any, value: _T_con) -> None:
-        ...
+    def __call__(s, self: Any, value: _T_con) -> None: ...
 
 
 class _HybridUpdaterType(Protocol[_T_con]):
@@ -918,25 +916,21 @@ class _HybridUpdaterType(Protocol[_T_con]):
         s,
         cls: Any,
         value: Union[_T_con, _ColumnExpressionArgument[_T_con]],
-    ) -> List[Tuple[_DMLColumnArgument, Any]]:
-        ...
+    ) -> List[Tuple[_DMLColumnArgument, Any]]: ...
 
 
 class _HybridDeleterType(Protocol[_T_co]):
-    def __call__(s, self: Any) -> None:
-        ...
+    def __call__(s, self: Any) -> None: ...
 
 
 class _HybridExprCallableType(Protocol[_T_co]):
     def __call__(
         s, cls: Any
-    ) -> Union[_HasClauseElement[_T_co], SQLColumnExpression[_T_co]]:
-        ...
+    ) -> Union[_HasClauseElement[_T_co], SQLColumnExpression[_T_co]]: ...
 
 
 class _HybridComparatorCallableType(Protocol[_T]):
-    def __call__(self, cls: Any) -> Comparator[_T]:
-        ...
+    def __call__(self, cls: Any) -> Comparator[_T]: ...
 
 
 class _HybridClassLevelAccessor(QueryableAttribute[_T]):
@@ -947,23 +941,24 @@ class _HybridClassLevelAccessor(QueryableAttribute[_T]):
 
     if TYPE_CHECKING:
 
-        def getter(self, fget: _HybridGetterType[_T]) -> hybrid_property[_T]:
-            ...
+        def getter(
+            self, fget: _HybridGetterType[_T]
+        ) -> hybrid_property[_T]: ...
 
-        def setter(self, fset: _HybridSetterType[_T]) -> hybrid_property[_T]:
-            ...
+        def setter(
+            self, fset: _HybridSetterType[_T]
+        ) -> hybrid_property[_T]: ...
 
-        def deleter(self, fdel: _HybridDeleterType[_T]) -> hybrid_property[_T]:
-            ...
+        def deleter(
+            self, fdel: _HybridDeleterType[_T]
+        ) -> hybrid_property[_T]: ...
 
         @property
-        def overrides(self) -> hybrid_property[_T]:
-            ...
+        def overrides(self) -> hybrid_property[_T]: ...
 
         def update_expression(
             self, meth: _HybridUpdaterType[_T]
-        ) -> hybrid_property[_T]:
-            ...
+        ) -> hybrid_property[_T]: ...
 
 
 class hybrid_method(interfaces.InspectionAttrInfo, Generic[_P, _R]):
@@ -1025,14 +1020,12 @@ class hybrid_method(interfaces.InspectionAttrInfo, Generic[_P, _R]):
     @overload
     def __get__(
         self, instance: Literal[None], owner: Type[object]
-    ) -> Callable[_P, SQLCoreOperations[_R]]:
-        ...
+    ) -> Callable[_P, SQLCoreOperations[_R]]: ...
 
     @overload
     def __get__(
         self, instance: object, owner: Type[object]
-    ) -> Callable[_P, _R]:
-        ...
+    ) -> Callable[_P, _R]: ...
 
     def __get__(
         self, instance: Optional[object], owner: Type[object]
@@ -1106,18 +1099,15 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
         util.update_wrapper(self, fget)
 
     @overload
-    def __get__(self, instance: Any, owner: Literal[None]) -> Self:
-        ...
+    def __get__(self, instance: Any, owner: Literal[None]) -> Self: ...
 
     @overload
     def __get__(
         self, instance: Literal[None], owner: Type[object]
-    ) -> _HybridClassLevelAccessor[_T]:
-        ...
+    ) -> _HybridClassLevelAccessor[_T]: ...
 
     @overload
-    def __get__(self, instance: object, owner: Type[object]) -> _T:
-        ...
+    def __get__(self, instance: object, owner: Type[object]) -> _T: ...
 
     def __get__(
         self, instance: Optional[object], owner: Optional[Type[object]]

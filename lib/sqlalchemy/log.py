@@ -269,14 +269,12 @@ class echo_property:
     @overload
     def __get__(
         self, instance: Literal[None], owner: Type[Identified]
-    ) -> echo_property:
-        ...
+    ) -> echo_property: ...
 
     @overload
     def __get__(
         self, instance: Identified, owner: Type[Identified]
-    ) -> _EchoFlagType:
-        ...
+    ) -> _EchoFlagType: ...
 
     def __get__(
         self, instance: Optional[Identified], owner: Type[Identified]

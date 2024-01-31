@@ -15,6 +15,7 @@ it uses a fixed number of tables to serve any number of potential parent
 objects, but is also slightly more complex.
 
 """
+
 from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey

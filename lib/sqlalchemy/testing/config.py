@@ -177,8 +177,7 @@ class Variation:
 
     if typing.TYPE_CHECKING:
 
-        def __getattr__(self, key: str) -> bool:
-            ...
+        def __getattr__(self, key: str) -> bool: ...
 
     @property
     def name(self):
@@ -269,9 +268,11 @@ def variation(argname_or_fn, cases=None):
     else:
         argname = argname_or_fn
     cases_plus_limitations = [
-        entry
-        if (isinstance(entry, tuple) and len(entry) == 2)
-        else (entry, None)
+        (
+            entry
+            if (isinstance(entry, tuple) and len(entry) == 2)
+            else (entry, None)
+        )
         for entry in cases
     ]
 
@@ -280,9 +281,11 @@ def variation(argname_or_fn, cases=None):
     )
     return combinations(
         *[
-            (variation._name, variation, limitation)
-            if limitation is not None
-            else (variation._name, variation)
+            (
+                (variation._name, variation, limitation)
+                if limitation is not None
+                else (variation._name, variation)
+            )
             for variation, (case, limitation) in zip(
                 variations, cases_plus_limitations
             )

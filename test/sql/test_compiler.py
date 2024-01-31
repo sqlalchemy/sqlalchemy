@@ -7525,7 +7525,6 @@ class CoercionTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class ResultMapTest(fixtures.TestBase):
-
     """test the behavior of the 'entry stack' and the determination
     when the result_map needs to be populated.
 
@@ -7740,9 +7739,9 @@ class ResultMapTest(fixtures.TestBase):
         with mock.patch.object(
             dialect.statement_compiler,
             "translate_select_structure",
-            lambda self, to_translate, **kw: wrapped_again
-            if to_translate is stmt
-            else to_translate,
+            lambda self, to_translate, **kw: (
+                wrapped_again if to_translate is stmt else to_translate
+            ),
         ):
             compiled = stmt.compile(dialect=dialect)
 
@@ -7799,9 +7798,9 @@ class ResultMapTest(fixtures.TestBase):
         with mock.patch.object(
             dialect.statement_compiler,
             "translate_select_structure",
-            lambda self, to_translate, **kw: wrapped_again
-            if to_translate is stmt
-            else to_translate,
+            lambda self, to_translate, **kw: (
+                wrapped_again if to_translate is stmt else to_translate
+            ),
         ):
             compiled = stmt.compile(dialect=dialect)
 

@@ -1149,9 +1149,9 @@ class DefaultTest(fixtures.MappedTest):
         mp = self.mapper_registry.map_imperatively(
             Hoho,
             default_t,
-            eager_defaults="auto"
-            if eager_defaults.auto
-            else bool(eager_defaults),
+            eager_defaults=(
+                "auto" if eager_defaults.auto else bool(eager_defaults)
+            ),
         )
 
         h1 = Hoho(hoho=althohoval)

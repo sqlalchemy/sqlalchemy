@@ -1517,20 +1517,20 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             data: Mapped[Union[float, Decimal]] = mapped_column()
             reverse_data: Mapped[Union[Decimal, float]] = mapped_column()
 
-            optional_data: Mapped[
-                Optional[Union[float, Decimal]]
-            ] = mapped_column()
+            optional_data: Mapped[Optional[Union[float, Decimal]]] = (
+                mapped_column()
+            )
 
             # use Optional directly
-            reverse_optional_data: Mapped[
-                Optional[Union[Decimal, float]]
-            ] = mapped_column()
+            reverse_optional_data: Mapped[Optional[Union[Decimal, float]]] = (
+                mapped_column()
+            )
 
             # use Union with None, same as Optional but presents differently
             # (Optional object with __origin__ Union vs. Union)
-            reverse_u_optional_data: Mapped[
-                Union[Decimal, float, None]
-            ] = mapped_column()
+            reverse_u_optional_data: Mapped[Union[Decimal, float, None]] = (
+                mapped_column()
+            )
 
             float_data: Mapped[float] = mapped_column()
             decimal_data: Mapped[Decimal] = mapped_column()
@@ -1538,14 +1538,14 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             if compat.py310:
                 pep604_data: Mapped[float | Decimal] = mapped_column()
                 pep604_reverse: Mapped[Decimal | float] = mapped_column()
-                pep604_optional: Mapped[
-                    Decimal | float | None
-                ] = mapped_column()
+                pep604_optional: Mapped[Decimal | float | None] = (
+                    mapped_column()
+                )
                 pep604_data_fwd: Mapped["float | Decimal"] = mapped_column()
                 pep604_reverse_fwd: Mapped["Decimal | float"] = mapped_column()
-                pep604_optional_fwd: Mapped[
-                    "Decimal | float | None"
-                ] = mapped_column()
+                pep604_optional_fwd: Mapped["Decimal | float | None"] = (
+                    mapped_column()
+                )
 
         is_(User.__table__.c.data.type, our_type)
         is_false(User.__table__.c.data.nullable)
@@ -2508,9 +2508,9 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                         collection_class=list
                     )
                 elif datatype.collections_mutable_sequence:
-                    bs: Mapped[
-                        collections.abc.MutableSequence[B]
-                    ] = relationship(collection_class=list)
+                    bs: Mapped[collections.abc.MutableSequence[B]] = (
+                        relationship(collection_class=list)
+                    )
                 else:
                     datatype.fail()
 
@@ -2537,15 +2537,15 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                     if datatype.typing_sequence:
                         bs: Mapped[typing.Sequence[B]] = relationship()
                     elif datatype.collections_sequence:
-                        bs: Mapped[
-                            collections.abc.Sequence[B]
-                        ] = relationship()
+                        bs: Mapped[collections.abc.Sequence[B]] = (
+                            relationship()
+                        )
                     elif datatype.typing_mutable_sequence:
                         bs: Mapped[typing.MutableSequence[B]] = relationship()
                     elif datatype.collections_mutable_sequence:
-                        bs: Mapped[
-                            collections.abc.MutableSequence[B]
-                        ] = relationship()
+                        bs: Mapped[collections.abc.MutableSequence[B]] = (
+                            relationship()
+                        )
                     else:
                         datatype.fail()
 

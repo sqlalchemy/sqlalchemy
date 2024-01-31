@@ -1,4 +1,5 @@
 """Single-table (table-per-hierarchy) inheritance example."""
+
 from __future__ import annotations
 
 from typing import Annotated

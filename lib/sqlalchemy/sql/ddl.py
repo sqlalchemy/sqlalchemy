@@ -95,8 +95,7 @@ class DDLIfCallable(Protocol):
         dialect: Dialect,
         compiler: Optional[DDLCompiler] = ...,
         checkfirst: bool,
-    ) -> bool:
-        ...
+    ) -> bool: ...
 
 
 class DDLIf(typing.NamedTuple):
@@ -1021,10 +1020,12 @@ class SchemaDropper(InvokeDropDDLBase):
                 reversed(
                     sort_tables_and_constraints(
                         unsorted_tables,
-                        filter_fn=lambda constraint: False
-                        if not self.dialect.supports_alter
-                        or constraint.name is None
-                        else None,
+                        filter_fn=lambda constraint: (
+                            False
+                            if not self.dialect.supports_alter
+                            or constraint.name is None
+                            else None
+                        ),
                     )
                 )
             )

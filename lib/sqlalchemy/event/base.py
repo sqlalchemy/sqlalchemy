@@ -42,9 +42,9 @@ from .registry import _EventKey
 from .. import util
 from ..util.typing import Literal
 
-_registrars: MutableMapping[
-    str, List[Type[_HasEventsDispatch[Any]]]
-] = util.defaultdict(list)
+_registrars: MutableMapping[str, List[Type[_HasEventsDispatch[Any]]]] = (
+    util.defaultdict(list)
+)
 
 
 def _is_event_name(name: str) -> bool:
@@ -240,8 +240,7 @@ class _HasEventsDispatch(Generic[_ET]):
 
     if typing.TYPE_CHECKING:
 
-        def __getattr__(self, name: str) -> _InstanceLevelDispatch[_ET]:
-            ...
+        def __getattr__(self, name: str) -> _InstanceLevelDispatch[_ET]: ...
 
     def __init_subclass__(cls) -> None:
         """Intercept new Event subclasses and create associated _Dispatch
@@ -430,12 +429,10 @@ class dispatcher(Generic[_ET]):
     @overload
     def __get__(
         self, obj: Literal[None], cls: Type[Any]
-    ) -> Type[_Dispatch[_ET]]:
-        ...
+    ) -> Type[_Dispatch[_ET]]: ...
 
     @overload
-    def __get__(self, obj: Any, cls: Type[Any]) -> _DispatchCommon[_ET]:
-        ...
+    def __get__(self, obj: Any, cls: Type[Any]) -> _DispatchCommon[_ET]: ...
 
     def __get__(self, obj: Any, cls: Type[Any]) -> Any:
         if obj is None:

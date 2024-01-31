@@ -147,9 +147,9 @@ def _standard_listen_example(
     )
 
     text %= {
-        "current_since": " (arguments as of %s)" % current_since
-        if current_since
-        else "",
+        "current_since": (
+            " (arguments as of %s)" % current_since if current_since else ""
+        ),
         "event_name": fn.__name__,
         "has_kw_arguments": ", **kw" if dispatch_collection.has_kw else "",
         "named_event_arguments": ", ".join(dispatch_collection.arg_names),
@@ -177,9 +177,9 @@ def _legacy_listen_examples(
             % {
                 "since": since,
                 "event_name": fn.__name__,
-                "has_kw_arguments": " **kw"
-                if dispatch_collection.has_kw
-                else "",
+                "has_kw_arguments": (
+                    " **kw" if dispatch_collection.has_kw else ""
+                ),
                 "named_event_arguments": ", ".join(args),
                 "sample_target": sample_target,
             }

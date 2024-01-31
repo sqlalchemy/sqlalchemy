@@ -2896,9 +2896,11 @@ class BetweenSubclassJoinWExtraJoinedLoad(
             m1 = aliased(Manager, flat=True)
             q = sess.query(Engineer, m1).join(Engineer.manager.of_type(m1))
 
-        with _aliased_join_warning(
-            r"Manager\(managers\)"
-        ) if autoalias else nullcontext():
+        with (
+            _aliased_join_warning(r"Manager\(managers\)")
+            if autoalias
+            else nullcontext()
+        ):
             self.assert_compile(
                 q,
                 "SELECT engineers.id AS "

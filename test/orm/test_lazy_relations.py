@@ -993,7 +993,6 @@ class LazyTest(_fixtures.FixtureTest):
 
 
 class GetterStateTest(_fixtures.FixtureTest):
-
     """test lazyloader on non-existent attribute returns
     expected attribute symbols, maintain expected state"""
 
@@ -1080,11 +1079,13 @@ class GetterStateTest(_fixtures.FixtureTest):
             properties={
                 "user": relationship(
                     User,
-                    primaryjoin=and_(
-                        users.c.id == addresses.c.user_id, users.c.id != 27
-                    )
-                    if dont_use_get
-                    else None,
+                    primaryjoin=(
+                        and_(
+                            users.c.id == addresses.c.user_id, users.c.id != 27
+                        )
+                        if dont_use_get
+                        else None
+                    ),
                     back_populates="addresses",
                 )
             },

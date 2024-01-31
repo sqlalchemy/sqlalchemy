@@ -702,9 +702,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             select(tbl),
             "SELECT %(name)s.test.id FROM %(name)s.test"
             % {"name": rendered_schema},
-            schema_translate_map={None: schemaname}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: schemaname} if use_schema_translate else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -777,16 +777,20 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "test",
             metadata,
             Column("id", Integer, primary_key=True),
-            schema=quoted_name("Foo.dbo", True)
-            if not use_schema_translate
-            else None,
+            schema=(
+                quoted_name("Foo.dbo", True)
+                if not use_schema_translate
+                else None
+            ),
         )
         self.assert_compile(
             select(tbl),
             "SELECT [Foo.dbo].test.id FROM [Foo.dbo].test",
-            schema_translate_map={None: quoted_name("Foo.dbo", True)}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: quoted_name("Foo.dbo", True)}
+                if use_schema_translate
+                else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -804,9 +808,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(tbl),
             "SELECT [Foo.dbo].test.id FROM [Foo.dbo].test",
-            schema_translate_map={None: "[Foo.dbo]"}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: "[Foo.dbo]"} if use_schema_translate else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -824,9 +828,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(tbl),
             "SELECT foo.dbo.test.id FROM foo.dbo.test",
-            schema_translate_map={None: "foo.dbo"}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: "foo.dbo"} if use_schema_translate else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -842,9 +846,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(tbl),
             "SELECT [Foo].dbo.test.id FROM [Foo].dbo.test",
-            schema_translate_map={None: "Foo.dbo"}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: "Foo.dbo"} if use_schema_translate else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 

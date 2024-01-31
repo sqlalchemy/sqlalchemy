@@ -492,9 +492,11 @@ class ReturningTest(fixtures.TablesTest):
                 t.c.value,
                 sort_by_parameter_order=bool(sort_by_parameter_order),
             ),
-            [{"value": value} for i in range(10)]
-            if multiple_rows
-            else {"value": value},
+            (
+                [{"value": value} for i in range(10)]
+                if multiple_rows
+                else {"value": value}
+            ),
         )
 
         if multiple_rows:
@@ -596,9 +598,11 @@ class ReturningTest(fixtures.TablesTest):
                 t.c.value,
                 sort_by_parameter_order=bool(sort_by_parameter_order),
             ),
-            [{"value": value} for i in range(10)]
-            if multiple_rows
-            else {"value": value},
+            (
+                [{"value": value} for i in range(10)]
+                if multiple_rows
+                else {"value": value}
+            ),
         )
 
         if multiple_rows:

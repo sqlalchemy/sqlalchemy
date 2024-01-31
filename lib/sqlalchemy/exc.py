@@ -571,8 +571,7 @@ class DBAPIError(StatementError):
         connection_invalidated: bool = False,
         dialect: Optional[Dialect] = None,
         ismulti: Optional[bool] = None,
-    ) -> StatementError:
-        ...
+    ) -> StatementError: ...
 
     @overload
     @classmethod
@@ -586,8 +585,7 @@ class DBAPIError(StatementError):
         connection_invalidated: bool = False,
         dialect: Optional[Dialect] = None,
         ismulti: Optional[bool] = None,
-    ) -> DontWrapMixin:
-        ...
+    ) -> DontWrapMixin: ...
 
     @overload
     @classmethod
@@ -601,8 +599,7 @@ class DBAPIError(StatementError):
         connection_invalidated: bool = False,
         dialect: Optional[Dialect] = None,
         ismulti: Optional[bool] = None,
-    ) -> BaseException:
-        ...
+    ) -> BaseException: ...
 
     @classmethod
     def instance(

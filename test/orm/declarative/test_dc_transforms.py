@@ -179,9 +179,9 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
                 JSON, init=True, default_factory=lambda: {}
             )
 
-        new_instance: GenericSetting[  # noqa: F841
-            Dict[str, Any]
-        ] = GenericSetting(key="x", value={"foo": "bar"})
+        new_instance: GenericSetting[Dict[str, Any]] = (  # noqa: F841
+            GenericSetting(key="x", value={"foo": "bar"})
+        )
 
     def test_no_anno_doesnt_go_into_dc(
         self, dc_decl_base: Type[MappedAsDataclass]

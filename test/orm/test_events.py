@@ -390,9 +390,9 @@ class ORMExecuteTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
                 is_orm_statement=ctx.is_orm_statement,
                 is_relationship_load=ctx.is_relationship_load,
                 is_column_load=ctx.is_column_load,
-                lazy_loaded_from=ctx.lazy_loaded_from
-                if ctx.is_select
-                else None,
+                lazy_loaded_from=(
+                    ctx.lazy_loaded_from if ctx.is_select else None
+                ),
             )
 
         return canary
@@ -1545,9 +1545,11 @@ class RestoreLoadContextTest(fixtures.DeclarativeMappedTest):
             (
                 lambda session: session,
                 "loaded_as_persistent",
-                lambda session, instance: instance.unloaded
-                if instance.__class__.__name__ == "A"
-                else None,
+                lambda session, instance: (
+                    instance.unloaded
+                    if instance.__class__.__name__ == "A"
+                    else None
+                ),
             ),
             argnames="target, event_name, fn",
         )(fn)
@@ -1669,7 +1671,6 @@ class DeclarativeEventListenTest(
 
 
 class DeferredMapperEventsTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
-
     """ "test event listeners against unmapped classes.
 
     This incurs special logic.  Note if we ever do the "remove" case,

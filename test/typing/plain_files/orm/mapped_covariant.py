@@ -24,8 +24,7 @@ class ChildProtocol(Protocol):
     # Read-only for simplicity, mutable protocol members are complicated,
     # see https://mypy.readthedocs.io/en/latest/common_issues.html#covariant-subtyping-of-mutable-protocol-members-is-rejected
     @property
-    def parent(self) -> Mapped[ParentProtocol]:
-        ...
+    def parent(self) -> Mapped[ParentProtocol]: ...
 
 
 def get_parent_name(child: ChildProtocol) -> str:

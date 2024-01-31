@@ -213,15 +213,12 @@ class Row(BaseRow, Sequence[Any], Generic[_TP]):
     if TYPE_CHECKING:
 
         @overload
-        def __getitem__(self, index: int) -> Any:
-            ...
+        def __getitem__(self, index: int) -> Any: ...
 
         @overload
-        def __getitem__(self, index: slice) -> Sequence[Any]:
-            ...
+        def __getitem__(self, index: slice) -> Sequence[Any]: ...
 
-        def __getitem__(self, index: Union[int, slice]) -> Any:
-            ...
+        def __getitem__(self, index: Union[int, slice]) -> Any: ...
 
     def __lt__(self, other: Any) -> bool:
         return self._op(other, operator.lt)
@@ -359,8 +356,7 @@ class RowMapping(BaseRow, typing.Mapping["_KeyType", Any]):
 
     if TYPE_CHECKING:
 
-        def __getitem__(self, key: _KeyType) -> Any:
-            ...
+        def __getitem__(self, key: _KeyType) -> Any: ...
 
     else:
         __getitem__ = BaseRow._get_by_key_impl_mapping

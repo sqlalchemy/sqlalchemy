@@ -172,8 +172,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
 
     if TYPE_CHECKING:
 
-        def __iter__(self) -> Iterator[_T]:
-            ...
+        def __iter__(self) -> Iterator[_T]: ...
 
     def __getitem__(self, index: Any) -> Union[_T, List[_T]]:
         sess = self.session

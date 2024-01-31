@@ -57,8 +57,7 @@ class QueueCommon(Generic[_T]):
     maxsize: int
     use_lifo: bool
 
-    def __init__(self, maxsize: int = 0, use_lifo: bool = False):
-        ...
+    def __init__(self, maxsize: int = 0, use_lifo: bool = False): ...
 
     def empty(self) -> bool:
         raise NotImplementedError()
@@ -242,8 +241,7 @@ class AsyncAdaptedQueue(QueueCommon[_T]):
     if typing.TYPE_CHECKING:
 
         @staticmethod
-        def await_(coroutine: Awaitable[Any]) -> _T:
-            ...
+        def await_(coroutine: Awaitable[Any]) -> _T: ...
 
     else:
         await_ = staticmethod(await_only)

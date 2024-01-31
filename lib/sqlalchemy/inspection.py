@@ -74,8 +74,7 @@ class _InspectableTypeProtocol(Protocol[_TCov]):
 
     """
 
-    def _sa_inspect_type(self) -> _TCov:
-        ...
+    def _sa_inspect_type(self) -> _TCov: ...
 
 
 class _InspectableProtocol(Protocol[_TCov]):
@@ -84,35 +83,31 @@ class _InspectableProtocol(Protocol[_TCov]):
 
     """
 
-    def _sa_inspect_instance(self) -> _TCov:
-        ...
+    def _sa_inspect_instance(self) -> _TCov: ...
 
 
 @overload
 def inspect(
     subject: Type[_InspectableTypeProtocol[_IN]], raiseerr: bool = True
-) -> _IN:
-    ...
+) -> _IN: ...
 
 
 @overload
-def inspect(subject: _InspectableProtocol[_IN], raiseerr: bool = True) -> _IN:
-    ...
+def inspect(
+    subject: _InspectableProtocol[_IN], raiseerr: bool = True
+) -> _IN: ...
 
 
 @overload
-def inspect(subject: Inspectable[_IN], raiseerr: bool = True) -> _IN:
-    ...
+def inspect(subject: Inspectable[_IN], raiseerr: bool = True) -> _IN: ...
 
 
 @overload
-def inspect(subject: Any, raiseerr: Literal[False] = ...) -> Optional[Any]:
-    ...
+def inspect(subject: Any, raiseerr: Literal[False] = ...) -> Optional[Any]: ...
 
 
 @overload
-def inspect(subject: Any, raiseerr: bool = True) -> Any:
-    ...
+def inspect(subject: Any, raiseerr: bool = True) -> Any: ...
 
 
 def inspect(subject: Any, raiseerr: bool = True) -> Any:

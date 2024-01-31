@@ -289,8 +289,7 @@ def testing_engine(
     options: Optional[Dict[str, Any]] = None,
     asyncio: Literal[False] = False,
     transfer_staticpool: bool = False,
-) -> Engine:
-    ...
+) -> Engine: ...
 
 
 @typing.overload
@@ -299,8 +298,7 @@ def testing_engine(
     options: Optional[Dict[str, Any]] = None,
     asyncio: Literal[True] = True,
     transfer_staticpool: bool = False,
-) -> AsyncEngine:
-    ...
+) -> AsyncEngine: ...
 
 
 def testing_engine(

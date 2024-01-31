@@ -212,8 +212,7 @@ def add_global(
 @overload
 def get_callexpr_kwarg(
     callexpr: CallExpr, name: str, *, expr_types: None = ...
-) -> Optional[Union[CallExpr, NameExpr]]:
-    ...
+) -> Optional[Union[CallExpr, NameExpr]]: ...
 
 
 @overload
@@ -222,8 +221,7 @@ def get_callexpr_kwarg(
     name: str,
     *,
     expr_types: Tuple[TypingType[_TArgType], ...],
-) -> Optional[_TArgType]:
-    ...
+) -> Optional[_TArgType]: ...
 
 
 def get_callexpr_kwarg(
@@ -315,9 +313,11 @@ def unbound_to_instance(
         return Instance(
             bound_type,
             [
-                unbound_to_instance(api, arg)
-                if isinstance(arg, UnboundType)
-                else arg
+                (
+                    unbound_to_instance(api, arg)
+                    if isinstance(arg, UnboundType)
+                    else arg
+                )
                 for arg in typ.args
             ],
         )

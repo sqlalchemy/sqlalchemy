@@ -82,13 +82,11 @@ def create_engine(
     query_cache_size: int = ...,
     use_insertmanyvalues: bool = ...,
     **kwargs: Any,
-) -> Engine:
-    ...
+) -> Engine: ...
 
 
 @overload
-def create_engine(url: Union[str, URL], **kwargs: Any) -> Engine:
-    ...
+def create_engine(url: Union[str, URL], **kwargs: Any) -> Engine: ...
 
 
 @util.deprecated_params(
@@ -824,13 +822,11 @@ def create_pool_from_url(
     timeout: float = ...,
     use_lifo: bool = ...,
     **kwargs: Any,
-) -> Pool:
-    ...
+) -> Pool: ...
 
 
 @overload
-def create_pool_from_url(url: Union[str, URL], **kwargs: Any) -> Pool:
-    ...
+def create_pool_from_url(url: Union[str, URL], **kwargs: Any) -> Pool: ...
 
 
 def create_pool_from_url(url: Union[str, URL], **kwargs: Any) -> Pool:

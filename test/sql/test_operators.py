@@ -483,19 +483,24 @@ class MultiElementExprTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         if negate:
             self.assert_compile(
                 select(~expr),
-                f"SELECT NOT (t.q{opstring}t.p{opstring}{exprs}) "
-                "AS anon_1 FROM t"
-                if not reverse
-                else f"SELECT NOT ({exprs}{opstring}t.q{opstring}t.p) "
-                "AS anon_1 FROM t",
+                (
+                    f"SELECT NOT (t.q{opstring}t.p{opstring}{exprs}) "
+                    "AS anon_1 FROM t"
+                    if not reverse
+                    else f"SELECT NOT ({exprs}{opstring}t.q{opstring}t.p) "
+                    "AS anon_1 FROM t"
+                ),
             )
         else:
             self.assert_compile(
                 select(expr),
-                f"SELECT t.q{opstring}t.p{opstring}{exprs} AS anon_1 FROM t"
-                if not reverse
-                else f"SELECT {exprs}{opstring}t.q{opstring}t.p "
-                f"AS anon_1 FROM t",
+                (
+                    f"SELECT t.q{opstring}t.p{opstring}{exprs} "
+                    "AS anon_1 FROM t"
+                    if not reverse
+                    else f"SELECT {exprs}{opstring}t.q{opstring}t.p "
+                    "AS anon_1 FROM t"
+                ),
             )
 
     @testing.combinations(
@@ -565,9 +570,11 @@ class MultiElementExprTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             self.assert_compile(
                 select(~expr),
-                f"SELECT {str_expr} AS anon_1 FROM t"
-                if not reverse
-                else f"SELECT {str_expr} AS anon_1 FROM t",
+                (
+                    f"SELECT {str_expr} AS anon_1 FROM t"
+                    if not reverse
+                    else f"SELECT {str_expr} AS anon_1 FROM t"
+                ),
             )
         else:
             if reverse:
@@ -583,9 +590,11 @@ class MultiElementExprTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             self.assert_compile(
                 select(expr),
-                f"SELECT {str_expr} AS anon_1 FROM t"
-                if not reverse
-                else f"SELECT {str_expr} AS anon_1 FROM t",
+                (
+                    f"SELECT {str_expr} AS anon_1 FROM t"
+                    if not reverse
+                    else f"SELECT {str_expr} AS anon_1 FROM t"
+                ),
             )
 
 
@@ -650,9 +659,11 @@ class CustomUnaryOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         col = column("somecol", modulus())
         self.assert_compile(
             col.modulus(),
-            "somecol %%"
-            if paramstyle in ("format", "pyformat")
-            else "somecol %",
+            (
+                "somecol %%"
+                if paramstyle in ("format", "pyformat")
+                else "somecol %"
+            ),
             dialect=default.DefaultDialect(paramstyle=paramstyle),
         )
 
@@ -667,9 +678,11 @@ class CustomUnaryOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         col = column("somecol", modulus())
         self.assert_compile(
             col.modulus_prefix(),
-            "%% somecol"
-            if paramstyle in ("format", "pyformat")
-            else "% somecol",
+            (
+                "%% somecol"
+                if paramstyle in ("format", "pyformat")
+                else "% somecol"
+            ),
             dialect=default.DefaultDialect(paramstyle=paramstyle),
         )
 
@@ -1272,7 +1285,6 @@ class ArrayIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 
 class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
-
     """test standalone booleans being wrapped in an AsBoolean, as well
     as true/false compilation."""
 
@@ -1433,7 +1445,6 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 
 class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
-
     """test interaction of and_()/or_() with boolean , null constants"""
 
     __dialect__ = default.DefaultDialect(supports_native_boolean=True)

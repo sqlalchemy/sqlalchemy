@@ -71,7 +71,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
-
     """test the usage of text() implicit within the select() construct
     when strings are passed."""
 

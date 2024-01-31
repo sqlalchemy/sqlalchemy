@@ -147,17 +147,14 @@ class _AsyncConnDialect(_ConnDialect):
 
 
 class _CreatorFnType(Protocol):
-    def __call__(self) -> DBAPIConnection:
-        ...
+    def __call__(self) -> DBAPIConnection: ...
 
 
 class _CreatorWRecFnType(Protocol):
-    def __call__(self, rec: ConnectionPoolEntry) -> DBAPIConnection:
-        ...
+    def __call__(self, rec: ConnectionPoolEntry) -> DBAPIConnection: ...
 
 
 class Pool(log.Identified, event.EventTarget):
-
     """Abstract base class for connection pools."""
 
     dispatch: dispatcher[Pool]
@@ -633,7 +630,6 @@ class ConnectionPoolEntry(ManagesConnection):
 
 
 class _ConnectionRecord(ConnectionPoolEntry):
-
     """Maintains a position in a connection pool which references a pooled
     connection.
 
@@ -729,11 +725,13 @@ class _ConnectionRecord(ConnectionPoolEntry):
 
         rec.fairy_ref = ref = weakref.ref(
             fairy,
-            lambda ref: _finalize_fairy(
-                None, rec, pool, ref, echo, transaction_was_reset=False
-            )
-            if _finalize_fairy is not None
-            else None,
+            lambda ref: (
+                _finalize_fairy(
+                    None, rec, pool, ref, echo, transaction_was_reset=False
+                )
+                if _finalize_fairy is not None
+                else None
+            ),
         )
         _strong_ref_connection_records[ref] = rec
         if echo:
@@ -1074,14 +1072,11 @@ class PoolProxiedConnection(ManagesConnection):
 
     if typing.TYPE_CHECKING:
 
-        def commit(self) -> None:
-            ...
+        def commit(self) -> None: ...
 
-        def cursor(self) -> DBAPICursor:
-            ...
+        def cursor(self) -> DBAPICursor: ...
 
-        def rollback(self) -> None:
-            ...
+        def rollback(self) -> None: ...
 
     @property
     def is_valid(self) -> bool:
@@ -1189,7 +1184,6 @@ class _AdhocProxiedConnection(PoolProxiedConnection):
 
 
 class _ConnectionFairy(PoolProxiedConnection):
-
     """Proxies a DBAPI connection and provides return-on-dereference
     support.
 

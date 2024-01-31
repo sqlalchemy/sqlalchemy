@@ -1195,9 +1195,11 @@ class LazyLoader(
                     key,
                     self,
                     loadopt,
-                    loadopt._generate_extra_criteria(context)
-                    if loadopt._extra_criteria
-                    else None,
+                    (
+                        loadopt._generate_extra_criteria(context)
+                        if loadopt._extra_criteria
+                        else None
+                    ),
                 ),
                 key,
             )
@@ -1672,9 +1674,11 @@ class SubqueryLoader(PostLoader):
         elif ltj > 2:
             middle = [
                 (
-                    orm_util.AliasedClass(item[0])
-                    if not inspect(item[0]).is_aliased_class
-                    else item[0].entity,
+                    (
+                        orm_util.AliasedClass(item[0])
+                        if not inspect(item[0]).is_aliased_class
+                        else item[0].entity
+                    ),
                     item[1],
                 )
                 for item in to_join[1:-1]
@@ -2328,9 +2332,11 @@ class JoinedLoader(AbstractRelationshipLoader):
 
             to_adapt = orm_util.AliasedClass(
                 self.mapper,
-                alias=alt_selectable._anonymous_fromclause(flat=True)
-                if alt_selectable is not None
-                else None,
+                alias=(
+                    alt_selectable._anonymous_fromclause(flat=True)
+                    if alt_selectable is not None
+                    else None
+                ),
                 flat=True,
                 use_mapper_path=True,
             )
