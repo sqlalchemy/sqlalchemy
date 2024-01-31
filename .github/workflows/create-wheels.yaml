@@ -72,7 +72,7 @@ jobs:
 
       - name: Build compiled wheels
         if: ${{ matrix.wheel_mode == 'compiled' }}
-        uses: pypa/cibuildwheel@v2.16.2
+        uses: pypa/cibuildwheel@v2.16.5
         env:
           CIBW_ARCHS_LINUX: ${{ matrix.linux_archs }}
           CIBW_BUILD: ${{ matrix.python }}
