@@ -62,14 +62,16 @@ def process_functions(filename: str, cmd: code_writer_cmd) -> str:
                             textwrap.indent(
                                 f"""
 
-# appease mypy which seems to not want to accept _T from
-# _ColumnExpressionArgument, as it includes non-generic types
+# set ColumnElement[_T] as a separate overload, to appease mypy
+# which seems to not want to accept _T from _ColumnExpressionArgument.
+# this is even if all non-generic types are removed from it, so
+# reasons remain unclear for why this does not work
 
 @overload
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     self,
     col: ColumnElement[_T],
-    *args: _ColumnExpressionArgument[Any],
+    *args: _ColumnExpressionOrLiteralArgument[Any],
     **kwargs: Any,
 ) -> {fn_class.__name__}[_T]:
     ...
@@ -78,15 +80,26 @@ def {key}( {'  # noqa: A001' if is_reserved_word else ''}
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     self,
     col: _ColumnExpressionArgument[_T],
-    *args: _ColumnExpressionArgument[Any],
+    *args: _ColumnExpressionOrLiteralArgument[Any],
     **kwargs: Any,
 ) -> {fn_class.__name__}[_T]:
         ...
 
+
+@overload
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     self,
-    col: _ColumnExpressionArgument[_T],
-    *args: _ColumnExpressionArgument[Any],
+    col: _ColumnExpressionOrLiteralArgument[_T],
+    *args: _ColumnExpressionOrLiteralArgument[Any],
+    **kwargs: Any,
+) -> {fn_class.__name__}[_T]:
+        ...
+
+
+def {key}( {'  # noqa: A001' if is_reserved_word else ''}
+    self,
+    col: _ColumnExpressionOrLiteralArgument[_T],
+    *args: _ColumnExpressionOrLiteralArgument[Any],
     **kwargs: Any,
 ) -> {fn_class.__name__}[_T]:
     ...
@@ -156,7 +169,7 @@ def {key}(self) -> Type[{_type}]:{_reserved_word}
                                 rf"""
 stmt{count} = select(func.{key}(column('x', Integer)))
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*int\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*int\]
 reveal_type(stmt{count})
 
 """,
@@ -170,7 +183,7 @@ reveal_type(stmt{count})
                                 rf"""
 stmt{count} = select(func.{key}(column('x', String), ','))
 
-# EXPECTED_RE_TYPE: .*Select\[Tuple\[.*str\]\]
+# EXPECTED_RE_TYPE: .*Select\[.*str\]
 reveal_type(stmt{count})
 
 """,
@@ -182,7 +195,7 @@ reveal_type(stmt{count})
                         fn_class.type, TypeEngine
                     ):
                         python_type = fn_class.type.python_type
-                        python_expr = rf"Tuple\[.*{python_type.__name__}\]"
+                        python_expr = rf".*{python_type.__name__}"
                         argspec = inspect.getfullargspec(fn_class)
                         if fn_class.__name__ == "next_value":
                             args = "Sequence('x_seq')"

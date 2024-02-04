@@ -1,5 +1,5 @@
 # dialects/postgresql/psycopg.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -79,6 +79,8 @@ from ...util.concurrency import await_
 
 if TYPE_CHECKING:
     from typing import Iterable
+
+    from psycopg import AsyncConnection
 
 logger = logging.getLogger("sqlalchemy.dialects.postgresql")
 
@@ -588,6 +590,7 @@ class AsyncAdapt_psycopg_ss_cursor(
 
 
 class AsyncAdapt_psycopg_connection(AsyncAdapt_dbapi_connection):
+    _connection: AsyncConnection
     __slots__ = ()
 
     _cursor_cls = AsyncAdapt_psycopg_cursor

@@ -1,5 +1,5 @@
 # engine/cursor.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -28,7 +28,6 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import TYPE_CHECKING
-from typing import TypeVar
 from typing import Union
 
 from .result import IteratorResult
@@ -53,6 +52,9 @@ from ..sql.type_api import TypeEngine
 from ..util import compat
 from ..util.typing import Literal
 from ..util.typing import Self
+from ..util.typing import TupleAny
+from ..util.typing import TypeVarTuple
+from ..util.typing import Unpack
 
 
 if typing.TYPE_CHECKING:
@@ -71,7 +73,7 @@ if typing.TYPE_CHECKING:
     from ..sql.type_api import _ResultProcessorType
 
 
-_T = TypeVar("_T", bound=Any)
+_Ts = TypeVarTuple("_Ts")
 
 
 # metadata entry tuple indexes.
@@ -344,7 +346,7 @@ class CursorResultMetaData(ResultMetaData):
 
     def __init__(
         self,
-        parent: CursorResult[Any],
+        parent: CursorResult[Unpack[TupleAny]],
         cursor_description: _DBAPICursorDescription,
     ):
         context = parent.context
@@ -928,18 +930,22 @@ class ResultFetchStrategy:
     alternate_cursor_description: Optional[_DBAPICursorDescription] = None
 
     def soft_close(
-        self, result: CursorResult[Any], dbapi_cursor: Optional[DBAPICursor]
+        self,
+        result: CursorResult[Unpack[TupleAny]],
+        dbapi_cursor: Optional[DBAPICursor],
     ) -> None:
         raise NotImplementedError()
 
     def hard_close(
-        self, result: CursorResult[Any], dbapi_cursor: Optional[DBAPICursor]
+        self,
+        result: CursorResult[Unpack[TupleAny]],
+        dbapi_cursor: Optional[DBAPICursor],
     ) -> None:
         raise NotImplementedError()
 
     def yield_per(
         self,
-        result: CursorResult[Any],
+        result: CursorResult[Unpack[TupleAny]],
         dbapi_cursor: Optional[DBAPICursor],
         num: int,
     ) -> None:
@@ -947,7 +953,7 @@ class ResultFetchStrategy:
 
     def fetchone(
         self,
-        result: CursorResult[Any],
+        result: CursorResult[Unpack[TupleAny]],
         dbapi_cursor: DBAPICursor,
         hard_close: bool = False,
     ) -> Any:
@@ -955,7 +961,7 @@ class ResultFetchStrategy:
 
     def fetchmany(
         self,
-        result: CursorResult[Any],
+        result: CursorResult[Unpack[TupleAny]],
         dbapi_cursor: DBAPICursor,
         size: Optional[int] = None,
     ) -> Any:
@@ -963,14 +969,14 @@ class ResultFetchStrategy:
 
     def fetchall(
         self,
-        result: CursorResult[Any],
+        result: CursorResult[Unpack[TupleAny]],
         dbapi_cursor: DBAPICursor,
     ) -> Any:
         raise NotImplementedError()
 
     def handle_exception(
         self,
-        result: CursorResult[Any],
+        result: CursorResult[Unpack[TupleAny]],
         dbapi_cursor: Optional[DBAPICursor],
         err: BaseException,
     ) -> NoReturn:
@@ -1375,7 +1381,7 @@ def null_dml_result() -> IteratorResult[Any]:
     return it
 
 
-class CursorResult(Result[_T]):
+class CursorResult(Result[Unpack[_Ts]]):
     """A Result that is representing state from a DBAPI cursor.
 
     .. versionchanged:: 1.4  The :class:`.CursorResult``
@@ -2108,7 +2114,9 @@ class CursorResult(Result[_T]):
     def _raw_row_iterator(self):
         return self._fetchiter_impl()
 
-    def merge(self, *others: Result[Any]) -> MergedResult[Any]:
+    def merge(
+        self, *others: Result[Unpack[TupleAny]]
+    ) -> MergedResult[Unpack[TupleAny]]:
         merged_result = super().merge(*others)
         setup_rowcounts = self.context._has_rowcount
         if setup_rowcounts:

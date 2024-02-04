@@ -56,6 +56,9 @@ def _history_mapper(local_mapper):
             local_mapper.local_table.metadata,
             name=local_mapper.local_table.name + "_history",
         )
+        for idx in history_table.indexes:
+            if idx.name is not None:
+                idx.name += "_history"
 
         for orig_c, history_c in zip(
             local_mapper.local_table.c, history_table.c

@@ -1,5 +1,5 @@
 # engine/default.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -66,6 +66,9 @@ from ..sql.compiler import InsertmanyvaluesSentinelOpts
 from ..sql.compiler import SQLCompiler
 from ..sql.elements import quoted_name
 from ..util.typing import Literal
+from ..util.typing import TupleAny
+from ..util.typing import Unpack
+
 
 if typing.TYPE_CHECKING:
     from types import ModuleType
@@ -1187,7 +1190,7 @@ class DefaultExecutionContext(ExecutionContext):
     result_column_struct: Optional[
         Tuple[List[ResultColumnsEntry], bool, bool, bool, bool]
     ] = None
-    returned_default_rows: Optional[Sequence[Row[Any]]] = None
+    returned_default_rows: Optional[Sequence[Row[Unpack[TupleAny]]]] = None
 
     execution_options: _ExecuteOptions = util.EMPTY_DICT
 
@@ -1583,7 +1586,13 @@ class DefaultExecutionContext(ExecutionContext):
         elif ch is CACHE_MISS:
             return "generated in %.5fs" % (now - gen_time,)
         elif ch is CACHING_DISABLED:
-            return "caching disabled %.5fs" % (now - gen_time,)
+            if "_cache_disable_reason" in self.execution_options:
+                return "caching disabled (%s) %.5fs " % (
+                    self.execution_options["_cache_disable_reason"],
+                    now - gen_time,
+                )
+            else:
+                return "caching disabled %.5fs" % (now - gen_time,)
         elif ch is NO_DIALECT_SUPPORT:
             return "dialect %s+%s does not support caching %.5fs" % (
                 self.dialect.name,

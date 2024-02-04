@@ -1,5 +1,5 @@
 # orm/_typing.py
-# Copyright (C) 2022-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2022-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -78,7 +78,7 @@ _IdentityKeyType = Tuple[Type[_T], Tuple[Any, ...], Optional[Any]]
 
 _ORMColumnExprArgument = Union[
     ColumnElement[_T],
-    _HasClauseElement,
+    _HasClauseElement[_T],
     roles.ExpressionElementRole[_T],
 ]
 

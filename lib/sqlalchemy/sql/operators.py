@@ -1,5 +1,5 @@
 # sql/operators.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -1819,10 +1819,10 @@ class ColumnOperators(Operators):
         See the documentation for :func:`_sql.any_` for examples.
 
         .. note:: be sure to not confuse the newer
-            :meth:`_sql.ColumnOperators.any_` method with its older
-            :class:`_types.ARRAY`-specific counterpart, the
-            :meth:`_types.ARRAY.Comparator.any` method, which a different
-            calling syntax and usage pattern.
+            :meth:`_sql.ColumnOperators.any_` method with the **legacy**
+            version of this method, the :meth:`_types.ARRAY.Comparator.any`
+            method that's specific to :class:`_types.ARRAY`, which uses a
+            different calling style.
 
         """
         return self.operate(any_op)
@@ -1834,10 +1834,10 @@ class ColumnOperators(Operators):
         See the documentation for :func:`_sql.all_` for examples.
 
         .. note:: be sure to not confuse the newer
-            :meth:`_sql.ColumnOperators.all_` method with its older
-            :class:`_types.ARRAY`-specific counterpart, the
-            :meth:`_types.ARRAY.Comparator.all` method, which a different
-            calling syntax and usage pattern.
+            :meth:`_sql.ColumnOperators.all_` method with the **legacy**
+            version of this method, the :meth:`_types.ARRAY.Comparator.all`
+            method that's specific to :class:`_types.ARRAY`, which uses a
+            different calling style.
 
         """
         return self.operate(all_op)

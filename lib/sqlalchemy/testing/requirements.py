@@ -1,5 +1,5 @@
 # testing/requirements.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -1522,6 +1522,12 @@ class SuiteRequirements(Requirements):
     def python311(self):
         return exclusions.only_if(
             lambda: util.py311, "Python 3.11 or above required"
+        )
+
+    @property
+    def python312(self):
+        return exclusions.only_if(
+            lambda: util.py312, "Python 3.12 or above required"
         )
 
     @property

@@ -1,5 +1,5 @@
 # engine/_py_row.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -18,10 +18,11 @@ from typing import Optional
 from typing import Tuple
 from typing import Type
 
+from ..util.typing import TupleAny
+
 if typing.TYPE_CHECKING:
     from .result import _KeyType
     from .result import _ProcessorsType
-    from .result import _RawRowType
     from .result import _TupleGetterType
     from .result import ResultMetaData
 
@@ -33,14 +34,14 @@ class BaseRow:
 
     _parent: ResultMetaData
     _key_to_index: Mapping[_KeyType, int]
-    _data: _RawRowType
+    _data: TupleAny
 
     def __init__(
         self,
         parent: ResultMetaData,
         processors: Optional[_ProcessorsType],
         key_to_index: Mapping[_KeyType, int],
-        data: _RawRowType,
+        data: TupleAny,
     ):
         """Row objects are constructed by CursorResult objects."""
         object.__setattr__(self, "_parent", parent)

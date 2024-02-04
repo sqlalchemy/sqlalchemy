@@ -1,5 +1,5 @@
 # dialects/postgresql/base.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -1112,15 +1112,34 @@ PostgreSQL Table Options
 Several options for CREATE TABLE are supported directly by the PostgreSQL
 dialect in conjunction with the :class:`_schema.Table` construct:
 
+* ``INHERITS``::
+
+    Table("some_table", metadata, ..., postgresql_inherits="some_supertable")
+
+    Table("some_table", metadata, ..., postgresql_inherits=("t1", "t2", ...))
+
+* ``ON COMMIT``::
+
+    Table("some_table", metadata, ..., postgresql_on_commit='PRESERVE ROWS')
+
+* ``PARTITION BY``::
+
+    Table("some_table", metadata, ...,
+          postgresql_partition_by='LIST (part_column)')
+
+    .. versionadded:: 1.2.6
+
 * ``TABLESPACE``::
 
     Table("some_table", metadata, ..., postgresql_tablespace='some_tablespace')
 
   The above option is also available on the :class:`.Index` construct.
 
-* ``ON COMMIT``::
+* ``USING``::
 
-    Table("some_table", metadata, ..., postgresql_on_commit='PRESERVE ROWS')
+    Table("some_table", metadata, ..., postgresql_using='heap')
+
+    .. versionadded:: 2.0.26
 
 * ``WITH OIDS``::
 
@@ -1129,19 +1148,6 @@ dialect in conjunction with the :class:`_schema.Table` construct:
 * ``WITHOUT OIDS``::
 
     Table("some_table", metadata, ..., postgresql_with_oids=False)
-
-* ``INHERITS``::
-
-    Table("some_table", metadata, ..., postgresql_inherits="some_supertable")
-
-    Table("some_table", metadata, ..., postgresql_inherits=("t1", "t2", ...))
-
-* ``PARTITION BY``::
-
-    Table("some_table", metadata, ...,
-          postgresql_partition_by='LIST (part_column)')
-
-    .. versionadded:: 1.2.6
 
 .. seealso::
 
@@ -1413,13 +1419,13 @@ from typing import TYPE_CHECKING
 from typing import TypedDict
 from typing import Union
 
-from . import array as _array
-from . import hstore as _hstore
+from . import arraylib as _array
 from . import json as _json
 from . import pg_catalog
 from . import ranges as _ranges
 from .ext import _regconfig_fn
 from .ext import aggregate_order_by
+from .hstore import HSTORE
 from .named_types import CreateDomainType as CreateDomainType  # noqa: F401
 from .named_types import CreateEnumType as CreateEnumType  # noqa: F401
 from .named_types import DOMAIN as DOMAIN  # noqa: F401
@@ -1608,7 +1614,7 @@ colspecs = {
 
 ischema_names = {
     "_array": _array.ARRAY,
-    "hstore": _hstore.HSTORE,
+    "hstore": HSTORE,
     "json": _json.JSON,
     "jsonb": _json.JSONB,
     "int4range": _ranges.INT4RANGE,
@@ -2395,6 +2401,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
         if pg_opts["partition_by"]:
             table_opts.append("\n PARTITION BY %s" % pg_opts["partition_by"])
 
+        if pg_opts["using"]:
+            table_opts.append("\n USING %s" % pg_opts["using"])
+
         if pg_opts["with_oids"] is True:
             table_opts.append("\n WITH OIDS")
         elif pg_opts["with_oids"] is False:
@@ -3006,6 +3015,7 @@ class PGDialect(default.DefaultDialect):
                 "with_oids": None,
                 "on_commit": None,
                 "inherits": None,
+                "using": None,
             },
         ),
         (
@@ -4696,9 +4706,13 @@ class PGDialect(default.DefaultDialect):
             # "CHECK (((a > 1) AND (a < 5))) NOT VALID"
             # "CHECK (some_boolean_function(a))"
             # "CHECK (((a\n < 1)\n OR\n (a\n >= 5))\n)"
+            # "CHECK (a NOT NULL) NO INHERIT"
+            # "CHECK (a NOT NULL) NO INHERIT NOT VALID"
 
             m = re.match(
-                r"^CHECK *\((.+)\)( NOT VALID)?$", src, flags=re.DOTALL
+                r"^CHECK *\((.+)\)( NO INHERIT)?( NOT VALID)?$",
+                src,
+                flags=re.DOTALL,
             )
             if not m:
                 util.warn("Could not parse CHECK constraint text: %r" % src)
@@ -4712,8 +4726,14 @@ class PGDialect(default.DefaultDialect):
                 "sqltext": sqltext,
                 "comment": comment,
             }
-            if m and m.group(2):
-                entry["dialect_options"] = {"not_valid": True}
+            if m:
+                do = {}
+                if " NOT VALID" in m.groups():
+                    do["not_valid"] = True
+                if " NO INHERIT" in m.groups():
+                    do["no_inherit"] = True
+                if do:
+                    entry["dialect_options"] = do
 
             check_constraints[(schema, table_name)].append(entry)
         return check_constraints.items()

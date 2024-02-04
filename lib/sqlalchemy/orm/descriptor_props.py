@@ -1,5 +1,5 @@
 # orm/descriptor_props.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -55,7 +55,10 @@ from ..sql import operators
 from ..sql.elements import BindParameter
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_pep593
+from ..util.typing import TupleAny
 from ..util.typing import typing_get_args
+from ..util.typing import Unpack
+
 
 if typing.TYPE_CHECKING:
     from ._typing import _InstanceDict
@@ -713,11 +716,11 @@ class CompositeProperty(
 
         def create_row_processor(
             self,
-            query: Select[Any],
-            procs: Sequence[Callable[[Row[Any]], Any]],
+            query: Select[Unpack[TupleAny]],
+            procs: Sequence[Callable[[Row[Unpack[TupleAny]]], Any]],
             labels: Sequence[str],
-        ) -> Callable[[Row[Any]], Any]:
-            def proc(row: Row[Any]) -> Any:
+        ) -> Callable[[Row[Unpack[TupleAny]]], Any]:
+            def proc(row: Row[Unpack[TupleAny]]) -> Any:
                 return self.property.composite_class(
                     *[proc(row) for proc in procs]
                 )

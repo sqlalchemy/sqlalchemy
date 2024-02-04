@@ -1,5 +1,5 @@
 # ext/asyncio/engine.py
-# Copyright (C) 2020-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2020-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -16,7 +16,6 @@ from typing import Generator
 from typing import NoReturn
 from typing import Optional
 from typing import overload
-from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -41,6 +40,9 @@ from ...engine.base import NestedTransaction
 from ...engine.base import Transaction
 from ...exc import ArgumentError
 from ...util.concurrency import greenlet_spawn
+from ...util.typing import TupleAny
+from ...util.typing import TypeVarTuple
+from ...util.typing import Unpack
 
 if TYPE_CHECKING:
     from ...engine.cursor import CursorResult
@@ -62,6 +64,7 @@ if TYPE_CHECKING:
     from ...sql.selectable import TypedReturnsRows
 
 _T = TypeVar("_T", bound=Any)
+_Ts = TypeVarTuple("_Ts")
 
 
 def create_async_engine(url: Union[str, URL], **kw: Any) -> AsyncEngine:
@@ -514,11 +517,11 @@ class AsyncConnection(
     @overload
     def stream(
         self,
-        statement: TypedReturnsRows[_T],
+        statement: TypedReturnsRows[Unpack[_Ts]],
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> GeneratorStartableContext[AsyncResult[_T]]:
+    ) -> GeneratorStartableContext[AsyncResult[Unpack[_Ts]]]:
         ...
 
     @overload
@@ -528,7 +531,7 @@ class AsyncConnection(
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> GeneratorStartableContext[AsyncResult[Any]]:
+    ) -> GeneratorStartableContext[AsyncResult[Unpack[TupleAny]]]:
         ...
 
     @asyncstartablecontext
@@ -538,7 +541,7 @@ class AsyncConnection(
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> AsyncIterator[AsyncResult[Any]]:
+    ) -> AsyncIterator[AsyncResult[Unpack[TupleAny]]]:
         """Execute a statement and return an awaitable yielding a
         :class:`_asyncio.AsyncResult` object.
 
@@ -573,6 +576,11 @@ class AsyncConnection(
             :meth:`.AsyncConnection.stream_scalars`
 
         """
+        if not self.dialect.supports_server_side_cursors:
+            raise exc.InvalidRequestError(
+                "Cant use `stream` or `stream_scalars` with the current "
+                "dialect since it does not support server side cursors."
+            )
 
         result = await greenlet_spawn(
             self._proxied.execute,
@@ -596,11 +604,11 @@ class AsyncConnection(
     @overload
     async def execute(
         self,
-        statement: TypedReturnsRows[_T],
+        statement: TypedReturnsRows[Unpack[_Ts]],
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> CursorResult[_T]:
+    ) -> CursorResult[Unpack[_Ts]]:
         ...
 
     @overload
@@ -610,7 +618,7 @@ class AsyncConnection(
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> CursorResult[Any]:
+    ) -> CursorResult[Unpack[TupleAny]]:
         ...
 
     async def execute(
@@ -619,7 +627,7 @@ class AsyncConnection(
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> CursorResult[Any]:
+    ) -> CursorResult[Unpack[TupleAny]]:
         r"""Executes a SQL statement construct and return a buffered
         :class:`_engine.Result`.
 
@@ -663,7 +671,7 @@ class AsyncConnection(
     @overload
     async def scalar(
         self,
-        statement: TypedReturnsRows[Tuple[_T]],
+        statement: TypedReturnsRows[_T],
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
@@ -705,7 +713,7 @@ class AsyncConnection(
     @overload
     async def scalars(
         self,
-        statement: TypedReturnsRows[Tuple[_T]],
+        statement: TypedReturnsRows[_T],
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
@@ -748,7 +756,7 @@ class AsyncConnection(
     @overload
     def stream_scalars(
         self,
-        statement: TypedReturnsRows[Tuple[_T]],
+        statement: TypedReturnsRows[_T],
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
@@ -1160,7 +1168,7 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):
         This applies **only** to the built-in cache that is established
         via the :paramref:`_engine.create_engine.query_cache_size` parameter.
         It will not impact any dictionary caches that were passed via the
-        :paramref:`.Connection.execution_options.query_cache` parameter.
+        :paramref:`.Connection.execution_options.compiled_cache` parameter.
 
         .. versionadded:: 1.4
 

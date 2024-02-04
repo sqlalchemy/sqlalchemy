@@ -1,5 +1,5 @@
 # orm/decl_api.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -77,6 +77,7 @@ from ..util.typing import flatten_newtype
 from ..util.typing import is_generic
 from ..util.typing import is_literal
 from ..util.typing import is_newtype
+from ..util.typing import is_pep695
 from ..util.typing import Literal
 from ..util.typing import Self
 
@@ -1263,6 +1264,10 @@ class registry:
                 search = ((python_type, python_type_type),)
         elif is_newtype(python_type):
             python_type_type = flatten_newtype(python_type)
+            search = ((python_type, python_type_type),)
+        elif is_pep695(python_type):
+            python_type_type = python_type.__value__
+            flattened = None
             search = ((python_type, python_type_type),)
         else:
             python_type_type = cast("Type[Any]", python_type)

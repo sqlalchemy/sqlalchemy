@@ -9,8 +9,75 @@
 
 
 .. changelog::
-    :version: 2.0.25
+    :version: 2.0.26
     :include_notes_from: unreleased_20
+
+.. changelog::
+    :version: 2.0.25
+    :released: January 2, 2024
+
+    .. change::
+        :tags: oracle, asyncio
+        :tickets: 10679
+
+        Added support for :ref:`oracledb` in asyncio mode, using the newly released
+        version of the ``oracledb`` DBAPI that includes asyncio support. For the
+        2.0 series, this is a preview release, where the current implementation
+        does not yet have include support for
+        :meth:`_asyncio.AsyncConnection.stream`. Improved support is planned for
+        the 2.1 release of SQLAlchemy.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10800
+
+        Fixed issue where when making use of the
+        :paramref:`_orm.relationship.post_update` feature at the same time as using
+        a mapper version_id_col could lead to a situation where the second UPDATE
+        statement emitted by the post-update feature would fail to make use of the
+        correct version identifier, assuming an UPDATE was already emitted in that
+        flush which had already bumped the version counter.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 10801, 10818
+
+        Fixed regressions caused by typing added to the ``sqlalchemy.sql.functions``
+        module in version 2.0.24, as part of :ticket:`6810`:
+
+        * Further enhancements to pep-484 typing to allow SQL functions from
+          :attr:`_sql.func` derived elements to work more effectively with ORM-mapped
+          attributes (:ticket:`10801`)
+
+        * Fixed the argument types passed to functions so that literal expressions
+          like strings and ints are again interpreted correctly (:ticket:`10818`)
+
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 10807
+
+        Added preliminary support for Python 3.12 pep-695 type alias structures,
+        when resolving custom type maps for ORM Annotated Declarative mappings.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10815
+
+        Fixed issue where ORM Annotated Declarative would mis-interpret the left
+        hand side of a relationship without any collection specified as
+        uselist=True if the left type were given as a class and not a string,
+        without using future-style annotations.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 10817
+
+        Improved compilation of :func:`_sql.any_` / :func:`_sql.all_` in the
+        context of a negation of boolean comparison, will now render ``NOT (expr)``
+        rather than reversing the equality operator to not equals, allowing
+        finer-grained control of negations for these non-typical operators.
 
 .. changelog::
     :version: 2.0.24

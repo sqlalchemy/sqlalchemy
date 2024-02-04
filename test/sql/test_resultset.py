@@ -50,6 +50,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
@@ -269,6 +270,7 @@ class CursorResultTest(fixtures.TablesTest):
         r = connection.scalars(users.select().order_by(users.c.user_id))
         eq_(r.all(), [7, 8, 9])
 
+    @expect_deprecated(".*is deprecated, Row now behaves like a tuple.*")
     def test_result_tuples(self, connection):
         users = self.tables.users
 
@@ -285,6 +287,7 @@ class CursorResultTest(fixtures.TablesTest):
         ).tuples()
         eq_(r.all(), [(7, "jack"), (8, "ed"), (9, "fred")])
 
+    @expect_deprecated(".*is deprecated, Row now behaves like a tuple.*")
     def test_row_tuple(self, connection):
         users = self.tables.users
 

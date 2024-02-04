@@ -1,5 +1,5 @@
 # ext/hybrid.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -930,7 +930,7 @@ class _HybridDeleterType(Protocol[_T_co]):
 class _HybridExprCallableType(Protocol[_T_co]):
     def __call__(
         s, cls: Any
-    ) -> Union[_HasClauseElement, SQLColumnExpression[_T_co]]:
+    ) -> Union[_HasClauseElement[_T_co], SQLColumnExpression[_T_co]]:
         ...
 
 
@@ -1447,7 +1447,7 @@ class Comparator(interfaces.PropComparator[_T]):
     classes for usage with hybrids."""
 
     def __init__(
-        self, expression: Union[_HasClauseElement, SQLColumnExpression[_T]]
+        self, expression: Union[_HasClauseElement[_T], SQLColumnExpression[_T]]
     ):
         self.expression = expression
 
@@ -1482,7 +1482,7 @@ class ExprComparator(Comparator[_T]):
     def __init__(
         self,
         cls: Type[Any],
-        expression: Union[_HasClauseElement, SQLColumnExpression[_T]],
+        expression: Union[_HasClauseElement[_T], SQLColumnExpression[_T]],
         hybrid: hybrid_property[_T],
     ):
         self.cls = cls

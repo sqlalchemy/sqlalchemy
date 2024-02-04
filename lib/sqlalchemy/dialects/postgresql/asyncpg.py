@@ -1,5 +1,5 @@
 # dialects/postgresql/asyncpg.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors <see AUTHORS
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors <see AUTHORS
 # file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -927,7 +927,7 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
                 # try to gracefully close; see #10717
                 # timeout added in asyncpg 0.14.0 December 2017
                 await_(self._connection.close(timeout=2))
-            except asyncio.TimeoutError:
+            except (asyncio.TimeoutError, OSError, self.dbapi.PostgresError):
                 # in the case where we are recycling an old connection
                 # that may have already been disconnected, close() will
                 # fail with the above timeout.  in this case, terminate

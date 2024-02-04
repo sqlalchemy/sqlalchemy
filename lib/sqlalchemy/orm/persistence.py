@@ -1,5 +1,5 @@
 # orm/persistence.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -1659,9 +1659,18 @@ def _postfetch(
 
     for c in prefetch_cols:
         if c.key in params and c in mapper._columntoproperty:
-            dict_[mapper._columntoproperty[c].key] = params[c.key]
+            pkey = mapper._columntoproperty[c].key
+
+            # set prefetched value in dict and also pop from committed_state,
+            # since this is new database state that replaces whatever might
+            # have previously been fetched (see #10800).  this is essentially a
+            # shorthand version of set_committed_value(), which could also be
+            # used here directly (with more overhead)
+            dict_[pkey] = params[c.key]
+            state.committed_state.pop(pkey, None)
+
             if refresh_flush:
-                load_evt_attrs.append(mapper._columntoproperty[c].key)
+                load_evt_attrs.append(pkey)
 
     if refresh_flush and load_evt_attrs:
         mapper.class_manager.dispatch.refresh_flush(

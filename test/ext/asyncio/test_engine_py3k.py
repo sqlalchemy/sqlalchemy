@@ -785,6 +785,27 @@ class AsyncEngineTest(EngineFixture):
         finally:
             await greenlet_spawn(conn.close)
 
+    @testing.combinations("stream", "stream_scalars", argnames="method")
+    @async_test
+    async def test_server_side_required_for_scalars(
+        self, async_engine, method
+    ):
+        with mock.patch.object(
+            async_engine.dialect, "supports_server_side_cursors", False
+        ):
+            async with async_engine.connect() as c:
+                with expect_raises_message(
+                    exc.InvalidRequestError,
+                    "Cant use `stream` or `stream_scalars` with the current "
+                    "dialect since it does not support server side cursors.",
+                ):
+                    if method == "stream":
+                        await c.stream(select(1))
+                    elif method == "stream_scalars":
+                        await c.stream_scalars(select(1))
+                    else:
+                        testing.fail(method)
+
 
 class AsyncCreatePoolTest(fixtures.TestBase):
     @config.fixture
@@ -857,44 +878,44 @@ class AsyncEventTest(EngineFixture):
         ):
             event.listen(async_engine, "checkout", mock.Mock())
 
+    def select1(self, engine):
+        if engine.dialect.name == "oracle":
+            return "select 1 from dual"
+        else:
+            return "select 1"
+
     @async_test
     async def test_sync_before_cursor_execute_engine(self, async_engine):
         canary = mock.Mock()
 
         event.listen(async_engine.sync_engine, "before_cursor_execute", canary)
 
+        s1 = self.select1(async_engine)
         async with async_engine.connect() as conn:
             sync_conn = conn.sync_connection
-            await conn.execute(text("select 1"))
+            await conn.execute(text(s1))
 
         eq_(
             canary.mock_calls,
-            [
-                mock.call(
-                    sync_conn, mock.ANY, "select 1", mock.ANY, mock.ANY, False
-                )
-            ],
+            [mock.call(sync_conn, mock.ANY, s1, mock.ANY, mock.ANY, False)],
         )
 
     @async_test
     async def test_sync_before_cursor_execute_connection(self, async_engine):
         canary = mock.Mock()
 
+        s1 = self.select1(async_engine)
         async with async_engine.connect() as conn:
             sync_conn = conn.sync_connection
 
             event.listen(
                 async_engine.sync_engine, "before_cursor_execute", canary
             )
-            await conn.execute(text("select 1"))
+            await conn.execute(text(s1))
 
         eq_(
             canary.mock_calls,
-            [
-                mock.call(
-                    sync_conn, mock.ANY, "select 1", mock.ANY, mock.ANY, False
-                )
-            ],
+            [mock.call(sync_conn, mock.ANY, s1, mock.ANY, mock.ANY, False)],
         )
 
     @async_test
@@ -932,6 +953,9 @@ class AsyncInspection(EngineFixture):
 
 
 class AsyncResultTest(EngineFixture):
+    __backend__ = True
+    __requires__ = ("server_side_cursors", "async_dialect")
+
     @async_test
     async def test_no_ss_cursor_w_execute(self, async_engine):
         users = self.tables.users
@@ -1259,7 +1283,13 @@ class TextSyncDBAPI(fixtures.TestBase):
     def async_engine(self):
         engine = create_engine("sqlite:///:memory:", future=True)
         engine.dialect.is_async = True
-        return _async_engine.AsyncEngine(engine)
+        engine.dialect.supports_server_side_cursors = True
+        with mock.patch.object(
+            engine.dialect.execution_ctx_cls,
+            "create_server_side_cursor",
+            engine.dialect.execution_ctx_cls.create_default_cursor,
+        ):
+            yield _async_engine.AsyncEngine(engine)
 
     @async_test
     @combinations(
@@ -1396,3 +1426,23 @@ class AsyncProxyTest(EngineFixture, fixtures.TestBase):
 
         async_t2 = async_conn.get_transaction()
         is_(async_t1, async_t2)
+
+
+class PoolRegenTest(EngineFixture):
+    @testing.requires.queue_pool
+    @async_test
+    @testing.variation("do_dispose", [True, False])
+    async def test_gather_after_dispose(self, testing_engine, do_dispose):
+        engine = testing_engine(
+            asyncio=True, options=dict(pool_size=10, max_overflow=10)
+        )
+
+        async def thing(engine):
+            async with engine.connect() as conn:
+                await conn.exec_driver_sql("select 1")
+
+        if do_dispose:
+            await engine.dispose()
+
+        tasks = [thing(engine) for _ in range(10)]
+        await asyncio.gather(*tasks)

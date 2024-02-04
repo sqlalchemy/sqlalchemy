@@ -1,5 +1,5 @@
 # testing/provision.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -146,7 +146,10 @@ def generate_db_urls(db_urls, extra_drivers):
     ]
 
     for url_obj, dialect in urls_plus_dialects:
-        backend_to_driver_we_already_have[dialect.name].add(dialect.driver)
+        # use get_driver_name instead of dialect.driver to account for
+        # "_async" virtual drivers like oracledb and psycopg
+        driver_name = url_obj.get_driver_name()
+        backend_to_driver_we_already_have[dialect.name].add(driver_name)
 
     backend_to_driver_we_need = {}
 

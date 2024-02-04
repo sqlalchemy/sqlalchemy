@@ -86,7 +86,7 @@ class LoopOperate(operators.ColumnOperators):
 class DefaultColumnComparatorTest(
     testing.AssertsCompiledSQL, fixtures.TestBase
 ):
-    dialect = "default_enhanced"
+    dialect = __dialect__ = "default_enhanced"
 
     @testing.combinations((operators.desc_op, desc), (operators.asc_op, asc))
     def test_scalar(self, operator, compare_to):
@@ -4540,7 +4540,7 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
         return t
 
-    @testing.combinations(
+    null_comparisons = testing.combinations(
         lambda col: any_(col) == None,
         lambda col: col.any_() == None,
         lambda col: any_(col) == null(),
@@ -4551,11 +4551,22 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         lambda col: None == col.any_(),
         argnames="expr",
     )
+
+    @null_comparisons
     @testing.combinations("int", "array", argnames="datatype")
     def test_any_generic_null(self, datatype, expr, t_fixture):
         col = t_fixture.c.data if datatype == "int" else t_fixture.c.arrval
 
         self.assert_compile(expr(col), "NULL = ANY (tab1.%s)" % col.name)
+
+    @null_comparisons
+    @testing.combinations("int", "array", argnames="datatype")
+    def test_any_generic_null_negate(self, datatype, expr, t_fixture):
+        col = t_fixture.c.data if datatype == "int" else t_fixture.c.arrval
+
+        self.assert_compile(
+            ~expr(col), "NOT (NULL = ANY (tab1.%s))" % col.name
+        )
 
     @testing.fixture(
         params=[
@@ -4565,48 +4576,78 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             ("ALL", lambda x: x.all_()),
         ]
     )
-    def operator(self, request):
+    def any_all_operators(self, request):
         return request.param
 
+    # test legacy array any() / all().  these are superseded by the
+    # any_() / all_() versions
     @testing.fixture(
         params=[
             ("ANY", lambda x, *o: x.any(*o)),
             ("ALL", lambda x, *o: x.all(*o)),
         ]
     )
-    def array_op(self, request):
+    def legacy_any_all_operators(self, request):
         return request.param
 
-    def test_array(self, t_fixture, operator):
+    def test_array(self, t_fixture, any_all_operators):
         t = t_fixture
-        op, fn = operator
+        op, fn = any_all_operators
         self.assert_compile(
             5 == fn(t.c.arrval),
             f":param_1 = {op} (tab1.arrval)",
             checkparams={"param_1": 5},
         )
 
-    def test_comparator_array(self, t_fixture, operator):
+    def test_comparator_inline_negate(self, t_fixture, any_all_operators):
         t = t_fixture
-        op, fn = operator
+        op, fn = any_all_operators
+        self.assert_compile(
+            5 != fn(t.c.arrval),
+            f":param_1 != {op} (tab1.arrval)",
+            checkparams={"param_1": 5},
+        )
+
+    @testing.combinations(
+        (operator.eq, "="),
+        (operator.ne, "!="),
+        (operator.gt, ">"),
+        (operator.le, "<="),
+        argnames="operator,opstring",
+    )
+    def test_comparator_outer_negate(
+        self, t_fixture, any_all_operators, operator, opstring
+    ):
+        """test #10817"""
+        t = t_fixture
+        op, fn = any_all_operators
+        self.assert_compile(
+            ~(operator(5, fn(t.c.arrval))),
+            f"NOT (:param_1 {opstring} {op} (tab1.arrval))",
+            checkparams={"param_1": 5},
+        )
+
+    def test_comparator_array(self, t_fixture, any_all_operators):
+        t = t_fixture
+        op, fn = any_all_operators
         self.assert_compile(
             5 > fn(t.c.arrval),
             f":param_1 > {op} (tab1.arrval)",
             checkparams={"param_1": 5},
         )
 
-    def test_comparator_array_wexpr(self, t_fixture, operator):
+    def test_comparator_array_wexpr(self, t_fixture, any_all_operators):
         t = t_fixture
-        op, fn = operator
+        op, fn = any_all_operators
         self.assert_compile(
             t.c.data > fn(t.c.arrval),
             f"tab1.data > {op} (tab1.arrval)",
             checkparams={},
         )
 
-    def test_illegal_ops(self, t_fixture, operator):
+    def test_illegal_ops(self, t_fixture, any_all_operators):
         t = t_fixture
-        op, fn = operator
+        op, fn = any_all_operators
 
         assert_raises_message(
             exc.ArgumentError,
@@ -4622,10 +4663,10 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             t.c.data + fn(t.c.arrval), f"tab1.data + {op} (tab1.arrval)"
         )
 
-    def test_bindparam_coercion(self, t_fixture, array_op):
+    def test_bindparam_coercion(self, t_fixture, legacy_any_all_operators):
         """test #7979"""
         t = t_fixture
-        op, fn = array_op
+        op, fn = legacy_any_all_operators
 
         expr = fn(t.c.arrval, bindparam("param"))
         expected = f"%(param)s = {op} (tab1.arrval)"
@@ -4633,9 +4674,11 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         self.assert_compile(expr, expected, dialect="postgresql")
 
-    def test_array_comparator_accessor(self, t_fixture, array_op):
+    def test_array_comparator_accessor(
+        self, t_fixture, legacy_any_all_operators
+    ):
         t = t_fixture
-        op, fn = array_op
+        op, fn = legacy_any_all_operators
 
         self.assert_compile(
             fn(t.c.arrval, 5, operator.gt),
@@ -4643,9 +4686,11 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"arrval_1": 5},
         )
 
-    def test_array_comparator_negate_accessor(self, t_fixture, array_op):
+    def test_array_comparator_negate_accessor(
+        self, t_fixture, legacy_any_all_operators
+    ):
         t = t_fixture
-        op, fn = array_op
+        op, fn = legacy_any_all_operators
 
         self.assert_compile(
             ~fn(t.c.arrval, 5, operator.gt),
@@ -4653,9 +4698,9 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"arrval_1": 5},
         )
 
-    def test_array_expression(self, t_fixture, operator):
+    def test_array_expression(self, t_fixture, any_all_operators):
         t = t_fixture
-        op, fn = operator
+        op, fn = any_all_operators
 
         self.assert_compile(
             5 == fn(t.c.arrval[5:6] + postgresql.array([3, 4])),
@@ -4671,9 +4716,9 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             dialect="postgresql",
         )
 
-    def test_subq(self, t_fixture, operator):
+    def test_subq(self, t_fixture, any_all_operators):
         t = t_fixture
-        op, fn = operator
+        op, fn = any_all_operators
 
         self.assert_compile(
             5 == fn(select(t.c.data).where(t.c.data < 10).scalar_subquery()),
@@ -4682,9 +4727,9 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"data_1": 10, "param_1": 5},
         )
 
-    def test_scalar_values(self, t_fixture, operator):
+    def test_scalar_values(self, t_fixture, any_all_operators):
         t = t_fixture
-        op, fn = operator
+        op, fn = any_all_operators
 
         self.assert_compile(
             5 == fn(values(t.c.data).data([(1,), (42,)]).scalar_values()),

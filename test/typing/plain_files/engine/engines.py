@@ -15,7 +15,7 @@ def regular() -> None:
 
         result = conn.execute(text("select * from table"))
 
-        # EXPECTED_TYPE: CursorResult[Any]
+        # EXPECTED_TYPE: CursorResult[Unpack[.*tuple[Any, ...]]]
         reveal_type(result)
 
     with e.begin() as conn:
@@ -24,7 +24,7 @@ def regular() -> None:
 
         result = conn.execute(text("select * from table"))
 
-        # EXPECTED_TYPE: CursorResult[Any]
+        # EXPECTED_TYPE: CursorResult[Unpack[.*tuple[Any, ...]]]
         reveal_type(result)
 
     engine = create_engine("postgresql://scott:tiger@localhost/test")

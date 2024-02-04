@@ -784,7 +784,7 @@ class DefaultRequirements(SuiteRequirements):
         #8221.
 
         """
-        return fails_if(["mssql", "oracle>=12"])
+        return fails_if(["mssql", "oracle < 23"])
 
     @property
     def parens_in_union_contained_select_w_limit_offset(self):
@@ -1693,6 +1693,10 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def mysql_fsp(self):
         return only_if(["mysql >= 5.6.4", "mariadb"])
+
+    @property
+    def mysql_notnull_generated_columns(self):
+        return only_if(["mysql >= 5.7"])
 
     @property
     def mysql_fully_case_sensitive(self):

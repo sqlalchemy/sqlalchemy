@@ -1,5 +1,5 @@
 # event/attr.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -404,7 +404,12 @@ class _MutexProtocol(Protocol):
 
 
 class _CompoundListener(_InstanceLevelDispatch[_ET]):
-    __slots__ = "_exec_once_mutex", "_exec_once", "_exec_w_sync_once"
+    __slots__ = (
+        "_exec_once_mutex",
+        "_exec_once",
+        "_exec_w_sync_once",
+        "_is_asyncio",
+    )
 
     _exec_once_mutex: _MutexProtocol
     parent_listeners: Collection[_ListenerFnType]
@@ -412,11 +417,18 @@ class _CompoundListener(_InstanceLevelDispatch[_ET]):
     _exec_once: bool
     _exec_w_sync_once: bool
 
+    def __init__(self, *arg: Any, **kw: Any):
+        super().__init__(*arg, **kw)
+        self._is_asyncio = False
+
     def _set_asyncio(self) -> None:
-        self._exec_once_mutex = AsyncAdaptedLock()
+        self._is_asyncio = True
 
     def _memoized_attr__exec_once_mutex(self) -> _MutexProtocol:
-        return threading.Lock()
+        if self._is_asyncio:
+            return AsyncAdaptedLock()
+        else:
+            return threading.Lock()
 
     def _exec_once_impl(
         self, retry_on_exception: bool, *args: Any, **kw: Any
@@ -525,6 +537,7 @@ class _ListenerCollection(_CompoundListener[_ET]):
     propagate: Set[_ListenerFnType]
 
     def __init__(self, parent: _ClsLevelDispatch[_ET], target_cls: Type[_ET]):
+        super().__init__()
         if target_cls not in parent._clslevel:
             parent.update_subclass(target_cls)
         self._exec_once = False
@@ -563,6 +576,9 @@ class _ListenerCollection(_CompoundListener[_ET]):
         ]
 
         existing_listeners.extend(other_listeners)
+
+        if other._is_asyncio:
+            self._set_asyncio()
 
         to_associate = other.propagate.union(other_listeners)
         registry._stored_in_collection_multi(self, other, to_associate)

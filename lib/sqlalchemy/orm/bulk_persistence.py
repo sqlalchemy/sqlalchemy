@@ -1,5 +1,5 @@
 # orm/bulk_persistence.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -53,6 +53,8 @@ from ..sql.dml import InsertDMLState
 from ..sql.dml import UpdateDMLState
 from ..util import EMPTY_DICT
 from ..util.typing import Literal
+from ..util.typing import TupleAny
+from ..util.typing import Unpack
 
 if TYPE_CHECKING:
     from ._typing import DMLStrategyArgument
@@ -249,7 +251,7 @@ def _bulk_update(
     update_changed_only: bool,
     use_orm_update_stmt: Optional[dml.Update] = ...,
     enable_check_rowcount: bool = True,
-) -> _result.Result[Any]:
+) -> _result.Result[Unpack[TupleAny]]:
     ...
 
 
@@ -261,7 +263,7 @@ def _bulk_update(
     update_changed_only: bool,
     use_orm_update_stmt: Optional[dml.Update] = None,
     enable_check_rowcount: bool = True,
-) -> Optional[_result.Result[Any]]:
+) -> Optional[_result.Result[Unpack[TupleAny]]]:
     base_mapper = mapper.base_mapper
 
     search_keys = mapper._primary_key_propkeys
@@ -1236,7 +1238,7 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
                 "are 'raw', 'orm', 'bulk', 'auto"
             )
 
-        result: _result.Result[Any]
+        result: _result.Result[Unpack[TupleAny]]
 
         if insert_options._dml_strategy == "raw":
             result = conn.execute(
@@ -1572,7 +1574,7 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
                 "are 'orm', 'auto', 'bulk', 'core_only'"
             )
 
-        result: _result.Result[Any]
+        result: _result.Result[Unpack[TupleAny]]
 
         if update_options._dml_strategy == "bulk":
             enable_check_rowcount = not statement._where_criteria

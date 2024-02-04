@@ -75,6 +75,7 @@ result set.
    for the 2.0 series. Typing details are subject to change however
    significant backwards-incompatible changes are not planned.
 
+.. _change_result_typing_20:
 
 SQL Expression / Statement / Result Set Typing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

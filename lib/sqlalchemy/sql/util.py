@@ -1,5 +1,5 @@
 # sql/util.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -70,6 +70,7 @@ from .visitors import _ET
 from .. import exc
 from .. import util
 from ..util.typing import Literal
+from ..util.typing import Unpack
 
 if typing.TYPE_CHECKING:
     from ._typing import _EquivalentColumnMap
@@ -588,7 +589,9 @@ class _repr_row(_repr_base):
 
     __slots__ = ("row",)
 
-    def __init__(self, row: Row[Any], max_chars: int = 300):
+    def __init__(
+        self, row: Row[Unpack[Tuple[Any, ...]]], max_chars: int = 300
+    ):
         self.row = row
         self.max_chars = max_chars
 
