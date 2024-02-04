@@ -8,6 +8,15 @@
 from .base import MariaDBIdentifierPreparer
 from .base import MySQLDialect
 from .base import MySQLTypeCompiler
+from ... import util
+from ...sql.sqltypes import UUID
+from ...sql.sqltypes import Uuid
+
+
+class _MariaDBUUID(UUID):
+    def __init__(self, as_uuid: bool = True, native_uuid: bool = True):
+        self.as_uuid = as_uuid
+        self.native_uuid = False
 
 
 class MariaDBTypeCompiler(MySQLTypeCompiler):
@@ -27,6 +36,9 @@ class MariaDBDialect(MySQLDialect):
     name = "mariadb"
     preparer = MariaDBIdentifierPreparer
     type_compiler_cls = MariaDBTypeCompiler
+    supports_native_uuid = True
+
+    colspecs = util.update_copy(MySQLDialect.colspecs, {Uuid: _MariaDBUUID})
 
 
 def loader(driver):
