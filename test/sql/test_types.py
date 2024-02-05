@@ -1417,9 +1417,11 @@ class TypeCoerceCastTest(fixtures.TablesTest):
         # on the way in here
         eq_(
             conn.execute(new_stmt).fetchall(),
-            [("x", "BIND_INxBIND_OUT")]
-            if coerce_fn is type_coerce
-            else [("x", "xBIND_OUT")],
+            (
+                [("x", "BIND_INxBIND_OUT")]
+                if coerce_fn is type_coerce
+                else [("x", "xBIND_OUT")]
+            ),
         )
 
     def test_cast_bind(self, connection):
@@ -1441,9 +1443,11 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
         eq_(
             conn.execute(stmt).fetchall(),
-            [("x", "BIND_INxBIND_OUT")]
-            if coerce_fn is type_coerce
-            else [("x", "xBIND_OUT")],
+            (
+                [("x", "BIND_INxBIND_OUT")]
+                if coerce_fn is type_coerce
+                else [("x", "xBIND_OUT")]
+            ),
         )
 
     def test_cast_existing_typed(self, connection):
@@ -3876,7 +3880,6 @@ class TestKWArgPassThru(AssertsCompiledSQL, fixtures.TestBase):
 
 
 class NumericRawSQLTest(fixtures.TestBase):
-
     """Test what DBAPIs and dialects return without any typing
     information supplied at the SQLA level.
 
@@ -4007,7 +4010,6 @@ class IntegerTest(fixtures.TestBase):
 class BooleanTest(
     fixtures.TablesTest, AssertsExecutionResults, AssertsCompiledSQL
 ):
-
     """test edge cases for booleans.  Note that the main boolean test suite
     is now in testing/suite/test_types.py
 

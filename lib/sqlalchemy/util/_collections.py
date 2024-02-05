@@ -227,12 +227,10 @@ class Properties(Generic[_T]):
         self._data.update(value)
 
     @overload
-    def get(self, key: str) -> Optional[_T]:
-        ...
+    def get(self, key: str) -> Optional[_T]: ...
 
     @overload
-    def get(self, key: str, default: Union[_DT, _T]) -> Union[_DT, _T]:
-        ...
+    def get(self, key: str, default: Union[_DT, _T]) -> Union[_DT, _T]: ...
 
     def get(
         self, key: str, default: Optional[Union[_DT, _T]] = None
@@ -520,12 +518,10 @@ class LRUCache(typing.MutableMapping[_KT, _VT]):
         return self._counter
 
     @overload
-    def get(self, key: _KT) -> Optional[_VT]:
-        ...
+    def get(self, key: _KT) -> Optional[_VT]: ...
 
     @overload
-    def get(self, key: _KT, default: Union[_VT, _T]) -> Union[_VT, _T]:
-        ...
+    def get(self, key: _KT, default: Union[_VT, _T]) -> Union[_VT, _T]: ...
 
     def get(
         self, key: _KT, default: Optional[Union[_VT, _T]] = None
@@ -587,13 +583,11 @@ class LRUCache(typing.MutableMapping[_KT, _VT]):
 
 
 class _CreateFuncType(Protocol[_T_co]):
-    def __call__(self) -> _T_co:
-        ...
+    def __call__(self) -> _T_co: ...
 
 
 class _ScopeFuncType(Protocol):
-    def __call__(self) -> Any:
-        ...
+    def __call__(self) -> Any: ...
 
 
 class ScopedRegistry(Generic[_T]):

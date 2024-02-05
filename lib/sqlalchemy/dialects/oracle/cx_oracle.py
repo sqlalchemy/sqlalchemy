@@ -840,9 +840,9 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                             )
 
                     for param in self.parameters:
-                        param[
-                            quoted_bind_names.get(name, name)
-                        ] = out_parameters[name]
+                        param[quoted_bind_names.get(name, name)] = (
+                            out_parameters[name]
+                        )
 
     def _generate_cursor_outputtype_handler(self):
         output_handlers = {}

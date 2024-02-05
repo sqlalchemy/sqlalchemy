@@ -155,14 +155,12 @@ _never_select_column = operator.attrgetter("_omit_from_statements")
 
 
 class _EntityNamespace(Protocol):
-    def __getattr__(self, key: str) -> SQLCoreOperations[Any]:
-        ...
+    def __getattr__(self, key: str) -> SQLCoreOperations[Any]: ...
 
 
 class _HasEntityNamespace(Protocol):
     @util.ro_non_memoized_property
-    def entity_namespace(self) -> _EntityNamespace:
-        ...
+    def entity_namespace(self) -> _EntityNamespace: ...
 
 
 def _is_has_entity_namespace(element: Any) -> TypeGuard[_HasEntityNamespace]:
@@ -261,8 +259,7 @@ _SelfGenerativeType = TypeVar("_SelfGenerativeType", bound="_GenerativeType")
 
 
 class _GenerativeType(compat_typing.Protocol):
-    def _generate(self) -> Self:
-        ...
+    def _generate(self) -> Self: ...
 
 
 def _generative(fn: _Fn) -> _Fn:
@@ -801,14 +798,11 @@ class _MetaOptions(type):
 
     if TYPE_CHECKING:
 
-        def __getattr__(self, key: str) -> Any:
-            ...
+        def __getattr__(self, key: str) -> Any: ...
 
-        def __setattr__(self, key: str, value: Any) -> None:
-            ...
+        def __setattr__(self, key: str, value: Any) -> None: ...
 
-        def __delattr__(self, key: str) -> None:
-            ...
+        def __delattr__(self, key: str) -> None: ...
 
 
 class Options(metaclass=_MetaOptions):
@@ -966,14 +960,11 @@ class Options(metaclass=_MetaOptions):
 
     if TYPE_CHECKING:
 
-        def __getattr__(self, key: str) -> Any:
-            ...
+        def __getattr__(self, key: str) -> Any: ...
 
-        def __setattr__(self, key: str, value: Any) -> None:
-            ...
+        def __setattr__(self, key: str, value: Any) -> None: ...
 
-        def __delattr__(self, key: str) -> None:
-            ...
+        def __delattr__(self, key: str) -> None: ...
 
 
 class CacheableOptions(Options, HasCacheKey):
@@ -1058,24 +1049,21 @@ class Executable(roles.StatementRole):
             **kw: Any,
         ) -> Tuple[
             Compiled, Optional[Sequence[BindParameter[Any]]], CacheStats
-        ]:
-            ...
+        ]: ...
 
         def _execute_on_connection(
             self,
             connection: Connection,
             distilled_params: _CoreMultiExecuteParams,
             execution_options: CoreExecuteOptionsParameter,
-        ) -> CursorResult[Any]:
-            ...
+        ) -> CursorResult[Any]: ...
 
         def _execute_on_scalar(
             self,
             connection: Connection,
             distilled_params: _CoreMultiExecuteParams,
             execution_options: CoreExecuteOptionsParameter,
-        ) -> Any:
-            ...
+        ) -> Any: ...
 
     @util.ro_non_memoized_property
     def _all_selected_columns(self):
@@ -1180,12 +1168,10 @@ class Executable(roles.StatementRole):
         is_delete_using: bool = ...,
         is_update_from: bool = ...,
         **opt: Any,
-    ) -> Self:
-        ...
+    ) -> Self: ...
 
     @overload
-    def execution_options(self, **opt: Any) -> Self:
-        ...
+    def execution_options(self, **opt: Any) -> Self: ...
 
     @_generative
     def execution_options(self, **kw: Any) -> Self:
@@ -1591,20 +1577,17 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
         return iter([col for _, col, _ in self._collection])
 
     @overload
-    def __getitem__(self, key: Union[str, int]) -> _COL_co:
-        ...
+    def __getitem__(self, key: Union[str, int]) -> _COL_co: ...
 
     @overload
     def __getitem__(
         self, key: Tuple[Union[str, int], ...]
-    ) -> ReadOnlyColumnCollection[_COLKEY, _COL_co]:
-        ...
+    ) -> ReadOnlyColumnCollection[_COLKEY, _COL_co]: ...
 
     @overload
     def __getitem__(
         self, key: slice
-    ) -> ReadOnlyColumnCollection[_COLKEY, _COL_co]:
-        ...
+    ) -> ReadOnlyColumnCollection[_COLKEY, _COL_co]: ...
 
     def __getitem__(
         self, key: Union[str, int, slice, Tuple[Union[str, int], ...]]

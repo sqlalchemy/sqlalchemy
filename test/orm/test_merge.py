@@ -1476,9 +1476,7 @@ class MergeTest(_fixtures.FixtureTest):
             CountStatements(
                 0
                 if load.noload
-                else 1
-                if merge_persistent.merge_persistent
-                else 2
+                else 1 if merge_persistent.merge_persistent else 2
             )
         )
 

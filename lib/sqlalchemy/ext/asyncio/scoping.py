@@ -536,8 +536,7 @@ class async_scoped_session(Generic[_AS]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[_T]:
-        ...
+    ) -> Result[_T]: ...
 
     @overload
     async def execute(
@@ -549,8 +548,7 @@ class async_scoped_session(Generic[_AS]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> CursorResult[Any]:
-        ...
+    ) -> CursorResult[Any]: ...
 
     @overload
     async def execute(
@@ -562,8 +560,7 @@ class async_scoped_session(Generic[_AS]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Any]:
-        ...
+    ) -> Result[Any]: ...
 
     async def execute(
         self,
@@ -1015,8 +1012,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> Optional[_T]:
-        ...
+    ) -> Optional[_T]: ...
 
     @overload
     async def scalar(
@@ -1027,8 +1023,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     async def scalar(
         self,
@@ -1070,8 +1065,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> ScalarResult[_T]:
-        ...
+    ) -> ScalarResult[_T]: ...
 
     @overload
     async def scalars(
@@ -1082,8 +1076,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> ScalarResult[Any]:
-        ...
+    ) -> ScalarResult[Any]: ...
 
     async def scalars(
         self,
@@ -1213,8 +1206,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> AsyncResult[_T]:
-        ...
+    ) -> AsyncResult[_T]: ...
 
     @overload
     async def stream(
@@ -1225,8 +1217,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> AsyncResult[Any]:
-        ...
+    ) -> AsyncResult[Any]: ...
 
     async def stream(
         self,
@@ -1265,8 +1256,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> AsyncScalarResult[_T]:
-        ...
+    ) -> AsyncScalarResult[_T]: ...
 
     @overload
     async def stream_scalars(
@@ -1277,8 +1267,7 @@ class async_scoped_session(Generic[_AS]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> AsyncScalarResult[Any]:
-        ...
+    ) -> AsyncScalarResult[Any]: ...
 
     async def stream_scalars(
         self,

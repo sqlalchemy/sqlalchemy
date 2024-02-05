@@ -567,7 +567,6 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
 
 
 class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
-
     """Tests MySQL-dialect specific compilation."""
 
     __dialect__ = mysql.dialect()

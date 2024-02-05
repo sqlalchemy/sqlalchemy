@@ -1,4 +1,5 @@
 """Test various algorithmic properties of selectables."""
+
 from itertools import zip_longest
 
 from sqlalchemy import and_
@@ -1962,7 +1963,6 @@ class RefreshForNewColTest(fixtures.TestBase):
 
 
 class AnonLabelTest(fixtures.TestBase):
-
     """Test behaviors fixed by [ticket:2168]."""
 
     def test_anon_labels_named_column(self):

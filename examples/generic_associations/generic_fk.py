@@ -17,6 +17,7 @@ queued up, here it is.   The author recommends "table_per_related"
 or "table_per_association" instead of this approach.
 
 """
+
 from sqlalchemy import and_
 from sqlalchemy import Column
 from sqlalchemy import create_engine

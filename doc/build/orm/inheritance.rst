@@ -203,12 +203,10 @@ and ``Employee``::
         }
 
 
-    class Manager(Employee):
-        ...
+    class Manager(Employee): ...
 
 
-    class Engineer(Employee):
-        ...
+    class Engineer(Employee): ...
 
 If the foreign key constraint is on a table corresponding to a subclass,
 the relationship should target that subclass instead.  In the example
@@ -248,8 +246,7 @@ established between the ``Manager`` and ``Company`` classes::
         }
 
 
-    class Engineer(Employee):
-        ...
+    class Engineer(Employee): ...
 
 Above, the ``Manager`` class will have a ``Manager.company`` attribute;
 ``Company`` will have a ``Company.managers`` attribute that always

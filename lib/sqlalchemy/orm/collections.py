@@ -167,8 +167,7 @@ _FN = TypeVar("_FN", bound="Callable[..., Any]")
 
 
 class _CollectionConverterProtocol(Protocol):
-    def __call__(self, collection: _COL) -> _COL:
-        ...
+    def __call__(self, collection: _COL) -> _COL: ...
 
 
 class _AdaptedCollectionProtocol(Protocol):
@@ -548,9 +547,9 @@ class CollectionAdapter:
             self.empty
         ), "This collection adapter is not in the 'empty' state"
         self.empty = False
-        self.owner_state.dict[
-            self._key
-        ] = self.owner_state._empty_collections.pop(self._key)
+        self.owner_state.dict[self._key] = (
+            self.owner_state._empty_collections.pop(self._key)
+        )
 
     def _refuse_empty(self) -> NoReturn:
         raise sa_exc.InvalidRequestError(
@@ -1554,14 +1553,14 @@ class InstrumentedDict(Dict[_KT, _VT]):
     """An instrumented version of the built-in dict."""
 
 
-__canned_instrumentation: util.immutabledict[
-    Any, _CollectionFactoryType
-] = util.immutabledict(
-    {
-        list: InstrumentedList,
-        set: InstrumentedSet,
-        dict: InstrumentedDict,
-    }
+__canned_instrumentation: util.immutabledict[Any, _CollectionFactoryType] = (
+    util.immutabledict(
+        {
+            list: InstrumentedList,
+            set: InstrumentedSet,
+            dict: InstrumentedDict,
+        }
+    )
 )
 
 __interfaces: util.immutabledict[

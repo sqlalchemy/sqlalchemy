@@ -330,20 +330,19 @@ def outerjoin(
 
 
 @overload
-def select(__ent0: _TCCA[_T0]) -> Select[Tuple[_T0]]:
-    ...
+def select(__ent0: _TCCA[_T0]) -> Select[Tuple[_T0]]: ...
 
 
 @overload
-def select(__ent0: _TCCA[_T0], __ent1: _TCCA[_T1]) -> Select[Tuple[_T0, _T1]]:
-    ...
+def select(
+    __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
+) -> Select[Tuple[_T0, _T1]]: ...
 
 
 @overload
 def select(
     __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
-) -> Select[Tuple[_T0, _T1, _T2]]:
-    ...
+) -> Select[Tuple[_T0, _T1, _T2]]: ...
 
 
 @overload
@@ -352,8 +351,7 @@ def select(
     __ent1: _TCCA[_T1],
     __ent2: _TCCA[_T2],
     __ent3: _TCCA[_T3],
-) -> Select[Tuple[_T0, _T1, _T2, _T3]]:
-    ...
+) -> Select[Tuple[_T0, _T1, _T2, _T3]]: ...
 
 
 @overload
@@ -363,8 +361,7 @@ def select(
     __ent2: _TCCA[_T2],
     __ent3: _TCCA[_T3],
     __ent4: _TCCA[_T4],
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4]]:
-    ...
+) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4]]: ...
 
 
 @overload
@@ -375,8 +372,7 @@ def select(
     __ent3: _TCCA[_T3],
     __ent4: _TCCA[_T4],
     __ent5: _TCCA[_T5],
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
-    ...
+) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]: ...
 
 
 @overload
@@ -388,8 +384,7 @@ def select(
     __ent4: _TCCA[_T4],
     __ent5: _TCCA[_T5],
     __ent6: _TCCA[_T6],
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
-    ...
+) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]: ...
 
 
 @overload
@@ -402,8 +397,7 @@ def select(
     __ent5: _TCCA[_T5],
     __ent6: _TCCA[_T6],
     __ent7: _TCCA[_T7],
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
-    ...
+) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]: ...
 
 
 @overload
@@ -417,8 +411,7 @@ def select(
     __ent6: _TCCA[_T6],
     __ent7: _TCCA[_T7],
     __ent8: _TCCA[_T8],
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]]:
-    ...
+) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]]: ...
 
 
 @overload
@@ -433,16 +426,16 @@ def select(
     __ent7: _TCCA[_T7],
     __ent8: _TCCA[_T8],
     __ent9: _TCCA[_T9],
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9]]:
-    ...
+) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9]]: ...
 
 
 # END OVERLOADED FUNCTIONS select
 
 
 @overload
-def select(*entities: _ColumnsClauseArgument[Any], **__kw: Any) -> Select[Any]:
-    ...
+def select(
+    *entities: _ColumnsClauseArgument[Any], **__kw: Any
+) -> Select[Any]: ...
 
 
 def select(*entities: _ColumnsClauseArgument[Any], **__kw: Any) -> Select[Any]:

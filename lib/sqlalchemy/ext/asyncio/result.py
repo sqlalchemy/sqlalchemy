@@ -324,12 +324,10 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[_TP]]):
         return await greenlet_spawn(self._only_one_row, True, False, False)
 
     @overload
-    async def scalar_one(self: AsyncResult[Tuple[_T]]) -> _T:
-        ...
+    async def scalar_one(self: AsyncResult[Tuple[_T]]) -> _T: ...
 
     @overload
-    async def scalar_one(self) -> Any:
-        ...
+    async def scalar_one(self) -> Any: ...
 
     async def scalar_one(self) -> Any:
         """Return exactly one scalar result or raise an exception.
@@ -349,12 +347,10 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[_TP]]):
     @overload
     async def scalar_one_or_none(
         self: AsyncResult[Tuple[_T]],
-    ) -> Optional[_T]:
-        ...
+    ) -> Optional[_T]: ...
 
     @overload
-    async def scalar_one_or_none(self) -> Optional[Any]:
-        ...
+    async def scalar_one_or_none(self) -> Optional[Any]: ...
 
     async def scalar_one_or_none(self) -> Optional[Any]:
         """Return exactly one scalar result or ``None``.
@@ -403,12 +399,10 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[_TP]]):
         return await greenlet_spawn(self._only_one_row, True, True, False)
 
     @overload
-    async def scalar(self: AsyncResult[Tuple[_T]]) -> Optional[_T]:
-        ...
+    async def scalar(self: AsyncResult[Tuple[_T]]) -> Optional[_T]: ...
 
     @overload
-    async def scalar(self) -> Any:
-        ...
+    async def scalar(self) -> Any: ...
 
     async def scalar(self) -> Any:
         """Fetch the first column of the first row, and close the result set.
@@ -452,16 +446,13 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[_TP]]):
     @overload
     def scalars(
         self: AsyncResult[Tuple[_T]], index: Literal[0]
-    ) -> AsyncScalarResult[_T]:
-        ...
+    ) -> AsyncScalarResult[_T]: ...
 
     @overload
-    def scalars(self: AsyncResult[Tuple[_T]]) -> AsyncScalarResult[_T]:
-        ...
+    def scalars(self: AsyncResult[Tuple[_T]]) -> AsyncScalarResult[_T]: ...
 
     @overload
-    def scalars(self, index: _KeyIndexType = 0) -> AsyncScalarResult[Any]:
-        ...
+    def scalars(self, index: _KeyIndexType = 0) -> AsyncScalarResult[Any]: ...
 
     def scalars(self, index: _KeyIndexType = 0) -> AsyncScalarResult[Any]:
         """Return an :class:`_asyncio.AsyncScalarResult` filtering object which
@@ -833,11 +824,9 @@ class AsyncTupleResult(AsyncCommon[_R], util.TypingOnly):
             """
             ...
 
-        async def __aiter__(self) -> AsyncIterator[_R]:
-            ...
+        async def __aiter__(self) -> AsyncIterator[_R]: ...
 
-        async def __anext__(self) -> _R:
-            ...
+        async def __anext__(self) -> _R: ...
 
         async def first(self) -> Optional[_R]:
             """Fetch the first object or ``None`` if no object is present.
@@ -871,12 +860,10 @@ class AsyncTupleResult(AsyncCommon[_R], util.TypingOnly):
             ...
 
         @overload
-        async def scalar_one(self: AsyncTupleResult[Tuple[_T]]) -> _T:
-            ...
+        async def scalar_one(self: AsyncTupleResult[Tuple[_T]]) -> _T: ...
 
         @overload
-        async def scalar_one(self) -> Any:
-            ...
+        async def scalar_one(self) -> Any: ...
 
         async def scalar_one(self) -> Any:
             """Return exactly one scalar result or raise an exception.
@@ -896,12 +883,10 @@ class AsyncTupleResult(AsyncCommon[_R], util.TypingOnly):
         @overload
         async def scalar_one_or_none(
             self: AsyncTupleResult[Tuple[_T]],
-        ) -> Optional[_T]:
-            ...
+        ) -> Optional[_T]: ...
 
         @overload
-        async def scalar_one_or_none(self) -> Optional[Any]:
-            ...
+        async def scalar_one_or_none(self) -> Optional[Any]: ...
 
         async def scalar_one_or_none(self) -> Optional[Any]:
             """Return exactly one or no scalar result.
@@ -919,12 +904,12 @@ class AsyncTupleResult(AsyncCommon[_R], util.TypingOnly):
             ...
 
         @overload
-        async def scalar(self: AsyncTupleResult[Tuple[_T]]) -> Optional[_T]:
-            ...
+        async def scalar(
+            self: AsyncTupleResult[Tuple[_T]],
+        ) -> Optional[_T]: ...
 
         @overload
-        async def scalar(self) -> Any:
-            ...
+        async def scalar(self) -> Any: ...
 
         async def scalar(self) -> Any:
             """Fetch the first column of the first row, and close the result

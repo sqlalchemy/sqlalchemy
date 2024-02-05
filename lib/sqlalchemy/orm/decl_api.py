@@ -313,17 +313,13 @@ class _declared_directive(_declared_attr_common, Generic[_T]):
             self,
             fn: Callable[..., _T],
             cascading: bool = False,
-        ):
-            ...
+        ): ...
 
-        def __get__(self, instance: Optional[object], owner: Any) -> _T:
-            ...
+        def __get__(self, instance: Optional[object], owner: Any) -> _T: ...
 
-        def __set__(self, instance: Any, value: Any) -> None:
-            ...
+        def __set__(self, instance: Any, value: Any) -> None: ...
 
-        def __delete__(self, instance: Any) -> None:
-            ...
+        def __delete__(self, instance: Any) -> None: ...
 
         def __call__(self, fn: Callable[..., _TT]) -> _declared_directive[_TT]:
             # extensive fooling of mypy underway...
@@ -428,14 +424,11 @@ class declared_attr(interfaces._MappedAttribute[_T], _declared_attr_common):
             self,
             fn: _DeclaredAttrDecorated[_T],
             cascading: bool = False,
-        ):
-            ...
+        ): ...
 
-        def __set__(self, instance: Any, value: Any) -> None:
-            ...
+        def __set__(self, instance: Any, value: Any) -> None: ...
 
-        def __delete__(self, instance: Any) -> None:
-            ...
+        def __delete__(self, instance: Any) -> None: ...
 
         # this is the Mapped[] API where at class descriptor get time we want
         # the type checker to see InstrumentedAttribute[_T].   However the
@@ -444,17 +437,14 @@ class declared_attr(interfaces._MappedAttribute[_T], _declared_attr_common):
         @overload
         def __get__(
             self, instance: None, owner: Any
-        ) -> InstrumentedAttribute[_T]:
-            ...
+        ) -> InstrumentedAttribute[_T]: ...
 
         @overload
-        def __get__(self, instance: object, owner: Any) -> _T:
-            ...
+        def __get__(self, instance: object, owner: Any) -> _T: ...
 
         def __get__(
             self, instance: Optional[object], owner: Any
-        ) -> Union[InstrumentedAttribute[_T], _T]:
-            ...
+        ) -> Union[InstrumentedAttribute[_T], _T]: ...
 
     @hybridmethod
     def _stateful(cls, **kw: Any) -> _stateful_declared_attr[_T]:
@@ -620,9 +610,9 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
                 for k, v in apply_dc_transforms.items()
             }
         else:
-            cls._sa_apply_dc_transforms = (
-                current_transforms
-            ) = apply_dc_transforms
+            cls._sa_apply_dc_transforms = current_transforms = (
+                apply_dc_transforms
+            )
 
         super().__init_subclass__(**kw)
 
@@ -753,11 +743,9 @@ class DeclarativeBase(
 
     if typing.TYPE_CHECKING:
 
-        def _sa_inspect_type(self) -> Mapper[Self]:
-            ...
+        def _sa_inspect_type(self) -> Mapper[Self]: ...
 
-        def _sa_inspect_instance(self) -> InstanceState[Self]:
-            ...
+        def _sa_inspect_instance(self) -> InstanceState[Self]: ...
 
         _sa_registry: ClassVar[_RegistryType]
 
@@ -838,8 +826,7 @@ class DeclarativeBase(
 
         """
 
-        def __init__(self, **kw: Any):
-            ...
+        def __init__(self, **kw: Any): ...
 
     def __init_subclass__(cls, **kw: Any) -> None:
         if DeclarativeBase in cls.__bases__:
@@ -924,11 +911,9 @@ class DeclarativeBaseNoMeta(
 
     if typing.TYPE_CHECKING:
 
-        def _sa_inspect_type(self) -> Mapper[Self]:
-            ...
+        def _sa_inspect_type(self) -> Mapper[Self]: ...
 
-        def _sa_inspect_instance(self) -> InstanceState[Self]:
-            ...
+        def _sa_inspect_instance(self) -> InstanceState[Self]: ...
 
         __tablename__: Any
         """String name to assign to the generated
@@ -963,8 +948,7 @@ class DeclarativeBaseNoMeta(
 
         """
 
-        def __init__(self, **kw: Any):
-            ...
+        def __init__(self, **kw: Any): ...
 
     def __init_subclass__(cls, **kw: Any) -> None:
         if DeclarativeBaseNoMeta in cls.__bases__:
@@ -1585,8 +1569,7 @@ class registry:
         ),
     )
     @overload
-    def mapped_as_dataclass(self, __cls: Type[_O]) -> Type[_O]:
-        ...
+    def mapped_as_dataclass(self, __cls: Type[_O]) -> Type[_O]: ...
 
     @overload
     def mapped_as_dataclass(
@@ -1601,8 +1584,7 @@ class registry:
         match_args: Union[_NoArg, bool] = ...,
         kw_only: Union[_NoArg, bool] = ...,
         dataclass_callable: Union[_NoArg, Callable[..., Type[Any]]] = ...,
-    ) -> Callable[[Type[_O]], Type[_O]]:
-        ...
+    ) -> Callable[[Type[_O]], Type[_O]]: ...
 
     def mapped_as_dataclass(
         self,

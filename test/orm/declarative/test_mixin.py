@@ -672,11 +672,9 @@ class DeclarativeMixinTest(DeclarativeTestBase):
                 return relationship("Other")
 
         class Engineer(Mixin, Person):
-
             """single table inheritance"""
 
         class Manager(Mixin, Person):
-
             """single table inheritance"""
 
         class Other(Base):

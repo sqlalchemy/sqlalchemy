@@ -419,13 +419,13 @@ class CompositeProperty(
             and self.composite_class not in _composite_getters
         ):
             if self._generated_composite_accessor is not None:
-                _composite_getters[
-                    self.composite_class
-                ] = self._generated_composite_accessor
+                _composite_getters[self.composite_class] = (
+                    self._generated_composite_accessor
+                )
             elif hasattr(self.composite_class, "__composite_values__"):
-                _composite_getters[
-                    self.composite_class
-                ] = lambda obj: obj.__composite_values__()
+                _composite_getters[self.composite_class] = (
+                    lambda obj: obj.__composite_values__()
+                )
 
     @util.preload_module("sqlalchemy.orm.properties")
     @util.preload_module("sqlalchemy.orm.decl_base")

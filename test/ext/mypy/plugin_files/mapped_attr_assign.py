@@ -3,6 +3,7 @@ after the mapping is complete
 
 
 """
+
 from typing import Optional
 
 from sqlalchemy import Column

@@ -791,9 +791,9 @@ class AsyncAdapt_asyncpg_connection(AdaptedConnection):
                     translated_error = exception_mapping[super_](
                         "%s: %s" % (type(error), error)
                     )
-                    translated_error.pgcode = (
-                        translated_error.sqlstate
-                    ) = getattr(error, "sqlstate", None)
+                    translated_error.pgcode = translated_error.sqlstate = (
+                        getattr(error, "sqlstate", None)
+                    )
                     raise translated_error from error
             else:
                 raise error

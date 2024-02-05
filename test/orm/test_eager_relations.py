@@ -3697,7 +3697,6 @@ class InnerJoinSplicingWSecondaryTest(
 
 
 class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
-
     """test #2188"""
 
     __dialect__ = "default"
@@ -3892,7 +3891,6 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
 
 
 class LoadOnExistingTest(_fixtures.FixtureTest):
-
     """test that loaders from a base Query fully populate."""
 
     run_inserts = "once"
@@ -5309,7 +5307,6 @@ class SubqueryTest(fixtures.MappedTest):
 
 
 class CorrelatedSubqueryTest(fixtures.MappedTest):
-
     """tests for #946, #947, #948.
 
     The "users" table is joined to "stuff", and the relationship
@@ -6633,7 +6630,6 @@ class DeepOptionsTest(_fixtures.FixtureTest):
 
 
 class SecondaryOptionsTest(fixtures.MappedTest):
-
     """test that the contains_eager() option doesn't bleed
     into a secondary load."""
 

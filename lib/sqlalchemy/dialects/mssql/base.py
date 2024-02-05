@@ -1426,7 +1426,6 @@ class ROWVERSION(TIMESTAMP):
 
 
 class NTEXT(sqltypes.UnicodeText):
-
     """MSSQL NTEXT type, for variable-length unicode text up to 2^30
     characters."""
 
@@ -1596,12 +1595,12 @@ class UNIQUEIDENTIFIER(sqltypes.Uuid[sqltypes._UUID_RETURN]):
     @overload
     def __init__(
         self: UNIQUEIDENTIFIER[_python_UUID], as_uuid: Literal[True] = ...
-    ):
-        ...
+    ): ...
 
     @overload
-    def __init__(self: UNIQUEIDENTIFIER[str], as_uuid: Literal[False] = ...):
-        ...
+    def __init__(
+        self: UNIQUEIDENTIFIER[str], as_uuid: Literal[False] = ...
+    ): ...
 
     def __init__(self, as_uuid: bool = True):
         """Construct a :class:`_mssql.UNIQUEIDENTIFIER` type.
@@ -2483,10 +2482,12 @@ class MSSQLCompiler(compiler.SQLCompiler):
             type_expression = "ELSE CAST(JSON_VALUE(%s, %s) AS %s)" % (
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
-                "FLOAT"
-                if isinstance(binary.type, sqltypes.Float)
-                else "NUMERIC(%s, %s)"
-                % (binary.type.precision, binary.type.scale),
+                (
+                    "FLOAT"
+                    if isinstance(binary.type, sqltypes.Float)
+                    else "NUMERIC(%s, %s)"
+                    % (binary.type.precision, binary.type.scale)
+                ),
             )
         elif binary.type._type_affinity is sqltypes.Boolean:
             # the NULL handling is particularly weird with boolean, so
@@ -2522,7 +2523,6 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
 
 class MSSQLStrictCompiler(MSSQLCompiler):
-
     """A subclass of MSSQLCompiler which disables the usage of bind
     parameters where not allowed natively by MS-SQL.
 

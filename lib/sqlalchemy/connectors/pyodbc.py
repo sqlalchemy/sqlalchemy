@@ -217,9 +217,11 @@ class PyODBCConnector(Connector):
 
         cursor.setinputsizes(
             [
-                (dbtype, None, None)
-                if not isinstance(dbtype, tuple)
-                else dbtype
+                (
+                    (dbtype, None, None)
+                    if not isinstance(dbtype, tuple)
+                    else dbtype
+                )
                 for key, dbtype, sqltype in list_of_tuples
             ]
         )

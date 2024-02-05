@@ -1238,7 +1238,6 @@ class TupleTest(fixtures.TestBase):
 
 
 class ExtractTest(fixtures.TablesTest):
-
     """The rationale behind this test is that for many years we've had a system
     of embedding type casts into the expressions rendered by visit_extract()
     on the postgreql platform.  The reason for this cast is not clear.

@@ -1090,9 +1090,9 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
                 "referred_columns": ref_col,
                 "name": name,
                 "options": mock.ANY,
-                "referred_schema": ref_schema
-                if ref_schema is not None
-                else tt(),
+                "referred_schema": (
+                    ref_schema if ref_schema is not None else tt()
+                ),
                 "referred_table": ref_table,
                 "comment": comment,
             }

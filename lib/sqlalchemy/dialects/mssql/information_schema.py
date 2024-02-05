@@ -207,6 +207,7 @@ class NumericSqlVariant(TypeDecorator):
       int 1 is returned as "\x01\x00\x00\x00". On python 3 it returns the
       correct value as string.
     """
+
     impl = Unicode
     cache_ok = True
 

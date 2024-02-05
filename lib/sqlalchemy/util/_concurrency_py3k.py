@@ -33,8 +33,7 @@ if typing.TYPE_CHECKING:
         dead: bool
         gr_context: Optional[Context]
 
-        def __init__(self, fn: Callable[..., Any], driver: greenlet):
-            ...
+        def __init__(self, fn: Callable[..., Any], driver: greenlet): ...
 
         def throw(self, *arg: Any) -> Any:
             return None
@@ -42,8 +41,7 @@ if typing.TYPE_CHECKING:
         def switch(self, value: Any) -> Any:
             return None
 
-    def getcurrent() -> greenlet:
-        ...
+    def getcurrent() -> greenlet: ...
 
 else:
     from greenlet import getcurrent
@@ -85,8 +83,7 @@ if TYPE_CHECKING:
 
     def iscoroutine(
         awaitable: Awaitable[_T_co],
-    ) -> TypeGuard[Coroutine[Any, Any, _T_co]]:
-        ...
+    ) -> TypeGuard[Coroutine[Any, Any, _T_co]]: ...
 
 else:
     iscoroutine = asyncio.iscoroutine

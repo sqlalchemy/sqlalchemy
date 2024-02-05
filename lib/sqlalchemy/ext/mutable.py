@@ -800,15 +800,12 @@ class MutableDict(Mutable, Dict[_KT, _VT]):
         @overload
         def setdefault(
             self: MutableDict[_KT, Optional[_T]], key: _KT, value: None = None
-        ) -> Optional[_T]:
-            ...
+        ) -> Optional[_T]: ...
 
         @overload
-        def setdefault(self, key: _KT, value: _VT) -> _VT:
-            ...
+        def setdefault(self, key: _KT, value: _VT) -> _VT: ...
 
-        def setdefault(self, key: _KT, value: object = None) -> object:
-            ...
+        def setdefault(self, key: _KT, value: object = None) -> object: ...
 
     else:
 
@@ -829,17 +826,14 @@ class MutableDict(Mutable, Dict[_KT, _VT]):
     if TYPE_CHECKING:
 
         @overload
-        def pop(self, __key: _KT) -> _VT:
-            ...
+        def pop(self, __key: _KT) -> _VT: ...
 
         @overload
-        def pop(self, __key: _KT, __default: _VT | _T) -> _VT | _T:
-            ...
+        def pop(self, __key: _KT, __default: _VT | _T) -> _VT | _T: ...
 
         def pop(
             self, __key: _KT, __default: _VT | _T | None = None
-        ) -> _VT | _T:
-            ...
+        ) -> _VT | _T: ...
 
     else:
 

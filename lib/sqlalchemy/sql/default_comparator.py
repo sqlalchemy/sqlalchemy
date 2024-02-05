@@ -296,9 +296,11 @@ def _match_impl(
             operator=operators.match_op,
         ),
         result_type=type_api.MATCHTYPE,
-        negate_op=operators.not_match_op
-        if op is operators.match_op
-        else operators.match_op,
+        negate_op=(
+            operators.not_match_op
+            if op is operators.match_op
+            else operators.match_op
+        ),
         **kw,
     )
 
@@ -340,9 +342,11 @@ def _between_impl(
             group=False,
         ),
         op,
-        negate=operators.not_between_op
-        if op is operators.between_op
-        else operators.between_op,
+        negate=(
+            operators.not_between_op
+            if op is operators.between_op
+            else operators.between_op
+        ),
         modifiers=kw,
     )
 

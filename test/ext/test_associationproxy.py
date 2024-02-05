@@ -3830,11 +3830,11 @@ class DeclOrmForms(fixtures.TestBase):
 
             id: Mapped[int] = mapped_column(primary_key=True)
 
-            user_keyword_associations: Mapped[
-                List[UserKeywordAssociation]
-            ] = relationship(
-                back_populates="user",
-                cascade="all, delete-orphan",
+            user_keyword_associations: Mapped[List[UserKeywordAssociation]] = (
+                relationship(
+                    back_populates="user",
+                    cascade="all, delete-orphan",
+                )
             )
 
             keywords: AssociationProxy[list[str]] = association_proxy(
@@ -3886,12 +3886,12 @@ class DeclOrmForms(fixtures.TestBase):
                 primary_key=True, repr=True, init=False
             )
 
-            user_keyword_associations: Mapped[
-                List[UserKeywordAssociation]
-            ] = relationship(
-                back_populates="user",
-                cascade="all, delete-orphan",
-                init=False,
+            user_keyword_associations: Mapped[List[UserKeywordAssociation]] = (
+                relationship(
+                    back_populates="user",
+                    cascade="all, delete-orphan",
+                    init=False,
+                )
             )
 
             if embed_in_field:

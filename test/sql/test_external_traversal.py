@@ -54,7 +54,6 @@ A = B = t1 = t2 = t3 = table1 = table2 = table3 = table4 = None
 class TraversalTest(
     fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
 ):
-
     """test ClauseVisitor's traversal, particularly its
     ability to copy and modify a ClauseElement in place."""
 
@@ -362,7 +361,6 @@ class TraversalTest(
 
 
 class BinaryEndpointTraversalTest(fixtures.TestBase):
-
     """test the special binary product visit"""
 
     def _assert_traversal(self, expr, expected):
@@ -443,7 +441,6 @@ class BinaryEndpointTraversalTest(fixtures.TestBase):
 
 
 class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
-
     """test copy-in-place behavior of various ClauseElements."""
 
     __dialect__ = "default"
@@ -2716,7 +2713,6 @@ class SpliceJoinsTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
-
     """tests the generative capability of Select"""
 
     __dialect__ = "default"
@@ -2811,7 +2807,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
-
     """Tests the generative capability of Insert, Update"""
 
     __dialect__ = "default"

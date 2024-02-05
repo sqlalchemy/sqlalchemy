@@ -181,20 +181,22 @@ def instances(cursor: CursorResult[Any], context: QueryContext) -> Result[Any]:
             return go
 
     unique_filters = [
-        _no_unique
-        if context.yield_per
-        else _not_hashable(
-            ent.column.type,  # type: ignore
-            legacy=context.load_options._legacy_uniquing,
-            uncertain=ent._null_column_type,
+        (
+            _no_unique
+            if context.yield_per
+            else (
+                _not_hashable(
+                    ent.column.type,  # type: ignore
+                    legacy=context.load_options._legacy_uniquing,
+                    uncertain=ent._null_column_type,
+                )
+                if (
+                    not ent.use_id_for_hash
+                    and (ent._non_hashable_value or ent._null_column_type)
+                )
+                else id if ent.use_id_for_hash else None
+            )
         )
-        if (
-            not ent.use_id_for_hash
-            and (ent._non_hashable_value or ent._null_column_type)
-        )
-        else id
-        if ent.use_id_for_hash
-        else None
         for ent in context.compile_state._entities
     ]
 

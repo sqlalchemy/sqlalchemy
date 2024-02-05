@@ -6,7 +6,6 @@ within a coroutine.
 
 """
 
-
 import asyncio
 
 from sqlalchemy import Column

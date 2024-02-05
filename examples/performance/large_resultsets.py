@@ -13,6 +13,7 @@ full blown ORM doesn't do terribly either even though mapped objects
 provide a huge amount of functionality.
 
 """
+
 from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import Identity

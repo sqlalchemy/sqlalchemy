@@ -227,8 +227,7 @@ class AnonymizedFromClauseRole(StrictFromClauseRole):
 
         def _anonymous_fromclause(
             self, *, name: Optional[str] = None, flat: bool = False
-        ) -> FromClause:
-            ...
+        ) -> FromClause: ...
 
 
 class ReturnsRowsRole(SQLRole):
@@ -246,8 +245,7 @@ class StatementRole(SQLRole):
     if TYPE_CHECKING:
 
         @util.memoized_property
-        def _propagate_attrs(self) -> _PropagateAttrsType:
-            ...
+        def _propagate_attrs(self) -> _PropagateAttrsType: ...
 
     else:
         _propagate_attrs = util.EMPTY_DICT

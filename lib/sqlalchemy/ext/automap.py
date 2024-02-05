@@ -715,8 +715,9 @@ _VT = TypeVar("_VT", bound=Any)
 
 
 class PythonNameForTableType(Protocol):
-    def __call__(self, base: Type[Any], tablename: str, table: Table) -> str:
-        ...
+    def __call__(
+        self, base: Type[Any], tablename: str, table: Table
+    ) -> str: ...
 
 
 def classname_for_table(
@@ -763,8 +764,7 @@ class NameForScalarRelationshipType(Protocol):
         local_cls: Type[Any],
         referred_cls: Type[Any],
         constraint: ForeignKeyConstraint,
-    ) -> str:
-        ...
+    ) -> str: ...
 
 
 def name_for_scalar_relationship(
@@ -804,8 +804,7 @@ class NameForCollectionRelationshipType(Protocol):
         local_cls: Type[Any],
         referred_cls: Type[Any],
         constraint: ForeignKeyConstraint,
-    ) -> str:
-        ...
+    ) -> str: ...
 
 
 def name_for_collection_relationship(
@@ -850,8 +849,7 @@ class GenerateRelationshipType(Protocol):
         local_cls: Type[Any],
         referred_cls: Type[Any],
         **kw: Any,
-    ) -> Relationship[Any]:
-        ...
+    ) -> Relationship[Any]: ...
 
     @overload
     def __call__(
@@ -863,8 +861,7 @@ class GenerateRelationshipType(Protocol):
         local_cls: Type[Any],
         referred_cls: Type[Any],
         **kw: Any,
-    ) -> ORMBackrefArgument:
-        ...
+    ) -> ORMBackrefArgument: ...
 
     def __call__(
         self,
@@ -877,8 +874,7 @@ class GenerateRelationshipType(Protocol):
         local_cls: Type[Any],
         referred_cls: Type[Any],
         **kw: Any,
-    ) -> Union[ORMBackrefArgument, Relationship[Any]]:
-        ...
+    ) -> Union[ORMBackrefArgument, Relationship[Any]]: ...
 
 
 @overload
@@ -890,8 +886,7 @@ def generate_relationship(
     local_cls: Type[Any],
     referred_cls: Type[Any],
     **kw: Any,
-) -> Relationship[Any]:
-    ...
+) -> Relationship[Any]: ...
 
 
 @overload
@@ -903,8 +898,7 @@ def generate_relationship(
     local_cls: Type[Any],
     referred_cls: Type[Any],
     **kw: Any,
-) -> ORMBackrefArgument:
-    ...
+) -> ORMBackrefArgument: ...
 
 
 def generate_relationship(

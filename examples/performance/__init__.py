@@ -205,6 +205,7 @@ We can run our new script directly::
 
 
 """  # noqa
+
 import argparse
 import cProfile
 import gc

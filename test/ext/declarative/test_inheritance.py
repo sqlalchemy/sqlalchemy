@@ -934,22 +934,25 @@ class ConcreteExtensionConfigTest(
 
         self.assert_compile(
             session.query(Document),
-            "SELECT pjoin.id AS pjoin_id, pjoin.doctype AS pjoin_doctype, "
-            "pjoin.type AS pjoin_type, pjoin.send_method AS pjoin_send_method "
-            "FROM "
-            "(SELECT actual_documents.id AS id, "
-            "actual_documents.send_method AS send_method, "
-            "actual_documents.doctype AS doctype, "
-            "'actual' AS type FROM actual_documents) AS pjoin"
-            if use_strict_attrs
-            else "SELECT pjoin.id AS pjoin_id, pjoin.send_method AS "
-            "pjoin_send_method, pjoin.doctype AS pjoin_doctype, "
-            "pjoin.type AS pjoin_type "
-            "FROM "
-            "(SELECT actual_documents.id AS id, "
-            "actual_documents.send_method AS send_method, "
-            "actual_documents.doctype AS doctype, "
-            "'actual' AS type FROM actual_documents) AS pjoin",
+            (
+                "SELECT pjoin.id AS pjoin_id, pjoin.doctype AS pjoin_doctype, "
+                "pjoin.type AS pjoin_type, "
+                "pjoin.send_method AS pjoin_send_method "
+                "FROM "
+                "(SELECT actual_documents.id AS id, "
+                "actual_documents.send_method AS send_method, "
+                "actual_documents.doctype AS doctype, "
+                "'actual' AS type FROM actual_documents) AS pjoin"
+                if use_strict_attrs
+                else "SELECT pjoin.id AS pjoin_id, pjoin.send_method AS "
+                "pjoin_send_method, pjoin.doctype AS pjoin_doctype, "
+                "pjoin.type AS pjoin_type "
+                "FROM "
+                "(SELECT actual_documents.id AS id, "
+                "actual_documents.send_method AS send_method, "
+                "actual_documents.doctype AS doctype, "
+                "'actual' AS type FROM actual_documents) AS pjoin"
+            ),
         )
 
     @testing.combinations(True, False)

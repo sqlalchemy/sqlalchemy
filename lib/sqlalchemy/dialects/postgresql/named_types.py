@@ -163,7 +163,6 @@ class EnumDropper(NamedTypeDropper):
 
 
 class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
-
     """PostgreSQL ENUM type.
 
     This is a subclass of :class:`_types.Enum` which includes

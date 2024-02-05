@@ -1490,10 +1490,8 @@ Basic guidelines include:
 
         def my_stmt(parameter, thing=False):
             stmt = lambda_stmt(lambda: select(table))
-            stmt += (
-                lambda s: s.where(table.c.x > parameter)
-                if thing
-                else s.where(table.c.y == parameter)
+            stmt += lambda s: (
+                s.where(table.c.x > parameter) if thing else s.where(table.c.y == parameter)
             )
             return stmt
 

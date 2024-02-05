@@ -411,15 +411,13 @@ def get_cls_kwargs(
     *,
     _set: Optional[Set[str]] = None,
     raiseerr: Literal[True] = ...,
-) -> Set[str]:
-    ...
+) -> Set[str]: ...
 
 
 @overload
 def get_cls_kwargs(
     cls: type, *, _set: Optional[Set[str]] = None, raiseerr: bool = False
-) -> Optional[Set[str]]:
-    ...
+) -> Optional[Set[str]]: ...
 
 
 def get_cls_kwargs(
@@ -1092,23 +1090,19 @@ class generic_fn_descriptor(Generic[_T_co]):
         self.__name__ = fget.__name__
 
     @overload
-    def __get__(self: _GFD, obj: None, cls: Any) -> _GFD:
-        ...
+    def __get__(self: _GFD, obj: None, cls: Any) -> _GFD: ...
 
     @overload
-    def __get__(self, obj: object, cls: Any) -> _T_co:
-        ...
+    def __get__(self, obj: object, cls: Any) -> _T_co: ...
 
     def __get__(self: _GFD, obj: Any, cls: Any) -> Union[_GFD, _T_co]:
         raise NotImplementedError()
 
     if TYPE_CHECKING:
 
-        def __set__(self, instance: Any, value: Any) -> None:
-            ...
+        def __set__(self, instance: Any, value: Any) -> None: ...
 
-        def __delete__(self, instance: Any) -> None:
-            ...
+        def __delete__(self, instance: Any) -> None: ...
 
     def _reset(self, obj: Any) -> None:
         raise NotImplementedError()
@@ -1247,12 +1241,10 @@ class HasMemoized:
             self.__name__ = fget.__name__
 
         @overload
-        def __get__(self: _MA, obj: None, cls: Any) -> _MA:
-            ...
+        def __get__(self: _MA, obj: None, cls: Any) -> _MA: ...
 
         @overload
-        def __get__(self, obj: Any, cls: Any) -> _T:
-            ...
+        def __get__(self, obj: Any, cls: Any) -> _T: ...
 
         def __get__(self, obj, cls):
             if obj is None:
