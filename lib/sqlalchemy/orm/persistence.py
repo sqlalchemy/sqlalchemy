@@ -1570,16 +1570,25 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction, states):
 def _postfetch_post_update(
     mapper, uowtransaction, table, state, dict_, result, params
 ):
-    if uowtransaction.is_deleted(state):
-        return
-
-    prefetch_cols = result.context.compiled.prefetch
-    postfetch_cols = result.context.compiled.postfetch
-
-    if (
+    needs_version_id = (
         mapper.version_id_col is not None
         and mapper.version_id_col in mapper._cols_by_table[table]
-    ):
+    )
+
+    if not uowtransaction.is_deleted(state):
+        # post updating after a regular INSERT or UPDATE, do a full postfetch
+        prefetch_cols = result.context.compiled.prefetch
+        postfetch_cols = result.context.compiled.postfetch
+    elif needs_version_id:
+        # post updating before a DELETE with a version_id_col, need to
+        # postfetch just version_id_col
+        prefetch_cols = postfetch_cols = ()
+    else:
+        # post updating before a DELETE without a version_id_col,
+        # don't need to postfetch
+        return
+
+    if needs_version_id:
         prefetch_cols = list(prefetch_cols) + [mapper.version_id_col]
 
     refresh_flush = bool(mapper.class_manager.dispatch.refresh_flush)
