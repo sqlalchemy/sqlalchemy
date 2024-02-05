@@ -551,6 +551,12 @@ class ReturningTest(fixtures.TablesTest):
             uuid.uuid4(),
             testing.requires.uuid_data_type,
         ),
+        (
+            "generic_native_uuid_str",
+            Uuid(as_uuid=False, native_uuid=True),
+            str(uuid.uuid4()),
+            testing.requires.uuid_data_type,
+        ),
         ("UUID", UUID(), uuid.uuid4(), testing.requires.uuid_data_type),
         (
             "LargeBinary1",
