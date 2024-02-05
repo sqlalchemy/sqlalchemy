@@ -5747,7 +5747,6 @@ class SQLCompiler(Compiled):
         returning_cols = self.implicit_returning or insert_stmt._returning
         if returning_cols:
             add_sentinel_cols = crud_params_struct.use_sentinel_columns
-
             if add_sentinel_cols is not None:
                 assert use_insertmanyvalues
 
@@ -7052,6 +7051,9 @@ class GenericTypeCompiler(TypeCompiler):
     def visit_TEXT(self, type_, **kw):
         return self._render_string_type(type_, "TEXT")
 
+    def visit_UUID(self, type_, **kw):
+        return "UUID"
+
     def visit_BLOB(self, type_, **kw):
         return "BLOB"
 
@@ -7065,7 +7067,10 @@ class GenericTypeCompiler(TypeCompiler):
         return "BOOLEAN"
 
     def visit_uuid(self, type_, **kw):
-        return self._render_string_type(type_, "CHAR", length_override=32)
+        if not type_.native_uuid or not self.dialect.supports_native_uuid:
+            return self._render_string_type(type_, "CHAR", length_override=32)
+        else:
+            return self.visit_UUID(type_, **kw)
 
     def visit_large_binary(self, type_, **kw):
         return self.visit_BLOB(type_, **kw)
