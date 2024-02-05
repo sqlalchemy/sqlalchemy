@@ -2032,8 +2032,6 @@ class QuotedBindVersioningTest(fixtures.MappedTest):
 
 
 class PostUpdateVersioningTest(fixtures.DeclarativeMappedTest):
-    """test for #10800"""
-
     @classmethod
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
@@ -2063,7 +2061,8 @@ class PostUpdateVersioningTest(fixtures.DeclarativeMappedTest):
                 "version_id_col": version_id,
             }
 
-    def test_bumped_version_id(self):
+    def test_bumped_version_id_on_update(self):
+        """test for #10800"""
         User, Parent = self.classes("User", "Parent")
 
         session = fixture_session()
@@ -2113,5 +2112,44 @@ class PostUpdateVersioningTest(fixtures.DeclarativeMappedTest):
                         "parent_version_id": 2,
                     }
                 ],
+            ),
+        )
+
+    def test_bumped_version_id_on_delete(self):
+        """test for #10967"""
+
+        User, Parent = self.classes("User", "Parent")
+
+        session = fixture_session()
+        u1 = User(id=1)
+        p1 = Parent(id=1, updated_by=u1)
+        session.add(u1)
+        session.add(p1)
+
+        session.flush()
+
+        session.delete(p1)
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+            session.commit()
+
+        asserter.assert_(
+            CompiledSQL(
+                "UPDATE parent SET version_id=:version_id, "
+                "updated_by_id=:updated_by_id WHERE parent.id = :parent_id "
+                "AND parent.version_id = :parent_version_id",
+                [
+                    {
+                        "version_id": 2,
+                        "updated_by_id": None,
+                        "parent_id": 1,
+                        "parent_version_id": 1,
+                    }
+                ],
+            ),
+            CompiledSQL(
+                "DELETE FROM parent WHERE parent.id = :id AND "
+                "parent.version_id = :version_id",
+                [{"id": 1, "version_id": 2}],
             ),
         )
