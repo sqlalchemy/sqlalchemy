@@ -45,11 +45,9 @@ if TYPE_CHECKING:
     from ..util.typing import _LiteralStar
     from ..util.typing import TypeGuard
 
-    def is_root(path: PathRegistry) -> TypeGuard[RootRegistry]:
-        ...
+    def is_root(path: PathRegistry) -> TypeGuard[RootRegistry]: ...
 
-    def is_entity(path: PathRegistry) -> TypeGuard[AbstractEntityRegistry]:
-        ...
+    def is_entity(path: PathRegistry) -> TypeGuard[AbstractEntityRegistry]: ...
 
 else:
     is_root = operator.attrgetter("is_root")
@@ -185,26 +183,21 @@ class PathRegistry(HasCacheKey):
         return id(self)
 
     @overload
-    def __getitem__(self, entity: _StrPathToken) -> TokenRegistry:
-        ...
+    def __getitem__(self, entity: _StrPathToken) -> TokenRegistry: ...
 
     @overload
-    def __getitem__(self, entity: int) -> _PathElementType:
-        ...
+    def __getitem__(self, entity: int) -> _PathElementType: ...
 
     @overload
-    def __getitem__(self, entity: slice) -> _PathRepresentation:
-        ...
+    def __getitem__(self, entity: slice) -> _PathRepresentation: ...
 
     @overload
     def __getitem__(
         self, entity: _InternalEntityType[Any]
-    ) -> AbstractEntityRegistry:
-        ...
+    ) -> AbstractEntityRegistry: ...
 
     @overload
-    def __getitem__(self, entity: MapperProperty[Any]) -> PropRegistry:
-        ...
+    def __getitem__(self, entity: MapperProperty[Any]) -> PropRegistry: ...
 
     def __getitem__(
         self,
@@ -320,13 +313,11 @@ class PathRegistry(HasCacheKey):
 
     @overload
     @classmethod
-    def per_mapper(cls, mapper: Mapper[Any]) -> CachingEntityRegistry:
-        ...
+    def per_mapper(cls, mapper: Mapper[Any]) -> CachingEntityRegistry: ...
 
     @overload
     @classmethod
-    def per_mapper(cls, mapper: AliasedInsp[Any]) -> SlotsEntityRegistry:
-        ...
+    def per_mapper(cls, mapper: AliasedInsp[Any]) -> SlotsEntityRegistry: ...
 
     @classmethod
     def per_mapper(
@@ -808,11 +799,9 @@ if TYPE_CHECKING:
 
     def path_is_entity(
         path: PathRegistry,
-    ) -> TypeGuard[AbstractEntityRegistry]:
-        ...
+    ) -> TypeGuard[AbstractEntityRegistry]: ...
 
-    def path_is_property(path: PathRegistry) -> TypeGuard[PropRegistry]:
-        ...
+    def path_is_property(path: PathRegistry) -> TypeGuard[PropRegistry]: ...
 
 else:
     path_is_entity = operator.attrgetter("is_entity")

@@ -387,9 +387,9 @@ def orm_insert_sentinel(
 
     return mapped_column(
         name=name,
-        default=default
-        if default is not None
-        else _InsertSentinelColumnDefault(),
+        default=(
+            default if default is not None else _InsertSentinelColumnDefault()
+        ),
         _omit_from_statements=omit_from_statements,
         insert_sentinel=True,
         use_existing_column=True,
@@ -562,8 +562,7 @@ def composite(
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
     **__kw: Any,
-) -> Composite[Any]:
-    ...
+) -> Composite[Any]: ...
 
 
 @overload
@@ -585,8 +584,7 @@ def composite(
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
     **__kw: Any,
-) -> Composite[_CC]:
-    ...
+) -> Composite[_CC]: ...
 
 
 @overload
@@ -608,8 +606,7 @@ def composite(
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
     **__kw: Any,
-) -> Composite[_CC]:
-    ...
+) -> Composite[_CC]: ...
 
 
 def composite(
@@ -2183,8 +2180,7 @@ def aliased(
     name: Optional[str] = None,
     flat: bool = False,
     adapt_on_names: bool = False,
-) -> AliasedType[_O]:
-    ...
+) -> AliasedType[_O]: ...
 
 
 @overload
@@ -2194,8 +2190,7 @@ def aliased(
     name: Optional[str] = None,
     flat: bool = False,
     adapt_on_names: bool = False,
-) -> AliasedClass[_O]:
-    ...
+) -> AliasedClass[_O]: ...
 
 
 @overload
@@ -2205,8 +2200,7 @@ def aliased(
     name: Optional[str] = None,
     flat: bool = False,
     adapt_on_names: bool = False,
-) -> FromClause:
-    ...
+) -> FromClause: ...
 
 
 def aliased(

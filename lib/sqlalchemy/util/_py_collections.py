@@ -59,11 +59,9 @@ class ReadOnlyContainer:
 class ImmutableDictBase(ReadOnlyContainer, Dict[_KT, _VT]):
     if TYPE_CHECKING:
 
-        def __new__(cls, *args: Any) -> Self:
-            ...
+        def __new__(cls, *args: Any) -> Self: ...
 
-        def __init__(cls, *args: Any):
-            ...
+        def __init__(cls, *args: Any): ...
 
     def _readonly(self, *arg: Any, **kw: Any) -> NoReturn:
         self._immutable()

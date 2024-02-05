@@ -1285,7 +1285,6 @@ class FixtureDataTest(_LocalFixture):
 
 
 class CleanSavepointTest(FixtureTest):
-
     """test the behavior for [ticket:2452] - rollback on begin_nested()
     only expires objects tracked as being modified in that transaction.
 
@@ -2625,12 +2624,14 @@ class ReallyNewJoinIntoAnExternalTransactionTest(
 
         self.session = Session(
             self.connection,
-            join_transaction_mode="create_savepoint"
-            if (
-                self.join_mode.create_savepoint
-                or self.join_mode.create_savepoint_w_savepoint
-            )
-            else "conditional_savepoint",
+            join_transaction_mode=(
+                "create_savepoint"
+                if (
+                    self.join_mode.create_savepoint
+                    or self.join_mode.create_savepoint_w_savepoint
+                )
+                else "conditional_savepoint"
+            ),
         )
 
     def teardown_session(self):

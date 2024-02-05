@@ -151,9 +151,9 @@ __all__ = [
     "object_session",
 ]
 
-_sessions: weakref.WeakValueDictionary[
-    int, Session
-] = weakref.WeakValueDictionary()
+_sessions: weakref.WeakValueDictionary[int, Session] = (
+    weakref.WeakValueDictionary()
+)
 """Weak-referencing dictionary of :class:`.Session` objects.
 """
 
@@ -193,8 +193,7 @@ class _ConnectionCallableProto(Protocol):
         mapper: Optional[Mapper[Any]] = None,
         instance: Optional[object] = None,
         **kw: Any,
-    ) -> Connection:
-        ...
+    ) -> Connection: ...
 
 
 def _state_session(state: InstanceState[Any]) -> Optional[Session]:
@@ -1005,9 +1004,11 @@ class SessionTransaction(_StateChange, TransactionalContext):
     def _begin(self, nested: bool = False) -> SessionTransaction:
         return SessionTransaction(
             self.session,
-            SessionTransactionOrigin.BEGIN_NESTED
-            if nested
-            else SessionTransactionOrigin.SUBTRANSACTION,
+            (
+                SessionTransactionOrigin.BEGIN_NESTED
+                if nested
+                else SessionTransactionOrigin.SUBTRANSACTION
+            ),
             self,
         )
 
@@ -1824,9 +1825,11 @@ class Session(_SessionClassMethods, EventTarget):
                 )
             trans = SessionTransaction(
                 self,
-                SessionTransactionOrigin.BEGIN
-                if begin
-                else SessionTransactionOrigin.AUTOBEGIN,
+                (
+                    SessionTransactionOrigin.BEGIN
+                    if begin
+                    else SessionTransactionOrigin.AUTOBEGIN
+                ),
             )
             assert self._transaction is trans
             return trans
@@ -2062,8 +2065,7 @@ class Session(_SessionClassMethods, EventTarget):
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
         _scalar_result: Literal[True] = ...,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     @overload
     def _execute_internal(
@@ -2076,8 +2078,7 @@ class Session(_SessionClassMethods, EventTarget):
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
         _scalar_result: bool = ...,
-    ) -> Result[Unpack[TupleAny]]:
-        ...
+    ) -> Result[Unpack[TupleAny]]: ...
 
     def _execute_internal(
         self,
@@ -2194,15 +2195,15 @@ class Session(_SessionClassMethods, EventTarget):
             )
 
         if compile_state_cls:
-            result: Result[
-                Unpack[TupleAny]
-            ] = compile_state_cls.orm_execute_statement(
-                self,
-                statement,
-                params or {},
-                execution_options,
-                bind_arguments,
-                conn,
+            result: Result[Unpack[TupleAny]] = (
+                compile_state_cls.orm_execute_statement(
+                    self,
+                    statement,
+                    params or {},
+                    execution_options,
+                    bind_arguments,
+                    conn,
+                )
             )
         else:
             result = conn.execute(
@@ -2224,8 +2225,7 @@ class Session(_SessionClassMethods, EventTarget):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Unpack[_Ts]]:
-        ...
+    ) -> Result[Unpack[_Ts]]: ...
 
     @overload
     def execute(
@@ -2237,8 +2237,7 @@ class Session(_SessionClassMethods, EventTarget):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> CursorResult[Unpack[TupleAny]]:
-        ...
+    ) -> CursorResult[Unpack[TupleAny]]: ...
 
     @overload
     def execute(
@@ -2250,8 +2249,7 @@ class Session(_SessionClassMethods, EventTarget):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Unpack[TupleAny]]:
-        ...
+    ) -> Result[Unpack[TupleAny]]: ...
 
     def execute(
         self,
@@ -2332,8 +2330,7 @@ class Session(_SessionClassMethods, EventTarget):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> Optional[_T]:
-        ...
+    ) -> Optional[_T]: ...
 
     @overload
     def scalar(
@@ -2344,8 +2341,7 @@ class Session(_SessionClassMethods, EventTarget):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     def scalar(
         self,
@@ -2382,8 +2378,7 @@ class Session(_SessionClassMethods, EventTarget):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> ScalarResult[_T]:
-        ...
+    ) -> ScalarResult[_T]: ...
 
     @overload
     def scalars(
@@ -2394,8 +2389,7 @@ class Session(_SessionClassMethods, EventTarget):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> ScalarResult[Any]:
-        ...
+    ) -> ScalarResult[Any]: ...
 
     def scalars(
         self,
@@ -2804,14 +2798,12 @@ class Session(_SessionClassMethods, EventTarget):
         )
 
     @overload
-    def query(self, _entity: _EntityType[_O]) -> Query[_O]:
-        ...
+    def query(self, _entity: _EntityType[_O]) -> Query[_O]: ...
 
     @overload
     def query(
         self, _colexpr: TypedColumnsClauseRole[_T]
-    ) -> RowReturningQuery[_T]:
-        ...
+    ) -> RowReturningQuery[_T]: ...
 
     # START OVERLOADED FUNCTIONS self.query RowReturningQuery 2-8
 
@@ -2821,14 +2813,12 @@ class Session(_SessionClassMethods, EventTarget):
     @overload
     def query(
         self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], /
-    ) -> RowReturningQuery[_T0, _T1]:
-        ...
+    ) -> RowReturningQuery[_T0, _T1]: ...
 
     @overload
     def query(
         self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2], /
-    ) -> RowReturningQuery[_T0, _T1, _T2]:
-        ...
+    ) -> RowReturningQuery[_T0, _T1, _T2]: ...
 
     @overload
     def query(
@@ -2838,8 +2828,7 @@ class Session(_SessionClassMethods, EventTarget):
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
         /,
-    ) -> RowReturningQuery[_T0, _T1, _T2, _T3]:
-        ...
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3]: ...
 
     @overload
     def query(
@@ -2850,8 +2839,7 @@ class Session(_SessionClassMethods, EventTarget):
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
         /,
-    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4]:
-        ...
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4]: ...
 
     @overload
     def query(
@@ -2863,8 +2851,7 @@ class Session(_SessionClassMethods, EventTarget):
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
         /,
-    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5]:
-        ...
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5]: ...
 
     @overload
     def query(
@@ -2877,8 +2864,7 @@ class Session(_SessionClassMethods, EventTarget):
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
         /,
-    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5, _T6]:
-        ...
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5, _T6]: ...
 
     @overload
     def query(
@@ -2895,16 +2881,14 @@ class Session(_SessionClassMethods, EventTarget):
         *entities: _ColumnsClauseArgument[Any],
     ) -> RowReturningQuery[
         _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, Unpack[TupleAny]
-    ]:
-        ...
+    ]: ...
 
     # END OVERLOADED FUNCTIONS self.query
 
     @overload
     def query(
         self, *entities: _ColumnsClauseArgument[Any], **kwargs: Any
-    ) -> Query[Any]:
-        ...
+    ) -> Query[Any]: ...
 
     def query(
         self, *entities: _ColumnsClauseArgument[Any], **kwargs: Any
@@ -3785,9 +3769,9 @@ class Session(_SessionClassMethods, EventTarget):
                 if correct_keys:
                     primary_key_identity = dict(primary_key_identity)
                     for k in correct_keys:
-                        primary_key_identity[
-                            pk_synonyms[k]
-                        ] = primary_key_identity[k]
+                        primary_key_identity[pk_synonyms[k]] = (
+                            primary_key_identity[k]
+                        )
 
             try:
                 primary_key_identity = list(
@@ -5005,8 +4989,7 @@ class sessionmaker(_SessionClassMethods, Generic[_S]):
         expire_on_commit: bool = ...,
         info: Optional[_InfoType] = ...,
         **kw: Any,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -5017,8 +5000,7 @@ class sessionmaker(_SessionClassMethods, Generic[_S]):
         expire_on_commit: bool = ...,
         info: Optional[_InfoType] = ...,
         **kw: Any,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,

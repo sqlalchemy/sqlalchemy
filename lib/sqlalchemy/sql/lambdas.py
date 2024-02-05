@@ -407,9 +407,9 @@ class LambdaElement(elements.ClauseElement):
 
         while parent is not None:
             assert parent.closure_cache_key is not CacheConst.NO_CACHE
-            parent_closure_cache_key: Tuple[
-                Any, ...
-            ] = parent.closure_cache_key
+            parent_closure_cache_key: Tuple[Any, ...] = (
+                parent.closure_cache_key
+            )
 
             cache_key = (
                 (parent.fn.__code__,) + parent_closure_cache_key + cache_key
@@ -535,8 +535,7 @@ class StatementLambdaElement(
             role: Type[SQLRole],
             opts: Union[Type[LambdaOptions], LambdaOptions] = LambdaOptions,
             apply_propagate_attrs: Optional[ClauseElement] = None,
-        ):
-            ...
+        ): ...
 
     def __add__(
         self, other: _StmtLambdaElementType[Any]
@@ -737,9 +736,9 @@ class AnalyzedCode:
         "closure_trackers",
         "build_py_wrappers",
     )
-    _fns: weakref.WeakKeyDictionary[
-        CodeType, AnalyzedCode
-    ] = weakref.WeakKeyDictionary()
+    _fns: weakref.WeakKeyDictionary[CodeType, AnalyzedCode] = (
+        weakref.WeakKeyDictionary()
+    )
 
     _generation_mutex = threading.RLock()
 
@@ -1184,12 +1183,12 @@ class AnalyzedFunction:
 
             # rewrite the original fn.   things that look like they will
             # become bound parameters are wrapped in a PyWrapper.
-            self.tracker_instrumented_fn = (
-                tracker_instrumented_fn
-            ) = self._rewrite_code_obj(
-                fn,
-                [new_closure[name] for name in fn.__code__.co_freevars],
-                new_globals,
+            self.tracker_instrumented_fn = tracker_instrumented_fn = (
+                self._rewrite_code_obj(
+                    fn,
+                    [new_closure[name] for name in fn.__code__.co_freevars],
+                    new_globals,
+                )
             )
 
             # now invoke the function.  This will give us a new SQL

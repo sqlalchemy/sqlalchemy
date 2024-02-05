@@ -853,9 +853,11 @@ class DefaultDialect(Dialect):
                                 ordered_rows = [
                                     rows_by_sentinel[
                                         tuple(
-                                            _resolver(parameters[_spk])  # type: ignore  # noqa: E501
-                                            if _resolver
-                                            else parameters[_spk]  # type: ignore  # noqa: E501
+                                            (
+                                                _resolver(parameters[_spk])  # type: ignore  # noqa: E501
+                                                if _resolver
+                                                else parameters[_spk]  # type: ignore  # noqa: E501
+                                            )
                                             for _resolver, _spk in zip(
                                                 sentinel_value_resolvers,
                                                 imv.sentinel_param_keys,
@@ -1462,9 +1464,11 @@ class DefaultExecutionContext(ExecutionContext):
             assert positiontup is not None
             for compiled_params in self.compiled_parameters:
                 l_param: List[Any] = [
-                    flattened_processors[key](compiled_params[key])
-                    if key in flattened_processors
-                    else compiled_params[key]
+                    (
+                        flattened_processors[key](compiled_params[key])
+                        if key in flattened_processors
+                        else compiled_params[key]
+                    )
                     for key in positiontup
                 ]
                 core_positional_parameters.append(
@@ -1485,18 +1489,20 @@ class DefaultExecutionContext(ExecutionContext):
             for compiled_params in self.compiled_parameters:
                 if escaped_names:
                     d_param = {
-                        escaped_names.get(key, key): flattened_processors[key](
-                            compiled_params[key]
+                        escaped_names.get(key, key): (
+                            flattened_processors[key](compiled_params[key])
+                            if key in flattened_processors
+                            else compiled_params[key]
                         )
-                        if key in flattened_processors
-                        else compiled_params[key]
                         for key in compiled_params
                     }
                 else:
                     d_param = {
-                        key: flattened_processors[key](compiled_params[key])
-                        if key in flattened_processors
-                        else compiled_params[key]
+                        key: (
+                            flattened_processors[key](compiled_params[key])
+                            if key in flattened_processors
+                            else compiled_params[key]
+                        )
                         for key in compiled_params
                     }
 
@@ -2158,17 +2164,21 @@ class DefaultExecutionContext(ExecutionContext):
         if compiled.positional:
             parameters = self.dialect.execute_sequence_format(
                 [
-                    processors[key](compiled_params[key])  # type: ignore
-                    if key in processors
-                    else compiled_params[key]
+                    (
+                        processors[key](compiled_params[key])  # type: ignore
+                        if key in processors
+                        else compiled_params[key]
+                    )
                     for key in compiled.positiontup or ()
                 ]
             )
         else:
             parameters = {
-                key: processors[key](compiled_params[key])  # type: ignore
-                if key in processors
-                else compiled_params[key]
+                key: (
+                    processors[key](compiled_params[key])  # type: ignore
+                    if key in processors
+                    else compiled_params[key]
+                )
                 for key in compiled_params
             }
         return self._execute_scalar(

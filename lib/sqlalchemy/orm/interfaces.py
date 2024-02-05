@@ -738,6 +738,7 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
         :attr:`.TypeEngine.comparator_factory`
 
     """
+
     __slots__ = "prop", "_parententity", "_adapt_to_entity"
 
     __visit_name__ = "orm_prop_comparator"
@@ -841,13 +842,11 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
         def operate(
             self, op: OperatorType, *other: Any, **kwargs: Any
-        ) -> ColumnElement[Any]:
-            ...
+        ) -> ColumnElement[Any]: ...
 
         def reverse_operate(
             self, op: OperatorType, other: Any, **kwargs: Any
-        ) -> ColumnElement[Any]:
-            ...
+        ) -> ColumnElement[Any]: ...
 
     def of_type(self, class_: _EntityType[Any]) -> PropComparator[_T_co]:
         r"""Redefine this object in terms of a polymorphic subclass,

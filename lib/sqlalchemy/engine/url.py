@@ -253,14 +253,12 @@ class URL(NamedTuple):
         @overload
         def _assert_value(
             val: str,
-        ) -> str:
-            ...
+        ) -> str: ...
 
         @overload
         def _assert_value(
             val: Sequence[str],
-        ) -> Union[str, Tuple[str, ...]]:
-            ...
+        ) -> Union[str, Tuple[str, ...]]: ...
 
         def _assert_value(
             val: Union[str, Sequence[str]],

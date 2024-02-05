@@ -196,8 +196,7 @@ class WriteOnlyAttributeImpl(
         dict_: _InstanceDict,
         user_data: Literal[None] = ...,
         passive: Literal[PassiveFlag.PASSIVE_OFF] = ...,
-    ) -> CollectionAdapter:
-        ...
+    ) -> CollectionAdapter: ...
 
     @overload
     def get_collection(
@@ -206,8 +205,7 @@ class WriteOnlyAttributeImpl(
         dict_: _InstanceDict,
         user_data: _AdaptedCollectionProtocol = ...,
         passive: PassiveFlag = ...,
-    ) -> CollectionAdapter:
-        ...
+    ) -> CollectionAdapter: ...
 
     @overload
     def get_collection(
@@ -218,8 +216,7 @@ class WriteOnlyAttributeImpl(
         passive: PassiveFlag = ...,
     ) -> Union[
         Literal[LoaderCallableStatus.PASSIVE_NO_RESULT], CollectionAdapter
-    ]:
-        ...
+    ]: ...
 
     def get_collection(
         self,

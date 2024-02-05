@@ -254,45 +254,39 @@ class AssociationProxyExtensionType(InspectionAttrExtensionType):
 
 
 class _GetterProtocol(Protocol[_T_co]):
-    def __call__(self, instance: Any) -> _T_co:
-        ...
+    def __call__(self, instance: Any) -> _T_co: ...
 
 
 # mypy 0.990 we are no longer allowed to make this Protocol[_T_con]
-class _SetterProtocol(Protocol):
-    ...
+class _SetterProtocol(Protocol): ...
 
 
 class _PlainSetterProtocol(_SetterProtocol, Protocol[_T_con]):
-    def __call__(self, instance: Any, value: _T_con) -> None:
-        ...
+    def __call__(self, instance: Any, value: _T_con) -> None: ...
 
 
 class _DictSetterProtocol(_SetterProtocol, Protocol[_T_con]):
-    def __call__(self, instance: Any, key: Any, value: _T_con) -> None:
-        ...
+    def __call__(self, instance: Any, key: Any, value: _T_con) -> None: ...
 
 
 # mypy 0.990 we are no longer allowed to make this Protocol[_T_con]
-class _CreatorProtocol(Protocol):
-    ...
+class _CreatorProtocol(Protocol): ...
 
 
 class _PlainCreatorProtocol(_CreatorProtocol, Protocol[_T_con]):
-    def __call__(self, value: _T_con) -> Any:
-        ...
+    def __call__(self, value: _T_con) -> Any: ...
 
 
 class _KeyCreatorProtocol(_CreatorProtocol, Protocol[_T_con]):
-    def __call__(self, key: Any, value: Optional[_T_con]) -> Any:
-        ...
+    def __call__(self, key: Any, value: Optional[_T_con]) -> Any: ...
 
 
 class _LazyCollectionProtocol(Protocol[_T]):
     def __call__(
         self,
-    ) -> Union[MutableSet[_T], MutableMapping[Any, _T], MutableSequence[_T]]:
-        ...
+    ) -> Union[
+        MutableSet[_T], MutableMapping[Any, _T], MutableSequence[_T]
+    ]: ...
 
 
 class _GetSetFactoryProtocol(Protocol):
@@ -300,8 +294,7 @@ class _GetSetFactoryProtocol(Protocol):
         self,
         collection_class: Optional[Type[Any]],
         assoc_instance: AssociationProxyInstance[Any],
-    ) -> Tuple[_GetterProtocol[Any], _SetterProtocol]:
-        ...
+    ) -> Tuple[_GetterProtocol[Any], _SetterProtocol]: ...
 
 
 class _ProxyFactoryProtocol(Protocol):
@@ -311,15 +304,13 @@ class _ProxyFactoryProtocol(Protocol):
         creator: _CreatorProtocol,
         value_attr: str,
         parent: AssociationProxyInstance[Any],
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 
 class _ProxyBulkSetProtocol(Protocol):
     def __call__(
         self, proxy: _AssociationCollection[Any], collection: Iterable[Any]
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 class _AssociationProxyProtocol(Protocol[_T]):
@@ -337,18 +328,15 @@ class _AssociationProxyProtocol(Protocol[_T]):
     proxy_bulk_set: Optional[_ProxyBulkSetProtocol]
 
     @util.ro_memoized_property
-    def info(self) -> _InfoType:
-        ...
+    def info(self) -> _InfoType: ...
 
     def for_class(
         self, class_: Type[Any], obj: Optional[object] = None
-    ) -> AssociationProxyInstance[_T]:
-        ...
+    ) -> AssociationProxyInstance[_T]: ...
 
     def _default_getset(
         self, collection_class: Any
-    ) -> Tuple[_GetterProtocol[Any], _SetterProtocol]:
-        ...
+    ) -> Tuple[_GetterProtocol[Any], _SetterProtocol]: ...
 
 
 class AssociationProxy(
@@ -419,18 +407,17 @@ class AssociationProxy(
             self._attribute_options = _DEFAULT_ATTRIBUTE_OPTIONS
 
     @overload
-    def __get__(self, instance: Literal[None], owner: Literal[None]) -> Self:
-        ...
+    def __get__(
+        self, instance: Literal[None], owner: Literal[None]
+    ) -> Self: ...
 
     @overload
     def __get__(
         self, instance: Literal[None], owner: Any
-    ) -> AssociationProxyInstance[_T]:
-        ...
+    ) -> AssociationProxyInstance[_T]: ...
 
     @overload
-    def __get__(self, instance: object, owner: Any) -> _T:
-        ...
+    def __get__(self, instance: object, owner: Any) -> _T: ...
 
     def __get__(
         self, instance: object, owner: Any
@@ -861,12 +848,10 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
         return self.parent.info
 
     @overload
-    def get(self: _Self, obj: Literal[None]) -> _Self:
-        ...
+    def get(self: _Self, obj: Literal[None]) -> _Self: ...
 
     @overload
-    def get(self, obj: Any) -> _T:
-        ...
+    def get(self, obj: Any) -> _T: ...
 
     def get(
         self, obj: Any
@@ -1432,12 +1417,10 @@ class _AssociationList(_AssociationSingleItem[_T], MutableSequence[_T]):
         self.setter(object_, value)
 
     @overload
-    def __getitem__(self, index: int) -> _T:
-        ...
+    def __getitem__(self, index: int) -> _T: ...
 
     @overload
-    def __getitem__(self, index: slice) -> MutableSequence[_T]:
-        ...
+    def __getitem__(self, index: slice) -> MutableSequence[_T]: ...
 
     def __getitem__(
         self, index: Union[int, slice]
@@ -1448,12 +1431,10 @@ class _AssociationList(_AssociationSingleItem[_T], MutableSequence[_T]):
             return [self._get(member) for member in self.col[index]]
 
     @overload
-    def __setitem__(self, index: int, value: _T) -> None:
-        ...
+    def __setitem__(self, index: int, value: _T) -> None: ...
 
     @overload
-    def __setitem__(self, index: slice, value: Iterable[_T]) -> None:
-        ...
+    def __setitem__(self, index: slice, value: Iterable[_T]) -> None: ...
 
     def __setitem__(
         self, index: Union[int, slice], value: Union[_T, Iterable[_T]]
@@ -1492,12 +1473,10 @@ class _AssociationList(_AssociationSingleItem[_T], MutableSequence[_T]):
                     self._set(self.col[i], item)
 
     @overload
-    def __delitem__(self, index: int) -> None:
-        ...
+    def __delitem__(self, index: int) -> None: ...
 
     @overload
-    def __delitem__(self, index: slice) -> None:
-        ...
+    def __delitem__(self, index: slice) -> None: ...
 
     def __delitem__(self, index: Union[slice, int]) -> None:
         del self.col[index]
@@ -1624,8 +1603,9 @@ class _AssociationList(_AssociationSingleItem[_T], MutableSequence[_T]):
 
     if typing.TYPE_CHECKING:
         # TODO: no idea how to do this without separate "stub"
-        def index(self, value: Any, start: int = ..., stop: int = ...) -> int:
-            ...
+        def index(
+            self, value: Any, start: int = ..., stop: int = ...
+        ) -> int: ...
 
     else:
 
@@ -1701,12 +1681,12 @@ class _AssociationDict(_AssociationCollection[_VT], MutableMapping[_KT, _VT]):
         return repr(dict(self))
 
     @overload
-    def get(self, __key: _KT, /) -> Optional[_VT]:
-        ...
+    def get(self, __key: _KT, /) -> Optional[_VT]: ...
 
     @overload
-    def get(self, __key: _KT, /, default: Union[_VT, _T]) -> Union[_VT, _T]:
-        ...
+    def get(
+        self, __key: _KT, /, default: Union[_VT, _T]
+    ) -> Union[_VT, _T]: ...
 
     def get(
         self, __key: _KT, /, default: Optional[Union[_VT, _T]] = None
@@ -1738,14 +1718,12 @@ class _AssociationDict(_AssociationCollection[_VT], MutableMapping[_KT, _VT]):
         return ValuesView(self)
 
     @overload
-    def pop(self, __key: _KT, /) -> _VT:
-        ...
+    def pop(self, __key: _KT, /) -> _VT: ...
 
     @overload
     def pop(
         self, __key: _KT, /, default: Union[_VT, _T] = ...
-    ) -> Union[_VT, _T]:
-        ...
+    ) -> Union[_VT, _T]: ...
 
     def pop(self, __key: _KT, /, *arg: Any, **kw: Any) -> Union[_VT, _T]:
         member = self.col.pop(__key, *arg, **kw)
@@ -1758,16 +1736,15 @@ class _AssociationDict(_AssociationCollection[_VT], MutableMapping[_KT, _VT]):
     @overload
     def update(
         self, __m: SupportsKeysAndGetItem[_KT, _VT], **kwargs: _VT
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
-    def update(self, __m: Iterable[tuple[_KT, _VT]], **kwargs: _VT) -> None:
-        ...
+    def update(
+        self, __m: Iterable[tuple[_KT, _VT]], **kwargs: _VT
+    ) -> None: ...
 
     @overload
-    def update(self, **kwargs: _VT) -> None:
-        ...
+    def update(self, **kwargs: _VT) -> None: ...
 
     def update(self, *a: Any, **kw: Any) -> None:
         up: Dict[_KT, _VT] = {}

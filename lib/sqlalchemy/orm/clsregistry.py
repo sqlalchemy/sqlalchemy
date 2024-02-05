@@ -83,9 +83,9 @@ def add_class(
             _ModuleMarker, decl_class_registry["_sa_module_registry"]
         )
     except KeyError:
-        decl_class_registry[
-            "_sa_module_registry"
-        ] = root_module = _ModuleMarker("_sa_module_registry", None)
+        decl_class_registry["_sa_module_registry"] = root_module = (
+            _ModuleMarker("_sa_module_registry", None)
+        )
 
     tokens = cls.__module__.split(".")
 
@@ -542,9 +542,7 @@ class _class_resolver:
 _fallback_dict: Mapping[str, Any] = None  # type: ignore
 
 
-def _resolver(
-    cls: Type[Any], prop: RelationshipProperty[Any]
-) -> Tuple[
+def _resolver(cls: Type[Any], prop: RelationshipProperty[Any]) -> Tuple[
     Callable[[str], Callable[[], Union[Type[Any], Table, _ModNS]]],
     Callable[[str, bool], _class_resolver],
 ]:

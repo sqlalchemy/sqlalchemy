@@ -80,8 +80,7 @@ if not TYPE_CHECKING:
 
 
 class _InstanceDictProto(Protocol):
-    def __call__(self) -> Optional[IdentityMap]:
-        ...
+    def __call__(self) -> Optional[IdentityMap]: ...
 
 
 class _InstallLoaderCallableProto(Protocol[_O]):
@@ -99,8 +98,7 @@ class _InstallLoaderCallableProto(Protocol[_O]):
         state: InstanceState[_O],
         dict_: _InstanceDict,
         row: Row[Unpack[TupleAny]],
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 @inspection._self_inspects

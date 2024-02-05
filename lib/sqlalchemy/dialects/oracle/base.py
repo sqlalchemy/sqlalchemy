@@ -1479,9 +1479,9 @@ class OracleDialect(default.DefaultDialect):
         self.use_ansi = use_ansi
         self.optimize_limits = optimize_limits
         self.exclude_tablespaces = exclude_tablespaces
-        self.enable_offset_fetch = (
-            self._supports_offset_fetch
-        ) = enable_offset_fetch
+        self.enable_offset_fetch = self._supports_offset_fetch = (
+            enable_offset_fetch
+        )
 
     def initialize(self, connection):
         super().initialize(connection)
@@ -2538,10 +2538,12 @@ class OracleDialect(default.DefaultDialect):
         return (
             (
                 (schema, self.normalize_name(table)),
-                {"text": comment}
-                if comment is not None
-                and not comment.startswith(ignore_mat_view)
-                else default(),
+                (
+                    {"text": comment}
+                    if comment is not None
+                    and not comment.startswith(ignore_mat_view)
+                    else default()
+                ),
             )
             for table, comment in result
         )
@@ -3083,9 +3085,11 @@ class OracleDialect(default.DefaultDialect):
                 table_uc[constraint_name] = uc = {
                     "name": constraint_name,
                     "column_names": [],
-                    "duplicates_index": constraint_name
-                    if constraint_name_orig in index_names
-                    else None,
+                    "duplicates_index": (
+                        constraint_name
+                        if constraint_name_orig in index_names
+                        else None
+                    ),
                 }
             else:
                 uc = table_uc[constraint_name]
@@ -3097,9 +3101,11 @@ class OracleDialect(default.DefaultDialect):
         return (
             (
                 key,
-                list(unique_cons[key].values())
-                if key in unique_cons
-                else default(),
+                (
+                    list(unique_cons[key].values())
+                    if key in unique_cons
+                    else default()
+                ),
             )
             for key in (
                 (schema, self.normalize_name(obj_name))
@@ -3222,9 +3228,11 @@ class OracleDialect(default.DefaultDialect):
         return (
             (
                 key,
-                check_constraints[key]
-                if key in check_constraints
-                else default(),
+                (
+                    check_constraints[key]
+                    if key in check_constraints
+                    else default()
+                ),
             )
             for key in (
                 (schema, self.normalize_name(obj_name))

@@ -179,8 +179,7 @@ following::
         )
         name: Mapped[Optional[str]] = Mapped._special_method(Column(String))
 
-        def __init__(self, id: Optional[int] = ..., name: Optional[str] = ...) -> None:
-            ...
+        def __init__(self, id: Optional[int] = ..., name: Optional[str] = ...) -> None: ...
 
 
     some_user = User(id=5, name="user")

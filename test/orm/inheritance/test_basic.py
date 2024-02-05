@@ -1933,7 +1933,7 @@ class OptimizedGetOnDeferredTest(fixtures.MappedTest):
                 # a.id is not included in the SELECT list
                 "SELECT b.data FROM a JOIN b ON a.id = b.id "
                 "WHERE a.id = :pk_1",
-                [{"pk_1": pk}]
+                [{"pk_1": pk}],
                 # if we used load_scalar_attributes(), it would look like
                 # this
                 # "SELECT b.data AS b_data FROM b WHERE :param_1 = b.id",

@@ -209,9 +209,9 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
     @property
     def _schema_translate_map(self) -> Optional[SchemaTranslateMapType]:
-        schema_translate_map: Optional[
-            SchemaTranslateMapType
-        ] = self._execution_options.get("schema_translate_map", None)
+        schema_translate_map: Optional[SchemaTranslateMapType] = (
+            self._execution_options.get("schema_translate_map", None)
+        )
 
         return schema_translate_map
 
@@ -222,9 +222,9 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         """
 
         name = obj.schema
-        schema_translate_map: Optional[
-            SchemaTranslateMapType
-        ] = self._execution_options.get("schema_translate_map", None)
+        schema_translate_map: Optional[SchemaTranslateMapType] = (
+            self._execution_options.get("schema_translate_map", None)
+        )
 
         if (
             schema_translate_map
@@ -255,12 +255,10 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         insertmanyvalues_page_size: int = ...,
         schema_translate_map: Optional[SchemaTranslateMapType] = ...,
         **opt: Any,
-    ) -> Connection:
-        ...
+    ) -> Connection: ...
 
     @overload
-    def execution_options(self, **opt: Any) -> Connection:
-        ...
+    def execution_options(self, **opt: Any) -> Connection: ...
 
     def execution_options(self, **opt: Any) -> Connection:
         r"""Set non-SQL options for the connection which take effect
@@ -1266,8 +1264,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> Optional[_T]:
-        ...
+    ) -> Optional[_T]: ...
 
     @overload
     def scalar(
@@ -1276,8 +1273,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     def scalar(
         self,
@@ -1315,8 +1311,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> ScalarResult[_T]:
-        ...
+    ) -> ScalarResult[_T]: ...
 
     @overload
     def scalars(
@@ -1325,8 +1320,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> ScalarResult[Any]:
-        ...
+    ) -> ScalarResult[Any]: ...
 
     def scalars(
         self,
@@ -1360,8 +1354,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> CursorResult[Unpack[_Ts]]:
-        ...
+    ) -> CursorResult[Unpack[_Ts]]: ...
 
     @overload
     def execute(
@@ -1370,8 +1363,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> CursorResult[Unpack[TupleAny]]:
-        ...
+    ) -> CursorResult[Unpack[TupleAny]]: ...
 
     def execute(
         self,
@@ -2021,9 +2013,9 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
         engine_events = self._has_events or self.engine._has_events
         if self.dialect._has_events:
-            do_execute_dispatch: Iterable[
-                Any
-            ] = self.dialect.dispatch.do_execute
+            do_execute_dispatch: Iterable[Any] = (
+                self.dialect.dispatch.do_execute
+            )
         else:
             do_execute_dispatch = ()
 
@@ -2384,9 +2376,9 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 None,
                 cast(Exception, e),
                 dialect.loaded_dbapi.Error,
-                hide_parameters=engine.hide_parameters
-                if engine is not None
-                else False,
+                hide_parameters=(
+                    engine.hide_parameters if engine is not None else False
+                ),
                 connection_invalidated=is_disconnect,
                 dialect=dialect,
             )
@@ -2423,9 +2415,9 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                     break
 
             if sqlalchemy_exception and is_disconnect != ctx.is_disconnect:
-                sqlalchemy_exception.connection_invalidated = (
-                    is_disconnect
-                ) = ctx.is_disconnect
+                sqlalchemy_exception.connection_invalidated = is_disconnect = (
+                    ctx.is_disconnect
+                )
 
         if newraise:
             raise newraise.with_traceback(exc_info[2]) from e
@@ -3033,12 +3025,10 @@ class Engine(
         insertmanyvalues_page_size: int = ...,
         schema_translate_map: Optional[SchemaTranslateMapType] = ...,
         **opt: Any,
-    ) -> OptionEngine:
-        ...
+    ) -> OptionEngine: ...
 
     @overload
-    def execution_options(self, **opt: Any) -> OptionEngine:
-        ...
+    def execution_options(self, **opt: Any) -> OptionEngine: ...
 
     def execution_options(self, **opt: Any) -> OptionEngine:
         """Return a new :class:`_engine.Engine` that will provide

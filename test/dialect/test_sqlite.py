@@ -1,4 +1,5 @@
 """SQLite-specific tests."""
+
 import datetime
 import json
 import os
@@ -912,7 +913,6 @@ class AttachedDBTest(fixtures.TablesTest):
 
 
 class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
-
     """Tests SQLite-dialect specific compilation."""
 
     __dialect__ = sqlite.dialect()
@@ -1314,7 +1314,6 @@ class OnConflictDDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class InsertTest(fixtures.TestBase, AssertsExecutionResults):
-
     """Tests inserts and autoincrement."""
 
     __only_on__ = "sqlite"
@@ -2508,7 +2507,6 @@ class ConstraintReflectionTest(fixtures.TestBase):
 
 
 class SavepointTest(fixtures.TablesTest):
-
     """test that savepoints work when we use the correct event setup"""
 
     __only_on__ = "sqlite"

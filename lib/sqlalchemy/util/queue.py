@@ -54,8 +54,7 @@ class QueueCommon(Generic[_T]):
     maxsize: int
     use_lifo: bool
 
-    def __init__(self, maxsize: int = 0, use_lifo: bool = False):
-        ...
+    def __init__(self, maxsize: int = 0, use_lifo: bool = False): ...
 
     def empty(self) -> bool:
         raise NotImplementedError()

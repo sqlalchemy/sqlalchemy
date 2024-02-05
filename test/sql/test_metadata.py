@@ -4146,7 +4146,6 @@ class ConstraintTest(fixtures.TestBase):
 
 
 class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
-
     """Test Column() construction."""
 
     __dialect__ = "default"
@@ -4562,7 +4561,6 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
 
 
 class ColumnDefaultsTest(fixtures.TestBase):
-
     """test assignment of default fixures to columns"""
 
     def _fixture(self, *arg, **kw):
@@ -5792,9 +5790,11 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             "b",
             metadata,
             Column("id", Integer, primary_key=True),
-            Column("aid", ForeignKey("a.id"))
-            if not col_has_type
-            else Column("aid", Integer, ForeignKey("a.id")),
+            (
+                Column("aid", ForeignKey("a.id"))
+                if not col_has_type
+                else Column("aid", Integer, ForeignKey("a.id"))
+            ),
         )
         fks = list(
             c for c in b.constraints if isinstance(c, ForeignKeyConstraint)

@@ -429,8 +429,7 @@ class ColumnProperty(
 
         if TYPE_CHECKING:
 
-            def __clause_element__(self) -> NamedColumn[_PT]:
-                ...
+            def __clause_element__(self) -> NamedColumn[_PT]: ...
 
         def _memoized_method___clause_element__(
             self,
@@ -636,9 +635,11 @@ class MappedColumn(
         return [
             (
                 self.column,
-                self._sort_order
-                if self._sort_order is not _NoArg.NO_ARG
-                else 0,
+                (
+                    self._sort_order
+                    if self._sort_order is not _NoArg.NO_ARG
+                    else 0
+                ),
             )
         ]
 

@@ -117,9 +117,7 @@ class _SerializableColumnGetterV2(_PlainColumnGetter[_KT]):
         return self.__class__, (self.colkeys,)
 
     @classmethod
-    def _reduce_from_cols(
-        cls, cols: Sequence[ColumnElement[_KT]]
-    ) -> Tuple[
+    def _reduce_from_cols(cls, cols: Sequence[ColumnElement[_KT]]) -> Tuple[
         Type[_SerializableColumnGetterV2[_KT]],
         Tuple[Sequence[Tuple[Optional[str], Optional[str]]]],
     ]:

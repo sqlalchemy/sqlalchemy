@@ -1,4 +1,5 @@
 """Concrete-table (table-per-class) inheritance example."""
+
 from __future__ import annotations
 
 from typing import Annotated

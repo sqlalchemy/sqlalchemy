@@ -38,15 +38,14 @@ class PGUuid(sqltypes.UUID[sqltypes._UUID_RETURN]):
         @overload
         def __init__(
             self: PGUuid[_python_UUID], as_uuid: Literal[True] = ...
-        ) -> None:
-            ...
+        ) -> None: ...
 
         @overload
-        def __init__(self: PGUuid[str], as_uuid: Literal[False] = ...) -> None:
-            ...
+        def __init__(
+            self: PGUuid[str], as_uuid: Literal[False] = ...
+        ) -> None: ...
 
-        def __init__(self, as_uuid: bool = True) -> None:
-            ...
+        def __init__(self, as_uuid: bool = True) -> None: ...
 
 
 class BYTEA(sqltypes.LargeBinary):
@@ -129,14 +128,12 @@ class MONEY(sqltypes.TypeEngine[str]):
 
 
 class OID(sqltypes.TypeEngine[int]):
-
     """Provide the PostgreSQL OID type."""
 
     __visit_name__ = "OID"
 
 
 class REGCONFIG(sqltypes.TypeEngine[str]):
-
     """Provide the PostgreSQL REGCONFIG type.
 
     .. versionadded:: 2.0.0rc1
@@ -147,7 +144,6 @@ class REGCONFIG(sqltypes.TypeEngine[str]):
 
 
 class TSQUERY(sqltypes.TypeEngine[str]):
-
     """Provide the PostgreSQL TSQUERY type.
 
     .. versionadded:: 2.0.0rc1
@@ -158,7 +154,6 @@ class TSQUERY(sqltypes.TypeEngine[str]):
 
 
 class REGCLASS(sqltypes.TypeEngine[str]):
-
     """Provide the PostgreSQL REGCLASS type.
 
     .. versionadded:: 1.2.7
@@ -169,7 +164,6 @@ class REGCLASS(sqltypes.TypeEngine[str]):
 
 
 class TIMESTAMP(sqltypes.TIMESTAMP):
-
     """Provide the PostgreSQL TIMESTAMP type."""
 
     __visit_name__ = "TIMESTAMP"
@@ -190,7 +184,6 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
 
 
 class TIME(sqltypes.TIME):
-
     """PostgreSQL TIME type."""
 
     __visit_name__ = "TIME"
@@ -211,7 +204,6 @@ class TIME(sqltypes.TIME):
 
 
 class INTERVAL(type_api.NativeForEmulated, sqltypes._AbstractInterval):
-
     """PostgreSQL INTERVAL type."""
 
     __visit_name__ = "INTERVAL"
@@ -281,7 +273,6 @@ PGBit = BIT
 
 
 class TSVECTOR(sqltypes.TypeEngine[str]):
-
     """The :class:`_postgresql.TSVECTOR` type implements the PostgreSQL
     text search type TSVECTOR.
 
@@ -298,7 +289,6 @@ class TSVECTOR(sqltypes.TypeEngine[str]):
 
 
 class CITEXT(sqltypes.TEXT):
-
     """Provide the PostgreSQL CITEXT type.
 
     .. versionadded:: 2.0.7

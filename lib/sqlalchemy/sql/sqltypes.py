@@ -81,7 +81,6 @@ _TE = TypeVar("_TE", bound="TypeEngine[Any]")
 
 
 class HasExpressionLookup(TypeEngineMixin):
-
     """Mixin expression adaptations based on lookup tables.
 
     These rules are currently used by the numeric, integer and date types
@@ -120,7 +119,6 @@ class HasExpressionLookup(TypeEngineMixin):
 
 
 class Concatenable(TypeEngineMixin):
-
     """A mixin that marks a type as supporting 'concatenation',
     typically strings."""
 
@@ -169,7 +167,6 @@ class Indexable(TypeEngineMixin):
 
 
 class String(Concatenable, TypeEngine[str]):
-
     """The base for all string and character types.
 
     In SQL, corresponds to VARCHAR.
@@ -256,7 +253,6 @@ class String(Concatenable, TypeEngine[str]):
 
 
 class Text(String):
-
     """A variably sized string type.
 
     In SQL, usually corresponds to CLOB or TEXT.  In general, TEXT objects
@@ -269,7 +265,6 @@ class Text(String):
 
 
 class Unicode(String):
-
     """A variable length Unicode string type.
 
     The :class:`.Unicode` type is a :class:`.String` subclass that assumes
@@ -323,7 +318,6 @@ class Unicode(String):
 
 
 class UnicodeText(Text):
-
     """An unbounded-length Unicode string type.
 
     See :class:`.Unicode` for details on the unicode
@@ -348,7 +342,6 @@ class UnicodeText(Text):
 
 
 class Integer(HasExpressionLookup, TypeEngine[int]):
-
     """A type for ``int`` integers."""
 
     __visit_name__ = "integer"
@@ -356,8 +349,7 @@ class Integer(HasExpressionLookup, TypeEngine[int]):
     if TYPE_CHECKING:
 
         @util.ro_memoized_property
-        def _type_affinity(self) -> Type[Integer]:
-            ...
+        def _type_affinity(self) -> Type[Integer]: ...
 
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
@@ -398,7 +390,6 @@ class Integer(HasExpressionLookup, TypeEngine[int]):
 
 
 class SmallInteger(Integer):
-
     """A type for smaller ``int`` integers.
 
     Typically generates a ``SMALLINT`` in DDL, and otherwise acts like
@@ -410,7 +401,6 @@ class SmallInteger(Integer):
 
 
 class BigInteger(Integer):
-
     """A type for bigger ``int`` integers.
 
     Typically generates a ``BIGINT`` in DDL, and otherwise acts like
@@ -425,7 +415,6 @@ _N = TypeVar("_N", bound=Union[decimal.Decimal, float])
 
 
 class Numeric(HasExpressionLookup, TypeEngine[_N]):
-
     """Base for non-integer numeric types, such as
     ``NUMERIC``, ``FLOAT``, ``DECIMAL``, and other variants.
 
@@ -462,8 +451,7 @@ class Numeric(HasExpressionLookup, TypeEngine[_N]):
     if TYPE_CHECKING:
 
         @util.ro_memoized_property
-        def _type_affinity(self) -> Type[Numeric[_N]]:
-            ...
+        def _type_affinity(self) -> Type[Numeric[_N]]: ...
 
     _default_decimal_return_scale = 10
 
@@ -474,8 +462,7 @@ class Numeric(HasExpressionLookup, TypeEngine[_N]):
         scale: Optional[int] = ...,
         decimal_return_scale: Optional[int] = ...,
         asdecimal: Literal[True] = ...,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -484,8 +471,7 @@ class Numeric(HasExpressionLookup, TypeEngine[_N]):
         scale: Optional[int] = ...,
         decimal_return_scale: Optional[int] = ...,
         asdecimal: Literal[False] = ...,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self,
@@ -581,9 +567,11 @@ class Numeric(HasExpressionLookup, TypeEngine[_N]):
                 # we're a "numeric", DBAPI returns floats, convert.
                 return processors.to_decimal_processor_factory(
                     decimal.Decimal,
-                    self.scale
-                    if self.scale is not None
-                    else self._default_decimal_return_scale,
+                    (
+                        self.scale
+                        if self.scale is not None
+                        else self._default_decimal_return_scale
+                    ),
                 )
         else:
             if dialect.supports_native_decimal:
@@ -636,8 +624,7 @@ class Float(Numeric[_N]):
         precision: Optional[int] = ...,
         asdecimal: Literal[False] = ...,
         decimal_return_scale: Optional[int] = ...,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
@@ -645,8 +632,7 @@ class Float(Numeric[_N]):
         precision: Optional[int] = ...,
         asdecimal: Literal[True] = ...,
         decimal_return_scale: Optional[int] = ...,
-    ):
-        ...
+    ): ...
 
     def __init__(
         self: Float[_N],
@@ -754,7 +740,6 @@ class _RenderISO8601NoT:
 class DateTime(
     _RenderISO8601NoT, HasExpressionLookup, TypeEngine[dt.datetime]
 ):
-
     """A type for ``datetime.datetime()`` objects.
 
     Date and time types return objects from the Python ``datetime``
@@ -818,7 +803,6 @@ class DateTime(
 
 
 class Date(_RenderISO8601NoT, HasExpressionLookup, TypeEngine[dt.date]):
-
     """A type for ``datetime.date()`` objects."""
 
     __visit_name__ = "date"
@@ -859,7 +843,6 @@ class Date(_RenderISO8601NoT, HasExpressionLookup, TypeEngine[dt.date]):
 
 
 class Time(_RenderISO8601NoT, HasExpressionLookup, TypeEngine[dt.time]):
-
     """A type for ``datetime.time()`` objects."""
 
     __visit_name__ = "time"
@@ -896,7 +879,6 @@ class Time(_RenderISO8601NoT, HasExpressionLookup, TypeEngine[dt.time]):
 
 
 class _Binary(TypeEngine[bytes]):
-
     """Define base behavior for binary types."""
 
     def __init__(self, length: Optional[int] = None):
@@ -960,7 +942,6 @@ class _Binary(TypeEngine[bytes]):
 
 
 class LargeBinary(_Binary):
-
     """A type for large binary byte data.
 
     The :class:`.LargeBinary` type corresponds to a large and/or unlengthed
@@ -984,7 +965,6 @@ class LargeBinary(_Binary):
 
 
 class SchemaType(SchemaEventTarget, TypeEngineMixin):
-
     """Add capabilities to a type which allow for schema-level DDL to be
     associated with a type.
 
@@ -1122,12 +1102,12 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         )
 
     @overload
-    def adapt(self, cls: Type[_TE], **kw: Any) -> _TE:
-        ...
+    def adapt(self, cls: Type[_TE], **kw: Any) -> _TE: ...
 
     @overload
-    def adapt(self, cls: Type[TypeEngineMixin], **kw: Any) -> TypeEngine[Any]:
-        ...
+    def adapt(
+        self, cls: Type[TypeEngineMixin], **kw: Any
+    ) -> TypeEngine[Any]: ...
 
     def adapt(
         self, cls: Type[Union[TypeEngine[Any], TypeEngineMixin]], **kw: Any
@@ -1887,7 +1867,6 @@ class PickleType(TypeDecorator[object]):
 
 
 class Boolean(SchemaType, Emulated, TypeEngine[bool]):
-
     """A bool datatype.
 
     :class:`.Boolean` typically uses BOOLEAN or SMALLINT on the DDL side,
@@ -2045,7 +2024,6 @@ class _AbstractInterval(HasExpressionLookup, TypeEngine[dt.timedelta]):
 
 
 class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
-
     """A type for ``datetime.timedelta()`` objects.
 
     The Interval type deals with ``datetime.timedelta`` objects.  In
@@ -2546,9 +2524,11 @@ class JSON(Indexable, TypeEngine[Any]):
                     index,
                     expr=self.expr,
                     operator=operators.json_getitem_op,
-                    bindparam_type=JSON.JSONIntIndexType
-                    if isinstance(index, int)
-                    else JSON.JSONStrIndexType,
+                    bindparam_type=(
+                        JSON.JSONIntIndexType
+                        if isinstance(index, int)
+                        else JSON.JSONStrIndexType
+                    ),
                 )
                 operator = operators.json_getitem_op
 
@@ -2870,7 +2850,6 @@ class ARRAY(
         Indexable.Comparator[Sequence[Any]],
         Concatenable.Comparator[Sequence[Any]],
     ):
-
         """Define comparison operations for :class:`_types.ARRAY`.
 
         More operators are available on the dialect-specific form
@@ -3145,14 +3124,16 @@ class ARRAY(
                 return collection_callable(arr)
         else:
             return collection_callable(
-                self._apply_item_processor(
-                    x,
-                    itemproc,
-                    dim - 1 if dim is not None else None,
-                    collection_callable,
+                (
+                    self._apply_item_processor(
+                        x,
+                        itemproc,
+                        dim - 1 if dim is not None else None,
+                        collection_callable,
+                    )
+                    if x is not None
+                    else None
                 )
-                if x is not None
-                else None
                 for x in arr
             )
 
@@ -3203,7 +3184,6 @@ class TupleType(TypeEngine[TupleAny]):
 
 
 class REAL(Float[_N]):
-
     """The SQL REAL type.
 
     .. seealso::
@@ -3216,7 +3196,6 @@ class REAL(Float[_N]):
 
 
 class FLOAT(Float[_N]):
-
     """The SQL FLOAT type.
 
     .. seealso::
@@ -3257,7 +3236,6 @@ class DOUBLE_PRECISION(Double[_N]):
 
 
 class NUMERIC(Numeric[_N]):
-
     """The SQL NUMERIC type.
 
     .. seealso::
@@ -3270,7 +3248,6 @@ class NUMERIC(Numeric[_N]):
 
 
 class DECIMAL(Numeric[_N]):
-
     """The SQL DECIMAL type.
 
     .. seealso::
@@ -3283,7 +3260,6 @@ class DECIMAL(Numeric[_N]):
 
 
 class INTEGER(Integer):
-
     """The SQL INT or INTEGER type.
 
     .. seealso::
@@ -3299,7 +3275,6 @@ INT = INTEGER
 
 
 class SMALLINT(SmallInteger):
-
     """The SQL SMALLINT type.
 
     .. seealso::
@@ -3312,7 +3287,6 @@ class SMALLINT(SmallInteger):
 
 
 class BIGINT(BigInteger):
-
     """The SQL BIGINT type.
 
     .. seealso::
@@ -3325,7 +3299,6 @@ class BIGINT(BigInteger):
 
 
 class TIMESTAMP(DateTime):
-
     """The SQL TIMESTAMP type.
 
     :class:`_types.TIMESTAMP` datatypes have support for timezone
@@ -3355,35 +3328,30 @@ class TIMESTAMP(DateTime):
 
 
 class DATETIME(DateTime):
-
     """The SQL DATETIME type."""
 
     __visit_name__ = "DATETIME"
 
 
 class DATE(Date):
-
     """The SQL DATE type."""
 
     __visit_name__ = "DATE"
 
 
 class TIME(Time):
-
     """The SQL TIME type."""
 
     __visit_name__ = "TIME"
 
 
 class TEXT(Text):
-
     """The SQL TEXT type."""
 
     __visit_name__ = "TEXT"
 
 
 class CLOB(Text):
-
     """The CLOB type.
 
     This type is found in Oracle and Informix.
@@ -3393,63 +3361,54 @@ class CLOB(Text):
 
 
 class VARCHAR(String):
-
     """The SQL VARCHAR type."""
 
     __visit_name__ = "VARCHAR"
 
 
 class NVARCHAR(Unicode):
-
     """The SQL NVARCHAR type."""
 
     __visit_name__ = "NVARCHAR"
 
 
 class CHAR(String):
-
     """The SQL CHAR type."""
 
     __visit_name__ = "CHAR"
 
 
 class NCHAR(Unicode):
-
     """The SQL NCHAR type."""
 
     __visit_name__ = "NCHAR"
 
 
 class BLOB(LargeBinary):
-
     """The SQL BLOB type."""
 
     __visit_name__ = "BLOB"
 
 
 class BINARY(_Binary):
-
     """The SQL BINARY type."""
 
     __visit_name__ = "BINARY"
 
 
 class VARBINARY(_Binary):
-
     """The SQL VARBINARY type."""
 
     __visit_name__ = "VARBINARY"
 
 
 class BOOLEAN(Boolean):
-
     """The SQL BOOLEAN type."""
 
     __visit_name__ = "BOOLEAN"
 
 
 class NullType(TypeEngine[None]):
-
     """An unknown type.
 
     :class:`.NullType` is used as a default type for those cases where
@@ -3534,7 +3493,6 @@ _UUID_RETURN = TypeVar("_UUID_RETURN", str, _python_UUID)
 
 
 class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
-
     """Represent a database agnostic UUID datatype.
 
     For backends that have no "native" UUID datatype, the value will
@@ -3594,16 +3552,14 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
         self: Uuid[_python_UUID],
         as_uuid: Literal[True] = ...,
         native_uuid: bool = ...,
-    ):
-        ...
+    ): ...
 
     @overload
     def __init__(
         self: Uuid[str],
         as_uuid: Literal[False] = ...,
         native_uuid: bool = ...,
-    ):
-        ...
+    ): ...
 
     def __init__(self, as_uuid: bool = True, native_uuid: bool = True):
         """Construct a :class:`_sqltypes.Uuid` type.
@@ -3726,7 +3682,6 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
 
 
 class UUID(Uuid[_UUID_RETURN], type_api.NativeForEmulated):
-
     """Represent the SQL UUID type.
 
     This is the SQL-native form of the :class:`_types.Uuid` database agnostic
@@ -3750,12 +3705,10 @@ class UUID(Uuid[_UUID_RETURN], type_api.NativeForEmulated):
     __visit_name__ = "UUID"
 
     @overload
-    def __init__(self: UUID[_python_UUID], as_uuid: Literal[True] = ...):
-        ...
+    def __init__(self: UUID[_python_UUID], as_uuid: Literal[True] = ...): ...
 
     @overload
-    def __init__(self: UUID[str], as_uuid: Literal[False] = ...):
-        ...
+    def __init__(self: UUID[str], as_uuid: Literal[False] = ...): ...
 
     def __init__(self, as_uuid: bool = True):
         """Construct a :class:`_sqltypes.UUID` type.

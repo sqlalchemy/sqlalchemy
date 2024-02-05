@@ -2476,9 +2476,9 @@ class Issue8168Test(AssertsCompiledSQL, fixtures.TestBase):
 
                 __mapper_args__ = {
                     "polymorphic_identity": "retailer",
-                    "polymorphic_load": "inline"
-                    if use_poly_on_retailer
-                    else None,
+                    "polymorphic_load": (
+                        "inline" if use_poly_on_retailer else None
+                    ),
                 }
 
             return Customer, Store, Retailer

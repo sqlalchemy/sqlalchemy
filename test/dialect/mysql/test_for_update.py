@@ -3,6 +3,7 @@
 See #4246
 
 """
+
 import contextlib
 
 from sqlalchemy import Column

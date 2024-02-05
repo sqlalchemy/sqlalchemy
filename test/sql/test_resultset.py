@@ -1303,11 +1303,15 @@ class CursorResultTest(fixtures.TablesTest):
 
         stmt = select(
             *[
-                text("*")
-                if colname == "*"
-                else users.c.user_name.label("name_label")
-                if colname == "name_label"
-                else users.c[colname]
+                (
+                    text("*")
+                    if colname == "*"
+                    else (
+                        users.c.user_name.label("name_label")
+                        if colname == "name_label"
+                        else users.c[colname]
+                    )
+                )
                 for colname in cols
             ]
         )

@@ -183,7 +183,6 @@ class _RelationshipErrors:
 
 
 class DependencyTwoParentTest(fixtures.MappedTest):
-
     """Test flush() when a mapper is dependent on multiple relationships"""
 
     run_setup_mappers = "once"
@@ -430,7 +429,6 @@ class M2ODontOverwriteFKTest(fixtures.MappedTest):
 
 
 class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
-
     """Tests the ultimate join condition, a single column
     that points to itself, e.g. within a SQL function or similar.
     The test is against a materialized path setup.
@@ -1022,7 +1020,6 @@ class OverlappingFksSiblingTest(fixtures.MappedTest):
 
 
 class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
-
     """Tests a composite FK where, in
     the relationship(), one col points
     to itself in the same table.
@@ -1506,7 +1503,6 @@ class CompositeJoinPartialFK(fixtures.MappedTest, AssertsCompiledSQL):
 
 
 class SynonymsAsFKsTest(fixtures.MappedTest):
-
     """Syncrules on foreign keys that are also primary"""
 
     @classmethod
@@ -1578,7 +1574,6 @@ class SynonymsAsFKsTest(fixtures.MappedTest):
 
 
 class FKsAsPksTest(fixtures.MappedTest):
-
     """Syncrules on foreign keys that are also primary"""
 
     @classmethod
@@ -1863,7 +1858,6 @@ class FKsAsPksTest(fixtures.MappedTest):
 
 
 class UniqueColReferenceSwitchTest(fixtures.MappedTest):
-
     """test a relationship based on a primary
     join against a unique non-pk column"""
 
@@ -1928,7 +1922,6 @@ class UniqueColReferenceSwitchTest(fixtures.MappedTest):
 
 
 class RelationshipToSelectableTest(fixtures.MappedTest):
-
     """Test a map to a select that relates to a map to the table."""
 
     @classmethod
@@ -2022,7 +2015,6 @@ class RelationshipToSelectableTest(fixtures.MappedTest):
 
 
 class FKEquatedToConstantTest(fixtures.MappedTest):
-
     """test a relationship with a non-column entity in the primary join,
     is not viewonly, and also has the non-column's clause mentioned in the
     foreign keys list.
@@ -2159,7 +2151,6 @@ class BackrefPropagatesForwardsArgs(fixtures.MappedTest):
 
 
 class AmbiguousJoinInterpretedAsSelfRef(fixtures.MappedTest):
-
     """test ambiguous joins due to FKs on both sides treated as
     self-referential.
 
@@ -2254,7 +2245,6 @@ class AmbiguousJoinInterpretedAsSelfRef(fixtures.MappedTest):
 
 
 class ManualBackrefTest(_fixtures.FixtureTest):
-
     """Test explicit relationships that are backrefs to each other."""
 
     run_inserts = None
@@ -2485,7 +2475,6 @@ class ManualBackrefTest(_fixtures.FixtureTest):
 
 
 class NoLoadBackPopulates(_fixtures.FixtureTest):
-
     """test the noload stratgegy which unlike others doesn't use
     lazyloader to set up instrumentation"""
 
@@ -2732,7 +2721,6 @@ class JoinConditionErrorTest(fixtures.TestBase):
 
 
 class TypeMatchTest(fixtures.MappedTest):
-
     """test errors raised when trying to add items
     whose type is not handled by a relationship"""
 
@@ -3000,7 +2988,6 @@ class TypedAssociationTable(fixtures.MappedTest):
 
 
 class CustomOperatorTest(fixtures.MappedTest, AssertsCompiledSQL):
-
     """test op() in conjunction with join conditions"""
 
     run_create_tables = run_deletes = None
@@ -3278,7 +3265,6 @@ class ViewOnlyM2MBackrefTest(fixtures.MappedTest):
 
 
 class ViewOnlyOverlappingNames(fixtures.MappedTest):
-
     """'viewonly' mappings with overlapping PK column names."""
 
     @classmethod
@@ -3534,7 +3520,6 @@ class ViewOnlySyncBackref(fixtures.MappedTest):
 
 
 class ViewOnlyUniqueNames(fixtures.MappedTest):
-
     """'viewonly' mappings with unique PK column names."""
 
     @classmethod
@@ -3636,7 +3621,6 @@ class ViewOnlyUniqueNames(fixtures.MappedTest):
 
 
 class ViewOnlyLocalRemoteM2M(fixtures.TestBase):
-
     """test that local-remote is correctly determined for m2m"""
 
     def test_local_remote(self, registry):
@@ -3675,7 +3659,6 @@ class ViewOnlyLocalRemoteM2M(fixtures.TestBase):
 
 
 class ViewOnlyNonEquijoin(fixtures.MappedTest):
-
     """'viewonly' mappings based on non-equijoins."""
 
     @classmethod
@@ -3737,7 +3720,6 @@ class ViewOnlyNonEquijoin(fixtures.MappedTest):
 
 
 class ViewOnlyRepeatedRemoteColumn(fixtures.MappedTest):
-
     """'viewonly' mappings that contain the same 'remote' column twice"""
 
     @classmethod
@@ -3811,7 +3793,6 @@ class ViewOnlyRepeatedRemoteColumn(fixtures.MappedTest):
 
 
 class ViewOnlyRepeatedLocalColumn(fixtures.MappedTest):
-
     """'viewonly' mappings that contain the same 'local' column twice"""
 
     @classmethod
@@ -3886,7 +3867,6 @@ class ViewOnlyRepeatedLocalColumn(fixtures.MappedTest):
 
 
 class ViewOnlyComplexJoin(_RelationshipErrors, fixtures.MappedTest):
-
     """'viewonly' mappings with a complex join condition."""
 
     @classmethod
@@ -4088,7 +4068,6 @@ class FunctionAsPrimaryJoinTest(fixtures.DeclarativeMappedTest):
 
 
 class RemoteForeignBetweenColsTest(fixtures.DeclarativeMappedTest):
-
     """test a complex annotation using between().
 
     Using declarative here as an integration test for the local()
@@ -4705,7 +4684,6 @@ class SecondaryArgTest(fixtures.TestBase):
 class SecondaryNestedJoinTest(
     fixtures.MappedTest, AssertsCompiledSQL, testing.AssertsExecutionResults
 ):
-
     """test support for a relationship where the 'secondary' table is a
     compound join().
 
@@ -6473,7 +6451,6 @@ class RaiseLoadTest(_fixtures.FixtureTest):
 
 
 class RelationDeprecationTest(fixtures.MappedTest):
-
     """test usage of the old 'relation' function."""
 
     run_inserts = "once"

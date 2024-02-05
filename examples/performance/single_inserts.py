@@ -4,6 +4,7 @@ within a distinct transaction, and afterwards returns to essentially a
 a database connection, inserts the row, commits and closes.
 
 """
+
 from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import create_engine

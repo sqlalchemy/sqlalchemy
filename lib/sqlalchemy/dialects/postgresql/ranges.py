@@ -723,12 +723,12 @@ class AbstractRange(sqltypes.TypeEngine[Range[_T]]):
     __abstract__ = True
 
     @overload
-    def adapt(self, cls: Type[_TE], **kw: Any) -> _TE:
-        ...
+    def adapt(self, cls: Type[_TE], **kw: Any) -> _TE: ...
 
     @overload
-    def adapt(self, cls: Type[TypeEngineMixin], **kw: Any) -> TypeEngine[Any]:
-        ...
+    def adapt(
+        self, cls: Type[TypeEngineMixin], **kw: Any
+    ) -> TypeEngine[Any]: ...
 
     def adapt(
         self,

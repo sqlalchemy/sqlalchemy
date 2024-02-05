@@ -1028,10 +1028,13 @@ class ReflectHugeViewTest(fixtures.TablesTest):
                 for i in range(col_num)
             ],
         )
-        cls.view_str = (
-            view_str
-        ) = "CREATE VIEW huge_named_view AS SELECT %s FROM base_table" % (
-            ",".join("long_named_column_number_%d" % i for i in range(col_num))
+        cls.view_str = view_str = (
+            "CREATE VIEW huge_named_view AS SELECT %s FROM base_table"
+            % (
+                ",".join(
+                    "long_named_column_number_%d" % i for i in range(col_num)
+                )
+            )
         )
         assert len(view_str) > 4000
 

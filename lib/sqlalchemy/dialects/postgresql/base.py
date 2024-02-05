@@ -2092,9 +2092,11 @@ class PGCompiler(compiler.SQLCompiler):
             text += "\n FETCH FIRST (%s)%s ROWS %s" % (
                 self.process(select._fetch_clause, **kw),
                 " PERCENT" if select._fetch_clause_options["percent"] else "",
-                "WITH TIES"
-                if select._fetch_clause_options["with_ties"]
-                else "ONLY",
+                (
+                    "WITH TIES"
+                    if select._fetch_clause_options["with_ties"]
+                    else "ONLY"
+                ),
             )
         return text
 
@@ -2264,9 +2266,11 @@ class PGDDLCompiler(compiler.DDLCompiler):
             ", ".join(
                 [
                     self.sql_compiler.process(
-                        expr.self_group()
-                        if not isinstance(expr, expression.ColumnClause)
-                        else expr,
+                        (
+                            expr.self_group()
+                            if not isinstance(expr, expression.ColumnClause)
+                            else expr
+                        ),
                         include_table=False,
                         literal_binds=True,
                     )
@@ -2591,17 +2595,21 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_TIMESTAMP(self, type_, **kw):
         return "TIMESTAMP%s %s" % (
-            "(%d)" % type_.precision
-            if getattr(type_, "precision", None) is not None
-            else "",
+            (
+                "(%d)" % type_.precision
+                if getattr(type_, "precision", None) is not None
+                else ""
+            ),
             (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE",
         )
 
     def visit_TIME(self, type_, **kw):
         return "TIME%s %s" % (
-            "(%d)" % type_.precision
-            if getattr(type_, "precision", None) is not None
-            else "",
+            (
+                "(%d)" % type_.precision
+                if getattr(type_, "precision", None) is not None
+                else ""
+            ),
             (type_.timezone and "WITH" or "WITHOUT") + " TIME ZONE",
         )
 
@@ -3107,9 +3115,7 @@ class PGDialect(default.DefaultDialect):
     def get_deferrable(self, connection):
         raise NotImplementedError()
 
-    def _split_multihost_from_url(
-        self, url: URL
-    ) -> Union[
+    def _split_multihost_from_url(self, url: URL) -> Union[
         Tuple[None, None],
         Tuple[Tuple[Optional[str], ...], Tuple[Optional[int], ...]],
     ]:
@@ -3641,9 +3647,11 @@ class PGDialect(default.DefaultDialect):
         # dictionary with (name, ) if default search path or (schema, name)
         # as keys
         enums = dict(
-            ((rec["name"],), rec)
-            if rec["visible"]
-            else ((rec["schema"], rec["name"]), rec)
+            (
+                ((rec["name"],), rec)
+                if rec["visible"]
+                else ((rec["schema"], rec["name"]), rec)
+            )
             for rec in self._load_enums(
                 connection, schema="*", info_cache=kw.get("info_cache")
             )
@@ -3671,9 +3679,9 @@ class PGDialect(default.DefaultDialect):
         for row_dict in rows:
             # ensure that each table has an entry, even if it has no columns
             if row_dict["name"] is None:
-                columns[
-                    (schema, row_dict["table_name"])
-                ] = ReflectionDefaults.columns()
+                columns[(schema, row_dict["table_name"])] = (
+                    ReflectionDefaults.columns()
+                )
                 continue
             table_cols = columns[(schema, row_dict["table_name"])]
 
@@ -4036,13 +4044,15 @@ class PGDialect(default.DefaultDialect):
         return (
             (
                 (schema, table_name),
-                {
-                    "constrained_columns": [] if cols is None else cols,
-                    "name": pk_name,
-                    "comment": comment,
-                }
-                if pk_name is not None
-                else default(),
+                (
+                    {
+                        "constrained_columns": [] if cols is None else cols,
+                        "name": pk_name,
+                        "comment": comment,
+                    }
+                    if pk_name is not None
+                    else default()
+                ),
             )
             for table_name, cols, pk_name, comment, _ in result
         )

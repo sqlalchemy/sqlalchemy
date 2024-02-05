@@ -91,8 +91,7 @@ class QueryPropertyDescriptor(Protocol):
 
     """
 
-    def __get__(self, instance: Any, owner: Type[_T]) -> Query[_T]:
-        ...
+    def __get__(self, instance: Any, owner: Type[_T]) -> Query[_T]: ...
 
 
 _O = TypeVar("_O", bound=object)
@@ -687,8 +686,7 @@ class scoped_session(Generic[_S]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Unpack[_Ts]]:
-        ...
+    ) -> Result[Unpack[_Ts]]: ...
 
     @overload
     def execute(
@@ -700,8 +698,7 @@ class scoped_session(Generic[_S]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> CursorResult[Unpack[TupleAny]]:
-        ...
+    ) -> CursorResult[Unpack[TupleAny]]: ...
 
     @overload
     def execute(
@@ -713,8 +710,7 @@ class scoped_session(Generic[_S]):
         bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ) -> Result[Unpack[TupleAny]]:
-        ...
+    ) -> Result[Unpack[TupleAny]]: ...
 
     def execute(
         self,
@@ -1579,14 +1575,12 @@ class scoped_session(Generic[_S]):
         return self._proxied.merge(instance, load=load, options=options)
 
     @overload
-    def query(self, _entity: _EntityType[_O]) -> Query[_O]:
-        ...
+    def query(self, _entity: _EntityType[_O]) -> Query[_O]: ...
 
     @overload
     def query(
         self, _colexpr: TypedColumnsClauseRole[_T]
-    ) -> RowReturningQuery[_T]:
-        ...
+    ) -> RowReturningQuery[_T]: ...
 
     # START OVERLOADED FUNCTIONS self.query RowReturningQuery 2-8
 
@@ -1596,14 +1590,12 @@ class scoped_session(Generic[_S]):
     @overload
     def query(
         self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], /
-    ) -> RowReturningQuery[_T0, _T1]:
-        ...
+    ) -> RowReturningQuery[_T0, _T1]: ...
 
     @overload
     def query(
         self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2], /
-    ) -> RowReturningQuery[_T0, _T1, _T2]:
-        ...
+    ) -> RowReturningQuery[_T0, _T1, _T2]: ...
 
     @overload
     def query(
@@ -1613,8 +1605,7 @@ class scoped_session(Generic[_S]):
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
         /,
-    ) -> RowReturningQuery[_T0, _T1, _T2, _T3]:
-        ...
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3]: ...
 
     @overload
     def query(
@@ -1625,8 +1616,7 @@ class scoped_session(Generic[_S]):
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
         /,
-    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4]:
-        ...
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4]: ...
 
     @overload
     def query(
@@ -1638,8 +1628,7 @@ class scoped_session(Generic[_S]):
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
         /,
-    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5]:
-        ...
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5]: ...
 
     @overload
     def query(
@@ -1652,8 +1641,7 @@ class scoped_session(Generic[_S]):
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
         /,
-    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5, _T6]:
-        ...
+    ) -> RowReturningQuery[_T0, _T1, _T2, _T3, _T4, _T5, _T6]: ...
 
     @overload
     def query(
@@ -1670,16 +1658,14 @@ class scoped_session(Generic[_S]):
         *entities: _ColumnsClauseArgument[Any],
     ) -> RowReturningQuery[
         _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, Unpack[TupleAny]
-    ]:
-        ...
+    ]: ...
 
     # END OVERLOADED FUNCTIONS self.query
 
     @overload
     def query(
         self, *entities: _ColumnsClauseArgument[Any], **kwargs: Any
-    ) -> Query[Any]:
-        ...
+    ) -> Query[Any]: ...
 
     def query(
         self, *entities: _ColumnsClauseArgument[Any], **kwargs: Any
@@ -1831,8 +1817,7 @@ class scoped_session(Generic[_S]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> Optional[_T]:
-        ...
+    ) -> Optional[_T]: ...
 
     @overload
     def scalar(
@@ -1843,8 +1828,7 @@ class scoped_session(Generic[_S]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     def scalar(
         self,
@@ -1886,8 +1870,7 @@ class scoped_session(Generic[_S]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> ScalarResult[_T]:
-        ...
+    ) -> ScalarResult[_T]: ...
 
     @overload
     def scalars(
@@ -1898,8 +1881,7 @@ class scoped_session(Generic[_S]):
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
-    ) -> ScalarResult[Any]:
-        ...
+    ) -> ScalarResult[Any]: ...
 
     def scalars(
         self,

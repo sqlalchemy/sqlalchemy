@@ -488,19 +488,15 @@ class PGIdentifierPreparer_asyncpg(PGIdentifierPreparer):
 class _AsyncpgConnection(Protocol):
     async def executemany(
         self, operation: Any, seq_of_parameters: Sequence[Tuple[Any, ...]]
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
-    async def reload_schema_state(self) -> None:
-        ...
+    async def reload_schema_state(self) -> None: ...
 
     async def prepare(
         self, operation: Any, *, name: Optional[str] = None
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
-    def is_closed(self) -> bool:
-        ...
+    def is_closed(self) -> bool: ...
 
     def transaction(
         self,
@@ -508,22 +504,17 @@ class _AsyncpgConnection(Protocol):
         isolation: Optional[str] = None,
         readonly: bool = False,
         deferrable: bool = False,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
-    def fetchrow(self, operation: str) -> Any:
-        ...
+    def fetchrow(self, operation: str) -> Any: ...
 
-    async def close(self) -> None:
-        ...
+    async def close(self) -> None: ...
 
-    def terminate(self) -> None:
-        ...
+    def terminate(self) -> None: ...
 
 
 class _AsyncpgCursor(Protocol):
-    def fetch(self, size: int) -> Any:
-        ...
+    def fetch(self, size: int) -> Any: ...
 
 
 class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
@@ -832,9 +823,9 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
                     translated_error = exception_mapping[super_](
                         "%s: %s" % (type(error), error)
                     )
-                    translated_error.pgcode = (
-                        translated_error.sqlstate
-                    ) = getattr(error, "sqlstate", None)
+                    translated_error.pgcode = translated_error.sqlstate = (
+                        getattr(error, "sqlstate", None)
+                    )
                     raise translated_error from error
             else:
                 super()._handle_exception(error)

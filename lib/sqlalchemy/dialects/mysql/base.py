@@ -1945,17 +1945,19 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
         columns = [
             self.sql_compiler.process(
-                elements.Grouping(expr)
-                if (
-                    isinstance(expr, elements.BinaryExpression)
-                    or (
-                        isinstance(expr, elements.UnaryExpression)
-                        and expr.modifier
-                        not in (operators.desc_op, operators.asc_op)
+                (
+                    elements.Grouping(expr)
+                    if (
+                        isinstance(expr, elements.BinaryExpression)
+                        or (
+                            isinstance(expr, elements.UnaryExpression)
+                            and expr.modifier
+                            not in (operators.desc_op, operators.asc_op)
+                        )
+                        or isinstance(expr, functions.FunctionElement)
                     )
-                    or isinstance(expr, functions.FunctionElement)
-                )
-                else expr,
+                    else expr
+                ),
                 include_table=False,
                 literal_binds=True,
             )
@@ -1984,12 +1986,14 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
                 # mapping specifying the prefix length for each column of the
                 # index
                 columns = ", ".join(
-                    "%s(%d)" % (expr, length[col.name])
-                    if col.name in length
-                    else (
-                        "%s(%d)" % (expr, length[expr])
-                        if expr in length
-                        else "%s" % expr
+                    (
+                        "%s(%d)" % (expr, length[col.name])
+                        if col.name in length
+                        else (
+                            "%s(%d)" % (expr, length[expr])
+                            if expr in length
+                            else "%s" % expr
+                        )
                     )
                     for col, expr in zip(index.expressions, columns)
                 )

@@ -2555,7 +2555,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
 
 class RequirementsTest(fixtures.MappedTest):
-
     """Tests the contract for user classes."""
 
     @classmethod

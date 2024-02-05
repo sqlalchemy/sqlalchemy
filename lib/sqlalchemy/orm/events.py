@@ -729,9 +729,9 @@ class _EventsHold(event.RefCollection[_ET]):
 
 
 class _InstanceEventsHold(_EventsHold[_ET]):
-    all_holds: weakref.WeakKeyDictionary[
-        Any, Any
-    ] = weakref.WeakKeyDictionary()
+    all_holds: weakref.WeakKeyDictionary[Any, Any] = (
+        weakref.WeakKeyDictionary()
+    )
 
     def resolve(self, class_: Type[_O]) -> Optional[ClassManager[_O]]:
         return instrumentation.opt_manager_of_class(class_)

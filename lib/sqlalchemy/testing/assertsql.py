@@ -88,9 +88,9 @@ class CompiledSQL(SQLMatchRule):
             dialect.supports_default_metavalue = True
 
             if self.enable_returning:
-                dialect.insert_returning = (
-                    dialect.update_returning
-                ) = dialect.delete_returning = True
+                dialect.insert_returning = dialect.update_returning = (
+                    dialect.delete_returning
+                ) = True
                 dialect.use_insertmanyvalues = True
                 dialect.supports_multivalues_insert = True
                 dialect.update_returning_multifrom = True

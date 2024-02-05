@@ -2030,9 +2030,9 @@ class SQLiteDialect(default.DefaultDialect):
             )
 
             if self.dbapi.sqlite_version_info < (3, 35) or util.pypy:
-                self.update_returning = (
-                    self.delete_returning
-                ) = self.insert_returning = False
+                self.update_returning = self.delete_returning = (
+                    self.insert_returning
+                ) = False
 
             if self.dbapi.sqlite_version_info < (3, 32, 0):
                 # https://www.sqlite.org/limits.html

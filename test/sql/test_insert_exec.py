@@ -472,7 +472,6 @@ class InsertExecTest(fixtures.TablesTest):
 
 
 class TableInsertTest(fixtures.TablesTest):
-
     """test for consistent insert behavior across dialects
     regarding the inline() method, values() method, lower-case 't' tables.
 
@@ -1766,9 +1765,11 @@ class IMVSentinelTest(fixtures.TestBase):
             Column(
                 "id",
                 Uuid(),
-                server_default=func.gen_random_uuid()
-                if default_type.server_side
-                else None,
+                server_default=(
+                    func.gen_random_uuid()
+                    if default_type.server_side
+                    else None
+                ),
                 default=uuid.uuid4 if default_type.client_side else None,
                 primary_key=True,
                 insert_sentinel=bool(add_insert_sentinel),

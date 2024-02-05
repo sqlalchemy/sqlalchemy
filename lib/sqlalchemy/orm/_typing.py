@@ -108,13 +108,13 @@ class _ORMAdapterProto(Protocol):
 
     """
 
-    def __call__(self, obj: _CE, key: Optional[str] = None) -> _CE:
-        ...
+    def __call__(self, obj: _CE, key: Optional[str] = None) -> _CE: ...
 
 
 class _LoaderCallable(Protocol):
-    def __call__(self, state: InstanceState[Any], passive: PassiveFlag) -> Any:
-        ...
+    def __call__(
+        self, state: InstanceState[Any], passive: PassiveFlag
+    ) -> Any: ...
 
 
 def is_orm_option(
@@ -138,39 +138,33 @@ def is_composite_class(obj: Any) -> bool:
 
 if TYPE_CHECKING:
 
-    def insp_is_mapper_property(obj: Any) -> TypeGuard[MapperProperty[Any]]:
-        ...
+    def insp_is_mapper_property(
+        obj: Any,
+    ) -> TypeGuard[MapperProperty[Any]]: ...
 
-    def insp_is_mapper(obj: Any) -> TypeGuard[Mapper[Any]]:
-        ...
+    def insp_is_mapper(obj: Any) -> TypeGuard[Mapper[Any]]: ...
 
-    def insp_is_aliased_class(obj: Any) -> TypeGuard[AliasedInsp[Any]]:
-        ...
+    def insp_is_aliased_class(obj: Any) -> TypeGuard[AliasedInsp[Any]]: ...
 
     def insp_is_attribute(
         obj: InspectionAttr,
-    ) -> TypeGuard[QueryableAttribute[Any]]:
-        ...
+    ) -> TypeGuard[QueryableAttribute[Any]]: ...
 
     def attr_is_internal_proxy(
         obj: InspectionAttr,
-    ) -> TypeGuard[QueryableAttribute[Any]]:
-        ...
+    ) -> TypeGuard[QueryableAttribute[Any]]: ...
 
     def prop_is_relationship(
         prop: MapperProperty[Any],
-    ) -> TypeGuard[RelationshipProperty[Any]]:
-        ...
+    ) -> TypeGuard[RelationshipProperty[Any]]: ...
 
     def is_collection_impl(
         impl: AttributeImpl,
-    ) -> TypeGuard[CollectionAttributeImpl]:
-        ...
+    ) -> TypeGuard[CollectionAttributeImpl]: ...
 
     def is_has_collection_adapter(
         impl: AttributeImpl,
-    ) -> TypeGuard[HasCollectionAdapter]:
-        ...
+    ) -> TypeGuard[HasCollectionAdapter]: ...
 
 else:
     insp_is_mapper_property = operator.attrgetter("is_property")

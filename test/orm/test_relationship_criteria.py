@@ -1908,9 +1908,11 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
 
                 eq_(
                     result.scalars().unique().all(),
-                    self._user_minus_edwood(*user_address_fixture)
-                    if value == "ed@wood.com"
-                    else self._user_minus_edlala(*user_address_fixture),
+                    (
+                        self._user_minus_edwood(*user_address_fixture)
+                        if value == "ed@wood.com"
+                        else self._user_minus_edlala(*user_address_fixture)
+                    ),
                 )
 
             asserter.assert_(
@@ -1976,9 +1978,11 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
 
                 eq_(
                     result.scalars().unique().all(),
-                    self._user_minus_edwood(*user_address_fixture)
-                    if value == "ed@wood.com"
-                    else self._user_minus_edlala(*user_address_fixture),
+                    (
+                        self._user_minus_edwood(*user_address_fixture)
+                        if value == "ed@wood.com"
+                        else self._user_minus_edlala(*user_address_fixture)
+                    ),
                 )
 
             asserter.assert_(
@@ -2033,9 +2037,11 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
 
                 eq_(
                     result.scalars().unique().all(),
-                    self._user_minus_edwood(*user_address_fixture)
-                    if value == "ed@wood.com"
-                    else self._user_minus_edlala(*user_address_fixture),
+                    (
+                        self._user_minus_edwood(*user_address_fixture)
+                        if value == "ed@wood.com"
+                        else self._user_minus_edlala(*user_address_fixture)
+                    ),
                 )
 
             asserter.assert_(
@@ -2129,9 +2135,11 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
 
                 eq_(
                     result,
-                    self._user_minus_edwood(*user_address_fixture)
-                    if value == "ed@wood.com"
-                    else self._user_minus_edlala(*user_address_fixture),
+                    (
+                        self._user_minus_edwood(*user_address_fixture)
+                        if value == "ed@wood.com"
+                        else self._user_minus_edlala(*user_address_fixture)
+                    ),
                 )
 
     @testing.combinations((True,), (False,), argnames="use_compiled_cache")
@@ -2237,9 +2245,11 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
 
                 eq_(
                     result.scalars().unique().all(),
-                    self._user_minus_edwood(*user_address_fixture)
-                    if value == "ed@wood.com"
-                    else self._user_minus_edlala(*user_address_fixture),
+                    (
+                        self._user_minus_edwood(*user_address_fixture)
+                        if value == "ed@wood.com"
+                        else self._user_minus_edlala(*user_address_fixture)
+                    ),
                 )
 
             asserter.assert_(
@@ -2309,9 +2319,11 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
 
                 eq_(
                     result.scalars().unique().all(),
-                    self._user_minus_edwood(*user_address_fixture)
-                    if value == "ed@wood.com"
-                    else self._user_minus_edlala(*user_address_fixture),
+                    (
+                        self._user_minus_edwood(*user_address_fixture)
+                        if value == "ed@wood.com"
+                        else self._user_minus_edlala(*user_address_fixture)
+                    ),
                 )
 
             asserter.assert_(

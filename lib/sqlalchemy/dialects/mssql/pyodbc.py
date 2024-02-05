@@ -369,7 +369,6 @@ from ...engine import cursor as _cursor
 
 
 class _ms_numeric_pyodbc:
-
     """Turns Decimals with adjusted() < 0 or > 7 into strings.
 
     The routines here are needed for older pyodbc versions
