@@ -75,7 +75,7 @@ Key aspects of this file layout include:
 
     [db]
     default=access+pyodbc://admin@access_test
-    sqlite=sqlite:///:memory:
+    sqlite=sqlite://
 
   Above, the ``[sqla_testing]`` section contains configuration used by
   SQLAlchemy's test plugin.  The ``[tool:pytest]`` section

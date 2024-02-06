@@ -174,7 +174,7 @@ will issue the CREATE statements:
 
 .. sourcecode:: python+sql
 
-    engine = create_engine("sqlite:///:memory:")
+    engine = create_engine("sqlite://")
 
     metadata_obj = MetaData()
 
@@ -229,7 +229,7 @@ default issue the CREATE or DROP regardless of the table being present:
 
 .. sourcecode:: python+sql
 
-    engine = create_engine("sqlite:///:memory:")
+    engine = create_engine("sqlite://")
 
     metadata_obj = MetaData()
 
