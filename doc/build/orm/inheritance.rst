@@ -9,10 +9,7 @@ SQLAlchemy supports three forms of inheritance:
 
 * **concrete table inheritance** – each type of class is represented by independent tables;
 
-* **joined table inheritance** – the class hierarchy is broken up among dependent tables.
-
-Each class represented by its own table that only
-includes those attributes local to that class.
+* **joined table inheritance** – the class hierarchy is broken up among dependent tables. Each class represented by its own table that only includes those attributes local to that class.
 
 The most common forms of inheritance are single and joined table, while
 concrete inheritance presents more configurational challenges.
