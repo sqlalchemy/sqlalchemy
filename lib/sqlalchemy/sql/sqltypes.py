@@ -307,14 +307,14 @@ class Unicode(String):
 
     __visit_name__ = "unicode"
 
-    def __init__(self, length=None, **kwargs):
+    def __init__(self, length: Optional[int] = None, collation: Optional[str] = None):
         """
         Create a :class:`.Unicode` object.
 
         Parameters are the same as that of :class:`.String`.
 
         """
-        super().__init__(length=length, **kwargs)
+        super().__init__(length=length, collation=collation)
 
 
 class UnicodeText(Text):
@@ -331,14 +331,14 @@ class UnicodeText(Text):
 
     __visit_name__ = "unicode_text"
 
-    def __init__(self, length=None, **kwargs):
+    def __init__(self, length: Optional[int] = None, collation: Optional[str] = None):
         """
         Create a Unicode-converting Text type.
 
-        Parameters are the same as that of :class:`_expression.TextClause`.
+        Parameters are the same as that of :class:`.Text`.
 
         """
-        super().__init__(length=length, **kwargs)
+        super().__init__(length=length, collation=collation)
 
 
 class Integer(HasExpressionLookup, TypeEngine[int]):
