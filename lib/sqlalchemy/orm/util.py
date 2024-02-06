@@ -258,9 +258,7 @@ class CascadeOptions(FrozenSet[str]):
         self.delete_orphan = "delete-orphan" in values
 
         if self.delete_orphan and not self.delete:
-            util.warn(
-                "The 'delete-orphan' cascade " "option requires 'delete'."
-            )
+            util.warn("The 'delete-orphan' cascade option requires 'delete'.")
         return self
 
     def __repr__(self):

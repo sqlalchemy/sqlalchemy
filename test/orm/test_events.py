@@ -1671,7 +1671,7 @@ class DeclarativeEventListenTest(
 
 
 class DeferredMapperEventsTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
-    """ "test event listeners against unmapped classes.
+    """test event listeners against unmapped classes.
 
     This incurs special logic.  Note if we ever do the "remove" case,
     it has to get all of these, too.

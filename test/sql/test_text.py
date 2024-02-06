@@ -470,7 +470,7 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
                 r"SELECT * FROM pg_attribute WHERE "
                 r"attrelid = :tab\:\:regclass"
             ),
-            "SELECT * FROM pg_attribute WHERE " "attrelid = %(tab)s::regclass",
+            "SELECT * FROM pg_attribute WHERE attrelid = %(tab)s::regclass",
             params={"tab": None},
             dialect="postgresql",
         )
@@ -483,7 +483,7 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
                 r"SELECT * FROM pg_attribute WHERE "
                 r"attrelid = foo::regclass"
             ),
-            "SELECT * FROM pg_attribute WHERE " "attrelid = foo::regclass",
+            "SELECT * FROM pg_attribute WHERE attrelid = foo::regclass",
             params={},
             dialect="postgresql",
         )

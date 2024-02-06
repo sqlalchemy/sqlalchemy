@@ -990,7 +990,7 @@ class RelationshipProperty(
             """
             if self.property.uselist:
                 raise sa_exc.InvalidRequestError(
-                    "'has()' not implemented for collections.  " "Use any()."
+                    "'has()' not implemented for collections. Use any()."
                 )
             return self._criterion_exists(criterion, **kwargs)
 

@@ -1951,7 +1951,7 @@ NoneType = type(None)
 
 
 def attrsetter(attrname):
-    code = "def set(obj, value):" "    obj.%s = value" % attrname
+    code = "def set(obj, value):    obj.%s = value" % attrname
     env = locals().copy()
     exec(code, env)
     return env["set"]

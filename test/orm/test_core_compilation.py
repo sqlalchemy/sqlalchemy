@@ -555,7 +555,7 @@ class DMLTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "DELETE FROM users AS users_1 " "WHERE users_1.name = :name_1",
+            "DELETE FROM users AS users_1 WHERE users_1.name = :name_1",
         )
 
     @testing.variation("stmt_type", ["core", "orm"])

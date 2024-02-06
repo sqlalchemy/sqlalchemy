@@ -118,7 +118,7 @@ _TLS = TypeVar("_TLS", bound="Type[LoaderStrategy]")
 class ORMStatementRole(roles.StatementRole):
     __slots__ = ()
     _role_name = (
-        "Executable SQL or text() construct, including ORM " "aware objects"
+        "Executable SQL or text() construct, including ORM aware objects"
     )
 
 

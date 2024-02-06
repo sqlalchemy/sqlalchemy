@@ -247,7 +247,7 @@ def _unsupported_impl(
     expr: ColumnElement[Any], op: OperatorType, *arg: Any, **kw: Any
 ) -> NoReturn:
     raise NotImplementedError(
-        "Operator '%s' is not supported on " "this expression" % op.__name__
+        "Operator '%s' is not supported on this expression" % op.__name__
     )
 
 

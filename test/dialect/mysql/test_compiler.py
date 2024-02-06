@@ -182,7 +182,7 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(idx),
-            "CREATE FULLTEXT INDEX test_idx1 " "ON testtbl (data(10))",
+            "CREATE FULLTEXT INDEX test_idx1 ON testtbl (data(10))",
         )
 
     def test_create_index_with_text(self):
@@ -876,7 +876,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(ix1),
-            "CREATE INDEX %s " "ON %s (%s)" % (exp, tname, cname),
+            "CREATE INDEX %s ON %s (%s)" % (exp, tname, cname),
         )
 
     def test_innodb_autoincrement(self):

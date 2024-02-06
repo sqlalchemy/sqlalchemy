@@ -345,9 +345,7 @@ class TransactionTest(fixtures.TablesTest):
         assert not trans.is_active
 
         eq_(
-            connection.exec_driver_sql(
-                "select count(*) from " "users"
-            ).scalar(),
+            connection.exec_driver_sql("select count(*) from users").scalar(),
             2,
         )
         connection.rollback()

@@ -2065,7 +2065,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             name = quoted_name(name, quote)
         elif quote is not None:
             raise exc.ArgumentError(
-                "Explicit 'name' is required when " "sending 'quote' argument"
+                "Explicit 'name' is required when sending 'quote' argument"
             )
 
         # name = None is expected to be an interim state

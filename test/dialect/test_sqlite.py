@@ -84,12 +84,12 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         )
         metadata.create_all(connection)
         for stmt in [
-            "INSERT INTO bool_table (id, boo) " "VALUES (1, 'false');",
-            "INSERT INTO bool_table (id, boo) " "VALUES (2, 'true');",
-            "INSERT INTO bool_table (id, boo) " "VALUES (3, '1');",
-            "INSERT INTO bool_table (id, boo) " "VALUES (4, '0');",
-            "INSERT INTO bool_table (id, boo) " "VALUES (5, 1);",
-            "INSERT INTO bool_table (id, boo) " "VALUES (6, 0);",
+            "INSERT INTO bool_table (id, boo) VALUES (1, 'false');",
+            "INSERT INTO bool_table (id, boo) VALUES (2, 'true');",
+            "INSERT INTO bool_table (id, boo) VALUES (3, '1');",
+            "INSERT INTO bool_table (id, boo) VALUES (4, '0');",
+            "INSERT INTO bool_table (id, boo) VALUES (5, 1);",
+            "INSERT INTO bool_table (id, boo) VALUES (6, 0);",
         ]:
             connection.exec_driver_sql(stmt)
 
@@ -653,7 +653,7 @@ class DialectTest(
 
     @testing.provide_metadata
     def test_quoted_identifiers_functional_two(self):
-        """ "test the edgiest of edge cases, quoted table/col names
+        """test the edgiest of edge cases, quoted table/col names
         that start and end with quotes.
 
         SQLite claims to have fixed this in
@@ -741,7 +741,7 @@ class DialectTest(
             ),
         ),
         (
-            "sqlite:///file:path/to/database?" "mode=ro&uri=true",
+            "sqlite:///file:path/to/database?mode=ro&uri=true",
             (
                 ["file:path/to/database?mode=ro"],
                 {"uri": True, "check_same_thread": False},
@@ -1155,7 +1155,7 @@ class OnConflictDDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateColumn(c),
-            "test INTEGER NOT NULL " "ON CONFLICT FAIL",
+            "test INTEGER NOT NULL ON CONFLICT FAIL",
             dialect=sqlite.dialect(),
         )
 
@@ -1194,7 +1194,7 @@ class OnConflictDDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             CreateTable(t),
-            "CREATE TABLE n (x VARCHAR(30), " "UNIQUE (x) ON CONFLICT FAIL)",
+            "CREATE TABLE n (x VARCHAR(30), UNIQUE (x) ON CONFLICT FAIL)",
             dialect=sqlite.dialect(),
         )
 

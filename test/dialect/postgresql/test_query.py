@@ -977,7 +977,7 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
         if self._strs_render_bind_casts(connection):
             self.assert_compile(
                 matchtable.c.title.match("somstr"),
-                "matchtable.title @@ " "plainto_tsquery(%(title_1)s::VARCHAR)",
+                "matchtable.title @@ plainto_tsquery(%(title_1)s::VARCHAR)",
             )
         else:
             self.assert_compile(

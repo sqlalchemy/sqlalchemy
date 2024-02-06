@@ -2534,7 +2534,7 @@ class SQLCompiler(Compiled):
 
     def _fallback_column_name(self, column):
         raise exc.CompileError(
-            "Cannot compile Column object until " "its 'name' is assigned."
+            "Cannot compile Column object until its 'name' is assigned."
         )
 
     def visit_lambda_element(self, element, **kw):
@@ -6640,7 +6640,7 @@ class DDLCompiler(Compiled):
     def _verify_index_table(self, index):
         if index.table is None:
             raise exc.CompileError(
-                "Index '%s' is not associated " "with any table." % index.name
+                "Index '%s' is not associated with any table." % index.name
             )
 
     def visit_create_index(

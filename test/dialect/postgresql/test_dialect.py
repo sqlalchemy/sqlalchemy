@@ -721,7 +721,7 @@ class MultiHostConnectTest(fixtures.TestBase):
             "postgresql+psycopg2://USER:PASS@/DB"
             "?host=hostA,hostC&port=111,222,333",
         ),
-        ("postgresql+psycopg2://USER:PASS@/DB" "?host=hostA&port=111,222",),
+        ("postgresql+psycopg2://USER:PASS@/DB?host=hostA&port=111,222",),
         (
             "postgresql+asyncpg://USER:PASS@/DB"
             "?host=hostA,hostB,hostC&port=111,333",

@@ -999,7 +999,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def emulated_lastrowid(self):
-        """ "target dialect retrieves cursor.lastrowid or an equivalent
+        """target dialect retrieves cursor.lastrowid or an equivalent
         after an insert() construct executes.
         """
         return fails_on_everything_except(
@@ -1027,7 +1027,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def emulated_lastrowid_even_with_sequences(self):
-        """ "target dialect retrieves cursor.lastrowid or an equivalent
+        """target dialect retrieves cursor.lastrowid or an equivalent
         after an insert() construct executes, even if the table has a
         Sequence on it.
         """
@@ -1040,7 +1040,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def dbapi_lastrowid(self):
-        """ "target backend includes a 'lastrowid' accessor on the DBAPI
+        """target backend includes a 'lastrowid' accessor on the DBAPI
         cursor object.
 
         """

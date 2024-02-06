@@ -532,9 +532,7 @@ end;
 
     def test_out_params(self, connection):
         result = connection.execute(
-            text(
-                "begin foo(:x_in, :x_out, :y_out, " ":z_out); end;"
-            ).bindparams(
+            text("begin foo(:x_in, :x_out, :y_out, :z_out); end;").bindparams(
                 bindparam("x_in", Float),
                 outparam("x_out", Integer),
                 outparam("y_out", Float),
@@ -863,7 +861,7 @@ class ExecuteTest(fixtures.TestBase):
         with testing.db.connect() as conn:
             eq_(
                 conn.exec_driver_sql(
-                    "/*+ this is a comment */ SELECT 1 FROM " "DUAL"
+                    "/*+ this is a comment */ SELECT 1 FROM DUAL"
                 ).fetchall(),
                 [(1,)],
             )
