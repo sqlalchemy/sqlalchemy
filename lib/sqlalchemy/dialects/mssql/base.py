@@ -1556,36 +1556,26 @@ class MSUUid(sqltypes.Uuid):
                 return process
 
     def _sentinel_value_resolver(self, dialect):
-        """Return a callable that will receive the uuid object or string
-        as it is normally passed to the DB in the parameter set, after
-        bind_processor() is called.  Convert this value to match
-        what it would be as coming back from an INSERT..OUTPUT inserted.
+        if not self.native_uuid:
+            # dealing entirely with strings going in and out of
+            # CHAR(32)
+            return None
 
-        for the UUID type, there are four varieties of settings so here
-        we seek to convert to the string or UUID representation that comes
-        back from the driver.
-
-        """
-        character_based_uuid = (
-            not dialect.supports_native_uuid or not self.native_uuid
-        )
+        # true if we expect the returned UUID values to be strings
+        # pymssql sends UUID objects back, pyodbc sends strings,
+        # however pyodbc converts them to uppercase coming back, so
+        # need special logic here
+        character_based_uuid = not dialect.supports_native_uuid
 
         if character_based_uuid:
-            if self.native_uuid:
-                # for pyodbc, uuid.uuid() objects are accepted for incoming
-                # data, as well as strings. but the driver will always return
-                # uppercase strings in result sets.
-                def process(value):
-                    return str(value).upper()
-
-            else:
-
-                def process(value):
-                    return str(value)
+            # we sent UUID objects in all cases, see bind_processor()
+            def process(uuid_value):
+                return str(uuid_value).upper()
 
             return process
+        elif not self.as_uuid:
+            return _python_UUID
         else:
-            # for pymssql, we get uuid.uuid() objects back.
             return None
 
 
