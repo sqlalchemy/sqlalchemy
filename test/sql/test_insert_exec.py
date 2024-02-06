@@ -1444,6 +1444,7 @@ class IMVSentinelTest(fixtures.TestBase):
         (ARRAY(Integer()), testing.requires.array_type),
         DateTime(),
         Uuid(),
+        Uuid(native_uuid=False),
         argnames="datatype",
     )
     def test_inserts_w_all_nulls(
@@ -1988,6 +1989,8 @@ class IMVSentinelTest(fixtures.TestBase):
         "return_type", ["include_sentinel", "default_only", "return_defaults"]
     )
     @testing.variation("add_sentinel_flag_to_col", [True, False])
+    @testing.variation("native_uuid", [True, False])
+    @testing.variation("as_uuid", [True, False])
     def test_sentinel_on_non_autoinc_primary_key(
         self,
         metadata,
@@ -1996,8 +1999,13 @@ class IMVSentinelTest(fixtures.TestBase):
         sort_by_parameter_order,
         randomize_returning,
         add_sentinel_flag_to_col,
+        native_uuid,
+        as_uuid,
     ):
         uuids = [uuid.uuid4() for i in range(10)]
+        if not as_uuid:
+            uuids = [str(u) for u in uuids]
+
         _some_uuids = iter(uuids)
 
         t1 = Table(
@@ -2005,7 +2013,7 @@ class IMVSentinelTest(fixtures.TestBase):
             metadata,
             Column(
                 "id",
-                Uuid(),
+                Uuid(native_uuid=bool(native_uuid), as_uuid=bool(as_uuid)),
                 default=functools.partial(next, _some_uuids),
                 primary_key=True,
                 insert_sentinel=bool(add_sentinel_flag_to_col),
@@ -2097,6 +2105,8 @@ class IMVSentinelTest(fixtures.TestBase):
         else:
             return_type.fail()
 
+    @testing.variation("native_uuid", [True, False])
+    @testing.variation("as_uuid", [True, False])
     def test_client_composite_pk(
         self,
         metadata,
@@ -2104,15 +2114,19 @@ class IMVSentinelTest(fixtures.TestBase):
         randomize_returning,
         sort_by_parameter_order,
         warn_for_downgrades,
+        native_uuid,
+        as_uuid,
     ):
         uuids = [uuid.uuid4() for i in range(10)]
+        if not as_uuid:
+            uuids = [str(u) for u in uuids]
 
         t1 = Table(
             "data",
             metadata,
             Column(
                 "id1",
-                Uuid(),
+                Uuid(as_uuid=bool(as_uuid), native_uuid=bool(native_uuid)),
                 default=functools.partial(next, iter(uuids)),
                 primary_key=True,
             ),
