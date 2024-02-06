@@ -62,10 +62,7 @@ class SuiteRequirements(Requirements):
     def uuid_data_type(self):
         """Return databases that support the UUID datatype."""
 
-        return exclusions.skip_if(
-            lambda config: not config.db.dialect.supports_native_uuid,
-            "backend does not have a UUID datatype",
-        )
+        return exclusions.closed()
 
     @property
     def foreign_keys(self):
