@@ -1074,7 +1074,7 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
             and (not self._target_is_object or self._value_is_scalar)
         ):
             raise exc.InvalidRequestError(
-                "'any()' not implemented for scalar " "attributes. Use has()."
+                "'any()' not implemented for scalar attributes. Use has()."
             )
         return self._criterion_exists(
             criterion=criterion, is_has=False, **kwargs
@@ -1098,7 +1098,7 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
             or (self._target_is_object and not self._value_is_scalar)
         ):
             raise exc.InvalidRequestError(
-                "'has()' not implemented for collections.  " "Use any()."
+                "'has()' not implemented for collections. Use any()."
             )
         return self._criterion_exists(
             criterion=criterion, is_has=True, **kwargs

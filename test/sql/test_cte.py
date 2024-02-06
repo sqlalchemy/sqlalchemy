@@ -518,7 +518,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         else:
             assert_raises_message(
                 CompileError,
-                "Multiple, unrelated CTEs found " "with the same name: 'cte1'",
+                "Multiple, unrelated CTEs found with the same name: 'cte1'",
                 s.compile,
             )
 

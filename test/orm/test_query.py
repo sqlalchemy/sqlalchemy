@@ -3563,7 +3563,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             q1,
-            "SELECT users.id AS foo FROM users " "WHERE users.name = :name_1",
+            "SELECT users.id AS foo FROM users WHERE users.name = :name_1",
         )
 
     def test_empty_filters(self):
@@ -4348,7 +4348,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
         q1 = sess.query(User)
         self.assert_compile(
             sess.query(q1.exists()),
-            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+            "SELECT EXISTS (SELECT 1 FROM users) AS anon_1",
         )
 
         q2 = sess.query(User).filter(User.name == "fred")
@@ -4366,7 +4366,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
         q1 = sess.query(User.id)
         self.assert_compile(
             sess.query(q1.exists()),
-            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+            "SELECT EXISTS (SELECT 1 FROM users) AS anon_1",
         )
 
     def test_exists_labeled_col_expression(self):
@@ -4376,7 +4376,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
         q1 = sess.query(User.id.label("foo"))
         self.assert_compile(
             sess.query(q1.exists()),
-            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+            "SELECT EXISTS (SELECT 1 FROM users) AS anon_1",
         )
 
     def test_exists_arbitrary_col_expression(self):
@@ -4386,7 +4386,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
         q1 = sess.query(func.foo(User.id))
         self.assert_compile(
             sess.query(q1.exists()),
-            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+            "SELECT EXISTS (SELECT 1 FROM users) AS anon_1",
         )
 
     def test_exists_col_warning(self):
@@ -5178,7 +5178,7 @@ class PrefixSuffixWithTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         sess = fixture_session()
         query = sess.query(User.name).prefix_with("PREFIX_1")
-        expected = "SELECT PREFIX_1 " "users.name AS users_name FROM users"
+        expected = "SELECT PREFIX_1 users.name AS users_name FROM users"
         self.assert_compile(query, expected, dialect=default.DefaultDialect())
 
     def test_one_suffix(self):
@@ -5194,7 +5194,7 @@ class PrefixSuffixWithTest(QueryTest, AssertsCompiledSQL):
         sess = fixture_session()
         query = sess.query(User.name).prefix_with("PREFIX_1", "PREFIX_2")
         expected = (
-            "SELECT PREFIX_1 PREFIX_2 " "users.name AS users_name FROM users"
+            "SELECT PREFIX_1 PREFIX_2 users.name AS users_name FROM users"
         )
         self.assert_compile(query, expected, dialect=default.DefaultDialect())
 

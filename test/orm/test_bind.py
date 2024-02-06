@@ -464,7 +464,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         engine = {"e1": e1, "e2": e2, "e3": e3}[expected_engine_name]
 
         with mock.patch(
-            "sqlalchemy.orm.context." "ORMCompileState.orm_setup_cursor_result"
+            "sqlalchemy.orm.context.ORMCompileState.orm_setup_cursor_result"
         ), mock.patch(
             "sqlalchemy.orm.context.ORMCompileState.orm_execute_statement"
         ), mock.patch(
@@ -529,7 +529,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
 
         assert_raises_message(
             sa.exc.InvalidRequestError,
-            "Session already has a Connection " "associated",
+            "Session already has a Connection associated",
             transaction._connection_for_bind,
             testing.db.connect(),
             None,

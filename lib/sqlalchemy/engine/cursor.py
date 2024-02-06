@@ -1611,11 +1611,11 @@ class CursorResult(Result[_T]):
         """
         if not self.context.compiled:
             raise exc.InvalidRequestError(
-                "Statement is not a compiled " "expression construct."
+                "Statement is not a compiled expression construct."
             )
         elif not self.context.isinsert:
             raise exc.InvalidRequestError(
-                "Statement is not an insert() " "expression construct."
+                "Statement is not an insert() expression construct."
             )
         elif self.context._is_explicit_returning:
             raise exc.InvalidRequestError(
@@ -1682,11 +1682,11 @@ class CursorResult(Result[_T]):
         """
         if not self.context.compiled:
             raise exc.InvalidRequestError(
-                "Statement is not a compiled " "expression construct."
+                "Statement is not a compiled expression construct."
             )
         elif not self.context.isupdate:
             raise exc.InvalidRequestError(
-                "Statement is not an update() " "expression construct."
+                "Statement is not an update() expression construct."
             )
         elif self.context.executemany:
             return self.context.compiled_parameters
@@ -1704,11 +1704,11 @@ class CursorResult(Result[_T]):
         """
         if not self.context.compiled:
             raise exc.InvalidRequestError(
-                "Statement is not a compiled " "expression construct."
+                "Statement is not a compiled expression construct."
             )
         elif not self.context.isinsert:
             raise exc.InvalidRequestError(
-                "Statement is not an insert() " "expression construct."
+                "Statement is not an insert() expression construct."
             )
         elif self.context.executemany:
             return self.context.compiled_parameters
@@ -1921,7 +1921,7 @@ class CursorResult(Result[_T]):
 
         if not self.context.compiled:
             raise exc.InvalidRequestError(
-                "Statement is not a compiled " "expression construct."
+                "Statement is not a compiled expression construct."
             )
         elif not self.context.isinsert and not self.context.isupdate:
             raise exc.InvalidRequestError(
@@ -1944,7 +1944,7 @@ class CursorResult(Result[_T]):
 
         if not self.context.compiled:
             raise exc.InvalidRequestError(
-                "Statement is not a compiled " "expression construct."
+                "Statement is not a compiled expression construct."
             )
         elif not self.context.isinsert and not self.context.isupdate:
             raise exc.InvalidRequestError(

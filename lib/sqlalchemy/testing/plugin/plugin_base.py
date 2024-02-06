@@ -90,7 +90,7 @@ def setup_options(make_option):
         action="append",
         type=str,
         dest="dburi",
-        help="Database uri.  Multiple OK, " "first one is run by default.",
+        help="Database uri.  Multiple OK, first one is run by default.",
     )
     make_option(
         "--dbdriver",

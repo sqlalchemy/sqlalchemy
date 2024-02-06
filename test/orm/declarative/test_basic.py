@@ -1387,7 +1387,7 @@ class DeclarativeMultiBaseTest(
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            "Can't add additional column 'foo' when " "specifying __table__",
+            "Can't add additional column 'foo' when specifying __table__",
             go,
         )
 
@@ -1825,7 +1825,7 @@ class DeclarativeMultiBaseTest(
 
         assert_raises_message(
             exc.InvalidRequestError,
-            "'addresses' is not an instance of " "ColumnProperty",
+            "'addresses' is not an instance of ColumnProperty",
             configure_mappers,
         )
 
@@ -1954,7 +1954,7 @@ class DeclarativeMultiBaseTest(
 
         assert_raises_message(
             AttributeError,
-            "does not have a mapped column named " "'__table__'",
+            "does not have a mapped column named '__table__'",
             configure_mappers,
         )
 
@@ -2508,7 +2508,7 @@ class DeclarativeMultiBaseTest(
 
     def test_oops(self):
         with testing.expect_warnings(
-            "Ignoring declarative-like tuple value of " "attribute 'name'"
+            "Ignoring declarative-like tuple value of attribute 'name'"
         ):
 
             class User(Base, ComparableEntity):

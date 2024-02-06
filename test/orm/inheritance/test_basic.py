@@ -1684,7 +1684,7 @@ class PassiveDeletesTest(fixtures.MappedTest):
             s.flush()
         asserter.assert_(
             RegexSQL(
-                "SELECT .* " "FROM c WHERE :param_1 = c.bid", [{"param_1": 3}]
+                "SELECT .* FROM c WHERE :param_1 = c.bid", [{"param_1": 3}]
             ),
             CompiledSQL("DELETE FROM c WHERE c.cid = :cid", [{"cid": 1}]),
             CompiledSQL("DELETE FROM b WHERE b.id = :id", [{"id": 3}]),
@@ -3012,7 +3012,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
         )
 
     def test_optimized_passes(self):
-        """ "test that the 'optimized load' routine doesn't crash when
+        """test that the 'optimized load' routine doesn't crash when
         a column in the join condition is not available."""
 
         base, sub = self.tables.base, self.tables.sub
@@ -3744,7 +3744,7 @@ class NoPolyIdentInMiddleTest(fixtures.MappedTest):
             __mapper_args__ = {"polymorphic_identity": "b"}
 
         with expect_warnings(
-            r"Mapper\[C\(a\)\] does not indicate a " "'polymorphic_identity',"
+            r"Mapper\[C\(a\)\] does not indicate a 'polymorphic_identity',"
         ):
 
             class C(A):

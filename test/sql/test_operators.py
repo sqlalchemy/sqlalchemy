@@ -419,7 +419,7 @@ class MultiElementExprTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         ),
         (
             lambda p, q: (1 - p) * (2 - q) * (3 - p) * (4 - q),
-            "(:p_1 - t.p) * (:q_1 - t.q) * " "(:p_2 - t.p) * (:q_2 - t.q)",
+            "(:p_1 - t.p) * (:q_1 - t.q) * (:p_2 - t.p) * (:q_2 - t.q)",
         ),
         (
             lambda p, q: (
@@ -3227,7 +3227,7 @@ class RegexpTestStrCompiler(fixtures.TestBase, testing.AssertsCompiledSQL):
                 self.table.c.myid.match("foo"),
                 self.table.c.myid.regexp_match("xx"),
             ),
-            "mytable.myid MATCH :myid_1 AND " "mytable.myid <regexp> :myid_2",
+            "mytable.myid MATCH :myid_1 AND mytable.myid <regexp> :myid_2",
         )
         self.assert_compile(
             and_(

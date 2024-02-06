@@ -384,7 +384,7 @@ class DeferredColumnLoader(LoaderStrategy):
         super().__init__(parent, strategy_key)
         if hasattr(self.parent_property, "composite_class"):
             raise NotImplementedError(
-                "Deferred loading for composite " "types not implemented yet"
+                "Deferred loading for composite types not implemented yet"
             )
         self.raiseload = self.strategy_opts.get("raiseload", False)
         self.columns = self.parent_property.columns
@@ -758,7 +758,7 @@ class LazyLoader(
                         self._equated_columns[c] = self._equated_columns[col]
 
             self.logger.info(
-                "%s will use Session.get() to " "optimize instance loads", self
+                "%s will use Session.get() to optimize instance loads", self
             )
 
     def init_class_attribute(self, mapper):

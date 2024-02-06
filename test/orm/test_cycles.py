@@ -1188,7 +1188,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
                 ],
             ),
             CompiledSQL(
-                "DELETE FROM person " "WHERE person.id = :id",
+                "DELETE FROM person WHERE person.id = :id",
                 lambda ctx: [{"id": p.id}],
             ),
             CompiledSQL(

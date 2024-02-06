@@ -1544,7 +1544,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             select(select(table1.c.name).label("foo")),
-            "SELECT (SELECT mytable.name FROM mytable) " "AS foo",
+            "SELECT (SELECT mytable.name FROM mytable) AS foo",
         )
 
         # scalar selects should not have any attributes on their 'c' or
@@ -2694,7 +2694,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             s3,
-            "SELECT NULL AS anon_1, NULL AS anon__1 " "UNION "
+            "SELECT NULL AS anon_1, NULL AS anon__1 UNION "
             # without the feature tested in test_deduping_hash_algo we'd get
             # "SELECT true AS anon_2, true AS anon__1",
             "SELECT true AS anon_2, true AS anon__2",
@@ -3775,7 +3775,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         )
         assert_raises_message(
             exc.CompileError,
-            "conflicts with unique bind parameter " "of the same name",
+            "conflicts with unique bind parameter of the same name",
             str,
             s,
         )
@@ -3789,7 +3789,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         )
         assert_raises_message(
             exc.CompileError,
-            "conflicts with unique bind parameter " "of the same name",
+            "conflicts with unique bind parameter of the same name",
             str,
             s,
         )
@@ -4434,7 +4434,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         )
         self.assert_compile(
             expr,
-            "(mytable.myid, mytable.name) IN " "(__[POSTCOMPILE_param_1])",
+            "(mytable.myid, mytable.name) IN (__[POSTCOMPILE_param_1])",
             checkparams={"param_1": [(1, "foo"), (5, "bar")]},
             check_post_param={"param_1": [(1, "foo"), (5, "bar")]},
             check_literal_execute={},
@@ -4469,7 +4469,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         dialect.tuple_in_values = True
         self.assert_compile(
             tuple_(table1.c.myid, table1.c.name).in_([(1, "foo"), (5, "bar")]),
-            "(mytable.myid, mytable.name) IN " "(__[POSTCOMPILE_param_1])",
+            "(mytable.myid, mytable.name) IN (__[POSTCOMPILE_param_1])",
             dialect=dialect,
             checkparams={"param_1": [(1, "foo"), (5, "bar")]},
             check_post_param={"param_1": [(1, "foo"), (5, "bar")]},
@@ -4816,7 +4816,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             select(table1.c.myid).where(
                 table1.c.myid == bindparam("foo", 5, literal_execute=True)
             ),
-            "SELECT mytable.myid FROM mytable " "WHERE mytable.myid = 5",
+            "SELECT mytable.myid FROM mytable WHERE mytable.myid = 5",
             literal_binds=True,
         )
 
@@ -4843,7 +4843,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             select(table1.c.myid).where(
                 table1.c.myid == bindparam("foo", 5, literal_execute=True)
             ),
-            "SELECT mytable.myid FROM mytable " "WHERE mytable.myid = 5",
+            "SELECT mytable.myid FROM mytable WHERE mytable.myid = 5",
             render_postcompile=True,
         )
 
@@ -6136,7 +6136,7 @@ class StringifySpecialTest(fixtures.TestBase):
 
         eq_ignore_whitespace(
             str(schema.AddConstraint(cons)),
-            "ALTER TABLE testtbl ADD EXCLUDE USING gist " "(room WITH =)",
+            "ALTER TABLE testtbl ADD EXCLUDE USING gist (room WITH =)",
         )
 
     def test_try_cast(self):
@@ -7337,7 +7337,7 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select(t1.c.a)
         s2 = select(t1).where(t1.c.a == s.scalar_subquery())
         self.assert_compile(
-            s2, "SELECT t1.a FROM t1 WHERE t1.a = " "(SELECT t1.a FROM t1)"
+            s2, "SELECT t1.a FROM t1 WHERE t1.a = (SELECT t1.a FROM t1)"
         )
 
     def test_correlate_semiauto_where_singlefrom(self):

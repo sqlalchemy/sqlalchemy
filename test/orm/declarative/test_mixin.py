@@ -1322,7 +1322,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            "Can't add additional column 'tada' when " "specifying __table__",
+            "Can't add additional column 'tada' when specifying __table__",
             go,
         )
 

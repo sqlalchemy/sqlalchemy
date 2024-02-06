@@ -981,7 +981,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
                 if first_element
                 else (Load(Item).joinedload(Keyword),)
             ),
-            "expected ORM mapped attribute for loader " "strategy argument",
+            "expected ORM mapped attribute for loader strategy argument",
         )
 
     @testing.combinations(

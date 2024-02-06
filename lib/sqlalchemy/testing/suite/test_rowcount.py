@@ -204,7 +204,7 @@ class RowCountTest(fixtures.TablesTest):
     def test_text_rowcount(self, connection):
         # test issue #3622, make sure eager rowcount is called for text
         result = connection.execute(
-            text("update employees set department='Z' " "where department='C'")
+            text("update employees set department='Z' where department='C'")
         )
         eq_(result.rowcount, 3)
 

@@ -3483,7 +3483,7 @@ class ConfigureOrNotConfigureTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "SELECT users.id, " "users.name " "FROM users",
+            "SELECT users.id, users.name FROM users",
         )
         is_true(um.configured)
 
