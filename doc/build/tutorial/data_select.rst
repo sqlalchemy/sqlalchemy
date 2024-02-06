@@ -1124,7 +1124,7 @@ When using :meth:`_expression.Select.lateral`, the behavior of
 UNION, UNION ALL and other set operations
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In SQL,SELECT statements can be merged together using the UNION or UNION ALL
+In SQL, SELECT statements can be merged together using the UNION or UNION ALL
 SQL operation, which produces the set of all rows produced by one or more
 statements together.  Other set operations such as INTERSECT [ALL] and
 EXCEPT [ALL] are also possible.
