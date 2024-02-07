@@ -513,7 +513,7 @@ class _PGJSONB(JSONB):
         return None
 
 
-class _Psycopg2Range(ranges.AbstractRangeImpl):
+class _Psycopg2Range(ranges.AbstractSingleRangeImpl):
     _psycopg2_range_cls = "none"
 
     def bind_processor(self, dialect):
