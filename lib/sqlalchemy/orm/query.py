@@ -1710,6 +1710,7 @@ class Query(
         schema_translate_map: Optional[SchemaTranslateMapType] = ...,
         populate_existing: bool = False,
         autoflush: bool = False,
+        preserve_rowcount: bool = False,
         **opt: Any,
     ) -> Self: ...
 
