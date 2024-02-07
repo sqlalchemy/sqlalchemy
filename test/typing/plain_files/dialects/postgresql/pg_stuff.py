@@ -12,13 +12,16 @@ from sqlalchemy import Text
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import array
+from sqlalchemy.dialects.postgresql import DATERANGE
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.dialects.postgresql import INT4RANGE
+from sqlalchemy.dialects.postgresql import INT8MULTIRANGE
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import TSTZMULTIRANGE
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
-
 
 # test #6402
 
@@ -77,3 +80,19 @@ insert(Test).on_conflict_do_nothing(
 ).on_conflict_do_update(
     unique, ["foo"], Test.id > 0, {"id": 42, Test.ident: 99}, Test.id == 22
 ).excluded.foo.desc()
+
+
+# EXPECTED_TYPE: Column[Range[int]]
+reveal_type(Column(INT4RANGE()))
+# EXPECTED_TYPE: Column[Range[datetime.date]]
+reveal_type(Column("foo", DATERANGE()))
+# EXPECTED_TYPE: Column[Sequence[Range[int]]]
+reveal_type(Column(INT8MULTIRANGE()))
+# EXPECTED_TYPE: Column[Sequence[Range[datetime.datetime]]]
+reveal_type(Column("foo", TSTZMULTIRANGE()))
+
+
+range_col_stmt = select(Column(INT4RANGE()), Column(INT8MULTIRANGE()))
+
+# EXPECTED_TYPE: Select[Range[int], Sequence[Range[int]]]
+reveal_type(range_col_stmt)

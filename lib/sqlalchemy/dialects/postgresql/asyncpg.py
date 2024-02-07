@@ -178,8 +178,6 @@ import json as _py_json
 import re
 import time
 from typing import Any
-from typing import cast
-from typing import Iterable
 from typing import NoReturn
 from typing import Optional
 from typing import Protocol
@@ -368,7 +366,7 @@ class AsyncpgCHAR(sqltypes.CHAR):
     render_bind_cast = True
 
 
-class _AsyncpgRange(ranges.AbstractRangeImpl):
+class _AsyncpgRange(ranges.AbstractSingleRangeImpl):
     def bind_processor(self, dialect):
         asyncpg_Range = dialect.dbapi.asyncpg.Range
 
@@ -422,10 +420,7 @@ class _AsyncpgMultiRange(ranges.AbstractMultiRangeImpl):
                     )
                 return value
 
-            return [
-                to_range(element)
-                for element in cast("Iterable[ranges.Range]", value)
-            ]
+            return [to_range(element) for element in value]
 
         return to_range
 
@@ -444,7 +439,7 @@ class _AsyncpgMultiRange(ranges.AbstractMultiRangeImpl):
                 return rvalue
 
             if value is not None:
-                value = [to_range(elem) for elem in value]
+                value = ranges.MultiRange(to_range(elem) for elem in value)
 
             return value
 
@@ -1063,7 +1058,7 @@ class PGDialect_asyncpg(PGDialect):
             OID: AsyncpgOID,
             REGCLASS: AsyncpgREGCLASS,
             sqltypes.CHAR: AsyncpgCHAR,
-            ranges.AbstractRange: _AsyncpgRange,
+            ranges.AbstractSingleRange: _AsyncpgRange,
             ranges.AbstractMultiRange: _AsyncpgMultiRange,
         },
     )

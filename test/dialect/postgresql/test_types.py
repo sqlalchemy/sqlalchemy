@@ -73,6 +73,7 @@ from sqlalchemy.dialects.postgresql import TSMULTIRANGE
 from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.dialects.postgresql import TSTZMULTIRANGE
 from sqlalchemy.dialects.postgresql import TSTZRANGE
+from sqlalchemy.dialects.postgresql.ranges import MultiRange
 from sqlalchemy.exc import CompileError
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import declarative_base
@@ -92,6 +93,7 @@ from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import ComparesTables
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import is_
+from sqlalchemy.testing.assertions import ne_
 from sqlalchemy.testing.assertsql import RegexSQL
 from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.testing.suite import test_types as suite
@@ -3887,6 +3889,53 @@ class HStoreRoundTripTest(fixtures.TablesTest):
             eq_(s.query(Data.data, Data).all(), [(d.data, d)])
 
 
+class RangeMiscTests(fixtures.TestBase):
+    @testing.combinations(
+        (Range(2, 7), INT4RANGE),
+        (Range(-10, 7), INT4RANGE),
+        (Range(None, -7), INT4RANGE),
+        (Range(33, None), INT4RANGE),
+        (Range(-2147483648, 2147483647), INT4RANGE),
+        (Range(-2147483648 - 1, 2147483647), INT8RANGE),
+        (Range(-2147483648, 2147483647 + 1), INT8RANGE),
+        (Range(-2147483648 - 1, None), INT8RANGE),
+        (Range(None, 2147483647 + 1), INT8RANGE),
+    )
+    def test_resolve_for_literal(self, obj, type_):
+        """This tests that the int4 / int8 version is selected correctly by
+        _resolve_for_literal."""
+        lit = literal(obj)
+        eq_(type(lit.type), type_)
+
+    @testing.combinations(
+        (Range(2, 7), INT4MULTIRANGE),
+        (Range(-10, 7), INT4MULTIRANGE),
+        (Range(None, -7), INT4MULTIRANGE),
+        (Range(33, None), INT4MULTIRANGE),
+        (Range(-2147483648, 2147483647), INT4MULTIRANGE),
+        (Range(-2147483648 - 1, 2147483647), INT8MULTIRANGE),
+        (Range(-2147483648, 2147483647 + 1), INT8MULTIRANGE),
+        (Range(-2147483648 - 1, None), INT8MULTIRANGE),
+        (Range(None, 2147483647 + 1), INT8MULTIRANGE),
+    )
+    def test_resolve_for_literal_multi(self, obj, type_):
+        """This tests that the int4 / int8 version is selected correctly by
+        _resolve_for_literal."""
+        list_ = MultiRange([Range(-1, 1), obj, Range(7, 100)])
+        lit = literal(list_)
+        eq_(type(lit.type), type_)
+
+    def test_multirange_sequence(self):
+        plain = [Range(-1, 1), Range(42, 43), Range(7, 100)]
+        mr = MultiRange(plain)
+        is_true(issubclass(MultiRange, list))
+        is_true(isinstance(mr, list))
+        eq_(mr, plain)
+        eq_(str(mr), str(plain))
+        eq_(repr(mr), repr(plain))
+        ne_(mr, plain[1:])
+
+
 class _RangeTests:
     _col_type = None
     "The concrete range class these tests are for."
@@ -4641,10 +4690,20 @@ class _RangeTypeRoundTrip(_RangeComparisonFixtures, fixtures.TablesTest):
         Brought up in #8540.
 
         """
+        # see also CompileTest::test_range_custom_object_hook
         data_obj = self._data_obj()
         stmt = select(literal(data_obj, type_=self._col_type))
         round_trip = connection.scalar(stmt)
         eq_(round_trip, data_obj)
+
+    def test_auto_cast_back_to_type_without_type(self, connection):
+        """use _resolve_for_literal to cast"""
+        # see also CompileTest::test_range_custom_object_hook
+        data_obj = self._data_obj()
+        lit = literal(data_obj)
+        round_trip = connection.scalar(select(lit))
+        eq_(round_trip, data_obj)
+        eq_(type(lit.type), self._col_type)
 
     def test_actual_type(self):
         eq_(str(self._col_type()), self._col_str)
@@ -5140,9 +5199,16 @@ class _MultiRangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
         )
 
 
-class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
+class _MultiRangeTypeRoundTrip(fixtures.TablesTest, _RangeTests):
     __requires__ = ("multirange_types",)
     __backend__ = True
+
+    @testing.fixture(params=(True, False), ids=["multirange", "plain_list"])
+    def data_obj(self, request):
+        if request.param:
+            return MultiRange(self._data_obj())
+        else:
+            return list(self._data_obj())
 
     @classmethod
     def define_tables(cls, metadata):
@@ -5155,7 +5221,7 @@ class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
         )
         cls.col = table.c.range
 
-    def test_auto_cast_back_to_type(self, connection):
+    def test_auto_cast_back_to_type(self, connection, data_obj):
         """test that a straight pass of the range type without any context
         will send appropriate casting info so that the driver can round
         trip it.
@@ -5170,10 +5236,28 @@ class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
         Brought up in #8540.
 
         """
-        data_obj = self._data_obj()
+        # see also CompileTest::test_multirange_custom_object_hook
         stmt = select(literal(data_obj, type_=self._col_type))
         round_trip = connection.scalar(stmt)
         eq_(round_trip, data_obj)
+
+    def test_auto_cast_back_to_type_without_type(self, connection):
+        """use _resolve_for_literal to cast"""
+        # see also CompileTest::test_multirange_custom_object_hook
+        data_obj = MultiRange(self._data_obj())
+        lit = literal(data_obj)
+        round_trip = connection.scalar(select(lit))
+        eq_(round_trip, data_obj)
+        eq_(type(lit.type), self._col_type)
+
+    @testing.fails("no automatic adaptation of plain list")
+    def test_auto_cast_back_to_type_without_type_plain_list(self, connection):
+        """use _resolve_for_literal to cast"""
+        # see also CompileTest::test_multirange_custom_object_hook
+        data_obj = list(self._data_obj())
+        lit = literal(data_obj)
+        r = connection.scalar(select(lit))
+        eq_(type(r), list)
 
     def test_actual_type(self):
         eq_(str(self._col_type()), self._col_str)
@@ -5188,12 +5272,12 @@ class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
     def _assert_data(self, conn):
         data = conn.execute(select(self.tables.data_table.c.range)).fetchall()
         eq_(data, [(self._data_obj(),)])
+        eq_(type(data[0][0]), MultiRange)
 
-    def test_textual_round_trip_w_dialect_type(self, connection):
+    def test_textual_round_trip_w_dialect_type(self, connection, data_obj):
         """test #8690"""
         data_table = self.tables.data_table
 
-        data_obj = self._data_obj()
         connection.execute(
             self.tables.data_table.insert(), {"range": data_obj}
         )
@@ -5206,9 +5290,9 @@ class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
 
         eq_(data_obj, v2)
 
-    def test_insert_obj(self, connection):
+    def test_insert_obj(self, connection, data_obj):
         connection.execute(
-            self.tables.data_table.insert(), {"range": self._data_obj()}
+            self.tables.data_table.insert(), {"range": data_obj}
         )
         self._assert_data(connection)
 
@@ -5229,6 +5313,7 @@ class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
         range_ = self.tables.data_table.c.range
         data = connection.execute(select(range_ + range_)).fetchall()
         eq_(data, [(self._data_obj(),)])
+        eq_(type(data[0][0]), MultiRange)
 
     @testing.requires.psycopg_or_pg8000_compatibility
     def test_intersection_result_text(self, connection):
@@ -5240,6 +5325,7 @@ class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
         range_ = self.tables.data_table.c.range
         data = connection.execute(select(range_ * range_)).fetchall()
         eq_(data, [(self._data_obj(),)])
+        eq_(type(data[0][0]), MultiRange)
 
     @testing.requires.psycopg_or_pg8000_compatibility
     def test_difference_result_text(self, connection):
@@ -5251,6 +5337,7 @@ class _MultiRangeTypeRoundTrip(fixtures.TablesTest):
         range_ = self.tables.data_table.c.range
         data = connection.execute(select(range_ - range_)).fetchall()
         eq_(data, [([],)])
+        eq_(type(data[0][0]), MultiRange)
 
 
 class _Int4MultiRangeTests:
@@ -5261,11 +5348,7 @@ class _Int4MultiRangeTests:
         return "{[1,2), [3, 5), [9, 12)}"
 
     def _data_obj(self):
-        return [
-            Range(1, 2),
-            Range(3, 5),
-            Range(9, 12),
-        ]
+        return [Range(1, 2), Range(3, 5), Range(9, 12)]
 
 
 class _Int8MultiRangeTests:
@@ -5463,6 +5546,17 @@ class DateTimeTZRMultiangeRoundTripTest(
     _DateTimeTZMultiRangeTests, _MultiRangeTypeRoundTrip
 ):
     pass
+
+
+class MultiRangeSequenceTest(fixtures.TestBase):
+    def test_methods(self):
+        plain = [Range(1, 3), Range(5, 9)]
+        multi = MultiRange(plain)
+        is_true(isinstance(multi, list))
+        eq_(multi, plain)
+        ne_(multi, plain[:1])
+        eq_(str(multi), str(plain))
+        eq_(repr(multi), repr(plain))
 
 
 class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
