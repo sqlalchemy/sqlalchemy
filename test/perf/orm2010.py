@@ -149,14 +149,12 @@ def run_with_profile(runsnake=False, dump=False):
     print("Total cpu seconds: %.2f" % stats.total_tt)
     print(
         "Total execute calls: %d"
-        % counts_by_methname[
-            "<method 'execute' of 'sqlite3.Cursor' " "objects>"
-        ]
+        % counts_by_methname["<method 'execute' of 'sqlite3.Cursor' objects>"]
     )
     print(
         "Total executemany calls: %d"
         % counts_by_methname.get(
-            "<method 'executemany' of 'sqlite3.Cursor' " "objects>", 0
+            "<method 'executemany' of 'sqlite3.Cursor' objects>", 0
         )
     )
 

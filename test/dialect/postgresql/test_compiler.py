@@ -262,7 +262,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             postgresql.CreateEnumType(e2),
-            "CREATE TYPE someschema.somename AS ENUM " "('x', 'y', 'z')",
+            "CREATE TYPE someschema.somename AS ENUM ('x', 'y', 'z')",
         )
         self.assert_compile(postgresql.DropEnumType(e1), "DROP TYPE somename")
         self.assert_compile(
@@ -271,7 +271,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = Table("sometable", MetaData(), Column("somecolumn", e1))
         self.assert_compile(
             schema.CreateTable(t1),
-            "CREATE TABLE sometable (somecolumn " "somename)",
+            "CREATE TABLE sometable (somecolumn somename)",
         )
         t1 = Table(
             "sometable",
@@ -682,7 +682,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(idx),
-            "CREATE INDEX test_idx1 ON testtbl " "(data text_pattern_ops)",
+            "CREATE INDEX test_idx1 ON testtbl (data text_pattern_ops)",
             dialect=postgresql.dialect(),
         )
         self.assert_compile(
@@ -725,7 +725,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                     unique=True,
                 )
             ),
-            "CREATE UNIQUE INDEX test_idx3 ON test_tbl " "(data3)",
+            "CREATE UNIQUE INDEX test_idx3 ON test_tbl (data3)",
         ),
         (
             lambda tbl: schema.CreateIndex(
@@ -892,17 +892,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(idx1),
-            "CREATE INDEX test_idx1 ON testtbl " "(data)",
+            "CREATE INDEX test_idx1 ON testtbl (data)",
             dialect=postgresql.dialect(),
         )
         self.assert_compile(
             schema.CreateIndex(idx2),
-            "CREATE INDEX test_idx2 ON testtbl " "USING btree (data)",
+            "CREATE INDEX test_idx2 ON testtbl USING btree (data)",
             dialect=postgresql.dialect(),
         )
         self.assert_compile(
             schema.CreateIndex(idx3),
-            "CREATE INDEX test_idx3 ON testtbl " "USING hash (data)",
+            "CREATE INDEX test_idx3 ON testtbl USING hash (data)",
             dialect=postgresql.dialect(),
         )
 
@@ -923,7 +923,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(idx1),
-            "CREATE INDEX test_idx1 ON testtbl " "(data)",
+            "CREATE INDEX test_idx1 ON testtbl (data)",
         )
         self.assert_compile(
             schema.CreateIndex(idx2),
@@ -946,7 +946,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateIndex(
                 Index("test_idx1", tbl.c.data, postgresql_using="GIST")
             ),
-            "CREATE INDEX test_idx1 ON testtbl " "USING gist (data)",
+            "CREATE INDEX test_idx1 ON testtbl USING gist (data)",
         )
 
         self.assert_compile(
@@ -988,7 +988,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(idx1),
-            "CREATE INDEX test_idx1 ON testtbl " "(data)",
+            "CREATE INDEX test_idx1 ON testtbl (data)",
             dialect=postgresql.dialect(),
         )
         self.assert_compile(
@@ -2083,7 +2083,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         # default dialect does not, as DBAPIs may be doing this for us
         self.assert_compile(
             t.update().values({t.c.data[2:5]: [2, 3, 4]}),
-            "UPDATE t SET data[%s:%s]=" "%s",
+            "UPDATE t SET data[%s:%s]=%s",
             checkparams={"param_1": [2, 3, 4], "data_2": 5, "data_1": 2},
             dialect=PGDialect(paramstyle="format"),
         )
@@ -2139,7 +2139,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         tbl3 = Table("testtbl3", m, Column("id", Integer), schema="testschema")
         stmt = tbl3.select().with_hint(tbl3, "ONLY", "postgresql")
         expected = (
-            "SELECT testschema.testtbl3.id FROM " "ONLY testschema.testtbl3"
+            "SELECT testschema.testtbl3.id FROM ONLY testschema.testtbl3"
         )
         self.assert_compile(stmt, expected)
 
@@ -3296,7 +3296,7 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
         sess = Session()
         self.assert_compile(
             sess.query(self.table).distinct(),
-            "SELECT DISTINCT t.id AS t_id, t.a AS t_a, " "t.b AS t_b FROM t",
+            "SELECT DISTINCT t.id AS t_id, t.a AS t_a, t.b AS t_b FROM t",
         )
 
     def test_query_on_columns(self):

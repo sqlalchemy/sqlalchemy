@@ -157,9 +157,7 @@ def _inspects(
     def decorate(fn_or_cls: _F) -> _F:
         for type_ in types:
             if type_ in _registrars:
-                raise AssertionError(
-                    "Type %s is already " "registered" % type_
-                )
+                raise AssertionError("Type %s is already registered" % type_)
             _registrars[type_] = fn_or_cls
         return fn_or_cls
 
@@ -171,6 +169,6 @@ _TT = TypeVar("_TT", bound="Type[Any]")
 
 def _self_inspects(cls: _TT) -> _TT:
     if cls in _registrars:
-        raise AssertionError("Type %s is already " "registered" % cls)
+        raise AssertionError("Type %s is already registered" % cls)
     _registrars[cls] = True
     return cls

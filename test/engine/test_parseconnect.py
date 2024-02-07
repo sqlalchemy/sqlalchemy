@@ -373,7 +373,7 @@ class URLTest(fixtures.TestBase):
         (
             "foo1=bar1&foo2=bar21&foo2=bar22&foo3=bar31",
             "foo2=bar23&foo3=bar32&foo3=bar33",
-            "foo1=bar1&foo2=bar23&" "foo3=bar32&foo3=bar33",
+            "foo1=bar1&foo2=bar23&foo3=bar32&foo3=bar33",
             False,
         ),
     )
@@ -573,7 +573,7 @@ class CreateEngineTest(fixtures.TestBase):
         e = engine_from_config(config, module=dbapi, _initialize=False)
         assert e.pool._recycle == 50
         assert e.url == url.make_url(
-            "postgresql+psycopg2://scott:tiger@somehost/test?foo" "z=somevalue"
+            "postgresql+psycopg2://scott:tiger@somehost/test?fooz=somevalue"
         )
         assert e.echo is True
 

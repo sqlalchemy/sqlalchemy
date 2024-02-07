@@ -490,7 +490,7 @@ class CursorResultTest(fixtures.TablesTest):
         if use_pickle:
             with expect_raises_message(
                 exc.NoSuchColumnError,
-                "Row was unpickled; lookup by ColumnElement is " "unsupported",
+                "Row was unpickled; lookup by ColumnElement is unsupported",
             ):
                 result[0]._mapping[users.c.user_id]
         else:
@@ -499,7 +499,7 @@ class CursorResultTest(fixtures.TablesTest):
         if use_pickle:
             with expect_raises_message(
                 exc.NoSuchColumnError,
-                "Row was unpickled; lookup by ColumnElement is " "unsupported",
+                "Row was unpickled; lookup by ColumnElement is unsupported",
             ):
                 result[0]._mapping[users.c.user_name]
         else:

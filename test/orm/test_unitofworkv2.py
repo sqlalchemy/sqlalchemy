@@ -3045,7 +3045,7 @@ class EagerDefaultsTest(fixtures.MappedTest):
             testing.db,
             s.flush,
             CompiledSQL(
-                "INSERT INTO test2 (id, foo, bar) " "VALUES (:id, :foo, :bar)",
+                "INSERT INTO test2 (id, foo, bar) VALUES (:id, :foo, :bar)",
                 [{"id": 1, "foo": None, "bar": 2}],
             ),
         )
