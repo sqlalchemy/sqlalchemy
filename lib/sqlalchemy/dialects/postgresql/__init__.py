@@ -8,7 +8,7 @@
 
 from types import ModuleType
 
-from . import array as arraylib  # noqa # must be above base and other dialects
+from . import array as arraylib  # noqa # keep above base and other dialects
 from . import asyncpg  # noqa
 from . import base
 from . import pg8000  # noqa
