@@ -1551,7 +1551,7 @@ class Update(DMLWhereBase, ValuesBase):
         E.g.::
 
             stmt = table.update().ordered_values(
-                ("name", "ed"), ("ident": "foo")
+                ("name", "ed"), ("ident", "foo")
             )
 
         .. seealso::
