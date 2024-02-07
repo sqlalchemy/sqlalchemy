@@ -1930,7 +1930,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
 
     @testing.fails_on("mssql", "FIXME: unknown")
     @testing.fails_on(
-        "oracle", "Oracle doesn't support boolean expressions as " "columns"
+        "oracle", "Oracle doesn't support boolean expressions as columns"
     )
     @testing.fails_on(
         "postgresql+pg8000",

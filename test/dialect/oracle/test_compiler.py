@@ -93,7 +93,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             parent.join(child),
-            "ed.parent JOIN ed.child ON ed.parent.id = " "ed.child.parent_id",
+            "ed.parent JOIN ed.child ON ed.parent.id = ed.child.parent_id",
         )
 
     def test_subquery(self):
@@ -1184,7 +1184,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         q = select(table1.c.name).where(table1.c.name == "foo")
         self.assert_compile(
             q,
-            "SELECT mytable.name FROM mytable WHERE " "mytable.name = :name_1",
+            "SELECT mytable.name FROM mytable WHERE mytable.name = :name_1",
             dialect=oracle.dialect(use_ansi=False),
         )
 
@@ -1499,7 +1499,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             schema.CreateTable(tbl2),
-            "CREATE TABLE testtbl2 (data INTEGER) " "COMPRESS FOR OLTP",
+            "CREATE TABLE testtbl2 (data INTEGER) COMPRESS FOR OLTP",
         )
 
     def test_create_index_bitmap_compress(self):

@@ -385,7 +385,7 @@ class TypeCompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 mysql.MSTimeStamp(),
                 DefaultClause(
                     sql.text(
-                        "'1999-09-09 09:09:09' " "ON UPDATE CURRENT_TIMESTAMP"
+                        "'1999-09-09 09:09:09' ON UPDATE CURRENT_TIMESTAMP"
                     )
                 ),
             ],
@@ -398,7 +398,7 @@ class TypeCompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 mysql.MSTimeStamp,
                 DefaultClause(
                     sql.text(
-                        "'1999-09-09 09:09:09' " "ON UPDATE CURRENT_TIMESTAMP"
+                        "'1999-09-09 09:09:09' ON UPDATE CURRENT_TIMESTAMP"
                     )
                 ),
             ],
@@ -410,9 +410,7 @@ class TypeCompileTest(fixtures.TestBase, AssertsCompiledSQL):
             [
                 mysql.MSTimeStamp(),
                 DefaultClause(
-                    sql.text(
-                        "CURRENT_TIMESTAMP " "ON UPDATE CURRENT_TIMESTAMP"
-                    )
+                    sql.text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
                 ),
             ],
             {},
@@ -423,9 +421,7 @@ class TypeCompileTest(fixtures.TestBase, AssertsCompiledSQL):
             [
                 mysql.MSTimeStamp,
                 DefaultClause(
-                    sql.text(
-                        "CURRENT_TIMESTAMP " "ON UPDATE CURRENT_TIMESTAMP"
-                    )
+                    sql.text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
                 ),
             ],
             {"nullable": False},
@@ -1209,7 +1205,7 @@ class EnumSetTest(
         t1 = Table("sometable", MetaData(), Column("somecolumn", e1))
         self.assert_compile(
             schema.CreateTable(t1),
-            "CREATE TABLE sometable (somecolumn " "ENUM('x','y','z'))",
+            "CREATE TABLE sometable (somecolumn ENUM('x','y','z'))",
         )
         t1 = Table(
             "sometable",

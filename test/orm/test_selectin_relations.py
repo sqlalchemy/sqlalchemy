@@ -3429,7 +3429,7 @@ class M2OWDegradeTest(
             testing.db,
             q.all,
             CompiledSQL(
-                "SELECT a.id AS a_id, a.q AS a_q " "FROM a ORDER BY a.id", [{}]
+                "SELECT a.id AS a_id, a.q AS a_q FROM a ORDER BY a.id", [{}]
             ),
             # in the very unlikely case that the the FK col on parent is
             # deferred, we degrade to the JOIN version so that we don't need to

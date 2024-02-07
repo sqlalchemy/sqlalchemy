@@ -326,7 +326,7 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
         sel = select(basefrom.c.a)
 
         with testing.expect_deprecated(
-            r"The Selectable.replace_selectable\(\) " "method is deprecated"
+            r"The Selectable.replace_selectable\(\) method is deprecated"
         ):
             replaced = sel.replace_selectable(
                 basefrom, basefrom.join(joinfrom, basefrom.c.a == joinfrom.c.a)

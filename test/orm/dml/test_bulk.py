@@ -238,7 +238,7 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
 
         asserter.assert_(
             CompiledSQL(
-                "UPDATE users SET name=:name WHERE " "users.id = :users_id",
+                "UPDATE users SET name=:name WHERE users.id = :users_id",
                 [
                     {"users_id": 1, "name": "u1new"},
                     {"users_id": 2, "name": "u2"},

@@ -2882,7 +2882,7 @@ class UseExistingTest(testing.AssertsCompiledSQL, fixtures.TablesTest):
 
         assert_raises_message(
             exc.InvalidRequestError,
-            "Table 'users' is already defined for this " "MetaData instance.",
+            "Table 'users' is already defined for this MetaData instance.",
             go,
         )
 
@@ -5665,7 +5665,7 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect.max_identifier_length = 15
         self.assert_compile(
             schema.CreateIndex(ix),
-            "CREATE INDEX ix_user_2de9 ON " '"user" (data, "Data2", "Data3")',
+            'CREATE INDEX ix_user_2de9 ON "user" (data, "Data2", "Data3")',
             dialect=dialect,
         )
 
@@ -5949,7 +5949,7 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         # no issue with native boolean
         self.assert_compile(
             schema.CreateTable(u1),
-            'CREATE TABLE "user" (' "x BOOLEAN" ")",
+            """CREATE TABLE "user" (x BOOLEAN)""",
             dialect="postgresql",
         )
 

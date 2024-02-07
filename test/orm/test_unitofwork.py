@@ -2299,7 +2299,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
             testing.db,
             session.flush,
             CompiledSQL(
-                "INSERT INTO users (name) " "VALUES (:name)",
+                "INSERT INTO users (name) VALUES (:name)",
                 {"name": "imnewlyadded"},
             ),
             AllOf(
@@ -2616,7 +2616,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
                 {"description": "item4updated", "items_id": objects[4].id},
             ),
             CompiledSQL(
-                "INSERT INTO keywords (name) " "VALUES (:name)",
+                "INSERT INTO keywords (name) VALUES (:name)",
                 {"name": "yellow"},
             ),
             CompiledSQL(
@@ -3416,7 +3416,7 @@ class InheritingRowSwitchTest(fixtures.MappedTest):
             # sync operation during _save_obj().update, this is safe to remove
             # again.
             CompiledSQL(
-                "UPDATE child SET pid=:pid " "WHERE child.cid = :child_cid",
+                "UPDATE child SET pid=:pid WHERE child.cid = :child_cid",
                 {"pid": 1, "child_cid": 1},
             ),
         )

@@ -221,7 +221,7 @@ class LambdaElementTest(
 
         self.assert_compile(
             go("u1"),
-            "SELECT users.id FROM users " "WHERE users.name = 'u1'",
+            "SELECT users.id FROM users WHERE users.name = 'u1'",
             literal_binds=True,
         )
 

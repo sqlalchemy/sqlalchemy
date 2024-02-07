@@ -2303,7 +2303,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             assert_raises(
                 (exc.DBAPIError,),
                 connection.exec_driver_sql,
-                "insert into my_table " "(data) values('four')",
+                "insert into my_table (data) values('four')",
             )
             trans.rollback()
 

@@ -142,7 +142,7 @@ load those ``Address`` objects which specify a city of "Boston"::
         name = mapped_column(String)
         boston_addresses = relationship(
             "Address",
-            primaryjoin="and_(User.id==Address.user_id, " "Address.city=='Boston')",
+            primaryjoin="and_(User.id==Address.user_id, Address.city=='Boston')",
         )
 
 
@@ -297,7 +297,7 @@ a :func:`_orm.relationship`::
 
         network = relationship(
             "Network",
-            primaryjoin="IPA.v4address.bool_op('<<')" "(foreign(Network.v4representation))",
+            primaryjoin="IPA.v4address.bool_op('<<')(foreign(Network.v4representation))",
             viewonly=True,
         )
 
@@ -702,7 +702,7 @@ join condition (requires version 0.9.2 at least to function as is)::
 
         d = relationship(
             "D",
-            secondary="join(B, D, B.d_id == D.id)." "join(C, C.d_id == D.id)",
+            secondary="join(B, D, B.d_id == D.id).join(C, C.d_id == D.id)",
             primaryjoin="and_(A.b_id == B.id, A.id == C.a_id)",
             secondaryjoin="D.id == B.d_id",
             uselist=False,
