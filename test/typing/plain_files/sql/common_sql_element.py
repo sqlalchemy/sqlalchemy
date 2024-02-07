@@ -12,6 +12,8 @@ from __future__ import annotations
 from sqlalchemy import asc
 from sqlalchemy import Column
 from sqlalchemy import column
+from sqlalchemy import ColumnElement
+from sqlalchemy import ColumnExpressionArgument
 from sqlalchemy import desc
 from sqlalchemy import Integer
 from sqlalchemy import literal
@@ -172,3 +174,14 @@ mydict = {
     literal("5"): "q",
     column("q"): "q",
 }
+
+
+# test 10959
+def where_criteria(cls_: type[User]) -> ColumnElement[bool]:
+    return cls_.email == "test"
+
+
+column_expression: ColumnExpressionArgument[bool] = where_criteria
+column_expression_lambda: ColumnExpressionArgument[bool] = (
+    lambda cls_: cls_.email == "test"
+)
