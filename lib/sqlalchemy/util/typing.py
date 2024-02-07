@@ -156,7 +156,7 @@ def de_stringify_annotation(
             annotation = str_cleanup_fn(annotation, originating_module)
 
         annotation = eval_expression(
-            annotation, originating_module, locals_=locals_
+            annotation, originating_module, locals_=locals_, in_class=cls
         )
 
     if (
@@ -209,6 +209,7 @@ def eval_expression(
     module_name: str,
     *,
     locals_: Optional[Mapping[str, Any]] = None,
+    in_class: Optional[Type[Any]] = None,
 ) -> Any:
     try:
         base_globals: Dict[str, Any] = sys.modules[module_name].__dict__
@@ -219,7 +220,18 @@ def eval_expression(
         ) from ke
 
     try:
-        annotation = eval(expression, base_globals, locals_)
+        if in_class is not None:
+            cls_namespace = dict(in_class.__dict__)
+            cls_namespace.setdefault(in_class.__name__, in_class)
+
+            # see #10899.  We want the locals/globals to take precedence
+            # over the class namespace in this context, even though this
+            # is not the usual way variables would resolve.
+            cls_namespace.update(base_globals)
+
+            annotation = eval(expression, cls_namespace, locals_)
+        else:
+            annotation = eval(expression, base_globals, locals_)
     except Exception as err:
         raise NameError(
             f"Could not de-stringify annotation {expression!r}"

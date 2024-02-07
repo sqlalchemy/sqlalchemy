@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 10899
+
+    Fixed issue where it was not possible to use a type (such as an enum)
+    within a :class:`_orm.Mapped` container type if that type were declared
+    locally within the class body.  The scope of locals used for the eval now
+    includes that of the class body itself.  In addition, the expression within
+    :class:`_orm.Mapped` may also refer to the class name itself, if used as a
+    string or with future annotations mode.

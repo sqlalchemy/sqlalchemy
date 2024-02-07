@@ -8,6 +8,7 @@ the ``test_tm_future_annotations_sync`` by the ``sync_test_file`` script.
 
 from __future__ import annotations
 
+import enum
 from typing import ClassVar
 from typing import Dict
 from typing import List
@@ -29,8 +30,11 @@ from sqlalchemy.orm import KeyFuncDict
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import sqltypes
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_true
 from .test_typed_mapping import expect_annotation_syntax_error
 from .test_typed_mapping import MappedColumnTest as _MappedColumnTest
 from .test_typed_mapping import RelationshipLHSTest as _RelationshipLHSTest
@@ -111,6 +115,85 @@ class MappedColumnTest(_MappedColumnTest):
         self.assert_compile(
             select(Foo), "SELECT foo.id, foo.data, foo.data2 FROM foo"
         )
+
+    def test_type_favors_outer(self, decl_base):
+        """test #10899, that we maintain favoring outer names vs. inner.
+        this is for backwards compatibility as well as what people
+        usually expect regarding the names of attributes in the class.
+
+        """
+
+        class User(decl_base):
+            __tablename__ = "user"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            uuid: Mapped[uuid.UUID] = mapped_column()
+
+        is_true(isinstance(User.__table__.c.uuid.type, sqltypes.Uuid))
+
+    def test_type_inline_cls_qualified(self, decl_base):
+        """test #10899, where we test that we can refer to the class name
+        directly to refer to class-bound elements.
+
+        """
+
+        class User(decl_base):
+            __tablename__ = "user"
+
+            class Role(enum.Enum):
+                admin = "admin"
+                user = "user"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            role: Mapped[User.Role]
+
+        is_true(isinstance(User.__table__.c.role.type, sqltypes.Enum))
+        eq_(User.__table__.c.role.type.length, 5)
+        is_(User.__table__.c.role.type.enum_class, User.Role)
+
+    def test_type_inline_disambiguate(self, decl_base):
+        """test #10899, where we test that we can refer to an inner name
+        that's not in conflict directly without qualification.
+
+        """
+
+        class User(decl_base):
+            __tablename__ = "user"
+
+            class Role(enum.Enum):
+                admin = "admin"
+                user = "user"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            role: Mapped[Role]
+
+        is_true(isinstance(User.__table__.c.role.type, sqltypes.Enum))
+        eq_(User.__table__.c.role.type.length, 5)
+        is_(User.__table__.c.role.type.enum_class, User.Role)
+        eq_(User.__table__.c.role.type.name, "role")  # and not 'enum'
+
+    def test_type_inner_can_be_qualified(self, decl_base):
+        """test #10899, same test as that of Role, using it to qualify against
+        a global variable with the same name.
+
+        """
+
+        global SomeGlobalName
+        SomeGlobalName = None
+
+        class User(decl_base):
+            __tablename__ = "user"
+
+            class SomeGlobalName(enum.Enum):
+                admin = "admin"
+                user = "user"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            role: Mapped[User.SomeGlobalName]
+
+        is_true(isinstance(User.__table__.c.role.type, sqltypes.Enum))
+        eq_(User.__table__.c.role.type.length, 5)
+        is_(User.__table__.c.role.type.enum_class, User.SomeGlobalName)
 
     def test_indirect_mapped_name_local_level(self, decl_base):
         """test #8759.
