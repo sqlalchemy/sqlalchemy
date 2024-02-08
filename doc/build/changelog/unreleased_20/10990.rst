@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 10990
+
+    Fixed issue where an assertion within the implementation for
+    :func:`_orm.with_expression` would raise if a SQL expression that was not
+    cacheable were used; this was a 2.0 regression since 1.4.
