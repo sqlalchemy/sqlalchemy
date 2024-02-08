@@ -10,6 +10,7 @@ from sqlalchemy import null
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import TypeDecorator
 from sqlalchemy import union_all
 from sqlalchemy import util
 from sqlalchemy.orm import aliased
@@ -2215,9 +2216,21 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
 
             c_expr = query_expression(literal(1))
 
+        class CustomTimeStamp(TypeDecorator):
+            cache_ok = False
+            impl = Integer
+
+        class HasNonCacheable(ComparableEntity, Base):
+            __tablename__ = "non_cacheable"
+
+            id = Column(Integer, primary_key=True)
+            created = Column(CustomTimeStamp)
+            msg_translated = query_expression()
+
     @classmethod
     def insert_data(cls, connection):
         A, A_default, B, C = cls.classes("A", "A_default", "B", "C")
+        (HasNonCacheable,) = cls.classes("HasNonCacheable")
         s = Session(connection)
 
         s.add_all(
@@ -2230,6 +2243,7 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
                 C(id=2, x=2),
                 A_default(id=1, x=1, y=2),
                 A_default(id=2, x=2, y=3),
+                HasNonCacheable(id=1, created=12345),
             ]
         )
 
@@ -2268,6 +2282,30 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
             .order_by(C.id)
         )
         eq_(c2.all(), [C(c_expr=4)])
+
+    def test_non_cacheable_expr(self):
+        """test #10990"""
+
+        HasNonCacheable = self.classes.HasNonCacheable
+
+        for i in range(3):
+            s = fixture_session()
+
+            stmt = (
+                select(HasNonCacheable)
+                .where(HasNonCacheable.created > 10)
+                .options(
+                    with_expression(
+                        HasNonCacheable.msg_translated,
+                        HasNonCacheable.created + 10,
+                    )
+                )
+            )
+
+            eq_(
+                s.scalars(stmt).all(),
+                [HasNonCacheable(id=1, created=12345, msg_translated=12355)],
+            )
 
     def test_reuse_expr(self):
         A = self.classes.A
