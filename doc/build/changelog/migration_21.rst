@@ -56,11 +56,11 @@ annotations.   To work around this issue, SQLAlchemy makes use of automated
 "stub generation" tools to generate hardcoded mappings of different numbers of
 positional arguments to constructs like :func:`_sql.select` to resolve to
 individual ``Unpack[]`` expressions (in SQLAlchemy 2.0, this generation
-prodcued ``Tuple[]`` annotations instead).  This means that there are arbitrary
+produced ``Tuple[]`` annotations instead).  This means that there are arbitrary
 limits on how many specific column expressions will be typed within the
 :class:`_engine.Row` object, without restoring to ``Any`` for remaining
 expressions; for :func:`_sql.select`, it's currently ten expressions, and
-for DML expresions like :func:`_dml.insert` that use :meth:`_dml.Insert.returning`,
+for DML expressions like :func:`_dml.insert` that use :meth:`_dml.Insert.returning`,
 it's eight.    If and when a new pep that provides a ``Map`` operator
 to pep-646 is proposed, this limitation can be lifted. [1]_  Originally, it was
 mistakenly assumed that this limitation prevented pep-646 from being usable at all,
@@ -91,7 +91,7 @@ extension, could be installed from pypi using a pre-built wheel instead
 of having to build from source.   This because the source build of ``greenlet``
 is not always trivial on some platforms.
 
-Disadantages to this approach included that SQLAlchemy needed to track
+Disadvantages to this approach included that SQLAlchemy needed to track
 exactly which versions of ``greenlet`` were published as wheels on pypi;
 the setup expression led to problems with some package management tools
 such as ``poetry``; it was not possible to install SQLAlchemy **without**
