@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, mysql
-    :tickets: 10893
-
-    Fixed issue in asyncio dialects asyncmy and aiomysql, where their
-    ``.close()`` method is apparently not a graceful close.  replace with
-    non-standard ``.ensure_closed()`` method that's awaitable and move
-    ``.close()`` to the so-called "terminate" case.

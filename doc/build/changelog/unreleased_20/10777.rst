@@ -1,7 +1,0 @@
-.. change::
-    :tags: usecase, postgresql, reflection
-    :tickets: 10777
-
-    Added support for reflection of PostgreSQL CHECK constraints marked with
-    "NO INHERIT", setting the key ``no_inherit=True`` in the reflected data.
-    Pull request courtesy Ellis Valentiner.

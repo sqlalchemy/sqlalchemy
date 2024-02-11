@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, mysql
-    :tickets: 10850
-
-    Fixed issue where NULL/NOT NULL would not be properly reflected from a
-    MySQL column that also specified the VIRTUAL or STORED directives.  Pull
-    request courtesy Georg Wicke-Arndt.
