@@ -10,7 +10,187 @@
 
 .. changelog::
     :version: 2.0.26
-    :include_notes_from: unreleased_20
+    :released: February 11, 2024
+
+    .. change::
+        :tags: usecase, postgresql, reflection
+        :tickets: 10777
+
+        Added support for reflection of PostgreSQL CHECK constraints marked with
+        "NO INHERIT", setting the key ``no_inherit=True`` in the reflected data.
+        Pull request courtesy Ellis Valentiner.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 10843
+
+        Fixed issues in :func:`_sql.case` where the logic for determining the
+        type of the expression could result in :class:`.NullType` if the last
+        element in the "whens" had no type, or in other cases where the type
+        could resolve to ``None``.  The logic has been updated to scan all
+        given expressions so that the first non-null type is used, as well as
+        to always ensure a type is present.  Pull request courtesy David Evans.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 10850
+
+        Fixed issue where NULL/NOT NULL would not be properly reflected from a
+        MySQL column that also specified the VIRTUAL or STORED directives.  Pull
+        request courtesy Georg Wicke-Arndt.
+
+    .. change::
+        :tags: bug, regression, postgresql
+        :tickets: 10863
+
+        Fixed regression in the asyncpg dialect caused by :ticket:`10717` in
+        release 2.0.24 where the change that now attempts to gracefully close the
+        asyncpg connection before terminating would not fall back to
+        ``terminate()`` for other potential connection-related exceptions other
+        than a timeout error, not taking into account cases where the graceful
+        ``.close()`` attempt fails for other reasons such as connection errors.
+
+
+    .. change::
+        :tags: oracle, bug, performance
+        :tickets: 10877
+
+        Changed the default arraysize of the Oracle dialects so that the value set
+        by the driver is used, that is 100 at the time of writing for both
+        cx_oracle and oracledb. Previously the value was set to 50 by default. The
+        setting of 50 could cause significant performance regressions compared to
+        when using cx_oracle/oracledb alone to fetch many hundreds of rows over
+        slower networks.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 10893
+
+        Fixed issue in asyncio dialects asyncmy and aiomysql, where their
+        ``.close()`` method is apparently not a graceful close.  replace with
+        non-standard ``.ensure_closed()`` method that's awaitable and move
+        ``.close()`` to the so-called "terminate" case.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10896
+
+        Replaced the "loader depth is excessively deep" warning with a shorter
+        message added to the caching badge within SQL logging, for those statements
+        where the ORM disabled the cache due to a too-deep chain of loader options.
+        The condition which this warning highlights is difficult to resolve and is
+        generally just a limitation in the ORM's application of SQL caching. A
+        future feature may include the ability to tune the threshold where caching
+        is disabled, but for now the warning will no longer be a nuisance.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10899
+
+        Fixed issue where it was not possible to use a type (such as an enum)
+        within a :class:`_orm.Mapped` container type if that type were declared
+        locally within the class body.  The scope of locals used for the eval now
+        includes that of the class body itself.  In addition, the expression within
+        :class:`_orm.Mapped` may also refer to the class name itself, if used as a
+        string or with future annotations mode.
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 10904
+
+        Support the ``USING <method>`` option for PostgreSQL ``CREATE TABLE`` to
+        specify the access method to use to store the contents for the new table.
+        Pull request courtesy Edgar Ramírez-Mondragón.
+
+        .. seealso::
+
+            :ref:`postgresql_table_options`
+
+    .. change::
+        :tags: bug, examples
+        :tickets: 10920
+
+        Fixed regression in history_meta example where the use of
+        :meth:`_schema.MetaData.to_metadata` to make a copy of the history table
+        would also copy indexes (which is a good thing), but causing naming
+        conflicts indexes regardless of naming scheme used for those indexes. A
+        "_history" suffix is now added to these indexes in the same way as is
+        achieved for the table name.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10967
+
+        Fixed issue where using :meth:`_orm.Session.delete` along with the
+        :paramref:`_orm.Mapper.version_id_col` feature would fail to use the
+        correct version identifier in the case that an additional UPDATE were
+        emitted against the target object as a result of the use of
+        :paramref:`_orm.relationship.post_update` on the object.  The issue is
+        similar to :ticket:`10800` just fixed in version 2.0.25 for the case of
+        updates alone.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10990
+
+        Fixed issue where an assertion within the implementation for
+        :func:`_orm.with_expression` would raise if a SQL expression that was not
+        cacheable were used; this was a 2.0 regression since 1.4.
+
+    .. change::
+        :tags: postgresql, usecase
+        :tickets: 9736
+
+        Correctly type PostgreSQL RANGE and MULTIRANGE types as ``Range[T]``
+        and ``Sequence[Range[T]]``.
+        Introduced utility sequence :class:`_postgresql.MultiRange` to allow better
+        interoperability of MULTIRANGE types.
+
+    .. change::
+        :tags: postgresql, usecase
+
+        Differentiate between INT4 and INT8 ranges and multi-ranges types when
+        inferring the database type from a :class:`_postgresql.Range` or
+        :class:`_postgresql.MultiRange` instance, preferring INT4 if the values
+        fit into it.
+
+    .. change::
+        :tags: bug, typing
+
+        Fixed the type signature for the :meth:`.PoolEvents.checkin` event to
+        indicate that the given :class:`.DBAPIConnection` argument may be ``None``
+        in the case where the connection has been invalidated.
+
+    .. change::
+        :tags: bug, examples
+
+        Fixed the performance example scripts in examples/performance to mostly
+        work with the Oracle database, by adding the :class:`.Identity` construct
+        to all the tables and allowing primary generation to occur on this backend.
+        A few of the "raw DBAPI" cases still are not compatible with Oracle.
+
+
+    .. change::
+        :tags: bug, mssql
+
+        Fixed an issue regarding the use of the :class:`.Uuid` datatype with the
+        :paramref:`.Uuid.as_uuid` parameter set to False, when using the pymssql
+        dialect. ORM-optimized INSERT statements (e.g. the "insertmanyvalues"
+        feature) would not correctly align primary key UUID values for bulk INSERT
+        statements, resulting in errors.  Similar issues were fixed for the
+        PostgreSQL drivers as well.
+
+
+    .. change::
+        :tags: bug, postgresql
+
+        Fixed an issue regarding the use of the :class:`.Uuid` datatype with the
+        :paramref:`.Uuid.as_uuid` parameter set to False, when using PostgreSQL
+        dialects. ORM-optimized INSERT statements (e.g. the "insertmanyvalues"
+        feature) would not correctly align primary key UUID values for bulk INSERT
+        statements, resulting in errors.  Similar issues were fixed for the
+        pymssql driver as well.
 
 .. changelog::
     :version: 2.0.25
