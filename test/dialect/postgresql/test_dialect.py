@@ -178,6 +178,28 @@ class DialectTest(fixtures.TestBase):
         with expect_raises(dataclasses.FrozenInstanceError):
             r1.lower = 8  # type: ignore
 
+    @testing.only_on("postgresql+asyncpg")
+    def test_asyncpg_terminate_catch(self):
+        """test for #11005"""
+
+        with testing.db.connect() as connection:
+            emulated_dbapi_connection = connection.connection.dbapi_connection
+
+            async def boom():
+                raise OSError("boom")
+
+            with mock.patch.object(
+                emulated_dbapi_connection,
+                "_connection",
+                mock.Mock(close=mock.Mock(return_value=boom())),
+            ) as mock_asyncpg_connection:
+                emulated_dbapi_connection.terminate()
+
+            eq_(
+                mock_asyncpg_connection.mock_calls,
+                [mock.call.close(timeout=2), mock.call.terminate()],
+            )
+
     def test_version_parsing(self):
         def mock_conn(res):
             return mock.Mock(

@@ -913,7 +913,11 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
                 # try to gracefully close; see #10717
                 # timeout added in asyncpg 0.14.0 December 2017
                 await_(self._connection.close(timeout=2))
-            except (asyncio.TimeoutError, OSError, self.dbapi.PostgresError):
+            except (
+                asyncio.TimeoutError,
+                OSError,
+                self.dbapi.asyncpg.PostgresError,
+            ):
                 # in the case where we are recycling an old connection
                 # that may have already been disconnected, close() will
                 # fail with the above timeout.  in this case, terminate
