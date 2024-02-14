@@ -533,6 +533,7 @@ a context manager as well, accomplishes the following things:
   are no longer associated with any database transaction in which to be
   refreshed::
 
+    # note that 'squidward.name' was just expired previously, so its value is unloaded
     >>> squidward.name
     Traceback (most recent call last):
       ...
