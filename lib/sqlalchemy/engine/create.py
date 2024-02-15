@@ -663,6 +663,17 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
     else:
         pool._dialect = dialect
 
+    if (
+        hasattr(pool, "_is_asyncio")
+        and pool._is_asyncio is not dialect.is_async
+    ):
+        raise exc.ArgumentError(
+            f"Pool class {pool.__class__.__name__} cannot be "
+            f"used with {'non-' if not dialect.is_async else ''}"
+            "asyncio engine",
+            code="pcls",
+        )
+
     # create engine.
     if not pop_kwarg("future", True):
         raise exc.ArgumentError(

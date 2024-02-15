@@ -50,6 +50,13 @@ queued up - the pool would only grow to that size if the application
 actually used five connections concurrently, in which case the usage of a
 small pool is an entirely appropriate default behavior.
 
+.. note:: The :class:`.QueuePool` class is **not compatible with asyncio**.
+   When using :class:`_asyncio.create_async_engine` to create an instance of
+   :class:`.AsyncEngine`, the :class:`_pool.AsyncAdaptedQueuePool` class,
+   which makes use of an asyncio-compatible queue implementation, is used
+   instead.
+
+
 .. _pool_switching:
 
 Switching Pool Implementations
@@ -713,6 +720,8 @@ like in the following example::
 
     my_pool = create_pool_from_url("mysql+mysqldb://", poolclass=NullPool)
 
+.. _pool_api:
+
 API Documentation - Available Pool Implementations
 --------------------------------------------------
 
@@ -720,6 +729,9 @@ API Documentation - Available Pool Implementations
     :members:
 
 .. autoclass:: sqlalchemy.pool.QueuePool
+    :members:
+
+.. autoclass:: sqlalchemy.pool.AsyncAdaptedQueuePool
     :members:
 
 .. autoclass:: SingletonThreadPool
