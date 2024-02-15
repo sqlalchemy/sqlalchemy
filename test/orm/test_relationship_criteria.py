@@ -2409,6 +2409,28 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             "AND items_1.description != :description_1",
         )
 
+    def test_use_secondary_table_in_criteria(self, order_item_fixture):
+        """test #11010 , regression caused by #9779"""
+
+        Order, Item = order_item_fixture
+        order_items = self.tables.order_items
+
+        stmt = select(Order).join(
+            Order.items.and_(
+                order_items.c.item_id > 1, Item.description != "description"
+            )
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT orders.id, orders.user_id, orders.address_id, "
+            "orders.description, orders.isopen FROM orders JOIN order_items "
+            "AS order_items_1 ON orders.id = order_items_1.order_id "
+            "JOIN items ON items.id = order_items_1.item_id "
+            "AND order_items_1.item_id > :item_id_1 "
+            "AND items.description != :description_1",
+        )
+
 
 class SubqueryCriteriaTest(fixtures.DeclarativeMappedTest):
     """test #10223"""
