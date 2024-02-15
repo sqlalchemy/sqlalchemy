@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, asyncio
+    :tickets: 8771
+
+    An error is raised if a :class:`.QueuePool` or other non-asyncio pool class
+    is passed to :func:`_asyncio.create_async_engine`.  This engine only
+    accepts asyncio-compatible pool classes including
+    :class:`.AsyncAdaptedQueuePool`. Other pool classes such as
+    :class:`.NullPool` are compatible with both synchronous and asynchronous
+    engines as they do not perform any locking.
+
+    .. seealso::
+
+        :ref:`pool_api`
+
