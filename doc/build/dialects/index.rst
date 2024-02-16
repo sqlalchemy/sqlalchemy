@@ -63,7 +63,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Database                                       | Dialect                               |
 +================================================+=======================================+
-| Actian Avalanche, Vector, Actian X, and Ingres | sqlalchemy-ingres_                    |
+| Actian Data Platform, Vector, Actian X, Ingres | sqlalchemy-ingres_                    |
 +------------------------------------------------+---------------------------------------+
 | Amazon Athena                                  | pyathena_                             |
 +------------------------------------------------+---------------------------------------+
@@ -124,7 +124,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 
 .. _openGauss-sqlalchemy: https://gitee.com/opengauss/openGauss-sqlalchemy
 .. _rockset-sqlalchemy: https://pypi.org/project/rockset-sqlalchemy
-.. _sqlalchemy-ingres: https://github.com/clach04/ingres_sa_dialect
+.. _sqlalchemy-ingres: https://github.com/ActianCorp/sqlalchemy-ingres
 .. _nzalchemy: https://pypi.org/project/nzalchemy/
 .. _ibm-db-sa: https://pypi.org/project/ibm-db-sa/
 .. _PyHive: https://github.com/dropbox/PyHive#sqlalchemy
