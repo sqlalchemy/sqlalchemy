@@ -499,7 +499,7 @@ class YEAR(sqltypes.TypeEngine):
 
 
 class TEXT(_StringType, sqltypes.TEXT):
-    """MySQL TEXT type, for text up to 2^16 characters."""
+    """MySQL TEXT type, for character storage encoded up to 2^16 bytes."""
 
     __visit_name__ = "TEXT"
 
@@ -508,7 +508,7 @@ class TEXT(_StringType, sqltypes.TEXT):
 
         :param length: Optional, if provided the server may optimize storage
           by substituting the smallest TEXT type sufficient to store
-          ``length`` characters.
+          ``length`` bytes of characters.
 
         :param charset: Optional, a column-level character set for this string
           value.  Takes precedence to 'ascii' or 'unicode' short-hand.
@@ -535,7 +535,7 @@ class TEXT(_StringType, sqltypes.TEXT):
 
 
 class TINYTEXT(_StringType):
-    """MySQL TINYTEXT type, for text up to 2^8 characters."""
+    """MySQL TINYTEXT type, for character storage encoded up to 2^8 bytes."""
 
     __visit_name__ = "TINYTEXT"
 
@@ -567,7 +567,8 @@ class TINYTEXT(_StringType):
 
 
 class MEDIUMTEXT(_StringType):
-    """MySQL MEDIUMTEXT type, for text up to 2^24 characters."""
+    """MySQL MEDIUMTEXT type, for character storage encoded up
+    to 2^24 bytes."""
 
     __visit_name__ = "MEDIUMTEXT"
 
@@ -599,7 +600,7 @@ class MEDIUMTEXT(_StringType):
 
 
 class LONGTEXT(_StringType):
-    """MySQL LONGTEXT type, for text up to 2^32 characters."""
+    """MySQL LONGTEXT type, for character storage encoded up to 2^32 bytes."""
 
     __visit_name__ = "LONGTEXT"
 
@@ -683,7 +684,7 @@ class CHAR(_StringType, sqltypes.CHAR):
         super().__init__(length=length, **kwargs)
 
     @classmethod
-    def _adapt_string_for_cast(self, type_):
+    def _adapt_string_for_cast(cls, type_):
         # copy the given string type into a CHAR
         # for the purposes of rendering a CAST expression
         type_ = sqltypes.to_instance(type_)
