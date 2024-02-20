@@ -143,19 +143,18 @@ this value can be supported::
 Events and Multiprocessing
 --------------------------
 
-SQLAlchemy's event hooks are implemented as Python data structures
-associated with a particular pair of Python functions and objects.
-Event propagation itself is implemented as Python function calls.
+SQLAlchemy's event hooks are implemented with Python functions and objects,
+so events propagate via Python function calls.
+Python multiprocessing follows the
+same way we think about OS multiprocessing,
+such as a parent process forking a child process,
+thus we can describe the SQLAlchemy event system's behavior using the same model.
 
-From this model,
-we can describe the behavior of the event system in terms of multiple Python processes,
-such as a parent child forking a child process,
-in the same way we would think about any other datastructure / function operation.
 Event hooks registered in a parent process
 will be present in new child processes
 that are forked from that parent after the hooks have been registered,
 since the child process starts with
-a copy of all existing Python structures from the parent when it begins.
+a copy of all existing Python structures from the parent when spawned.
 Child processes that already exist before the hooks are registered
 will not receive those new event hooks,
 as changes made to Python structures in a parent process
