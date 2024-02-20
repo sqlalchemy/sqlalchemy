@@ -1,3 +1,9 @@
+# dialects/mysql/provision.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 from ... import exc
@@ -82,7 +88,9 @@ def _mysql_temp_table_keyword_args(cfg, eng):
 
 
 @upsert.for_db("mariadb")
-def _upsert(cfg, table, returning, set_lambda=None):
+def _upsert(
+    cfg, table, returning, *, set_lambda=None, sort_by_parameter_order=False
+):
     from sqlalchemy.dialects.mysql import insert
 
     stmt = insert(table)
@@ -93,5 +101,7 @@ def _upsert(cfg, table, returning, set_lambda=None):
         pk1 = table.primary_key.c[0]
         stmt = stmt.on_duplicate_key_update({pk1.key: pk1})
 
-    stmt = stmt.returning(*returning)
+    stmt = stmt.returning(
+        *returning, sort_by_parameter_order=sort_by_parameter_order
+    )
     return stmt

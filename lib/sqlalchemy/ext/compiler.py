@@ -1,5 +1,5 @@
 # ext/compiler.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -409,7 +409,7 @@ accommodates two arguments::
     @compiles(greatest, 'oracle')
     def case_greatest(element, compiler, **kw):
         arg1, arg2 = list(element.clauses)
-        return compiler.process(case([(arg1 > arg2, arg1)], else_=arg2), **kw)
+        return compiler.process(case((arg1 > arg2, arg1), else_=arg2), **kw)
 
 Example usage::
 

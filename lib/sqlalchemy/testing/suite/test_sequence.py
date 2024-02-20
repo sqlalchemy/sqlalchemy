@@ -1,3 +1,9 @@
+# testing/suite/test_sequence.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 from .. import config
@@ -120,7 +126,6 @@ class SequenceTest(fixtures.TablesTest):
     @testing.combinations((True,), (False,), argnames="implicit_returning")
     @testing.requires.schemas
     def test_insert_roundtrip_translate(self, connection, implicit_returning):
-
         seq_no_returning = Table(
             "seq_no_returning_sch",
             MetaData(),

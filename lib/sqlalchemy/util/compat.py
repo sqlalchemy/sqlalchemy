@@ -1,5 +1,5 @@
 # util/compat.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import base64
 import dataclasses
+import hashlib
+from importlib import metadata as importlib_metadata
 import inspect
 import operator
 import platform
@@ -29,12 +31,10 @@ from typing import Set
 from typing import Tuple
 from typing import Type
 
-
 py312 = sys.version_info >= (3, 12)
 py311 = sys.version_info >= (3, 11)
 py310 = sys.version_info >= (3, 10)
 py39 = sys.version_info >= (3, 9)
-py38 = sys.version_info >= (3, 8)
 pypy = platform.python_implementation() == "PyPy"
 cpython = platform.python_implementation() == "CPython"
 
@@ -96,10 +96,16 @@ def inspect_getfullargspec(func: Callable[..., Any]) -> FullArgSpec:
     )
 
 
-if typing.TYPE_CHECKING or py38:
-    from importlib import metadata as importlib_metadata
+if py39:
+    # python stubs don't have a public type for this. not worth
+    # making a protocol
+    def md5_not_for_security() -> Any:
+        return hashlib.md5(usedforsecurity=False)
+
 else:
-    import importlib_metadata  # noqa
+
+    def md5_not_for_security() -> Any:
+        return hashlib.md5()
 
 
 if typing.TYPE_CHECKING or py39:
@@ -116,7 +122,6 @@ else:
 if py310:
     anext_ = anext
 else:
-
     _NOT_PROVIDED = object()
     from collections.abc import AsyncIterator
 
@@ -138,7 +143,7 @@ else:
 
 def importlib_metadata_get(group):
     ep = importlib_metadata.entry_points()
-    if not typing.TYPE_CHECKING and hasattr(ep, "select"):
+    if typing.TYPE_CHECKING or hasattr(ep, "select"):
         return ep.select(group=group)
     else:
         return ep.get(group, ())

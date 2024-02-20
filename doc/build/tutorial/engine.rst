@@ -3,11 +3,19 @@
 
 .. include:: tutorial_nav_include.rst
 
+.. rst-class:: core-header, orm-addin
+
 .. _tutorial_engine:
 
 Establishing Connectivity - the Engine
 ==========================================
 
+.. container:: orm-header
+
+    **Welcome ORM and Core readers alike!**
+
+    Every SQLAlchemy application that connects to a database needs to use
+    an :class:`_engine.Engine`.  This short section is for everyone.
 
 The start of any SQLAlchemy application is an object called the
 :class:`_engine.Engine`.   This object acts as a central source of connections

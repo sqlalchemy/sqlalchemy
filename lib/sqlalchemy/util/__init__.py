@@ -1,5 +1,5 @@
 # util/__init__.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -26,6 +26,7 @@ from ._collections import IdentitySet as IdentitySet
 from ._collections import immutabledict as immutabledict
 from ._collections import LRUCache as LRUCache
 from ._collections import merge_lists_w_ordering as merge_lists_w_ordering
+from ._collections import NONE_SET as NONE_SET
 from ._collections import ordered_column_set as ordered_column_set
 from ._collections import OrderedDict as OrderedDict
 from ._collections import OrderedIdentitySet as OrderedIdentitySet
@@ -64,11 +65,10 @@ from .compat import osx as osx
 from .compat import py310 as py310
 from .compat import py311 as py311
 from .compat import py312 as py312
-from .compat import py38 as py38
 from .compat import py39 as py39
 from .compat import pypy as pypy
 from .compat import win32 as win32
-from .concurrency import await_fallback as await_fallback
+from .concurrency import await_ as await_
 from .concurrency import await_only as await_only
 from .concurrency import greenlet_spawn as greenlet_spawn
 from .concurrency import is_exit_exception as is_exit_exception
@@ -155,3 +155,4 @@ from .langhelpers import warn_exception as warn_exception
 from .langhelpers import warn_limited as warn_limited
 from .langhelpers import wrap_callable as wrap_callable
 from .preloaded import preload_module as preload_module
+from .typing import is_non_string_iterable as is_non_string_iterable

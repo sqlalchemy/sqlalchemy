@@ -142,7 +142,6 @@ class MergeTest(NoCache, fixtures.MappedTest):
 
 
 class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
-
     """test overhead associated with many-to-one fetches.
 
     Prior to the refactor of LoadLazyAttribute and
@@ -625,7 +624,6 @@ class SelectInEagerLoadTest(NoCache, fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-
         Table(
             "a",
             metadata,

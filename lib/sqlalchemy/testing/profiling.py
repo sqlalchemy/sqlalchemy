@@ -1,5 +1,5 @@
 # testing/profiling.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -90,7 +90,6 @@ class ProfileStatsFile:
 
     @property
     def platform_key(self):
-
         dbapi_key = config.db.name + "_" + config.db.driver
 
         if config.db.name == "sqlite" and config.db.dialect._is_url_file_db(
@@ -216,7 +215,6 @@ class ProfileStatsFile:
         profile_f = open(self.fname, "w")
         profile_f.write(self._header())
         for test_key in sorted(self.data):
-
             per_fn = self.data[test_key]
             profile_f.write("\n# TEST: %s\n\n" % test_key)
             for platform_key in sorted(per_fn):
@@ -245,7 +243,6 @@ def function_call_count(variance=0.05, times=1, warmup=0):
 
     @decorator
     def wrap(fn, *args, **kw):
-
         for warm in range(warmup):
             fn(*args, **kw)
 

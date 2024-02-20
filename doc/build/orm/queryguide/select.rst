@@ -175,11 +175,12 @@ above using this form as well::
 Selecting Individual Attributes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The attributes on a mapped class, such as ``User.name`` and ``Address.email_address``,
-have a similar behavior as that of the entity class itself such as ``User``
-in that they are automatically converted into ORM-annotated Core objects
-when passed to :func:`_sql.select`.   They may be used in the same way
-as table columns are used::
+The attributes on a mapped class, such as ``User.name`` and
+``Address.email_address``, can be used just like :class:`_schema.Column` or
+other SQL expression objects when passed to :func:`_sql.select`. Creating a
+:func:`_sql.select` that is against specific columns will return :class:`.Row`
+objects, and **not** entities like ``User`` or ``Address`` objects.
+Each :class:`.Row` will have each column represented individually::
 
     >>> result = session.execute(
     ...     select(User.name, Address.email_address)
@@ -191,11 +192,8 @@ as table columns are used::
     ORDER BY user_account.id, address.id
     [...] (){stop}
 
-ORM attributes, themselves known as
-:class:`_orm.InstrumentedAttribute`
-objects, can be used in the same way as any :class:`_sql.ColumnElement`,
-and are delivered in result rows just the same way, such as below
-where we refer to their values by column name within each row::
+The above statement returns :class:`.Row` objects with ``name`` and
+``email_address`` columns, as illustrated in the runtime demonstration below::
 
     >>> for row in result:
     ...     print(f"{row.name}  {row.email_address}")
@@ -800,7 +798,7 @@ applied to more than one :func:`_orm.aliased` construct at once, and
 used in the same :class:`.Select` construct in terms of each entity separately.
 The rendered SQL will continue to treat all such :func:`_orm.aliased`
 constructs as the same subquery, however from the ORM / Python perspective
-the different return values and object attributes can be referred towards
+the different return values and object attributes can be referenced
 by using the appropriate :func:`_orm.aliased` construct.
 
 Given for example a subquery that refers to both ``User`` and ``Address``::
@@ -1051,7 +1049,7 @@ in terms of the target :func:`_orm.relationship`.
 
 * **An object has a particular parent from a one-to-many perspective** - the
   :func:`_orm.with_parent` function produces a comparison that returns rows
-  which are referred towards by a given parent, this is essentially the
+  which are referenced by a given parent, this is essentially the
   same as using the ``==`` operator with the many-to-one side::
 
       >>> from sqlalchemy.orm import with_parent

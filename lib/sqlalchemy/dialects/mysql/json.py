@@ -1,5 +1,5 @@
-# mysql/json.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mysql/json.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -27,8 +27,6 @@ class JSON(sqltypes.JSON):
     as well as the core index operations provided by :class:`_types.JSON`
     datatype, by adapting the operations to render the ``JSON_EXTRACT``
     function at the database level.
-
-    .. versionadded:: 1.1
 
     """
 

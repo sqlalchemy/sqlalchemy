@@ -2,9 +2,11 @@ import copy
 from unittest.mock import call
 from unittest.mock import MagicMock
 from unittest.mock import Mock
+from unittest.mock import patch
 
 import sqlalchemy as tsa
 from sqlalchemy import create_engine
+from sqlalchemy import create_pool_from_url
 from sqlalchemy import engine_from_config
 from sqlalchemy import exc
 from sqlalchemy import pool
@@ -13,9 +15,11 @@ from sqlalchemy.dialects import plugins
 from sqlalchemy.dialects import registry
 from sqlalchemy.engine.default import DefaultDialect
 import sqlalchemy.engine.url as url
+from sqlalchemy.pool.impl import NullPool
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixture
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
@@ -58,13 +62,33 @@ class URLTest(fixtures.TestBase):
         "dbtype://username:password@hostspec/test database with@atsign",
         "dbtype://username:password@hostspec?query=but_no_db",
         "dbtype://username:password@hostspec:450?query=but_no_db",
+        "dbtype://username:password with spaces@hostspec:450?query=but_no_db",
+        "dbtype+apitype://username with space+and+plus:"
+        "password with space+and+plus@"
+        "hostspec:450?query=but_no_db",
+        "dbtype://user%25%26%7C:pass%25%26%7C@hostspec:499?query=but_no_db",
+        "dbtype://user🐍測試:pass🐍測試@hostspec:499?query=but_no_db",
     )
     def test_rfc1738(self, text):
         u = url.make_url(text)
 
         assert u.drivername in ("dbtype", "dbtype+apitype")
-        assert u.username in ("username", None)
-        assert u.password in ("password", "apples/oranges", None)
+        assert u.username in (
+            "username",
+            "user%&|",
+            "username with space+and+plus",
+            "user🐍測試",
+            None,
+        )
+        assert u.password in (
+            "password",
+            "password with spaces",
+            "password with space+and+plus",
+            "apples/oranges",
+            "pass%&|",
+            "pass🐍測試",
+            None,
+        )
         assert u.host in (
             "hostspec",
             "127.0.0.1",
@@ -83,7 +107,8 @@ class URLTest(fixtures.TestBase):
             "E:/work/src/LEM/db/hello.db",
             None,
         ), u.database
-        eq_(u.render_as_string(hide_password=False), text)
+
+        eq_(url.make_url(u.render_as_string(hide_password=False)), u)
 
     def test_rfc1738_password(self):
         u = url.make_url("dbtype://user:pass word + other%3Awords@host/dbname")
@@ -175,6 +200,7 @@ class URLTest(fixtures.TestBase):
     def test_query_string(self):
         u = url.make_url("dialect://user:pass@host/db?arg1=param1&arg2=param2")
         eq_(u.query, {"arg1": "param1", "arg2": "param2"})
+        eq_(u.normalized_query, {"arg1": ("param1",), "arg2": ("param2",)})
         eq_(
             u.render_as_string(hide_password=False),
             "dialect://user:pass@host/db?arg1=param1&arg2=param2",
@@ -211,6 +237,10 @@ class URLTest(fixtures.TestBase):
         )
         eq_(u.query, {"arg1": "param1", "arg2": ("param2", "param3")})
         eq_(
+            u.normalized_query,
+            {"arg1": ("param1",), "arg2": ("param2", "param3")},
+        )
+        eq_(
             u.render_as_string(hide_password=False),
             "dialect://user:pass@host/db?arg1=param1&arg2=param2&arg2=param3",
         )
@@ -218,6 +248,7 @@ class URLTest(fixtures.TestBase):
         test_url = "dialect://user:pass@host/db?arg1%3D=param1&arg2=param+2"
         u = url.make_url(test_url)
         eq_(u.query, {"arg1=": "param1", "arg2": "param 2"})
+        eq_(u.normalized_query, {"arg1=": ("param1",), "arg2": ("param 2",)})
         eq_(u.render_as_string(hide_password=False), test_url)
 
     def test_comparison(self):
@@ -312,6 +343,13 @@ class URLTest(fixtures.TestBase):
         with expect_raises_message(TypeError, ".*immutable"):
             url_obj.query["foo"] = "hoho"
 
+    def test_create_engine_url_invalid(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Expected string or URL object, got 42",
+        ):
+            create_engine(42)
+
     @testing.combinations(
         (
             "foo1=bar1&foo2=bar2",
@@ -335,7 +373,7 @@ class URLTest(fixtures.TestBase):
         (
             "foo1=bar1&foo2=bar21&foo2=bar22&foo3=bar31",
             "foo2=bar23&foo3=bar32&foo3=bar33",
-            "foo1=bar1&foo2=bar23&" "foo3=bar32&foo3=bar33",
+            "foo1=bar1&foo2=bar23&foo3=bar32&foo3=bar33",
             False,
         ),
     )
@@ -535,7 +573,7 @@ class CreateEngineTest(fixtures.TestBase):
         e = engine_from_config(config, module=dbapi, _initialize=False)
         assert e.pool._recycle == 50
         assert e.url == url.make_url(
-            "postgresql+psycopg2://scott:tiger@somehost/test?foo" "z=somevalue"
+            "postgresql+psycopg2://scott:tiger@somehost/test?fooz=somevalue"
         )
         assert e.echo is True
 
@@ -682,7 +720,7 @@ class CreateEngineTest(fixtures.TestBase):
         dbapi = MockDBAPI(
             foober=12, lala=18, hoho={"this": "dict"}, fooz="somevalue"
         )
-        for (value, expected) in [
+        for value, expected in [
             ("rollback", pool.reset_rollback),
             ("commit", pool.reset_commit),
             (None, pool.reset_none),
@@ -867,6 +905,56 @@ class CreateEngineTest(fixtures.TestBase):
                 pass
         # but we should at least find one
         ne_(successes, 0, "No default drivers found.")
+
+
+class CreatePoolTest(fixtures.TestBase):
+    @fixture
+    def mock_create(self):
+        with patch(
+            "sqlalchemy.engine.create.create_engine",
+        ) as p:
+            yield p
+
+    def test_url_only(self, mock_create):
+        create_pool_from_url("sqlite://")
+        mock_create.assert_called_once_with("sqlite://", _initialize=False)
+
+    def test_pool_args(self, mock_create):
+        create_pool_from_url(
+            "sqlite://",
+            logging_name="foo",
+            echo=True,
+            timeout=42,
+            recycle=22,
+            reset_on_return=True,
+            pre_ping=True,
+            use_lifo=True,
+            foo=99,
+        )
+        mock_create.assert_called_once_with(
+            "sqlite://",
+            pool_logging_name="foo",
+            echo_pool=True,
+            pool_timeout=42,
+            pool_recycle=22,
+            pool_reset_on_return=True,
+            pool_pre_ping=True,
+            pool_use_lifo=True,
+            foo=99,
+            _initialize=False,
+        )
+
+    def test_pool_creation(self):
+        pp = create_pool_from_url("sqlite://")
+        engine_pool = create_engine("sqlite://").pool
+        eq_(pp.__class__, engine_pool.__class__)
+        pp = create_pool_from_url("sqlite://", pre_ping=True)
+        is_true(pp._pre_ping)
+        is_false(isinstance(pp, NullPool))
+
+    def test_pool_creation_custom_class(self):
+        pp = create_pool_from_url("sqlite://", poolclass=NullPool)
+        is_true(isinstance(pp, NullPool))
 
 
 class TestRegNewDBAPI(fixtures.TestBase):

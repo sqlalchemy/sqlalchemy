@@ -1,5 +1,5 @@
 # sql/cache_key.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -11,6 +11,7 @@ import enum
 from itertools import zip_longest
 import typing
 from typing import Any
+from typing import Callable
 from typing import Dict
 from typing import Iterable
 from typing import Iterator
@@ -18,6 +19,7 @@ from typing import List
 from typing import MutableMapping
 from typing import NamedTuple
 from typing import Optional
+from typing import Protocol
 from typing import Sequence
 from typing import Tuple
 from typing import Union
@@ -31,7 +33,6 @@ from .. import util
 from ..inspection import inspect
 from ..util import HasMemoized
 from ..util.typing import Literal
-from ..util.typing import Protocol
 
 if typing.TYPE_CHECKING:
     from .elements import BindParameter
@@ -43,8 +44,7 @@ if typing.TYPE_CHECKING:
 class _CacheKeyTraversalDispatchType(Protocol):
     def __call__(
         s, self: HasCacheKey, visitor: _CacheKeyTraversal
-    ) -> CacheKey:
-        ...
+    ) -> _CacheKeyTraversalDispatchTypeReturn: ...
 
 
 class CacheConst(enum.Enum):
@@ -74,6 +74,18 @@ class CacheTraverseTarget(enum.Enum):
     PROPAGATE_ATTRS,
     ANON_NAME,
 ) = tuple(CacheTraverseTarget)
+
+_CacheKeyTraversalDispatchTypeReturn = Sequence[
+    Tuple[
+        str,
+        Any,
+        Union[
+            Callable[..., Tuple[Any, ...]],
+            CacheTraverseTarget,
+            InternalTraversal,
+        ],
+    ]
+]
 
 
 class HasCacheKey:
@@ -290,11 +302,13 @@ class HasCacheKey:
                         result += (
                             attrname,
                             obj["compile_state_plugin"],
-                            obj["plugin_subject"]._gen_cache_key(
-                                anon_map, bindparams
-                            )
-                            if obj["plugin_subject"]
-                            else None,
+                            (
+                                obj["plugin_subject"]._gen_cache_key(
+                                    anon_map, bindparams
+                                )
+                                if obj["plugin_subject"]
+                                else None
+                            ),
                         )
                     elif meth is InternalTraversal.dp_annotations_key:
                         # obj is here is the _annotations dict.  Table uses
@@ -324,7 +338,7 @@ class HasCacheKey:
                             ),
                         )
                     else:
-                        result += meth(
+                        result += meth(  # type: ignore
                             attrname, obj, self, anon_map, bindparams
                         )
         return result
@@ -465,6 +479,9 @@ class CacheKey(NamedTuple):
     def __eq__(self, other: Any) -> bool:
         return bool(self.key == other.key)
 
+    def __ne__(self, other: Any) -> bool:
+        return not (self.key == other.key)
+
     @classmethod
     def _diff_tuples(cls, left: CacheKey, right: CacheKey) -> str:
         ck1 = CacheKey(left, [])
@@ -472,7 +489,6 @@ class CacheKey(NamedTuple):
         return ck1._diff(ck2)
 
     def _whats_different(self, other: CacheKey) -> Iterator[str]:
-
         k1 = self.key
         k2 = other.key
 
@@ -544,6 +560,9 @@ class CacheKey(NamedTuple):
     def _apply_params_to_element(
         self, original_cache_key: CacheKey, target_element: ClauseElement
     ) -> ClauseElement:
+        if target_element._is_immutable:
+            return target_element
+
         translate = {
             k.key: v.value
             for k, v in zip(original_cache_key.bindparams, self.bindparams)
@@ -601,9 +620,9 @@ class _CacheKeyTraversal(HasTraversalDispatch):
         InternalTraversal.dp_memoized_select_entities
     )
 
-    visit_string = (
-        visit_boolean
-    ) = visit_operator = visit_plain_obj = CACHE_IN_PLACE
+    visit_string = visit_boolean = visit_operator = visit_plain_obj = (
+        CACHE_IN_PLACE
+    )
     visit_statement_hint_list = CACHE_IN_PLACE
     visit_type = STATIC_CACHE_KEY
     visit_anon_name = ANON_NAME
@@ -650,9 +669,11 @@ class _CacheKeyTraversal(HasTraversalDispatch):
     ) -> Tuple[Any, ...]:
         return (
             attrname,
-            obj._gen_cache_key(anon_map, bindparams)
-            if isinstance(obj, HasCacheKey)
-            else obj,
+            (
+                obj._gen_cache_key(anon_map, bindparams)
+                if isinstance(obj, HasCacheKey)
+                else obj
+            ),
         )
 
     def visit_multi_list(
@@ -666,9 +687,11 @@ class _CacheKeyTraversal(HasTraversalDispatch):
         return (
             attrname,
             tuple(
-                elem._gen_cache_key(anon_map, bindparams)
-                if isinstance(elem, HasCacheKey)
-                else elem
+                (
+                    elem._gen_cache_key(anon_map, bindparams)
+                    if isinstance(elem, HasCacheKey)
+                    else elem
+                )
                 for elem in obj
             ),
         )
@@ -829,12 +852,16 @@ class _CacheKeyTraversal(HasTraversalDispatch):
         return tuple(
             (
                 target._gen_cache_key(anon_map, bindparams),
-                onclause._gen_cache_key(anon_map, bindparams)
-                if onclause is not None
-                else None,
-                from_._gen_cache_key(anon_map, bindparams)
-                if from_ is not None
-                else None,
+                (
+                    onclause._gen_cache_key(anon_map, bindparams)
+                    if onclause is not None
+                    else None
+                ),
+                (
+                    from_._gen_cache_key(anon_map, bindparams)
+                    if from_ is not None
+                    else None
+                ),
                 tuple([(key, flags[key]) for key in sorted(flags)]),
             )
             for (target, onclause, from_, flags) in obj
@@ -928,9 +955,11 @@ class _CacheKeyTraversal(HasTraversalDispatch):
             tuple(
                 (
                     key,
-                    value._gen_cache_key(anon_map, bindparams)
-                    if isinstance(value, HasCacheKey)
-                    else value,
+                    (
+                        value._gen_cache_key(anon_map, bindparams)
+                        if isinstance(value, HasCacheKey)
+                        else value
+                    ),
                 )
                 for key, value in [(key, obj[key]) for key in sorted(obj)]
             ),
@@ -976,9 +1005,11 @@ class _CacheKeyTraversal(HasTraversalDispatch):
             attrname,
             tuple(
                 (
-                    key._gen_cache_key(anon_map, bindparams)
-                    if hasattr(key, "__clause_element__")
-                    else key,
+                    (
+                        key._gen_cache_key(anon_map, bindparams)
+                        if hasattr(key, "__clause_element__")
+                        else key
+                    ),
                     value._gen_cache_key(anon_map, bindparams),
                 )
                 for key, value in obj
@@ -999,9 +1030,11 @@ class _CacheKeyTraversal(HasTraversalDispatch):
             attrname,
             tuple(
                 (
-                    k._gen_cache_key(anon_map, bindparams)
-                    if hasattr(k, "__clause_element__")
-                    else k,
+                    (
+                        k._gen_cache_key(anon_map, bindparams)
+                        if hasattr(k, "__clause_element__")
+                        else k
+                    ),
                     obj[k]._gen_cache_key(anon_map, bindparams),
                 )
                 for k in obj

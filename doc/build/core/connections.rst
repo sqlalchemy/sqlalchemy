@@ -48,7 +48,7 @@ a textual statement to the database looks like::
     with engine.connect() as connection:
         result = connection.execute(text("select username from users"))
         for row in result:
-            print("username:", row["username"])
+            print("username:", row.username)
 
 Above, the :meth:`_engine.Engine.connect` method returns a :class:`_engine.Connection`
 object, and by using it in a Python context manager (e.g. the ``with:``
@@ -107,7 +107,7 @@ to the transaction ending, the :class:`_engine.Connection` waits for the
 :meth:`_engine.Connection.execute` method to be called again, at which point
 it autobegins again.
 
-This calling style is referred towards as **commit as you go**, and is
+This calling style is known as **commit as you go**, and is
 illustrated in the example below::
 
     with engine.connect() as connection:
@@ -159,7 +159,7 @@ Begin Once
 ~~~~~~~~~~
 
 The :class:`_engine.Connection` object provides a more explicit transaction
-management style referred towards as **begin once**. In contrast to "commit as
+management style known as **begin once**. In contrast to "commit as
 you go", "begin once" allows the start point of the transaction to be
 stated explicitly,
 and allows that the transaction itself may be framed out as a context manager
@@ -542,7 +542,6 @@ before we call upon :meth:`_engine.Connection.begin`::
     # which... we usually don't.
 
     with engine.connect() as connection:
-
         connection.execution_options(isolation_level="AUTOCOMMIT")
 
         # run statement(s) in autocommit mode
@@ -568,7 +567,6 @@ use two blocks ::
 
     # use an autocommit block
     with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
-
         # run statement in autocommit mode
         connection.execute("<statement>")
 
@@ -742,7 +740,6 @@ of 1000 rows.   The maximum size of this buffer can be affected using the
         with conn.execution_options(stream_results=True, max_row_buffer=100).execute(
             text("select * from table")
         ) as result:
-
             for row in result:
                 print(f"{row}")
 
@@ -854,9 +851,6 @@ as the schema name is passed to these methods explicitly.
     To use a single :class:`_orm.Session` with multiple ``schema_translate_map``
     configurations, the :ref:`horizontal_sharding_toplevel` extension may
     be used.  See the example at :ref:`examples_sharding`.
-
-
-.. versionadded:: 1.1
 
 .. _sql_caching:
 
@@ -1070,8 +1064,7 @@ examples being the :class:`.Values` construct as well as when using "multivalued
 inserts" with the :meth:`.Insert.values` method.
 
 So far our cache is still empty.  The next statements will be cached however,
-a segment looks like::
-
+a segment looks like:
 
 .. sourcecode:: sql
 
@@ -1497,10 +1490,8 @@ Basic guidelines include:
 
         def my_stmt(parameter, thing=False):
             stmt = lambda_stmt(lambda: select(table))
-            stmt += (
-                lambda s: s.where(table.c.x > parameter)
-                if thing
-                else s.where(table.c.y == parameter)
+            stmt += lambda s: (
+                s.where(table.c.x > parameter) if thing else s.where(table.c.y == parameter)
             )
             return stmt
 
@@ -1779,15 +1770,21 @@ performance example.
 .. versionadded:: 2.0 see :ref:`change_6047` for background on the change
    including sample performance tests
 
+.. tip:: The :term:`insertmanyvalues` feature is a **transparently available**
+   performance feature which requires no end-user intervention in order for
+   it to take place as needed.   This section describes the architecture
+   of the feature as well as how to measure its performance and tune its
+   behavior in order to optimize the speed of bulk INSERT statements,
+   particularly as used by the ORM.
+
 As more databases have added support for INSERT..RETURNING, SQLAlchemy has
 undergone a major change in how it approaches the subject of INSERT statements
 where there's a need to acquire server-generated values, most importantly
 server-generated primary key values which allow the new row to be referenced in
-subsequent operations. This issue has for over a decade prevented SQLAlchemy
-from being able to batch large sets of rows into a small number of database
-round trips for the very common case where primary key values are
-server-generated, and historically has been the most significant performance
-bottleneck in the ORM.
+subsequent operations. In particular, this scenario has long been a significant
+performance issue in the ORM, which relies on being able to retrieve
+server-generated primary key values in order to correctly populate the
+:term:`identity map`.
 
 With recent support for RETURNING added to SQLite and MariaDB, SQLAlchemy no
 longer needs to rely upon the single-row-only
@@ -1806,55 +1803,28 @@ from the
 feature of the ``psycopg2`` DBAPI, which SQLAlchemy incrementally added more
 and more support towards in recent release series.
 
-Concretely, for most backends the behavior will rewrite a statement of the
-form:
+Current Support
+~~~~~~~~~~~~~~~
 
-.. sourcecode:: sql
-
-    INSERT INTO a (data, x, y) VALUES (%(data)s, %(x)s, %(y)s) RETURNING a.id
-
-into a "batched" form as:
-
-.. sourcecode:: sql
-
-    INSERT INTO a (data, x, y) VALUES
-        (%(data_0)s, %(x_0)s, %(y_0)s),
-        (%(data_1)s, %(x_1)s, %(y_1)s),
-        (%(data_2)s, %(x_2)s, %(y_2)s),
-        ...
-        (%(data_78)s, %(x_78)s, %(y_78)s)
-    RETURNING a.id
-
-It's also important to note that the feature will invoke **multiple INSERT
-statements** using the DBAPI ``cursor.execute()`` method,
-within the scope of  **single** call to the Core-level
-:meth:`_engine.Connection.execute` method,
-with each statement containing up to a fixed limit of parameter sets.
-This limit is configurable as described below at :ref:`engine_insertmanyvalues_page_size`.
-The separate calls to ``cursor.execute()`` are logged individually and
-also individually passed along to event listeners such as
-:meth:`.ConnectionEvents.before_cursor_execute` (see :ref:`engine_insertmanyvalues_events`
-below).
-
-The feature is enabled for included SQLAlchemy backends that support RETURNING
-as well as "multiple VALUES()" clauses within INSERT statements,
-and takes place for all INSERT...RETURNING statements that are used with
-"executemany" style execution, which occurs when passing a list of dictionaries
-to the :paramref:`_engine.Connection.execute.parameters` parameter of the
-:meth:`_engine.Connection.execute` method, as well as throughout Core and ORM
-for any similar method including ORM methods like :meth:`_orm.Session.execute`
-and asyncio methods like :meth:`_asyncio.AsyncConnection.execute` and
-:meth:`_asyncio.AsyncSession.execute`.     The ORM itself also makes use of the
-feature within the :term:`unit of work` process when inserting many rows,
-that is, for large numbers of objects added to a :class:`_orm.Session` using
-methods such as :meth:`_orm.Session.add` and :meth:`_orm.Session.add_all`.
+The feature is enabled for all backend included in SQLAlchemy that support
+RETURNING, with the exception of Oracle for which both the cx_Oracle and
+OracleDB drivers offer their own equivalent feature. The feature normally takes
+place when making use of the :meth:`_dml.Insert.returning` method of an
+:class:`_dml.Insert` construct in conjunction with :term:`executemany`
+execution, which occurs when passing a list of dictionaries to the
+:paramref:`_engine.Connection.execute.parameters` parameter of the
+:meth:`_engine.Connection.execute` or :meth:`_orm.Session.execute` methods (as
+well as equivalent methods under :ref:`asyncio <asyncio_toplevel>` and
+shorthand methods like :meth:`_orm.Session.scalars`). It also takes place
+within the ORM :term:`unit of work` process when using methods such as
+:meth:`_orm.Session.add` and :meth:`_orm.Session.add_all` to add rows.
 
 For SQLAlchemy's included dialects, support or equivalent support is currently
 as follows:
 
 * SQLite - supported for SQLite versions 3.35 and above
 * PostgreSQL - all supported Postgresql versions (9 and above)
-* SQL Server - all supported SQL Server versions
+* SQL Server - all supported SQL Server versions [#]_
 * MariaDB - supported for MariaDB versions 10.5 and above
 * MySQL - no support, no RETURNING feature is present
 * Oracle - supports RETURNING with executemany using native cx_Oracle / OracleDB
@@ -1862,8 +1832,13 @@ as follows:
   parameters. This is not the same implementation as "executemanyvalues", however has
   the same usage patterns and equivalent performance benefits.
 
-Enabling/Disabling the feature
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. versionchanged:: 2.0.10
+
+   .. [#] "insertmanyvalues" support for Microsoft SQL Server
+      is restored, after being temporarily disabled in version 2.0.9.
+
+Disabling the feature
+~~~~~~~~~~~~~~~~~~~~~
 
 To disable the "insertmanyvalues" feature for a given backend for an
 :class:`.Engine` overall, pass the
@@ -1887,11 +1862,327 @@ The feature can also be disabled from being used implicitly for a particular
       )
 
 The reason one might want to disable RETURNING for a specific table is to
-work around backend-specific limitations.  For example, there is a known
-limitation of SQL Server that the ``OUTPUT inserted.<colname>`` feature
-may not work correctly for a table that has INSERT triggers established;
-such a table may need to include ``implicit_returning=False`` (see
-:ref:`mssql_triggers`).
+work around backend-specific limitations.
+
+
+Batched Mode Operation
+~~~~~~~~~~~~~~~~~~~~~~
+
+The feature has two modes of operation, which are selected transparently on a
+per-dialect, per-:class:`_schema.Table` basis. One is **batched mode**,
+which reduces the number of database round trips by rewriting an
+INSERT statement of the form:
+
+.. sourcecode:: sql
+
+    INSERT INTO a (data, x, y) VALUES (%(data)s, %(x)s, %(y)s) RETURNING a.id
+
+into a "batched" form such as:
+
+.. sourcecode:: sql
+
+    INSERT INTO a (data, x, y) VALUES
+        (%(data_0)s, %(x_0)s, %(y_0)s),
+        (%(data_1)s, %(x_1)s, %(y_1)s),
+        (%(data_2)s, %(x_2)s, %(y_2)s),
+        ...
+        (%(data_78)s, %(x_78)s, %(y_78)s)
+    RETURNING a.id
+
+where above, the statement is organized against a subset (a "batch") of the
+input data, the size of which is determined by the database backend as well as
+the number of parameters in each batch to correspond to known limits for
+statement size / number of parameters.  The feature then executes the INSERT
+statement once for each batch of input data until all records are consumed,
+concatenating the RETURNING results for each batch into a single large
+rowset that's available from a single :class:`_result.Result` object.
+
+This "batched" form allows INSERT of many rows using much fewer database round
+trips, and has been shown to allow dramatic performance improvements for most
+backends where it's supported.
+
+.. _engine_insertmanyvalues_returning_order:
+
+Correlating RETURNING rows to parameter sets
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 2.0.10
+
+The "batch" mode query illustrated in the previous section does not guarantee
+the order of records returned would correspond with that of the input data.
+When used by the SQLAlchemy ORM :term:`unit of work` process, as well as for
+applications which correlate returned server-generated values with input data,
+the :meth:`_dml.Insert.returning` and :meth:`_dml.UpdateBase.return_defaults`
+methods include an option
+:paramref:`_dml.Insert.returning.sort_by_parameter_order` which indicates that
+"insertmanyvalues" mode should guarantee this correspondence. This is **not
+related** to the order in which records are actually INSERTed by the database
+backend, which is **not** assumed under any circumstances; only that the
+returned records should be organized when received back to correspond to the
+order in which the original input data was passed.
+
+When the :paramref:`_dml.Insert.returning.sort_by_parameter_order` parameter is
+present, for tables that use server-generated integer primary key values such
+as ``IDENTITY``, PostgreSQL ``SERIAL``, MariaDB ``AUTO_INCREMENT``, or SQLite's
+``ROWID`` scheme, "batch" mode may instead opt to use a more complex
+INSERT..RETURNING form, in conjunction with post-execution sorting of rows
+based on the returned values, or if
+such a form is not available, the "insertmanyvalues" feature may gracefully
+degrade to "non-batched" mode which runs individual INSERT statements for each
+parameter set.
+
+For example, on SQL Server when an auto incrementing ``IDENTITY`` column is
+used as the primary key, the following SQL form is used:
+
+.. sourcecode:: sql
+
+    INSERT INTO a (data, x, y)
+    OUTPUT inserted.id, inserted.id AS id__1
+    SELECT p0, p1, p2 FROM (VALUES
+        (?, ?, ?, 0), (?, ?, ?, 1), (?, ?, ?, 2),
+        ...
+        (?, ?, ?, 77)
+    ) AS imp_sen(p0, p1, p2, sen_counter) ORDER BY sen_counter
+
+A similar form is used for PostgreSQL as well, when primary key columns use
+SERIAL or IDENTITY. The above form **does not** guarantee the order in which
+rows are inserted. However, it does guarantee that the IDENTITY or SERIAL
+values will be created in order with each parameter set [#]_. The
+"insertmanyvalues" feature then sorts the returned rows for the above INSERT
+statement by incrementing integer identity.
+
+For the SQLite database, there is no appropriate INSERT form that can
+correlate the production of new ROWID values with the order in which
+the parameter sets are passed.  As a result, when using server-generated
+primary key values, the SQLite backend will degrade to "non-batched"
+mode when ordered RETURNING is requested.
+For MariaDB, the default INSERT form used by insertmanyvalues is sufficient,
+as this database backend will line up the
+order of AUTO_INCREMENT with the order of input data when using InnoDB [#]_.
+
+For a client-side generated primary key, such as when using the Python
+``uuid.uuid4()`` function to generate new values for a :class:`.Uuid` column,
+the "insertmanyvalues" feature transparently includes this column in the
+RETURNING records and correlates its value to that of the given input records,
+thus maintaining correspondence between input records and result rows. From
+this, it follows that all backends allow for batched, parameter-correlated
+RETURNING order when client-side-generated primary key values are used.
+
+The subject of how "insertmanyvalues" "batch" mode determines a column or
+columns to use as a point of correspondence between input parameters and
+RETURNING rows is known as an :term:`insert sentinel`, which is a specific
+column or columns that are used to track such values. The "insert sentinel" is
+normally selected automatically, however can also be user-configuration for
+extremely special cases; the section
+:ref:`engine_insertmanyvalues_sentinel_columns` describes this.
+
+For backends that do not offer an appropriate INSERT form that can deliver
+server-generated values deterministically aligned with input values, or
+for :class:`_schema.Table` configurations that feature other kinds of
+server generated primary key values, "insertmanyvalues" mode will make use
+of **non-batched** mode when guaranteed RETURNING ordering is requested.
+
+.. seealso::
+
+    .. [#]
+
+    * Microsoft SQL Server rationale
+
+      "INSERT queries that use SELECT with ORDER BY to populate rows guarantees
+      how identity values are computed but not the order in which the rows are inserted."
+      https://learn.microsoft.com/en-us/sql/t-sql/statements/insert-transact-sql?view=sql-server-ver16#limitations-and-restrictions
+
+    * PostgreSQL batched INSERT Discussion
+
+      Original description in 2018 https://www.postgresql.org/message-id/29386.1528813619@sss.pgh.pa.us
+
+      Follow up in 2023 - https://www.postgresql.org/message-id/be108555-da2a-4abc-a46b-acbe8b55bd25%40app.fastmail.com
+
+    .. [#]
+
+   * MariaDB AUTO_INCREMENT behavior (using the same InnoDB engine as MySQL):
+
+     https://dev.mysql.com/doc/refman/8.0/en/innodb-auto-increment-handling.html
+
+     https://dba.stackexchange.com/a/72099
+
+.. _engine_insertmanyvalues_non_batch:
+
+Non-Batched Mode Operation
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For :class:`_schema.Table` configurations that do not have client side primary
+key values, and offer server-generated primary key values (or no primary key)
+that the database in question is not able to invoke in a deterministic or
+sortable way relative to multiple parameter sets, the "insertmanyvalues"
+feature when tasked with satisfying the
+:paramref:`_dml.Insert.returning.sort_by_parameter_order` requirement for an
+:class:`_dml.Insert` statement may instead opt to use **non-batched mode**.
+
+In this mode, the original SQL form of INSERT is maintained, and the
+"insertmanyvalues" feature will instead run the statement as given for each
+parameter set individually, organizing the returned rows into a full result
+set. Unlike previous SQLAlchemy versions, it does so in a tight loop that
+minimizes Python overhead. In some cases, such as on SQLite, "non-batched" mode
+performs exactly as well as "batched" mode.
+
+Statement Execution Model
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For both "batched" and "non-batched" modes, the feature will necessarily
+invoke **multiple INSERT statements** using the DBAPI ``cursor.execute()`` method,
+within the scope of  **single** call to the Core-level
+:meth:`_engine.Connection.execute` method,
+with each statement containing up to a fixed limit of parameter sets.
+This limit is configurable as described below at :ref:`engine_insertmanyvalues_page_size`.
+The separate calls to ``cursor.execute()`` are logged individually and
+also individually passed along to event listeners such as
+:meth:`.ConnectionEvents.before_cursor_execute` (see :ref:`engine_insertmanyvalues_events`
+below).
+
+
+
+
+.. _engine_insertmanyvalues_sentinel_columns:
+
+Configuring Sentinel Columns
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In typical cases, the "insertmanyvalues" feature in order to provide
+INSERT..RETURNING with deterministic row order will automatically determine a
+sentinel column from a given table's primary key, gracefully degrading to "row
+at a time" mode if one cannot be identified. As a completely **optional**
+feature, to get full "insertmanyvalues" bulk performance for tables that have
+server generated primary keys whose default generator functions aren't
+compatible with the "sentinel" use case, other non-primary key columns may be
+marked as "sentinel" columns assuming they meet certain requirements. A typical
+example is a non-primary key :class:`_sqltypes.Uuid` column with a client side
+default such as the Python ``uuid.uuid4()`` function.  There is also a construct to create
+simple integer columns with a a client side integer counter oriented towards
+the "insertmanyvalues" use case.
+
+Sentinel columns may be indicated by adding :paramref:`_schema.Column.insert_sentinel`
+to qualifying columns.   The most basic "qualifying" column is a not-nullable,
+unique column with a client side default, such as a UUID column as follows::
+
+    import uuid
+
+    from sqlalchemy import Column
+    from sqlalchemy import FetchedValue
+    from sqlalchemy import Integer
+    from sqlalchemy import String
+    from sqlalchemy import Table
+    from sqlalchemy import Uuid
+
+    my_table = Table(
+        "some_table",
+        metadata,
+        # assume some arbitrary server-side function generates
+        # primary key values, so cannot be tracked by a bulk insert
+        Column("id", String(50), server_default=FetchedValue(), primary_key=True),
+        Column("data", String(50)),
+        Column(
+            "uniqueid",
+            Uuid(),
+            default=uuid.uuid4,
+            nullable=False,
+            unique=True,
+            insert_sentinel=True,
+        ),
+    )
+
+When using ORM Declarative models, the same forms are available using
+the :class:`_orm.mapped_column` construct::
+
+    import uuid
+
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class MyClass(Base):
+        __tablename__ = "my_table"
+
+        id: Mapped[str] = mapped_column(primary_key=True, server_default=FetchedValue())
+        data: Mapped[str] = mapped_column(String(50))
+        uniqueid: Mapped[uuid.UUID] = mapped_column(
+            default=uuid.uuid4, unique=True, insert_sentinel=True
+        )
+
+While the values generated by the default generator **must** be unique, the
+actual UNIQUE constraint on the above "sentinel" column, indicated by the
+``unique=True`` parameter, itself is optional and may be omitted if not
+desired.
+
+There is also a special form of "insert sentinel" that's a dedicated nullable
+integer column which makes use of a special default integer counter that's only
+used during "insertmanyvalues" operations; as an additional behavior, the
+column will omit itself from SQL statements and result sets and behave in a
+mostly transparent manner.  It does need to be physically present within
+the actual database table, however.  This style of :class:`_schema.Column`
+may be constructed using the function :func:`_schema.insert_sentinel`::
+
+    from sqlalchemy import Column
+    from sqlalchemy import Integer
+    from sqlalchemy import String
+    from sqlalchemy import Table
+    from sqlalchemy import Uuid
+    from sqlalchemy import insert_sentinel
+
+    Table(
+        "some_table",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("data", String(50)),
+        insert_sentinel("sentinel"),
+    )
+
+When using ORM Declarative, a Declarative-friendly version of
+:func:`_schema.insert_sentinel` is available called
+:func:`_orm.orm_insert_sentinel`, which has the ability to be used on the Base
+class or a mixin; if packaged using :func:`_orm.declared_attr`, the column will
+apply itself to all table-bound subclasses including within joined inheritance
+hierarchies::
+
+
+    from sqlalchemy.orm import declared_attr
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import orm_insert_sentinel
+
+
+    class Base(DeclarativeBase):
+        @declared_attr
+        def _sentinel(cls) -> Mapped[int]:
+            return orm_insert_sentinel()
+
+
+    class MyClass(Base):
+        __tablename__ = "my_table"
+
+        id: Mapped[str] = mapped_column(primary_key=True, server_default=FetchedValue())
+        data: Mapped[str] = mapped_column(String(50))
+
+
+    class MySubClass(MyClass):
+        __tablename__ = "sub_table"
+
+        id: Mapped[str] = mapped_column(ForeignKey("my_table.id"), primary_key=True)
+
+
+    class MySingleInhClass(MyClass):
+        pass
+
+In the example above, both "my_table" and "sub_table" will have an additional
+integer column named "_sentinel" that can be used by the "insertmanyvalues"
+feature to help optimize bulk inserts used by the ORM.
+
 
 .. _engine_insertmanyvalues_page_size:
 
@@ -1906,7 +2197,7 @@ given exceeds a fixed limit, or when the total number of bound parameters to be
 rendered in a single INSERT statement exceeds a fixed limit (the two fixed
 limits are separate), multiple INSERT statements will be invoked within the
 scope of a single :meth:`_engine.Connection.execute` call, each of which
-accommodate for a portion of the parameter dictionaries, referred towards as a
+accommodate for a portion of the parameter dictionaries, known as a
 "batch".  The number of parameter dictionaries represented within each
 "batch" is then known as the "batch size".  For example, a batch size of
 500 means that each INSERT statement emitted will INSERT at most 500 rows.
@@ -1929,9 +2220,8 @@ varies by dialect and server version; the largest size is 32700 (chosen as a
 healthy distance away from PostgreSQL's limit of 32767 and SQLite's modern
 limit of 32766, while leaving room for additional parameters in the statement
 as well as for DBAPI quirkiness). Older versions of SQLite (prior to 3.32.0)
-will set this value to 999; SQL Server sets it to 2099.  MariaDB has no
-established limit however 32700 remains as a limiting factor for SQL message
-size.
+will set this value to 999. MariaDB has no established limit however 32700
+remains as a limiting factor for SQL message size.
 
 The value of the "batch size" can be affected :class:`_engine.Engine`
 wide via the :paramref:`_sa.create_engine.insertmanyvalues_page_size` parameter.
@@ -1966,8 +2256,8 @@ Or configured on the statement itself::
 Logging and Events
 ~~~~~~~~~~~~~~~~~~
 
-The "insertmanyvalues" feature integrates fully with SQLAlchemy's statement
-logging as well as cursor events such as :meth:`.ConnectionEvents.before_cursor_execute`.
+The "insertmanyvalues" feature integrates fully with SQLAlchemy's :ref:`statement
+logging <dbengine_logging>` as well as cursor events such as :meth:`.ConnectionEvents.before_cursor_execute`.
 When the list of parameters is broken into separate batches, **each INSERT
 statement is logged and passed to event handlers individually**.   This is a major change
 compared to how the psycopg2-only feature worked in previous 1.x series of
@@ -1979,14 +2269,36 @@ an excerpt of this logging:
 .. sourcecode:: text
 
   INSERT INTO a (data, x, y) VALUES (?, ?, ?), ... 795 characters truncated ...  (?, ?, ?), (?, ?, ?) RETURNING id
-  [generated in 0.00177s (insertmanyvalues)] ('d0', 0, 0, 'd1',  ...
+  [generated in 0.00177s (insertmanyvalues) 1/10 (unordered)] ('d0', 0, 0, 'd1',  ...
   INSERT INTO a (data, x, y) VALUES (?, ?, ?), ... 795 characters truncated ...  (?, ?, ?), (?, ?, ?) RETURNING id
-  [insertmanyvalues batch 2 of 10] ('d100', 100, 1000, 'd101', ...
+  [insertmanyvalues 2/10 (unordered)] ('d100', 100, 1000, 'd101', ...
 
   ...
 
   INSERT INTO a (data, x, y) VALUES (?, ?, ?), ... 795 characters truncated ...  (?, ?, ?), (?, ?, ?) RETURNING id
-  [insertmanyvalues batch 10 of 10] ('d900', 900, 9000, 'd901', ...
+  [insertmanyvalues 10/10 (unordered)] ('d900', 900, 9000, 'd901', ...
+
+When :ref:`non-batch mode <engine_insertmanyvalues_non_batch>` takes place, logging
+will indicate this along with the insertmanyvalues message:
+
+.. sourcecode:: text
+
+  ...
+
+  INSERT INTO a (data, x, y) VALUES (?, ?, ?) RETURNING id
+  [insertmanyvalues 67/78 (ordered; batch not supported)] ('d66', 66, 66)
+  INSERT INTO a (data, x, y) VALUES (?, ?, ?) RETURNING id
+  [insertmanyvalues 68/78 (ordered; batch not supported)] ('d67', 67, 67)
+  INSERT INTO a (data, x, y) VALUES (?, ?, ?) RETURNING id
+  [insertmanyvalues 69/78 (ordered; batch not supported)] ('d68', 68, 68)
+  INSERT INTO a (data, x, y) VALUES (?, ?, ?) RETURNING id
+  [insertmanyvalues 70/78 (ordered; batch not supported)] ('d69', 69, 69)
+
+  ...
+
+.. seealso::
+
+    :ref:`dbengine_logging`
 
 Upsert Support
 ~~~~~~~~~~~~~~
@@ -2341,7 +2653,7 @@ Result Set API
 
 .. autoclass:: Row
     :members:
-    :private-members: _asdict, _fields, _mapping
+    :private-members: _asdict, _fields, _mapping, _t, _tuple
 
 .. autoclass:: RowMapping
     :members:

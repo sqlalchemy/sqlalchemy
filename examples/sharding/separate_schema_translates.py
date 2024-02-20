@@ -4,6 +4,7 @@ where a different "schema_translates_map" can be used for each shard.
 In this example we will set a "shard id" at all times.
 
 """
+
 from __future__ import annotations
 
 import datetime
@@ -191,7 +192,6 @@ def main():
     quito.reports.append(Report(85))
 
     with Session() as sess:
-
         sess.add_all(
             [tokyo, newyork, toronto, london, dublin, brasilia, quito]
         )

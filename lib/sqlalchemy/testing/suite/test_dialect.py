@@ -1,3 +1,9 @@
+# testing/suite/test_dialect.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 
@@ -109,9 +115,7 @@ class ExceptionTest(fixtures.TablesTest):
 
     @requirements.duplicate_key_raises_integrity_error
     def test_integrity_error(self):
-
         with config.db.connect() as conn:
-
             trans = conn.begin()
             conn.execute(
                 self.tables.manual_pk.insert(), {"id": 1, "data": "d1"}
@@ -249,9 +253,30 @@ class IsolationLevelTest(fixtures.TestBase):
         ):
             eng.connect()
 
+    @testing.requires.independent_readonly_connections
+    def test_dialect_user_setting_is_restored(self, testing_engine):
+        levels = requirements.get_isolation_levels(config)
+        default = levels["default"]
+        supported = (
+            sorted(
+                set(levels["supported"]).difference([default, "AUTOCOMMIT"])
+            )
+        )[0]
+
+        e = testing_engine(options={"isolation_level": supported})
+
+        with e.connect() as conn:
+            eq_(conn.get_isolation_level(), supported)
+
+        with e.connect() as conn:
+            conn.execution_options(isolation_level=default)
+            eq_(conn.get_isolation_level(), default)
+
+        with e.connect() as conn:
+            eq_(conn.get_isolation_level(), supported)
+
 
 class AutocommitIsolationTest(fixtures.TablesTest):
-
     run_deletes = "each"
 
     __requires__ = ("autocommit",)
@@ -310,6 +335,34 @@ class AutocommitIsolationTest(fixtures.TablesTest):
             ]
         )
         self._test_conn_autocommits(conn, False)
+
+    @testing.requires.independent_readonly_connections
+    @testing.variation("use_dialect_setting", [True, False])
+    def test_dialect_autocommit_is_restored(
+        self, testing_engine, use_dialect_setting
+    ):
+        """test #10147"""
+
+        if use_dialect_setting:
+            e = testing_engine(options={"isolation_level": "AUTOCOMMIT"})
+        else:
+            e = testing_engine().execution_options(
+                isolation_level="AUTOCOMMIT"
+            )
+
+        levels = requirements.get_isolation_levels(config)
+
+        default = levels["default"]
+
+        with e.connect() as conn:
+            self._test_conn_autocommits(conn, True)
+
+        with e.connect() as conn:
+            conn.execution_options(isolation_level=default)
+            self._test_conn_autocommits(conn, False)
+
+        with e.connect() as conn:
+            self._test_conn_autocommits(conn, True)
 
 
 class EscapingTest(fixtures.TestBase):
@@ -542,7 +595,6 @@ class ReturningGuardsTest(fixtures.TablesTest):
 
     @classmethod
     def define_tables(cls, metadata):
-
         Table(
             "t",
             metadata,

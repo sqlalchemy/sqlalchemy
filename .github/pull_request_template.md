@@ -10,7 +10,7 @@
 
 This pull request is:
 
-- [ ] A documentation / typographical error fix
+- [ ] A documentation / typographical / small typing error fix
 	- Good to go, no issue or tests are needed
 - [ ] A short code fix
 	- please include the issue number, and create an issue if none exists, which

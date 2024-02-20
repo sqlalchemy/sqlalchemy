@@ -276,7 +276,6 @@ class TransactionTest(fixtures.TablesTest):
         savepoint = [None]
 
         def go():
-
             with connection.begin_nested() as sp:
                 savepoint[0] = sp
                 # force the "commit" of the savepoint that occurs
@@ -346,9 +345,7 @@ class TransactionTest(fixtures.TablesTest):
         assert not trans.is_active
 
         eq_(
-            connection.exec_driver_sql(
-                "select count(*) from " "users"
-            ).scalar(),
+            connection.exec_driver_sql("select count(*) from users").scalar(),
             2,
         )
         connection.rollback()
@@ -614,7 +611,6 @@ class TransactionTest(fixtures.TablesTest):
 
     @testing.requires.autocommit
     def test_no_autocommit_w_begin(self):
-
         with testing.db.begin() as conn:
             assert_raises_message(
                 exc.InvalidRequestError,
@@ -628,7 +624,6 @@ class TransactionTest(fixtures.TablesTest):
 
     @testing.requires.autocommit
     def test_no_autocommit_w_autobegin(self):
-
         with testing.db.connect() as conn:
             conn.execute(select(1))
 
@@ -650,7 +645,6 @@ class TransactionTest(fixtures.TablesTest):
         users = self.tables.users
 
         with testing.db.connect() as conn:
-
             assert not conn.in_transaction()
             conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
 
@@ -745,7 +739,6 @@ class TransactionTest(fixtures.TablesTest):
     def test_rollback_inactive(self):
         users = self.tables.users
         with testing.db.connect() as conn:
-
             conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
             conn.commit()
 
@@ -1069,25 +1062,25 @@ class TransactionTest(fixtures.TablesTest):
     def test_savepoint_seven(self):
         users = self.tables.users
 
-        conn = testing.db.connect()
-        trans = conn.begin()
-        conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
+        with testing.db.connect() as conn:
+            trans = conn.begin()
+            conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
 
-        sp1 = conn.begin_nested()
-        conn.execute(users.insert(), {"user_id": 2, "user_name": "name2"})
+            sp1 = conn.begin_nested()
+            conn.execute(users.insert(), {"user_id": 2, "user_name": "name2"})
 
-        sp2 = conn.begin_nested()
-        conn.execute(users.insert(), {"user_id": 3, "user_name": "name3"})
+            sp2 = conn.begin_nested()
+            conn.execute(users.insert(), {"user_id": 3, "user_name": "name3"})
 
-        assert conn.in_transaction()
+            assert conn.in_transaction()
 
-        trans.close()
+            trans.close()
 
-        assert not sp1.is_active
-        assert not sp2.is_active
-        assert not trans.is_active
-        assert conn._transaction is None
-        assert conn._nested_transaction is None
+            assert not sp1.is_active
+            assert not sp2.is_active
+            assert not trans.is_active
+            assert conn._transaction is None
+            assert conn._nested_transaction is None
 
         with testing.db.connect() as conn:
             eq_(
@@ -1161,43 +1154,48 @@ class IsolationLevelTest(fixtures.TestBase):
             assert False, "no non-default isolation level available"
 
     def test_engine_param_stays(self):
-
         eng = testing_engine()
-        isolation_level = eng.dialect.get_isolation_level(
-            eng.connect().connection.dbapi_connection
-        )
+        with eng.connect() as conn:
+            isolation_level = eng.dialect.get_isolation_level(
+                conn.connection.dbapi_connection
+            )
         level = self._non_default_isolation_level()
 
         ne_(isolation_level, level)
 
         eng = testing_engine(options=dict(isolation_level=level))
-        eq_(
-            eng.dialect.get_isolation_level(
-                eng.connect().connection.dbapi_connection
-            ),
-            level,
-        )
+        with eng.connect() as conn:
+            eq_(
+                eng.dialect.get_isolation_level(
+                    conn.connection.dbapi_connection
+                ),
+                level,
+            )
 
         # check that it stays
-        conn = eng.connect()
-        eq_(
-            eng.dialect.get_isolation_level(conn.connection.dbapi_connection),
-            level,
-        )
-        conn.close()
+        with eng.connect() as conn:
+            eq_(
+                eng.dialect.get_isolation_level(
+                    conn.connection.dbapi_connection
+                ),
+                level,
+            )
 
-        conn = eng.connect()
-        eq_(
-            eng.dialect.get_isolation_level(conn.connection.dbapi_connection),
-            level,
-        )
-        conn.close()
+        with eng.connect() as conn:
+            eq_(
+                eng.dialect.get_isolation_level(
+                    conn.connection.dbapi_connection
+                ),
+                level,
+            )
 
     def test_default_level(self):
         eng = testing_engine(options=dict())
-        isolation_level = eng.dialect.get_isolation_level(
-            eng.connect().connection.dbapi_connection
-        )
+
+        with eng.connect() as conn:
+            isolation_level = eng.dialect.get_isolation_level(
+                conn.connection.dbapi_connection
+            )
         eq_(isolation_level, self._default_isolation_level())
 
     def test_reset_level(self):
@@ -1335,16 +1333,16 @@ class IsolationLevelTest(fixtures.TestBase):
 
     def test_connection_invalidated(self):
         eng = testing_engine()
-        conn = eng.connect()
-        c2 = conn.execution_options(
-            isolation_level=self._non_default_isolation_level()
-        )
-        c2.invalidate()
-        c2.connection
+        with eng.connect() as conn:
+            c2 = conn.execution_options(
+                isolation_level=self._non_default_isolation_level()
+            )
+            c2.invalidate()
+            c2.connection
 
-        # TODO: do we want to rebuild the previous isolation?
-        # for now, this is current behavior so we will leave it.
-        eq_(c2.get_isolation_level(), self._default_isolation_level())
+            # TODO: do we want to rebuild the previous isolation?
+            # for now, this is current behavior so we will leave it.
+            eq_(c2.get_isolation_level(), self._default_isolation_level())
 
     def test_per_connection(self):
         from sqlalchemy.pool import QueuePool
@@ -1384,24 +1382,26 @@ class IsolationLevelTest(fixtures.TestBase):
 
     def test_exception_in_transaction(self):
         eng = testing_engine()
-        c1 = eng.connect()
-        with expect_raises_message(
-            exc.InvalidRequestError,
-            r"This connection has already initialized a SQLAlchemy "
-            r"Transaction\(\) object via begin\(\) or autobegin; "
-            r"isolation_level may not be altered unless rollback\(\) or "
-            r"commit\(\) is called first.",
-        ):
-            with c1.begin():
-                c1 = c1.execution_options(
-                    isolation_level=self._non_default_isolation_level()
-                )
+        with eng.connect() as c1:
+            with expect_raises_message(
+                exc.InvalidRequestError,
+                r"This connection has already initialized a SQLAlchemy "
+                r"Transaction\(\) object via begin\(\) or autobegin; "
+                r"isolation_level may not be altered unless rollback\(\) or "
+                r"commit\(\) is called first.",
+            ):
+                with c1.begin():
+                    c1 = c1.execution_options(
+                        isolation_level=self._non_default_isolation_level()
+                    )
 
-        # was never set, so we are on original value
-        eq_(
-            eng.dialect.get_isolation_level(c1.connection.dbapi_connection),
-            self._default_isolation_level(),
-        )
+            # was never set, so we are on original value
+            eq_(
+                eng.dialect.get_isolation_level(
+                    c1.connection.dbapi_connection
+                ),
+                self._default_isolation_level(),
+            )
 
     def test_per_statement_bzzt(self):
         assert_raises_message(
@@ -1424,22 +1424,26 @@ class IsolationLevelTest(fixtures.TestBase):
                 }
             ),
         )
-        conn = eng.connect()
-        eq_(
-            eng.dialect.get_isolation_level(conn.connection.dbapi_connection),
-            self._non_default_isolation_level(),
-        )
+        with eng.connect() as conn:
+            eq_(
+                eng.dialect.get_isolation_level(
+                    conn.connection.dbapi_connection
+                ),
+                self._non_default_isolation_level(),
+            )
 
     def test_per_option_engine(self):
         eng = testing_engine(testing.db.url).execution_options(
             isolation_level=self._non_default_isolation_level()
         )
 
-        conn = eng.connect()
-        eq_(
-            eng.dialect.get_isolation_level(conn.connection.dbapi_connection),
-            self._non_default_isolation_level(),
-        )
+        with eng.connect() as conn:
+            eq_(
+                eng.dialect.get_isolation_level(
+                    conn.connection.dbapi_connection
+                ),
+                self._non_default_isolation_level(),
+            )
 
     def test_isolation_level_accessors_connection_default(self):
         eng = testing_engine(testing.db.url)
@@ -1468,11 +1472,9 @@ class ConnectionCharacteristicTest(fixtures.TestBase):
             transactional = True
 
             def reset_characteristic(self, dialect, dbapi_conn):
-
                 dialect.reset_foo(dbapi_conn)
 
             def set_characteristic(self, dialect, dbapi_conn, value):
-
                 dialect.set_foo(dbapi_conn, value)
 
             def get_characteristic(self, dialect, dbapi_conn):
@@ -1503,7 +1505,6 @@ class ConnectionCharacteristicTest(fixtures.TestBase):
         return base.Engine(pool, FooDialect(), u), connection
 
     def test_engine_param_stays(self, characteristic_fixture):
-
         engine, connection = characteristic_fixture
 
         foo_level = engine.dialect.get_foo(engine.connect().connection)
@@ -1582,7 +1583,6 @@ class ConnectionCharacteristicTest(fixtures.TestBase):
         )
 
     def test_per_engine(self, characteristic_fixture):
-
         engine, connection = characteristic_fixture
 
         pool, dialect, url = engine.pool, engine.dialect, engine.url
@@ -1595,7 +1595,6 @@ class ConnectionCharacteristicTest(fixtures.TestBase):
         eq_(eng.dialect.get_foo(conn.connection), "new_value")
 
     def test_per_option_engine(self, characteristic_fixture):
-
         engine, connection = characteristic_fixture
 
         eng = engine.execution_options(foo="new_value")

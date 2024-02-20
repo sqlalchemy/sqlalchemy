@@ -5,6 +5,8 @@
 
 .. include:: tutorial_nav_include.rst
 
+.. rst-class:: core-header, orm-addin
+
 .. _tutorial_working_with_data:
 
 Working with Data

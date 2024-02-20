@@ -300,6 +300,8 @@ class TypeDDLTest(fixtures.TestBase):
             (types.Float, [None], {}, "FLOAT"),
             (types.Float, [12], {}, "FLOAT(12)"),
             (mssql.MSReal, [], {}, "REAL"),
+            (types.Double, [], {}, "DOUBLE PRECISION"),
+            (types.Double, [53], {}, "DOUBLE PRECISION"),
             (types.Integer, [], {}, "INTEGER"),
             (types.BigInteger, [], {}, "BIGINT"),
             (mssql.MSTinyInteger, [], {}, "TINYINT"),
@@ -672,7 +674,6 @@ class TypeRoundTripTest(
             eq_(value, returned)
 
     def test_float(self, metadata, connection):
-
         float_table = Table(
             "float_table",
             metadata,
@@ -815,7 +816,36 @@ class TypeRoundTripTest(
         )
         return t, (d1, t1, d2, d3)
 
-    def test_date_roundtrips(self, date_fixture, connection):
+    def test_date_roundtrips_no_offset(self, date_fixture, connection):
+        t, (d1, t1, d2, d3) = date_fixture
+        connection.execute(
+            t.insert(),
+            dict(
+                adate=d1,
+                adatetime=d2,
+                atime1=t1,
+                atime2=d2,
+            ),
+        )
+
+        row = connection.execute(t.select()).first()
+        eq_(
+            (
+                row.adate,
+                row.adatetime,
+                row.atime1,
+                row.atime2,
+            ),
+            (
+                d1,
+                d2,
+                t1,
+                d2.time(),
+            ),
+        )
+
+    @testing.skip_if("+pymssql", "offsets dont seem to work")
+    def test_date_roundtrips_w_offset(self, date_fixture, connection):
         t, (d1, t1, d2, d3) = date_fixture
         connection.execute(
             t.insert(),
@@ -855,6 +885,7 @@ class TypeRoundTripTest(
         (datetime.datetime(2007, 10, 30, 11, 2, 32)),
         argnames="date",
     )
+    @testing.skip_if("+pymssql", "unknown failures")
     def test_tz_present_or_non_in_dates(self, date_fixture, connection, date):
         t, (d1, t1, d2, d3) = date_fixture
         connection.execute(
@@ -954,6 +985,7 @@ class TypeRoundTripTest(
         id_="iaaa",
         argnames="dto_param_value, expected_offset_hours, should_fail",
     )
+    @testing.skip_if("+pymssql", "offsets dont seem to work")
     def test_datetime_offset(
         self,
         datetimeoffset_fixture,
@@ -1304,7 +1336,8 @@ class StringRoundTripTest(fixtures.TestBase):
         id_="ia",
     )
     @testing.combinations(
-        ("insertmany", True),
+        # disabled due to #9603
+        # ("insertmany", True),
         ("insertsingle", False),
         argnames="insertmany",
         id_="ia",
@@ -1331,7 +1364,6 @@ class StringRoundTripTest(fixtures.TestBase):
         use_returning,
         insertmany,
     ):
-
         if datatype is NVARCHAR and length != "max" and length > 4000:
             return
         elif unicode_ and datatype not in (NVARCHAR, UnicodeText):
@@ -1414,7 +1446,7 @@ class MyPickleType(types.TypeDecorator):
 
     def process_bind_param(self, value, dialect):
         if value:
-            value.stuff = "BIND" + value.stuff
+            value = pickleable.Foo(value.moredata, stuff="BIND" + value.stuff)
         return value
 
     def process_result_value(self, value, dialect):
@@ -1595,3 +1627,22 @@ class BooleanTest(fixtures.TestBase, AssertsCompiledSQL):
             ddl,
         )
         assert isinstance(tbl.c.boo.type.as_generic(), Boolean)
+
+
+class NumberTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = mssql.dialect()
+
+    @testing.combinations(
+        ("sa", sqltypes.Float(), "FLOAT"),  # ideally it should render real
+        ("sa", sqltypes.Double(), "DOUBLE PRECISION"),
+        ("sa", sqltypes.FLOAT(), "FLOAT"),
+        ("sa", sqltypes.REAL(), "REAL"),
+        ("sa", sqltypes.DOUBLE(), "DOUBLE"),
+        ("sa", sqltypes.DOUBLE_PRECISION(), "DOUBLE PRECISION"),
+        ("mssql", mssql.FLOAT(), "FLOAT"),
+        ("mssql", mssql.DOUBLE_PRECISION(), "DOUBLE PRECISION"),
+        ("mssql", mssql.REAL(), "REAL"),
+        id_="ira",
+    )
+    def test_float_type_compile(self, type_, sql_text):
+        self.assert_compile(type_, sql_text)

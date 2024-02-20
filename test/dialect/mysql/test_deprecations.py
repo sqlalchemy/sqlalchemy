@@ -7,7 +7,6 @@ from sqlalchemy.testing import fixtures
 
 
 class CompileTest(AssertsCompiledSQL, fixtures.TestBase):
-
     __dialect__ = mysql.dialect()
 
     def test_distinct_string(self):

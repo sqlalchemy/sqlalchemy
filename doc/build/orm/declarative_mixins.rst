@@ -634,7 +634,6 @@ for inheriting subclasses by default::
 
 
     class Manager(Person):
-
         __mapper_args__ = {"polymorphic_identity": "manager"}
 
 .. _mixin_inheritance_columns:
@@ -739,7 +738,7 @@ from multiple collections::
     class MyModel(MySQLSettings, MyOtherMixin, Base):
         __tablename__ = "my_model"
 
-        @declared_attr
+        @declared_attr.directive
         def __table_args__(cls):
             args = dict()
             args.update(MySQLSettings.__table_args__)
@@ -748,25 +747,128 @@ from multiple collections::
 
         id = mapped_column(Integer, primary_key=True)
 
-Creating Indexes with Mixins
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. _orm_mixins_named_constraints:
 
-To define a named, potentially multicolumn :class:`.Index` that applies to all
-tables derived from a mixin, use the "inline" form of :class:`.Index` and
-establish it as part of ``__table_args__``::
+Creating Indexes and Constraints with Naming Conventions on Mixins
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Using named constraints such as :class:`.Index`, :class:`.UniqueConstraint`,
+:class:`.CheckConstraint`, where each object is to be unique to a specific
+table descending from a mixin, requires that an individual instance of each
+object is created per actual mapped class.
+
+As a simple example, to define a named, potentially multicolumn :class:`.Index`
+that applies to all tables derived from a mixin, use the "inline" form of
+:class:`.Index` and establish it as part of ``__table_args__``, using
+:class:`.declared_attr` to establish ``__table_args__()`` as a class method
+that will be invoked for each subclass::
 
     class MyMixin:
         a = mapped_column(Integer)
         b = mapped_column(Integer)
 
-        @declared_attr
+        @declared_attr.directive
         def __table_args__(cls):
             return (Index(f"test_idx_{cls.__tablename__}", "a", "b"),)
 
 
-    class MyModel(MyMixin, Base):
-        __tablename__ = "atable"
-        c = mapped_column(Integer, primary_key=True)
+    class MyModelA(MyMixin, Base):
+        __tablename__ = "table_a"
+        id = mapped_column(Integer, primary_key=True)
+
+
+    class MyModelB(MyMixin, Base):
+        __tablename__ = "table_b"
+        id = mapped_column(Integer, primary_key=True)
+
+The above example would generate two tables ``"table_a"`` and ``"table_b"``, with
+indexes ``"test_idx_table_a"`` and ``"test_idx_table_b"``
+
+Typically, in modern SQLAlchemy we would use a naming convention,
+as documented at :ref:`constraint_naming_conventions`.   While naming conventions
+take place automatically using the :paramref:`_schema.MetaData.naming_convention`
+as new :class:`.Constraint` objects are created, as this convention is applied
+at object construction time based on the parent :class:`.Table` for a particular
+:class:`.Constraint`, a distinct :class:`.Constraint` object needs to be created
+for each inheriting subclass with its own :class:`.Table`, again using
+:class:`.declared_attr` with ``__table_args__()``, below illustrated using
+an abstract mapped base::
+
+    from uuid import UUID
+
+    from sqlalchemy import CheckConstraint
+    from sqlalchemy import create_engine
+    from sqlalchemy import MetaData
+    from sqlalchemy import UniqueConstraint
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import declared_attr
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+
+    constraint_naming_conventions = {
+        "ix": "ix_%(column_0_label)s",
+        "uq": "uq_%(table_name)s_%(column_0_name)s",
+        "ck": "ck_%(table_name)s_%(constraint_name)s",
+        "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+        "pk": "pk_%(table_name)s",
+    }
+
+
+    class Base(DeclarativeBase):
+        metadata = MetaData(naming_convention=constraint_naming_conventions)
+
+
+    class MyAbstractBase(Base):
+        __abstract__ = True
+
+        @declared_attr.directive
+        def __table_args__(cls):
+            return (
+                UniqueConstraint("uuid"),
+                CheckConstraint("x > 0 OR y < 100", name="xy_chk"),
+            )
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        uuid: Mapped[UUID]
+        x: Mapped[int]
+        y: Mapped[int]
+
+
+    class ModelAlpha(MyAbstractBase):
+        __tablename__ = "alpha"
+
+
+    class ModelBeta(MyAbstractBase):
+        __tablename__ = "beta"
+
+The above mapping will generate DDL that includes table-specific names
+for all constraints, including primary key, CHECK constraint, unique
+constraint:
+
+.. sourcecode:: sql
+
+    CREATE TABLE alpha (
+        id INTEGER NOT NULL,
+        uuid CHAR(32) NOT NULL,
+        x INTEGER NOT NULL,
+        y INTEGER NOT NULL,
+        CONSTRAINT pk_alpha PRIMARY KEY (id),
+        CONSTRAINT uq_alpha_uuid UNIQUE (uuid),
+        CONSTRAINT ck_alpha_xy_chk CHECK (x > 0 OR y < 100)
+    )
+
+
+    CREATE TABLE beta (
+        id INTEGER NOT NULL,
+        uuid CHAR(32) NOT NULL,
+        x INTEGER NOT NULL,
+        y INTEGER NOT NULL,
+        CONSTRAINT pk_beta PRIMARY KEY (id),
+        CONSTRAINT uq_beta_uuid UNIQUE (uuid),
+        CONSTRAINT ck_beta_xy_chk CHECK (x > 0 OR y < 100)
+    )
+
+
 
 .. _Pylance: https://github.com/microsoft/pylance-release
 

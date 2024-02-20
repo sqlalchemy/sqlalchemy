@@ -11,8 +11,8 @@ SQLAlchemy
     :target: https://pypi.org/project/sqlalchemy
     :alt: PyPI - Python Version
 
-.. |Downloads| image:: https://img.shields.io/pypi/dm/sqlalchemy
-    :target: https://pypi.org/project/sqlalchemy
+.. |Downloads| image:: https://static.pepy.tech/badge/sqlalchemy/month
+    :target: https://pepy.tech/project/sqlalchemy
     :alt: PyPI - Downloads
 
 

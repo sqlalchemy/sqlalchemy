@@ -12,6 +12,7 @@ from sqlalchemy import String
 from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import true
+from sqlalchemy import union_all
 from sqlalchemy import update
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
@@ -364,8 +365,24 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         ),
         (
             lambda User: select(1).where(User.name == "ed"),
-            # no mapper for this one because the plugin is not "orm"
-            lambda User: {"clause": mock.ANY},
+            # changed by #9805
+            lambda User: {"clause": mock.ANY, "mapper": inspect(User)},
+            "e1",
+        ),
+        (
+            lambda User: select(
+                union_all(select(User), select(User)).subquery()
+            ),
+            # added for #10058, testing for #9805
+            lambda User: {"clause": mock.ANY, "mapper": inspect(User)},
+            "e1",
+        ),
+        (
+            lambda session, User: session.query(
+                union_all(select(User), select(User)).subquery()
+            ).statement,
+            # added for #10058, testing for #9805
+            lambda User: {"clause": mock.ANY, "mapper": inspect(User)},
             "e1",
         ),
         (
@@ -447,7 +464,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         engine = {"e1": e1, "e2": e2, "e3": e3}[expected_engine_name]
 
         with mock.patch(
-            "sqlalchemy.orm.context." "ORMCompileState.orm_setup_cursor_result"
+            "sqlalchemy.orm.context.ORMCompileState.orm_setup_cursor_result"
         ), mock.patch(
             "sqlalchemy.orm.context.ORMCompileState.orm_execute_statement"
         ), mock.patch(
@@ -512,7 +529,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
 
         assert_raises_message(
             sa.exc.InvalidRequestError,
-            "Session already has a Connection " "associated",
+            "Session already has a Connection associated",
             transaction._connection_for_bind,
             testing.db.connect(),
             None,
@@ -526,7 +543,6 @@ class BindIntegrationTest(_fixtures.FixtureTest):
 
         self.mapper_registry.map_imperatively(User, users)
         with testing.db.connect() as c:
-
             sess = Session(bind=c)
 
             u = User(name="u1")

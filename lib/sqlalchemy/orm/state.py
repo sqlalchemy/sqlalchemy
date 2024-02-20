@@ -1,5 +1,5 @@
 # orm/state.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -20,6 +20,7 @@ from typing import Dict
 from typing import Generic
 from typing import Iterable
 from typing import Optional
+from typing import Protocol
 from typing import Set
 from typing import Tuple
 from typing import TYPE_CHECKING
@@ -45,7 +46,8 @@ from .. import exc as sa_exc
 from .. import inspection
 from .. import util
 from ..util.typing import Literal
-from ..util.typing import Protocol
+from ..util.typing import TupleAny
+from ..util.typing import Unpack
 
 if TYPE_CHECKING:
     from ._typing import _IdentityKeyType
@@ -78,8 +80,7 @@ if not TYPE_CHECKING:
 
 
 class _InstanceDictProto(Protocol):
-    def __call__(self) -> Optional[IdentityMap]:
-        ...
+    def __call__(self) -> Optional[IdentityMap]: ...
 
 
 class _InstallLoaderCallableProto(Protocol[_O]):
@@ -93,9 +94,11 @@ class _InstallLoaderCallableProto(Protocol[_O]):
     """
 
     def __call__(
-        self, state: InstanceState[_O], dict_: _InstanceDict, row: Row[Any]
-    ) -> None:
-        ...
+        self,
+        state: InstanceState[_O],
+        dict_: _InstanceDict,
+        row: Row[Unpack[TupleAny]],
+    ) -> None: ...
 
 
 @inspection._self_inspects
@@ -278,9 +281,6 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         or via transaction commit and enters the "detached" state,
         this flag will continue to report True.
 
-        .. versionadded:: 1.1 - added a local method form of
-           :func:`.orm.util.was_deleted`.
-
         .. seealso::
 
             :attr:`.InstanceState.deleted` - refers to the "deleted" state
@@ -299,12 +299,6 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         An object that is in the persistent state is guaranteed to
         be within the :attr:`.Session.identity_map` of its parent
         :class:`.Session`.
-
-        .. versionchanged:: 1.1 The :attr:`.InstanceState.persistent`
-           accessor no longer returns True for an object that was
-           "deleted" within a flush; use the :attr:`.InstanceState.deleted`
-           accessor to detect this state.   This allows the "persistent"
-           state to guarantee membership in the identity map.
 
         .. seealso::
 
@@ -587,7 +581,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         return self._pending_mutations[key]
 
     def __getstate__(self) -> Dict[str, Any]:
-        state_dict = {
+        state_dict: Dict[str, Any] = {
             "instance": self.obj(),
             "class_": self.class_,
             "committed_state": self.committed_state,
@@ -626,8 +620,8 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
             self.class_ = state_dict["class_"]
 
         self.committed_state = state_dict.get("committed_state", {})
-        self._pending_mutations = state_dict.get("_pending_mutations", {})  # type: ignore  # noqa E501
-        self.parents = state_dict.get("parents", {})  # type: ignore
+        self._pending_mutations = state_dict.get("_pending_mutations", {})
+        self.parents = state_dict.get("parents", {})
         self.modified = state_dict.get("modified", False)
         self.expired = state_dict.get("expired", False)
         if "info" in state_dict:
@@ -682,7 +676,9 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
             fixed_impl = impl
 
             def _set_callable(
-                state: InstanceState[_O], dict_: _InstanceDict, row: Row[Any]
+                state: InstanceState[_O],
+                dict_: _InstanceDict,
+                row: Row[Unpack[TupleAny]],
             ) -> None:
                 if "callables" not in state.__dict__:
                     state.callables = {}
@@ -694,7 +690,9 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         else:
 
             def _set_callable(
-                state: InstanceState[_O], dict_: _InstanceDict, row: Row[Any]
+                state: InstanceState[_O],
+                dict_: _InstanceDict,
+                row: Row[Unpack[TupleAny]],
             ) -> None:
                 if "callables" not in state.__dict__:
                     state.callables = {}
@@ -833,8 +831,8 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     def unloaded(self) -> Set[str]:
         """Return the set of keys which do not have a loaded value.
 
-        This includes expired attributes and any other attribute that
-        was never populated or modified.
+        This includes expired attributes and any other attribute that was never
+        populated or modified.
 
         """
         return (
@@ -844,11 +842,16 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         )
 
     @property
+    @util.deprecated(
+        "2.0",
+        "The :attr:`.InstanceState.unloaded_expirable` attribute is "
+        "deprecated.  Please use :attr:`.InstanceState.unloaded`.",
+    )
     def unloaded_expirable(self) -> Set[str]:
-        """Return the set of keys which do not have a loaded value.
+        """Synonymous with :attr:`.InstanceState.unloaded`.
 
-        This includes expired attributes and any other attribute that
-        was never populated or modified.
+        This attribute was added as an implementation-specific detail at some
+        point and should be considered to be private.
 
         """
         return self.unloaded
@@ -1104,8 +1107,6 @@ class AttributeState:
 
             :func:`.attributes.get_history` - underlying function
 
-        .. versionadded:: 0.9.0
-
         """
         return self.state.get_history(self.key, PASSIVE_OFF ^ INIT_OK)
 
@@ -1127,6 +1128,9 @@ class PendingCollection:
     def __init__(self) -> None:
         self.deleted_items = util.IdentitySet()
         self.added_items = util.OrderedIdentitySet()
+
+    def merge_with_history(self, history: History) -> History:
+        return history._merge(self.added_items, self.deleted_items)
 
     def append(self, value: Any) -> None:
         if value in self.deleted_items:

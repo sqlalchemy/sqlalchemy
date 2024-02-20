@@ -301,11 +301,11 @@ Server) or even names that refer to alternate database files (SQLite ATTACH) or
 remote servers (Oracle DBLINK with synonyms).
 
 What all of the above approaches have (mostly) in common is that there's a way
-of referring to this alternate set of tables using a string name.  SQLAlchemy
+of referencing this alternate set of tables using a string name.  SQLAlchemy
 refers to this name as the **schema name**.  Within SQLAlchemy, this is nothing
 more than a string name which is associated with a :class:`_schema.Table`
 object, and is then rendered into SQL statements in a manner appropriate to the
-target database such that the table is referred towards in its remote "schema",
+target database such that the table is referenced in its remote "schema",
 whatever mechanism that is on the target database.
 
 The "schema" name may be associated directly with a :class:`_schema.Table`
@@ -328,7 +328,7 @@ schema names on a per-connection or per-statement basis.
     "database" that typically has a single "owner".  Within this database there
     can be any number of "schemas" which then contain the actual table objects.
 
-    A table within a specific schema is referred towards explicitly using the
+    A table within a specific schema is referenced explicitly using the
     syntax "<schemaname>.<tablename>".  Contrast this to an architecture such
     as that of MySQL, where there are only "databases", however SQL statements
     can refer to multiple databases at once, using the same syntax except it
@@ -603,6 +603,8 @@ Column, Table, MetaData API
 
 .. autoclass:: SchemaItem
     :members:
+
+.. autofunction:: insert_sentinel
 
 .. autoclass:: Table
     :members:

@@ -137,7 +137,7 @@ connection, rather than the :meth:`_engine.Engine.connect` method.  This method
 will both manage the scope of the :class:`_engine.Connection` and also
 enclose everything inside of a transaction with COMMIT at the end, assuming
 a successful block, or ROLLBACK in case of exception raise.  This style
-may be referred towards as **begin once**:
+is known as **begin once**:
 
 .. sourcecode:: pycon+sql
 
@@ -301,7 +301,7 @@ Sending Parameters
 SQL statements are usually accompanied by data that is to be passed with the
 statement itself, as we saw in the INSERT example previously. The
 :meth:`_engine.Connection.execute` method therefore also accepts parameters,
-which are referred towards as :term:`bound parameters`.  A rudimentary example
+which are known as :term:`bound parameters`.  A rudimentary example
 might be if we wanted to limit our SELECT statement only to rows that meet a
 certain criteria, such as rows where the "y" value were greater than a certain
 value that is passed in to a function.
@@ -355,7 +355,7 @@ Sending Multiple Parameters
 
 In the example at :ref:`tutorial_committing_data`, we executed an INSERT
 statement where it appeared that we were able to INSERT multiple rows into the
-database at once.  For statements :term:`DML` statements such as "INSERT",
+database at once.  For :term:`DML` statements such as "INSERT",
 "UPDATE" and "DELETE", we can send **multiple parameter sets** to the
 :meth:`_engine.Connection.execute` method by passing a list of dictionaries
 instead of a single dictionary, which indicates that the single SQL statement

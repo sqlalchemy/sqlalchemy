@@ -30,14 +30,12 @@ jobs:
           - "windows-latest"
           - "macos-latest"
         python-version:
-          - "3.7"
           - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
-          # greenlet doesn't build as of 2022-12-01
-          # - "3.12.0-alpha - 3.12"
-          - "pypy-3.9"
+          - "3.12"
+          - "pypy-3.10"
         build-type:
           - "cext"
           - "nocext"
@@ -47,16 +45,10 @@ jobs:
 
         include:
           # autocommit tests fail on the ci for some reason
-          - python-version: "pypy-3.9"
+          - python-version: "pypy-3.10"
             pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
           - os: "ubuntu-latest"
             pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
-          # do not run aiosqlite on python 3.11
-          # wait for https://github.com/python/cpython/issues/99205 to be fixed
-          - os: "ubuntu-latest"
-            python-version: "3.11"
-            pytest-args: "--dbdriver pysqlite"
-
 
         exclude:
           # linux and osx do not have x86 python
@@ -65,10 +57,10 @@ jobs:
           - os: "macos-latest"
             architecture: x86
           # pypy does not have cext or x86
-          - python-version: "pypy-3.9"
+          - python-version: "pypy-3.10"
             build-type: "cext"
           - os: "windows-latest"
-            python-version: "pypy-3.9"
+            python-version: "pypy-3.10"
             architecture: x86
 
       fail-fast: false
@@ -76,13 +68,19 @@ jobs:
     # steps to run in each job. Some are github actions, others run shell commands
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}
+
+      - name: Remove greenlet
+        if: ${{ matrix.no-greenlet == 'true' }}
+        shell: pwsh
+        run: |
+          (cat setup.cfg) | %{$_ -replace "^\s*greenlet.+",""} | set-content setup.cfg
 
       - name: Install dependencies
         run: |
@@ -92,7 +90,7 @@ jobs:
 
       - name: Run tests
         run: tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
-        continue-on-error: ${{ matrix.python-version == 'pypy-3.9' }}
+        continue-on-error: ${{ matrix.python-version == 'pypy-3.10' }}
 
   run-test-arm64:
     name: test-arm64-${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.os }}
@@ -100,11 +98,11 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - cp37-cp37m
           - cp38-cp38
           - cp39-cp39
           - cp310-cp310
           - cp311-cp311
+          - cp312-cp312
         build-type:
           - "cext"
           - "nocext"
@@ -113,7 +111,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up emulation
         run: |
@@ -132,8 +130,8 @@ jobs:
             tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
             "
 
-  run-mypy:
-    name: mypy-${{ matrix.python-version }}
+  run-tox:
+    name: ${{ matrix.tox-env }}-${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       # run this job using this matrix, excluding some combinations below.
@@ -141,19 +139,38 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
+          - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
+        tox-env:
+          - mypy
+          - lint
+          - pep484
+
+        exclude:
+          # run lint only on 3.11
+          - tox-env: lint
+            python-version: "3.8"
+          - tox-env: lint
+            python-version: "3.9"
+          - tox-env: lint
+            python-version: "3.10"
+          # run pep484 only on 3.10+
+          - tox-env: pep484
+            python-version: "3.8"
+          - tox-env: pep484
+            python-version: "3.9"
 
       fail-fast: false
 
     # steps to run in each job. Some are github actions, others run shell commands
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}
@@ -164,72 +181,5 @@ jobs:
           pip install --upgrade tox setuptools
           pip list
 
-      - name: Run tests
-        run: tox -e mypy ${{ matrix.pytest-args }}
-
-  run-lint:
-    name: lint-${{ matrix.python-version }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      # run this job using this matrix, excluding some combinations below.
-      matrix:
-        os:
-          - "ubuntu-latest"
-        python-version:
-          - "3.11"
-
-      fail-fast: false
-
-    # steps to run in each job. Some are github actions, others run shell commands
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Set up python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: ${{ matrix.architecture }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade tox setuptools
-          pip list
-
-      - name: Run tests
-        run: tox -e lint
-
-  run-pep484:
-    name: pep484-${{ matrix.python-version }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      # run this job using this matrix, excluding some combinations below.
-      matrix:
-        os:
-          - "ubuntu-latest"
-        python-version:
-          - "3.10"
-          - "3.11"
-
-      fail-fast: false
-
-    # steps to run in each job. Some are github actions, others run shell commands
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Set up python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: ${{ matrix.architecture }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade tox setuptools
-          pip list
-
-      - name: Run tests
-        run: tox -e pep484
+      - name: Run tox
+        run: tox -e ${{ matrix.tox-env }} ${{ matrix.pytest-args }}

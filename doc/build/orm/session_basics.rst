@@ -15,12 +15,15 @@ ORM-mapped objects.  The ORM objects themselves are maintained inside the
 structure that maintains unique copies of each object, where "unique" means
 "only one object with a particular primary key".
 
-The :class:`.Session` begins in a mostly stateless form. Once queries are
-issued or other objects are persisted with it, it requests a connection
-resource from an :class:`_engine.Engine` that is associated with the
-:class:`.Session`, and then establishes a transaction on that connection. This
-transaction remains in effect until the :class:`.Session` is instructed to
-commit or roll back the transaction.
+The :class:`.Session` in its most common pattern of use begins in a mostly
+stateless form. Once queries are issued or other objects are persisted with it,
+it requests a connection resource from an :class:`_engine.Engine` that is
+associated with the :class:`.Session`, and then establishes a transaction on
+that connection. This transaction remains in effect until the :class:`.Session`
+is instructed to commit or roll back the transaction.   When the transaction
+ends, the connection resource associated with the :class:`_engine.Engine`
+is :term:`released` to the connection pool managed by the engine.   A new
+transaction then starts with a new connection checkout.
 
 The ORM objects maintained by a :class:`_orm.Session` are :term:`instrumented`
 such that whenever an attribute or a collection is modified in the Python
@@ -386,7 +389,9 @@ The flush which occurs automatically within the scope of certain methods
 is known as **autoflush**.  Autoflush is defined as a configurable,
 automatic flush call which occurs at the beginning of methods including:
 
-* :meth:`_orm.Session.execute` and other SQL-executing methods
+* :meth:`_orm.Session.execute` and other SQL-executing methods, when used
+  against ORM-enabled SQL constructs, such as :func:`_sql.select` objects
+  that refer to ORM entities and/or ORM-mapped attributes
 * When a :class:`_query.Query` is invoked to send SQL to the database
 * Within the :meth:`.Session.merge` method before querying the database
 * When objects are :ref:`refreshed <session_expiring>`
@@ -641,8 +646,26 @@ connections. If no pending changes are detected, then no SQL is emitted to the
 database. This behavior is not configurable and is not affected by the
 :paramref:`.Session.autoflush` parameter.
 
-Subsequent to that, :meth:`_orm.Session.commit` will then COMMIT the actual
-database transaction or transactions, if any, that are in place.
+Subsequent to that, assuming the :class:`_orm.Session` is bound to an
+:class:`_engine.Engine`, :meth:`_orm.Session.commit` will then COMMIT the
+actual database transaction that is in place, if one was started.   After the
+commit, the :class:`_engine.Connection` object associated with that transaction
+is closed, causing its underlying DBAPI connection to be :term:`released` back
+to the connection pool associated with the :class:`_engine.Engine` to which the
+:class:`_orm.Session` is bound.
+
+For a :class:`_orm.Session` that's bound to multiple engines (e.g. as described
+at :ref:`Partitioning Strategies <session_partitioning>`), the same COMMIT
+steps will proceed for each :class:`_engine.Engine` /
+:class:`_engine.Connection` that is in play within the "logical" transaction
+being committed.  These database transactions are uncoordinated with each other
+unless :ref:`two-phase features <session_twophase>` are enabled.
+
+Other connection-interaction patterns are available as well, by binding the
+:class:`_orm.Session` to a :class:`_engine.Connection` directly; in this case,
+it's assumed that an externally-managed transaction is present, and a real
+COMMIT will not be emitted automatically in this case; see the section
+:ref:`session_external_transaction` for background on this pattern.
 
 Finally, all objects within the :class:`_orm.Session` are :term:`expired` as
 the transaction is closed out. This is so that when the instances are next
@@ -669,9 +692,25 @@ been begun either via :ref:`autobegin <session_autobegin>`
 or by calling the :meth:`_orm.Session.begin`
 method explicitly, is as follows:
 
-  * All transactions are rolled back and all connections returned to the
-    connection pool, unless the Session was bound directly to a Connection, in
-    which case the connection is still maintained (but still rolled back).
+  * Database transactions are rolled back.  For a :class:`_orm.Session`
+    bound to a single :class:`_engine.Engine`, this means ROLLBACK is emitted
+    for at most a single :class:`_engine.Connection` that's currently in use.
+    For :class:`_orm.Session` objects bound to multiple :class:`_engine.Engine`
+    objects, ROLLBACK is emitted for all :class:`_engine.Connection` objects
+    that were checked out.
+  * Database connections are :term:`released`.  This follows the same connection-related
+    behavior noted in :ref:`session_committing`, where
+    :class:`_engine.Connection` objects obtained from :class:`_engine.Engine`
+    objects are closed, causing the DBAPI connections to be :term:`released` to
+    the connection pool within the :class:`_engine.Engine`.   New connections
+    are checked out from the :class:`_engine.Engine` if and when a new
+    transaction begins.
+  * For a :class:`_orm.Session`
+    that's bound directly to a :class:`_engine.Connection` as described
+    at :ref:`session_external_transaction`, rollback behavior on this
+    :class:`_engine.Connection` would follow the behavior specified by the
+    :paramref:`_orm.Session.join_transaction_mode` parameter, which could
+    involve rolling back savepoints or emitting a real ROLLBACK.
   * Objects which were initially in the :term:`pending` state when they were added
     to the :class:`~sqlalchemy.orm.session.Session` within the lifespan of the
     transaction are expunged, corresponding to their INSERT statement being
@@ -721,10 +760,22 @@ transactional/connection resources from the :class:`_engine.Engine` object(s)
 to which it is bound.   When connections are returned to the connection pool,
 transactional state is rolled back as well.
 
-When the :class:`_orm.Session` is closed, it is essentially in the
+By default, when the :class:`_orm.Session` is closed, it is essentially in the
 original state as when it was first constructed, and **may be used again**.
 In this sense, the :meth:`_orm.Session.close` method is more like a "reset"
 back to the clean state and not as much like a "database close" method.
+In this mode of operation the method :meth:`_orm.Session.reset` is an alias to
+:meth:`_orm.Session.close` and behaves in the same way.
+
+The default behavior of :meth:`_orm.Session.close` can be changed by setting the
+parameter :paramref:`_orm.Session.close_resets_only` to ``False``, indicating that
+the :class:`_orm.Session` cannot be reused after the method
+:meth:`_orm.Session.close` has been called. In this mode of operation the
+:meth:`_orm.Session.reset` method will allow multiple "reset" of the session,
+behaving like :meth:`_orm.Session.close` when
+:paramref:`_orm.Session.close_resets_only` is set to ``True``.
+
+.. versionadded:: 2.0.22
 
 It's recommended that the scope of a :class:`_orm.Session` be limited by
 a call to :meth:`_orm.Session.close` at the end, especially if the
@@ -942,48 +993,68 @@ The newer :ref:`core_inspection_toplevel` system can also be used::
 
 .. _session_faq_threadsafe:
 
-Is the session thread-safe?
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Is the Session thread-safe?  Is AsyncSession safe to share in concurrent tasks?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The :class:`.Session` is very much intended to be used in a
-**non-concurrent** fashion, which usually means in only one thread at a
-time.
+The :class:`.Session` is a **mutable, stateful** object that represents a **single
+database transaction**.   An instance of :class:`.Session` therefore **cannot
+be shared among concurrent threads or asyncio tasks without careful
+synchronization**. The :class:`.Session` is intended to be used in a
+**non-concurrent** fashion, that is, a particular instance of :class:`.Session`
+should be used in only one thread or task at a time.
 
-The :class:`.Session` should be used in such a way that one
-instance exists for a single series of operations within a single
-transaction.   One expedient way to get this effect is by associating
-a :class:`.Session` with the current thread (see :ref:`unitofwork_contextual`
-for background).  Another is to use a pattern
-where the :class:`.Session` is passed between functions and is otherwise
-not shared with other threads.
+When using the :class:`_asyncio.AsyncSession` object from SQLAlchemy's
+:ref:`asyncio <asyncio_toplevel>` extension, this object is only a thin proxy
+on top of a :class:`_orm.Session`, and the same rules apply; it is an
+**unsynchronized, mutable, stateful object**, so it is **not** safe to use a single
+instance of :class:`_asyncio.AsyncSession` in multiple asyncio tasks at once.
 
-The bigger point is that you should not *want* to use the session
-with multiple concurrent threads. That would be like having everyone at a
-restaurant all eat from the same plate. The session is a local "workspace"
-that you use for a specific set of tasks; you don't want to, or need to,
-share that session with other threads who are doing some other task.
+An instance of :class:`.Session` or :class:`_asyncio.AsyncSession` represents a
+single logical database transaction, referencing only a single
+:class:`_engine.Connection` at a time for a particular :class:`.Engine` or
+:class:`.AsyncEngine` to which the object is bound (note that these objects
+both support being bound to multiple engines at once, however in this case
+there will still be only one connection per engine in play within the
+scope of a transaction).
 
-Making sure the :class:`.Session` is only used in a single concurrent thread at a time
-is called a "share nothing" approach to concurrency.  But actually, not
-sharing the :class:`.Session` implies a more significant pattern; it
-means not just the :class:`.Session` object itself, but
-also **all objects that are associated with that Session**, must be kept within
-the scope of a single concurrent thread.   The set of mapped
-objects associated with a :class:`.Session` are essentially proxies for data
-within database rows accessed over a database connection, and so just like
-the :class:`.Session` itself, the whole
-set of objects is really just a large-scale proxy for a database connection
-(or connections).  Ultimately, it's mostly the DBAPI connection itself that
-we're keeping away from concurrent access; but since the :class:`.Session`
-and all the objects associated with it are all proxies for that DBAPI connection,
-the entire graph is essentially not safe for concurrent access.
+A database connection within a transaction is also a stateful object that is
+intended to be operated upon in a non-concurrent, sequential fashion. Commands
+are issued on the connection in a sequence, which are handled by the database
+server in the exact order in which they are emitted.   As the
+:class:`_orm.Session` emits commands upon this connection and receives results,
+the :class:`_orm.Session` itself is transitioning through internal state
+changes that align with the state of commands and data present on this
+connection; states which include if a transaction were begun, committed, or
+rolled back, what SAVEPOINTs if any are in play, as well as fine-grained
+synchronization of the state of individual database rows with local ORM-mapped
+objects.
 
-If there are in fact multiple threads participating
-in the same task, then you may consider sharing the session and its objects between
-those threads; however, in this extremely unusual scenario the application would
-need to ensure that a proper locking scheme is implemented so that there isn't
-*concurrent* access to the :class:`.Session` or its state.   A more common approach
-to this situation is to maintain a single :class:`.Session` per concurrent thread,
-but to instead *copy* objects from one :class:`.Session` to another, often
-using the :meth:`.Session.merge` method to copy the state of an object into
-a new object local to a different :class:`.Session`.
+When designing database applications for concurrency, the appropriate model is
+that each concurrent task / thread works with its own database transaction.
+This is why when discussing the issue of database concurrency, the standard
+terminology used is **multiple, concurrent transactions**.   Within traditional
+RDMS there is no analogue for a single database transaction that is receiving
+and processing multiple commands concurrently.
+
+The concurrency model for SQLAlchemy's :class:`_orm.Session` and
+:class:`_asyncio.AsyncSession` is therefore **Session per thread, AsyncSession per
+task**.  An application that uses multiple threads, or multiple tasks in
+asyncio such as when using an API like ``asyncio.gather()`` would want to ensure
+that each thread has its own :class:`_orm.Session`, each asyncio task
+has its own :class:`_asyncio.AsyncSession`.
+
+The best way to ensure this use is by using the :ref:`standard context manager
+pattern <session_getting>`  locally within the top level Python function that
+is inside the thread or task, which will ensure the lifespan of the
+:class:`_orm.Session` or :class:`_asyncio.AsyncSession` is maintained within
+a local scope.
+
+For applications that benefit from having a "global" :class:`.Session`
+where it's not an option to pass the :class:`.Session` object to specific
+functions and methods which require it, the :class:`.scoped_session`
+approach can provide for a "thread local" :class:`.Session` object;
+see the section :ref:`unitofwork_contextual` for background.   Within
+the asyncio context, the :class:`.async_scoped_session`
+object is the asyncio analogue for :class:`.scoped_session`, however is more
+challenging to configure as it requires a custom "context" function.
+

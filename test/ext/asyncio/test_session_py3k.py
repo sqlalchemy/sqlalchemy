@@ -1,20 +1,32 @@
-from sqlalchemy import Column
+from __future__ import annotations
+
+import contextlib
+from typing import List
+from typing import Optional
+
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import Identity
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import Sequence
+from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import async_object_session
 from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import close_all_sessions
 from sqlalchemy.ext.asyncio import exc as async_exc
 from sqlalchemy.ext.asyncio.base import ReversibleProxy
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
@@ -24,12 +36,17 @@ from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
+from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import expect_deprecated
+from sqlalchemy.testing.assertions import in_
 from sqlalchemy.testing.assertions import is_false
+from sqlalchemy.testing.assertions import not_in
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.provision import normalize_sequence
+from sqlalchemy.testing.schema import Column
 from .test_engine_py3k import AsyncFixture as _AsyncFixture
 from ...orm import _fixtures
 
@@ -44,6 +61,12 @@ class AsyncFixture(_AsyncFixture, _fixtures.FixtureTest):
     @testing.fixture
     def async_engine(self):
         return engines.testing_engine(asyncio=True, transfer_staticpool=True)
+
+    # TODO: this seems to cause deadlocks in
+    # OverrideSyncSession for some reason
+    # @testing.fixture
+    # def async_engine(self, async_testing_engine):
+    # return async_testing_engine(transfer_staticpool=True)
 
     @testing.fixture
     def async_session(self, async_engine):
@@ -102,6 +125,50 @@ class AsyncSessionTest(AsyncFixture):
                     sync_connection.dialect.default_sequence_base,
                 )
 
+    @async_test
+    async def test_close_all(self, async_engine):
+        User = self.classes.User
+
+        s1 = AsyncSession(async_engine)
+        u1 = User()
+        s1.add(u1)
+
+        s2 = AsyncSession(async_engine)
+        u2 = User()
+        s2.add(u2)
+
+        in_(u1, s1)
+        in_(u2, s2)
+
+        await close_all_sessions()
+
+        not_in(u1, s1)
+        not_in(u2, s2)
+
+    @async_test
+    async def test_session_close_all_deprecated(self, async_engine):
+        User = self.classes.User
+
+        s1 = AsyncSession(async_engine)
+        u1 = User()
+        s1.add(u1)
+
+        s2 = AsyncSession(async_engine)
+        u2 = User()
+        s2.add(u2)
+
+        in_(u1, s1)
+        in_(u2, s2)
+
+        with expect_deprecated(
+            r"The AsyncSession.close_all\(\) method is deprecated and will "
+            "be removed in a future release. "
+        ):
+            await AsyncSession.close_all()
+
+        not_in(u1, s1)
+        not_in(u2, s2)
+
 
 class AsyncSessionQueryTest(AsyncFixture):
     @async_test
@@ -128,6 +195,16 @@ class AsyncSessionQueryTest(AsyncFixture):
 
         result = await async_session.scalar(stmt)
         eq_(result, 7)
+
+    @testing.requires.python310
+    @async_test
+    async def test_session_aclose(self, async_session):
+        User = self.classes.User
+        u = User(name="u")
+        async with contextlib.aclosing(async_session) as session:
+            session.add(u)
+            await session.commit()
+        assert async_session.sync_session.identity_map.values() == []
 
     @testing.combinations(
         ("scalars",), ("stream_scalars",), argnames="filter_"
@@ -162,6 +239,39 @@ class AsyncSessionQueryTest(AsyncFixture):
 
         u3 = await async_session.get(User, 12)
         is_(u3, None)
+
+    @async_test
+    async def test_get_one(self, async_session):
+        User = self.classes.User
+
+        u1 = await async_session.get_one(User, 7)
+        u2 = await async_session.get_one(User, 10)
+        u3 = await async_session.get_one(User, 7)
+
+        is_(u1, u3)
+        eq_(u1.name, "jack")
+        eq_(u2.name, "chuck")
+
+        with testing.expect_raises_message(
+            exc.NoResultFound,
+            "No row was found when one was required",
+        ):
+            await async_session.get_one(User, 12)
+
+    @async_test
+    async def test_force_a_lazyload(self, async_session):
+        """test for #9298"""
+
+        User = self.classes.User
+
+        stmt = select(User).order_by(User.id)
+
+        result = (await async_session.scalars(stmt)).all()
+
+        for user_obj in result:
+            await async_session.refresh(user_obj, ["addresses"])
+
+        eq_(result, self.static.user_address_result)
 
     @async_test
     async def test_get_loader_options(self, async_session):
@@ -204,6 +314,7 @@ class AsyncSessionQueryTest(AsyncFixture):
 
     @testing.combinations("statement", "execute", argnames="location")
     @async_test
+    @testing.requires.server_side_cursors
     async def test_no_ss_cursor_w_execute(self, async_session, location):
         User = self.classes.User
 
@@ -238,7 +349,6 @@ class AsyncSessionTransactionTest(AsyncFixture):
 
     @async_test
     async def test_orm_sessionmaker_block_one(self, async_engine):
-
         User = self.classes.User
         maker = sessionmaker(async_engine, class_=AsyncSession)
 
@@ -262,7 +372,6 @@ class AsyncSessionTransactionTest(AsyncFixture):
 
     @async_test
     async def test_orm_sessionmaker_block_two(self, async_engine):
-
         User = self.classes.User
         maker = sessionmaker(async_engine, class_=AsyncSession)
 
@@ -284,7 +393,6 @@ class AsyncSessionTransactionTest(AsyncFixture):
 
     @async_test
     async def test_async_sessionmaker_block_one(self, async_engine):
-
         User = self.classes.User
         maker = async_sessionmaker(async_engine)
 
@@ -308,7 +416,6 @@ class AsyncSessionTransactionTest(AsyncFixture):
 
     @async_test
     async def test_async_sessionmaker_block_two(self, async_engine):
-
         User = self.classes.User
         maker = async_sessionmaker(async_engine)
 
@@ -331,11 +438,9 @@ class AsyncSessionTransactionTest(AsyncFixture):
     @async_test
     async def test_trans(self, async_session, async_engine):
         async with async_engine.connect() as outer_conn:
-
             User = self.classes.User
 
             async with async_session.begin():
-
                 eq_(await outer_conn.scalar(select(func.count(User.id))), 0)
 
                 u1 = User(name="u1")
@@ -351,7 +456,6 @@ class AsyncSessionTransactionTest(AsyncFixture):
     @async_test
     async def test_commit_as_you_go(self, async_session, async_engine):
         async with async_engine.connect() as outer_conn:
-
             User = self.classes.User
 
             eq_(await outer_conn.scalar(select(func.count(User.id))), 0)
@@ -371,7 +475,6 @@ class AsyncSessionTransactionTest(AsyncFixture):
     @async_test
     async def test_trans_noctx(self, async_session, async_engine):
         async with async_engine.connect() as outer_conn:
-
             User = self.classes.User
 
             trans = await async_session.begin()
@@ -538,7 +641,6 @@ class AsyncSessionTransactionTest(AsyncFixture):
         User = self.classes.User
 
         async with async_engine.connect() as conn:
-
             await conn.begin()
 
             await conn.begin_nested()
@@ -666,7 +768,9 @@ class AsyncORMBehaviorsTest(AsyncFixture):
             class A:
                 __tablename__ = "a"
 
-                id = Column(Integer, primary_key=True)
+                id = Column(
+                    Integer, primary_key=True, test_needs_autoincrement=True
+                )
                 b = relationship(
                     "B",
                     uselist=False,
@@ -678,7 +782,9 @@ class AsyncORMBehaviorsTest(AsyncFixture):
             @registry.mapped
             class B:
                 __tablename__ = "b"
-                id = Column(Integer, primary_key=True)
+                id = Column(
+                    Integer, primary_key=True, test_needs_autoincrement=True
+                )
                 a_id = Column(ForeignKey("a.id"))
 
             async with async_engine.begin() as conn:
@@ -689,14 +795,8 @@ class AsyncORMBehaviorsTest(AsyncFixture):
         return go
 
     @testing.combinations(
-        (
-            "legacy_style",
-            True,
-        ),
-        (
-            "new_style",
-            False,
-        ),
+        ("legacy_style", True),
+        ("new_style", False),
         argnames="_legacy_inactive_history_style",
         id_="ia",
     )
@@ -704,7 +804,6 @@ class AsyncORMBehaviorsTest(AsyncFixture):
     async def test_new_style_active_history(
         self, async_session, one_to_one_fixture, _legacy_inactive_history_style
     ):
-
         A, B = await one_to_one_fixture(_legacy_inactive_history_style)
 
         a1 = A()
@@ -726,6 +825,7 @@ class AsyncORMBehaviorsTest(AsyncFixture):
                 (exc.StatementError, exc.MissingGreenlet)
             ):
                 a1.b = b2
+
         else:
             a1.b = b2
 
@@ -811,7 +911,6 @@ class AsyncProxyTest(AsyncFixture):
 
     @async_test
     async def test_get_transaction(self, async_session):
-
         is_(async_session.get_transaction(), None)
         is_(async_session.get_nested_transaction(), None)
 
@@ -856,6 +955,11 @@ class AsyncProxyTest(AsyncFixture):
 
         is_(async_object_session(u3), None)
 
+        await s2.reset()
+        is_(async_object_session(u2), None)
+        s2.add(u2)
+
+        is_(async_object_session(u2), s2)
         await s2.close()
         is_(async_object_session(u2), None)
 
@@ -918,7 +1022,6 @@ class AsyncProxyTest(AsyncFixture):
 
     def test_inspect_session_no_asyncio_imported(self):
         with mock.patch("sqlalchemy.orm.state._async_provider", None):
-
             User = self.classes.User
 
             s1 = Session(testing.db)
@@ -990,3 +1093,103 @@ class OverrideSyncSession(AsyncFixture):
 
         is_true(not isinstance(ass.sync_session, _MySession))
         is_(ass.sync_session_class, Session)
+
+
+class AsyncAttrsTest(
+    testing.AssertsExecutionResults, _AsyncFixture, fixtures.TestBase
+):
+    __requires__ = ("async_dialect",)
+
+    @config.fixture
+    def decl_base(self, metadata):
+        _md = metadata
+
+        class Base(ComparableEntity, AsyncAttrs, DeclarativeBase):
+            metadata = _md
+            type_annotation_map = {
+                str: String().with_variant(
+                    String(50), "mysql", "mariadb", "oracle"
+                )
+            }
+
+        yield Base
+        Base.registry.dispose()
+
+    @testing.fixture
+    def async_engine(self, async_testing_engine):
+        yield async_testing_engine(transfer_staticpool=True)
+
+    @testing.fixture
+    def ab_fixture(self, decl_base):
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(Identity(), primary_key=True)
+            data: Mapped[Optional[str]]
+            bs: Mapped[List[B]] = relationship(order_by=lambda: B.id)
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(Identity(), primary_key=True)
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+            data: Mapped[Optional[str]]
+
+        decl_base.metadata.create_all(testing.db)
+
+        return A, B
+
+    @async_test
+    async def test_lazyloaders(self, async_engine, ab_fixture):
+        A, B = ab_fixture
+
+        async with AsyncSession(async_engine) as session:
+            b1, b2, b3 = B(data="b1"), B(data="b2"), B(data="b3")
+            a1 = A(data="a1", bs=[b1, b2, b3])
+            session.add(a1)
+
+            await session.commit()
+
+            assert inspect(a1).expired
+
+            with self.assert_statement_count(async_engine.sync_engine, 1):
+                eq_(await a1.awaitable_attrs.data, "a1")
+
+            with self.assert_statement_count(async_engine.sync_engine, 1):
+                eq_(await a1.awaitable_attrs.bs, [b1, b2, b3])
+
+            # now it's loaded, lazy loading not used anymore
+            eq_(a1.bs, [b1, b2, b3])
+
+    @async_test
+    async def test_it_didnt_load_but_is_ok(self, async_engine, ab_fixture):
+        A, B = ab_fixture
+
+        async with AsyncSession(async_engine) as session:
+            b1, b2, b3 = B(data="b1"), B(data="b2"), B(data="b3")
+            a1 = A(data="a1", bs=[b1, b2, b3])
+            session.add(a1)
+
+            await session.commit()
+
+        async with AsyncSession(async_engine) as session:
+            a1 = (
+                await session.scalars(select(A).options(selectinload(A.bs)))
+            ).one()
+
+            with self.assert_statement_count(async_engine.sync_engine, 0):
+                eq_(await a1.awaitable_attrs.bs, [b1, b2, b3])
+
+    @async_test
+    async def test_the_famous_lazyloader_gotcha(
+        self, async_engine, ab_fixture
+    ):
+        A, B = ab_fixture
+
+        async with AsyncSession(async_engine) as session:
+            a1 = A(data="a1")
+            session.add(a1)
+
+            await session.flush()
+
+            with self.assert_statement_count(async_engine.sync_engine, 1):
+                eq_(await a1.awaitable_attrs.bs, [])

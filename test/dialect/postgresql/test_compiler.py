@@ -24,6 +24,7 @@ from sqlalchemy import schema
 from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import SmallInteger
+from sqlalchemy import sql
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
@@ -42,6 +43,7 @@ from sqlalchemy.dialects.postgresql import array_agg as pg_array_agg
 from sqlalchemy.dialects.postgresql import DOMAIN
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import JSONPATH
 from sqlalchemy.dialects.postgresql import Range
@@ -50,6 +52,7 @@ from sqlalchemy.dialects.postgresql import TSQUERY
 from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
+from sqlalchemy.dialects.postgresql.ranges import MultiRange
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import Session
@@ -64,6 +67,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import AssertsCompiledSQL
+from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import eq_ignore_whitespace
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertions import is_
@@ -108,7 +112,6 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
-
     __dialect__ = postgresql.dialect()
 
     def test_plain_stringify_returning(self):
@@ -260,7 +263,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             postgresql.CreateEnumType(e2),
-            "CREATE TYPE someschema.somename AS ENUM " "('x', 'y', 'z')",
+            "CREATE TYPE someschema.somename AS ENUM ('x', 'y', 'z')",
         )
         self.assert_compile(postgresql.DropEnumType(e1), "DROP TYPE somename")
         self.assert_compile(
@@ -269,7 +272,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = Table("sometable", MetaData(), Column("somecolumn", e1))
         self.assert_compile(
             schema.CreateTable(t1),
-            "CREATE TABLE sometable (somecolumn " "somename)",
+            "CREATE TABLE sometable (somecolumn somename)",
         )
         t1 = Table(
             "sometable",
@@ -580,6 +583,19 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TABLE atable (id INTEGER) ON COMMIT DROP",
         )
 
+    def test_create_table_with_using_option(self):
+        m = MetaData()
+        tbl = Table(
+            "atable",
+            m,
+            Column("id", Integer),
+            postgresql_using="heap",
+        )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE atable (id INTEGER) USING heap",
+        )
+
     def test_create_table_with_multiple_options(self):
         m = MetaData()
         tbl = Table(
@@ -589,10 +605,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             postgresql_tablespace="sometablespace",
             postgresql_with_oids=False,
             postgresql_on_commit="preserve_rows",
+            postgresql_using="heap",
         )
         self.assert_compile(
             schema.CreateTable(tbl),
-            "CREATE TABLE atable (id INTEGER) WITHOUT OIDS "
+            "CREATE TABLE atable (id INTEGER) USING heap WITHOUT OIDS "
             "ON COMMIT PRESERVE ROWS TABLESPACE sometablespace",
         )
 
@@ -643,7 +660,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_create_index_with_ops(self):
-
         m = MetaData()
         tbl = Table(
             "testtbl",
@@ -667,7 +683,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(idx),
-            "CREATE INDEX test_idx1 ON testtbl " "(data text_pattern_ops)",
+            "CREATE INDEX test_idx1 ON testtbl (data text_pattern_ops)",
             dialect=postgresql.dialect(),
         )
         self.assert_compile(
@@ -676,6 +692,102 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "(data text_pattern_ops, data2 int4_ops)",
             dialect=postgresql.dialect(),
         )
+
+    @testing.combinations(
+        (
+            lambda tbl: schema.CreateIndex(
+                Index(
+                    "test_idx1",
+                    tbl.c.data,
+                    unique=True,
+                    postgresql_nulls_not_distinct=True,
+                )
+            ),
+            "CREATE UNIQUE INDEX test_idx1 ON test_tbl "
+            "(data) NULLS NOT DISTINCT",
+        ),
+        (
+            lambda tbl: schema.CreateIndex(
+                Index(
+                    "test_idx2",
+                    tbl.c.data2,
+                    unique=True,
+                    postgresql_nulls_not_distinct=False,
+                )
+            ),
+            "CREATE UNIQUE INDEX test_idx2 ON test_tbl "
+            "(data2) NULLS DISTINCT",
+        ),
+        (
+            lambda tbl: schema.CreateIndex(
+                Index(
+                    "test_idx3",
+                    tbl.c.data3,
+                    unique=True,
+                )
+            ),
+            "CREATE UNIQUE INDEX test_idx3 ON test_tbl (data3)",
+        ),
+        (
+            lambda tbl: schema.CreateIndex(
+                Index(
+                    "test_idx3_complex",
+                    tbl.c.data3,
+                    postgresql_nulls_not_distinct=True,
+                    postgresql_include=["data2"],
+                    postgresql_where=and_(tbl.c.data3 > 5),
+                    postgresql_with={"fillfactor": 50},
+                )
+            ),
+            "CREATE INDEX test_idx3_complex ON test_tbl "
+            "(data3) INCLUDE (data2) NULLS NOT DISTINCT WITH "
+            "(fillfactor = 50) WHERE data3 > 5",
+        ),
+        (
+            lambda tbl: schema.AddConstraint(
+                schema.UniqueConstraint(
+                    tbl.c.data,
+                    name="uq_data1",
+                    postgresql_nulls_not_distinct=True,
+                )
+            ),
+            "ALTER TABLE test_tbl ADD CONSTRAINT uq_data1 UNIQUE "
+            "NULLS NOT DISTINCT (data)",
+        ),
+        (
+            lambda tbl: schema.AddConstraint(
+                schema.UniqueConstraint(
+                    tbl.c.data2,
+                    name="uq_data2",
+                    postgresql_nulls_not_distinct=False,
+                )
+            ),
+            "ALTER TABLE test_tbl ADD CONSTRAINT uq_data2 UNIQUE "
+            "NULLS DISTINCT (data2)",
+        ),
+        (
+            lambda tbl: schema.AddConstraint(
+                schema.UniqueConstraint(
+                    tbl.c.data3,
+                    name="uq_data3",
+                )
+            ),
+            "ALTER TABLE test_tbl ADD CONSTRAINT uq_data3 UNIQUE (data3)",
+        ),
+    )
+    def test_nulls_not_distinct(self, expr_fn, expected):
+        dd = PGDialect()
+        m = MetaData()
+        tbl = Table(
+            "test_tbl",
+            m,
+            Column("data", String),
+            Column("data2", Integer),
+            Column("data3", Integer),
+        )
+
+        expr = testing.resolve_lambda(expr_fn, tbl=tbl)
+        self.assert_compile(expr, expected, dialect=dd)
 
     def test_create_index_with_labeled_ops(self):
         m = MetaData()
@@ -781,17 +893,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(idx1),
-            "CREATE INDEX test_idx1 ON testtbl " "(data)",
+            "CREATE INDEX test_idx1 ON testtbl (data)",
             dialect=postgresql.dialect(),
         )
         self.assert_compile(
             schema.CreateIndex(idx2),
-            "CREATE INDEX test_idx2 ON testtbl " "USING btree (data)",
+            "CREATE INDEX test_idx2 ON testtbl USING btree (data)",
             dialect=postgresql.dialect(),
         )
         self.assert_compile(
             schema.CreateIndex(idx3),
-            "CREATE INDEX test_idx3 ON testtbl " "USING hash (data)",
+            "CREATE INDEX test_idx3 ON testtbl USING hash (data)",
             dialect=postgresql.dialect(),
         )
 
@@ -812,7 +924,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(idx1),
-            "CREATE INDEX test_idx1 ON testtbl " "(data)",
+            "CREATE INDEX test_idx1 ON testtbl (data)",
         )
         self.assert_compile(
             schema.CreateIndex(idx2),
@@ -835,7 +947,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateIndex(
                 Index("test_idx1", tbl.c.data, postgresql_using="GIST")
             ),
-            "CREATE INDEX test_idx1 ON testtbl " "USING gist (data)",
+            "CREATE INDEX test_idx1 ON testtbl USING gist (data)",
         )
 
         self.assert_compile(
@@ -877,7 +989,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(idx1),
-            "CREATE INDEX test_idx1 ON testtbl " "(data)",
+            "CREATE INDEX test_idx1 ON testtbl (data)",
             dialect=postgresql.dialect(),
         )
         self.assert_compile(
@@ -1034,7 +1146,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         tbl.append_constraint(cons)
         self.assert_compile(
             schema.AddConstraint(cons),
-            "ALTER TABLE testtbl ADD EXCLUDE USING gist " "(room WITH =)",
+            "ALTER TABLE testtbl ADD EXCLUDE USING gist (room WITH =)",
             dialect=postgresql.dialect(),
         )
 
@@ -1054,13 +1166,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("valid_from_date", Date(), nullable=True),
             Column("valid_thru_date", Date(), nullable=True),
         )
+        sql_text = "daterange(valid_from_date, valid_thru_date, '[]')"
         cons = ExcludeConstraint(
-            (
-                literal_column(
-                    "daterange(valid_from_date, valid_thru_date, '[]')"
-                ),
-                "&&",
-            ),
+            (literal_column(sql_text), "&&"),
             where=column("valid_from_date") <= column("valid_thru_date"),
             name="ex_mytable_valid_date_range",
             deferrable=deferrable_value,
@@ -1068,6 +1176,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         table.append_constraint(cons)
+        eq_(cons.columns.keys(), [sql_text])
         expected = (
             "ALTER TABLE mytable ADD CONSTRAINT ex_mytable_valid_date_range "
             "EXCLUDE USING gist "
@@ -1134,7 +1243,41 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         tbl.append_constraint(cons_copy)
         self.assert_compile(
             schema.AddConstraint(cons_copy),
-            "ALTER TABLE testtbl ADD EXCLUDE USING gist " "(room WITH =)",
+            "ALTER TABLE testtbl ADD EXCLUDE USING gist (room WITH =)",
+        )
+
+    def test_exclude_constraint_copy_complex(self):
+        m = MetaData()
+        tbl = Table("foo", m, Column("x", Integer), Column("y", Integer))
+        cons = ExcludeConstraint(
+            (tbl.c.x, "*"),
+            (text("x-y"), "%"),
+            (literal_column("x+y"), "$"),
+            (tbl.c.x // tbl.c.y, "??"),
+            (func.power(tbl.c.x, 42), "="),
+            (func.int8range(column("x"), column("y")), "&&"),
+            ("y", "^"),
+        )
+        tbl.append_constraint(cons)
+        expected = (
+            "ALTER TABLE {name} ADD EXCLUDE USING gist "
+            "(x WITH *, x-y WITH %, x+y WITH $, x / y WITH ??, "
+            "power(x, 42) WITH =, int8range(x, y) WITH &&, y WITH ^)"
+        )
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            expected.format(name="foo"),
+            dialect=postgresql.dialect(),
+        )
+        m2 = MetaData()
+        tbl2 = tbl.to_metadata(m2, name="bar")
+        (cons2,) = [
+            c for c in tbl2.constraints if isinstance(c, ExcludeConstraint)
+        ]
+        self.assert_compile(
+            schema.AddConstraint(cons2),
+            expected.format(name="bar"),
+            dialect=postgresql.dialect(),
         )
 
     def test_exclude_constraint_copy_where_using(self):
@@ -1164,6 +1307,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         m = MetaData()
         cons = ExcludeConstraint((text("room::TEXT"), "="))
         Table("testtbl", m, Column("room", String), cons)
+        eq_(list(cons.columns), [])
         self.assert_compile(
             schema.AddConstraint(cons),
             "ALTER TABLE testtbl ADD EXCLUDE USING gist "
@@ -1240,6 +1384,35 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.AddConstraint(cons),
             "ALTER TABLE testtbl ADD EXCLUDE USING gist "
             "(room first_opsclass WITH =, during second_opclass WITH &&)",
+            dialect=postgresql.dialect(),
+        )
+
+    def test_exclude_constraint_expression(self):
+        m = MetaData()
+        tbl = Table("foo", m, Column("x", Integer), Column("y", Integer))
+        cons = ExcludeConstraint((func.int8range(column("x"), tbl.c.y), "&&"))
+        tbl.append_constraint(cons)
+        # only the first col is considered. see #9233
+        eq_(cons.columns.keys(), ["x"])
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            "ALTER TABLE foo ADD EXCLUDE USING gist "
+            "(int8range(x, y) WITH &&)",
+            dialect=postgresql.dialect(),
+        )
+
+    def test_exclude_constraint_literal_binds(self):
+        m = MetaData()
+        tbl = Table("foo", m, Column("x", Integer), Column("y", Integer))
+        cons = ExcludeConstraint(
+            (func.power(tbl.c.x, 42), "="),
+            (func.int8range(column("x"), "y"), "&&"),
+        )
+        tbl.append_constraint(cons)
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            "ALTER TABLE foo ADD EXCLUDE USING gist "
+            "(power(x, 42) WITH =, int8range(x, 'y') WITH &&)",
             dialect=postgresql.dialect(),
         )
 
@@ -1911,7 +2084,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         # default dialect does not, as DBAPIs may be doing this for us
         self.assert_compile(
             t.update().values({t.c.data[2:5]: [2, 3, 4]}),
-            "UPDATE t SET data[%s:%s]=" "%s",
+            "UPDATE t SET data[%s:%s]=%s",
             checkparams={"param_1": [2, 3, 4], "data_2": 5, "data_1": 2},
             dialect=PGDialect(paramstyle="format"),
         )
@@ -1967,7 +2140,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         tbl3 = Table("testtbl3", m, Column("id", Integer), schema="testschema")
         stmt = tbl3.select().with_hint(tbl3, "ONLY", "postgresql")
         expected = (
-            "SELECT testschema.testtbl3.id FROM " "ONLY testschema.testtbl3"
+            "SELECT testschema.testtbl3.id FROM ONLY testschema.testtbl3"
         )
         self.assert_compile(stmt, expected)
 
@@ -2032,26 +2205,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_pg_array_agg_implicit_pg_array(self):
-
         expr = pg_array_agg(column("data", Integer))
         assert isinstance(expr.type, PG_ARRAY)
         is_(expr.type.item_type._type_affinity, Integer)
 
     def test_pg_array_agg_uses_base_array(self):
-
         expr = pg_array_agg(column("data", sqltypes.ARRAY(Integer)))
         assert isinstance(expr.type, sqltypes.ARRAY)
         assert not isinstance(expr.type, PG_ARRAY)
         is_(expr.type.item_type._type_affinity, Integer)
 
     def test_pg_array_agg_uses_pg_array(self):
-
         expr = pg_array_agg(column("data", PG_ARRAY(Integer)))
         assert isinstance(expr.type, PG_ARRAY)
         is_(expr.type.item_type._type_affinity, Integer)
 
     def test_pg_array_agg_explicit_base_array(self):
-
         expr = pg_array_agg(
             column("data", sqltypes.ARRAY(Integer)),
             type_=sqltypes.ARRAY(Integer),
@@ -2061,7 +2230,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         is_(expr.type.item_type._type_affinity, Integer)
 
     def test_pg_array_agg_explicit_pg_array(self):
-
         expr = pg_array_agg(
             column("data", sqltypes.ARRAY(Integer)), type_=PG_ARRAY(Integer)
         )
@@ -2404,7 +2572,24 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "AS jsonb_path_exists_1 FROM data",
         )
 
-    def test_custom_object_hook(self):
+    @testing.combinations(
+        (lambda col: col["foo"] + " ", "(x -> %(x_1)s) || %(param_1)s"),
+        (
+            lambda col: col["foo"] + " " + col["bar"],
+            "(x -> %(x_1)s) || %(param_1)s || (x -> %(x_2)s)",
+        ),
+        argnames="expr, expected",
+    )
+    @testing.combinations((JSON(),), (JSONB(),), argnames="type_")
+    def test_eager_grouping_flag(self, expr, expected, type_):
+        """test #10479"""
+        col = Column("x", type_)
+
+        expr = testing.resolve_lambda(expr, col=col)
+
+        self.assert_compile(expr, expected)
+
+    def test_range_custom_object_hook(self):
         # See issue #8884
         from datetime import date
 
@@ -2422,6 +2607,62 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             stmt,
             "SELECT sum(usages.amount) AS sum_1 FROM usages "
             "WHERE usages.date <@ %(date_1)s::DATERANGE",
+        )
+
+    def test_multirange_custom_object_hook(self):
+        from datetime import date
+
+        usages = table(
+            "usages",
+            column("id", Integer),
+            column("date", Date),
+            column("amount", Integer),
+        )
+        period = MultiRange(
+            [
+                Range(date(2022, 1, 1), (2023, 1, 1)),
+                Range(date(2024, 1, 1), (2025, 1, 1)),
+            ]
+        )
+        stmt = select(func.sum(usages.c.amount)).where(
+            usages.c.date.op("<@")(period)
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT sum(usages.amount) AS sum_1 FROM usages "
+            "WHERE usages.date <@ %(date_1)s::DATEMULTIRANGE",
+        )
+
+    def test_bitwise_xor(self):
+        c1 = column("c1", Integer)
+        c2 = column("c2", Integer)
+        self.assert_compile(
+            select(c1.bitwise_xor(c2)),
+            "SELECT c1 # c2 AS anon_1",
+        )
+
+    def test_ilike_escaping(self):
+        dialect = postgresql.dialect()
+        self.assert_compile(
+            sql.column("foo").ilike("bar", escape="\\"),
+            "foo ILIKE %(foo_1)s ESCAPE '\\\\'",
+        )
+
+        self.assert_compile(
+            sql.column("foo").ilike("bar", escape=""),
+            "foo ILIKE %(foo_1)s ESCAPE ''",
+            dialect=dialect,
+        )
+
+        self.assert_compile(
+            sql.column("foo").notilike("bar", escape="\\"),
+            "foo NOT ILIKE %(foo_1)s ESCAPE '\\\\'",
+        )
+
+        self.assert_compile(
+            sql.column("foo").notilike("bar", escape=""),
+            "foo NOT ILIKE %(foo_1)s ESCAPE ''",
+            dialect=dialect,
         )
 
 
@@ -2535,7 +2776,6 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
                 stmt.on_conflict_do_nothing,
                 stmt.on_conflict_do_update,
             ):
-
                 with testing.expect_raises_message(
                     exc.InvalidRequestError,
                     "This Insert construct already has an "
@@ -2566,7 +2806,6 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
         )
 
     def test_do_nothing_no_target(self):
-
         i = (
             insert(self.table1)
             .values(dict(name="foo"))
@@ -2579,7 +2818,6 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
         )
 
     def test_do_nothing_index_elements_target(self):
-
         i = (
             insert(self.table1)
             .values(dict(name="foo"))
@@ -3015,7 +3253,6 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
 
 
 class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
-
     """Test 'DISTINCT' with SQL expression language and orm.Query with
     an emphasis on PG's 'DISTINCT ON' syntax.
 
@@ -3084,7 +3321,7 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
         sess = Session()
         self.assert_compile(
             sess.query(self.table).distinct(),
-            "SELECT DISTINCT t.id AS t_id, t.a AS t_a, " "t.b AS t_b FROM t",
+            "SELECT DISTINCT t.id AS t_id, t.a AS t_a, t.b AS t_b FROM t",
         )
 
     def test_query_on_columns(self):
@@ -3139,7 +3376,6 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_distinct_on_subquery_anon(self):
-
         sq = select(self.table).alias()
         q = (
             select(self.table.c.id, sq.c.id)
@@ -3170,7 +3406,6 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
 
 
 class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
-
     """Tests for full text searching"""
 
     __dialect__ = postgresql.dialect()
@@ -3499,21 +3734,14 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_regexp_match_flags(self):
         self.assert_compile(
             self.table.c.myid.regexp_match("pattern", flags="ig"),
-            "mytable.myid ~ CONCAT('(?', %(myid_1)s, ')', %(myid_2)s)",
-            checkparams={"myid_2": "pattern", "myid_1": "ig"},
+            "mytable.myid ~ CONCAT('(?', 'ig', ')', %(myid_1)s)",
+            checkparams={"myid_1": "pattern"},
         )
 
     def test_regexp_match_flags_ignorecase(self):
         self.assert_compile(
             self.table.c.myid.regexp_match("pattern", flags="i"),
             "mytable.myid ~* %(myid_1)s",
-            checkparams={"myid_1": "pattern"},
-        )
-
-    def test_regexp_match_flags_col(self):
-        self.assert_compile(
-            self.table.c.myid.regexp_match("pattern", flags=self.table.c.name),
-            "mytable.myid ~ CONCAT('(?', mytable.name, ')', %(myid_1)s)",
             checkparams={"myid_1": "pattern"},
         )
 
@@ -3541,23 +3769,14 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_not_regexp_match_flags(self):
         self.assert_compile(
             ~self.table.c.myid.regexp_match("pattern", flags="ig"),
-            "mytable.myid !~ CONCAT('(?', %(myid_1)s, ')', %(myid_2)s)",
-            checkparams={"myid_2": "pattern", "myid_1": "ig"},
+            "mytable.myid !~ CONCAT('(?', 'ig', ')', %(myid_1)s)",
+            checkparams={"myid_1": "pattern"},
         )
 
     def test_not_regexp_match_flags_ignorecase(self):
         self.assert_compile(
             ~self.table.c.myid.regexp_match("pattern", flags="i"),
             "mytable.myid !~* %(myid_1)s",
-            checkparams={"myid_1": "pattern"},
-        )
-
-    def test_not_regexp_match_flags_col(self):
-        self.assert_compile(
-            ~self.table.c.myid.regexp_match(
-                "pattern", flags=self.table.c.name
-            ),
-            "mytable.myid !~ CONCAT('(?', mytable.name, ')', %(myid_1)s)",
             checkparams={"myid_1": "pattern"},
         )
 
@@ -3594,22 +3813,23 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             self.table.c.myid.regexp_replace(
                 "pattern", "replacement", flags="ig"
             ),
-            "REGEXP_REPLACE(mytable.myid, %(myid_1)s, %(myid_2)s, %(myid_3)s)",
+            "REGEXP_REPLACE(mytable.myid, %(myid_1)s, %(myid_2)s, 'ig')",
             checkparams={
                 "myid_1": "pattern",
                 "myid_2": "replacement",
-                "myid_3": "ig",
             },
         )
 
-    def test_regexp_replace_flags_col(self):
+    def test_regexp_replace_flags_safestring(self):
         self.assert_compile(
             self.table.c.myid.regexp_replace(
-                "pattern", "replacement", flags=self.table.c.name
+                "pattern", "replacement", flags="i'g"
             ),
-            "REGEXP_REPLACE(mytable.myid, %(myid_1)s,"
-            " %(myid_2)s, mytable.name)",
-            checkparams={"myid_1": "pattern", "myid_2": "replacement"},
+            "REGEXP_REPLACE(mytable.myid, %(myid_1)s, %(myid_2)s, 'i''g')",
+            checkparams={
+                "myid_1": "pattern",
+                "myid_2": "replacement",
+            },
         )
 
     @testing.combinations(

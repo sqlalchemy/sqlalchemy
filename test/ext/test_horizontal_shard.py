@@ -5,6 +5,7 @@ from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import delete
 from sqlalchemy import event
+from sqlalchemy import exc
 from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import inspect
@@ -35,6 +36,7 @@ from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import provision
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.engines import testing_reaper
 
@@ -196,7 +198,7 @@ class ShardTest:
         toronto = WeatherLocation("North America", "Toronto")
         london = WeatherLocation("Europe", "London")
         dublin = WeatherLocation("Europe", "Dublin")
-        brasilia = WeatherLocation("South America", "Brasila")
+        brasilia = WeatherLocation("South America", "Brasilia")
         quito = WeatherLocation("South America", "Quito")
         tokyo.reports.append(Report(80.0, id_=1))
         newyork.reports.append(Report(75, id_=1))
@@ -225,6 +227,21 @@ class ShardTest:
 
         t2 = sess.get(WeatherLocation, 1)
         is_(t2, tokyo)
+
+    def test_get_one(self):
+        sess = self._fixture_data()
+        brasilia = sess.get_one(WeatherLocation, 6)
+        eq_(brasilia.id, 6)
+        eq_(brasilia.city, "Brasilia")
+
+        toronto = sess.get_one(WeatherLocation, 3)
+        eq_(toronto.id, 3)
+        eq_(toronto.city, "Toronto")
+
+        with expect_raises_message(
+            exc.NoResultFound, "No row was found when one was required"
+        ):
+            sess.get_one(WeatherLocation, 25)
 
     def test_get_explicit_shard(self):
         sess = self._fixture_data()
@@ -662,7 +679,6 @@ class DistinctEngineShardTest(ShardTest, fixtures.MappedTest):
         return self.dbs
 
     def teardown_test(self):
-
         testing_reaper.checkin_all()
         for i in range(1, 5):
             os.remove("shard%d_%s.db" % (i, provision.FOLLOWER_IDENT))
@@ -1112,3 +1128,88 @@ class LazyLoadIdentityKeyTest(fixtures.DeclarativeMappedTest):
 
         # second lazy load uses correct state
         eq_(book2.pages[0].title, "book 2 page 1")
+
+
+class UseAssocProxForM2MTest(fixtures.DeclarativeMappedTest):
+    """illustrate the test case for #4376"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        from sqlalchemy.ext.associationproxy import association_proxy
+
+        class Book(Base):
+            __tablename__ = "book"
+            id = Column(Integer, primary_key=True)
+            authors = association_proxy(
+                "book_authors",
+                "author",
+                creator=lambda author: BookAuthor(author=author),
+            )
+            book_authors = relationship("BookAuthor", back_populates="book")
+
+        class BookAuthor(Base):
+            __tablename__ = "book_author"
+            authorid = Column(ForeignKey("author.id"), primary_key=True)
+            bookid = Column(ForeignKey("book.id"), primary_key=True)
+
+            book = relationship("Book", back_populates="book_authors")
+            author = relationship("Author", back_populates="book_authors")
+
+        class Author(Base):
+            __tablename__ = "author"
+            id = Column(Integer, primary_key=True)
+
+            books = association_proxy(
+                "book_authors",
+                "book",
+                creator=lambda book: BookAuthor(book=book),
+            )
+
+            book_authors = relationship(BookAuthor, back_populates="author")
+
+    def test_update_many_to_many_sharded(self):
+        session = ShardedSession(
+            shards={"test": testing.db},
+            shard_chooser=self.shard_chooser,
+            identity_chooser=lambda *args: None,
+            execute_chooser=lambda *args: ["test"],
+        )
+
+        Book, Author = self.classes("Book", "Author")
+        book = Book()
+        book.authors.append(Author())
+
+        session.add(book)
+        session.commit()
+
+    def test_update_many_to_many_sharded__save_junction_table_directly(self):
+        session = ShardedSession(
+            shards={"test": testing.db},
+            shard_chooser=self.shard_chooser,
+            identity_chooser=lambda *args: None,
+            execute_chooser=lambda *args: ["test"],
+        )
+
+        Book, Author, BookAuthor = self.classes("Book", "Author", "BookAuthor")
+
+        book = Book()
+        author = Author()
+
+        session.add(book)
+        session.add(author)
+        session.commit()
+
+        book_author = BookAuthor()
+        book_author.bookid = book.id
+        book_author.authorid = author.id
+
+        session.add(book_author)
+        session.commit()
+
+    def shard_chooser(self, mapper, instance, clause=None):
+        if not instance and not clause:
+            raise Exception("Cannot determine shard")
+
+        return "test"

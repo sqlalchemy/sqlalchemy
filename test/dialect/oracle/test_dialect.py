@@ -36,6 +36,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing.assertions import expect_raises_message
+from sqlalchemy.testing.assertions import is_
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.testing.schema import Table
@@ -51,24 +52,26 @@ class CxOracleDialectTest(fixtures.TestBase):
             dialect._load_version(dbapi)
             return dialect.cx_oracle_ver
 
-        eq_(check("7.2"), (7, 2))
-        eq_(check("7.0.1"), (7, 0, 1))
+        eq_(check("8.2"), (8, 2))
+        eq_(check("8.0.1"), (8, 0, 1))
         eq_(check("9.0b1"), (9, 0))
 
     def test_minimum_version(self):
         with expect_raises_message(
             exc.InvalidRequestError,
-            "cx_Oracle version 7 and above are supported",
+            "cx_Oracle version 8 and above are supported",
         ):
             cx_oracle.OracleDialect_cx_oracle(dbapi=Mock(version="5.1.5"))
 
         dialect = cx_oracle.OracleDialect_cx_oracle(
-            dbapi=Mock(version="7.1.0")
+            dbapi=Mock(version="8.1.0")
         )
-        eq_(dialect.cx_oracle_ver, (7, 1, 0))
+        eq_(dialect.cx_oracle_ver, (8, 1, 0))
 
 
 class OracleDbDialectTest(fixtures.TestBase):
+    __only_on__ = "oracle+oracledb"
+
     def test_oracledb_version_parse(self):
         dialect = oracledb.OracleDialect_oracledb()
 
@@ -84,22 +87,41 @@ class OracleDbDialectTest(fixtures.TestBase):
     def test_minimum_version(self):
         with expect_raises_message(
             exc.InvalidRequestError,
-            "oracledb version 1 and above are supported",
+            r"oracledb version \(1,\) and above are supported",
         ):
             oracledb.OracleDialect_oracledb(dbapi=Mock(version="0.1.5"))
 
         dialect = oracledb.OracleDialect_oracledb(dbapi=Mock(version="7.1.0"))
         eq_(dialect.oracledb_ver, (7, 1, 0))
 
+    def test_get_dialect(self):
+        u = url.URL.create("oracle://")
+        d = oracledb.OracleDialect_oracledb.get_dialect_cls(u)
+        is_(d, oracledb.OracleDialect_oracledb)
+        d = oracledb.OracleDialect_oracledb.get_async_dialect_cls(u)
+        is_(d, oracledb.OracleDialectAsync_oracledb)
+        d = oracledb.OracleDialectAsync_oracledb.get_dialect_cls(u)
+        is_(d, oracledb.OracleDialectAsync_oracledb)
+        d = oracledb.OracleDialectAsync_oracledb.get_dialect_cls(u)
+        is_(d, oracledb.OracleDialectAsync_oracledb)
+
+    def test_async_version(self):
+        e = create_engine("oracle+oracledb_async://")
+        is_true(isinstance(e.dialect, oracledb.OracleDialectAsync_oracledb))
+
 
 class OracledbMode(fixtures.TestBase):
     __backend__ = True
     __only_on__ = "oracle+oracledb"
 
-    def _run_in_process(self, fn):
+    def _run_in_process(self, fn, fn_kw=None):
+        if config.db.dialect.is_async:
+            config.skip_test("thick mode unsupported in async mode")
         ctx = get_context("spawn")
         queue = ctx.Queue()
-        process = ctx.Process(target=fn, args=(config.db_url, queue))
+        process = ctx.Process(
+            target=fn, args=(config.db_url, queue), kwargs=fn_kw or {}
+        )
         try:
             process.start()
             process.join(10)
@@ -108,19 +130,24 @@ class OracledbMode(fixtures.TestBase):
         finally:
             process.kill()
 
-    def test_thin_mode(self):
+    @testing.combinations({}, {"thick_mode": None}, {"thick_mode": False})
+    def test_thin_mode(self, options):
         from ._oracledb_mode import run_thin_mode
 
-        mode, is_thin = self._run_in_process(run_thin_mode)
+        mode, is_thin = self._run_in_process(run_thin_mode, options)
         is_true(is_thin)
         is_true(mode.startswith("python-oracledb thn"))
 
-    def test_thick_mode(self):
+    @testing.combinations(True, {}, {"driver_name": "custom-driver-name"})
+    def test_thick_mode(self, value):
         from ._oracledb_mode import run_thick_mode
 
-        mode, is_thin = self._run_in_process(run_thick_mode)
+        mode, is_thin = self._run_in_process(
+            run_thick_mode, {"thick_mode": value}
+        )
         is_false(is_thin)
-        eq_(mode.strip(), "custom-driver-name")
+        if isinstance(value, dict) and value.get("driver_name"):
+            eq_(mode.strip(), "custom-driver-name")
 
 
 class DialectWBackendTest(fixtures.TestBase):
@@ -166,7 +193,6 @@ class DialectWBackendTest(fixtures.TestBase):
     )
     @testing.only_on(["oracle+cx_oracle", "oracle+oracledb"])
     def test_is_disconnect(self, message, code, expected):
-
         dialect = testing.db.dialect
 
         exception_obj = dialect.dbapi.InterfaceError()
@@ -196,6 +222,7 @@ class DialectWBackendTest(fixtures.TestBase):
                 testing.db.dialect.get_isolation_level(dbapi_conn),
                 "READ COMMITTED",
             )
+            conn.close()
 
     def test_graceful_failure_isolation_level_not_available(self):
         engine = engines.testing_engine()
@@ -260,7 +287,6 @@ class DefaultSchemaNameTest(fixtures.TestBase):
         eng = engines.testing_engine()
 
         with eng.connect() as conn:
-
             trans = conn.begin()
             eq_(
                 testing.db.dialect._get_default_schema_name(conn),
@@ -318,7 +344,7 @@ class EncodingErrorsTest(fixtures.TestBase):
             FIXED_CHAR=self.cx_Oracle_FIXED_CHAR,
             CLOB=self.cx_Oracle_CLOB,
             NCLOB=self.cx_Oracle_NCLOB,
-            version="7.0.1",
+            version="8.0.1",
             __future__=mock.Mock(),
         )
 
@@ -352,7 +378,6 @@ class EncodingErrorsTest(fixtures.TestBase):
         utf8_w_errors = data.encode("utf-16")
 
         if has_errorhandler:
-
             eq_(
                 outconverter(utf8_w_errors),
                 data.encode("utf-16").decode("utf-8", "ignore"),
@@ -507,9 +532,7 @@ end;
 
     def test_out_params(self, connection):
         result = connection.execute(
-            text(
-                "begin foo(:x_in, :x_out, :y_out, " ":z_out); end;"
-            ).bindparams(
+            text("begin foo(:x_in, :x_out, :y_out, :z_out); end;").bindparams(
                 bindparam("x_in", Float),
                 outparam("x_out", Integer),
                 outparam("y_out", Float),
@@ -544,7 +567,6 @@ end;
 
 
 class QuotedBindRoundTripTest(fixtures.TestBase):
-
     __only_on__ = "oracle"
     __backend__ = True
 
@@ -832,7 +854,6 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class ExecuteTest(fixtures.TestBase):
-
     __only_on__ = "oracle"
     __backend__ = True
 
@@ -840,7 +861,7 @@ class ExecuteTest(fixtures.TestBase):
         with testing.db.connect() as conn:
             eq_(
                 conn.exec_driver_sql(
-                    "/*+ this is a comment */ SELECT 1 FROM " "DUAL"
+                    "/*+ this is a comment */ SELECT 1 FROM DUAL"
                 ).fetchall(),
                 [(1,)],
             )

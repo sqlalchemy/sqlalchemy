@@ -583,6 +583,73 @@ Arithmetic Operators
 
   ..
 
+.. _operators_bitwise:
+
+Bitwise Operators
+^^^^^^^^^^^^^^^^^
+
+Bitwise operator functions provide uniform access to bitwise operators across
+different backends, which are expected to operate on compatible
+values such as integers and bit-strings (e.g. PostgreSQL
+:class:`_postgresql.BIT` and similar). Note that these are **not** general
+boolean operators.
+
+.. versionadded:: 2.0.2 Added dedicated operators for bitwise operations.
+
+* :meth:`_sql.ColumnOperators.bitwise_not`, :func:`_sql.bitwise_not`.
+  Available as a column-level method, producing a bitwise NOT clause against a
+  parent object::
+
+    >>> print(column("x").bitwise_not())
+    ~x
+
+  This operator is also available as a column-expression-level method, applying
+  bitwise NOT to an individual column expression::
+
+    >>> from sqlalchemy import bitwise_not
+    >>> print(bitwise_not(column("x")))
+    ~x
+
+  ..
+
+* :meth:`_sql.ColumnOperators.bitwise_and` produces bitwise AND::
+
+    >>> print(column("x").bitwise_and(5))
+    x & :x_1
+
+  ..
+
+* :meth:`_sql.ColumnOperators.bitwise_or` produces bitwise OR::
+
+    >>> print(column("x").bitwise_or(5))
+    x | :x_1
+
+  ..
+
+* :meth:`_sql.ColumnOperators.bitwise_xor` produces bitwise XOR::
+
+    >>> print(column("x").bitwise_xor(5))
+    x ^ :x_1
+
+  For PostgreSQL dialects, "#" is used to represent bitwise XOR; this emits
+  automatically when using one of these backends::
+
+    >>> from sqlalchemy.dialects import postgresql
+    >>> print(column("x").bitwise_xor(5).compile(dialect=postgresql.dialect()))
+    x # %(x_1)s
+
+  ..
+
+* :meth:`_sql.ColumnOperators.bitwise_rshift`, :meth:`_sql.ColumnOperators.bitwise_lshift`
+  produce bitwise shift operators::
+
+    >>> print(column("x").bitwise_rshift(5))
+    x >> :x_1
+    >>> print(column("x").bitwise_lshift(5))
+    x << :x_1
+
+  ..
+
 
 Using Conjunctions and Negations
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

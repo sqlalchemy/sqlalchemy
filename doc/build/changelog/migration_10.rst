@@ -73,7 +73,6 @@ once, a query as a pre-compiled unit begins to be feasible::
 
 
     def search_for_user(session, username, email=None):
-
         baked_query = bakery(lambda session: session.query(User))
         baked_query += lambda q: q.filter(User.name == bindparam("username"))
 

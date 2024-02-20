@@ -16,8 +16,9 @@ How do I pool database connections?   Are my connections pooled?
 ----------------------------------------------------------------
 
 SQLAlchemy performs application-level connection pooling automatically
-in most cases.  With the exception of SQLite, a :class:`_engine.Engine` object
-refers to a :class:`.QueuePool` as a source of connectivity.
+in most cases.  For all included dialects (except SQLite when using a 
+"memory" database), a :class:`_engine.Engine` object refers to a 
+:class:`.QueuePool` as a source of connectivity.
 
 For more detail, see :ref:`engines_toplevel` and :ref:`pooling_toplevel`.
 
@@ -305,7 +306,6 @@ using the following proof of concept script.  Once run, it will emit a
     from sqlalchemy import select
 
     if __name__ == "__main__":
-
         engine = create_engine("mysql+mysqldb://scott:tiger@localhost/test", echo_pool=True)
 
         def do_a_thing(engine):
@@ -392,13 +392,12 @@ a COMMIT as any connection is returned to the pool::
 I am using multiple connections with a SQLite database (typically to test transaction operation), and my test program is not working!
 ----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-If using a SQLite ``:memory:`` database, or a version of SQLAlchemy prior
-to version 0.7, the default connection pool is the :class:`.SingletonThreadPool`,
-which maintains exactly one SQLite connection per thread.  So two
-connections in use in the same thread will actually be the same SQLite
-connection.   Make sure you're not using a :memory: database and
-use :class:`.NullPool`, which is the default for non-memory databases in
-current SQLAlchemy versions.
+If using a SQLite ``:memory:`` database the default connection pool is the 
+:class:`.SingletonThreadPool`, which maintains exactly one SQLite connection
+per thread.  So two connections in use in the same thread will actually be 
+the same SQLite connection.  Make sure you're not using a :memory: database
+so that the engine will use :class:`.QueuePool` (the default for non-memory 
+databases in current SQLAlchemy versions).
 
 .. seealso::
 

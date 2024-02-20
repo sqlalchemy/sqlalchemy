@@ -1,5 +1,5 @@
 # orm/dependency.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -167,9 +167,11 @@ class DependencyProcessor:
             sum_ = state.manager[self.key].impl.get_all_pending(
                 state,
                 state.dict,
-                self._passive_delete_flag
-                if isdelete
-                else attributes.PASSIVE_NO_INITIALIZE,
+                (
+                    self._passive_delete_flag
+                    if isdelete
+                    else attributes.PASSIVE_NO_INITIALIZE
+                ),
             )
 
             if not sum_:
@@ -231,7 +233,10 @@ class DependencyProcessor:
 
     def prop_has_changes(self, uowcommit, states, isdelete):
         if not isdelete or self.passive_deletes:
-            passive = attributes.PASSIVE_NO_INITIALIZE
+            passive = (
+                attributes.PASSIVE_NO_INITIALIZE
+                | attributes.INCLUDE_PENDING_MUTATIONS
+            )
         elif self.direction is MANYTOONE:
             # here, we were hoping to optimize having to fetch many-to-one
             # for history and ignore it, if there's no further cascades
@@ -240,7 +245,9 @@ class DependencyProcessor:
             # test_cascade etc. will still fail.
             passive = attributes.PASSIVE_NO_FETCH_RELATED
         else:
-            passive = attributes.PASSIVE_OFF
+            passive = (
+                attributes.PASSIVE_OFF | attributes.INCLUDE_PENDING_MUTATIONS
+            )
 
         for s in states:
             # TODO: add a high speed method
@@ -377,9 +384,7 @@ class OneToManyDP(DependencyProcessor):
         isdelete,
         childisdelete,
     ):
-
         if self.post_update:
-
             child_post_updates = unitofwork.PostUpdateAll(
                 uow, self.mapper.primary_base_mapper, False
             )
@@ -472,9 +477,15 @@ class OneToManyDP(DependencyProcessor):
             pks_changed = self._pks_changed(uowcommit, state)
 
             if not pks_changed or self.passive_updates:
-                passive = attributes.PASSIVE_NO_INITIALIZE
+                passive = (
+                    attributes.PASSIVE_NO_INITIALIZE
+                    | attributes.INCLUDE_PENDING_MUTATIONS
+                )
             else:
-                passive = attributes.PASSIVE_OFF
+                passive = (
+                    attributes.PASSIVE_OFF
+                    | attributes.INCLUDE_PENDING_MUTATIONS
+                )
 
             history = uowcommit.get_attribute_history(state, self.key, passive)
             if history:
@@ -645,7 +656,6 @@ class ManyToOneDP(DependencyProcessor):
         after_save,
         before_delete,
     ):
-
         if self.post_update:
             parent_post_updates = unitofwork.PostUpdateAll(
                 uow, self.parent.primary_base_mapper, False
@@ -686,9 +696,7 @@ class ManyToOneDP(DependencyProcessor):
         isdelete,
         childisdelete,
     ):
-
         if self.post_update:
-
             if not isdelete:
                 parent_post_updates = unitofwork.PostUpdateAll(
                     uow, self.parent.primary_base_mapper, False
@@ -784,7 +792,6 @@ class ManyToOneDP(DependencyProcessor):
             and not self.cascade.delete_orphan
             and not self.passive_deletes == "all"
         ):
-
             # post_update means we have to update our
             # row to not reference the child object
             # before we can DELETE the row
@@ -986,7 +993,6 @@ class ManyToManyDP(DependencyProcessor):
         after_save,
         before_delete,
     ):
-
         uow.dependencies.update(
             [
                 (parent_saves, after_save),
@@ -1128,9 +1134,15 @@ class ManyToManyDP(DependencyProcessor):
                 uowcommit, state
             )
             if need_cascade_pks:
-                passive = attributes.PASSIVE_OFF
+                passive = (
+                    attributes.PASSIVE_OFF
+                    | attributes.INCLUDE_PENDING_MUTATIONS
+                )
             else:
-                passive = attributes.PASSIVE_NO_INITIALIZE
+                passive = (
+                    attributes.PASSIVE_NO_INITIALIZE
+                    | attributes.INCLUDE_PENDING_MUTATIONS
+                )
             history = uowcommit.get_attribute_history(state, self.key, passive)
             if history:
                 for child in history.added:
@@ -1160,7 +1172,6 @@ class ManyToManyDP(DependencyProcessor):
                 tmp.update((c, state) for c in history.added + history.deleted)
 
                 if need_cascade_pks:
-
                     for child in history.unchanged:
                         associationrow = {}
                         sync.update(
@@ -1251,7 +1262,6 @@ class ManyToManyDP(DependencyProcessor):
     def _synchronize(
         self, state, child, associationrow, clearkeys, uowcommit, operation
     ):
-
         # this checks for None if uselist=True
         self._verify_canload(child)
 

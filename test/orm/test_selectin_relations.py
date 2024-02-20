@@ -29,7 +29,7 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import assert_engine
 from sqlalchemy.testing.assertsql import CompiledSQL
-from sqlalchemy.testing.fixtures import ComparableEntity
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -164,7 +164,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         for i in range(3):
 
             def go():
-
                 sess = fixture_session()
 
                 u = aliased(User)
@@ -202,7 +201,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.assert_sql_count(testing.db, go, 2)
 
     def test_from_aliased_w_cache_three(self):
-
         User, Dingaling, Address = self.user_dingaling_fixture()
 
         for i in range(3):
@@ -860,7 +858,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         )
 
     def test_double_w_ac_against_subquery(self):
-
         (
             users,
             orders,
@@ -930,7 +927,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self._run_double_test()
 
     def test_double_w_ac(self):
-
         (
             users,
             orders,
@@ -1716,10 +1712,10 @@ class OrderBySecondaryTest(fixtures.MappedTest):
     def test_ordering(self):
         a, m2m, b = (self.tables.a, self.tables.m2m, self.tables.b)
 
-        class A(fixtures.ComparableEntity):
+        class A(ComparableEntity):
             pass
 
-        class B(fixtures.ComparableEntity):
+        class B(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -1833,7 +1829,6 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
 
     @classmethod
     def insert_data(cls, connection):
-
         e1 = Engineer(primary_language="java")
         e2 = Engineer(primary_language="c++")
         e1.paperwork = [
@@ -2168,7 +2163,6 @@ class HeterogeneousSubtypesTest(fixtures.DeclarativeMappedTest):
         sess.commit()
 
     def test_one_to_many(self):
-
         Company, Programmer, Manager, GolfSwing, Language = self.classes(
             "Company", "Programmer", "Manager", "GolfSwing", "Language"
         )
@@ -2245,14 +2239,14 @@ class TupleTest(fixtures.DeclarativeMappedTest):
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class A(fixtures.ComparableEntity, Base):
+        class A(ComparableEntity, Base):
             __tablename__ = "a"
             id1 = Column(Integer, primary_key=True)
             id2 = Column(Integer, primary_key=True)
 
             bs = relationship("B", order_by="B.id", back_populates="a")
 
-        class B(fixtures.ComparableEntity, Base):
+        class B(ComparableEntity, Base):
             __tablename__ = "b"
             id = Column(Integer, primary_key=True)
             a_id1 = Column()
@@ -2361,12 +2355,12 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class A(fixtures.ComparableEntity, Base):
+        class A(ComparableEntity, Base):
             __tablename__ = "a"
             id = Column(Integer, primary_key=True)
             bs = relationship("B", order_by="B.id", back_populates="a")
 
-        class B(fixtures.ComparableEntity, Base):
+        class B(ComparableEntity, Base):
             __tablename__ = "b"
             id = Column(Integer, primary_key=True)
             a_id = Column(ForeignKey("a.id"))
@@ -2449,7 +2443,6 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
                 .offset(offset)
                 .options(selectinload(A.bs))
             ):
-
                 # this part fails with joined eager loading
                 # (if you enable joined eager w/ yield_per)
                 eq_(a.bs, [B(id=(a.id * 6) + j) for j in range(1, 6)])
@@ -2962,7 +2955,7 @@ class SelfRefInheritanceAliasedTest(
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class Foo(fixtures.ComparableEntity, Base):
+        class Foo(ComparableEntity, Base):
             __tablename__ = "foo"
             id = Column(Integer, primary_key=True)
             type = Column(String(50))
@@ -3210,14 +3203,14 @@ class MissingForeignTest(
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class A(fixtures.ComparableEntity, Base):
+        class A(ComparableEntity, Base):
             __tablename__ = "a"
             id = Column(Integer, primary_key=True)
             b_id = Column(Integer)
             b = relationship("B", primaryjoin="foreign(A.b_id) == B.id")
             q = Column(Integer)
 
-        class B(fixtures.ComparableEntity, Base):
+        class B(ComparableEntity, Base):
             __tablename__ = "b"
             id = Column(Integer, primary_key=True)
             x = Column(Integer)
@@ -3263,7 +3256,7 @@ class M2OWDegradeTest(
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class A(fixtures.ComparableEntity, Base):
+        class A(ComparableEntity, Base):
             __tablename__ = "a"
             id = Column(Integer, primary_key=True)
             b_id = Column(ForeignKey("b.id"))
@@ -3271,7 +3264,7 @@ class M2OWDegradeTest(
             b_no_omit_join = relationship("B", omit_join=False, overlaps="b")
             q = Column(Integer)
 
-        class B(fixtures.ComparableEntity, Base):
+        class B(ComparableEntity, Base):
             __tablename__ = "b"
             id = Column(Integer, primary_key=True)
             x = Column(Integer)
@@ -3436,7 +3429,7 @@ class M2OWDegradeTest(
             testing.db,
             q.all,
             CompiledSQL(
-                "SELECT a.id AS a_id, a.q AS a_q " "FROM a ORDER BY a.id", [{}]
+                "SELECT a.id AS a_id, a.q AS a_q FROM a ORDER BY a.id", [{}]
             ),
             # in the very unlikely case that the the FK col on parent is
             # deferred, we degrade to the JOIN version so that we don't need to
@@ -3701,7 +3694,6 @@ class TestCompositePlusNonComposite(fixtures.DeclarativeMappedTest):
         s.commit()
 
     def test_load_composite_then_non_composite(self):
-
         A, B, A2, B2 = self.classes("A", "B", "A2", "B2")
 
         s = fixture_session()

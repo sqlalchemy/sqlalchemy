@@ -30,6 +30,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import not_in
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -63,10 +64,10 @@ class CascadeArgTest(fixtures.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        class User(cls.Basic):
+        class User(cls.Comparable):
             pass
 
-        class Address(cls.Basic):
+        class Address(cls.Comparable):
             pass
 
     def test_delete_with_passive_deletes_all(self):
@@ -171,6 +172,78 @@ class CascadeArgTest(fixtures.MappedTest):
         rel = relationship(Address)
         rel.cascade = "save-update, merge, expunge"
         eq_(rel.cascade, {"save-update", "merge", "expunge"})
+
+
+class CasadeWithRaiseloadTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "users",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("name", String(30), nullable=False),
+        )
+        Table(
+            "addresses",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("user_id", Integer, ForeignKey("users.id")),
+            Column("email_address", String(50), nullable=False),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class User(cls.Comparable):
+            pass
+
+        class Address(cls.Comparable):
+            pass
+
+    def test_delete_skips_lazy_raise(self):
+        User, Address = self.classes.User, self.classes.Address
+        users, addresses = self.tables.users, self.tables.addresses
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    Address, cascade="all, delete-orphan", lazy="raise"
+                )
+            },
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
+
+        self.mapper_registry.metadata.create_all(testing.db)
+
+        sess = fixture_session()
+        u1 = User(
+            name="u1",
+            addresses=[
+                Address(email_address="e1"),
+                Address(email_address="e2"),
+            ],
+        )
+        sess.add(u1)
+        sess.commit()
+
+        eq_(
+            sess.scalars(
+                select(Address).order_by(Address.email_address)
+            ).all(),
+            [Address(email_address="e1"), Address(email_address="e2")],
+        )
+
+        sess.close()
+
+        sess.delete(u1)
+        sess.commit()
+
+        eq_(sess.scalars(select(Address)).all(), [])
 
 
 class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
@@ -368,7 +441,6 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
         User, Order = self.classes.User, self.classes.Order
 
         with fixture_session() as sess:
-
             u = User(name="jack")
             sess.add(u)
             sess.commit()
@@ -385,7 +457,6 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
         User, Order = self.classes.User, self.classes.Order
 
         with fixture_session() as sess:
-
             u = User(name="jack")
 
             o1 = Order()
@@ -1077,7 +1148,6 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         o2m=False,
         m2o=False,
     ):
-
         Address, addresses, users, User = (
             self.classes.Address,
             self.tables.addresses,
@@ -1132,7 +1202,6 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         fwd=False,
         bkd=False,
     ):
-
         keywords, items, item_keywords, Keyword, Item = (
             self.tables.keywords,
             self.tables.items,
@@ -1397,6 +1466,42 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
             sess.expunge(u1)
             assert u1 not in sess
             assert a1 in sess
+            assert_warns_message(
+                sa_exc.SAWarning, "not in session", sess.flush
+            )
+
+    def test_m2o_backref_future_child_pending(self):
+        """test #10090"""
+
+        User, Address = self.classes.User, self.classes.Address
+
+        self._one_to_many_fixture(o2m=True, m2o=True, m2o_cascade=False)
+        with Session(testing.db, future=True) as sess:
+            u1 = User(name="u1")
+            sess.add(u1)
+            sess.flush()
+
+            a1 = Address(email_address="a1")
+            a1.user = u1
+            assert a1 not in sess
+            assert_warns_message(
+                sa_exc.SAWarning, "not in session", sess.flush
+            )
+
+    def test_m2m_backref_future_child_pending(self):
+        """test #10090"""
+
+        Item, Keyword = self.classes.Item, self.classes.Keyword
+
+        self._many_to_many_fixture(fwd=True, bkd=True)
+        with Session(testing.db, future=True) as sess:
+            i1 = Item(description="i1")
+            sess.add(i1)
+            sess.flush()
+
+            k1 = Keyword(name="k1")
+            k1.items.append(i1)
+            assert k1 not in sess
             assert_warns_message(
                 sa_exc.SAWarning, "not in session", sess.flush
             )
@@ -3188,13 +3293,13 @@ class DoubleParentO2MOrphanTest(fixtures.MappedTest):
             self.tables.accounts,
         )
 
-        class Customer(fixtures.ComparableEntity):
+        class Customer(ComparableEntity):
             pass
 
-        class Account(fixtures.ComparableEntity):
+        class Account(ComparableEntity):
             pass
 
-        class SalesRep(fixtures.ComparableEntity):
+        class SalesRep(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -3360,13 +3465,13 @@ class DoubleParentM2OOrphanTest(fixtures.MappedTest):
             self.tables.addresses,
         )
 
-        class Address(fixtures.ComparableEntity):
+        class Address(ComparableEntity):
             pass
 
-        class Home(fixtures.ComparableEntity):
+        class Home(ComparableEntity):
             pass
 
-        class Business(fixtures.ComparableEntity):
+        class Business(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(Address, addresses)
@@ -3420,13 +3525,13 @@ class DoubleParentM2OOrphanTest(fixtures.MappedTest):
             self.tables.addresses,
         )
 
-        class Address(fixtures.ComparableEntity):
+        class Address(ComparableEntity):
             pass
 
-        class Home(fixtures.ComparableEntity):
+        class Home(ComparableEntity):
             pass
 
-        class Business(fixtures.ComparableEntity):
+        class Business(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(Address, addresses)
@@ -3478,10 +3583,10 @@ class CollectionAssignmentOrphanTest(fixtures.MappedTest):
     def test_basic(self):
         table_b, table_a = self.tables.table_b, self.tables.table_a
 
-        class A(fixtures.ComparableEntity):
+        class A(ComparableEntity):
             pass
 
-        class B(fixtures.ComparableEntity):
+        class B(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -3976,10 +4081,10 @@ class PartialFlushTest(fixtures.MappedTest):
     def test_o2m_m2o(self):
         base, noninh_child = self.tables.base, self.tables.noninh_child
 
-        class Base(fixtures.ComparableEntity):
+        class Base(ComparableEntity):
             pass
 
-        class Child(fixtures.ComparableEntity):
+        class Child(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -4035,7 +4140,7 @@ class PartialFlushTest(fixtures.MappedTest):
             self.tables.parent,
         )
 
-        class Base(fixtures.ComparableEntity):
+        class Base(ComparableEntity):
             pass
 
         class Parent(Base):
@@ -4482,6 +4587,7 @@ class CollectionCascadesNoBackrefTest(fixtures.TestBase):
     @testing.combinations(
         (set, "add"),
         (list, "append"),
+        (list, "assign"),
         (attribute_keyed_dict("key"), "__setitem__"),
         (attribute_keyed_dict("key"), "setdefault"),
         (attribute_keyed_dict("key"), "update_dict"),
@@ -4508,7 +4614,9 @@ class CollectionCascadesNoBackrefTest(fixtures.TestBase):
         assert b1 not in s
         assert b3 not in s
 
-        if methname == "__setitem__":
+        if methname == "assign":
+            a1.bs = [b1, b2]
+        elif methname == "__setitem__":
             meth = getattr(a1.bs, methname)
             meth(b1.key, b1)
             meth(b2.key, b2)

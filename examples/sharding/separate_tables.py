@@ -1,5 +1,6 @@
 """Illustrates sharding using a single SQLite database, that will however
 have multiple tables using a naming convention."""
+
 from __future__ import annotations
 
 import datetime
@@ -279,7 +280,6 @@ def main():
     quito.reports.append(Report(85))
 
     with Session() as sess:
-
         sess.add_all(
             [tokyo, newyork, toronto, london, dublin, brasilia, quito]
         )

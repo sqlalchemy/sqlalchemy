@@ -3,11 +3,13 @@ record by primary key
 
 
 """
+
 import random
 
 from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import create_engine
+from sqlalchemy import Identity
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
@@ -28,7 +30,7 @@ ids = range(1, 11000)
 
 class Customer(Base):
     __tablename__ = "customer"
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, Identity(), primary_key=True)
     name = Column(String(255))
     description = Column(String(255))
     q = Column(Integer)
@@ -100,7 +102,6 @@ def test_orm_query_new_style_using_external_lambdas(n):
 
     session = Session(bind=engine)
     for id_ in random.sample(ids, n):
-
         stmt = lambdas.lambda_stmt(lambda: future_select(Customer))
         stmt += lambda s: s.where(Customer.id == id_)
         session.execute(stmt).scalar_one()
@@ -185,7 +186,6 @@ def test_core_reuse_stmt(n):
     stmt = select(Customer.__table__).where(Customer.id == bindparam("id"))
     with engine.connect() as conn:
         for id_ in random.sample(ids, n):
-
             row = conn.execute(stmt, {"id": id_}).first()
             tuple(row)
 

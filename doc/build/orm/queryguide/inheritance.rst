@@ -27,7 +27,7 @@ Writing SELECT statements for Inheritance Mappings
     :doc:`View the ORM setup for this page <_inheritance_setup>`.
 
 SELECTing from the base class vs. specific sub-classes
---------------------------------------------------------
+------------------------------------------------------
 
 A SELECT statement constructed against a class in a joined inheritance
 hierarchy will query against the table to which the class is mapped, as well as
@@ -177,11 +177,10 @@ objects that were loaded without any additional SQL statements being emitted::
    the :func:`_orm.selectinload` relationship strategy which is more
    sophisticated in this regard and can factor out the JOIN when not needed.
 
+.. _polymorphic_selectin_as_loader_option_target:
 
-.. _polymorphic_selectin_w_loader_options:
-
-Combining additional loader options with selectin_polymorphic() subclass loads
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Applying selectin_polymorphic() to an existing eager load
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ..  Setup code, not for display
 
@@ -189,17 +188,74 @@ Combining additional loader options with selectin_polymorphic() subclass loads
     >>> session.close()
     ROLLBACK
 
+In addition to :func:`_orm.selectin_polymorphic` being specified as an option
+for a top-level entity loaded by a statement, we may also indicate
+:func:`_orm.selectin_polymorphic` on the target of an existing load.
+As our :doc:`setup <_inheritance_setup>` mapping includes a parent
+``Company`` entity with a ``Company.employees`` :func:`_orm.relationship`
+referring to ``Employee`` entities, we may illustrate a SELECT against
+the ``Company`` entity that eagerly loads all ``Employee`` objects as well as
+all attributes on their subtypes as follows, by applying :meth:`.Load.selectin_polymorphic`
+as a chained loader option; in this form, the first argument is implicit from
+the previous loader option (in this case :func:`_orm.selectinload`), so
+we only indicate the additional target subclasses we wish to load::
+
+    >>> from sqlalchemy.orm import selectinload
+    >>> stmt = select(Company).options(
+    ...     selectinload(Company.employees).selectin_polymorphic([Manager, Engineer])
+    ... )
+    >>> for company in session.scalars(stmt):
+    ...     print(f"company: {company.name}")
+    ...     print(f"employees: {company.employees}")
+    {execsql}BEGIN (implicit)
+    SELECT company.id, company.name
+    FROM company
+    [...] ()
+    SELECT employee.company_id AS employee_company_id, employee.id AS employee_id,
+    employee.name AS employee_name, employee.type AS employee_type
+    FROM employee
+    WHERE employee.company_id IN (?)
+    [...] (1,)
+    SELECT manager.id AS manager_id, employee.id AS employee_id,
+    employee.type AS employee_type,
+    manager.manager_name AS manager_manager_name
+    FROM employee JOIN manager ON employee.id = manager.id
+    WHERE employee.id IN (?) ORDER BY employee.id
+    [...] (1,)
+    SELECT engineer.id AS engineer_id, employee.id AS employee_id,
+    employee.type AS employee_type,
+    engineer.engineer_info AS engineer_engineer_info
+    FROM employee JOIN engineer ON employee.id = engineer.id
+    WHERE employee.id IN (?, ?) ORDER BY employee.id
+    [...] (2, 3)
+    {stop}company: Krusty Krab
+    employees: [Manager('Mr. Krabs'), Engineer('SpongeBob'), Engineer('Squidward')]
+
+.. seealso::
+
+    :ref:`eagerloading_polymorphic_subtypes` - illustrates the equivalent example
+    as above using :func:`_orm.with_polymorphic` instead
+
+
+.. _polymorphic_selectin_w_loader_options:
+
+Applying loader options to the subclasses loaded by selectin_polymorphic
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 The SELECT statements emitted by :func:`_orm.selectin_polymorphic` are themselves
 ORM statements, so we may also add other loader options (such as those
 documented at :ref:`orm_queryguide_relationship_loaders`) that refer to specific
-subclasses.  For example, if we considered that the ``Manager`` mapper had
+subclasses.   These options should be applied as **siblings** to a
+:func:`_orm.selectin_polymorphic` option, that is, comma separated within
+:meth:`_sql.select.options`.
+
+For example, if we considered that the ``Manager`` mapper had
 a :ref:`one to many <relationship_patterns_o2m>` relationship to an entity
 called ``Paperwork``, we could combine the use of
 :func:`_orm.selectin_polymorphic` and :func:`_orm.selectinload` to eagerly load
 this collection on all ``Manager`` objects, where the sub-attributes of
 ``Manager`` objects were also themselves eagerly loaded::
 
-    >>> from sqlalchemy.orm import selectinload
     >>> from sqlalchemy.orm import selectin_polymorphic
     >>> stmt = (
     ...     select(Employee)
@@ -210,8 +266,7 @@ this collection on all ``Manager`` objects, where the sub-attributes of
     ...     )
     ... )
     >>> objects = session.scalars(stmt).all()
-    {execsql}BEGIN (implicit)
-    SELECT employee.id, employee.name, employee.type, employee.company_id
+    {execsql}SELECT employee.id, employee.name, employee.type, employee.company_id
     FROM employee ORDER BY employee.id
     [...] ()
     SELECT manager.id AS manager_id, employee.id AS employee_id, employee.type AS employee_type, manager.manager_name AS manager_manager_name
@@ -231,60 +286,69 @@ this collection on all ``Manager`` objects, where the sub-attributes of
     >>> print(objects[0].paperwork)
     [Paperwork('Secret Recipes'), Paperwork('Krabby Patty Orders')]
 
-.. _polymorphic_selectin_as_loader_option_target:
+.. _polymorphic_selectin_as_loader_option_target_plus_opts:
 
-Applying selectin_polymorphic() to an existing eager load
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Applying loader options when selectin_polymorphic is itself a sub-option
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In addition to being able to add loader options to the right side of a
-:func:`_orm.selectin_polymorphic` load, we may also indicate
-:func:`_orm.selectin_polymorphic` on the target of an existing load.
-As our :doc:`setup <_inheritance_setup>` mapping includes a parent
-``Company`` entity with a ``Company.employees`` :func:`_orm.relationship`
-referring to ``Employee`` entities, we may illustrate a SELECT against
-the ``Company`` entity that eagerly loads all ``Employee`` objects as well as
-all attributes on their subtypes as follows, by applying :meth:`.Load.selectin_polymorphic`
-as a chained loader option; in this form, the first argument is implicit from
-the previous loader option (in this case :func:`_orm.selectinload`), so
-we only indicate the additional target subclasses we wish to load::
+..  Setup code, not for display
 
+
+    >>> session.close()
+    ROLLBACK
+
+.. versionadded:: 2.0.21
+
+The previous section illustrated :func:`_orm.selectin_polymorphic` and
+:func:`_orm.selectinload` used as sibling options, both used within a single
+call to :meth:`_sql.select.options`.   If the target entity is one that is
+already being loaded from a parent relationship, as in the example at
+:ref:`polymorphic_selectin_as_loader_option_target`, we can apply this
+"sibling" pattern using the :meth:`_orm.Load.options` method that applies
+sub-options to a parent, as illustrated at
+:ref:`orm_queryguide_relationship_sub_options`.  Below we combine the two
+examples to load ``Company.employees``, also loading the attributes for the
+``Manager`` and ``Engineer`` classes, as well as eagerly loading the
+```Manager.paperwork``` attribute::
+
+    >>> from sqlalchemy.orm import selectinload
     >>> stmt = select(Company).options(
-    ...     selectinload(Company.employees).selectin_polymorphic([Manager, Engineer])
+    ...     selectinload(Company.employees).options(
+    ...         selectin_polymorphic(Employee, [Manager, Engineer]),
+    ...         selectinload(Manager.paperwork),
+    ...     )
     ... )
     >>> for company in session.scalars(stmt):
     ...     print(f"company: {company.name}")
-    ...     print(f"employees: {company.employees}")
-    {execsql}SELECT company.id, company.name
+    ...     for employee in company.employees:
+    ...         if isinstance(employee, Manager):
+    ...             print(f"manager: {employee.name} paperwork: {employee.paperwork}")
+    {execsql}BEGIN (implicit)
+    SELECT company.id, company.name
     FROM company
     [...] ()
-    SELECT employee.company_id AS employee_company_id, employee.id AS employee_id,
-    employee.name AS employee_name, employee.type AS employee_type
+    SELECT employee.company_id AS employee_company_id, employee.id AS employee_id, employee.name AS employee_name, employee.type AS employee_type
     FROM employee
     WHERE employee.company_id IN (?)
     [...] (1,)
-    SELECT manager.id AS manager_id, employee.id AS employee_id, employee.name AS employee_name,
-    employee.type AS employee_type, employee.company_id AS employee_company_id,
-    manager.manager_name AS manager_manager_name
+    SELECT manager.id AS manager_id, employee.id AS employee_id, employee.type AS employee_type, manager.manager_name AS manager_manager_name
     FROM employee JOIN manager ON employee.id = manager.id
     WHERE employee.id IN (?) ORDER BY employee.id
     [...] (1,)
-    SELECT engineer.id AS engineer_id, employee.id AS employee_id, employee.name AS employee_name,
-    employee.type AS employee_type, employee.company_id AS employee_company_id,
-    engineer.engineer_info AS engineer_engineer_info
+    SELECT paperwork.manager_id AS paperwork_manager_id, paperwork.id AS paperwork_id, paperwork.document_name AS paperwork_document_name
+    FROM paperwork
+    WHERE paperwork.manager_id IN (?)
+    [...] (1,)
+    SELECT engineer.id AS engineer_id, employee.id AS employee_id, employee.type AS employee_type, engineer.engineer_info AS engineer_engineer_info
     FROM employee JOIN engineer ON employee.id = engineer.id
     WHERE employee.id IN (?, ?) ORDER BY employee.id
     [...] (2, 3)
     {stop}company: Krusty Krab
-    employees: [Manager('Mr. Krabs'), Engineer('SpongeBob'), Engineer('Squidward')]
-
-.. seealso::
-
-    :ref:`eagerloading_polymorphic_subtypes` - illustrates the equivalent example
-    as above using :func:`_orm.with_polymorphic` instead
+    manager: Mr. Krabs paperwork: [Paperwork('Secret Recipes'), Paperwork('Krabby Patty Orders')]
 
 
 Configuring selectin_polymorphic() on mappers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The behavior of :func:`_orm.selectin_polymorphic` may be configured on specific
 mappers so that it takes place by default, by using the
@@ -344,7 +408,7 @@ In contrast to :func:`_orm.selectin_polymorphic` which affects only the loading
 of objects, the :func:`_orm.with_polymorphic` construct affects how the SQL
 query for a polymorphic structure is rendered, most commonly as a series of
 LEFT OUTER JOINs to each of the included sub-tables. This join structure is
-referred towards as the **polymorphic selectable**. By providing for a view of
+known as the **polymorphic selectable**. By providing for a view of
 several sub-tables at once, :func:`_orm.with_polymorphic` offers a means of
 writing a SELECT statement across several inherited classes at once with the
 ability to add filtering criteria based on individual sub-tables.
@@ -445,7 +509,7 @@ statement.
 To use this feature with a joined inheritance mapping, we typically want to
 pass two parameters, :paramref:`_orm.with_polymorphic.aliased` as well as
 :paramref:`_orm.with_polymorphic.flat`.  The :paramref:`_orm.with_polymorphic.aliased`
-parameter indicates that the polymorphic selectable should be referred towards
+parameter indicates that the polymorphic selectable should be referenced
 by an alias name that is unique to this construct.   The
 :paramref:`_orm.with_polymorphic.flat` parameter is specific to the default
 LEFT OUTER JOIN polymorphic selectable and indicates that a more optimized
@@ -551,7 +615,7 @@ using alternative polymorphic selectables in general.
 .. _with_polymorphic_mapper_config:
 
 Configuring with_polymorphic() on mappers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 As is the case with :func:`_orm.selectin_polymorphic`, the
 :func:`_orm.with_polymorphic` construct also supports a mapper-configured
@@ -764,7 +828,7 @@ point of view.
 .. _eagerloading_polymorphic_subtypes:
 
 Eager Loading of Polymorphic Subtypes
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The use of :meth:`_orm.PropComparator.of_type` illustrated with the
 :meth:`.Select.join` method in the previous section may also be applied
@@ -868,7 +932,7 @@ the ``Engineer`` entity is performed::
 
 
 Optimizing Attribute Loads for Single Inheritance
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ..  Setup code, not for display
 

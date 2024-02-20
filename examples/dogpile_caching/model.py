@@ -7,6 +7,7 @@ PostalCode --(has a)--> City
 City --(has a)--> Country
 
 """
+
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer

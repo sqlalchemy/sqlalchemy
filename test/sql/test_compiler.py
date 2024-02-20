@@ -35,6 +35,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Index
 from sqlalchemy import insert
+from sqlalchemy import insert_sentinel
 from sqlalchemy import Integer
 from sqlalchemy import intersect
 from sqlalchemy import join
@@ -58,6 +59,7 @@ from sqlalchemy import Text
 from sqlalchemy import text
 from sqlalchemy import TIMESTAMP
 from sqlalchemy import true
+from sqlalchemy import try_cast
 from sqlalchemy import tuple_
 from sqlalchemy import type_coerce
 from sqlalchemy import types
@@ -87,6 +89,8 @@ from sqlalchemy.sql.elements import CompilerColumnElement
 from sqlalchemy.sql.elements import Grouping
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy.sql.expression import ClauseList
+from sqlalchemy.sql.expression import ColumnClause
+from sqlalchemy.sql.expression import TableClause
 from sqlalchemy.sql.selectable import LABEL_STYLE_NONE
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises
@@ -241,7 +245,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         assert not hasattr(c1, "__dict__")
 
     def test_compile_label_is_slots(self):
-
         c1 = compiler._CompileLabel(column("q"), "somename")
 
         eq_(c1.name, "somename")
@@ -1156,7 +1159,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_dupe_columns_use_labels_from_anon(self):
-
         t = table("t", column("a"), column("b"))
         a = t.alias()
 
@@ -1542,7 +1544,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             select(select(table1.c.name).label("foo")),
-            "SELECT (SELECT mytable.name FROM mytable) " "AS foo",
+            "SELECT (SELECT mytable.name FROM mytable) AS foo",
         )
 
         # scalar selects should not have any attributes on their 'c' or
@@ -2298,7 +2300,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_literal(self):
-
         self.assert_compile(
             select(literal("foo")), "SELECT :param_1 AS anon_1"
         )
@@ -2693,7 +2694,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             s3,
-            "SELECT NULL AS anon_1, NULL AS anon__1 " "UNION "
+            "SELECT NULL AS anon_1, NULL AS anon__1 UNION "
             # without the feature tested in test_deduping_hash_algo we'd get
             # "SELECT true AS anon_2, true AS anon__1",
             "SELECT true AS anon_2, true AS anon__2",
@@ -2968,6 +2969,48 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=sqlite.dialect(),
         )
 
+    @testing.combinations(
+        (
+            "default",
+            None,
+            "SELECT CAST(t1.txt AS VARCHAR(10)) AS txt FROM t1",
+            None,
+        ),
+        (
+            "explicit_mssql",
+            "Latin1_General_CI_AS",
+            "SELECT CAST(t1.txt AS VARCHAR(10)) COLLATE Latin1_General_CI_AS AS txt FROM t1",  # noqa
+            mssql.dialect(),
+        ),
+        (
+            "explicit_mysql",
+            "utf8mb4_unicode_ci",
+            "SELECT CAST(t1.txt AS CHAR(10)) AS txt FROM t1",
+            mysql.dialect(),
+        ),
+        (
+            "explicit_postgresql",
+            "en_US",
+            'SELECT CAST(t1.txt AS VARCHAR(10)) COLLATE "en_US" AS txt FROM t1',  # noqa
+            postgresql.dialect(),
+        ),
+        (
+            "explicit_sqlite",
+            "NOCASE",
+            'SELECT CAST(t1.txt AS VARCHAR(10)) COLLATE "NOCASE" AS txt FROM t1',  # noqa
+            sqlite.dialect(),
+        ),
+        id_="iaaa",
+    )
+    def test_cast_with_collate(self, collation_name, expected_sql, dialect):
+        t1 = Table(
+            "t1",
+            MetaData(),
+            Column("txt", String(10, collation=collation_name)),
+        )
+        stmt = select(func.cast(t1.c.txt, t1.c.txt.type))
+        self.assert_compile(stmt, expected_sql, dialect=dialect)
+
     def test_over(self):
         self.assert_compile(func.row_number().over(), "row_number() OVER ()")
         self.assert_compile(
@@ -3085,7 +3128,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_over_framespec(self):
-
         expr = table1.c.myid
         self.assert_compile(
             select(func.row_number().over(order_by=expr, rows=(0, None))),
@@ -3505,7 +3547,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             self.assert_compile(stmt, expected, dialect=dialect)
 
     def test_statement_hints(self):
-
         stmt = (
             select(table1.c.myid)
             .with_statement_hint("test hint one")
@@ -3676,7 +3717,6 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
                 [5, 6],
             ),
         ]:
-
             self.assert_compile(
                 stmt, expected_named_stmt, params=expected_default_params_dict
             )
@@ -3735,7 +3775,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         )
         assert_raises_message(
             exc.CompileError,
-            "conflicts with unique bind parameter " "of the same name",
+            "conflicts with unique bind parameter of the same name",
             str,
             s,
         )
@@ -3749,7 +3789,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         )
         assert_raises_message(
             exc.CompileError,
-            "conflicts with unique bind parameter " "of the same name",
+            "conflicts with unique bind parameter of the same name",
             str,
             s,
         )
@@ -3919,7 +3959,6 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
     def test_bind_anon_name_special_chars_uniqueify_two(self):
-
         t = table("t", column("_3foo"), column("4(foo"))
 
         self.assert_compile(
@@ -4091,7 +4130,6 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_construct_params_combine_extracted(
         self, stmt1, stmt2, param1, param2, extparam1, extparam2
     ):
-
         if extparam1:
             keys = list(extparam1)
         else:
@@ -4375,13 +4413,28 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             {"myid_1": 20, "myid_2": 18},
         )
 
+    @testing.combinations("default", "default_qmark", argnames="dialect")
+    def test_literal_execute_combinations(self, dialect):
+        """test #10142"""
+
+        a = bindparam("a", value="abc", literal_execute=True)
+        b = bindparam("b", value="def", literal_execute=True)
+        c = bindparam("c", value="ghi", literal_execute=True)
+        self.assert_compile(
+            select(a, b, a, c),
+            "SELECT 'abc' AS anon_1, 'def' AS anon_2, 'abc' AS anon__1, "
+            "'ghi' AS anon_3",
+            render_postcompile=True,
+            dialect=dialect,
+        )
+
     def test_tuple_expanding_in_no_values(self):
         expr = tuple_(table1.c.myid, table1.c.name).in_(
             [(1, "foo"), (5, "bar")]
         )
         self.assert_compile(
             expr,
-            "(mytable.myid, mytable.name) IN " "(__[POSTCOMPILE_param_1])",
+            "(mytable.myid, mytable.name) IN (__[POSTCOMPILE_param_1])",
             checkparams={"param_1": [(1, "foo"), (5, "bar")]},
             check_post_param={"param_1": [(1, "foo"), (5, "bar")]},
             check_literal_execute={},
@@ -4416,7 +4469,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         dialect.tuple_in_values = True
         self.assert_compile(
             tuple_(table1.c.myid, table1.c.name).in_([(1, "foo"), (5, "bar")]),
-            "(mytable.myid, mytable.name) IN " "(__[POSTCOMPILE_param_1])",
+            "(mytable.myid, mytable.name) IN (__[POSTCOMPILE_param_1])",
             dialect=dialect,
             checkparams={"param_1": [(1, "foo"), (5, "bar")]},
             check_post_param={"param_1": [(1, "foo"), (5, "bar")]},
@@ -4544,7 +4597,6 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
 
     @testing.variation("scalar_subquery", [True, False])
     def test_select_in(self, scalar_subquery):
-
         stmt = select(table2.c.otherid, table2.c.othername)
 
         if scalar_subquery:
@@ -4764,7 +4816,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             select(table1.c.myid).where(
                 table1.c.myid == bindparam("foo", 5, literal_execute=True)
             ),
-            "SELECT mytable.myid FROM mytable " "WHERE mytable.myid = 5",
+            "SELECT mytable.myid FROM mytable WHERE mytable.myid = 5",
             literal_binds=True,
         )
 
@@ -4791,7 +4843,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             select(table1.c.myid).where(
                 table1.c.myid == bindparam("foo", 5, literal_execute=True)
             ),
-            "SELECT mytable.myid FROM mytable " "WHERE mytable.myid = 5",
+            "SELECT mytable.myid FROM mytable WHERE mytable.myid = 5",
             render_postcompile=True,
         )
 
@@ -5922,6 +5974,53 @@ class StringifySpecialTest(fixtures.TestBase):
         ):
             eq_(str(Grouping(Widget())), "(widget)")
 
+    def test_dialect_sub_compile_has_stack(self):
+        """test #10753"""
+
+        class Widget(ColumnElement):
+            __visit_name__ = "widget"
+            stringify_dialect = "sqlite"
+
+        def visit_widget(self, element, **kw):
+            assert self.stack
+            return "widget"
+
+        with mock.patch(
+            "sqlalchemy.dialects.sqlite.base.SQLiteCompiler.visit_widget",
+            visit_widget,
+            create=True,
+        ):
+            eq_(str(select(Widget())), "SELECT widget AS anon_1")
+
+    def test_dialect_sub_compile_has_stack_pg_specific(self):
+        """test #10753"""
+        my_table = table(
+            "my_table", column("id"), column("data"), column("user_email")
+        )
+
+        from sqlalchemy.dialects.postgresql import insert
+
+        insert_stmt = insert(my_table).values(
+            id="some_existing_id", data="inserted value"
+        )
+
+        do_update_stmt = insert_stmt.on_conflict_do_update(
+            index_elements=["id"], set_=dict(data="updated value")
+        )
+
+        # note!  two different bound parameter formats.   It's weird yes,
+        # but this is what I want.  They are stringifying without using the
+        # correct dialect.   We could use the PG compiler at the point of
+        # the insert() but that still would not accommodate params in other
+        # parts of the statement.
+        eq_ignore_whitespace(
+            str(select(do_update_stmt.cte())),
+            "WITH anon_1 AS (INSERT INTO my_table (id, data) "
+            "VALUES (:param_1, :param_2) "
+            "ON CONFLICT (id) "
+            "DO UPDATE SET data = %(param_3)s) SELECT FROM anon_1",
+        )
+
     def test_dialect_sub_compile_w_binds(self):
         """test sub-compile into a new compiler where
         state != CompilerState.COMPILING, but we have to render a bindparam
@@ -6028,7 +6127,6 @@ class StringifySpecialTest(fixtures.TestBase):
         )
 
     def test_dialect_specific_ddl(self):
-
         from sqlalchemy.dialects.postgresql import ExcludeConstraint
 
         m = MetaData()
@@ -6038,15 +6136,22 @@ class StringifySpecialTest(fixtures.TestBase):
 
         eq_ignore_whitespace(
             str(schema.AddConstraint(cons)),
-            "ALTER TABLE testtbl ADD EXCLUDE USING gist " "(room WITH =)",
+            "ALTER TABLE testtbl ADD EXCLUDE USING gist (room WITH =)",
+        )
+
+    def test_try_cast(self):
+        t1 = Table("t1", MetaData(), Column("id", Integer, primary_key=True))
+        expr = select(try_cast(t1.c.id, Integer))
+
+        eq_ignore_whitespace(
+            str(expr),
+            "SELECT TRY_CAST(t1.id AS INTEGER) AS id FROM t1",
         )
 
 
 class KwargPropagationTest(fixtures.TestBase):
     @classmethod
     def setup_test_class(cls):
-        from sqlalchemy.sql.expression import ColumnClause, TableClause
-
         class CatchCol(ColumnClause):
             pass
 
@@ -7232,7 +7337,7 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select(t1.c.a)
         s2 = select(t1).where(t1.c.a == s.scalar_subquery())
         self.assert_compile(
-            s2, "SELECT t1.a FROM t1 WHERE t1.a = " "(SELECT t1.a FROM t1)"
+            s2, "SELECT t1.a FROM t1 WHERE t1.a = (SELECT t1.a FROM t1)"
         )
 
     def test_correlate_semiauto_where_singlefrom(self):
@@ -7420,7 +7525,6 @@ class CoercionTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class ResultMapTest(fixtures.TestBase):
-
     """test the behavior of the 'entry stack' and the determination
     when the result_map needs to be populated.
 
@@ -7543,7 +7647,6 @@ class ResultMapTest(fixtures.TestBase):
 
         class MyCompiler(compiler.SQLCompiler):
             def visit_select(self, stmt, *arg, **kw):
-
                 if stmt is stmt2.element:
                     with self._nested_result() as nested:
                         contexts[stmt2.element] = nested
@@ -7636,9 +7739,9 @@ class ResultMapTest(fixtures.TestBase):
         with mock.patch.object(
             dialect.statement_compiler,
             "translate_select_structure",
-            lambda self, to_translate, **kw: wrapped_again
-            if to_translate is stmt
-            else to_translate,
+            lambda self, to_translate, **kw: (
+                wrapped_again if to_translate is stmt else to_translate
+            ),
         ):
             compiled = stmt.compile(dialect=dialect)
 
@@ -7695,13 +7798,252 @@ class ResultMapTest(fixtures.TestBase):
         with mock.patch.object(
             dialect.statement_compiler,
             "translate_select_structure",
-            lambda self, to_translate, **kw: wrapped_again
-            if to_translate is stmt
-            else to_translate,
+            lambda self, to_translate, **kw: (
+                wrapped_again if to_translate is stmt else to_translate
+            ),
         ):
             compiled = stmt.compile(dialect=dialect)
 
         proxied = [obj[0] for (k, n, obj, type_) in compiled._result_columns]
         for orig_obj, proxied_obj in zip(orig, proxied):
-
             is_(orig_obj, proxied_obj)
+
+
+class OmitFromStatementsTest(fixtures.TestBase, AssertsCompiledSQL):
+    """test the _omit_from_statements parameter.
+
+    this somewhat awkward parameter was added to suit the case of
+    "insert_sentinel" columns that would try very hard not to be noticed
+    when not needed, by being omitted from any SQL statement that does not
+    refer to them explicitly.  If they are referred to explicitly or
+    are in a context where their client side default has to be fired off,
+    then they are present.
+
+    If marked public, the feature could be used as a general "I don't want to
+    see this column unless I asked it to" use case.
+
+    """
+
+    __dialect__ = "default_enhanced"
+
+    @testing.fixture
+    def t1(self):
+        m1 = MetaData()
+
+        t1 = Table(
+            "t1",
+            m1,
+            Column("id", Integer, primary_key=True),
+            Column("a", Integer),
+            Column(
+                "b", Integer, _omit_from_statements=True, insert_sentinel=True
+            ),
+            Column("c", Integer),
+            Column("d", Integer, _omit_from_statements=True),
+            Column("e", Integer),
+        )
+        return t1
+
+    @testing.fixture
+    def t2(self):
+        m1 = MetaData()
+
+        t2 = Table(
+            "t2",
+            m1,
+            Column("id", Integer, primary_key=True),
+            Column("a", Integer),
+            Column(
+                "b",
+                Integer,
+                _omit_from_statements=True,
+                insert_sentinel=True,
+                default="10",
+                onupdate="20",
+            ),
+            Column("c", Integer, default="14", onupdate="19"),
+            Column(
+                "d",
+                Integer,
+                _omit_from_statements=True,
+                default="5",
+                onupdate="15",
+            ),
+            Column("e", Integer),
+        )
+        return t2
+
+    @testing.fixture
+    def t3(self):
+        m1 = MetaData()
+
+        t3 = Table(
+            "t3",
+            m1,
+            Column("id", Integer, primary_key=True),
+            Column("a", Integer),
+            insert_sentinel("b"),
+            Column("c", Integer, default="14", onupdate="19"),
+        )
+        return t3
+
+    def test_select_omitted(self, t1):
+        self.assert_compile(
+            select(t1), "SELECT t1.id, t1.a, t1.c, t1.e FROM t1"
+        )
+
+    def test_select_from_subquery_includes_hidden(self, t1):
+        s1 = select(t1.c.a, t1.c.b, t1.c.c, t1.c.d, t1.c.e).subquery()
+        eq_(s1.c.keys(), ["a", "b", "c", "d", "e"])
+
+        self.assert_compile(
+            select(s1),
+            "SELECT anon_1.a, anon_1.b, anon_1.c, anon_1.d, anon_1.e "
+            "FROM (SELECT t1.a AS a, t1.b AS b, t1.c AS c, t1.d AS d, "
+            "t1.e AS e FROM t1) AS anon_1",
+        )
+
+    def test_select_from_subquery_omitted(self, t1):
+        s1 = select(t1).subquery()
+
+        eq_(s1.c.keys(), ["id", "a", "c", "e"])
+        self.assert_compile(
+            select(s1),
+            "SELECT anon_1.id, anon_1.a, anon_1.c, anon_1.e FROM "
+            "(SELECT t1.id AS id, t1.a AS a, t1.c AS c, t1.e AS e FROM t1) "
+            "AS anon_1",
+        )
+
+    def test_insert_omitted(self, t1):
+        self.assert_compile(
+            insert(t1), "INSERT INTO t1 (id, a, c, e) VALUES (:id, :a, :c, :e)"
+        )
+
+    def test_insert_from_select_omitted(self, t1):
+        self.assert_compile(
+            insert(t1).from_select(["a", "c", "e"], select(t1)),
+            "INSERT INTO t1 (a, c, e) SELECT t1.id, t1.a, t1.c, t1.e FROM t1",
+        )
+
+    def test_insert_from_select_included(self, t1):
+        self.assert_compile(
+            insert(t1).from_select(["a", "b", "c", "d", "e"], select(t1)),
+            "INSERT INTO t1 (a, b, c, d, e) SELECT t1.id, t1.a, t1.c, t1.e "
+            "FROM t1",
+        )
+
+    def test_insert_from_select_defaults_included(self, t2):
+        self.assert_compile(
+            insert(t2).from_select(["a", "c", "e"], select(t2)),
+            "INSERT INTO t2 (a, c, e, b, d) SELECT t2.id, t2.a, t2.c, t2.e, "
+            ":b AS anon_1, :d AS anon_2 FROM t2",
+            # TODO: do we have a test in test_defaults for this, that the
+            # default values get set up as expected?
+        )
+
+    def test_insert_from_select_sentinel_defaults_omitted(self, t3):
+        self.assert_compile(
+            # a pure SentinelDefault not included here, so there is no 'b'
+            insert(t3).from_select(["a", "c"], select(t3)),
+            "INSERT INTO t3 (a, c) SELECT t3.id, t3.a, t3.c FROM t3",
+        )
+
+    def test_insert_omitted_return_col_nonspecified(self, t1):
+        self.assert_compile(
+            insert(t1).returning(t1),
+            "INSERT INTO t1 (id, a, c, e) VALUES (:id, :a, :c, :e) "
+            "RETURNING t1.id, t1.a, t1.c, t1.e",
+        )
+
+    def test_insert_omitted_return_col_specified(self, t1):
+        self.assert_compile(
+            insert(t1).returning(t1.c.a, t1.c.b, t1.c.c, t1.c.d, t1.c.e),
+            "INSERT INTO t1 (id, a, c, e) VALUES (:id, :a, :c, :e) "
+            "RETURNING t1.a, t1.b, t1.c, t1.d, t1.e",
+        )
+
+    def test_insert_omitted_no_params(self, t1):
+        self.assert_compile(
+            insert(t1), "INSERT INTO t1 () VALUES ()", params={}
+        )
+
+    def test_insert_omitted_no_params_defaults(self, t2):
+        # omit columns that nonetheless have client-side defaults
+        # are included
+        self.assert_compile(
+            insert(t2),
+            "INSERT INTO t2 (b, c, d) VALUES (:b, :c, :d)",
+            params={},
+        )
+
+    def test_insert_omitted_no_params_defaults_no_sentinel(self, t3):
+        # omit columns that nonetheless have client-side defaults
+        # are included
+        self.assert_compile(
+            insert(t3),
+            "INSERT INTO t3 (c) VALUES (:c)",
+            params={},
+        )
+
+    def test_insert_omitted_defaults(self, t2):
+        self.assert_compile(
+            insert(t2), "INSERT INTO t2 (id, a, c, e) VALUES (:id, :a, :c, :e)"
+        )
+
+    def test_update_omitted(self, t1):
+        self.assert_compile(
+            update(t1), "UPDATE t1 SET id=:id, a=:a, c=:c, e=:e"
+        )
+
+    def test_update_omitted_defaults(self, t2):
+        self.assert_compile(
+            update(t2), "UPDATE t2 SET id=:id, a=:a, c=:c, e=:e"
+        )
+
+    def test_update_omitted_no_params_defaults(self, t2):
+        # omit columns that nonetheless have client-side defaults
+        # are included
+        self.assert_compile(
+            update(t2), "UPDATE t2 SET b=:b, c=:c, d=:d", params={}
+        )
+
+    def test_select_include_col(self, t1):
+        self.assert_compile(
+            select(t1, t1.c.b, t1.c.d),
+            "SELECT t1.id, t1.a, t1.c, t1.e, t1.b, t1.d FROM t1",
+        )
+
+    def test_update_include_col(self, t1):
+        self.assert_compile(
+            update(t1).values(a=5, b=10, c=15, d=20, e=25),
+            "UPDATE t1 SET a=:a, b=:b, c=:c, d=:d, e=:e",
+            checkparams={"a": 5, "b": 10, "c": 15, "d": 20, "e": 25},
+        )
+
+    def test_insert_include_col(self, t1):
+        self.assert_compile(
+            insert(t1).values(a=5, b=10, c=15, d=20, e=25),
+            "INSERT INTO t1 (a, b, c, d, e) VALUES (:a, :b, :c, :d, :e)",
+            checkparams={"a": 5, "b": 10, "c": 15, "d": 20, "e": 25},
+        )
+
+    def test_insert_include_col_via_keys(self, t1):
+        self.assert_compile(
+            insert(t1),
+            "INSERT INTO t1 (a, b, c, d, e) VALUES (:a, :b, :c, :d, :e)",
+            params={"a": 5, "b": 10, "c": 15, "d": 20, "e": 25},
+            checkparams={"a": 5, "b": 10, "c": 15, "d": 20, "e": 25},
+        )
+
+    def test_select_omitted_incl_whereclause(self, t1):
+        self.assert_compile(
+            select(t1).where(t1.c.d == 5),
+            "SELECT t1.id, t1.a, t1.c, t1.e FROM t1 WHERE t1.d = :d_1",
+            checkparams={"d_1": 5},
+        )
+
+    def test_select_omitted_incl_order_by(self, t1):
+        self.assert_compile(
+            select(t1).order_by(t1.c.d),
+            "SELECT t1.id, t1.a, t1.c, t1.e FROM t1 ORDER BY t1.d",
+        )

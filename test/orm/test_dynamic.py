@@ -1375,7 +1375,6 @@ class DynamicUOWTest(
     _fixtures.FixtureTest,
     testing.AssertsExecutionResults,
 ):
-
     run_inserts = None
 
     @testing.combinations(
@@ -1445,9 +1444,11 @@ class DynamicUOWTest(
             addresses_args={
                 "order_by": addresses.c.id,
                 "backref": "user",
-                "cascade": "save-update"
-                if not delete_cascade_configured
-                else "all, delete",
+                "cascade": (
+                    "save-update"
+                    if not delete_cascade_configured
+                    else "all, delete"
+                ),
             }
         )
 
@@ -1520,9 +1521,11 @@ class WriteOnlyUOWTest(
                 data: Mapped[str]
                 bs: WriteOnlyMapped["B"] = relationship(  # noqa: F821
                     passive_deletes=passive_deletes,
-                    cascade="all, delete-orphan"
-                    if cascade_deletes
-                    else "save-update, merge",
+                    cascade=(
+                        "all, delete-orphan"
+                        if cascade_deletes
+                        else "save-update, merge"
+                    ),
                     order_by="B.id",
                 )
 
@@ -1975,7 +1978,6 @@ class _HistoryTest:
         if sess:
             sess.autoflush = False
         try:
-
             if self.lazy == "write_only" and compare_passive is not None:
                 eq_(
                     attributes.get_history(
@@ -1988,9 +1990,11 @@ class _HistoryTest:
                     attributes.get_history(
                         obj,
                         attrname,
-                        PassiveFlag.PASSIVE_NO_FETCH
-                        if self.lazy == "write_only"
-                        else PassiveFlag.PASSIVE_OFF,
+                        (
+                            PassiveFlag.PASSIVE_NO_FETCH
+                            if self.lazy == "write_only"
+                            else PassiveFlag.PASSIVE_OFF
+                        ),
                     ),
                     compare,
                 )

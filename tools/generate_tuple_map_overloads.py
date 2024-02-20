@@ -37,7 +37,6 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 
 def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
-
     # use tempfile in same path as the module, or at least in the
     # current working directory, so that black / zimports use
     # local pyproject.toml
@@ -51,7 +50,7 @@ def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
         current_fnname = given_fnname = None
         for line in orig_py:
             m = re.match(
-                r"^( *)# START OVERLOADED FUNCTIONS ([\.\w_]+) ([\w_]+) (\d+)-(\d+)$",  # noqa: E501
+                r"^( *)# START OVERLOADED FUNCTIONS ([\.\w_]+) ([\w_]+) (\d+)-(\d+)(?: \"(.+)\")?",  # noqa: E501
                 line,
             )
             if m:
@@ -65,6 +64,7 @@ def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
                 return_type = m.group(3)
                 start_index = int(m.group(4))
                 end_index = int(m.group(5))
+                extra_args = m.group(6) or ""
 
                 cmd.write_status(
                     f"Generating {start_index}-{end_index} overloads "
@@ -82,26 +82,32 @@ def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
                 )
 
                 for num_args in range(start_index, end_index + 1):
+                    ret_suffix = ""
                     combinations = [
-                        [
-                            f"__ent{arg}: _TCCA[_T{arg}]"
-                            for arg in range(num_args)
-                        ]
+                        f"__ent{arg}: _TCCA[_T{arg}]"
+                        for arg in range(num_args)
                     ]
-                    for combination in combinations:
-                        buf.write(
-                            textwrap.indent(
-                                f"""
+
+                    if num_args == end_index:
+                        ret_suffix = ", Unpack[TupleAny]"
+                        extra_args = (
+                            f", *entities: _ColumnsClauseArgument[Any]"
+                            f"{extra_args.replace(', *', '')}"
+                        )
+
+                    buf.write(
+                        textwrap.indent(
+                            f"""
 @overload
 def {current_fnname}(
-    {'self, ' if use_self else ''}{", ".join(combination)}
-) -> {return_type}[Tuple[{', '.join(f'_T{i}' for i in range(num_args))}]]:
+    {'self, ' if use_self else ''}{", ".join(combinations)},/{extra_args}
+) -> {return_type}[{', '.join(f'_T{i}' for i in range(num_args))}{ret_suffix}]:
     ...
 
 """,  # noqa: E501
-                                indent,
-                            )
+                            indent,
                         )
+                    )
 
             if in_block and line.startswith(
                 f"{indent}# END OVERLOADED FUNCTIONS {given_fnname}"
@@ -114,7 +120,6 @@ def {current_fnname}(
 
 
 def run_module(modname: str, cmd: code_writer_cmd) -> None:
-
     cmd.write_status(f"importing module {modname}\n")
     mod = importlib.import_module(modname)
     destination_path = mod.__file__
@@ -142,7 +147,6 @@ entries = [
 ]
 
 if __name__ == "__main__":
-
     cmd = code_writer_cmd(__file__)
 
     with cmd.add_arguments() as parser:

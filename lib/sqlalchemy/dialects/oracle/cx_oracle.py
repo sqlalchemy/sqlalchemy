@@ -1,4 +1,5 @@
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/oracle/cx_oracle.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -125,10 +126,15 @@ itself.  These options are always passed directly to :func:`_sa.create_engine`
 
 The parameters accepted by the cx_oracle dialect are as follows:
 
-* ``arraysize`` - set the cx_oracle.arraysize value on cursors, defaulted
-  to 50.  This setting is significant with cx_Oracle as the contents of LOB
-  objects are only readable within a "live" row (e.g. within a batch of
-  50 rows).
+* ``arraysize`` - set the cx_oracle.arraysize value on cursors; defaults
+  to ``None``, indicating that the driver default should be used (typically
+  the value is 100).  This setting controls how many rows are buffered when
+  fetching rows, and can have a significant effect on performance when
+  modified.   The setting is used for both ``cx_Oracle`` as well as
+  ``oracledb``.
+
+  .. versionchanged:: 2.0.26 - changed the default value from 50 to None,
+    to use the default value of the driver itself.
 
 * ``auto_convert_lobs`` - defaults to True; See :ref:`cx_oracle_lob`.
 
@@ -543,6 +549,11 @@ class _OracleNumeric(sqltypes.Numeric):
         return handler
 
 
+class _OracleUUID(sqltypes.Uuid):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.STRING
+
+
 class _OracleBinaryFloat(_OracleNumeric):
     def get_dbapi_type(self, dbapi):
         return dbapi.NATIVE_FLOAT
@@ -731,7 +742,6 @@ class OracleCompiler_cx_oracle(OracleCompiler):
         # Oracle parameters and use the custom escaping here
         escaped_from = kw.get("escaped_from", None)
         if not escaped_from:
-
             if self._bind_translate_re.search(name):
                 # not quite the translate use case as we want to
                 # also get a quick boolean if we even found
@@ -759,7 +769,6 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
         # check for has_out_parameters or RETURNING, create cx_Oracle.var
         # objects if so
         if self.compiled.has_out_parameters or self.compiled._oracle_returning:
-
             out_parameters = self.out_parameters
             assert out_parameters is not None
 
@@ -811,23 +820,34 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
 
                             out_parameters[name] = self.cursor.var(
                                 dbtype,
+                                # this is fine also in oracledb_async since
+                                # the driver will await the read coroutine
                                 outconverter=lambda value: value.read(),
                                 arraysize=len_params,
                             )
+                        elif (
+                            isinstance(type_impl, _OracleNumeric)
+                            and type_impl.asdecimal
+                        ):
+                            out_parameters[name] = self.cursor.var(
+                                decimal.Decimal,
+                                arraysize=len_params,
+                            )
+
                         else:
                             out_parameters[name] = self.cursor.var(
                                 dbtype, arraysize=len_params
                             )
 
                     for param in self.parameters:
-                        param[
-                            quoted_bind_names.get(name, name)
-                        ] = out_parameters[name]
+                        param[quoted_bind_names.get(name, name)] = (
+                            out_parameters[name]
+                        )
 
     def _generate_cursor_outputtype_handler(self):
         output_handlers = {}
 
-        for (keyname, name, objects, type_) in self.compiled._result_columns:
+        for keyname, name, objects, type_ in self.compiled._result_columns:
             handler = type_._cached_custom_processor(
                 self.dialect,
                 "cx_oracle_outputtypehandler",
@@ -878,29 +898,8 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
             and is_sql_compiler(self.compiled)
             and self.compiled._oracle_returning
         ):
-            # create a fake cursor result from the out parameters. unlike
-            # get_out_parameter_values(), the result-row handlers here will be
-            # applied at the Result level
-
-            numcols = len(self.out_parameters)
-
-            # [stmt_result for stmt_result in outparam.values] == each
-            # statement in executemany
-            # [val for val in stmt_result] == each row for a particular
-            # statement
-            initial_buffer = list(
-                zip(
-                    *[
-                        [
-                            val
-                            for stmt_result in self.out_parameters[
-                                f"ret_{j}"
-                            ].values
-                            for val in stmt_result
-                        ]
-                        for j in range(numcols)
-                    ]
-                )
+            initial_buffer = self.fetchall_for_returning(
+                self.cursor, _internal=True
             )
 
             fetch_strategy = _cursor.FullyBufferedCursorFetchStrategy(
@@ -920,6 +919,43 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
             c.arraysize = self.dialect.arraysize
 
         return c
+
+    def fetchall_for_returning(self, cursor, *, _internal=False):
+        compiled = self.compiled
+        if (
+            not _internal
+            and compiled is None
+            or not is_sql_compiler(compiled)
+            or not compiled._oracle_returning
+        ):
+            raise NotImplementedError(
+                "execution context was not prepared for Oracle RETURNING"
+            )
+
+        # create a fake cursor result from the out parameters. unlike
+        # get_out_parameter_values(), the result-row handlers here will be
+        # applied at the Result level
+
+        numcols = len(self.out_parameters)
+
+        # [stmt_result for stmt_result in outparam.values] == each
+        # statement in executemany
+        # [val for val in stmt_result] == each row for a particular
+        # statement
+        return list(
+            zip(
+                *[
+                    [
+                        val
+                        for stmt_result in self.out_parameters[
+                            f"ret_{j}"
+                        ].values
+                        for val in (stmt_result or ())
+                    ]
+                    for j in range(numcols)
+                ]
+            )
+        )
 
     def get_out_parameter_values(self, out_param_names):
         # this method should not be called when the compiler has
@@ -942,6 +978,7 @@ class OracleDialect_cx_oracle(OracleDialect):
     supports_sane_multi_rowcount = True
 
     insert_executemany_returning = True
+    insert_executemany_returning_sort_by_parameter_order = True
     update_executemany_returning = True
     delete_executemany_returning = True
 
@@ -949,8 +986,8 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     driver = "cx_oracle"
 
-    colspecs = OracleDialect.colspecs
-    colspecs.update(
+    colspecs = util.update_copy(
+        OracleDialect.colspecs,
         {
             sqltypes.TIMESTAMP: _CXOracleTIMESTAMP,
             sqltypes.Numeric: _OracleNumeric,
@@ -974,9 +1011,10 @@ class OracleDialect_cx_oracle(OracleDialect):
             oracle.RAW: _OracleRaw,
             sqltypes.Unicode: _OracleUnicodeStringCHAR,
             sqltypes.NVARCHAR: _OracleUnicodeStringNCHAR,
+            sqltypes.Uuid: _OracleUUID,
             oracle.NCLOB: _OracleUnicodeTextNCLOB,
             oracle.ROWID: _OracleRowid,
-        }
+        },
     )
 
     execute_sequence_format = list
@@ -1000,12 +1038,11 @@ class OracleDialect_cx_oracle(OracleDialect):
         self,
         auto_convert_lobs=True,
         coerce_to_decimal=True,
-        arraysize=50,
+        arraysize=None,
         encoding_errors=None,
         threaded=None,
         **kwargs,
     ):
-
         OracleDialect.__init__(self, **kwargs)
         self.arraysize = arraysize
         self.encoding_errors = encoding_errors
@@ -1059,9 +1096,9 @@ class OracleDialect_cx_oracle(OracleDialect):
                     int(x) for x in m.group(1, 2, 3) if x is not None
                 )
         self.cx_oracle_ver = version
-        if self.cx_oracle_ver < (7,) and self.cx_oracle_ver > (0, 0, 0):
+        if self.cx_oracle_ver < (8,) and self.cx_oracle_ver > (0, 0, 0):
             raise exc.InvalidRequestError(
-                "cx_Oracle version 7 and above are supported"
+                "cx_Oracle version 8 and above are supported"
             )
 
     @classmethod
@@ -1207,7 +1244,6 @@ class OracleDialect_cx_oracle(OracleDialect):
         def output_type_handler(
             cursor, name, default_type, size, precision, scale
         ):
-
             if (
                 default_type == cx_Oracle.NUMBER
                 and default_type is not cx_Oracle.NATIVE_FLOAT
@@ -1274,7 +1310,6 @@ class OracleDialect_cx_oracle(OracleDialect):
         return output_type_handler
 
     def on_connect(self):
-
         output_type_handler = self._generate_connection_outputtype_handler()
 
         def on_connect(conn):
@@ -1420,7 +1455,6 @@ class OracleDialect_cx_oracle(OracleDialect):
     def do_commit_twophase(
         self, connection, xid, is_prepared=True, recover=False
     ):
-
         if not is_prepared:
             self.do_commit(connection.connection)
         else:

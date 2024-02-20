@@ -1,5 +1,5 @@
 # event/registry.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -66,9 +66,9 @@ _RefCollectionToListenerType = Dict[
     "weakref.ref[_ListenerFnType]",
 ]
 
-_key_to_collection: Dict[
-    _EventKeyTupleType, _RefCollectionToListenerType
-] = collections.defaultdict(dict)
+_key_to_collection: Dict[_EventKeyTupleType, _RefCollectionToListenerType] = (
+    collections.defaultdict(dict)
+)
 """
 Given an original listen() argument, can locate all
 listener collections and the listener fn contained
@@ -241,7 +241,7 @@ class _EventKey(Generic[_ET]):
     ):
         self.target = target
         self.identifier = identifier
-        self.fn = fn  # type: ignore[assignment]
+        self.fn = fn
         if isinstance(fn, types.MethodType):
             self.fn_key = id(fn.__func__), id(fn.__self__)
         else:
@@ -338,7 +338,6 @@ class _EventKey(Generic[_ET]):
         retval: Optional[bool] = None,
         asyncio: bool = False,
     ) -> None:
-
         target, identifier = self.dispatch_target, self.identifier
 
         dispatch_collection = getattr(target.dispatch, identifier)

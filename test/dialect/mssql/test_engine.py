@@ -423,7 +423,7 @@ class FastExecutemanyTest(fixtures.TestBase):
     @testing.variation("add_event", [True, False])
     @testing.variation("setinputsizes", [True, False])
     @testing.variation("fastexecutemany", [True, False])
-    @testing.variation("insertmanyvalues", [True, False])
+    @testing.variation("insertmanyvalues", [False])  # disabled due to #9603
     @testing.variation("broken_types", [True, False])
     def test_insert_typing(
         self,
@@ -459,7 +459,10 @@ class FastExecutemanyTest(fixtures.TestBase):
         # (... four months pass ...)
         # surprise! we need it again.  woop!  for #8917
         expect_failure = (
-            broken_types and not setinputsizes and insertmanyvalues
+            broken_types
+            and not setinputsizes
+            and insertmanyvalues
+            and not fastexecutemany
         )
 
         engine = testing_engine(
@@ -531,7 +534,6 @@ class FastExecutemanyTest(fixtures.TestBase):
                         )
 
         with engine.begin() as conn:
-
             if expect_failure:
                 with expect_raises(DBAPIError):
                     conn.execute(observations.insert(), records)

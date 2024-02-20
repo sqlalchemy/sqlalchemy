@@ -9,15 +9,16 @@ from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import config
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
 
-class Company(fixtures.ComparableEntity):
+class Company(ComparableEntity):
     pass
 
 
-class Person(fixtures.ComparableEntity):
+class Person(ComparableEntity):
     pass
 
 
@@ -33,19 +34,19 @@ class Boss(Manager):
     pass
 
 
-class Machine(fixtures.ComparableEntity):
+class Machine(ComparableEntity):
     pass
 
 
-class MachineType(fixtures.ComparableEntity):
+class MachineType(ComparableEntity):
     pass
 
 
-class Paperwork(fixtures.ComparableEntity):
+class Paperwork(ComparableEntity):
     pass
 
 
-class Page(fixtures.ComparableEntity):
+class Page(ComparableEntity):
     pass
 
 
@@ -164,7 +165,6 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
 
     @classmethod
     def insert_data(cls, connection):
-
         cls.e1 = e1 = Engineer(
             name="dilbert",
             engineer_name="dilbert",
@@ -569,7 +569,7 @@ class GeometryFixtureBase(fixtures.DeclarativeMappedTest):
                     items["__mapper_args__"][mapper_opt] = value[mapper_opt]
 
             if is_base:
-                klass = type(key, (fixtures.ComparableEntity, base), items)
+                klass = type(key, (ComparableEntity, base), items)
             else:
                 klass = type(key, (base,), items)
 

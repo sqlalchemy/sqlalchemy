@@ -652,7 +652,6 @@ class NoLoadTest(_fixtures.FixtureTest):
     run_deletes = None
 
     def test_o2m_noload(self):
-
         Address, addresses, users, User = (
             self.classes.Address,
             self.tables.addresses,

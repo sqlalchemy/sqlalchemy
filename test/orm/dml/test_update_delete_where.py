@@ -1,4 +1,3 @@
-from sqlalchemy import bindparam
 from sqlalchemy import Boolean
 from sqlalchemy import case
 from sqlalchemy import column
@@ -11,6 +10,7 @@ from sqlalchemy import insert
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import lambda_stmt
+from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy import select
@@ -19,10 +19,14 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import update
 from sqlalchemy import values
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import immediateload
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import synonym
@@ -810,20 +814,6 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         eq_(sess.query(User).order_by(User.id).all(), [jack, jill, jane])
 
-    def test_update_multirow_not_supported(self):
-        User = self.classes.User
-
-        sess = fixture_session()
-
-        with expect_raises_message(
-            exc.InvalidRequestError,
-            "WHERE clause with bulk ORM UPDATE not supported " "right now.",
-        ):
-            sess.execute(
-                update(User).where(User.id == bindparam("id")),
-                [{"id": 1, "age": 27}, {"id": 2, "age": 37}],
-            )
-
     def test_delete_bulk_not_supported(self):
         User = self.classes.User
 
@@ -843,6 +833,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         sess = fixture_session()
 
         john, jack, jill, jane = sess.query(User).order_by(User.id).all()
+
         sess.query(User).filter(User.age > 29).update(
             {"age": User.age - 10}, synchronize_session="evaluate"
         )
@@ -1109,6 +1100,97 @@ class UpdateDeleteTest(fixtures.MappedTest):
             list(zip([25, 37, 29, 27])),
         )
 
+    @testing.requires.update_returning
+    @testing.requires.returning_star
+    def test_update_returning_star(self):
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        john, jack, jill, jane = sess.query(User).order_by(User.id).all()
+
+        stmt = (
+            update(User)
+            .where(User.age > 29)
+            .values({"age": User.age - 10})
+            .returning(literal_column("*"))
+        )
+
+        result = sess.execute(stmt)
+        eq_(set(result), {(2, "jack", 37), (4, "jane", 27)})
+
+        eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
+        eq_(
+            sess.query(User.age).order_by(User.id).all(),
+            list(zip([25, 37, 29, 27])),
+        )
+
+    @testing.requires.update_returning
+    @testing.combinations(
+        selectinload,
+        immediateload,
+        argnames="loader_fn",
+    )
+    @testing.variation("opt_location", ["statement", "execute"])
+    def test_update_returning_eagerload_propagate(
+        self, loader_fn, connection, opt_location
+    ):
+        User = self.classes.User
+
+        catch_opts = []
+
+        @event.listens_for(connection, "before_cursor_execute")
+        def before_cursor_execute(
+            conn, cursor, statement, parameters, context, executemany
+        ):
+            catch_opts.append(
+                {
+                    k: v
+                    for k, v in context.execution_options.items()
+                    if isinstance(k, str)
+                    and k[0] != "_"
+                    and k not in ("sa_top_level_orm_context",)
+                }
+            )
+
+        sess = Session(connection)
+
+        stmt = (
+            update(User)
+            .where(User.age > 29)
+            .values({"age": User.age - 10})
+            .returning(User)
+            .options(loader_fn(User.addresses))
+        )
+
+        if opt_location.execute:
+            opts = {
+                "compiled_cache": None,
+                "user_defined": "opt1",
+                "schema_translate_map": {"foo": "bar"},
+            }
+            result = sess.scalars(
+                stmt,
+                execution_options=opts,
+            )
+        elif opt_location.statement:
+            opts = {
+                "user_defined": "opt1",
+                "schema_translate_map": {"foo": "bar"},
+            }
+            stmt = stmt.execution_options(**opts)
+            result = sess.scalars(stmt)
+        else:
+            result = ()
+            opts = None
+            opt_location.fail()
+
+        for u1 in result:
+            u1.addresses
+
+        for elem in catch_opts:
+            eq_(elem, opts)
+
     @testing.combinations(True, False, argnames="implicit_returning")
     def test_update_fetch_returning(self, implicit_returning):
         if implicit_returning:
@@ -1270,6 +1352,67 @@ class UpdateDeleteTest(fixtures.MappedTest):
         # to point to the class, so you can test eq with sets
         eq_(set(result.all()), expected)
 
+    @testing.requires.update_returning
+    @testing.variation("crud_type", ["update", "delete"])
+    @testing.combinations(
+        "auto",
+        "evaluate",
+        "fetch",
+        False,
+        argnames="synchronize_session",
+    )
+    def test_crud_returning_bundle(self, crud_type, synchronize_session):
+        """test #10776"""
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        if crud_type.update:
+            stmt = (
+                update(User)
+                .filter(User.age > 29)
+                .values({"age": User.age - 10})
+                .execution_options(synchronize_session=synchronize_session)
+                .returning(Bundle("mybundle", User.id, User.age), User.name)
+            )
+            expected = {((4, 27), "jane"), ((2, 37), "jack")}
+        elif crud_type.delete:
+            stmt = (
+                delete(User)
+                .filter(User.age > 29)
+                .execution_options(synchronize_session=synchronize_session)
+                .returning(Bundle("mybundle", User.id, User.age), User.name)
+            )
+            expected = {((2, 47), "jack"), ((4, 37), "jane")}
+        else:
+            crud_type.fail()
+
+        result = sess.execute(stmt)
+
+        eq_(set(result.all()), expected)
+
+    @testing.requires.delete_returning
+    @testing.requires.returning_star
+    def test_delete_returning_star(self):
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        john, jack, jill, jane = sess.query(User).order_by(User.id).all()
+
+        in_(john, sess)
+        in_(jack, sess)
+
+        stmt = delete(User).where(User.age > 29).returning(literal_column("*"))
+
+        result = sess.execute(stmt)
+        eq_(result.all(), [(2, "jack", 47), (4, "jane", 37)])
+
+        in_(john, sess)
+        not_in(jack, sess)
+        in_(jill, sess)
+        not_in(jane, sess)
+
     @testing.combinations(True, False, argnames="implicit_returning")
     def test_delete_fetch_returning(self, implicit_returning):
         if implicit_returning:
@@ -1409,7 +1552,6 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 execution_options=dict(synchronize_session="evaluate"),
             )
         elif update_type == "bulk":
-
             data = [
                 {"id": john.id, "age": 25},
                 {"id": jack.id, "age": 37},
@@ -1803,7 +1945,6 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         @event.listens_for(session, "after_bulk_update")
         def do_orm_execute(bulk_ud):
-
             cols = [
                 c.key
                 for c, v in (
@@ -2180,6 +2321,84 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
             properties={"user": relationship(User, backref="documents")},
         )
 
+    @testing.requires.update_from_using_alias
+    @testing.combinations(
+        False,
+        ("fetch", testing.requires.update_returning),
+        ("auto", testing.requires.update_returning),
+        argnames="synchronize_session",
+    )
+    def test_update_from_alias(self, synchronize_session):
+        Document = self.classes.Document
+        s = fixture_session()
+
+        d1 = aliased(Document)
+
+        with self.sql_execution_asserter() as asserter:
+            s.execute(
+                update(d1).where(d1.title == "baz").values(flag=True),
+                execution_options={"synchronize_session": synchronize_session},
+            )
+
+        if True:
+            # TODO: see note in crud.py line 770.  RETURNING should be here
+            # if synchronize_session="fetch" however there are more issues
+            # with this.
+            # if synchronize_session is False:
+            asserter.assert_(
+                CompiledSQL(
+                    "UPDATE documents AS documents_1 SET flag=:flag "
+                    "WHERE documents_1.title = :title_1",
+                    [{"flag": True, "title_1": "baz"}],
+                )
+            )
+        else:
+            asserter.assert_(
+                CompiledSQL(
+                    "UPDATE documents AS documents_1 SET flag=:flag "
+                    "WHERE documents_1.title = :title_1 "
+                    "RETURNING documents_1.id",
+                    [{"flag": True, "title_1": "baz"}],
+                )
+            )
+
+    @testing.requires.delete_using_alias
+    @testing.combinations(
+        False,
+        ("fetch", testing.requires.delete_returning),
+        ("auto", testing.requires.delete_returning),
+        argnames="synchronize_session",
+    )
+    def test_delete_using_alias(self, synchronize_session):
+        Document = self.classes.Document
+        s = fixture_session()
+
+        d1 = aliased(Document)
+
+        with self.sql_execution_asserter() as asserter:
+            s.execute(
+                delete(d1).where(d1.title == "baz"),
+                execution_options={"synchronize_session": synchronize_session},
+            )
+
+        if synchronize_session is False:
+            asserter.assert_(
+                CompiledSQL(
+                    "DELETE FROM documents AS documents_1 "
+                    "WHERE documents_1.title = :title_1",
+                    [{"title_1": "baz"}],
+                )
+            )
+        else:
+            asserter.assert_(
+                CompiledSQL(
+                    "DELETE FROM documents AS documents_1 "
+                    "WHERE documents_1.title = :title_1 "
+                    "RETURNING documents_1.id",
+                    [{"title_1": "baz"}],
+                )
+            )
+
     @testing.requires.update_from
     def test_update_from_joined_subq_test(self):
         Document = self.classes.Document
@@ -2424,7 +2643,6 @@ class ExpressionUpdateTest(fixtures.MappedTest):
 
 
 class InheritTest(fixtures.DeclarativeMappedTest):
-
     run_inserts = "each"
 
     run_deletes = "each"
@@ -2653,7 +2871,6 @@ class InheritTest(fixtures.DeclarativeMappedTest):
         e2 = s.query(Engineer).filter_by(name="e2").first()
 
         with self.sql_execution_asserter() as asserter:
-
             assert e2 in s
 
             q = (

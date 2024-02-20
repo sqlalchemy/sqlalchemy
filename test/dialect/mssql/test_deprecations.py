@@ -207,7 +207,6 @@ class LegacySchemaAliasingBackendTest(
             )
 
         with eng.begin() as conn:
-
             tbl.create(conn)
             conn.execute(tbl.insert(), {"id": 1})
             eq_(conn.scalar(tbl.select()), 1)

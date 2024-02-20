@@ -34,7 +34,9 @@ Write Only Relationships
 The **write only** loader strategy is the primary means of configuring a
 :func:`_orm.relationship` that will remain writeable, but will not load
 its contents into memory.  A write-only ORM configuration in modern
-type-annotated Declarative form is illustrated below::
+type-annotated Declarative form is illustrated below:
+
+.. sourcecode:: python
 
     >>> from decimal import Decimal
     >>> from datetime import datetime
@@ -152,11 +154,17 @@ source of objects to start, where below we use a Python ``list``::
     {execsql}BEGIN (implicit)
     INSERT INTO account (identifier) VALUES (?)
     [...] ('account_01',)
-    INSERT INTO account_transaction (account_id, description, amount, timestamp) VALUES
-    (?, ?, ?, CURRENT_TIMESTAMP), (?, ?, ?, CURRENT_TIMESTAMP), (?, ?, ?, CURRENT_TIMESTAMP)
-    RETURNING id, timestamp
-    [...] (1, 'initial deposit', 500.0, 1, 'transfer', 1000.0, 1, 'withdrawal', -29.5)
+    INSERT INTO account_transaction (account_id, description, amount, timestamp)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP) RETURNING id, timestamp
+    [... (insertmanyvalues) 1/3 (ordered; batch not supported)] (1, 'initial deposit', 500.0)
+    INSERT INTO account_transaction (account_id, description, amount, timestamp)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP) RETURNING id, timestamp
+    [insertmanyvalues 2/3 (ordered; batch not supported)] (1, 'transfer', 1000.0)
+    INSERT INTO account_transaction (account_id, description, amount, timestamp)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP) RETURNING id, timestamp
+    [insertmanyvalues 3/3 (ordered; batch not supported)] (1, 'withdrawal', -29.5)
     COMMIT
+
 
 Once an object is database-persisted (i.e. in the :term:`persistent` or
 :term:`detached` state), the collection has the ability to be extended with new
@@ -199,10 +207,13 @@ methods::
     ... )
     >>> session.commit()
     {execsql}INSERT INTO account_transaction (account_id, description, amount, timestamp)
-    VALUES (?, ?, ?, CURRENT_TIMESTAMP), (?, ?, ?, CURRENT_TIMESTAMP)
-    RETURNING id, timestamp
-    [...] (1, 'paycheck', 2000.0, 1, 'rent', -800.0)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP) RETURNING id, timestamp
+    [... (insertmanyvalues) 1/2 (ordered; batch not supported)] (1, 'paycheck', 2000.0)
+    INSERT INTO account_transaction (account_id, description, amount, timestamp)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP) RETURNING id, timestamp
+    [insertmanyvalues 2/2 (ordered; batch not supported)] (1, 'rent', -800.0)
     COMMIT
+
 
 The items added above are held in a pending queue within the
 :class:`_orm.Session` until the next flush, at which point they are INSERTed

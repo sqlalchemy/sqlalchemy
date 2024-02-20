@@ -13,6 +13,8 @@ from sqlalchemy import MetaData
 from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.sql import literal_column
 from sqlalchemy.sql import select
@@ -115,8 +117,6 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_literal_binds_pgarray(self):
-        from sqlalchemy.dialects.postgresql import ARRAY, array
-
         m = MetaData()
         t = Table(
             "t",
@@ -983,7 +983,11 @@ class PKDefaultTest(fixtures.TestBase):
                 metadata,
                 Column(
                     "date_id",
-                    DateTime(timezone=True),
+                    # we want no tzinfo normally since pymssql doesn't do
+                    # it right now
+                    DateTime().with_variant(
+                        DateTime(timezone=True), "postgresql"
+                    ),
                     default=text("current_timestamp"),
                     primary_key=True,
                 ),
@@ -1093,7 +1097,6 @@ class PKIncrementTest(fixtures.TablesTest):
 
 
 class AutoIncrementTest(fixtures.TestBase):
-
     __backend__ = True
 
     @testing.requires.empty_inserts
@@ -1111,6 +1114,7 @@ class AutoIncrementTest(fixtures.TestBase):
         id_ = r.inserted_primary_key[0]
         eq_(id_, 1)
         eq_(connection.scalar(sa.select(single.c.id)), 1)
+        assert single.autoincrement_column is single.c.id
 
     def test_autoinc_detection_no_affinity(self):
         class MyType(TypeDecorator):
@@ -1120,6 +1124,7 @@ class AutoIncrementTest(fixtures.TestBase):
         assert MyType()._type_affinity is None
         t = Table("x", MetaData(), Column("id", MyType(), primary_key=True))
         assert t._autoincrement_column is None
+        assert t.autoincrement_column is None
 
     def test_autoincrement_ignore_fk(self):
         m = MetaData()
@@ -1229,7 +1234,6 @@ class AutoIncrementTest(fixtures.TestBase):
 
 
 class SpecialTypePKTest(fixtures.TestBase):
-
     """test process_result_value in conjunction with primary key columns.
 
     Also tests that "autoincrement" checks are against
@@ -1560,6 +1564,7 @@ class CurrentParametersTest(fixtures.TablesTest):
 
         some_table = self.tables.some_table
         some_table.c.x.default.arg = gen_default
+        some_table.c.x._reset_memoizations()
         return fn
 
     @testing.combinations(

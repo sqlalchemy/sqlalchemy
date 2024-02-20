@@ -1,5 +1,5 @@
-# sqlite/base.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/sqlite/base.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -10,7 +10,7 @@
 r"""
 .. dialect:: sqlite
     :name: SQLite
-    :full_support: 3.21, 3.28+
+    :full_support: 3.36.0
     :normal_support: 3.12+
     :best_effort: 3.7.16+
 
@@ -215,7 +215,7 @@ by *not even emitting BEGIN* until the first write operation.
     SQLite's transactional scope is impacted by unresolved
     issues in the pysqlite driver, which defers BEGIN statements to a greater
     degree than is often feasible. See the section :ref:`pysqlite_serializable`
-    for techniques to work around this behavior.
+    or :ref:`aiosqlite_serializable` for techniques to work around this behavior.
 
 .. seealso::
 
@@ -273,8 +273,9 @@ won't work at all with pysqlite unless workarounds are taken.
 .. warning::
 
     SQLite's SAVEPOINT feature is impacted by unresolved
-    issues in the pysqlite driver, which defers BEGIN statements to a greater
-    degree than is often feasible. See the section :ref:`pysqlite_serializable`
+    issues in the pysqlite and aiosqlite drivers, which defer BEGIN statements
+    to a greater degree than is often feasible. See the sections
+    :ref:`pysqlite_serializable` and :ref:`aiosqlite_serializable`
     for techniques to work around this behavior.
 
 Transactional DDL
@@ -699,10 +700,6 @@ lookup is used instead:
   ``REAL``, ``FLOA`` or ``DOUB``.
 * Otherwise, the :class:`_types.NUMERIC` type is used.
 
-.. versionadded:: 0.9.3 Support for SQLite type affinity rules when reflecting
-   columns.
-
-
 .. _sqlite_partial_index:
 
 Partial Indexes
@@ -720,8 +717,6 @@ The index will be rendered at create time as::
     CREATE INDEX test_idx1 ON testtbl (data)
     WHERE data > 5 AND data < 10
 
-.. versionadded:: 0.9.9
-
 .. _sqlite_dotted_column_names:
 
 Dotted Column Names
@@ -732,12 +727,6 @@ Using table or column names that explicitly have periods in them is
 databases in general, as the dot is a syntactically significant character,
 the SQLite driver up until version **3.10.0** of SQLite has a bug which
 requires that SQLAlchemy filter out these dots in result sets.
-
-.. versionchanged:: 1.1
-
-    The following SQLite issue has been resolved as of version 3.10.0
-    of SQLite.  SQLAlchemy as of **1.1** automatically disables its internal
-    workarounds based on detection of this version.
 
 The bug, entirely outside of SQLAlchemy, can be illustrated thusly::
 
@@ -855,7 +844,7 @@ Reflecting internal schema tables
 ----------------------------------
 
 Reflection methods that return lists of tables will omit so-called
-"SQLite internal schema object" names, which are referred towards by SQLite
+"SQLite internal schema object" names, which are considered by SQLite
 as any object name that is prefixed with ``sqlite_``.  An example of
 such an object is the ``sqlite_sequence`` table that's generated when
 the ``AUTOINCREMENT`` column parameter is used.   In order to return
@@ -954,8 +943,6 @@ class _DateTimeMixin:
         it will imply a NUMERIC storage format on SQLite; in this case,
         the type will generate its DDL as DATE_CHAR, DATETIME_CHAR,
         TIME_CHAR.
-
-        .. versionadded:: 1.0.0
 
         """
         spec = self._storage_format % {
@@ -1332,6 +1319,9 @@ class SQLiteCompiler(compiler.SQLCompiler):
     def visit_char_length_func(self, fn, **kw):
         return "length%s" % self.function_argspec(fn)
 
+    def visit_aggregate_strings_func(self, fn, **kw):
+        return "group_concat%s" % self.function_argspec(fn)
+
     def visit_cast(self, cast, **kwargs):
         if self.dialect.supports_cast:
             return super().visit_cast(cast, **kwargs)
@@ -1464,7 +1454,6 @@ class SQLiteCompiler(compiler.SQLCompiler):
         return target_text
 
     def visit_on_conflict_do_nothing(self, on_conflict, **kw):
-
         target_text = self._on_conflict_target(on_conflict, **kw)
 
         if target_text:
@@ -1542,7 +1531,6 @@ class SQLiteCompiler(compiler.SQLCompiler):
 
 class SQLiteDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
-
         coltype = self.dialect.type_compiler_instance.process(
             column.type, type_expression=column
         )
@@ -1664,7 +1652,6 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         return text
 
     def visit_foreign_key_constraint(self, constraint, **kw):
-
         local_table = constraint.elements[0].parent.table
         remote_table = constraint.elements[0].column.table
 
@@ -1910,7 +1897,10 @@ class SQLiteDialect(default.DefaultDialect):
     supports_default_values = True
     supports_default_metavalue = False
 
+    # sqlite issue:
     # https://github.com/python/cpython/issues/93421
+    # note this parameter is no longer used by the ORM or default dialect
+    # see #9414
     supports_sane_rowcount_returning = False
 
     supports_empty_insert = False
@@ -2040,9 +2030,9 @@ class SQLiteDialect(default.DefaultDialect):
             )
 
             if self.dbapi.sqlite_version_info < (3, 35) or util.pypy:
-                self.update_returning = (
-                    self.delete_returning
-                ) = self.insert_returning = False
+                self.update_returning = self.delete_returning = (
+                    self.insert_returning
+                ) = False
 
             if self.dbapi.sqlite_version_info < (3, 32, 0):
                 # https://www.sqlite.org/limits.html
@@ -2151,6 +2141,11 @@ class SQLiteDialect(default.DefaultDialect):
     @reflection.cache
     def has_table(self, connection, table_name, schema=None, **kw):
         self._ensure_has_table_connection(connection)
+
+        if schema is not None and schema not in self.get_schema_names(
+            connection, **kw
+        ):
+            return False
 
         info = self._get_table_pragma(
             connection, "table_info", table_name, schema=schema
@@ -2269,7 +2264,6 @@ class SQLiteDialect(default.DefaultDialect):
         persisted,
         tablesql,
     ):
-
         if generated:
             # the type of a column "cc INTEGER GENERATED ALWAYS AS (1 + 42)"
             # somehow is "INTEGER GENERATED ALWAYS"
@@ -2454,10 +2448,16 @@ class SQLiteDialect(default.DefaultDialect):
             if table_data is None:
                 # system tables, etc.
                 return
+
+            # note that we already have the FKs from PRAGMA above.  This whole
+            # regexp thing is trying to locate additional detail about the
+            # FKs, namely the name of the constraint and other options.
+            # so parsing the columns is really about matching it up to what
+            # we already have.
             FK_PATTERN = (
                 r"(?:CONSTRAINT (\w+) +)?"
                 r"FOREIGN KEY *\( *(.+?) *\) +"
-                r'REFERENCES +(?:(?:"(.+?)")|([a-z0-9_]+)) *\((.+?)\) *'
+                r'REFERENCES +(?:(?:"(.+?)")|([a-z0-9_]+)) *\( *((?:(?:"[^"]+"|[a-z0-9_]+) *(?:, *)?)+)\) *'  # noqa: E501
                 r"((?:ON (?:DELETE|UPDATE) "
                 r"(?:SET NULL|SET DEFAULT|CASCADE|RESTRICT|NO ACTION) *)*)"
                 r"((?:NOT +)?DEFERRABLE)?"
@@ -2547,7 +2547,6 @@ class SQLiteDialect(default.DefaultDialect):
     def get_unique_constraints(
         self, connection, table_name, schema=None, **kw
     ):
-
         auto_index_by_sig = {}
         for idx in self.get_indexes(
             connection,

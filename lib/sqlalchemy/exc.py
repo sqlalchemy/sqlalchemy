@@ -1,5 +1,5 @@
-# sqlalchemy/exc.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# exc.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -51,17 +51,15 @@ class HasDescriptionCode:
             self.code = code
         super().__init__(*arg, **kw)
 
+    _what_are_we = "error"
+
     def _code_str(self) -> str:
         if not self.code:
             return ""
         else:
             return (
-                "(Background on this error at: "
-                "https://sqlalche.me/e/%s/%s)"
-                % (
-                    _version_token,
-                    self.code,
-                )
+                f"(Background on this {self._what_are_we} at: "
+                f"https://sqlalche.me/e/{_version_token}/{self.code})"
             )
 
     def __str__(self) -> str:
@@ -137,8 +135,6 @@ class DuplicateColumnError(ArgumentError):
 class ObjectNotExecutableError(ArgumentError):
     """Raised when an object is passed to .execute() that can't be
     executed as SQL.
-
-    .. versionadded:: 1.1
 
     """
 
@@ -575,8 +571,7 @@ class DBAPIError(StatementError):
         connection_invalidated: bool = False,
         dialect: Optional[Dialect] = None,
         ismulti: Optional[bool] = None,
-    ) -> StatementError:
-        ...
+    ) -> StatementError: ...
 
     @overload
     @classmethod
@@ -590,8 +585,7 @@ class DBAPIError(StatementError):
         connection_invalidated: bool = False,
         dialect: Optional[Dialect] = None,
         ismulti: Optional[bool] = None,
-    ) -> DontWrapMixin:
-        ...
+    ) -> DontWrapMixin: ...
 
     @overload
     @classmethod
@@ -605,8 +599,7 @@ class DBAPIError(StatementError):
         connection_invalidated: bool = False,
         dialect: Optional[Dialect] = None,
         ismulti: Optional[bool] = None,
-    ) -> BaseException:
-        ...
+    ) -> BaseException: ...
 
     @classmethod
     def instance(
@@ -833,3 +826,5 @@ class SAPendingDeprecationWarning(PendingDeprecationWarning):
 
 class SAWarning(HasDescriptionCode, RuntimeWarning):
     """Issued at runtime."""
+
+    _what_are_we = "warning"

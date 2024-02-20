@@ -1,30 +1,40 @@
-# postgresql/on_conflict.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/postgresql/dml.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
+from __future__ import annotations
 
-import typing
+from typing import Any
+from typing import Optional
 
 from . import ext
+from .._typing import _OnConflictConstraintT
+from .._typing import _OnConflictIndexElementsT
+from .._typing import _OnConflictIndexWhereT
+from .._typing import _OnConflictSetT
+from .._typing import _OnConflictWhereT
 from ... import util
 from ...sql import coercions
 from ...sql import roles
 from ...sql import schema
+from ...sql._typing import _DMLTableArgument
 from ...sql.base import _exclusive_against
 from ...sql.base import _generative
 from ...sql.base import ColumnCollection
+from ...sql.base import ReadOnlyColumnCollection
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
+from ...sql.elements import KeyedColumnElement
 from ...sql.expression import alias
+from ...util.typing import Self
 
 
 __all__ = ("Insert", "insert")
 
 
-def insert(table):
+def insert(table: _DMLTableArgument) -> Insert:
     """Construct a PostgreSQL-specific variant :class:`_postgresql.Insert`
     construct.
 
@@ -44,9 +54,6 @@ def insert(table):
     return Insert(table)
 
 
-SelfInsert = typing.TypeVar("SelfInsert", bound="Insert")
-
-
 class Insert(StandardInsert):
     """PostgreSQL-specific implementation of INSERT.
 
@@ -55,15 +62,15 @@ class Insert(StandardInsert):
     The :class:`_postgresql.Insert` object is created using the
     :func:`sqlalchemy.dialects.postgresql.insert` function.
 
-    .. versionadded:: 1.1
-
     """
 
     stringify_dialect = "postgresql"
     inherit_cache = False
 
     @util.memoized_property
-    def excluded(self):
+    def excluded(
+        self,
+    ) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
         """Provide the ``excluded`` namespace for an ON CONFLICT statement
 
         PG's ON CONFLICT clause allows reference to the row that would
@@ -100,13 +107,13 @@ class Insert(StandardInsert):
     @_generative
     @_on_conflict_exclusive
     def on_conflict_do_update(
-        self: SelfInsert,
-        constraint=None,
-        index_elements=None,
-        index_where=None,
-        set_=None,
-        where=None,
-    ) -> SelfInsert:
+        self,
+        constraint: _OnConflictConstraintT = None,
+        index_elements: _OnConflictIndexElementsT = None,
+        index_where: _OnConflictIndexWhereT = None,
+        set_: _OnConflictSetT = None,
+        where: _OnConflictWhereT = None,
+    ) -> Self:
         r"""
         Specifies a DO UPDATE SET action for ON CONFLICT clause.
 
@@ -152,8 +159,6 @@ class Insert(StandardInsert):
          not meeting the ``WHERE`` condition will not be updated
          (effectively a ``DO NOTHING`` for those rows).
 
-         .. versionadded:: 1.1
-
 
         .. seealso::
 
@@ -168,11 +173,11 @@ class Insert(StandardInsert):
     @_generative
     @_on_conflict_exclusive
     def on_conflict_do_nothing(
-        self: SelfInsert,
-        constraint=None,
-        index_elements=None,
-        index_where=None,
-    ) -> SelfInsert:
+        self,
+        constraint: _OnConflictConstraintT = None,
+        index_elements: _OnConflictIndexElementsT = None,
+        index_where: _OnConflictIndexWhereT = None,
+    ) -> Self:
         """
         Specifies a DO NOTHING action for ON CONFLICT clause.
 
@@ -192,8 +197,6 @@ class Insert(StandardInsert):
          Additional WHERE criterion that can be used to infer a
          conditional target index.
 
-         .. versionadded:: 1.1
-
         .. seealso::
 
             :ref:`postgresql_insert_on_conflict`
@@ -208,8 +211,16 @@ class Insert(StandardInsert):
 class OnConflictClause(ClauseElement):
     stringify_dialect = "postgresql"
 
-    def __init__(self, constraint=None, index_elements=None, index_where=None):
+    constraint_target: Optional[str]
+    inferred_target_elements: _OnConflictIndexElementsT
+    inferred_target_whereclause: _OnConflictIndexWhereT
 
+    def __init__(
+        self,
+        constraint: _OnConflictConstraintT = None,
+        index_elements: _OnConflictIndexElementsT = None,
+        index_where: _OnConflictIndexWhereT = None,
+    ):
         if constraint is not None:
             if not isinstance(constraint, str) and isinstance(
                 constraint,
@@ -246,9 +257,9 @@ class OnConflictClause(ClauseElement):
             self.inferred_target_elements = index_elements
             self.inferred_target_whereclause = index_where
         elif constraint is None:
-            self.constraint_target = (
-                self.inferred_target_elements
-            ) = self.inferred_target_whereclause = None
+            self.constraint_target = self.inferred_target_elements = (
+                self.inferred_target_whereclause
+            ) = None
 
 
 class OnConflictDoNothing(OnConflictClause):
@@ -260,11 +271,11 @@ class OnConflictDoUpdate(OnConflictClause):
 
     def __init__(
         self,
-        constraint=None,
-        index_elements=None,
-        index_where=None,
-        set_=None,
-        where=None,
+        constraint: _OnConflictConstraintT = None,
+        index_elements: _OnConflictIndexElementsT = None,
+        index_where: _OnConflictIndexWhereT = None,
+        set_: _OnConflictSetT = None,
+        where: _OnConflictWhereT = None,
     ):
         super().__init__(
             constraint=constraint,

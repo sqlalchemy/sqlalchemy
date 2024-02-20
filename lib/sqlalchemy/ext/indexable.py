@@ -1,5 +1,5 @@
-# ext/index.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# ext/indexable.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -21,9 +21,6 @@ The :mod:`~sqlalchemy.ext.indexable` extension provides
 :class:`_schema.Column`-like interface for any element of an
 :class:`_types.Indexable` typed column. In simple cases, it can be
 treated as a :class:`_schema.Column` - mapped attribute.
-
-
-.. versionadded:: 1.1
 
 Synopsis
 ========
@@ -234,8 +231,6 @@ class index_property(hybrid_property):  # noqa
     """A property generator. The generated property describes an object
     attribute that corresponds to an :class:`_types.Indexable`
     column.
-
-    .. versionadded:: 1.1
 
     .. seealso::
 

@@ -31,9 +31,9 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.fixtures import RemoveORMEventsGlobally
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-from test.orm.test_events import _RemoveListeners
 
 
 class ConcreteTest(AssertsCompiledSQL, fixtures.MappedTest):
@@ -1446,7 +1446,9 @@ class ColKeysTest(fixtures.MappedTest):
         eq_(sess.get(Office, 2).name, "office2")
 
 
-class AdaptOnNamesTest(_RemoveListeners, fixtures.DeclarativeMappedTest):
+class AdaptOnNamesTest(
+    RemoveORMEventsGlobally, fixtures.DeclarativeMappedTest
+):
     """test the full integration case for #7805"""
 
     @classmethod
@@ -1503,7 +1505,6 @@ class AdaptOnNamesTest(_RemoveListeners, fixtures.DeclarativeMappedTest):
 
             @classmethod
             def make_statement(cls, *filter_cond, include_metadata=False):
-
                 a_stmt = (
                     select(
                         A.id,

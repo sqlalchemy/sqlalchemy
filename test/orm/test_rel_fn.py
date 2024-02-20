@@ -1137,7 +1137,6 @@ class DetermineJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_determine_join_ambiguous_fks_m2m(self):
-
         self._assert_raises_ambig_join(
             relationships.JoinCondition,
             "Whatever.foo",
@@ -1310,6 +1309,28 @@ class LazyClauseTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
 
 
 class DeannotateCorrectlyTest(fixtures.TestBase):
+    def test_annotate_orm_join(self):
+        """test for #10223"""
+        from sqlalchemy.orm import declarative_base
+
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            bs = relationship("B")
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey(A.id))
+
+        stmt = select(A).join(A.bs)
+
+        from sqlalchemy.sql import util
+
+        util._deep_annotate(stmt, {"foo": "bar"})
+
     def test_pj_deannotates(self):
         from sqlalchemy.orm import declarative_base
 

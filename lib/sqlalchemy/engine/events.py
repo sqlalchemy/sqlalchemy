@@ -1,5 +1,5 @@
-# sqlalchemy/engine/events.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# engine/events.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -25,6 +25,8 @@ from .interfaces import Dialect
 from .. import event
 from .. import exc
 from ..util.typing import Literal
+from ..util.typing import TupleAny
+from ..util.typing import Unpack
 
 if typing.TYPE_CHECKING:
     from .interfaces import _CoreMultiExecuteParams
@@ -131,7 +133,7 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
         if default_dispatch is None and hasattr(
             target, "_no_async_engine_events"
         ):
-            target._no_async_engine_events()  # type: ignore
+            target._no_async_engine_events()
 
         return default_dispatch
 
@@ -270,7 +272,7 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
         multiparams: _CoreMultiExecuteParams,
         params: _CoreSingleExecuteParams,
         execution_options: _ExecuteOptions,
-        result: Result[Any],
+        result: Result[Unpack[TupleAny]],
     ) -> None:
         """Intercept high level execute() events after execute.
 
@@ -498,8 +500,6 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
         can still be used for new requests in which case
         it re-acquires connection resources.
 
-        .. versionadded:: 1.0.5
-
         """
 
     def begin(self, conn: Connection) -> None:
@@ -636,16 +636,13 @@ class DialectEvents(event.Events[Dialect]):
 
         :meth:`_events.ConnectionEvents.after_execute`
 
-
-    .. versionadded:: 0.9.4
-
     """
 
     _target_class_doc = "SomeEngine"
     _dispatch_target = Dialect
 
     @classmethod
-    def _listen(  # type: ignore
+    def _listen(
         cls,
         event_key: event._EventKey[Dialect],
         *,
@@ -663,7 +660,6 @@ class DialectEvents(event.Events[Dialect]):
         target: Union[Engine, Type[Engine], Dialect, Type[Dialect]],
         identifier: str,
     ) -> Optional[Union[Dialect, Type[Dialect]]]:
-
         if isinstance(target, type):
             if issubclass(target, Engine):
                 return Dialect
@@ -743,6 +739,25 @@ class DialectEvents(event.Events[Dialect]):
         that some dialects such as psycopg, psycopg2, and most MySQL dialects
         make use of a native ``ping()`` method supplied by the DBAPI which does
         not make use of disconnect codes.
+
+        .. versionchanged:: 2.0.0 The :meth:`.DialectEvents.handle_error`
+           event hook participates in connection pool "pre-ping" operations.
+           Within this usage, the :attr:`.ExceptionContext.engine` attribute
+           will be ``None``, however the :class:`.Dialect` in use is always
+           available via the :attr:`.ExceptionContext.dialect` attribute.
+
+        .. versionchanged:: 2.0.5 Added :attr:`.ExceptionContext.is_pre_ping`
+           attribute which will be set to ``True`` when the
+           :meth:`.DialectEvents.handle_error` event hook is triggered within
+           a connection pool pre-ping operation.
+
+        .. versionchanged:: 2.0.5 An issue was repaired that allows for the
+           PostgreSQL ``psycopg`` and ``psycopg2`` drivers, as well as all
+           MySQL drivers, to properly participate in the
+           :meth:`.DialectEvents.handle_error` event hook during
+           connection pool "pre-ping" operations; previously, the
+           implementation was non-working for these drivers.
+
 
         A handler function has two options for replacing
         the SQLAlchemy-constructed exception into one that is user
@@ -835,9 +850,6 @@ class DialectEvents(event.Events[Dialect]):
             @event.listens_for(e, 'do_connect')
             def receive_do_connect(dialect, conn_rec, cargs, cparams):
                 return psycopg2.connect(*cargs, **cparams)
-
-
-        .. versionadded:: 1.0.3
 
         .. seealso::
 

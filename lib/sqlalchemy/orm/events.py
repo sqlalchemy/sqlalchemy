@@ -1,5 +1,5 @@
 # orm/events.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -494,13 +494,13 @@ class InstanceEvents(event.Events[ClassManager[Any]]):
 
         .. seealso::
 
+            :ref:`mapped_class_load_events`
+
             :meth:`.InstanceEvents.init`
 
             :meth:`.InstanceEvents.refresh`
 
             :meth:`.SessionEvents.loaded_as_persistent`
-
-            :ref:`mapping_constructors`
 
         """
 
@@ -534,6 +534,8 @@ class InstanceEvents(event.Events[ClassManager[Any]]):
 
         .. seealso::
 
+            :ref:`mapped_class_load_events`
+
             :meth:`.InstanceEvents.load`
 
         """
@@ -566,8 +568,6 @@ class InstanceEvents(event.Events[ClassManager[Any]]):
             :meth:`.SessionEvents.pending_to_persistent` and
             :meth:`.MapperEvents.after_insert` are better choices.
 
-        .. versionadded:: 1.0.5
-
         :param target: the mapped instance.  If
          the event is configured with ``raw=True``, this will
          instead be the :class:`.InstanceState` state-management
@@ -578,6 +578,8 @@ class InstanceEvents(event.Events[ClassManager[Any]]):
          were populated.
 
         .. seealso::
+
+            :ref:`mapped_class_load_events`
 
             :ref:`orm_server_defaults`
 
@@ -727,9 +729,9 @@ class _EventsHold(event.RefCollection[_ET]):
 
 
 class _InstanceEventsHold(_EventsHold[_ET]):
-    all_holds: weakref.WeakKeyDictionary[
-        Any, Any
-    ] = weakref.WeakKeyDictionary()
+    all_holds: weakref.WeakKeyDictionary[Any, Any] = (
+        weakref.WeakKeyDictionary()
+    )
 
     def resolve(self, class_: Type[_O]) -> Optional[ClassManager[_O]]:
         return instrumentation.opt_manager_of_class(class_)
@@ -911,7 +913,11 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         before instrumentation is applied to the mapped class.
 
         This event is the earliest phase of mapper construction.
-        Most attributes of the mapper are not yet initialized.
+        Most attributes of the mapper are not yet initialized.   To
+        receive an event within initial mapper construction where basic
+        state is available such as the :attr:`_orm.Mapper.attrs` collection,
+        the :meth:`_orm.MapperEvents.after_mapper_constructed` event may
+        be a better choice.
 
         This listener can either be applied to the :class:`_orm.Mapper`
         class overall, or to any un-mapped class which serves as a base
@@ -927,6 +933,44 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
          of this event.
         :param class\_: the mapped class.
 
+        .. seealso::
+
+            :meth:`_orm.MapperEvents.after_mapper_constructed`
+
+        """
+
+    def after_mapper_constructed(
+        self, mapper: Mapper[_O], class_: Type[_O]
+    ) -> None:
+        """Receive a class and mapper when the :class:`_orm.Mapper` has been
+        fully constructed.
+
+        This event is called after the initial constructor for
+        :class:`_orm.Mapper` completes.  This occurs after the
+        :meth:`_orm.MapperEvents.instrument_class` event and after the
+        :class:`_orm.Mapper` has done an initial pass of its arguments
+        to generate its collection of :class:`_orm.MapperProperty` objects,
+        which are accessible via the :meth:`_orm.Mapper.get_property`
+        method and the :attr:`_orm.Mapper.iterate_properties` attribute.
+
+        This event differs from the
+        :meth:`_orm.MapperEvents.before_mapper_configured` event in that it
+        is invoked within the constructor for :class:`_orm.Mapper`, rather
+        than within the :meth:`_orm.registry.configure` process.   Currently,
+        this event is the only one which is appropriate for handlers that
+        wish to create additional mapped classes in response to the
+        construction of this :class:`_orm.Mapper`, which will be part of the
+        same configure step when :meth:`_orm.registry.configure` next runs.
+
+        .. versionadded:: 2.0.2
+
+        .. seealso::
+
+            :ref:`examples_versioning` - an example which illustrates the use
+            of the :meth:`_orm.MapperEvents.before_mapper_configured`
+            event to create new mappers to record change-audit histories on
+            objects.
+
         """
 
     def before_mapper_configured(
@@ -938,7 +982,7 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         the configure step, by returning the :attr:`.orm.interfaces.EXT_SKIP`
         symbol which indicates to the :func:`.configure_mappers` call that this
         particular mapper (or hierarchy of mappers, if ``propagate=True`` is
-        used) should be skipped in the current configuration run.  When one or
+        used) should be skipped in the current configuration run. When one or
         more mappers are skipped, the he "new mappers" flag will remain set,
         meaning the :func:`.configure_mappers` function will continue to be
         called when mappers are used, to continue to try to configure all
@@ -1052,7 +1096,7 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
 
             @event.listens_for(Mapper, "before_configured")
             def go():
-                # ...
+                ...
 
         Contrast this event to :meth:`.MapperEvents.after_configured`,
         which is invoked after the series of mappers has been configured,
@@ -1072,10 +1116,7 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
 
             @event.listens_for(mapper, "before_configured", once=True)
             def go():
-                # ...
-
-
-        .. versionadded:: 0.9.3
+                ...
 
 
         .. seealso::
@@ -1147,6 +1188,12 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         """Receive an object instance before an INSERT statement
         is emitted corresponding to that instance.
 
+        .. note:: this event **only** applies to the
+           :ref:`session flush operation <session_flushing>`
+           and does **not** apply to the ORM DML operations described at
+           :ref:`orm_expression_update_delete`.  To intercept ORM
+           DML events, use :meth:`_orm.SessionEvents.do_orm_execute`.
+
         This event is used to modify local, non-object related
         attributes on the instance before an INSERT occurs, as well
         as to emit additional SQL statements on the given
@@ -1195,6 +1242,12 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         """Receive an object instance after an INSERT statement
         is emitted corresponding to that instance.
 
+        .. note:: this event **only** applies to the
+           :ref:`session flush operation <session_flushing>`
+           and does **not** apply to the ORM DML operations described at
+           :ref:`orm_expression_update_delete`.  To intercept ORM
+           DML events, use :meth:`_orm.SessionEvents.do_orm_execute`.
+
         This event is used to modify in-Python-only
         state on the instance after an INSERT occurs, as well
         as to emit additional SQL statements on the given
@@ -1242,6 +1295,12 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
     ) -> None:
         """Receive an object instance before an UPDATE statement
         is emitted corresponding to that instance.
+
+        .. note:: this event **only** applies to the
+           :ref:`session flush operation <session_flushing>`
+           and does **not** apply to the ORM DML operations described at
+           :ref:`orm_expression_update_delete`.  To intercept ORM
+           DML events, use :meth:`_orm.SessionEvents.do_orm_execute`.
 
         This event is used to modify local, non-object related
         attributes on the instance before an UPDATE occurs, as well
@@ -1310,6 +1369,12 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         """Receive an object instance after an UPDATE statement
         is emitted corresponding to that instance.
 
+        .. note:: this event **only** applies to the
+           :ref:`session flush operation <session_flushing>`
+           and does **not** apply to the ORM DML operations described at
+           :ref:`orm_expression_update_delete`.  To intercept ORM
+           DML events, use :meth:`_orm.SessionEvents.do_orm_execute`.
+
         This event is used to modify in-Python-only
         state on the instance after an UPDATE occurs, as well
         as to emit additional SQL statements on the given
@@ -1376,6 +1441,12 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         """Receive an object instance before a DELETE statement
         is emitted corresponding to that instance.
 
+        .. note:: this event **only** applies to the
+           :ref:`session flush operation <session_flushing>`
+           and does **not** apply to the ORM DML operations described at
+           :ref:`orm_expression_update_delete`.  To intercept ORM
+           DML events, use :meth:`_orm.SessionEvents.do_orm_execute`.
+
         This event is used to emit additional SQL statements on
         the given connection as well as to perform application
         specific bookkeeping related to a deletion event.
@@ -1417,6 +1488,12 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
     ) -> None:
         """Receive an object instance after a DELETE statement
         has been emitted corresponding to that instance.
+
+        .. note:: this event **only** applies to the
+           :ref:`session flush operation <session_flushing>`
+           and does **not** apply to the ORM DML operations described at
+           :ref:`orm_expression_update_delete`.  To intercept ORM
+           DML events, use :meth:`_orm.SessionEvents.do_orm_execute`.
 
         This event is used to emit additional SQL statements on
         the given connection as well as to perform application
@@ -1528,7 +1605,6 @@ class SessionEvents(event.Events[Session]):
         cls, target: Any, identifier: str
     ) -> Union[Session, type]:
         if isinstance(target, scoped_session):
-
             target = target.session_factory
             if not isinstance(target, sessionmaker) and (
                 not isinstance(target, type) or not issubclass(target, Session)
@@ -1569,7 +1645,6 @@ class SessionEvents(event.Events[Session]):
 
         if is_instance_event:
             if not raw or restore_load_context:
-
                 fn = event_key._listen_fn
 
                 def wrap(
@@ -1605,11 +1680,13 @@ class SessionEvents(event.Events[Session]):
         This event is invoked for all top-level SQL statements invoked from the
         :meth:`_orm.Session.execute` method, as well as related methods such as
         :meth:`_orm.Session.scalars` and :meth:`_orm.Session.scalar`. As of
-        SQLAlchemy 1.4, all ORM queries emitted on behalf of a
-        :class:`_orm.Session` will flow through this method, so this event hook
-        provides the single point at which ORM queries of all types may be
-        intercepted before they are invoked, and additionally to replace their
-        execution with a different process.
+        SQLAlchemy 1.4, all ORM queries that run through the
+        :meth:`_orm.Session.execute` method as well as related methods
+        :meth:`_orm.Session.scalars`, :meth:`_orm.Session.scalar` etc.
+        will participate in this event.
+        This event hook does **not** apply to the queries that are
+        emitted internally within the ORM flush process, i.e. the
+        process described at :ref:`session_flushing`.
 
         .. note::  The :meth:`_orm.SessionEvents.do_orm_execute` event hook
            is triggered **for ORM statement executions only**, meaning those
@@ -1620,10 +1697,16 @@ class SessionEvents(event.Events[Session]):
            otherwise originating from an :class:`_engine.Engine` object without
            any :class:`_orm.Session` involved. To intercept **all** SQL
            executions regardless of whether the Core or ORM APIs are in use,
-           see the event hooks at
-           :class:`.ConnectionEvents`, such as
+           see the event hooks at :class:`.ConnectionEvents`, such as
            :meth:`.ConnectionEvents.before_execute` and
            :meth:`.ConnectionEvents.before_cursor_execute`.
+
+           Also, this event hook does **not** apply to queries that are
+           emitted internally within the ORM flush process,
+           i.e. the process described at :ref:`session_flushing`; to
+           intercept steps within the flush process, see the event
+           hooks described at :ref:`session_persistence_events` as
+           well as :ref:`session_persistence_mapper`.
 
         This event is a ``do_`` event, meaning it has the capability to replace
         the operation that the :meth:`_orm.Session.execute` method normally
@@ -1956,7 +2039,14 @@ class SessionEvents(event.Events[Session]):
         transaction: SessionTransaction,
         connection: Connection,
     ) -> None:
-        """Execute after a transaction is begun on a connection
+        """Execute after a transaction is begun on a connection.
+
+        .. note:: This event is called within the process of the
+          :class:`_orm.Session` modifying its own internal state.
+          To invoke SQL operations within this hook, use the
+          :class:`_engine.Connection` provided to the event;
+          do not run SQL operations using the :class:`_orm.Session`
+          directly.
 
         :param session: The target :class:`.Session`.
         :param transaction: The :class:`.SessionTransaction`.
@@ -2015,16 +2105,6 @@ class SessionEvents(event.Events[Session]):
 
         """
 
-    @event._legacy_signature(
-        "0.9",
-        ["session", "query", "query_context", "result"],
-        lambda update_context: (
-            update_context.session,
-            update_context.query,
-            None,
-            update_context.result,
-        ),
-    )
     def after_bulk_update(self, update_context: _O) -> None:
         """Event for after the legacy :meth:`_orm.Query.update` method
         has been called.
@@ -2061,16 +2141,6 @@ class SessionEvents(event.Events[Session]):
 
         """
 
-    @event._legacy_signature(
-        "0.9",
-        ["session", "query", "query_context", "result"],
-        lambda delete_context: (
-            delete_context.session,
-            delete_context.query,
-            None,
-            delete_context.result,
-        ),
-    )
     def after_bulk_delete(self, delete_context: _O) -> None:
         """Event for after the legacy :meth:`_orm.Query.delete` method
         has been called.
@@ -2119,8 +2189,6 @@ class SessionEvents(event.Events[Session]):
 
         :param instance: the ORM-mapped instance being operated upon.
 
-        .. versionadded:: 1.1
-
         .. seealso::
 
             :ref:`session_lifecycle_events`
@@ -2141,8 +2209,6 @@ class SessionEvents(event.Events[Session]):
 
         :param instance: the ORM-mapped instance being operated upon.
 
-        .. versionadded:: 1.1
-
         .. seealso::
 
             :ref:`session_lifecycle_events`
@@ -2161,8 +2227,6 @@ class SessionEvents(event.Events[Session]):
         :param session: target :class:`.Session`
 
         :param instance: the ORM-mapped instance being operated upon.
-
-        .. versionadded:: 1.1
 
         .. seealso::
 
@@ -2184,8 +2248,6 @@ class SessionEvents(event.Events[Session]):
         :param session: target :class:`.Session`
 
         :param instance: the ORM-mapped instance being operated upon.
-
-        .. versionadded:: 1.1
 
         .. seealso::
 
@@ -2222,8 +2284,6 @@ class SessionEvents(event.Events[Session]):
 
         :param instance: the ORM-mapped instance being operated upon.
 
-        .. versionadded:: 1.1
-
         .. seealso::
 
             :ref:`session_lifecycle_events`
@@ -2258,8 +2318,6 @@ class SessionEvents(event.Events[Session]):
 
         :param instance: the ORM-mapped instance being operated upon.
 
-        .. versionadded:: 1.1
-
         .. seealso::
 
             :ref:`session_lifecycle_events`
@@ -2291,8 +2349,6 @@ class SessionEvents(event.Events[Session]):
         the :meth:`.SessionEvents.persistent_to_deleted` event is therefore
         invoked at the end of a flush.
 
-        .. versionadded:: 1.1
-
         .. seealso::
 
             :ref:`session_lifecycle_events`
@@ -2308,8 +2364,6 @@ class SessionEvents(event.Events[Session]):
         successfully in a flush is restored due to a call to
         :meth:`.Session.rollback`.   The event is not called under
         any other circumstances.
-
-        .. versionadded:: 1.1
 
         .. seealso::
 
@@ -2332,8 +2386,6 @@ class SessionEvents(event.Events[Session]):
         when the :meth:`.Session.expunge_all` or :meth:`.Session.close`
         events are called, as well as if the object is individually
         expunged from its deleted state via :meth:`.Session.expunge`.
-
-        .. versionadded:: 1.1
 
         .. seealso::
 
@@ -2364,8 +2416,6 @@ class SessionEvents(event.Events[Session]):
         :param deleted: boolean.  If True, indicates this object moved
          to the detached state because it was marked as deleted and flushed.
 
-
-        .. versionadded:: 1.1
 
         .. seealso::
 
@@ -2476,7 +2526,6 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
         propagate: bool = False,
         include_key: bool = False,
     ) -> None:
-
         target, fn = event_key.dispatch_target, event_key._listen_fn
 
         if active_history:
@@ -2706,10 +2755,6 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
           from its original value by backref handlers in order to control
           chained event propagation.
 
-          .. versionchanged:: 0.9.0 the ``initiator`` argument is now
-             passed as a :class:`.attributes.Event` object, and may be
-             modified by backref handlers within a chain of backref-linked
-             events.
         :param key: When the event is established using the
          :paramref:`.AttributeEvents.include_key` parameter set to
          True, this will be the key used in the operation, such as
@@ -2754,11 +2799,6 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
           representing the initiation of the event.  May be modified
           from its original value by backref handlers in order to control
           chained event propagation.
-
-          .. versionchanged:: 0.9.0 the ``initiator`` argument is now
-             passed as a :class:`.attributes.Event` object, and may be
-             modified by backref handlers within a chain of backref-linked
-             events.
 
         :return: if the event was registered with ``retval=True``,
          the given value, or a new effective value, should be returned.
@@ -2864,8 +2904,6 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
         returned by the previous listener that specifies ``retval=True``
         as the ``value`` argument of the next listener.
 
-        .. versionadded:: 1.1
-
         :param target: the object instance receiving the event.
          If the listener is registered with ``raw=True``, this will
          be the :class:`.InstanceState` object.
@@ -2927,9 +2965,6 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
         :param collection_adapter: the :class:`.CollectionAdapter` that will
          mediate internal access to the collection.
 
-        .. versionadded:: 1.0.0 :meth:`.AttributeEvents.init_collection`
-           and :meth:`.AttributeEvents.dispose_collection` events.
-
         .. seealso::
 
             :class:`.AttributeEvents` - background on listener options such
@@ -2961,9 +2996,6 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
            :meth:`.AttributeEvents.dispose_collection` will now have its
            contents before the dispose intact; previously, the collection
            would be empty.
-
-        .. versionadded:: 1.0.0 the :meth:`.AttributeEvents.init_collection`
-           and :meth:`.AttributeEvents.dispose_collection` events.
 
         .. seealso::
 

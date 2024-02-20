@@ -1,5 +1,5 @@
 # orm/descriptor_props.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -44,6 +44,7 @@ from .interfaces import _MapsColumns
 from .interfaces import MapperProperty
 from .interfaces import PropComparator
 from .util import _none_set
+from .util import de_stringify_annotation
 from .. import event
 from .. import exc as sa_exc
 from .. import schema
@@ -52,10 +53,12 @@ from .. import util
 from ..sql import expression
 from ..sql import operators
 from ..sql.elements import BindParameter
-from ..util.typing import de_stringify_annotation
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_pep593
+from ..util.typing import TupleAny
 from ..util.typing import typing_get_args
+from ..util.typing import Unpack
+
 
 if typing.TYPE_CHECKING:
     from ._typing import _InstanceDict
@@ -305,7 +308,12 @@ class CompositeProperty(
             dict_ = attributes.instance_dict(instance)
             state = attributes.instance_state(instance)
             attr = state.manager[self.key]
-            previous = dict_.get(self.key, LoaderCallableStatus.NO_VALUE)
+
+            if attr.dispatch._active_history:
+                previous = fget(instance)
+            else:
+                previous = dict_.get(self.key, LoaderCallableStatus.NO_VALUE)
+
             for fn in attr.dispatch.set:
                 value = fn(state, value, previous, attr.impl)
             dict_[self.key] = value
@@ -322,7 +330,14 @@ class CompositeProperty(
         def fdel(instance: Any) -> None:
             state = attributes.instance_state(instance)
             dict_ = attributes.instance_dict(instance)
-            previous = dict_.pop(self.key, LoaderCallableStatus.NO_VALUE)
+            attr = state.manager[self.key]
+
+            if attr.dispatch._active_history:
+                previous = fget(instance)
+                dict_.pop(self.key, None)
+            else:
+                previous = dict_.pop(self.key, LoaderCallableStatus.NO_VALUE)
+
             attr = state.manager[self.key]
             attr.dispatch.remove(state, previous, attr.impl)
             for key in self._attribute_keys:
@@ -407,13 +422,13 @@ class CompositeProperty(
             and self.composite_class not in _composite_getters
         ):
             if self._generated_composite_accessor is not None:
-                _composite_getters[
-                    self.composite_class
-                ] = self._generated_composite_accessor
+                _composite_getters[self.composite_class] = (
+                    self._generated_composite_accessor
+                )
             elif hasattr(self.composite_class, "__composite_values__"):
-                _composite_getters[
-                    self.composite_class
-                ] = lambda obj: obj.__composite_values__()  # type: ignore
+                _composite_getters[self.composite_class] = (
+                    lambda obj: obj.__composite_values__()
+                )
 
     @util.preload_module("sqlalchemy.orm.properties")
     @util.preload_module("sqlalchemy.orm.decl_base")
@@ -502,8 +517,8 @@ class CompositeProperty(
         return self
 
     @property
-    def columns_to_assign(self) -> List[schema.Column[Any]]:
-        return [c for c in self.columns if c.table is None]
+    def columns_to_assign(self) -> List[Tuple[schema.Column[Any], int]]:
+        return [(c, 0) for c in self.columns if c.table is None]
 
     @util.preload_module("orm.properties")
     def _setup_arguments_on_columns(self) -> None:
@@ -614,6 +629,10 @@ class CompositeProperty(
             self.parent, "expire", expire_handler, raw=True, propagate=True
         )
 
+        proxy_attr = self.parent.class_manager[self.key]
+        proxy_attr.impl.dispatch = proxy_attr.dispatch  # type: ignore
+        proxy_attr.impl.dispatch._active_history = self.active_history
+
         # TODO: need a deserialize hook here
 
     @util.memoized_property
@@ -623,7 +642,6 @@ class CompositeProperty(
     def _populate_composite_bulk_save_mappings_fn(
         self,
     ) -> Callable[[Dict[str, Any]], None]:
-
         if self._generated_composite_accessor:
             get_values = self._generated_composite_accessor
         else:
@@ -698,11 +716,11 @@ class CompositeProperty(
 
         def create_row_processor(
             self,
-            query: Select[Any],
-            procs: Sequence[Callable[[Row[Any]], Any]],
+            query: Select[Unpack[TupleAny]],
+            procs: Sequence[Callable[[Row[Unpack[TupleAny]]], Any]],
             labels: Sequence[str],
-        ) -> Callable[[Row[Any]], Any]:
-            def proc(row: Row[Any]) -> Any:
+        ) -> Callable[[Row[Unpack[TupleAny]]], Any]:
+            def proc(row: Row[Unpack[TupleAny]]) -> Any:
                 return self.property.composite_class(
                     *[proc(row) for proc in procs]
                 )
@@ -791,16 +809,16 @@ class CompositeProperty(
         def __ne__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
             return self._compare(operators.ne, other)
 
-        def __lt__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
+        def __lt__(self, other: Any) -> ColumnElement[bool]:
             return self._compare(operators.lt, other)
 
-        def __gt__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
+        def __gt__(self, other: Any) -> ColumnElement[bool]:
             return self._compare(operators.gt, other)
 
-        def __le__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
+        def __le__(self, other: Any) -> ColumnElement[bool]:
             return self._compare(operators.le, other)
 
-        def __ge__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
+        def __ge__(self, other: Any) -> ColumnElement[bool]:
             return self._compare(operators.ge, other)
 
         # what might be interesting would be if we create
@@ -824,8 +842,8 @@ class CompositeProperty(
             ]
             if self._adapt_to_entity:
                 assert self.adapter is not None
-                comparisons = [self.adapter(x) for x in comparisons]  # type: ignore  # noqa: E501
-            return sql.and_(*comparisons)  # type: ignore
+                comparisons = [self.adapter(x) for x in comparisons]
+            return sql.and_(*comparisons)
 
     def __str__(self) -> str:
         return str(self.parent.class_.__name__) + "." + self.key
@@ -870,7 +888,6 @@ class ConcreteInheritedProperty(DescriptorProperty[_T]):
     def _comparator_factory(
         self, mapper: Mapper[Any]
     ) -> Type[PropComparator[_T]]:
-
         comparator_callable = None
 
         for m in self.parent.iterate_to_root():

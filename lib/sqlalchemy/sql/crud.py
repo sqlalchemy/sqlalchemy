@@ -1,5 +1,5 @@
 # sql/crud.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -34,6 +34,7 @@ from . import coercions
 from . import dml
 from . import elements
 from . import roles
+from .base import _DefaultDescriptionTuple
 from .dml import isinsert as _compile_state_isinsert
 from .elements import ColumnClause
 from .schema import default_is_clause_element
@@ -53,6 +54,7 @@ if TYPE_CHECKING:
     from .elements import ColumnElement
     from .elements import KeyedColumnElement
     from .schema import _SQLExprDefault
+    from .schema import Column
 
 REQUIRED = util.symbol(
     "REQUIRED",
@@ -79,20 +81,22 @@ def _as_dml_column(c: ColumnElement[Any]) -> ColumnClause[Any]:
 
 _CrudParamElement = Tuple[
     "ColumnElement[Any]",
-    str,
-    Optional[Union[str, "_SQLExprDefault"]],
+    str,  # column name
+    Optional[
+        Union[str, "_SQLExprDefault"]
+    ],  # bound parameter string or SQL expression to apply
     Iterable[str],
 ]
 _CrudParamElementStr = Tuple[
     "KeyedColumnElement[Any]",
     str,  # column name
-    str,  # placeholder
+    str,  # bound parameter string
     Iterable[str],
 ]
 _CrudParamElementSQLExpr = Tuple[
     "ColumnClause[Any]",
     str,
-    "_SQLExprDefault",
+    "_SQLExprDefault",  # SQL expression to apply
     Iterable[str],
 ]
 
@@ -101,8 +105,10 @@ _CrudParamSequence = List[_CrudParamElement]
 
 class _CrudParams(NamedTuple):
     single_params: _CrudParamSequence
-
     all_multi_params: List[Sequence[_CrudParamElementStr]]
+    is_default_metavalue_only: bool = False
+    use_insertmanyvalues: bool = False
+    use_sentinel_columns: Optional[Sequence[Column[Any]]] = None
 
 
 def _get_crud_params(
@@ -206,6 +212,7 @@ def _get_crud_params(
                     (c.key,),
                 )
                 for c in stmt.table.columns
+                if not c._omit_from_statements
             ],
             [],
         )
@@ -301,8 +308,10 @@ def _get_crud_params(
             toplevel,
             kw,
         )
+        use_insertmanyvalues = False
+        use_sentinel_columns = None
     else:
-        _scan_cols(
+        use_insertmanyvalues, use_sentinel_columns = _scan_cols(
             compiler,
             stmt,
             compile_state,
@@ -327,6 +336,8 @@ def _get_crud_params(
                 "Unconsumed column names: %s"
                 % (", ".join("%s" % (c,) for c in check))
             )
+
+    is_default_metavalue_only = False
 
     if (
         _compile_state_isinsert(compile_state)
@@ -363,8 +374,15 @@ def _get_crud_params(
                 (),
             )
         ]
+        is_default_metavalue_only = True
 
-    return _CrudParams(values, [])
+    return _CrudParams(
+        values,
+        [],
+        is_default_metavalue_only=is_default_metavalue_only,
+        use_insertmanyvalues=use_insertmanyvalues,
+        use_sentinel_columns=use_sentinel_columns,
+    )
 
 
 @overload
@@ -376,8 +394,7 @@ def _create_bind_param(
     required: bool = False,
     name: Optional[str] = None,
     **kw: Any,
-) -> str:
-    ...
+) -> str: ...
 
 
 @overload
@@ -386,8 +403,7 @@ def _create_bind_param(
     col: ColumnElement[Any],
     value: Any,
     **kw: Any,
-) -> str:
-    ...
+) -> str: ...
 
 
 def _create_bind_param(
@@ -473,10 +489,10 @@ def _key_getters_for_crud_column(
             key: Union[ColumnClause[Any], str]
         ) -> Union[str, Tuple[str, str]]:
             str_key = c_key_role(key)
-            if hasattr(key, "table") and key.table in _et:  # type: ignore
+            if hasattr(key, "table") and key.table in _et:
                 return (key.table.name, str_key)  # type: ignore
             else:
-                return str_key  # type: ignore
+                return str_key
 
         def _getattr_col_key(
             col: ColumnClause[Any],
@@ -495,7 +511,7 @@ def _key_getters_for_crud_column(
                 return col.key
 
     else:
-        _column_as_key = functools.partial(  # type: ignore
+        _column_as_key = functools.partial(
             coercions.expect_as_key, roles.DMLColumnRole
         )
         _getattr_col_key = _col_bind_name = operator.attrgetter("key")  # type: ignore  # noqa: E501
@@ -516,7 +532,6 @@ def _scan_insert_from_select_cols(
     toplevel,
     kw,
 ):
-
     cols = [stmt.table.c[_column_as_key(name)] for name in stmt._select_names]
 
     assert compiler.stack[-1]["selectable"] is stmt
@@ -527,7 +542,19 @@ def _scan_insert_from_select_cols(
     if stmt.include_insert_from_select_defaults:
         col_set = set(cols)
         for col in stmt.table.columns:
-            if col not in col_set and col.default:
+            # omit columns that were not in the SELECT statement.
+            # this will omit columns marked as omit_from_statements naturally,
+            # as long as that col was not explicit in the SELECT.
+            # if an omit_from_statements col has a "default" on it, then
+            # we need to include it, as these defaults should still fire off.
+            # but, if it has that default and it's the "sentinel" default,
+            # we don't do sentinel default operations for insert_from_select
+            # here so we again omit it.
+            if (
+                col not in col_set
+                and col.default
+                and not col.default.is_sentinel
+            ):
                 cols.append(col)
 
     for c in cols:
@@ -579,6 +606,8 @@ def _scan_cols(
         implicit_returning,
         implicit_return_defaults,
         postfetch_lastrowid,
+        use_insertmanyvalues,
+        use_sentinel_columns,
     ) = _get_returning_modifiers(compiler, stmt, compile_state, toplevel)
 
     assert compile_state.isupdate or compile_state.isinsert
@@ -616,6 +645,9 @@ def _scan_cols(
 
     compiler_implicit_returning = compiler.implicit_returning
 
+    # TODO - see TODO(return_defaults_columns) below
+    # cols_in_params = set()
+
     for c in cols:
         # scan through every column in the target table
 
@@ -640,6 +672,9 @@ def _scan_cols(
                 insert_null_pk_still_autoincrements,
                 kw,
             )
+
+            # TODO - see TODO(return_defaults_columns) below
+            # cols_in_params.add(c)
 
         elif isinsert:
             # no parameter is present and it's an insert.
@@ -672,9 +707,12 @@ def _scan_cols(
             elif c.default is not None:
                 # column has a default, but it's not a pk column, or it is but
                 # we don't need to get the pk back.
-                _append_param_insert_hasdefault(
-                    compiler, stmt, c, implicit_return_defaults, values, kw
-                )
+                if not c.default.is_sentinel or (
+                    use_sentinel_columns is not None
+                ):
+                    _append_param_insert_hasdefault(
+                        compiler, stmt, c, implicit_return_defaults, values, kw
+                    )
 
             elif c.server_default is not None:
                 # column has a DDL-level default, and is either not a pk
@@ -730,6 +768,21 @@ def _scan_cols(
             if c in remaining_supplemental
         )
 
+    # TODO(return_defaults_columns): there can still be more columns in
+    # _return_defaults_columns in the case that they are from something like an
+    # aliased of the table. we can add them here, however this breaks other ORM
+    # things. so this is for another day. see
+    # test/orm/dml/test_update_delete_where.py -> test_update_from_alias
+
+    # if stmt._return_defaults_columns:
+    #     compiler_implicit_returning.extend(
+    #         set(stmt._return_defaults_columns)
+    #         .difference(compiler_implicit_returning)
+    #         .difference(cols_in_params)
+    #     )
+
+    return (use_insertmanyvalues, use_sentinel_columns)
+
 
 def _setup_delete_return_defaults(
     compiler,
@@ -744,7 +797,7 @@ def _setup_delete_return_defaults(
     toplevel,
     kw,
 ):
-    (_, _, implicit_return_defaults, _) = _get_returning_modifiers(
+    (_, _, implicit_return_defaults, *_) = _get_returning_modifiers(
         compiler, stmt, compile_state, toplevel
     )
 
@@ -786,7 +839,6 @@ def _append_param_parameter(
     accumulated_bind_names: Set[str] = set()
 
     if coercions._is_literal(value):
-
         if (
             insert_null_pk_still_autoincrements
             and c.primary_key
@@ -805,10 +857,12 @@ def _append_param_parameter(
             c,
             value,
             required=value is REQUIRED,
-            name=_col_bind_name(c)
-            if not _compile_state_isinsert(compile_state)
-            or not compile_state._has_multi_parameters
-            else "%s_m0" % _col_bind_name(c),
+            name=(
+                _col_bind_name(c)
+                if not _compile_state_isinsert(compile_state)
+                or not compile_state._has_multi_parameters
+                else "%s_m0" % _col_bind_name(c)
+            ),
             accumulate_bind_names=accumulated_bind_names,
             **kw,
         )
@@ -830,10 +884,12 @@ def _append_param_parameter(
             compiler,
             c,
             value,
-            name=_col_bind_name(c)
-            if not _compile_state_isinsert(compile_state)
-            or not compile_state._has_multi_parameters
-            else "%s_m0" % _col_bind_name(c),
+            name=(
+                _col_bind_name(c)
+                if not _compile_state_isinsert(compile_state)
+                or not compile_state._has_multi_parameters
+                else "%s_m0" % _col_bind_name(c)
+            ),
             accumulate_bind_names=accumulated_bind_names,
             **kw,
         )
@@ -853,7 +909,6 @@ def _append_param_parameter(
                 compiler.postfetch.append(c)
         else:
             if c.primary_key:
-
                 if implicit_returning:
                     compiler.implicit_returning.append(c)
                 elif compiler.dialect.postfetch_lastrowid:
@@ -1074,7 +1129,6 @@ def _append_param_insert_select_hasdefault(
     values: List[_CrudParamElementSQLExpr],
     kw: Dict[str, Any],
 ) -> None:
-
     if default_is_sequence(c.default):
         if compiler.dialect.supports_sequences and (
             not c.default.optional or not compiler.dialect.sequences_optional
@@ -1112,7 +1166,6 @@ def _append_param_insert_select_hasdefault(
 def _append_param_update(
     compiler, compile_state, stmt, c, implicit_return_defaults, values, kw
 ):
-
     include_table = compile_state.include_table_with_column_exprs
     if c.onupdate is not None and not c.onupdate.is_sequence:
         if c.onupdate.is_clause_element:
@@ -1162,8 +1215,7 @@ def _create_insert_prefetch_bind_param(
     c: ColumnElement[Any],
     process: Literal[True] = ...,
     **kw: Any,
-) -> str:
-    ...
+) -> str: ...
 
 
 @overload
@@ -1172,8 +1224,7 @@ def _create_insert_prefetch_bind_param(
     c: ColumnElement[Any],
     process: Literal[False],
     **kw: Any,
-) -> elements.BindParameter[Any]:
-    ...
+) -> elements.BindParameter[Any]: ...
 
 
 def _create_insert_prefetch_bind_param(
@@ -1183,7 +1234,6 @@ def _create_insert_prefetch_bind_param(
     name: Optional[str] = None,
     **kw: Any,
 ) -> Union[elements.BindParameter[Any], str]:
-
     param = _create_bind_param(
         compiler, c, None, process=process, name=name, **kw
     )
@@ -1197,8 +1247,7 @@ def _create_update_prefetch_bind_param(
     c: ColumnElement[Any],
     process: Literal[True] = ...,
     **kw: Any,
-) -> str:
-    ...
+) -> str: ...
 
 
 @overload
@@ -1207,8 +1256,7 @@ def _create_update_prefetch_bind_param(
     c: ColumnElement[Any],
     process: Literal[False],
     **kw: Any,
-) -> elements.BindParameter[Any]:
-    ...
+) -> elements.BindParameter[Any]: ...
 
 
 def _create_update_prefetch_bind_param(
@@ -1247,6 +1295,18 @@ class _multiparam_column(elements.ColumnElement[Any]):
             and other.key == self.key
             and other.original == self.original
         )
+
+    @util.memoized_property
+    def _default_description_tuple(self) -> _DefaultDescriptionTuple:
+        """used by default.py -> _process_execute_defaults()"""
+
+        return _DefaultDescriptionTuple._from_column_default(self.default)
+
+    @util.memoized_property
+    def _onupdate_description_tuple(self) -> _DefaultDescriptionTuple:
+        """used by default.py -> _process_execute_defaults()"""
+
+        return _DefaultDescriptionTuple._from_column_default(self.onupdate)
 
 
 def _process_multiparam_default_bind(
@@ -1295,7 +1355,7 @@ def _get_update_multitable_params(
 ):
     normalized_params = {
         coercions.expect(roles.DMLColumnRole, c): param
-        for c, param in stmt_parameter_tuples
+        for c, param in stmt_parameter_tuples or ()
     }
 
     include_table = compile_state.include_table_with_column_exprs
@@ -1382,7 +1442,7 @@ def _extend_values_for_multiparams(
 
         row = {_column_as_key(key): v for key, v in row.items()}
 
-        for (col, col_expr, param, accumulated_names) in values_0:
+        for col, col_expr, param, accumulated_names in values_0:
             if col.key in row:
                 key = col.key
 
@@ -1417,7 +1477,6 @@ def _get_stmt_parameter_tuples_params(
     values,
     kw,
 ):
-
     for k, v in stmt_parameter_tuples:
         colkey = _column_as_key(k)
         if colkey is not None:
@@ -1459,16 +1518,15 @@ def _get_returning_modifiers(compiler, stmt, compile_state, toplevel):
 
     """
 
+    dialect = compiler.dialect
+
     need_pks = (
         toplevel
         and _compile_state_isinsert(compile_state)
         and not stmt._inline
         and (
             not compiler.for_executemany
-            or (
-                compiler.dialect.insert_executemany_returning
-                and stmt._return_defaults
-            )
+            or (dialect.insert_executemany_returning and stmt._return_defaults)
         )
         and not stmt._returning
         # and (not stmt._returning or stmt._return_defaults)
@@ -1479,7 +1537,7 @@ def _get_returning_modifiers(compiler, stmt, compile_state, toplevel):
     # after the INSERT if that's all we need.
     postfetch_lastrowid = (
         need_pks
-        and compiler.dialect.postfetch_lastrowid
+        and dialect.postfetch_lastrowid
         and stmt.table._autoincrement_column is not None
     )
 
@@ -1491,7 +1549,7 @@ def _get_returning_modifiers(compiler, stmt, compile_state, toplevel):
         need_pks
         # the dialect can veto it if it just doesnt support RETURNING
         # with INSERT
-        and compiler.dialect.insert_returning
+        and dialect.insert_returning
         # user-defined implicit_returning on Table can veto it
         and compile_state._primary_table.implicit_returning
         # the compile_state can veto it (SQlite uses this to disable
@@ -1506,10 +1564,7 @@ def _get_returning_modifiers(compiler, stmt, compile_state, toplevel):
             # and a lot of weird use cases are supported by it.
             # SQLite lastrowid times 3x faster than returning,
             # Mariadb lastrowid 2x faster than returning
-            (
-                not postfetch_lastrowid
-                or compiler.dialect.favor_returning_over_lastrowid
-            )
+            (not postfetch_lastrowid or dialect.favor_returning_over_lastrowid)
             or compile_state._has_multi_parameters
             or stmt._return_defaults
         )
@@ -1521,25 +1576,61 @@ def _get_returning_modifiers(compiler, stmt, compile_state, toplevel):
         should_implicit_return_defaults = (
             implicit_returning and stmt._return_defaults
         )
+        explicit_returning = (
+            should_implicit_return_defaults
+            or stmt._returning
+            or stmt._supplemental_returning
+        )
+        use_insertmanyvalues = (
+            toplevel
+            and compiler.for_executemany
+            and dialect.use_insertmanyvalues
+            and (
+                explicit_returning or dialect.use_insertmanyvalues_wo_returning
+            )
+        )
+
+        use_sentinel_columns = None
+        if (
+            use_insertmanyvalues
+            and explicit_returning
+            and stmt._sort_by_parameter_order
+        ):
+            use_sentinel_columns = compiler._get_sentinel_column_for_table(
+                stmt.table
+            )
+
     elif compile_state.isupdate:
         should_implicit_return_defaults = (
             stmt._return_defaults
             and compile_state._primary_table.implicit_returning
             and compile_state._supports_implicit_returning
-            and compiler.dialect.update_returning
+            and dialect.update_returning
         )
+        use_insertmanyvalues = False
+        use_sentinel_columns = None
     elif compile_state.isdelete:
         should_implicit_return_defaults = (
             stmt._return_defaults
             and compile_state._primary_table.implicit_returning
             and compile_state._supports_implicit_returning
-            and compiler.dialect.delete_returning
+            and dialect.delete_returning
         )
+        use_insertmanyvalues = False
+        use_sentinel_columns = None
     else:
         should_implicit_return_defaults = False  # pragma: no cover
+        use_insertmanyvalues = False
+        use_sentinel_columns = None
 
     if should_implicit_return_defaults:
         if not stmt._return_defaults_columns:
+            # TODO: this is weird.  See #9685 where we have to
+            # take an extra step to prevent this from happening.  why
+            # would this ever be *all* columns?  but if we set to blank, then
+            # that seems to break things also in the ORM.  So we should
+            # try to clean this up and figure out what return_defaults
+            # needs to do w/ the ORM etc. here
             implicit_return_defaults = set(stmt.table.c)
         else:
             implicit_return_defaults = set(stmt._return_defaults_columns)
@@ -1551,6 +1642,8 @@ def _get_returning_modifiers(compiler, stmt, compile_state, toplevel):
         implicit_returning or should_implicit_return_defaults,
         implicit_return_defaults,
         postfetch_lastrowid,
+        use_insertmanyvalues,
+        use_sentinel_columns,
     )
 
 

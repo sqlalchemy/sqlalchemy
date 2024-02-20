@@ -96,10 +96,6 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
-    def reflect_indexes_with_ascdesc(self):
-        return fails_if(["oracle"])
-
-    @property
     def table_ddl_if_exists(self):
         """target platform supports IF NOT EXISTS / IF EXISTS for tables."""
 
@@ -169,6 +165,10 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def comment_reflection(self):
         return only_on(["postgresql", "mysql", "mariadb", "oracle", "mssql"])
+
+    @property
+    def comment_reflection_full_unicode(self):
+        return only_on(["postgresql", "oracle", "mssql"])
 
     @property
     def constraint_comment_reflection(self):
@@ -367,22 +367,22 @@ class DefaultRequirements(SuiteRequirements):
         Target must support simultaneous, independent database connections.
         """
 
-        # This is also true of some configurations of UnixODBC and probably
-        # win32 ODBC as well.
+        # note:  **do not** let any sqlite driver run "independent connection"
+        # tests.  Use independent_readonly_connections for a concurrency
+        # related test that only uses reads to use sqlite
+        return skip_if(["sqlite"])
+
+    @property
+    def independent_readonly_connections(self):
+        """
+        Target must support simultaneous, independent database connections
+        that will be used in a readonly fashion.
+
+        """
         return skip_if(
             [
-                no_support(
-                    "sqlite",
-                    "independent connections disabled "
-                    "when :memory: connections are used",
-                ),
-                exclude(
-                    "mssql",
-                    "<",
-                    (9, 0, 0),
-                    "SQL Server 2005+ is required for "
-                    "independent connections",
-                ),
+                self._sqlite_memory_db,
+                "+aiosqlite",
             ]
         )
 
@@ -462,6 +462,12 @@ class DefaultRequirements(SuiteRequirements):
         return self.computed_columns + skip_if("oracle")
 
     @property
+    def returning_star(self):
+        """backend supports RETURNING *"""
+
+        return skip_if(["oracle", "mssql"])
+
+    @property
     def correlated_outer_joins(self):
         """Target must support an outer join to a subquery which
         correlates to the parent."""
@@ -486,11 +492,28 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def update_from_using_alias(self):
+        """Target must support UPDATE..FROM syntax against an alias"""
+
+        return skip_if(
+            ["oracle", "sqlite<3.33.0", "mssql"],
+            "Backend does not support UPDATE..FROM with an alias",
+        )
+
+    @property
     def delete_using(self):
         """Target must support DELETE FROM..FROM or DELETE..USING syntax"""
         return only_on(
             ["postgresql", "mssql", "mysql", "mariadb"],
             "Backend does not support DELETE..USING or equivalent",
+        )
+
+    @property
+    def delete_using_alias(self):
+        """Target must support DELETE FROM against an alias"""
+        return only_on(
+            ["postgresql", "sqlite"],
+            "Backend does not support DELETE..USING/FROM with an alias",
         )
 
     @property
@@ -603,11 +626,15 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def indexes_with_expressions(self):
-        return only_on(["postgresql", "sqlite>=3.9.0"])
+        return only_on(["postgresql", "sqlite>=3.9.0", "oracle"])
 
     @property
     def reflect_indexes_with_expressions(self):
-        return only_on(["postgresql"])
+        return only_on(["postgresql", "oracle"])
+
+    @property
+    def reflect_indexes_with_ascdesc_as_expression(self):
+        return only_on(["oracle"])
 
     @property
     def temp_table_names(self):
@@ -757,7 +784,7 @@ class DefaultRequirements(SuiteRequirements):
         #8221.
 
         """
-        return fails_if(["mssql", "oracle>=12"])
+        return fails_if(["mssql", "oracle < 23"])
 
     @property
     def parens_in_union_contained_select_w_limit_offset(self):
@@ -967,8 +994,12 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def arraysize(self):
+        return skip_if("+pymssql", "DBAPI is missing this attribute")
+
+    @property
     def emulated_lastrowid(self):
-        """ "target dialect retrieves cursor.lastrowid or an equivalent
+        """target dialect retrieves cursor.lastrowid or an equivalent
         after an insert() construct executes.
         """
         return fails_on_everything_except(
@@ -996,7 +1027,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def emulated_lastrowid_even_with_sequences(self):
-        """ "target dialect retrieves cursor.lastrowid or an equivalent
+        """target dialect retrieves cursor.lastrowid or an equivalent
         after an insert() construct executes, even if the table has a
         Sequence on it.
         """
@@ -1009,7 +1040,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def dbapi_lastrowid(self):
-        """ "target backend includes a 'lastrowid' accessor on the DBAPI
+        """target backend includes a 'lastrowid' accessor on the DBAPI
         cursor object.
 
         """
@@ -1154,7 +1185,6 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def sqlite_partial_indexes(self):
-
         return only_on(self._sqlite_partial_idx)
 
     @property
@@ -1173,6 +1203,14 @@ class DefaultRequirements(SuiteRequirements):
         return self.json_type
 
     @property
+    def datetime_interval(self):
+        """target dialect supports rendering of a datetime.timedelta as a
+        literal string, e.g. via the TypeEngine.literal_processor() method.
+        Added for Oracle and Postgresql as of now.
+        """
+        return only_on(["oracle", "postgresql"])
+
+    @property
     def datetime_literals(self):
         """target dialect supports rendering of a date, time, or datetime as a
         literal string, e.g. via the TypeEngine.literal_processor() method.
@@ -1188,9 +1226,9 @@ class DefaultRequirements(SuiteRequirements):
         return exclusions.open()
 
     @property
-    def datetime_implicit_bound(self):
-        """target dialect when given a datetime object will bind it such
-        that the database server knows the object is a datetime, and not
+    def date_implicit_bound(self):
+        """target dialect when given a date object will bind it such
+        that the database server knows the object is a date, and not
         a plain string.
 
         """
@@ -1205,6 +1243,51 @@ class DefaultRequirements(SuiteRequirements):
                 "+mysqlconnector",
                 "+cymysql",
                 "+aiomysql",
+            ]
+        )
+
+    @property
+    def time_implicit_bound(self):
+        """target dialect when given a time object will bind it such
+        that the database server knows the object is a time, and not
+        a plain string.
+
+        """
+
+        # this may have worked with mariadbconnector at some point, but
+        # this now seems to not be the case.   Since no other mysql driver
+        # supports these tests, that's fine
+        return exclusions.fails_on(
+            [
+                "+mysqldb",
+                "+pymysql",
+                "+asyncmy",
+                "+mysqlconnector",
+                "+mariadbconnector",
+                "+cymysql",
+                "+aiomysql",
+            ]
+        )
+
+    @property
+    def datetime_implicit_bound(self):
+        """target dialect when given a datetime object will bind it such
+        that the database server knows the object is a date, and not
+        a plain string.
+
+        """
+
+        # mariadbconnector works.  pyodbc we dont know, not supported in
+        # testing.
+        return exclusions.fails_on(
+            [
+                "+mysqldb",
+                "+pymysql",
+                "+asyncmy",
+                "+mysqlconnector",
+                "+cymysql",
+                "+aiomysql",
+                "+pymssql",
             ]
         )
 
@@ -1334,6 +1417,10 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def literal_float_coercion(self):
+        return skip_if("+asyncmy")
+
+    @property
     def infinity_floats(self):
         return fails_on_everything_except(
             "sqlite",
@@ -1343,6 +1430,10 @@ class DefaultRequirements(SuiteRequirements):
         ) + skip_if(
             "postgresql+pg8000", "seems to work on pg14 only, not earlier?"
         )
+
+    @property
+    def float_or_double_precision_behaves_generically(self):
+        return skip_if(["oracle", "mysql", "mariadb"])
 
     @property
     def precision_generic_float_type(self):
@@ -1392,6 +1483,10 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(("mssql+pyodbc", None, None, "crashes due to bug #351"))
 
     @property
+    def float_is_numeric(self):
+        return exclusions.fails_if(["oracle"])
+
+    @property
     def duplicate_key_raises_integrity_error(self):
         return exclusions.open()
 
@@ -1413,20 +1508,27 @@ class DefaultRequirements(SuiteRequirements):
         return self._has_pg_extension("hstore")
 
     @property
+    def citext(self):
+        return self._has_pg_extension("citext")
+
+    @property
     def btree_gist(self):
         return self._has_pg_extension("btree_gist")
 
     @property
     def range_types(self):
-        return only_on(["+psycopg2", "+psycopg", "+asyncpg"])
+        return only_on(["+psycopg2", "+psycopg", "+asyncpg", "+pg8000"])
 
     @property
     def multirange_types(self):
-        return only_on(["+psycopg", "+asyncpg"]) + only_on("postgresql >= 14")
+        return only_on(["+psycopg", "+asyncpg", "+pg8000"]) + only_on(
+            "postgresql >= 14"
+        )
 
     @property
     def async_dialect(self):
-        """dialect makes use of await_() to invoke operations on the DBAPI."""
+        """dialect makes use of await_() to invoke operations on
+        the DBAPI."""
 
         return self.asyncio + only_on(
             LambdaPredicate(
@@ -1591,6 +1693,10 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def mysql_fsp(self):
         return only_if(["mysql >= 5.6.4", "mariadb"])
+
+    @property
+    def mysql_notnull_generated_columns(self):
+        return only_if(["mysql >= 5.7"])
 
     @property
     def mysql_fully_case_sensitive(self):
@@ -1847,6 +1953,10 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def identity_columns(self):
         return only_if(["postgresql >= 10", "oracle >= 12", "mssql"])
+
+    @property
+    def multiple_identity_columns(self):
+        return only_if(["postgresql >= 10"])
 
     @property
     def identity_columns_standard(self):

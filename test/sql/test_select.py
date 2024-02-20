@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import true
 from sqlalchemy import tuple_
 from sqlalchemy import union
 from sqlalchemy.sql import column
@@ -76,6 +77,29 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.myid FROM mytable, myothertable "
             "WHERE mytable.myid = myothertable.otherid",
         )
+
+    @testing.combinations(
+        (
+            lambda tbl: select().select_from(tbl).where(tbl.c.id == 123),
+            "SELECT FROM tbl WHERE tbl.id = :id_1",
+        ),
+        (lambda tbl: select().where(true()), "SELECT WHERE 1 = 1"),
+        (
+            lambda tbl: select()
+            .select_from(tbl)
+            .where(tbl.c.id == 123)
+            .exists(),
+            "EXISTS (SELECT FROM tbl WHERE tbl.id = :id_1)",
+        ),
+    )
+    def test_select_no_columns(self, stmt, expected):
+        """test #9440"""
+
+        tbl = table("tbl", column("id"))
+
+        stmt = testing.resolve_lambda(stmt, tbl=tbl)
+
+        self.assert_compile(stmt, expected)
 
     def test_new_calling_style_clauseelement_thing_that_has_iter(self):
         class Thing:
@@ -504,12 +528,26 @@ class ColumnCollectionAsSelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         eq_(list(coll), [table1.c.description, table1.c.myid])
 
-    def test_missing_key(self):
+    def test_c_sub_collection_positive_slice(self):
+        coll = table1.c[0:2]
 
+        is_(coll.myid, table1.c.myid)
+        is_(coll.name, table1.c.name)
+
+        eq_(list(coll), [table1.c.myid, table1.c.name])
+
+    def test_c_sub_collection_negative_slice(self):
+        coll = table1.c[-2:]
+
+        is_(coll.name, table1.c.name)
+        is_(coll.description, table1.c.description)
+
+        eq_(list(coll), [table1.c.name, table1.c.description])
+
+    def test_missing_key(self):
         with expect_raises_message(KeyError, "unknown"):
             table1.c["myid", "unknown"]
 
     def test_missing_index(self):
-
         with expect_raises_message(IndexError, "5"):
             table1.c["myid", 5]

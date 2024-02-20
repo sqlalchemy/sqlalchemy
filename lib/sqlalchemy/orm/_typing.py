@@ -1,5 +1,5 @@
 # orm/_typing.py
-# Copyright (C) 2022 the SQLAlchemy authors and contributors
+# Copyright (C) 2022-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -12,6 +12,7 @@ from typing import Any
 from typing import Dict
 from typing import Mapping
 from typing import Optional
+from typing import Protocol
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
@@ -26,7 +27,6 @@ from ..sql._orm_types import (
 )
 from ..sql._typing import _HasClauseElement
 from ..sql.elements import ColumnElement
-from ..util.typing import Protocol
 from ..util.typing import TypeGuard
 
 if TYPE_CHECKING:
@@ -53,15 +53,8 @@ _T = TypeVar("_T", bound=Any)
 
 _T_co = TypeVar("_T_co", bound=Any, covariant=True)
 
-# I would have preferred this were bound=object however it seems
-# to not travel in all situations when defined in that way.
-_O = TypeVar("_O", bound=Any)
+_O = TypeVar("_O", bound=object)
 """The 'ORM mapped object' type.
-
-"""
-
-_OO = TypeVar("_OO", bound=object)
-"""The 'ORM mapped object, that's definitely object' type.
 
 """
 
@@ -85,7 +78,7 @@ _IdentityKeyType = Tuple[Type[_T], Tuple[Any, ...], Optional[Any]]
 
 _ORMColumnExprArgument = Union[
     ColumnElement[_T],
-    _HasClauseElement,
+    _HasClauseElement[_T],
     roles.ExpressionElementRole[_T],
 ]
 
@@ -100,6 +93,7 @@ class _OrmKnownExecutionOptions(_CoreKnownExecutionOptions, total=False):
     dml_strategy: DMLStrategyArgument
     is_delete_using: bool
     is_update_from: bool
+    render_nulls: bool
 
 
 OrmExecuteOptionsParameter = Union[
@@ -114,19 +108,19 @@ class _ORMAdapterProto(Protocol):
 
     """
 
-    def __call__(self, obj: _CE, key: Optional[str] = None) -> _CE:
-        ...
+    def __call__(self, obj: _CE, key: Optional[str] = None) -> _CE: ...
 
 
 class _LoaderCallable(Protocol):
-    def __call__(self, state: InstanceState[Any], passive: PassiveFlag) -> Any:
-        ...
+    def __call__(
+        self, state: InstanceState[Any], passive: PassiveFlag
+    ) -> Any: ...
 
 
 def is_orm_option(
     opt: ExecutableOption,
 ) -> TypeGuard[ORMOption]:
-    return not opt._is_core  # type: ignore
+    return not opt._is_core
 
 
 def is_user_defined_option(
@@ -144,39 +138,33 @@ def is_composite_class(obj: Any) -> bool:
 
 if TYPE_CHECKING:
 
-    def insp_is_mapper_property(obj: Any) -> TypeGuard[MapperProperty[Any]]:
-        ...
+    def insp_is_mapper_property(
+        obj: Any,
+    ) -> TypeGuard[MapperProperty[Any]]: ...
 
-    def insp_is_mapper(obj: Any) -> TypeGuard[Mapper[Any]]:
-        ...
+    def insp_is_mapper(obj: Any) -> TypeGuard[Mapper[Any]]: ...
 
-    def insp_is_aliased_class(obj: Any) -> TypeGuard[AliasedInsp[Any]]:
-        ...
+    def insp_is_aliased_class(obj: Any) -> TypeGuard[AliasedInsp[Any]]: ...
 
     def insp_is_attribute(
         obj: InspectionAttr,
-    ) -> TypeGuard[QueryableAttribute[Any]]:
-        ...
+    ) -> TypeGuard[QueryableAttribute[Any]]: ...
 
     def attr_is_internal_proxy(
         obj: InspectionAttr,
-    ) -> TypeGuard[QueryableAttribute[Any]]:
-        ...
+    ) -> TypeGuard[QueryableAttribute[Any]]: ...
 
     def prop_is_relationship(
         prop: MapperProperty[Any],
-    ) -> TypeGuard[RelationshipProperty[Any]]:
-        ...
+    ) -> TypeGuard[RelationshipProperty[Any]]: ...
 
     def is_collection_impl(
         impl: AttributeImpl,
-    ) -> TypeGuard[CollectionAttributeImpl]:
-        ...
+    ) -> TypeGuard[CollectionAttributeImpl]: ...
 
     def is_has_collection_adapter(
         impl: AttributeImpl,
-    ) -> TypeGuard[HasCollectionAdapter]:
-        ...
+    ) -> TypeGuard[HasCollectionAdapter]: ...
 
 else:
     insp_is_mapper_property = operator.attrgetter("is_property")

@@ -156,7 +156,7 @@ denormalize::
 
         def process_bind_param(self, value, dialect):
             if value is not None:
-                if not value.tzinfo:
+                if not value.tzinfo or value.tzinfo.utcoffset(value) is None:
                     raise TypeError("tzinfo is required")
                 value = value.astimezone(datetime.timezone.utc).replace(tzinfo=None)
             return value
@@ -171,12 +171,20 @@ denormalize::
 Backend-agnostic GUID Type
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Receives and returns Python uuid() objects.  Uses the PG UUID type
-when using PostgreSQL, CHAR(32) on other backends, storing them
-in stringified hex format.   Can be modified to store
-binary in CHAR(16) if desired::
+.. note:: Since version 2.0 the built-in :class:`_types.Uuid` type that
+    behaves similarly should be preferred. This example is presented
+    just as an example of a type decorator that recieves and returns
+    python objects.
 
+Receives and returns Python uuid() objects.  
+Uses the PG UUID type when using PostgreSQL, UNIQUEIDENTIFIER when using MSSQL,
+CHAR(32) on other backends, storing them in stringified format.
+The ``GUIDHyphens`` version stores the value with hyphens instead of just the hex
+string, using a CHAR(36) type::
+
+    from operator import attrgetter
     from sqlalchemy.types import TypeDecorator, CHAR
+    from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
     from sqlalchemy.dialects.postgresql import UUID
     import uuid
 
@@ -184,31 +192,34 @@ binary in CHAR(16) if desired::
     class GUID(TypeDecorator):
         """Platform-independent GUID type.
 
-        Uses PostgreSQL's UUID type, otherwise uses
-        CHAR(32), storing as stringified hex values.
+        Uses PostgreSQL's UUID type or MSSQL's UNIQUEIDENTIFIER,
+        otherwise uses CHAR(32), storing as stringified hex values.
 
         """
 
         impl = CHAR
         cache_ok = True
 
+        _default_type = CHAR(32)
+        _uuid_as_str = attrgetter("hex")
+
         def load_dialect_impl(self, dialect):
             if dialect.name == "postgresql":
                 return dialect.type_descriptor(UUID())
+            elif dialect.name == "mssql":
+                return dialect.type_descriptor(UNIQUEIDENTIFIER())
             else:
-                return dialect.type_descriptor(CHAR(32))
+                return dialect.type_descriptor(self._default_type)
 
         def process_bind_param(self, value, dialect):
             if value is None:
                 return value
-            elif dialect.name == "postgresql":
+            elif dialect.name in ("postgresql", "mssql"):
                 return str(value)
             else:
                 if not isinstance(value, uuid.UUID):
-                    return "%.32x" % uuid.UUID(value).int
-                else:
-                    # hexstring
-                    return "%.32x" % value.int
+                    value = uuid.UUID(value)
+                return self._uuid_as_str(value)
 
         def process_result_value(self, value, dialect):
             if value is None:
@@ -217,6 +228,18 @@ binary in CHAR(16) if desired::
                 if not isinstance(value, uuid.UUID):
                     value = uuid.UUID(value)
                 return value
+
+
+    class GUIDHyphens(GUID):
+        """Platform-independent GUID type.
+
+        Uses PostgreSQL's UUID type or MSSQL's UNIQUEIDENTIFIER,
+        otherwise uses CHAR(36), storing as stringified uuid values.
+
+        """
+
+        _default_type = CHAR(36)
+        _uuid_as_str = str
 
 Linking Python ``uuid.UUID`` to the Custom Type for ORM mappings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -342,7 +365,6 @@ method::
 
 
     class JSONEncodedDict(TypeDecorator):
-
         impl = VARCHAR
 
         cache_ok = True

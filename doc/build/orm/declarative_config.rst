@@ -338,9 +338,6 @@ configuration via the :meth:`.MapperEvents.before_configured` event::
             """ """
             # do something before mappings are configured
 
-.. versionadded:: 0.9.3
-
-
 .. _declarative_metadata:
 
 ``metadata``
@@ -454,6 +451,8 @@ created perhaps within distinct databases::
 
     :ref:`orm_inheritance_abstract_poly` - an alternative form of "abstract"
     mapped class that is appropriate for inheritance hierarchies.
+
+.. _declarative_table_cls:
 
 ``__table_cls__``
 ~~~~~~~~~~~~~~~~~

@@ -28,12 +28,15 @@ from sqlalchemy.orm import undefer
 from sqlalchemy.orm import util as orm_util
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_not
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import AssertsCompiledSQL
 from sqlalchemy.testing.assertions import emits_warning
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.pickleable import Address
+from sqlalchemy.testing.pickleable import User
 from test.orm import _fixtures
 from .inheritance._poly_fixtures import _Polymorphic
 from .inheritance._poly_fixtures import Company
@@ -973,10 +976,12 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Keyword = self.classes.Keyword
         self._assert_eager_with_entity_exception(
             [Item],
-            lambda: (joinedload(Keyword),)
-            if first_element
-            else (Load(Item).joinedload(Keyword),),
-            "expected ORM mapped attribute for loader " "strategy argument",
+            lambda: (
+                (joinedload(Keyword),)
+                if first_element
+                else (Load(Item).joinedload(Keyword),)
+            ),
+            "expected ORM mapped attribute for loader strategy argument",
         )
 
     @testing.combinations(
@@ -987,9 +992,11 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Item = self.classes.Item
         self._assert_eager_with_entity_exception(
             [Item],
-            lambda: (joinedload(rando),)
-            if first_element
-            else (Load(Item).joinedload(rando)),
+            lambda: (
+                (joinedload(rando),)
+                if first_element
+                else (Load(Item).joinedload(rando))
+            ),
             "expected ORM mapped attribute for loader strategy argument",
         )
 
@@ -999,9 +1006,11 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
 
         self._assert_eager_with_entity_exception(
             [OrderWProp],
-            lambda: (joinedload(OrderWProp.some_attr),)
-            if first_element
-            else (Load(OrderWProp).joinedload(OrderWProp.some_attr),),
+            lambda: (
+                (joinedload(OrderWProp.some_attr),)
+                if first_element
+                else (Load(OrderWProp).joinedload(OrderWProp.some_attr),)
+            ),
             "expected ORM mapped attribute for loader strategy argument",
         )
 
@@ -1231,9 +1240,10 @@ class OptionsNoPropTestInh(_Polymorphic):
             r"ORM mapped entity or attribute "
             r'(?:"Mapper\[Engineer\(engineers\)\]"|"Engineer.engineer_name") '
             r'does not link from relationship "Company.employees".  Did you '
-            r'mean to use "Company.employees.of_type\(Engineer\)"\?',
+            r'mean to use "Company.employees.of_type\(Engineer\)" '
+            r'or "loadopt.options'
+            r'\(selectin_polymorphic\(Person, \[Engineer\]\), ...\)" \?',
         ):
-
             if use_options:
                 s.query(Company).options(
                     joinedload(Company.employees).options(
@@ -1265,8 +1275,6 @@ class PickleTest(fixtures.MappedTest):
 
     @testing.fixture
     def user_address_fixture(self, registry):
-        from sqlalchemy.testing.pickleable import User, Address
-
         registry.map_imperatively(
             User,
             self.tables.users,
@@ -1287,20 +1295,18 @@ class PickleTest(fixtures.MappedTest):
     def test_pickle_relationship_loader(self, user_address_fixture):
         User, Address = user_address_fixture
 
-        for i in range(3):
-            opt = joinedload(User.addresses)
+        opt = joinedload(User.addresses)
 
-            q1 = fixture_session().query(User).options(opt)
-            c1 = q1._compile_context()
+        pickled = pickle.dumps(opt)
 
-            pickled = pickle.dumps(opt)
+        opt2 = pickle.loads(pickled)
 
-            opt2 = pickle.loads(pickled)
+        is_not(opt, opt2)
+        assert isinstance(opt, Load)
+        assert isinstance(opt2, Load)
 
-            q2 = fixture_session().query(User).options(opt2)
-            c2 = q2._compile_context()
-
-            eq_(c1.attributes, c2.attributes)
+        for k in opt.__slots__:
+            eq_(getattr(opt, k), getattr(opt2, k))
 
 
 class LocalOptsTest(PathTest, QueryTest):

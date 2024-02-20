@@ -13,11 +13,12 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 
 
-class Person(fixtures.ComparableEntity):
+class Person(ComparableEntity):
     pass
 
 
@@ -33,7 +34,7 @@ class Boss(Manager):
     pass
 
 
-class Company(fixtures.ComparableEntity):
+class Company(ComparableEntity):
     pass
 
 
@@ -530,7 +531,6 @@ class RoundTripTest(PolymorphTest):
         )
 
     def test_primary_table_only_for_requery(self):
-
         session = fixture_session()
 
         if self.redefine_colprop:

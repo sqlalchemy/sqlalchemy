@@ -1,5 +1,5 @@
 # orm/unitofwork.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -112,7 +112,6 @@ def track_cascade_events(descriptor, prop):
 
         sess = state.session
         if sess:
-
             if sess._warn_on_events:
                 sess._flush_warning("related attribute set")
 
@@ -489,7 +488,6 @@ class UOWTransaction:
 
 
 class IterateMappersMixin:
-
     __slots__ = ()
 
     def _mappers(self, uow):

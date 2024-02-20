@@ -1,12 +1,12 @@
-# mssql/__init__.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mssql/__init__.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
-
+from . import aioodbc  # noqa
 from . import base  # noqa
 from . import pymssql  # noqa
 from . import pyodbc  # noqa
@@ -19,6 +19,7 @@ from .base import DATETIME
 from .base import DATETIME2
 from .base import DATETIMEOFFSET
 from .base import DECIMAL
+from .base import DOUBLE_PRECISION
 from .base import FLOAT
 from .base import IMAGE
 from .base import INTEGER
@@ -38,11 +39,11 @@ from .base import TEXT
 from .base import TIME
 from .base import TIMESTAMP
 from .base import TINYINT
-from .base import try_cast
 from .base import UNIQUEIDENTIFIER
 from .base import VARBINARY
 from .base import VARCHAR
 from .base import XML
+from ...sql import try_cast
 
 
 base.dialect = dialect = pyodbc.dialect
@@ -67,6 +68,7 @@ __all__ = (
     "DATETIME2",
     "DATETIMEOFFSET",
     "DATE",
+    "DOUBLE_PRECISION",
     "TIME",
     "SMALLDATETIME",
     "BINARY",

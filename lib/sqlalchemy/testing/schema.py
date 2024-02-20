@@ -1,5 +1,5 @@
 # testing/schema.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -88,7 +88,6 @@ def _schema_column(factory, args, kw):
     if test_opts.get("test_needs_autoincrement", False) and kw.get(
         "primary_key", False
     ):
-
         if col.default is None and col.server_default is None:
             col.autoincrement = True
 

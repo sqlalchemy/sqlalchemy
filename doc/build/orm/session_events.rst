@@ -89,7 +89,6 @@ may be used on its own, or is ideally suited to be used within the
 
     @event.listens_for(Session, "do_orm_execute")
     def _do_orm_execute(orm_execute_state):
-
         if (
             orm_execute_state.is_select
             and not orm_execute_state.is_column_load
@@ -335,16 +334,16 @@ hook continually adds new state to be flushed each time it is called.
 
 .. _session_persistence_mapper:
 
-Mapper-level Events
-^^^^^^^^^^^^^^^^^^^
+Mapper-level Flush Events
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In addition to the flush-level hooks, there is also a suite of hooks
-that are more fine-grained, in that they are called on a per-object
-basis and are broken out based on INSERT, UPDATE or DELETE.   These
-are the mapper persistence hooks, and they too are very popular,
-however these events need to be approached more cautiously, as they
-proceed within the context of the flush process that is already
-ongoing; many operations are not safe to proceed here.
+In addition to the flush-level hooks, there is also a suite of hooks that are
+more fine-grained, in that they are called on a per-object basis and are broken
+out based on INSERT, UPDATE or DELETE within the flush process. These are the
+mapper persistence hooks, and they too are very popular, however these events
+need to be approached more cautiously, as they proceed within the context of
+the flush process that is already ongoing; many operations are not safe to
+proceed here.
 
 The events are:
 
@@ -354,6 +353,14 @@ The events are:
 * :meth:`.MapperEvents.after_update`
 * :meth:`.MapperEvents.before_delete`
 * :meth:`.MapperEvents.after_delete`
+
+.. note::
+
+  It is important to note that these events apply **only** to the
+  :ref:`session flush operation <session_flushing>` , and **not** to the
+  ORM-level INSERT/UPDATE/DELETE functionality described at
+  :ref:`orm_expression_update_delete`. To intercept ORM-level DML, use the
+  :meth:`_orm.SessionEvents.do_orm_execute` event.
 
 Each event is passed the :class:`_orm.Mapper`,
 the mapped object itself, and the :class:`_engine.Connection` which is being
@@ -401,9 +408,6 @@ Object Lifecycle Events
 
 Another use case for events is to track the lifecycle of objects.  This
 refers to the states first introduced at :ref:`session_object_states`.
-
-.. versionadded:: 1.1 added a system of events that intercept all possible
-   state transitions of an object within the :class:`.Session`.
 
 All the states above can be tracked fully with events.   Each event
 represents a distinct state transition, meaning, the starting state

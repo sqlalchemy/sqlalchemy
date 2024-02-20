@@ -150,7 +150,7 @@ so that they did not conflict with the existing columns mapped to ``B``, as
 well as it was necessary to define a new primary key.
 
 With the new approach, all of this verbosity goes away, and the additional
-columns are referred towards directly when making the relationship::
+columns are referenced directly when making the relationship::
 
     j = join(B, D, D.b_id == B.id).join(C, C.id == D.c_id)
 
@@ -452,27 +452,26 @@ AssociationProxy stores class-specific state on a per-class basis
 
 The :class:`.AssociationProxy` object makes lots of decisions based on the
 parent mapped class it is associated with.   While the
-:class:`.AssociationProxy` historically began as a relatively simple "getter",
-it became apparent early on that it also needed to make decisions about what
-kind of attribute it is referring towards, e.g. scalar or collection, mapped
-object or simple value, and similar.  To achieve this, it needs to inspect the
-mapped attribute or other descriptor or attribute that it refers towards, as
-referenced from its parent class.   However in Python descriptor mechanics, a
-descriptor only learns about its "parent" class when it is accessed in the
-context of that class, such as calling ``MyClass.some_descriptor``, which calls
-the ``__get__()`` method which passes in the class.    The
+:class:`.AssociationProxy` historically began as a relatively simple 'getter,'
+it became apparent early on that it also needed to make decisions regarding the
+kind of attribute to which it refers—such as scalar or collection, mapped
+object or simple value, and so on. To achieve this, it needs to inspect the
+mapped attribute or other referring descriptor or attribute, as referenced from
+its parent class. However in Python descriptor mechanics, a descriptor only
+learns about its "parent" class when it is accessed in the context of that
+class, such as calling ``MyClass.some_descriptor``, which calls the
+``__get__()`` method which passes in the class.    The
 :class:`.AssociationProxy` object would therefore store state that is specific
 to that class, but only once this method were called; trying to inspect this
-state ahead of time without first accessing the :class:`.AssociationProxy`
-as a descriptor would raise an error.  Additionally, it would  assume that
-the first class to be seen by ``__get__()`` would be  the only parent class it
-needed to know about.  This is despite the fact that if a particular class
-has inheriting subclasses, the association proxy is really working
-on behalf of more than one parent class even though it was not explicitly
-re-used.  While even with this shortcoming, the association proxy would
-still get pretty far with its current behavior, it still leaves shortcomings
-in some cases as well as the complex problem of determining the best "owner"
-class.
+state ahead of time without first accessing the :class:`.AssociationProxy` as a
+descriptor would raise an error.  Additionally, it would  assume that the first
+class to be seen by ``__get__()`` would be  the only parent class it needed to
+know about.  This is despite the fact that if a particular class has inheriting
+subclasses, the association proxy is really working on behalf of more than one
+parent class even though it was not explicitly re-used.  While even with this
+shortcoming, the association proxy would still get pretty far with its current
+behavior, it still leaves shortcomings in some cases as well as the complex
+problem of determining the best "owner" class.
 
 These problems are now solved in that :class:`.AssociationProxy` no longer
 modifies its own internal state when ``__get__()`` is called; instead, a new

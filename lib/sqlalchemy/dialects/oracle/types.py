@@ -1,14 +1,25 @@
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/oracle/types.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
+from __future__ import annotations
+
+import datetime as dt
+from typing import Optional
+from typing import Type
+from typing import TYPE_CHECKING
 
 from ... import exc
 from ...sql import sqltypes
 from ...types import NVARCHAR
 from ...types import VARCHAR
+
+if TYPE_CHECKING:
+    from ...engine.interfaces import Dialect
+    from ...sql.type_api import _LiteralProcessorType
 
 
 class RAW(sqltypes._Binary):
@@ -97,7 +108,7 @@ class FLOAT(sqltypes.FLOAT):
         self.binary_precision = binary_precision
 
 
-class BINARY_DOUBLE(sqltypes.Float):
+class BINARY_DOUBLE(sqltypes.Double):
     __visit_name__ = "BINARY_DOUBLE"
 
 
@@ -116,38 +127,36 @@ class LONG(sqltypes.Text):
 class _OracleDateLiteralRender:
     def _literal_processor_datetime(self, dialect):
         def process(value):
-            if value is not None:
-                if getattr(value, "microsecond", None):
-                    value = (
-                        f"""TO_TIMESTAMP"""
-                        f"""('{value.isoformat().replace("T", " ")}', """
-                        """'YYYY-MM-DD HH24:MI:SS.FF')"""
-                    )
-                else:
-                    value = (
-                        f"""TO_DATE"""
-                        f"""('{value.isoformat().replace("T", " ")}', """
-                        """'YYYY-MM-DD HH24:MI:SS')"""
-                    )
+            if getattr(value, "microsecond", None):
+                value = (
+                    f"""TO_TIMESTAMP"""
+                    f"""('{value.isoformat().replace("T", " ")}', """
+                    """'YYYY-MM-DD HH24:MI:SS.FF')"""
+                )
+            else:
+                value = (
+                    f"""TO_DATE"""
+                    f"""('{value.isoformat().replace("T", " ")}', """
+                    """'YYYY-MM-DD HH24:MI:SS')"""
+                )
             return value
 
         return process
 
     def _literal_processor_date(self, dialect):
         def process(value):
-            if value is not None:
-                if getattr(value, "microsecond", None):
-                    value = (
-                        f"""TO_TIMESTAMP"""
-                        f"""('{value.isoformat().split("T")[0]}', """
-                        """'YYYY-MM-DD')"""
-                    )
-                else:
-                    value = (
-                        f"""TO_DATE"""
-                        f"""('{value.isoformat().split("T")[0]}', """
-                        """'YYYY-MM-DD')"""
-                    )
+            if getattr(value, "microsecond", None):
+                value = (
+                    f"""TO_TIMESTAMP"""
+                    f"""('{value.isoformat().split("T")[0]}', """
+                    """'YYYY-MM-DD')"""
+                )
+            else:
+                value = (
+                    f"""TO_DATE"""
+                    f"""('{value.isoformat().split("T")[0]}', """
+                    """'YYYY-MM-DD')"""
+                )
             return value
 
         return process
@@ -159,8 +168,6 @@ class DATE(_OracleDateLiteralRender, sqltypes.DateTime):
     This type has no special Python behavior, except that it subclasses
     :class:`_types.DateTime`; this is to suit the fact that the Oracle
     ``DATE`` type supports a time value.
-
-    .. versionadded:: 0.9.4
 
     """
 
@@ -205,6 +212,15 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
             second_precision=interval.second_precision,
         )
 
+    @classmethod
+    def adapt_emulated_to_native(
+        cls, interval: sqltypes.Interval, **kw  # type: ignore[override]
+    ):
+        return INTERVAL(
+            day_precision=interval.day_precision,
+            second_precision=interval.second_precision,
+        )
+
     @property
     def _type_affinity(self):
         return sqltypes.Interval
@@ -215,6 +231,18 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
             second_precision=self.second_precision,
             day_precision=self.day_precision,
         )
+
+    @property
+    def python_type(self) -> Type[dt.timedelta]:
+        return dt.timedelta
+
+    def literal_processor(
+        self, dialect: Dialect
+    ) -> Optional[_LiteralProcessorType[dt.timedelta]]:
+        def process(value: dt.timedelta) -> str:
+            return f"NUMTODSINTERVAL({value.total_seconds()}, 'SECOND')"
+
+        return process
 
 
 class TIMESTAMP(sqltypes.TIMESTAMP):

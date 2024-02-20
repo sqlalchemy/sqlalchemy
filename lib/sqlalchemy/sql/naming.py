@@ -1,5 +1,5 @@
-# sqlalchemy/naming.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# sql/naming.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -140,7 +140,6 @@ _prefix_dict = {
 
 
 def _get_convention(dict_, key):
-
     for super_ in key.__mro__:
         if super_ in _prefix_dict and _prefix_dict[super_] in dict_:
             return dict_[_prefix_dict[super_]]

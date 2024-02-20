@@ -20,12 +20,12 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import try_cast
 from sqlalchemy import union
 from sqlalchemy import UniqueConstraint
 from sqlalchemy import update
 from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects.mssql import base as mssql_base
-from sqlalchemy.dialects.mssql.base import try_cast
 from sqlalchemy.sql import column
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
@@ -175,7 +175,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         t = table("sometable", column("somecolumn"))
         self.assert_compile(
             t.insert(),
-            "INSERT INTO sometable (somecolumn) VALUES " "(:somecolumn)",
+            "INSERT INTO sometable (somecolumn) VALUES (:somecolumn)",
         )
 
     def test_update(self):
@@ -485,6 +485,74 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "foo.myid = mytable.myid",
         )
 
+    @testing.variation("style", ["plain", "ties", "percent"])
+    def test_noorderby_insubquery_fetch(self, style):
+        """test "no ORDER BY in subqueries unless TOP / LIMIT / OFFSET"
+        present; test issue #10458"""
+
+        table1 = table(
+            "mytable",
+            column("myid", Integer),
+            column("name", String),
+            column("description", String),
+        )
+
+        if style.plain:
+            q = (
+                select(table1.c.myid)
+                .order_by(table1.c.myid)
+                .fetch(count=10)
+                .alias("foo")
+            )
+        elif style.ties:
+            q = (
+                select(table1.c.myid)
+                .order_by(table1.c.myid)
+                .fetch(count=10, with_ties=True)
+                .alias("foo")
+            )
+        elif style.percent:
+            q = (
+                select(table1.c.myid)
+                .order_by(table1.c.myid)
+                .fetch(count=10, percent=True)
+                .alias("foo")
+            )
+        else:
+            style.fail()
+
+        crit = q.c.myid == table1.c.myid
+
+        if style.plain:
+            # the "plain" style of fetch doesnt use TOP right now, so
+            # there's an order_by implicit in the row_number part of it
+            self.assert_compile(
+                select("*").where(crit),
+                "SELECT * FROM (SELECT anon_1.myid AS myid FROM "
+                "(SELECT mytable.myid AS myid, ROW_NUMBER() OVER "
+                "(ORDER BY mytable.myid) AS mssql_rn FROM mytable) AS anon_1 "
+                "WHERE mssql_rn <= :param_1) AS foo, mytable "
+                "WHERE foo.myid = mytable.myid",
+            )
+        elif style.ties:
+            # issue #10458 is that when TIES/PERCENT were used, and it just
+            # generates TOP, ORDER BY would be omitted.
+            self.assert_compile(
+                select("*").where(crit),
+                "SELECT * FROM (SELECT TOP __[POSTCOMPILE_param_1] WITH "
+                "TIES mytable.myid AS myid FROM mytable "
+                "ORDER BY mytable.myid) AS foo, mytable "
+                "WHERE foo.myid = mytable.myid",
+            )
+        elif style.percent:
+            self.assert_compile(
+                select("*").where(crit),
+                "SELECT * FROM (SELECT TOP __[POSTCOMPILE_param_1] "
+                "PERCENT mytable.myid AS myid FROM mytable "
+                "ORDER BY mytable.myid) AS foo, mytable "
+                "WHERE foo.myid = mytable.myid",
+            )
+
     @testing.combinations(10, 0)
     def test_noorderby_insubquery_offset_oldstyle(self, offset):
         """test "no ORDER BY in subqueries unless TOP / LIMIT / OFFSET"
@@ -634,9 +702,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             select(tbl),
             "SELECT %(name)s.test.id FROM %(name)s.test"
             % {"name": rendered_schema},
-            schema_translate_map={None: schemaname}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: schemaname} if use_schema_translate else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -709,16 +777,20 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "test",
             metadata,
             Column("id", Integer, primary_key=True),
-            schema=quoted_name("Foo.dbo", True)
-            if not use_schema_translate
-            else None,
+            schema=(
+                quoted_name("Foo.dbo", True)
+                if not use_schema_translate
+                else None
+            ),
         )
         self.assert_compile(
             select(tbl),
             "SELECT [Foo.dbo].test.id FROM [Foo.dbo].test",
-            schema_translate_map={None: quoted_name("Foo.dbo", True)}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: quoted_name("Foo.dbo", True)}
+                if use_schema_translate
+                else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -736,9 +808,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(tbl),
             "SELECT [Foo.dbo].test.id FROM [Foo.dbo].test",
-            schema_translate_map={None: "[Foo.dbo]"}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: "[Foo.dbo]"} if use_schema_translate else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -756,9 +828,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(tbl),
             "SELECT foo.dbo.test.id FROM foo.dbo.test",
-            schema_translate_map={None: "foo.dbo"}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: "foo.dbo"} if use_schema_translate else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -774,9 +846,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(tbl),
             "SELECT [Foo].dbo.test.id FROM [Foo].dbo.test",
-            schema_translate_map={None: "Foo.dbo"}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: "Foo.dbo"} if use_schema_translate else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -790,7 +862,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             tbl.delete().where(tbl.c.id == 1),
-            "DELETE FROM paj.test WHERE paj.test.id = " ":id_1",
+            "DELETE FROM paj.test WHERE paj.test.id = :id_1",
         )
         s = select(tbl.c.id).where(tbl.c.id == 1)
         self.assert_compile(
@@ -810,7 +882,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             tbl.delete().where(tbl.c.id == 1),
-            "DELETE FROM banana.paj.test WHERE " "banana.paj.test.id = :id_1",
+            "DELETE FROM banana.paj.test WHERE banana.paj.test.id = :id_1",
         )
         s = select(tbl.c.id).where(tbl.c.id == 1)
         self.assert_compile(
@@ -927,7 +999,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             select(func.max(t.c.col1)),
-            "SELECT max(sometable.col1) AS max_1 FROM " "sometable",
+            "SELECT max(sometable.col1) AS max_1 FROM sometable",
         )
 
     def test_function_overrides(self):
@@ -1000,7 +1072,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         d = delete(table1).returning(table1.c.myid, table1.c.name)
         self.assert_compile(
-            d, "DELETE FROM mytable OUTPUT deleted.myid, " "deleted.name"
+            d, "DELETE FROM mytable OUTPUT deleted.myid, deleted.name"
         )
         d = (
             delete(table1)
@@ -1375,6 +1447,42 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateIndex(idx), "CREATE CLUSTERED INDEX foo ON test (id)"
         )
 
+    def test_index_empty(self):
+        metadata = MetaData()
+        idx = Index("foo")
+        Table("test", metadata, Column("id", Integer)).append_constraint(idx)
+        self.assert_compile(
+            schema.CreateIndex(idx), "CREATE INDEX foo ON test"
+        )
+
+    def test_index_colstore_clustering(self):
+        metadata = MetaData()
+        idx = Index("foo", mssql_clustered=True, mssql_columnstore=True)
+        Table("test", metadata, Column("id", Integer)).append_constraint(idx)
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE CLUSTERED COLUMNSTORE INDEX foo ON test",
+        )
+
+    def test_index_colstore_no_clustering(self):
+        metadata = MetaData()
+        tbl = Table("test", metadata, Column("id", Integer))
+        idx = Index(
+            "foo", tbl.c.id, mssql_clustered=False, mssql_columnstore=True
+        )
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE NONCLUSTERED COLUMNSTORE INDEX foo ON test (id)",
+        )
+
+    def test_index_not_colstore_clustering(self):
+        metadata = MetaData()
+        idx = Index("foo", mssql_clustered=True, mssql_columnstore=False)
+        Table("test", metadata, Column("id", Integer)).append_constraint(idx)
+        self.assert_compile(
+            schema.CreateIndex(idx), "CREATE CLUSTERED INDEX foo ON test"
+        )
+
     def test_index_where(self):
         metadata = MetaData()
         tbl = Table("test", metadata, Column("data", Integer))
@@ -1473,12 +1581,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE INDEX foo ON test (x) INCLUDE (y) WHERE y > 1",
         )
 
-    def test_try_cast(self):
-        metadata = MetaData()
-        t1 = Table("t1", metadata, Column("id", Integer, primary_key=True))
+    @testing.variation("use_mssql_version", [True, False])
+    def test_try_cast(self, use_mssql_version):
+        t1 = Table("t1", MetaData(), Column("id", Integer, primary_key=True))
+
+        if use_mssql_version:
+            stmt = select(mssql.try_cast(t1.c.id, Integer))
+        else:
+            stmt = select(try_cast(t1.c.id, Integer))
 
         self.assert_compile(
-            select(try_cast(t1.c.id, Integer)),
+            stmt,
             "SELECT TRY_CAST (t1.id AS INTEGER) AS id FROM t1",
         )
 
@@ -1832,7 +1945,7 @@ class CompileIdentityTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             schema.CreateTable(tbl),
-            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(3,1)" ")",
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(3,1))",
         )
 
     def test_identity_separate_from_primary_key(self):

@@ -1,45 +1,48 @@
-"""Illustrates use of the sqlalchemy.ext.asyncio.AsyncSession object
+"""Illustrates use of the ``sqlalchemy.ext.asyncio.AsyncSession`` object
 for asynchronous ORM use.
 
 """
 
-import asyncio
+from __future__ import annotations
 
-from sqlalchemy import Column
-from sqlalchemy import DateTime
+import asyncio
+import datetime
+from typing import List
+from typing import Optional
+
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
-from sqlalchemy import Integer
-from sqlalchemy import String
 from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.future import select
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 
-Base = declarative_base()
+
+class Base(AsyncAttrs, DeclarativeBase):
+    pass
 
 
 class A(Base):
     __tablename__ = "a"
 
-    id = Column(Integer, primary_key=True)
-    data = Column(String)
-    create_date = Column(DateTime, server_default=func.now())
-    bs = relationship("B")
-
-    # required in order to access columns with server defaults
-    # or SQL expression defaults, subsequent to a flush, without
-    # triggering an expired load
-    __mapper_args__ = {"eager_defaults": True}
+    id: Mapped[int] = mapped_column(primary_key=True)
+    data: Mapped[Optional[str]]
+    create_date: Mapped[datetime.datetime] = mapped_column(
+        server_default=func.now()
+    )
+    bs: Mapped[List[B]] = relationship()
 
 
 class B(Base):
     __tablename__ = "b"
-    id = Column(Integer, primary_key=True)
-    a_id = Column(ForeignKey("a.id"))
-    data = Column(String)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+    data: Mapped[Optional[str]]
 
 
 async def async_main():
@@ -74,10 +77,10 @@ async def async_main():
 
         # AsyncSession.execute() is used for 2.0 style ORM execution
         # (same as the synchronous API).
-        result = await session.execute(stmt)
+        result = await session.scalars(stmt)
 
         # result is a buffered Result object.
-        for a1 in result.scalars():
+        for a1 in result:
             print(a1)
             print(f"created at: {a1.create_date}")
             for b1 in a1.bs:
@@ -92,13 +95,17 @@ async def async_main():
             for b1 in a1.bs:
                 print(b1)
 
-        result = await session.execute(select(A).order_by(A.id))
+        result = await session.scalars(select(A).order_by(A.id))
 
-        a1 = result.scalars().first()
+        a1 = result.first()
 
         a1.data = "new data"
 
         await session.commit()
+
+        # use the AsyncAttrs interface to accommodate for a lazy load
+        for b1 in await a1.awaitable_attrs.bs:
+            print(b1)
 
 
 asyncio.run(async_main())

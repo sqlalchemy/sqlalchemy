@@ -1,4 +1,5 @@
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/oracle/oracledb.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -21,6 +22,31 @@ the Oracle Client Interface in the same way as cx_Oracle.
 
     :ref:`cx_oracle` - all of cx_Oracle's notes apply to the oracledb driver
     as well.
+
+The SQLAlchemy ``oracledb`` dialect provides both a sync and an async
+implementation under the same dialect name. The proper version is
+selected depending on how the engine is created:
+
+* calling :func:`_sa.create_engine` with ``oracle+oracledb://...`` will
+  automatically select the sync version, e.g.::
+
+    from sqlalchemy import create_engine
+    sync_engine = create_engine("oracle+oracledb://scott:tiger@localhost/?service_name=XEPDB1")
+
+* calling :func:`_asyncio.create_async_engine` with
+  ``oracle+oracledb://...`` will automatically select the async version,
+  e.g.::
+
+    from sqlalchemy.ext.asyncio import create_async_engine
+    asyncio_engine = create_async_engine("oracle+oracledb://scott:tiger@localhost/?service_name=XEPDB1")
+
+The asyncio version of the dialect may also be specified explicitly using the
+``oracledb_async`` suffix, as::
+
+    from sqlalchemy.ext.asyncio import create_async_engine
+    asyncio_engine = create_async_engine("oracle+oracledb_async://scott:tiger@localhost/?service_name=XEPDB1")
+
+.. versionadded:: 2.0.25 added support for the async version of oracledb.
 
 Thick mode support
 ------------------
@@ -48,26 +74,38 @@ like the ``lib_dir`` path, a dict may be passed to this parameter, as in::
 .. versionadded:: 2.0.0 added support for oracledb driver.
 
 """  # noqa
+from __future__ import annotations
+
+import collections
 import re
+from typing import Any
+from typing import TYPE_CHECKING
 
 from .cx_oracle import OracleDialect_cx_oracle as _OracleDialect_cx_oracle
 from ... import exc
+from ...connectors.asyncio import AsyncAdapt_dbapi_connection
+from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
+from ...util import await_
+
+if TYPE_CHECKING:
+    from oracledb import AsyncConnection
+    from oracledb import AsyncCursor
 
 
 class OracleDialect_oracledb(_OracleDialect_cx_oracle):
     supports_statement_cache = True
     driver = "oracledb"
+    _min_version = (1,)
 
     def __init__(
         self,
         auto_convert_lobs=True,
         coerce_to_decimal=True,
-        arraysize=50,
+        arraysize=None,
         encoding_errors=None,
         thick_mode=None,
         **kwargs,
     ):
-
         super().__init__(
             auto_convert_lobs,
             coerce_to_decimal,
@@ -76,7 +114,9 @@ class OracleDialect_oracledb(_OracleDialect_cx_oracle):
             **kwargs,
         )
 
-        if self.dbapi is not None and thick_mode is not None:
+        if self.dbapi is not None and (
+            thick_mode or isinstance(thick_mode, dict)
+        ):
             kw = thick_mode if isinstance(thick_mode, dict) else {}
             self.dbapi.init_oracle_client(**kw)
 
@@ -90,6 +130,10 @@ class OracleDialect_oracledb(_OracleDialect_cx_oracle):
     def is_thin_mode(cls, connection):
         return connection.connection.dbapi_connection.thin
 
+    @classmethod
+    def get_async_dialect_cls(cls, url):
+        return OracleDialectAsync_oracledb
+
     def _load_version(self, dbapi_module):
         version = (0, 0, 0)
         if dbapi_module is not None:
@@ -99,10 +143,136 @@ class OracleDialect_oracledb(_OracleDialect_cx_oracle):
                     int(x) for x in m.group(1, 2, 3) if x is not None
                 )
         self.oracledb_ver = version
-        if self.oracledb_ver < (1,) and self.oracledb_ver > (0, 0, 0):
+        if (
+            self.oracledb_ver > (0, 0, 0)
+            and self.oracledb_ver < self._min_version
+        ):
             raise exc.InvalidRequestError(
-                "oracledb version 1 and above are supported"
+                f"oracledb version {self._min_version} and above are supported"
             )
 
 
+class AsyncAdapt_oracledb_cursor(AsyncAdapt_dbapi_cursor):
+    _cursor: AsyncCursor
+    __slots__ = ()
+
+    @property
+    def outputtypehandler(self):
+        return self._cursor.outputtypehandler
+
+    @outputtypehandler.setter
+    def outputtypehandler(self, value):
+        self._cursor.outputtypehandler = value
+
+    def var(self, *args, **kwargs):
+        return self._cursor.var(*args, **kwargs)
+
+    def close(self):
+        self._rows.clear()
+        self._cursor.close()
+
+    def setinputsizes(self, *args: Any, **kwargs: Any) -> Any:
+        return self._cursor.setinputsizes(*args, **kwargs)
+
+    def _aenter_cursor(self, cursor: AsyncCursor) -> AsyncCursor:
+        try:
+            return cursor.__enter__()
+        except Exception as error:
+            self._adapt_connection._handle_exception(error)
+
+    async def _execute_async(self, operation, parameters):
+        # override to not use mutex, oracledb already has mutex
+
+        if parameters is None:
+            result = await self._cursor.execute(operation)
+        else:
+            result = await self._cursor.execute(operation, parameters)
+
+        if self._cursor.description and not self.server_side:
+            self._rows = collections.deque(await self._cursor.fetchall())
+        return result
+
+    async def _executemany_async(
+        self,
+        operation,
+        seq_of_parameters,
+    ):
+        # override to not use mutex, oracledb already has mutex
+        return await self._cursor.executemany(operation, seq_of_parameters)
+
+
+class AsyncAdapt_oracledb_connection(AsyncAdapt_dbapi_connection):
+    _connection: AsyncConnection
+    __slots__ = ()
+
+    thin = True
+
+    _cursor_cls = AsyncAdapt_oracledb_cursor
+    _ss_cursor_cls = None
+
+    @property
+    def autocommit(self):
+        return self._connection.autocommit
+
+    @autocommit.setter
+    def autocommit(self, value):
+        self._connection.autocommit = value
+
+    @property
+    def outputtypehandler(self):
+        return self._connection.outputtypehandler
+
+    @outputtypehandler.setter
+    def outputtypehandler(self, value):
+        self._connection.outputtypehandler = value
+
+    @property
+    def version(self):
+        return self._connection.version
+
+    @property
+    def stmtcachesize(self):
+        return self._connection.stmtcachesize
+
+    @stmtcachesize.setter
+    def stmtcachesize(self, value):
+        self._connection.stmtcachesize = value
+
+    def cursor(self):
+        return AsyncAdapt_oracledb_cursor(self)
+
+
+class OracledbAdaptDBAPI:
+    def __init__(self, oracledb) -> None:
+        self.oracledb = oracledb
+
+        for k, v in self.oracledb.__dict__.items():
+            if k != "connect":
+                self.__dict__[k] = v
+
+    def connect(self, *arg, **kw):
+        creator_fn = kw.pop("async_creator_fn", self.oracledb.connect_async)
+        return AsyncAdapt_oracledb_connection(
+            self, await_(creator_fn(*arg, **kw))
+        )
+
+
+class OracleDialectAsync_oracledb(OracleDialect_oracledb):
+    is_async = True
+    supports_statement_cache = True
+
+    _min_version = (2,)
+
+    # thick_mode mode is not supported by asyncio, oracledb will raise
+    @classmethod
+    def import_dbapi(cls):
+        import oracledb
+
+        return OracledbAdaptDBAPI(oracledb)
+
+    def get_driver_connection(self, connection):
+        return connection._connection
+
+
 dialect = OracleDialect_oracledb
+dialect_async = OracleDialectAsync_oracledb

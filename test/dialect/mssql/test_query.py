@@ -18,6 +18,7 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy.dialects.mssql import base as mssql
+from sqlalchemy.dialects.mssql import pyodbc as mssql_pyodbc
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
@@ -135,7 +136,6 @@ class IdentityInsertTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     @testing.requires.schemas
     def test_insert_using_schema_translate(self, connection, metadata):
-
         t = Table(
             "t",
             metadata,
@@ -409,8 +409,7 @@ def full_text_search_missing():
         return result.scalar() == 0
 
 
-class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
-
+class MatchTest(AssertsCompiledSQL, fixtures.TablesTest):
     __only_on__ = "mssql"
     __skip_if__ = (full_text_search_missing,)
     __backend__ = True
@@ -517,6 +516,7 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
         self.assert_compile(
             matchtable.c.title.match("somstr"),
             "CONTAINS (matchtable.title, ?)",
+            dialect=mssql_pyodbc.dialect(paramstyle="qmark"),
         )
 
     def test_simple_match(self, connection):
@@ -664,7 +664,7 @@ RETURN
     def test_scalar_strings_named_control(self, scalar_strings, connection):
         result = (
             connection.exec_driver_sql(
-                "SELECT anon_1.my_string " "FROM scalar_strings() AS anon_1"
+                "SELECT anon_1.my_string FROM scalar_strings() AS anon_1"
             )
             .scalars()
             .all()

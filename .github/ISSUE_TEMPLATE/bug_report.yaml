@@ -9,28 +9,22 @@ body:
     attributes:
       value: "
 
-**FOR ALL USERS - PLEASE READ THIS PARAGRAPH AS IT IS HELPS US TO DO OUR WORK MORE EFFICIENTLY:**
-
-The **VAST MAJORITY** of bugs reported are in fact
-**USAGE QUESTIONS, NOT BUGS** for APIs that can take some practice to familiarize with,
-and which are also tailored towards high quality relational designs that
-beginners are sometimes less familiar with.
-
-If you are relatively new to SQLAlchemy, and even if not but the issue is uncertain, PLEASE START A NEW
-[DISCUSSION](https://github.com/sqlalchemy/sqlalchemy/discussions/new?category=Usage-Questions) INSTEAD, so that we can
-help with your issue.   If you are relatively new to
-SQLAlchemy, there is an approximately **90% chance your issue is not a bug and will be converted to a
-discussion in any case**.
-If your issue is actually a bug, we will open a new bug report with what we need.
+**If you are writing new SQLAlchemy code and are observing a behavior that you did not expect,
+or if you are new to SQLAlchemy overall, please open a
+[discussion](https://github.com/sqlalchemy/sqlalchemy/discussions/new?category=Usage-Questions)
+instead of an issue report.  The VAST MAJORITY of issues are converted to discussions
+as they are not bugs.**
 
 [START A NEW USAGE QUESTIONS DISCUSSION HERE](https://github.com/sqlalchemy/sqlalchemy/discussions/new?category=Usage-Questions)
 
 "
   - type: markdown
     attributes:
-      value: "**IF YOUR ISSUE RELATES TO AN @ SIGN, OR ANY OTHER NON-ALPHANUMERIC CHARACTER IN YOUR PASSWORD.  THIS IS NOT A BUG.**
+      value: "**If your issue is you have upgraded SQLAlchemy and now can't connect to the database, please READ THIS FIRST:**
 
-Please URL escape **@ signs and any other non-alphanumeric characters** in passwords;
+URL escape **@ signs and any other non-alphanumeric characters** in passwords;  **@ signs
+must be escaped in modern versions of SQLAlchemy which was not the case with older versions**.
+
 For the ``@`` sign for example, the escape is `%40`.
 See [Engine URLs](https://docs.sqlalchemy.org/en/stable/core/engines.html#escaping-special-characters-such-as-signs-in-passwords)
     "
@@ -39,6 +33,12 @@ See [Engine URLs](https://docs.sqlalchemy.org/en/stable/core/engines.html#escapi
       value: "
 
 **GUIDELINES FOR REPORTING BUGS**
+
+IF YOU DO NOT HAVE A COMPLETE, RUNNABLE TEST CASE WRITTEN DIRECTLY IN THE TEXTAREA BELOW,
+YOUR ISSUE WILL BE CLOSED.   PLEASE OPEN A
+[DISCUSSION](https://github.com/sqlalchemy/sqlalchemy/discussions/new?category=Usage-Questions)
+IF YOU DON'T HAVE A COMPLETE TEST CASE!
+
 
 If you are new to SQLAlchemy bug reports, please review our many examples
 of [well written bug reports](https://github.com/sqlalchemy/sqlalchemy/issues?q=is%3Aissue+label%3A%22great+mcve%22).   Each of these reports include the following features:
@@ -56,6 +56,59 @@ of [well written bug reports](https://github.com/sqlalchemy/sqlalchemy/issues?q=
     attributes:
       label: Describe the bug
       description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+
+  - type: input
+    id: relevant_documentation
+    attributes:
+      label: Optional link from https://docs.sqlalchemy.org which documents the behavior that is expected
+      description:  "
+Please make sure the behavior you are seeing is definitely in contradiction
+to what's documented as the correct behavior.  If unsure, open a
+[discussion](https://github.com/sqlalchemy/sqlalchemy/discussions/new?category=Usage-Questions)
+instead.
+"
+    validations:
+      required: false
+
+  - type: input
+    id: sqlalchemy_version
+    attributes:
+      label: SQLAlchemy Version in Use
+      description: e.g. 1.4.42, 2.0.2, etc
+    validations:
+      required: true
+
+  - type: input
+    id: dbapi_version
+    attributes:
+      label: DBAPI (i.e. the database driver)
+      description: examples include psycopg2, pyodbc, pysqlite, mysqlclient, asyncpg
+    validations:
+      required: true
+
+  - type: input
+    id: database_version
+    attributes:
+      label: Database Vendor and Major Version
+      description: e.g. SQLite, PostgreSQL 12, MySQL 8, MariaDB 10.10, etc
+    validations:
+      required: true
+
+  - type: input
+    id: python_version
+    attributes:
+      label: Python Version
+      description: assumes cpython unless otherwise stated, e.g. 3.10, 3.11, pypy
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: Linux, Windows, OSX
     validations:
       required: true
 
@@ -86,18 +139,6 @@ If the message is a warning, run your program with the ``-Werror`` flag:   ``pyt
 
 ```
 "
-    validations:
-      required: true
-
-  - type: textarea
-    attributes:
-      label: Versions
-      value: |
-        - OS:
-        - Python:
-        - SQLAlchemy:
-        - Database:
-        - DBAPI (eg: psycopg, cx_oracle, mysqlclient):
     validations:
       required: true
 

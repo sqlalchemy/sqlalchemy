@@ -5,6 +5,7 @@ from sqlalchemy import String
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -31,7 +32,7 @@ class InheritingSelectablesTest(fixtures.MappedTest):
         connection.execute(foo.insert(), dict(a="i am bar", b="bar"))
         connection.execute(foo.insert(), dict(a="also bar", b="bar"))
 
-        class Foo(fixtures.ComparableEntity):
+        class Foo(ComparableEntity):
             pass
 
         class Bar(Foo):

@@ -8,6 +8,7 @@ in exactly the same way.   The main change is how the
 the routine that generates new primary keys.
 
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -283,7 +284,6 @@ async def main():
     quito.reports.append(Report(85))
 
     async with Session() as sess:
-
         sess.add_all(
             [tokyo, newyork, toronto, london, dublin, brasilia, quito]
         )

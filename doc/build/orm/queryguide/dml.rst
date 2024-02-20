@@ -105,7 +105,7 @@ Getting new objects with RETURNING
 The bulk ORM insert feature supports INSERT..RETURNING for selected
 backends, which can return a :class:`.Result` object that may yield individual
 columns back as well as fully constructed ORM objects corresponding
-to the new rows.    INSERT..RETURNING requires the use of a backend that
+to the newly generated records.    INSERT..RETURNING requires the use of a backend that
 supports SQL RETURNING syntax as well as support for :term:`executemany`
 with RETURNING; this feature is available with all
 :ref:`SQLAlchemy-included <included_dialects>` backends
@@ -127,9 +127,10 @@ iteration of ``User`` objects::
     ...     ],
     ... )
     {execsql}INSERT INTO user_account (name, fullname)
-    VALUES (?, ?), (?, ?), (?, ?), (?, ?), (?, ?) RETURNING id, name, fullname, species
-    [... (insertmanyvalues)] ('spongebob', 'Spongebob Squarepants', 'sandy',
-    'Sandy Cheeks', 'patrick', 'Patrick Star', 'squidward', 'Squidward Tentacles',
+    VALUES (?, ?), (?, ?), (?, ?), (?, ?), (?, ?)
+    RETURNING id, name, fullname, species
+    [...] ('spongebob', 'Spongebob Squarepants', 'sandy', 'Sandy Cheeks',
+    'patrick', 'Patrick Star', 'squidward', 'Squidward Tentacles',
     'ehkrabs', 'Eugene H. Krabs')
     {stop}>>> print(users.all())
     [User(name='spongebob', fullname='Spongebob Squarepants'),
@@ -153,6 +154,53 @@ single INSERT statement so that RETURNING may be used.
    in the result as ORM mapped objects.  Limited support for ORM loader
    options such as :func:`_orm.load_only` and :func:`_orm.selectinload`
    is also present.
+
+.. _orm_queryguide_bulk_insert_returning_ordered:
+
+Correlating RETURNING records with input data order
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When using bulk INSERT with RETURNING, it's important to note that most
+database backends provide no formal guarantee of the order in which the
+records from RETURNING are returned, including that there is no guarantee that
+their order will correspond to that of the input records.  For applications
+that need to ensure RETURNING records can be correlated with input data,
+the additional parameter :paramref:`_dml.Insert.returning.sort_by_parameter_order`
+may be specified, which depending on backend may use special INSERT forms
+that maintain a token which is used to reorder the returned rows appropriately,
+or in some cases, such as in the example below using the SQLite backend,
+the operation will INSERT one row at a time::
+
+    >>> data = [
+    ...     {"name": "pearl", "fullname": "Pearl Krabs"},
+    ...     {"name": "plankton", "fullname": "Plankton"},
+    ...     {"name": "gary", "fullname": "Gary"},
+    ... ]
+    >>> user_ids = session.scalars(
+    ...     insert(User).returning(User.id, sort_by_parameter_order=True), data
+    ... )
+    {execsql}INSERT INTO user_account (name, fullname) VALUES (?, ?) RETURNING id
+    [... (insertmanyvalues) 1/3 (ordered; batch not supported)] ('pearl', 'Pearl Krabs')
+    INSERT INTO user_account (name, fullname) VALUES (?, ?) RETURNING id
+    [insertmanyvalues 2/3 (ordered; batch not supported)] ('plankton', 'Plankton')
+    INSERT INTO user_account (name, fullname) VALUES (?, ?) RETURNING id
+    [insertmanyvalues 3/3 (ordered; batch not supported)] ('gary', 'Gary')
+    {stop}>>> for user_id, input_record in zip(user_ids, data):
+    ...     input_record["id"] = user_id
+    >>> print(data)
+    [{'name': 'pearl', 'fullname': 'Pearl Krabs', 'id': 6},
+    {'name': 'plankton', 'fullname': 'Plankton', 'id': 7},
+    {'name': 'gary', 'fullname': 'Gary', 'id': 8}]
+
+.. versionadded:: 2.0.10 Added :paramref:`_dml.Insert.returning.sort_by_parameter_order`
+   which is implemented within the :term:`insertmanyvalues` architecture.
+
+.. seealso::
+
+    :ref:`engine_insertmanyvalues_returning_order` - background on approaches
+    taken to guarantee correspondence between input data and result rows
+    without significant loss of performance
+
 
 .. _orm_queryguide_insert_heterogeneous_params:
 
@@ -190,17 +238,129 @@ to each set of keys and batch accordingly into separate INSERT statements::
     ...         {"name": "ehkrabs", "fullname": "Eugene H. Krabs", "species": "Crab"},
     ...     ],
     ... )
-    {execsql}INSERT INTO user_account (name, fullname, species) VALUES (?, ?, ?), (?, ?, ?) RETURNING id, name, fullname, species
-    [... (insertmanyvalues)] ('spongebob', 'Spongebob Squarepants', 'Sea Sponge', 'sandy', 'Sandy Cheeks', 'Squirrel')
-    INSERT INTO user_account (name, species) VALUES (?, ?) RETURNING id, name, fullname, species
+    {execsql}INSERT INTO user_account (name, fullname, species)
+    VALUES (?, ?, ?), (?, ?, ?) RETURNING id, name, fullname, species
+    [... (insertmanyvalues) 1/1 (unordered)] ('spongebob', 'Spongebob Squarepants', 'Sea Sponge',
+    'sandy', 'Sandy Cheeks', 'Squirrel')
+    INSERT INTO user_account (name, species)
+    VALUES (?, ?) RETURNING id, name, fullname, species
     [...] ('patrick', 'Starfish')
-    INSERT INTO user_account (name, fullname, species) VALUES (?, ?, ?), (?, ?, ?) RETURNING id, name, fullname, species
-    [... (insertmanyvalues)] ('squidward', 'Squidward Tentacles', 'Squid', 'ehkrabs', 'Eugene H. Krabs', 'Crab')
+    INSERT INTO user_account (name, fullname, species)
+    VALUES (?, ?, ?), (?, ?, ?) RETURNING id, name, fullname, species
+    [... (insertmanyvalues) 1/1 (unordered)] ('squidward', 'Squidward Tentacles',
+    'Squid', 'ehkrabs', 'Eugene H. Krabs', 'Crab')
+
+
 
 In the above example, the five parameter dictionaries passed translated into
 three INSERT statements, grouped along the specific sets of keys
 in each dictionary while still maintaining row order, i.e.
 ``("name", "fullname", "species")``, ``("name", "species")``, ``("name","fullname", "species")``.
+
+.. _orm_queryguide_insert_null_params:
+
+Sending NULL values in ORM bulk INSERT statements
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The bulk ORM insert feature draws upon a behavior that is also present
+in the legacy "bulk" insert behavior, as well as in the ORM unit of work
+overall, which is that rows which contain NULL values are INSERTed using
+a statement that does not refer to those columns; the rationale here is so
+that backends and schemas which contain server-side INSERT defaults that may
+be sensitive to the presence of a NULL value vs. no value present will
+produce a server side value as expected.  This default behavior
+has the effect of breaking up the bulk inserted batches into more
+batches of fewer rows::
+
+    >>> session.execute(
+    ...     insert(User),
+    ...     [
+    ...         {
+    ...             "name": "name_a",
+    ...             "fullname": "Employee A",
+    ...             "species": "Squid",
+    ...         },
+    ...         {
+    ...             "name": "name_b",
+    ...             "fullname": "Employee B",
+    ...             "species": "Squirrel",
+    ...         },
+    ...         {
+    ...             "name": "name_c",
+    ...             "fullname": "Employee C",
+    ...             "species": None,
+    ...         },
+    ...         {
+    ...             "name": "name_d",
+    ...             "fullname": "Employee D",
+    ...             "species": "Bluefish",
+    ...         },
+    ...     ],
+    ... )
+    {execsql}INSERT INTO user_account (name, fullname, species) VALUES (?, ?, ?)
+    [...] [('name_a', 'Employee A', 'Squid'), ('name_b', 'Employee B', 'Squirrel')]
+    INSERT INTO user_account (name, fullname) VALUES (?, ?)
+    [...] ('name_c', 'Employee C')
+    INSERT INTO user_account (name, fullname, species) VALUES (?, ?, ?)
+    [...] ('name_d', 'Employee D', 'Bluefish')
+    ...
+
+..  Setup code, not for display
+
+  >>> session.rollback()
+  ROLLBACK...
+  >>> session.connection()
+  BEGIN (implicit)...
+
+Above, the bulk INSERT of four rows is broken into three separate statements,
+the second statement reformatted to not refer to the NULL column for the single
+parameter dictionary that contains a ``None`` value.    This default
+behavior may be undesirable when many rows in the dataset contain random NULL
+values, as it causes the "executemany" operation to be broken into a larger
+number of smaller operations; particularly when relying upon
+:ref:`insertmanyvalues <engine_insertmanyvalues>` to reduce the overall number
+of statements, this can have a bigger performance impact.
+
+To disable the handling of ``None`` values in the parameters into separate
+batches, pass the execution option ``render_nulls=True``; this will cause
+all parameter dictionaries to be treated equivalently, assuming the same
+set of keys in each dictionary::
+
+    >>> session.execute(
+    ...     insert(User).execution_options(render_nulls=True),
+    ...     [
+    ...         {
+    ...             "name": "name_a",
+    ...             "fullname": "Employee A",
+    ...             "species": "Squid",
+    ...         },
+    ...         {
+    ...             "name": "name_b",
+    ...             "fullname": "Employee B",
+    ...             "species": "Squirrel",
+    ...         },
+    ...         {
+    ...             "name": "name_c",
+    ...             "fullname": "Employee C",
+    ...             "species": None,
+    ...         },
+    ...         {
+    ...             "name": "name_d",
+    ...             "fullname": "Employee D",
+    ...             "species": "Bluefish",
+    ...         },
+    ...     ],
+    ... )
+    {execsql}INSERT INTO user_account (name, fullname, species) VALUES (?, ?, ?)
+    [...] [('name_a', 'Employee A', 'Squid'), ('name_b', 'Employee B', 'Squirrel'), ('name_c', 'Employee C', None), ('name_d', 'Employee D', 'Bluefish')]
+    ...
+
+Above, all parameter dictionaries are sent in a single INSERT batch, including
+the ``None`` value present in the third parameter dictionary.
+
+.. versionadded:: 2.0.23  Added the ``render_nulls`` execution option which
+   mirrors the behavior of the legacy
+   :paramref:`_orm.Session.bulk_insert_mappings.render_nulls` parameter.
 
 .. _orm_queryguide_insert_joined_table_inheritance:
 
@@ -232,12 +392,22 @@ the returned rows include values for all columns inserted::
     ...         {"name": "ehkrabs", "manager_name": "Eugene H. Krabs"},
     ...     ],
     ... )
-    {execsql}INSERT INTO employee (name, type) VALUES (?, ?), (?, ?) RETURNING id, name, type
-    [... (insertmanyvalues)] ('sandy', 'manager', 'ehkrabs', 'manager')
-    INSERT INTO manager (id, manager_name) VALUES (?, ?), (?, ?) RETURNING id, manager_name
-    [... (insertmanyvalues)] (1, 'Sandy Cheeks', 2, 'Eugene H. Krabs')
-    {stop}>>> print(managers.all())
-    [Manager('sandy', manager_name='Sandy Cheeks'), Manager('ehkrabs', manager_name='Eugene H. Krabs')]
+    {execsql}INSERT INTO employee (name, type) VALUES (?, ?) RETURNING id, name, type
+    [... (insertmanyvalues) 1/2 (ordered; batch not supported)] ('sandy', 'manager')
+    INSERT INTO employee (name, type) VALUES (?, ?) RETURNING id, name, type
+    [insertmanyvalues 2/2 (ordered; batch not supported)] ('ehkrabs', 'manager')
+    INSERT INTO manager (id, manager_name) VALUES (?, ?), (?, ?) RETURNING id, manager_name, id AS id__1
+    [... (insertmanyvalues) 1/1 (ordered)] (1, 'Sandy Cheeks', 2, 'Eugene H. Krabs')
+
+.. tip:: Bulk INSERT of joined inheritance mappings requires that the ORM
+   make use of the :paramref:`_dml.Insert.returning.sort_by_parameter_order`
+   parameter internally, so that it can correlate primary key values from
+   RETURNING rows from the base table into the parameter sets being used
+   to INSERT into the "sub" table, which is why the SQLite backend
+   illustrated above transparently degrades to using non-batched statements.
+   Background on this feature is at
+   :ref:`engine_insertmanyvalues_returning_order`.
+
 
 .. _orm_queryguide_bulk_insert_w_sql:
 
@@ -281,11 +451,12 @@ and then pass the additional records using "bulk" mode::
     ...     ],
     ... )
     {execsql}INSERT INTO log_record (message, code, timestamp)
-    VALUES (?, ?, CURRENT_TIMESTAMP), (?, ?, CURRENT_TIMESTAMP), (?, ?, CURRENT_TIMESTAMP),
-    (?, ?, CURRENT_TIMESTAMP)
+    VALUES (?, ?, CURRENT_TIMESTAMP), (?, ?, CURRENT_TIMESTAMP),
+    (?, ?, CURRENT_TIMESTAMP), (?, ?, CURRENT_TIMESTAMP)
     RETURNING id, message, code, timestamp
-    [... (insertmanyvalues)] ('log message #1', 'SQLA', 'log message #2', 'SQLA',
-    'log message #3', 'SQLA', 'log message #4', 'SQLA')
+    [... (insertmanyvalues) 1/1 (unordered)] ('log message #1', 'SQLA', 'log message #2',
+    'SQLA', 'log message #3', 'SQLA', 'log message #4', 'SQLA')
+
 
     {stop}>>> print(log_record_result.all())
     [LogRecord('log message #1', 'SQLA', datetime.datetime(...)),
@@ -588,13 +759,16 @@ ORM, using an explicit WHERE clause, which is documented at
 
 For the "bulk" version of UPDATE, a :func:`_dml.update` construct is made in
 terms of an ORM class and passed to the :meth:`_orm.Session.execute` method;
-the resulting :class:`_dml.Update` object should have **no WHERE criteria or
-values**, that is, the :meth:`_dml.Update.where` and :meth:`_dml.Update.values`
-methods are not used. Passing the :class:`_dml.Update` construct along with a
-list of parameter dictionaries which each include a full primary key value will
-invoke **bulk UPDATE by primary key mode** for the statement, generating the
-appropriate WHERE criteria to match each row by primary key, and using
-:term:`executemany` to run each parameter set against the UPDATE statement::
+the resulting :class:`_dml.Update` object should have **no values and typically
+no WHERE criteria**, that is, the :meth:`_dml.Update.values` method is not
+used, and the :meth:`_dml.Update.where` is **usually** not used, but may be
+used in the unusual case that additional filtering criteria would be added.
+
+Passing the :class:`_dml.Update` construct along with a list of parameter
+dictionaries which each include a full primary key value will invoke **bulk
+UPDATE by primary key mode** for the statement, generating the appropriate
+WHERE criteria to match each row by primary key, and using :term:`executemany`
+to run each parameter set against the UPDATE statement::
 
     >>> from sqlalchemy import update
     >>> session.execute(
@@ -609,9 +783,18 @@ appropriate WHERE criteria to match each row by primary key, and using
     [...] [('Spongebob Squarepants', 1), ('Patrick Star', 3), ('Eugene H. Krabs', 5)]
     {stop}<...>
 
+Note that each parameter dictionary **must include a full primary key for
+each record**, else an error is raised.
+
 Like the bulk INSERT feature, heterogeneous parameter lists are supported here
 as well, where the parameters will be grouped into sub-batches of UPDATE
 runs.
+
+.. versionchanged:: 2.0.11  Additional WHERE criteria can be combined with
+   :ref:`orm_queryguide_bulk_update` by using the :meth:`_dml.Update.where`
+   method to add additional criteria.  However this criteria is always in
+   addition to the WHERE criteria that's already made present which includes
+   primary key values.
 
 The RETURNING feature is not available when using the "bulk UPDATE by primary
 key" feature; the list of multiple parameter dictionaries necessarily makes use
@@ -620,12 +803,48 @@ support result rows.
 
 
 .. versionchanged:: 2.0  Passing an :class:`_dml.Update` construct to the
-   :meth:`_orm.Session.execute` method along with a list of parameter dictionaries
-   and no WHERE criteria now invokes a "bulk update", which
-   makes use of the same functionality as the legacy
-   :meth:`_orm.Session.bulk_update_mappings` method.  This is a behavior change
-   compared to the 1.x series where the :class:`_dml.Update` would only be
-   supported with explicit WHERE criteria and inline VALUES.
+   :meth:`_orm.Session.execute` method along with a list of parameter
+   dictionaries now invokes a "bulk update", which makes use of the same
+   functionality as the legacy :meth:`_orm.Session.bulk_update_mappings`
+   method.  This is a behavior change compared to the 1.x series where the
+   :class:`_dml.Update` would only be supported with explicit WHERE criteria
+   and inline VALUES.
+
+.. _orm_queryguide_bulk_update_disabling:
+
+Disabling Bulk ORM Update by Primary Key for an UPDATE statement with multiple parameter sets
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ORM Bulk Update by Primary Key feature, which runs an UPDATE statement
+per record which includes WHERE criteria for each primary key value, is
+automatically used when:
+
+1. the UPDATE statement given is against an ORM entity
+2. the :class:`_orm.Session` is used to execute the statement, and not a
+   Core :class:`_engine.Connection`
+3. The parameters passed are a **list of dictionaries**.
+
+In order to invoke an UPDATE statement without using "ORM Bulk Update by Primary Key",
+invoke the statement against the :class:`_engine.Connection` directly using
+the :meth:`_orm.Session.connection` method to acquire the current
+:class:`_engine.Connection` for the transaction::
+
+
+    >>> from sqlalchemy import bindparam
+    >>> session.connection().execute(
+    ...     update(User).where(User.name == bindparam("u_name")),
+    ...     [
+    ...         {"u_name": "spongebob", "fullname": "Spongebob Squarepants"},
+    ...         {"u_name": "patrick", "fullname": "Patrick Star"},
+    ...     ],
+    ... )
+    {execsql}UPDATE user_account SET fullname=? WHERE user_account.name = ?
+    [...] [('Spongebob Squarepants', 'spongebob'), ('Patrick Star', 'patrick')]
+    {stop}<...>
+
+.. seealso::
+
+    :ref:`error_bupq`
 
 .. _orm_queryguide_bulk_update_joined_inh:
 
@@ -773,6 +992,52 @@ For a DELETE, an example of deleting rows based on criteria::
     ROLLBACK...
     >>> session.connection()
     BEGIN (implicit)...
+
+.. warning:: Please read the following section :ref:`orm_queryguide_update_delete_caveats`
+   for important notes regarding how the functionality of ORM-Enabled UPDATE and DELETE
+   diverges from that of ORM :term:`unit of work` features, such
+   as using the :meth:`_orm.Session.delete` method to delete individual objects.
+
+
+.. _orm_queryguide_update_delete_caveats:
+
+Important Notes and Caveats for ORM-Enabled Update and Delete
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ORM-enabled UPDATE and DELETE features bypass ORM :term:`unit of work`
+automation in favor of being able to emit a single UPDATE or DELETE statement
+that matches multiple rows at once without complexity.
+
+* The operations do not offer in-Python cascading of relationships - it is
+  assumed that ON UPDATE CASCADE and/or ON DELETE CASCADE is configured for any
+  foreign key references which require it, otherwise the database may emit an
+  integrity violation if foreign key references are being enforced. See the
+  notes at :ref:`passive_deletes` for some examples.
+
+* After the UPDATE or DELETE, dependent objects in the :class:`.Session` which
+  were impacted by an ON UPDATE CASCADE or ON DELETE CASCADE on related tables,
+  particularly objects that refer to rows that have now been deleted, may still
+  reference those objects.  This issue is resolved once the :class:`.Session`
+  is expired, which normally occurs upon :meth:`.Session.commit` or can be
+  forced by using :meth:`.Session.expire_all`.
+
+* ORM-enabled UPDATEs and DELETEs do not handle joined table inheritance
+  automatically.   See the section :ref:`orm_queryguide_update_delete_joined_inh`
+  for notes on how to work with joined-inheritance mappings.
+
+* The WHERE criteria needed in order to limit the polymorphic identity to
+  specific subclasses for single-table-inheritance mappings **is included
+  automatically** .   This only applies to a subclass mapper that has no table of
+  its own.
+
+* The :func:`_orm.with_loader_criteria` option **is supported** by ORM
+  update and delete operations; criteria here will be added to that of the UPDATE
+  or DELETE statement being emitted, as well as taken into account during the
+  "synchronize" process.
+
+* In order to intercept ORM-enabled UPDATE and DELETE operations with event
+  handlers, use the :meth:`_orm.SessionEvents.do_orm_execute` event.
+
 
 .. _orm_queryguide_update_delete_sync:
 

@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Union
+
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
@@ -6,6 +10,7 @@ from sqlalchemy import null
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import TypeDecorator
 from sqlalchemy import union_all
 from sqlalchemy import util
 from sqlalchemy.orm import aliased
@@ -39,6 +44,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -132,8 +138,8 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             ],
         )
 
-    @testing.combinations(True, False, None, "deferred_parameter")
-    def test_group_defer_newstyle(self, deferred_parameter):
+    @testing.combinations(True, False, None, argnames="deferred_parameter")
+    def test_group_defer_newstyle(self, deferred_parameter: Union[bool, None]):
         class Base(DeclarativeBase):
             pass
 
@@ -685,6 +691,75 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
                     "FROM orders ORDER BY orders.id",
                     {},
                 )
+            ],
+        )
+
+    def test_undefer_group_with_load(self):
+        users, Order, User, orders = (
+            self.tables.users,
+            self.classes.Order,
+            self.classes.User,
+            self.tables.orders,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+        )
+        self.mapper_registry.map_imperatively(
+            Order,
+            orders,
+            properties=util.OrderedDict(
+                [
+                    ("userident", deferred(orders.c.user_id, group="primary")),
+                    (
+                        "description",
+                        deferred(orders.c.description, group="primary"),
+                    ),
+                    ("opened", deferred(orders.c.isopen, group="primary")),
+                    ("user", relationship(User)),
+                ]
+            ),
+        )
+
+        sess = fixture_session()
+        q = (
+            sess.query(Order)
+            .filter(Order.id == 3)
+            .options(
+                selectinload(Order.user),
+                undefer_group("primary"),
+            )
+        )
+
+        def go():
+            result = q.all()
+            print(result)
+            o = result[0]
+            eq_(o.opened, 1)
+            eq_(o.userident, 7)
+            eq_(o.description, "order 3")
+            u = o.user
+            eq_(u.id, 7)
+
+        self.sql_eq_(
+            go,
+            [
+                (
+                    "SELECT orders.id AS orders_id, "
+                    "orders.user_id AS orders_user_id, "
+                    "orders.address_id AS orders_address_id, "
+                    "orders.description AS orders_description, "
+                    "orders.isopen AS orders_isopen "
+                    "FROM orders WHERE orders.id = :id_1",
+                    {"id_1": 3},
+                ),
+                (
+                    "SELECT users.id AS users_id, users.name AS users_name "
+                    "FROM users WHERE users.id IN "
+                    "(__[POSTCOMPILE_primary_keys])",
+                    [{"primary_keys": [7]}],
+                ),
             ],
         )
 
@@ -1542,7 +1617,6 @@ class MultiPathTest(fixtures.DeclarativeMappedTest):
             session.commit()
 
     def test_data_loaded(self):
-
         User, Task = self.classes("User", "Task")
         session = fixture_session()
 
@@ -1661,6 +1735,69 @@ class InheritanceTest(_Polymorphic):
             "ON people.person_id = managers.person_id "
             "ORDER BY managers.person_id",
         )
+
+    @testing.variation("load", ["contains_eager", "joinedload"])
+    def test_issue_10125(self, load):
+        s = fixture_session()
+
+        employee_alias = aliased(Manager, flat=True)
+        company_alias = aliased(Company)
+
+        if load.contains_eager:
+            q = (
+                s.query(company_alias)
+                .outerjoin(
+                    employee_alias,
+                    company_alias.employees.of_type(employee_alias),
+                )
+                .options(
+                    contains_eager(
+                        company_alias.employees.of_type(employee_alias)
+                    ).load_only(
+                        employee_alias.person_id,
+                    )
+                )
+            )
+        elif load.joinedload:
+            q = s.query(company_alias).options(
+                joinedload(
+                    company_alias.employees.of_type(employee_alias)
+                ).load_only(
+                    employee_alias.person_id,
+                )
+            )
+        else:
+            load.fail()
+
+        if load.contains_eager:
+            self.assert_compile(
+                q,
+                "SELECT people_1.person_id AS people_1_person_id, "
+                "people_1.type AS people_1_type, "
+                "managers_1.person_id AS managers_1_person_id, "
+                "companies_1.company_id AS companies_1_company_id, "
+                "companies_1.name AS companies_1_name "
+                "FROM companies AS companies_1 LEFT OUTER JOIN "
+                "(people AS people_1 JOIN managers AS managers_1 "
+                "ON people_1.person_id = managers_1.person_id) "
+                "ON companies_1.company_id = people_1.company_id",
+            )
+        elif load.joinedload:
+            self.assert_compile(
+                q,
+                "SELECT companies_1.company_id AS companies_1_company_id, "
+                "companies_1.name AS companies_1_name, "
+                "people_1.person_id AS people_1_person_id, "
+                "people_1.type AS people_1_type, "
+                "managers_1.person_id AS managers_1_person_id "
+                "FROM companies AS companies_1 LEFT OUTER JOIN "
+                "(people AS people_1 JOIN managers AS managers_1 "
+                "ON people_1.person_id = managers_1.person_id) "
+                "ON companies_1.company_id = people_1.company_id "
+                "ORDER BY people_1.person_id",
+            )
+        else:
+            load.fail()
 
     def test_load_only_subclass_bound(self):
         s = fixture_session()
@@ -2045,7 +2182,7 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class A(fixtures.ComparableEntity, Base):
+        class A(ComparableEntity, Base):
             __tablename__ = "a"
             id = Column(Integer, primary_key=True)
             x = Column(Integer)
@@ -2055,7 +2192,7 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
 
             bs = relationship("B", order_by="B.id")
 
-        class A_default(fixtures.ComparableEntity, Base):
+        class A_default(ComparableEntity, Base):
             __tablename__ = "a_default"
             id = Column(Integer, primary_key=True)
             x = Column(Integer)
@@ -2063,7 +2200,7 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
 
             my_expr = query_expression(default_expr=literal(15))
 
-        class B(fixtures.ComparableEntity, Base):
+        class B(ComparableEntity, Base):
             __tablename__ = "b"
             id = Column(Integer, primary_key=True)
             a_id = Column(ForeignKey("a.id"))
@@ -2072,16 +2209,28 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
 
             b_expr = query_expression()
 
-        class C(fixtures.ComparableEntity, Base):
+        class C(ComparableEntity, Base):
             __tablename__ = "c"
             id = Column(Integer, primary_key=True)
             x = Column(Integer)
 
             c_expr = query_expression(literal(1))
 
+        class CustomTimeStamp(TypeDecorator):
+            cache_ok = False
+            impl = Integer
+
+        class HasNonCacheable(ComparableEntity, Base):
+            __tablename__ = "non_cacheable"
+
+            id = Column(Integer, primary_key=True)
+            created = Column(CustomTimeStamp)
+            msg_translated = query_expression()
+
     @classmethod
     def insert_data(cls, connection):
         A, A_default, B, C = cls.classes("A", "A_default", "B", "C")
+        (HasNonCacheable,) = cls.classes("HasNonCacheable")
         s = Session(connection)
 
         s.add_all(
@@ -2094,6 +2243,7 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
                 C(id=2, x=2),
                 A_default(id=1, x=1, y=2),
                 A_default(id=2, x=2, y=3),
+                HasNonCacheable(id=1, created=12345),
             ]
         )
 
@@ -2132,6 +2282,30 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
             .order_by(C.id)
         )
         eq_(c2.all(), [C(c_expr=4)])
+
+    def test_non_cacheable_expr(self):
+        """test #10990"""
+
+        HasNonCacheable = self.classes.HasNonCacheable
+
+        for i in range(3):
+            s = fixture_session()
+
+            stmt = (
+                select(HasNonCacheable)
+                .where(HasNonCacheable.created > 10)
+                .options(
+                    with_expression(
+                        HasNonCacheable.msg_translated,
+                        HasNonCacheable.created + 10,
+                    )
+                )
+            )
+
+            eq_(
+                s.scalars(stmt).all(),
+                [HasNonCacheable(id=1, created=12345, msg_translated=12355)],
+            )
 
     def test_reuse_expr(self):
         A = self.classes.A
@@ -2417,7 +2591,7 @@ class RaiseLoadTest(fixtures.DeclarativeMappedTest):
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class A(fixtures.ComparableEntity, Base):
+        class A(ComparableEntity, Base):
             __tablename__ = "a"
             id = Column(Integer, primary_key=True)
             x = Column(Integer)

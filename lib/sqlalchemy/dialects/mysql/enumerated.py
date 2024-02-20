@@ -1,5 +1,5 @@
-# mysql/enumerated.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mysql/enumerated.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -141,8 +141,6 @@ class SET(_StringType):
             When using :paramref:`.mysql.SET.retrieve_as_bitwise`, it is
             essential that the list of set values is expressed in the
             **exact same order** as exists on the MySQL database.
-
-          .. versionadded:: 1.0.0
 
         """
         self.retrieve_as_bitwise = kw.pop("retrieve_as_bitwise", False)

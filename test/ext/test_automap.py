@@ -65,6 +65,18 @@ class AutomapTest(fixtures.MappedTest):
         u1 = User(name="u1", addresses_collection={a1})
         assert a1.user is u1
 
+    def test_prepare_from_subclass(self):
+        """test #9367"""
+        Base = automap_base()
+
+        class User(Base):
+            __tablename__ = "users"
+
+        User.prepare(testing.db)
+
+        assert not hasattr(Base.classes, "users")
+        assert hasattr(Base.classes, "addresses")
+
     def test_prepare_w_only(self):
         Base = automap_base()
 
@@ -645,7 +657,7 @@ class AutomapInhTest(fixtures.MappedTest):
 
 
 class ConcurrentAutomapTest(fixtures.TestBase):
-    __only_on__ = "sqlite"
+    __only_on__ = "sqlite+pysqlite"
 
     def _make_tables(self, e):
         m = MetaData()
@@ -655,11 +667,14 @@ class ConcurrentAutomapTest(fixtures.TestBase):
                 m,
                 Column("id", Integer, primary_key=True),
                 Column("data", String(50)),
-                Column(
-                    "t_%d_id" % (i - 1), ForeignKey("table_%d.id" % (i - 1))
-                )
-                if i > 4
-                else None,
+                (
+                    Column(
+                        "t_%d_id" % (i - 1),
+                        ForeignKey("table_%d.id" % (i - 1)),
+                    )
+                    if i > 4
+                    else None
+                ),
             )
         m.drop_all(e)
         m.create_all(e)

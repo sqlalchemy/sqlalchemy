@@ -1,5 +1,5 @@
 # ext/declarative/extensions.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -11,9 +11,15 @@
 from __future__ import annotations
 
 import collections
+import contextlib
+from typing import Any
 from typing import Callable
 from typing import TYPE_CHECKING
+from typing import Union
 
+from ... import exc as sa_exc
+from ...engine import Connection
+from ...engine import Engine
 from ...orm import exc as orm_exc
 from ...orm import relationships
 from ...orm.base import _mapper_or_none
@@ -324,7 +330,6 @@ class AbstractConcreteBase(ConcreteBase):
                 for sup_ in scls.__mro__[1:]:
                     sup_sm = _mapper_or_none(sup_)
                     if sup_sm:
-
                         sm._set_concrete_base(sup_sm)
                         break
 
@@ -414,9 +419,25 @@ class DeferredReflection:
     """
 
     @classmethod
-    def prepare(cls, engine):
-        """Reflect all :class:`_schema.Table` objects for all current
-        :class:`.DeferredReflection` subclasses"""
+    def prepare(
+        cls, bind: Union[Engine, Connection], **reflect_kw: Any
+    ) -> None:
+        r"""Reflect all :class:`_schema.Table` objects for all current
+        :class:`.DeferredReflection` subclasses
+
+        :param bind: :class:`_engine.Engine` or :class:`_engine.Connection`
+         instance
+
+         ..versionchanged:: 2.0.16 a :class:`_engine.Connection` is also
+         accepted.
+
+        :param \**reflect_kw: additional keyword arguments passed to
+         :meth:`_schema.MetaData.reflect`, such as
+         :paramref:`_schema.MetaData.reflect.views`.
+
+         .. versionadded:: 2.0.16
+
+        """
 
         to_map = _DeferredMapperConfig.classes_for_base(cls)
 
@@ -425,14 +446,24 @@ class DeferredReflection:
         # first collect the primary __table__ for each class into a
         # collection of metadata/schemaname -> table names
         for thingy in to_map:
-
             if thingy.local_table is not None:
                 metadata_to_table[
                     (thingy.local_table.metadata, thingy.local_table.schema)
                 ].add(thingy.local_table.name)
 
         # then reflect all those tables into their metadatas
-        with engine.connect() as conn:
+
+        if isinstance(bind, Connection):
+            conn = bind
+            ctx = contextlib.nullcontext(enter_result=conn)
+        elif isinstance(bind, Engine):
+            ctx = bind.connect()
+        else:
+            raise sa_exc.ArgumentError(
+                f"Expected Engine or Connection, got {bind!r}"
+            )
+
+        with ctx as conn:
             for (metadata, schema), table_names in metadata_to_table.items():
                 metadata.reflect(
                     conn,
@@ -440,6 +471,7 @@ class DeferredReflection:
                     schema=schema,
                     extend_existing=True,
                     autoload_replace=False,
+                    **reflect_kw,
                 )
 
             metadata_to_table.clear()
@@ -453,12 +485,10 @@ class DeferredReflection:
                 metadata = mapper.class_.metadata
 
                 for rel in mapper._props.values():
-
                     if (
                         isinstance(rel, relationships.RelationshipProperty)
                         and rel._init_args.secondary._is_populated()
                     ):
-
                         secondary_arg = rel._init_args.secondary
 
                         if isinstance(secondary_arg.argument, Table):

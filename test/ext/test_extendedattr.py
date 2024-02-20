@@ -159,7 +159,6 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
             )
 
         class MyClass:
-
             # This proves that a staticmethod will work here; don't
             # flatten this back to a class assignment!
             def __sa_instrumentation_manager__(cls):
@@ -761,7 +760,6 @@ class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
 
 
 class ExtendedEventsTest(_ExtBase, fixtures.ORMTest):
-
     """Allow custom Events implementations."""
 
     @modifies_instrumentation_finders

@@ -76,11 +76,15 @@ class DeleteTest(_DeleteTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     def test_where_empty(self):
         table1 = self.tables.mytable
 
-        with expect_deprecated():
+        with expect_deprecated(
+            r"Invoking and_\(\) without arguments is deprecated"
+        ):
             self.assert_compile(
                 table1.delete().where(and_()), "DELETE FROM mytable"
             )
-        with expect_deprecated():
+        with expect_deprecated(
+            r"Invoking or_\(\) without arguments is deprecated"
+        ):
             self.assert_compile(
                 table1.delete().where(or_()), "DELETE FROM mytable"
             )

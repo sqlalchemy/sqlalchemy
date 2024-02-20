@@ -1,4 +1,5 @@
-# Copyright (C) 2013-2023 the SQLAlchemy authors and contributors
+# dialects/postgresql/ranges.py
+# Copyright (C) 2013-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -14,22 +15,33 @@ from decimal import Decimal
 from typing import Any
 from typing import cast
 from typing import Generic
+from typing import List
 from typing import Optional
 from typing import overload
+from typing import Sequence
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
+from .operators import ADJACENT_TO
+from .operators import CONTAINED_BY
+from .operators import CONTAINS
+from .operators import NOT_EXTEND_LEFT_OF
+from .operators import NOT_EXTEND_RIGHT_OF
+from .operators import OVERLAP
+from .operators import STRICTLY_LEFT_OF
+from .operators import STRICTLY_RIGHT_OF
 from ... import types as sqltypes
+from ...sql import operators
+from ...sql.type_api import TypeEngine
 from ...util import py310
 from ...util.typing import Literal
 
 if TYPE_CHECKING:
     from ...sql.elements import ColumnElement
     from ...sql.type_api import _TE
-    from ...sql.type_api import TypeEngine
     from ...sql.type_api import TypeEngineMixin
 
 _T = TypeVar("_T", bound=Any)
@@ -142,8 +154,8 @@ class Range(Generic[_T]):
         return not self.empty and self.upper is None
 
     @property
-    def __sa_type_engine__(self) -> AbstractRange[Range[_T]]:
-        return AbstractRange()
+    def __sa_type_engine__(self) -> AbstractSingleRange[_T]:
+        return AbstractSingleRange()
 
     def _contains_value(self, value: _T) -> bool:
         """Return True if this range contains the given value."""
@@ -284,7 +296,7 @@ class Range(Generic[_T]):
             else:
                 return 0
 
-    def __eq__(self, other: Any) -> bool:  # type: ignore[override]  # noqa: E501
+    def __eq__(self, other: Any) -> bool:
         """Compare this range to the `other` taking into account
         bounds inclusivity, returning ``True`` if they are equal.
         """
@@ -641,6 +653,47 @@ class Range(Generic[_T]):
     def __sub__(self, other: Range[_T]) -> Range[_T]:
         return self.difference(other)
 
+    def intersection(self, other: Range[_T]) -> Range[_T]:
+        """Compute the intersection of this range with the `other`.
+
+        .. versionadded:: 2.0.10
+
+        """
+        if self.empty or other.empty or not self.overlaps(other):
+            return Range(None, None, empty=True)
+
+        slower = self.lower
+        slower_b = self.bounds[0]
+        supper = self.upper
+        supper_b = self.bounds[1]
+        olower = other.lower
+        olower_b = other.bounds[0]
+        oupper = other.upper
+        oupper_b = other.bounds[1]
+
+        if self._compare_edges(slower, slower_b, olower, olower_b) < 0:
+            rlower = olower
+            rlower_b = olower_b
+        else:
+            rlower = slower
+            rlower_b = slower_b
+
+        if self._compare_edges(supper, supper_b, oupper, oupper_b) > 0:
+            rupper = oupper
+            rupper_b = oupper_b
+        else:
+            rupper = supper
+            rupper_b = supper_b
+
+        return Range(
+            rlower,
+            rupper,
+            bounds=cast(_BoundsType, rlower_b + rupper_b),
+        )
+
+    def __mul__(self, other: Range[_T]) -> Range[_T]:
+        return self.intersection(other)
+
     def __str__(self) -> str:
         return self._stringify()
 
@@ -657,27 +710,46 @@ class Range(Generic[_T]):
         return f"{b0}{l},{r}{b1}"
 
 
-class AbstractRange(sqltypes.TypeEngine[Range[_T]]):
-    """
-    Base for PostgreSQL RANGE types.
+class MultiRange(List[Range[_T]]):
+    """Represents a multirange sequence.
+
+    This list subclass is an utility to allow automatic type inference of
+    the proper multi-range SQL type depending on the single range values.
+    This is useful when operating on literal multi-ranges::
+
+        import sqlalchemy as sa
+        from sqlalchemy.dialects.postgresql import MultiRange, Range
+
+        value = literal(MultiRange([Range(2, 4)]))
+
+        select(tbl).where(tbl.c.value.op("@")(MultiRange([Range(-3, 7)])))
+
+    .. versionadded:: 2.0.26
 
     .. seealso::
 
-        `PostgreSQL range functions <https://www.postgresql.org/docs/current/static/functions-range.html>`_
+        - :ref:`postgresql_multirange_list_use`.
+    """
 
-    """  # noqa: E501
+    @property
+    def __sa_type_engine__(self) -> AbstractMultiRange[_T]:
+        return AbstractMultiRange()
+
+
+class AbstractRange(sqltypes.TypeEngine[_T]):
+    """Base class for single and multi Range SQL types."""
 
     render_bind_cast = True
 
     __abstract__ = True
 
     @overload
-    def adapt(self, cls: Type[_TE], **kw: Any) -> _TE:
-        ...
+    def adapt(self, cls: Type[_TE], **kw: Any) -> _TE: ...
 
     @overload
-    def adapt(self, cls: Type[TypeEngineMixin], **kw: Any) -> TypeEngine[Any]:
-        ...
+    def adapt(
+        self, cls: Type[TypeEngineMixin], **kw: Any
+    ) -> TypeEngine[Any]: ...
 
     def adapt(
         self,
@@ -691,7 +763,10 @@ class AbstractRange(sqltypes.TypeEngine[Range[_T]]):
         and also render as ``INT4RANGE`` in SQL and DDL.
 
         """
-        if issubclass(cls, AbstractRangeImpl) and cls is not self.__class__:
+        if (
+            issubclass(cls, (AbstractSingleRangeImpl, AbstractMultiRangeImpl))
+            and cls is not self.__class__
+        ):
             # two ways to do this are:  1. create a new type on the fly
             # or 2. have AbstractRangeImpl(visit_name) constructor and a
             # visit_abstract_range_impl() method in the PG compiler.
@@ -710,11 +785,111 @@ class AbstractRange(sqltypes.TypeEngine[Range[_T]]):
         else:
             return super().adapt(cls)
 
-    def _resolve_for_literal(self, value: Any) -> Any:
+    class comparator_factory(TypeEngine.Comparator[Range[Any]]):
+        """Define comparison operations for range types."""
+
+        def contains(self, other: Any, **kw: Any) -> ColumnElement[bool]:
+            """Boolean expression. Returns true if the right hand operand,
+            which can be an element or a range, is contained within the
+            column.
+
+            kwargs may be ignored by this operator but are required for API
+            conformance.
+            """
+            return self.expr.operate(CONTAINS, other)
+
+        def contained_by(self, other: Any) -> ColumnElement[bool]:
+            """Boolean expression. Returns true if the column is contained
+            within the right hand operand.
+            """
+            return self.expr.operate(CONTAINED_BY, other)
+
+        def overlaps(self, other: Any) -> ColumnElement[bool]:
+            """Boolean expression. Returns true if the column overlaps
+            (has points in common with) the right hand operand.
+            """
+            return self.expr.operate(OVERLAP, other)
+
+        def strictly_left_of(self, other: Any) -> ColumnElement[bool]:
+            """Boolean expression. Returns true if the column is strictly
+            left of the right hand operand.
+            """
+            return self.expr.operate(STRICTLY_LEFT_OF, other)
+
+        __lshift__ = strictly_left_of
+
+        def strictly_right_of(self, other: Any) -> ColumnElement[bool]:
+            """Boolean expression. Returns true if the column is strictly
+            right of the right hand operand.
+            """
+            return self.expr.operate(STRICTLY_RIGHT_OF, other)
+
+        __rshift__ = strictly_right_of
+
+        def not_extend_right_of(self, other: Any) -> ColumnElement[bool]:
+            """Boolean expression. Returns true if the range in the column
+            does not extend right of the range in the operand.
+            """
+            return self.expr.operate(NOT_EXTEND_RIGHT_OF, other)
+
+        def not_extend_left_of(self, other: Any) -> ColumnElement[bool]:
+            """Boolean expression. Returns true if the range in the column
+            does not extend left of the range in the operand.
+            """
+            return self.expr.operate(NOT_EXTEND_LEFT_OF, other)
+
+        def adjacent_to(self, other: Any) -> ColumnElement[bool]:
+            """Boolean expression. Returns true if the range in the column
+            is adjacent to the range in the operand.
+            """
+            return self.expr.operate(ADJACENT_TO, other)
+
+        def union(self, other: Any) -> ColumnElement[bool]:
+            """Range expression. Returns the union of the two ranges.
+            Will raise an exception if the resulting range is not
+            contiguous.
+            """
+            return self.expr.operate(operators.add, other)
+
+        def difference(self, other: Any) -> ColumnElement[bool]:
+            """Range expression. Returns the union of the two ranges.
+            Will raise an exception if the resulting range is not
+            contiguous.
+            """
+            return self.expr.operate(operators.sub, other)
+
+        def intersection(self, other: Any) -> ColumnElement[Range[_T]]:
+            """Range expression. Returns the intersection of the two ranges.
+            Will raise an exception if the resulting range is not
+            contiguous.
+            """
+            return self.expr.operate(operators.mul, other)
+
+
+class AbstractSingleRange(AbstractRange[Range[_T]]):
+    """Base for PostgreSQL RANGE types.
+
+    These are types that return a single :class:`_postgresql.Range` object.
+
+    .. seealso::
+
+        `PostgreSQL range functions <https://www.postgresql.org/docs/current/static/functions-range.html>`_
+
+    """  # noqa: E501
+
+    __abstract__ = True
+
+    def _resolve_for_literal(self, value: Range[Any]) -> Any:
         spec = value.lower if value.lower is not None else value.upper
 
         if isinstance(spec, int):
-            return INT8RANGE()
+            # pg is unreasonably picky here: the query
+            # "select 1::INTEGER <@ '[1, 4)'::INT8RANGE" raises
+            # "operator does not exist: integer <@ int8range" as of pg 16
+            if _is_int32(value):
+                return INT4RANGE()
+            else:
+                return INT8RANGE()
         elif isinstance(spec, (Decimal, float)):
             return NUMRANGE()
         elif isinstance(spec, datetime):
@@ -725,176 +900,130 @@ class AbstractRange(sqltypes.TypeEngine[Range[_T]]):
             # empty Range, SQL datatype can't be determined here
             return sqltypes.NULLTYPE
 
-    class comparator_factory(sqltypes.Concatenable.Comparator[Range[Any]]):
-        """Define comparison operations for range types."""
 
-        def __ne__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
-            "Boolean expression. Returns true if two ranges are not equal"
-            if other is None:
-                return super().__ne__(other)  # type: ignore
-            else:
-                return self.expr.op("<>", is_comparison=True)(other)  # type: ignore # noqa: E501
-
-        def contains(self, other: Any, **kw: Any) -> ColumnElement[bool]:
-            """Boolean expression. Returns true if the right hand operand,
-            which can be an element or a range, is contained within the
-            column.
-
-            kwargs may be ignored by this operator but are required for API
-            conformance.
-            """
-            return self.expr.op("@>", is_comparison=True)(other)  # type: ignore  # noqa: E501
-
-        def contained_by(self, other: Any) -> ColumnElement[bool]:
-            """Boolean expression. Returns true if the column is contained
-            within the right hand operand.
-            """
-            return self.expr.op("<@", is_comparison=True)(other)  # type: ignore  # noqa: E501
-
-        def overlaps(self, other: Any) -> ColumnElement[bool]:
-            """Boolean expression. Returns true if the column overlaps
-            (has points in common with) the right hand operand.
-            """
-            return self.expr.op("&&", is_comparison=True)(other)  # type: ignore  # noqa: E501
-
-        def strictly_left_of(self, other: Any) -> ColumnElement[bool]:
-            """Boolean expression. Returns true if the column is strictly
-            left of the right hand operand.
-            """
-            return self.expr.op("<<", is_comparison=True)(other)  # type: ignore  # noqa: E501
-
-        __lshift__ = strictly_left_of
-
-        def strictly_right_of(self, other: Any) -> ColumnElement[bool]:
-            """Boolean expression. Returns true if the column is strictly
-            right of the right hand operand.
-            """
-            return self.expr.op(">>", is_comparison=True)(other)  # type: ignore  # noqa: E501
-
-        __rshift__ = strictly_right_of
-
-        def not_extend_right_of(self, other: Any) -> ColumnElement[bool]:
-            """Boolean expression. Returns true if the range in the column
-            does not extend right of the range in the operand.
-            """
-            return self.expr.op("&<", is_comparison=True)(other)  # type: ignore  # noqa: E501
-
-        def not_extend_left_of(self, other: Any) -> ColumnElement[bool]:
-            """Boolean expression. Returns true if the range in the column
-            does not extend left of the range in the operand.
-            """
-            return self.expr.op("&>", is_comparison=True)(other)  # type: ignore  # noqa: E501
-
-        def adjacent_to(self, other: Any) -> ColumnElement[bool]:
-            """Boolean expression. Returns true if the range in the column
-            is adjacent to the range in the operand.
-            """
-            return self.expr.op("-|-", is_comparison=True)(other)  # type: ignore  # noqa: E501
-
-        def union(self, other: Any) -> ColumnElement[bool]:
-            """Range expression. Returns the union of the two ranges.
-            Will raise an exception if the resulting range is not
-            contiguous.
-            """
-            return self.expr.op("+")(other)  # type: ignore
-
-        __add__ = union
-
-        def difference(self, other: Any) -> ColumnElement[bool]:
-            """Range expression. Returns the union of the two ranges.
-            Will raise an exception if the resulting range is not
-            contiguous.
-            """
-            return self.expr.op("-")(other)  # type: ignore
-
-        __sub__ = difference
-
-
-class AbstractRangeImpl(AbstractRange[Range[_T]]):
-    """Marker for AbstractRange that will apply a subclass-specific
+class AbstractSingleRangeImpl(AbstractSingleRange[_T]):
+    """Marker for AbstractSingleRange that will apply a subclass-specific
     adaptation"""
 
 
-class AbstractMultiRange(AbstractRange[Range[_T]]):
-    """base for PostgreSQL MULTIRANGE types"""
+class AbstractMultiRange(AbstractRange[Sequence[Range[_T]]]):
+    """Base for PostgreSQL MULTIRANGE types.
+
+    these are types that return a sequence of :class:`_postgresql.Range`
+    objects.
+
+    """
 
     __abstract__ = True
 
+    def _resolve_for_literal(self, value: Sequence[Range[Any]]) -> Any:
+        if not value:
+            # empty MultiRange, SQL datatype can't be determined here
+            return sqltypes.NULLTYPE
+        first = value[0]
+        spec = first.lower if first.lower is not None else first.upper
 
-class AbstractMultiRangeImpl(
-    AbstractRangeImpl[Range[_T]], AbstractMultiRange[Range[_T]]
-):
-    """Marker for AbstractRange that will apply a subclass-specific
+        if isinstance(spec, int):
+            # pg is unreasonably picky here: the query
+            # "select 1::INTEGER <@ '{[1, 4),[6,19)}'::INT8MULTIRANGE" raises
+            # "operator does not exist: integer <@ int8multirange" as of pg 16
+            if all(_is_int32(r) for r in value):
+                return INT4MULTIRANGE()
+            else:
+                return INT8MULTIRANGE()
+        elif isinstance(spec, (Decimal, float)):
+            return NUMMULTIRANGE()
+        elif isinstance(spec, datetime):
+            return TSMULTIRANGE() if not spec.tzinfo else TSTZMULTIRANGE()
+        elif isinstance(spec, date):
+            return DATEMULTIRANGE()
+        else:
+            # empty Range, SQL datatype can't be determined here
+            return sqltypes.NULLTYPE
+
+
+class AbstractMultiRangeImpl(AbstractMultiRange[_T]):
+    """Marker for AbstractMultiRange that will apply a subclass-specific
     adaptation"""
 
 
-class INT4RANGE(AbstractRange[Range[int]]):
+class INT4RANGE(AbstractSingleRange[int]):
     """Represent the PostgreSQL INT4RANGE type."""
 
     __visit_name__ = "INT4RANGE"
 
 
-class INT8RANGE(AbstractRange[Range[int]]):
+class INT8RANGE(AbstractSingleRange[int]):
     """Represent the PostgreSQL INT8RANGE type."""
 
     __visit_name__ = "INT8RANGE"
 
 
-class NUMRANGE(AbstractRange[Range[Decimal]]):
+class NUMRANGE(AbstractSingleRange[Decimal]):
     """Represent the PostgreSQL NUMRANGE type."""
 
     __visit_name__ = "NUMRANGE"
 
 
-class DATERANGE(AbstractRange[Range[date]]):
+class DATERANGE(AbstractSingleRange[date]):
     """Represent the PostgreSQL DATERANGE type."""
 
     __visit_name__ = "DATERANGE"
 
 
-class TSRANGE(AbstractRange[Range[datetime]]):
+class TSRANGE(AbstractSingleRange[datetime]):
     """Represent the PostgreSQL TSRANGE type."""
 
     __visit_name__ = "TSRANGE"
 
 
-class TSTZRANGE(AbstractRange[Range[datetime]]):
+class TSTZRANGE(AbstractSingleRange[datetime]):
     """Represent the PostgreSQL TSTZRANGE type."""
 
     __visit_name__ = "TSTZRANGE"
 
 
-class INT4MULTIRANGE(AbstractMultiRange[Range[int]]):
+class INT4MULTIRANGE(AbstractMultiRange[int]):
     """Represent the PostgreSQL INT4MULTIRANGE type."""
 
     __visit_name__ = "INT4MULTIRANGE"
 
 
-class INT8MULTIRANGE(AbstractMultiRange[Range[int]]):
+class INT8MULTIRANGE(AbstractMultiRange[int]):
     """Represent the PostgreSQL INT8MULTIRANGE type."""
 
     __visit_name__ = "INT8MULTIRANGE"
 
 
-class NUMMULTIRANGE(AbstractMultiRange[Range[Decimal]]):
+class NUMMULTIRANGE(AbstractMultiRange[Decimal]):
     """Represent the PostgreSQL NUMMULTIRANGE type."""
 
     __visit_name__ = "NUMMULTIRANGE"
 
 
-class DATEMULTIRANGE(AbstractMultiRange[Range[date]]):
+class DATEMULTIRANGE(AbstractMultiRange[date]):
     """Represent the PostgreSQL DATEMULTIRANGE type."""
 
     __visit_name__ = "DATEMULTIRANGE"
 
 
-class TSMULTIRANGE(AbstractMultiRange[Range[datetime]]):
+class TSMULTIRANGE(AbstractMultiRange[datetime]):
     """Represent the PostgreSQL TSRANGE type."""
 
     __visit_name__ = "TSMULTIRANGE"
 
 
-class TSTZMULTIRANGE(AbstractMultiRange[Range[datetime]]):
+class TSTZMULTIRANGE(AbstractMultiRange[datetime]):
     """Represent the PostgreSQL TSTZRANGE type."""
 
     __visit_name__ = "TSTZMULTIRANGE"
+
+
+_max_int_32 = 2**31 - 1
+_min_int_32 = -(2**31)
+
+
+def _is_int32(r: Range[int]) -> bool:
+    return (r.lower is None or _min_int_32 <= r.lower <= _max_int_32) and (
+        r.upper is None or _min_int_32 <= r.upper <= _max_int_32
+    )

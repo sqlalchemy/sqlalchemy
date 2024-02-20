@@ -124,8 +124,12 @@ method:
 
     >>> session.flush()
     {execsql}BEGIN (implicit)
-    INSERT INTO user_account (name, fullname) VALUES (?, ?), (?, ?) RETURNING id
-    [...] ('squidward', 'Squidward Tentacles', 'ehkrabs', 'Eugene H. Krabs')
+    INSERT INTO user_account (name, fullname) VALUES (?, ?) RETURNING id
+    [... (insertmanyvalues) 1/2 (ordered; batch not supported)] ('squidward', 'Squidward Tentacles')
+    INSERT INTO user_account (name, fullname) VALUES (?, ?) RETURNING id
+    [insertmanyvalues 2/2 (ordered; batch not supported)] ('ehkrabs', 'Eugene H. Krabs')
+
+
 
 
 Above we observe the :class:`_orm.Session` was first called upon to emit SQL,
@@ -529,6 +533,7 @@ a context manager as well, accomplishes the following things:
   are no longer associated with any database transaction in which to be
   refreshed::
 
+    # note that 'squidward.name' was just expired previously, so its value is unloaded
     >>> squidward.name
     Traceback (most recent call last):
       ...

@@ -1,5 +1,5 @@
 # orm/_orm_constructors.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -24,11 +24,11 @@ from ._typing import _O
 from .descriptor_props import Composite
 from .descriptor_props import Synonym
 from .interfaces import _AttributeOptions
-from .properties import ColumnProperty
 from .properties import MappedColumn
 from .properties import MappedSQLExpression
 from .query import AliasOption
 from .relationships import _RelationshipArgumentType
+from .relationships import _RelationshipBackPopulatesArgument
 from .relationships import _RelationshipSecondaryArgument
 from .relationships import Relationship
 from .relationships import RelationshipProperty
@@ -43,6 +43,7 @@ from ..exc import InvalidRequestError
 from ..sql._typing import _no_kw
 from ..sql.base import _NoArg
 from ..sql.base import SchemaEventTarget
+from ..sql.schema import _InsertSentinelColumnDefault
 from ..sql.schema import SchemaConst
 from ..sql.selectable import FromClause
 from ..util.typing import Annotated
@@ -62,13 +63,14 @@ if TYPE_CHECKING:
     from .relationships import _RelationshipJoinConditionArgument
     from .relationships import ORMBackrefArgument
     from .session import _SessionBind
+    from ..sql._typing import _AutoIncrementType
     from ..sql._typing import _ColumnExpressionArgument
     from ..sql._typing import _FromClauseArgument
     from ..sql._typing import _InfoType
     from ..sql._typing import _OnClauseArgument
     from ..sql._typing import _TypeEngineArgument
     from ..sql.elements import ColumnElement
-    from ..sql.schema import _ServerDefaultType
+    from ..sql.schema import _ServerDefaultArgument
     from ..sql.schema import FetchedValue
     from ..sql.selectable import Alias
     from ..sql.selectable import Subquery
@@ -82,6 +84,7 @@ _T = typing.TypeVar("_T")
     "The :class:`.AliasOption` object is not necessary "
     "for entities to be matched up to a query that is established "
     "via :meth:`.Query.from_statement` and now does nothing.",
+    enable_warnings=False,  # AliasOption itself warns
 )
 def contains_alias(alias: Union[Alias, Subquery]) -> AliasOption:
     r"""Return a :class:`.MapperOption` that will indicate to the
@@ -99,6 +102,7 @@ def mapped_column(
     __type_pos: Optional[
         Union[_TypeEngineArgument[Any], SchemaEventTarget]
     ] = None,
+    /,
     *args: SchemaEventTarget,
     init: Union[_NoArg, bool] = _NoArg.NO_ARG,
     repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
@@ -112,11 +116,11 @@ def mapped_column(
     primary_key: Optional[bool] = False,
     deferred: Union[_NoArg, bool] = _NoArg.NO_ARG,
     deferred_group: Optional[str] = None,
-    deferred_raiseload: bool = False,
+    deferred_raiseload: Optional[bool] = None,
     use_existing_column: bool = False,
     name: Optional[str] = None,
     type_: Optional[_TypeEngineArgument[Any]] = None,
-    autoincrement: Union[bool, Literal["auto", "ignore_fk"]] = "auto",
+    autoincrement: _AutoIncrementType = "auto",
     doc: Optional[str] = None,
     key: Optional[str] = None,
     index: Optional[bool] = None,
@@ -124,12 +128,14 @@ def mapped_column(
     info: Optional[_InfoType] = None,
     onupdate: Optional[Any] = None,
     insert_default: Optional[Any] = _NoArg.NO_ARG,
-    server_default: Optional[_ServerDefaultType] = None,
+    server_default: Optional[_ServerDefaultArgument] = None,
     server_onupdate: Optional[FetchedValue] = None,
+    active_history: bool = False,
     quote: Optional[bool] = None,
     system: bool = False,
     comment: Optional[str] = None,
-    **dialect_kwargs: Any,
+    sort_order: Union[_NoArg, int] = _NoArg.NO_ARG,
+    **kw: Any,
 ) -> MappedColumn[Any]:
     r"""declare a new ORM-mapped :class:`_schema.Column` construct
     for use within :ref:`Declarative Table <orm_declarative_table>`
@@ -184,7 +190,7 @@ def mapped_column(
      "NOT NULL". If omitted, the nullability is derived from the type
      annotation based on whether or not ``typing.Optional`` is present.
      ``nullable`` defaults to ``True`` otherwise for non-primary key columns,
-     and ``False`` or primary key columns.
+     and ``False`` for primary key columns.
     :param primary_key: optional bool, indicates the :class:`_schema.Column`
      would be part of the table's primary key or not.
     :param deferred: Optional bool - this keyword argument is consumed by the
@@ -242,11 +248,43 @@ def mapped_column(
      :class:`_sql.Insert` construct would use in any case, leading to the same
      end result.
 
+     .. note:: When using Core level column defaults that are callables to
+        be interpreted by the underlying :class:`_schema.Column` in conjunction
+        with :ref:`ORM-mapped dataclasses
+        <orm_declarative_native_dataclasses>`, especially those that are
+        :ref:`context-aware default functions <context_default_functions>`,
+        **the** :paramref:`_orm.mapped_column.insert_default` **parameter must
+        be used instead**.  This is necessary to disambiguate the callable from
+        being interpreted as a dataclass level default.
+
     :param insert_default: Passed directly to the
      :paramref:`_schema.Column.default` parameter; will supersede the value
      of :paramref:`_orm.mapped_column.default` when present, however
      :paramref:`_orm.mapped_column.default` will always apply to the
      constructor default for a dataclasses mapping.
+
+    :param sort_order: An integer that indicates how this mapped column
+     should be sorted compared to the others when the ORM is creating a
+     :class:`_schema.Table`. Among mapped columns that have the same
+     value the default ordering is used, placing first the mapped columns
+     defined in the main class, then the ones in the super classes.
+     Defaults to 0. The sort is ascending.
+
+     .. versionadded:: 2.0.4
+
+    :param active_history=False:
+
+        When ``True``, indicates that the "previous" value for a
+        scalar attribute should be loaded when replaced, if not
+        already loaded. Normally, history tracking logic for
+        simple non-primary-key scalar values only needs to be
+        aware of the "new" value in order to perform a flush. This
+        flag is available for applications that make use of
+        :func:`.attributes.get_history` or :meth:`.Session.is_modified`
+        which also need to know the "previous" value of the attribute.
+
+        .. versionadded:: 2.0.10
+
 
     :param init: Specific to :ref:`orm_declarative_native_dataclasses`,
      specifies if the mapped attribute should be part of the ``__init__()``
@@ -270,7 +308,7 @@ def mapped_column(
      :ref:`orm_declarative_native_dataclasses`, indicates if this field
      should be marked as keyword-only when generating the ``__init__()``.
 
-    :param \**kw: All remaining keyword argments are passed through to the
+    :param \**kw: All remaining keyword arguments are passed through to the
      constructor for the :class:`_schema.Column`.
 
     """
@@ -291,6 +329,7 @@ def mapped_column(
         index=index,
         unique=unique,
         info=info,
+        active_history=active_history,
         nullable=nullable,
         onupdate=onupdate,
         primary_key=primary_key,
@@ -303,10 +342,74 @@ def mapped_column(
         deferred=deferred,
         deferred_group=deferred_group,
         deferred_raiseload=deferred_raiseload,
-        **dialect_kwargs,
+        sort_order=sort_order,
+        **kw,
     )
 
 
+def orm_insert_sentinel(
+    name: Optional[str] = None,
+    type_: Optional[_TypeEngineArgument[Any]] = None,
+    *,
+    default: Optional[Any] = None,
+    omit_from_statements: bool = True,
+) -> MappedColumn[Any]:
+    """Provides a surrogate :func:`_orm.mapped_column` that generates
+    a so-called :term:`sentinel` column, allowing efficient bulk
+    inserts with deterministic RETURNING sorting for tables that don't
+    otherwise have qualifying primary key configurations.
+
+    Use of :func:`_orm.orm_insert_sentinel` is analogous to the use of the
+    :func:`_schema.insert_sentinel` construct within a Core
+    :class:`_schema.Table` construct.
+
+    Guidelines for adding this construct to a Declarative mapped class
+    are the same as that of the :func:`_schema.insert_sentinel` construct;
+    the database table itself also needs to have a column with this name
+    present.
+
+    For background on how this object is used, see the section
+    :ref:`engine_insertmanyvalues_sentinel_columns` as part of the
+    section :ref:`engine_insertmanyvalues`.
+
+    .. seealso::
+
+        :func:`_schema.insert_sentinel`
+
+        :ref:`engine_insertmanyvalues`
+
+        :ref:`engine_insertmanyvalues_sentinel_columns`
+
+
+    .. versionadded:: 2.0.10
+
+    """
+
+    return mapped_column(
+        name=name,
+        default=(
+            default if default is not None else _InsertSentinelColumnDefault()
+        ),
+        _omit_from_statements=omit_from_statements,
+        insert_sentinel=True,
+        use_existing_column=True,
+        nullable=True,
+    )
+
+
+@util.deprecated_params(
+    **{
+        arg: (
+            "2.0",
+            f"The :paramref:`_orm.column_property.{arg}` parameter is "
+            "deprecated for :func:`_orm.column_property`.  This parameter "
+            "applies to a writeable-attribute in a Declarative Dataclasses "
+            "configuration only, and :func:`_orm.column_property` is treated "
+            "as a read-only attribute in this context.",
+        )
+        for arg in ("init", "kw_only", "default", "default_factory")
+    }
+)
 def column_property(
     column: _ORMColumnExprArgument[_T],
     *additional_columns: _ORMColumnExprArgument[Any],
@@ -314,7 +417,7 @@ def column_property(
     deferred: bool = False,
     raiseload: bool = False,
     comparator_factory: Optional[Type[PropComparator[_T]]] = None,
-    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    init: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
     repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
     default: Optional[Any] = _NoArg.NO_ARG,
     default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
@@ -327,49 +430,58 @@ def column_property(
 ) -> MappedSQLExpression[_T]:
     r"""Provide a column-level property for use with a mapping.
 
-    Column-based properties can normally be applied to the mapper's
-    ``properties`` dictionary using the :class:`_schema.Column`
-    element directly.
-    Use this function when the given column is not directly present within
-    the mapper's selectable; examples include SQL expressions, functions,
-    and scalar SELECT queries.
+    With Declarative mappings, :func:`_orm.column_property` is used to
+    map read-only SQL expressions to a mapped class.
+
+    When using Imperative mappings, :func:`_orm.column_property` also
+    takes on the role of mapping table columns with additional features.
+    When using fully Declarative mappings, the :func:`_orm.mapped_column`
+    construct should be used for this purpose.
+
+    With Declarative Dataclass mappings, :func:`_orm.column_property`
+    is considered to be **read only**, and will not be included in the
+    Dataclass ``__init__()`` constructor.
 
     The :func:`_orm.column_property` function returns an instance of
     :class:`.ColumnProperty`.
 
-    Columns that aren't present in the mapper's selectable won't be
-    persisted by the mapper and are effectively "read-only" attributes.
+    .. seealso::
+
+        :ref:`mapper_column_property_sql_expressions` - general use of
+        :func:`_orm.column_property` to map SQL expressions
+
+        :ref:`orm_imperative_table_column_options` - usage of
+        :func:`_orm.column_property` with Imperative Table mappings to apply
+        additional options to a plain :class:`_schema.Column` object
 
     :param \*cols:
-          list of Column objects to be mapped.
+        list of Column objects to be mapped.
 
     :param active_history=False:
-      When ``True``, indicates that the "previous" value for a
-      scalar attribute should be loaded when replaced, if not
-      already loaded. Normally, history tracking logic for
-      simple non-primary-key scalar values only needs to be
-      aware of the "new" value in order to perform a flush. This
-      flag is available for applications that make use of
-      :func:`.attributes.get_history` or :meth:`.Session.is_modified`
-      which also need to know
-      the "previous" value of the attribute.
+
+        Used only for Imperative Table mappings, or legacy-style Declarative
+        mappings (i.e. which have not been upgraded to
+        :func:`_orm.mapped_column`), for column-based attributes that are
+        expected to be writeable; use :func:`_orm.mapped_column` with
+        :paramref:`_orm.mapped_column.active_history` for Declarative mappings.
+        See that parameter for functional details.
 
     :param comparator_factory: a class which extends
-       :class:`.ColumnProperty.Comparator` which provides custom SQL
-       clause generation for comparison operations.
+        :class:`.ColumnProperty.Comparator` which provides custom SQL
+        clause generation for comparison operations.
 
     :param group:
         a group name for this property when marked as deferred.
 
     :param deferred:
-          when True, the column property is "deferred", meaning that
-          it does not load immediately, and is instead loaded when the
-          attribute is first accessed on an instance.  See also
-          :func:`~sqlalchemy.orm.deferred`.
+        when True, the column property is "deferred", meaning that
+        it does not load immediately, and is instead loaded when the
+        attribute is first accessed on an instance.  See also
+        :func:`~sqlalchemy.orm.deferred`.
 
     :param doc:
-          optional string that will be applied as the doc on the
-          class-bound descriptor.
+        optional string that will be applied as the doc on the
+        class-bound descriptor.
 
     :param expire_on_flush=True:
         Disable expiry on flush.   A column_property() which refers
@@ -399,20 +511,25 @@ def column_property(
 
             :ref:`orm_queryguide_deferred_raiseload`
 
-    .. seealso::
+    :param init:
 
-        :ref:`column_property_options` - to map columns while including
-        mapping options
+    :param default:
 
-        :ref:`mapper_column_property_sql_expressions` - to map SQL
-        expressions
+    :param default_factory:
+
+    :param kw_only:
 
     """
     return MappedSQLExpression(
         column,
         *additional_columns,
         attribute_options=_AttributeOptions(
-            init, repr, default, default_factory, compare, kw_only
+            False if init is _NoArg.NO_ARG else init,
+            repr,
+            default,
+            default_factory,
+            compare,
+            kw_only,
         ),
         group=group,
         deferred=deferred,
@@ -422,12 +539,14 @@ def column_property(
         expire_on_flush=expire_on_flush,
         info=info,
         doc=doc,
+        _assume_readonly_dc_attributes=True,
     )
 
 
 @overload
 def composite(
     _class_or_attr: _CompositeAttrType[Any],
+    /,
     *attrs: _CompositeAttrType[Any],
     group: Optional[str] = None,
     deferred: bool = False,
@@ -443,13 +562,13 @@ def composite(
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
     **__kw: Any,
-) -> Composite[Any]:
-    ...
+) -> Composite[Any]: ...
 
 
 @overload
 def composite(
     _class_or_attr: Type[_CC],
+    /,
     *attrs: _CompositeAttrType[Any],
     group: Optional[str] = None,
     deferred: bool = False,
@@ -465,14 +584,36 @@ def composite(
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
     **__kw: Any,
-) -> Composite[_CC]:
-    ...
+) -> Composite[_CC]: ...
+
+
+@overload
+def composite(
+    _class_or_attr: Callable[..., _CC],
+    /,
+    *attrs: _CompositeAttrType[Any],
+    group: Optional[str] = None,
+    deferred: bool = False,
+    raiseload: bool = False,
+    comparator_factory: Optional[Type[Composite.Comparator[_T]]] = None,
+    active_history: bool = False,
+    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    default: Optional[Any] = _NoArg.NO_ARG,
+    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
+    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    info: Optional[_InfoType] = None,
+    doc: Optional[str] = None,
+    **__kw: Any,
+) -> Composite[_CC]: ...
 
 
 def composite(
     _class_or_attr: Union[
         None, Type[_CC], Callable[..., _CC], _CompositeAttrType[Any]
     ] = None,
+    /,
     *attrs: _CompositeAttrType[Any],
     group: Optional[str] = None,
     deferred: bool = False,
@@ -779,7 +920,7 @@ def relationship(
     ] = None,
     primaryjoin: Optional[_RelationshipJoinConditionArgument] = None,
     secondaryjoin: Optional[_RelationshipJoinConditionArgument] = None,
-    back_populates: Optional[str] = None,
+    back_populates: Optional[_RelationshipBackPopulatesArgument] = None,
     order_by: _ORMOrderByArgument = False,
     backref: Optional[ORMBackrefArgument] = None,
     overlaps: Optional[str] = None,
@@ -916,11 +1057,6 @@ def relationship(
           in some cases can enable complex :func:`_orm.relationship` SQL
           conditions to be used.
 
-      .. versionadded:: 0.9.2 :paramref:`_orm.relationship.secondary`
-         works
-         more effectively when referring to a :class:`_expression.Join`
-         instance.
-
     :param active_history=False:
       When ``True``, indicates that the "previous" value for a
       many-to-one reference should be loaded when replaced, if
@@ -1054,12 +1190,6 @@ def relationship(
       It may be desirable to set this flag to False when the DISTINCT is
       reducing performance of the innermost subquery beyond that of what
       duplicate innermost rows may be causing.
-
-      .. versionchanged:: 0.9.0 -
-         :paramref:`_orm.relationship.distinct_target_key` now defaults to
-         ``None``, so that the feature enables itself automatically for
-         those cases where the innermost query targets a non-unique
-         key.
 
       .. seealso::
 
@@ -1231,8 +1361,6 @@ def relationship(
         value is loaded.  This strategy can be used when objects will
         remain associated with the attached :class:`.Session`, however
         additional SELECT statements should be blocked.
-
-        .. versionadded:: 1.1
 
       * ``write_only`` - the attribute will be configured with a special
         "virtual collection" that may receive
@@ -1563,19 +1691,10 @@ def relationship(
       the full set of related objects, to prevent modifications of the
       collection from resulting in persistence operations.
 
-      When using the :paramref:`_orm.relationship.viewonly` flag in
-      conjunction with backrefs, the originating relationship for a
-      particular state change will not produce state changes within the
-      viewonly relationship.   This is the behavior implied by
-      :paramref:`_orm.relationship.sync_backref` being set to False.
-
-      .. versionchanged:: 1.3.17 - the
-         :paramref:`_orm.relationship.sync_backref` flag is set to False
-             when using viewonly in conjunction with backrefs.
-
       .. seealso::
 
-        :paramref:`_orm.relationship.sync_backref`
+        :ref:`relationship_viewonly_notes` - more details on best practices
+        when using :paramref:`_orm.relationship.viewonly`.
 
     :param sync_backref:
       A boolean that enables the events used to synchronize the in-Python
@@ -1772,8 +1891,6 @@ def synonym(
     :param info: Optional data dictionary which will be populated into the
         :attr:`.InspectionAttr.info` attribute of this object.
 
-        .. versionadded:: 1.0.0
-
     :param comparator_factory: A subclass of :class:`.PropComparator`
       that will provide custom comparison behavior at the SQL expression
       level.
@@ -1937,7 +2054,7 @@ def deferred(
     expire_on_flush: bool = True,
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
-) -> ColumnProperty[_T]:
+) -> MappedSQLExpression[_T]:
     r"""Indicate a column-based mapped attribute that by default will
     not load unless accessed.
 
@@ -1963,7 +2080,7 @@ def deferred(
         :ref:`orm_queryguide_deferred_imperative`
 
     """
-    return ColumnProperty(
+    return MappedSQLExpression(
         column,
         *additional_columns,
         attribute_options=_AttributeOptions(
@@ -1984,10 +2101,11 @@ def query_expression(
     default_expr: _ORMColumnExprArgument[_T] = sql.null(),
     *,
     repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
     expire_on_flush: bool = True,
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
-) -> ColumnProperty[_T]:
+) -> MappedSQLExpression[_T]:
     """Indicate an attribute that populates from a query-time SQL expression.
 
     :param default_expr: Optional SQL expression object that will be used in
@@ -2000,19 +2118,20 @@ def query_expression(
         :ref:`orm_queryguide_with_expression` - background and usage examples
 
     """
-    prop = ColumnProperty(
+    prop = MappedSQLExpression(
         default_expr,
         attribute_options=_AttributeOptions(
-            _NoArg.NO_ARG,
+            False,
             repr,
             _NoArg.NO_ARG,
             _NoArg.NO_ARG,
-            _NoArg.NO_ARG,
+            compare,
             _NoArg.NO_ARG,
         ),
         expire_on_flush=expire_on_flush,
         info=info,
         doc=doc,
+        _assume_readonly_dc_attributes=True,
     )
 
     prop.strategy_key = (("query_expression", True),)
@@ -2057,39 +2176,36 @@ AliasedType = Annotated[Type[_O], "aliased"]
 @overload
 def aliased(
     element: Type[_O],
-    alias: Optional[Union[Alias, Subquery]] = None,
+    alias: Optional[FromClause] = None,
     name: Optional[str] = None,
     flat: bool = False,
     adapt_on_names: bool = False,
-) -> AliasedType[_O]:
-    ...
+) -> AliasedType[_O]: ...
 
 
 @overload
 def aliased(
     element: Union[AliasedClass[_O], Mapper[_O], AliasedInsp[_O]],
-    alias: Optional[Union[Alias, Subquery]] = None,
+    alias: Optional[FromClause] = None,
     name: Optional[str] = None,
     flat: bool = False,
     adapt_on_names: bool = False,
-) -> AliasedClass[_O]:
-    ...
+) -> AliasedClass[_O]: ...
 
 
 @overload
 def aliased(
     element: FromClause,
-    alias: Optional[Union[Alias, Subquery]] = None,
+    alias: None = None,
     name: Optional[str] = None,
     flat: bool = False,
     adapt_on_names: bool = False,
-) -> FromClause:
-    ...
+) -> FromClause: ...
 
 
 def aliased(
     element: Union[_EntityType[_O], FromClause],
-    alias: Optional[Union[Alias, Subquery]] = None,
+    alias: Optional[FromClause] = None,
     name: Optional[str] = None,
     flat: bool = False,
     adapt_on_names: bool = False,
@@ -2196,7 +2312,7 @@ def aliased(
 
 
 def with_polymorphic(
-    base: Union[_O, Mapper[_O]],
+    base: Union[Type[_O], Mapper[_O]],
     classes: Union[Literal["*"], Iterable[Type[Any]]],
     selectable: Union[Literal[False, None], FromClause] = False,
     flat: bool = False,
@@ -2300,7 +2416,7 @@ def join(
 
     :func:`_orm.join` is an extension to the core join interface
     provided by :func:`_expression.join()`, where the
-    left and right selectables may be not only core selectable
+    left and right selectable may be not only core selectable
     objects such as :class:`_schema.Table`, but also mapped classes or
     :class:`.AliasedClass` instances.   The "on" clause can
     be a SQL expression or an ORM mapped attribute

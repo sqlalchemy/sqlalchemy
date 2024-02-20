@@ -1,5 +1,5 @@
-# plugin/plugin_base.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# testing/plugin/plugin_base.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -10,9 +10,11 @@
 from __future__ import annotations
 
 import abc
+from argparse import Namespace
 import configparser
 import logging
 import os
+from pathlib import Path
 import re
 import sys
 from typing import Any
@@ -51,7 +53,7 @@ file_config = None
 logging = None
 include_tags = set()
 exclude_tags = set()
-options = None
+options: Namespace = None  # type: ignore
 
 
 def setup_options(make_option):
@@ -88,7 +90,7 @@ def setup_options(make_option):
         action="append",
         type=str,
         dest="dburi",
-        help="Database uri.  Multiple OK, " "first one is run by default.",
+        help="Database uri.  Multiple OK, first one is run by default.",
     )
     make_option(
         "--dbdriver",
@@ -319,6 +321,10 @@ def _log(opt_str, value, parser):
 
 
 def _list_dbs(*args):
+    if file_config is None:
+        # assume the current working directory is the one containing the
+        # setup file
+        read_config(Path.cwd())
     print("Available --db options (use --dburi to override)")
     for macro in sorted(file_config.options("db")):
         print("%20s\t%s" % (macro, file_config.get("db", macro)))
@@ -411,16 +417,15 @@ def _init_symbols(options, file_config):
 @pre
 def _set_disable_asyncio(opt, file_config):
     if opt.disable_asyncio:
-
         asyncio.ENABLE_ASYNCIO = False
 
 
 @post
 def _engine_uri(options, file_config):
-
     from sqlalchemy import testing
     from sqlalchemy.testing import config
     from sqlalchemy.testing import provision
+    from sqlalchemy.engine import url as sa_url
 
     if options.dburi:
         db_urls = list(options.dburi)
@@ -445,17 +450,18 @@ def _engine_uri(options, file_config):
 
     config._current = None
 
-    expanded_urls = list(provision.generate_db_urls(db_urls, extra_drivers))
-
-    for db_url in expanded_urls:
-        log.info("Adding database URL: %s", db_url)
-
-        if options.write_idents and provision.FOLLOWER_IDENT:
+    if options.write_idents and provision.FOLLOWER_IDENT:
+        for db_url in [sa_url.make_url(db_url) for db_url in db_urls]:
             with open(options.write_idents, "a") as file_:
                 file_.write(
                     f"{provision.FOLLOWER_IDENT} "
                     f"{db_url.render_as_string(hide_password=False)}\n"
                 )
+
+    expanded_urls = list(provision.generate_db_urls(db_urls, extra_drivers))
+
+    for db_url in expanded_urls:
+        log.info("Adding database URL: %s", db_url)
 
         cfg = provision.setup_config(
             db_url, options, file_config, provision.FOLLOWER_IDENT
@@ -466,7 +472,6 @@ def _engine_uri(options, file_config):
 
 @post
 def _requirements(options, file_config):
-
     requirement_cls = file_config.get("sqla_testing", "requirement_cls")
     _setup_requirements(requirement_cls)
 
@@ -474,9 +479,6 @@ def _requirements(options, file_config):
 def _setup_requirements(argument):
     from sqlalchemy.testing import config
     from sqlalchemy import testing
-
-    if config.requirements is not None:
-        return
 
     modname, clsname = argument.split(":")
 
@@ -608,7 +610,6 @@ def _setup_engine(cls):
 
 
 def before_test(test, test_module_name, test_class, test_name):
-
     # format looks like:
     # "test.aaa_profiling.test_compiler.CompileTest.test_update_whereclause"
 

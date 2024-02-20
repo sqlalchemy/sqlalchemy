@@ -136,7 +136,6 @@ class DependencySortTest(fixtures.TestBase):
             )
 
     def test_raise_on_cycle_two(self):
-
         # this condition was arising from ticket:362 and was not treated
         # properly by topological sort
 
@@ -201,7 +200,6 @@ class DependencySortTest(fixtures.TestBase):
         self.assert_sort(tuples)
 
     def test_ticket_1380(self):
-
         # ticket:1380 regression: would raise a KeyError
 
         tuples = [(id(i), i) for i in range(3)]

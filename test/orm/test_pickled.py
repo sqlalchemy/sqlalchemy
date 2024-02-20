@@ -10,6 +10,7 @@ from sqlalchemy import testing
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import collections
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import relationship
@@ -22,6 +23,7 @@ from sqlalchemy.orm.collections import column_keyed_dict
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_not_none
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.pickleable import Address
 from sqlalchemy.testing.pickleable import AddressWMixin
@@ -592,6 +594,8 @@ class PickleTest(fixtures.MappedTest):
             eq_(u1.addresses, repickled.addresses)
             eq_(repickled.addresses["email1"], Address(email_address="email1"))
 
+            is_not_none(collections.collection_adapter(repickled.addresses))
+
     def test_column_mapped_collection(self):
         users, addresses = self.tables.users, self.tables.addresses
 
@@ -617,6 +621,8 @@ class PickleTest(fixtures.MappedTest):
             repickled = loads(dumps(u1))
             eq_(u1.addresses, repickled.addresses)
             eq_(repickled.addresses["email1"], Address(email_address="email1"))
+
+            is_not_none(collections.collection_adapter(repickled.addresses))
 
     def test_composite_column_mapped_collection(self):
         users, addresses = self.tables.users, self.tables.addresses
@@ -646,11 +652,11 @@ class PickleTest(fixtures.MappedTest):
                 repickled.addresses[(1, "email1")],
                 Address(id=1, email_address="email1"),
             )
+            is_not_none(collections.collection_adapter(repickled.addresses))
 
 
 class OptionsTest(_Polymorphic):
     def test_options_of_type(self):
-
         with_poly = with_polymorphic(Person, [Engineer, Manager], flat=True)
         for opt, serialized_path, serialized_of_type in [
             (

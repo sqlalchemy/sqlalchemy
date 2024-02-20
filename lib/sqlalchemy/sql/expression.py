@@ -1,5 +1,5 @@
 # sql/expression.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -22,6 +22,7 @@ from ._elements_constructors import any_ as any_
 from ._elements_constructors import asc as asc
 from ._elements_constructors import between as between
 from ._elements_constructors import bindparam as bindparam
+from ._elements_constructors import bitwise_not as bitwise_not
 from ._elements_constructors import case as case
 from ._elements_constructors import cast as cast
 from ._elements_constructors import collate as collate
@@ -41,6 +42,7 @@ from ._elements_constructors import outparam as outparam
 from ._elements_constructors import over as over
 from ._elements_constructors import text as text
 from ._elements_constructors import true as true
+from ._elements_constructors import try_cast as try_cast
 from ._elements_constructors import tuple_ as tuple_
 from ._elements_constructors import type_coerce as type_coerce
 from ._elements_constructors import within_group as within_group
@@ -60,6 +62,7 @@ from ._selectable_constructors import tablesample as tablesample
 from ._selectable_constructors import union as union
 from ._selectable_constructors import union_all as union_all
 from ._selectable_constructors import values as values
+from ._typing import ColumnExpressionArgument as ColumnExpressionArgument
 from .base import _from_objects as _from_objects
 from .base import _select_iterables as _select_iterables
 from .base import ColumnCollection as ColumnCollection
@@ -98,6 +101,7 @@ from .elements import SavepointClause as SavepointClause
 from .elements import SQLColumnExpression as SQLColumnExpression
 from .elements import TextClause as TextClause
 from .elements import True_ as True_
+from .elements import TryCast as TryCast
 from .elements import Tuple as Tuple
 from .elements import TypeClause as TypeClause
 from .elements import TypeCoerce as TypeCoerce
@@ -151,4 +155,8 @@ from .selectable import Values as Values
 from .visitors import Visitable as Visitable
 
 nullsfirst = nulls_first
+"""Synonym for the :func:`.nulls_first` function."""
+
+
 nullslast = nulls_last
+"""Synonym for the :func:`.nulls_last` function."""

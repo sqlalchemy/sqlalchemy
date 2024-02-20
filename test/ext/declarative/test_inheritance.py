@@ -21,10 +21,11 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import expect_raises_message
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.fixtures import RemoveORMEventsGlobally
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-from test.orm.test_events import _RemoveListeners
 
 Base = None
 
@@ -43,7 +44,7 @@ class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
 
 
 class ConcreteInhTest(
-    _RemoveListeners, DeclarativeTestBase, testing.AssertsCompiledSQL
+    RemoveORMEventsGlobally, DeclarativeTestBase, testing.AssertsCompiledSQL
 ):
     def _roundtrip(
         self,
@@ -144,13 +145,11 @@ class ConcreteInhTest(
             "punion",
         )
 
-        class Employee(Base, fixtures.ComparableEntity):
-
+        class Employee(Base, ComparableEntity):
             __table__ = punion
             __mapper_args__ = {"polymorphic_on": punion.c.type}
 
         class Engineer(Employee):
-
             __table__ = engineers
             __mapper_args__ = {
                 "polymorphic_identity": "engineer",
@@ -158,7 +157,6 @@ class ConcreteInhTest(
             }
 
         class Manager(Employee):
-
             __table__ = managers
             __mapper_args__ = {
                 "polymorphic_identity": "manager",
@@ -177,8 +175,7 @@ class ConcreteInhTest(
     def test_concrete_inline_non_polymorphic(self):
         """test the example from the declarative docs."""
 
-        class Employee(Base, fixtures.ComparableEntity):
-
+        class Employee(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -186,7 +183,6 @@ class ConcreteInhTest(
             name = Column(String(50))
 
         class Engineer(Employee):
-
             __tablename__ = "engineers"
             __mapper_args__ = {"concrete": True}
             id = Column(
@@ -196,7 +192,6 @@ class ConcreteInhTest(
             name = Column(String(50))
 
         class Manager(Employee):
-
             __tablename__ = "manager"
             __mapper_args__ = {"concrete": True}
             id = Column(
@@ -217,7 +212,7 @@ class ConcreteInhTest(
         self._roundtrip(Employee, Manager, Engineer, Boss, polymorphic=False)
 
     def test_abstract_concrete_base_didnt_configure(self):
-        class Employee(AbstractConcreteBase, Base, fixtures.ComparableEntity):
+        class Employee(AbstractConcreteBase, Base, ComparableEntity):
             strict_attrs = True
 
         assert_raises_message(
@@ -275,7 +270,7 @@ class ConcreteInhTest(
         )
 
     def test_abstract_concrete_extension(self):
-        class Employee(AbstractConcreteBase, Base, fixtures.ComparableEntity):
+        class Employee(AbstractConcreteBase, Base, ComparableEntity):
             name = Column(String(50))
 
         class Manager(Employee):
@@ -327,7 +322,7 @@ class ConcreteInhTest(
     def test_abstract_concrete_extension_descriptor_refresh(
         self, use_strict_attrs
     ):
-        class Employee(AbstractConcreteBase, Base, fixtures.ComparableEntity):
+        class Employee(AbstractConcreteBase, Base, ComparableEntity):
             strict_attrs = use_strict_attrs
 
             @declared_attr
@@ -384,7 +379,7 @@ class ConcreteInhTest(
         eq_(e1.name, "d")
 
     def test_concrete_extension(self):
-        class Employee(ConcreteBase, Base, fixtures.ComparableEntity):
+        class Employee(ConcreteBase, Base, ComparableEntity):
             __tablename__ = "employee"
             employee_id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -434,7 +429,7 @@ class ConcreteInhTest(
         self._roundtrip(Employee, Manager, Engineer, Boss)
 
     def test_concrete_extension_warn_for_overlap(self):
-        class Employee(ConcreteBase, Base, fixtures.ComparableEntity):
+        class Employee(ConcreteBase, Base, ComparableEntity):
             __tablename__ = "employee"
 
             employee_id = Column(
@@ -469,7 +464,7 @@ class ConcreteInhTest(
             configure_mappers()
 
     def test_concrete_extension_warn_concrete_disc_resolves_overlap(self):
-        class Employee(ConcreteBase, Base, fixtures.ComparableEntity):
+        class Employee(ConcreteBase, Base, ComparableEntity):
             _concrete_discriminator_name = "_type"
 
             __tablename__ = "employee"
@@ -568,7 +563,7 @@ class ConcreteInhTest(
         )
 
     def test_abs_concrete_extension_warn_for_overlap(self):
-        class Employee(AbstractConcreteBase, Base, fixtures.ComparableEntity):
+        class Employee(AbstractConcreteBase, Base, ComparableEntity):
             name = Column(String(50))
             __mapper_args__ = {
                 "polymorphic_identity": "employee",
@@ -601,7 +596,7 @@ class ConcreteInhTest(
     def test_abs_concrete_extension_warn_concrete_disc_resolves_overlap(
         self, use_strict_attrs
     ):
-        class Employee(AbstractConcreteBase, Base, fixtures.ComparableEntity):
+        class Employee(AbstractConcreteBase, Base, ComparableEntity):
             strict_attrs = use_strict_attrs
             _concrete_discriminator_name = "_type"
 
@@ -677,7 +672,7 @@ class ConcreteInhTest(
         assert PolyTest.__mapper__.polymorphic_on is Test.__table__.c.type
 
     def test_ok_to_override_type_from_abstract(self):
-        class Employee(AbstractConcreteBase, Base, fixtures.ComparableEntity):
+        class Employee(AbstractConcreteBase, Base, ComparableEntity):
             name = Column(String(50))
 
         class Manager(Employee):
@@ -735,12 +730,12 @@ class ConcreteInhTest(
 
 
 class ConcreteExtensionConfigTest(
-    _RemoveListeners, testing.AssertsCompiledSQL, DeclarativeTestBase
+    RemoveORMEventsGlobally, testing.AssertsCompiledSQL, DeclarativeTestBase
 ):
     __dialect__ = "default"
 
     def test_classreg_setup(self):
-        class A(Base, fixtures.ComparableEntity):
+        class A(Base, ComparableEntity):
             __tablename__ = "a"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -750,7 +745,7 @@ class ConcreteExtensionConfigTest(
                 "BC", primaryjoin="BC.a_id == A.id", collection_class=set
             )
 
-        class BC(AbstractConcreteBase, Base, fixtures.ComparableEntity):
+        class BC(AbstractConcreteBase, Base, ComparableEntity):
             a_id = Column(Integer, ForeignKey("a.id"))
 
         class B(BC):
@@ -939,22 +934,25 @@ class ConcreteExtensionConfigTest(
 
         self.assert_compile(
             session.query(Document),
-            "SELECT pjoin.id AS pjoin_id, pjoin.doctype AS pjoin_doctype, "
-            "pjoin.type AS pjoin_type, pjoin.send_method AS pjoin_send_method "
-            "FROM "
-            "(SELECT actual_documents.id AS id, "
-            "actual_documents.send_method AS send_method, "
-            "actual_documents.doctype AS doctype, "
-            "'actual' AS type FROM actual_documents) AS pjoin"
-            if use_strict_attrs
-            else "SELECT pjoin.id AS pjoin_id, pjoin.send_method AS "
-            "pjoin_send_method, pjoin.doctype AS pjoin_doctype, "
-            "pjoin.type AS pjoin_type "
-            "FROM "
-            "(SELECT actual_documents.id AS id, "
-            "actual_documents.send_method AS send_method, "
-            "actual_documents.doctype AS doctype, "
-            "'actual' AS type FROM actual_documents) AS pjoin",
+            (
+                "SELECT pjoin.id AS pjoin_id, pjoin.doctype AS pjoin_doctype, "
+                "pjoin.type AS pjoin_type, "
+                "pjoin.send_method AS pjoin_send_method "
+                "FROM "
+                "(SELECT actual_documents.id AS id, "
+                "actual_documents.send_method AS send_method, "
+                "actual_documents.doctype AS doctype, "
+                "'actual' AS type FROM actual_documents) AS pjoin"
+                if use_strict_attrs
+                else "SELECT pjoin.id AS pjoin_id, pjoin.send_method AS "
+                "pjoin_send_method, pjoin.doctype AS pjoin_doctype, "
+                "pjoin.type AS pjoin_type "
+                "FROM "
+                "(SELECT actual_documents.id AS id, "
+                "actual_documents.send_method AS send_method, "
+                "actual_documents.doctype AS doctype, "
+                "'actual' AS type FROM actual_documents) AS pjoin"
+            ),
         )
 
     @testing.combinations(True, False)

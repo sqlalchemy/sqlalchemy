@@ -1,5 +1,5 @@
 # testing/engines.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -23,7 +23,7 @@ from .util import decorator
 from .util import gc_collect
 from .. import event
 from .. import pool
-from ..util import await_only
+from ..util import await_
 from ..util.typing import Literal
 
 
@@ -110,8 +110,9 @@ class ConnectionKiller:
                         and proxy_ref._pool is rec.pool
                     ):
                         self._safe(proxy_ref._checkin)
+
             if hasattr(rec, "sync_engine"):
-                await_only(rec.dispose())
+                await_(rec.dispose())
             else:
                 rec.dispose()
         eng.clear()
@@ -229,7 +230,6 @@ class ReconnectFixture:
         return getattr(self.dbapi, key)
 
     def connect(self, *args, **kwargs):
-
         conn = self.dbapi.connect(*args, **kwargs)
         if self.is_stopped:
             self._safe(conn.close)
@@ -289,8 +289,7 @@ def testing_engine(
     options: Optional[Dict[str, Any]] = None,
     asyncio: Literal[False] = False,
     transfer_staticpool: bool = False,
-) -> Engine:
-    ...
+) -> Engine: ...
 
 
 @typing.overload
@@ -299,8 +298,7 @@ def testing_engine(
     options: Optional[Dict[str, Any]] = None,
     asyncio: Literal[True] = True,
     transfer_staticpool: bool = False,
-) -> AsyncEngine:
-    ...
+) -> AsyncEngine: ...
 
 
 def testing_engine(
@@ -454,8 +452,8 @@ class DBAPIProxyConnection:
 
     """
 
-    def __init__(self, engine, cursor_cls):
-        self.conn = engine.pool._creator()
+    def __init__(self, engine, conn, cursor_cls):
+        self.conn = conn
         self.engine = engine
         self.cursor_cls = cursor_cls
 

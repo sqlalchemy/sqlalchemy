@@ -1,7 +1,9 @@
+import asyncio
 import dataclasses
 import datetime
 import logging
 import logging.handlers
+import re
 
 from sqlalchemy import BigInteger
 from sqlalchemy import bindparam
@@ -27,6 +29,7 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import TypeDecorator
+from sqlalchemy.dialects.postgresql import asyncpg as asyncpg_dialect
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.dialects.postgresql import JSONB
@@ -57,8 +60,100 @@ from sqlalchemy.testing.assertions import expect_raises
 from sqlalchemy.testing.assertions import ne_
 
 
+def _fk_expected(
+    constrained_columns,
+    referred_table,
+    referred_columns,
+    referred_schema=None,
+    match=None,
+    onupdate=None,
+    ondelete=None,
+    deferrable=None,
+    initially=None,
+):
+    return (
+        constrained_columns,
+        referred_schema,
+        referred_table,
+        referred_columns,
+        f"MATCH {match}" if match else None,
+        match,
+        f"ON UPDATE {onupdate}" if onupdate else None,
+        onupdate,
+        f"ON DELETE {ondelete}" if ondelete else None,
+        ondelete,
+        deferrable,
+        f"INITIALLY {initially}" if initially else None,
+        initially,
+    )
+
+
 class DialectTest(fixtures.TestBase):
     """python-side dialect tests."""
+
+    @testing.combinations(
+        (
+            "FOREIGN KEY (tid) REFERENCES some_table(id)",
+            _fk_expected("tid", "some_table", "id"),
+        ),
+        (
+            'FOREIGN KEY (tid) REFERENCES "(2)"(id)',
+            _fk_expected("tid", '"(2)"', "id"),
+        ),
+        (
+            'FOREIGN KEY (tid) REFERENCES some_table("(2)")',
+            _fk_expected("tid", "some_table", '"(2)"'),
+        ),
+        (
+            'FOREIGN KEY (tid1, tid2) REFERENCES some_table("(2)", "(3)")',
+            _fk_expected("tid1, tid2", "some_table", '"(2)", "(3)"'),
+        ),
+        (
+            "FOREIGN KEY (tid) REFERENCES some_table(id) "
+            "DEFERRABLE INITIALLY DEFERRED",
+            _fk_expected(
+                "tid",
+                "some_table",
+                "id",
+                deferrable="DEFERRABLE",
+                initially="DEFERRED",
+            ),
+        ),
+        (
+            "FOREIGN KEY (tid1, tid2) "
+            "REFERENCES some_schema.some_table(id1, id2)",
+            _fk_expected(
+                "tid1, tid2",
+                "some_table",
+                "id1, id2",
+                referred_schema="some_schema",
+            ),
+        ),
+        (
+            "FOREIGN KEY (tid1, tid2) "
+            "REFERENCES some_schema.some_table(id1, id2) "
+            "MATCH FULL "
+            "ON UPDATE CASCADE "
+            "ON DELETE CASCADE "
+            "DEFERRABLE INITIALLY DEFERRED",
+            _fk_expected(
+                "tid1, tid2",
+                "some_table",
+                "id1, id2",
+                referred_schema="some_schema",
+                onupdate="CASCADE",
+                ondelete="CASCADE",
+                match="FULL",
+                deferrable="DEFERRABLE",
+                initially="DEFERRED",
+            ),
+        ),
+    )
+    def test_fk_parsing(self, condef, expected):
+        FK_REGEX = postgresql.dialect()._fk_regex_pattern
+        groups = re.search(FK_REGEX, condef).groups()
+
+        eq_(groups, expected)
 
     def test_range_constructor(self):
         """test kwonly argments in the range constructor, as we had
@@ -82,6 +177,28 @@ class DialectTest(fixtures.TestBase):
 
         with expect_raises(dataclasses.FrozenInstanceError):
             r1.lower = 8  # type: ignore
+
+    @testing.only_on("postgresql+asyncpg")
+    def test_asyncpg_terminate_catch(self):
+        """test for #11005"""
+
+        with testing.db.connect() as connection:
+            emulated_dbapi_connection = connection.connection.dbapi_connection
+
+            async def boom():
+                raise OSError("boom")
+
+            with mock.patch.object(
+                emulated_dbapi_connection,
+                "_connection",
+                mock.Mock(close=mock.Mock(return_value=boom())),
+            ) as mock_asyncpg_connection:
+                emulated_dbapi_connection.terminate()
+
+            eq_(
+                mock_asyncpg_connection.mock_calls,
+                [mock.call.close(timeout=2), mock.call.terminate()],
+            )
 
     def test_version_parsing(self):
         def mock_conn(res):
@@ -138,7 +255,6 @@ class DialectTest(fixtures.TestBase):
     def test_ensure_version_is_qualified(
         self, future_connection, testing_engine, metadata
     ):
-
         default_schema_name = future_connection.dialect.default_schema_name
         event.listen(
             metadata,
@@ -218,94 +334,6 @@ $$ LANGUAGE plpgsql;"""
         eq_(cargs, [])
         eq_(cparams, {"host": "somehost", "any_random_thing": "yes"})
 
-    @testing.combinations(
-        (
-            "postgresql+psycopg2://USER:PASS@/DB?host=hostA",
-            {
-                "dbname": "DB",
-                "user": "USER",
-                "password": "PASS",
-                "host": "hostA",
-            },
-        ),
-        (
-            "postgresql+psycopg2://USER:PASS@/DB"
-            "?host=hostA&host=hostB&host=hostC",
-            {
-                "dbname": "DB",
-                "user": "USER",
-                "password": "PASS",
-                "host": "hostA,hostB,hostC",
-                "port": ",,",
-            },
-        ),
-        (
-            "postgresql+psycopg2://USER:PASS@/DB"
-            "?host=hostA&host=hostB:portB&host=hostC:portC",
-            {
-                "dbname": "DB",
-                "user": "USER",
-                "password": "PASS",
-                "host": "hostA,hostB,hostC",
-                "port": ",portB,portC",
-            },
-        ),
-        (
-            "postgresql+psycopg2://USER:PASS@/DB?"
-            "host=hostA:portA&host=hostB:portB&host=hostC:portC",
-            {
-                "dbname": "DB",
-                "user": "USER",
-                "password": "PASS",
-                "host": "hostA,hostB,hostC",
-                "port": "portA,portB,portC",
-            },
-        ),
-        (
-            "postgresql+psycopg2:///"
-            "?host=hostA:portA&host=hostB:portB&host=hostC:portC",
-            {"host": "hostA,hostB,hostC", "port": "portA,portB,portC"},
-        ),
-        (
-            "postgresql+psycopg2:///"
-            "?host=hostA:portA&host=hostB:portB&host=hostC:portC",
-            {"host": "hostA,hostB,hostC", "port": "portA,portB,portC"},
-        ),
-        (
-            "postgresql+psycopg2:///"
-            "?host=hostA,hostB,hostC&port=portA,portB,portC",
-            {"host": "hostA,hostB,hostC", "port": "portA,portB,portC"},
-        ),
-        argnames="url_string,expected",
-    )
-    @testing.combinations(
-        psycopg2_dialect.dialect(),
-        psycopg_dialect.dialect(),
-        argnames="dialect",
-    )
-    def test_psycopg_multi_hosts(self, dialect, url_string, expected):
-        u = url.make_url(url_string)
-        cargs, cparams = dialect.create_connect_args(u)
-        eq_(cargs, [])
-        eq_(cparams, expected)
-
-    @testing.combinations(
-        "postgresql+psycopg2:///?host=H&host=H&port=5432,5432",
-        "postgresql+psycopg2://user:pass@/dbname?host=H&host=H&port=5432,5432",
-        argnames="url_string",
-    )
-    @testing.combinations(
-        psycopg2_dialect.dialect(),
-        psycopg_dialect.dialect(),
-        argnames="dialect",
-    )
-    def test_psycopg_no_mix_hosts(self, dialect, url_string):
-        with expect_raises_message(
-            exc.ArgumentError, "Can't mix 'multihost' formats together"
-        ):
-            u = url.make_url(url_string)
-            dialect.create_connect_args(u)
-
     def test_psycopg2_disconnect(self):
         class Error(Exception):
             pass
@@ -343,19 +371,445 @@ $$ LANGUAGE plpgsql;"""
         eq_(dialect.is_disconnect("not an error", None, None), False)
 
 
+class MultiHostConnectTest(fixtures.TestBase):
+    def working_combinations():
+        psycopg_combinations = [
+            (
+                "postgresql+psycopg2://USER:PASS@/DB?host=hostA",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "hostA",
+                },
+            ),
+            (
+                # issue #10069 -if there is just one host as x:y with no
+                # integers, treat it as a hostname, to accommodate as many
+                # third party scenarios as possible
+                "postgresql+psycopg2://USER:PASS@/DB?host=hostA:xyz",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "hostA:xyz",
+                },
+            ),
+            (
+                # also issue #10069 - this parsing is not "defined" right now
+                # but err on the side of single host
+                "postgresql+psycopg2://USER:PASS@/DB?host=hostA:123.456",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "hostA:123.456",
+                },
+            ),
+            (
+                "postgresql+psycopg2://USER:PASS@/DB?host=192.168.1.50",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "192.168.1.50",
+                },
+            ),
+            (
+                "postgresql+psycopg2://USER:PASS@/DB?host=192.168.1.50:",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "192.168.1.50",
+                },
+            ),
+            (
+                "postgresql+psycopg2://USER:PASS@/DB?host=192.168.1.50:5678",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "192.168.1.50",
+                    "port": "5678",
+                    "asyncpg_port": 5678,
+                },
+            ),
+            (
+                "postgresql+psycopg2://USER:PASS@/DB?host=hostA:",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "hostA",
+                },
+            ),
+            (
+                "postgresql+psycopg2://USER:PASS@/DB?host=HOSTNAME",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "HOSTNAME",
+                },
+            ),
+            (
+                "postgresql+psycopg2://USER:PASS@/DB?host=HOSTNAME:1234",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "HOSTNAME",
+                    "port": "1234",
+                    "asyncpg_port": 1234,
+                },
+            ),
+            (
+                # issue #10069
+                "postgresql+psycopg2://USER:PASS@/DB?"
+                "host=/cloudsql/my-gcp-project:us-central1:mydbisnstance",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "/cloudsql/my-gcp-project:"
+                    "us-central1:mydbisnstance",
+                },
+            ),
+            (
+                # issue #10069
+                "postgresql+psycopg2://USER:PASS@/DB?"
+                "host=/cloudsql/my-gcp-project:4567",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    # full host,because the "hostname" contains slashes.
+                    # this corresponds to PG's "host" mechanics
+                    # at https://www.postgresql.org/docs/current
+                    # /libpq-connect.html#LIBPQ-PARAMKEYWORDS
+                    # "If a host name looks like an absolute path name, it
+                    # specifies Unix-domain communication "
+                    "host": "/cloudsql/my-gcp-project:4567",
+                },
+            ),
+            (
+                "postgresql+psycopg2://USER:PASS@/DB?host=hostA:1234",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "hostA",
+                    "port": "1234",
+                    "asyncpg_port": 1234,
+                },
+            ),
+            (
+                "postgresql+psycopg2://USER:PASS@/DB"
+                "?host=hostA&host=hostB&host=hostC",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "hostA,hostB,hostC",
+                    "port": ",,",
+                    "asyncpg_error": "All ports are required to be present"
+                    " for asyncpg multiple host URL",
+                },
+            ),
+            (
+                "postgresql+psycopg2://USER:PASS@/DB"
+                "?host=hostA&host=hostB:222&host=hostC:333",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "hostA,hostB,hostC",
+                    "port": ",222,333",
+                    "asyncpg_error": "All ports are required to be present"
+                    " for asyncpg multiple host URL",
+                },
+            ),
+            (
+                "postgresql+psycopg2://USER:PASS@/DB?"
+                "host=hostA:111&host=hostB:222&host=hostC:333",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "host": "hostA,hostB,hostC",
+                    "port": "111,222,333",
+                    "asyncpg_host": ["hostA", "hostB", "hostC"],
+                    "asyncpg_port": [111, 222, 333],
+                },
+            ),
+            (
+                "postgresql+psycopg2:///"
+                "?host=hostA:111&host=hostB:222&host=hostC:333",
+                {
+                    "host": "hostA,hostB,hostC",
+                    "port": "111,222,333",
+                    "asyncpg_host": ["hostA", "hostB", "hostC"],
+                    "asyncpg_port": [111, 222, 333],
+                },
+            ),
+            (
+                "postgresql+psycopg2:///"
+                "?host=hostA:111&host=hostB:222&host=hostC:333",
+                {
+                    "host": "hostA,hostB,hostC",
+                    "port": "111,222,333",
+                    "asyncpg_host": ["hostA", "hostB", "hostC"],
+                    "asyncpg_port": [111, 222, 333],
+                },
+            ),
+            (
+                "postgresql+psycopg2:///"
+                "?host=hostA,hostB,hostC&port=111,222,333",
+                {
+                    "host": "hostA,hostB,hostC",
+                    "port": "111,222,333",
+                    "asyncpg_host": ["hostA", "hostB", "hostC"],
+                    "asyncpg_port": [111, 222, 333],
+                },
+            ),
+            (
+                "postgresql+asyncpg://USER:PASS@/DB"
+                "?host=hostA,hostB,&port=111,222,333",
+                {
+                    "host": "hostA,hostB,",
+                    "port": "111,222,333",
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "asyncpg_error": "All hosts are required to be present"
+                    " for asyncpg multiple host URL",
+                },
+            ),
+            (
+                # fixed host + multihost formats.
+                "postgresql+psycopg2://USER:PASS@hostfixed/DB?port=111",
+                {
+                    "host": "hostfixed",
+                    "port": "111",
+                    "asyncpg_port": 111,
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                },
+            ),
+            (
+                # fixed host + multihost formats.  **silently ignore**
+                # the fixed host.  See #10076
+                "postgresql+psycopg2://USER:PASS@hostfixed/DB?host=hostA:111",
+                {
+                    "host": "hostA",
+                    "port": "111",
+                    "asyncpg_port": 111,
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                },
+            ),
+            (
+                # fixed host + multihost formats.  **silently ignore**
+                # the fixed host.  See #10076
+                "postgresql+psycopg2://USER:PASS@hostfixed/DB"
+                "?host=hostA&port=111",
+                {
+                    "host": "hostA",
+                    "port": "111",
+                    "asyncpg_port": 111,
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                },
+            ),
+            (
+                # fixed host + multihost formats.  **silently ignore**
+                # the fixed host.  See #10076
+                "postgresql+psycopg2://USER:PASS@hostfixed/DB?host=hostA",
+                {
+                    "host": "hostA",
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                },
+            ),
+            (
+                # fixed host + multihost formats.  if there is only one port
+                # or only one host after the query string, assume that's the
+                # host/port
+                "postgresql+psycopg2://USER:PASS@/DB?port=111",
+                {
+                    "dbname": "DB",
+                    "user": "USER",
+                    "password": "PASS",
+                    "port": "111",
+                    "asyncpg_port": 111,
+                },
+            ),
+        ]
+        for url_string, expected_psycopg in psycopg_combinations:
+            asyncpg_error = expected_psycopg.pop("asyncpg_error", False)
+            asyncpg_host = expected_psycopg.pop("asyncpg_host", False)
+            asyncpg_port = expected_psycopg.pop("asyncpg_port", False)
+
+            expected_asyncpg = dict(expected_psycopg)
+
+            if "dbname" in expected_asyncpg:
+                expected_asyncpg["database"] = expected_asyncpg.pop("dbname")
+
+            if asyncpg_error:
+                expected_asyncpg["error"] = asyncpg_error
+            if asyncpg_host is not False:
+                expected_asyncpg["host"] = asyncpg_host
+
+            if asyncpg_port is not False:
+                expected_asyncpg["port"] = asyncpg_port
+
+            yield url_string, expected_psycopg, expected_asyncpg
+
+    @testing.combinations_list(
+        working_combinations(),
+        argnames="url_string,expected_psycopg,expected_asyncpg",
+    )
+    @testing.combinations(
+        psycopg2_dialect.dialect(),
+        psycopg_dialect.dialect(),
+        asyncpg_dialect.dialect(),
+        argnames="dialect",
+    )
+    def test_multi_hosts(
+        self, dialect, url_string, expected_psycopg, expected_asyncpg
+    ):
+        url_string = url_string.replace("psycopg2", dialect.driver)
+
+        u = url.make_url(url_string)
+
+        if dialect.driver == "asyncpg":
+            if "error" in expected_asyncpg:
+                with expect_raises_message(
+                    exc.ArgumentError, expected_asyncpg["error"]
+                ):
+                    dialect.create_connect_args(u)
+                return
+
+            expected = expected_asyncpg
+        else:
+            expected = expected_psycopg
+
+        cargs, cparams = dialect.create_connect_args(u)
+        eq_(cparams, expected)
+        eq_(cargs, [])
+
+    @testing.combinations(
+        (
+            "postgresql+psycopg2://USER:PASS@/DB"
+            "?host=hostA:111&host=hostB:vvv&host=hostC:333",
+        ),
+        (
+            "postgresql+psycopg2://USER:PASS@/DB"
+            "?host=hostA,hostB:,hostC&port=111,vvv,333",
+        ),
+        (
+            "postgresql+psycopg2://USER:PASS@/DB"
+            "?host=hostA:xyz&host=hostB:123",
+        ),
+        ("postgresql+psycopg2://USER:PASS@/DB?host=hostA&port=xyz",),
+        # for single host with :xyz, as of #10069 this is treated as a
+        # hostname by itself, w/ colon plus digits
+        argnames="url_string",
+    )
+    @testing.combinations(
+        psycopg2_dialect.dialect(),
+        psycopg_dialect.dialect(),
+        asyncpg_dialect.dialect(),
+        argnames="dialect",
+    )
+    def test_non_int_port_disallowed(self, dialect, url_string):
+        url_string = url_string.replace("psycopg2", dialect.driver)
+
+        u = url.make_url(url_string)
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"Received non-integer port arguments: \((?:'.*?',?)+\)",
+        ):
+            dialect.create_connect_args(u)
+
+    @testing.combinations(
+        (
+            "postgresql+psycopg2://USER:PASS@/DB"
+            "?host=hostA,hostC&port=111,222,333",
+        ),
+        ("postgresql+psycopg2://USER:PASS@/DB?host=hostA&port=111,222",),
+        (
+            "postgresql+asyncpg://USER:PASS@/DB"
+            "?host=hostA,hostB,hostC&port=111,333",
+        ),
+        argnames="url_string",
+    )
+    @testing.combinations(
+        psycopg2_dialect.dialect(),
+        psycopg_dialect.dialect(),
+        asyncpg_dialect.dialect(),
+        argnames="dialect",
+    )
+    def test_num_host_port_doesnt_match(self, dialect, url_string):
+        url_string = url_string.replace("psycopg2", dialect.driver)
+
+        u = url.make_url(url_string)
+
+        with expect_raises_message(
+            exc.ArgumentError, "number of hosts and ports don't match"
+        ):
+            dialect.create_connect_args(u)
+
+    @testing.combinations(
+        "postgresql+psycopg2:///?host=H&host=H&port=5432,5432",
+        "postgresql+psycopg2://user:pass@/dbname?host=H&host=H&port=5432,5432",
+        argnames="url_string",
+    )
+    @testing.combinations(
+        psycopg2_dialect.dialect(),
+        psycopg_dialect.dialect(),
+        asyncpg_dialect.dialect(),
+        argnames="dialect",
+    )
+    def test_dont_mix_multihost_formats(self, dialect, url_string):
+        url_string = url_string.replace("psycopg2", dialect.name)
+
+        u = url.make_url(url_string)
+
+        with expect_raises_message(
+            exc.ArgumentError, "Can't mix 'multihost' formats together"
+        ):
+            dialect.create_connect_args(u)
+
+
 class BackendDialectTest(fixtures.TestBase):
     __backend__ = True
 
-    @testing.only_on(["+psycopg", "+psycopg2"])
+    @testing.only_on(["+psycopg", "+psycopg2", "+asyncpg"])
     @testing.combinations(
-        "host=H:P&host=H:P&host=H:P",
-        "host=H:P&host=H&host=H",
-        "host=H:P&host=H&host=H:P",
-        "host=H&host=H:P&host=H",
-        "host=H,H,H&port=P,P,P",
+        ("postgresql+D://U:PS@/DB?host=H:P&host=H:P&host=H:P", True),
+        ("postgresql+D://U:PS@/DB?host=H:P&host=H&host=H", False),
+        ("postgresql+D://U:PS@/DB?host=H:P&host=H&host=H:P", False),
+        ("postgresql+D://U:PS@/DB?host=H&host=H:P&host=H", False),
+        ("postgresql+D://U:PS@/DB?host=H,H,H&port=P,P,P", True),
+        ("postgresql+D://U:PS@H:P/DB", True),
+        argnames="pattern,has_all_ports",
     )
-    def test_connect_psycopg_multiple_hosts(self, pattern):
-        """test the fix for #4392"""
+    def test_multiple_host_real_connect(
+        self, testing_engine, pattern, has_all_ports
+    ):
+        """test the fix for #4392.
+
+        Additionally add multiple host tests for #10004's additional
+        use cases
+
+        """
 
         tdb_url = testing.db.url
 
@@ -364,13 +818,25 @@ class BackendDialectTest(fixtures.TestBase):
             host = "localhost"
         port = str(tdb_url.port) if tdb_url.port else "5432"
 
-        query_str = pattern.replace("H", host).replace("P", port)
         url_string = (
-            f"{tdb_url.drivername}://{tdb_url.username}:"
-            f"{tdb_url.password}@/{tdb_url.database}?{query_str}"
+            pattern.replace("DB", tdb_url.database)
+            .replace("postgresql+D", tdb_url.drivername)
+            .replace("U", tdb_url.username)
+            .replace("PS", tdb_url.password)
+            .replace("H", host)
+            .replace("P", port)
         )
 
-        e = create_engine(url_string)
+        if testing.against("+asyncpg") and not has_all_ports:
+            with expect_raises_message(
+                exc.ArgumentError,
+                "All ports are required to be present "
+                "for asyncpg multiple host URL",
+            ):
+                testing_engine(url_string)
+            return
+
+        e = testing_engine(url_string)
         with e.connect() as conn:
             eq_(conn.exec_driver_sql("select 1").scalar(), 1)
 
@@ -570,7 +1036,6 @@ class ExecutemanyFlagOptionsTest(fixtures.TablesTest):
 class MiscBackendTest(
     fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
 ):
-
     __only_on__ = "postgresql"
     __backend__ = True
 
@@ -637,13 +1102,11 @@ class MiscBackendTest(
         with testing.db.connect().execution_options(
             isolation_level="SERIALIZABLE"
         ) as conn:
-
             dbapi_conn = conn.connection.dbapi_connection
 
             is_false(dbapi_conn.autocommit)
 
             with conn.begin():
-
                 existing_isolation = conn.exec_driver_sql(
                     "show transaction isolation level"
                 ).scalar()
@@ -665,7 +1128,6 @@ class MiscBackendTest(
             dbapi_conn.autocommit = False
 
             with conn.begin():
-
                 existing_isolation = conn.exec_driver_sql(
                     "show transaction isolation level"
                 ).scalar()
@@ -779,9 +1241,9 @@ class MiscBackendTest(
     def test_autocommit_pre_ping(self, testing_engine, autocommit):
         engine = testing_engine(
             options={
-                "isolation_level": "AUTOCOMMIT"
-                if autocommit
-                else "SERIALIZABLE",
+                "isolation_level": (
+                    "AUTOCOMMIT" if autocommit else "SERIALIZABLE"
+                ),
                 "pool_pre_ping": True,
             }
         )
@@ -791,6 +1253,50 @@ class MiscBackendTest(
 
                 dbapi_conn = conn.connection.dbapi_connection
                 eq_(dbapi_conn.autocommit, autocommit)
+
+    @testing.only_on("+asyncpg")
+    @testing.combinations((True,), (False,), argnames="autocommit")
+    def test_asyncpg_transactional_ping(self, testing_engine, autocommit):
+        """test #10226"""
+
+        engine = testing_engine(
+            options={
+                "isolation_level": (
+                    "AUTOCOMMIT" if autocommit else "SERIALIZABLE"
+                ),
+                "pool_pre_ping": True,
+            }
+        )
+        conn = engine.connect()
+        dbapi_conn = conn.connection.dbapi_connection
+        conn.close()
+
+        future = asyncio.Future()
+        future.set_result(None)
+
+        rollback = mock.Mock(return_value=future)
+        transaction = mock.Mock(
+            return_value=mock.Mock(
+                start=mock.Mock(return_value=future),
+                rollback=rollback,
+            )
+        )
+        mock_asyncpg_connection = mock.Mock(
+            fetchrow=mock.Mock(return_value=future), transaction=transaction
+        )
+
+        with mock.patch.object(
+            dbapi_conn, "_connection", mock_asyncpg_connection
+        ):
+            conn = engine.connect()
+            conn.close()
+
+        if autocommit:
+            eq_(transaction.mock_calls, [])
+            eq_(rollback.mock_calls, [])
+        else:
+            eq_(transaction.mock_calls, [mock.call()])
+            eq_(rollback.mock_calls, [mock.call()])
 
     def test_deferrable_flag_engine(self):
         engine = engines.testing_engine(

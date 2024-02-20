@@ -1,5 +1,5 @@
-# mssql/pymssql.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mssql/pymssql.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -16,10 +16,9 @@
 pymssql is a Python module that provides a Python DBAPI interface around
 `FreeTDS <https://www.freetds.org/>`_.
 
-.. note::
+.. versionchanged:: 2.0.5
 
-    pymssql is currently not included in SQLAlchemy's continuous integration
-    (CI) testing.
+    pymssql was restored to SQLAlchemy's continuous integration testing
 
 
 """  # noqa
@@ -51,6 +50,7 @@ class MSIdentifierPreparer_pymssql(MSIdentifierPreparer):
 class MSDialect_pymssql(MSDialect):
     supports_statement_cache = True
     supports_native_decimal = True
+    supports_native_uuid = True
     driver = "pymssql"
 
     preparer = MSIdentifierPreparer_pymssql

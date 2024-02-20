@@ -1,5 +1,5 @@
 # testing/requirements.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -22,9 +22,8 @@ from __future__ import annotations
 import platform
 
 from . import asyncio as _test_asyncio
-from . import config
 from . import exclusions
-from . import only_on
+from .exclusions import only_on
 from .. import create_engine
 from .. import util
 from ..pool import QueuePool
@@ -56,6 +55,12 @@ class SuiteRequirements(Requirements):
     @property
     def index_ddl_if_exists(self):
         """target platform supports IF NOT EXISTS / IF EXISTS for indexes."""
+
+        return exclusions.closed()
+
+    @property
+    def uuid_data_type(self):
+        """Return databases that support the UUID datatype."""
 
         return exclusions.closed()
 
@@ -493,6 +498,13 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def arraysize(self):
+        """dialect includes the required pep-249 attribute
+        ``cursor.arraysize``"""
+
+        return exclusions.open()
+
+    @property
     def emulated_lastrowid(self):
         """target dialect retrieves cursor.lastrowid, or fetches
         from a database-side function after an insert() construct executes,
@@ -542,7 +554,7 @@ class SuiteRequirements(Requirements):
 
     @property
     def foreign_key_constraint_name_reflection(self):
-        """Target supports refleciton of FOREIGN KEY constraints and
+        """Target supports reflection of FOREIGN KEY constraints and
         will return the name of the constraint that was used in the
         "CONSTRAINT <name> FOREIGN KEY" DDL.
 
@@ -649,8 +661,15 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def comment_reflection_full_unicode(self):
+        """Indicates if the database support table comment reflection in the
+        full unicode range, including emoji etc.
+        """
+        return exclusions.closed()
+
+    @property
     def constraint_comment_reflection(self):
-        """indicates if the database support constraint on constraints
+        """indicates if the database support comments on constraints
         and their reflection"""
         return exclusions.closed()
 
@@ -756,6 +775,12 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def reflect_indexes_with_ascdesc_as_expression(self):
+        """target database supports reflecting INDEX with per-column
+        ASC/DESC but reflects them as expressions (like oracle)."""
+        return exclusions.closed()
+
+    @property
     def indexes_with_expressions(self):
         """target database supports CREATE INDEX against SQL expressions."""
         return exclusions.closed()
@@ -821,6 +846,14 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def datetime_interval(self):
+        """target dialect supports rendering of a datetime.timedelta as a
+        literal string, e.g. via the TypeEngine.literal_processor() method.
+
+        """
+        return exclusions.closed()
+
+    @property
     def datetime_literals(self):
         """target dialect supports rendering of a date, time, or datetime as a
         literal string, e.g. via the TypeEngine.literal_processor() method.
@@ -849,6 +882,24 @@ class SuiteRequirements(Requirements):
         datetime.time() with tzinfo with Time(timezone=True)."""
 
         return exclusions.closed()
+
+    @property
+    def date_implicit_bound(self):
+        """target dialect when given a date object will bind it such
+        that the database server knows the object is a date, and not
+        a plain string.
+
+        """
+        return exclusions.open()
+
+    @property
+    def time_implicit_bound(self):
+        """target dialect when given a time object will bind it such
+        that the database server knows the object is a time, and not
+        a plain string.
+
+        """
+        return exclusions.open()
 
     @property
     def datetime_implicit_bound(self):
@@ -990,7 +1041,6 @@ class SuiteRequirements(Requirements):
             }
         """
         with config.db.connect() as conn:
-
             try:
                 supported = conn.dialect.get_isolation_level_values(
                     conn.connection.dbapi_connection
@@ -1171,9 +1221,27 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def float_or_double_precision_behaves_generically(self):
+        return exclusions.closed()
+
+    @property
     def precision_generic_float_type(self):
         """target backend will return native floating point numbers with at
         least seven decimal places when using the generic Float type.
+
+        """
+        return exclusions.open()
+
+    @property
+    def literal_float_coercion(self):
+        """target backend will return the exact float value 15.7563
+        with only four significant digits from this statement:
+
+        SELECT :param
+
+        where :param is the Python float 15.7563
+
+        i.e. it does not return 15.75629997253418
 
         """
         return exclusions.open()
@@ -1194,6 +1262,12 @@ class SuiteRequirements(Requirements):
 
         Added to support Pyodbc bug #351.
         """
+
+        return exclusions.open()
+
+    @property
+    def float_is_numeric(self):
+        """target backend uses Numeric for Float/Dual"""
 
         return exclusions.open()
 
@@ -1349,6 +1423,15 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def independent_readonly_connections(self):
+        """
+        Target must support simultaneous, independent database connections
+        that will be used in a readonly fashion.
+
+        """
+        return exclusions.open()
+
+    @property
     def skip_mysql_on_windows(self):
         """Catchall for a large variety of MySQL on Windows failures"""
         return exclusions.open()
@@ -1378,10 +1461,14 @@ class SuiteRequirements(Requirements):
 
     @property
     def timing_intensive(self):
+        from . import config
+
         return config.add_to_marker.timing_intensive
 
     @property
     def memory_intensive(self):
+        from . import config
+
         return config.add_to_marker.memory_intensive
 
     @property
@@ -1420,12 +1507,6 @@ class SuiteRequirements(Requirements):
         return exclusions.skip_if(check)
 
     @property
-    def python38(self):
-        return exclusions.only_if(
-            lambda: util.py38, "Python 3.8 or above required"
-        )
-
-    @property
     def python39(self):
         return exclusions.only_if(
             lambda: util.py39, "Python 3.9 or above required"
@@ -1441,6 +1522,12 @@ class SuiteRequirements(Requirements):
     def python311(self):
         return exclusions.only_if(
             lambda: util.py311, "Python 3.11 or above required"
+        )
+
+    @property
+    def python312(self):
+        return exclusions.only_if(
+            lambda: util.py312, "Python 3.12 or above required"
         )
 
     @property
@@ -1514,13 +1601,26 @@ class SuiteRequirements(Requirements):
 
     @property
     def async_dialect(self):
-        """dialect makes use of await_() to invoke operations on the DBAPI."""
+        """dialect makes use of await_() to invoke operations on the
+        DBAPI."""
 
         return exclusions.closed()
 
     @property
     def asyncio(self):
         return self.greenlet
+
+    @property
+    def no_greenlet(self):
+        def go(config):
+            try:
+                import greenlet  # noqa: F401
+            except ImportError:
+                return True
+            else:
+                return False
+
+        return exclusions.only_if(go)
 
     @property
     def greenlet(self):

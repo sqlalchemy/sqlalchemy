@@ -75,6 +75,7 @@ result set.
    for the 2.0 series. Typing details are subject to change however
    significant backwards-incompatible changes are not planned.
 
+.. _change_result_typing_20:
 
 SQL Expression / Statement / Result Set Typing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -198,7 +199,6 @@ helper):
   ::
 
     with engine.connect() as conn:
-
         # (variable) stmt: Select[Tuple[str, int]]
         stmt = select(str_col, int_col)
 
@@ -262,7 +262,6 @@ helper):
   all the way from statement to result set::
 
       with Session(engine) as session:
-
           # (variable) stmt: Select[Tuple[int, str]]
           stmt_1 = select(User.id, User.name)
 
@@ -277,7 +276,6 @@ helper):
   as a SELECT against two mapped classes::
 
       with Session(engine) as session:
-
           # (variable) stmt: Select[Tuple[User, Address]]
           stmt_2 = select(User, Address).join_from(User, Address)
 
@@ -293,7 +291,6 @@ helper):
   class as well as the return type expected from a statement::
 
       with Session(engine) as session:
-
           # this is in fact an Annotated type, but typing tools don't
           # generally display this
 
@@ -621,6 +618,7 @@ of :class:`_types.String`, as below where use of an ``Annotated`` ``str`` called
 
     str50 = Annotated[str, 50]
 
+
     # declarative base with a type-level override, using a type that is
     # expected to be used in multiple places
     class Base(DeclarativeBase):
@@ -687,8 +685,8 @@ or ``Mapped[user_fk]`` draw from both the
 ``Annotated`` construct directly in order to re-use pre-established typing
 and column configurations.
 
-Step six - turn mapped classes into dataclasses_
-+++++++++++++++++++++++++++++++++++++++++++++++++
+Optional step - turn mapped classes into dataclasses_
++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 We can turn mapped classes into dataclasses_, where a key advantage
 is that we can build a strictly-typed ``__init__()`` method with explicit
@@ -859,7 +857,8 @@ Optimized ORM bulk insert now implemented for all backends other than MySQL
 The dramatic performance improvement introduced in the 1.4 series and described
 at :ref:`change_5263` has now been generalized to all included backends that
 support RETURNING, which is all backends other than MySQL: SQLite, MariaDB,
-PostgreSQL (all drivers), Oracle, and SQL Server. While the original feature
+PostgreSQL (all drivers), and Oracle; SQL Server has support but is
+temporarily disabled in version 2.0.9 [#]_. While the original feature
 was most critical for the psycopg2 driver which otherwise had major performance
 issues when using ``cursor.executemany()``, the change is also critical for
 other PostgreSQL drivers such as asyncpg, as when using RETURNING,
@@ -894,16 +893,16 @@ With most databases now offering RETURNING (with the conspicuous exception of
 MySQL, given that MariaDB supports it), the new change generalizes the psycopg2
 "fast execution helper" approach to all dialects that support RETURNING, which
 now includes SQlite and MariaDB, and for which no other approach for
-"executemany plus RETURNING" is possible, which includes SQLite, MariaDB, all
-PG drivers, and SQL Server. The cx_Oracle and oracledb drivers used for Oracle
+"executemany plus RETURNING" is possible, which includes SQLite, MariaDB, and all
+PG drivers. The cx_Oracle and oracledb drivers used for Oracle
 support RETURNING with executemany natively, and this has also been implemented
-to provide equivalent performance improvements. With SQLite and MariaDB now
+to provide equivalent performance improvements.  With SQLite and MariaDB now
 offering RETURNING support, ORM use of ``cursor.lastrowid`` is nearly a thing
 of the past, with only MySQL still relying upon it.
 
 For INSERT statements that don't use RETURNING, traditional executemany()
-behavior is used for most backends, with the current exceptions of psycopg2
-and mssql+pyodbc, which both have very slow executemany() performance overall
+behavior is used for most backends, with the current exception of psycopg2,
+which has very slow executemany() performance overall
 and are still improved by the "insertmanyvalues" approach.
 
 Benchmarks
@@ -973,10 +972,20 @@ Driver                         SQLA 1.4 Time (secs)    SQLA 2.0 Time (secs)
 sqlite+pysqlite2 (memory)      6.204843                3.554856
 postgresql+asyncpg (network)   88.292285               4.561492
 postgresql+psycopg (network)   N/A (psycopg3)          4.861368
-oracle+cx_Oracle (network)     92.603953               4.809520
 mssql+pyodbc (network)         158.396667              4.825139
+oracle+cx_Oracle (network)     92.603953               4.809520
 mariadb+mysqldb (network)      71.705197               4.075377
 ============================   ====================    ====================
+
+
+
+.. note::
+
+   .. [#] The feature is was temporarily disabled for SQL Server in
+      SQLAlchemy 2.0.9 due to issues with row ordering when RETURNING is used.
+      In SQLAlchemy 2.0.10, the feature is re-enabled, with special
+      case handling for the unit of work's requirement for RETURNING to be
+      ordered.
 
 Two additional drivers have no change in performance; the psycopg2 drivers,
 for which fast executemany was already implemented in SQLAlchemy 1.4,
@@ -1821,6 +1830,118 @@ operations.
 
 
 :ticket:`8925`
+
+.. _change_9297:
+
+ORM Declarative Applies Column Orders Differently; Control behavior using ``sort_order``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Declarative has changed the system by which mapped columns that originate from
+mixin or abstract base classes are sorted along with the columns that are on the
+declared class itself to place columns from the declared class first, followed
+by mixin columns.  The following mapping::
+
+    class Foo:
+        col1 = mapped_column(Integer)
+        col3 = mapped_column(Integer)
+
+
+    class Bar:
+        col2 = mapped_column(Integer)
+        col4 = mapped_column(Integer)
+
+
+    class Model(Base, Foo, Bar):
+        id = mapped_column(Integer, primary_key=True)
+        __tablename__ = "model"
+
+Produces a CREATE TABLE as follows on 1.4:
+
+.. sourcecode:: sql
+
+    CREATE TABLE model (
+      col1 INTEGER,
+      col3 INTEGER,
+      col2 INTEGER,
+      col4 INTEGER,
+      id INTEGER NOT NULL,
+      PRIMARY KEY (id)
+    )
+
+Whereas on 2.0 it produces:
+
+.. sourcecode:: sql
+
+    CREATE TABLE model (
+      id INTEGER NOT NULL,
+      col1 INTEGER,
+      col3 INTEGER,
+      col2 INTEGER,
+      col4 INTEGER,
+      PRIMARY KEY (id)
+    )
+
+For the specific case above, this can be seen as an improvement, as the primary
+key columns on the ``Model`` are now where one would typically prefer.  However,
+this is no comfort for the application that defined models the other way
+around, as::
+
+    class Foo:
+        id = mapped_column(Integer, primary_key=True)
+        col1 = mapped_column(Integer)
+        col3 = mapped_column(Integer)
+
+
+    class Model(Foo, Base):
+        col2 = mapped_column(Integer)
+        col4 = mapped_column(Integer)
+        __tablename__ = "model"
+
+This now produces CREATE TABLE output as:
+
+.. sourcecode:: sql
+
+    CREATE TABLE model (
+      col2 INTEGER,
+      col4 INTEGER,
+      id INTEGER NOT NULL,
+      col1 INTEGER,
+      col3 INTEGER,
+      PRIMARY KEY (id)
+    )
+
+To solve this issue, SQLAlchemy 2.0.4 introduces a new parameter on
+:func:`_orm.mapped_column` called :paramref:`_orm.mapped_column.sort_order`,
+which is an integer value, defaulting to ``0``,
+that can be set to a positive or negative value so that columns are placed
+before or after other columns, as in the example below::
+
+    class Foo:
+        id = mapped_column(Integer, primary_key=True, sort_order=-10)
+        col1 = mapped_column(Integer, sort_order=-1)
+        col3 = mapped_column(Integer)
+
+
+    class Model(Foo, Base):
+        col2 = mapped_column(Integer)
+        col4 = mapped_column(Integer)
+        __tablename__ = "model"
+
+The above model places "id" before all others and "col1" after "id":
+
+.. sourcecode:: sql
+
+    CREATE TABLE model (
+      id INTEGER NOT NULL,
+      col1 INTEGER,
+      col2 INTEGER,
+      col4 INTEGER,
+      col3 INTEGER,
+      PRIMARY KEY (id)
+    )
+
+Future SQLAlchemy releases may opt to provide an explicit ordering hint for the
+:class:`_orm.mapped_column` construct, as this ordering is ORM specific.
 
 .. _change_7211:
 

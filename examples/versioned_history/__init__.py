@@ -7,19 +7,17 @@ Compare to the :ref:`examples_versioned_rows` examples which write updates
 as new rows in the same table, without using a separate history table.
 
 Usage is illustrated via a unit test module ``test_versioning.py``, which can
-be run via ``pytest``::
+be run like any other module, using ``unittest`` internally::
 
-    # assume SQLAlchemy is installed where pytest is
-
-    cd examples/versioned_history
-    pytest test_versioning.py
+    python -m examples.versioned_history.test_versioning
 
 
 A fragment of example usage, using declarative::
 
     from history_meta import Versioned, versioned_session
 
-    Base = declarative_base()
+    class Base(DeclarativeBase):
+        pass
 
     class SomeClass(Versioned, Base):
         __tablename__ = 'sometable'

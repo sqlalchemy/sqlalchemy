@@ -44,7 +44,6 @@ class TestCoreInspection(fixtures.TestBase):
         assert not hasattr(Foo(), "__clause_element__")
 
     def test_col_now_has_a_clauseelement(self):
-
         x = Column("foo", Integer)
 
         assert hasattr(x, "__clause_element__")

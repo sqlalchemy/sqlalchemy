@@ -207,14 +207,14 @@
         :tickets: 4124
         :versions: 1.2.0
 
-        Fixed bug where a descriptor that is elsewhere a mapped column
-        or relationship within a hierarchy based on :class:`.AbstractConcreteBase`
-        would be referred towards during a refresh operation, causing an error
-        as the attribute is not mapped as a mapper property.
-        A similar issue can arise for other attributes like the "type" column
-        added by :class:`.AbstractConcreteBase` if the class fails to include
-        "concrete=True" in its mapper, however the check here should also
-        prevent that scenario from causing a problem.
+        Fixed a bug where a descriptor, which is a mapped column or a
+        relationship elsewhere in a hierarchy based on
+        :class:`.AbstractConcreteBase`, would be referenced during a refresh
+        operation, leading to an error since the attribute is not mapped as a
+        mapper property. A similar issue can arise for other attributes
+        like the "type" column added by :class:`.AbstractConcreteBase` if the
+        class fails to include "concrete=True" in its mapper, however the check
+        here should also prevent that scenario from causing a problem.
 
     .. change:: 4006
         :tags: bug, postgresql
@@ -949,7 +949,7 @@
         :tags: bug, sql
         :tickets: 3878
 
-        Fixed 1.1 regression where "import *" would not work for
+        Fixed 1.1 regression where ``import *`` would not work for
         sqlalchemy.sql.expression, due to mis-spelled ``any_`` and ``all_``
         functions.
 

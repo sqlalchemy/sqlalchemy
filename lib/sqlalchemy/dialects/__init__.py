@@ -1,5 +1,5 @@
 # dialects/__init__.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -51,7 +51,7 @@ def _auto_fn(name: str) -> Optional[Callable[[], Type[Dialect]]]:
 
     if hasattr(module, driver):
         module = getattr(module, driver)
-        return lambda: module.dialect  # type: ignore
+        return lambda: module.dialect
     else:
         return None
 

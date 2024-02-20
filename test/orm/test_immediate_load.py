@@ -1,9 +1,12 @@
 """basic tests of lazy loaded attributes"""
 
+from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy.orm import immediateload
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import is_
 from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
 
@@ -201,3 +204,101 @@ class ImmediateTest(_fixtures.FixtureTest):
         # aren't fired off.  This is because the "lazyload" strategy
         # does not invoke eager loaders.
         assert "user" not in u1.addresses[0].__dict__
+
+
+class SelfReferentialTest(_fixtures.FixtureTest):
+    run_inserts = None
+    run_deletes = "each"
+
+    @testing.fixture
+    def node_fixture(self):
+        Node = self.classes.Node
+        nodes = self.tables.nodes
+
+        def go(join_depth):
+            self.mapper_registry.map_imperatively(
+                Node,
+                nodes,
+                properties={
+                    "parent": relationship(
+                        Node,
+                        remote_side=nodes.c.id,
+                        lazy="immediate",
+                        join_depth=join_depth,
+                    )
+                },
+            )
+
+            return Node
+
+        yield go
+
+        # 1. the fixture uses InnoDB, so foreign keys are enforced
+        # 2. "delete from nodes" in InnoDB is not smart enough to delete
+        #    all rows in the correct order automatically
+        # 3. "DELETE..ORDER BY" is mysql specific.  we want the TablesTest
+        #    fixture to be generic
+        # 4. Can't add "ON DELETE CASCADE" to that fixture because SQL Server
+        #    rejects it
+        # 5. so until we have a "delete from all tables taking FKs into
+        #    account" routine, we need a custom teardown here for MySQL/MariaDB
+        # 6. A similar fixture in test_recursive_loaders is cheating since it's
+        #    hardcoding to using MyISAM for MySQL
+        with Session(testing.db) as sess:
+            for node in sess.scalars(select(Node)):
+                sess.delete(node)
+
+            sess.commit()
+
+    @testing.variation("persistence", ["expunge", "keep", "reload"])
+    @testing.combinations((None,), (1,), (2,), argnames="join_depth")
+    def test_self_referential_recursive(
+        self, persistence, join_depth, node_fixture
+    ):
+        """test #10139"""
+
+        Node = node_fixture(join_depth)
+
+        sess = fixture_session()
+        n0 = Node(data="n0")
+        n1 = Node(data="n1")
+        n2 = Node(data="n2")
+        n1.parent = n0
+        n2.parent = n1
+        sess.add_all([n0, n1, n2])
+        sess.commit()
+        if persistence.expunge or persistence.reload:
+            sess.close()
+
+        if persistence.reload:
+            sess.add(n1)
+            sess.add(n0)
+
+        n2 = sess.query(Node).filter(Node.data == "n2").one()
+
+        if persistence.expunge and (join_depth is None or join_depth < 1):
+            expected_count = 1
+        else:
+            expected_count = 0
+
+        with self.assert_statement_count(testing.db, expected_count):
+            if persistence.keep or persistence.reload:
+                is_(n2.parent, n1)
+            else:
+                eq_(n2.parent, Node(data="n1"))
+
+            n1 = n2.parent
+
+        # ensure n1.parent_id is unexpired
+        n1.parent_id
+
+        if persistence.expunge and (join_depth is None or join_depth < 2):
+            expected_count = 1
+        else:
+            expected_count = 0
+
+        with self.assert_statement_count(testing.db, expected_count):
+            if persistence.keep or persistence.reload:
+                is_(n1.parent, n0)
+            else:
+                eq_(n1.parent, Node(data="n0"))

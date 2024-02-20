@@ -1,5 +1,5 @@
 # orm/persistence.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -140,11 +140,13 @@ def post_update(base_mapper, states, uowtransaction, post_update_cols):
                 state_dict,
                 sub_mapper,
                 connection,
-                mapper._get_committed_state_attr_by_column(
-                    state, state_dict, mapper.version_id_col
-                )
-                if mapper.version_id_col is not None
-                else None,
+                (
+                    mapper._get_committed_state_attr_by_column(
+                        state, state_dict, mapper.version_id_col
+                    )
+                    if mapper.version_id_col is not None
+                    else None
+                ),
             )
             for state, state_dict, sub_mapper, connection in states_to_update
             if table in sub_mapper._pks_by_table
@@ -221,7 +223,6 @@ def _organize_states_for_save(base_mapper, states, uowtransaction):
     for state, dict_, mapper, connection in _connections_for_states(
         base_mapper, uowtransaction, states
     ):
-
         has_identity = bool(state.key)
 
         instance_key = state.key or mapper._identity_key_from_state(state)
@@ -310,7 +311,6 @@ def _organize_states_for_delete(base_mapper, states, uowtransaction):
     for state, dict_, mapper, connection in _connections_for_states(
         base_mapper, uowtransaction, states
     ):
-
         mapper.dispatch.before_delete(mapper, connection, state)
 
         if mapper.version_id_col is not None:
@@ -326,9 +326,11 @@ def _organize_states_for_delete(base_mapper, states, uowtransaction):
 def _collect_insert_commands(
     table,
     states_to_insert,
+    *,
     bulk=False,
     return_defaults=False,
     render_nulls=False,
+    include_bulk_keys=(),
 ):
     """Identify sets of values to use in INSERT statements for a
     list of states.
@@ -401,10 +403,14 @@ def _collect_insert_commands(
                 None
             )
 
-        if bulk and mapper._set_polymorphic_identity:
-            params.setdefault(
-                mapper._polymorphic_attr_key, mapper.polymorphic_identity
-            )
+        if bulk:
+            if mapper._set_polymorphic_identity:
+                params.setdefault(
+                    mapper._polymorphic_attr_key, mapper.polymorphic_identity
+                )
+
+            if include_bulk_keys:
+                params.update((k, state_dict[k]) for k in include_bulk_keys)
 
         yield (
             state,
@@ -422,8 +428,10 @@ def _collect_update_commands(
     uowtransaction,
     table,
     states_to_update,
+    *,
     bulk=False,
     use_orm_update_stmt=None,
+    include_bulk_keys=(),
 ):
     """Identify sets of values to use in UPDATE statements for a
     list of states.
@@ -443,7 +451,6 @@ def _collect_update_commands(
         connection,
         update_version_id,
     ) in states_to_update:
-
         if table not in mapper._pks_by_table:
             continue
 
@@ -504,7 +511,6 @@ def _collect_update_commands(
             update_version_id is not None
             and mapper.version_id_col in mapper._cols_by_table[table]
         ):
-
             if not bulk and not (params or value_params):
                 # HACK: check for history in other tables, in case the
                 # history is only in a different table than the one
@@ -550,6 +556,19 @@ def _collect_update_commands(
                     mapper._pk_attr_keys_by_table[table]
                 )
             }
+            if util.NONE_SET.intersection(pk_params.values()):
+                raise sa_exc.InvalidRequestError(
+                    f"No primary key value supplied for column(s) "
+                    f"""{
+                        ', '.join(
+                            str(c) for c in pks if pk_params[c._label] is None
+                        )
+                    }; """
+                    "per-row ORM Bulk UPDATE by Primary Key requires that "
+                    "records contain primary key values",
+                    code="bupq",
+                )
+
         else:
             pk_params = {}
             for col in pks:
@@ -580,6 +599,9 @@ def _collect_update_commands(
                         "Can't update table %s using NULL for primary "
                         "key value on column %s" % (table, col)
                     )
+
+        if include_bulk_keys:
+            params.update((k, state_dict[k]) for k in include_bulk_keys)
 
         if params or value_params:
             params.update(pk_params)
@@ -626,7 +648,6 @@ def _collect_post_update_commands(
         connection,
         update_version_id,
     ) in states_to_update:
-
         # assert table in mapper._pks_by_table
 
         pks = mapper._pks_by_table[table]
@@ -653,7 +674,6 @@ def _collect_post_update_commands(
                 update_version_id is not None
                 and mapper.version_id_col in mapper._cols_by_table[table]
             ):
-
                 col = mapper.version_id_col
                 params[col._label] = update_version_id
 
@@ -680,16 +700,15 @@ def _collect_delete_commands(
         connection,
         update_version_id,
     ) in states_to_delete:
-
         if table not in mapper._pks_by_table:
             continue
 
         params = {}
         for col in mapper._pks_by_table[table]:
-            params[
-                col.key
-            ] = value = mapper._get_committed_state_attr_by_column(
-                state, state_dict, col
+            params[col.key] = value = (
+                mapper._get_committed_state_attr_by_column(
+                    state, state_dict, col
+                )
             )
             if value is None:
                 raise orm_exc.FlushError(
@@ -712,8 +731,10 @@ def _emit_update_statements(
     mapper,
     table,
     update,
+    *,
     bookkeeping=True,
     use_orm_update_stmt=None,
+    enable_check_rowcount=True,
 ):
     """Emit UPDATE statements corresponding to value lists collected
     by _collect_update_commands()."""
@@ -801,15 +822,11 @@ def _emit_update_statements(
             )
             return_defaults = True
 
-        if mapper.version_id_col is not None:
+        if mapper._version_id_has_server_side_value:
             statement = statement.return_defaults(mapper.version_id_col)
             return_defaults = True
 
-        assert_singlerow = (
-            connection.dialect.supports_sane_rowcount
-            if not return_defaults
-            else connection.dialect.supports_sane_rowcount_returning
-        )
+        assert_singlerow = connection.dialect.supports_sane_rowcount
 
         assert_multirow = (
             assert_singlerow
@@ -851,10 +868,10 @@ def _emit_update_statements(
                         c.returned_defaults,
                     )
                 rows += c.rowcount
-                check_rowcount = assert_singlerow
+                check_rowcount = enable_check_rowcount and assert_singlerow
         else:
             if not allow_executemany:
-                check_rowcount = assert_singlerow
+                check_rowcount = enable_check_rowcount and assert_singlerow
                 for (
                     state,
                     state_dict,
@@ -887,8 +904,9 @@ def _emit_update_statements(
             else:
                 multiparams = [rec[2] for rec in records]
 
-                check_rowcount = assert_multirow or (
-                    assert_singlerow and len(multiparams) == 1
+                check_rowcount = enable_check_rowcount and (
+                    assert_multirow
+                    or (assert_singlerow and len(multiparams) == 1)
                 )
 
                 c = connection.execute(
@@ -918,9 +936,11 @@ def _emit_update_statements(
                             c.context.compiled_parameters[0],
                             value_params,
                             True,
-                            c.returned_defaults
-                            if not c.context.executemany
-                            else None,
+                            (
+                                c.returned_defaults
+                                if not c.context.executemany
+                                else None
+                            ),
                         )
 
         if check_rowcount:
@@ -945,6 +965,7 @@ def _emit_insert_statements(
     mapper,
     table,
     insert,
+    *,
     bookkeeping=True,
     use_orm_insert_stmt=None,
     execution_options=None,
@@ -959,8 +980,13 @@ def _emit_insert_statements(
         # if a user query with RETURNING was passed, we definitely need
         # to use RETURNING.
         returning_is_required_anyway = bool(use_orm_insert_stmt._returning)
+        deterministic_results_reqd = (
+            returning_is_required_anyway
+            and use_orm_insert_stmt._sort_by_parameter_order
+        ) or bookkeeping
     else:
         returning_is_required_anyway = False
+        deterministic_results_reqd = bookkeeping
         cached_stmt = base_mapper._memo(("insert", table), table.insert)
         exec_opt = {"compiled_cache": base_mapper._compiled_cache}
 
@@ -986,7 +1012,6 @@ def _emit_insert_statements(
             rec[7],
         ),
     ):
-
         statement = cached_stmt
 
         if use_orm_insert_stmt is not None:
@@ -1013,7 +1038,6 @@ def _emit_insert_statements(
             and has_all_pks
             and not hasvalue
         ):
-
             # the "we don't need newly generated values back" section.
             # here we have all the PKs, all the defaults or we don't want
             # to fetch them, or the dialect doesn't support RETURNING at all
@@ -1049,9 +1073,11 @@ def _emit_insert_statements(
                             last_inserted_params,
                             value_params,
                             False,
-                            result.returned_defaults
-                            if not result.context.executemany
-                            else None,
+                            (
+                                result.returned_defaults
+                                if not result.context.executemany
+                                else None
+                            ),
                         )
                     else:
                         _postfetch_bulk_save(mapper_rec, state_dict, table)
@@ -1061,36 +1087,55 @@ def _emit_insert_statements(
             # know that we are using RETURNING in any case
 
             records = list(records)
-            if (
-                not hasvalue
-                and connection.dialect.insert_executemany_returning
-                and len(records) > 1
+
+            if returning_is_required_anyway or (
+                table.implicit_returning and not hasvalue and len(records) > 1
             ):
-                do_executemany = True
-            elif returning_is_required_anyway:
-                if connection.dialect.insert_executemany_returning:
+                if (
+                    deterministic_results_reqd
+                    and connection.dialect.insert_executemany_returning_sort_by_parameter_order  # noqa: E501
+                ) or (
+                    not deterministic_results_reqd
+                    and connection.dialect.insert_executemany_returning
+                ):
                     do_executemany = True
-                else:
+                elif returning_is_required_anyway:
+                    if deterministic_results_reqd:
+                        dt = " with RETURNING and sort by parameter order"
+                    else:
+                        dt = " with RETURNING"
                     raise sa_exc.InvalidRequestError(
                         f"Can't use explicit RETURNING for bulk INSERT "
                         f"operation with "
                         f"{connection.dialect.dialect_description} backend; "
-                        f"executemany is not supported with RETURNING"
+                        f"executemany{dt} is not enabled for this dialect."
                     )
+                else:
+                    do_executemany = False
             else:
                 do_executemany = False
 
-            if not has_all_defaults and base_mapper._prefer_eager_defaults(
-                connection.dialect, table
-            ):
-                statement = statement.return_defaults(
-                    *mapper._server_default_cols[table]
-                )
+            if use_orm_insert_stmt is None:
+                if (
+                    not has_all_defaults
+                    and base_mapper._prefer_eager_defaults(
+                        connection.dialect, table
+                    )
+                ):
+                    statement = statement.return_defaults(
+                        *mapper._server_default_cols[table],
+                        sort_by_parameter_order=bookkeeping,
+                    )
 
             if mapper.version_id_col is not None:
-                statement = statement.return_defaults(mapper.version_id_col)
+                statement = statement.return_defaults(
+                    mapper.version_id_col,
+                    sort_by_parameter_order=bookkeeping,
+                )
             elif do_executemany:
-                statement = statement.return_defaults(*table.primary_key)
+                statement = statement.return_defaults(
+                    *table.primary_key, sort_by_parameter_order=bookkeeping
+                )
 
             if do_executemany:
                 multiparams = [rec[2] for rec in records]
@@ -1222,9 +1267,11 @@ def _emit_insert_statements(
                                 result.context.compiled_parameters[0],
                                 value_params,
                                 False,
-                                result.returned_defaults
-                                if not result.context.executemany
-                                else None,
+                                (
+                                    result.returned_defaults
+                                    if not result.context.executemany
+                                    else None
+                                ),
                             )
                         else:
                             _postfetch_bulk_save(mapper_rec, state_dict, table)
@@ -1268,12 +1315,12 @@ def _emit_post_update_statements(
 
         stmt = table.update().where(clauses)
 
-        if mapper.version_id_col is not None:
-            stmt = stmt.return_defaults(mapper.version_id_col)
-
         return stmt
 
     statement = base_mapper._memo(("post_update", table), update_stmt)
+
+    if mapper._version_id_has_server_side_value:
+        statement = statement.return_defaults(mapper.version_id_col)
 
     # execute each UPDATE in the order according to the original
     # list of states to guarantee row access order, but
@@ -1288,11 +1335,7 @@ def _emit_post_update_statements(
         records = list(records)
         connection = key[0]
 
-        assert_singlerow = (
-            connection.dialect.supports_sane_rowcount
-            if mapper.version_id_col is None
-            else connection.dialect.supports_sane_rowcount_returning
-        )
+        assert_singlerow = connection.dialect.supports_sane_rowcount
         assert_multirow = (
             assert_singlerow
             and connection.dialect.supports_sane_multi_rowcount
@@ -1302,7 +1345,6 @@ def _emit_post_update_statements(
         if not allow_executemany:
             check_rowcount = assert_singlerow
             for state, state_dict, mapper_rec, connection, params in records:
-
                 c = connection.execute(
                     statement, params, execution_options=execution_options
                 )
@@ -1406,7 +1448,6 @@ def _emit_delete_statements(
                 # execute deletes individually so that versioned
                 # rows can be verified
                 for params in del_objects:
-
                     c = connection.execute(
                         statement, params, execution_options=execution_options
                     )
@@ -1465,7 +1506,6 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction, states):
 
     """
     for state, state_dict, mapper, connection, has_identity in states:
-
         if mapper._readonly_props:
             readonly = state.unmodified_intersection(
                 [
@@ -1538,16 +1578,25 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction, states):
 def _postfetch_post_update(
     mapper, uowtransaction, table, state, dict_, result, params
 ):
-    if uowtransaction.is_deleted(state):
-        return
-
-    prefetch_cols = result.context.compiled.prefetch
-    postfetch_cols = result.context.compiled.postfetch
-
-    if (
+    needs_version_id = (
         mapper.version_id_col is not None
         and mapper.version_id_col in mapper._cols_by_table[table]
-    ):
+    )
+
+    if not uowtransaction.is_deleted(state):
+        # post updating after a regular INSERT or UPDATE, do a full postfetch
+        prefetch_cols = result.context.compiled.prefetch
+        postfetch_cols = result.context.compiled.postfetch
+    elif needs_version_id:
+        # post updating before a DELETE with a version_id_col, need to
+        # postfetch just version_id_col
+        prefetch_cols = postfetch_cols = ()
+    else:
+        # post updating before a DELETE without a version_id_col,
+        # don't need to postfetch
+        return
+
+    if needs_version_id:
         prefetch_cols = list(prefetch_cols) + [mapper.version_id_col]
 
     refresh_flush = bool(mapper.class_manager.dispatch.refresh_flush)
@@ -1627,9 +1676,18 @@ def _postfetch(
 
     for c in prefetch_cols:
         if c.key in params and c in mapper._columntoproperty:
-            dict_[mapper._columntoproperty[c].key] = params[c.key]
+            pkey = mapper._columntoproperty[c].key
+
+            # set prefetched value in dict and also pop from committed_state,
+            # since this is new database state that replaces whatever might
+            # have previously been fetched (see #10800).  this is essentially a
+            # shorthand version of set_committed_value(), which could also be
+            # used here directly (with more overhead)
+            dict_[pkey] = params[c.key]
+            state.committed_state.pop(pkey, None)
+
             if refresh_flush:
-                load_evt_attrs.append(mapper._columntoproperty[c].key)
+                load_evt_attrs.append(pkey)
 
     if refresh_flush and load_evt_attrs:
         mapper.class_manager.dispatch.refresh_flush(

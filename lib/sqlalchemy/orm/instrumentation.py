@@ -1,5 +1,5 @@
 # orm/instrumentation.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -42,6 +42,7 @@ from typing import Generic
 from typing import Iterable
 from typing import List
 from typing import Optional
+from typing import Protocol
 from typing import Set
 from typing import Tuple
 from typing import Type
@@ -61,7 +62,6 @@ from .. import util
 from ..event import EventTarget
 from ..util import HasMemoized
 from ..util.typing import Literal
-from ..util.typing import Protocol
 
 if TYPE_CHECKING:
     from ._typing import _RegistryType
@@ -85,13 +85,11 @@ class _ExpiredAttributeLoaderProto(Protocol):
         state: state.InstanceState[Any],
         toload: Set[str],
         passive: base.PassiveFlag,
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 class _ManagerFactory(Protocol):
-    def __call__(self, class_: Type[_O]) -> ClassManager[_O]:
-        ...
+    def __call__(self, class_: Type[_O]) -> ClassManager[_O]: ...
 
 
 class ClassManager(
@@ -138,7 +136,7 @@ class ClassManager(
     def deferred_scalar_loader(self):
         return self.expired_attribute_loader
 
-    @deferred_scalar_loader.setter  # type: ignore[no-redef]
+    @deferred_scalar_loader.setter
     @util.deprecated(
         "1.4",
         message="The ClassManager.deferred_scalar_loader attribute is now "
@@ -203,9 +201,8 @@ class ClassManager(
         ] = None,
         init_method: Optional[Callable[..., None]] = None,
     ) -> None:
-
         if mapper:
-            self.mapper = mapper  # type: ignore[assignment]
+            self.mapper = mapper  #
         if registry:
             registry._add_manager(self)
         if declarative_scan:
@@ -429,7 +426,7 @@ class ClassManager(
         for key in list(self.originals):
             self.uninstall_member(key)
 
-        self.mapper = None  # type: ignore
+        self.mapper = None
         self.dispatch = None  # type: ignore
         self.new_init = None
         self.info.clear()
@@ -507,11 +504,11 @@ class ClassManager(
         # so that mypy sees that __new__ is present.   currently
         # it's bound to Any as there were other problems not having
         # it that way but these can be revisited
-        instance = self.class_.__new__(self.class_)  # type: ignore
+        instance = self.class_.__new__(self.class_)
         if state is None:
             state = self._state_constructor(instance, self)
         self._state_setter(instance, state)
-        return instance  # type: ignore[no-any-return]
+        return instance
 
     def setup_instance(
         self, instance: _O, state: Optional[InstanceState[_O]] = None

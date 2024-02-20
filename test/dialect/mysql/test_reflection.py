@@ -238,14 +238,19 @@ class TypeReflectionTest(fixtures.TestBase):
         metadata,
         connection,
     ):
-
         specs = [(mysql.ENUM("", "fleem"), mysql.ENUM("", "fleem"))]
 
         self._run_test(metadata, connection, specs, ["enums"])
 
+    @testing.only_on("mariadb>=10.7")
+    def test_uuid(self, metadata, connection):
+        specs = [
+            (mysql.UUID(), mysql.UUID()),
+        ]
+        self._run_test(metadata, connection, specs, [])
+
 
 class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
-
     __only_on__ = "mysql", "mariadb"
     __backend__ = True
 
@@ -432,7 +437,6 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(ref_kw["partitions"], "6")
 
     def test_reflection_with_subpartition_options(self, connection, metadata):
-
         subpartititon_text = """HASH (TO_DAYS (c2))
                                 SUBPARTITIONS 2(
                                  PARTITION p0 VALUES LESS THAN (1990),
@@ -760,103 +764,152 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         view_names = dialect.get_view_names(connection, "information_schema")
         self.assert_("TABLES" in view_names)
 
-    def test_nullable_reflection(self, metadata, connection):
-        """test reflection of NULL/NOT NULL, in particular with TIMESTAMP
-        defaults where MySQL is inconsistent in how it reports CREATE TABLE.
-
-        """
-        meta = metadata
-
-        # this is ideally one table, but older MySQL versions choke
-        # on the multiple TIMESTAMP columns
-        row = connection.exec_driver_sql(
-            "show variables like '%%explicit_defaults_for_timestamp%%'"
-        ).first()
-        explicit_defaults_for_timestamp = row[1].lower() in ("on", "1", "true")
-
-        reflected = []
-        for idx, cols in enumerate(
+    @testing.combinations(
+        (
             [
-                [
-                    "x INTEGER NULL",
-                    "y INTEGER NOT NULL",
-                    "z INTEGER",
-                    "q TIMESTAMP NULL",
-                ],
-                ["p TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP"],
-                ["r TIMESTAMP NOT NULL"],
-                ["s TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"],
-                ["t TIMESTAMP"],
-                ["u TIMESTAMP DEFAULT CURRENT_TIMESTAMP"],
-            ]
-        ):
-            Table("nn_t%d" % idx, meta)  # to allow DROP
-
-            connection.exec_driver_sql(
-                """
-                    CREATE TABLE nn_t%d (
-                        %s
-                    )
-                """
-                % (idx, ", \n".join(cols))
-            )
-
-            reflected.extend(
-                {
-                    "name": d["name"],
-                    "nullable": d["nullable"],
-                    "default": d["default"],
-                }
-                for d in inspect(connection).get_columns("nn_t%d" % idx)
-            )
-
-        if connection.dialect._is_mariadb_102:
-            current_timestamp = "current_timestamp()"
-        else:
-            current_timestamp = "CURRENT_TIMESTAMP"
-
-        eq_(
-            reflected,
+                "x INTEGER NULL",
+                "y INTEGER NOT NULL",
+                "z INTEGER",
+                "q TIMESTAMP NULL",
+            ],
             [
                 {"name": "x", "nullable": True, "default": None},
                 {"name": "y", "nullable": False, "default": None},
                 {"name": "z", "nullable": True, "default": None},
                 {"name": "q", "nullable": True, "default": None},
-                {"name": "p", "nullable": True, "default": current_timestamp},
+            ],
+        ),
+        (
+            ["p TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP"],
+            [
+                {
+                    "name": "p",
+                    "nullable": True,
+                    "default": "CURRENT_TIMESTAMP",
+                }
+            ],
+        ),
+        (
+            ["r TIMESTAMP NOT NULL"],
+            [
                 {
                     "name": "r",
                     "nullable": False,
-                    "default": None
-                    if explicit_defaults_for_timestamp
-                    else (
-                        "%(current_timestamp)s "
-                        "ON UPDATE %(current_timestamp)s"
-                    )
-                    % {"current_timestamp": current_timestamp},
-                },
-                {"name": "s", "nullable": False, "default": current_timestamp},
+                    "default": None,
+                    "non_explicit_defaults_for_ts_default": (
+                        "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+                    ),
+                }
+            ],
+        ),
+        (
+            ["s TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"],
+            [
+                {
+                    "name": "s",
+                    "nullable": False,
+                    "default": "CURRENT_TIMESTAMP",
+                }
+            ],
+        ),
+        (
+            ["t TIMESTAMP"],
+            [
                 {
                     "name": "t",
-                    "nullable": True
-                    if explicit_defaults_for_timestamp
-                    else False,
-                    "default": None
-                    if explicit_defaults_for_timestamp
-                    else (
-                        "%(current_timestamp)s "
-                        "ON UPDATE %(current_timestamp)s"
-                    )
-                    % {"current_timestamp": current_timestamp},
-                },
+                    "nullable": True,
+                    "default": None,
+                    "non_explicit_defaults_for_ts_nullable": False,
+                    "non_explicit_defaults_for_ts_default": (
+                        "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+                    ),
+                }
+            ],
+        ),
+        (
+            ["u TIMESTAMP DEFAULT CURRENT_TIMESTAMP"],
+            [
                 {
                     "name": "u",
-                    "nullable": True
-                    if explicit_defaults_for_timestamp
-                    else False,
-                    "default": current_timestamp,
-                },
+                    "nullable": True,
+                    "non_explicit_defaults_for_ts_nullable": False,
+                    "default": "CURRENT_TIMESTAMP",
+                }
             ],
-        )
+        ),
+        (
+            ["v INTEGER GENERATED ALWAYS AS (4711) VIRTUAL NOT NULL"],
+            [
+                {
+                    "name": "v",
+                    "nullable": False,
+                    "default": None,
+                }
+            ],
+            testing.requires.mysql_notnull_generated_columns,
+        ),
+        argnames="ddl_columns,expected_reflected",
+    )
+    def test_nullable_reflection(
+        self, metadata, connection, ddl_columns, expected_reflected
+    ):
+        """test reflection of NULL/NOT NULL, in particular with TIMESTAMP
+        defaults where MySQL is inconsistent in how it reports CREATE TABLE.
+
+        """
+        row = connection.exec_driver_sql(
+            "show variables like '%%explicit_defaults_for_timestamp%%'"
+        ).first()
+        explicit_defaults_for_timestamp = row[1].lower() in ("on", "1", "true")
+
+        def get_expected_default(er):
+            if (
+                not explicit_defaults_for_timestamp
+                and "non_explicit_defaults_for_ts_default" in er
+            ):
+                default = er["non_explicit_defaults_for_ts_default"]
+            else:
+                default = er["default"]
+
+            if default is not None and connection.dialect._is_mariadb_102:
+                default = default.replace(
+                    "CURRENT_TIMESTAMP", "current_timestamp()"
+                )
+
+            return default
+
+        def get_expected_nullable(er):
+            if (
+                not explicit_defaults_for_timestamp
+                and "non_explicit_defaults_for_ts_nullable" in er
+            ):
+                return er["non_explicit_defaults_for_ts_nullable"]
+            else:
+                return er["nullable"]
+
+        expected_reflected = [
+            {
+                "name": er["name"],
+                "nullable": get_expected_nullable(er),
+                "default": get_expected_default(er),
+            }
+            for er in expected_reflected
+        ]
+
+        Table("nullable_refl", metadata)
+
+        cols_ddl = ", \n".join(ddl_columns)
+        connection.exec_driver_sql(f"CREATE TABLE nullable_refl ({cols_ddl})")
+
+        reflected = [
+            {
+                "name": d["name"],
+                "nullable": d["nullable"],
+                "default": d["default"],
+            }
+            for d in inspect(connection).get_columns("nullable_refl")
+        ]
+        eq_(reflected, expected_reflected)
 
     def test_reflection_with_unique_constraint(self, metadata, connection):
         insp = inspect(connection)
@@ -1367,6 +1420,29 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                 },
             },
         )
+
+    def test_reflect_comment_escapes(self, connection, metadata):
+        c = "\\ - \\\\ - \\0 - \\a - \\b - \\t - \\n - \\v - \\f - \\r"
+        Table("t", metadata, Column("c", Integer, comment=c), comment=c)
+        metadata.create_all(connection)
+
+        insp = inspect(connection)
+        tc = insp.get_table_comment("t")
+        eq_(tc, {"text": c})
+        col = insp.get_columns("t")[0]
+        eq_({col["name"]: col["comment"]}, {"c": c})
+
+    def test_reflect_comment_unicode(self, connection, metadata):
+        c = "☁️✨🐍🁰🝝"
+        c_exp = "☁️✨???"
+        Table("t", metadata, Column("c", Integer, comment=c), comment=c)
+        metadata.create_all(connection)
+
+        insp = inspect(connection)
+        tc = insp.get_table_comment("t")
+        eq_(tc, {"text": c_exp})
+        col = insp.get_columns("t")[0]
+        eq_({col["name"]: col["comment"]}, {"c": c_exp})
 
 
 class RawReflectionTest(fixtures.TestBase):

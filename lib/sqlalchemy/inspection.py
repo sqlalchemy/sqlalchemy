@@ -1,5 +1,5 @@
-# sqlalchemy/inspect.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# inspection.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -36,6 +36,7 @@ from typing import Dict
 from typing import Generic
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Type
 from typing import TypeVar
 from typing import Union
@@ -44,9 +45,10 @@ from . import exc
 from .util.typing import Literal
 
 _T = TypeVar("_T", bound=Any)
+_TCov = TypeVar("_TCov", bound=Any, covariant=True)
 _F = TypeVar("_F", bound=Callable[..., Any])
 
-_IN = TypeVar("_IN", bound="Inspectable[Any]")
+_IN = TypeVar("_IN", bound=Any)
 
 _registrars: Dict[type, Union[Literal[True], Callable[[Any], Any]]] = {}
 
@@ -66,19 +68,46 @@ class Inspectable(Generic[_T]):
     __slots__ = ()
 
 
-@overload
-def inspect(subject: Inspectable[_IN], raiseerr: bool = True) -> _IN:
-    ...
+class _InspectableTypeProtocol(Protocol[_TCov]):
+    """a protocol defining a method that's used when a type (ie the class
+    itself) is passed to inspect().
+
+    """
+
+    def _sa_inspect_type(self) -> _TCov: ...
+
+
+class _InspectableProtocol(Protocol[_TCov]):
+    """a protocol defining a method that's used when an instance is
+    passed to inspect().
+
+    """
+
+    def _sa_inspect_instance(self) -> _TCov: ...
 
 
 @overload
-def inspect(subject: Any, raiseerr: Literal[False] = ...) -> Optional[Any]:
-    ...
+def inspect(
+    subject: Type[_InspectableTypeProtocol[_IN]], raiseerr: bool = True
+) -> _IN: ...
 
 
 @overload
-def inspect(subject: Any, raiseerr: bool = True) -> Any:
-    ...
+def inspect(
+    subject: _InspectableProtocol[_IN], raiseerr: bool = True
+) -> _IN: ...
+
+
+@overload
+def inspect(subject: Inspectable[_IN], raiseerr: bool = True) -> _IN: ...
+
+
+@overload
+def inspect(subject: Any, raiseerr: Literal[False] = ...) -> Optional[Any]: ...
+
+
+@overload
+def inspect(subject: Any, raiseerr: bool = True) -> Any: ...
 
 
 def inspect(subject: Any, raiseerr: bool = True) -> Any:
@@ -128,9 +157,7 @@ def _inspects(
     def decorate(fn_or_cls: _F) -> _F:
         for type_ in types:
             if type_ in _registrars:
-                raise AssertionError(
-                    "Type %s is already " "registered" % type_
-                )
+                raise AssertionError("Type %s is already registered" % type_)
             _registrars[type_] = fn_or_cls
         return fn_or_cls
 
@@ -142,6 +169,6 @@ _TT = TypeVar("_TT", bound="Type[Any]")
 
 def _self_inspects(cls: _TT) -> _TT:
     if cls in _registrars:
-        raise AssertionError("Type %s is already " "registered" % cls)
+        raise AssertionError("Type %s is already registered" % cls)
     _registrars[cls] = True
     return cls

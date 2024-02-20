@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 9183
-
-    Fixed typing of limit, offset and fetch to allow ``None``.
-
-

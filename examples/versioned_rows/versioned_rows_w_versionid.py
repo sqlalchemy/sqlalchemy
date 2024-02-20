@@ -6,6 +6,7 @@ This example adds a numerical version_id to the Versioned class as well
 as the ability to see which row is the most "current" version.
 
 """
+
 from sqlalchemy import Boolean
 from sqlalchemy import Column
 from sqlalchemy import create_engine

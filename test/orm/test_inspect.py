@@ -1,9 +1,21 @@
 """test the inspection registry system."""
 
+import random
+import textwrap
+
+from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
+from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.associationproxy import AssociationProxyExtensionType
+from sqlalchemy.ext.hybrid import hybrid_method
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.ext.hybrid import HybridExtensionType
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import relationship
@@ -12,6 +24,7 @@ from sqlalchemy.orm import synonym
 from sqlalchemy.orm.attributes import instance_state
 from sqlalchemy.orm.attributes import NO_VALUE
 from sqlalchemy.orm.base import InspectionAttr
+from sqlalchemy.orm.interfaces import NotExtension
 from sqlalchemy.orm.util import identity_key
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -233,18 +246,6 @@ class TestORMInspection(_fixtures.FixtureTest):
         assert hasattr(prop, "expression")
 
     def test_extension_types(self):
-        from sqlalchemy.ext.associationproxy import (
-            association_proxy,
-            AssociationProxyExtensionType,
-        )
-        from sqlalchemy.ext.hybrid import (
-            hybrid_property,
-            hybrid_method,
-            HybridExtensionType,
-        )
-        from sqlalchemy import Table, MetaData, Integer, Column
-        from sqlalchemy.orm.interfaces import NotExtension
-
         class SomeClass(self.classes.User):
             some_assoc = association_proxy("addresses", "email_address")
 
@@ -439,20 +440,18 @@ class TestORMInspection(_fixtures.FixtureTest):
         import random
         import keyword
 
-        names = {
-            "".join(
-                random.choice("abcdegfghijklmnopqrstuvwxyz")
-                for i in range(random.randint(3, 15))
-            )
-            for j in range(random.randint(4, 12))
-        }
-        return list(names.difference(keyword.kwlist))
+        def _random_name():
+            while True:
+                name = "".join(
+                    random.choice("abcdegfghijklmnopqrstuvwxyz")
+                    for i in range(random.randint(5, 15))
+                )
+                if name not in keyword.kwlist:
+                    return name
+
+        return [_random_name() for i in range(random.randint(8, 15))]
 
     def _ordered_name_fixture(self, glbls, clsname, base, supercls):
-        import random
-        from sqlalchemy import Integer, Column
-        import textwrap
-
         names = self._random_names()
 
         if base is supercls:
@@ -549,8 +548,6 @@ class %s(SuperCls):
     def test_all_orm_descriptors_pep520_classical(self):
         class MyClass:
             pass
-
-        from sqlalchemy import Table, MetaData, Column, Integer
 
         names = self._random_names()
 

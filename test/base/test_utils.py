@@ -1,4 +1,5 @@
 import copy
+from decimal import Decimal
 import inspect
 from pathlib import Path
 import pickle
@@ -19,15 +20,19 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_instance_of
+from sqlalchemy.testing import is_none
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing import not_in
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing.util import picklers
 from sqlalchemy.util import classproperty
 from sqlalchemy.util import compat
 from sqlalchemy.util import FastIntFlag
 from sqlalchemy.util import get_callable_argspec
+from sqlalchemy.util import is_non_string_iterable
 from sqlalchemy.util import langhelpers
 from sqlalchemy.util import preloaded
 from sqlalchemy.util import WeakSequence
@@ -209,6 +214,27 @@ class OrderedSetTest(fixtures.TestBase):
         eq_(o.difference(iter([3, 4])), util.OrderedSet([2, 5]))
         eq_(o.intersection(iter([3, 4, 6])), util.OrderedSet([3, 4]))
         eq_(o.union(iter([3, 4, 6])), util.OrderedSet([3, 2, 4, 5, 6]))
+        eq_(
+            o.symmetric_difference(iter([3, 4, 6])), util.OrderedSet([2, 5, 6])
+        )
+
+    def test_mutators_against_iter_update(self):
+        # testing a set modified against an iterator
+        o = util.OrderedSet([3, 2, 4, 5])
+        o.difference_update(iter([3, 4]))
+        eq_(list(o), [2, 5])
+
+        o = util.OrderedSet([3, 2, 4, 5])
+        o.intersection_update(iter([3, 4]))
+        eq_(list(o), [3, 4])
+
+        o = util.OrderedSet([3, 2, 4, 5])
+        o.update(iter([3, 4, 6]))
+        eq_(list(o), [3, 2, 4, 5, 6])
+
+        o = util.OrderedSet([3, 2, 4, 5])
+        o.symmetric_difference_update(iter([3, 4, 6]))
+        eq_(list(o), [2, 5, 6])
 
     def test_len(self):
         eq_(len(util.OrderedSet([1, 2, 3])), 3)
@@ -228,6 +254,110 @@ class OrderedSetTest(fixtures.TestBase):
         eq_(str(o), "OrderedSet([])")
         o = util.OrderedSet([3, 2, 4, 5])
         eq_(str(o), "OrderedSet([3, 2, 4, 5])")
+
+    def test_modify(self):
+        o = util.OrderedSet([3, 9, 11])
+        is_none(o.add(42))
+        in_(42, o)
+        in_(3, o)
+
+        is_none(o.remove(9))
+        not_in(9, o)
+        in_(3, o)
+
+        is_none(o.discard(11))
+        in_(3, o)
+
+        o.add(99)
+        is_none(o.insert(1, 13))
+        eq_(list(o), [3, 13, 42, 99])
+        eq_(o[2], 42)
+
+        val = o.pop()
+        eq_(val, 99)
+        not_in(99, o)
+        eq_(list(o), [3, 13, 42])
+
+        is_none(o.clear())
+        not_in(3, o)
+        is_false(bool(o))
+
+    def test_empty_pop(self):
+        with expect_raises_message(KeyError, "pop from an empty set"):
+            util.OrderedSet().pop()
+
+    @testing.combinations(
+        lambda o: o + util.OrderedSet([11, 22]),
+        lambda o: o | util.OrderedSet([11, 22]),
+        lambda o: o.union(util.OrderedSet([11, 22])),
+        lambda o: o.union([11, 2], [22, 8]),
+    )
+    def test_op(self, fn):
+        o = util.OrderedSet(range(10))
+        x = fn(o)
+        is_instance_of(x, util.OrderedSet)
+        in_(9, x)
+        in_(11, x)
+        not_in(11, o)
+
+    def test_update(self):
+        o = util.OrderedSet(range(10))
+        is_none(o.update([22, 2], [33, 11]))
+        in_(11, o)
+        in_(22, o)
+
+    def test_set_ops(self):
+        o1, o2 = util.OrderedSet([1, 3, 5, 7]), {2, 3, 4, 5}
+        eq_(o1 & o2, {3, 5})
+        eq_(o1.intersection(o2), {3, 5})
+        o3 = o1.copy()
+        o3 &= o2
+        eq_(o3, {3, 5})
+        o3 = o1.copy()
+        is_none(o3.intersection_update(o2))
+        eq_(o3, {3, 5})
+
+        eq_(o1 | o2, {1, 2, 3, 4, 5, 7})
+        eq_(o1.union(o2), {1, 2, 3, 4, 5, 7})
+        o3 = o1.copy()
+        o3 |= o2
+        eq_(o3, {1, 2, 3, 4, 5, 7})
+        o3 = o1.copy()
+        is_none(o3.update(o2))
+        eq_(o3, {1, 2, 3, 4, 5, 7})
+
+        eq_(o1 - o2, {1, 7})
+        eq_(o1.difference(o2), {1, 7})
+        o3 = o1.copy()
+        o3 -= o2
+        eq_(o3, {1, 7})
+        o3 = o1.copy()
+        is_none(o3.difference_update(o2))
+        eq_(o3, {1, 7})
+
+        eq_(o1 ^ o2, {1, 2, 4, 7})
+        eq_(o1.symmetric_difference(o2), {1, 2, 4, 7})
+        o3 = o1.copy()
+        o3 ^= o2
+        eq_(o3, {1, 2, 4, 7})
+        o3 = o1.copy()
+        is_none(o3.symmetric_difference_update(o2))
+        eq_(o3, {1, 2, 4, 7})
+
+    def test_copy(self):
+        o = util.OrderedSet([3, 2, 4, 5])
+        cp = o.copy()
+        is_instance_of(cp, util.OrderedSet)
+        eq_(o, cp)
+        o.add(42)
+        is_false(42 in cp)
+
+    def test_pickle(self):
+        o = util.OrderedSet([2, 4, 9, 42])
+        for loads, dumps in picklers():
+            l = loads(dumps(o))
+            is_instance_of(l, util.OrderedSet)
+            eq_(list(l), [2, 4, 9, 42])
 
 
 class ImmutableDictTest(fixtures.TestBase):
@@ -554,7 +684,6 @@ class ToListTest(fixtures.TestBase):
         eq_(util.to_list((1, 2, 3)), [1, 2, 3])
 
     def test_from_bytes(self):
-
         eq_(util.to_list(compat.b("abc")), [compat.b("abc")])
 
         eq_(
@@ -763,7 +892,6 @@ class ColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         assert "kcol2" in cc
 
     def test_dupes_add(self):
-
         c1, c2a, c3, c2b = (
             column("c1"),
             column("c2"),
@@ -797,7 +925,6 @@ class ColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         eq_(ci.keys(), ["c1", "c2", "c3", "c2"])
 
     def test_dupes_construct(self):
-
         c1, c2a, c3, c2b = (
             column("c1"),
             column("c2"),
@@ -828,7 +955,6 @@ class ColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         eq_(ci.keys(), ["c1", "c2", "c3", "c2"])
 
     def test_identical_dupe_construct(self):
-
         c1, c2, c3 = (column("c1"), column("c2"), column("c3"))
 
         cc = sql.ColumnCollection(
@@ -941,7 +1067,6 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         self._assert_collection_integrity(cc)
 
     def test_dupes_construct_dedupe(self):
-
         c1, c2a, c3, c2b = (
             column("c1"),
             column("c2"),
@@ -986,7 +1111,6 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         eq_(list(ci), [c1, c2, c3])
 
     def test_identical_dupe_construct_dedupes(self):
-
         c1, c2, c3 = (column("c1"), column("c2"), column("c3"))
 
         cc = DedupeColumnCollection(
@@ -1176,7 +1300,6 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         self._assert_collection_integrity(cc)
 
     def test_remove(self):
-
         c1, c2, c3 = column("c1"), column("c2"), column("c3")
 
         cc = DedupeColumnCollection(
@@ -1214,7 +1337,6 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         assert_raises(IndexError, lambda: ci[2])
 
     def test_remove_doesnt_change_iteration(self):
-
         c1, c2, c3, c4, c5 = (
             column("c1"),
             column("c2"),
@@ -1428,6 +1550,30 @@ class HashEqOverride:
             return self.value != other.value
         else:
             return True
+
+
+class MiscTest(fixtures.TestBase):
+    @testing.combinations(
+        (["one", "two", "three"], True),
+        (("one", "two", "three"), True),
+        ((), True),
+        ("four", False),
+        (252, False),
+        (Decimal("252"), False),
+        (b"four", False),
+        (iter("four"), True),
+        (b"", False),
+        ("", False),
+        (None, False),
+        ({"dict": "value"}, True),
+        ({}, True),
+        ({"set", "two"}, True),
+        (set(), True),
+        (util.immutabledict(), True),
+        (util.immutabledict({"key": "value"}), True),
+    )
+    def test_non_string_iterable_check(self, fixture, expected):
+        is_(is_non_string_iterable(fixture), expected)
 
 
 class IdentitySetTest(fixtures.TestBase):
@@ -2410,7 +2556,8 @@ class SymbolTest(fixtures.TestBase):
 
         with expect_raises_message(
             TypeError,
-            "Can't replace canonical symbol for fi_sym1 with new int value 2",
+            "Can't replace canonical symbol for 'fi_sym1' "
+            "with new int value 2",
         ):
 
             class Enum2(FastIntFlag):
@@ -2458,9 +2605,8 @@ class SymbolTest(fixtures.TestBase):
         s = pickle.dumps(sym1)
         pickle.loads(s)
 
-        for protocol in 0, 1, 2:
-            print(protocol)
-            serial = pickle.dumps(sym1)
+        for _, dumper in picklers():
+            serial = dumper(sym1)
             rt = pickle.loads(serial)
             assert rt is sym1
             assert rt is sym2
@@ -2797,7 +2943,6 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
         argnames="fn,wanted,grouped",
     )
     def test_specs(self, fn, wanted, grouped):
-
         # test direct function
         if grouped is None:
             parsed = util.format_argspec_plus(fn)

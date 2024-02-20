@@ -35,6 +35,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import provision
+from sqlalchemy.testing.assertions import is_false
 
 
 class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
@@ -104,7 +105,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         argnames="type_obj,ddl",
     )
     def test_assorted_types(self, metadata, connection, type_obj, ddl):
-
         table = Table("type_test", metadata, Column("col1", type_obj))
         table.create(connection)
 
@@ -318,7 +318,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         """test #6910"""
 
         with testing.db.connect() as c1, testing.db.connect() as c2:
-
             try:
                 with c1.begin():
                     c1.exec_driver_sql(
@@ -390,7 +389,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
     ):
         """test #8035"""
 
-        tname = f"##foo{random.randint(1,1000000)}"
+        tname = f"##foo{random.randint(1, 1000000)}"
 
         with temp_db_alt_collation_fixture.connect() as conn:
             conn.exec_driver_sql(f"CREATE TABLE {tname} (id int primary key)")
@@ -535,7 +534,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         )
 
     def test_indexes_cols(self, metadata, connection):
-
         t1 = Table("t", metadata, Column("x", Integer), Column("y", Integer))
         Index("foo", t1.c.x, t1.c.y)
         metadata.create_all(connection)
@@ -546,7 +544,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         eq_(set(list(t2.indexes)[0].columns), {t2.c["x"], t2.c.y})
 
     def test_indexes_cols_with_commas(self, metadata, connection):
-
         t1 = Table(
             "t",
             metadata,
@@ -562,7 +559,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         eq_(set(list(t2.indexes)[0].columns), {t2.c["x, col"], t2.c.y})
 
     def test_indexes_cols_with_spaces(self, metadata, connection):
-
         t1 = Table(
             "t",
             metadata,
@@ -578,7 +574,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         eq_(set(list(t2.indexes)[0].columns), {t2.c["x col"], t2.c.y})
 
     def test_indexes_with_filtered(self, metadata, connection):
-
         t1 = Table(
             "t",
             metadata,
@@ -659,6 +654,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         for ix in ind:
             if ix["dialect_options"]["mssql_clustered"]:
                 clustered_index = ix["name"]
+                is_false("mssql_columnstore" in ix["dialect_options"])
 
         eq_(clustered_index, "idx_x")
 
@@ -710,12 +706,149 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
 
         for ix in ind:
             assert ix["dialect_options"]["mssql_clustered"] == False
+            is_false("mssql_columnstore" in ix["dialect_options"])
 
         t2 = Table("t", MetaData(), autoload_with=connection)
         idx = list(sorted(t2.indexes, key=lambda idx: idx.name))[0]
 
         self.assert_compile(
             CreateIndex(idx), "CREATE NONCLUSTERED INDEX idx_x ON t (x)"
+        )
+
+    @testing.only_if("mssql>=12")
+    def test_index_reflection_colstore_clustered(self, metadata, connection):
+        t1 = Table(
+            "t",
+            metadata,
+            Column("id", Integer),
+            Column("x", types.String(20)),
+            Column("y", types.Integer),
+            Index("idx_x", mssql_clustered=True, mssql_columnstore=True),
+        )
+        Index("idx_y", t1.c.y)
+        metadata.create_all(connection)
+        ind = testing.db.dialect.get_indexes(connection, "t", None)
+
+        for ix in ind:
+            if ix["name"] == "idx_x":
+                is_true(ix["dialect_options"]["mssql_clustered"])
+                is_true(ix["dialect_options"]["mssql_columnstore"])
+                eq_(ix["dialect_options"]["mssql_include"], [])
+                eq_(ix["column_names"], [])
+            else:
+                is_false(ix["dialect_options"]["mssql_clustered"])
+                is_false("mssql_columnstore" in ix["dialect_options"])
+
+        t2 = Table("t", MetaData(), autoload_with=connection)
+        idx = list(sorted(t2.indexes, key=lambda idx: idx.name))[0]
+
+        self.assert_compile(
+            CreateIndex(idx), "CREATE CLUSTERED COLUMNSTORE INDEX idx_x ON t"
+        )
+
+    @testing.only_if("mssql>=11")
+    def test_index_reflection_colstore_nonclustered(
+        self, metadata, connection
+    ):
+        t1 = Table(
+            "t",
+            metadata,
+            Column("id", Integer),
+            Column("x", types.String(20)),
+            Column("y", types.Integer),
+        )
+        Index("idx_x", t1.c.x, mssql_clustered=False, mssql_columnstore=True)
+        Index("idx_y", t1.c.y)
+        metadata.create_all(connection)
+        ind = testing.db.dialect.get_indexes(connection, "t", None)
+
+        for ix in ind:
+            is_false(ix["dialect_options"]["mssql_clustered"])
+            if ix["name"] == "idx_x":
+                is_true(ix["dialect_options"]["mssql_columnstore"])
+                eq_(ix["dialect_options"]["mssql_include"], [])
+                eq_(ix["column_names"], ["x"])
+            else:
+                is_false("mssql_columnstore" in ix["dialect_options"])
+
+        t2 = Table("t", MetaData(), autoload_with=connection)
+        idx = list(sorted(t2.indexes, key=lambda idx: idx.name))[0]
+
+        self.assert_compile(
+            CreateIndex(idx),
+            "CREATE NONCLUSTERED COLUMNSTORE INDEX idx_x ON t (x)",
+        )
+
+    @testing.only_if("mssql>=11")
+    def test_index_reflection_colstore_nonclustered_none(
+        self, metadata, connection
+    ):
+        t1 = Table(
+            "t",
+            metadata,
+            Column("id", Integer),
+            Column("x", types.String(20)),
+            Column("y", types.Integer),
+        )
+        Index("idx_x", t1.c.x, mssql_columnstore=True)
+        Index("idx_y", t1.c.y)
+        metadata.create_all(connection)
+        ind = testing.db.dialect.get_indexes(connection, "t", None)
+
+        for ix in ind:
+            is_false(ix["dialect_options"]["mssql_clustered"])
+            if ix["name"] == "idx_x":
+                is_true(ix["dialect_options"]["mssql_columnstore"])
+                eq_(ix["dialect_options"]["mssql_include"], [])
+                eq_(ix["column_names"], ["x"])
+            else:
+                is_false("mssql_columnstore" in ix["dialect_options"])
+
+        t2 = Table("t", MetaData(), autoload_with=connection)
+        idx = list(sorted(t2.indexes, key=lambda idx: idx.name))[0]
+
+        self.assert_compile(
+            CreateIndex(idx),
+            "CREATE NONCLUSTERED COLUMNSTORE INDEX idx_x ON t (x)",
+        )
+
+    @testing.only_if("mssql>=11")
+    def test_index_reflection_colstore_nonclustered_multicol(
+        self, metadata, connection
+    ):
+        t1 = Table(
+            "t",
+            metadata,
+            Column("id", Integer),
+            Column("x", types.String(20)),
+            Column("y", types.Integer),
+        )
+        Index(
+            "idx_xid",
+            t1.c.x,
+            t1.c.id,
+            mssql_clustered=False,
+            mssql_columnstore=True,
+        )
+        Index("idx_y", t1.c.y)
+        metadata.create_all(connection)
+        ind = testing.db.dialect.get_indexes(connection, "t", None)
+
+        for ix in ind:
+            is_false(ix["dialect_options"]["mssql_clustered"])
+            if ix["name"] == "idx_xid":
+                is_true(ix["dialect_options"]["mssql_columnstore"])
+                eq_(ix["dialect_options"]["mssql_include"], [])
+                eq_(ix["column_names"], ["x", "id"])
+            else:
+                is_false("mssql_columnstore" in ix["dialect_options"])
+
+        t2 = Table("t", MetaData(), autoload_with=connection)
+        idx = list(sorted(t2.indexes, key=lambda idx: idx.name))[0]
+
+        self.assert_compile(
+            CreateIndex(idx),
+            "CREATE NONCLUSTERED COLUMNSTORE INDEX idx_xid ON t (x, id)",
         )
 
     def test_primary_key_reflection_clustered(self, metadata, connection):
@@ -895,10 +1028,13 @@ class ReflectHugeViewTest(fixtures.TablesTest):
                 for i in range(col_num)
             ],
         )
-        cls.view_str = (
-            view_str
-        ) = "CREATE VIEW huge_named_view AS SELECT %s FROM base_table" % (
-            ",".join("long_named_column_number_%d" % i for i in range(col_num))
+        cls.view_str = view_str = (
+            "CREATE VIEW huge_named_view AS SELECT %s FROM base_table"
+            % (
+                ",".join(
+                    "long_named_column_number_%d" % i for i in range(col_num)
+                )
+            )
         )
         assert len(view_str) > 4000
 
@@ -1047,7 +1183,6 @@ class IdentityReflectionTest(fixtures.TablesTest):
 
     @classmethod
     def define_tables(cls, metadata):
-
         for i, col in enumerate(
             [
                 Column(
@@ -1064,7 +1199,11 @@ class IdentityReflectionTest(fixtures.TablesTest):
                     ),
                 ),
                 Column("id2", Integer, Identity()),
-                Column("id3", sqltypes.BigInteger, Identity()),
+                Column(
+                    "id3",
+                    sqltypes.BigInteger,
+                    Identity(start=-9223372036854775808),
+                ),
                 Column("id4", sqltypes.SmallInteger, Identity()),
                 Column("id5", sqltypes.Numeric, Identity()),
             ]
@@ -1086,7 +1225,10 @@ class IdentityReflectionTest(fixtures.TablesTest):
                 eq_(type(col["identity"]["start"]), int)
                 eq_(type(col["identity"]["increment"]), int)
             elif col["name"] == "id3":
-                eq_(col["identity"], {"start": 1, "increment": 1})
+                eq_(
+                    col["identity"],
+                    {"start": -9223372036854775808, "increment": 1},
+                )
                 eq_(type(col["identity"]["start"]), int)
                 eq_(type(col["identity"]["increment"]), int)
             elif col["name"] == "id4":

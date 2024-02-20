@@ -1,6 +1,9 @@
+import logging.handlers
+
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import literal_column
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -10,7 +13,6 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
-from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -52,7 +54,6 @@ class _NodeTest:
 
     @classmethod
     def setup_mappers(cls):
-
         nodes = cls.tables.nodes
         Node = cls.classes.Node
 
@@ -182,7 +183,6 @@ class DeepRecursiveTest(_NodeTest, fixtures.MappedTest):
 
     @testing.fixture
     def limited_cache_conn(self, connection):
-
         connection.engine._compiled_cache.clear()
 
         assert_limit = 0
@@ -259,12 +259,27 @@ class DeepRecursiveTest(_NodeTest, fixtures.MappedTest):
                 result = s.scalars(stmt)
                 self._assert_depth(result.one(), 200)
 
+    @testing.fixture
+    def capture_log(self, testing_engine):
+        existing_level = logging.getLogger("sqlalchemy.engine").level
+
+        buf = logging.handlers.BufferingHandler(100)
+        logging.getLogger("sqlalchemy.engine").addHandler(buf)
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+        yield buf
+        logging.getLogger("sqlalchemy.engine").setLevel(existing_level)
+        logging.getLogger("sqlalchemy.engine").removeHandler(buf)
+
     @testing.combinations(selectinload, immediateload, argnames="loader_fn")
     @testing.combinations(4, 9, 12, 25, 41, 55, argnames="depth")
+    @testing.variation("disable_cache", [True, False])
     def test_warning_w_no_recursive_opt(
-        self, loader_fn, depth, limited_cache_conn
+        self, loader_fn, depth, limited_cache_conn, disable_cache, capture_log
     ):
+        buf = capture_log
+
         connection = limited_cache_conn(27)
+        connection._echo = True
 
         Node = self.classes.Node
 
@@ -275,21 +290,37 @@ class DeepRecursiveTest(_NodeTest, fixtures.MappedTest):
                 .options(self._stack_loaders(loader_fn, depth))
             )
 
-            # note this is a magic number, it's not important that it's exact,
-            # just that when someone makes a huge recursive thing,
-            # it warns
-            if depth > 8:
-                with expect_warnings(
-                    "Loader depth for query is excessively deep; "
-                    "caching will be disabled for additional loaders."
-                ):
-                    with Session(connection) as s:
-                        result = s.scalars(stmt)
-                        self._assert_depth(result.one(), depth)
+            if disable_cache:
+                exec_opts = dict(compiled_cache=None)
             else:
-                with Session(connection) as s:
-                    result = s.scalars(stmt)
-                    self._assert_depth(result.one(), depth)
+                exec_opts = {}
+
+            with Session(connection) as s:
+                result = s.scalars(stmt, execution_options=exec_opts)
+                self._assert_depth(result.one(), depth)
+
+            if not disable_cache:
+                # note this is a magic number, it's not important that it's
+                # exact, just that when someone makes a huge recursive thing,
+                # it disables caching and notes in the logs
+                if depth > 8:
+                    eq_(
+                        buf.buffer[-1].message[0:55],
+                        "[caching disabled (excess depth for "
+                        "ORM loader options)",
+                    )
+                else:
+                    assert buf.buffer[-1].message.startswith(
+                        "[cached since" if i > 0 else "[generated in"
+                    )
+
+        if disable_cache:
+            clen = len(connection.engine._compiled_cache)
+            assert clen == 0
+            # limited_cache_conn wants to confirm the cache was used,
+            # so popualte in the case that we know we didn't use it
+            connection.execute(select(1))
+            connection.execute(select(1).where(literal_column("1") == 1))
 
 
 # TODO:

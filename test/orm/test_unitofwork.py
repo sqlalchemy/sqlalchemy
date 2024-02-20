@@ -1,6 +1,7 @@
 """Tests unitofwork operations."""
 
 import datetime
+import re
 
 import sqlalchemy as sa
 from sqlalchemy import Boolean
@@ -30,6 +31,8 @@ from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
+from sqlalchemy.testing.entities import BasicEntity
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.provision import normalize_sequence
 from sqlalchemy.testing.schema import Column
@@ -208,10 +211,10 @@ class UnicodeSchemaTest(fixtures.MappedTest):
     def test_mapping(self):
         t2, t1 = self.tables.t2, self.tables.t1
 
-        class A(fixtures.ComparableEntity):
+        class A(ComparableEntity):
             pass
 
-        class B(fixtures.ComparableEntity):
+        class B(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(
@@ -250,7 +253,7 @@ class UnicodeSchemaTest(fixtures.MappedTest):
     def test_inheritance_mapping(self):
         t2, t1 = self.tables.t2, self.tables.t1
 
-        class A(fixtures.ComparableEntity):
+        class A(ComparableEntity):
             pass
 
         class B(A):
@@ -1029,12 +1032,11 @@ class ColumnCollisionTest(fixtures.MappedTest):
     def test_naming(self):
         book = self.tables.book
 
-        class Book(fixtures.ComparableEntity):
+        class Book(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(Book, book)
         with fixture_session() as sess:
-
             b1 = Book(book_id="abc", title="def")
             sess.add(b1)
             sess.flush()
@@ -1147,9 +1149,9 @@ class DefaultTest(fixtures.MappedTest):
         mp = self.mapper_registry.map_imperatively(
             Hoho,
             default_t,
-            eager_defaults="auto"
-            if eager_defaults.auto
-            else bool(eager_defaults),
+            eager_defaults=(
+                "auto" if eager_defaults.auto else bool(eager_defaults)
+            ),
         )
 
         h1 = Hoho(hoho=althohoval)
@@ -1467,7 +1469,6 @@ class ColumnPropertyTest(fixtures.MappedTest):
         Data = self.classes.Data
 
         with fixture_session() as sess:
-
             d1 = Data(a="hello", b="there")
             sess.add(d1)
             sess.flush()
@@ -1910,7 +1911,7 @@ class SaveTest(_fixtures.FixtureTest):
     def test_synonym(self):
         users = self.tables.users
 
-        class SUser(fixtures.BasicEntity):
+        class SUser(BasicEntity):
             def _get_name(self):
                 return "User:" + self.name
 
@@ -2298,7 +2299,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
             testing.db,
             session.flush,
             CompiledSQL(
-                "INSERT INTO users (name) " "VALUES (:name)",
+                "INSERT INTO users (name) VALUES (:name)",
                 {"name": "imnewlyadded"},
             ),
             AllOf(
@@ -2615,7 +2616,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
                 {"description": "item4updated", "items_id": objects[4].id},
             ),
             CompiledSQL(
-                "INSERT INTO keywords (name) " "VALUES (:name)",
+                "INSERT INTO keywords (name) VALUES (:name)",
                 {"name": "yellow"},
             ),
             CompiledSQL(
@@ -2774,7 +2775,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
             self.classes.Item,
         )
 
-        class IKAssociation(fixtures.ComparableEntity):
+        class IKAssociation(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(Keyword, keywords)
@@ -3027,7 +3028,7 @@ class BooleanColTest(fixtures.MappedTest):
         t1_t = self.tables.t1_t
 
         # use the regular mapper
-        class T(fixtures.ComparableEntity):
+        class T(ComparableEntity):
             pass
 
         self.mapper_registry.map_imperatively(T, t1_t)
@@ -3415,7 +3416,7 @@ class InheritingRowSwitchTest(fixtures.MappedTest):
             # sync operation during _save_obj().update, this is safe to remove
             # again.
             CompiledSQL(
-                "UPDATE child SET pid=:pid " "WHERE child.cid = :child_cid",
+                "UPDATE child SET pid=:pid WHERE child.cid = :child_cid",
                 {"pid": 1, "child_cid": 1},
             ),
         )
@@ -3513,14 +3514,15 @@ class PartialNullPKTest(fixtures.MappedTest):
 class NoRowInsertedTest(fixtures.TestBase):
     """test #7594.
 
-    failure modes when INSERT doesnt actually insert a row.
+    failure modes when INSERT doesn't actually insert a row.
+    s
     """
 
-    __backend__ = True
-
     # the test manipulates INSERTS to become UPDATES to simulate
-    # "INSERT that returns no row" so both are needed
-    __requires__ = ("insert_returning", "update_returning")
+    # "INSERT that returns no row" so both are needed; the manipulations
+    # are currently postgresql or SQLite specific
+    __backend__ = True
+    __only_on__ = ("postgresql", "sqlite")
 
     @testing.fixture
     def null_server_default_fixture(self, registry, connection):
@@ -3537,30 +3539,35 @@ class NoRowInsertedTest(fixtures.TestBase):
         def revert_insert(
             conn, cursor, statement, parameters, context, executemany
         ):
-            if statement.startswith("INSERT"):
-                if statement.endswith("RETURNING my_table.id"):
-                    if executemany and isinstance(parameters, list):
-                        # remove some rows, so the count is wrong
-                        parameters = parameters[0:1]
-                    else:
-                        # statement should return no rows
-                        statement = (
-                            "UPDATE my_table SET id=NULL WHERE 1!=1 "
-                            "RETURNING my_table.id"
-                        )
-                        parameters = {}
+            if re.match(r"INSERT.* RETURNING (?:my_table.)?id", statement):
+                if executemany and isinstance(parameters, list):
+                    # remove some rows, so the count is wrong
+                    parameters = parameters[0:1]
                 else:
-                    assert not testing.against(
-                        "postgresql"
-                    ), "this test has to at least run on PostgreSQL"
-                    testing.config.skip_test(
-                        "backend doesn't support the expected form of "
-                        "RETURNING for this test to work"
+                    # statement should return no rows
+                    statement = (
+                        "UPDATE my_table SET id=NULL WHERE 1!=1 "
+                        "RETURNING my_table.id"
                     )
+                    parameters = {}
+            else:
+                assert not testing.against(
+                    "postgresql"
+                ), "this test has to at least run on PostgreSQL"
+                testing.config.skip_test(
+                    "backend doesn't support the expected form of "
+                    "RETURNING for this test to work"
+                )
+
             return statement, parameters
 
         return MyClass
 
+    @testing.only_on(
+        "postgresql",
+        "only postgresql uses RETURNING for a single-row "
+        "INSERT among the DBs we are using in this test",
+    )
     def test_insert_single_no_pk_correct_exception(
         self, null_server_default_fixture, connection
     ):

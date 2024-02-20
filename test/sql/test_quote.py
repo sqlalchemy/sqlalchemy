@@ -530,7 +530,6 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_subquery_four(self):
-
         # Not lower case names, quotes off, should not quote
         metadata = MetaData()
         t1 = Table(
@@ -822,7 +821,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         # what if table/schema *are* quoted?
         self.assert_compile(
             t1.select().set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
-            "SELECT " "Foo.T1.Col1 AS Foo_T1_Col1 " "FROM " "Foo.T1",
+            "SELECT Foo.T1.Col1 AS Foo_T1_Col1 FROM Foo.T1",
         )
 
     def test_quote_flag_propagate_check_constraint(self):
@@ -831,7 +830,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         CheckConstraint(t.c.x > 5)
         self.assert_compile(
             schema.CreateTable(t),
-            "CREATE TABLE t (" '"x" INTEGER, ' 'CHECK ("x" > 5)' ")",
+            'CREATE TABLE t ("x" INTEGER, CHECK ("x" > 5))',
         )
 
     def test_quote_flag_propagate_index(self):
@@ -859,7 +858,6 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class PreparerTest(fixtures.TestBase):
-
     """Test the db-agnostic quoting services of IdentifierPreparer."""
 
     def test_unformat(self):

@@ -238,7 +238,7 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
 
         asserter.assert_(
             CompiledSQL(
-                "UPDATE users SET name=:name WHERE " "users.id = :users_id",
+                "UPDATE users SET name=:name WHERE users.id = :users_id",
                 [
                     {"users_id": 1, "name": "u1new"},
                     {"users_id": 2, "name": "u2"},
@@ -1009,7 +1009,6 @@ class BulkIssue6793Test(BulkTest, fixtures.DeclarativeMappedTest):
         session = fixture_session()
 
         with self.sql_execution_asserter() as asserter:
-
             session.bulk_save_objects([User(name="A"), User(name="B")])
 
             session.add(User(name="C"))

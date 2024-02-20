@@ -44,7 +44,10 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_none
+from sqlalchemy.testing import is_not_none
 from sqlalchemy.testing.assertions import expect_raises_message
+from sqlalchemy.testing.entities import ComparableEntity  # noqa
 from sqlalchemy.testing.entities import ComparableMixin  # noqa
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -203,7 +206,11 @@ class AutoFlushTest(fixtures.MappedTest):
             collection[obj.name] = obj
 
         self._test_premature_flush(
-            collections.attribute_keyed_dict("name"), set_, is_dict=True
+            collections.attribute_keyed_dict(
+                "name", ignore_unpopulated_attribute=True
+            ),
+            set_,
+            is_dict=True,
         )
 
 
@@ -744,7 +751,6 @@ class SetTest(_CollectionOperations):
             {"e", "f", "g"},
             set(),
         ):
-
             eq_(p1.children.union(other), control.union(other))
             eq_(p1.children.difference(other), control.difference(other))
             eq_((p1.children - other), (control - other))
@@ -1098,6 +1104,64 @@ class ScalarTest(fixtures.MappedTest):
         p2 = Parent("p2")
         p2.bar = "quux"
 
+    def test_scalar_opts_exclusive(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            "The cascade_scalar_deletes and create_on_none_assignment "
+            "parameters are mutually exclusive.",
+        ):
+            association_proxy(
+                "a",
+                "b",
+                cascade_scalar_deletes=True,
+                create_on_none_assignment=True,
+            )
+
+    @testing.variation("create_on_none", [True, False])
+    @testing.variation("specify_creator", [True, False])
+    def test_create_on_set_none(
+        self, create_on_none, specify_creator, decl_base
+    ):
+        class A(decl_base):
+            __tablename__ = "a"
+            id = mapped_column(Integer, primary_key=True)
+            b_id = mapped_column(ForeignKey("b.id"))
+            b = relationship("B")
+
+            if specify_creator:
+                b_data = association_proxy(
+                    "b",
+                    "data",
+                    create_on_none_assignment=bool(create_on_none),
+                    creator=lambda data: B(data=data),
+                )
+            else:
+                b_data = association_proxy(
+                    "b", "data", create_on_none_assignment=bool(create_on_none)
+                )
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id = mapped_column(Integer, primary_key=True)
+            data = mapped_column(String)
+
+            def __init__(self, data=None):
+                self.data = data
+
+        a1 = A()
+        is_none(a1.b)
+        a1.b_data = None
+
+        if create_on_none:
+            is_not_none(a1.b)
+        else:
+            is_none(a1.b)
+
+        a1.b_data = "data"
+
+        a1.b_data = None
+        is_not_none(a1.b)
+
     @testing.provide_metadata
     def test_empty_scalars(self):
         metadata = self.metadata
@@ -1190,7 +1254,6 @@ class ScalarTest(fixtures.MappedTest):
 class LazyLoadTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-
         Table(
             "Parent",
             metadata,
@@ -2369,7 +2432,6 @@ class DictOfTupleUpdateTest(fixtures.MappedTest):
         cls.mapper_registry.map_imperatively(B, b)
 
     def test_update_one_elem_dict(self):
-
         a1 = self.classes.A()
         a1.elements.update({("B", 3): "elem2"})
         eq_(a1.elements, {("B", 3): "elem2"})
@@ -2450,7 +2512,7 @@ class CompositeAccessTest(fixtures.DeclarativeMappedTest):
                 creator=lambda point: PointData(point=point),
             )
 
-        class PointData(fixtures.ComparableEntity, cls.DeclarativeBasic):
+        class PointData(ComparableEntity, cls.DeclarativeBasic):
             __tablename__ = "point"
 
             id = Column(
@@ -2710,6 +2772,7 @@ class ScalarRemoveTest:
     useobject = None
     cascade_scalar_deletes = None
     uselist = None
+    create_on_none_assignment = False
 
     @classmethod
     def setup_classes(cls):
@@ -2724,6 +2787,7 @@ class ScalarRemoveTest:
                 "b",
                 creator=lambda b: AB(b=b),
                 cascade_scalar_deletes=cls.cascade_scalar_deletes,
+                create_on_none_assignment=cls.create_on_none_assignment,
             )
 
         if cls.useobject:
@@ -2792,7 +2856,12 @@ class ScalarRemoveTest:
 
         a1.b = None
 
-        assert a1.ab is None
+        if self.create_on_none_assignment:
+            assert isinstance(a1.ab, AB)
+            assert a1.ab is not None
+            eq_(a1.ab.b, None)
+        else:
+            assert a1.ab is None
 
     def test_del_already_nonpresent(self):
         if self.useobject:
@@ -2880,7 +2949,6 @@ class ScalarRemoveTest:
 class ScalarRemoveListObjectCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
-
     run_create_tables = None
     useobject = True
     cascade_scalar_deletes = True
@@ -2890,7 +2958,6 @@ class ScalarRemoveListObjectCascade(
 class ScalarRemoveScalarObjectCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
-
     run_create_tables = None
     useobject = True
     cascade_scalar_deletes = True
@@ -2900,7 +2967,6 @@ class ScalarRemoveScalarObjectCascade(
 class ScalarRemoveListScalarCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
-
     run_create_tables = None
     useobject = False
     cascade_scalar_deletes = True
@@ -2910,7 +2976,6 @@ class ScalarRemoveListScalarCascade(
 class ScalarRemoveScalarScalarCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
-
     run_create_tables = None
     useobject = False
     cascade_scalar_deletes = True
@@ -2920,7 +2985,6 @@ class ScalarRemoveScalarScalarCascade(
 class ScalarRemoveListObjectNoCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
-
     run_create_tables = None
     useobject = True
     cascade_scalar_deletes = False
@@ -2930,27 +2994,36 @@ class ScalarRemoveListObjectNoCascade(
 class ScalarRemoveScalarObjectNoCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
-
     run_create_tables = None
     useobject = True
     cascade_scalar_deletes = False
     uselist = False
 
 
+class ScalarRemoveScalarObjectNoCascadeNoneAssign(
+    ScalarRemoveScalarObjectNoCascade
+):
+    create_on_none_assignment = True
+
+
 class ScalarRemoveListScalarNoCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
-
     run_create_tables = None
     useobject = False
     cascade_scalar_deletes = False
     uselist = True
 
 
+class ScalarRemoveListScalarNoCascadeNoneAssign(
+    ScalarRemoveScalarObjectNoCascade
+):
+    create_on_none_assignment = True
+
+
 class ScalarRemoveScalarScalarNoCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
-
     run_create_tables = None
     useobject = False
     cascade_scalar_deletes = False
@@ -3517,7 +3590,6 @@ class ProxyPlainPropertyTest(fixtures.DeclarativeMappedTest):
 
     @classmethod
     def setup_classes(cls):
-
         Base = cls.DeclarativeBasic
 
         class A(Base):
@@ -3758,11 +3830,11 @@ class DeclOrmForms(fixtures.TestBase):
 
             id: Mapped[int] = mapped_column(primary_key=True)
 
-            user_keyword_associations: Mapped[
-                List[UserKeywordAssociation]
-            ] = relationship(
-                back_populates="user",
-                cascade="all, delete-orphan",
+            user_keyword_associations: Mapped[List[UserKeywordAssociation]] = (
+                relationship(
+                    back_populates="user",
+                    cascade="all, delete-orphan",
+                )
             )
 
             keywords: AssociationProxy[list[str]] = association_proxy(
@@ -3814,12 +3886,12 @@ class DeclOrmForms(fixtures.TestBase):
                 primary_key=True, repr=True, init=False
             )
 
-            user_keyword_associations: Mapped[
-                List[UserKeywordAssociation]
-            ] = relationship(
-                back_populates="user",
-                cascade="all, delete-orphan",
-                init=False,
+            user_keyword_associations: Mapped[List[UserKeywordAssociation]] = (
+                relationship(
+                    back_populates="user",
+                    cascade="all, delete-orphan",
+                    init=False,
+                )
             )
 
             if embed_in_field:

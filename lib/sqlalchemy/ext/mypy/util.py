@@ -1,5 +1,5 @@
 # ext/mypy/util.py
-# Copyright (C) 2021-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2021-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -19,6 +19,8 @@ from typing import Type as TypingType
 from typing import TypeVar
 from typing import Union
 
+from mypy import version
+from mypy.messages import format_type as _mypy_format_type
 from mypy.nodes import CallExpr
 from mypy.nodes import ClassDef
 from mypy.nodes import CLASSDEF_NO_INFO
@@ -33,6 +35,7 @@ from mypy.nodes import Statement
 from mypy.nodes import SymbolTableNode
 from mypy.nodes import TypeAlias
 from mypy.nodes import TypeInfo
+from mypy.options import Options
 from mypy.plugin import ClassDefContext
 from mypy.plugin import DynamicClassDefContext
 from mypy.plugin import SemanticAnalyzerPluginInterface
@@ -46,6 +49,11 @@ from mypy.types import Type
 from mypy.types import TypeVarType
 from mypy.types import UnboundType
 from mypy.types import UnionType
+
+_vers = tuple(
+    [int(x) for x in version.__version__.split(".") if re.match(r"^\d+$", x)]
+)
+mypy_14 = _vers >= (1, 4)
 
 
 _TArgType = TypeVar("_TArgType", bound=Union[CallExpr, NameExpr])
@@ -163,6 +171,13 @@ def get_mapped_attributes(
     return attributes
 
 
+def format_type(typ_: Type, options: Options) -> str:
+    if mypy_14:
+        return _mypy_format_type(typ_, options)
+    else:
+        return _mypy_format_type(typ_)  # type: ignore
+
+
 def set_mapped_attributes(
     info: TypeInfo, attributes: List[SQLAlchemyAttribute]
 ) -> None:
@@ -197,8 +212,7 @@ def add_global(
 @overload
 def get_callexpr_kwarg(
     callexpr: CallExpr, name: str, *, expr_types: None = ...
-) -> Optional[Union[CallExpr, NameExpr]]:
-    ...
+) -> Optional[Union[CallExpr, NameExpr]]: ...
 
 
 @overload
@@ -207,8 +221,7 @@ def get_callexpr_kwarg(
     name: str,
     *,
     expr_types: Tuple[TypingType[_TArgType], ...],
-) -> Optional[_TArgType]:
-    ...
+) -> Optional[_TArgType]: ...
 
 
 def get_callexpr_kwarg(
@@ -300,9 +313,11 @@ def unbound_to_instance(
         return Instance(
             bound_type,
             [
-                unbound_to_instance(api, arg)
-                if isinstance(arg, UnboundType)
-                else arg
+                (
+                    unbound_to_instance(api, arg)
+                    if isinstance(arg, UnboundType)
+                    else arg
+                )
                 for arg in typ.args
             ],
         )

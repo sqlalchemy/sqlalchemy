@@ -1,5 +1,5 @@
 # event/legacy.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -72,7 +72,6 @@ def _wrap_fn_for_legacy(
         if len(argnames) == len(argspec.args) and has_kw is bool(
             argspec.varkw
         ):
-
             formatted_def = "def %s(%s%s)" % (
                 dispatch_collection.name,
                 ", ".join(dispatch_collection.arg_names),
@@ -148,9 +147,9 @@ def _standard_listen_example(
     )
 
     text %= {
-        "current_since": " (arguments as of %s)" % current_since
-        if current_since
-        else "",
+        "current_since": (
+            " (arguments as of %s)" % current_since if current_since else ""
+        ),
         "event_name": fn.__name__,
         "has_kw_arguments": ", **kw" if dispatch_collection.has_kw else "",
         "named_event_arguments": ", ".join(dispatch_collection.arg_names),
@@ -178,9 +177,9 @@ def _legacy_listen_examples(
             % {
                 "since": since,
                 "event_name": fn.__name__,
-                "has_kw_arguments": " **kw"
-                if dispatch_collection.has_kw
-                else "",
+                "has_kw_arguments": (
+                    " **kw" if dispatch_collection.has_kw else ""
+                ),
                 "named_event_arguments": ", ".join(args),
                 "sample_target": sample_target,
             }

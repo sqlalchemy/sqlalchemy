@@ -1,5 +1,3 @@
-# PYTHON_VERSION>=3.7
-
 from __future__ import annotations
 
 from dataclasses import dataclass

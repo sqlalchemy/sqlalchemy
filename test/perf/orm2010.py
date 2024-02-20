@@ -100,7 +100,6 @@ def runit_persist(status, factor=1, query_runs=5):
 
 
 def runit_query_runs(status, factor=1, query_runs=5):
-
     # do some heavier reading
     for i in range(query_runs):
         status("Heavy query run #%d" % (i + 1))
@@ -150,14 +149,12 @@ def run_with_profile(runsnake=False, dump=False):
     print("Total cpu seconds: %.2f" % stats.total_tt)
     print(
         "Total execute calls: %d"
-        % counts_by_methname[
-            "<method 'execute' of 'sqlite3.Cursor' " "objects>"
-        ]
+        % counts_by_methname["<method 'execute' of 'sqlite3.Cursor' objects>"]
     )
     print(
         "Total executemany calls: %d"
         % counts_by_methname.get(
-            "<method 'executemany' of 'sqlite3.Cursor' " "objects>", 0
+            "<method 'executemany' of 'sqlite3.Cursor' objects>", 0
         )
     )
 

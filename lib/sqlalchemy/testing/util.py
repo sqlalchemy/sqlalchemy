@@ -1,5 +1,5 @@
 # testing/util.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -59,7 +59,7 @@ def picklers():
 
     # yes, this thing needs this much testing
     for pickle_ in picklers:
-        for protocol in range(-2, pickle.HIGHEST_PROTOCOL):
+        for protocol in range(-2, pickle.HIGHEST_PROTOCOL + 1):
             yield pickle_.loads, lambda d: pickle_.dumps(d, protocol)
 
 
@@ -122,7 +122,6 @@ def all_partial_orderings(tuples, elements):
         edges[child].add(parent)
 
     def _all_orderings(elements):
-
         if len(elements) == 1:
             yield list(elements)
         else:
@@ -217,22 +216,21 @@ def provide_metadata(fn, *args, **kw):
         # we have to hardcode some of that cleanup ahead of time.
 
         # close ORM sessions
-        fixtures._close_all_sessions()
+        fixtures.close_all_sessions()
 
         # integrate with the "connection" fixture as there are many
         # tests where it is used along with provide_metadata
-        if fixtures._connection_fixture_connection:
+        cfc = fixtures.base._connection_fixture_connection
+        if cfc:
             # TODO: this warning can be used to find all the places
             # this is used with connection fixture
             # warn("mixing legacy provide metadata with connection fixture")
-            drop_all_tables_from_metadata(
-                metadata, fixtures._connection_fixture_connection
-            )
+            drop_all_tables_from_metadata(metadata, cfc)
             # as the provide_metadata fixture is often used with "testing.db",
             # when we do the drop we have to commit the transaction so that
             # the DB is actually updated as the CREATE would have been
             # committed
-            fixtures._connection_fixture_connection.get_transaction().commit()
+            cfc.get_transaction().commit()
         else:
             drop_all_tables_from_metadata(metadata, config.db)
         self.metadata = prev_meta
@@ -325,7 +323,6 @@ def metadata_fixture(ddl="function"):
 
     def decorate(fn):
         def run_ddl(self):
-
             metadata = self.metadata = schema.MetaData()
             try:
                 result = fn(self, metadata)
@@ -349,7 +346,6 @@ def force_drop_names(*names):
 
     @decorator
     def go(fn, *args, **kw):
-
         try:
             return fn(*args, **kw)
         finally:
@@ -403,7 +399,6 @@ def drop_all_tables(
     consider_schemas=(None,),
     include_names=None,
 ):
-
     if include_names is not None:
         include_names = set(include_names)
 

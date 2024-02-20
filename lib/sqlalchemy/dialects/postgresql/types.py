@@ -1,26 +1,54 @@
-# Copyright (C) 2013-2023 the SQLAlchemy authors and contributors
+# dialects/postgresql/types.py
+# Copyright (C) 2013-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
+from __future__ import annotations
 
 import datetime as dt
+from typing import Any
+from typing import Optional
+from typing import overload
+from typing import Type
+from typing import TYPE_CHECKING
+from uuid import UUID as _python_UUID
 
 from ...sql import sqltypes
+from ...sql import type_api
+from ...util.typing import Literal
 
+if TYPE_CHECKING:
+    from ...engine.interfaces import Dialect
+    from ...sql.operators import OperatorType
+    from ...sql.type_api import _LiteralProcessorType
+    from ...sql.type_api import TypeEngine
 
 _DECIMAL_TYPES = (1231, 1700)
 _FLOAT_TYPES = (700, 701, 1021, 1022)
 _INT_TYPES = (20, 21, 23, 26, 1005, 1007, 1016)
 
 
-class PGUuid(sqltypes.UUID):
+class PGUuid(sqltypes.UUID[sqltypes._UUID_RETURN]):
     render_bind_cast = True
     render_literal_cast = True
 
+    if TYPE_CHECKING:
 
-class BYTEA(sqltypes.LargeBinary[bytes]):
+        @overload
+        def __init__(
+            self: PGUuid[_python_UUID], as_uuid: Literal[True] = ...
+        ) -> None: ...
+
+        @overload
+        def __init__(
+            self: PGUuid[str], as_uuid: Literal[False] = ...
+        ) -> None: ...
+
+        def __init__(self, as_uuid: bool = True) -> None: ...
+
+
+class BYTEA(sqltypes.LargeBinary):
     __visit_name__ = "BYTEA"
 
 
@@ -53,7 +81,6 @@ PGMacAddr8 = MACADDR8
 
 
 class MONEY(sqltypes.TypeEngine[str]):
-
     r"""Provide the PostgreSQL MONEY type.
 
     Depending on driver, result rows using this type may return a
@@ -64,12 +91,15 @@ class MONEY(sqltypes.TypeEngine[str]):
 
         import re
         import decimal
+        from sqlalchemy import Dialect
         from sqlalchemy import TypeDecorator
 
         class NumericMoney(TypeDecorator):
             impl = MONEY
 
-            def process_result_value(self, value: Any, dialect: Any) -> None:
+            def process_result_value(
+                self, value: Any, dialect: Dialect
+            ) -> None:
                 if value is not None:
                     # adjust this for the currency and numeric
                     m = re.match(r"\$([\d.]+)", value)
@@ -98,18 +128,12 @@ class MONEY(sqltypes.TypeEngine[str]):
 
 
 class OID(sqltypes.TypeEngine[int]):
-
-    """Provide the PostgreSQL OID type.
-
-    .. versionadded:: 0.9.5
-
-    """
+    """Provide the PostgreSQL OID type."""
 
     __visit_name__ = "OID"
 
 
 class REGCONFIG(sqltypes.TypeEngine[str]):
-
     """Provide the PostgreSQL REGCONFIG type.
 
     .. versionadded:: 2.0.0rc1
@@ -120,7 +144,6 @@ class REGCONFIG(sqltypes.TypeEngine[str]):
 
 
 class TSQUERY(sqltypes.TypeEngine[str]):
-
     """Provide the PostgreSQL TSQUERY type.
 
     .. versionadded:: 2.0.0rc1
@@ -131,7 +154,6 @@ class TSQUERY(sqltypes.TypeEngine[str]):
 
 
 class REGCLASS(sqltypes.TypeEngine[str]):
-
     """Provide the PostgreSQL REGCLASS type.
 
     .. versionadded:: 1.2.7
@@ -142,12 +164,13 @@ class REGCLASS(sqltypes.TypeEngine[str]):
 
 
 class TIMESTAMP(sqltypes.TIMESTAMP):
-
     """Provide the PostgreSQL TIMESTAMP type."""
 
     __visit_name__ = "TIMESTAMP"
 
-    def __init__(self, timezone=False, precision=None):
+    def __init__(
+        self, timezone: bool = False, precision: Optional[int] = None
+    ) -> None:
         """Construct a TIMESTAMP.
 
         :param timezone: boolean value if timezone present, default False
@@ -161,12 +184,13 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
 
 
 class TIME(sqltypes.TIME):
-
     """PostgreSQL TIME type."""
 
     __visit_name__ = "TIME"
 
-    def __init__(self, timezone=False, precision=None):
+    def __init__(
+        self, timezone: bool = False, precision: Optional[int] = None
+    ) -> None:
         """Construct a TIME.
 
         :param timezone: boolean value if timezone present, default False
@@ -179,14 +203,15 @@ class TIME(sqltypes.TIME):
         self.precision = precision
 
 
-class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
-
+class INTERVAL(type_api.NativeForEmulated, sqltypes._AbstractInterval):
     """PostgreSQL INTERVAL type."""
 
     __visit_name__ = "INTERVAL"
     native = True
 
-    def __init__(self, precision=None, fields=None):
+    def __init__(
+        self, precision: Optional[int] = None, fields: Optional[str] = None
+    ) -> None:
         """Construct an INTERVAL.
 
         :param precision: optional integer precision value
@@ -201,19 +226,29 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
         self.fields = fields
 
     @classmethod
-    def adapt_emulated_to_native(cls, interval, **kw):
+    def adapt_emulated_to_native(
+        cls, interval: sqltypes.Interval, **kw: Any  # type: ignore[override]
+    ) -> INTERVAL:
         return INTERVAL(precision=interval.second_precision)
 
     @property
-    def _type_affinity(self):
+    def _type_affinity(self) -> Type[sqltypes.Interval]:
         return sqltypes.Interval
 
-    def as_generic(self, allow_nulltype=False):
+    def as_generic(self, allow_nulltype: bool = False) -> sqltypes.Interval:
         return sqltypes.Interval(native=True, second_precision=self.precision)
 
     @property
-    def python_type(self):
+    def python_type(self) -> Type[dt.timedelta]:
         return dt.timedelta
+
+    def literal_processor(
+        self, dialect: Dialect
+    ) -> Optional[_LiteralProcessorType[dt.timedelta]]:
+        def process(value: dt.timedelta) -> str:
+            return f"make_interval(secs=>{value.total_seconds()})"
+
+        return process
 
 
 PGInterval = INTERVAL
@@ -222,13 +257,15 @@ PGInterval = INTERVAL
 class BIT(sqltypes.TypeEngine[int]):
     __visit_name__ = "BIT"
 
-    def __init__(self, length=None, varying=False):
-        if not varying:
+    def __init__(
+        self, length: Optional[int] = None, varying: bool = False
+    ) -> None:
+        if varying:
+            # BIT VARYING can be unlimited-length, so no default
+            self.length = length
+        else:
             # BIT without VARYING defaults to length 1
             self.length = length or 1
-        else:
-            # but BIT VARYING can be unlimited-length, so no default
-            self.length = length
         self.varying = varying
 
 
@@ -236,14 +273,11 @@ PGBit = BIT
 
 
 class TSVECTOR(sqltypes.TypeEngine[str]):
-
     """The :class:`_postgresql.TSVECTOR` type implements the PostgreSQL
     text search type TSVECTOR.
 
     It can be used to do full text queries on natural language
     documents.
-
-    .. versionadded:: 0.9.0
 
     .. seealso::
 
@@ -252,3 +286,18 @@ class TSVECTOR(sqltypes.TypeEngine[str]):
     """
 
     __visit_name__ = "TSVECTOR"
+
+
+class CITEXT(sqltypes.TEXT):
+    """Provide the PostgreSQL CITEXT type.
+
+    .. versionadded:: 2.0.7
+
+    """
+
+    __visit_name__ = "CITEXT"
+
+    def coerce_compared_value(
+        self, op: Optional[OperatorType], value: Any
+    ) -> TypeEngine[Any]:
+        return self

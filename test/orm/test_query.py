@@ -75,10 +75,12 @@ from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import assert_warns_message
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import expect_raises
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertions import is_not_none
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -187,6 +189,7 @@ class OnlyReturnTuplesTest(QueryTest):
         assert isinstance(row, collections_abc.Sequence)
         assert isinstance(row._mapping, collections_abc.Mapping)
 
+    @expect_deprecated(".*is deprecated, Row now behaves like a tuple.*")
     def test_single_entity_tuples(self):
         User = self.classes.User
         query = fixture_session().query(User).tuples()
@@ -213,6 +216,7 @@ class OnlyReturnTuplesTest(QueryTest):
         assert isinstance(row, collections_abc.Sequence)
         assert isinstance(row._mapping, collections_abc.Mapping)
 
+    @expect_deprecated(".*is deprecated, Row now behaves like a tuple.*")
     def test_multiple_entity_true_tuples(self):
         User = self.classes.User
         query = fixture_session().query(User.id, User).tuples()
@@ -358,7 +362,6 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
         (lambda s, users: select(users.c.id, users.c.name),),
     )
     def test_legacy_tuple_old_select(self, test_case):
-
         User, users = self.classes.User, self.tables.users
 
         self.mapper_registry.map_imperatively(User, users)
@@ -624,15 +627,11 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
 
         eq_(q.column_descriptions, asserted)
 
-    def test_unhashable_type_legacy(self):
-        class MyType(TypeDecorator):
-            impl = Integer
-            hashable = False
-            cache_ok = True
-
-            def process_result_value(self, value, dialect):
-                return [value]
-
+    @testing.variation("use_future", [True, False])
+    @testing.variation(
+        "type_style", ["unhashable", "unknown_hashable", "unknown_unhashable"]
+    )
+    def test_unhashable_types(self, use_future, type_style):
         User, users = self.classes.User, self.tables.users
         Address, addresses = self.classes.Address, self.tables.addresses
         self.mapper_registry.map_imperatively(
@@ -640,165 +639,80 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
         )
         self.mapper_registry.map_imperatively(Address, addresses)
 
-        s = fixture_session()
-        q = (
-            s.query(User, type_coerce(users.c.id, MyType).label("foo"))
-            .filter(User.id.in_([7, 8]))
-            .join(User.addresses)
-            .order_by(User.id)
-        )
+        if type_style.unknown_hashable:
+            expression = type_coerce("Some Unique String", NullType)
+        else:
 
-        result = q.all()
+            class MyType(TypeDecorator):
+                impl = Integer
 
-        # uniquing basically does not occur because we can't hash on
-        # MyType
-        eq_(
-            result,
-            [
-                (User(id=7), [7]),
-                (User(id=8), [8]),
-                (User(id=8), [8]),
-                (User(id=8), [8]),
-            ],
-        )
+                if type_style.unhashable:
+                    hashable = False
+                elif type_style.unknown_unhashable:
+                    _isnull = True
+                cache_ok = True
 
-    def test_unhashable_type_future(self):
-        class MyType(TypeDecorator):
-            impl = Integer
-            hashable = False
-            cache_ok = True
+                def process_result_value(self, value, dialect):
+                    return [value]
 
-            def process_result_value(self, value, dialect):
-                return [value]
-
-        User, users = self.classes.User, self.tables.users
-        Address, addresses = self.classes.Address, self.tables.addresses
-        self.mapper_registry.map_imperatively(
-            User, users, properties={"addresses": relationship(Address)}
-        )
-        self.mapper_registry.map_imperatively(Address, addresses)
+            expression = type_coerce(users.c.id, MyType)
 
         s = fixture_session()
 
-        stmt = (
-            select(User, type_coerce(users.c.id, MyType).label("foo"))
-            .filter(User.id.in_([7, 8]))
-            .join(User.addresses)
-            .order_by(User.id)
-        )
-
-        result = s.execute(stmt).unique()
-
-        with expect_raises_message(
-            sa_exc.InvalidRequestError,
-            r"Can't apply uniqueness to row tuple "
-            r"containing value of type MyType\(\)",
-        ):
-            result.all()
-
-    def test_unknown_type_assume_not_hashable_legacy(self):
-        User, users = self.classes.User, self.tables.users
-
-        User, users = self.classes.User, self.tables.users
-        Address, addresses = self.classes.Address, self.tables.addresses
-        self.mapper_registry.map_imperatively(
-            User, users, properties={"addresses": relationship(Address)}
-        )
-        self.mapper_registry.map_imperatively(Address, addresses)
-
-        s = fixture_session()
+        if not use_future:
+            q = s.query(User, expression.label("foo"))
+        else:
+            q = select(User, expression.label("foo"))
 
         q = (
-            s.query(
-                User, type_coerce("Some Unique String", NullType).label("foo")
+            q.filter(User.id.in_([7, 8]))
+            .join(User.addresses)
+            .order_by(User.id)
+        )
+
+        if type_style.unknown_hashable:
+            if not use_future:
+                result = q.all()
+            else:
+                result = s.execute(q).unique().all()
+            eq_(
+                result,
+                [
+                    (User(id=7, name="jack"), "Some Unique String"),
+                    (User(id=8, name="ed"), "Some Unique String"),
+                ],
             )
-            .filter(User.id.in_([7, 8]))
-            .join(User.addresses)
-            .order_by(User.id)
-        )
-
-        result = q.all()
-
-        eq_(
-            result,
-            [
-                (User(id=7, name="jack"), "Some Unique String"),
-                (User(id=8, name="ed"), "Some Unique String"),
-                (User(id=8, name="ed"), "Some Unique String"),
-                (User(id=8, name="ed"), "Some Unique String"),
-            ],
-        )
-
-    def test_unknown_type_assume_hashable_future(self):
-        User, users = self.classes.User, self.tables.users
-
-        User, users = self.classes.User, self.tables.users
-        Address, addresses = self.classes.Address, self.tables.addresses
-        self.mapper_registry.map_imperatively(
-            User, users, properties={"addresses": relationship(Address)}
-        )
-        self.mapper_registry.map_imperatively(Address, addresses)
-
-        s = fixture_session()
-
-        # TODO: it's also unusual I need a label() for type_coerce
-        stmt = (
-            select(
-                User, type_coerce("Some Unique String", NullType).label("foo")
-            )
-            .filter(User.id.in_([7, 8]))
-            .join(User.addresses)
-            .order_by(User.id)
-        )
-
-        result = s.execute(stmt).unique()
-
-        eq_(
-            result.all(),
-            [
-                (User(id=7, name="jack"), "Some Unique String"),
-                (User(id=8, name="ed"), "Some Unique String"),
-            ],
-        )
-
-    def test_unknown_type_truly_not_hashable_future(self):
-        User, users = self.classes.User, self.tables.users
-
-        User, users = self.classes.User, self.tables.users
-        Address, addresses = self.classes.Address, self.tables.addresses
-        self.mapper_registry.map_imperatively(
-            User, users, properties={"addresses": relationship(Address)}
-        )
-        self.mapper_registry.map_imperatively(Address, addresses)
-
-        class MyType(TypeDecorator):
-            impl = Integer
-            hashable = True  # which is wrong
-            cache_ok = True
-
-            def process_result_value(self, value, dialect):
-                return [value]
-
-        s = fixture_session()
-
-        stmt = (
-            select(User, type_coerce(User.id, MyType).label("foo"))
-            .filter(User.id.in_([7, 8]))
-            .join(User.addresses)
-            .order_by(User.id)
-        )
-
-        result = s.execute(stmt).unique()
-
-        with expect_raises_message(TypeError, "unhashable type"):
-            result.all()
+        else:
+            uncertain = bool(type_style.unknown_unhashable)
+            if not use_future:
+                result = q.all()
+                eq_(
+                    result,
+                    [
+                        (User(id=7, name="jack"), [7]),
+                        (User(id=8, name="ed"), [8]),
+                        (User(id=8, name="ed"), [8]),
+                        (User(id=8, name="ed"), [8]),
+                    ],
+                )
+            else:
+                with expect_raises_message(
+                    sa_exc.InvalidRequestError,
+                    r"Can't apply uniqueness to row tuple "
+                    r"containing value of type MyType\(\); "
+                    rf"""{
+                        'the values returned appear to be'
+                        if uncertain else 'this datatype produces'
+                    } """
+                    r"non-hashable values",
+                ):
+                    result = s.execute(q).unique().all()
 
 
 class RowLabelingTest(QueryTest):
     @testing.fixture
     def assert_row_keys(self):
         def go(stmt, expected, coreorm_exec, selected_columns=None):
-
             if coreorm_exec == "core":
                 with testing.db.connect() as conn:
                     row = conn.execute(stmt).first()
@@ -824,7 +738,6 @@ class RowLabelingTest(QueryTest):
                 stmt._label_style is not LABEL_STYLE_NONE
                 and coreorm_exec == "orm"
             ):
-
                 for k in expected:
                     is_not_none(getattr(row, k))
 
@@ -1215,18 +1128,6 @@ class GetTest(QueryTest):
             {"i": 1, "j": "2", "k": 3},
         )
 
-    def test_get(self):
-        User = self.classes.User
-
-        s = fixture_session()
-        assert s.get(User, 19) is None
-        u = s.get(User, 7)
-        u2 = s.get(User, 7)
-        assert u is u2
-        s.expunge_all()
-        u2 = s.get(User, 7)
-        assert u is not u2
-
     def test_get_synonym_direct_name(self, decl_base):
         """test #8753"""
 
@@ -1324,7 +1225,7 @@ class GetTest(QueryTest):
 
         s = users.outerjoin(addresses)
 
-        class UserThing(fixtures.ComparableEntity):
+        class UserThing(ComparableEntity):
             pass
 
         registry.map_imperatively(
@@ -1608,7 +1509,6 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
         (Query.order_by, lambda meth, User: meth(User.name)),
     )
     def test_from_statement_text(self, meth, test_case):
-
         User = self.classes.User
         s = fixture_session()
         q = s.query(User)
@@ -1923,7 +1823,6 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_selfref_relationship(self):
-
         Node = self.classes.Node
 
         nalias = aliased(Node)
@@ -2116,7 +2015,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
     def test_clauses(self):
         User, Address = self.classes.User, self.classes.Address
 
-        for (expr, compare) in (
+        for expr, compare in (
             (func.max(User.id), "max(users.id)"),
             (User.id.desc(), "users.id DESC"),
             (
@@ -3667,7 +3566,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             q1,
-            "SELECT users.id AS foo FROM users " "WHERE users.name = :name_1",
+            "SELECT users.id AS foo FROM users WHERE users.name = :name_1",
         )
 
     def test_empty_filters(self):
@@ -4452,7 +4351,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
         q1 = sess.query(User)
         self.assert_compile(
             sess.query(q1.exists()),
-            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+            "SELECT EXISTS (SELECT 1 FROM users) AS anon_1",
         )
 
         q2 = sess.query(User).filter(User.name == "fred")
@@ -4470,7 +4369,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
         q1 = sess.query(User.id)
         self.assert_compile(
             sess.query(q1.exists()),
-            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+            "SELECT EXISTS (SELECT 1 FROM users) AS anon_1",
         )
 
     def test_exists_labeled_col_expression(self):
@@ -4480,7 +4379,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
         q1 = sess.query(User.id.label("foo"))
         self.assert_compile(
             sess.query(q1.exists()),
-            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+            "SELECT EXISTS (SELECT 1 FROM users) AS anon_1",
         )
 
     def test_exists_arbitrary_col_expression(self):
@@ -4490,7 +4389,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
         q1 = sess.query(func.foo(User.id))
         self.assert_compile(
             sess.query(q1.exists()),
-            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+            "SELECT EXISTS (SELECT 1 FROM users) AS anon_1",
         )
 
     def test_exists_col_warning(self):
@@ -4660,7 +4559,6 @@ class CountTest(QueryTest):
         eq_(q.distinct().count(), 3)
 
     def test_cols_future(self):
-
         User, Address = self.classes.User, self.classes.Address
 
         s = fixture_session()
@@ -5283,7 +5181,7 @@ class PrefixSuffixWithTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         sess = fixture_session()
         query = sess.query(User.name).prefix_with("PREFIX_1")
-        expected = "SELECT PREFIX_1 " "users.name AS users_name FROM users"
+        expected = "SELECT PREFIX_1 users.name AS users_name FROM users"
         self.assert_compile(query, expected, dialect=default.DefaultDialect())
 
     def test_one_suffix(self):
@@ -5299,7 +5197,7 @@ class PrefixSuffixWithTest(QueryTest, AssertsCompiledSQL):
         sess = fixture_session()
         query = sess.query(User.name).prefix_with("PREFIX_1", "PREFIX_2")
         expected = (
-            "SELECT PREFIX_1 PREFIX_2 " "users.name AS users_name FROM users"
+            "SELECT PREFIX_1 PREFIX_2 users.name AS users_name FROM users"
         )
         self.assert_compile(query, expected, dialect=default.DefaultDialect())
 
@@ -6864,7 +6762,6 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
             Address.special_user == User(id=None, name=None)
         )
         with expect_warnings("Got None for value of column"):
-
             self.assert_compile(
                 q,
                 "SELECT addresses.id AS addresses_id, "
@@ -6983,7 +6880,6 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
             )
         )
         with expect_warnings("Got None for value of column"):
-
             self.assert_compile(
                 q,
                 "SELECT users.id AS users_id, users.name AS users_name "
@@ -7694,6 +7590,8 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 
 class SessionBindTest(QueryTest):
+    run_setup_mappers = "each"
+
     @contextlib.contextmanager
     def _assert_bind_args(self, session, expect_mapped_bind=True):
         get_bind = mock.Mock(side_effect=session.get_bind)

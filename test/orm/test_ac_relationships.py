@@ -3,6 +3,7 @@ from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import insert_sentinel
 from sqlalchemy import Integer
 from sqlalchemy import join
 from sqlalchemy import select
@@ -14,10 +15,11 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertsql import CompiledSQL
-from sqlalchemy.testing.fixtures import ComparableEntity
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 
 
@@ -41,6 +43,7 @@ class PartitionByFixture(fixtures.DeclarativeMappedTest):
             __tablename__ = "c"
             id = Column(Integer, primary_key=True)
             b_id = Column(ForeignKey("b.id"))
+            _sentinel = insert_sentinel()
 
         partition = select(
             B,
@@ -332,3 +335,64 @@ class AltSelectableTest(
             "FROM a JOIN (b JOIN d ON d.b_id = b.id "
             "JOIN c ON c.id = d.c_id) ON a.b_id = b.id",
         )
+
+
+class StructuralEagerLoadCycleTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+
+            bs = relationship(lambda: B, back_populates="a")
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+
+            a = relationship(A, lazy="joined", back_populates="bs")
+
+        partitioned_b = aliased(B)
+
+        A.partitioned_bs = relationship(
+            partitioned_b, lazy="selectin", viewonly=True
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, B = cls.classes("A", "B")
+
+        s = Session(connection)
+        a = A()
+        a.bs = [B() for _ in range(5)]
+        s.add(a)
+
+        s.commit()
+
+    @testing.variation("ensure_no_warning", [True, False])
+    def test_no_endless_loop(self, ensure_no_warning):
+        """test #9590"""
+
+        A = self.classes.A
+
+        sess = fixture_session()
+
+        results = sess.scalars(select(A))
+
+        # the correct behavior is 1. no warnings and 2. no endless loop.
+        # however when the failure mode is occurring, it correctly warns,
+        # but then we don't get to see the endless loop happen.
+        # so test it both ways even though when things are "working", there's
+        # no problem
+        if ensure_no_warning:
+            a = results.first()
+        else:
+            with expect_warnings(
+                "Loader depth for query is excessively deep", assert_=False
+            ):
+                a = results.first()
+
+        a.bs

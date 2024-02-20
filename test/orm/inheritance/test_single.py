@@ -34,6 +34,7 @@ from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -583,7 +584,6 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             )
 
     def test_having(self):
-
         Engineer, Manager = self.classes("Engineer", "Manager")
 
         sess = fixture_session()
@@ -1694,7 +1694,7 @@ class SingleOnJoinedTest(fixtures.MappedTest):
         )
 
     def test_single_on_joined(self):
-        class Person(fixtures.ComparableEntity):
+        class Person(ComparableEntity):
             pass
 
         class Employee(Person):
@@ -1909,9 +1909,11 @@ class SingleFromPolySelectableTest(
             e1 = aliased(Engineer, flat=True)
             q = s.query(Boss).join(e1, e1.manager_id == Boss.id)
 
-        with _aliased_join_warning(
-            r"Mapper\[Engineer\(engineer\)\]"
-        ) if autoalias else nullcontext():
+        with (
+            _aliased_join_warning(r"Mapper\[Engineer\(engineer\)\]")
+            if autoalias
+            else nullcontext()
+        ):
             self.assert_compile(
                 q,
                 "SELECT manager.id AS manager_id, employee.id AS employee_id, "
@@ -1974,9 +1976,11 @@ class SingleFromPolySelectableTest(
             b1 = aliased(Boss, flat=True)
             q = s.query(Engineer).join(b1, Engineer.manager_id == b1.id)
 
-        with _aliased_join_warning(
-            r"Mapper\[Boss\(manager\)\]"
-        ) if autoalias else nullcontext():
+        with (
+            _aliased_join_warning(r"Mapper\[Boss\(manager\)\]")
+            if autoalias
+            else nullcontext()
+        ):
             self.assert_compile(
                 q,
                 "SELECT engineer.id AS engineer_id, "

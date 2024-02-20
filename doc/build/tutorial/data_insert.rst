@@ -5,9 +5,7 @@
 
 .. include:: tutorial_nav_include.rst
 
-
-.. rst-class:: core-header
-
+.. rst-class:: core-header, orm-addin
 
 .. _tutorial_core_insert:
 
@@ -269,6 +267,12 @@ as in the example below that builds upon the example stated in
     is dialect specific, however is supported for all the dialects
     that are included in SQLAlchemy which support RETURNING.  See the section
     :ref:`engine_insertmanyvalues` for background on this feature.
+
+.. seealso::
+
+    Bulk INSERT with or without RETURNING is also supported by the ORM.  See
+    :ref:`orm_queryguide_bulk_insert` for reference documentation.
+
 
 
 .. _tutorial_insert_from_select:

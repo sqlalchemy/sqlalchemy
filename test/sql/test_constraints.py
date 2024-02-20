@@ -286,7 +286,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
         if auto:
             fk_assertions.append(
                 CompiledSQL(
-                    "ALTER TABLE a ADD " "FOREIGN KEY(bid) REFERENCES b (id)"
+                    "ALTER TABLE a ADD FOREIGN KEY(bid) REFERENCES b (id)"
                 )
             )
         assertions.append(AllOf(*fk_assertions))
@@ -409,10 +409,10 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
             ),
             AllOf(
                 CompiledSQL(
-                    "ALTER TABLE b ADD " "FOREIGN KEY(aid) REFERENCES a (id)"
+                    "ALTER TABLE b ADD FOREIGN KEY(aid) REFERENCES a (id)"
                 ),
                 CompiledSQL(
-                    "ALTER TABLE a ADD " "FOREIGN KEY(bid) REFERENCES b (id)"
+                    "ALTER TABLE a ADD FOREIGN KEY(bid) REFERENCES b (id)"
                 ),
             ),
         ]
@@ -720,10 +720,10 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
             RegexSQL("^CREATE TABLE events"),
             AllOf(
                 CompiledSQL(
-                    "CREATE UNIQUE INDEX ix_events_name ON events " "(name)"
+                    "CREATE UNIQUE INDEX ix_events_name ON events (name)"
                 ),
                 CompiledSQL(
-                    "CREATE INDEX ix_events_location ON events " "(location)"
+                    "CREATE INDEX ix_events_location ON events (location)"
                 ),
                 CompiledSQL(
                     "CREATE UNIQUE INDEX sport_announcer ON events "
@@ -810,7 +810,6 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
                 ("sometable", "this_name_is_too_long", "ix_sometable_t_09aa"),
                 ("sometable", "this_name_alsois_long", "ix_sometable_t_3cf1"),
             ]:
-
                 t1 = Table(
                     tname, MetaData(), Column(cname, Integer, index=True)
                 )
@@ -818,7 +817,7 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
 
                 self.assert_compile(
                     schema.CreateIndex(ix1),
-                    "CREATE INDEX %s " "ON %s (%s)" % (exp, tname, cname),
+                    "CREATE INDEX %s ON %s (%s)" % (exp, tname, cname),
                     dialect=dialect,
                 )
 
@@ -1238,7 +1237,7 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
         # is disabled
         self.assert_compile(
             schema.CreateTable(t),
-            "CREATE TABLE tbl (" "a INTEGER, " "b INTEGER" ")",
+            "CREATE TABLE tbl (a INTEGER, b INTEGER)",
         )
 
     def test_render_drop_constraint(self):

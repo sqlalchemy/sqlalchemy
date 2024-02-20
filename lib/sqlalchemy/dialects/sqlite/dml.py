@@ -1,28 +1,35 @@
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/sqlite/dml.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
+from __future__ import annotations
 
+from typing import Any
 
-import typing
-
+from .._typing import _OnConflictIndexElementsT
+from .._typing import _OnConflictIndexWhereT
+from .._typing import _OnConflictSetT
+from .._typing import _OnConflictWhereT
 from ... import util
 from ...sql import coercions
 from ...sql import roles
+from ...sql._typing import _DMLTableArgument
 from ...sql.base import _exclusive_against
 from ...sql.base import _generative
 from ...sql.base import ColumnCollection
+from ...sql.base import ReadOnlyColumnCollection
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
+from ...sql.elements import KeyedColumnElement
 from ...sql.expression import alias
-
+from ...util.typing import Self
 
 __all__ = ("Insert", "insert")
 
 
-def insert(table):
+def insert(table: _DMLTableArgument) -> Insert:
     """Construct a sqlite-specific variant :class:`_sqlite.Insert`
     construct.
 
@@ -40,9 +47,6 @@ def insert(table):
 
     """
     return Insert(table)
-
-
-SelfInsert = typing.TypeVar("SelfInsert", bound="Insert")
 
 
 class Insert(StandardInsert):
@@ -65,7 +69,9 @@ class Insert(StandardInsert):
     inherit_cache = False
 
     @util.memoized_property
-    def excluded(self):
+    def excluded(
+        self,
+    ) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
         """Provide the ``excluded`` namespace for an ON CONFLICT statement
 
         SQLite's ON CONFLICT clause allows reference to the row that would
@@ -97,12 +103,12 @@ class Insert(StandardInsert):
     @_generative
     @_on_conflict_exclusive
     def on_conflict_do_update(
-        self: SelfInsert,
-        index_elements=None,
-        index_where=None,
-        set_=None,
-        where=None,
-    ) -> SelfInsert:
+        self,
+        index_elements: _OnConflictIndexElementsT = None,
+        index_where: _OnConflictIndexWhereT = None,
+        set_: _OnConflictSetT = None,
+        where: _OnConflictWhereT = None,
+    ) -> Self:
         r"""
         Specifies a DO UPDATE SET action for ON CONFLICT clause.
 
@@ -151,8 +157,10 @@ class Insert(StandardInsert):
     @_generative
     @_on_conflict_exclusive
     def on_conflict_do_nothing(
-        self: SelfInsert, index_elements=None, index_where=None
-    ) -> SelfInsert:
+        self,
+        index_elements: _OnConflictIndexElementsT = None,
+        index_where: _OnConflictIndexWhereT = None,
+    ) -> Self:
         """
         Specifies a DO NOTHING action for ON CONFLICT clause.
 
@@ -176,16 +184,23 @@ class Insert(StandardInsert):
 class OnConflictClause(ClauseElement):
     stringify_dialect = "sqlite"
 
-    def __init__(self, index_elements=None, index_where=None):
+    constraint_target: None
+    inferred_target_elements: _OnConflictIndexElementsT
+    inferred_target_whereclause: _OnConflictIndexWhereT
 
+    def __init__(
+        self,
+        index_elements: _OnConflictIndexElementsT = None,
+        index_where: _OnConflictIndexWhereT = None,
+    ):
         if index_elements is not None:
             self.constraint_target = None
             self.inferred_target_elements = index_elements
             self.inferred_target_whereclause = index_where
         else:
-            self.constraint_target = (
-                self.inferred_target_elements
-            ) = self.inferred_target_whereclause = None
+            self.constraint_target = self.inferred_target_elements = (
+                self.inferred_target_whereclause
+            ) = None
 
 
 class OnConflictDoNothing(OnConflictClause):
@@ -197,10 +212,10 @@ class OnConflictDoUpdate(OnConflictClause):
 
     def __init__(
         self,
-        index_elements=None,
-        index_where=None,
-        set_=None,
-        where=None,
+        index_elements: _OnConflictIndexElementsT = None,
+        index_where: _OnConflictIndexWhereT = None,
+        set_: _OnConflictSetT = None,
+        where: _OnConflictWhereT = None,
     ):
         super().__init__(
             index_elements=index_elements,

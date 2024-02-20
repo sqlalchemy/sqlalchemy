@@ -1,5 +1,5 @@
 # util/topological.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -30,7 +30,6 @@ __all__ = ["sort", "sort_as_subsets", "find_cycles"]
 def sort_as_subsets(
     tuples: Collection[Tuple[_T, _T]], allitems: Collection[_T]
 ) -> Iterator[Sequence[_T]]:
-
     edges: DefaultDict[_T, Set[_T]] = util.defaultdict(set)
     for parent, child in tuples:
         edges[child].add(parent)

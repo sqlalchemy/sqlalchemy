@@ -1,5 +1,5 @@
 # util/deprecations.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -234,6 +234,10 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_F], _F]:
             )
             check_defaults = set(defaults).intersection(messages)
             check_kw = set(messages).difference(defaults)
+        elif spec.kwonlydefaults is not None:
+            defaults = spec.kwonlydefaults
+            check_defaults = set(defaults).intersection(messages)
+            check_kw = set(messages).difference(defaults)
         else:
             check_defaults = ()
             check_kw = set(messages)
@@ -242,7 +246,7 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_F], _F]:
 
         # latest mypy has opinions here, not sure if they implemented
         # Concatenate or something
-        @decorator  # type: ignore
+        @decorator
         def warned(fn: _F, *args: Any, **kwargs: Any) -> _F:
             for m in check_defaults:
                 if (defaults[m] is None and kwargs[m] is not None) or (
@@ -286,9 +290,9 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_F], _F]:
                     for param, (version, message) in specs.items()
                 },
             )
-        decorated = warned(fn)  # type: ignore
+        decorated = warned(fn)
         decorated.__doc__ = doc
-        return decorated  # type: ignore[no-any-return]
+        return decorated
 
     return decorate
 
@@ -314,7 +318,6 @@ def _decorate_cls_with_warning(
 ) -> Type[_T]:
     doc = cls.__doc__ is not None and cls.__doc__ or ""
     if docstring_header is not None:
-
         if constructor is not None:
             docstring_header %= dict(func=constructor)
 
@@ -331,7 +334,7 @@ def _decorate_cls_with_warning(
             clsdict["__doc__"] = doc
             clsdict.pop("__dict__", None)
             clsdict.pop("__weakref__", None)
-            cls = type(cls.__name__, cls.__bases__, clsdict)  # type: ignore
+            cls = type(cls.__name__, cls.__bases__, clsdict)
             if constructor is not None:
                 constructor_fn = clsdict[constructor]
 
@@ -373,7 +376,7 @@ def _decorate_with_warning(
     else:
         doc_only = ""
 
-    @decorator  # type: ignore
+    @decorator
     def warned(fn: _F, *args: Any, **kwargs: Any) -> _F:
         skip_warning = not enable_warnings or kwargs.pop(
             "_sa_skip_warning", False
@@ -390,9 +393,9 @@ def _decorate_with_warning(
 
         doc = inject_docstring_text(doc, docstring_header, 1)
 
-    decorated = warned(func)  # type: ignore
+    decorated = warned(func)
     decorated.__doc__ = doc
     decorated._sa_warn = lambda: _warn_with_version(  # type: ignore
         message, version, wtype, stacklevel=3
     )
-    return decorated  # type: ignore[no-any-return]
+    return decorated

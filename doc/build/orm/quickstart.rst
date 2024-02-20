@@ -103,10 +103,10 @@ of the key.  In the above example, the ``User.id`` and ``Address.id``
 columns are marked as primary key.
 
 Taken together, the combination of a string table name as well as a list
-of column declarations is referred towards in SQLAlchemy as :term:`table metadata`.
+of column declarations is known in SQLAlchemy as :term:`table metadata`.
 Setting up table metadata using both Core and ORM approaches is introduced
 in the :ref:`unified_tutorial` at :ref:`tutorial_working_with_metadata`.
-The above mapping is an example of what's referred towards as
+The above mapping is an example of what's known as
 :ref:`Annotated Declarative Table <orm_declarative_mapped_column>`
 configuration.
 
@@ -201,7 +201,6 @@ is used:
     >>> from sqlalchemy.orm import Session
 
     >>> with Session(engine) as session:
-    ...
     ...     spongebob = User(
     ...         name="spongebob",
     ...         fullname="Spongebob Squarepants",
@@ -221,10 +220,18 @@ is used:
     ...
     ...     session.commit()
     {execsql}BEGIN (implicit)
-    INSERT INTO user_account (name, fullname) VALUES (?, ?), (?, ?), (?, ?) RETURNING id
-    [...] ('spongebob', 'Spongebob Squarepants', 'sandy', 'Sandy Cheeks', 'patrick', 'Patrick Star')
-    INSERT INTO address (email_address, user_id) VALUES (?, ?), (?, ?), (?, ?) RETURNING id
-    [...] ('spongebob@sqlalchemy.org', 1, 'sandy@sqlalchemy.org', 2, 'sandy@squirrelpower.org', 2)
+    INSERT INTO user_account (name, fullname) VALUES (?, ?) RETURNING id
+    [...] ('spongebob', 'Spongebob Squarepants')
+    INSERT INTO user_account (name, fullname) VALUES (?, ?) RETURNING id
+    [...] ('sandy', 'Sandy Cheeks')
+    INSERT INTO user_account (name, fullname) VALUES (?, ?) RETURNING id
+    [...] ('patrick', 'Patrick Star')
+    INSERT INTO address (email_address, user_id) VALUES (?, ?) RETURNING id
+    [...] ('spongebob@sqlalchemy.org', 1)
+    INSERT INTO address (email_address, user_id) VALUES (?, ?) RETURNING id
+    [...] ('sandy@sqlalchemy.org', 2)
+    INSERT INTO address (email_address, user_id) VALUES (?, ?) RETURNING id
+    [...] ('sandy@squirrelpower.org', 2)
     COMMIT
 
 

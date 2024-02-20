@@ -15,6 +15,7 @@ from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import type_coerce
 from sqlalchemy import update
+from sqlalchemy.sql import crud
 from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -24,6 +25,8 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import provision
 from sqlalchemy.testing.schema import Column
@@ -84,6 +87,31 @@ class ReturnCombinationTests(fixtures.TestBase, AssertsCompiledSQL):
             r"and return_defaults\(\) simultaneously",
             stmt.compile,
         )
+
+    @testing.combinations("return_defaults", "returning", argnames="methname")
+    @testing.combinations(insert, update, delete, argnames="construct")
+    def test_sort_by_parameter_ordering_param(
+        self, methname, construct, table_fixture
+    ):
+        t = table_fixture
+
+        stmt = construct(t)
+
+        if construct is insert:
+            is_false(stmt._sort_by_parameter_order)
+
+        meth = getattr(stmt, methname)
+
+        if construct in (update, delete):
+            with expect_raises_message(
+                sa_exc.ArgumentError,
+                rf"The 'sort_by_parameter_order' argument to "
+                rf"{methname}\(\) only applies to INSERT statements",
+            ):
+                meth(t.c.id, sort_by_parameter_order=True)
+        else:
+            new = meth(t.c.id, sort_by_parameter_order=True)
+            is_true(new._sort_by_parameter_order)
 
     def test_return_defaults_no_returning(self, table_fixture):
         t = table_fixture
@@ -662,7 +690,6 @@ class SequenceReturningTest(fixtures.TablesTest):
 
 
 class KeyReturningTest(fixtures.TablesTest, AssertsExecutionResults):
-
     """test returning() works with columns that define 'key'."""
 
     __requires__ = ("insert_returning",)
@@ -1267,6 +1294,16 @@ class InsertManyReturningTest(fixtures.TablesTest):
             Column("strval", String(50)),
         )
 
+        Table(
+            "no_implicit_returning",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", String(30)),
+            implicit_returning=False,
+        )
+
     @testing.combinations(
         (
             lambda table: (table.c.strval + "hi",),
@@ -1347,15 +1384,37 @@ class InsertManyReturningTest(fixtures.TablesTest):
 
         t1 = self.tables.type_cases
 
+        grm = crud._get_returning_modifiers
+
+        def _grm(*arg, **kw):
+            (
+                need_pks,
+                implicit_returning,
+                implicit_return_defaults,
+                postfetch_lastrowid,
+                _,
+                _,
+            ) = grm(*arg, **kw)
+
+            return (
+                need_pks,
+                implicit_returning,
+                implicit_return_defaults,
+                postfetch_lastrowid,
+                False,
+                None,
+            )
+
         with mock.patch.object(
-            testing.db.dialect.statement_compiler,
-            "_insert_stmt_should_use_insertmanyvalues",
-            lambda *arg: False,
+            crud,
+            "_get_returning_modifiers",
+            new=_grm,
         ):
             with expect_raises_message(
                 sa_exc.StatementError,
                 r'Statement does not have "insertmanyvalues" enabled, '
-                r"can\'t use INSERT..RETURNING with executemany in this case.",
+                r"can\'t use INSERT..RETURNING with executemany in this "
+                "case.",
             ):
                 connection.execute(
                     t1.insert().returning(t1.c.id, t1.c.goofy, t1.c.full),
@@ -1365,6 +1424,61 @@ class InsertManyReturningTest(fixtures.TablesTest):
                         {"persons": 7, "full": False},
                     ],
                 )
+
+    @testing.variation(
+        "style",
+        ["no_cols", "cols", "cols_plus_supplemental", "normal_returning"],
+    )
+    def test_no_executemany_w_no_implicit_returning(self, connection, style):
+        """test a refinement made during fixes for #10453;
+        return_defaults() with 'supplemental_cols' is considered to be an
+        explicit returning case, bypassing the implicit_returning parameter.
+
+        """
+        t1 = self.tables.no_implicit_returning
+
+        if style.cols_plus_supplemental:
+            result = connection.execute(
+                t1.insert().return_defaults(
+                    t1.c.id, supplemental_cols=[t1.c.data]
+                ),
+                [
+                    {"data": "d1"},
+                    {"data": "d2"},
+                    {"data": "d3"},
+                ],
+            )
+            eq_(result.scalars().all(), ["d1", "d2", "d3"])
+        elif style.normal_returning:
+            result = connection.execute(
+                t1.insert().returning(t1.c.data),
+                [
+                    {"data": "d1"},
+                    {"data": "d2"},
+                    {"data": "d3"},
+                ],
+            )
+            eq_(result.scalars().all(), ["d1", "d2", "d3"])
+        elif style.cols:
+            result = connection.execute(
+                t1.insert().return_defaults(t1.c.id),
+                [
+                    {"data": "d1"},
+                    {"data": "d2"},
+                    {"data": "d3"},
+                ],
+            )
+            assert not result.returns_rows
+        elif style.no_cols:
+            result = connection.execute(
+                t1.insert().return_defaults(t1.c.id),
+                [
+                    {"data": "d1"},
+                    {"data": "d2"},
+                    {"data": "d3"},
+                ],
+            )
+            assert not result.returns_rows
 
     def test_insert_executemany_type_test(self, connection):
         t1 = self.tables.type_cases
@@ -1446,9 +1560,11 @@ class InsertManyReturningTest(fixtures.TablesTest):
             config,
             t1,
             (t1.c.id, t1.c.insdef, t1.c.data),
-            (lambda excluded: {"data": excluded.data + " excluded"})
-            if update_cols
-            else None,
+            set_lambda=(
+                (lambda excluded: {"data": excluded.data + " excluded"})
+                if update_cols
+                else None
+            ),
         )
 
         upserted_rows = connection.execute(

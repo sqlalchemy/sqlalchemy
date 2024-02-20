@@ -8,10 +8,32 @@ body:
   - type: markdown
     attributes:
       value: "SQLAlchemy v2 introduced typing support on most common public apis, but the work to fully type
-all the pubic api is still in progress.
+all the pubic api is still in progress. Check https://github.com/sqlalchemy/sqlalchemy/issues/6810 for progress
 
 Currently the SQLAlchemy team is targeting mypy support, with best effort support for other type checkers.
 "
+
+  - type: checkboxes
+    id: stubs
+    attributes:
+      label: Ensure stubs packages are not installed
+      description: SQLAlchemy v2 does not need any stub to work, so ensure they are not installed
+      options:
+        - label: No sqlalchemy stub packages is installed (both `sqlalchemy-stubs` and `sqlalchemy2-stubs` are not compatible with v2)
+          required: true
+
+  - type: checkboxes
+    id: untyped
+    attributes:
+      label: Verify if the api is typed
+      description: "Some modules in SQLAlchemy v2 are not yet fully typed.
+      Check https://github.com/sqlalchemy/sqlalchemy/issues/6810 for the progress on the missing ones.
+
+      If the api you are using is part of these module please comment on that issue instead of opening a new issue.
+      "
+      options:
+        - label: The api is not in a module listed in [#6810](https://github.com/sqlalchemy/sqlalchemy/issues/6810) so it should pass type checking
+          required: true
 
   - type: textarea
     attributes:

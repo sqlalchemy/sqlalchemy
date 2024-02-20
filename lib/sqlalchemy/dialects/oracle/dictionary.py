@@ -1,4 +1,5 @@
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/oracle/dictionary.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -392,6 +393,17 @@ all_indexes = Table(
     Column("indexing", VARCHAR2(7)),
     Column("auto", VARCHAR2(3)),
 ).alias("a_indexes")
+
+all_ind_expressions = Table(
+    "all_ind_expressions" + DB_LINK_PLACEHOLDER,
+    dictionary_meta,
+    Column("index_owner", VARCHAR2(128), nullable=False),
+    Column("index_name", VARCHAR2(128), nullable=False),
+    Column("table_owner", VARCHAR2(128), nullable=False),
+    Column("table_name", VARCHAR2(128), nullable=False),
+    Column("column_expression", LONG),
+    Column("column_position", NUMBER, nullable=False),
+).alias("a_ind_expressions")
 
 all_constraints = Table(
     "all_constraints" + DB_LINK_PLACEHOLDER,

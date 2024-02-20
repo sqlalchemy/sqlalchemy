@@ -113,6 +113,59 @@ class _UpdateFromTestBase:
 class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     __dialect__ = "default_enhanced"
 
+    @testing.variation("twotable", [True, False])
+    @testing.variation("values", ["none", "blank"])
+    def test_update_no_params(self, values, twotable):
+        """test issue identified while doing #9721
+
+        UPDATE with empty VALUES but multiple tables would raise a
+        NoneType error; fixed this to emit an empty "SET" the way a single
+        table UPDATE currently does.
+
+        both cases should probably raise CompileError, however this could
+        be backwards incompatible with current use cases (such as other test
+        suites)
+
+        """
+
+        table1 = self.tables.mytable
+        table2 = self.tables.myothertable
+
+        stmt = table1.update().where(table1.c.name == "jill")
+        if twotable:
+            stmt = stmt.where(table2.c.otherid == table1.c.myid)
+
+        if values.blank:
+            stmt = stmt.values()
+
+        if twotable:
+            if values.blank:
+                self.assert_compile(
+                    stmt,
+                    "UPDATE mytable SET  FROM myothertable "
+                    "WHERE mytable.name = :name_1 "
+                    "AND myothertable.otherid = mytable.myid",
+                )
+            elif values.none:
+                self.assert_compile(
+                    stmt,
+                    "UPDATE mytable SET myid=:myid, name=:name, "
+                    "description=:description FROM myothertable "
+                    "WHERE mytable.name = :name_1 "
+                    "AND myothertable.otherid = mytable.myid",
+                )
+        elif values.blank:
+            self.assert_compile(
+                stmt,
+                "UPDATE mytable SET  WHERE mytable.name = :name_1",
+            )
+        elif values.none:
+            self.assert_compile(
+                stmt,
+                "UPDATE mytable SET myid=:myid, name=:name, "
+                "description=:description WHERE mytable.name = :name_1",
+            )
+
     def test_update_literal_binds(self):
         table1 = self.tables.mytable
 
@@ -360,7 +413,6 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
 
     def test_labels_no_collision(self):
-
         t = table("foo", column("id"), column("foo_id"))
 
         self.assert_compile(
@@ -563,7 +615,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "name=(mytable.name || :name_1) "
             "WHERE "
             "mytable.myid = hoho(:hoho_1) AND "
-            "mytable.name = :param_2 || mytable.name || :param_3",
+            "mytable.name = (:param_2 || mytable.name || :param_3)",
         )
 
     def test_unconsumed_names_kwargs(self):
@@ -624,7 +676,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "myid=do_stuff(mytable.myid, :param_1) "
             "WHERE "
             "mytable.myid = hoho(:hoho_1) AND "
-            "mytable.name = :param_2 || mytable.name || :param_3",
+            "mytable.name = (:param_2 || mytable.name || :param_3)",
         )
 
     def test_update_ordered_parameters_newstyle_2(self):
@@ -654,7 +706,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "myid=do_stuff(mytable.myid, :param_1) "
             "WHERE "
             "mytable.myid = hoho(:hoho_1) AND "
-            "mytable.name = :param_2 || mytable.name || :param_3",
+            "mytable.name = (:param_2 || mytable.name || :param_3)",
         )
 
     def test_update_ordered_parameters_multiple(self):
@@ -724,7 +776,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "name=(mytable.name || :name_1) "
             "WHERE "
             "mytable.myid = hoho(:hoho_1) AND "
-            "mytable.name = :param_2 || mytable.name || :param_3",
+            "mytable.name = (:param_2 || mytable.name || :param_3)",
         )
 
     def test_where_empty(self):
@@ -927,7 +979,6 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
 
         if paramstyle.qmark:
-
             dialect = default.StrCompileDialect(paramstyle="qmark")
             self.assert_compile(
                 upd,

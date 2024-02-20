@@ -20,6 +20,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -29,16 +30,15 @@ def pickle_protocols():
     # return iter([-1, 0, 1, 2])
 
 
-class User(fixtures.ComparableEntity):
+class User(ComparableEntity):
     pass
 
 
-class Address(fixtures.ComparableEntity):
+class Address(ComparableEntity):
     pass
 
 
 class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
-
     run_setup_mappers = "once"
     run_inserts = "once"
     run_deletes = None

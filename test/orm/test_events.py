@@ -16,13 +16,13 @@ from sqlalchemy import literal_column
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy import update
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import deferred
-from sqlalchemy.orm import events
 from sqlalchemy.orm import EXT_SKIP
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import joinedload
@@ -49,24 +49,14 @@ from sqlalchemy.testing import is_not
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.fixtures import RemoveORMEventsGlobally
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
 from test.orm import _fixtures
 
 
-class _RemoveListeners:
-    @testing.fixture(autouse=True)
-    def _remove_listeners(self):
-        yield
-        events.MapperEvents._clear()
-        events.InstanceEvents._clear()
-        events.SessionEvents._clear()
-        events.InstrumentationEvents._clear()
-        events.QueryEvents._clear()
-
-
-class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
+class ORMExecuteTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
     run_setup_mappers = "once"
     run_inserts = "once"
     run_deletes = None
@@ -76,7 +66,6 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
         cls._setup_stock_mapping()
 
     def _caching_session_fixture(self):
-
         cache = {}
 
         maker = sessionmaker(testing.db, future=True)
@@ -112,7 +101,6 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
         User, Address = self.classes("User", "Address")
 
         with self.sql_execution_asserter(testing.db) as asserter:
-
             with self._caching_session_fixture() as session:
                 stmt = (
                     select(User)
@@ -351,7 +339,6 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
             sess.execute(insert(User), orig_params)
 
     def test_chained_events_one(self):
-
         sess = Session(testing.db, future=True)
 
         @event.listens_for(sess, "do_orm_execute")
@@ -387,7 +374,6 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
 
         @event.listens_for(session, "do_orm_execute")
         def do_orm_execute(ctx):
-
             if not ctx.is_select:
                 assert_raises_message(
                     sa.exc.InvalidRequestError,
@@ -404,12 +390,46 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
                 is_orm_statement=ctx.is_orm_statement,
                 is_relationship_load=ctx.is_relationship_load,
                 is_column_load=ctx.is_column_load,
-                lazy_loaded_from=ctx.lazy_loaded_from
-                if ctx.is_select
-                else None,
+                lazy_loaded_from=(
+                    ctx.lazy_loaded_from if ctx.is_select else None
+                ),
             )
 
         return canary
+
+    @testing.combinations(
+        (lambda: select(1), True),
+        (
+            lambda user_table: select(user_table).union(select(user_table)),
+            True,
+        ),
+        (lambda: text("select * from users"), False),
+    )
+    def test_non_orm_statements(self, stmt, is_select):
+        sess = Session(testing.db, future=True)
+
+        canary = self._flag_fixture(sess)
+
+        user_table = self.tables.users
+        stmt = testing.resolve_lambda(stmt, user_table=user_table)
+        sess.execute(stmt).all()
+
+        eq_(
+            canary.mock_calls,
+            [
+                call.options(
+                    bind_mapper=None,
+                    all_mappers=[],
+                    is_select=is_select,
+                    is_update=False,
+                    is_delete=False,
+                    is_orm_statement=False,
+                    is_relationship_load=False,
+                    is_column_load=False,
+                    lazy_loaded_from=None,
+                )
+            ],
+        )
 
     def test_all_mappers_accessor_one(self):
         User, Address = self.classes("User", "Address")
@@ -442,7 +462,6 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
         )
 
     def test_all_mappers_accessor_two(self):
-
         sess = Session(testing.db, future=True)
 
         canary = self._flag_fixture(sess)
@@ -702,7 +721,6 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
         )
 
     def test_chained_events_two(self):
-
         sess = Session(testing.db, future=True)
 
         def added(ctx):
@@ -787,7 +805,7 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
             eq_(m1.mock_calls, [])
 
 
-class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
+class MapperEventsTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
     run_inserts = None
 
     @classmethod
@@ -1324,6 +1342,97 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             canary.mock_calls,
         )
 
+    @testing.variation(
+        "listen_type",
+        ["listen_on_mapper", "listen_on_base", "listen_on_mixin"],
+    )
+    def test_mapper_config_sequence(self, decl_base, listen_type):
+        canary = Mock()
+
+        if listen_type.listen_on_mapper:
+            event.listen(Mapper, "instrument_class", canary.instrument_class)
+            event.listen(
+                Mapper,
+                "after_mapper_constructed",
+                canary.after_mapper_constructed,
+            )
+        elif listen_type.listen_on_base:
+            event.listen(
+                decl_base,
+                "instrument_class",
+                canary.instrument_class,
+                propagate=True,
+            )
+            event.listen(
+                decl_base,
+                "after_mapper_constructed",
+                canary.after_mapper_constructed,
+                propagate=True,
+            )
+        elif listen_type.listen_on_mixin:
+
+            class Mixin:
+                pass
+
+            event.listen(
+                Mixin,
+                "instrument_class",
+                canary.instrument_class,
+                propagate=True,
+            )
+            event.listen(
+                Mixin,
+                "after_mapper_constructed",
+                canary.after_mapper_constructed,
+                propagate=True,
+            )
+        else:
+            listen_type.fail()
+
+        event.listen(object, "class_instrument", canary.class_instrument)
+        event.listen(Mapper, "before_configured", canary.before_configured)
+        event.listen(
+            Mapper, "before_mapper_configured", canary.before_mapper_configured
+        )
+        event.listen(Mapper, "after_configured", canary.after_configured)
+
+        if listen_type.listen_on_mixin:
+
+            class Thing(Mixin, decl_base):
+                __tablename__ = "thing"
+
+                id = Column(Integer, primary_key=True)
+
+        else:
+
+            class Thing(decl_base):
+                __tablename__ = "thing"
+
+                id = Column(Integer, primary_key=True)
+
+        mp = inspect(Thing)
+        eq_(
+            canary.mock_calls,
+            [
+                call.instrument_class(mp, Thing),
+                call.class_instrument(Thing),
+                call.after_mapper_constructed(mp, Thing),
+            ],
+        )
+
+        decl_base.registry.configure()
+        eq_(
+            canary.mock_calls,
+            [
+                call.instrument_class(mp, Thing),
+                call.class_instrument(Thing),
+                call.after_mapper_constructed(mp, Thing),
+                call.before_configured(),
+                call.before_mapper_configured(mp, Thing),
+                call.after_configured(),
+            ],
+        )
+
     @testing.combinations((True,), (False,), argnames="create_dependency")
     @testing.combinations((True,), (False,), argnames="configure_at_once")
     def test_before_mapper_configured_event(
@@ -1436,9 +1545,11 @@ class RestoreLoadContextTest(fixtures.DeclarativeMappedTest):
             (
                 lambda session: session,
                 "loaded_as_persistent",
-                lambda session, instance: instance.unloaded
-                if instance.__class__.__name__ == "A"
-                else None,
+                lambda session, instance: (
+                    instance.unloaded
+                    if instance.__class__.__name__ == "A"
+                    else None
+                ),
             ),
             argnames="target, event_name, fn",
         )(fn)
@@ -1526,7 +1637,7 @@ class RestoreLoadContextTest(fixtures.DeclarativeMappedTest):
 
 
 class DeclarativeEventListenTest(
-    _RemoveListeners, fixtures.DeclarativeMappedTest
+    RemoveORMEventsGlobally, fixtures.DeclarativeMappedTest
 ):
     run_setup_classes = "each"
     run_deletes = None
@@ -1559,9 +1670,8 @@ class DeclarativeEventListenTest(
         eq_(listen.mock_calls, [call(c1, "c"), call(b1, "b"), call(a1, "a")])
 
 
-class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
-
-    """ "test event listeners against unmapped classes.
+class DeferredMapperEventsTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
+    """test event listeners against unmapped classes.
 
     This incurs special logic.  Note if we ever do the "remove" case,
     it has to get all of these, too.
@@ -2228,7 +2338,7 @@ class RefreshTest(_fixtures.FixtureTest):
         eq_(canary, [("refresh", None)])
 
 
-class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
+class SessionEventsTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
     run_inserts = None
 
     def test_class_listen(self):
@@ -2755,7 +2865,9 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         assert "name" not in u1.__dict__
 
 
-class SessionLifecycleEventsTest(_RemoveListeners, _fixtures.FixtureTest):
+class SessionLifecycleEventsTest(
+    RemoveORMEventsGlobally, _fixtures.FixtureTest
+):
     run_inserts = None
 
     def _fixture(self, include_address=False):
@@ -3297,7 +3409,7 @@ class SessionLifecycleEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
 
 class QueryEventsTest(
-    _RemoveListeners,
+    RemoveORMEventsGlobally,
     _fixtures.FixtureTest,
     AssertsCompiledSQL,
     testing.AssertsExecutionResults,

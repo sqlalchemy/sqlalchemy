@@ -1,5 +1,5 @@
-# testing/engines.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/postgresql/psycopg2cffi.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -16,8 +16,6 @@ r"""
 ``psycopg2cffi`` is an adaptation of ``psycopg2``, using CFFI for the C
 layer. This makes it suitable for use in e.g. PyPy. Documentation
 is as per ``psycopg2``.
-
-.. versionadded:: 1.0.0
 
 .. seealso::
 

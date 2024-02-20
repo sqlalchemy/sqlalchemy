@@ -3,6 +3,7 @@ an UPDATE statement on a single row into an INSERT statement, so that a new
 row is inserted with the new data, keeping the old row intact.
 
 """
+
 from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import event

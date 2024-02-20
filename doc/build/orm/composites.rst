@@ -84,7 +84,7 @@ Working with Mapped Composite Column Types
 
 With a mapping as illustrated in the top section, we can work with the
 ``Vertex`` class, where the ``.start`` and ``.end`` attributes will
-transparently refer to the columns referred towards by the ``Point`` class, as
+transparently refer to the columns referenced by the ``Point`` class, as
 well as with instances of the ``Vertex`` class, where the ``.start`` and
 ``.end`` attributes will refer to instances of the ``Point`` class. The ``x1``,
 ``y1``, ``x2``, and ``y2`` columns are handled transparently:
@@ -399,7 +399,11 @@ For the purposes of the example, the ``Vertex`` composite is then mapped to a
 class called ``HasVertex``, which is where the :class:`.Table` containing the
 four source columns ultimately resides::
 
+    from __future__ import annotations
+
     import dataclasses
+    from typing import Any
+    from typing import Tuple
 
     from sqlalchemy.orm import composite
     from sqlalchemy.orm import DeclarativeBase
@@ -419,11 +423,11 @@ four source columns ultimately resides::
         end: Point
 
         @classmethod
-        def _generate(self, x1, y1, x2, y2):
+        def _generate(cls, x1: int, y1: int, x2: int, y2: int) -> Vertex:
             """generate a Vertex from a row"""
             return Vertex(Point(x1, y1), Point(x2, y2))
 
-        def __composite_values__(self):
+        def __composite_values__(self) -> Tuple[Any, ...]:
             """generate a row from a Vertex"""
             return dataclasses.astuple(self.start) + dataclasses.astuple(self.end)
 

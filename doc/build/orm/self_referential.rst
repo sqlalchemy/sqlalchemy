@@ -76,18 +76,20 @@ of the ``parent`` :func:`_orm.relationship`, thus establishing
 then behaves as a many-to-one.
 
 As always, both directions can be combined into a bidirectional
-relationship using the :func:`.backref` function::
+relationship using two :func:`_orm.relationship` constructs linked by
+:paramref:`_orm.relationship.back_populates`::
 
     class Node(Base):
         __tablename__ = "node"
         id = mapped_column(Integer, primary_key=True)
         parent_id = mapped_column(Integer, ForeignKey("node.id"))
         data = mapped_column(String(50))
-        children = relationship("Node", backref=backref("parent", remote_side=[id]))
+        children = relationship("Node", back_populates="parent")
+        parent = relationship("Node", back_populates="children", remote_side=[id])
 
 .. seealso::
 
-    :ref:`examples_adjacencylist` - working example
+    :ref:`examples_adjacencylist` - working example, updated for SQLAlchemy 2.0
 
 Composite Adjacency Lists
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -114,8 +116,10 @@ to a specific folder within that account::
         name = mapped_column(String)
 
         parent_folder = relationship(
-            "Folder", backref="child_folders", remote_side=[account_id, folder_id]
+            "Folder", back_populates="child_folders", remote_side=[account_id, folder_id]
         )
+
+        child_folders = relationship("Folder", back_populates="parent_folder")
 
 Above, we pass ``account_id`` into the :paramref:`_orm.relationship.remote_side` list.
 :func:`_orm.relationship` recognizes that the ``account_id`` column here

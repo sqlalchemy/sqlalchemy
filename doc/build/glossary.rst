@@ -27,6 +27,44 @@ Glossary
 
             :ref:`migration_20_toplevel`
 
+    sentinel
+    insert sentinel
+        This is a SQLAlchemy-specific term that refers to a
+        :class:`_schema.Column` which can be used for a bulk
+        :term:`insertmanyvalues` operation to track INSERTed data records
+        against rows passed back using RETURNING or similar.   Such a
+        column configuration is necessary for those cases when the
+        :term:`insertmanyvalues` feature does an optimized INSERT..RETURNING
+        statement for many rows at once while still being able to guarantee the
+        order of returned rows matches the input data.
+
+        For typical use cases, the SQLAlchemy SQL compiler can automatically
+        make use of surrogate integer primary key columns as "insert
+        sentinels", and no user-configuration is required.  For less common
+        cases with other varieties of server-generated primary key values,
+        explicit "insert sentinel" columns may be optionally configured within
+        :term:`table metadata` in order to optimize INSERT statements that
+        are inserting many rows at once.
+
+        .. seealso::
+
+            :ref:`engine_insertmanyvalues_returning_order` - in the section
+            :ref:`engine_insertmanyvalues`
+
+    insertmanyvalues
+        This refers to a SQLAlchemy-specific feature which allows INSERT
+        statements to emit thousands of new rows within a single statement
+        while at the same time allowing server generated values to be returned
+        inline from the statement using RETURNING or similar, for performance
+        optimization purposes. The feature is intended to be transparently
+        available for selected backends, but does offer some configurational
+        options. See the section :ref:`engine_insertmanyvalues` for a full
+        description of this feature.
+
+        .. seealso::
+
+            :ref:`engine_insertmanyvalues`
+
     mixin class
     mixin classes
 
@@ -266,7 +304,7 @@ Glossary
         aggregate the single row from each INSERT execution together.
 
         To overcome this limitation, SQLAlchemy as of the 2.0 series implements
-        an alternative form of "executemany" which is referred towards as
+        an alternative form of "executemany" which is known as
         :ref:`engine_insertmanyvalues`. This feature makes use of
         ``cursor.execute()`` to invoke an INSERT statement that will proceed
         with multiple parameter sets in one round trip, thus producing the same
@@ -402,6 +440,8 @@ Glossary
         .. seealso::
 
             `Metadata Mapping (via Martin Fowler) <https://www.martinfowler.com/eaaCatalog/metadataMapping.html>`_
+
+            :ref:`tutorial_working_with_metadata`  - in the :ref:`unified_tutorial`
 
     version id column
         In SQLAlchemy, this refers to the use of a particular table column that
@@ -770,6 +810,19 @@ Glossary
             :ref:`tutorial_orm_data_manipulation`
 
             :ref:`session_basics`
+
+    flush
+    flushing
+    flushed
+
+        This refers to the actual process used by the :term:`unit of work`
+        to emit changes to a database.  In SQLAlchemy this process occurs
+        via the :class:`_orm.Session` object and is usually automatic, but
+        can also be controlled manually.
+
+        .. seealso::
+
+            :ref:`session_flushing`
 
     expire
     expired

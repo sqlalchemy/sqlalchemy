@@ -6,6 +6,7 @@ import pickle
 import weakref
 
 import sqlalchemy as sa
+from sqlalchemy import and_
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
@@ -14,8 +15,12 @@ from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import types
 from sqlalchemy import Unicode
 from sqlalchemy import util
+from sqlalchemy.dialects import mysql
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects import sqlite
 from sqlalchemy.engine import result
 from sqlalchemy.engine.processors import to_decimal_processor_factory
 from sqlalchemy.orm import aliased
@@ -34,12 +39,14 @@ from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm.session import _sessions
 from sqlalchemy.sql import column
 from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql.util import visit_binary_product
 from sqlalchemy.sql.visitors import cloned_traverse
 from sqlalchemy.sql.visitors import replacement_traverse
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import pickleable
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -47,11 +54,11 @@ from sqlalchemy.testing.util import gc_collect
 from ..orm import _fixtures
 
 
-class A(fixtures.ComparableEntity):
+class A(ComparableEntity):
     pass
 
 
-class B(fixtures.ComparableEntity):
+class B(ComparableEntity):
     pass
 
 
@@ -290,7 +297,6 @@ class MemUsageTest(EnsureZeroed):
 
     @testing.requires.cextensions
     def test_cycles_in_row(self):
-
         tup = result.result_tuple(["a", "b", "c"])
 
         @profile_memory()
@@ -309,9 +315,6 @@ class MemUsageTest(EnsureZeroed):
     def test_ad_hoc_types(self):
         """test storage of bind processors, result processors
         in dialect-wide registry."""
-
-        from sqlalchemy.dialects import mysql, postgresql, sqlite
-        from sqlalchemy import types
 
         eng = engines.testing_engine()
         for args in (
@@ -692,7 +695,6 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
         @testing.emits_warning()
         @profile_memory()
         def go():
-
             # execute with a non-unicode object. a warning is emitted,
             # this warning shouldn't clog up memory.
 
@@ -915,7 +917,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
 
         @profile_memory()
         def go():
-            class A(fixtures.ComparableEntity):
+            class A(ComparableEntity):
                 pass
 
             class B(A):
@@ -996,10 +998,10 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
 
         @profile_memory()
         def go():
-            class A(fixtures.ComparableEntity):
+            class A(ComparableEntity):
                 pass
 
-            class B(fixtures.ComparableEntity):
+            class B(ComparableEntity):
                 pass
 
             self.mapper_registry.map_imperatively(
@@ -1063,7 +1065,8 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
 
         t1_mapper = self.mapper_registry.map_imperatively(T1, t1)
 
-        @testing.emits_warning()
+        @testing.emits_warning(r"This declarative base")
+        @testing.expect_deprecated(r"User-placed attribute .* is replacing")
         @profile_memory()
         def go():
             class T2:
@@ -1125,7 +1128,9 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             s = table2.select()
             sess = session()
             with testing.expect_deprecated(
-                "Implicit coercion of SELECT and " "textual SELECT constructs"
+                "Implicit coercion of SELECT and textual SELECT constructs",
+                "An alias is being generated automatically",
+                assert_=False,
             ):
                 sess.query(Foo).join(s, Foo.bars).all()
             sess.rollback()
@@ -1634,7 +1639,6 @@ class CycleTest(_fixtures.FixtureTest):
 
     @testing.provide_metadata
     def test_optimized_get(self):
-
         Base = declarative_base(metadata=self.metadata)
 
         class Employee(Base):
@@ -1668,9 +1672,6 @@ class CycleTest(_fixtures.FixtureTest):
 
     def test_visit_binary_product(self):
         a, b, q, e, f, j, r = (column(chr_) for chr_ in "abqefjr")
-
-        from sqlalchemy import and_, func
-        from sqlalchemy.sql.util import visit_binary_product
 
         expr = and_((a + b) == q + func.sum(e + f), j == r)
 

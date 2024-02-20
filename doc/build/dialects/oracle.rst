@@ -44,6 +44,12 @@ construction arguments, are as follows:
 .. autoclass:: BFILE
   :members: __init__
 
+.. autoclass:: BINARY_DOUBLE
+  :members: __init__
+
+.. autoclass:: BINARY_FLOAT
+  :members: __init__
+
 .. autoclass:: DATE
    :members: __init__
 
@@ -56,6 +62,9 @@ construction arguments, are as follows:
 .. autoclass:: NCLOB
   :members: __init__
 
+.. autoclass:: NVARCHAR2
+   :members: __init__
+
 .. autoclass:: NUMBER
    :members: __init__
 
@@ -63,6 +72,9 @@ construction arguments, are as follows:
   :members: __init__
 
 .. autoclass:: RAW
+  :members: __init__
+
+.. autoclass:: ROWID
   :members: __init__
 
 .. autoclass:: TIMESTAMP

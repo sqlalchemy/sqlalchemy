@@ -52,23 +52,21 @@ def before_insert(mapper, connection, instance):
         )
 
         connection.execute(
-            personnel.update(personnel.c.rgt >= right_most_sibling).values(
+            personnel.update()
+            .where(personnel.c.rgt >= right_most_sibling)
+            .values(
                 lft=case(
-                    [
-                        (
-                            personnel.c.lft > right_most_sibling,
-                            personnel.c.lft + 2,
-                        )
-                    ],
+                    (
+                        personnel.c.lft > right_most_sibling,
+                        personnel.c.lft + 2,
+                    ),
                     else_=personnel.c.lft,
                 ),
                 rgt=case(
-                    [
-                        (
-                            personnel.c.rgt >= right_most_sibling,
-                            personnel.c.rgt + 2,
-                        )
-                    ],
+                    (
+                        personnel.c.rgt >= right_most_sibling,
+                        personnel.c.rgt + 2,
+                    ),
                     else_=personnel.c.rgt,
                 ),
             )

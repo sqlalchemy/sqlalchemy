@@ -29,11 +29,11 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
 
-class Company(fixtures.ComparableEntity):
+class Company(ComparableEntity):
     pass
 
 
-class Person(fixtures.ComparableEntity):
+class Person(ComparableEntity):
     pass
 
 
@@ -49,11 +49,11 @@ class Boss(Manager):
     pass
 
 
-class Machine(fixtures.ComparableEntity):
+class Machine(ComparableEntity):
     pass
 
 
-class Paperwork(fixtures.ComparableEntity):
+class Paperwork(ComparableEntity):
     pass
 
 
@@ -61,12 +61,10 @@ def _aliased_join_warning(arg):
     return testing.expect_warnings(
         r"An alias is being generated automatically against joined entity "
         r"Mapper\[%s\] due to overlapping tables" % (arg,),
-        raise_on_any_unexpected=True,
     )
 
 
 class SelfReferentialTestJoinedToBase(fixtures.MappedTest):
-
     run_setup_mappers = "once"
 
     @classmethod
@@ -175,7 +173,6 @@ class SelfReferentialTestJoinedToBase(fixtures.MappedTest):
 
 
 class SelfReferentialJ2JTest(fixtures.MappedTest):
-
     run_setup_mappers = "once"
 
     @classmethod
@@ -407,7 +404,6 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
 
 
 class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
-
     run_setup_mappers = "once"
 
     @classmethod
@@ -559,7 +555,6 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
 
 
 class M2MFilterTest(fixtures.MappedTest):
-
     run_setup_mappers = "once"
     run_inserts = "once"
     run_deletes = None
@@ -1827,6 +1822,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
         # I3abfb45dd6e50f84f29d39434caa0b550ce27864,
         # this query is coming out instead which is equivalent, but not
         # totally sure where this happens
+        # update: changed slightly in #10169
 
         stmt = select(Sub2)
 
@@ -1844,6 +1840,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
         self.assert_compile(
             stmt,
             "SELECT anon_1.sub2_id AS anon_1_sub2_id, "
+            "anon_1.base2_id AS anon_1_base2_id, "
             "anon_1.base2_base1_id AS anon_1_base2_base1_id, "
             "anon_1.base2_data AS anon_1_base2_data, "
             "anon_1.sub2_subdata AS anon_1_sub2_subdata "
@@ -1851,8 +1848,8 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
             "base2.base1_id AS base2_base1_id, base2.data AS base2_data, "
             "sub2.subdata AS sub2_subdata "
             "FROM base2 JOIN sub2 ON base2.id = sub2.id) AS anon_1 "
-            "JOIN ep1 ON anon_1.sub2_id = ep1.base2_id "
-            "JOIN ep2 ON anon_1.sub2_id = ep2.base2_id",
+            "JOIN ep1 ON anon_1.base2_id = ep1.base2_id "
+            "JOIN ep2 ON anon_1.base2_id = ep2.base2_id",
         )
 
     def test_seven(self):
@@ -1887,10 +1884,12 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
             # adding Sub2 to the entities list helps it,
             # otherwise the joins for Sub2.ep1/ep2 don't have columns
             # to latch onto.   Can't really make it better than this
+            # update: changed slightly in #10169
             stmt,
             "SELECT anon_1.parent_id AS anon_1_parent_id, "
             "anon_1.parent_data AS anon_1_parent_data, "
             "anon_1.sub2_id AS anon_1_sub2_id, "
+            "anon_1.base2_id AS anon_1_base2_id, "
             "anon_1.base2_base1_id AS anon_1_base2_base1_id, "
             "anon_1.base2_data AS anon_1_base2_data, "
             "anon_1.sub2_subdata AS anon_1_sub2_subdata "
@@ -1904,8 +1903,8 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
             "ON parent.id = sub1.parent_id JOIN "
             "(base2 JOIN sub2 ON base2.id = sub2.id) "
             "ON base1.id = base2.base1_id) AS anon_1 "
-            "JOIN ep1 ON anon_1.sub2_id = ep1.base2_id "
-            "JOIN ep2 ON anon_1.sub2_id = ep2.base2_id",
+            "JOIN ep1 ON anon_1.base2_id = ep1.base2_id "
+            "JOIN ep2 ON anon_1.base2_id = ep2.base2_id",
         )
 
 
@@ -2336,7 +2335,9 @@ class JoinedloadOverWPolyAliased(
                 exc.ArgumentError,
                 r'ORM mapped entity or attribute "Sub1.links" does not '
                 r'link from relationship "Link.child".  Did you mean to use '
-                r'"Link.child.of_type\(Sub1\)"\?',
+                r'"Link.child.of_type\(Sub1\)"\ or '
+                r'"loadopt.options'
+                r'\(selectin_polymorphic\(Parent, \[Sub1\]\), ...\)" \?',
             ):
                 session.query(cls).options(
                     joinedload(cls.links)
@@ -2760,7 +2761,6 @@ class MultipleAdaptUsesEntityOverTableTest(
 
 
 class SameNameOnJoined(fixtures.MappedTest):
-
     run_setup_mappers = "once"
     run_inserts = None
     run_deletes = None
@@ -2896,9 +2896,11 @@ class BetweenSubclassJoinWExtraJoinedLoad(
             m1 = aliased(Manager, flat=True)
             q = sess.query(Engineer, m1).join(Engineer.manager.of_type(m1))
 
-        with _aliased_join_warning(
-            r"Manager\(managers\)"
-        ) if autoalias else nullcontext():
+        with (
+            _aliased_join_warning(r"Manager\(managers\)")
+            if autoalias
+            else nullcontext()
+        ):
             self.assert_compile(
                 q,
                 "SELECT engineers.id AS "

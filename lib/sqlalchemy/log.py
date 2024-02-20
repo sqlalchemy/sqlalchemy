@@ -1,5 +1,5 @@
-# sqlalchemy/log.py
-# Copyright (C) 2006-2023 the SQLAlchemy authors and contributors
+# log.py
+# Copyright (C) 2006-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 # Includes alterations by Vinay Sajip vinay_sajip@yahoo.co.uk
 #
@@ -30,18 +30,13 @@ from typing import TypeVar
 from typing import Union
 
 from .util import py311
-from .util import py38
 from .util.typing import Literal
 
 
-if py38:
-    STACKLEVEL = True
-    # needed as of py3.11.0b1
-    # #8019
-    STACKLEVEL_OFFSET = 2 if py311 else 1
-else:
-    STACKLEVEL = False
-    STACKLEVEL_OFFSET = 0
+STACKLEVEL = True
+# needed as of py3.11.0b1
+# #8019
+STACKLEVEL_OFFSET = 2 if py311 else 1
 
 _IT = TypeVar("_IT", bound="Identified")
 
@@ -75,10 +70,10 @@ def _qual_logger_name_for_cls(cls: Type[Identified]) -> str:
 
 def class_logger(cls: Type[_IT]) -> Type[_IT]:
     logger = logging.getLogger(_qual_logger_name_for_cls(cls))
-    cls._should_log_debug = lambda self: logger.isEnabledFor(  # type: ignore[assignment]  # noqa: E501
+    cls._should_log_debug = lambda self: logger.isEnabledFor(  # type: ignore[method-assign]  # noqa: E501
         logging.DEBUG
     )
-    cls._should_log_info = lambda self: logger.isEnabledFor(  # type: ignore[assignment]  # noqa: E501
+    cls._should_log_info = lambda self: logger.isEnabledFor(  # type: ignore[method-assign]  # noqa: E501
         logging.INFO
     )
     cls.logger = logger
@@ -202,7 +197,6 @@ class InstanceLogger:
             selected_level = self.logger.getEffectiveLevel()
 
         if level >= selected_level:
-
             if STACKLEVEL:
                 kwargs["stacklevel"] = (
                     kwargs.get("stacklevel", 1) + STACKLEVEL_OFFSET
@@ -270,14 +264,12 @@ class echo_property:
     @overload
     def __get__(
         self, instance: Literal[None], owner: Type[Identified]
-    ) -> echo_property:
-        ...
+    ) -> echo_property: ...
 
     @overload
     def __get__(
         self, instance: Identified, owner: Type[Identified]
-    ) -> _EchoFlagType:
-        ...
+    ) -> _EchoFlagType: ...
 
     def __get__(
         self, instance: Optional[Identified], owner: Type[Identified]

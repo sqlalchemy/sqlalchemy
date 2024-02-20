@@ -40,7 +40,7 @@ Setting up MetaData with Table objects
 ---------------------------------------
 
 When we work with a relational database, the basic data-holding structure
-in the database which we query from is known a **table**.
+in the database which we query from is known as a **table**.
 In SQLAlchemy, the database "table" is ultimately represented
 by a Python object similarly named :class:`_schema.Table`.
 
@@ -115,7 +115,7 @@ Components of ``Table``
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 We can observe that the :class:`_schema.Table` construct as written in Python
-has a resemblence to a SQL CREATE TABLE statement; starting with the table
+has a resemblance to a SQL CREATE TABLE statement; starting with the table
 name, then listing out each column, where each column has a name and a
 datatype. The objects we use above are:
 
@@ -205,7 +205,7 @@ In the next section we will emit the completed DDL for the ``user`` and
 Emitting DDL to the Database
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-We've constructed a an object structure that represents
+We've constructed an object structure that represents
 two database tables in a database, starting at the root :class:`_schema.MetaData`
 object, then into two :class:`_schema.Table` objects, each of which hold
 onto a collection of :class:`_schema.Column` and :class:`_schema.Constraint`
@@ -335,7 +335,7 @@ SQLAlchemy :class:`_orm.DeclarativeBase` class::
     >>> class Base(DeclarativeBase):
     ...     pass
 
-Above, the ``Base`` class is what we'll refer towards as the Declarative Base.
+Above, the ``Base`` class is what we'll call the Declarative Base.
 When we make new classes that are subclasses of ``Base``, combined with
 appropriate class-level directives, they will each be established as a new
 **ORM mapped class** at class creation time, each one typically (but not
@@ -415,7 +415,7 @@ types::
     ...     def __repr__(self) -> str:
     ...         return f"Address(id={self.id!r}, email_address={self.email_address!r})"
 
-The two classes above, ``User`` and ``Address``, are now referred towards
+The two classes above, ``User`` and ``Address``, are now called
 as **ORM Mapped Classes**, and are available for use in
 ORM persistence and query operations, which will be described later.  Details
 about these classes include:
@@ -427,7 +427,7 @@ about these classes include:
   from the :attr:`_orm.DeclarativeBase.__table__` attribute.
 
 * As mentioned previously, this form
-  is referred towards as :ref:`orm_declarative_table_configuration`.  One
+  is known as :ref:`orm_declarative_table_configuration`.  One
   of several alternative declaration styles would instead have us
   build the :class:`_schema.Table` object directly, and **assign** it
   directly to :attr:`_orm.DeclarativeBase.__table__`.  This style
@@ -590,8 +590,19 @@ another operation that was mentioned at the beginning of the section,
 that of **table reflection**.   Table reflection refers to the process of
 generating :class:`_schema.Table` and related objects by reading the current
 state of a database.   Whereas in the previous sections we've been declaring
-:class:`_schema.Table` objects in Python and then emitting DDL to the database,
-the reflection process does it in reverse.
+:class:`_schema.Table` objects in Python, where we then have the option
+to emit DDL to the database to generate such a schema, the reflection process
+does these two steps in reverse, starting from an existing database
+and generating in-Python data structures to represent the schemas within
+that database.
+
+.. tip::  There is no requirement that reflection must be used in order to
+   use SQLAlchemy with a pre-existing database.  It is entirely typical that
+   the SQLAlchemy application declares all metadata explicitly in Python,
+   such that its structure corresponds to that the existing database.
+   The metadata structure also need not include tables, columns, or other
+   constraints and constructs in the pre-existing database that are not needed
+   for the local application to function.
 
 As an example of reflection, we will create a new :class:`_schema.Table`
 object which represents the ``some_table`` object we created manually in
@@ -644,7 +655,3 @@ Core and ORM table-oriented constructs that we can use to interact with
 these tables via a :class:`_engine.Connection` and/or ORM
 :class:`_orm.Session`.  In the following sections, we will illustrate
 how to create, manipulate, and select data using these structures.
-
-
-
-

@@ -13,8 +13,10 @@ full blown ORM doesn't do terribly either even though mapped objects
 provide a huge amount of functionality.
 
 """
+
 from sqlalchemy import Column
 from sqlalchemy import create_engine
+from sqlalchemy import Identity
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.ext.declarative import declarative_base
@@ -29,7 +31,7 @@ engine = None
 
 class Customer(Base):
     __tablename__ = "customer"
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, Identity(), primary_key=True)
     name = Column(String(255))
     description = Column(String(255))
 
@@ -108,6 +110,20 @@ def test_core_fetchall(n):
     with engine.connect() as conn:
         result = conn.execute(Customer.__table__.select().limit(n)).fetchall()
         for row in result:
+            row.id, row.name, row.description
+
+
+@Profiler.profile
+def test_core_fetchall_mapping(n):
+    """Load Core result rows using fetchall."""
+
+    with engine.connect() as conn:
+        result = (
+            conn.execute(Customer.__table__.select().limit(n))
+            .mappings()
+            .fetchall()
+        )
+        for row in result:
             row["id"], row["name"], row["description"]
 
 
@@ -124,7 +140,7 @@ def test_core_fetchmany_w_streaming(n):
             if not chunk:
                 break
             for row in chunk:
-                row["id"], row["name"], row["description"]
+                row.id, row.name, row.description
 
 
 @Profiler.profile
@@ -138,7 +154,7 @@ def test_core_fetchmany(n):
             if not chunk:
                 break
             for row in chunk:
-                row["id"], row["name"], row["description"]
+                row.id, row.name, row.description
 
 
 @Profiler.profile

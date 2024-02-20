@@ -1,5 +1,5 @@
-# sqlite/pysqlite.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/sqlite/pysqlite.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -486,6 +486,7 @@ class _SQLite_pysqliteDate(DATE):
 class SQLiteDialect_pysqlite(SQLiteDialect):
     default_paramstyle = "qmark"
     supports_statement_cache = True
+    returns_native_bytes = True
 
     colspecs = util.update_copy(
         SQLiteDialect.colspecs,
@@ -531,7 +532,6 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
     )
 
     def set_isolation_level(self, dbapi_connection, level):
-
         if level == "AUTOCOMMIT":
             dbapi_connection.isolation_level = None
         else:
@@ -544,7 +544,14 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
                 return None
             return re.search(a, b) is not None
 
-        create_func_kw = {"deterministic": True} if util.py38 else {}
+        if self._get_server_version_info(None) >= (3, 9):
+            # sqlite must be greater than 3.8.3 for deterministic=True
+            # https://docs.python.org/3/library/sqlite3.html#sqlite3.Connection.create_function
+            # the check is more conservative since there were still issues
+            # with following 3.8 sqlite versions
+            create_func_kw = {"deterministic": True}
+        else:
+            create_func_kw = {}
 
         def set_regexp(dbapi_connection):
             dbapi_connection.create_function(

@@ -205,6 +205,7 @@ We can run our new script directly::
 
 
 """  # noqa
+
 import argparse
 import cProfile
 import gc
@@ -318,7 +319,6 @@ class Profiler:
 
     @classmethod
     def main(cls):
-
         parser = argparse.ArgumentParser("python -m examples.performance")
 
         if cls.name is None:

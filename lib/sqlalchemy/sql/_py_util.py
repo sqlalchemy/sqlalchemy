@@ -1,5 +1,5 @@
 # sql/_py_util.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -57,7 +57,6 @@ class cache_anon_map(
     _index = 0
 
     def get_anon(self, object_: Any) -> Tuple[str, bool]:
-
         idself = id(object_)
         if idself in self:
             s_val = self[idself]

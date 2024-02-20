@@ -13,6 +13,7 @@ from sqlalchemy import exists
 from sqlalchemy import extract
 from sqlalchemy import Float
 from sqlalchemy import Integer
+from sqlalchemy import literal
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import or_
@@ -204,12 +205,24 @@ class CoreFixtures:
             ),
         ),
         lambda: (
+            literal(1).op("+")(literal(1)),
+            literal(1).op("-")(literal(1)),
+            column("q").op("-")(literal(1)),
+            UnaryExpression(table_a.c.b, modifier=operators.neg),
+            UnaryExpression(table_a.c.b, modifier=operators.desc_op),
+            UnaryExpression(table_a.c.b, modifier=operators.custom_op("!")),
+            UnaryExpression(table_a.c.b, modifier=operators.custom_op("~")),
+        ),
+        lambda: (
             column("q") == column("x"),
             column("q") == column("y"),
             column("z") == column("x"),
             (column("z") == column("x")).self_group(),
             (column("q") == column("x")).self_group(),
             column("z") + column("x"),
+            column("z").op("foo")(column("x")),
+            column("z").op("foo")(literal(1)),
+            column("z").op("bar")(column("x")),
             column("z") - column("x"),
             column("x") - column("z"),
             column("z") > column("x"),
@@ -224,6 +237,14 @@ class CoreFixtures:
             column("q").like("somstr"),
             column("q").like("somstr", escape="\\"),
             column("q").like("somstr", escape="X"),
+        ),
+        lambda: (
+            column("q").regexp_match("y", flags="ig"),
+            column("q").regexp_match("y", flags="q"),
+            column("q").regexp_match("y"),
+            column("q").regexp_replace("y", "z", flags="ig"),
+            column("q").regexp_replace("y", "z", flags="q"),
+            column("q").regexp_replace("y", "z"),
         ),
         lambda: (
             column("q", ARRAY(Integer))[3] == 5,
@@ -356,6 +377,10 @@ class CoreFixtures:
         lambda: (table_a.c.a, table_b.c.a),
         lambda: (tuple_(1, 2), tuple_(3, 4)),
         lambda: (func.array_agg([1, 2]), func.array_agg([3, 4])),
+        lambda: (
+            func.aggregate_strings(table_a.c.b, ","),
+            func.aggregate_strings(table_b_like_a.c.b, ","),
+        ),
         lambda: (
             func.percentile_cont(0.5).within_group(table_a.c.a),
             func.percentile_cont(0.5).within_group(table_a.c.b),
@@ -881,7 +906,6 @@ class CoreFixtures:
             return stmt
 
         def three():
-
             a1 = table_a.alias()
             a2 = table_a.alias()
             ex = exists().where(table_b.c.b == a1.c.a)
@@ -908,7 +932,6 @@ class CoreFixtures:
     fixtures.append(_complex_fixtures)
 
     def _statements_w_context_options_fixtures():
-
         return [
             select(table_a)._add_context_option(opt1, True),
             select(table_a)._add_context_option(opt1, 5),
@@ -957,7 +980,6 @@ class CoreFixtures:
             return anon_col > 5
 
         def three():
-
             l1, l2 = table_a.c.a.label(None), table_a.c.b.label(None)
 
             stmt = select(table_a.c.a, table_a.c.b, l1, l2)
@@ -1150,6 +1172,27 @@ class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
         ).data([(i, "data %s" % i, i * 5) for i in range(500)])
 
         is_(large_v1._generate_cache_key(), None)
+
+    @testing.combinations(
+        (lambda: column("x"), lambda: column("x"), lambda: column("y")),
+        (
+            lambda: func.foo_bar(1, 2, 3),
+            lambda: func.foo_bar(4, 5, 6),
+            lambda: func.foo_bar_bat(1, 2, 3),
+        ),
+    )
+    def test_cache_key_object_comparators(self, lc1, lc2, lc3):
+        """test ne issue detected as part of #10042"""
+        c1 = lc1()
+        c2 = lc2()
+        c3 = lc3()
+
+        eq_(c1._generate_cache_key(), c2._generate_cache_key())
+        ne_(c1._generate_cache_key(), c3._generate_cache_key())
+        is_true(c1._generate_cache_key() == c2._generate_cache_key())
+        is_false(c1._generate_cache_key() != c2._generate_cache_key())
+        is_true(c1._generate_cache_key() != c3._generate_cache_key())
+        is_false(c1._generate_cache_key() == c3._generate_cache_key())
 
     def test_cache_key(self):
         for fixtures_, compare_values in [
@@ -1469,7 +1512,6 @@ class CompareClausesTest(fixtures.TestBase):
         )
 
     def test_compare_metadata_tables_annotations_two(self):
-
         t1 = Table("a", MetaData(), Column("q", Integer), Column("p", Integer))
         t2 = Table("a", MetaData(), Column("q", Integer), Column("p", Integer))
 
@@ -1503,7 +1545,6 @@ class CompareClausesTest(fixtures.TestBase):
         ne_(t3._generate_cache_key(), t4._generate_cache_key())
 
     def test_compare_comparison_associative(self):
-
         l1 = table_c.c.x == table_d.c.y
         l2 = table_d.c.y == table_c.c.x
         l3 = table_c.c.x == table_d.c.z
@@ -1522,7 +1563,6 @@ class CompareClausesTest(fixtures.TestBase):
         is_false(l1.compare(l3))
 
     def test_compare_clauselist_associative(self):
-
         l1 = and_(table_c.c.x == table_d.c.y, table_c.c.y == table_d.c.z)
 
         l2 = and_(table_c.c.y == table_d.c.z, table_c.c.x == table_d.c.y)
@@ -1534,7 +1574,6 @@ class CompareClausesTest(fixtures.TestBase):
         is_false(l1.compare(l3))
 
     def test_compare_clauselist_not_associative(self):
-
         l1 = ClauseList(
             table_c.c.x, table_c.c.y, table_d.c.y, operator=operators.sub
         )
@@ -1547,7 +1586,6 @@ class CompareClausesTest(fixtures.TestBase):
         is_false(l1.compare(l2))
 
     def test_compare_clauselist_assoc_different_operator(self):
-
         l1 = and_(table_c.c.x == table_d.c.y, table_c.c.y == table_d.c.z)
 
         l2 = or_(table_c.c.y == table_d.c.z, table_c.c.x == table_d.c.y)
@@ -1555,7 +1593,6 @@ class CompareClausesTest(fixtures.TestBase):
         is_false(l1.compare(l2))
 
     def test_compare_clauselist_not_assoc_different_operator(self):
-
         l1 = ClauseList(
             table_c.c.x, table_c.c.y, table_d.c.y, operator=operators.sub
         )

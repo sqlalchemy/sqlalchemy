@@ -1,15 +1,32 @@
+# testing/suite/test_insert.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
+from decimal import Decimal
+import uuid
+
+from . import testing
 from .. import fixtures
 from ..assertions import eq_
 from ..config import requirements
 from ..schema import Column
 from ..schema import Table
+from ... import Double
+from ... import Float
+from ... import Identity
 from ... import Integer
 from ... import literal
 from ... import literal_column
+from ... import Numeric
 from ... import select
 from ... import String
+from ...types import LargeBinary
+from ...types import UUID
+from ...types import Uuid
 
 
 class LastrowidTest(fixtures.TablesTest):
@@ -50,14 +67,12 @@ class LastrowidTest(fixtures.TablesTest):
         )
 
     def test_autoincrement_on_insert(self, connection):
-
         connection.execute(
             self.tables.autoinc_pk.insert(), dict(data="some data")
         )
         self._assert_round_trip(self.tables.autoinc_pk, connection)
 
     def test_last_inserted_id(self, connection):
-
         r = connection.execute(
             self.tables.autoinc_pk.insert(), dict(data="some data")
         )
@@ -95,6 +110,15 @@ class InsertBehaviorTest(fixtures.TablesTest):
             Column("data", String(50)),
         )
         Table(
+            "no_implicit_returning",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", String(50)),
+            implicit_returning=False,
+        )
+        Table(
             "includes_defaults",
             metadata,
             Column(
@@ -108,6 +132,33 @@ class InsertBehaviorTest(fixtures.TablesTest):
                 default=literal_column("2", type_=Integer) + literal(2),
             ),
         )
+
+    @testing.variation("style", ["plain", "return_defaults"])
+    @testing.variation("executemany", [True, False])
+    def test_no_results_for_non_returning_insert(
+        self, connection, style, executemany
+    ):
+        """test another INSERT issue found during #10453"""
+
+        table = self.tables.no_implicit_returning
+
+        stmt = table.insert()
+        if style.return_defaults:
+            stmt = stmt.return_defaults()
+
+        if executemany:
+            data = [
+                {"data": "d1"},
+                {"data": "d2"},
+                {"data": "d3"},
+                {"data": "d4"},
+                {"data": "d5"},
+            ]
+        else:
+            data = {"data": "d1"}
+
+        r = connection.execute(stmt, data)
+        assert not r.returns_rows
 
     @requirements.autoincrement_insert
     def test_autoclose_on_insert(self, connection):
@@ -344,14 +395,12 @@ class ReturningTest(fixtures.TablesTest):
         eq_(fetched_pk, pk)
 
     def test_autoincrement_on_insert_implicit_returning(self, connection):
-
         connection.execute(
             self.tables.autoinc_pk.insert(), dict(data="some data")
         )
         self._assert_round_trip(self.tables.autoinc_pk, connection)
 
     def test_last_inserted_id_implicit_returning(self, connection):
-
         r = connection.execute(
             self.tables.autoinc_pk.insert(), dict(data="some data")
         )
@@ -377,6 +426,205 @@ class ReturningTest(fixtures.TablesTest):
         pks = connection.execute(select(self.tables.autoinc_pk.c.id))
 
         eq_(rall, pks.all())
+
+    @testing.combinations(
+        (Double(), 8.5514716, True),
+        (
+            Double(53),
+            8.5514716,
+            True,
+            testing.requires.float_or_double_precision_behaves_generically,
+        ),
+        (Float(), 8.5514, True),
+        (
+            Float(8),
+            8.5514,
+            True,
+            testing.requires.float_or_double_precision_behaves_generically,
+        ),
+        (
+            Numeric(precision=15, scale=12, asdecimal=False),
+            8.5514716,
+            True,
+            testing.requires.literal_float_coercion,
+        ),
+        (
+            Numeric(precision=15, scale=12, asdecimal=True),
+            Decimal("8.5514716"),
+            False,
+        ),
+        argnames="type_,value,do_rounding",
+    )
+    @testing.variation("sort_by_parameter_order", [True, False])
+    @testing.variation("multiple_rows", [True, False])
+    def test_insert_w_floats(
+        self,
+        connection,
+        metadata,
+        sort_by_parameter_order,
+        type_,
+        value,
+        do_rounding,
+        multiple_rows,
+    ):
+        """test #9701.
+
+        this tests insertmanyvalues as well as decimal / floating point
+        RETURNING types
+
+        """
+
+        t = Table(
+            # Oracle backends seems to be getting confused if
+            # this table is named the same as the one
+            # in test_imv_returning_datatypes.  use a different name
+            "f_t",
+            metadata,
+            Column("id", Integer, Identity(), primary_key=True),
+            Column("value", type_),
+        )
+
+        t.create(connection)
+
+        result = connection.execute(
+            t.insert().returning(
+                t.c.id,
+                t.c.value,
+                sort_by_parameter_order=bool(sort_by_parameter_order),
+            ),
+            (
+                [{"value": value} for i in range(10)]
+                if multiple_rows
+                else {"value": value}
+            ),
+        )
+
+        if multiple_rows:
+            i_range = range(1, 11)
+        else:
+            i_range = range(1, 2)
+
+        # we want to test only that we are getting floating points back
+        # with some degree of the original value maintained, that it is not
+        # being truncated to an integer.  there's too much variation in how
+        # drivers return floats, which should not be relied upon to be
+        # exact, for us to just compare as is (works for PG drivers but not
+        # others) so we use rounding here.  There's precedent for this
+        # in suite/test_types.py::NumericTest as well
+
+        if do_rounding:
+            eq_(
+                {(id_, round(val_, 5)) for id_, val_ in result},
+                {(id_, round(value, 5)) for id_ in i_range},
+            )
+
+            eq_(
+                {
+                    round(val_, 5)
+                    for val_ in connection.scalars(select(t.c.value))
+                },
+                {round(value, 5)},
+            )
+        else:
+            eq_(
+                set(result),
+                {(id_, value) for id_ in i_range},
+            )
+
+            eq_(
+                set(connection.scalars(select(t.c.value))),
+                {value},
+            )
+
+    @testing.combinations(
+        (
+            "non_native_uuid",
+            Uuid(native_uuid=False),
+            uuid.uuid4(),
+        ),
+        (
+            "non_native_uuid_str",
+            Uuid(as_uuid=False, native_uuid=False),
+            str(uuid.uuid4()),
+        ),
+        (
+            "generic_native_uuid",
+            Uuid(native_uuid=True),
+            uuid.uuid4(),
+            testing.requires.uuid_data_type,
+        ),
+        (
+            "generic_native_uuid_str",
+            Uuid(as_uuid=False, native_uuid=True),
+            str(uuid.uuid4()),
+            testing.requires.uuid_data_type,
+        ),
+        ("UUID", UUID(), uuid.uuid4(), testing.requires.uuid_data_type),
+        (
+            "LargeBinary1",
+            LargeBinary(),
+            b"this is binary",
+        ),
+        ("LargeBinary2", LargeBinary(), b"7\xe7\x9f"),
+        argnames="type_,value",
+        id_="iaa",
+    )
+    @testing.variation("sort_by_parameter_order", [True, False])
+    @testing.variation("multiple_rows", [True, False])
+    @testing.requires.insert_returning
+    def test_imv_returning_datatypes(
+        self,
+        connection,
+        metadata,
+        sort_by_parameter_order,
+        type_,
+        value,
+        multiple_rows,
+    ):
+        """test #9739, #9808 (similar to #9701).
+
+        this tests insertmanyvalues in conjunction with various datatypes.
+
+        These tests are particularly for the asyncpg driver which needs
+        most types to be explicitly cast for the new IMV format
+
+        """
+        t = Table(
+            "d_t",
+            metadata,
+            Column("id", Integer, Identity(), primary_key=True),
+            Column("value", type_),
+        )
+
+        t.create(connection)
+
+        result = connection.execute(
+            t.insert().returning(
+                t.c.id,
+                t.c.value,
+                sort_by_parameter_order=bool(sort_by_parameter_order),
+            ),
+            (
+                [{"value": value} for i in range(10)]
+                if multiple_rows
+                else {"value": value}
+            ),
+        )
+
+        if multiple_rows:
+            i_range = range(1, 11)
+        else:
+            i_range = range(1, 2)
+
+        eq_(
+            set(result),
+            {(id_, value) for id_ in i_range},
+        )
+
+        eq_(
+            set(connection.scalars(select(t.c.value))),
+            {value},
+        )
 
 
 __all__ = ("LastrowidTest", "InsertBehaviorTest", "ReturningTest")

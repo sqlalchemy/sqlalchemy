@@ -321,15 +321,20 @@ class MaterializedViewReflectionTest(
         insp = inspect(connection)
 
         def normalize(definition):
+            # pg16 returns "SELECT" without qualifying tablename.
+            # older pgs include it
+            definition = re.sub(
+                r"testtable\.(\w+)", lambda m: m.group(1), definition
+            )
             return re.sub(r"[\n\t ]+", " ", definition.strip())
 
         eq_(
             normalize(insp.get_view_definition("test_mview")),
-            "SELECT testtable.id, testtable.data FROM testtable;",
+            "SELECT id, data FROM testtable;",
         )
         eq_(
             normalize(insp.get_view_definition("test_regview")),
-            "SELECT testtable.data FROM testtable;",
+            "SELECT data FROM testtable;",
         )
 
     def test_get_view_comment(self, connection):
@@ -821,7 +826,6 @@ class ReflectionTest(
         assert inspect(connection).has_table("some_temp_table")
 
     def test_cross_schema_reflection_one(self, metadata, connection):
-
         meta1 = metadata
 
         users = Table(
@@ -1127,7 +1131,6 @@ class ReflectionTest(
         )
 
     def test_uppercase_lowercase_table(self, metadata, connection):
-
         a_table = Table("a", metadata, Column("x", Integer))
         A_table = Table("A", metadata, Column("x", Integer))
 
@@ -1138,7 +1141,6 @@ class ReflectionTest(
         assert inspect(connection).has_table("A")
 
     def test_uppercase_lowercase_sequence(self, connection):
-
         a_seq = Sequence("a")
         A_seq = Sequence("A")
 
@@ -1166,7 +1168,7 @@ class ReflectionTest(
         connection.exec_driver_sql(
             """
             create index idx3 on party
-                (lower(name::text), other, lower(aname::text))
+                (lower(name::text), other, lower(aname::text) desc)
             """
         )
         connection.exec_driver_sql(
@@ -1182,6 +1184,15 @@ class ReflectionTest(
                 where name != 'foo'
             """
         )
+        version = connection.dialect.server_version_info
+        if version >= (15,):
+            connection.exec_driver_sql(
+                """
+                create unique index zz_idx5 on party
+                    (name desc, upper(other))
+                    nulls not distinct
+                """
+            )
 
         expected = [
             {
@@ -1216,6 +1227,7 @@ class ReflectionTest(
                 "unique": False,
                 "include_columns": [],
                 "dialect_options": {"postgresql_include": []},
+                "column_sorting": {"lower(aname::text)": ("desc",)},
             },
             {
                 "name": "idx4",
@@ -1240,7 +1252,23 @@ class ReflectionTest(
                 "dialect_options": {"postgresql_include": []},
             },
         ]
-        if connection.dialect.server_version_info < (11,):
+        if version > (15,):
+            expected.append(
+                {
+                    "name": "zz_idx5",
+                    "column_names": ["name", None],
+                    "expressions": ["name", "upper(other::text)"],
+                    "unique": True,
+                    "include_columns": [],
+                    "dialect_options": {
+                        "postgresql_include": [],
+                        "postgresql_nulls_not_distinct": True,
+                    },
+                    "column_sorting": {"name": ("desc",)},
+                },
+            )
+
+        if version < (11,):
             for index in expected:
                 index.pop("include_columns")
                 index["dialect_options"].pop("postgresql_include")
@@ -1464,6 +1492,72 @@ class ReflectionTest(
             "gin",
         )
 
+    @testing.skip_if("postgresql < 15.0", "nullsnotdistinct not supported")
+    def test_nullsnotdistinct(self, metadata, connection):
+        Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x", ARRAY(Integer)),
+            Column("y", ARRAY(Integer)),
+            Index(
+                "idx1", "x", unique=True, postgresql_nulls_not_distinct=True
+            ),
+            UniqueConstraint(
+                "y", name="unq1", postgresql_nulls_not_distinct=True
+            ),
+        )
+        metadata.create_all(connection)
+
+        ind = inspect(connection).get_indexes("t", None)
+        expected_ind = [
+            {
+                "unique": True,
+                "column_names": ["x"],
+                "name": "idx1",
+                "dialect_options": {
+                    "postgresql_nulls_not_distinct": True,
+                    "postgresql_include": [],
+                },
+                "include_columns": [],
+            },
+            {
+                "unique": True,
+                "column_names": ["y"],
+                "name": "unq1",
+                "dialect_options": {
+                    "postgresql_nulls_not_distinct": True,
+                    "postgresql_include": [],
+                },
+                "include_columns": [],
+                "duplicates_constraint": "unq1",
+            },
+        ]
+        eq_(ind, expected_ind)
+
+        unq = inspect(connection).get_unique_constraints("t", None)
+        expected_unq = [
+            {
+                "column_names": ["y"],
+                "name": "unq1",
+                "dialect_options": {
+                    "postgresql_nulls_not_distinct": True,
+                },
+                "comment": None,
+            }
+        ]
+        eq_(unq, expected_unq)
+
+        m = MetaData()
+        t1 = Table("t", m, autoload_with=connection)
+        eq_(len(t1.indexes), 1)
+        idx_options = list(t1.indexes)[0].dialect_options["postgresql"]
+        eq_(idx_options["nulls_not_distinct"], True)
+
+        cst = {c.name: c for c in t1.constraints}
+        cst_options = cst["unq1"].dialect_options["postgresql"]
+        eq_(cst_options["nulls_not_distinct"], True)
+
     @testing.skip_if("postgresql < 11.0", "indnkeyatts not supported")
     def test_index_reflection_with_include(self, metadata, connection):
         """reflect indexes with include set"""
@@ -1633,7 +1727,6 @@ class ReflectionTest(
         is_false(inspector.has_type("mood"))
 
     def test_inspect_enums(self, metadata, inspect_fixture):
-
         inspector, conn = inspect_fixture
 
         enum_type = postgresql.ENUM(
@@ -1697,7 +1790,6 @@ class ReflectionTest(
 
         for enum in "lower_case", "UpperCase", "Name.With.Dot":
             for schema in None, "test_schema", "TestSchema":
-
                 postgresql.ENUM(
                     "CapsOne",
                     "CapsTwo",
@@ -1752,7 +1844,6 @@ class ReflectionTest(
         counter = itertools.count()
         for enum in "lower_case", "UpperCase", "Name.With.Dot":
             for schema in None, "test_schema", "TestSchema":
-
                 enum_type = postgresql.ENUM(
                     "CapsOne",
                     "CapsTwo",
@@ -2103,6 +2194,42 @@ class ReflectionTest(
                     "dialect_options": {"not_valid": True},
                     "comment": None,
                 }
+            ],
+        )
+
+    def test_reflect_with_no_inherit_check_constraint(self):
+        rows = [
+            ("foo", "some name", "CHECK ((a IS NOT NULL)) NO INHERIT", None),
+            (
+                "foo",
+                "some name",
+                "CHECK ((a IS NOT NULL)) NO INHERIT NOT VALID",
+                None,
+            ),
+        ]
+        conn = mock.Mock(
+            execute=lambda *arg, **kw: mock.MagicMock(
+                fetchall=lambda: rows, __iter__=lambda self: iter(rows)
+            )
+        )
+        check_constraints = testing.db.dialect.get_check_constraints(
+            conn, "foo"
+        )
+        eq_(
+            check_constraints,
+            [
+                {
+                    "name": "some name",
+                    "sqltext": "a IS NOT NULL",
+                    "dialect_options": {"no_inherit": True},
+                    "comment": None,
+                },
+                {
+                    "name": "some name",
+                    "sqltext": "a IS NOT NULL",
+                    "dialect_options": {"not_valid": True, "no_inherit": True},
+                    "comment": None,
+                },
             ],
         )
 

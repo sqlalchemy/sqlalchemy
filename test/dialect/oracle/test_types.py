@@ -50,6 +50,7 @@ from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.util import b
+from sqlalchemy.util.concurrency import await_
 
 
 def exec_sql(conn, sql, *args, **kwargs):
@@ -183,6 +184,10 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
             oracle.INTERVAL(day_precision=2, second_precision=5),
             "INTERVAL DAY(2) TO SECOND(5)",
         ),
+        (
+            sqltypes.Interval(day_precision=9, second_precision=3),
+            "INTERVAL DAY(9) TO SECOND(3)",
+        ),
     )
     def test_interval(self, type_, expected):
         self.assert_compile(type_, expected)
@@ -190,6 +195,50 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_interval_coercion_literal(self):
         expr = column("bar", oracle.INTERVAL) == datetime.timedelta(days=1)
         eq_(expr.right.type._type_affinity, sqltypes.Interval)
+
+    @testing.combinations(
+        ("sa", sqltypes.Float(), "FLOAT"),
+        ("sa", sqltypes.Double(), "DOUBLE PRECISION"),
+        ("sa", sqltypes.FLOAT(), "FLOAT"),
+        ("sa", sqltypes.REAL(), "REAL"),
+        ("sa", sqltypes.DOUBLE(), "DOUBLE"),
+        ("sa", sqltypes.DOUBLE_PRECISION(), "DOUBLE PRECISION"),
+        ("oracle", oracle.FLOAT(), "FLOAT"),
+        ("oracle", oracle.DOUBLE_PRECISION(), "DOUBLE PRECISION"),
+        ("oracle", oracle.REAL(), "REAL"),
+        ("oracle", oracle.BINARY_DOUBLE(), "BINARY_DOUBLE"),
+        ("oracle", oracle.BINARY_FLOAT(), "BINARY_FLOAT"),
+        id_="ira",
+    )
+    def test_float_type_compile(self, type_, sql_text):
+        self.assert_compile(type_, sql_text)
+
+    @testing.combinations(
+        (
+            text("select :parameter from dual").bindparams(
+                parameter=datetime.timedelta(days=2)
+            ),
+            "select NUMTODSINTERVAL(172800.0, 'SECOND') from dual",
+        ),
+        (
+            text("SELECT :parameter from dual").bindparams(
+                parameter=datetime.timedelta(days=1, minutes=3, seconds=4)
+            ),
+            "SELECT NUMTODSINTERVAL(86584.0, 'SECOND') from dual",
+        ),
+        (
+            text("select :parameter - :parameter2 from dual").bindparams(
+                parameter=datetime.timedelta(days=1, minutes=3, seconds=4),
+                parameter2=datetime.timedelta(days=0, minutes=1, seconds=4),
+            ),
+            (
+                "select NUMTODSINTERVAL(86584.0, 'SECOND') - "
+                "NUMTODSINTERVAL(64.0, 'SECOND') from dual"
+            ),
+        ),
+    )
+    def test_interval_literal_processor(self, type_, expected):
+        self.assert_compile(type_, expected, literal_binds=True)
 
 
 class TypesTest(fixtures.TestBase):
@@ -305,6 +354,24 @@ class TypesTest(fixtures.TestBase):
             row._mapping["day_interval"],
             datetime.timedelta(days=35, seconds=5743),
         )
+
+    def test_interval_literal_processor(self, connection):
+        stmt = text("select :parameter - :parameter2 from dual")
+        result = connection.execute(
+            stmt.bindparams(
+                bindparam(
+                    "parameter",
+                    datetime.timedelta(days=1, minutes=3, seconds=4),
+                    literal_execute=True,
+                ),
+                bindparam(
+                    "parameter2",
+                    datetime.timedelta(days=0, minutes=1, seconds=4),
+                    literal_execute=True,
+                ),
+            )
+        ).one()
+        eq_(result[0], datetime.timedelta(days=1, seconds=120))
 
     def test_no_decimal_float_precision(self):
         with expect_raises_message(
@@ -861,7 +928,6 @@ class TypesTest(fixtures.TestBase):
         eq_(t2.c.c4.type.length, 180)
 
     def test_long_type(self, metadata, connection):
-
         t = Table("t", metadata, Column("data", oracle.LONG))
         metadata.create_all(connection)
         connection.execute(t.insert(), dict(data="xyz"))
@@ -933,13 +999,23 @@ class LOBFetchTest(fixtures.TablesTest):
         for i in range(1, 11):
             connection.execute(binary_table.insert(), dict(id=i, data=stream))
 
+    def _read_lob(self, engine, row):
+        if engine.dialect.is_async:
+            data = await_(row._mapping["data"].read())
+            bindata = await_(row._mapping["bindata"].read())
+        else:
+            data = row._mapping["data"].read()
+            bindata = row._mapping["bindata"].read()
+        return data, bindata
+
     def test_lobs_without_convert(self):
         engine = testing_engine(options=dict(auto_convert_lobs=False))
         t = self.tables.z_test
         with engine.begin() as conn:
             row = conn.execute(t.select().where(t.c.id == 1)).first()
-            eq_(row._mapping["data"].read(), "this is text 1")
-            eq_(row._mapping["bindata"].read(), b("this is binary 1"))
+            data, bindata = self._read_lob(engine, row)
+            eq_(data, "this is text 1")
+            eq_(bindata, b("this is binary 1"))
 
     def test_lobs_with_convert(self, connection):
         t = self.tables.z_test
@@ -963,17 +1039,13 @@ class LOBFetchTest(fixtures.TablesTest):
         results = result.fetchall()
 
         def go():
-            eq_(
-                [
-                    dict(
-                        id=row._mapping["id"],
-                        data=row._mapping["data"].read(),
-                        bindata=row._mapping["bindata"].read(),
-                    )
-                    for row in results
-                ],
-                self.data,
-            )
+            actual = []
+            for row in results:
+                data, bindata = self._read_lob(engine, row)
+                actual.append(
+                    dict(id=row._mapping["id"], data=data, bindata=bindata)
+                )
+            eq_(actual, self.data)
 
         # this comes from cx_Oracle because these are raw
         # cx_Oracle.Variable objects

@@ -15,6 +15,7 @@ from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing import not_in
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.schema import Column
 
 
@@ -169,7 +170,6 @@ class IndexPropertyTest(fixtures.TestBase):
 
 
 class IndexPropertyArrayTest(fixtures.DeclarativeMappedTest):
-
     __requires__ = ("array_type",)
     __backend__ = True
 
@@ -177,7 +177,7 @@ class IndexPropertyArrayTest(fixtures.DeclarativeMappedTest):
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
 
-        class Array(fixtures.ComparableEntity, Base):
+        class Array(ComparableEntity, Base):
             __tablename__ = "array"
 
             id = Column(
@@ -250,7 +250,6 @@ class IndexPropertyArrayTest(fixtures.DeclarativeMappedTest):
 
 
 class IndexPropertyJsonTest(fixtures.DeclarativeMappedTest):
-
     # TODO: remove reliance on "astext" for these tests
     __requires__ = ("json_type",)
     __only_on__ = "postgresql"
@@ -272,7 +271,7 @@ class IndexPropertyJsonTest(fixtures.DeclarativeMappedTest):
                 expr = super().expr(model)
                 return expr.astext.cast(self.cast_type)
 
-        class Json(fixtures.ComparableEntity, Base):
+        class Json(ComparableEntity, Base):
             __tablename__ = "json"
 
             id = Column(
@@ -324,7 +323,6 @@ class IndexPropertyJsonTest(fixtures.DeclarativeMappedTest):
         eq_(j.other, 42)
 
     def test_modified(self):
-
         Json = self.classes.Json
         s = Session(testing.db)
 

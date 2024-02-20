@@ -6,10 +6,21 @@ from textwrap import wrap
 from timeit import timeit
 from types import MappingProxyType
 
+from sqlalchemy import bindparam
+from sqlalchemy import column
 
-def test_case(fn):
-    fn.__test_case__ = True
-    return fn
+
+def test_case(fn=None, *, number=None):
+    def wrap(fn):
+        fn.__test_case__ = True
+        if number is not None:
+            fn.__number__ = number
+        return fn
+
+    if fn is None:
+        return wrap
+    else:
+        return wrap(fn)
 
 
 class Case:
@@ -87,7 +98,11 @@ class Case:
             for m in methods:
                 call = getattr(impl_case, m)
                 try:
-                    value = timeit(call, number=number)
+                    t_num = number
+                    fn_num = getattr(call, "__number__", None)
+                    if fn_num is not None:
+                        t_num = max(1, int(fn_num * factor))
+                    value = timeit(call, number=t_num)
                     print(".", end="", flush=True)
                 except Exception as e:
                     fails.append(f"{name}::{m} error: {e}")
@@ -772,6 +787,8 @@ class OrderedSet(IdentitySet):
 
 
 class TupleGetter(Case):
+    NUMBER = 2_000_000
+
     @staticmethod
     def python():
         from sqlalchemy.engine._py_row import tuplegetter
@@ -802,20 +819,7 @@ class TupleGetter(Case):
         self.tuple = tuple(range(1000))
         self.tg_inst = self.impl_tg(42)
         self.tg_inst_m = self.impl_tg(42, 420, 99, 9, 1)
-
-        class MockRow:
-            def __init__(self, data):
-                self.data = data
-
-            def _get_by_int_impl(self, index):
-                # called by python
-                return self.data[index]
-
-            def _get_by_key_impl_mapping(self, index):
-                # called by c
-                return self.data[index]
-
-        self.row = MockRow(self.tuple)
+        self.tg_inst_seq = self.impl_tg(*range(70, 75))
 
     @classmethod
     def update_results(cls, results):
@@ -832,12 +836,20 @@ class TupleGetter(Case):
         self.tg_inst_m(self.tuple)
 
     @test_case
+    def tuplegetter_seq(self):
+        self.tg_inst_seq(self.tuple)
+
+    @test_case
     def tuplegetter_new_one(self):
         self.impl_tg(42)(self.tuple)
 
     @test_case
     def tuplegetter_new_many(self):
         self.impl_tg(42, 420, 99, 9, 1)(self.tuple)
+
+    @test_case
+    def tuplegetter_new_seq(self):
+        self.impl_tg(40, 41, 42, 43, 44)(self.tuple)
 
 
 class BaseRow(Case):
@@ -873,16 +885,14 @@ class BaseRow(Case):
         self.row_args = (
             self.parent,
             self.parent._processors,
-            self.parent._keymap,
-            0,
+            self.parent._key_to_index,
             (1, 2, 3),
         )
         self.parent_long = SimpleResultMetaData(tuple(ascii_letters))
         self.row_long_args = (
             self.parent_long,
             self.parent_long._processors,
-            self.parent_long._keymap,
-            0,
+            self.parent_long._key_to_index,
             tuple(range(len(ascii_letters))),
         )
         self.row = self.impl(*self.row_args)
@@ -897,6 +907,30 @@ class BaseRow(Case):
 
         self.row_state = self.row.__getstate__()
         self.row_long_state = self.row_long.__getstate__()
+
+        assert len(ascii_letters) == 52
+        self.parent_proc = SimpleResultMetaData(
+            tuple(ascii_letters),
+            _processors=[None, int, float, None, str] * 10,  # cut the last 2
+        )
+        self.row_proc_args = (
+            self.parent_proc,
+            self.parent_proc._processors,
+            self.parent_proc._key_to_index,
+            tuple(range(len(ascii_letters))),
+        )
+
+        self.parent_proc_none = SimpleResultMetaData(
+            tuple(ascii_letters), _processors=[None] * 52
+        )
+        self.row_proc_none_args = (
+            self.parent_proc_none,
+            # NOTE: usually the code calls _effective_processors that returns
+            # None for this case of all None.
+            self.parent_proc_none._processors,
+            self.parent_proc_none._key_to_index,
+            tuple(range(len(ascii_letters))),
+        )
 
     @classmethod
     def update_results(cls, results):
@@ -915,6 +949,22 @@ class BaseRow(Case):
         self.Row(*self.row_long_args)
 
     @test_case
+    def base_row_new_proc(self):
+        self.impl(*self.row_proc_args)
+
+    @test_case
+    def row_new_proc(self):
+        self.Row(*self.row_proc_args)
+
+    @test_case
+    def brow_new_proc_none(self):
+        self.impl(*self.row_proc_none_args)
+
+    @test_case
+    def row_new_proc_none(self):
+        self.Row(*self.row_proc_none_args)
+
+    @test_case
     def row_dumps(self):
         self.row.__getstate__()
         self.row_long.__getstate__()
@@ -923,11 +973,6 @@ class BaseRow(Case):
     def row_loads(self):
         self.impl.__new__(self.impl).__setstate__(self.row_state)
         self.impl.__new__(self.impl).__setstate__(self.row_long_state)
-
-    @test_case
-    def row_filter(self):
-        self.row._filter_on_values(None)
-        self.row_long._filter_on_values(None)
 
     @test_case
     def row_values_impl(self):
@@ -966,25 +1011,11 @@ class BaseRow(Case):
         self.row_long[1:-1]
 
     @test_case
-    def get_by_int(self):
-        self.row._get_by_int_impl(0)
-        self.row._get_by_int_impl(1)
-        self.row_long._get_by_int_impl(0)
-        self.row_long._get_by_int_impl(1)
-
-    @test_case
     def get_by_key(self):
-        self.row._get_by_key_impl(0)
-        self.row._get_by_key_impl(1)
-        self.row_long._get_by_key_impl(0)
-        self.row_long._get_by_key_impl(1)
-
-    @test_case
-    def get_by_key_slice(self):
-        self.row._get_by_key_impl(slice(0, 1))
-        self.row._get_by_key_impl(slice(1, -1))
-        self.row_long._get_by_key_impl(slice(0, 1))
-        self.row_long._get_by_key_impl(slice(1, -1))
+        self.row._get_by_key_impl_mapping("a")
+        self.row._get_by_key_impl_mapping("b")
+        self.row_long._get_by_key_impl_mapping("s")
+        self.row_long._get_by_key_impl_mapping("a")
 
     @test_case
     def getattr(self):
@@ -992,6 +1023,40 @@ class BaseRow(Case):
         self.row.b
         self.row_long.x
         self.row_long.y
+
+    @test_case(number=50_000)
+    def get_by_key_recreate(self):
+        self.init_objects()
+        row = self.row
+        for _ in range(25):
+            row._get_by_key_impl_mapping("a")
+        l_row = self.row_long
+        for _ in range(25):
+            l_row._get_by_key_impl_mapping("f")
+            l_row._get_by_key_impl_mapping("o")
+            l_row._get_by_key_impl_mapping("r")
+            l_row._get_by_key_impl_mapping("t")
+            l_row._get_by_key_impl_mapping("y")
+            l_row._get_by_key_impl_mapping("t")
+            l_row._get_by_key_impl_mapping("w")
+            l_row._get_by_key_impl_mapping("o")
+
+    @test_case(number=50_000)
+    def getattr_recreate(self):
+        self.init_objects()
+        row = self.row
+        for _ in range(25):
+            row.a
+        l_row = self.row_long
+        for _ in range(25):
+            l_row.f
+            l_row.o
+            l_row.r
+            l_row.t
+            l_row.y
+            l_row.t
+            l_row.w
+            l_row.o
 
 
 class CacheAnonMap(Case):
@@ -1012,8 +1077,6 @@ class CacheAnonMap(Case):
     NUMBER = 1000000
 
     def init_objects(self):
-        from sqlalchemy import column, bindparam
-
         self.object_1 = column("x")
         self.object_2 = bindparam("y")
 
@@ -1075,12 +1138,10 @@ class PrefixAnonMap(Case):
 
     @test_case
     def test_apply_non_present(self):
-
         self.name.apply_map(self.impl_w_non_present)
 
     @test_case
     def test_apply_present(self):
-
         self.name.apply_map(self.impl_w_present)
 
 

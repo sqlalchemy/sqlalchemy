@@ -4,6 +4,7 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -37,7 +38,7 @@ class ABCTest(fixtures.MappedTest):
 
     @testing.combinations(("union",), ("none",))
     def test_abc_poly_roundtrip(self, fetchtype):
-        class A(fixtures.ComparableEntity):
+        class A(ComparableEntity):
             pass
 
         class B(A):

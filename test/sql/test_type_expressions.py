@@ -24,7 +24,6 @@ class _ExprFixture:
 
     def _fixture(self):
         class MyString(String):
-
             # supersedes any processing that might be on
             # String
             def bind_expression(self, bindvalue):
@@ -93,7 +92,7 @@ class _ExprFixture:
     def _variant_fixture(self, inner_fixture):
         type_ = inner_fixture.c.y.type
 
-        variant = String().with_variant(type_, "default")
+        variant = String(30).with_variant(type_, "default")
         return self._test_table(variant)
 
     def _dialect_level_fixture(self):

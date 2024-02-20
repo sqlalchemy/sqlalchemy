@@ -57,10 +57,9 @@ class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "START WITH 1 MAXVALUE 10 CYCLE",
         ),
         (
-            Sequence("foo_seq", cache=1000, order=True),
-            "CACHE 1000 ORDER",
+            Sequence("foo_seq", cache=1000),
+            "CACHE 1000",
         ),
-        (Sequence("foo_seq", order=True), "ORDER"),
         (Sequence("foo_seq", minvalue=42), "MINVALUE 42"),
         (Sequence("foo_seq", minvalue=-42), "MINVALUE -42"),
         (
@@ -162,7 +161,6 @@ class SequenceExecTest(fixtures.TestBase):
         self._assert_seq_result(connection.scalar(s))
 
     def test_execute_deprecated(self, connection):
-
         s = normalize_sequence(config, Sequence("my_sequence", optional=True))
 
         with expect_deprecated(

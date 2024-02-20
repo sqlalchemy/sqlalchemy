@@ -1,5 +1,5 @@
 # ext/mypy/infer.py
-# Copyright (C) 2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2021-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -11,7 +11,6 @@ from typing import Optional
 from typing import Sequence
 
 from mypy.maptype import map_instance_to_supertype
-from mypy.messages import format_type
 from mypy.nodes import AssignmentStmt
 from mypy.nodes import CallExpr
 from mypy.nodes import Expression
@@ -442,7 +441,6 @@ def _infer_type_from_decl_column(
         )
 
         if left_hand_explicit_type is not None:
-
             return _infer_type_from_left_and_inferred_right(
                 api, node, left_hand_explicit_type, python_type_for_type
             )
@@ -490,8 +488,8 @@ def _infer_type_from_left_and_inferred_right(
             api,
             msg.format(
                 node.name,
-                format_type(orig_left_hand_type),
-                format_type(effective_type),
+                util.format_type(orig_left_hand_type, api.options),
+                util.format_type(effective_type, api.options),
             ),
             node,
         )

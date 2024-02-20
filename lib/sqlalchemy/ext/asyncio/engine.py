@@ -1,5 +1,5 @@
 # ext/asyncio/engine.py
-# Copyright (C) 2020-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2020-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -16,7 +16,6 @@ from typing import Generator
 from typing import NoReturn
 from typing import Optional
 from typing import overload
-from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -35,10 +34,15 @@ from ... import inspection
 from ... import util
 from ...engine import Connection
 from ...engine import create_engine as _create_engine
+from ...engine import create_pool_from_url as _create_pool_from_url
 from ...engine import Engine
 from ...engine.base import NestedTransaction
 from ...engine.base import Transaction
+from ...exc import ArgumentError
 from ...util.concurrency import greenlet_spawn
+from ...util.typing import TupleAny
+from ...util.typing import TypeVarTuple
+from ...util.typing import Unpack
 
 if TYPE_CHECKING:
     from ...engine.cursor import CursorResult
@@ -60,6 +64,7 @@ if TYPE_CHECKING:
     from ...sql.selectable import TypedReturnsRows
 
 _T = TypeVar("_T", bound=Any)
+_Ts = TypeVarTuple("_Ts")
 
 
 def create_async_engine(url: Union[str, URL], **kw: Any) -> AsyncEngine:
@@ -72,6 +77,20 @@ def create_async_engine(url: Union[str, URL], **kw: Any) -> AsyncEngine:
 
     .. versionadded:: 1.4
 
+    :param async_creator: an async callable which returns a driver-level
+        asyncio connection. If given, the function should take no arguments,
+        and return a new asyncio connection from the underlying asyncio
+        database driver; the connection will be wrapped in the appropriate
+        structures to be used with the :class:`.AsyncEngine`.   Note that the
+        parameters specified in the URL are not applied here, and the creator
+        function should use its own connection parameters.
+
+        This parameter is the asyncio equivalent of the
+        :paramref:`_sa.create_engine.creator` parameter of the
+        :func:`_sa.create_engine` function.
+
+        .. versionadded:: 2.0.16
+
     """
 
     if kw.get("server_side_cursors", False):
@@ -80,8 +99,24 @@ def create_async_engine(url: Union[str, URL], **kw: Any) -> AsyncEngine:
             "use the connection.stream() method for an async "
             "streaming result set"
         )
-    kw["future"] = True
     kw["_is_async"] = True
+    async_creator = kw.pop("async_creator", None)
+    if async_creator:
+        if kw.get("creator", None):
+            raise ArgumentError(
+                "Can only specify one of 'async_creator' or 'creator', "
+                "not both."
+            )
+
+        def creator() -> Any:
+            # note that to send adapted arguments like
+            # prepared_statement_cache_size, user would use
+            # "creator" and emulate this form here
+            return sync_engine.dialect.dbapi.connect(  # type: ignore
+                async_creator_fn=async_creator
+            )
+
+        kw["creator"] = creator
     sync_engine = _create_engine(url, **kw)
     return AsyncEngine(sync_engine)
 
@@ -109,6 +144,21 @@ def async_engine_from_config(
     options.update(kwargs)
     url = options.pop("url")
     return create_async_engine(url, **options)
+
+
+def create_async_pool_from_url(url: Union[str, URL], **kwargs: Any) -> Pool:
+    """Create a new async engine instance.
+
+    Arguments passed to :func:`_asyncio.create_async_pool_from_url` are mostly
+    identical to those passed to the :func:`_sa.create_pool_from_url` function.
+    The specified dialect must be an asyncio-compatible dialect
+    such as :ref:`dialect-postgresql-asyncpg`.
+
+    .. versionadded:: 2.0.10
+
+    """
+    kwargs["_is_async"] = True
+    return _create_pool_from_url(url, **kwargs)
 
 
 class AsyncConnectable:
@@ -210,7 +260,9 @@ class AsyncConnection(
             AsyncEngine._retrieve_proxy_for_target(target.engine), target
         )
 
-    async def start(self, is_ctxmanager: bool = False) -> AsyncConnection:
+    async def start(
+        self, is_ctxmanager: bool = False  # noqa: U100
+    ) -> AsyncConnection:
         """Start this :class:`_asyncio.AsyncConnection` object's context
         outside of using a Python ``with:`` block.
 
@@ -218,7 +270,7 @@ class AsyncConnection(
         if self.sync_connection:
             raise exc.InvalidRequestError("connection is already started")
         self.sync_connection = self._assign_proxied(
-            await (greenlet_spawn(self.sync_engine.connect))
+            await greenlet_spawn(self.sync_engine.connect)
         )
         return self
 
@@ -286,7 +338,6 @@ class AsyncConnection(
     async def invalidate(
         self, exception: Optional[BaseException] = None
     ) -> None:
-
         """Invalidate the underlying DBAPI connection associated with
         this :class:`_engine.Connection`.
 
@@ -367,12 +418,10 @@ class AsyncConnection(
         insertmanyvalues_page_size: int = ...,
         schema_translate_map: Optional[SchemaTranslateMapType] = ...,
         **opt: Any,
-    ) -> AsyncConnection:
-        ...
+    ) -> AsyncConnection: ...
 
     @overload
-    async def execution_options(self, **opt: Any) -> AsyncConnection:
-        ...
+    async def execution_options(self, **opt: Any) -> AsyncConnection: ...
 
     async def execution_options(self, **opt: Any) -> AsyncConnection:
         r"""Set non-SQL options for the connection which take effect
@@ -430,6 +479,18 @@ class AsyncConnection(
         """
         await greenlet_spawn(self._proxied.close)
 
+    async def aclose(self) -> None:
+        """A synonym for :meth:`_asyncio.AsyncConnection.close`.
+
+        The :meth:`_asyncio.AsyncConnection.aclose` name is specifically
+        to support the Python standard library ``@contextlib.aclosing``
+        context manager function.
+
+        .. versionadded:: 2.0.20
+
+        """
+        await self.close()
+
     async def exec_driver_sql(
         self,
         statement: str,
@@ -454,12 +515,11 @@ class AsyncConnection(
     @overload
     def stream(
         self,
-        statement: TypedReturnsRows[_T],
+        statement: TypedReturnsRows[Unpack[_Ts]],
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> GeneratorStartableContext[AsyncResult[_T]]:
-        ...
+    ) -> GeneratorStartableContext[AsyncResult[Unpack[_Ts]]]: ...
 
     @overload
     def stream(
@@ -468,8 +528,7 @@ class AsyncConnection(
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> GeneratorStartableContext[AsyncResult[Any]]:
-        ...
+    ) -> GeneratorStartableContext[AsyncResult[Unpack[TupleAny]]]: ...
 
     @asyncstartablecontext
     async def stream(
@@ -478,7 +537,7 @@ class AsyncConnection(
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> AsyncIterator[AsyncResult[Any]]:
+    ) -> AsyncIterator[AsyncResult[Unpack[TupleAny]]]:
         """Execute a statement and return an awaitable yielding a
         :class:`_asyncio.AsyncResult` object.
 
@@ -513,6 +572,11 @@ class AsyncConnection(
             :meth:`.AsyncConnection.stream_scalars`
 
         """
+        if not self.dialect.supports_server_side_cursors:
+            raise exc.InvalidRequestError(
+                "Cant use `stream` or `stream_scalars` with the current "
+                "dialect since it does not support server side cursors."
+            )
 
         result = await greenlet_spawn(
             self._proxied.execute,
@@ -536,12 +600,11 @@ class AsyncConnection(
     @overload
     async def execute(
         self,
-        statement: TypedReturnsRows[_T],
+        statement: TypedReturnsRows[Unpack[_Ts]],
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> CursorResult[_T]:
-        ...
+    ) -> CursorResult[Unpack[_Ts]]: ...
 
     @overload
     async def execute(
@@ -550,8 +613,7 @@ class AsyncConnection(
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> CursorResult[Any]:
-        ...
+    ) -> CursorResult[Unpack[TupleAny]]: ...
 
     async def execute(
         self,
@@ -559,7 +621,7 @@ class AsyncConnection(
         parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> CursorResult[Any]:
+    ) -> CursorResult[Unpack[TupleAny]]:
         r"""Executes a SQL statement construct and return a buffered
         :class:`_engine.Result`.
 
@@ -603,12 +665,11 @@ class AsyncConnection(
     @overload
     async def scalar(
         self,
-        statement: TypedReturnsRows[Tuple[_T]],
+        statement: TypedReturnsRows[_T],
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> Optional[_T]:
-        ...
+    ) -> Optional[_T]: ...
 
     @overload
     async def scalar(
@@ -617,8 +678,7 @@ class AsyncConnection(
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     async def scalar(
         self,
@@ -645,27 +705,25 @@ class AsyncConnection(
     @overload
     async def scalars(
         self,
-        statement: TypedReturnsRows[Tuple[_T]],
-        parameters: Optional[_CoreSingleExecuteParams] = None,
+        statement: TypedReturnsRows[_T],
+        parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> ScalarResult[_T]:
-        ...
+    ) -> ScalarResult[_T]: ...
 
     @overload
     async def scalars(
         self,
         statement: Executable,
-        parameters: Optional[_CoreSingleExecuteParams] = None,
+        parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> ScalarResult[Any]:
-        ...
+    ) -> ScalarResult[Any]: ...
 
     async def scalars(
         self,
         statement: Executable,
-        parameters: Optional[_CoreSingleExecuteParams] = None,
+        parameters: Optional[_CoreAnyExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
     ) -> ScalarResult[Any]:
@@ -688,12 +746,11 @@ class AsyncConnection(
     @overload
     def stream_scalars(
         self,
-        statement: TypedReturnsRows[Tuple[_T]],
+        statement: TypedReturnsRows[_T],
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> GeneratorStartableContext[AsyncScalarResult[_T]]:
-        ...
+    ) -> GeneratorStartableContext[AsyncScalarResult[_T]]: ...
 
     @overload
     def stream_scalars(
@@ -702,8 +759,7 @@ class AsyncConnection(
         parameters: Optional[_CoreSingleExecuteParams] = None,
         *,
         execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> GeneratorStartableContext[AsyncScalarResult[Any]]:
-        ...
+    ) -> GeneratorStartableContext[AsyncScalarResult[Any]]: ...
 
     @asyncstartablecontext
     async def stream_scalars(
@@ -718,7 +774,7 @@ class AsyncConnection(
 
         E.g.::
 
-            result = await conn.stream_scalars(stmt):
+            result = await conn.stream_scalars(stmt)
             async for scalar in result:
                 print(f"{scalar}")
 
@@ -759,16 +815,52 @@ class AsyncConnection(
             yield result.scalars()
 
     async def run_sync(
-        self, fn: Callable[..., Any], *arg: Any, **kw: Any
-    ) -> Any:
-        """Invoke the given sync callable passing self as the first argument.
+        self, fn: Callable[..., _T], *arg: Any, **kw: Any
+    ) -> _T:
+        """Invoke the given synchronous (i.e. not async) callable,
+        passing a synchronous-style :class:`_engine.Connection` as the first
+        argument.
+
+        This method allows traditional synchronous SQLAlchemy functions to
+        run within the context of an asyncio application.
+
+        E.g.::
+
+            def do_something_with_core(conn: Connection, arg1: int, arg2: str) -> str:
+                '''A synchronous function that does not require awaiting
+
+                :param conn: a Core SQLAlchemy Connection, used synchronously
+
+                :return: an optional return value is supported
+
+                '''
+                conn.execute(
+                    some_table.insert().values(int_col=arg1, str_col=arg2)
+                )
+                return "success"
+
+
+            async def do_something_async(async_engine: AsyncEngine) -> None:
+                '''an async function that uses awaiting'''
+
+                async with async_engine.begin() as async_conn:
+                    # run do_something_with_core() with a sync-style
+                    # Connection, proxied into an awaitable
+                    return_code = await async_conn.run_sync(do_something_with_core, 5, "strval")
+                    print(return_code)
 
         This method maintains the asyncio event loop all the way through
         to the database connection by running the given callable in a
         specially instrumented greenlet.
 
-        E.g.::
+        The most rudimentary use of :meth:`.AsyncConnection.run_sync` is to
+        invoke methods such as :meth:`_schema.MetaData.create_all`, given
+        an :class:`.AsyncConnection` that needs to be provided to
+        :meth:`_schema.MetaData.create_all` as a :class:`_engine.Connection`
+        object::
 
+            # run metadata.create_all(conn) with a sync-style Connection,
+            # proxied into an awaitable
             with async_engine.begin() as conn:
                 await conn.run_sync(metadata.create_all)
 
@@ -781,8 +873,11 @@ class AsyncConnection(
 
         .. seealso::
 
+            :meth:`.AsyncSession.run_sync`
+
             :ref:`session_run_sync`
-        """
+
+        """  # noqa: E501
 
         return await greenlet_spawn(fn, self._proxied, *arg, **kw)
 
@@ -843,32 +938,28 @@ class AsyncConnection(
 
     @property
     def default_isolation_level(self) -> Any:
-        r"""The default isolation level assigned to this
-        :class:`_engine.Connection`.
+        r"""The initial-connection time isolation level associated with the
+        :class:`_engine.Dialect` in use.
 
         .. container:: class_bases
 
             Proxied for the :class:`_engine.Connection` class
             on behalf of the :class:`_asyncio.AsyncConnection` class.
 
-        This is the isolation level setting that the
-        :class:`_engine.Connection`
-        has when first procured via the :meth:`_engine.Engine.connect` method.
-        This level stays in place until the
-        :paramref:`.Connection.execution_options.isolation_level` is used
-        to change the setting on a per-:class:`_engine.Connection` basis.
+        This value is independent of the
+        :paramref:`.Connection.execution_options.isolation_level` and
+        :paramref:`.Engine.execution_options.isolation_level` execution
+        options, and is determined by the :class:`_engine.Dialect` when the
+        first connection is created, by performing a SQL query against the
+        database for the current isolation level before any additional commands
+        have been emitted.
 
-        Unlike :meth:`_engine.Connection.get_isolation_level`,
-        this attribute is set
-        ahead of time from the first connection procured by the dialect,
-        so SQL query is not invoked when this accessor is called.
-
-        .. versionadded:: 0.9.9
+        Calling this accessor does not invoke any new SQL queries.
 
         .. seealso::
 
             :meth:`_engine.Connection.get_isolation_level`
-            - view current level
+            - view current actual isolation level
 
             :paramref:`_sa.create_engine.isolation_level`
             - set per :class:`_engine.Engine` isolation level
@@ -1005,12 +1096,10 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):
         insertmanyvalues_page_size: int = ...,
         schema_translate_map: Optional[SchemaTranslateMapType] = ...,
         **opt: Any,
-    ) -> AsyncEngine:
-        ...
+    ) -> AsyncEngine: ...
 
     @overload
-    def execution_options(self, **opt: Any) -> AsyncEngine:
-        ...
+    def execution_options(self, **opt: Any) -> AsyncEngine: ...
 
     def execution_options(self, **opt: Any) -> AsyncEngine:
         """Return a new :class:`_asyncio.AsyncEngine` that will provide
@@ -1025,7 +1114,6 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):
         return AsyncEngine(self.sync_engine.execution_options(**opt))
 
     async def dispose(self, close: bool = True) -> None:
-
         """Dispose of the connection pool used by this
         :class:`_asyncio.AsyncEngine`.
 
@@ -1066,7 +1154,7 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):
         This applies **only** to the built-in cache that is established
         via the :paramref:`_engine.create_engine.query_cache_size` parameter.
         It will not impact any dictionary caches that were passed via the
-        :paramref:`.Connection.execution_options.query_cache` parameter.
+        :paramref:`.Connection.execution_options.compiled_cache` parameter.
 
         .. versionadded:: 1.4
 
@@ -1324,15 +1412,13 @@ class AsyncTransaction(
 
 
 @overload
-def _get_sync_engine_or_connection(async_engine: AsyncEngine) -> Engine:
-    ...
+def _get_sync_engine_or_connection(async_engine: AsyncEngine) -> Engine: ...
 
 
 @overload
 def _get_sync_engine_or_connection(
     async_engine: AsyncConnection,
-) -> Connection:
-    ...
+) -> Connection: ...
 
 
 def _get_sync_engine_or_connection(
@@ -1350,7 +1436,9 @@ def _get_sync_engine_or_connection(
 
 
 @inspection._inspects(AsyncConnection)
-def _no_insp_for_async_conn_yet(subject: AsyncConnection) -> NoReturn:
+def _no_insp_for_async_conn_yet(
+    subject: AsyncConnection,  # noqa: U100
+) -> NoReturn:
     raise exc.NoInspectionAvailable(
         "Inspection on an AsyncConnection is currently not supported. "
         "Please use ``run_sync`` to pass a callable where it's possible "
@@ -1360,7 +1448,9 @@ def _no_insp_for_async_conn_yet(subject: AsyncConnection) -> NoReturn:
 
 
 @inspection._inspects(AsyncEngine)
-def _no_insp_for_async_engine_xyet(subject: AsyncEngine) -> NoReturn:
+def _no_insp_for_async_engine_xyet(
+    subject: AsyncEngine,  # noqa: U100
+) -> NoReturn:
     raise exc.NoInspectionAvailable(
         "Inspection on an AsyncEngine is currently not supported. "
         "Please obtain a connection then use ``conn.run_sync`` to pass a "

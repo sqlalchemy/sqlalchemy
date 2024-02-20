@@ -1,3 +1,9 @@
+# testing/suite/test_results.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 import datetime
@@ -242,7 +248,6 @@ class PercentSchemaNamesTest(fixtures.TablesTest):
 class ServerSideCursorsTest(
     fixtures.TestBase, testing.AssertsExecutionResults
 ):
-
     __requires__ = ("server_side_cursors",)
 
     __backend__ = True
@@ -255,7 +260,7 @@ class ServerSideCursorsTest(
         elif self.engine.dialect.driver == "pymysql":
             sscursor = __import__("pymysql.cursors").cursors.SSCursor
             return isinstance(cursor, sscursor)
-        elif self.engine.dialect.driver in ("aiomysql", "asyncmy"):
+        elif self.engine.dialect.driver in ("aiomysql", "asyncmy", "aioodbc"):
             return cursor.server_side
         elif self.engine.dialect.driver == "mysqldb":
             sscursor = __import__("MySQLdb.cursors").cursors.SSCursor
@@ -312,7 +317,7 @@ class ServerSideCursorsTest(
             True,
             "SELECT 1 FOR UPDATE",
             True,
-            testing.skip_if("sqlite"),
+            testing.skip_if(["sqlite", "mssql"]),
         ),
         ("text_no_ss", False, text("select 42"), False),
         (

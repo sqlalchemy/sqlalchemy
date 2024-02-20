@@ -26,6 +26,8 @@ used when building up SQLAlchemy Expression Language constructs.
 
 .. autofunction:: bindparam
 
+.. autofunction:: bitwise_not
+
 .. autofunction:: case
 
 .. autofunction:: cast
@@ -60,6 +62,8 @@ used when building up SQLAlchemy Expression Language constructs.
 .. autofunction:: text
 
 .. autofunction:: true
+
+.. autofunction:: try_cast
 
 .. autofunction:: tuple_
 
@@ -100,7 +104,19 @@ Functions listed here are more commonly available as methods from any
 
 .. autofunction:: nulls_first
 
+.. function:: nullsfirst
+
+   Synonym for the :func:`_sql.nulls_first` function.
+
+   .. versionchanged:: 2.0.5 restored missing legacy symbol :func:`.nullsfirst`.
+
 .. autofunction:: nulls_last
+
+.. function:: nullslast
+
+   Legacy synonym for the :func:`_sql.nulls_last` function.
+
+   .. versionchanged:: 2.0.5 restored missing legacy symbol :func:`.nullslast`.
 
 .. autofunction:: over
 
@@ -136,11 +152,22 @@ The classes here are generated using the constructors listed at
 .. autoclass:: ColumnCollection
    :members:
 
-
 .. autoclass:: ColumnElement
    :members:
    :inherited-members:
    :undoc-members:
+
+.. data:: ColumnExpressionArgument
+
+   General purpose "column expression" argument.
+
+   .. versionadded:: 2.0.13
+
+   This type is used for "column" kinds of expressions that typically represent
+   a single SQL column expression, including :class:`_sql.ColumnElement`, as
+   well as ORM-mapped attributes that will have a ``__clause_element__()``
+   method.
+
 
 .. autoclass:: ColumnOperators
    :members:
@@ -175,6 +202,9 @@ The classes here are generated using the constructors listed at
 .. autoclass:: TextClause
    :members:
 
+.. autoclass:: TryCast
+   :members:
+
 .. autoclass:: Tuple
    :members:
 
@@ -193,5 +223,13 @@ The classes here are generated using the constructors listed at
 .. autoclass:: UnaryExpression
    :members:
 
+Column Element Typing Utilities
+-------------------------------
+
+Standalone utility functions imported from the ``sqlalchemy`` namespace
+to improve support by type checkers.
 
 
+.. autofunction:: sqlalchemy.NotNullable
+
+.. autofunction:: sqlalchemy.Nullable

@@ -1,5 +1,5 @@
-# orm/collections.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# orm/mapped_collection.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -7,31 +7,34 @@
 
 from __future__ import annotations
 
+import operator
 from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import Generic
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
+from typing import Union
 
 from . import base
 from .collections import collection
+from .collections import collection_adapter
 from .. import exc as sa_exc
 from .. import util
 from ..sql import coercions
 from ..sql import expression
 from ..sql import roles
+from ..util.typing import Literal
 
 if TYPE_CHECKING:
-    from typing import List
-    from typing import Optional
-    from typing import Sequence
-    from typing import Tuple
-    from typing import Union
-
     from . import AttributeEventToken
     from . import Mapper
+    from .collections import CollectionAdapter
     from ..sql.elements import ColumnElement
 
 _KT = TypeVar("_KT", bound=Any)
@@ -78,7 +81,11 @@ class _PlainColumnGetter(Generic[_KT]):
         if self.composite:
             return tuple(key)
         else:
-            return key[0]
+            obj = key[0]
+            if obj is None:
+                return _UNMAPPED_AMBIGUOUS_NONE
+            else:
+                return obj
 
 
 class _SerializableColumnGetterV2(_PlainColumnGetter[_KT]):
@@ -110,9 +117,7 @@ class _SerializableColumnGetterV2(_PlainColumnGetter[_KT]):
         return self.__class__, (self.colkeys,)
 
     @classmethod
-    def _reduce_from_cols(
-        cls, cols: Sequence[ColumnElement[_KT]]
-    ) -> Tuple[
+    def _reduce_from_cols(cls, cols: Sequence[ColumnElement[_KT]]) -> Tuple[
         Type[_SerializableColumnGetterV2[_KT]],
         Tuple[Sequence[Tuple[Optional[str], Optional[str]]]],
     ]:
@@ -128,7 +133,7 @@ class _SerializableColumnGetterV2(_PlainColumnGetter[_KT]):
     def _cols(self, mapper: Mapper[_KT]) -> Sequence[ColumnElement[_KT]]:
         cols: List[ColumnElement[_KT]] = []
         metadata = getattr(mapper.local_table, "metadata", None)
-        for (ckey, tkey) in self.colkeys:
+        for ckey, tkey in self.colkeys:
             if tkey is None or metadata is None or tkey not in metadata:
                 cols.append(mapper.local_table.c[ckey])  # type: ignore
             else:
@@ -173,7 +178,7 @@ def column_keyed_dict(
      .. versionadded:: 2.0 an error is raised by default if the attribute
         being used for the dictionary key is determined that it was never
         populated with any value.  The
-        :paramref:`.column_keyed_dict.ignore_unpopulated_attribute`
+        :paramref:`_orm.column_keyed_dict.ignore_unpopulated_attribute`
         parameter may be set which will instead indicate that this condition
         should be ignored, and the append operation silently skipped.
         This is in contrast to the behavior of the 1.x series which would
@@ -193,15 +198,30 @@ def column_keyed_dict(
     )
 
 
+_UNMAPPED_AMBIGUOUS_NONE = object()
+
+
 class _AttrGetter:
-    __slots__ = ("attr_name",)
+    __slots__ = ("attr_name", "getter")
 
     def __init__(self, attr_name: str):
         self.attr_name = attr_name
+        self.getter = operator.attrgetter(attr_name)
 
     def __call__(self, mapped_object: Any) -> Any:
-        dict_ = base.instance_dict(mapped_object)
-        return dict_.get(self.attr_name, base.NO_VALUE)
+        obj = self.getter(mapped_object)
+        if obj is None:
+            state = base.instance_state(mapped_object)
+            mp = state.mapper
+            if self.attr_name in mp.attrs:
+                dict_ = state.dict
+                obj = dict_.get(self.attr_name, base.NO_VALUE)
+                if obj is None:
+                    return _UNMAPPED_AMBIGUOUS_NONE
+            else:
+                return _UNMAPPED_AMBIGUOUS_NONE
+
+        return obj
 
     def __reduce__(self) -> Tuple[Type[_AttrGetter], Tuple[str]]:
         return _AttrGetter, (self.attr_name,)
@@ -209,7 +229,7 @@ class _AttrGetter:
 
 def attribute_keyed_dict(
     attr_name: str, *, ignore_unpopulated_attribute: bool = False
-) -> Type[KeyFuncDict[_KT, _KT]]:
+) -> Type[KeyFuncDict[Any, Any]]:
     """A dictionary-based collection type with attribute-based keying.
 
     .. versionchanged:: 2.0 Renamed :data:`.attribute_mapped_collection` to
@@ -240,7 +260,7 @@ def attribute_keyed_dict(
      .. versionadded:: 2.0 an error is raised by default if the attribute
         being used for the dictionary key is determined that it was never
         populated with any value.  The
-        :paramref:`.attribute_keyed_dict.ignore_unpopulated_attribute`
+        :paramref:`_orm.attribute_keyed_dict.ignore_unpopulated_attribute`
         parameter may be set which will instead indicate that this condition
         should be ignored, and the append operation silently skipped.
         This is in contrast to the behavior of the 1.x series which would
@@ -291,7 +311,7 @@ def keyfunc_mapping(
         being used for the dictionary key returns
         :attr:`.LoaderCallableStatus.NO_VALUE`, which in an ORM attribute
         context indicates an attribute that was never populated with any value.
-        The :paramref:`.mapped_collection.ignore_unpopulated_attribute`
+        The :paramref:`_orm.mapped_collection.ignore_unpopulated_attribute`
         parameter may be set which will instead indicate that this condition
         should be ignored, and the append operation silently skipped. This is
         in contrast to the behavior of the 1.x series which would erroneously
@@ -334,7 +354,7 @@ class KeyFuncDict(Dict[_KT, _VT]):
     def __init__(
         self,
         keyfunc: _F,
-        *,
+        *dict_args: Any,
         ignore_unpopulated_attribute: bool = False,
     ) -> None:
         """Create a new collection with keying provided by keyfunc.
@@ -352,53 +372,86 @@ class KeyFuncDict(Dict[_KT, _VT]):
         """
         self.keyfunc = keyfunc
         self.ignore_unpopulated_attribute = ignore_unpopulated_attribute
+        super().__init__(*dict_args)
 
     @classmethod
     def _unreduce(
-        cls, keyfunc: _F, values: Dict[_KT, _KT]
+        cls,
+        keyfunc: _F,
+        values: Dict[_KT, _KT],
+        adapter: Optional[CollectionAdapter] = None,
     ) -> "KeyFuncDict[_KT, _KT]":
         mp: KeyFuncDict[_KT, _KT] = KeyFuncDict(keyfunc)
         mp.update(values)
+        # note that the adapter sets itself up onto this collection
+        # when its `__setstate__` method is called
         return mp
 
     def __reduce__(
         self,
     ) -> Tuple[
         Callable[[_KT, _KT], KeyFuncDict[_KT, _KT]],
-        Tuple[Any, Union[Dict[_KT, _KT], Dict[_KT, _KT]]],
+        Tuple[Any, Union[Dict[_KT, _KT], Dict[_KT, _KT]], CollectionAdapter],
     ]:
-        return (KeyFuncDict._unreduce, (self.keyfunc, dict(self)))
+        return (
+            KeyFuncDict._unreduce,
+            (
+                self.keyfunc,
+                dict(self),
+                collection_adapter(self),
+            ),
+        )
 
+    @util.preload_module("sqlalchemy.orm.attributes")
     def _raise_for_unpopulated(
-        self, value: _KT, initiator: Optional[AttributeEventToken]
+        self,
+        value: _KT,
+        initiator: Union[AttributeEventToken, Literal[None, False]] = None,
+        *,
+        warn_only: bool,
     ) -> None:
         mapper = base.instance_state(value).mapper
 
-        if initiator is None:
-            relationship = "unknown relationship"
-        else:
-            relationship = f"{mapper.attrs[initiator.key]}"
+        attributes = util.preloaded.orm_attributes
 
-        raise sa_exc.InvalidRequestError(
-            f"In event triggered from population of attribute {relationship} "
-            "(likely from a backref), "
-            f"can't populate value in KeyFuncDict; "
-            "dictionary key "
-            f"derived from {base.instance_str(value)} is not "
-            f"populated. Ensure appropriate state is set up on "
-            f"the {base.instance_str(value)} object "
-            f"before assigning to the {relationship} attribute. "
-            f"To skip this assignment entirely, "
-            f'Set the "ignore_unpopulated_attribute=True" '
-            f"parameter on the mapped collection factory."
-        )
+        if not isinstance(initiator, attributes.AttributeEventToken):
+            relationship = "unknown relationship"
+        elif initiator.key in mapper.attrs:
+            relationship = f"{mapper.attrs[initiator.key]}"
+        else:
+            relationship = initiator.key
+
+        if warn_only:
+            util.warn(
+                f"Attribute keyed dictionary value for "
+                f"attribute '{relationship}' was None; this will raise "
+                "in a future release. "
+                f"To skip this assignment entirely, "
+                f'Set the "ignore_unpopulated_attribute=True" '
+                f"parameter on the mapped collection factory."
+            )
+        else:
+            raise sa_exc.InvalidRequestError(
+                "In event triggered from population of "
+                f"attribute '{relationship}' "
+                "(potentially from a backref), "
+                f"can't populate value in KeyFuncDict; "
+                "dictionary key "
+                f"derived from {base.instance_str(value)} is not "
+                f"populated. Ensure appropriate state is set up on "
+                f"the {base.instance_str(value)} object "
+                f"before assigning to the {relationship} attribute. "
+                f"To skip this assignment entirely, "
+                f'Set the "ignore_unpopulated_attribute=True" '
+                f"parameter on the mapped collection factory."
+            )
 
     @collection.appender  # type: ignore[misc]
     @collection.internally_instrumented  # type: ignore[misc]
     def set(
         self,
         value: _KT,
-        _sa_initiator: Optional[AttributeEventToken] = None,
+        _sa_initiator: Union[AttributeEventToken, Literal[None, False]] = None,
     ) -> None:
         """Add an item by value, consulting the keyfunc for the key."""
 
@@ -406,7 +459,17 @@ class KeyFuncDict(Dict[_KT, _VT]):
 
         if key is base.NO_VALUE:
             if not self.ignore_unpopulated_attribute:
-                self._raise_for_unpopulated(value, _sa_initiator)
+                self._raise_for_unpopulated(
+                    value, _sa_initiator, warn_only=False
+                )
+            else:
+                return
+        elif key is _UNMAPPED_AMBIGUOUS_NONE:
+            if not self.ignore_unpopulated_attribute:
+                self._raise_for_unpopulated(
+                    value, _sa_initiator, warn_only=True
+                )
+                key = None
             else:
                 return
 
@@ -417,7 +480,7 @@ class KeyFuncDict(Dict[_KT, _VT]):
     def remove(
         self,
         value: _KT,
-        _sa_initiator: Optional[AttributeEventToken] = None,
+        _sa_initiator: Union[AttributeEventToken, Literal[None, False]] = None,
     ) -> None:
         """Remove an item by value, consulting the keyfunc for the key."""
 
@@ -425,8 +488,18 @@ class KeyFuncDict(Dict[_KT, _VT]):
 
         if key is base.NO_VALUE:
             if not self.ignore_unpopulated_attribute:
-                self._raise_for_unpopulated(value, _sa_initiator)
+                self._raise_for_unpopulated(
+                    value, _sa_initiator, warn_only=False
+                )
             return
+        elif key is _UNMAPPED_AMBIGUOUS_NONE:
+            if not self.ignore_unpopulated_attribute:
+                self._raise_for_unpopulated(
+                    value, _sa_initiator, warn_only=True
+                )
+                key = None
+            else:
+                return
 
         # Let self[key] raise if key is not in this collection
         # testlib.pragma exempt:__ne__
@@ -444,9 +517,10 @@ def _mapped_collection_cls(
     keyfunc: _F, ignore_unpopulated_attribute: bool
 ) -> Type[KeyFuncDict[_KT, _KT]]:
     class _MKeyfuncMapped(KeyFuncDict[_KT, _KT]):
-        def __init__(self) -> None:
+        def __init__(self, *dict_args: Any) -> None:
             super().__init__(
                 keyfunc,
+                *dict_args,
                 ignore_unpopulated_attribute=ignore_unpopulated_attribute,
             )
 

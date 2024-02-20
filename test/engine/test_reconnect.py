@@ -1,3 +1,4 @@
+import itertools
 import time
 from unittest.mock import call
 from unittest.mock import Mock
@@ -28,6 +29,8 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing.engines import DBAPIProxyConnection
+from sqlalchemy.testing.engines import DBAPIProxyCursor
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -1002,6 +1005,154 @@ def _assert_invalidated(fn, *args):
             raise
 
 
+class RealPrePingEventHandlerTest(fixtures.TestBase):
+    """real test for issue #5648, which had to be revisited for 2.0 as the
+    initial version was not adequately tested and non-implementation for
+    mysql, postgresql was not caught
+
+    """
+
+    __backend__ = True
+    __requires__ = "graceful_disconnects", "ad_hoc_engines"
+
+    @testing.fixture
+    def ping_fixture(self, testing_engine):
+        engine = testing_engine(
+            options={"pool_pre_ping": True, "_initialize": False}
+        )
+
+        existing_connect = engine.dialect.dbapi.connect
+
+        fail = False
+        fail_count = itertools.count()
+        DBAPIError = engine.dialect.dbapi.Error
+
+        class ExplodeConnection(DBAPIProxyConnection):
+            def ping(self, *arg, **kw):
+                if fail and next(fail_count) < 1:
+                    raise DBAPIError("unhandled disconnect situation")
+                else:
+                    return True
+
+        class ExplodeCursor(DBAPIProxyCursor):
+            def execute(self, stmt, parameters=None, **kw):
+                if fail and next(fail_count) < 1:
+                    raise DBAPIError("unhandled disconnect situation")
+                else:
+                    return super().execute(stmt, parameters=parameters, **kw)
+
+        def mock_connect(*arg, **kw):
+            real_connection = existing_connect(*arg, **kw)
+            return ExplodeConnection(engine, real_connection, ExplodeCursor)
+
+        with mock.patch.object(
+            engine.dialect.loaded_dbapi, "connect", mock_connect
+        ):
+            # set up initial connection.  pre_ping works on subsequent connects
+            engine.connect().close()
+
+            # ping / exec will fail
+            fail = True
+
+            yield engine
+
+    @testing.fixture
+    def ping_fixture_all_errs_disconnect(self, ping_fixture):
+        engine = ping_fixture
+
+        with mock.patch.object(
+            engine.dialect, "is_disconnect", lambda *arg, **kw: True
+        ):
+            yield engine
+
+    def test_control(self, ping_fixture):
+        """test the fixture raises on connect"""
+        engine = ping_fixture
+
+        with expect_raises_message(
+            exc.DBAPIError, "unhandled disconnect situation"
+        ):
+            engine.connect()
+
+    def test_downgrade_control(self, ping_fixture_all_errs_disconnect):
+        """test the disconnect fixture doesn't raise, since it considers
+        all errors to be disconnect errors.
+
+        """
+
+        engine = ping_fixture_all_errs_disconnect
+
+        conn = engine.connect()
+        conn.close()
+
+    def test_event_handler_didnt_upgrade_disconnect(self, ping_fixture):
+        """test that having an event handler that doesn't do anything
+        keeps the behavior in place for a fatal error.
+
+        """
+        engine = ping_fixture
+
+        @event.listens_for(engine, "handle_error")
+        def setup_disconnect(ctx):
+            assert not ctx.is_disconnect
+
+        with expect_raises_message(
+            exc.DBAPIError, "unhandled disconnect situation"
+        ):
+            engine.connect()
+
+    def test_event_handler_didnt_downgrade_disconnect(
+        self, ping_fixture_all_errs_disconnect
+    ):
+        """test that having an event handler that doesn't do anything
+        keeps the behavior in place for a disconnect error.
+
+        """
+        engine = ping_fixture_all_errs_disconnect
+
+        @event.listens_for(engine, "handle_error")
+        def setup_disconnect(ctx):
+            assert ctx.is_pre_ping
+            assert ctx.is_disconnect
+
+        conn = engine.connect()
+        conn.close()
+
+    def test_event_handler_can_upgrade_disconnect(self, ping_fixture):
+        """test that an event hook can receive a fatal error and convert
+        it to be a disconnect error during pre-ping"""
+
+        engine = ping_fixture
+
+        @event.listens_for(engine, "handle_error")
+        def setup_disconnect(ctx):
+            assert ctx.is_pre_ping
+            ctx.is_disconnect = True
+
+        conn = engine.connect()
+        # no error
+        conn.close()
+
+    def test_event_handler_can_downgrade_disconnect(
+        self, ping_fixture_all_errs_disconnect
+    ):
+        """test that an event hook can receive a disconnect error and convert
+        it to be a fatal error during pre-ping"""
+
+        engine = ping_fixture_all_errs_disconnect
+
+        @event.listens_for(engine, "handle_error")
+        def setup_disconnect(ctx):
+            assert ctx.is_disconnect
+            if ctx.is_pre_ping:
+                ctx.is_disconnect = False
+
+        with expect_raises_message(
+            exc.DBAPIError, "unhandled disconnect situation"
+        ):
+            engine.connect()
+
+
 class RealReconnectTest(fixtures.TestBase):
     __backend__ = True
     __requires__ = "graceful_disconnects", "ad_hoc_engines"
@@ -1014,7 +1165,6 @@ class RealReconnectTest(fixtures.TestBase):
 
     def test_reconnect(self):
         with self.engine.connect() as conn:
-
             eq_(conn.execute(select(1)).scalar(), 1)
             assert not conn.closed
 
@@ -1338,6 +1488,9 @@ class PrePingRealTest(fixtures.TestBase):
 class InvalidateDuringResultTest(fixtures.TestBase):
     __backend__ = True
 
+    # test locks SQLite file databases due to unconsumed results
+    __requires__ = ("ad_hoc_engines",)
+
     def setup_test(self):
         self.engine = engines.reconnecting_engine()
         self.meta = MetaData()
@@ -1360,27 +1513,25 @@ class InvalidateDuringResultTest(fixtures.TestBase):
             self.meta.drop_all(conn)
         self.engine.dispose()
 
-    @testing.fails_if(
-        [
-            "+mysqlconnector",
-            "+mysqldb",
-            "+cymysql",
-            "+pymysql",
-            "+pg8000",
-            "+asyncpg",
-            "+aiosqlite",
-            "+aiomysql",
-            "+asyncmy",
-            "+psycopg",
-        ],
-        "Buffers the result set and doesn't check for connection close",
-    )
     def test_invalidate_on_results(self):
         conn = self.engine.connect()
-        result = conn.exec_driver_sql("select * from sometable")
+        result = conn.exec_driver_sql(
+            "select * from sometable",
+        )
         for x in range(20):
             result.fetchone()
+
+        real_cursor = result.cursor
         self.engine.test_shutdown()
+
+        def produce_side_effect():
+            # will fail because connection was closed, with an exception
+            # that should trigger disconnect routines
+            real_cursor.execute("select * from sometable")
+
+        result.cursor = Mock(
+            fetchone=mock.Mock(side_effect=produce_side_effect)
+        )
         try:
             _assert_invalidated(result.fetchone)
             assert conn.invalidated
@@ -1430,9 +1581,9 @@ class ReconnectRecipeTest(fixtures.TestBase):
                         connection.rollback()
 
                         time.sleep(retry_interval)
-                        context.cursor = (
-                            cursor
-                        ) = connection.connection.cursor()
+                        context.cursor = cursor = (
+                            connection.connection.cursor()
+                        )
                     else:
                         raise
                 else:

@@ -1,5 +1,5 @@
 # orm/sync.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -85,10 +85,10 @@ def clear(dest, dest_mapper, synchronize_pairs):
             and dest_mapper._get_state_attr_by_column(dest, dest.dict, r)
             not in orm_util._none_set
         ):
-
             raise AssertionError(
-                "Dependency rule tried to blank-out primary key "
-                "column '%s' on instance '%s'" % (r, orm_util.state_str(dest))
+                f"Dependency rule on column '{l}' "
+                "tried to blank-out primary key "
+                f"column '{r}' on instance '{orm_util.state_str(dest)}'"
             )
         try:
             dest_mapper._set_state_attr_by_column(dest, dest.dict, r, None)

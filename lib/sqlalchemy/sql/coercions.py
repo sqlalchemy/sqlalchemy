@@ -1,5 +1,5 @@
 # sql/coercions.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -165,8 +165,7 @@ def expect(
     role: Type[roles.TruncatedLabelRole],
     element: Any,
     **kw: Any,
-) -> str:
-    ...
+) -> str: ...
 
 
 @overload
@@ -176,8 +175,7 @@ def expect(
     *,
     as_key: Literal[True] = ...,
     **kw: Any,
-) -> str:
-    ...
+) -> str: ...
 
 
 @overload
@@ -185,8 +183,7 @@ def expect(
     role: Type[roles.LiteralValueRole],
     element: Any,
     **kw: Any,
-) -> BindParameter[Any]:
-    ...
+) -> BindParameter[Any]: ...
 
 
 @overload
@@ -194,8 +191,7 @@ def expect(
     role: Type[roles.DDLReferredColumnRole],
     element: Any,
     **kw: Any,
-) -> Column[Any]:
-    ...
+) -> Column[Any]: ...
 
 
 @overload
@@ -203,8 +199,7 @@ def expect(
     role: Type[roles.DDLConstraintColumnRole],
     element: Any,
     **kw: Any,
-) -> Union[Column[Any], str]:
-    ...
+) -> Union[Column[Any], str]: ...
 
 
 @overload
@@ -212,8 +207,7 @@ def expect(
     role: Type[roles.StatementOptionRole],
     element: Any,
     **kw: Any,
-) -> DQLDMLClauseElement:
-    ...
+) -> DQLDMLClauseElement: ...
 
 
 @overload
@@ -221,8 +215,7 @@ def expect(
     role: Type[roles.LabeledColumnExprRole[Any]],
     element: _ColumnExpressionArgument[_T],
     **kw: Any,
-) -> NamedColumn[_T]:
-    ...
+) -> NamedColumn[_T]: ...
 
 
 @overload
@@ -234,8 +227,7 @@ def expect(
     ],
     element: _ColumnExpressionArgument[_T],
     **kw: Any,
-) -> ColumnElement[_T]:
-    ...
+) -> ColumnElement[_T]: ...
 
 
 @overload
@@ -249,8 +241,7 @@ def expect(
     ],
     element: Any,
     **kw: Any,
-) -> ColumnElement[Any]:
-    ...
+) -> ColumnElement[Any]: ...
 
 
 @overload
@@ -258,8 +249,7 @@ def expect(
     role: Type[roles.DMLTableRole],
     element: _DMLTableArgument,
     **kw: Any,
-) -> _DMLTableElement:
-    ...
+) -> _DMLTableElement: ...
 
 
 @overload
@@ -267,8 +257,7 @@ def expect(
     role: Type[roles.HasCTERole],
     element: HasCTE,
     **kw: Any,
-) -> HasCTE:
-    ...
+) -> HasCTE: ...
 
 
 @overload
@@ -276,8 +265,7 @@ def expect(
     role: Type[roles.SelectStatementRole],
     element: SelectBase,
     **kw: Any,
-) -> SelectBase:
-    ...
+) -> SelectBase: ...
 
 
 @overload
@@ -285,8 +273,7 @@ def expect(
     role: Type[roles.FromClauseRole],
     element: _FromClauseArgument,
     **kw: Any,
-) -> FromClause:
-    ...
+) -> FromClause: ...
 
 
 @overload
@@ -296,8 +283,7 @@ def expect(
     *,
     explicit_subquery: Literal[True] = ...,
     **kw: Any,
-) -> Subquery:
-    ...
+) -> Subquery: ...
 
 
 @overload
@@ -305,8 +291,7 @@ def expect(
     role: Type[roles.ColumnsClauseRole],
     element: _ColumnsClauseArgument[Any],
     **kw: Any,
-) -> _ColumnsClauseElement:
-    ...
+) -> _ColumnsClauseElement: ...
 
 
 @overload
@@ -314,8 +299,7 @@ def expect(
     role: Type[roles.JoinTargetRole],
     element: _JoinTargetProtocol,
     **kw: Any,
-) -> _JoinTargetProtocol:
-    ...
+) -> _JoinTargetProtocol: ...
 
 
 # catchall for not-yet-implemented overloads
@@ -324,8 +308,7 @@ def expect(
     role: Type[_SR],
     element: Any,
     **kw: Any,
-) -> Any:
-    ...
+) -> Any: ...
 
 
 def expect(
@@ -335,6 +318,7 @@ def expect(
     apply_propagate_attrs: Optional[ClauseElement] = None,
     argname: Optional[str] = None,
     post_inspect: bool = False,
+    disable_inspection: bool = False,
     **kw: Any,
 ) -> Any:
     if (
@@ -373,7 +357,6 @@ def expect(
         if impl._resolve_literal_only:
             resolved = impl._literal_coercion(element, **kw)
         else:
-
             original_element = element
 
             is_clause_element = False
@@ -399,7 +382,7 @@ def expect(
                         break
 
             if not is_clause_element:
-                if impl._use_inspection:
+                if impl._use_inspection and not disable_inspection:
                     insp = inspection.inspect(element, raiseerr=False)
                     if insp is not None:
                         if post_inspect:
@@ -424,9 +407,8 @@ def expect(
         if typing.TYPE_CHECKING:
             assert isinstance(resolved, (SQLCoreOperations, ClauseElement))
 
-        if (
-            not apply_propagate_attrs._propagate_attrs
-            and resolved._propagate_attrs
+        if not apply_propagate_attrs._propagate_attrs and getattr(
+            resolved, "_propagate_attrs", None
         ):
             apply_propagate_attrs._propagate_attrs = resolved._propagate_attrs
 
@@ -803,7 +785,6 @@ class ExpressionElementImpl(_ColumnCoercions, RoleImpl):
 
 
 class BinaryElementImpl(ExpressionElementImpl, RoleImpl):
-
     __slots__ = ()
 
     def _literal_coercion(
@@ -853,9 +834,7 @@ class InElementImpl(RoleImpl):
         )
 
     def _literal_coercion(self, element, expr, operator, **kw):
-        if isinstance(element, collections_abc.Iterable) and not isinstance(
-            element, str
-        ):
+        if util.is_non_string_iterable(element):
             non_literal_expressions: Dict[
                 Optional[operators.ColumnOperators],
                 operators.ColumnOperators,
@@ -874,9 +853,11 @@ class InElementImpl(RoleImpl):
             if non_literal_expressions:
                 return elements.ClauseList(
                     *[
-                        non_literal_expressions[o]
-                        if o in non_literal_expressions
-                        else expr._bind_param(operator, o)
+                        (
+                            non_literal_expressions[o]
+                            if o in non_literal_expressions
+                            else expr._bind_param(operator, o)
+                        )
                         for o in element
                     ]
                 )
@@ -962,7 +943,6 @@ class StrAsPlainColumnImpl(_CoerceLiterals, RoleImpl):
 
 
 class ByOfImpl(_CoerceLiterals, _ColumnCoercions, RoleImpl, roles.ByOfRole):
-
     __slots__ = ()
 
     _coerce_consts = True
@@ -1054,7 +1034,6 @@ class TruncatedLabelImpl(_StringOnly, RoleImpl):
 
 
 class DDLExpressionImpl(_Deannotate, _CoerceLiterals, RoleImpl):
-
     __slots__ = ()
 
     _coerce_consts = True
@@ -1156,9 +1135,9 @@ class ColumnsClauseImpl(_SelectIsNotFrom, _CoerceLiterals, RoleImpl):
             % {
                 "column": util.ellipses_string(element),
                 "argname": "for argument %s" % (argname,) if argname else "",
-                "literal_column": "literal_column"
-                if guess_is_literal
-                else "column",
+                "literal_column": (
+                    "literal_column" if guess_is_literal else "column"
+                ),
             }
         )
 

@@ -19,15 +19,16 @@ The rest of what's here are standard SQLAlchemy and
 dogpile.cache constructs.
 
 """
+
 from dogpile.cache.api import NO_VALUE
 
 from sqlalchemy import event
 from sqlalchemy.orm import loading
+from sqlalchemy.orm import Query
 from sqlalchemy.orm.interfaces import UserDefinedOption
 
 
 class ORMCache:
-
     """An add-on for an ORM :class:`.Session` optionally loads full results
     from a dogpile cache region.
 
@@ -42,7 +43,6 @@ class ORMCache:
         event.listen(session_factory, "do_orm_execute", self._do_orm_execute)
 
     def _do_orm_execute(self, orm_context):
-
         for opt in orm_context.user_defined_options:
             if isinstance(opt, RelationshipCache):
                 opt = opt._process_orm_context(orm_context)
@@ -53,7 +53,7 @@ class ORMCache:
                 dogpile_region = self.cache_regions[opt.region]
 
                 our_cache_key = opt._generate_cache_key(
-                    orm_context.statement, orm_context.parameters, self
+                    orm_context.statement, orm_context.parameters or {}, self
                 )
 
                 if opt.ignore_expiration:
@@ -91,7 +91,8 @@ class ORMCache:
     def invalidate(self, statement, parameters, opt):
         """Invalidate the cache value represented by a statement."""
 
-        statement = statement.__clause_element__()
+        if isinstance(statement, Query):
+            statement = statement.__clause_element__()
 
         dogpile_region = self.cache_regions[opt.region]
 

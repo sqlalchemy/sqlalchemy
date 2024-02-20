@@ -1,5 +1,5 @@
 # ext/mypy/decl_class.py
-# Copyright (C) 2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2021-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -50,7 +50,6 @@ def scan_declarative_assignments_and_apply_types(
     api: SemanticAnalyzerPluginInterface,
     is_mixin_scan: bool = False,
 ) -> Optional[List[util.SQLAlchemyAttribute]]:
-
     info = util.info_for_cls(cls, api)
 
     if info is None:
@@ -59,9 +58,9 @@ def scan_declarative_assignments_and_apply_types(
     elif cls.fullname.startswith("builtins"):
         return None
 
-    mapped_attributes: Optional[
-        List[util.SQLAlchemyAttribute]
-    ] = util.get_mapped_attributes(info, api)
+    mapped_attributes: Optional[List[util.SQLAlchemyAttribute]] = (
+        util.get_mapped_attributes(info, api)
+    )
 
     # used by assign.add_additional_orm_attributes among others
     util.establish_as_sqlalchemy(info)
@@ -161,7 +160,6 @@ def _scan_symbol_table_entry(
                 sym = api.lookup_qualified(typeengine_arg.name, typeengine_arg)
                 if sym is not None and isinstance(sym.node, TypeInfo):
                     if names.has_base_type_id(sym.node, names.TYPEENGINE):
-
                         left_hand_explicit_type = UnionType(
                             [
                                 infer.extract_python_type_from_typeengine(
@@ -457,7 +455,6 @@ def _scan_declarative_assignment_stmt(
     elif isinstance(stmt.rvalue, CallExpr) and isinstance(
         stmt.rvalue.callee, RefExpr
     ):
-
         python_type_for_type = infer.infer_type_from_right_hand_nameexpr(
             api, stmt, node, left_hand_explicit_type, stmt.rvalue.callee
         )

@@ -1,5 +1,5 @@
-# postgresql/pg_catalog.py
-# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# dialects/postgresql/pg_catalog.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -166,6 +166,7 @@ pg_index = Table(
     Column("indnatts", SmallInteger),
     Column("indnkeyatts", SmallInteger, info={"server_version": (11,)}),
     Column("indisunique", Boolean),
+    Column("indnullsnotdistinct", Boolean, info={"server_version": (15,)}),
     Column("indisprimary", Boolean),
     Column("indisexclusion", Boolean, info={"server_version": (9, 1)}),
     Column("indimmediate", Boolean),

@@ -1,5 +1,5 @@
-# postgresql/pg8000.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors <see AUTHORS
+# dialects/postgresql/pg8000.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors <see AUTHORS
 # file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -94,6 +94,7 @@ of the :ref:`psycopg2 <psycopg2_isolation_level>` dialect:
 import decimal
 import re
 
+from . import ranges
 from .array import ARRAY as PGARRAY
 from .base import _DECIMAL_TYPES
 from .base import _FLOAT_TYPES
@@ -109,6 +110,7 @@ from .json import JSONB
 from .json import JSONPathType
 from .pg_catalog import _SpaceVector
 from .pg_catalog import OIDVECTOR
+from .types import CITEXT
 from ... import exc
 from ... import util
 from ...engine import processors
@@ -148,7 +150,7 @@ class _PGNumeric(sqltypes.Numeric):
                 )
 
 
-class _PGFloat(_PGNumeric):
+class _PGFloat(_PGNumeric, sqltypes.Float):
     __visit_name__ = "float"
     render_bind_cast = True
 
@@ -249,6 +251,68 @@ class _PGARRAY(PGARRAY):
 
 class _PGOIDVECTOR(_SpaceVector, OIDVECTOR):
     pass
+
+
+class _Pg8000Range(ranges.AbstractSingleRangeImpl):
+    def bind_processor(self, dialect):
+        pg8000_Range = dialect.dbapi.Range
+
+        def to_range(value):
+            if isinstance(value, ranges.Range):
+                value = pg8000_Range(
+                    value.lower, value.upper, value.bounds, value.empty
+                )
+            return value
+
+        return to_range
+
+    def result_processor(self, dialect, coltype):
+        def to_range(value):
+            if value is not None:
+                value = ranges.Range(
+                    value.lower,
+                    value.upper,
+                    bounds=value.bounds,
+                    empty=value.is_empty,
+                )
+            return value
+
+        return to_range
+
+
+class _Pg8000MultiRange(ranges.AbstractMultiRangeImpl):
+    def bind_processor(self, dialect):
+        pg8000_Range = dialect.dbapi.Range
+
+        def to_multirange(value):
+            if isinstance(value, list):
+                mr = []
+                for v in value:
+                    if isinstance(v, ranges.Range):
+                        mr.append(
+                            pg8000_Range(v.lower, v.upper, v.bounds, v.empty)
+                        )
+                    else:
+                        mr.append(v)
+                return mr
+            else:
+                return value
+
+        return to_multirange
+
+    def result_processor(self, dialect, coltype):
+        def to_multirange(value):
+            if value is None:
+                return None
+            else:
+                return ranges.MultiRange(
+                    ranges.Range(
+                        v.lower, v.upper, bounds=v.bounds, empty=v.is_empty
+                    )
+                    for v in value
+                )
+
+        return to_multirange
 
 
 _server_side_id = util.counter()
@@ -367,6 +431,7 @@ class PGDialect_pg8000(PGDialect):
             sqltypes.Boolean: _PGBoolean,
             sqltypes.NullType: _PGNullType,
             JSONB: _PGJSONB,
+            CITEXT: CITEXT,
             sqltypes.JSON.JSONPathType: _PGJSONPathType,
             sqltypes.JSON.JSONIndexType: _PGJSONIndexType,
             sqltypes.JSON.JSONIntIndexType: _PGJSONIntIndexType,
@@ -383,6 +448,18 @@ class PGDialect_pg8000(PGDialect):
             sqltypes.Enum: _PGEnum,
             sqltypes.ARRAY: _PGARRAY,
             OIDVECTOR: _PGOIDVECTOR,
+            ranges.INT4RANGE: _Pg8000Range,
+            ranges.INT8RANGE: _Pg8000Range,
+            ranges.NUMRANGE: _Pg8000Range,
+            ranges.DATERANGE: _Pg8000Range,
+            ranges.TSRANGE: _Pg8000Range,
+            ranges.TSTZRANGE: _Pg8000Range,
+            ranges.INT4MULTIRANGE: _Pg8000MultiRange,
+            ranges.INT8MULTIRANGE: _Pg8000MultiRange,
+            ranges.NUMMULTIRANGE: _Pg8000MultiRange,
+            ranges.DATEMULTIRANGE: _Pg8000MultiRange,
+            ranges.TSMULTIRANGE: _Pg8000MultiRange,
+            ranges.TSTZMULTIRANGE: _Pg8000MultiRange,
         },
     )
 
@@ -392,6 +469,13 @@ class PGDialect_pg8000(PGDialect):
 
         if self._dbapi_version < (1, 16, 6):
             raise NotImplementedError("pg8000 1.16.6 or greater is required")
+
+        if self._native_inet_types:
+            raise NotImplementedError(
+                "The pg8000 dialect does not fully implement "
+                "ipaddress type handling; INET is supported by default, "
+                "CIDR is not"
+            )
 
     @util.memoized_property
     def _dbapi_version(self):
@@ -498,8 +582,8 @@ class PGDialect_pg8000(PGDialect):
         cursor = dbapi_connection.cursor()
         cursor.execute(
             f"""SET CLIENT_ENCODING TO '{
-            client_encoding.replace("'", "''")
-        }'"""
+                client_encoding.replace("'", "''")
+            }'"""
         )
         cursor.execute("COMMIT")
         cursor.close()
@@ -535,6 +619,17 @@ class PGDialect_pg8000(PGDialect):
 
             def on_connect(conn):
                 self._set_client_encoding(conn, self.client_encoding)
+
+            fns.append(on_connect)
+
+        if self._native_inet_types is False:
+
+            def on_connect(conn):
+                # inet
+                conn.register_in_adapter(869, lambda s: s)
+
+                # cidr
+                conn.register_in_adapter(650, lambda s: s)
 
             fns.append(on_connect)
 

@@ -7,6 +7,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.attributes import instance_state
 from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -259,7 +260,12 @@ class LoadOnFKsTest(fixtures.DeclarativeMappedTest):
         # backref did not fire off when c3.parent was set.
         # originally this was impacted by #3708, now does not happen
         # due to backref_cascades behavior being removed
-        assert c3 not in p1.children
+        # warning is new as of #10090
+        with expect_warnings(
+            r"Object of type <Child> not in session, add operation along "
+            r"'Parent.children' will not proceed"
+        ):
+            assert c3 not in p1.children
 
     def test_enable_rel_loading_allows_backref_event(self, parent_fixture):
         sess, p1, p2, c1, c2 = parent_fixture
@@ -274,7 +280,12 @@ class LoadOnFKsTest(fixtures.DeclarativeMappedTest):
         # backref did not fire off when c3.parent was set.
         # originally this was impacted by #3708, now does not happen
         # due to backref_cascades behavior being removed
-        assert c3 not in p1.children
+        # warning is new as of #10090
+        with expect_warnings(
+            r"Object of type <Child> not in session, add operation along "
+            r"'Parent.children' will not proceed"
+        ):
+            assert c3 not in p1.children
 
     def test_backref_doesnt_double(self, parent_fixture):
         sess, p1, p2, c1, c2 = parent_fixture

@@ -5,14 +5,13 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
 import inspect
 import re
 from tempfile import NamedTemporaryFile
 import textwrap
-from typing import Any
 
 from sqlalchemy.sql.functions import _registry
+from sqlalchemy.sql.functions import ReturnTypeFromArgs
 from sqlalchemy.types import TypeEngine
 from sqlalchemy.util.tool_support import code_writer_cmd
 
@@ -20,11 +19,13 @@ from sqlalchemy.util.tool_support import code_writer_cmd
 def _fns_in_deterministic_order():
     reg = _registry["_default"]
     for key in sorted(reg):
-        yield key, reg[key]
+        cls = reg[key]
+        if cls is ReturnTypeFromArgs:
+            continue
+        yield key, cls
 
 
 def process_functions(filename: str, cmd: code_writer_cmd) -> str:
-
     with NamedTemporaryFile(
         mode="w",
         delete=False,
@@ -56,23 +57,88 @@ def process_functions(filename: str, cmd: code_writer_cmd) -> str:
                 for key, fn_class in _fns_in_deterministic_order():
                     is_reserved_word = key in builtins
 
-                    guess_its_generic = bool(fn_class.__parameters__)
+                    if issubclass(fn_class, ReturnTypeFromArgs):
+                        buf.write(
+                            textwrap.indent(
+                                f"""
 
-                    buf.write(
-                        textwrap.indent(
-                            f"""
+# set ColumnElement[_T] as a separate overload, to appease mypy
+# which seems to not want to accept _T from _ColumnExpressionArgument.
+# this is even if all non-generic types are removed from it, so
+# reasons remain unclear for why this does not work
+
+@overload
+def {key}( {'  # noqa: A001' if is_reserved_word else ''}
+    self,
+    col: ColumnElement[_T],
+    *args: _ColumnExpressionOrLiteralArgument[Any],
+    **kwargs: Any,
+) -> {fn_class.__name__}[_T]:
+    ...
+
+@overload
+def {key}( {'  # noqa: A001' if is_reserved_word else ''}
+    self,
+    col: _ColumnExpressionArgument[_T],
+    *args: _ColumnExpressionOrLiteralArgument[Any],
+    **kwargs: Any,
+) -> {fn_class.__name__}[_T]:
+        ...
+
+
+@overload
+def {key}( {'  # noqa: A001' if is_reserved_word else ''}
+    self,
+    col: _ColumnExpressionOrLiteralArgument[_T],
+    *args: _ColumnExpressionOrLiteralArgument[Any],
+    **kwargs: Any,
+) -> {fn_class.__name__}[_T]:
+        ...
+
+
+def {key}( {'  # noqa: A001' if is_reserved_word else ''}
+    self,
+    col: _ColumnExpressionOrLiteralArgument[_T],
+    *args: _ColumnExpressionOrLiteralArgument[Any],
+    **kwargs: Any,
+) -> {fn_class.__name__}[_T]:
+    ...
+
+    """,
+                                indent,
+                            )
+                        )
+                    else:
+                        guess_its_generic = bool(fn_class.__parameters__)
+
+                        # the latest flake8 is quite broken here:
+                        # 1. it insists on linting f-strings, no option
+                        #    to turn it off
+                        # 2. the f-string indentation rules are either broken
+                        #    or completely impossible to figure out
+                        # 3. there's no way to E501 a too-long f-string,
+                        #    so I can't even put the expressions all one line
+                        #    to get around the indentation errors
+                        # 4. Therefore here I have to concat part of the
+                        #    string outside of the f-string
+                        _type = fn_class.__name__
+                        _type += "[Any]" if guess_its_generic else ""
+                        _reserved_word = (
+                            "  # noqa: A001" if is_reserved_word else ""
+                        )
+
+                        # now the f-string
+                        buf.write(
+                            textwrap.indent(
+                                f"""
 @property
-def {key}(self) -> Type[{fn_class.__name__}{
-    '[Any]' if guess_its_generic else ''
-}]:{
-     '  # noqa: A001' if is_reserved_word else ''
-}
+def {key}(self) -> Type[{_type}]:{_reserved_word}
     ...
 
 """,
-                            indent,
+                                indent,
+                            )
                         )
-                    )
 
             m = re.match(
                 r"^( *)# START GENERATED FUNCTION TYPING TESTS",
@@ -95,25 +161,48 @@ def {key}(self) -> Type[{fn_class.__name__}{
 
                 count = 0
                 for key, fn_class in _fns_in_deterministic_order():
-                    if hasattr(fn_class, "type") and isinstance(
+                    if issubclass(fn_class, ReturnTypeFromArgs):
+                        count += 1
+
+                        buf.write(
+                            textwrap.indent(
+                                rf"""
+stmt{count} = select(func.{key}(column('x', Integer)))
+
+# EXPECTED_RE_TYPE: .*Select\[.*int\]
+reveal_type(stmt{count})
+
+""",
+                                indent,
+                            )
+                        )
+                    elif fn_class.__name__ == "aggregate_strings":
+                        count += 1
+                        buf.write(
+                            textwrap.indent(
+                                rf"""
+stmt{count} = select(func.{key}(column('x', String), ','))
+
+# EXPECTED_RE_TYPE: .*Select\[.*str\]
+reveal_type(stmt{count})
+
+""",
+                                indent,
+                            )
+                        )
+
+                    elif hasattr(fn_class, "type") and isinstance(
                         fn_class.type, TypeEngine
                     ):
                         python_type = fn_class.type.python_type
-
-                        # TODO: numeric types don't seem to be coming out
-                        # at the moment, because Numeric is typed generically
-                        # in that it can return Decimal or float. We would need
-                        # to further break out Numeric / Float into types
-                        # that type out as returning an exact Decimal or float
-                        if python_type is Decimal:
-                            python_type = Any
-                            python_expr = f"{python_type.__name__}"
-                        else:
-                            python_expr = rf"Tuple\[.*{python_type.__name__}\]"
+                        python_expr = rf".*{python_type.__name__}"
                         argspec = inspect.getfullargspec(fn_class)
-                        args = ", ".join(
-                            'column("x")' for elem in argspec.args[1:]
-                        )
+                        if fn_class.__name__ == "next_value":
+                            args = "Sequence('x_seq')"
+                        else:
+                            args = ", ".join(
+                                'column("x")' for elem in argspec.args[1:]
+                            )
                         count += 1
 
                         buf.write(
@@ -149,11 +238,10 @@ def main(cmd: code_writer_cmd) -> None:
 
 
 functions_py = "lib/sqlalchemy/sql/functions.py"
-test_functions_py = "test/ext/mypy/plain_files/functions.py"
+test_functions_py = "test/typing/plain_files/sql/functions.py"
 
 
 if __name__ == "__main__":
-
     cmd = code_writer_cmd(__file__)
 
     with cmd.run_program():

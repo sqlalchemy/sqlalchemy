@@ -1250,6 +1250,19 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
 
         return t1, t2, t3
 
+    @testing.fixture
+    def same_named_tables(self, metadata, connection):
+        ts1 = Table(
+            "t1", metadata, Column("x", String(10)), schema=config.test_schema
+        )
+        tsnone = Table("t1", metadata, Column("x", String(10)), schema=None)
+
+        metadata.create_all(connection)
+
+        connection.execute(ts1.insert().values(x="ts1"))
+        connection.execute(tsnone.insert().values(x="tsnone"))
+        return ts1, tsnone
+
     def test_create_table(self, plain_tables, connection):
         map_ = {
             None: config.test_schema,
@@ -1283,7 +1296,6 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
         )
 
     def test_ddl_hastable(self, plain_tables, connection):
-
         map_ = {
             None: config.test_schema,
             "foo": config.test_schema,
@@ -1404,6 +1416,133 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
             CompiledSQL("DELETE FROM __[SCHEMA_bar].t3"),
         )
 
+    def test_schema_translate_map_keys_change_name_added(
+        self, same_named_tables, connection
+    ):
+        """test #10024"""
+
+        metadata = MetaData()
+
+        translate_table = Table(
+            "t1", metadata, Column("x", String(10)), schema=config.test_schema
+        )
+
+        eq_(
+            connection.scalar(
+                select(translate_table),
+                execution_options={"schema_translate_map": {"foo": "bar"}},
+            ),
+            "ts1",
+        )
+
+        eq_(
+            connection.scalar(
+                select(translate_table),
+                execution_options={
+                    "schema_translate_map": {
+                        "foo": "bar",
+                        config.test_schema: None,
+                    }
+                },
+            ),
+            "tsnone",
+        )
+
+    def test_schema_translate_map_keys_change_name_removed(
+        self, same_named_tables, connection
+    ):
+        """test #10024"""
+
+        metadata = MetaData()
+
+        translate_table = Table(
+            "t1", metadata, Column("x", String(10)), schema=config.test_schema
+        )
+
+        eq_(
+            connection.scalar(
+                select(translate_table),
+                execution_options={
+                    "schema_translate_map": {
+                        "foo": "bar",
+                        config.test_schema: None,
+                    }
+                },
+            ),
+            "tsnone",
+        )
+
+        eq_(
+            connection.scalar(
+                select(translate_table),
+                execution_options={"schema_translate_map": {"foo": "bar"}},
+            ),
+            "ts1",
+        )
+
+    def test_schema_translate_map_keys_change_none_removed(
+        self, same_named_tables, connection
+    ):
+        """test #10024"""
+
+        connection.engine.clear_compiled_cache()
+
+        metadata = MetaData()
+
+        translate_table = Table("t1", metadata, Column("x", String(10)))
+
+        eq_(
+            connection.scalar(
+                select(translate_table),
+                execution_options={
+                    "schema_translate_map": {None: config.test_schema}
+                },
+            ),
+            "ts1",
+        )
+
+        with expect_raises_message(
+            tsa.exc.StatementError,
+            "schema translate map which previously had `None` "
+            "present as a key now no longer has it present",
+        ):
+            connection.scalar(
+                select(translate_table),
+                execution_options={"schema_translate_map": {"foo": "bar"}},
+            ),
+
+    def test_schema_translate_map_keys_change_none_added(
+        self, same_named_tables, connection
+    ):
+        """test #10024"""
+
+        connection.engine.clear_compiled_cache()
+
+        metadata = MetaData()
+
+        translate_table = Table("t1", metadata, Column("x", String(10)))
+
+        eq_(
+            connection.scalar(
+                select(translate_table),
+                execution_options={"schema_translate_map": {"foo": "bar"}},
+            ),
+            "tsnone",
+        )
+
+        with expect_raises_message(
+            tsa.exc.StatementError,
+            "schema translate map which previously did not have `None` "
+            "present as a key now has `None` present; compiled statement may "
+            "lack adequate placeholders.",
+        ):
+            connection.scalar(
+                select(translate_table),
+                execution_options={
+                    "schema_translate_map": {None: config.test_schema}
+                },
+            ),
+
     def test_crud(self, plain_tables, connection):
         # provided by metadata fixture provided by plain_tables fixture
         self.metadata.create_all(connection)
@@ -1465,7 +1604,6 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
         )
 
     def test_via_engine(self, plain_tables, metadata):
-
         with config.db.begin() as connection:
             metadata.create_all(connection)
 
@@ -1876,7 +2014,6 @@ class EngineEventsTest(fixtures.TestBase):
         stmt = str(select(1).compile(dialect=e1.dialect))
 
         with e1.connect() as conn:
-
             result = conn.exec_driver_sql(stmt)
             eq_(result.scalar(), 1)
 
@@ -2044,8 +2181,8 @@ class EngineEventsTest(fixtures.TestBase):
                 select(1).compile(dialect=e1.dialect), (), {}
             )
 
+    @testing.emits_warning("The garbage collector is trying to clean up")
     def test_execute_events(self):
-
         stmts = []
         cursor_stmts = []
 
@@ -2283,6 +2420,7 @@ class EngineEventsTest(fixtures.TestBase):
 
         eng_copy = copy.copy(eng)
         eng_copy.dispose(close=close)
+
         copy_conn = eng_copy.connect()
         dbapi_conn_two = copy_conn.connection.dbapi_connection
 
@@ -2293,6 +2431,9 @@ class EngineEventsTest(fixtures.TestBase):
             is_not(dbapi_conn_one, conn.connection.dbapi_connection)
         else:
             is_(dbapi_conn_one, conn.connection.dbapi_connection)
+
+        conn.close()
+        copy_conn.close()
 
     def test_retval_flag(self):
         canary = []
@@ -2949,7 +3090,6 @@ class HandleErrorTest(fixtures.TestBase):
         with patch.object(
             engine.dialect, "is_disconnect", Mock(return_value=orig_error)
         ):
-
             with engine.connect() as c:
                 try:
                     c.exec_driver_sql("SELECT x FROM nonexistent")
@@ -2989,7 +3129,6 @@ class HandleErrorTest(fixtures.TestBase):
         with patch.object(
             engine.dialect, "is_disconnect", Mock(return_value=orig_error)
         ):
-
             with engine.connect() as c:
                 target_crec = c.connection._connection_record
                 try:
@@ -3030,7 +3169,6 @@ class HandleErrorTest(fixtures.TestBase):
                 assert_raises(MySpecialException, conn.get_isolation_level)
 
     def test_handle_error_not_on_connection(self, connection):
-
         with expect_raises_message(
             tsa.exc.InvalidRequestError,
             r"The handle_error\(\) event hook as of SQLAlchemy 2.0 is "
@@ -3516,12 +3654,12 @@ class DialectEventTest(fixtures.TestBase):
             arg[-1].get_result_proxy = Mock(return_value=Mock(context=arg[-1]))
             return retval
 
-        m1.real_do_execute.side_effect = (
-            m1.do_execute.side_effect
-        ) = mock_the_cursor
-        m1.real_do_executemany.side_effect = (
-            m1.do_executemany.side_effect
-        ) = mock_the_cursor
+        m1.real_do_execute.side_effect = m1.do_execute.side_effect = (
+            mock_the_cursor
+        )
+        m1.real_do_executemany.side_effect = m1.do_executemany.side_effect = (
+            mock_the_cursor
+        )
         m1.real_do_execute_no_params.side_effect = (
             m1.do_execute_no_params.side_effect
         ) = mock_the_cursor
@@ -3702,8 +3840,8 @@ class DialectEventTest(fixtures.TestBase):
 
         conn.connection.invalidate(soft=True)
         conn.close()
-        conn = e.connect()
-        eq_(conn.info["boom"], "one")
+        with e.connect() as conn:
+            eq_(conn.info["boom"], "one")
 
     def test_connect_do_connect_info_there_after_invalidate(self):
         # test that info is maintained after the do_connect()
@@ -3720,8 +3858,9 @@ class DialectEventTest(fixtures.TestBase):
         eq_(conn.info["boom"], "one")
 
         conn.connection.invalidate()
-        conn = e.connect()
-        eq_(conn.info["boom"], "one")
+
+        with e.connect() as conn:
+            eq_(conn.info["boom"], "one")
 
 
 class SetInputSizesTest(fixtures.TablesTest):

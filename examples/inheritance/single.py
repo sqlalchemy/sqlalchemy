@@ -1,4 +1,5 @@
 """Single-table (table-per-hierarchy) inheritance example."""
+
 from __future__ import annotations
 
 from typing import Annotated
@@ -63,7 +64,6 @@ class Person(Base):
 
 
 class Engineer(Person):
-
     # illustrate a single-inh "conflicting" mapped_column declaration,
     # where both subclasses want to share the same column that is nonetheless
     # not "local" to the base class
@@ -111,7 +111,6 @@ engine = create_engine("sqlite://", echo=True)
 Base.metadata.create_all(engine)
 
 with Session(engine) as session:
-
     c = Company(
         name="company1",
         employees=[

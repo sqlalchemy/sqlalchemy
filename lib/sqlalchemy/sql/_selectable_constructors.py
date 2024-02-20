@@ -1,5 +1,5 @@
 # sql/_selectable_constructors.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -10,7 +10,6 @@ from __future__ import annotations
 from typing import Any
 from typing import Optional
 from typing import overload
-from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
@@ -32,6 +31,8 @@ from .selectable import Select
 from .selectable import TableClause
 from .selectable import TableSample
 from .selectable import Values
+from ..util.typing import TupleAny
+from ..util.typing import Unpack
 
 if TYPE_CHECKING:
     from ._typing import _FromClauseArgument
@@ -140,6 +141,7 @@ def exists(
     __argument: Optional[
         Union[_ColumnsClauseArgument[Any], SelectBase, ScalarSelect[Any]]
     ] = None,
+    /,
 ) -> Exists:
     """Construct a new :class:`_expression.Exists` construct.
 
@@ -256,8 +258,6 @@ def join(
 
     :param full: if True, render a FULL OUTER JOIN, instead of JOIN.
 
-     .. versionadded:: 1.1
-
     .. seealso::
 
         :meth:`_expression.FromClause.join` - method form,
@@ -285,8 +285,6 @@ def lateral(
     FROM clauses of that SELECT.   It is a special case of subquery
     only supported by a small number of backends, currently more recent
     PostgreSQL versions.
-
-    .. versionadded:: 1.1
 
     .. seealso::
 
@@ -334,20 +332,17 @@ def outerjoin(
 
 
 @overload
-def select(__ent0: _TCCA[_T0]) -> Select[Tuple[_T0]]:
-    ...
+def select(__ent0: _TCCA[_T0], /) -> Select[_T0]: ...
 
 
 @overload
-def select(__ent0: _TCCA[_T0], __ent1: _TCCA[_T1]) -> Select[Tuple[_T0, _T1]]:
-    ...
+def select(__ent0: _TCCA[_T0], __ent1: _TCCA[_T1], /) -> Select[_T0, _T1]: ...
 
 
 @overload
 def select(
-    __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
-) -> Select[Tuple[_T0, _T1, _T2]]:
-    ...
+    __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2], /
+) -> Select[_T0, _T1, _T2]: ...
 
 
 @overload
@@ -356,8 +351,8 @@ def select(
     __ent1: _TCCA[_T1],
     __ent2: _TCCA[_T2],
     __ent3: _TCCA[_T3],
-) -> Select[Tuple[_T0, _T1, _T2, _T3]]:
-    ...
+    /,
+) -> Select[_T0, _T1, _T2, _T3]: ...
 
 
 @overload
@@ -367,8 +362,8 @@ def select(
     __ent2: _TCCA[_T2],
     __ent3: _TCCA[_T3],
     __ent4: _TCCA[_T4],
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4]]:
-    ...
+    /,
+) -> Select[_T0, _T1, _T2, _T3, _T4]: ...
 
 
 @overload
@@ -379,8 +374,8 @@ def select(
     __ent3: _TCCA[_T3],
     __ent4: _TCCA[_T4],
     __ent5: _TCCA[_T5],
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
-    ...
+    /,
+) -> Select[_T0, _T1, _T2, _T3, _T4, _T5]: ...
 
 
 @overload
@@ -392,8 +387,8 @@ def select(
     __ent4: _TCCA[_T4],
     __ent5: _TCCA[_T5],
     __ent6: _TCCA[_T6],
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
-    ...
+    /,
+) -> Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6]: ...
 
 
 @overload
@@ -406,8 +401,8 @@ def select(
     __ent5: _TCCA[_T5],
     __ent6: _TCCA[_T6],
     __ent7: _TCCA[_T7],
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
-    ...
+    /,
+) -> Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]: ...
 
 
 @overload
@@ -421,8 +416,8 @@ def select(
     __ent6: _TCCA[_T6],
     __ent7: _TCCA[_T7],
     __ent8: _TCCA[_T8],
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]]:
-    ...
+    /,
+) -> Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]: ...
 
 
 @overload
@@ -437,19 +432,25 @@ def select(
     __ent7: _TCCA[_T7],
     __ent8: _TCCA[_T8],
     __ent9: _TCCA[_T9],
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9]]:
-    ...
+    /,
+    *entities: _ColumnsClauseArgument[Any],
+) -> Select[
+    _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9, Unpack[TupleAny]
+]: ...
 
 
 # END OVERLOADED FUNCTIONS select
 
 
 @overload
-def select(*entities: _ColumnsClauseArgument[Any], **__kw: Any) -> Select[Any]:
-    ...
+def select(
+    *entities: _ColumnsClauseArgument[Any], **__kw: Any
+) -> Select[Unpack[TupleAny]]: ...
 
 
-def select(*entities: _ColumnsClauseArgument[Any], **__kw: Any) -> Select[Any]:
+def select(
+    *entities: _ColumnsClauseArgument[Any], **__kw: Any
+) -> Select[Unpack[TupleAny]]:
     r"""Construct a new :class:`_expression.Select`.
 
 
@@ -502,11 +503,6 @@ def table(name: str, *columns: ColumnClause[Any], **kw: Any) -> TableClause:
     :class:`_schema.Table` object.
     It may be used to construct lightweight table constructs.
 
-    .. versionchanged:: 1.0.0 :func:`_expression.table` can now
-       be imported from the plain ``sqlalchemy`` namespace like any
-       other SQL element.
-
-
     :param name: Name of the table.
 
     :param columns: A collection of :func:`_expression.column` constructs.
@@ -556,8 +552,6 @@ def tablesample(
         SELECT alias.people_id FROM
         people AS alias TABLESAMPLE bernoulli(:bernoulli_1)
         REPEATABLE (random())
-
-    .. versionadded:: 1.1
 
     :param sampling: a ``float`` percentage between 0 and 100 or
         :class:`_functions.Function`.

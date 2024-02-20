@@ -1,5 +1,5 @@
 # sql/annotation.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -39,6 +39,7 @@ from .visitors import ExternallyTraversible
 from .visitors import InternalTraversal
 from .. import util
 from ..util.typing import Literal
+from ..util.typing import Self
 
 if TYPE_CHECKING:
     from .base import _EntityNamespace
@@ -47,11 +48,6 @@ if TYPE_CHECKING:
 _AnnotationDict = Mapping[str, Any]
 
 EMPTY_ANNOTATIONS: util.immutabledict[str, Any] = util.EMPTY_DICT
-
-
-SelfSupportsAnnotations = TypeVar(
-    "SelfSupportsAnnotations", bound="SupportsAnnotations"
-)
 
 
 class SupportsAnnotations(ExternallyTraversible):
@@ -63,26 +59,22 @@ class SupportsAnnotations(ExternallyTraversible):
 
     _is_immutable: bool
 
-    def _annotate(
-        self: SelfSupportsAnnotations, values: _AnnotationDict
-    ) -> SelfSupportsAnnotations:
+    def _annotate(self, values: _AnnotationDict) -> Self:
         raise NotImplementedError()
 
     @overload
     def _deannotate(
-        self: SelfSupportsAnnotations,
+        self,
         values: Literal[None] = ...,
         clone: bool = ...,
-    ) -> SelfSupportsAnnotations:
-        ...
+    ) -> Self: ...
 
     @overload
     def _deannotate(
         self,
         values: Sequence[str] = ...,
         clone: bool = ...,
-    ) -> SupportsAnnotations:
-        ...
+    ) -> SupportsAnnotations: ...
 
     def _deannotate(
         self,
@@ -105,9 +97,11 @@ class SupportsAnnotations(ExternallyTraversible):
             tuple(
                 (
                     key,
-                    value._gen_cache_key(anon_map, [])
-                    if isinstance(value, HasCacheKey)
-                    else value,
+                    (
+                        value._gen_cache_key(anon_map, [])
+                        if isinstance(value, HasCacheKey)
+                        else value
+                    ),
                 )
                 for key, value in [
                     (key, self._annotations[key])
@@ -117,7 +111,72 @@ class SupportsAnnotations(ExternallyTraversible):
         )
 
 
-class SupportsCloneAnnotations(SupportsAnnotations):
+class SupportsWrappingAnnotations(SupportsAnnotations):
+    __slots__ = ()
+
+    _constructor: Callable[..., SupportsWrappingAnnotations]
+
+    if TYPE_CHECKING:
+
+        @util.ro_non_memoized_property
+        def entity_namespace(self) -> _EntityNamespace: ...
+
+    def _annotate(self, values: _AnnotationDict) -> Self:
+        """return a copy of this ClauseElement with annotations
+        updated by the given dictionary.
+
+        """
+        return Annotated._as_annotated_instance(self, values)  # type: ignore
+
+    def _with_annotations(self, values: _AnnotationDict) -> Self:
+        """return a copy of this ClauseElement with annotations
+        replaced by the given dictionary.
+
+        """
+        return Annotated._as_annotated_instance(self, values)  # type: ignore
+
+    @overload
+    def _deannotate(
+        self,
+        values: Literal[None] = ...,
+        clone: bool = ...,
+    ) -> Self: ...
+
+    @overload
+    def _deannotate(
+        self,
+        values: Sequence[str] = ...,
+        clone: bool = ...,
+    ) -> SupportsAnnotations: ...
+
+    def _deannotate(
+        self,
+        values: Optional[Sequence[str]] = None,
+        clone: bool = False,
+    ) -> SupportsAnnotations:
+        """return a copy of this :class:`_expression.ClauseElement`
+        with annotations
+        removed.
+
+        :param values: optional tuple of individual values
+         to remove.
+
+        """
+        if clone:
+            s = self._clone()
+            return s
+        else:
+            return self
+
+
+class SupportsCloneAnnotations(SupportsWrappingAnnotations):
+    # SupportsCloneAnnotations extends from SupportsWrappingAnnotations
+    # to support the structure of having the base ClauseElement
+    # be a subclass of SupportsWrappingAnnotations.  Any ClauseElement
+    # subclass that wants to extend from SupportsCloneAnnotations
+    # will inherently also be subclassing SupportsWrappingAnnotations, so
+    # make that specific here.
+
     if not typing.TYPE_CHECKING:
         __slots__ = ()
 
@@ -125,9 +184,7 @@ class SupportsCloneAnnotations(SupportsAnnotations):
         ("_annotations", InternalTraversal.dp_annotations_key)
     ]
 
-    def _annotate(
-        self: SelfSupportsAnnotations, values: _AnnotationDict
-    ) -> SelfSupportsAnnotations:
+    def _annotate(self, values: _AnnotationDict) -> Self:
         """return a copy of this ClauseElement with annotations
         updated by the given dictionary.
 
@@ -138,9 +195,7 @@ class SupportsCloneAnnotations(SupportsAnnotations):
         new.__dict__.pop("_generate_cache_key", None)
         return new
 
-    def _with_annotations(
-        self: SelfSupportsAnnotations, values: _AnnotationDict
-    ) -> SelfSupportsAnnotations:
+    def _with_annotations(self, values: _AnnotationDict) -> Self:
         """return a copy of this ClauseElement with annotations
         replaced by the given dictionary.
 
@@ -153,19 +208,17 @@ class SupportsCloneAnnotations(SupportsAnnotations):
 
     @overload
     def _deannotate(
-        self: SelfSupportsAnnotations,
+        self,
         values: Literal[None] = ...,
         clone: bool = ...,
-    ) -> SelfSupportsAnnotations:
-        ...
+    ) -> Self: ...
 
     @overload
     def _deannotate(
         self,
         values: Sequence[str] = ...,
         clone: bool = ...,
-    ) -> SupportsAnnotations:
-        ...
+    ) -> SupportsAnnotations: ...
 
     def _deannotate(
         self,
@@ -189,74 +242,6 @@ class SupportsCloneAnnotations(SupportsAnnotations):
             return new
         else:
             return self
-
-
-class SupportsWrappingAnnotations(SupportsAnnotations):
-    __slots__ = ()
-
-    _constructor: Callable[..., SupportsWrappingAnnotations]
-
-    if TYPE_CHECKING:
-
-        @util.ro_non_memoized_property
-        def entity_namespace(self) -> _EntityNamespace:
-            ...
-
-    def _annotate(
-        self: SelfSupportsAnnotations, values: _AnnotationDict
-    ) -> SelfSupportsAnnotations:
-        """return a copy of this ClauseElement with annotations
-        updated by the given dictionary.
-
-        """
-        return Annotated._as_annotated_instance(self, values)  # type: ignore
-
-    def _with_annotations(
-        self: SelfSupportsAnnotations, values: _AnnotationDict
-    ) -> SelfSupportsAnnotations:
-        """return a copy of this ClauseElement with annotations
-        replaced by the given dictionary.
-
-        """
-        return Annotated._as_annotated_instance(self, values)  # type: ignore
-
-    @overload
-    def _deannotate(
-        self: SelfSupportsAnnotations,
-        values: Literal[None] = ...,
-        clone: bool = ...,
-    ) -> SelfSupportsAnnotations:
-        ...
-
-    @overload
-    def _deannotate(
-        self,
-        values: Sequence[str] = ...,
-        clone: bool = ...,
-    ) -> SupportsAnnotations:
-        ...
-
-    def _deannotate(
-        self,
-        values: Optional[Sequence[str]] = None,
-        clone: bool = False,
-    ) -> SupportsAnnotations:
-        """return a copy of this :class:`_expression.ClauseElement`
-        with annotations
-        removed.
-
-        :param values: optional tuple of individual values
-         to remove.
-
-        """
-        if clone:
-            s = self._clone()
-            return s
-        else:
-            return self
-
-
-SelfAnnotated = TypeVar("SelfAnnotated", bound="Annotated")
 
 
 class Annotated(SupportsAnnotations):
@@ -295,7 +280,7 @@ class Annotated(SupportsAnnotations):
     __element: SupportsWrappingAnnotations
     _hash: int
 
-    def __new__(cls: Type[SelfAnnotated], *args: Any) -> SelfAnnotated:
+    def __new__(cls: Type[Self], *args: Any) -> Self:
         return object.__new__(cls)
 
     def __init__(
@@ -308,16 +293,12 @@ class Annotated(SupportsAnnotations):
         self._annotations = util.immutabledict(values)
         self._hash = hash(element)
 
-    def _annotate(
-        self: SelfAnnotated, values: _AnnotationDict
-    ) -> SelfAnnotated:
+    def _annotate(self, values: _AnnotationDict) -> Self:
         _values = self._annotations.union(values)
-        new: SelfAnnotated = self._with_annotations(_values)  # type: ignore
+        new = self._with_annotations(_values)
         return new
 
-    def _with_annotations(
-        self: SelfAnnotated, values: _AnnotationDict
-    ) -> SupportsAnnotations:
+    def _with_annotations(self, values: _AnnotationDict) -> Self:
         clone = self.__class__.__new__(self.__class__)
         clone.__dict__ = self.__dict__.copy()
         clone.__dict__.pop("_annotations_cache_key", None)
@@ -327,19 +308,17 @@ class Annotated(SupportsAnnotations):
 
     @overload
     def _deannotate(
-        self: SelfAnnotated,
+        self,
         values: Literal[None] = ...,
         clone: bool = ...,
-    ) -> SelfAnnotated:
-        ...
+    ) -> Self: ...
 
     @overload
     def _deannotate(
         self,
         values: Sequence[str] = ...,
         clone: bool = ...,
-    ) -> Annotated:
-        ...
+    ) -> Annotated: ...
 
     def _deannotate(
         self,
@@ -370,7 +349,7 @@ class Annotated(SupportsAnnotations):
         def _constructor(self):
             return self.__element._constructor
 
-    def _clone(self: SelfAnnotated, **kw: Any) -> SelfAnnotated:
+    def _clone(self, **kw: Any) -> Self:
         clone = self.__element._clone(**kw)
         if clone is self.__element:
             # detect immutable, don't change anything
@@ -409,19 +388,35 @@ class Annotated(SupportsAnnotations):
 # so that the resulting objects are pickleable; additionally, other
 # decisions can be made up front about the type of object being annotated
 # just once per class rather than per-instance.
-annotated_classes: Dict[
-    Type[SupportsWrappingAnnotations], Type[Annotated]
-] = {}
+annotated_classes: Dict[Type[SupportsWrappingAnnotations], Type[Annotated]] = (
+    {}
+)
 
 _SA = TypeVar("_SA", bound="SupportsAnnotations")
+
+
+def _safe_annotate(to_annotate: _SA, annotations: _AnnotationDict) -> _SA:
+    try:
+        _annotate = to_annotate._annotate
+    except AttributeError:
+        # skip objects that don't actually have an `_annotate`
+        # attribute, namely QueryableAttribute inside of a join
+        # condition
+        return to_annotate
+    else:
+        return _annotate(annotations)
 
 
 def _deep_annotate(
     element: _SA,
     annotations: _AnnotationDict,
     exclude: Optional[Sequence[SupportsAnnotations]] = None,
+    *,
     detect_subquery_cols: bool = False,
     ind_cols_on_fromclause: bool = False,
+    annotate_callable: Optional[
+        Callable[[SupportsAnnotations, _AnnotationDict], SupportsAnnotations]
+    ] = None,
 ) -> _SA:
     """Deep copy the given ClauseElement, annotating each element
     with the given annotations dictionary.
@@ -436,7 +431,6 @@ def _deep_annotate(
     cloned_ids: Dict[int, SupportsAnnotations] = {}
 
     def clone(elem: SupportsAnnotations, **kw: Any) -> SupportsAnnotations:
-
         # ind_cols_on_fromclause means make sure an AnnotatedFromClause
         # has its own .c collection independent of that which its proxying.
         # this is used specifically by orm.LoaderCriteriaOption to break
@@ -460,9 +454,13 @@ def _deep_annotate(
             newelem = elem._clone(clone=clone, **kw)
         elif annotations != elem._annotations:
             if detect_subquery_cols and elem._is_immutable:
-                newelem = elem._clone(clone=clone, **kw)._annotate(annotations)
+                to_annotate = elem._clone(clone=clone, **kw)
             else:
-                newelem = elem._annotate(annotations)
+                to_annotate = elem
+            if annotate_callable:
+                newelem = annotate_callable(to_annotate, annotations)
+            else:
+                newelem = _safe_annotate(to_annotate, annotations)
         else:
             newelem = elem
 
@@ -482,15 +480,13 @@ def _deep_annotate(
 @overload
 def _deep_deannotate(
     element: Literal[None], values: Optional[Sequence[str]] = None
-) -> Literal[None]:
-    ...
+) -> Literal[None]: ...
 
 
 @overload
 def _deep_deannotate(
     element: _SA, values: Optional[Sequence[str]] = None
-) -> _SA:
-    ...
+) -> _SA: ...
 
 
 def _deep_deannotate(

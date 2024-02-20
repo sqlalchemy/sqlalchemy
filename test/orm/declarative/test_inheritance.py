@@ -1,3 +1,5 @@
+import contextlib
+
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
 from sqlalchemy import Identity
@@ -7,6 +9,7 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import close_all_sessions
+from sqlalchemy.orm import column_property
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
@@ -20,10 +23,12 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -43,11 +48,14 @@ class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
         Base.metadata.drop_all(testing.db)
 
 
-class DeclarativeInheritanceTest(DeclarativeTestBase):
+class DeclarativeInheritanceTest(
+    testing.AssertsCompiledSQL, DeclarativeTestBase
+):
+    __dialect__ = "default"
+
     @testing.emits_warning(r".*does not indicate a 'polymorphic_identity'")
     def test_we_must_copy_mapper_args(self):
         class Person(Base):
-
             __tablename__ = "people"
             id = Column(Integer, primary_key=True)
             discriminator = Column("type", String(50))
@@ -57,16 +65,55 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             }
 
         class Engineer(Person):
-
             primary_language = Column(String(50))
 
         assert "inherits" not in Person.__mapper_args__
         assert class_mapper(Engineer).polymorphic_identity is None
         assert class_mapper(Engineer).polymorphic_on is Person.__table__.c.type
 
+    @testing.variation("directive", ["declared_attr", "da_directive"])
+    def test_declared_attr_mapped_args(self, directive):
+        class Employee(Base):
+            __tablename__ = "employee"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            type: Mapped[str] = mapped_column(String(50))
+
+            if directive.declared_attr:
+
+                @declared_attr
+                def __mapper_args__(cls):
+                    if cls.__name__ == "Employee":
+                        return {
+                            "polymorphic_on": cls.type,
+                            "polymorphic_identity": "Employee",
+                        }
+                    else:
+                        return {"polymorphic_identity": cls.__name__}
+
+            elif directive.da_directive:
+
+                @declared_attr.directive
+                def __mapper_args__(cls):
+                    if cls.__name__ == "Employee":
+                        return {
+                            "polymorphic_on": cls.type,
+                            "polymorphic_identity": "Employee",
+                        }
+                    else:
+                        return {"polymorphic_identity": cls.__name__}
+
+            else:
+                directive.fail()
+
+        class Engineer(Employee):
+            pass
+
+        eq_(class_mapper(Engineer).polymorphic_identity, "Engineer")
+        eq_(class_mapper(Employee).polymorphic_identity, "Employee")
+
     def test_we_must_only_copy_column_mapper_args(self):
         class Person(Base):
-
             __tablename__ = "people"
             id = Column(Integer, primary_key=True)
             a = Column(Integer)
@@ -87,12 +134,10 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
     def test_custom_join_condition(self):
         class Foo(Base):
-
             __tablename__ = "foo"
             id = Column("id", Integer, primary_key=True)
 
         class Bar(Foo):
-
             __tablename__ = "bar"
             bar_id = Column("id", Integer, primary_key=True)
             foo_id = Column("foo_id", Integer)
@@ -103,8 +148,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         configure_mappers()
 
     def test_joined(self):
-        class Company(Base, fixtures.ComparableEntity):
-
+        class Company(Base, ComparableEntity):
             __tablename__ = "companies"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -112,8 +156,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             name = Column("name", String(50))
             employees = relationship("Person")
 
-        class Person(Base, fixtures.ComparableEntity):
-
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -126,7 +169,6 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __tablename__ = "engineers"
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             id = Column(
@@ -135,7 +177,6 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             primary_language = Column("primary_language", String(50))
 
         class Manager(Person):
-
             __tablename__ = "managers"
             __mapper_args__ = {"polymorphic_identity": "manager"}
             id = Column(
@@ -205,8 +246,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         self.assert_sql_count(testing.db, go, 1)
 
     def test_add_subcol_after_the_fact(self):
-        class Person(Base, fixtures.ComparableEntity):
-
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -216,7 +256,6 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __tablename__ = "engineers"
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             id = Column(
@@ -236,8 +275,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         )
 
     def test_add_parentcol_after_the_fact(self):
-        class Person(Base, fixtures.ComparableEntity):
-
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -246,7 +284,6 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __tablename__ = "engineers"
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             primary_language = Column(String(50))
@@ -267,8 +304,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         )
 
     def test_add_sub_parentcol_after_the_fact(self):
-        class Person(Base, fixtures.ComparableEntity):
-
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -277,7 +313,6 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __tablename__ = "engineers"
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             primary_language = Column(String(50))
@@ -286,7 +321,6 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             )
 
         class Admin(Engineer):
-
             __tablename__ = "admins"
             __mapper_args__ = {"polymorphic_identity": "admin"}
             workstation = Column(String(50))
@@ -307,8 +341,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         )
 
     def test_subclass_mixin(self):
-        class Person(Base, fixtures.ComparableEntity):
-
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column("id", Integer, primary_key=True)
             name = Column("name", String(50))
@@ -316,11 +349,9 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class MyMixin:
-
             pass
 
         class Engineer(MyMixin, Person):
-
             __tablename__ = "engineers"
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             id = Column(
@@ -439,14 +470,12 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
     def test_with_undefined_foreignkey(self):
         class Parent(Base):
-
             __tablename__ = "parent"
             id = Column("id", Integer, primary_key=True)
             tp = Column("type", String(50))
             __mapper_args__ = dict(polymorphic_on=tp)
 
         class Child1(Parent):
-
             __tablename__ = "child1"
             id = Column(
                 "id", Integer, ForeignKey("parent.id"), primary_key=True
@@ -458,7 +487,6 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         # though child2 doesn't exist yet
 
         class Child2(Parent):
-
             __tablename__ = "child2"
             id = Column(
                 "id", Integer, ForeignKey("parent.id"), primary_key=True
@@ -505,8 +533,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         """test single inheritance where all the columns are on the base
         class."""
 
-        class Company(Base, fixtures.ComparableEntity):
-
+        class Company(Base, ComparableEntity):
             __tablename__ = "companies"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -514,8 +541,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             name = Column("name", String(50))
             employees = relationship("Person")
 
-        class Person(Base, fixtures.ComparableEntity):
-
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -530,11 +556,9 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __mapper_args__ = {"polymorphic_identity": "engineer"}
 
         class Manager(Person):
-
             __mapper_args__ = {"polymorphic_identity": "manager"}
 
         Base.metadata.create_all(testing.db)
@@ -581,8 +605,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
         """
 
-        class Company(Base, fixtures.ComparableEntity):
-
+        class Company(Base, ComparableEntity):
             __tablename__ = "companies"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -590,8 +613,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             name = Column("name", String(50))
             employees = relationship("Person")
 
-        class Person(Base, fixtures.ComparableEntity):
-
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -602,12 +624,10 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             primary_language = Column(String(50))
 
         class Manager(Person):
-
             __mapper_args__ = {"polymorphic_identity": "manager"}
             golf_swing = Column(String(50))
 
@@ -768,8 +788,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
     def test_single_constraint_on_sub(self):
         """test the somewhat unusual case of [ticket:3341]"""
 
-        class Person(Base, fixtures.ComparableEntity):
-
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -779,7 +798,6 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             primary_language = Column(String(50))
 
@@ -810,13 +828,18 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         )
 
     @testing.variation("decl_type", ["legacy", "use_existing_column"])
+    @testing.variation("different_attr", [True, False])
     def test_columns_single_inheritance_conflict_resolution(
-        self, connection, decl_base, decl_type
+        self, connection, decl_base, decl_type, different_attr
     ):
         """Test that a declared_attr can return the existing column and it will
         be ignored.  this allows conditional columns to be added.
 
-        See [ticket:2472].
+        See #2472.
+
+        use_existing_column variant is #8822
+
+        different_attr variant is #9332
 
         """
 
@@ -825,58 +848,108 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             id = Column(Integer, Identity(), primary_key=True)
 
         class Engineer(Person):
+            if different_attr:
+                if decl_type.legacy:
 
-            """single table inheritance"""
+                    @declared_attr
+                    def e_target_id(cls):
+                        return cls.__table__.c.get(
+                            "target_id",
+                            Column(
+                                "target_id", Integer, ForeignKey("other.id")
+                            ),
+                        )
 
-            if decl_type.legacy:
+                elif decl_type.use_existing_column:
+                    e_target_id: Mapped[int] = mapped_column(
+                        "target_id",
+                        ForeignKey("other.id"),
+                        use_existing_column=True,
+                    )
+            else:
+                if decl_type.legacy:
 
-                @declared_attr
-                def target_id(cls):
-                    return cls.__table__.c.get(
-                        "target_id", Column(Integer, ForeignKey("other.id"))
+                    @declared_attr
+                    def target_id(cls):
+                        return cls.__table__.c.get(
+                            "target_id",
+                            Column(Integer, ForeignKey("other.id")),
+                        )
+
+                elif decl_type.use_existing_column:
+                    target_id: Mapped[int] = mapped_column(
+                        ForeignKey("other.id"), use_existing_column=True
                     )
 
-            elif decl_type.use_existing_column:
-                target_id: Mapped[int] = mapped_column(
-                    ForeignKey("other.id"), use_existing_column=True
-                )
-
-            @declared_attr
-            def target(cls):
-                return relationship("Other")
+            target = relationship("Other")
 
         class Manager(Person):
+            if different_attr:
+                if decl_type.legacy:
 
-            """single table inheritance"""
+                    @declared_attr
+                    def m_target_id(cls):
+                        return cls.__table__.c.get(
+                            "target_id",
+                            Column(
+                                "target_id", Integer, ForeignKey("other.id")
+                            ),
+                        )
 
-            if decl_type.legacy:
+                elif decl_type.use_existing_column:
+                    m_target_id: Mapped[int] = mapped_column(
+                        "target_id",
+                        ForeignKey("other.id"),
+                        use_existing_column=True,
+                    )
+            else:
+                if decl_type.legacy:
 
-                @declared_attr
-                def target_id(cls):
-                    return cls.__table__.c.get(
-                        "target_id", Column(Integer, ForeignKey("other.id"))
+                    @declared_attr
+                    def target_id(cls):
+                        return cls.__table__.c.get(
+                            "target_id",
+                            Column(Integer, ForeignKey("other.id")),
+                        )
+
+                elif decl_type.use_existing_column:
+                    target_id: Mapped[int] = mapped_column(
+                        ForeignKey("other.id"), use_existing_column=True
                     )
 
-            elif decl_type.use_existing_column:
-                target_id: Mapped[int] = mapped_column(
-                    ForeignKey("other.id"), use_existing_column=True
-                )
-
-            @declared_attr
-            def target(cls):
-                return relationship("Other")
+            target = relationship("Other")
 
         class Other(decl_base):
             __tablename__ = "other"
             id = Column(Integer, Identity(), primary_key=True)
 
-        is_(
-            Engineer.target_id.property.columns[0],
-            Person.__table__.c.target_id,
-        )
-        is_(
-            Manager.target_id.property.columns[0], Person.__table__.c.target_id
-        )
+        if different_attr:
+            is_(
+                Engineer.e_target_id.property.columns[0],
+                Person.__table__.c.target_id,
+            )
+            is_(
+                Manager.m_target_id.property.columns[0],
+                Person.__table__.c.target_id,
+            )
+            self.assert_compile(
+                select(Engineer.e_target_id),
+                "SELECT person.target_id FROM person",
+            )
+            self.assert_compile(
+                select(Manager.m_target_id),
+                "SELECT person.target_id FROM person",
+            )
+        else:
+            is_(
+                Engineer.target_id.property.columns[0],
+                Person.__table__.c.target_id,
+            )
+            is_(
+                Manager.target_id.property.columns[0],
+                Person.__table__.c.target_id,
+            )
+
         # do a brief round trip on this
         decl_base.metadata.create_all(connection)
         with Session(connection) as session:
@@ -886,6 +959,97 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             )
             session.commit()
             eq_(session.query(Engineer).first().target, o1)
+
+    @testing.variation("omit_from_statements", [True, False])
+    @testing.variation("combine_on_b", [True, False])
+    @testing.variation("c_first", [True, False])
+    def test_use_existing_column_other_inh_types(
+        self, decl_base, omit_from_statements, combine_on_b, c_first
+    ):
+        """test additional fixes to use_existing_column, adding
+        some new use cases with "omit_from_statements" which in this case
+        is essentially the same as adding it to the mapper exclude_cols
+        list.
+
+        """
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data: Mapped[str]
+            extra: Mapped[int] = mapped_column(
+                use_existing_column=True,
+                _omit_from_statements=bool(omit_from_statements),
+            )
+
+        if c_first:
+
+            class C(A):
+                foo: Mapped[str]
+                extra: Mapped[int] = mapped_column(
+                    use_existing_column=True,
+                    _omit_from_statements=bool(omit_from_statements),
+                )
+
+        if not combine_on_b and not omit_from_statements:
+            ctx = expect_warnings(
+                "Implicitly combining column a.extra with column b.extra",
+            )
+        else:
+            ctx = contextlib.nullcontext()
+
+        with ctx:
+
+            class B(A):
+                __tablename__ = "b"
+                id: Mapped[int] = mapped_column(
+                    ForeignKey("a.id"), primary_key=True
+                )
+                if combine_on_b:
+                    extra: Mapped[int] = column_property(
+                        mapped_column(
+                            _omit_from_statements=bool(omit_from_statements)
+                        ),
+                        A.extra,
+                    )
+                else:
+                    extra: Mapped[int] = mapped_column(
+                        use_existing_column=True,
+                        _omit_from_statements=bool(omit_from_statements),
+                    )
+
+        if not c_first:
+
+            class C(A):  # noqa: F811
+                foo: Mapped[str]
+                extra: Mapped[int] = mapped_column(
+                    use_existing_column=True,
+                    _omit_from_statements=bool(omit_from_statements),
+                )
+
+        if bool(omit_from_statements):
+            self.assert_compile(select(A), "SELECT a.id, a.data FROM a")
+        else:
+            self.assert_compile(
+                select(A), "SELECT a.id, a.data, a.extra FROM a"
+            )
+
+        if bool(omit_from_statements) and not combine_on_b:
+            self.assert_compile(
+                select(B),
+                "SELECT b.id, a.id AS id_1, a.data "
+                "FROM a JOIN b ON a.id = b.id",
+            )
+        else:
+            # if we combine_on_b we made a column_property, which brought
+            # out "extra" even if it was omit_from_statements.  this should be
+            # expected
+            self.assert_compile(
+                select(B),
+                "SELECT b.id, a.id AS id_1, a.data, b.extra, "
+                "a.extra AS extra_1 FROM a JOIN b ON a.id = b.id",
+            )
 
     @testing.variation("decl_type", ["legacy", "use_existing_column"])
     def test_columns_single_inheritance_conflict_resolution_pk(
@@ -903,7 +1067,6 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             target_id = Column(Integer, primary_key=True)
 
         class Engineer(Person):
-
             """single table inheritance"""
 
             if decl_type.legacy:
@@ -920,7 +1083,6 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
                 )
 
         class Manager(Person):
-
             """single table inheritance"""
 
             if decl_type.legacy:
@@ -946,11 +1108,11 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
     @testing.variation("decl_type", ["legacy", "use_existing_column"])
     def test_columns_single_inheritance_cascading_resolution_pk(
-        self, decl_type
+        self, decl_type, decl_base
     ):
         """An additional test for #4352 in terms of the requested use case."""
 
-        class TestBase(Base):
+        class TestBase(decl_base):
             __abstract__ = True
 
             if decl_type.legacy:
@@ -984,8 +1146,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         is_(Manager.id.property.columns[0], Person.__table__.c.id)
 
     def test_joined_from_single(self):
-        class Company(Base, fixtures.ComparableEntity):
-
+        class Company(Base, ComparableEntity):
             __tablename__ = "companies"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -993,8 +1154,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             name = Column("name", String(50))
             employees = relationship("Person")
 
-        class Person(Base, fixtures.ComparableEntity):
-
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -1005,12 +1165,10 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Manager(Person):
-
             __mapper_args__ = {"polymorphic_identity": "manager"}
             golf_swing = Column(String(50))
 
         class Engineer(Person):
-
             __tablename__ = "engineers"
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             id = Column(Integer, ForeignKey("people.id"), primary_key=True)
@@ -1061,8 +1219,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         )
 
     def test_single_from_joined_colsonsub(self):
-        class Person(Base, fixtures.ComparableEntity):
-
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -1110,8 +1267,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         is_(B.__mapper__.polymorphic_on, A.__table__.c.discriminator)
 
     def test_add_deferred(self):
-        class Person(Base, fixtures.ComparableEntity):
-
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -1135,8 +1291,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
         """
 
-        class Person(Base, fixtures.ComparableEntity):
-
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -1146,13 +1301,11 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             primary_language_id = Column(Integer, ForeignKey("languages.id"))
             primary_language = relationship("Language")
 
-        class Language(Base, fixtures.ComparableEntity):
-
+        class Language(Base, ComparableEntity):
             __tablename__ = "languages"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -1200,8 +1353,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         )
 
     def test_single_three_levels(self):
-        class Person(Base, fixtures.ComparableEntity):
-
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
@@ -1209,17 +1361,14 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             primary_language = Column(String(50))
 
         class JuniorEngineer(Engineer):
-
             __mapper_args__ = {"polymorphic_identity": "junior_engineer"}
             nerf_gun = Column(String(50))
 
         class Manager(Person):
-
             __mapper_args__ = {"polymorphic_identity": "manager"}
             golf_swing = Column(String(50))
 
@@ -1235,7 +1384,6 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
     def test_single_detects_conflict(self):
         class Person(Base):
-
             __tablename__ = "people"
             id = Column(Integer, primary_key=True)
             name = Column(String(50))
@@ -1243,7 +1391,6 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __mapper_args__ = {"polymorphic_on": discriminator}
 
         class Engineer(Person):
-
             __mapper_args__ = {"polymorphic_identity": "engineer"}
             primary_language = Column(String(50))
 
@@ -1251,7 +1398,6 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
         def go():
             class Manager(Person):
-
                 __mapper_args__ = {"polymorphic_identity": "manager"}
                 golf_swing = Column(String(50))
                 primary_language = Column(String(50))
@@ -1262,15 +1408,13 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
         def go():
             class Salesman(Person):
-
                 __mapper_args__ = {"polymorphic_identity": "manager"}
                 name = Column(String(50))
 
         assert_raises(sa.exc.ArgumentError, go)
 
     def test_single_no_special_cols(self):
-        class Person(Base, fixtures.ComparableEntity):
-
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column("id", Integer, primary_key=True)
             name = Column("name", String(50))
@@ -1279,7 +1423,6 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
         def go():
             class Engineer(Person):
-
                 __mapper_args__ = {"polymorphic_identity": "engineer"}
                 primary_language = Column("primary_language", String(50))
                 foo_bar = Column(Integer, primary_key=True)
@@ -1287,8 +1430,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         assert_raises_message(sa.exc.ArgumentError, "place primary key", go)
 
     def test_single_no_table_args(self):
-        class Person(Base, fixtures.ComparableEntity):
-
+        class Person(Base, ComparableEntity):
             __tablename__ = "people"
             id = Column("id", Integer, primary_key=True)
             name = Column("name", String(50))
@@ -1297,7 +1439,6 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
         def go():
             class Engineer(Person):
-
                 __mapper_args__ = {"polymorphic_identity": "engineer"}
                 primary_language = Column("primary_language", String(50))
 
@@ -1325,7 +1466,6 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
 
 class OverlapColPrecedenceTest(DeclarativeTestBase):
-
     """test #1892 cases when declarative does column precedence."""
 
     def _run_test(self, Engineer, e_id, p_id):

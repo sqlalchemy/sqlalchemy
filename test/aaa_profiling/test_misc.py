@@ -265,7 +265,6 @@ class CCLookupTest(fixtures.RemoveORMEventsGlobally, fixtures.TestBase):
         ("require_embedded",), ("no_embedded",), argnames="require_embedded"
     )
     def test_corresponding_column_isolated(self, t1, require_embedded):
-
         subq = select(t1).union_all(select(t1)).subquery()
 
         target = subq.c.x7
@@ -292,7 +291,6 @@ class CCLookupTest(fixtures.RemoveORMEventsGlobally, fixtures.TestBase):
     def test_gen_subq_to_table_single_corresponding_column(
         self, t1, require_embedded
     ):
-
         src = t1.c.x7
 
         require_embedded = require_embedded == "require_embedded"
@@ -317,7 +315,6 @@ class CCLookupTest(fixtures.RemoveORMEventsGlobally, fixtures.TestBase):
     def test_gen_subq_to_table_many_corresponding_column(
         self, t1, require_embedded
     ):
-
         require_embedded = require_embedded == "require_embedded"
 
         @profiling.function_call_count(variance=0.15, warmup=1)
@@ -325,7 +322,6 @@ class CCLookupTest(fixtures.RemoveORMEventsGlobally, fixtures.TestBase):
             subq = select(t1).union_all(select(t1)).subquery()
 
             for name in ("x%d" % i for i in range(1, 10)):
-
                 target = subq.c[name]
                 src = t1.c[name]
 
@@ -344,14 +340,12 @@ class CCLookupTest(fixtures.RemoveORMEventsGlobally, fixtures.TestBase):
     def test_gen_subq_aliased_class_select(
         self, t1, require_embedded, inheritance_model
     ):
-
         A = inheritance_model
 
         require_embedded = require_embedded == "require_embedded"
 
         @profiling.function_call_count(variance=0.15, warmup=1)
         def go():
-
             a1a1 = aliased(A)
             a1a2 = aliased(A)
             subq = select(a1a1).union_all(select(a1a2)).subquery()
@@ -368,14 +362,12 @@ class CCLookupTest(fixtures.RemoveORMEventsGlobally, fixtures.TestBase):
     def test_gen_subq_aliased_class_select_cols(
         self, t1, require_embedded, inheritance_model
     ):
-
         A = inheritance_model
 
         require_embedded = require_embedded == "require_embedded"
 
         @profiling.function_call_count(variance=0.15, warmup=1)
         def go():
-
             a1a1 = aliased(A)
             a1a2 = aliased(A)
             subq = select(a1a1).union_all(select(a1a2)).subquery()

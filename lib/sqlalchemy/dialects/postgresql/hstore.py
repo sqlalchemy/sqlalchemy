@@ -1,5 +1,5 @@
-# postgresql/hstore.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/postgresql/hstore.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -10,56 +10,17 @@
 import re
 
 from .array import ARRAY
+from .operators import CONTAINED_BY
+from .operators import CONTAINS
+from .operators import GETITEM
+from .operators import HAS_ALL
+from .operators import HAS_ANY
+from .operators import HAS_KEY
 from ... import types as sqltypes
 from ...sql import functions as sqlfunc
-from ...sql import operators
 
 
 __all__ = ("HSTORE", "hstore")
-
-idx_precedence = operators._PRECEDENCE[operators.json_getitem_op]
-
-GETITEM = operators.custom_op(
-    "->",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-HAS_KEY = operators.custom_op(
-    "?",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-HAS_ALL = operators.custom_op(
-    "?&",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-HAS_ANY = operators.custom_op(
-    "?|",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-CONTAINS = operators.custom_op(
-    "@>",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
-
-CONTAINED_BY = operators.custom_op(
-    "<@",
-    precedence=idx_precedence,
-    natural_self_precedent=True,
-    eager_grouping=True,
-)
 
 
 class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
@@ -146,8 +107,6 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
 
         :param text_type: the type that should be used for indexed values.
          Defaults to :class:`_types.Text`.
-
-         .. versionadded:: 1.1.0
 
         """
         if text_type is not None:

@@ -16,9 +16,8 @@ high demand, so in the interests of having an easy StackOverflow answer
 queued up, here it is.   The author recommends "table_per_related"
 or "table_per_association" instead of this approach.
 
-.. versionadded:: 0.8.3
-
 """
+
 from sqlalchemy import and_
 from sqlalchemy import Column
 from sqlalchemy import create_engine

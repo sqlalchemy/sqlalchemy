@@ -1,5 +1,5 @@
 # sql/lambdas.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -43,7 +43,7 @@ from .. import exc
 from .. import inspection
 from .. import util
 from ..util.typing import Literal
-from ..util.typing import Self
+
 
 if TYPE_CHECKING:
     from .elements import BindParameter
@@ -272,11 +272,16 @@ class LambdaElement(elements.ClauseElement):
 
         if rec is None:
             if cache_key is not _cache_key.NO_CACHE:
-                rec = AnalyzedFunction(
-                    tracker, self, apply_propagate_attrs, fn
-                )
-                rec.closure_bindparams = bindparams
-                lambda_cache[tracker_key + cache_key] = rec
+                with AnalyzedCode._generation_mutex:
+                    key = tracker_key + cache_key
+                    if key not in lambda_cache:
+                        rec = AnalyzedFunction(
+                            tracker, self, apply_propagate_attrs, fn
+                        )
+                        rec.closure_bindparams = bindparams
+                        lambda_cache[key] = rec
+                    else:
+                        rec = lambda_cache[key]
             else:
                 rec = NonAnalyzedFunction(self._invoke_user_fn(fn))
 
@@ -346,7 +351,6 @@ class LambdaElement(elements.ClauseElement):
             element: Optional[visitors.ExternallyTraversible], **kw: Any
         ) -> Optional[visitors.ExternallyTraversible]:
             if isinstance(element, elements.BindParameter):
-
                 if element.key in bindparam_lookup:
                     bind = bindparam_lookup[element.key]
                     if element.expanding:
@@ -368,7 +372,7 @@ class LambdaElement(elements.ClauseElement):
         return expr
 
     def _copy_internals(
-        self: Self,
+        self,
         clone: _CloneCallableType = _clone,
         deferred_copy_internals: Optional[_CloneCallableType] = None,
         **kw: Any,
@@ -403,9 +407,9 @@ class LambdaElement(elements.ClauseElement):
 
         while parent is not None:
             assert parent.closure_cache_key is not CacheConst.NO_CACHE
-            parent_closure_cache_key: Tuple[
-                Any, ...
-            ] = parent.closure_cache_key
+            parent_closure_cache_key: Tuple[Any, ...] = (
+                parent.closure_cache_key
+            )
 
             cache_key = (
                 (parent.fn.__code__,) + parent_closure_cache_key + cache_key
@@ -531,8 +535,7 @@ class StatementLambdaElement(
             role: Type[SQLRole],
             opts: Union[Type[LambdaOptions], LambdaOptions] = LambdaOptions,
             apply_propagate_attrs: Optional[ClauseElement] = None,
-        ):
-            ...
+        ): ...
 
     def __add__(
         self, other: _StmtLambdaElementType[Any]
@@ -714,7 +717,7 @@ class LinkedLambdaElement(StatementLambdaElement):
         opts: Union[Type[LambdaOptions], LambdaOptions],
     ):
         self.opts = opts
-        self.fn = fn  # type: ignore[assignment]
+        self.fn = fn
         self.parent_lambda = parent_lambda
 
         self.tracker_key = parent_lambda.tracker_key + (fn.__code__,)
@@ -733,9 +736,9 @@ class AnalyzedCode:
         "closure_trackers",
         "build_py_wrappers",
     )
-    _fns: weakref.WeakKeyDictionary[
-        CodeType, AnalyzedCode
-    ] = weakref.WeakKeyDictionary()
+    _fns: weakref.WeakKeyDictionary[CodeType, AnalyzedCode] = (
+        weakref.WeakKeyDictionary()
+    )
 
     _generation_mutex = threading.RLock()
 
@@ -983,7 +986,6 @@ class AnalyzedCode:
         if isinstance(cell_contents, _cache_key.HasCacheKey):
 
             def get(closure, opts, anon_map, bindparams):
-
                 obj = closure[idx].cell_contents
                 if use_inspect:
                     obj = inspection.inspect(obj)
@@ -1181,12 +1183,12 @@ class AnalyzedFunction:
 
             # rewrite the original fn.   things that look like they will
             # become bound parameters are wrapped in a PyWrapper.
-            self.tracker_instrumented_fn = (
-                tracker_instrumented_fn
-            ) = self._rewrite_code_obj(
-                fn,
-                [new_closure[name] for name in fn.__code__.co_freevars],
-                new_globals,
+            self.tracker_instrumented_fn = tracker_instrumented_fn = (
+                self._rewrite_code_obj(
+                    fn,
+                    [new_closure[name] for name in fn.__code__.co_freevars],
+                    new_globals,
+                )
             )
 
             # now invoke the function.  This will give us a new SQL
@@ -1422,7 +1424,6 @@ class PyWrapper(ColumnOperators):
         return self._sa__add_getter(key, operator.itemgetter)
 
     def _add_getter(self, key, getter_fn):
-
         bind_paths = object.__getattribute__(self, "_bind_paths")
 
         bind_path_key = (key, getter_fn)

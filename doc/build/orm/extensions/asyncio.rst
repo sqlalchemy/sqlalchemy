@@ -9,7 +9,7 @@ included, using asyncio-compatible dialects.
 .. versionadded:: 1.4
 
 .. warning:: Please read :ref:`asyncio_install` for important platform
-   installation notes for many platforms, including **Apple M1 Architecture**.
+   installation notes on **all** platforms.
 
 .. seealso::
 
@@ -20,25 +20,14 @@ included, using asyncio-compatible dialects.
 
 .. _asyncio_install:
 
-Asyncio Platform Installation Notes (Including Apple M1)
----------------------------------------------------------
+Asyncio Platform Installation Notes
+-----------------------------------
 
-The asyncio extension requires Python 3 only. It also depends
+The asyncio extension depends
 upon the `greenlet <https://pypi.org/project/greenlet/>`_ library. This
-dependency is installed by default on common machine platforms including:
+dependency is **not installed by default**.
 
-.. sourcecode:: text
-
-    x86_64 aarch64 ppc64le amd64 win32
-
-For the above platforms, ``greenlet`` is known to supply pre-built wheel files.
-For other platforms, **greenlet does not install by default**;
-the current file listing for greenlet can be seen at
-`Greenlet - Download Files <https://pypi.org/project/greenlet/#files>`_.
-Note that **there are many architectures omitted, including Apple M1**.
-
-To install SQLAlchemy while ensuring the ``greenlet`` dependency is present
-regardless of what platform is in use, the
+To install SQLAlchemy while ensuring the ``greenlet`` dependency is present, the
 ``[asyncio]`` `setuptools extra <https://packaging.python.org/en/latest/tutorials/installing-packages/#installing-setuptools-extras>`_
 may be installed
 as follows, which will include also instruct ``pip`` to install ``greenlet``:
@@ -50,6 +39,9 @@ as follows, which will include also instruct ``pip`` to install ``greenlet``:
 Note that installation of ``greenlet`` on platforms that do not have a pre-built
 wheel file means that ``greenlet`` will be built from source, which requires
 that Python's development libraries also be present.
+
+.. versionchanged:: 2.1  ``greenlet`` is no longer installed by default; to
+   use the asyncio extension, the ``sqlalchemy[asyncio]`` target must be used.
 
 
 Synopsis - Core
@@ -140,11 +132,21 @@ Synopsis - ORM
 ---------------
 
 Using :term:`2.0 style` querying, the :class:`_asyncio.AsyncSession` class
-provides full ORM functionality. Within the default mode of use, special care
-must be taken to avoid :term:`lazy loading` or other expired-attribute access
-involving ORM relationships and column attributes; the next
-section :ref:`asyncio_orm_avoid_lazyloads` details this.   The example below
-illustrates a complete example including mapper and session configuration::
+provides full ORM functionality.
+
+Within the default mode of use, special care must be taken to avoid :term:`lazy
+loading` or other expired-attribute access involving ORM relationships and
+column attributes; the next section :ref:`asyncio_orm_avoid_lazyloads` details
+this.
+
+.. warning::
+
+    A single instance of :class:`_asyncio.AsyncSession` is **not safe for
+    use in multiple, concurrent tasks**.  See the sections
+    :ref:`asyncio_concurrency` and :ref:`session_faq_threadsafe` for background.
+
+The example below illustrates a complete example including mapper and session
+configuration::
 
     from __future__ import annotations
 
@@ -155,6 +157,7 @@ illustrates a complete example including mapper and session configuration::
     from sqlalchemy import ForeignKey
     from sqlalchemy import func
     from sqlalchemy import select
+    from sqlalchemy.ext.asyncio import AsyncAttrs
     from sqlalchemy.ext.asyncio import async_sessionmaker
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy.ext.asyncio import create_async_engine
@@ -165,7 +168,7 @@ illustrates a complete example including mapper and session configuration::
     from sqlalchemy.orm import selectinload
 
 
-    class Base(DeclarativeBase):
+    class Base(AsyncAttrs, DeclarativeBase):
         pass
 
 
@@ -186,13 +189,12 @@ illustrates a complete example including mapper and session configuration::
 
 
     async def insert_objects(async_session: async_sessionmaker[AsyncSession]) -> None:
-
         async with async_session() as session:
             async with session.begin():
                 session.add_all(
                     [
                         A(bs=[B(), B()], data="a1"),
-                        A(bs=[B()], data="a2"),
+                        A(bs=[], data="a2"),
                         A(bs=[B(), B()], data="a3"),
                     ]
                 )
@@ -201,7 +203,6 @@ illustrates a complete example including mapper and session configuration::
     async def select_and_update_objects(
         async_session: async_sessionmaker[AsyncSession],
     ) -> None:
-
         async with async_session() as session:
             stmt = select(A).options(selectinload(A.bs))
 
@@ -224,6 +225,11 @@ illustrates a complete example including mapper and session configuration::
             # access attribute subsequent to commit; this is what
             # expire_on_commit=False allows
             print(a1.data)
+
+            # alternatively, AsyncAttrs may be used to access any attribute
+            # as an awaitable (new in 2.0.13)
+            for b1 in await a1.awaitable_attrs.bs:
+                print(b1)
 
 
     async def async_main() -> None:
@@ -260,29 +266,122 @@ the end of the block; this is equivalent to calling the
 :meth:`_asyncio.AsyncSession.close` method.
 
 
+.. _asyncio_concurrency:
+
+Using AsyncSession with Concurrent Tasks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :class:`_asyncio.AsyncSession` object is a **mutable, stateful object**
+which represents a **single, stateful database transaction in progress**. Using
+concurrent tasks with asyncio, with APIs such as ``asyncio.gather()`` for
+example, should use a **separate** :class:`_asyncio.AsyncSession` **per individual
+task**.
+
+See the section :ref:`session_faq_threadsafe` for a general description of
+the :class:`_orm.Session` and :class:`_asyncio.AsyncSession` with regards to
+how they should be used with concurrent workloads.
+
 .. _asyncio_orm_avoid_lazyloads:
 
 Preventing Implicit IO when Using AsyncSession
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Using traditional asyncio, the application needs to avoid any points at which
-IO-on-attribute access may occur. Above, the following measures are taken to
-prevent this:
+IO-on-attribute access may occur.   Techniques that can be used to help
+this are below, many of which are illustrated in the preceding example.
 
-* The :func:`_orm.selectinload` eager loader is employed in order to eagerly
+* Attributes that are lazy-loading relationships, deferred columns or
+  expressions, or are being accessed in expiration scenarios can take advantage
+  of the  :class:`_asyncio.AsyncAttrs` mixin.  This mixin, when added to a
+  specific class or more generally to the Declarative ``Base`` superclass,
+  provides an accessor :attr:`_asyncio.AsyncAttrs.awaitable_attrs`
+  which delivers any attribute as an awaitable::
+
+    from __future__ import annotations
+
+    from typing import List
+
+    from sqlalchemy.ext.asyncio import AsyncAttrs
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import relationship
+
+
+    class Base(AsyncAttrs, DeclarativeBase):
+        pass
+
+
+    class A(Base):
+        __tablename__ = "a"
+
+        # ... rest of mapping ...
+
+        bs: Mapped[List[B]] = relationship()
+
+
+    class B(Base):
+        __tablename__ = "b"
+
+        # ... rest of mapping ...
+
+  Accessing the ``A.bs`` collection on newly loaded instances of ``A`` when
+  eager loading is not in use will normally use :term:`lazy loading`, which in
+  order to succeed will usually emit IO to the database, which will fail under
+  asyncio as no implicit IO is allowed. To access this attribute directly under
+  asyncio without any prior loading operations, the attribute can be accessed
+  as an awaitable by indicating the :attr:`_asyncio.AsyncAttrs.awaitable_attrs`
+  prefix::
+
+    a1 = (await session.scalars(select(A))).one()
+    for b1 in await a1.awaitable_attrs.bs:
+        print(b1)
+
+  The :class:`_asyncio.AsyncAttrs` mixin provides a succinct facade over the
+  internal approach that's also used by the
+  :meth:`_asyncio.AsyncSession.run_sync` method.
+
+
+  .. versionadded:: 2.0.13
+
+  .. seealso::
+
+      :class:`_asyncio.AsyncAttrs`
+
+
+* Collections can be replaced with **write only collections** that will never
+  emit IO implicitly, by using the :ref:`write_only_relationship` feature in
+  SQLAlchemy 2.0. Using this feature, collections are never read from, only
+  queried using explicit SQL calls.  See the example
+  ``async_orm_writeonly.py`` in the :ref:`examples_asyncio` section for
+  an example of write-only collections used with asyncio.
+
+  When using write only collections, the program's behavior is simple and easy
+  to predict regarding collections. However, the downside is that there is not
+  any built-in system for loading many of these collections all at once, which
+  instead would need to be performed manually.  Therefore, many of the
+  bullets below address specific techniques when using traditional lazy-loaded
+  relationships with asyncio, which requires more care.
+
+* If not using :class:`_asyncio.AsyncAttrs`, relationships can be declared
+  with ``lazy="raise"`` so that by default they will not attempt to emit SQL.
+  In order to load collections, :term:`eager loading` would be used instead.
+
+* The most useful eager loading strategy is the
+  :func:`_orm.selectinload` eager loader, which is employed in the previous
+  example in order to eagerly
   load the ``A.bs`` collection within the scope of the
   ``await session.execute()`` call::
 
       stmt = select(A).options(selectinload(A.bs))
 
-  ..
+* When constructing new objects, **collections are always assigned a default,
+  empty collection**, such as a list in the above example::
 
-  If the default loader strategy of "lazyload" were left in place, the access
-  of the ``A.bs`` attribute would raise an asyncio exception.
-  There are a variety of ORM loader options available, which may be configured
-  at the default mapping level or used on a per-query basis, documented at
-  :ref:`loading_toplevel`.
+      A(bs=[], data="a2")
 
+  This allows the ``.bs`` collection on the above ``A`` object to be present and
+  readable when the ``A`` object is flushed; otherwise, when the ``A`` is
+  flushed, ``.bs`` would be unloaded and would raise an error on access.
 
 * The :class:`_asyncio.AsyncSession` is configured using
   :paramref:`_orm.Session.expire_on_commit` set to False, so that we may access
@@ -308,30 +407,38 @@ prevent this:
           # expire_on_commit=False allows
           print(a1.data)
 
-* The :paramref:`_schema.Column.server_default` value on the ``created_at``
-  column will not be refreshed by default after an INSERT; instead, it is
-  normally
-  :ref:`expired so that it can be loaded when needed <orm_server_defaults>`.
-  Similar behavior applies to a column where the
-  :paramref:`_schema.Column.default` parameter is assigned to a SQL expression
-  object. To access this value with asyncio, it has to be refreshed within the
-  flush process, which is achieved by setting the
-  :paramref:`_orm.Mapper.eager_defaults` parameter on the mapping::
-
-
-    class A(Base):
-        # ...
-
-        # column with a server_default, or SQL expression default
-        create_date = mapped_column(DateTime, server_default=func.now())
-
-        # add this so that it can be accessed
-        __mapper_args__ = {"eager_defaults": True}
-
 Other guidelines include:
 
 * Methods like :meth:`_asyncio.AsyncSession.expire` should be avoided in favor of
-  :meth:`_asyncio.AsyncSession.refresh`
+  :meth:`_asyncio.AsyncSession.refresh`; **if** expiration is absolutely needed.
+  Expiration should generally **not** be needed as
+  :paramref:`_orm.Session.expire_on_commit`
+  should normally be set to ``False`` when using asyncio.
+
+* A lazy-loaded relationship **can be loaded explicitly under asyncio** using
+  :meth:`_asyncio.AsyncSession.refresh`, **if** the desired attribute name
+  is passed explicitly to
+  :paramref:`_orm.Session.refresh.attribute_names`, e.g.::
+
+    # assume a_obj is an A that has lazy loaded A.bs collection
+    a_obj = await async_session.get(A, [1])
+
+    # force the collection to load by naming it in attribute_names
+    await async_session.refresh(a_obj, ["bs"])
+
+    # collection is present
+    print(f"bs collection: {a_obj.bs}")
+
+  It's of course preferable to use eager loading up front in order to have
+  collections already set up without the need to lazy-load.
+
+  .. versionadded:: 2.0.4 Added support for
+     :meth:`_asyncio.AsyncSession.refresh` and the underlying
+     :meth:`_orm.Session.refresh` method to force lazy-loaded relationships
+     to load, if they are named explicitly in the
+     :paramref:`_orm.Session.refresh.attribute_names` parameter.
+     In previous versions, the relationship would be silently skipped even
+     if named in the parameter.
 
 * Avoid using the ``all`` cascade option documented at :ref:`unitofwork_cascades`
   in favor of listing out the desired cascade features explicitly.   The
@@ -367,6 +474,14 @@ Other guidelines include:
   .. seealso::
 
     :ref:`migration_20_dynamic_loaders` - notes on migration to 2.0 style
+
+* If using asyncio with a database that does not support RETURNING, such as
+  MySQL 8, server default values such as generated timestamps will not be
+  available on newly flushed objects unless the
+  :paramref:`_orm.Mapper.eager_defaults` option is used. In SQLAlchemy 2.0,
+  this behavior is applied automatically to backends like PostgreSQL, SQLite
+  and MariaDB which use RETURNING to fetch new values when rows are
+  INSERTed.
 
 .. _session_run_sync:
 
@@ -933,6 +1048,8 @@ Engine API Documentation
 
 .. autofunction:: async_engine_from_config
 
+.. autofunction:: create_async_pool_from_url
+
 .. autoclass:: AsyncEngine
    :members:
 
@@ -972,6 +1089,8 @@ ORM Session API Documentation
 
 .. autofunction:: async_session
 
+.. autofunction:: close_all_sessions
+
 .. autoclass:: async_sessionmaker
    :members:
    :inherited-members:
@@ -979,6 +1098,9 @@ ORM Session API Documentation
 .. autoclass:: async_scoped_session
    :members:
    :inherited-members:
+
+.. autoclass:: AsyncAttrs
+   :members:
 
 .. autoclass:: AsyncSession
    :members:

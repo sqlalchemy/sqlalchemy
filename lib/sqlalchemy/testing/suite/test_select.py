@@ -1,3 +1,9 @@
+# testing/suite/test_select.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 import collections.abc as collections_abc
@@ -1729,7 +1735,6 @@ class IdentityColumnTest(fixtures.TablesTest):
         eq_(res, [(-5, "b"), (0, "a"), (42, "c")])
 
     def test_select_columns(self, connection):
-
         res = connection.execute(
             select(self.tables.tbl_a.c.id).order_by(self.tables.tbl_a.c.id)
         ).fetchall()

@@ -1,5 +1,5 @@
 # ext/mypy/apply.py
-# Copyright (C) 2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2021-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -118,7 +118,6 @@ def re_apply_declarative_assignments(
             and stmt.lvalues[0].name in mapped_attr_lookup
             and isinstance(stmt.lvalues[0].node, Var)
         ):
-
             left_node = stmt.lvalues[0].node
 
             python_type_for_type = mapped_attr_lookup[
@@ -145,7 +144,6 @@ def re_apply_declarative_assignments(
                     and isinstance(stmt.rvalue.args[0].callee, RefExpr)
                 )
             ):
-
                 new_python_type_for_type = (
                     infer.infer_type_from_right_hand_nameexpr(
                         api,
@@ -163,9 +161,9 @@ def re_apply_declarative_assignments(
 
                     # update the SQLAlchemyAttribute with the better
                     # information
-                    mapped_attr_lookup[
-                        stmt.lvalues[0].name
-                    ].type = python_type_for_type
+                    mapped_attr_lookup[stmt.lvalues[0].name].type = (
+                        python_type_for_type
+                    )
 
                     update_cls_metadata = True
 
@@ -225,9 +223,11 @@ def apply_type_to_mapped_statement(
         lvalue.is_inferred_def = False
         left_node.type = api.named_type(
             NAMED_TYPE_SQLA_MAPPED,
-            [AnyType(TypeOfAny.special_form)]
-            if python_type_for_type is None
-            else [python_type_for_type],
+            (
+                [AnyType(TypeOfAny.special_form)]
+                if python_type_for_type is None
+                else [python_type_for_type]
+            ),
         )
 
     # so to have it skip the right side totally, we can do this:

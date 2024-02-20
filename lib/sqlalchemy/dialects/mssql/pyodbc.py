@@ -1,5 +1,5 @@
-# mssql/pyodbc.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mssql/pyodbc.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -281,29 +281,14 @@ non-ODBC drivers such as pymssql where it works very well.
 Rowcount Support
 ----------------
 
-Pyodbc only has partial support for rowcount.  See the notes at
-:ref:`mssql_rowcount_versioning` for important notes when using ORM
-versioning.
+Previous limitations with the SQLAlchemy ORM's "versioned rows" feature with
+Pyodbc have been resolved as of SQLAlchemy 2.0.5. See the notes at
+:ref:`mssql_rowcount_versioning`.
 
 .. _mssql_pyodbc_fastexecutemany:
 
 Fast Executemany Mode
 ---------------------
-
-.. note:: SQLAlchemy 2.0 now includes an equivalent "fast executemany"
-   handler for INSERT statements that is more robust than the PyODBC feature;
-   the feature is called :ref:`insertmanyvalues <engine_insertmanyvalues>`
-   and is enabled by default for all INSERT statements used by SQL Server.
-   SQLAlchemy's feature integrates with the PyODBC ``setinputsizes()`` method
-   which allows for more accurate specification of datatypes, and additionally
-   uses a dynamically sized, batched approach that scales to any number of
-   columns and/or rows.
-
-   The SQL Server ``fast_executemany`` parameter may be used at the same time
-   as ``insertmanyvalues`` is enabled; however, the parameter will not be used
-   in as many cases as INSERT statements that are invoked using Core
-   :class:`_dml.Insert` constructs as well as all ORM use no longer use the
-   ``.executemany()`` DBAPI cursor method.
 
 The PyODBC driver includes support for a "fast executemany" mode of execution
 which greatly reduces round trips for a DBAPI ``executemany()`` call when using
@@ -318,6 +303,12 @@ Server dialect supports this parameter by passing the
         "mssql+pyodbc://scott:tiger@mssql2017:1433/test?driver=ODBC+Driver+17+for+SQL+Server",
         fast_executemany=True)
 
+.. versionchanged:: 2.0.9 - the ``fast_executemany`` parameter now has its
+   intended effect of this PyODBC feature taking effect for all INSERT
+   statements that are executed with multiple parameter sets, which don't
+   include RETURNING.  Previously, SQLAlchemy 2.0's :term:`insertmanyvalues`
+   feature would cause ``fast_executemany`` to not be used in most cases
+   even if specified.
 
 .. versionadded:: 1.3
 
@@ -337,16 +328,19 @@ fast_executemany=True where it is not supported (assuming
 :ref:`insertmanyvalues <engine_insertmanyvalues>` is kept enabled,
 "fastexecutemany" will not take place for INSERT statements in any case).
 
-The behavior of setinputsizes can be customized via the
-:meth:`.DialectEvents.do_setinputsizes` hook. See that method for usage
-examples.
+The use of ``cursor.setinputsizes()`` can be disabled by passing
+``use_setinputsizes=False`` to :func:`_sa.create_engine`.
 
-.. versionchanged:: 1.4.1  The pyodbc dialects will not use setinputsizes
-   unless ``use_setinputsizes=True`` is passed.
+When ``use_setinputsizes`` is left at its default of ``True``, the
+specific per-type symbols passed to ``cursor.setinputsizes()`` can be
+programmatically customized using the :meth:`.DialectEvents.do_setinputsizes`
+hook. See that method for usage examples.
 
 .. versionchanged:: 2.0  The mssql+pyodbc dialect now defaults to using
-   setinputsizes for all statement executions with the exception of
-   cursor.executemany() calls when fast_executemany=True.
+   ``use_setinputsizes=True`` for all statement executions with the exception of
+   cursor.executemany() calls when fast_executemany=True.  The behavior can
+   be turned off by passing ``use_setinputsizes=False`` to
+   :func:`_sa.create_engine`.
 
 """  # noqa
 
@@ -371,10 +365,10 @@ from ... import exc
 from ... import types as sqltypes
 from ... import util
 from ...connectors.pyodbc import PyODBCConnector
+from ...engine import cursor as _cursor
 
 
 class _ms_numeric_pyodbc:
-
     """Turns Decimals with adjusted() < 0 or > 7 into strings.
 
     The routines here are needed for older pyodbc versions
@@ -383,7 +377,6 @@ class _ms_numeric_pyodbc:
     """
 
     def bind_processor(self, dialect):
-
         super_process = super().bind_processor(dialect)
 
         if not dialect._need_decimal_fix:
@@ -592,14 +585,22 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
                 try:
                     # fetchall() ensures the cursor is consumed
                     # without closing it (FreeTDS particularly)
-                    row = self.cursor.fetchall()[0]
-                    break
+                    rows = self.cursor.fetchall()
                 except self.dialect.dbapi.Error:
                     # no way around this - nextset() consumes the previous set
                     # so we need to just keep flipping
                     self.cursor.nextset()
+                else:
+                    if not rows:
+                        # async adapter drivers just return None here
+                        self.cursor.nextset()
+                        continue
+                    row = rows[0]
+                    break
 
             self._lastrowid = int(row[0])
+
+            self.cursor_fetch_strategy = _cursor._NO_CURSOR_DML
         else:
             super().post_exec()
 
@@ -607,10 +608,9 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
 class MSDialect_pyodbc(PyODBCConnector, MSDialect):
     supports_statement_cache = True
 
-    # mssql still has problems with this on Linux
+    # note this parameter is no longer used by the ORM or default dialect
+    # see #9414
     supports_sane_rowcount_returning = False
-
-    favor_returning_over_lastrowid = True
 
     execution_ctx_cls = MSExecutionContext_pyodbc
 
@@ -660,6 +660,8 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
             8,
         )
         self.fast_executemany = fast_executemany
+        if fast_executemany:
+            self.use_insertmanyvalues_wo_returning = False
 
     def _get_server_version_info(self, connection):
         try:

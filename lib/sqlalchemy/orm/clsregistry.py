@@ -1,5 +1,5 @@
-# ext/declarative/clsregistry.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# orm/clsregistry.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -83,9 +83,9 @@ def add_class(
             _ModuleMarker, decl_class_registry["_sa_module_registry"]
         )
     except KeyError:
-        decl_class_registry[
-            "_sa_module_registry"
-        ] = root_module = _ModuleMarker("_sa_module_registry", None)
+        decl_class_registry["_sa_module_registry"] = root_module = (
+            _ModuleMarker("_sa_module_registry", None)
+        )
 
     tokens = cls.__module__.split(".")
 
@@ -239,10 +239,10 @@ class _MultipleClassMarker(ClsRegistryToken):
     def add_item(self, item: Type[Any]) -> None:
         # protect against class registration race condition against
         # asynchronous garbage collection calling _remove_item,
-        # [ticket:3208]
+        # [ticket:3208] and [ticket:10782]
         modules = {
             cls.__module__
-            for cls in [ref() for ref in self.contents]
+            for cls in [ref() for ref in list(self.contents)]
             if cls is not None
         }
         if item.__module__ in modules:
@@ -542,18 +542,16 @@ class _class_resolver:
 _fallback_dict: Mapping[str, Any] = None  # type: ignore
 
 
-def _resolver(
-    cls: Type[Any], prop: RelationshipProperty[Any]
-) -> Tuple[
+def _resolver(cls: Type[Any], prop: RelationshipProperty[Any]) -> Tuple[
     Callable[[str], Callable[[], Union[Type[Any], Table, _ModNS]]],
     Callable[[str, bool], _class_resolver],
 ]:
-
     global _fallback_dict
 
     if _fallback_dict is None:
         import sqlalchemy
-        from sqlalchemy.orm import foreign, remote
+        from . import foreign
+        from . import remote
 
         _fallback_dict = util.immutabledict(sqlalchemy.__dict__).union(
             {"foreign": foreign, "remote": remote}

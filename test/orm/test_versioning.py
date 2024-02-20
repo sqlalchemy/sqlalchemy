@@ -45,12 +45,7 @@ def conditional_sane_rowcount_warnings(
     update=False, delete=False, only_returning=False
 ):
     warnings = ()
-    if (
-        only_returning
-        and not testing.db.dialect.supports_sane_rowcount_returning
-    ) or (
-        not only_returning and not testing.db.dialect.supports_sane_rowcount
-    ):
+    if not testing.db.dialect.supports_sane_rowcount:
         if update:
             warnings += (
                 "Dialect .* does not support "
@@ -140,9 +135,7 @@ class NullVersionIdTest(fixtures.MappedTest):
 
         f1.value = "f1rev2"
 
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             f1.version_id = None
             assert_raises_message(
                 sa.orm.exc.FlushError,
@@ -209,24 +202,20 @@ class VersioningTest(fixtures.MappedTest):
         s1.commit()
 
         f1.value = "f1rev2"
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s1.commit()
 
         s2 = fixture_session()
         f1_s = s2.get(Foo, f1.id)
         f1_s.value = "f1rev3"
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s2.commit()
 
         f1.value = "f1rev3mine"
 
         # Only dialects with a sane rowcount can detect the
         # StaleDataError
-        if testing.db.dialect.supports_sane_rowcount_returning:
+        if testing.db.dialect.supports_sane_rowcount:
             assert_raises_message(
                 sa.orm.exc.StaleDataError,
                 r"UPDATE statement on table 'version_table' expected "
@@ -235,9 +224,7 @@ class VersioningTest(fixtures.MappedTest):
             ),
             s1.rollback()
         else:
-            with conditional_sane_rowcount_warnings(
-                update=True, only_returning=True
-            ):
+            with conditional_sane_rowcount_warnings(update=True):
                 s1.commit()
 
         # new in 0.5 !  don't need to close the session
@@ -245,9 +232,7 @@ class VersioningTest(fixtures.MappedTest):
         f2 = s1.get(Foo, f2.id)
 
         f1_s.value = "f1rev4"
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s2.commit()
 
         s1.delete(f1)
@@ -275,9 +260,7 @@ class VersioningTest(fixtures.MappedTest):
 
         f1.value = "f1rev2"
         f2.value = "f2rev2"
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s1.commit()
 
         eq_(
@@ -306,9 +289,7 @@ class VersioningTest(fixtures.MappedTest):
         s1.add_all((f1, f2))
         s1.commit()
 
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s1.bulk_update_mappings(
                 Foo,
                 [
@@ -340,9 +321,7 @@ class VersioningTest(fixtures.MappedTest):
         s1.commit()
         eq_(f1.version_id, 1)
         f1.version_id = 2
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s1.commit()
         eq_(f1.version_id, 2)
 
@@ -350,9 +329,7 @@ class VersioningTest(fixtures.MappedTest):
         # is honored
         f1.version_id = 4
         f1.value = "something new"
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s1.commit()
         eq_(f1.version_id, 4)
 
@@ -377,9 +354,7 @@ class VersioningTest(fixtures.MappedTest):
         s2 = fixture_session()
         f1s2 = s2.get(Foo, f1s1.id)
         f1s2.value = "f1 new value"
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s2.commit()
 
         # load, version is wrong
@@ -457,7 +432,6 @@ class VersioningTest(fixtures.MappedTest):
         with patch.object(
             config.db.dialect, "supports_sane_multi_rowcount", False
         ), patch("sqlalchemy.engine.cursor.CursorResult.rowcount", rowcount):
-
             Foo = self.classes.Foo
             s1 = self._fixture()
             f1s1 = Foo(value="f1 value")
@@ -465,14 +439,11 @@ class VersioningTest(fixtures.MappedTest):
             s1.commit()
 
             f1s1.value = "f2 value"
-            with conditional_sane_rowcount_warnings(
-                update=True, only_returning=True
-            ):
+            with conditional_sane_rowcount_warnings(update=True):
                 s1.flush()
             eq_(f1s1.version_id, 2)
 
     def test_update_delete_no_plain_rowcount(self):
-
         with patch.object(
             config.db.dialect, "supports_sane_rowcount", False
         ), patch.object(
@@ -532,17 +503,13 @@ class VersioningTest(fixtures.MappedTest):
         s1.commit()
 
         f1.value = "f2"
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s1.commit()
 
         f2 = Foo(id=f1.id, value="f3")
         f3 = s1.merge(f2)
         assert f3 is f1
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s1.commit()
         eq_(f3.version_id, 3)
 
@@ -555,17 +522,13 @@ class VersioningTest(fixtures.MappedTest):
         s1.commit()
 
         f1.value = "f2"
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s1.commit()
 
         f2 = Foo(id=f1.id, value="f3", version_id=2)
         f3 = s1.merge(f2)
         assert f3 is f1
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s1.commit()
         eq_(f3.version_id, 3)
 
@@ -578,9 +541,7 @@ class VersioningTest(fixtures.MappedTest):
         s1.commit()
 
         f1.value = "f2"
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s1.commit()
 
         f2 = Foo(id=f1.id, value="f3", version_id=1)
@@ -603,9 +564,7 @@ class VersioningTest(fixtures.MappedTest):
         s1.commit()
 
         f1.value = "f2"
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s1.commit()
 
         f2 = Foo(id=f1.id, value="f3", version_id=1)
@@ -670,9 +629,7 @@ class VersionOnPostUpdateTest(fixtures.MappedTest):
         s, n1, n2 = self._fixture(o2m=True, post_update=False)
 
         n1.related.append(n2)
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s.flush()
 
         eq_(n1.version_id, 1)
@@ -682,9 +639,7 @@ class VersionOnPostUpdateTest(fixtures.MappedTest):
         s, n1, n2 = self._fixture(o2m=False, post_update=False)
 
         n1.related = n2
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s.flush()
 
         eq_(n1.version_id, 2)
@@ -694,9 +649,7 @@ class VersionOnPostUpdateTest(fixtures.MappedTest):
         s, n1, n2 = self._fixture(o2m=True, post_update=True)
 
         n1.related.append(n2)
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s.flush()
 
         eq_(n1.version_id, 1)
@@ -706,9 +659,7 @@ class VersionOnPostUpdateTest(fixtures.MappedTest):
         s, n1, n2 = self._fixture(o2m=False, post_update=True)
 
         n1.related = n2
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s.flush()
 
         eq_(n1.version_id, 2)
@@ -719,9 +670,7 @@ class VersionOnPostUpdateTest(fixtures.MappedTest):
 
         n1.related.append(n2)
         s.add_all([n1, n2])
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s.flush()
 
         eq_(n1.version_id, 1)
@@ -732,15 +681,13 @@ class VersionOnPostUpdateTest(fixtures.MappedTest):
 
         n1.related = n2
         s.add_all([n1, n2])
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s.flush()
 
         eq_(n1.version_id, 1)
         eq_(n2.version_id, 1)
 
-    @testing.requires.sane_rowcount_w_returning
+    @testing.requires.sane_rowcount
     def test_o2m_post_update_version_assert(self):
         Node = self.classes.Node
         s, n1, n2 = self._fixture(o2m=True, post_update=True)
@@ -782,7 +729,7 @@ class VersionOnPostUpdateTest(fixtures.MappedTest):
             ):
                 s.flush()
 
-    @testing.requires.sane_rowcount_w_returning
+    @testing.requires.sane_rowcount
     def test_m2o_post_update_version_assert(self):
         Node = self.classes.Node
 
@@ -944,9 +891,7 @@ class ColumnTypeTest(fixtures.MappedTest):
         s1.commit()
 
         f1.value = "f1rev2"
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s1.commit()
 
 
@@ -1007,9 +952,7 @@ class RowSwitchTest(fixtures.MappedTest):
         p = session.query(P).first()
         session.delete(p)
         session.add(P(id="P1", data="really a row-switch"))
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             session.commit()
 
     def test_child_row_switch(self):
@@ -1028,9 +971,7 @@ class RowSwitchTest(fixtures.MappedTest):
 
         p = session.query(P).first()
         p.c = C(data="child row-switch")
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             session.commit()
 
 
@@ -1096,9 +1037,7 @@ class AlternateGeneratorTest(fixtures.MappedTest):
         p = session.query(P).first()
         session.delete(p)
         session.add(P(id="P1", data="really a row-switch"))
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             session.commit()
 
     def test_child_row_switch_one(self):
@@ -1117,12 +1056,10 @@ class AlternateGeneratorTest(fixtures.MappedTest):
 
         p = session.query(P).first()
         p.c = C(data="child row-switch")
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             session.commit()
 
-    @testing.requires.sane_rowcount_w_returning
+    @testing.requires.sane_rowcount
     def test_child_row_switch_two(self):
         P = self.classes.P
 
@@ -1206,9 +1143,7 @@ class PlainInheritanceTest(fixtures.MappedTest):
         s.commit()
 
         s1.sub_data = "s2"
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s.commit()
 
         eq_(s1.version_id, 2)
@@ -1524,7 +1459,6 @@ class ServerVersioningTest(fixtures.MappedTest):
 
         eq_(f1.version_id, 2)
 
-    @testing.requires.sane_rowcount_w_returning
     @testing.requires.updateable_autoincrement_pks
     @testing.requires.update_returning
     def test_sql_expr_w_mods_bump(self):
@@ -1694,7 +1628,6 @@ class ServerVersioningTest(fixtures.MappedTest):
             self.assert_sql_execution(testing.db, sess.flush, *statements)
 
     @testing.requires.independent_connections
-    @testing.requires.sane_rowcount_w_returning
     def test_concurrent_mod_err_expire_on_commit(self):
         sess = self._fixture()
 
@@ -1719,7 +1652,6 @@ class ServerVersioningTest(fixtures.MappedTest):
         )
 
     @testing.requires.independent_connections
-    @testing.requires.sane_rowcount_w_returning
     def test_concurrent_mod_err_noexpire_on_commit(self):
         sess = self._fixture(expire_on_commit=False)
 
@@ -1799,14 +1731,12 @@ class ManualVersionTest(fixtures.MappedTest):
         a1.vid = 2
         a1.data = "d2"
 
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             sess.commit()
 
         eq_(a1.vid, 2)
 
-    @testing.requires.sane_rowcount_w_returning
+    @testing.requires.sane_rowcount
     def test_update_concurrent_check(self):
         sess = fixture_session()
         a1 = self.classes.A()
@@ -1833,18 +1763,14 @@ class ManualVersionTest(fixtures.MappedTest):
         # change the data and UPDATE without
         # incrementing version id
         a1.data = "d2"
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             sess.commit()
 
         eq_(a1.vid, 1)
 
         a1.data = "d3"
         a1.vid = 2
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             sess.commit()
 
         eq_(a1.vid, 2)
@@ -1907,18 +1833,14 @@ class ManualInheritanceVersionTest(fixtures.MappedTest):
         # change col on subtable only without
         # incrementing version id
         b1.b_data = "bd2"
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             sess.commit()
 
         eq_(b1.vid, 1)
 
         b1.b_data = "d3"
         b1.vid = 2
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             sess.commit()
 
         eq_(b1.vid, 2)
@@ -1990,9 +1912,7 @@ class VersioningMappedSelectTest(fixtures.MappedTest):
 
         f1.value = "f1rev2"
         f2.value = "f2rev2"
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s1.commit()
 
         eq_(
@@ -2015,9 +1935,7 @@ class VersioningMappedSelectTest(fixtures.MappedTest):
         f1.version_id = 2
         f2.value = "f2rev2"
         f2.version_id = 2
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             s1.flush()
 
         eq_(
@@ -2057,9 +1975,7 @@ class VersioningMappedSelectTest(fixtures.MappedTest):
 
         s1.expire_all()
 
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             f1.value = "f2"
             f1.version_id = 2
             s1.flush()
@@ -2109,9 +2025,131 @@ class QuotedBindVersioningTest(fixtures.MappedTest):
         fixture_session.commit()
 
         f1.value = "v2"
-        with conditional_sane_rowcount_warnings(
-            update=True, only_returning=True
-        ):
+        with conditional_sane_rowcount_warnings(update=True):
             fixture_session.commit()
 
         eq_(f1.version, 2)
+
+
+class PostUpdateVersioningTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class User(Base):
+            __tablename__ = "user"
+
+            id = Column(Integer, primary_key=True)
+
+        class Parent(Base):
+            __tablename__ = "parent"
+
+            id = Column(Integer, primary_key=True)
+            version_id = Column(Integer)
+            updated_by_id = Column(
+                Integer,
+                ForeignKey("user.id"),
+            )
+
+            updated_by = relationship(
+                "User",
+                foreign_keys=[updated_by_id],
+                post_update=True,
+            )
+
+            __mapper_args__ = {
+                "version_id_col": version_id,
+            }
+
+    def test_bumped_version_id_on_update(self):
+        """test for #10800"""
+        User, Parent = self.classes("User", "Parent")
+
+        session = fixture_session()
+        u1 = User(id=1)
+        u2 = User(id=2)
+        p1 = Parent(id=1, updated_by=u1)
+        session.add(u1)
+        session.add(u2)
+        session.add(p1)
+
+        u2id = u2.id
+        session.commit()
+        session.close()
+
+        p1 = session.get(Parent, 1)
+        p1.updated_by
+        p1.version_id = p1.version_id
+        p1.updated_by_id = u2id
+        assert "version_id" in inspect(p1).committed_state
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+            session.commit()
+
+        asserter.assert_(
+            CompiledSQL(
+                "UPDATE parent SET version_id=:version_id, "
+                "updated_by_id=:updated_by_id WHERE parent.id = :parent_id "
+                "AND parent.version_id = :parent_version_id",
+                [
+                    {
+                        "version_id": 2,
+                        "updated_by_id": 2,
+                        "parent_id": 1,
+                        "parent_version_id": 1,
+                    }
+                ],
+            ),
+            CompiledSQL(
+                "UPDATE parent SET version_id=:version_id, "
+                "updated_by_id=:updated_by_id WHERE parent.id = :parent_id "
+                "AND parent.version_id = :parent_version_id",
+                [
+                    {
+                        "version_id": 3,
+                        "updated_by_id": 2,
+                        "parent_id": 1,
+                        "parent_version_id": 2,
+                    }
+                ],
+            ),
+        )
+
+    def test_bumped_version_id_on_delete(self):
+        """test for #10967"""
+
+        User, Parent = self.classes("User", "Parent")
+
+        session = fixture_session()
+        u1 = User(id=1)
+        p1 = Parent(id=1, updated_by=u1)
+        session.add(u1)
+        session.add(p1)
+
+        session.flush()
+
+        session.delete(p1)
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+            session.commit()
+
+        asserter.assert_(
+            CompiledSQL(
+                "UPDATE parent SET version_id=:version_id, "
+                "updated_by_id=:updated_by_id WHERE parent.id = :parent_id "
+                "AND parent.version_id = :parent_version_id",
+                [
+                    {
+                        "version_id": 2,
+                        "updated_by_id": None,
+                        "parent_id": 1,
+                        "parent_version_id": 1,
+                    }
+                ],
+            ),
+            CompiledSQL(
+                "DELETE FROM parent WHERE parent.id = :id AND "
+                "parent.version_id = :version_id",
+                [{"id": 1, "version_id": 2}],
+            ),
+        )

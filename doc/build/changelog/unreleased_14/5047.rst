@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, oracle
-    :tickets: 5047
-    :versions: 2.0.0
-
-    Added :class:`_oracle.ROWID` to reflected types as this type may be used in
-    a "CREATE TABLE" statement.

@@ -1,5 +1,5 @@
-# postgresql/psycopg2.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/postgresql/psycopg2.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -88,6 +88,7 @@ connection URI::
         "postgresql+psycopg2://scott:tiger@192.168.0.199:5432/test?sslmode=require"
     )
 
+
 Unix Domain Connections
 ------------------------
 
@@ -103,6 +104,19 @@ was built.  This value can be overridden by passing a pathname to psycopg2,
 using ``host`` as an additional keyword argument::
 
     create_engine("postgresql+psycopg2://user:password@/dbname?host=/var/lib/postgresql")
+
+.. warning::  The format accepted here allows for a hostname in the main URL
+   in addition to the "host" query string argument.  **When using this URL
+   format, the initial host is silently ignored**.  That is, this URL::
+
+        engine = create_engine("postgresql+psycopg2://user:password@myhost1/dbname?host=myhost2")
+
+   Above, the hostname ``myhost1`` is **silently ignored and discarded.**  The
+   host which is connected is the ``myhost2`` host.
+
+   This is to maintain some degree of compatibility with PostgreSQL's own URL
+   format which has been tested to behave the same way and for which tools like
+   PifPaf hardcode two hostnames.
 
 .. seealso::
 
@@ -240,7 +254,7 @@ equivalent to psycopg2's ``execute_values()`` handler; an overview of this
 feature and its configuration are at :ref:`engine_insertmanyvalues`.
 
 .. versionadded:: 2.0 Replaced psycopg2's ``execute_values()`` fast execution
-   helper with a native SQLAlchemy mechanism referred towards as
+   helper with a native SQLAlchemy mechanism known as
    :ref:`insertmanyvalues <engine_insertmanyvalues>`.
 
 The psycopg2 dialect retains the ability to use the psycopg2-specific
@@ -499,7 +513,7 @@ class _PGJSONB(JSONB):
         return None
 
 
-class _Psycopg2Range(ranges.AbstractRangeImpl):
+class _Psycopg2Range(ranges.AbstractSingleRangeImpl):
     _psycopg2_range_cls = "none"
 
     def bind_processor(self, dialect):
@@ -600,6 +614,8 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
     psycopg2_version = (0, 0)
     use_insertmanyvalues_wo_returning = True
 
+    returns_native_bytes = False
+
     _has_native_hstore = True
 
     colspecs = util.update_copy(
@@ -624,6 +640,13 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
         **kwargs,
     ):
         _PGDialect_common_psycopg.__init__(self, **kwargs)
+
+        if self._native_inet_types:
+            raise NotImplementedError(
+                "The psycopg2 dialect does not implement "
+                "ipaddress type handling; native_inet_types cannot be set "
+                "to ``True`` when using this dialect."
+            )
 
         # Parse executemany_mode argument, allowing it to be only one of the
         # symbol names
@@ -802,7 +825,6 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
 
     @util.memoized_instancemethod
     def _hstore_oids(self, dbapi_connection):
-
         extras = self._psycopg2_extras
         oids = extras.HstoreAdapter.get_oids(dbapi_connection)
         if oids is not None and oids[0]:

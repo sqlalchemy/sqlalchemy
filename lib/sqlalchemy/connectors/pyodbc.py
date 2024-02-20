@@ -1,5 +1,5 @@
 # connectors/pyodbc.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -217,9 +217,11 @@ class PyODBCConnector(Connector):
 
         cursor.setinputsizes(
             [
-                (dbtype, None, None)
-                if not isinstance(dbtype, tuple)
-                else dbtype
+                (
+                    (dbtype, None, None)
+                    if not isinstance(dbtype, tuple)
+                    else dbtype
+                )
                 for key, dbtype, sqltype in list_of_tuples
             ]
         )
@@ -227,7 +229,7 @@ class PyODBCConnector(Connector):
     def get_isolation_level_values(
         self, dbapi_connection: interfaces.DBAPIConnection
     ) -> List[IsolationLevel]:
-        return super().get_isolation_level_values(dbapi_connection) + [  # type: ignore  # noqa: E501
+        return super().get_isolation_level_values(dbapi_connection) + [
             "AUTOCOMMIT"
         ]
 

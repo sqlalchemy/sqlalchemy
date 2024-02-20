@@ -1,4 +1,5 @@
 """Test various algorithmic properties of selectables."""
+
 from itertools import zip_longest
 
 from sqlalchemy import and_
@@ -41,6 +42,7 @@ from sqlalchemy.sql import elements
 from sqlalchemy.sql import LABEL_STYLE_DISAMBIGUATE_ONLY
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql import operators
+from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import visitors
@@ -907,7 +909,6 @@ class SelectableTest(
         )
 
     def test_join_against_join(self):
-
         j = outerjoin(table1, table2, table1.c.col1 == table2.c.col2)
         jj = (
             select(table1.c.col1.label("bar_col1"))
@@ -975,7 +976,6 @@ class SelectableTest(
         )
 
     def test_union_correspondence(self):
-
         # tests that we can correspond a column in a Select statement
         # with a certain Table, against a column in a Union where one of
         # its underlying Selects matches to that same Table
@@ -1069,7 +1069,6 @@ class SelectableTest(
         assert u.selected_columns.col3 is not None
 
     def test_alias_union(self):
-
         # same as testunion, except its an alias of the union
 
         u = (
@@ -1347,7 +1346,6 @@ class SelectableTest(
         assert u1.corresponding_column(table2.c.col3) is u1.c._all_columns[2]
 
     def test_select_union(self):
-
         # like testaliasunion, but off a Select off the union.
 
         u = (
@@ -1384,7 +1382,6 @@ class SelectableTest(
         assert s.corresponding_column(s2.c.table2_col2) is s.c.col2
 
     def test_union_against_join(self):
-
         # same as testunion, except its an alias of the union
 
         u = (
@@ -1966,7 +1963,6 @@ class RefreshForNewColTest(fixtures.TestBase):
 
 
 class AnonLabelTest(fixtures.TestBase):
-
     """Test behaviors fixed by [ticket:2168]."""
 
     def test_anon_labels_named_column(self):
@@ -2106,7 +2102,7 @@ class JoinConditionTest(fixtures.TestBase, AssertsCompiledSQL):
         t1t2 = t1.join(t2)
         t2t3 = t2.join(t3)
 
-        for (left, right, a_subset, expected) in [
+        for left, right, a_subset, expected in [
             (t1, t2, None, t1.c.id == t2.c.t1id),
             (t1t2, t3, t2, t1t2.c.t2_id == t3.c.t2id),
             (t2t3, t1, t3, t1.c.id == t3.c.t1id),
@@ -3028,6 +3024,37 @@ class AnnotationsTest(fixtures.TestBase):
         eq_(whereclause.left._annotations, {"foo": "bar"})
         eq_(whereclause.right._annotations, {"foo": "bar"})
 
+    @testing.variation("use_col_ahead_of_time", [True, False])
+    def test_set_type_on_column(self, use_col_ahead_of_time):
+        """test related to #10597"""
+
+        col = Column()
+
+        col_anno = col._annotate({"foo": "bar"})
+
+        if use_col_ahead_of_time:
+            expr = col_anno == bindparam("foo")
+
+            # this could only be fixed if we put some kind of a container
+            # that receives the type directly rather than using NullType;
+            # like a PendingType or something
+
+            is_(expr.right.type._type_affinity, sqltypes.NullType)
+
+        assert "type" not in col_anno.__dict__
+
+        col.name = "name"
+        col._set_type(Integer())
+
+        eq_(col_anno.name, "name")
+        is_(col_anno.type._type_affinity, Integer)
+
+        expr = col_anno == bindparam("foo")
+
+        is_(expr.right.type._type_affinity, Integer)
+
+        assert "type" in col_anno.__dict__
+
     @testing.combinations(True, False, None)
     def test_setup_inherit_cache(self, inherit_cache_value):
         if inherit_cache_value is None:
@@ -3457,7 +3484,6 @@ class AnnotationsTest(fixtures.TestBase):
             lambda s: visitors.cloned_traverse(s, {}, {}),
             lambda s: visitors.replacement_traverse(s, {}, lambda x: None),
         ):
-
             sel = fn(select(fn(select(fn(s.subquery())).subquery())))
             eq_(str(assert_s), str(sel))
 
@@ -3917,7 +3943,6 @@ class ResultMapTest(fixtures.TestBase):
         )
 
     def test_unary_boolean(self):
-
         s1 = select(not_(True)).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         eq_(
             [type(entry[-1]) for entry in s1.compile()._result_columns],

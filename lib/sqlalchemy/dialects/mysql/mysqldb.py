@@ -1,5 +1,5 @@
-# mysql/mysqldb.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mysql/mysqldb.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -168,15 +168,8 @@ class MySQLDialect_mysqldb(MySQLDialect):
         return on_connect
 
     def do_ping(self, dbapi_connection):
-        try:
-            dbapi_connection.ping(False)
-        except self.dbapi.Error as err:
-            if self.is_disconnect(err, dbapi_connection, None):
-                return False
-            else:
-                raise
-        else:
-            return True
+        dbapi_connection.ping()
+        return True
 
     def do_executemany(self, cursor, statement, parameters, context=None):
         rowcount = cursor.executemany(statement, parameters)

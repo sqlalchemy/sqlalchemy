@@ -1,3 +1,9 @@
+# testing/suite/test_cte.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 from .. import fixtures
@@ -175,7 +181,6 @@ class CTETest(fixtures.TablesTest):
 
     @testing.requires.ctes_with_update_delete
     def test_delete_scalar_subq_round_trip(self, connection):
-
         some_table = self.tables.some_table
         some_other_table = self.tables.some_other_table
 

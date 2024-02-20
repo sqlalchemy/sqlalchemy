@@ -14,16 +14,16 @@ def _get_version(conn):
     return conn.exec_driver_sql(sql).scalar()
 
 
-def run_thin_mode(url, queue):
-    e = create_engine(url)
+def run_thin_mode(url, queue, **kw):
+    e = create_engine(url, **kw)
     with e.connect() as conn:
         res = _get_version(conn)
         queue.put((res, e.dialect.is_thin_mode(conn)))
     e.dispose()
 
 
-def run_thick_mode(url, queue):
-    e = create_engine(url, thick_mode={"driver_name": "custom-driver-name"})
+def run_thick_mode(url, queue, **kw):
+    e = create_engine(url, **kw)
     with e.connect() as conn:
         res = _get_version(conn)
         queue.put((res, e.dialect.is_thin_mode(conn)))

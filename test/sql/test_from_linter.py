@@ -1,4 +1,5 @@
 from sqlalchemy import column
+from sqlalchemy import delete
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import JSON
@@ -7,6 +8,7 @@ from sqlalchemy import sql
 from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import true
+from sqlalchemy import update
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import expect_warnings
@@ -35,6 +37,35 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
         self.b = self.tables.table_b
         self.c = self.tables.table_c
         self.d = self.tables.table_d
+
+    @testing.variation(
+        "what_to_clone", ["nothing", "fromclause", "whereclause", "both"]
+    )
+    def test_cloned_aliases(self, what_to_clone):
+        a1 = self.a.alias()
+        b1 = self.b.alias()
+        c = self.c
+
+        j1 = a1.join(b1, a1.c.col_a == b1.c.col_b)
+        j1_from = j1
+        b1_where = b1
+
+        if what_to_clone.fromclause or what_to_clone.both:
+            a1c = a1._clone()
+            b1c = b1._clone()
+            j1_from = a1c.join(b1c, a1c.c.col_a == b1c.c.col_b)
+
+        if what_to_clone.whereclause or what_to_clone.both:
+            b1_where = b1_where._clone()
+
+        query = (
+            select(c)
+            .select_from(c, j1_from)
+            .where(b1_where.c.col_b == c.c.col_c)
+        )
+        for start in None, c:
+            froms, start = find_unmatching_froms(query, start)
+            assert not froms
 
     def test_everything_is_connected(self):
         query = (
@@ -382,18 +413,54 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
         froms, start = find_unmatching_froms(query)
         assert not froms
 
+    @testing.variation("dml", ["update", "delete"])
+    @testing.combinations(
+        (False, False), (True, False), (True, True), argnames="twotable,error"
+    )
+    def test_dml(self, dml, twotable, error):
+        if dml.update:
+            stmt = update(self.a)
+        elif dml.delete:
+            stmt = delete(self.a)
+        else:
+            dml.fail()
 
-class TestLinter(fixtures.TablesTest):
+        stmt = stmt.where(self.a.c.col_a == "a1")
+        if twotable:
+            stmt = stmt.where(self.b.c.col_b == "a1")
+
+            if not error:
+                stmt = stmt.where(self.b.c.col_b == self.a.c.col_a)
+
+        froms, _ = find_unmatching_froms(stmt)
+        if error:
+            assert froms
+        else:
+            assert not froms
+
+
+class TestLinterRoundTrip(fixtures.TablesTest):
+    __backend__ = True
+
     @classmethod
     def define_tables(cls, metadata):
-        Table("table_a", metadata, Column("col_a", Integer, primary_key=True))
-        Table("table_b", metadata, Column("col_b", Integer, primary_key=True))
+        Table(
+            "table_a",
+            metadata,
+            Column("col_a", Integer, primary_key=True, autoincrement=False),
+        )
+        Table(
+            "table_b",
+            metadata,
+            Column("col_b", Integer, primary_key=True, autoincrement=False),
+        )
 
     @classmethod
     def setup_bind(cls):
         # from linting is enabled by default
         return config.db
 
+    @testing.only_on("sqlite")
     def test_noop_for_unhandled_objects(self):
         with self.bind.connect() as conn:
             conn.exec_driver_sql("SELECT 1;").fetchone()
@@ -429,6 +496,7 @@ class TestLinter(fixtures.TablesTest):
             with self.bind.connect() as conn:
                 conn.execute(query)
 
+    @testing.requires.ctes
     def test_warn_anon_cte(self):
         a, b = self.tables("table_a", "table_b")
 
@@ -443,6 +511,47 @@ class TestLinter(fixtures.TablesTest):
         ):
             with self.bind.connect() as conn:
                 conn.execute(query)
+
+    @testing.variation(
+        "dml",
+        [
+            ("update", testing.requires.update_from),
+            ("delete", testing.requires.delete_using),
+        ],
+    )
+    @testing.combinations(
+        (False, False), (True, False), (True, True), argnames="twotable,error"
+    )
+    def test_warn_dml(self, dml, twotable, error):
+        a, b = self.tables("table_a", "table_b")
+
+        if dml.update:
+            stmt = update(a).values(col_a=5)
+        elif dml.delete:
+            stmt = delete(a)
+        else:
+            dml.fail()
+
+        stmt = stmt.where(a.c.col_a == 1)
+        if twotable:
+            stmt = stmt.where(b.c.col_b == 1)
+
+            if not error:
+                stmt = stmt.where(b.c.col_b == a.c.col_a)
+
+        stmt_type = "UPDATE" if dml.update else "DELETE"
+
+        with self.bind.connect() as conn:
+            if error:
+                with expect_warnings(
+                    rf"{stmt_type} statement has a cartesian product between "
+                    rf'FROM element\(s\) "table_[ab]" and FROM '
+                    rf'element "table_[ab]"'
+                ):
+                    with self.bind.connect() as conn:
+                        conn.execute(stmt)
+            else:
+                conn.execute(stmt)
 
     def test_no_linting(self, metadata, connection):
         eng = engines.testing_engine(

@@ -130,7 +130,7 @@ for a :func:`_sql.select` by using a tuple of string names::
     FROM user_account
 
 .. versionadded:: 2.0 Added tuple-accessor capability to the
-   :attr`.FromClause.c` collection
+   :attr:`.FromClause.c` collection
 
 
 .. _tutorial_selecting_orm_entities:
@@ -255,7 +255,7 @@ when referring to arbitrary SQL expressions in a result row by name:
 .. seealso::
 
     :ref:`tutorial_order_by_label` - the label names we create may also be
-    referred towards in the ORDER BY or GROUP BY clause of the :class:`_sql.Select`.
+    referenced in the ORDER BY or GROUP BY clause of the :class:`_sql.Select`.
 
 .. _tutorial_select_arbitrary_text:
 
@@ -274,7 +274,7 @@ SQL that's quicker to write literally.
 The :func:`_sql.text` construct introduced at
 :ref:`tutorial_working_with_transactions` can in fact be embedded into a
 :class:`_sql.Select` construct directly, such as below where we manufacture
-a hardcoded string literal ``'some label'`` and embed it within the
+a hardcoded string literal ``'some phrase'`` and embed it within the
 SELECT statement::
 
   >>> from sqlalchemy import text
@@ -682,7 +682,7 @@ Now that we are selecting from multiple tables and using joins, we quickly
 run into the case where we need to refer to the same table multiple times
 in the FROM clause of a statement.  We accomplish this using SQL **aliases**,
 which are a syntax that supplies an alternative name to a table or subquery
-from which it can be referred towards in the statement.
+from which it can be referenced in the statement.
 
 In the SQLAlchemy Expression Language, these "names" are instead represented by
 :class:`_sql.FromClause` objects known as the :class:`_sql.Alias` construct,
@@ -1124,7 +1124,7 @@ When using :meth:`_expression.Select.lateral`, the behavior of
 UNION, UNION ALL and other set operations
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In SQL,SELECT statements can be merged together using the UNION or UNION ALL
+In SQL, SELECT statements can be merged together using the UNION or UNION ALL
 SQL operation, which produces the set of all rows produced by one or more
 statements together.  Other set operations such as INTERSECT [ALL] and
 EXCEPT [ALL] are also possible.
@@ -1163,7 +1163,7 @@ that it has fewer methods.   The :class:`_sql.CompoundSelect` produced by
 To use a :class:`_sql.CompoundSelect` as a subquery, just like :class:`_sql.Select`
 it provides a :meth:`_sql.SelectBase.subquery` method which will produce a
 :class:`_sql.Subquery` object with a :attr:`_sql.FromClause.c`
-collection that may be referred towards in an enclosing :func:`_sql.select`::
+collection that may be referenced in an enclosing :func:`_sql.select`::
 
     >>> u_subq = u.subquery()
     >>> stmt = (
@@ -1236,7 +1236,7 @@ organized into a subquery using :meth:`_sql.CompoundSelect.subquery`, which
 then links to ORM objects using the :func:`_orm.aliased` function. This works
 in the same way introduced at :ref:`tutorial_subqueries_orm_aliased`, to first
 create an ad-hoc "mapping" of our desired entity to the subquery, then
-selecting from that that new entity as though it were any other mapped class.
+selecting from that new entity as though it were any other mapped class.
 In the example below, we are able to add additional criteria such as ORDER BY
 outside of the UNION itself, as we can filter or order by the columns exported
 by the subquery::
@@ -1422,7 +1422,7 @@ something like :class:`_types.Integer` or :class:`_types.Numeric`, JSON
 accessors in order to work need to be using a type such as
 :class:`_types.JSON`.  Certain classes of functions return entire rows
 instead of column values, where there is a need to refer to specific columns;
-such functions are referred towards
+such functions are known
 as :ref:`table valued functions <tutorial_functions_table_valued>`.
 
 The SQL return type of the function may also be significant when executing a
@@ -1676,7 +1676,7 @@ Table-Valued Functions
 Table-valued SQL functions support a scalar representation that contains named
 sub-elements. Often used for JSON and ARRAY-oriented functions as well as
 functions like ``generate_series()``, the table-valued function is specified in
-the FROM clause, and is then referred towards as a table, or sometimes even as
+the FROM clause, and is then referenced as a table, or sometimes even as
 a column. Functions of this form are prominent within the PostgreSQL database,
 however some forms of table valued functions are also supported by SQLite,
 Oracle, and SQL Server.

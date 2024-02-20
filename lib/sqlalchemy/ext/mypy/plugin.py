@@ -1,5 +1,5 @@
 # ext/mypy/plugin.py
-# Copyright (C) 2021-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2021-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -72,7 +72,6 @@ class SQLAlchemyPlugin(Plugin):
     def get_class_decorator_hook(
         self, fullname: str
     ) -> Optional[Callable[[ClassDefContext], None]]:
-
         sym = self.lookup_fully_qualified(fullname)
 
         if sym is not None and sym.node is not None:

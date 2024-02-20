@@ -1,3 +1,9 @@
+# dialects/postgresql/provision.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 import time
@@ -11,6 +17,7 @@ from ...testing.provision import drop_all_schema_objects_post_tables
 from ...testing.provision import drop_all_schema_objects_pre_tables
 from ...testing.provision import drop_db
 from ...testing.provision import log
+from ...testing.provision import post_configure_engine
 from ...testing.provision import prepare_for_drop_tables
 from ...testing.provision import set_default_schema_on_connection
 from ...testing.provision import temp_table_keyword_args
@@ -129,7 +136,9 @@ def prepare_for_drop_tables(config, connection):
 
 
 @upsert.for_db("postgresql")
-def _upsert(cfg, table, returning, set_lambda=None):
+def _upsert(
+    cfg, table, returning, *, set_lambda=None, sort_by_parameter_order=False
+):
     from sqlalchemy.dialects.postgresql import insert
 
     stmt = insert(table)
@@ -143,5 +152,24 @@ def _upsert(cfg, table, returning, set_lambda=None):
     else:
         stmt = stmt.on_conflict_do_nothing()
 
-    stmt = stmt.returning(*returning)
+    stmt = stmt.returning(
+        *returning, sort_by_parameter_order=sort_by_parameter_order
+    )
     return stmt
+
+
+_extensions = [
+    ("citext", (13,)),
+    ("hstore", (13,)),
+]
+
+
+@post_configure_engine.for_db("postgresql")
+def _create_citext_extension(url, engine, follower_ident):
+    with engine.connect() as conn:
+        for extension, min_version in _extensions:
+            if conn.dialect.server_version_info >= min_version:
+                conn.execute(
+                    text(f"CREATE EXTENSION IF NOT EXISTS {extension}")
+                )
+                conn.commit()
