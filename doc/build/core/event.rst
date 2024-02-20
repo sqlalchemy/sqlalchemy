@@ -143,18 +143,30 @@ this value can be supported::
 Events and Multiprocessing
 --------------------------
 
-Note that events and propagation via hooks occur locally to a Python process.
-In other words, events only propagate objects within the originating Python process.
-Thus, when using Python multiprocessing
-(or other approaches to create separate Python processes),
-there is no means by which a SQLAlchemy event gets transmitted to other processes.
+SQLAlchemy's event hooks are implemented as Python data structures
+associated with a particular pair of Python functions and objects.
+Event propagation itself is implemented as Python function calls.
 
-What happens if one forks the current Python process?
-If a Python process forks a new child process,
-existing event listeners will be copied to the child process at that point,
-along with the rest of the Python interpreter state,
-but there is no intrinsic mechanism for event listener registration
-to propagate to other already existing processes.
+From this model,
+we can describe the behavior of the event system in terms of multiple Python processes,
+such as a parent child forking a child process,
+in the same way we would think about any other datastructure / function operation.
+Event hooks registered in a parent process
+will be present in new child processes
+that are forked from that parent after the hooks have been registered,
+since the child process starts with
+a copy of all existing Python structures from the parent when it begins.
+Child processes that already exist before the hooks are registered
+will not receive those new event hooks,
+as changes made to Python structures in a parent process
+do not propagate to child processes.
+
+For the events themselves, these are Python function calls,
+which do not have any ability to propagate between processes.
+SQLAlchemy's event system does not implement any inter-process communication.
+It is possible to implement event hooks
+that use Python inter-process messaging within them,
+however this would need to be implemented by the user.
 
 Event Reference
 ---------------
