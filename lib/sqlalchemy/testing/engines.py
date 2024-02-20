@@ -368,7 +368,12 @@ def testing_engine(
                 True  # enable event blocks, helps with profiling
             )
 
-    if isinstance(engine.pool, pool.QueuePool):
+    if (
+        isinstance(engine.pool, pool.QueuePool)
+        and "pool" not in options
+        and "pool_timeout" not in options
+        and "max_overflow" not in options
+    ):
         engine.pool._timeout = 0
         engine.pool._max_overflow = 0
     if use_reaper:

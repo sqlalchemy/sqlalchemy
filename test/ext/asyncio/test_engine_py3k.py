@@ -3,6 +3,7 @@ import contextlib
 import inspect as stdlib_inspect
 from unittest.mock import patch
 
+from sqlalchemy import AssertionPool
 from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import delete
@@ -11,7 +12,11 @@ from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import NullPool
+from sqlalchemy import QueuePool
 from sqlalchemy import select
+from sqlalchemy import SingletonThreadPool
+from sqlalchemy import StaticPool
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
@@ -519,6 +524,77 @@ class AsyncEngineTest(EngineFixture):
         isolation_level = await conn.get_isolation_level()
 
         eq_(isolation_level, "SERIALIZABLE")
+
+    @testing.combinations(
+        (
+            AsyncAdaptedQueuePool,
+            True,
+        ),
+        (
+            QueuePool,
+            False,
+        ),
+        (NullPool, True),
+        (SingletonThreadPool, False),
+        (StaticPool, True),
+        (AssertionPool, True),
+        argnames="pool_cls,should_work",
+    )
+    @testing.variation("instantiate", [True, False])
+    @async_test
+    async def test_pool_classes(
+        self, async_testing_engine, pool_cls, instantiate, should_work
+    ):
+        """test #8771"""
+        if instantiate:
+            if pool_cls in (QueuePool, AsyncAdaptedQueuePool):
+                pool = pool_cls(creator=testing.db.pool._creator, timeout=10)
+            else:
+                pool = pool_cls(
+                    creator=testing.db.pool._creator,
+                )
+
+            options = {"pool": pool}
+        else:
+            if pool_cls in (QueuePool, AsyncAdaptedQueuePool):
+                options = {"poolclass": pool_cls, "pool_timeout": 10}
+            else:
+                options = {"poolclass": pool_cls}
+
+        if not should_work:
+            with expect_raises_message(
+                exc.ArgumentError,
+                f"Pool class {pool_cls.__name__} "
+                "cannot be used with asyncio engine",
+            ):
+                async_testing_engine(options=options)
+            return
+
+        e = async_testing_engine(options=options)
+
+        if pool_cls is AssertionPool:
+            async with e.connect() as conn:
+                result = await conn.scalar(select(1))
+                eq_(result, 1)
+            return
+
+        async def go():
+            async with e.connect() as conn:
+                result = await conn.scalar(select(1))
+                eq_(result, 1)
+                return result
+
+        eq_(await asyncio.gather(*[go() for i in range(10)]), [1] * 10)
+
+    def test_cant_use_async_pool_w_create_engine(self):
+        """supplemental test for #8771"""
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Pool class AsyncAdaptedQueuePool "
+            "cannot be used with non-asyncio engine",
+        ):
+            create_engine("sqlite://", poolclass=AsyncAdaptedQueuePool)
 
     @testing.requires.queue_pool
     @async_test
