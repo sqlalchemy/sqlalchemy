@@ -140,23 +140,21 @@ this value can be supported::
     # it to use the return value
     listen(UserContact.phone, "set", validate_phone, retval=True)
 
-Multiprocessing Support
------------------------
+Events and Multiprocessing
+--------------------------
 
-.. tip::
+Note that events and propagation via hooks occur locally to a Python process.
+In other words, events only propagate objects within the originating Python process.
+Thus, when using Python multiprocessing
+(or other approaches to create separate Python processes),
+there is no means by which a SQLAlchemy event gets transmitted to other processes.
 
-  Note that events and propagation via hooks occur locally to a Python process.
-  In other words, events only propagate objects within the originating Python process.
-  Thus, when using Python multiprocessing
-  (or other approaches to create separate Python processes),
-  there is no means by which a SQLAlchemy event gets transmitted to other processes.
-
-  What happens if one forks the current Python process?
-  If a Python process forks a new child process,
-  existing event listeners will be copied to the child process at that point,
-  along with the rest of the Python interpreter state,
-  but there is no intrinsic mechanism for event listener registration
-  to propagate to other already existing processes.
+What happens if one forks the current Python process?
+If a Python process forks a new child process,
+existing event listeners will be copied to the child process at that point,
+along with the rest of the Python interpreter state,
+but there is no intrinsic mechanism for event listener registration
+to propagate to other already existing processes.
 
 Event Reference
 ---------------
