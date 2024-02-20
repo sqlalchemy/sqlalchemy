@@ -188,6 +188,28 @@ sooner.
 
  :ref:`connections_toplevel`
 
+.. _error_pcls:
+
+Pool class cannot be used with asyncio engine (or vice versa)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :class:`_pool.QueuePool` pool class uses a ``thread.Lock`` object internally
+and is not compatible with asyncio.  If using the :func:`_asyncio.create_async_engine`
+function to create an :class:`.AsyncEngine`, the appropriate queue pool class
+is :class:`_pool.AsyncAdaptedQueuePool`, which is used automatically and does
+not need to be specified.
+
+In addition to :class:`_pool.AsyncAdaptedQueuePool`, the :class:`_pool.NullPool`
+and :class:`_pool.StaticPool` pool classes do not use locks and are also
+suitable for use with async engines.
+
+This error is also raised in reverse in the unlikely case that the
+:class:`_pool.AsyncAdaptedQueuePool` pool class is indicated explicitly with
+the :func:`_sa.create_engine` function.
+
+.. seealso::
+
+    :ref:`pooling_toplevel`
 
 .. _error_8s2b:
 

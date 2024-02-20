@@ -34,6 +34,7 @@ from sqlalchemy.engine import BindTyping
 from sqlalchemy.engine import default
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.base import Engine
+from sqlalchemy.pool import AsyncAdaptedQueuePool
 from sqlalchemy.pool import NullPool
 from sqlalchemy.pool import QueuePool
 from sqlalchemy.sql import column
@@ -2411,7 +2412,15 @@ class EngineEventsTest(fixtures.TestBase):
     @testing.combinations(True, False, argnames="close")
     def test_close_parameter(self, testing_engine, close):
         eng = testing_engine(
-            options=dict(pool_size=1, max_overflow=0, poolclass=QueuePool)
+            options=dict(
+                pool_size=1,
+                max_overflow=0,
+                poolclass=(
+                    QueuePool
+                    if not testing.db.dialect.is_async
+                    else AsyncAdaptedQueuePool
+                ),
+            )
         )
 
         conn = eng.connect()

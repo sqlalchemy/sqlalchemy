@@ -47,8 +47,18 @@ class QueuePool(Pool):
     that imposes a limit on the number of open connections.
 
     :class:`.QueuePool` is the default pooling implementation used for
-    all :class:`_engine.Engine` objects, unless the SQLite dialect is
-    in use with a ``:memory:`` database.
+    all :class:`_engine.Engine` objects other than SQLite with a ``:memory:``
+    database.
+
+    The :class:`.QueuePool` class **is not compatible** with asyncio and
+    :func:`_asyncio.create_async_engine`.  The
+    :class:`.AsyncAdaptedQueuePool` class is used automatically when
+    using :func:`_asyncio.create_async_engine`, if no other kind of pool
+    is specified.
+
+    .. seealso::
+
+        :class:`.AsyncAdaptedQueuePool`
 
     """
 
@@ -123,6 +133,7 @@ class QueuePool(Pool):
           :class:`_pool.Pool` constructor.
 
         """
+
         Pool.__init__(self, creator, **kw)
         self._pool = self._queue_class(pool_size, use_lifo=use_lifo)
         self._overflow = 0 - pool_size
@@ -248,6 +259,18 @@ class QueuePool(Pool):
 
 
 class AsyncAdaptedQueuePool(QueuePool):
+    """An asyncio-compatible version of :class:`.QueuePool`.
+
+    This pool is used by default when using :class:`.AsyncEngine` engines that
+    were generated from :func:`_asyncio.create_async_engine`.   It uses an
+    asyncio-compatible queue implementation that does not use
+    ``threading.Lock``.
+
+    The arguments and operation of :class:`.AsyncAdaptedQueuePool` are
+    otherwise identical to that of :class:`.QueuePool`.
+
+    """
+
     _is_asyncio = True  # type: ignore[assignment]
     _queue_class: Type[sqla_queue.QueueCommon[ConnectionPoolEntry]] = (
         sqla_queue.AsyncAdaptedQueue
@@ -269,6 +292,9 @@ class NullPool(Pool):
     Reconnect-related functions such as ``recycle`` and connection
     invalidation are not supported by this Pool implementation, since
     no connections are held persistently.
+
+    The :class:`.NullPool` class **is compatible** with asyncio and
+    :func:`_asyncio.create_async_engine`.
 
     """
 
@@ -316,6 +342,9 @@ class SingletonThreadPool(Pool):
        however in its current status it is generally used only for test
        scenarios using a SQLite ``:memory:`` database and is not recommended
        for production use.
+
+    The :class:`.SingletonThreadPool` class **is not compatible** with asyncio
+    and :func:`_asyncio.create_async_engine`.
 
 
     Options are the same as those of :class:`_pool.Pool`, as well as:
@@ -425,6 +454,8 @@ class StaticPool(Pool):
     invalidation (which is also used to support auto-reconnect) are only
     partially supported right now and may not yield good results.
 
+    The :class:`.StaticPool` class **is compatible** with asyncio and
+    :func:`_asyncio.create_async_engine`.
 
     """
 
@@ -488,6 +519,9 @@ class AssertionPool(Pool):
     This will raise an exception if more than one connection is checked out
     at a time.  Useful for debugging code that is using more connections
     than desired.
+
+    The :class:`.AssertionPool` class **is compatible** with asyncio and
+    :func:`_asyncio.create_async_engine`.
 
     """
 

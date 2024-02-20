@@ -12,6 +12,8 @@ from sqlalchemy.engine import base
 from sqlalchemy.engine import characteristics
 from sqlalchemy.engine import default
 from sqlalchemy.engine import url
+from sqlalchemy.pool import AsyncAdaptedQueuePool
+from sqlalchemy.pool import QueuePool
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
@@ -1345,10 +1347,17 @@ class IsolationLevelTest(fixtures.TestBase):
             eq_(c2.get_isolation_level(), self._default_isolation_level())
 
     def test_per_connection(self):
-        from sqlalchemy.pool import QueuePool
 
         eng = testing_engine(
-            options=dict(poolclass=QueuePool, pool_size=2, max_overflow=0)
+            options=dict(
+                poolclass=(
+                    QueuePool
+                    if not testing.db.dialect.is_async
+                    else AsyncAdaptedQueuePool
+                ),
+                pool_size=2,
+                max_overflow=0,
+            )
         )
 
         c1 = eng.connect()
