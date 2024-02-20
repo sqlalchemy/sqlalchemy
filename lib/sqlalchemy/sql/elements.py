@@ -1396,12 +1396,14 @@ class ColumnElement(
     @overload
     def self_group(
         self: ColumnElement[_T], against: Optional[OperatorType] = None
-    ) -> ColumnElement[_T]: ...
+    ) -> ColumnElement[_T]:
+        ...
 
     @overload
     def self_group(
         self: ColumnElement[Any], against: Optional[OperatorType] = None
-    ) -> ColumnElement[Any]: ...
+    ) -> ColumnElement[Any]:
+        ...
 
     def self_group(
         self, against: Optional[OperatorType] = None
