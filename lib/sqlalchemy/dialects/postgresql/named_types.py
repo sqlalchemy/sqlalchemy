@@ -416,10 +416,10 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
         data_type: _TypeEngineArgument[Any],
         *,
         collation: Optional[str] = None,
-        default: Optional[Union[str, elements.TextClause]] = None,
+        default: Union[elements.TextClause, str, None] = None,
         constraint_name: Optional[str] = None,
         not_null: Optional[bool] = None,
-        check: Optional[str] = None,
+        check: Union[elements.TextClause, str, None] = None,
         create_type: bool = True,
         **kw: Any,
     ):
@@ -463,7 +463,7 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
         self.default = default
         self.collation = collation
         self.constraint_name = constraint_name
-        self.not_null = not_null
+        self.not_null = bool(not_null)
         if check is not None:
             check = coercions.expect(roles.DDLExpressionRole, check)
         self.check = check
@@ -473,6 +473,20 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
     @classmethod
     def __test_init__(cls):
         return cls("name", sqltypes.Integer)
+
+    def adapt(self, impl, **kw):
+        if self.default:
+            kw["default"] = self.default
+        if self.constraint_name is not None:
+            kw["constraint_name"] = self.constraint_name
+        if self.not_null:
+            kw["not_null"] = self.not_null
+        if self.check is not None:
+            kw["check"] = str(self.check)
+        if self.create_type:
+            kw["create_type"] = self.create_type
+
+        return super().adapt(impl, **kw)
 
 
 class CreateEnumType(schema._CreateDropBase):
