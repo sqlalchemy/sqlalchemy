@@ -35,6 +35,7 @@ from uuid import UUID as _python_UUID
 from .base import MySQLCompiler
 from .base import MySQLDialect
 from .base import MySQLExecutionContext
+from .mariadb import MariaDBDialect
 from ... import sql
 from ... import util
 from ...sql import sqltypes
@@ -279,4 +280,12 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
         )
 
 
+class MariaDBDialect_mariadbconnector(
+    MariaDBDialect, MySQLDialect_mariadbconnector
+):
+    supports_statement_cache = True
+    _allows_uuid_binds = False
+
+
 dialect = MySQLDialect_mariadbconnector
+mariadb_dialect = MariaDBDialect_mariadbconnector
