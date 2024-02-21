@@ -2453,6 +2453,18 @@ class PGDDLCompiler(compiler.DDLCompiler):
         if pg_opts["using"]:
             table_opts.append("\n USING %s" % pg_opts["using"])
 
+        if pg_opts["with"]:
+            with_opts = []
+            for param, value in pg_opts["with"].items():
+                if value is not None:
+                    processed_value = self.sql_compiler.process(
+                        sql.literal(value), literal_binds=True
+                    )
+                    with_opts.append("%s = %s" % (param, processed_value))
+                else:
+                    with_opts.append("%s" % param)
+            table_opts.append("\n WITH (%s)" % (", ".join(with_opts)))
+
         if pg_opts["with_oids"] is True:
             table_opts.append("\n WITH OIDS")
         elif pg_opts["with_oids"] is False:
@@ -3067,6 +3079,7 @@ class PGDialect(default.DefaultDialect):
                 "ignore_search_path": False,
                 "tablespace": None,
                 "partition_by": None,
+                "with": {},
                 "with_oids": None,
                 "on_commit": None,
                 "inherits": None,

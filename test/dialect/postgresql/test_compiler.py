@@ -552,6 +552,34 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "PARTITION BY RANGE (part_column)",
         )
 
+    def test_create_table_with(self):
+        m = MetaData()
+
+        tbl = Table(
+            "atable",
+            m,
+            Column("id", Integer),
+            postgresql_with={
+                "fillfactor": 30,
+                "autovacuum_enabled": False,
+                "autovacuum_analyze_scale_factor": 0.2,
+                "vacuum_index_cleanup": "auto",
+                "vacuum_truncate": None,  # default true
+            },
+        )
+
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE atable (id INTEGER) "
+            "WITH ("
+            "fillfactor = 30, "
+            "autovacuum_enabled = false, "
+            "autovacuum_analyze_scale_factor = 0.2, "
+            "vacuum_index_cleanup = 'auto', "
+            "vacuum_truncate"
+            ")",
+        )
+
     def test_create_table_with_oids(self):
         m = MetaData()
         tbl = Table(
