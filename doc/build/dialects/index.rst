@@ -119,7 +119,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Teradata Vantage                               | teradatasqlalchemy_                   |
 +------------------------------------------------+---------------------------------------+
-| YugabyteDB                                     | sqlalchemy-yugabytedb_                 |
+| YugabyteDB                                     | sqlalchemy-yugabytedb_                |
 +------------------------------------------------+---------------------------------------+
 
 .. [1] Supports version 1.3.x only at the moment.
