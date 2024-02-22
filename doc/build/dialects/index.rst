@@ -119,6 +119,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Teradata Vantage                               | teradatasqlalchemy_                   |
 +------------------------------------------------+---------------------------------------+
+| YugabyteDB                                     | sqlalchemy-yugabytedb_                |
++------------------------------------------------+---------------------------------------+
 
 .. [1] Supports version 1.3.x only at the moment.
 
@@ -150,3 +152,4 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _sqlalchemy-sybase: https://pypi.org/project/sqlalchemy-sybase/
 .. _firebolt-sqlalchemy: https://pypi.org/project/firebolt-sqlalchemy/
 .. _pyathena: https://github.com/laughingman7743/PyAthena/
+.. _sqlalchemy-yugabytedb: https://pypi.org/project/sqlalchemy-yugabytedb/
