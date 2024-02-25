@@ -25,6 +25,9 @@ from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
+from typing_extensions import Concatenate
+from typing_extensions import ParamSpec
+
 from . import engine
 from .base import ReversibleProxy
 from .base import StartableContext
@@ -75,6 +78,7 @@ if TYPE_CHECKING:
 
 _AsyncSessionBind = Union["AsyncEngine", "AsyncConnection"]
 
+_P = ParamSpec("_P")
 _T = TypeVar("_T", bound=Any)
 _Ts = TypeVarTuple("_Ts")
 
@@ -336,7 +340,10 @@ class AsyncSession(ReversibleProxy[Session]):
         )
 
     async def run_sync(
-        self, fn: Callable[..., _T], *arg: Any, **kw: Any
+        self,
+        fn: Callable[Concatenate[Session, _P], _T],
+        *arg: _P.args,
+        **kw: _P.kwargs,
     ) -> _T:
         """Invoke the given synchronous (i.e. not async) callable,
         passing a synchronous-style :class:`_orm.Session` as the first
@@ -390,7 +397,9 @@ class AsyncSession(ReversibleProxy[Session]):
             :ref:`session_run_sync`
         """  # noqa: E501
 
-        return await greenlet_spawn(fn, self.sync_session, *arg, **kw)
+        return await greenlet_spawn(
+            fn, self.sync_session, *arg, _require_await=False, **kw
+        )
 
     @overload
     async def execute(
