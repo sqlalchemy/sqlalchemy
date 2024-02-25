@@ -25,9 +25,6 @@ from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
-from typing_extensions import Concatenate
-from typing_extensions import ParamSpec
-
 from . import engine
 from .base import ReversibleProxy
 from .base import StartableContext
@@ -41,6 +38,8 @@ from ...orm import Session
 from ...orm import SessionTransaction
 from ...orm import state as _instance_state
 from ...util.concurrency import greenlet_spawn
+from ...util.typing import Concatenate
+from ...util.typing import ParamSpec
 from ...util.typing import TupleAny
 from ...util.typing import TypeVarTuple
 from ...util.typing import Unpack
