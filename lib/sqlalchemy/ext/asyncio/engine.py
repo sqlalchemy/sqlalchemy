@@ -21,9 +21,6 @@ from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
-from typing_extensions import Concatenate
-from typing_extensions import ParamSpec
-
 from . import exc as async_exc
 from .base import asyncstartablecontext
 from .base import GeneratorStartableContext
@@ -43,6 +40,8 @@ from ...engine.base import NestedTransaction
 from ...engine.base import Transaction
 from ...exc import ArgumentError
 from ...util.concurrency import greenlet_spawn
+from ...util.typing import Concatenate
+from ...util.typing import ParamSpec
 from ...util.typing import TupleAny
 from ...util.typing import TypeVarTuple
 from ...util.typing import Unpack
