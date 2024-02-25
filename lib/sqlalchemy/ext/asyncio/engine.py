@@ -40,6 +40,8 @@ from ...engine.base import NestedTransaction
 from ...engine.base import Transaction
 from ...exc import ArgumentError
 from ...util.concurrency import greenlet_spawn
+from ...util.typing import Concatenate
+from ...util.typing import ParamSpec
 from ...util.typing import TupleAny
 from ...util.typing import TypeVarTuple
 from ...util.typing import Unpack
@@ -63,6 +65,7 @@ if TYPE_CHECKING:
     from ...sql.base import Executable
     from ...sql.selectable import TypedReturnsRows
 
+_P = ParamSpec("_P")
 _T = TypeVar("_T", bound=Any)
 _Ts = TypeVarTuple("_Ts")
 
@@ -816,7 +819,10 @@ class AsyncConnection(
             yield result.scalars()
 
     async def run_sync(
-        self, fn: Callable[..., _T], *arg: Any, **kw: Any
+        self,
+        fn: Callable[Concatenate[Connection, _P], _T],
+        *arg: _P.args,
+        **kw: _P.kwargs,
     ) -> _T:
         """Invoke the given synchronous (i.e. not async) callable,
         passing a synchronous-style :class:`_engine.Connection` as the first
@@ -880,7 +886,9 @@ class AsyncConnection(
 
         """  # noqa: E501
 
-        return await greenlet_spawn(fn, self._proxied, *arg, **kw)
+        return await greenlet_spawn(
+            fn, self._proxied, *arg, _require_await=False, **kw
+        )
 
     def __await__(self) -> Generator[Any, None, AsyncConnection]:
         return self.start().__await__()
