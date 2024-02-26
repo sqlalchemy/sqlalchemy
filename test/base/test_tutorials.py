@@ -6,9 +6,11 @@ import os
 import re
 import sys
 
+from sqlalchemy.engine.url import make_url
 from sqlalchemy.testing import config
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import requires
+from sqlalchemy.testing import skip_test
 
 
 class DocTest(fixtures.TestBase):
@@ -65,12 +67,9 @@ class DocTest(fixtures.TestBase):
             doctest.ELLIPSIS
             | doctest.NORMALIZE_WHITESPACE
             | doctest.IGNORE_EXCEPTION_DETAIL
-            | _get_allow_unicode_flag()
         )
         runner = doctest.DocTestRunner(
-            verbose=None,
-            optionflags=optionflags,
-            checker=_get_unicode_checker(),
+            verbose=config.options.verbose >= 2, optionflags=optionflags
         )
         parser = doctest.DocTestParser()
         globs = {"print_function": print}
@@ -163,90 +162,28 @@ class DocTest(fixtures.TestBase):
         )
 
     def test_orm_queryguide_inheritance(self):
-        self._run_doctest(
-            "orm/queryguide/inheritance.rst",
-        )
+        self._run_doctest("orm/queryguide/inheritance.rst")
 
     @requires.update_from
     def test_orm_queryguide_dml(self):
-        self._run_doctest(
-            "orm/queryguide/dml.rst",
-        )
+        self._run_doctest("orm/queryguide/dml.rst")
 
     def test_orm_large_collections(self):
-        self._run_doctest(
-            "orm/large_collections.rst",
-        )
+        self._run_doctest("orm/large_collections.rst")
 
     def test_orm_queryguide_columns(self):
-        self._run_doctest(
-            "orm/queryguide/columns.rst",
-        )
+        self._run_doctest("orm/queryguide/columns.rst")
 
     def test_orm_quickstart(self):
         self._run_doctest("orm/quickstart.rst")
 
-
-# unicode checker courtesy pytest
-
-
-def _get_unicode_checker():
-    """
-    Returns a doctest.OutputChecker subclass that takes in account the
-    ALLOW_UNICODE option to ignore u'' prefixes in strings. Useful
-    when the same doctest should run in Python 2 and Python 3.
-
-    An inner class is used to avoid importing "doctest" at the module
-    level.
-    """
-    if hasattr(_get_unicode_checker, "UnicodeOutputChecker"):
-        return _get_unicode_checker.UnicodeOutputChecker()
-
-    import doctest
-    import re
-
-    class UnicodeOutputChecker(doctest.OutputChecker):
-        """
-        Copied from doctest_nose_plugin.py from the nltk project:
-            https://github.com/nltk/nltk
-        """
-
-        _literal_re = re.compile(r"(\W|^)[uU]([rR]?[\'\"])", re.UNICODE)
-
-        def check_output(self, want, got, optionflags):
-            res = doctest.OutputChecker.check_output(
-                self, want, got, optionflags
-            )
-            if res:
-                return True
-
-            if not (optionflags & _get_allow_unicode_flag()):
-                return False
-
-            else:  # pragma: no cover
-                # the code below will end up executed only in Python 2 in
-                # our tests, and our coverage check runs in Python 3 only
-                def remove_u_prefixes(txt):
-                    return re.sub(self._literal_re, r"\1\2", txt)
-
-                want = remove_u_prefixes(want)
-                got = remove_u_prefixes(got)
-                res = doctest.OutputChecker.check_output(
-                    self, want, got, optionflags
-                )
-                return res
-
-    _get_unicode_checker.UnicodeOutputChecker = UnicodeOutputChecker
-    return _get_unicode_checker.UnicodeOutputChecker()
-
-
-def _get_allow_unicode_flag():
-    """
-    Registers and returns the ALLOW_UNICODE flag.
-    """
-    import doctest
-
-    return doctest.register_optionflag("ALLOW_UNICODE")
+    @requires.greenlet
+    def test_asyncio(self):
+        try:
+            make_url("sqlite+aiosqlite://").get_dialect().import_dbapi()
+        except ImportError:
+            skip_test("missing aiosqile")
+        self._run_doctest("orm/extensions/asyncio.rst")
 
 
 # increase number to force pipeline run. 1
