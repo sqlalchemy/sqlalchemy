@@ -459,7 +459,7 @@ below.
    attributes (``x`` and ``y`` in this case) might change.
 
    Other forms of the above pattern include Python standard library
-   :ref:`cached_property <https://docs.python.org/3/library/functools.html#functools.cached_property>`
+   `cached_property <https://docs.python.org/3/library/functools.html#functools.cached_property>`_
    decorator (which is cached, and not re-computed each time), as well as SQLAlchemy's :class:`.hybrid_property` decorator which
    allows for attributes that can work for SQL querying as well.
 

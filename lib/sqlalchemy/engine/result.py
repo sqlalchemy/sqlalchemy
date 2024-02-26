@@ -1232,7 +1232,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
 
     @deprecated(
         "2.1.0",
-        "The :method:`.Result.tuples` method is deprecated, :class:`.Row` "
+        "The :meth:`.Result.tuples` method is deprecated, :class:`.Row` "
         "now behaves like a tuple and can unpack types directly.",
     )
     def tuples(self) -> TupleResult[Tuple[Unpack[_Ts]]]:

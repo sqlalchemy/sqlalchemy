@@ -130,7 +130,7 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[Unpack[_Ts]]]):
 
     @deprecated(
         "2.1.0",
-        "The :method:`.AsyncResult.tuples` method is deprecated, "
+        "The :meth:`.AsyncResult.tuples` method is deprecated, "
         ":class:`.Row` now behaves like a tuple and can unpack types "
         "directly.",
     )

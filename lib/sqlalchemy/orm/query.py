@@ -300,7 +300,7 @@ class Query(
 
     @deprecated(
         "2.1.0",
-        "The :method:`.Query.tuples` method is deprecated, :class:`.Row` "
+        "The :meth:`.Query.tuples` method is deprecated, :class:`.Row` "
         "now behaves like a tuple and can unpack types directly.",
     )
     def tuples(self: Query[_O]) -> Query[Tuple[_O]]:
