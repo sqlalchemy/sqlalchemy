@@ -193,9 +193,9 @@ configuration::
             async with session.begin():
                 session.add_all(
                     [
-                        A(bs=[B(), B()], data="a1"),
+                        A(bs=[B(data="b1"), B(data="b2")], data="a1"),
                         A(bs=[], data="a2"),
-                        A(bs=[B(), B()], data="a3"),
+                        A(bs=[B(data="b3"), B(data="b4")], data="a3"),
                     ]
                 )
 
@@ -208,11 +208,11 @@ configuration::
 
             result = await session.execute(stmt)
 
-            for a1 in result.scalars():
-                print(a1)
-                print(f"created at: {a1.create_date}")
-                for b1 in a1.bs:
-                    print(b1)
+            for a in result.scalars():
+                print(a)
+                print(f"created at: {a.create_date}")
+                for b in a.bs:
+                    print(b, b.data)
 
             result = await session.execute(select(A).order_by(A.id).limit(1))
 
@@ -229,7 +229,7 @@ configuration::
             # alternatively, AsyncAttrs may be used to access any attribute
             # as an awaitable (new in 2.0.13)
             for b1 in await a1.awaitable_attrs.bs:
-                print(b1)
+                print(b1, b1.data)
 
 
     async def async_main() -> None:
