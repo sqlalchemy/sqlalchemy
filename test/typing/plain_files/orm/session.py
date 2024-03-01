@@ -97,6 +97,12 @@ with Session(e) as sess:
         User.id
     ).offset(User.id)
 
+    # test #11083
+
+    with sess.begin() as tx:
+        # EXPECTED_TYPE: SessionTransaction
+        reveal_type(tx)
+
 # more result tests in typed_results.py
 
 
