@@ -664,8 +664,7 @@ class CollectionAdapter:
             return self.attr.fire_append_wo_mutation_event(
                 self.owner_state, self.owner_state.dict, item, initiator, key
             )
-        else:
-            return item
+        return item
 
     def fire_append_event(self, item, initiator=None, key=NO_KEY):
         """Notify that a entity has entered the collection.
@@ -686,8 +685,7 @@ class CollectionAdapter:
             return self.attr.fire_append_event(
                 self.owner_state, self.owner_state.dict, item, initiator, key
             )
-        else:
-            return item
+        return item
 
     def _fire_remove_event_bulk(self, items, initiator=None, key=NO_KEY):
         if not items:
