@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm, performance, regression
+    :tickets: 11085
+
+    Adjusted the fix made in :ticket:`10570`, released in 2.0.23, where new
+    logic was added to reconcile possibly changing bound parameter values
+    across cache key generations used within the :func:`_orm.with_expression`
+    construct.  The new logic changes the approach by which the new bound
+    parameter values are associated with the statement, avoiding the need to
+    deep-copy the statement which can result in a significant performance
+    penalty for very deep / complex SQL constructs.  The new approach no longer
+    requires this deep-copy step.
