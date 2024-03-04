@@ -1034,6 +1034,8 @@ class Load(_AbstractLoad):
     def _adapt_cached_option_to_uncached_option(
         self, context: QueryContext, uncached_opt: ORMOption
     ) -> ORMOption:
+        if uncached_opt is self:
+            return self
         return self._adjust_for_extra_criteria(context)
 
     def _prepend_path(self, path: PathRegistry) -> Load:
@@ -1049,47 +1051,51 @@ class Load(_AbstractLoad):
         returning a new instance of this ``Load`` object.
 
         """
-        orig_query = context.compile_state.select_statement
-
-        orig_cache_key: Optional[CacheKey] = None
-        replacement_cache_key: Optional[CacheKey] = None
-        found_crit = False
-
-        def process(opt: _LoadElement) -> _LoadElement:
-            nonlocal orig_cache_key, replacement_cache_key, found_crit
-
-            found_crit = True
-
-            if orig_cache_key is None or replacement_cache_key is None:
-                orig_cache_key = orig_query._generate_cache_key()
-                replacement_cache_key = context.query._generate_cache_key()
-
-            if replacement_cache_key is not None:
-                assert orig_cache_key is not None
-
-                opt._extra_criteria = tuple(
-                    replacement_cache_key._apply_params_to_element(
-                        orig_cache_key, crit
-                    )
-                    for crit in opt._extra_criteria
-                )
-
-            return opt
 
         # avoid generating cache keys for the queries if we don't
         # actually have any extra_criteria options, which is the
         # common case
-        new_context = tuple(
-            process(value._clone()) if value._extra_criteria else value
-            for value in self.context
-        )
-
-        if found_crit:
-            cloned = self._clone()
-            cloned.context = new_context
-            return cloned
+        for value in self.context:
+            if value._extra_criteria:
+                break
         else:
             return self
+
+        replacement_cache_key = context.query._generate_cache_key()
+
+        if replacement_cache_key is None:
+            return self
+
+        orig_query = context.compile_state.select_statement
+        orig_cache_key = orig_query._generate_cache_key()
+        assert orig_cache_key is not None
+
+        def process(
+            opt: _LoadElement,
+            replacement_cache_key: CacheKey,
+            orig_cache_key: CacheKey,
+        ) -> _LoadElement:
+            cloned_opt = opt._clone()
+
+            cloned_opt._extra_criteria = tuple(
+                replacement_cache_key._apply_params_to_element(
+                    orig_cache_key, crit
+                )
+                for crit in cloned_opt._extra_criteria
+            )
+
+            return cloned_opt
+
+        cloned = self._clone()
+        cloned.context = tuple(
+            (
+                process(value, replacement_cache_key, orig_cache_key)
+                if value._extra_criteria
+                else value
+            )
+            for value in self.context
+        )
+        return cloned
 
     def _reconcile_query_entities_with_us(self, mapper_entities, raiseerr):
         """called at process time to allow adjustment of the root
