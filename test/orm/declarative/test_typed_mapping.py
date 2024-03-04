@@ -895,7 +895,9 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         ),
         ("index", True, lambda column: column.index is True),
         ("index", _NoArg.NO_ARG, lambda column: column.index is None),
+        ("index", False, lambda column: column.index is False),
         ("unique", True, lambda column: column.unique is True),
+        ("unique", False, lambda column: column.unique is False),
         ("autoincrement", True, lambda column: column.autoincrement is True),
         ("system", True, lambda column: column.system is True),
         ("primary_key", True, lambda column: column.primary_key is True),
@@ -1052,6 +1054,32 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 getattr(mc._attribute_options, f"dataclasses_{argname}"),
                 argument,
             )
+
+    @testing.combinations(("index",), ("unique",), argnames="paramname")
+    @testing.combinations((True,), (False,), (None,), argnames="orig")
+    @testing.combinations((True,), (False,), (None,), argnames="merging")
+    def test_index_unique_combinations(
+        self, paramname, orig, merging, decl_base
+    ):
+        """test #11091"""
+
+        # anno only: global myint
+
+        amc = mapped_column(**{paramname: merging})
+        myint = Annotated[int, amc]
+
+        mc = mapped_column(**{paramname: orig})
+
+        class User(decl_base):
+            __tablename__ = "user"
+            id: Mapped[int] = mapped_column(primary_key=True)
+            myname: Mapped[myint] = mc
+
+        result = getattr(User.__table__.c.myname, paramname)
+        if orig is None:
+            is_(result, merging)
+        else:
+            is_(result, orig)
 
     def test_pep484_newtypes_as_typemap_keys(
         self, decl_base: Type[DeclarativeBase]
