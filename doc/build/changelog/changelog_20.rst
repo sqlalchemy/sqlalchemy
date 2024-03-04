@@ -10,7 +10,66 @@
 
 .. changelog::
     :version: 2.0.28
-    :include_notes_from: unreleased_20
+    :released: March 4, 2024
+
+    .. change::
+        :tags: engine, usecase
+        :tickets: 10974
+
+        Added new core execution option
+        :paramref:`_engine.Connection.execution_options.preserve_rowcount`. When
+        set, the ``cursor.rowcount`` attribute from the DBAPI cursor will be
+        unconditionally memoized at statement execution time, so that whatever
+        value the DBAPI offers for any kind of statement will be available using
+        the :attr:`_engine.CursorResult.rowcount` attribute from the
+        :class:`_engine.CursorResult`.  This allows the rowcount to be accessed for
+        statments such as INSERT and SELECT, to the degree supported by the DBAPI
+        in use. The :ref:`engine_insertmanyvalues` also supports this option and
+        will ensure :attr:`_engine.CursorResult.rowcount` is correctly set for a
+        bulk INSERT of rows when set.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 11010
+
+        Fixed regression caused by :ticket:`9779` where using the "secondary" table
+        in a relationship ``and_()`` expression would fail to be aliased to match
+        how the "secondary" table normally renders within a
+        :meth:`_sql.Select.join` expression, leading to an invalid query.
+
+    .. change::
+        :tags: bug, orm, performance, regression
+        :tickets: 11085
+
+        Adjusted the fix made in :ticket:`10570`, released in 2.0.23, where new
+        logic was added to reconcile possibly changing bound parameter values
+        across cache key generations used within the :func:`_orm.with_expression`
+        construct.  The new logic changes the approach by which the new bound
+        parameter values are associated with the statement, avoiding the need to
+        deep-copy the statement which can result in a significant performance
+        penalty for very deep / complex SQL constructs.  The new approach no longer
+        requires this deep-copy step.
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 8771
+
+        An error is raised if a :class:`.QueuePool` or other non-asyncio pool class
+        is passed to :func:`_asyncio.create_async_engine`.  This engine only
+        accepts asyncio-compatible pool classes including
+        :class:`.AsyncAdaptedQueuePool`. Other pool classes such as
+        :class:`.NullPool` are compatible with both synchronous and asynchronous
+        engines as they do not perform any locking.
+
+        .. seealso::
+
+            :ref:`pool_api`
+
+
+    .. change::
+        :tags: change, tests
+
+        pytest support in the tox.ini file has been updated to support pytest 8.1.
 
 .. changelog::
     :version: 2.0.27
