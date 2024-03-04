@@ -1,3 +1,4 @@
+from collections import defaultdict
 import collections.abc as collections_abc
 from contextlib import contextmanager
 import csv
@@ -1733,6 +1734,29 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(proxy.key, "value")
         eq_(proxy._mapping["key"], "value")
 
+    @contextmanager
+    def cursor_wrapper(self, engine):
+        calls = defaultdict(int)
+
+        class CursorWrapper:
+            def __init__(self, real_cursor):
+                self.real_cursor = real_cursor
+
+            def __getattr__(self, name):
+                calls[name] += 1
+                return getattr(self.real_cursor, name)
+
+        create_cursor = engine.dialect.execution_ctx_cls.create_cursor
+
+        def new_create(context):
+            cursor = create_cursor(context)
+            return CursorWrapper(cursor)
+
+        with patch.object(
+            engine.dialect.execution_ctx_cls, "create_cursor", new_create
+        ):
+            yield calls
+
     def test_no_rowcount_on_selects_inserts(self, metadata, testing_engine):
         """assert that rowcount is only called on deletes and updates.
 
@@ -1744,33 +1768,71 @@ class CursorResultTest(fixtures.TablesTest):
 
         engine = testing_engine()
 
+        req = testing.requires
+
         t = Table("t1", metadata, Column("data", String(10)))
         metadata.create_all(engine)
-
-        with patch.object(
-            engine.dialect.execution_ctx_cls, "rowcount"
-        ) as mock_rowcount:
+        count = 0
+        with self.cursor_wrapper(engine) as call_counts:
             with engine.begin() as conn:
-                mock_rowcount.__get__ = Mock()
                 conn.execute(
                     t.insert(),
                     [{"data": "d1"}, {"data": "d2"}, {"data": "d3"}],
                 )
-
-                eq_(len(mock_rowcount.__get__.mock_calls), 0)
+                if (
+                    req.rowcount_always_cached.enabled
+                    or req.rowcount_always_cached_on_insert.enabled
+                ):
+                    count += 1
+                eq_(call_counts["rowcount"], count)
 
                 eq_(
                     conn.execute(t.select()).fetchall(),
                     [("d1",), ("d2",), ("d3",)],
                 )
-                eq_(len(mock_rowcount.__get__.mock_calls), 0)
+                if req.rowcount_always_cached.enabled:
+                    count += 1
+                eq_(call_counts["rowcount"], count)
 
                 conn.execute(t.update(), {"data": "d4"})
 
-                eq_(len(mock_rowcount.__get__.mock_calls), 1)
+                count += 1
+                eq_(call_counts["rowcount"], count)
 
                 conn.execute(t.delete())
-                eq_(len(mock_rowcount.__get__.mock_calls), 2)
+                count += 1
+                eq_(call_counts["rowcount"], count)
+
+    def test_rowcount_always_called_when_preserve_rowcount(
+        self, metadata, testing_engine
+    ):
+        """assert that rowcount is called on any statement when
+        ``preserve_rowcount=True``.
+
+        """
+
+        engine = testing_engine()
+
+        t = Table("t1", metadata, Column("data", String(10)))
+        metadata.create_all(engine)
+
+        with self.cursor_wrapper(engine) as call_counts:
+            with engine.begin() as conn:
+                conn = conn.execution_options(preserve_rowcount=True)
+                # Do not use insertmanyvalues on any driver
+                conn.execute(t.insert(), {"data": "d1"})
+
+                eq_(call_counts["rowcount"], 1)
+
+                eq_(conn.execute(t.select()).fetchall(), [("d1",)])
+                eq_(call_counts["rowcount"], 2)
+
+                conn.execute(t.update(), {"data": "d4"})
+
+                eq_(call_counts["rowcount"], 3)
+
+                conn.execute(t.delete())
+                eq_(call_counts["rowcount"], 4)
 
     def test_row_is_sequence(self):
         row = Row(object(), [None], {}, ["value"])

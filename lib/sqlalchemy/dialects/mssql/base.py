@@ -1841,7 +1841,6 @@ class MSExecutionContext(default.DefaultExecutionContext):
     _enable_identity_insert = False
     _select_lastrowid = False
     _lastrowid = None
-    _rowcount = None
 
     dialect: MSDialect
 
@@ -1960,13 +1959,6 @@ class MSExecutionContext(default.DefaultExecutionContext):
 
     def get_lastrowid(self):
         return self._lastrowid
-
-    @property
-    def rowcount(self):
-        if self._rowcount is not None:
-            return self._rowcount
-        else:
-            return self.cursor.rowcount
 
     def handle_dbapi_exception(self, e):
         if self._enable_identity_insert:

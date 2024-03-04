@@ -24,6 +24,7 @@ core_execution_options = {
     "stream_results": "bool",
     "max_row_buffer": "int",
     "yield_per": "int",
+    "preserve_rowcount": "bool",
 }
 
 orm_dql_execution_options = {

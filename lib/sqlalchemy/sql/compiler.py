@@ -602,7 +602,7 @@ class _InsertManyValuesBatch(NamedTuple):
     replaced_parameters: _DBAPIAnyExecuteParams
     processed_setinputsizes: Optional[_GenericSetInputSizesType]
     batch: Sequence[_DBAPISingleExecuteParams]
-    batch_size: int
+    current_batch_size: int
     batchnum: int
     total_batches: int
     rows_sorted: bool
@@ -5448,7 +5448,7 @@ class SQLCompiler(Compiled):
                     param,
                     generic_setinputsizes,
                     [param],
-                    batch_size,
+                    1,
                     batchnum,
                     lenparams,
                     sort_by_parameter_order,
@@ -5479,7 +5479,7 @@ class SQLCompiler(Compiled):
                 ),
             )
 
-        batches = list(parameters)
+        batches = cast("List[Sequence[Any]]", list(parameters))
 
         processed_setinputsizes: Optional[_GenericSetInputSizesType] = None
         batchnum = 1
@@ -5573,8 +5573,12 @@ class SQLCompiler(Compiled):
                 )
 
         while batches:
-            batch = cast("Sequence[Any]", batches[0:batch_size])
+            batch = batches[0:batch_size]
             batches[0:batch_size] = []
+            if batches:
+                current_batch_size = batch_size
+            else:
+                current_batch_size = len(batch)
 
             if generic_setinputsizes:
                 # if setinputsizes is present, expand this collection to
@@ -5584,7 +5588,7 @@ class SQLCompiler(Compiled):
                     (new_key, len_, typ)
                     for new_key, len_, typ in (
                         (f"{key}_{index}", len_, typ)
-                        for index in range(len(batch))
+                        for index in range(current_batch_size)
                         for key, len_, typ in generic_setinputsizes
                     )
                 ]
@@ -5594,6 +5598,9 @@ class SQLCompiler(Compiled):
                 num_ins_params = imv.num_positional_params_counted
 
                 batch_iterator: Iterable[Sequence[Any]]
+                extra_params_left: Sequence[Any]
+                extra_params_right: Sequence[Any]
+
                 if num_ins_params == len(batch[0]):
                     extra_params_left = extra_params_right = ()
                     batch_iterator = batch
@@ -5616,7 +5623,7 @@ class SQLCompiler(Compiled):
                     )[:-2]
                 else:
                     expanded_values_string = (
-                        (executemany_values_w_comma * len(batch))
+                        (executemany_values_w_comma * current_batch_size)
                     )[:-2]
 
                 if self._numeric_binds and num_ins_params > 0:
@@ -5632,7 +5639,7 @@ class SQLCompiler(Compiled):
                     assert not extra_params_right
 
                     start = expand_pos_lower_index + 1
-                    end = num_ins_params * (len(batch)) + start
+                    end = num_ins_params * (current_batch_size) + start
 
                     # need to format here, since statement may contain
                     # unescaped %, while values_string contains just (%s, %s)
@@ -5682,7 +5689,7 @@ class SQLCompiler(Compiled):
                 replaced_parameters,
                 processed_setinputsizes,
                 batch,
-                batch_size,
+                current_batch_size,
                 batchnum,
                 total_batches,
                 sort_by_parameter_order,
