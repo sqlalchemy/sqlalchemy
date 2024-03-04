@@ -176,7 +176,6 @@ _ColumnExpressionArgument = Union[
     "SQLCoreOperations[_T]",
     roles.ExpressionElementRole[_T],
     Callable[[], "ColumnElement[_T]"],
-    Callable[[Any], "ColumnElement[_T]"],
     "LambdaElement",
 ]
 "See docs in public alias ColumnExpressionArgument."
