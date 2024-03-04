@@ -787,7 +787,8 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
 
         eq_(connection.execute(table.select()).all(), [(1, 1), (2, 2), (3, 3)])
 
-    def test_insert_returning_values(self, connection):
+    @testing.variation("preserve_rowcount", [True, False])
+    def test_insert_returning_values(self, connection, preserve_rowcount):
         t = self.tables.data
 
         conn = connection
@@ -796,7 +797,14 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
             {"x": "x%d" % i, "y": "y%d" % i}
             for i in range(1, page_size * 2 + 27)
         ]
-        result = conn.execute(t.insert().returning(t.c.x, t.c.y), data)
+        if preserve_rowcount:
+            eo = {"preserve_rowcount": True}
+        else:
+            eo = {}
+
+        result = conn.execute(
+            t.insert().returning(t.c.x, t.c.y), data, execution_options=eo
+        )
 
         eq_([tup[0] for tup in result.cursor.description], ["x", "y"])
         eq_(result.keys(), ["x", "y"])
@@ -813,6 +821,9 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
         assert result._soft_closed
         # assert result.closed
         assert result.cursor is None
+
+        if preserve_rowcount:
+            eq_(result.rowcount, len(data))
 
     def test_insert_returning_preexecute_pk(self, metadata, connection):
         counter = itertools.count(1)
@@ -1036,10 +1047,14 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
 
         eq_(result.all(), [("p1_p1", "y1"), ("p2_p2", "y2")])
 
-    def test_insert_returning_defaults(self, connection):
+    @testing.variation("preserve_rowcount", [True, False])
+    def test_insert_returning_defaults(self, connection, preserve_rowcount):
         t = self.tables.data
 
-        conn = connection
+        if preserve_rowcount:
+            conn = connection.execution_options(preserve_rowcount=True)
+        else:
+            conn = connection
 
         result = conn.execute(t.insert(), {"x": "x0", "y": "y0"})
         first_pk = result.inserted_primary_key[0]
@@ -1053,6 +1068,9 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
             result.all(),
             [(pk, 5) for pk in range(1 + first_pk, total_rows + first_pk)],
         )
+
+        if preserve_rowcount:
+            eq_(result.rowcount, total_rows - 1)  # range starts from 1
 
     def test_insert_return_pks_default_values(self, connection):
         """test sending multiple, empty rows into an INSERT and getting primary

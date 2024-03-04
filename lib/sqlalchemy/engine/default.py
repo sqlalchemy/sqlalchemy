@@ -1198,7 +1198,7 @@ class DefaultExecutionContext(ExecutionContext):
 
     _soft_closed = False
 
-    _has_rowcount = False
+    _rowcount: Optional[int] = None
 
     # a hook for SQLite's translation of
     # result column names
@@ -1788,7 +1788,14 @@ class DefaultExecutionContext(ExecutionContext):
 
     @util.non_memoized_property
     def rowcount(self) -> int:
-        return self.cursor.rowcount
+        if self._rowcount is not None:
+            return self._rowcount
+        else:
+            return self.cursor.rowcount
+
+    @property
+    def _has_rowcount(self):
+        return self._rowcount is not None
 
     def supports_sane_rowcount(self):
         return self.dialect.supports_sane_rowcount
@@ -1798,6 +1805,9 @@ class DefaultExecutionContext(ExecutionContext):
 
     def _setup_result_proxy(self):
         exec_opt = self.execution_options
+
+        if self._rowcount is None and exec_opt.get("preserve_rowcount", False):
+            self._rowcount = self.cursor.rowcount
 
         if self.is_crud or self.is_text:
             result = self._setup_dml_or_text_result()
@@ -1955,8 +1965,7 @@ class DefaultExecutionContext(ExecutionContext):
 
             if rows:
                 self.returned_default_rows = rows
-            result.rowcount = len(rows)
-            self._has_rowcount = True
+            self._rowcount = len(rows)
 
             if self._is_supplemental_returning:
                 result._rewind(rows)
@@ -1970,12 +1979,12 @@ class DefaultExecutionContext(ExecutionContext):
         elif not result._metadata.returns_rows:
             # no results, get rowcount
             # (which requires open cursor on some drivers)
-            result.rowcount
-            self._has_rowcount = True
+            if self._rowcount is None:
+                self._rowcount = self.cursor.rowcount
             result._soft_close()
         elif self.isupdate or self.isdelete:
-            result.rowcount
-            self._has_rowcount = True
+            if self._rowcount is None:
+                self._rowcount = self.cursor.rowcount
         return result
 
     @util.memoized_property

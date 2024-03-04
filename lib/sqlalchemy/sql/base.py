@@ -1167,6 +1167,7 @@ class Executable(roles.StatementRole):
         render_nulls: bool = ...,
         is_delete_using: bool = ...,
         is_update_from: bool = ...,
+        preserve_rowcount: bool = False,
         **opt: Any,
     ) -> Self: ...
 

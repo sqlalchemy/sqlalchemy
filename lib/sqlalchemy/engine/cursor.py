@@ -1975,8 +1975,28 @@ class CursorResult(Result[_T]):
     def rowcount(self) -> int:
         """Return the 'rowcount' for this result.
 
-        The 'rowcount' reports the number of rows *matched*
-        by the WHERE criterion of an UPDATE or DELETE statement.
+        The primary purpose of 'rowcount' is to report the number of rows
+        matched by the WHERE criterion of an UPDATE or DELETE statement
+        executed once (i.e. for a single parameter set), which may then be
+        compared to the number of rows expected to be updated or deleted as a
+        means of asserting data integrity.
+
+        This attribute is transferred from the ``cursor.rowcount`` attribute
+        of the DBAPI before the cursor is closed, to support DBAPIs that
+        don't make this value available after cursor close.   Some DBAPIs may
+        offer meaningful values for other kinds of statements, such as INSERT
+        and SELECT statements as well.  In order to retrieve ``cursor.rowcount``
+        for these statements, set the
+        :paramref:`.Connection.execution_options.preserve_rowcount`
+        execution option to True, which will cause the ``cursor.rowcount``
+        value to be unconditionally memoized before any results are returned
+        or the cursor is closed, regardless of statement type.
+
+        For cases where the DBAPI does not support rowcount for a particular
+        kind of statement and/or execution, the returned value will be ``-1``,
+        which is delivered directly from the DBAPI and is part of :pep:`249`.
+        All DBAPIs should support rowcount for single-parameter-set
+        UPDATE and DELETE statements, however.
 
         .. note::
 
@@ -1985,37 +2005,46 @@ class CursorResult(Result[_T]):
 
            * This attribute returns the number of rows *matched*,
              which is not necessarily the same as the number of rows
-             that were actually *modified* - an UPDATE statement, for example,
+             that were actually *modified*. For example, an UPDATE statement
              may have no net change on a given row if the SET values
              given are the same as those present in the row already.
              Such a row would be matched but not modified.
              On backends that feature both styles, such as MySQL,
-             rowcount is configured by default to return the match
+             rowcount is configured to return the match
              count in all cases.
 
-           * :attr:`_engine.CursorResult.rowcount`
-             is *only* useful in conjunction
-             with an UPDATE or DELETE statement.  Contrary to what the Python
-             DBAPI says, it does *not* reliably return the
-             number of rows available from the results of a SELECT statement
-             as DBAPIs cannot support this functionality when rows are
-             unbuffered.
+           * :attr:`_engine.CursorResult.rowcount` in the default case is
+             *only* useful in conjunction with an UPDATE or DELETE statement,
+             and only with a single set of parameters. For other kinds of
+             statements, SQLAlchemy will not attempt to pre-memoize the value
+             unless the
+             :paramref:`.Connection.execution_options.preserve_rowcount`
+             execution option is used.  Note that contrary to :pep:`249`, many
+             DBAPIs do not support rowcount values for statements that are not
+             UPDATE or DELETE, particularly when rows are being returned which
+             are not fully pre-buffered.   DBAPIs that dont support rowcount
+             for a particular kind of statement should return the value ``-1``
+             for such statements.
 
-           * :attr:`_engine.CursorResult.rowcount`
-             may not be fully implemented by
-             all dialects.  In particular, most DBAPIs do not support an
-             aggregate rowcount result from an executemany call.
-             The :meth:`_engine.CursorResult.supports_sane_rowcount` and
-             :meth:`_engine.CursorResult.supports_sane_multi_rowcount` methods
-             will report from the dialect if each usage is known to be
-             supported.
+           * :attr:`_engine.CursorResult.rowcount` may not be meaningful
+             when executing a single statement with multiple parameter sets
+             (i.e. an :term:`executemany`). Most DBAPIs do not sum "rowcount"
+             values across multiple parameter sets and will return ``-1``
+             when accessed.
 
-           * Statements that use RETURNING may not return a correct
-             rowcount.
+           * SQLAlchemy's :ref:`engine_insertmanyvalues` feature does support
+             a correct population of :attr:`_engine.CursorResult.rowcount`
+             when the :paramref:`.Connection.execution_options.preserve_rowcount`
+             execution option is set to True.
+
+           * Statements that use RETURNING may not support rowcount, returning
+             a ``-1`` value instead.
 
         .. seealso::
 
             :ref:`tutorial_update_delete_rowcount` - in the :ref:`unified_tutorial`
+
+            :paramref:`.Connection.execution_options.preserve_rowcount`
 
         """  # noqa: E501
         try:
@@ -2110,8 +2139,7 @@ class CursorResult(Result[_T]):
 
     def merge(self, *others: Result[Any]) -> MergedResult[Any]:
         merged_result = super().merge(*others)
-        setup_rowcounts = self.context._has_rowcount
-        if setup_rowcounts:
+        if self.context._has_rowcount:
             merged_result.rowcount = sum(
                 cast("CursorResult[Any]", result).rowcount
                 for result in (self,) + others

@@ -2061,3 +2061,17 @@ class DefaultRequirements(SuiteRequirements):
                 return False
 
         return only_if(go, "json_each is required")
+
+    @property
+    def rowcount_always_cached(self):
+        """Indicates that ``cursor.rowcount`` is always accessed,
+        usually in an ``ExecutionContext.post_exec``.
+        """
+        return only_on(["+mariadbconnector"])
+
+    @property
+    def rowcount_always_cached_on_insert(self):
+        """Indicates that ``cursor.rowcount`` is always accessed in an insert
+        statement.
+        """
+        return only_on(["mssql"])

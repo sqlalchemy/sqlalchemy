@@ -87,13 +87,6 @@ class MySQLExecutionContext_mariadbconnector(MySQLExecutionContext):
         if self.isinsert and self.compiled.postfetch_lastrowid:
             self._lastrowid = self.cursor.lastrowid
 
-    @property
-    def rowcount(self):
-        if self._rowcount is not None:
-            return self._rowcount
-        else:
-            return self.cursor.rowcount
-
     def get_lastrowid(self):
         return self._lastrowid
 

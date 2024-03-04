@@ -478,10 +478,7 @@ def insertmanyvalues_fixture(
 
             yield batch
 
-    def _exec_insertmany_context(
-        dialect,
-        context,
-    ):
+    def _exec_insertmany_context(dialect, context):
         with mock.patch.object(
             dialect,
             "_deliver_insertmanyvalues_batches",

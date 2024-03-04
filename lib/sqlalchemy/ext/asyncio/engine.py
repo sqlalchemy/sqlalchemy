@@ -414,6 +414,7 @@ class AsyncConnection(
         yield_per: int = ...,
         insertmanyvalues_page_size: int = ...,
         schema_translate_map: Optional[SchemaTranslateMapType] = ...,
+        preserve_rowcount: bool = False,
         **opt: Any,
     ) -> AsyncConnection: ...
 
