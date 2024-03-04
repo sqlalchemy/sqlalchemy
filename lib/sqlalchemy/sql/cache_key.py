@@ -37,6 +37,7 @@ from ..util.typing import Protocol
 if typing.TYPE_CHECKING:
     from .elements import BindParameter
     from .elements import ClauseElement
+    from .elements import ColumnElement
     from .visitors import _TraverseInternalsType
     from ..engine.interfaces import _CoreSingleExecuteParams
 
@@ -557,18 +558,17 @@ class CacheKey(NamedTuple):
         _anon_map = prefix_anon_map()
         return {b.key % _anon_map: b.effective_value for b in self.bindparams}
 
+    @util.preload_module("sqlalchemy.sql.elements")
     def _apply_params_to_element(
-        self, original_cache_key: CacheKey, target_element: ClauseElement
-    ) -> ClauseElement:
-        if target_element._is_immutable:
+        self, original_cache_key: CacheKey, target_element: ColumnElement[Any]
+    ) -> ColumnElement[Any]:
+        if target_element._is_immutable or original_cache_key is self:
             return target_element
 
-        translate = {
-            k.key: v.value
-            for k, v in zip(original_cache_key.bindparams, self.bindparams)
-        }
-
-        return target_element.params(translate)
+        elements = util.preloaded.sql_elements
+        return elements._OverrideBinds(
+            target_element, self.bindparams, original_cache_key.bindparams
+        )
 
 
 def _ad_hoc_cache_key_from_args(

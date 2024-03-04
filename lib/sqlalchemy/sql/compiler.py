@@ -2383,6 +2383,47 @@ class SQLCompiler(Compiled):
         """
         return ""
 
+    def visit_override_binds(self, override_binds, **kw):
+        """SQL compile the nested element of an _OverrideBinds with
+        bindparams swapped out.
+
+        The _OverrideBinds is not normally expected to be compiled; it
+        is meant to be used when an already cached statement is to be used,
+        the compilation was already performed, and only the bound params should
+        be swapped in at execution time.
+
+        However, the test suite has some tests that exercise compilation
+        on individual elements without using the cache key version, so here we
+        modify the bound parameter collection for the given compiler based on
+        the translation.
+
+        """
+
+        # get SQL text first
+        sqltext = override_binds.element._compiler_dispatch(self, **kw)
+
+        # then change binds after the fact.  note that we don't try to
+        # swap the bindparam as we compile, because our element may be
+        # elsewhere in the statement already (e.g. a subquery or perhaps a
+        # CTE) and was already visited / compiled. See
+        # test_relationship_criteria.py ->
+        #    test_selectinload_local_criteria_subquery
+        for k in override_binds.translate:
+            if k not in self.binds:
+                continue
+            bp = self.binds[k]
+
+            new_bp = bp._with_value(
+                override_binds.translate[bp.key],
+                maintain_key=True,
+                required=False,
+            )
+            name = self.bind_names[bp]
+            self.binds[k] = self.binds[name] = new_bp
+            self.bind_names[new_bp] = name
+
+        return sqltext
+
     def visit_grouping(self, grouping, asfrom=False, **kwargs):
         return "(" + grouping.element._compiler_dispatch(self, **kwargs) + ")"
 
@@ -3614,6 +3655,7 @@ class SQLCompiler(Compiled):
         render_postcompile=False,
         **kwargs,
     ):
+
         if not skip_bind_expression:
             impl = bindparam.type.dialect_impl(self.dialect)
             if impl._has_bind_expression:

@@ -104,6 +104,7 @@ if typing.TYPE_CHECKING:
     from .type_api import TypeEngine
     from .visitors import _CloneCallableType
     from .visitors import _TraverseInternalsType
+    from .visitors import anon_map
     from ..engine import Connection
     from ..engine import Dialect
     from ..engine import Engine
@@ -4064,6 +4065,57 @@ class Grouping(GroupedElement, ColumnElement[_T]):
     def __setstate__(self, state):
         self.element = state["element"]
         self.type = state["type"]
+
+
+class _OverrideBinds(Grouping[_T]):
+    """used by cache_key->_apply_params_to_element to allow compilation /
+    execution of a SQL element that's been cached, using an alternate set of
+    bound parameter values.
+
+    This is used by the ORM to swap new parameter values into expressions
+    that are embedded into loader options like with_expression(),
+    selectinload().  Previously, this task was accomplished using the
+    .params() method which would perform a deep-copy instead.  This deep
+    copy proved to be too expensive for more complex expressions.
+
+    See #11085
+
+    """
+
+    __visit_name__ = "override_binds"
+
+    def __init__(
+        self,
+        element: ColumnElement[_T],
+        bindparams: Sequence[BindParameter[Any]],
+        replaces_params: Sequence[BindParameter[Any]],
+    ):
+        self.element = element
+        self.translate = {
+            k.key: v.value for k, v in zip(replaces_params, bindparams)
+        }
+
+    def _gen_cache_key(
+        self, anon_map: anon_map, bindparams: List[BindParameter[Any]]
+    ) -> Optional[typing_Tuple[Any, ...]]:
+        """generate a cache key for the given element, substituting its bind
+        values for the translation values present."""
+
+        existing_bps: List[BindParameter[Any]] = []
+        ck = self.element._gen_cache_key(anon_map, existing_bps)
+
+        bindparams.extend(
+            (
+                bp._with_value(
+                    self.translate[bp.key], maintain_key=True, required=False
+                )
+                if bp.key in self.translate
+                else bp
+            )
+            for bp in existing_bps
+        )
+
+        return ck
 
 
 class _OverRange(IntEnum):

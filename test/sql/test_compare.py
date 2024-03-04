@@ -35,6 +35,7 @@ from sqlalchemy.schema import Sequence
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql import dml
+from sqlalchemy.sql import elements
 from sqlalchemy.sql import False_
 from sqlalchemy.sql import func
 from sqlalchemy.sql import operators
@@ -1368,7 +1369,7 @@ class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
                 "__init__" in cls.__dict__
                 or issubclass(cls, AliasedReturnsRows)
             )
-            and not issubclass(cls, (Annotated))
+            and not issubclass(cls, (Annotated, elements._OverrideBinds))
             and cls.__module__.startswith("sqlalchemy.")
             and "orm" not in cls.__module__
             and "compiler" not in cls.__module__
