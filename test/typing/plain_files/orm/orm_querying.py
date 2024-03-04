@@ -132,6 +132,6 @@ def test_10959_with_loader_criteria() -> None:
     def where_criteria(cls_: type[A]) -> ColumnElement[bool]:
         return cls_.data == "some data"
 
-    orm.with_loader_criteria(A, lambda cls: cls.public == "some data")
+    orm.with_loader_criteria(A, lambda cls: cls.data == "some data")
 
     orm.with_loader_criteria(A, where_criteria)
