@@ -133,5 +133,4 @@ def test_10959_with_loader_criteria() -> None:
         return cls_.data == "some data"
 
     orm.with_loader_criteria(A, lambda cls: cls.data == "some data")
-
     orm.with_loader_criteria(A, where_criteria)
