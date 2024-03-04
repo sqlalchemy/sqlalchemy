@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm, regression
-    :tickets: 11010
-
-    Fixed regression caused by :ticket:`9779` where using the "secondary" table
-    in a relationship ``and_()`` expression would fail to be aliased to match
-    how the "secondary" table normally renders within a
-    :meth:`_sql.Select.join` expression, leading to an invalid query.
