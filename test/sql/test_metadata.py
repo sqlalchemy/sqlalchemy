@@ -4376,6 +4376,28 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
 
         deregister(schema.CreateColumn)
 
+    @testing.combinations(("index",), ("unique",), argnames="paramname")
+    @testing.combinations((True,), (False,), (None,), argnames="orig")
+    @testing.combinations((True,), (False,), (None,), argnames="merging")
+    def test_merge_index_unique(self, paramname, orig, merging):
+        """test #11091"""
+        source = Column(**{paramname: merging})
+
+        target = Column(**{paramname: orig})
+
+        source._merge(target)
+
+        target_copy = target._copy()
+        for col in (
+            target,
+            target_copy,
+        ):
+            result = getattr(col, paramname)
+            if orig is None:
+                is_(result, merging)
+            else:
+                is_(result, orig)
+
     @testing.combinations(
         ("default", lambda ctx: 10),
         ("default", func.foo()),
