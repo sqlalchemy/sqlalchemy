@@ -116,6 +116,7 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import CoreExecuteOptionsParameter
     from ..engine.interfaces import SchemaTranslateMapType
     from ..engine.result import Result
+    from ..ext.asyncio import AsyncEngine
 
 _NUMERIC = Union[float, Decimal]
 _NUMBER = Union[float, int, Decimal]
@@ -246,7 +247,7 @@ class CompilerElement(Visitable):
     @util.preload_module("sqlalchemy.engine.url")
     def compile(
         self,
-        bind: Optional[Union[Engine, Connection]] = None,
+        bind: Optional[Union[Engine, AsyncEngine, Connection]] = None,
         dialect: Optional[Dialect] = None,
         **kw: Any,
     ) -> Compiled:
