@@ -2871,7 +2871,7 @@ class Query(
 
         try:
             bind = (
-                self._get_bind_args(statement, self.session.get_bind)
+                self.session.get_bind(clause=statement)
                 if self.session
                 else None
             )
@@ -2879,9 +2879,6 @@ class Query(
             bind = None
 
         return str(statement.compile(bind))
-
-    def _get_bind_args(self, statement: Any, fn: Any, **kw: Any) -> Any:
-        return fn(clause=statement, **kw)
 
     @property
     def column_descriptions(self) -> List[ORMColumnDescription]:
