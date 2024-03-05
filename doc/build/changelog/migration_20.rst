@@ -2095,6 +2095,38 @@ when using an explicit :func:`_orm.aliased` object, both from a user point
 of view as well as how the internals of the SQLAlchemy ORM must handle it.
 
 
+Filtering operations no longer accept explicit subqueries
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Synopsis**
+
+Support for accepting explicit subqueries in filtering operations, such as
+`_sql.expression.ColumnOperators.in_` and
+`_sql.expression.ColumnOperators.not_in`, has been removed in 2.0 ::
+
+    subq = (
+        session.query(User.id)
+        .filter(User.name == "foo")
+    ).subquery()
+    q = (
+        session.query(User)
+        .filter(User.id.in_(subq))
+    )
+
+**Migration to 2.0**
+
+Under 2.0, SQLAlchemy will automatically interpret a fully constructed query
+as a subquery based on the implied context ::
+
+    subq = (
+        session.query(User.id)
+        .filter(User.name == "foo")
+    )
+    q = (
+        session.query(User)
+        .filter(User.id.in_(subq))
+    )
+
 .. _joinedload_not_uniqued:
 
 ORM Rows not uniquified by default
