@@ -928,16 +928,6 @@ class Compiled:
     def _init_compiler_cls(cls):
         pass
 
-    def _execute_on_connection(
-        self, connection, distilled_params, execution_options
-    ):
-        if self.can_execute:
-            return connection._execute_compiled(
-                self, distilled_params, execution_options
-            )
-        else:
-            raise exc.ObjectNotExecutableError(self.statement)
-
     def visit_unsupported_compilation(self, element, err, **kw):
         raise exc.UnsupportedCompilationError(self, type(element)) from err
 

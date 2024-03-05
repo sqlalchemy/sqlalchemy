@@ -3115,7 +3115,7 @@ class BinaryTest(fixtures.TablesTest, AssertsExecutionResults):
         compiled = select(cast(literal(util.b("foo")), LargeBinary)).compile(
             dialect=testing.db.dialect, compile_kwargs={"literal_binds": True}
         )
-        result = connection.execute(compiled)
+        result = connection.execute(compiled.statement)
         eq_(result.scalar(), util.b("foo"))
 
     def test_bind_processor_no_dbapi(self):

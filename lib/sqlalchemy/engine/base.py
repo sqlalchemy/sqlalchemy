@@ -1672,56 +1672,6 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             )
         return ret
 
-    def _execute_compiled(
-        self,
-        compiled: Compiled,
-        distilled_parameters: _CoreMultiExecuteParams,
-        execution_options: CoreExecuteOptionsParameter = _EMPTY_EXECUTION_OPTS,
-    ) -> CursorResult[Unpack[TupleAny]]:
-        """Execute a sql.Compiled object.
-
-        TODO: why do we have this?   likely deprecate or remove
-
-        """
-
-        exec_opts = compiled.execution_options.merge_with(
-            self._execution_options, execution_options
-        )
-
-        if self._has_events or self.engine._has_events:
-            (
-                compiled,
-                distilled_parameters,
-                event_multiparams,
-                event_params,
-            ) = self._invoke_before_exec_event(
-                compiled, distilled_parameters, exec_opts
-            )
-
-        dialect = self.dialect
-
-        ret = self._execute_context(
-            dialect,
-            dialect.execution_ctx_cls._init_compiled,
-            compiled,
-            distilled_parameters,
-            exec_opts,
-            compiled,
-            distilled_parameters,
-            None,
-            None,
-        )
-        if self._has_events or self.engine._has_events:
-            self.dispatch.after_execute(
-                self,
-                compiled,
-                event_multiparams,
-                event_params,
-                exec_opts,
-                ret,
-            )
-        return ret
-
     def exec_driver_sql(
         self,
         statement: str,

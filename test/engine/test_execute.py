@@ -32,7 +32,6 @@ from sqlalchemy import util
 from sqlalchemy import VARCHAR
 from sqlalchemy.connectors.asyncio import AsyncAdapt_dbapi_module
 from sqlalchemy.engine import BindTyping
-from sqlalchemy.engine import default
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.pool import AsyncAdaptedQueuePool
@@ -701,39 +700,6 @@ class ExecuteTest(fixtures.TablesTest):
         ):
             conn.exec_driver_sql(
                 "insert into users (user_id, user_name) values (?, ?)", []
-            )
-
-    @testing.only_on("sqlite")
-    def test_execute_compiled_favors_compiled_paramstyle(self):
-        users = self.tables.users
-
-        with patch.object(testing.db.dialect, "do_execute") as do_exec:
-            stmt = users.update().values(user_id=1, user_name="foo")
-
-            d1 = default.DefaultDialect(paramstyle="format")
-            d2 = default.DefaultDialect(paramstyle="pyformat")
-
-            with testing.db.begin() as conn:
-                conn.execute(stmt.compile(dialect=d1))
-                conn.execute(stmt.compile(dialect=d2))
-
-            eq_(
-                do_exec.mock_calls,
-                [
-                    call(
-                        mock.ANY,
-                        "UPDATE users SET user_id=%s, user_name=%s",
-                        (1, "foo"),
-                        mock.ANY,
-                    ),
-                    call(
-                        mock.ANY,
-                        "UPDATE users SET user_id=%(user_id)s, "
-                        "user_name=%(user_name)s",
-                        {"user_name": "foo", "user_id": 1},
-                        mock.ANY,
-                    ),
-                ],
             )
 
     @testing.requires.ad_hoc_engines
@@ -2266,11 +2232,6 @@ class EngineEventsTest(fixtures.TestBase):
         with e1.connect() as conn:
             conn.execute(select(1))
             conn.execute(select(1).compile(dialect=e1.dialect).statement)
-            conn.execute(select(1).compile(dialect=e1.dialect))
-
-            conn._execute_compiled(
-                select(1).compile(dialect=e1.dialect), (), {}
-            )
 
     @testing.emits_warning("The garbage collector is trying to clean up")
     def test_execute_events(self):
