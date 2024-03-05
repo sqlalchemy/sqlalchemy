@@ -452,15 +452,27 @@ Example usage::
     )
 
 """
+from __future__ import annotations
+from typing import Callable
+from typing import Type
+from typing import TypeVar
+from typing import Union
+
 from .. import exc
 from ..sql import sqltypes
+from ..sql.compiler import Compiled
+from ..sql.compiler import TypeCompiler
+from ..sql.expression import ClauseElement
 
 
-def compiles(class_, *specs):
+_C = TypeVar("_C", bound=Callable[..., ...])
+
+
+def compiles(class_: Type[ClauseElement], *specs: str) -> Callable[[_C], _C]:
     """Register a function as a compiler for a
     given :class:`_expression.ClauseElement` type."""
 
-    def decorate(fn):
+    def decorate(fn: _C) -> _C:
         # get an existing @compiles handler
         existing = class_.__dict__.get("_compiler_dispatcher", None)
 
@@ -473,7 +485,9 @@ def compiles(class_, *specs):
 
             if existing_dispatch:
 
-                def _wrap_existing_dispatch(element, compiler, **kw):
+                def _wrap_existing_dispatch(
+                        element: ClauseElement,
+                        compiler: Union[Compiled, TypeCompiler], **kw):
                     try:
                         return existing_dispatch(element, compiler, **kw)
                     except exc.UnsupportedCompilationError as uce:
@@ -505,7 +519,7 @@ def compiles(class_, *specs):
     return decorate
 
 
-def deregister(class_):
+def deregister(class_: Type[ClauseElement]) -> None:
     """Remove all custom compilers associated with a given
     :class:`_expression.ClauseElement` type.
 
@@ -517,10 +531,13 @@ def deregister(class_):
 
 
 class _dispatcher:
-    def __init__(self):
+    def __init__(self) -> None:
         self.specs = {}
 
-    def __call__(self, element, compiler, **kw):
+    def __call__(
+            self,
+            element: ClauseElement,
+            compiler: Union[Compiled, TypeCompiler], **kw):
         # TODO: yes, this could also switch off of DBAPI in use.
         fn = self.specs.get(compiler.dialect.name, None)
         if not fn:
