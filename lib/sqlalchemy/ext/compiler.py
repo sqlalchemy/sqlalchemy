@@ -453,6 +453,7 @@ Example usage::
 
 """
 from __future__ import annotations
+
 from typing import Callable
 from typing import Type
 from typing import TypeVar
