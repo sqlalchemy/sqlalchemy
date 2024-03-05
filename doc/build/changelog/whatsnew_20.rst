@@ -1051,7 +1051,7 @@ implemented by
 :meth:`_orm.Session.bulk_insert_mappings`, with additional enhancements.  This will optimize the
 batching of rows making use of the new :ref:`fast insertmany <change_6047>`
 feature, while also adding support for
-heterogenous parameter sets and multiple-table mappings like joined table
+heterogeneous parameter sets and multiple-table mappings like joined table
 inheritance::
 
     >>> users = session.scalars(

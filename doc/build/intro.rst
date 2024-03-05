@@ -142,7 +142,7 @@ Installing with AsyncIO Support
 
 SQLAlchemy's ``asyncio`` support depends upon the
 `greenlet <https://pypi.org/project/greenlet/>`_ project.    This dependency
-is not inclued by default.   To install with asyncio support, run this command:
+is not included by default.   To install with asyncio support, run this command:
 
 .. sourcecode:: text
 
