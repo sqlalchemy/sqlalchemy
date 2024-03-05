@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 11091
+
+    Fixed issue in ORM annotated declarative where using
+    :func:`_orm.mapped_column()` with an :paramref:`_orm.mapped_column.index`
+    or :paramref:`_orm.mapped_column.unique` setting of False would be
+    overridden by an incoming ``Annotated`` element that featured that
+    parameter set to ``True``, even though the immediate
+    :func:`_orm.mapped_column()` element is more specific and should take
+    precedence.  The logic to reconcile the booleans has been enhanced to
+    accommodate a local value of ``False`` as still taking precedence over an
+    incoming ``True`` value from the annotated element.
