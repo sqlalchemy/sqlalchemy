@@ -452,15 +452,22 @@ Example usage::
     )
 
 """
+from typing import Callable, Type, TypeVar, Union
+
 from .. import exc
 from ..sql import sqltypes
+from ..sql.compiler import Compiled, TypeCompiler
+from ..sql.expression import ClauseElement
 
 
-def compiles(class_, *specs):
+_C = TypeVar("_C", bound=Callable[..., ...])
+
+
+def compiles(class_: Type[ClauseElement], *specs: str) -> Callable[[_C], _C]:
     """Register a function as a compiler for a
     given :class:`_expression.ClauseElement` type."""
 
-    def decorate(fn):
+    def decorate(fn: _C) -> _C:
         # get an existing @compiles handler
         existing = class_.__dict__.get("_compiler_dispatcher", None)
 
@@ -473,7 +480,9 @@ def compiles(class_, *specs):
 
             if existing_dispatch:
 
-                def _wrap_existing_dispatch(element, compiler, **kw):
+                def _wrap_existing_dispatch(
+                        element: ClauseElement,
+                        compiler: Union[Compiled, TypeCompiler], **kw):
                     try:
                         return existing_dispatch(element, compiler, **kw)
                     except exc.UnsupportedCompilationError as uce:
@@ -505,7 +514,7 @@ def compiles(class_, *specs):
     return decorate
 
 
-def deregister(class_):
+def deregister(class_: Type[ClauseElement]) -> None:
     """Remove all custom compilers associated with a given
     :class:`_expression.ClauseElement` type.
 
