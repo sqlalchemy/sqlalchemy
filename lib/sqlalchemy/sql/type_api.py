@@ -116,7 +116,7 @@ class _ComparatorFactory(Protocol[_T]):
     ) -> TypeEngine.Comparator[_T]: ...
 
 
-class TypeEngine(Visitable, Generic[_T]):
+class TypeEngine(Visitable, Generic[_T_co]):
     """The ultimate base class for all SQL datatypes.
 
     Common subclasses of :class:`.TypeEngine` include
@@ -359,7 +359,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
     def literal_processor(
         self, dialect: Dialect
-    ) -> Optional[_LiteralProcessorType[_T]]:
+    ) -> Optional[_LiteralProcessorType[_T_co]]:
         """Return a conversion function for processing literal values that are
         to be rendered directly without using binds.
 
@@ -396,7 +396,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
     def bind_processor(
         self, dialect: Dialect
-    ) -> Optional[_BindProcessorType[_T]]:
+    ) -> Optional[_BindProcessorType[_T_co]]:
         """Return a conversion function for processing bind values.
 
         Returns a callable which will receive a bind parameter value
@@ -432,7 +432,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
     def result_processor(
         self, dialect: Dialect, coltype: object
-    ) -> Optional[_ResultProcessorType[_T]]:
+    ) -> Optional[_ResultProcessorType[_T_co]]:
         """Return a conversion function for processing result row values.
 
         Returns a callable which will receive a result row column
@@ -468,8 +468,8 @@ class TypeEngine(Visitable, Generic[_T]):
         return None
 
     def column_expression(
-        self, colexpr: ColumnElement[_T]
-    ) -> Optional[ColumnElement[_T]]:
+        self, colexpr: ColumnElement[_T_co]
+    ) -> Optional[ColumnElement[_T_co]]:
         """Given a SELECT column expression, return a wrapping SQL expression.
 
         This is typically a SQL function that wraps a column expression
@@ -527,8 +527,8 @@ class TypeEngine(Visitable, Generic[_T]):
         )
 
     def bind_expression(
-        self, bindvalue: BindParameter[_T]
-    ) -> Optional[ColumnElement[_T]]:
+        self, bindvalue: BindParameter[_T_co]
+    ) -> Optional[ColumnElement[_T_co]]:
         """Given a bind value (i.e. a :class:`.BindParameter` instance),
         return a SQL expression in its place.
 
@@ -576,7 +576,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
     def _sentinel_value_resolver(
         self, dialect: Dialect
-    ) -> Optional[_SentinelProcessorType[_T]]:
+    ) -> Optional[_SentinelProcessorType[_T_co]]:
         """Return an optional callable that will match parameter values
         (post-bind processing) to result values
         (pre-result-processing), for use in the "sentinel" feature.
@@ -768,7 +768,7 @@ class TypeEngine(Visitable, Generic[_T]):
         return self
 
     @util.ro_memoized_property
-    def _type_affinity(self) -> Optional[Type[TypeEngine[_T]]]:
+    def _type_affinity(self) -> Optional[Type[TypeEngine[_T_co]]]:
         """Return a rudimental 'affinity' value expressing the general class
         of type."""
 
@@ -784,7 +784,7 @@ class TypeEngine(Visitable, Generic[_T]):
     @util.ro_memoized_property
     def _generic_type_affinity(
         self,
-    ) -> Type[TypeEngine[_T]]:
+    ) -> Type[TypeEngine[_T_co]]:
         best_camelcase = None
         best_uppercase = None
 
@@ -811,10 +811,10 @@ class TypeEngine(Visitable, Generic[_T]):
         return (
             best_camelcase
             or best_uppercase
-            or cast("Type[TypeEngine[_T]]", NULLTYPE.__class__)
+            or cast("Type[TypeEngine[_T_co]]", NULLTYPE.__class__)
         )
 
-    def as_generic(self, allow_nulltype: bool = False) -> TypeEngine[_T]:
+    def as_generic(self, allow_nulltype: bool = False) -> TypeEngine[_T_co]:
         """
         Return an instance of the generic type corresponding to this type
         using heuristic rule. The method may be overridden if this
@@ -854,7 +854,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
         return util.constructor_copy(self, self._generic_type_affinity)
 
-    def dialect_impl(self, dialect: Dialect) -> TypeEngine[_T]:
+    def dialect_impl(self, dialect: Dialect) -> TypeEngine[_T_co]:
         """Return a dialect-specific implementation for this
         :class:`.TypeEngine`.
 
@@ -867,7 +867,7 @@ class TypeEngine(Visitable, Generic[_T]):
             return tm["impl"]
         return self._dialect_info(dialect)["impl"]
 
-    def _unwrapped_dialect_impl(self, dialect: Dialect) -> TypeEngine[_T]:
+    def _unwrapped_dialect_impl(self, dialect: Dialect) -> TypeEngine[_T_co]:
         """Return the 'unwrapped' dialect impl for this type.
 
         For a type that applies wrapping logic (e.g. TypeDecorator), give
@@ -883,7 +883,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
     def _cached_literal_processor(
         self, dialect: Dialect
-    ) -> Optional[_LiteralProcessorType[_T]]:
+    ) -> Optional[_LiteralProcessorType[_T_co]]:
         """Return a dialect-specific literal processor for this type."""
 
         try:
@@ -899,7 +899,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
     def _cached_bind_processor(
         self, dialect: Dialect
-    ) -> Optional[_BindProcessorType[_T]]:
+    ) -> Optional[_BindProcessorType[_T_co]]:
         """Return a dialect-specific bind processor for this type."""
 
         try:
@@ -915,7 +915,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
     def _cached_result_processor(
         self, dialect: Dialect, coltype: Any
-    ) -> Optional[_ResultProcessorType[_T]]:
+    ) -> Optional[_ResultProcessorType[_T_co]]:
         """Return a dialect-specific result processor for this type."""
 
         try:
@@ -935,7 +935,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
     def _cached_sentinel_value_processor(
         self, dialect: Dialect
-    ) -> Optional[_SentinelProcessorType[_T]]:
+    ) -> Optional[_SentinelProcessorType[_T_co]]:
         try:
             return dialect._type_memos[self]["sentinel"]
         except KeyError:
@@ -946,7 +946,7 @@ class TypeEngine(Visitable, Generic[_T]):
         return bp
 
     def _cached_custom_processor(
-        self, dialect: Dialect, key: str, fn: Callable[[TypeEngine[_T]], _O]
+        self, dialect: Dialect, key: str, fn: Callable[[TypeEngine[_T_co]], _O]
     ) -> _O:
         """return a dialect-specific processing object for
         custom purposes.
