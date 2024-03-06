@@ -489,7 +489,8 @@ def compiles(class_: Type[ClauseElement], *specs: str) -> Callable[[_C], _C]:
 
                 def _wrap_existing_dispatch(
                         element: ClauseElement,
-                        compiler: Union[Compiled, TypeCompiler], **kw: Any) -> Any:
+                        compiler: Union[Compiled, TypeCompiler],
+                        **kw: Any) -> Any:
                     try:
                         return existing_dispatch(element, compiler, **kw)
                     except exc.UnsupportedCompilationError as uce:
