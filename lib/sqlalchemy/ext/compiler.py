@@ -486,11 +486,10 @@ def compiles(class_, *specs):
 
                 existing.specs["default"] = _wrap_existing_dispatch
 
-            # TODO: why is the lambda needed ?
             setattr(
                 class_,
                 "_compiler_dispatch",
-                lambda *arg, **kw: existing(*arg, **kw),
+                existing,
             )
             setattr(class_, "_compiler_dispatcher", existing)
 
