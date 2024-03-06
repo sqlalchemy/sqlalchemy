@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 r"""Provides an API for creation of custom ClauseElements and compilers.
 
@@ -454,6 +453,8 @@ Example usage::
 """
 from __future__ import annotations
 
+from typing import Any
+from typing import Dict
 from typing import Callable
 from typing import Type
 from typing import TypeVar
@@ -466,7 +467,7 @@ from ..sql.compiler import TypeCompiler
 from ..sql.expression import ClauseElement
 
 
-_C = TypeVar("_C", bound=Callable[..., ...])
+_C = TypeVar("_C", bound=Callable[..., Any])
 
 
 def compiles(class_: Type[ClauseElement], *specs: str) -> Callable[[_C], _C]:
@@ -488,7 +489,7 @@ def compiles(class_: Type[ClauseElement], *specs: str) -> Callable[[_C], _C]:
 
                 def _wrap_existing_dispatch(
                         element: ClauseElement,
-                        compiler: Union[Compiled, TypeCompiler], **kw):
+                        compiler: Union[Compiled, TypeCompiler], **kw: Any) -> Any:
                     try:
                         return existing_dispatch(element, compiler, **kw)
                     except exc.UnsupportedCompilationError as uce:
@@ -527,18 +528,18 @@ def deregister(class_: Type[ClauseElement]) -> None:
     """
 
     if hasattr(class_, "_compiler_dispatcher"):
-        class_._compiler_dispatch = class_._original_compiler_dispatch
+        class_._compiler_dispatch = class_._original_compiler_dispatch # type: ignore
         del class_._compiler_dispatcher
 
 
 class _dispatcher:
     def __init__(self) -> None:
-        self.specs = {}
+        self.specs: Dict[str, Callable[..., Any]] = {}
 
     def __call__(
             self,
             element: ClauseElement,
-            compiler: Union[Compiled, TypeCompiler], **kw):
+            compiler: Union[Compiled, TypeCompiler], **kw: Any) -> Any:
         # TODO: yes, this could also switch off of DBAPI in use.
         fn = self.specs.get(compiler.dialect.name, None)
         if not fn:
