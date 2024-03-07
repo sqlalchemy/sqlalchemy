@@ -503,7 +503,7 @@ def _queryable_attribute_unreduce(
         return getattr(entity, key)
 
 
-class InstrumentedAttribute(QueryableAttribute[_T]):
+class InstrumentedAttribute(QueryableAttribute[_T_co]):
     """Class bound instrumented attribute which adds basic
     :term:`descriptor` methods.
 
