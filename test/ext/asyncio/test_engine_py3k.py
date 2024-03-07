@@ -403,6 +403,12 @@ class AsyncEngineTest(EngineFixture):
 
             eq_(m.mock_calls, [])
 
+    @async_test
+    async def test_statement_compile(self, async_engine):
+        eq_(str(select(1).compile(async_engine)), "SELECT 1")
+        async with async_engine.connect() as conn:
+            eq_(str(select(1).compile(conn)), "SELECT 1")
+
     def test_clear_compiled_cache(self, async_engine):
         async_engine.sync_engine._compiled_cache["foo"] = "bar"
         eq_(async_engine.sync_engine._compiled_cache["foo"], "bar")
