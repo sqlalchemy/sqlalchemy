@@ -5432,31 +5432,29 @@ class _DateTimeTZMultiRangeTests:
     _tstzs_delta = None
 
     def tstzs(self):
-        utc_now = cast(
-            func.current_timestamp().op("AT TIME ZONE")("utc"),
-            DateTime(timezone=True),
+        # note this was hitting DST issues when these tests were using a
+        # live date and running on or near 2024-03-09 :).   hardcoded to a
+        # date a few days earlier
+        utc_now = datetime.datetime(
+            2024, 3, 2, 14, 57, 50, 473566, tzinfo=datetime.timezone.utc
         )
 
         if self._tstzs is None:
-            with testing.db.connect() as connection:
-                lower = connection.scalar(select(utc_now))
-                upper = lower + datetime.timedelta(1)
-                self._tstzs = (lower, upper)
+            lower = utc_now
+            upper = lower + datetime.timedelta(1)
+            self._tstzs = (lower, upper)
         return self._tstzs
 
     def tstzs_delta(self):
-        utc_now = cast(
-            func.current_timestamp().op("AT TIME ZONE")("utc"),
-            DateTime(timezone=True),
+        utc_now = datetime.datetime(
+            2024, 3, 2, 14, 57, 50, 473566, tzinfo=datetime.timezone.utc
         )
 
         if self._tstzs_delta is None:
-            with testing.db.connect() as connection:
-                lower = connection.scalar(
-                    select(utc_now)
-                ) + datetime.timedelta(3)
-                upper = lower + datetime.timedelta(2)
-                self._tstzs_delta = (lower, upper)
+            lower = utc_now + datetime.timedelta(3)
+            upper = lower + datetime.timedelta(2)
+            self._tstzs_delta = (lower, upper)
+
         return self._tstzs_delta
 
     def _data_str(self):
