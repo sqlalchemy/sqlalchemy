@@ -249,7 +249,7 @@ class CascadeOptions(FrozenSet[str]):
             values.clear()
         values.discard("all")
 
-        self = super().__new__(cls, values)  # type: ignore
+        self = super().__new__(cls, values)
         self.save_update = "save-update" in values
         self.delete = "delete" in values
         self.refresh_expire = "refresh-expire" in values
