@@ -583,15 +583,48 @@ The logger name of instance such as an :class:`~sqlalchemy.engine.Engine` or
 string. To set this to a specific name, use the
 :paramref:`_sa.create_engine.logging_name` and
 :paramref:`_sa.create_engine.pool_logging_name`  with
-:func:`sqlalchemy.create_engine`::
+:func:`sqlalchemy.create_engine`; the name will be appended to the logging name
+``sqlalchemy.engine.Engine``::
 
+    >>> import logging
     >>> from sqlalchemy import create_engine
     >>> from sqlalchemy import text
-    >>> e = create_engine("sqlite://", echo=True, logging_name="myengine")
+    >>> logging.basicConfig()
+    >>> logging.getLogger("sqlalchemy.engine.Engine.myengine").setLevel(logging.INFO)
+    >>> e = create_engine("sqlite://", logging_name="myengine")
     >>> with e.connect() as conn:
     ...     conn.execute(text("select 'hi'"))
     2020-10-24 12:47:04,291 INFO sqlalchemy.engine.Engine.myengine select 'hi'
     2020-10-24 12:47:04,292 INFO sqlalchemy.engine.Engine.myengine ()
+
+.. tip::
+
+    The :paramref:`_sa.create_engine.logging_name` and
+    :paramref:`_sa.create_engine.pool_logging_name` parameters may also be used in
+    conjunction with :paramref:`_sa.create_engine.echo` and
+    :paramref:`_sa.create_engine.echo_pool`. However, an unavoidable double logging
+    condition will occur if other engines are created with echo flags set to True
+    and **no** logging name. This is because a handler will be added automatically
+    for ``sqlalchemy.engine.Engine`` which will log messages both for the name-less
+    engine as well as engines with logging names.   For example::
+
+        from sqlalchemy import create_engine, text
+
+        e1 = create_engine("sqlite://", echo=True, logging_name="myname")
+        with e1.begin() as conn:
+            conn.execute(text("SELECT 1"))
+
+        e2 = create_engine("sqlite://", echo=True)
+        with e2.begin() as conn:
+            conn.execute(text("SELECT 2"))
+
+        with e1.begin() as conn:
+            conn.execute(text("SELECT 3"))
+
+    The above scenario will double log ``SELECT 3``.  To resolve, ensure
+    all engines have a ``logging_name`` set, or use explicit logger / handler
+    setup without using :paramref:`_sa.create_engine.echo` and
+    :paramref:`_sa.create_engine.echo_pool`.
 
 .. _dbengine_logging_tokens:
 
