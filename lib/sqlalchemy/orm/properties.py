@@ -58,6 +58,7 @@ from ..util.typing import de_optionalize_union_types
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_optional_union
 from ..util.typing import is_pep593
+from ..util.typing import is_pep695
 from ..util.typing import is_union
 from ..util.typing import Self
 from ..util.typing import typing_get_args
@@ -760,6 +761,11 @@ class MappedColumn(
 
         use_args_from = None
 
+        our_original_type = our_type
+
+        if is_pep695(our_type):
+            our_type = our_type.__value__
+
         if is_pep593(our_type):
             our_type_is_pep593 = True
 
@@ -852,9 +858,9 @@ class MappedColumn(
             new_sqltype = None
 
             if our_type_is_pep593:
-                checks = [our_type, raw_pep_593_type]
+                checks = [our_original_type, raw_pep_593_type]
             else:
-                checks = [our_type]
+                checks = [our_original_type]
 
             for check_type in checks:
                 new_sqltype = registry._resolve_type(check_type)

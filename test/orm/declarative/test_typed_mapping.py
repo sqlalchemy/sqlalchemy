@@ -106,6 +106,13 @@ if compat.py312:
         """
 type _UnionPep695 = _SomeDict1 | _SomeDict2
 type _StrPep695 = str
+
+type strtypalias_keyword = Annotated[str, mapped_column(info={"hi": "there"})]
+
+strtypalias_tat: typing.TypeAliasType = Annotated[
+    str, mapped_column(info={"hi": "there"})]
+
+strtypalias_plain = Annotated[str, mapped_column(info={"hi": "there"})]
 """,
         globals(),
     )
@@ -823,6 +830,32 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         eq_(Test.__table__.c.data.type.length, 30)
         is_(Test.__table__.c.structure.type._type_affinity, JSON)
+
+    @testing.variation("alias_type", ["none", "typekeyword", "typealiastype"])
+    @testing.requires.python312
+    def test_extract_pep593_from_pep695(
+        self, decl_base: Type[DeclarativeBase], alias_type
+    ):
+        """test #11130"""
+
+        class MyClass(decl_base):
+            __tablename__ = "my_table"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            if alias_type.typekeyword:
+                data_one: Mapped[strtypalias_keyword]  # noqa: F821
+            elif alias_type.typealiastype:
+                data_one: Mapped[strtypalias_tat]  # noqa: F821
+            elif alias_type.none:
+                data_one: Mapped[strtypalias_plain]  # noqa: F821
+            else:
+                alias_type.fail()
+
+        table = MyClass.__table__
+        assert table is not None
+
+        eq_(MyClass.data_one.expression.info, {"hi": "there"})
 
     @testing.requires.python310
     def test_we_got_all_attrs_test_annotated(self):

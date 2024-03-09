@@ -1,0 +1,9 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 11130
+
+    Added support for the :pep:`695` ``TypeAliasType`` construct as well as the
+    python 3.12 native ``type`` keyword to work with ORM Annotated Declarative
+    form when using these constructs to link to a :pep:`593` ``Annotated``
+    container, allowing the resolution of the ``Annotated`` to proceed when
+    these constructs are used in a :class:`_orm.Mapped` typing container.
