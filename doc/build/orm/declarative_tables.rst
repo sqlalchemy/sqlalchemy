@@ -1158,6 +1158,10 @@ additional columns are present on mapped subclasses that have
 no :class:`.Table` of their own.  This is illustrated in the section
 :ref:`single_inheritance`.
 
+Note that in a similar fashion a :func:`_orm.relationship` can be added
+to an existing declarative table mapping as described in
+:ref:`orm_declarative_table_adding_relationship`.
+
 .. note:: Assignment of mapped
     properties to an already mapped class will only
     function correctly if the "declarative base" class is used, meaning
