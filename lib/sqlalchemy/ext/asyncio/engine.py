@@ -930,7 +930,7 @@ class AsyncConnection(
         return self._proxied.invalidated
 
     @property
-    def dialect(self) -> Any:
+    def dialect(self) -> Dialect:
         r"""Proxy for the :attr:`_engine.Connection.dialect` attribute
         on behalf of the :class:`_asyncio.AsyncConnection` class.
 
@@ -939,7 +939,7 @@ class AsyncConnection(
         return self._proxied.dialect
 
     @dialect.setter
-    def dialect(self, attr: Any) -> None:
+    def dialect(self, attr: Dialect) -> None:
         self._proxied.dialect = attr
 
     @property
