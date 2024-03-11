@@ -403,6 +403,13 @@ class AsyncEngineTest(EngineFixture):
 
             eq_(m.mock_calls, [])
 
+    @async_test
+    async def test_statement_compile(self, async_engine):
+        stmt = _select1(async_engine)
+        eq_(str(select(1).compile(async_engine)), stmt)
+        async with async_engine.connect() as conn:
+            eq_(str(select(1).compile(conn)), stmt)
+
     def test_clear_compiled_cache(self, async_engine):
         async_engine.sync_engine._compiled_cache["foo"] = "bar"
         eq_(async_engine.sync_engine._compiled_cache["foo"], "bar")
@@ -954,19 +961,13 @@ class AsyncEventTest(EngineFixture):
         ):
             event.listen(async_engine, "checkout", mock.Mock())
 
-    def select1(self, engine):
-        if engine.dialect.name == "oracle":
-            return "select 1 from dual"
-        else:
-            return "select 1"
-
     @async_test
     async def test_sync_before_cursor_execute_engine(self, async_engine):
         canary = mock.Mock()
 
         event.listen(async_engine.sync_engine, "before_cursor_execute", canary)
 
-        s1 = self.select1(async_engine)
+        s1 = _select1(async_engine)
         async with async_engine.connect() as conn:
             sync_conn = conn.sync_connection
             await conn.execute(text(s1))
@@ -980,7 +981,7 @@ class AsyncEventTest(EngineFixture):
     async def test_sync_before_cursor_execute_connection(self, async_engine):
         canary = mock.Mock()
 
-        s1 = self.select1(async_engine)
+        s1 = _select1(async_engine)
         async with async_engine.connect() as conn:
             sync_conn = conn.sync_connection
 
@@ -1522,3 +1523,10 @@ class PoolRegenTest(EngineFixture):
 
         tasks = [thing(engine) for _ in range(10)]
         await asyncio.gather(*tasks)
+
+
+def _select1(engine):
+    if engine.dialect.name == "oracle":
+        return "SELECT 1 FROM DUAL"
+    else:
+        return "SELECT 1"
