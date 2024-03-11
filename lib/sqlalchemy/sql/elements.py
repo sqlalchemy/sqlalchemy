@@ -1915,8 +1915,9 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
 
         from sqlalchemy import bindparam
 
-        stmt = select(users_table).\
-                    where(users_table.c.name == bindparam('username'))
+        stmt = select(users_table).where(
+            users_table.c.name == bindparam("username")
+        )
 
     Detailed discussion of how :class:`.BindParameter` is used is
     at :func:`.bindparam`.

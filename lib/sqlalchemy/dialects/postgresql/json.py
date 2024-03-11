@@ -155,7 +155,7 @@ class JSON(sqltypes.JSON):
          be used to persist a NULL value::
 
              from sqlalchemy import null
-             conn.execute(table.insert(), data=null())
+             conn.execute(table.insert(), {"data": null()})
 
          .. seealso::
 

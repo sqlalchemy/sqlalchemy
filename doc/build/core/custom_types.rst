@@ -527,7 +527,10 @@ transparently::
     with engine.begin() as conn:
         metadata_obj.create_all(conn)
 
-        conn.execute(message.insert(), username="some user", message="this is my message")
+        conn.execute(
+            message.insert(),
+            {"username": "some user", "message": "this is my message"},
+        )
 
         print(
             conn.scalar(select(message.c.message).where(message.c.username == "some user"))
