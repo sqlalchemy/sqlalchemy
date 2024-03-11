@@ -1102,8 +1102,10 @@ that will be passed to ``eval()`` are:
     are **evaluated as Python code expressions using eval().  DO NOT PASS
     UNTRUSTED INPUT TO THESE ARGUMENTS.**
 
+.. _orm_declarative_table_adding_relationship:
+
 Adding Relationships to Mapped Classes After Declaration
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 It should also be noted that in a similar way as described at
 :ref:`orm_declarative_table_adding_columns`, any :class:`_orm.MapperProperty`
