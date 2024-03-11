@@ -140,15 +140,15 @@ each time the transaction is ended, and a new statement is
 emitted, a new transaction begins implicitly::
 
     with engine.connect() as connection:
-        connection.execute("<some statement>")
+        connection.execute(text("<some statement>"))
         connection.commit()  # commits "some statement"
 
         # new transaction starts
-        connection.execute("<some other statement>")
+        connection.execute(text("<some other statement>"))
         connection.rollback()  # rolls back "some other statement"
 
         # new transaction starts
-        connection.execute("<a third statement>")
+        connection.execute(text("<a third statement>"))
         connection.commit()  # commits "a third statement"
 
 .. versionadded:: 2.0 "commit as you go" style is a new feature of
@@ -321,7 +321,7 @@ begin a transaction::
         isolation_level="REPEATABLE READ"
     ) as connection:
         with connection.begin():
-            connection.execute("<statement>")
+            connection.execute(text("<statement>"))
 
 .. tip::  The return value of
    the :meth:`_engine.Connection.execution_options` method is the same
@@ -443,8 +443,8 @@ If we wanted to check out a :class:`_engine.Connection` object and use it
 
     with engine.connect() as connection:
         connection.execution_options(isolation_level="AUTOCOMMIT")
-        connection.execute("<statement>")
-        connection.execute("<statement>")
+        connection.execute(text("<statement>"))
+        connection.execute(text("<statement>"))
 
 Above illustrates normal usage of "DBAPI autocommit" mode.   There is no
 need to make use of methods such as :meth:`_engine.Connection.begin`
@@ -472,8 +472,8 @@ In the example below, statements remain
 
         # this begin() does not affect the DBAPI connection, isolation stays at AUTOCOMMIT
         with connection.begin() as trans:
-            connection.execute("<statement>")
-            connection.execute("<statement>")
+            connection.execute(text("<statement>"))
+            connection.execute(text("<statement>"))
 
 When we run a block like the above with logging turned on, the logging
 will attempt to indicate that while a DBAPI level ``.commit()`` is called,
@@ -496,11 +496,11 @@ called after autobegin has already occurred::
         connection = connection.execution_options(isolation_level="AUTOCOMMIT")
 
         # "transaction" is autobegin (but has no effect due to autocommit)
-        connection.execute("<statement>")
+        connection.execute(text("<statement>"))
 
         # this will raise; "transaction" is already begun
         with connection.begin() as trans:
-            connection.execute("<statement>")
+            connection.execute(text("<statement>"))
 
 The above example also demonstrates the same theme that the "autocommit"
 isolation level is a configurational detail of the underlying database
@@ -545,7 +545,7 @@ before we call upon :meth:`_engine.Connection.begin`::
         connection.execution_options(isolation_level="AUTOCOMMIT")
 
         # run statement(s) in autocommit mode
-        connection.execute("<statement>")
+        connection.execute(text("<statement>"))
 
         # "commit" the autobegun "transaction"
         connection.commit()
@@ -555,7 +555,7 @@ before we call upon :meth:`_engine.Connection.begin`::
 
         # use a begin block
         with connection.begin() as trans:
-            connection.execute("<statement>")
+            connection.execute(text("<statement>"))
 
 Above, to manually revert the isolation level we made use of
 :attr:`_engine.Connection.default_isolation_level` to restore the default
@@ -568,11 +568,11 @@ use two blocks ::
     # use an autocommit block
     with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
         # run statement in autocommit mode
-        connection.execute("<statement>")
+        connection.execute(text("<statement>"))
 
     # use a regular block
     with engine.begin() as connection:
-        connection.execute("<statement>")
+        connection.execute(text("<statement>"))
 
 To sum up:
 
