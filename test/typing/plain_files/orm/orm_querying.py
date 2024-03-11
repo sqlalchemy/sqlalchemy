@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from sqlalchemy import ColumnElement
 from sqlalchemy import ForeignKey
 from sqlalchemy import orm
 from sqlalchemy import select
@@ -124,3 +125,12 @@ def load_options_error() -> None:
         # EXPECTED_MYPY_RE: Argument 1 to .* has incompatible type .*
         orm.undefer(B.a).undefer("bar"),
     )
+
+
+# test 10959
+def test_10959_with_loader_criteria() -> None:
+    def where_criteria(cls_: type[A]) -> ColumnElement[bool]:
+        return cls_.data == "some data"
+
+    orm.with_loader_criteria(A, lambda cls: cls.data == "some data")
+    orm.with_loader_criteria(A, where_criteria)
