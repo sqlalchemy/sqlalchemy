@@ -503,7 +503,7 @@ def _queryable_attribute_unreduce(
         return getattr(entity, key)
 
 
-class InstrumentedAttribute(QueryableAttribute[_T]):
+class InstrumentedAttribute(QueryableAttribute[_T_co]):
     """Class bound instrumented attribute which adds basic
     :term:`descriptor` methods.
 
@@ -544,14 +544,14 @@ class InstrumentedAttribute(QueryableAttribute[_T]):
     @overload
     def __get__(
         self, instance: None, owner: Any
-    ) -> InstrumentedAttribute[_T]: ...
+    ) -> InstrumentedAttribute[_T_co]: ...
 
     @overload
-    def __get__(self, instance: object, owner: Any) -> _T: ...
+    def __get__(self, instance: object, owner: Any) -> _T_co: ...
 
     def __get__(
         self, instance: Optional[object], owner: Any
-    ) -> Union[InstrumentedAttribute[_T], _T]:
+    ) -> Union[InstrumentedAttribute[_T_co], _T_co]:
         if instance is None:
             return self
 
