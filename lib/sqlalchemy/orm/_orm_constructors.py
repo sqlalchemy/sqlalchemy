@@ -95,6 +95,141 @@ def contains_alias(alias: Union[Alias, Subquery]) -> AliasOption:
     return AliasOption(alias)
 
 
+# nullable=True -> MappedColumn[Optional[_T]]
+@overload
+def mapped_column(
+    __name_pos: Optional[
+        Union[str, _TypeEngineArgument[_T], SchemaEventTarget]
+    ] = None,
+    __type_pos: Optional[
+        Union[_TypeEngineArgument[_T], SchemaEventTarget]
+    ] = None,
+    *args: SchemaEventTarget,
+    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    default: Optional[Union[_NoArg, _T, Callable[..., _T]]] = _NoArg.NO_ARG,
+    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
+    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    nullable: Literal[True],
+    primary_key: Optional[bool] = False,
+    deferred: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    deferred_group: Optional[str] = None,
+    deferred_raiseload: Optional[bool] = None,
+    use_existing_column: bool = False,
+    name: Optional[str] = None,
+    type_: Optional[_TypeEngineArgument[Any]] = None,
+    autoincrement: _AutoIncrementType = "auto",
+    doc: Optional[str] = None,
+    key: Optional[str] = None,
+    index: Optional[bool] = None,
+    unique: Optional[bool] = None,
+    info: Optional[_InfoType] = None,
+    onupdate: Optional[Any] = None,
+    insert_default: Optional[Any] = _NoArg.NO_ARG,
+    server_default: Optional[_ServerDefaultArgument] = None,
+    server_onupdate: Optional[FetchedValue] = None,
+    active_history: bool = False,
+    quote: Optional[bool] = None,
+    system: bool = False,
+    comment: Optional[str] = None,
+    sort_order: Union[_NoArg, int] = _NoArg.NO_ARG,
+    **kw: Any,
+) -> MappedColumn[Optional[_T]]:
+    ...
+
+
+# nullable=False -> MappedColumn[_T]
+@overload
+def mapped_column(
+    __name_pos: Optional[
+        Union[str, _TypeEngineArgument[_T], SchemaEventTarget]
+    ] = None,
+    __type_pos: Optional[
+        Union[_TypeEngineArgument[_T], SchemaEventTarget]
+    ] = None,
+    *args: SchemaEventTarget,
+    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    default: Union[_NoArg, _T, Callable[..., _T]] = _NoArg.NO_ARG,
+    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
+    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    nullable: Literal[False],
+    primary_key: Optional[bool] = False,
+    deferred: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    deferred_group: Optional[str] = None,
+    deferred_raiseload: Optional[bool] = None,
+    use_existing_column: bool = False,
+    name: Optional[str] = None,
+    type_: Optional[_TypeEngineArgument[Any]] = None,
+    autoincrement: _AutoIncrementType = "auto",
+    doc: Optional[str] = None,
+    key: Optional[str] = None,
+    index: Optional[bool] = None,
+    unique: Optional[bool] = None,
+    info: Optional[_InfoType] = None,
+    onupdate: Optional[Any] = None,
+    insert_default: Optional[Any] = _NoArg.NO_ARG,
+    server_default: Optional[_ServerDefaultArgument] = None,
+    server_onupdate: Optional[FetchedValue] = None,
+    active_history: bool = False,
+    quote: Optional[bool] = None,
+    system: bool = False,
+    comment: Optional[str] = None,
+    sort_order: Union[_NoArg, int] = _NoArg.NO_ARG,
+    **kw: Any,
+) -> MappedColumn[_T]:
+    ...
+
+
+# nullable unset or None -> MappedColumn[_T]
+# TODO this would be only correct if the default unset nullable was False, which implies a larger change.
+@overload
+def mapped_column(
+    __name_pos: Optional[
+        Union[str, _TypeEngineArgument[_T], SchemaEventTarget]
+    ] = None,
+    __type_pos: Optional[
+        Union[_TypeEngineArgument[_T], SchemaEventTarget]
+    ] = None,
+    *args: SchemaEventTarget,
+    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    default: Union[_NoArg, _T, Callable[..., _T]] = _NoArg.NO_ARG,
+    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
+    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    nullable: Optional[
+        Literal[SchemaConst.NULL_UNSPECIFIED]
+    ] = SchemaConst.NULL_UNSPECIFIED,
+    primary_key: Optional[bool] = False,
+    deferred: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    deferred_group: Optional[str] = None,
+    deferred_raiseload: Optional[bool] = None,
+    use_existing_column: bool = False,
+    name: Optional[str] = None,
+    type_: Optional[_TypeEngineArgument[Any]] = None,
+    autoincrement: _AutoIncrementType = "auto",
+    doc: Optional[str] = None,
+    key: Optional[str] = None,
+    index: Optional[bool] = None,
+    unique: Optional[bool] = None,
+    info: Optional[_InfoType] = None,
+    onupdate: Optional[Any] = None,
+    insert_default: Optional[Any] = _NoArg.NO_ARG,
+    server_default: Optional[_ServerDefaultArgument] = None,
+    server_onupdate: Optional[FetchedValue] = None,
+    active_history: bool = False,
+    quote: Optional[bool] = None,
+    system: bool = False,
+    comment: Optional[str] = None,
+    sort_order: Union[_NoArg, int] = _NoArg.NO_ARG,
+    **kw: Any,
+) -> MappedColumn[_T]:
+    ...
+
+
 def mapped_column(
     __name_pos: Optional[
         Union[str, _TypeEngineArgument[Any], SchemaEventTarget]
