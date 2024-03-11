@@ -112,8 +112,8 @@ To disable the prepared statement cache, use a value of zero::
 
 .. _asyncpg_prepared_statement_name:
 
-Prepared Statement Name
------------------------
+Prepared Statement Name with PGBouncer
+--------------------------------------
 
 By default, asyncpg enumerates prepared statements in numeric order, which
 can lead to errors if a name has already been taken for another prepared
@@ -128,7 +128,7 @@ a prepared statement is prepared::
     from uuid import uuid4
 
     engine = create_async_engine(
-        "postgresql+asyncpg://user:pass@hostname/dbname",
+        "postgresql+asyncpg://user:pass@somepgbouncer/dbname",
         poolclass=NullPool,
         connect_args={
             'prepared_statement_name_func': lambda:  f'__asyncpg_{uuid4()}__',
@@ -141,7 +141,7 @@ a prepared statement is prepared::
 
    https://github.com/sqlalchemy/sqlalchemy/issues/6467
 
-.. warning:: To prevent a buildup of useless prepared statements in
+.. warning:: When using PGBouncer, to prevent a buildup of useless prepared statements in
    your application, it's important to use the :class:`.NullPool` pool
    class, and to configure PgBouncer to use `DISCARD <https://www.postgresql.org/docs/current/sql-discard.html>`_
    when returning connections.  The DISCARD command is used to release resources held by the db connection,
