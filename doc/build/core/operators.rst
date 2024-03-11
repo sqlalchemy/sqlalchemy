@@ -303,7 +303,7 @@ databases support:
   using the :meth:`_sql.ColumnOperators.__eq__` overloaded operator, i.e.
   ``==``, in conjunction with the ``None`` or :func:`_sql.null` value. In this
   way, there's typically not a need to use :meth:`_sql.ColumnOperators.is_`
-  explicitly, paricularly when used with a dynamic value::
+  explicitly, particularly when used with a dynamic value::
 
     >>> a = None
     >>> print(column("x") == a)

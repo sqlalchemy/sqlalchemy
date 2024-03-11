@@ -204,7 +204,7 @@ the operation will INSERT one row at a time::
 
 .. _orm_queryguide_insert_heterogeneous_params:
 
-Using Heterogenous Parameter Dictionaries
+Using Heterogeneous Parameter Dictionaries
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ..  Setup code, not for display
@@ -215,7 +215,7 @@ Using Heterogenous Parameter Dictionaries
   BEGIN (implicit)...
 
 The ORM bulk insert feature supports lists of parameter dictionaries that are
-"heterogenous", which basically means "individual dictionaries can have different
+"heterogeneous", which basically means "individual dictionaries can have different
 keys".   When this condition is detected,
 the ORM will break up the parameter dictionaries into groups corresponding
 to each set of keys and batch accordingly into separate INSERT statements::
@@ -552,7 +552,7 @@ are not present:
   or other multi-table mappings are not supported, since that would require multiple
   INSERT statements.
 
-* :ref:`Heterogenous parameter sets <orm_queryguide_insert_heterogeneous_params>`
+* :ref:`Heterogeneous parameter sets <orm_queryguide_insert_heterogeneous_params>`
   are not supported - each element in the VALUES set must have the same
   columns.
 

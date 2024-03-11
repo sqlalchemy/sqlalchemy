@@ -177,7 +177,7 @@ SQLAlchemy Documentation
 
     * :doc:`Frequently Asked Questions <faq/index>` - A collection of common problems and solutions
     * :doc:`Glossary <glossary>` - Terms used in SQLAlchemy's documentation
-    * :doc:`Error Message Guide <errors>` - Explainations of many SQLAlchemy Errors
+    * :doc:`Error Message Guide <errors>` - Explanations of many SQLAlchemy Errors
     * :doc:`Complete table of of contents <contents>`
     * :ref:`Index <genindex>`
 

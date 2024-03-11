@@ -280,7 +280,7 @@ Facts about :attr:`_engine.CursorResult.rowcount`:
 
 * :attr:`_engine.CursorResult.rowcount` is not necessarily available for an UPDATE
   or DELETE statement that uses RETURNING, or for one that uses an
-  :ref:`executemany <tutorial_multiple_parameters>` execution.   The availablility
+  :ref:`executemany <tutorial_multiple_parameters>` execution.   The availability
   depends on the DBAPI module in use.
 
 * In any case where the DBAPI does not determine the rowcount for some type

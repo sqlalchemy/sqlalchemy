@@ -182,7 +182,7 @@ Other mapping forms for composites
 The :func:`_orm.composite` construct may be passed the relevant columns
 using a :func:`_orm.mapped_column` construct, a :class:`_schema.Column`,
 or the string name of an existing mapped column.   The following examples
-illustrate an equvalent mapping as that of the main section above.
+illustrate an equivalent mapping as that of the main section above.
 
 * Map columns directly, then pass to composite
 

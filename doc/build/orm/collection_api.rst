@@ -129,7 +129,7 @@ Python code, as well as in a few special cases, the collection class for a
 In the absence of :paramref:`_orm.relationship.collection_class`
 or :class:`_orm.Mapped`, the default collection type is ``list``.
 
-Beyond ``list`` and ``set`` builtins, there is also support for two varities of
+Beyond ``list`` and ``set`` builtins, there is also support for two varieties of
 dictionary, described below at :ref:`orm_dictionary_collection`. There is also
 support for any arbitrary mutable sequence type can be set up as the target
 collection, with some additional configuration steps; this is described in the

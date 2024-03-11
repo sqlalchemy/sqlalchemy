@@ -173,7 +173,7 @@ Backend-agnostic GUID Type
 
 .. note:: Since version 2.0 the built-in :class:`_types.Uuid` type that
     behaves similarly should be preferred. This example is presented
-    just as an example of a type decorator that recieves and returns
+    just as an example of a type decorator that receives and returns
     python objects.
 
 Receives and returns Python uuid() objects.  
