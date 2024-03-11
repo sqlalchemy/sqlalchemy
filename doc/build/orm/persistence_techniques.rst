@@ -332,7 +332,7 @@ Case 2: Table includes trigger-generated values which are not compatible with RE
 
 The ``"auto"`` setting of :paramref:`_orm.Mapper.eager_defaults` means that
 a backend that supports RETURNING will usually make use of RETURNING with
-INSERT statements in order to retreive newly generated default values.
+INSERT statements in order to retrieve newly generated default values.
 However there are limitations of server-generated values that are generated
 using triggers, such that RETURNING can't be used:
 
@@ -367,7 +367,7 @@ this looks like::
 
 On SQL Server with the pyodbc driver, an INSERT for the above table will
 not use RETURNING and will use the SQL Server ``scope_identity()`` function
-to retreive the newly generated primary key value:
+to retrieve the newly generated primary key value:
 
 .. sourcecode:: sql
 

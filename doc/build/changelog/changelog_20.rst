@@ -27,7 +27,7 @@
         value the DBAPI offers for any kind of statement will be available using
         the :attr:`_engine.CursorResult.rowcount` attribute from the
         :class:`_engine.CursorResult`.  This allows the rowcount to be accessed for
-        statments such as INSERT and SELECT, to the degree supported by the DBAPI
+        statements such as INSERT and SELECT, to the degree supported by the DBAPI
         in use. The :ref:`engine_insertmanyvalues` also supports this option and
         will ensure :attr:`_engine.CursorResult.rowcount` is correctly set for a
         bulk INSERT of rows when set.

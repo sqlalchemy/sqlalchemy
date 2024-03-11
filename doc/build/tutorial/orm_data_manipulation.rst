@@ -157,7 +157,7 @@ Another effect of the INSERT that occurred was that the ORM has retrieved the
 new primary key identifiers for each new object; internally it normally uses
 the same :attr:`_engine.CursorResult.inserted_primary_key` accessor we
 introduced previously.   The ``squidward`` and ``krabs`` objects now have these new
-primary key identifiers associated with them and we can view them by acesssing
+primary key identifiers associated with them and we can view them by accessing
 the ``id`` attribute::
 
     >>> squidward.id

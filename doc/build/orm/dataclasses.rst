@@ -424,7 +424,7 @@ scalar object references may make use of
 The above mapping will generate an empty list for ``Parent.children`` when a
 new ``Parent()`` object is constructed without passing ``children``, and
 similarly a ``None`` value for ``Child.parent`` when a new ``Child()`` object
-is constructed without passsing ``parent``.
+is constructed without passing ``parent``.
 
 While the :paramref:`_orm.relationship.default_factory` can be automatically
 derived from the given collection class of the :func:`_orm.relationship`
