@@ -35,11 +35,6 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column()
 
-    # this currently doesnt generate an error.  not sure how to get the
-    # overloads to hit this one, nor am i sure i really want to do that
-    # anyway
-    name_this_works_atm: Mapped[str] = mapped_column(nullable=True)
-
     extra: Mapped[Optional[str]] = mapped_column()
     extra_name: Mapped[Optional[str]] = mapped_column("extra_name")
 

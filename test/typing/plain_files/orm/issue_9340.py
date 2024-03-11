@@ -1,3 +1,4 @@
+from typing import Optional
 from typing import Sequence
 from typing import TYPE_CHECKING
 
@@ -28,7 +29,7 @@ class UserComment(Message):
     __mapper_args__ = {
         "polymorphic_identity": "user_comment",
     }
-    username: Mapped[str] = mapped_column(nullable=True)
+    username: Mapped[Optional[str]] = mapped_column(nullable=True)
 
 
 engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/")
