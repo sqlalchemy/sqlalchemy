@@ -17,6 +17,7 @@ from .. import exc
 from .. import util
 from ..util._has_cy import HAS_CYEXTENSION
 from ..util.typing import Protocol
+from ..util.typing import Self
 
 if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_util import _distill_params_20 as _distill_params_20
@@ -113,7 +114,7 @@ class TransactionalContext:
                     "before emitting further commands."
                 )
 
-    def __enter__(self) -> TransactionalContext:
+    def __enter__(self) -> Self:
         subject = self._get_subject()
 
         # none for outer transaction, may be non-None for nested
