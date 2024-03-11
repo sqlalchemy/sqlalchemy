@@ -3450,7 +3450,7 @@ class OnConflictTest(AssertsCompiledSQL, fixtures.TablesTest):
         )
 
         # The last inserted primary key should be 2 here
-        # it is taking the result from the the exotic fixture
+        # it is taking the result from the exotic fixture
         eq_(result.inserted_primary_key, (2,))
 
         eq_(
