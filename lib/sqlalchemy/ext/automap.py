@@ -1002,6 +1002,12 @@ class AutomapBase:
 
         User, Address = Base.classes.User, Base.classes.Address
 
+    For class names that overlap with a method name of
+    :class:`.util.Properties`, such as ``items()``, the getitem form
+    is also supported::
+
+        Item = Base.classes["item"]
+
     """
 
     by_module: ClassVar[ByModuleProperties]
