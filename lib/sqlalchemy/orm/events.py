@@ -1939,7 +1939,7 @@ class SessionEvents(event.Events[Session]):
             @event.listens_for(Session, "after_soft_rollback")
             def do_something(session, previous_transaction):
                 if session.is_active:
-                    session.execute("select * from some_table")
+                    session.execute(text("select * from some_table"))
 
         :param session: The target :class:`.Session`.
         :param previous_transaction: The :class:`.SessionTransaction`

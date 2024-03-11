@@ -90,7 +90,7 @@ This is most easily accomplished using the
     session = Session()
 
     # execute a string statement
-    result = session.execute("select * from table where id=:id", {"id": 7})
+    result = session.execute(text("select * from table where id=:id"), {"id": 7})
 
     # execute a SQL expression construct
     result = session.execute(select(mytable).where(mytable.c.id == 7))

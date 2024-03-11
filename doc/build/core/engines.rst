@@ -649,7 +649,7 @@ tokens::
     >>> from sqlalchemy import create_engine
     >>> e = create_engine("sqlite://", echo="debug")
     >>> with e.connect().execution_options(logging_token="track1") as conn:
-    ...     conn.execute("select 1").all()
+    ...     conn.execute(text("select 1")).all()
     2021-02-03 11:48:45,754 INFO sqlalchemy.engine.Engine [track1] select 1
     2021-02-03 11:48:45,754 INFO sqlalchemy.engine.Engine [track1] [raw sql] ()
     2021-02-03 11:48:45,754 DEBUG sqlalchemy.engine.Engine [track1] Col ('1',)
@@ -666,14 +666,14 @@ of an application without creating new engines::
     >>> e1 = e.execution_options(logging_token="track1")
     >>> e2 = e.execution_options(logging_token="track2")
     >>> with e1.connect() as conn:
-    ...     conn.execute("select 1").all()
+    ...     conn.execute(text("select 1")).all()
     2021-02-03 11:51:08,960 INFO sqlalchemy.engine.Engine [track1] select 1
     2021-02-03 11:51:08,960 INFO sqlalchemy.engine.Engine [track1] [raw sql] ()
     2021-02-03 11:51:08,960 DEBUG sqlalchemy.engine.Engine [track1] Col ('1',)
     2021-02-03 11:51:08,961 DEBUG sqlalchemy.engine.Engine [track1] Row (1,)
 
     >>> with e2.connect() as conn:
-    ...     conn.execute("select 2").all()
+    ...     conn.execute(text("select 2")).all()
     2021-02-03 11:52:05,518 INFO sqlalchemy.engine.Engine [track2] Select 1
     2021-02-03 11:52:05,519 INFO sqlalchemy.engine.Engine [track2] [raw sql] ()
     2021-02-03 11:52:05,520 DEBUG sqlalchemy.engine.Engine [track2] Col ('1',)
