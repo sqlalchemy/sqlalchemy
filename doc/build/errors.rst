@@ -572,7 +572,7 @@ is executed::
 Above, no value has been provided for the parameter "my_param".  The correct
 approach is to provide a value::
 
-    result = conn.execute(stmt, my_param=12)
+    result = conn.execute(stmt, {"my_param": 12})
 
 When the message takes the form "a value is required for bind parameter <x>
 in parameter group <y>", the message is referring to the "executemany" style

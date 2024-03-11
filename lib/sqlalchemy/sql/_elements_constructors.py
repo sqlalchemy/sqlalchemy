@@ -493,8 +493,9 @@ def bindparam(
 
         from sqlalchemy import bindparam
 
-        stmt = select(users_table).\
-                    where(users_table.c.name == bindparam('username'))
+        stmt = select(users_table).where(
+            users_table.c.name == bindparam("username")
+        )
 
     The above statement, when rendered, will produce SQL similar to::
 
@@ -504,22 +505,25 @@ def bindparam(
     would typically be applied at execution time to a method
     like :meth:`_engine.Connection.execute`::
 
-        result = connection.execute(stmt, username='wendy')
+        result = connection.execute(stmt, {"username": "wendy"})
 
     Explicit use of :func:`.bindparam` is also common when producing
     UPDATE or DELETE statements that are to be invoked multiple times,
     where the WHERE criterion of the statement is to change on each
     invocation, such as::
 
-        stmt = (users_table.update().
-                where(user_table.c.name == bindparam('username')).
-                values(fullname=bindparam('fullname'))
-                )
+        stmt = (
+            users_table.update()
+            .where(user_table.c.name == bindparam("username"))
+            .values(fullname=bindparam("fullname"))
+        )
 
         connection.execute(
-            stmt, [{"username": "wendy", "fullname": "Wendy Smith"},
-                   {"username": "jack", "fullname": "Jack Jones"},
-                   ]
+            stmt,
+            [
+                {"username": "wendy", "fullname": "Wendy Smith"},
+                {"username": "jack", "fullname": "Jack Jones"},
+            ],
         )
 
     SQLAlchemy's Core expression system makes wide use of
@@ -568,7 +572,7 @@ def bindparam(
     bound placeholders based on the arguments passed, as in::
 
         stmt = users_table.insert()
-        result = connection.execute(stmt, name='Wendy')
+        result = connection.execute(stmt, {"name": "Wendy"})
 
     The above will produce SQL output as::
 
@@ -1589,7 +1593,7 @@ def text(text: str) -> TextClause:
     E.g.::
 
         t = text("SELECT * FROM users WHERE id=:user_id")
-        result = connection.execute(t, user_id=12)
+        result = connection.execute(t, {"user_id": 12})
 
     For SQL statements where a colon is required verbatim, as within
     an inline string, use a backslash to escape::
@@ -1619,7 +1623,7 @@ def text(text: str) -> TextClause:
     such as for the WHERE clause of a SELECT statement::
 
         s = select(users.c.id, users.c.name).where(text("id=:user_id"))
-        result = connection.execute(s, user_id=12)
+        result = connection.execute(s, {"user_id": 12})
 
     :func:`_expression.text` is also used for the construction
     of a full, standalone statement using plain text.
