@@ -437,7 +437,7 @@ class DeferredLambdaElement(LambdaElement):
 
     def __init__(
         self,
-        fn: _LambdaType,
+        fn: _AnyLambdaType,
         role: Type[roles.SQLRole],
         opts: Union[Type[LambdaOptions], LambdaOptions] = LambdaOptions,
         lambda_args: Tuple[Any, ...] = (),

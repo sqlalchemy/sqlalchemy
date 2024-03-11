@@ -1380,7 +1380,10 @@ class LoaderCriteriaOption(CriteriaOption):
     def __init__(
         self,
         entity_or_base: _EntityType[Any],
-        where_criteria: _ColumnExpressionArgument[bool],
+        where_criteria: Union[
+            _ColumnExpressionArgument[bool],
+            Callable[[Any], _ColumnExpressionArgument[bool]],
+        ],
         loader_only: bool = False,
         include_aliases: bool = False,
         propagate_to_loaders: bool = True,
