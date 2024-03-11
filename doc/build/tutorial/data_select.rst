@@ -447,7 +447,7 @@ explicitly::
     FROM user_account JOIN address ON user_account.id = address.user_id
 
 
-The other is the the :meth:`_sql.Select.join` method, which indicates only the
+The other is the :meth:`_sql.Select.join` method, which indicates only the
 right side of the JOIN, the left hand-side is inferred::
 
     >>> print(select(user_table.c.name, address_table.c.email_address).join(address_table))
