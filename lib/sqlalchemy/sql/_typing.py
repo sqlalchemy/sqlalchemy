@@ -70,6 +70,7 @@ if TYPE_CHECKING:
     from .sqltypes import TableValueType
     from .sqltypes import TupleType
     from .type_api import TypeEngine
+    from ..engine import Dialect
     from ..util.typing import TypeGuard
 
 _T = TypeVar("_T", bound=Any)
@@ -91,6 +92,15 @@ class _CoreAdapterProto(Protocol):
     """protocol for the ClauseAdapter/ColumnAdapter.traverse() method."""
 
     def __call__(self, obj: _CE) -> _CE: ...
+
+
+class _HasDialect(Protocol):
+    """protocol for Engine/Connection-like objects that have dialect
+    attribute.
+    """
+
+    @property
+    def dialect(self) -> Dialect: ...
 
 
 # match column types that are not ORM entities
