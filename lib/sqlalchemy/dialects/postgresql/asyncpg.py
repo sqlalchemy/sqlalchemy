@@ -1184,6 +1184,7 @@ class PGDialect_asyncpg(PGDialect):
             decoder=_json_decoder,
             schema="pg_catalog",
             format="binary",
+            name=self._prepared_statement_name_func(),
         )
 
     async def setup_asyncpg_jsonb_codec(self, conn):
@@ -1217,6 +1218,7 @@ class PGDialect_asyncpg(PGDialect):
             decoder=_jsonb_decoder,
             schema="pg_catalog",
             format="binary",
+            name=self._prepared_statement_name_func(),
         )
 
     async def _disable_asyncpg_inet_codecs(self, conn):
@@ -1228,6 +1230,7 @@ class PGDialect_asyncpg(PGDialect):
             decoder=lambda s: s,
             schema="pg_catalog",
             format="text",
+            name=self._prepared_statement_name_func(),
         )
 
         await asyncpg_connection.set_type_codec(
@@ -1236,6 +1239,7 @@ class PGDialect_asyncpg(PGDialect):
             decoder=lambda s: s,
             schema="pg_catalog",
             format="text",
+            name=self._prepared_statement_name_func(),
         )
 
     def on_connect(self):
