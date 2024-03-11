@@ -976,7 +976,7 @@ This document details individual issue-level changes made throughout
 
         Fixed regression where using ORM update() with synchronize_session='fetch'
         would fail due to the use of evaluators that are now used to determine the
-        in-Python value for expressions in the the SET clause when refreshing
+        in-Python value for expressions in the SET clause when refreshing
         objects; if the evaluators make use of math operators against non-numeric
         values such as PostgreSQL JSONB, the non-evaluable condition would fail to
         be detected correctly. The evaluator now limits the use of math mutation
@@ -2810,7 +2810,7 @@ This document details individual issue-level changes made throughout
         :class:`_result.Result` class and implemented it for the filtered result
         implementations that are used by the ORM, so that it is possible to call
         the :meth:`_engine.CursorResult.close` method on the underlying
-        :class:`_engine.CursorResult` when the the ``yield_per`` execution option
+        :class:`_engine.CursorResult` when the ``yield_per`` execution option
         is in use to close a server side cursor before remaining ORM results have
         been fetched. This was again already available for Core result sets but the
         change makes it available for 2.0 style ORM results as well.
@@ -9141,7 +9141,7 @@ This document details individual issue-level changes made throughout
         cascade operation actually takes place.   The new behavior can be
         established as always by setting the flag to ``False`` on a specific
         :func:`_orm.relationship`, or more generally can be set up across the board
-        by setting the the :paramref:`_orm.Session.future` flag to True.
+        by setting the :paramref:`_orm.Session.future` flag to True.
 
         .. seealso::
 
