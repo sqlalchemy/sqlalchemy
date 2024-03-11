@@ -543,9 +543,9 @@ is when establishing a many-to-many relationship from a class to itself, as show
 
     from typing import List
 
-    from sqlalchemy import Integer, ForeignKey, String, Column, Table
-    from sqlalchemy.orm import DeclarativeBase
-    from sqlalchemy.orm import relationship
+    from sqlalchemy import Integer, ForeignKey, Column, Table
+    from sqlalchemy.orm import DeclarativeBase, Mapped
+    from sqlalchemy.orm import mapped_column, relationship
 
 
     class Base(DeclarativeBase):
