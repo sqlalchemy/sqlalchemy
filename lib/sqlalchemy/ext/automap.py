@@ -1006,7 +1006,7 @@ class AutomapBase:
     :class:`.util.Properties`, such as ``items()``, the getitem form
     is also supported::
 
-        Item = Base.classes["item"]
+        Item = Base.classes["items"]
 
     """
 
