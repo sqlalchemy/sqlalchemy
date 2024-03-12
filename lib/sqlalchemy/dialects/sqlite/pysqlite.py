@@ -51,11 +51,14 @@ used. Double backslashes are probably needed::
     # absolute path on Windows
     e = create_engine('sqlite:///C:\\path\\to\\database.db')
 
-The sqlite ``:memory:`` identifier is the default if no filepath is
-present.  Specify ``sqlite://`` and nothing else::
+To use sqlite ``:memory:`` database specify it as the filename using
+``sqlite://:memory:``. It's also the default if no filepath is
+present, specifying only ``sqlite://`` and nothing else::
 
     # in-memory database
-    e = create_engine('sqlite://')
+    e = create_engine('sqlite://:memory:')
+    # also in-memory database
+    e2 = create_engine('sqlite://')
 
 .. _pysqlite_uri_connections:
 
