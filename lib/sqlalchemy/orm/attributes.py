@@ -565,6 +565,9 @@ class InstrumentedAttribute(QueryableAttribute[_T]):
                 raise orm_exc.UnmappedInstanceError(instance) from err
             return self.impl.get(state, dict_)  # type: ignore[no-any-return]
 
+    if TYPE_CHECKING:
+        def __hash__(self) -> int: ...
+
 
 @dataclasses.dataclass(frozen=True)
 class AdHocHasEntityNamespace(HasCacheKey):
