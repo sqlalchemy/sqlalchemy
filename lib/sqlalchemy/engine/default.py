@@ -780,6 +780,13 @@ class DefaultDialect(Dialect):
 
         sentinel_value_resolvers = None
 
+        if compiled.schema_translate_map:
+            schema_translate_map = context.execution_options.get(
+                "schema_translate_map", {}
+            )
+        else:
+            schema_translate_map = None
+
         if is_returning:
             result: Optional[List[Any]] = []
             context._insertmanyvalues_rows = result
@@ -800,6 +807,7 @@ class DefaultDialect(Dialect):
             generic_setinputsizes,
             batch_size,
             sort_by_parameter_order,
+            schema_translate_map,
         ):
             yield imv_batch
 

@@ -29,6 +29,7 @@ import collections
 import collections.abc as collections_abc
 import contextlib
 from enum import IntEnum
+import functools
 import itertools
 import operator
 import re
@@ -5405,6 +5406,7 @@ class SQLCompiler(Compiled):
         generic_setinputsizes: Optional[_GenericSetInputSizesType],
         batch_size: int,
         sort_by_parameter_order: bool,
+        schema_translate_map: Optional[SchemaTranslateMapType],
     ) -> Iterator[_InsertManyValuesBatch]:
         imv = self._insertmanyvalues
         assert imv is not None
@@ -5456,7 +5458,19 @@ class SQLCompiler(Compiled):
                 )
             return
 
-        executemany_values = f"({imv.single_values_expr})"
+        if schema_translate_map:
+            rst = functools.partial(
+                self.preparer._render_schema_translates,
+                schema_translate_map=schema_translate_map,
+            )
+        else:
+            rst = None
+
+        imv_single_values_expr = imv.single_values_expr
+        if rst:
+            imv_single_values_expr = rst(imv_single_values_expr)
+
+        executemany_values = f"({imv_single_values_expr})"
         statement = statement.replace(executemany_values, "__EXECMANY_TOKEN__")
 
         # Use optional insertmanyvalues_max_parameters
@@ -5489,6 +5503,12 @@ class SQLCompiler(Compiled):
 
         insert_crud_params = imv.insert_crud_params
         assert insert_crud_params is not None
+
+        if rst:
+            insert_crud_params = [
+                (col, key, rst(expr), st)
+                for col, key, expr, st in insert_crud_params
+            ]
 
         escaped_bind_names: Mapping[str, str]
         expand_pos_lower_index = expand_pos_upper_index = 0
@@ -5537,10 +5557,10 @@ class SQLCompiler(Compiled):
 
             if imv.embed_values_counter:
                 executemany_values_w_comma = (
-                    f"({imv.single_values_expr}, _IMV_VALUES_COUNTER), "
+                    f"({imv_single_values_expr}, _IMV_VALUES_COUNTER), "
                 )
             else:
-                executemany_values_w_comma = f"({imv.single_values_expr}), "
+                executemany_values_w_comma = f"({imv_single_values_expr}), "
 
             all_names_we_will_expand: Set[str] = set()
             for elem in imv.insert_crud_params:
