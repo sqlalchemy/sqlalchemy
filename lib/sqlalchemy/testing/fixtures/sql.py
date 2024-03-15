@@ -459,6 +459,10 @@ def insertmanyvalues_fixture(
         # by not having the other methods we assert that those aren't being
         # used
 
+        @property
+        def description(self):
+            return self.cursor.description
+
         def fetchall(self):
             rows = self.cursor.fetchall()
             rows = list(rows)

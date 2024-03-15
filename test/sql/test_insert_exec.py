@@ -1764,10 +1764,8 @@ class IMVSentinelTest(fixtures.TestBase):
         """test assertions to ensure sentinel values passed in parameter
         structures can be identified when they come back in cursor.fetchall().
 
-        Values that are further modified by the database driver or by
-        SQL expressions (as in the case below) before being INSERTed
-        won't match coming back out, so datatypes need to implement
-        _sentinel_value_resolver() if this is the case.
+        Sentinels are now matched based on the data on the outside of the
+        type, that is, before the bind, and after the result.
 
         """
 
@@ -1780,11 +1778,8 @@ class IMVSentinelTest(fixtures.TestBase):
 
             if resolve_sentinel_values:
 
-                def _sentinel_value_resolver(self, dialect):
-                    def fix_sentinels(value):
-                        return value.lower()
-
-                    return fix_sentinels
+                def process_result_value(self, value, dialect):
+                    return value.replace("upper", "UPPER")
 
         t1 = Table(
             "data",
@@ -1816,10 +1811,16 @@ class IMVSentinelTest(fixtures.TestBase):
                 connection.execute(stmt, data)
         else:
             result = connection.execute(stmt, data)
-            eq_(
-                set(result.all()),
-                {(f"d{i}", f"upper_d{i}") for i in range(10)},
-            )
+            if resolve_sentinel_values:
+                eq_(
+                    set(result.all()),
+                    {(f"d{i}", f"UPPER_d{i}") for i in range(10)},
+                )
+            else:
+                eq_(
+                    set(result.all()),
+                    {(f"d{i}", f"upper_d{i}") for i in range(10)},
+                )
 
     @testing.variation("add_insert_sentinel", [True, False])
     def test_sentinel_insert_default_pk_only(
