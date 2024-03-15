@@ -1,6 +1,7 @@
 """Tests Mapped covariance."""
 
 from datetime import datetime
+from typing import List
 from typing import Protocol
 from typing import Sequence
 from typing import TypeVar
@@ -62,15 +63,15 @@ assert get_parent_name(Child(parent=Parent(name="foo"))) == "foo"
 
 # Make sure that relationships are covariant as well
 _BaseT = TypeVar("_BaseT", bound=Base, covariant=True)
-RelationshipType = (
-    InstrumentedAttribute[_BaseT]
-    | InstrumentedAttribute[Sequence[_BaseT]]
-    | InstrumentedAttribute[_BaseT | None]
-)
+RelationshipType = Union[
+    InstrumentedAttribute[_BaseT],
+    InstrumentedAttribute[Sequence[_BaseT]],
+    InstrumentedAttribute[Union[_BaseT, None]],
+]
 
 
 def operate_on_relationships(
-    relationships: list[RelationshipType[_BaseT]],
+    relationships: List[RelationshipType[_BaseT]],
 ) -> int:
     return len(relationships)
 
