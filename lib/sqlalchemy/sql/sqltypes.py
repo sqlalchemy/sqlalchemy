@@ -3662,31 +3662,6 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
 
                 return process
 
-    def _sentinel_value_resolver(self, dialect):
-        """For the "insertmanyvalues" feature only, return a callable that
-        will receive the uuid object or string
-        as it is normally passed to the DB in the parameter set, after
-        bind_processor() is called.  Convert this value to match
-        what it would be as coming back from a RETURNING or similar
-        statement for the given backend.
-
-        Individual dialects and drivers may need their own implementations
-        based on how their UUID types send data and how the drivers behave
-        (e.g. pyodbc)
-
-        """
-        if not self.native_uuid or not dialect.supports_native_uuid:
-            # dealing entirely with strings going in and out of
-            # CHAR(32)
-            return None
-
-        elif self.as_uuid:
-            # we sent UUID objects and we are getting UUID objects back
-            return None
-        else:
-            # we sent strings and we are getting UUID objects back
-            return _python_UUID
-
 
 class UUID(Uuid[_UUID_RETURN], type_api.NativeForEmulated):
     """Represent the SQL UUID type.
