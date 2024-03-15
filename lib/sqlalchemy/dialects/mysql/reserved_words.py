@@ -282,6 +282,7 @@ RESERVED_WORDS_MARIADB = {
     }
 )
 
+# https://dev.mysql.com/doc/refman/8.3/en/keywords.html
 # https://dev.mysql.com/doc/refman/8.0/en/keywords.html
 # https://dev.mysql.com/doc/refman/5.7/en/keywords.html
 # https://dev.mysql.com/doc/refman/5.6/en/keywords.html
@@ -403,6 +404,7 @@ RESERVED_WORDS_MYSQL = {
     "int4",
     "int8",
     "integer",
+    "intersect",
     "interval",
     "into",
     "io_after_gtids",
@@ -468,6 +470,7 @@ RESERVED_WORDS_MYSQL = {
     "outfile",
     "over",
     "parse_gcol_expr",
+    "parallel",
     "partition",
     "percent_rank",
     "persist",
@@ -476,6 +479,7 @@ RESERVED_WORDS_MYSQL = {
     "primary",
     "procedure",
     "purge",
+    "qualify",
     "range",
     "rank",
     "read",
