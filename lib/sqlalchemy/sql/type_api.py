@@ -1244,6 +1244,8 @@ class TypeDecorator(ExternalType, SchemaEventTarget, TypeEngine):
         class MyEpochType(types.TypeDecorator):
             impl = types.Integer
 
+            cache_ok = True
+
             epoch = datetime.date(1970, 1, 1)
 
             def process_bind_param(self, value, dialect):
