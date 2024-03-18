@@ -1555,29 +1555,6 @@ class MSUUid(sqltypes.Uuid):
 
                 return process
 
-    def _sentinel_value_resolver(self, dialect):
-        if not self.native_uuid:
-            # dealing entirely with strings going in and out of
-            # CHAR(32)
-            return None
-
-        # true if we expect the returned UUID values to be strings
-        # pymssql sends UUID objects back, pyodbc sends strings,
-        # however pyodbc converts them to uppercase coming back, so
-        # need special logic here
-        character_based_uuid = not dialect.supports_native_uuid
-
-        if character_based_uuid:
-            # we sent UUID objects in all cases, see bind_processor()
-            def process(uuid_value):
-                return str(uuid_value).upper()
-
-            return process
-        elif not self.as_uuid:
-            return _python_UUID
-        else:
-            return None
-
 
 class UNIQUEIDENTIFIER(sqltypes.Uuid[sqltypes._UUID_RETURN]):
     __visit_name__ = "UNIQUEIDENTIFIER"
