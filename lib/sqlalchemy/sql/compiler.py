@@ -117,7 +117,6 @@ if typing.TYPE_CHECKING:
     from .selectable import Select
     from .selectable import SelectState
     from .type_api import _BindProcessorType
-    from .type_api import _SentinelProcessorType
     from ..engine.cursor import CursorResultMetaData
     from ..engine.interfaces import _CoreSingleExecuteParams
     from ..engine.interfaces import _DBAPIAnyExecuteParams
@@ -548,8 +547,8 @@ class _InsertManyValues(NamedTuple):
 
     """
 
-    sentinel_param_keys: Optional[Sequence[Union[str, int]]] = None
-    """parameter str keys / int indexes in each param dictionary / tuple
+    sentinel_param_keys: Optional[Sequence[str]] = None
+    """parameter str keys in each param dictionary / tuple
     that would link to the client side "sentinel" values for that row, which
     we can use to match up parameter sets to result rows.
 
@@ -558,6 +557,10 @@ class _InsertManyValues(NamedTuple):
     columns.
 
     .. versionadded:: 2.0.10
+
+    .. versionchanged:: 2.0.29 - the sequence is now string dictionary keys
+       only, used against the "compiled parameteters" collection before
+       the parameters were converted by bound parameter processors
 
     """
 
@@ -603,6 +606,7 @@ class _InsertManyValuesBatch(NamedTuple):
     replaced_parameters: _DBAPIAnyExecuteParams
     processed_setinputsizes: Optional[_GenericSetInputSizesType]
     batch: Sequence[_DBAPISingleExecuteParams]
+    sentinel_values: Sequence[Tuple[Any, ...]]
     current_batch_size: int
     batchnum: int
     total_batches: int
@@ -1678,19 +1682,9 @@ class SQLCompiler(Compiled):
                 for v in self._insertmanyvalues.insert_crud_params
             ]
 
-            sentinel_param_int_idxs = (
-                [
-                    self.positiontup.index(cast(str, _param_key))
-                    for _param_key in self._insertmanyvalues.sentinel_param_keys  # noqa: E501
-                ]
-                if self._insertmanyvalues.sentinel_param_keys is not None
-                else None
-            )
-
             self._insertmanyvalues = self._insertmanyvalues._replace(
                 single_values_expr=single_values_expr,
                 insert_crud_params=insert_crud_params,
-                sentinel_param_keys=sentinel_param_int_idxs,
             )
 
     def _process_numeric(self):
@@ -1759,21 +1753,11 @@ class SQLCompiler(Compiled):
                 for v in self._insertmanyvalues.insert_crud_params
             ]
 
-            sentinel_param_int_idxs = (
-                [
-                    self.positiontup.index(cast(str, _param_key))
-                    for _param_key in self._insertmanyvalues.sentinel_param_keys  # noqa: E501
-                ]
-                if self._insertmanyvalues.sentinel_param_keys is not None
-                else None
-            )
-
             self._insertmanyvalues = self._insertmanyvalues._replace(
                 # This has the numbers (:1, :2)
                 single_values_expr=single_values_expr,
                 # The single binds are instead %s so they can be formatted
                 insert_crud_params=insert_crud_params,
-                sentinel_param_keys=sentinel_param_int_idxs,
             )
 
     @util.memoized_property
@@ -1804,23 +1788,6 @@ class SQLCompiler(Compiled):
             )
             if value is not None
         }
-
-    @util.memoized_property
-    def _imv_sentinel_value_resolvers(
-        self,
-    ) -> Optional[Sequence[Optional[_SentinelProcessorType[Any]]]]:
-        imv = self._insertmanyvalues
-        if imv is None or imv.sentinel_columns is None:
-            return None
-
-        sentinel_value_resolvers = [
-            _scol.type._cached_sentinel_value_processor(self.dialect)
-            for _scol in imv.sentinel_columns
-        ]
-        if util.NONE_SET.issuperset(sentinel_value_resolvers):
-            return None
-        else:
-            return sentinel_value_resolvers
 
     def is_subquery(self):
         return len(self.stack) > 1
@@ -5403,6 +5370,7 @@ class SQLCompiler(Compiled):
         self,
         statement: str,
         parameters: _DBAPIMultiExecuteParams,
+        compiled_parameters: List[_MutableCoreSingleExecuteParams],
         generic_setinputsizes: Optional[_GenericSetInputSizesType],
         batch_size: int,
         sort_by_parameter_order: bool,
@@ -5410,6 +5378,13 @@ class SQLCompiler(Compiled):
     ) -> Iterator[_InsertManyValuesBatch]:
         imv = self._insertmanyvalues
         assert imv is not None
+
+        if not imv.sentinel_param_keys:
+            _sentinel_from_params = None
+        else:
+            _sentinel_from_params = operator.itemgetter(
+                *imv.sentinel_param_keys
+            )
 
         lenparams = len(parameters)
         if imv.is_default_expr and not self.dialect.supports_default_metavalue:
@@ -5442,14 +5417,23 @@ class SQLCompiler(Compiled):
             downgraded = False
 
         if use_row_at_a_time:
-            for batchnum, param in enumerate(
-                cast("Sequence[_DBAPISingleExecuteParams]", parameters), 1
+            for batchnum, (param, compiled_param) in enumerate(
+                cast(
+                    "Sequence[Tuple[_DBAPISingleExecuteParams, _MutableCoreSingleExecuteParams]]",  # noqa: E501
+                    zip(parameters, compiled_parameters),
+                ),
+                1,
             ):
                 yield _InsertManyValuesBatch(
                     statement,
                     param,
                     generic_setinputsizes,
                     [param],
+                    (
+                        [_sentinel_from_params(compiled_param)]
+                        if _sentinel_from_params
+                        else []
+                    ),
                     1,
                     batchnum,
                     lenparams,
@@ -5494,6 +5478,9 @@ class SQLCompiler(Compiled):
             )
 
         batches = cast("List[Sequence[Any]]", list(parameters))
+        compiled_batches = cast(
+            "List[Sequence[Any]]", list(compiled_parameters)
+        )
 
         processed_setinputsizes: Optional[_GenericSetInputSizesType] = None
         batchnum = 1
@@ -5594,7 +5581,11 @@ class SQLCompiler(Compiled):
 
         while batches:
             batch = batches[0:batch_size]
+            compiled_batch = compiled_batches[0:batch_size]
+
             batches[0:batch_size] = []
+            compiled_batches[0:batch_size] = []
+
             if batches:
                 current_batch_size = batch_size
             else:
@@ -5709,6 +5700,11 @@ class SQLCompiler(Compiled):
                 replaced_parameters,
                 processed_setinputsizes,
                 batch,
+                (
+                    [_sentinel_from_params(cb) for cb in compiled_batch]
+                    if _sentinel_from_params
+                    else []
+                ),
                 current_batch_size,
                 batchnum,
                 total_batches,

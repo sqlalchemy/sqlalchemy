@@ -1,0 +1,26 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 11160
+
+    Made a change to the adjustment made in version 2.0.10 for :ticket:`9618`,
+    which added the behavior of reconciling RETURNING rows from a bulk INSERT
+    to the parameters that were passed to it.  This behavior included a
+    comparison of already-DB-converted bound parameter values against returned
+    row values that was not always "symmetrical" for SQL column types such as
+    UUIDs, depending on specifics of how different DBAPIs receive such values
+    versus how they return them, necessitating the need for additional
+    "sentinel value resolver" methods on these column types.  Unfortunately
+    this broke third party column types such as UUID/GUID types in libraries
+    like SQLModel which did not implement this special method, raising an error
+    "Can't match sentinel values in result set to parameter sets".  Rather than
+    attempt to further explain and document this implementation detail of the
+    "insertmanyvalues" feature including a public version of the new
+    method, the approach is intead revised to no longer need this extra
+    conversion step, and the logic that does the comparison now works on the
+    pre-converted bound parameter value compared to the post-result-processed
+    value, which should always be of a matching datatype.  In the unusual case
+    that a custom SQL column type that also happens to be used in a "sentinel"
+    column for bulk INSERT is not receiving and returning the same value type,
+    the "Can't match" error will be raised, however the mitigation is
+    straightforward in that the same Python datatype should be passed as that
+    returned.

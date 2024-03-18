@@ -574,18 +574,6 @@ class TypeEngine(Visitable, Generic[_T]):
         """
         return None
 
-    def _sentinel_value_resolver(
-        self, dialect: Dialect
-    ) -> Optional[_SentinelProcessorType[_T]]:
-        """Return an optional callable that will match parameter values
-        (post-bind processing) to result values
-        (pre-result-processing), for use in the "sentinel" feature.
-
-        .. versionadded:: 2.0.10
-
-        """
-        return None
-
     @util.memoized_property
     def _has_bind_expression(self) -> bool:
         """memoized boolean, check if bind_expression is implemented.
@@ -932,18 +920,6 @@ class TypeEngine(Visitable, Generic[_T]):
         rp = d["impl"].result_processor(dialect, coltype)
         d["result"][coltype] = rp
         return rp
-
-    def _cached_sentinel_value_processor(
-        self, dialect: Dialect
-    ) -> Optional[_SentinelProcessorType[_T]]:
-        try:
-            return dialect._type_memos[self]["sentinel"]
-        except KeyError:
-            pass
-
-        d = self._dialect_info(dialect)
-        d["sentinel"] = bp = d["impl"]._sentinel_value_resolver(dialect)
-        return bp
 
     def _cached_custom_processor(
         self, dialect: Dialect, key: str, fn: Callable[[TypeEngine[_T]], _O]

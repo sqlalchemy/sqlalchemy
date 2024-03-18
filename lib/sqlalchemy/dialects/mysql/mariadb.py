@@ -37,31 +37,6 @@ class _MariaDBUUID(UUID):
         else:
             return None
 
-    def _sentinel_value_resolver(self, dialect):
-        """Return a callable that will receive the uuid object or string
-        as it is normally passed to the DB in the parameter set, after
-        bind_processor() is called.  Convert this value to match
-        what it would be as coming back from MariaDB RETURNING.  this seems
-        to be *after* SQLAlchemy's datatype has converted, so these
-        will be UUID objects if as_uuid=True and dashed strings if
-        as_uuid=False
-
-        """
-
-        if not dialect._allows_uuid_binds:
-
-            def process(value):
-                return (
-                    f"{value[0:8]}-{value[8:12]}-"
-                    f"{value[12:16]}-{value[16:20]}-{value[20:]}"
-                )
-
-            return process
-        elif self.as_uuid:
-            return str
-        else:
-            return None
-
 
 class MariaDBDialect(MySQLDialect):
     is_mariadb = True
