@@ -97,6 +97,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | IBM Netezza Performance Server [1]_            | nzalchemy_                            |
 +------------------------------------------------+---------------------------------------+
+| Impala                                         | impyla_                            |
++------------------------------------------------+---------------------------------------+
 | Microsoft Access (via pyodbc)                  | sqlalchemy-access_                    |
 +------------------------------------------------+---------------------------------------+
 | Microsoft SQL Server (via python-tds)          | sqlalchemy-tds_                       |
@@ -153,3 +155,4 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _firebolt-sqlalchemy: https://pypi.org/project/firebolt-sqlalchemy/
 .. _pyathena: https://github.com/laughingman7743/PyAthena/
 .. _sqlalchemy-yugabytedb: https://pypi.org/project/sqlalchemy-yugabytedb/
+.. _impyla: https://pypi.org/project/impyla/
