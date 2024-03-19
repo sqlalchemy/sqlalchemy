@@ -205,7 +205,7 @@ the operation will INSERT one row at a time::
 .. _orm_queryguide_insert_heterogeneous_params:
 
 Using Heterogeneous Parameter Dictionaries
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ..  Setup code, not for display
 
