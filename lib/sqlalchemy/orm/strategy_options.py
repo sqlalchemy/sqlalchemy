@@ -108,9 +108,9 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         The option is used in conjunction with an explicit join that loads
         the desired rows, i.e.::
 
-            sess.query(Order).\
-                    join(Order.user).\
-                    options(contains_eager(Order.user))
+            sess.query(Order).join(Order.user).options(
+                contains_eager(Order.user)
+            )
 
         The above query would join from the ``Order`` entity to its related
         ``User`` entity, and the returned ``Order`` objects would have the
@@ -121,11 +121,9 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         :ref:`orm_queryguide_populate_existing` execution option assuming the
         primary collection of parent objects may already have been loaded::
 
-            sess.query(User).\
-                join(User.addresses).\
-                filter(Address.email_address.like('%@aol.com')).\
-                options(contains_eager(User.addresses)).\
-                populate_existing()
+            sess.query(User).join(User.addresses).filter(
+                Address.email_address.like("%@aol.com")
+            ).options(contains_eager(User.addresses)).populate_existing()
 
         See the section :ref:`contains_eager` for complete usage details.
 
@@ -191,10 +189,18 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         the lead entity can be
         specifically referred to using the :class:`_orm.Load` constructor::
 
-            stmt = select(User, Address).join(User.addresses).options(
-                        Load(User).load_only(User.name, User.fullname),
-                        Load(Address).load_only(Address.email_address)
-                    )
+            stmt = (
+                select(User, Address)
+                .join(User.addresses)
+                .options(
+                    Load(User).load_only(User.name, User.fullname),
+                    Load(Address).load_only(Address.email_address),
+                )
+            )
+
+        When used together with the
+        :ref:`populate_existing <orm_queryguide_populate_existing>`
+        execution option only the attributes listed will be refreshed.
 
         :param \*attrs: Attributes to be loaded, all others will be deferred.
 
@@ -247,28 +253,31 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         examples::
 
             # joined-load the "orders" collection on "User"
-            query(User).options(joinedload(User.orders))
+            select(User).options(joinedload(User.orders))
 
             # joined-load Order.items and then Item.keywords
-            query(Order).options(
-                joinedload(Order.items).joinedload(Item.keywords))
+            select(Order).options(
+                joinedload(Order.items).joinedload(Item.keywords)
+            )
 
             # lazily load Order.items, but when Items are loaded,
             # joined-load the keywords collection
-            query(Order).options(
-                lazyload(Order.items).joinedload(Item.keywords))
+            select(Order).options(
+                lazyload(Order.items).joinedload(Item.keywords)
+            )
 
         :param innerjoin: if ``True``, indicates that the joined eager load
          should use an inner join instead of the default of left outer join::
 
-            query(Order).options(joinedload(Order.user, innerjoin=True))
+            select(Order).options(joinedload(Order.user, innerjoin=True))
 
         In order to chain multiple eager joins together where some may be
         OUTER and others INNER, right-nested joins are used to link them::
 
-            query(A).options(
-                joinedload(A.bs, innerjoin=False).
-                    joinedload(B.cs, innerjoin=True)
+            select(A).options(
+                joinedload(A.bs, innerjoin=False).joinedload(
+                    B.cs, innerjoin=True
+                )
             )
 
         The above query, linking A.bs via "outer" join and B.cs via "inner"
@@ -283,10 +292,10 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         will render as LEFT OUTER JOIN.  For example, supposing ``A.bs``
         is an outerjoin::
 
-            query(A).options(
-                joinedload(A.bs).
-                    joinedload(B.cs, innerjoin="unnested")
+            select(A).options(
+                joinedload(A.bs).joinedload(B.cs, innerjoin="unnested")
             )
+
 
         The above join will render as "a LEFT OUTER JOIN b LEFT OUTER JOIN c",
         rather than as "a LEFT OUTER JOIN (b JOIN c)".
@@ -338,16 +347,18 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         examples::
 
             # subquery-load the "orders" collection on "User"
-            query(User).options(subqueryload(User.orders))
+            select(User).options(subqueryload(User.orders))
 
             # subquery-load Order.items and then Item.keywords
-            query(Order).options(
-                subqueryload(Order.items).subqueryload(Item.keywords))
+            select(Order).options(
+                subqueryload(Order.items).subqueryload(Item.keywords)
+            )
 
             # lazily load Order.items, but when Items are loaded,
             # subquery-load the keywords collection
-            query(Order).options(
-                lazyload(Order.items).subqueryload(Item.keywords))
+            select(Order).options(
+                lazyload(Order.items).subqueryload(Item.keywords)
+            )
 
 
         .. seealso::
@@ -373,16 +384,18 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         examples::
 
             # selectin-load the "orders" collection on "User"
-            query(User).options(selectinload(User.orders))
+            select(User).options(selectinload(User.orders))
 
             # selectin-load Order.items and then Item.keywords
-            query(Order).options(
-                selectinload(Order.items).selectinload(Item.keywords))
+            select(Order).options(
+                selectinload(Order.items).selectinload(Item.keywords)
+            )
 
             # lazily load Order.items, but when Items are loaded,
             # selectin-load the keywords collection
-            query(Order).options(
-                lazyload(Order.items).selectinload(Item.keywords))
+            select(Order).options(
+                lazyload(Order.items).selectinload(Item.keywords)
+            )
 
         :param recursion_depth: optional int; when set to a positive integer
          in conjunction with a self-referential relationship,
@@ -558,17 +571,20 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         element of an element::
 
             session.query(MyClass).options(
-                defaultload(MyClass.someattribute).
-                joinedload(MyOtherClass.someotherattribute)
+                defaultload(MyClass.someattribute).joinedload(
+                    MyOtherClass.someotherattribute
+                )
             )
 
         :func:`.defaultload` is also useful for setting column-level options on
         a related class, namely that of :func:`.defer` and :func:`.undefer`::
 
-            session.query(MyClass).options(
-                defaultload(MyClass.someattribute).
-                defer("some_column").
-                undefer("some_other_column")
+            session.scalars(
+                select(MyClass).options(
+                    defaultload(MyClass.someattribute)
+                    .defer("some_column")
+                    .undefer("some_other_column")
+                )
             )
 
         .. seealso::
@@ -609,7 +625,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         at once using :meth:`_orm.Load.options`::
 
 
-            session.query(MyClass).options(
+            select(MyClass).options(
                 defaultload(MyClass.someattr).options(
                     defer(RelatedClass.some_column),
                     defer(RelatedClass.some_other_column),
@@ -660,11 +676,13 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
             # undefer all columns specific to a single class using Load + *
             session.query(MyClass, MyOtherClass).options(
-                Load(MyClass).undefer("*"))
+                Load(MyClass).undefer("*")
+            )
 
             # undefer a column on a related object
-            session.query(MyClass).options(
-                defaultload(MyClass.items).undefer(MyClass.text))
+            select(MyClass).options(
+                defaultload(MyClass.items).undefer(MyClass.text)
+            )
 
         :param key: Attribute to be undeferred.
 
@@ -697,8 +715,9 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         spelled out using relationship loader options, such as
         :func:`_orm.defaultload`::
 
-            session.query(MyClass).options(
-                defaultload("someattr").undefer_group("large_attrs"))
+            select(MyClass).options(
+                defaultload("someattr").undefer_group("large_attrs")
+            )
 
         .. seealso::
 
