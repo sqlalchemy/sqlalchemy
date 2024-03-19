@@ -212,10 +212,8 @@ string, using a CHAR(36) type::
                 return dialect.type_descriptor(self._default_type)
 
         def process_bind_param(self, value, dialect):
-            if value is None:
+            if value is None or dialect.name in ("postgresql", "mssql"):
                 return value
-            elif dialect.name in ("postgresql", "mssql"):
-                return str(value)
             else:
                 if not isinstance(value, uuid.UUID):
                     value = uuid.UUID(value)
