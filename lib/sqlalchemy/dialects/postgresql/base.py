@@ -407,8 +407,8 @@ default schema, if one exists.   Otherwise, ``public`` is used.
 
 When a :class:`_schema.Table` object is reflected, if it is present in the
 schema indicated by the ``current_schema()`` function, **the schema name assigned
-to the table is the Python value ``None``**.  Otherwise, the schema name
-will be assigned as the name of that schema.
+to the ".schema" attribute of the Table is the Python "None" value**.  Otherwise, the
+".schema" attribute will be assigned the string name of that schema.
 
 With regards to tables which these :class:`_schema.Table`
 objects refer to via foreign key constraint, a decision must be made as to how
