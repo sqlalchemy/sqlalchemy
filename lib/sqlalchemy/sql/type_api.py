@@ -1005,9 +1005,11 @@ class TypeEngine(Visitable, Generic[_T]):
         types with "implementation" types that are specific to a particular
         dialect.
         """
-        return util.constructor_copy(
+        typ = util.constructor_copy(
             self, cast(Type[TypeEngine[Any]], cls), **kw
         )
+        typ._variant_mapping = self._variant_mapping
+        return typ
 
     def coerce_compared_value(
         self, op: Optional[OperatorType], value: Any
