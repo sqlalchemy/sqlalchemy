@@ -107,6 +107,7 @@ _NOT_ENTITY = TypeVar(
     "_NOT_ENTITY",
     int,
     str,
+    bool,
     "datetime",
     "date",
     "time",
