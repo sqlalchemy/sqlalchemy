@@ -2408,7 +2408,7 @@ def joinedload(*keys: _AttrType, **kw: Any) -> _AbstractLoad:
 @loader_unbound_fn
 def subqueryload(*keys: _AttrType) -> _AbstractLoad:
     """
-    .. deprecated:: 2.0
+    .. deprecated:: 2.1
 
     .. seealso::
 
