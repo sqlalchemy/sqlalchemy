@@ -1695,6 +1695,19 @@ class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.composite = self.variant.with_variant(self.UTypeThree(), "mysql")
 
+    def test_copy_doesnt_lose_variants(self):
+        """test #11176"""
+
+        v = self.UTypeOne().with_variant(self.UTypeTwo(), "postgresql")
+
+        v_c = v.copy()
+
+        self.assert_compile(v_c, "UTYPEONE", dialect="default")
+
+        self.assert_compile(
+            v_c, "UTYPETWO", dialect=dialects.postgresql.dialect()
+        )
+
     def test_one_dialect_is_req(self):
         with expect_raises_message(
             exc.ArgumentError, "At least one dialect name is required"
