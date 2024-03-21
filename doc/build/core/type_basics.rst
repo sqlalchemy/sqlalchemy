@@ -259,7 +259,9 @@ its exact name in DDL with ``CREATE TABLE`` is issued.
 
 
 .. autoclass:: ARRAY
-   :members:
+    :members: __init__, Comparator
+    :member-order: bysource
+
 
 .. autoclass:: BIGINT
 

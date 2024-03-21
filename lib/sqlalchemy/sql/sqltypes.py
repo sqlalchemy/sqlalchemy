@@ -2767,22 +2767,22 @@ class ARRAY(
     dimension parameter will generally assume single-dimensional behaviors.
 
     SQL expressions of type :class:`_types.ARRAY` have support for "index" and
-    "slice" behavior.  The Python ``[]`` operator works normally here, given
-    integer indexes or slices.  Arrays default to 1-based indexing.
-    The operator produces binary expression
+    "slice" behavior.  The ``[]`` operator produces expression
     constructs which will produce the appropriate SQL, both for
     SELECT statements::
 
         select(mytable.c.data[5], mytable.c.data[2:7])
 
     as well as UPDATE statements when the :meth:`_expression.Update.values`
-    method
-    is used::
+    method is used::
 
         mytable.update().values({
             mytable.c.data[5]: 7,
             mytable.c.data[2:7]: [1, 2, 3]
         })
+
+    Indexed access is one-based by default;
+    for zero-based index conversion, set :paramref:`_types.ARRAY.zero_indexes`.
 
     The :class:`_types.ARRAY` type also provides for the operators
     :meth:`.types.ARRAY.Comparator.any` and
@@ -2827,6 +2827,56 @@ class ARRAY(
     zero_indexes = False
     """If True, Python zero-based indexes should be interpreted as one-based
     on the SQL expression side."""
+
+    def __init__(
+        self,
+        item_type: _TypeEngineArgument[Any],
+        as_tuple: bool = False,
+        dimensions: Optional[int] = None,
+        zero_indexes: bool = False,
+    ):
+        """Construct an :class:`_types.ARRAY`.
+
+        E.g.::
+
+          Column('myarray', ARRAY(Integer))
+
+        Arguments are:
+
+        :param item_type: The data type of items of this array. Note that
+          dimensionality is irrelevant here, so multi-dimensional arrays like
+          ``INTEGER[][]``, are constructed as ``ARRAY(Integer)``, not as
+          ``ARRAY(ARRAY(Integer))`` or such.
+
+        :param as_tuple=False: Specify whether return results
+          should be converted to tuples from lists.  This parameter is
+          not generally needed as a Python list corresponds well
+          to a SQL array.
+
+        :param dimensions: if non-None, the ARRAY will assume a fixed
+         number of dimensions.   This impacts how the array is declared
+         on the database, how it goes about interpreting Python and
+         result values, as well as how expression behavior in conjunction
+         with the "getitem" operator works.  See the description at
+         :class:`_types.ARRAY` for additional detail.
+
+        :param zero_indexes=False: when True, index values will be converted
+         between Python zero-based and SQL one-based indexes, e.g.
+         a value of one will be added to all index values before passing
+         to the database.
+
+        """
+        if isinstance(item_type, ARRAY):
+            raise ValueError(
+                "Do not nest ARRAY types; ARRAY(basetype) "
+                "handles multi-dimensional arrays of basetype"
+            )
+        if isinstance(item_type, type):
+            item_type = item_type()
+        self.item_type = item_type
+        self.as_tuple = as_tuple
+        self.dimensions = dimensions
+        self.zero_indexes = zero_indexes
 
     class Comparator(
         Indexable.Comparator[Sequence[Any]],
@@ -2981,56 +3031,6 @@ class ARRAY(
             )
 
     comparator_factory = Comparator
-
-    def __init__(
-        self,
-        item_type: _TypeEngineArgument[Any],
-        as_tuple: bool = False,
-        dimensions: Optional[int] = None,
-        zero_indexes: bool = False,
-    ):
-        """Construct an :class:`_types.ARRAY`.
-
-        E.g.::
-
-          Column('myarray', ARRAY(Integer))
-
-        Arguments are:
-
-        :param item_type: The data type of items of this array. Note that
-          dimensionality is irrelevant here, so multi-dimensional arrays like
-          ``INTEGER[][]``, are constructed as ``ARRAY(Integer)``, not as
-          ``ARRAY(ARRAY(Integer))`` or such.
-
-        :param as_tuple=False: Specify whether return results
-          should be converted to tuples from lists.  This parameter is
-          not generally needed as a Python list corresponds well
-          to a SQL array.
-
-        :param dimensions: if non-None, the ARRAY will assume a fixed
-         number of dimensions.   This impacts how the array is declared
-         on the database, how it goes about interpreting Python and
-         result values, as well as how expression behavior in conjunction
-         with the "getitem" operator works.  See the description at
-         :class:`_types.ARRAY` for additional detail.
-
-        :param zero_indexes=False: when True, index values will be converted
-         between Python zero-based and SQL one-based indexes, e.g.
-         a value of one will be added to all index values before passing
-         to the database.
-
-        """
-        if isinstance(item_type, ARRAY):
-            raise ValueError(
-                "Do not nest ARRAY types; ARRAY(basetype) "
-                "handles multi-dimensional arrays of basetype"
-            )
-        if isinstance(item_type, type):
-            item_type = item_type()
-        self.item_type = item_type
-        self.as_tuple = as_tuple
-        self.dimensions = dimensions
-        self.zero_indexes = zero_indexes
 
     @property
     def hashable(self):

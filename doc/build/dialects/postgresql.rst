@@ -458,7 +458,7 @@ construction arguments, are as follows:
 
 .. autoclass:: ARRAY
     :members: __init__, Comparator
-
+    :member-order: bysource
 
 .. autoclass:: BIT
 

@@ -183,8 +183,9 @@ class ARRAY(sqltypes.ARRAY):
 
         mytable.c.data.contains([1, 2])
 
-    The :class:`_postgresql.ARRAY` type may not be supported on all
-    PostgreSQL DBAPIs; it is currently known to work on psycopg2 only.
+    Indexed access is one-based by default, to match that of PostgreSQL;
+    for zero-based indexed access, set
+    :paramref:`_postgresql.ARRAY.zero_indexes`.
 
     Additionally, the :class:`_postgresql.ARRAY`
     type does not work directly in
@@ -223,41 +224,6 @@ class ARRAY(sqltypes.ARRAY):
         :class:`_postgresql.array` - produces a literal array value.
 
     """
-
-    class Comparator(sqltypes.ARRAY.Comparator):
-        """Define comparison operations for :class:`_types.ARRAY`.
-
-        Note that these operations are in addition to those provided
-        by the base :class:`.types.ARRAY.Comparator` class, including
-        :meth:`.types.ARRAY.Comparator.any` and
-        :meth:`.types.ARRAY.Comparator.all`.
-
-        """
-
-        def contains(self, other, **kwargs):
-            """Boolean expression.  Test if elements are a superset of the
-            elements of the argument array expression.
-
-            kwargs may be ignored by this operator but are required for API
-            conformance.
-            """
-            return self.operate(CONTAINS, other, result_type=sqltypes.Boolean)
-
-        def contained_by(self, other):
-            """Boolean expression.  Test if elements are a proper subset of the
-            elements of the argument array expression.
-            """
-            return self.operate(
-                CONTAINED_BY, other, result_type=sqltypes.Boolean
-            )
-
-        def overlap(self, other):
-            """Boolean expression.  Test if array has elements in common with
-            an argument array expression.
-            """
-            return self.operate(OVERLAP, other, result_type=sqltypes.Boolean)
-
-    comparator_factory = Comparator
 
     def __init__(
         self,
@@ -309,6 +275,41 @@ class ARRAY(sqltypes.ARRAY):
         self.as_tuple = as_tuple
         self.dimensions = dimensions
         self.zero_indexes = zero_indexes
+
+    class Comparator(sqltypes.ARRAY.Comparator):
+        """Define comparison operations for :class:`_types.ARRAY`.
+
+        Note that these operations are in addition to those provided
+        by the base :class:`.types.ARRAY.Comparator` class, including
+        :meth:`.types.ARRAY.Comparator.any` and
+        :meth:`.types.ARRAY.Comparator.all`.
+
+        """
+
+        def contains(self, other, **kwargs):
+            """Boolean expression.  Test if elements are a superset of the
+            elements of the argument array expression.
+
+            kwargs may be ignored by this operator but are required for API
+            conformance.
+            """
+            return self.operate(CONTAINS, other, result_type=sqltypes.Boolean)
+
+        def contained_by(self, other):
+            """Boolean expression.  Test if elements are a proper subset of the
+            elements of the argument array expression.
+            """
+            return self.operate(
+                CONTAINED_BY, other, result_type=sqltypes.Boolean
+            )
+
+        def overlap(self, other):
+            """Boolean expression.  Test if array has elements in common with
+            an argument array expression.
+            """
+            return self.operate(OVERLAP, other, result_type=sqltypes.Boolean)
+
+    comparator_factory = Comparator
 
     @property
     def hashable(self):
