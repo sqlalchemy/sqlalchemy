@@ -68,14 +68,18 @@ from sqlalchemy.orm import foreign
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import MappedAsDataclass
+from sqlalchemy.orm import Relationship
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import remote
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import undefer
 from sqlalchemy.orm import WriteOnlyMapped
+from sqlalchemy.orm.attributes import CollectionAttributeImpl
 from sqlalchemy.orm.collections import attribute_keyed_dict
 from sqlalchemy.orm.collections import KeyFuncDict
+from sqlalchemy.orm.dynamic import DynamicAttributeImpl
 from sqlalchemy.orm.properties import MappedColumn
+from sqlalchemy.orm.writeonly import WriteOnlyAttributeImpl
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.sql.base import _NoArg
 from sqlalchemy.sql.sqltypes import Enum
@@ -1185,8 +1189,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         with expect_raises_message(
             NotImplementedError,
-            r"Use of the \<class 'sqlalchemy.orm."
-            r"relationships.Relationship'\> construct inside of an Annotated "
+            r"Use of the 'Relationship' construct inside of an Annotated "
             r"object is not yet supported.",
         ):
 
@@ -2490,6 +2493,42 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         yield Base
         Base.registry.dispose()
+
+    @testing.combinations(
+        (Relationship, CollectionAttributeImpl),
+        (Mapped, CollectionAttributeImpl),
+        (WriteOnlyMapped, WriteOnlyAttributeImpl),
+        (DynamicMapped, DynamicAttributeImpl),
+        argnames="mapped_cls,implcls",
+    )
+    def test_use_relationship(self, decl_base, mapped_cls, implcls):
+        """test #10611"""
+
+        global B
+
+        class B(decl_base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(Integer, primary_key=True)
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+
+        class A(decl_base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            # for future annotations support, need to write these
+            # directly in source code
+            if mapped_cls is Relationship:
+                bs: Relationship[List[B]] = relationship()
+            elif mapped_cls is Mapped:
+                bs: Mapped[List[B]] = relationship()
+            elif mapped_cls is WriteOnlyMapped:
+                bs: WriteOnlyMapped[List[B]] = relationship()
+            elif mapped_cls is DynamicMapped:
+                bs: DynamicMapped[List[B]] = relationship()
+
+        decl_base.registry.configure()
+        assert isinstance(A.bs.impl, implcls)
 
     def test_no_typing_in_rhs(self, decl_base):
         class A(decl_base):

@@ -28,8 +28,8 @@ from .properties import MappedColumn
 from .properties import MappedSQLExpression
 from .query import AliasOption
 from .relationships import _RelationshipArgumentType
+from .relationships import _RelationshipDeclared
 from .relationships import _RelationshipSecondaryArgument
-from .relationships import Relationship
 from .relationships import RelationshipProperty
 from .session import Session
 from .util import _ORMJoin
@@ -950,7 +950,7 @@ def relationship(
     omit_join: Literal[None, False] = None,
     sync_backref: Optional[bool] = None,
     **kw: Any,
-) -> Relationship[Any]:
+) -> _RelationshipDeclared[Any]:
     """Provide a relationship between two mapped classes.
 
     This corresponds to a parent-child or associative table relationship.
@@ -1756,7 +1756,7 @@ def relationship(
 
     """
 
-    return Relationship(
+    return _RelationshipDeclared(
         argument,
         secondary=secondary,
         uselist=uselist,

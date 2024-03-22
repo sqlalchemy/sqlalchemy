@@ -1755,19 +1755,17 @@ class RelationshipProperty(
         argument = extracted_mapped_annotation
         assert originating_module is not None
 
-        is_write_only = mapped_container is not None and issubclass(
-            mapped_container, WriteOnlyMapped
-        )
-        if is_write_only:
-            self.lazy = "write_only"
-            self.strategy_key = (("lazy", self.lazy),)
-
-        is_dynamic = mapped_container is not None and issubclass(
-            mapped_container, DynamicMapped
-        )
-        if is_dynamic:
-            self.lazy = "dynamic"
-            self.strategy_key = (("lazy", self.lazy),)
+        if mapped_container is not None:
+            is_write_only = issubclass(mapped_container, WriteOnlyMapped)
+            is_dynamic = issubclass(mapped_container, DynamicMapped)
+            if is_write_only:
+                self.lazy = "write_only"
+                self.strategy_key = (("lazy", self.lazy),)
+            elif is_dynamic:
+                self.lazy = "dynamic"
+                self.strategy_key = (("lazy", self.lazy),)
+        else:
+            is_write_only = is_dynamic = False
 
         argument = de_optionalize_union_types(argument)
 
@@ -3465,11 +3463,9 @@ _local_col_exclude = _ColInAnnotations("local", "should_not_adapt")
 _remote_col_exclude = _ColInAnnotations("remote", "should_not_adapt")
 
 
-class Relationship(  # type: ignore
+class Relationship(
     RelationshipProperty[_T],
     _DeclarativeMapped[_T],
-    WriteOnlyMapped[_T],  # not compatible with Mapped[_T]
-    DynamicMapped[_T],  # not compatible with Mapped[_T]
 ):
     """Describes an object property that holds a single item or list
     of items that correspond to a related database table.
@@ -3487,3 +3483,18 @@ class Relationship(  # type: ignore
 
     inherit_cache = True
     """:meta private:"""
+
+
+class _RelationshipDeclared(  # type: ignore[misc]
+    Relationship[_T],
+    WriteOnlyMapped[_T],  # not compatible with Mapped[_T]
+    DynamicMapped[_T],  # not compatible with Mapped[_T]
+):
+    """Relationship subclass used implicitly for declarative mapping."""
+
+    inherit_cache = True
+    """:meta private:"""
+
+    @classmethod
+    def _mapper_property_name(cls) -> str:
+        return "Relationship"
