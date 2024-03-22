@@ -21,6 +21,7 @@ from typing import Generic
 from typing import no_type_check
 from typing import Optional
 from typing import overload
+from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -579,7 +580,7 @@ class InspectionAttr:
 
     """
 
-    __slots__ = ()
+    __slots__: Tuple[str, ...] = ()
 
     is_selectable = False
     """Return True if this object is an instance of

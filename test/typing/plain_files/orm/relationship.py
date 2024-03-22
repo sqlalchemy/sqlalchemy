@@ -21,6 +21,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import registry
+from sqlalchemy.orm import Relationship
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 
@@ -29,11 +30,22 @@ class Base(DeclarativeBase):
     pass
 
 
+class Group(Base):
+    __tablename__ = "group"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column()
+
+    addresses_style_one_anno_only: Mapped[List["User"]]
+    addresses_style_two_anno_only: Mapped[Set["User"]]
+
+
 class User(Base):
     __tablename__ = "user"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column()
+    group_id = mapped_column(ForeignKey("group.id"))
 
     # this currently doesnt generate an error.  not sure how to get the
     # overloads to hit this one, nor am i sure i really want to do that
@@ -57,6 +69,19 @@ class Address(Base):
 
     user_style_one: Mapped[User] = relationship()
     user_style_two: Mapped["User"] = relationship()
+
+    rel_style_one: Relationship[List["MoreMail"]] = relationship()
+    # everything works even if using Relationship instead of Mapped
+    # users should use Mapped though
+    rel_style_one_anno_only: Relationship[Set["MoreMail"]]
+
+
+class MoreMail(Base):
+    __tablename__ = "address"
+
+    id = mapped_column(Integer, primary_key=True)
+    aggress_id = mapped_column(ForeignKey("address.id"))
+    email: Mapped[str]
 
 
 class SelfReferential(Base):
@@ -99,6 +124,18 @@ if typing.TYPE_CHECKING:
 
     # EXPECTED_RE_TYPE: sqlalchemy.orm.attributes.InstrumentedAttribute\[builtins.set\*?\[relationship.Address\]\]
     reveal_type(User.addresses_style_two)
+
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*?\[relationship.User\]\]
+    reveal_type(Group.addresses_style_one_anno_only)
+
+    # EXPECTED_RE_TYPE: sqlalchemy.orm.attributes.InstrumentedAttribute\[builtins.set\*?\[relationship.User\]\]
+    reveal_type(Group.addresses_style_two_anno_only)
+
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*?\[relationship.MoreMail\]\]
+    reveal_type(Address.rel_style_one)
+
+    # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.set\*?\[relationship.MoreMail\]\]
+    reveal_type(Address.rel_style_one_anno_only)
 
 
 mapper_registry: registry = registry()
