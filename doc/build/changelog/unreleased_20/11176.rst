@@ -1,0 +1,12 @@
+.. change::
+    :tag: bug, sql, regression
+    :tickets: 11176
+
+    Fixed regression from the 1.4 series where the refactor of the
+    :meth:`_types.TypeEngine.with_variant` method introduced at
+    :ref:`change_6980` failed to accommodate for the ``.copy()`` method, which
+    will lose the variant mappings that are set up. This becomes an issue for
+    the very specific case of a "schema" type, which includes types such as
+    :class:`.Enum` and :class:`.ARRAY`, when they are then used in the context
+    of an ORM Declarative mapping with mixins where copying of types comes into
+    play.  The variant mapping is now copied as well.
