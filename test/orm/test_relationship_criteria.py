@@ -2069,6 +2069,55 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             )
 
     @testing.combinations(
+        (selectinload,),
+        (subqueryload,),
+        (lazyload,),
+        (joinedload,),
+        argnames="opt",
+    )
+    @testing.variation("use_in", [True, False])
+    def test_opts_local_criteria_cachekey(
+        self, opt, user_address_fixture, use_in
+    ):
+        """test #11173"""
+        User, Address = user_address_fixture
+
+        s = Session(testing.db, future=True)
+
+        def go(value):
+            if use_in:
+                expr = ~Address.email_address.in_([value, "some_email"])
+            else:
+                expr = Address.email_address != value
+            stmt = (
+                select(User)
+                .options(
+                    opt(User.addresses.and_(expr)),
+                )
+                .order_by(User.id)
+            )
+            result = s.execute(stmt)
+            return result
+
+        for value in (
+            "ed@wood.com",
+            "ed@lala.com",
+            "ed@wood.com",
+            "ed@lala.com",
+        ):
+            s.close()
+            result = go(value)
+
+            eq_(
+                result.scalars().unique().all(),
+                (
+                    self._user_minus_edwood(*user_address_fixture)
+                    if value == "ed@wood.com"
+                    else self._user_minus_edlala(*user_address_fixture)
+                ),
+            )
+
+    @testing.combinations(
         (joinedload, False),
         (lazyload, True),
         (subqueryload, False),
