@@ -10,7 +10,134 @@
 
 .. changelog::
     :version: 2.0.29
-    :include_notes_from: unreleased_20
+    :released: March 23, 2024
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10611
+
+        Fixed Declarative issue where typing a relationship using
+        :class:`_orm.Relationship` rather than :class:`_orm.Mapped` would
+        inadvertently pull in the "dynamic" relationship loader strategy for that
+        attribute.
+
+    .. change::
+        :tags: postgresql, usecase
+        :tickets: 10693
+
+        The PostgreSQL dialect now returns :class:`_postgresql.DOMAIN` instances
+        when reflecting a column that has a domain as type. Previously, the domain
+        data type was returned instead. As part of this change, the domain
+        reflection was improved to also return the collation of the text types.
+        Pull request courtesy of Thomas Stephenson.
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 11055
+
+        Fixed typing issue allowing asyncio ``run_sync()`` methods to correctly
+        type the parameters according to the callable that was passed, making use
+        of :pep:`612` ``ParamSpec`` variables.  Pull request courtesy Francisco R.
+        Del Roio.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11091
+
+        Fixed issue in ORM annotated declarative where using
+        :func:`_orm.mapped_column()` with an :paramref:`_orm.mapped_column.index`
+        or :paramref:`_orm.mapped_column.unique` setting of False would be
+        overridden by an incoming ``Annotated`` element that featured that
+        parameter set to ``True``, even though the immediate
+        :func:`_orm.mapped_column()` element is more specific and should take
+        precedence.  The logic to reconcile the booleans has been enhanced to
+        accommodate a local value of ``False`` as still taking precedence over an
+        incoming ``True`` value from the annotated element.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 11130
+
+        Added support for the :pep:`695` ``TypeAliasType`` construct as well as the
+        python 3.12 native ``type`` keyword to work with ORM Annotated Declarative
+        form when using these constructs to link to a :pep:`593` ``Annotated``
+        container, allowing the resolution of the ``Annotated`` to proceed when
+        these constructs are used in a :class:`_orm.Mapped` typing container.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 11157
+
+        Fixed issue in :ref:`engine_insertmanyvalues` feature where using a primary
+        key column with an "inline execute" default generator such as an explicit
+        :class:`.Sequence` with an explcit schema name, while at the same time
+        using the
+        :paramref:`_engine.Connection.execution_options.schema_translate_map`
+        feature would fail to render the sequence or the parameters properly,
+        leading to errors.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 11160
+
+        Made a change to the adjustment made in version 2.0.10 for :ticket:`9618`,
+        which added the behavior of reconciling RETURNING rows from a bulk INSERT
+        to the parameters that were passed to it.  This behavior included a
+        comparison of already-DB-converted bound parameter values against returned
+        row values that was not always "symmetrical" for SQL column types such as
+        UUIDs, depending on specifics of how different DBAPIs receive such values
+        versus how they return them, necessitating the need for additional
+        "sentinel value resolver" methods on these column types.  Unfortunately
+        this broke third party column types such as UUID/GUID types in libraries
+        like SQLModel which did not implement this special method, raising an error
+        "Can't match sentinel values in result set to parameter sets".  Rather than
+        attempt to further explain and document this implementation detail of the
+        "insertmanyvalues" feature including a public version of the new
+        method, the approach is intead revised to no longer need this extra
+        conversion step, and the logic that does the comparison now works on the
+        pre-converted bound parameter value compared to the post-result-processed
+        value, which should always be of a matching datatype.  In the unusual case
+        that a custom SQL column type that also happens to be used in a "sentinel"
+        column for bulk INSERT is not receiving and returning the same value type,
+        the "Can't match" error will be raised, however the mitigation is
+        straightforward in that the same Python datatype should be passed as that
+        returned.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 11173
+
+        Fixed regression from version 2.0.28 caused by the fix for :ticket:`11085`
+        where the newer method of adjusting post-cache bound parameter values would
+        interefere with the implementation for the :func:`_orm.subqueryload` loader
+        option, which has some more legacy patterns in use internally, when
+        the additional loader criteria feature were used with this loader option.
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 11176
+
+        Fixed regression from the 1.4 series where the refactor of the
+        :meth:`_types.TypeEngine.with_variant` method introduced at
+        :ref:`change_6980` failed to accommodate for the ``.copy()`` method, which
+        will lose the variant mappings that are set up. This becomes an issue for
+        the very specific case of a "schema" type, which includes types such as
+        :class:`.Enum` and :class:`.ARRAY`, when they are then used in the context
+        of an ORM Declarative mapping with mixins where copying of types comes into
+        play.  The variant mapping is now copied as well.
+
+    .. change::
+        :tags: bug, tests
+        :tickets: 11187
+
+        Backported to SQLAlchemy 2.0 an improvement to the test suite with regards
+        to how asyncio related tests are run, now using the newer Python 3.11
+        ``asyncio.Runner`` or a backported equivalent, rather than relying on the
+        previous implementation based on ``asyncio.get_running_loop()``.  This
+        should hopefully prevent issues with large suite runs on CPU loaded
+        hardware where the event loop seems to become corrupted, leading to
+        cascading failures.
+
 
 .. changelog::
     :version: 2.0.28

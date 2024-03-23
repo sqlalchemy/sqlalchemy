@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 11055
-
-    Fixed typing issue allowing asyncio ``run_sync()`` methods to correctly
-    type the parameters according to the callable that was passed, making use
-    of :pep:`612` ``ParamSpec`` variables.  Pull request courtesy Francisco R.
-    Del Roio.
