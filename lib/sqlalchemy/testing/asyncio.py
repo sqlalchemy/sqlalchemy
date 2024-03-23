@@ -21,16 +21,21 @@ from functools import wraps
 import inspect
 
 from . import config
-from ..util.concurrency import _util_async_run
-from ..util.concurrency import _util_async_run_coroutine_function
+from ..util.concurrency import _AsyncUtil
 
 # may be set to False if the
 # --disable-asyncio flag is passed to the test runner.
 ENABLE_ASYNCIO = True
+_async_util = _AsyncUtil()  # it has lazy init so just always create one
+
+
+def _shutdown():
+    """called when the test finishes"""
+    _async_util.close()
 
 
 def _run_coroutine_function(fn, *args, **kwargs):
-    return _util_async_run_coroutine_function(fn, *args, **kwargs)
+    return _async_util.run(fn, *args, **kwargs)
 
 
 def _assume_async(fn, *args, **kwargs):
@@ -47,7 +52,7 @@ def _assume_async(fn, *args, **kwargs):
     if not ENABLE_ASYNCIO:
         return fn(*args, **kwargs)
 
-    return _util_async_run(fn, *args, **kwargs)
+    return _async_util.run_in_greenlet(fn, *args, **kwargs)
 
 
 def _maybe_async_provisioning(fn, *args, **kwargs):
@@ -66,7 +71,7 @@ def _maybe_async_provisioning(fn, *args, **kwargs):
         return fn(*args, **kwargs)
 
     if config.any_async:
-        return _util_async_run(fn, *args, **kwargs)
+        return _async_util.run_in_greenlet(fn, *args, **kwargs)
     else:
         return fn(*args, **kwargs)
 
@@ -87,7 +92,7 @@ def _maybe_async(fn, *args, **kwargs):
     is_async = config._current.is_async
 
     if is_async:
-        return _util_async_run(fn, *args, **kwargs)
+        return _async_util.run_in_greenlet(fn, *args, **kwargs)
     else:
         return fn(*args, **kwargs)
 
