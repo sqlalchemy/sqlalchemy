@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 10611
-
-    Fixed Declarative issue where typing a relationship using
-    :class:`_orm.Relationship` rather than :class:`_orm.Mapped` would
-    inadvertently pull in the "dynamic" relationship loader strategy for that
-    attribute.

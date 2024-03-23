@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm, regression
-    :tickets: 11173
-
-    Fixed regression from version 2.0.28 caused by the fix for :ticket:`11085`
-    where the newer method of adjusting post-cache bound parameter values would
-    interefere with the implementation for the :func:`_orm.subqueryload` loader
-    option, which has some more legacy patterns in use internally, when
-    the additional loader criteria feature were used with this loader option.
