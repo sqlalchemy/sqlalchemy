@@ -1,5 +1,5 @@
 .. change::
-    :tag: bug, sql, regression
+    :tags: bug, sql, regression
     :tickets: 11176
 
     Fixed regression from the 1.4 series where the refactor of the
