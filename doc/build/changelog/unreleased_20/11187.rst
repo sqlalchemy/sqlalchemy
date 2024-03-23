@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, tests
+    :tickets: 11187
+
+    Backported to SQLAlchemy 2.0 an improvement to the test suite with regards
+    to how asyncio related tests are run, now using the newer Python 3.11
+    ``asyncio.Runner`` or a backported equivalent, rather than relying on the
+    previous implementation based on ``asyncio.get_running_loop()``.  This
+    should hopefully prevent issues with large suite runs on CPU loaded
+    hardware where the event loop seems to become corrupted, leading to
+    cascading failures.
+

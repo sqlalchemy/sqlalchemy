@@ -5,6 +5,11 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from typing import Any
+from typing import Callable
+from typing import Coroutine
+from typing import TypeVar
+
 from . import compat
 
 have_greenlet = False
@@ -22,14 +27,47 @@ if compat.py3k:
         from ._concurrency_py3k import greenlet_spawn
         from ._concurrency_py3k import is_exit_exception
         from ._concurrency_py3k import AsyncAdaptedLock
-        from ._concurrency_py3k import _util_async_run  # noqa: F401
-        from ._concurrency_py3k import (
-            _util_async_run_coroutine_function,
-        )  # noqa: F401, E501
+        from ._concurrency_py3k import _Runner
         from ._concurrency_py3k import asyncio  # noqa: F401
 
-    # does not need greennlet, just Python 3
+    # does not need greenlet, just Python 3
     from ._compat_py3k import asynccontextmanager  # noqa: F401
+
+_T = TypeVar("_T")
+
+
+class _AsyncUtil:
+    """Asyncio util for test suite/ util only"""
+
+    def __init__(self) -> None:
+        if have_greenlet:
+            self.runner = _Runner()
+
+    def run(
+        self,
+        fn: Callable[..., Coroutine[Any, Any, _T]],
+        *args: Any,
+        **kwargs: Any,
+    ) -> _T:
+        """Run coroutine on the loop"""
+        return self.runner.run(fn(*args, **kwargs))
+
+    def run_in_greenlet(
+        self, fn: Callable[..., _T], *args: Any, **kwargs: Any
+    ) -> _T:
+        """Run sync function in greenlet. Support nested calls"""
+        if have_greenlet:
+            if self.runner.get_loop().is_running():
+                return fn(*args, **kwargs)
+            else:
+                return self.runner.run(greenlet_spawn(fn, *args, **kwargs))
+        else:
+            return fn(*args, **kwargs)
+
+    def close(self) -> None:
+        if have_greenlet:
+            self.runner.close()
+
 
 if not have_greenlet:
 
