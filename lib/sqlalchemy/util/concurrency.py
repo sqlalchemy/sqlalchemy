@@ -18,7 +18,7 @@ from typing import TypeVar
 have_greenlet = False
 greenlet_error = None
 try:
-    import greenlet  # type: ignore # noqa: F401
+    import greenlet  # type: ignore[import-untyped,unused-ignore]  # noqa: F401,E501
 except ImportError as e:
     greenlet_error = str(e)
     pass
