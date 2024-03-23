@@ -19,10 +19,14 @@ from typing import Coroutine
 from typing import Optional
 from typing import TYPE_CHECKING
 from typing import TypeVar
+from typing import Union
 
 from .langhelpers import memoized_property
 from .. import exc
+from ..util import py311
+from ..util.typing import Literal
 from ..util.typing import Protocol
+from ..util.typing import Self
 from ..util.typing import TypeGuard
 
 _T = TypeVar("_T")
@@ -225,34 +229,6 @@ class AsyncAdaptedLock:
         self.mutex.release()
 
 
-def _util_async_run_coroutine_function(
-    fn: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any
-) -> Any:
-    """for test suite/ util only"""
-
-    loop = get_event_loop()
-    if loop.is_running():
-        raise Exception(
-            "for async run coroutine we expect that no greenlet or event "
-            "loop is running when we start out"
-        )
-    return loop.run_until_complete(fn(*args, **kwargs))
-
-
-def _util_async_run(
-    fn: Callable[..., Coroutine[Any, Any, Any]], *args: Any, **kwargs: Any
-) -> Any:
-    """for test suite/ util only"""
-
-    loop = get_event_loop()
-    if not loop.is_running():
-        return loop.run_until_complete(greenlet_spawn(fn, *args, **kwargs))
-    else:
-        # allow for a wrapped test function to call another
-        assert isinstance(getcurrent(), _AsyncIoGreenlet)
-        return fn(*args, **kwargs)
-
-
 def get_event_loop() -> asyncio.AbstractEventLoop:
     """vendor asyncio.get_event_loop() for python 3.7 and above.
 
@@ -265,3 +241,50 @@ def get_event_loop() -> asyncio.AbstractEventLoop:
         # avoid "During handling of the above exception, another exception..."
         pass
     return asyncio.get_event_loop_policy().get_event_loop()
+
+
+if py311:
+    _Runner = asyncio.Runner
+else:
+
+    class _Runner:  # type: ignore[no-redef]
+        """Runner implementation for test only"""
+
+        _loop: Union[None, asyncio.AbstractEventLoop, Literal[False]]
+
+        def __init__(self) -> None:
+            self._loop = None
+
+        def __enter__(self) -> Self:
+            self._lazy_init()
+            return self
+
+        def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+            self.close()
+
+        def close(self) -> None:
+            if self._loop:
+                try:
+                    self._loop.run_until_complete(
+                        self._loop.shutdown_asyncgens()
+                    )
+                finally:
+                    self._loop.close()
+                    self._loop = False
+
+        def get_loop(self) -> asyncio.AbstractEventLoop:
+            """Return embedded event loop."""
+            self._lazy_init()
+            assert self._loop
+            return self._loop
+
+        def run(self, coro: Coroutine[Any, Any, _T]) -> _T:
+            self._lazy_init()
+            assert self._loop
+            return self._loop.run_until_complete(coro)
+
+        def _lazy_init(self) -> None:
+            if self._loop is False:
+                raise RuntimeError("Runner is closed")
+            if self._loop is None:
+                self._loop = asyncio.new_event_loop()

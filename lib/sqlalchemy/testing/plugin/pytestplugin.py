@@ -182,6 +182,12 @@ def pytest_sessionfinish(session):
         collect_types.dump_stats(session.config.option.dump_pyannotate)
 
 
+def pytest_unconfigure(config):
+    from sqlalchemy.testing import asyncio
+
+    asyncio._shutdown()
+
+
 def pytest_collection_finish(session):
     if session.config.option.dump_pyannotate:
         from pyannotate_runtime import collect_types
