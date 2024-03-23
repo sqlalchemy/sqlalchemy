@@ -1,0 +1,9 @@
+.. change::
+    :tags: postgresql, reflection
+    :tickets: 10693
+
+    The PostgreSQL dialect now returns :class:`_postgresql.DOMAIN` instances
+    when reflecting a column that has a domain as type. Previously, the domain
+    data type was returned instead. As part of this change, the domain
+    reflection was improved to also return the collation of the text types.
+    Pull request courtesy of Thomas Stephenson.

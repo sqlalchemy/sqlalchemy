@@ -23,6 +23,7 @@ from sqlalchemy import Text
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import base as postgresql
+from sqlalchemy.dialects.postgresql import DOMAIN
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.dialects.postgresql import INTEGER
 from sqlalchemy.dialects.postgresql import INTERVAL
@@ -408,25 +409,24 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     def setup_test_class(cls):
         with testing.db.begin() as con:
             for ddl in [
-                'CREATE SCHEMA "SomeSchema"',
+                'CREATE SCHEMA IF NOT EXISTS "SomeSchema"',
                 "CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42",
                 "CREATE DOMAIN test_schema.testdomain INTEGER DEFAULT 0",
                 "CREATE TYPE testtype AS ENUM ('test')",
                 "CREATE DOMAIN enumdomain AS testtype",
                 "CREATE DOMAIN arraydomain AS INTEGER[]",
+                "CREATE DOMAIN arraydomain_2d AS INTEGER[][]",
+                "CREATE DOMAIN arraydomain_3d AS  INTEGER[][][]",
                 'CREATE DOMAIN "SomeSchema"."Quoted.Domain" INTEGER DEFAULT 0',
-                "CREATE DOMAIN nullable_domain AS TEXT CHECK "
+                'CREATE DOMAIN nullable_domain AS TEXT COLLATE "C" CHECK '
                 "(VALUE IN('FOO', 'BAR'))",
                 "CREATE DOMAIN not_nullable_domain AS TEXT NOT NULL",
                 "CREATE DOMAIN my_int AS int CONSTRAINT b_my_int_one CHECK "
                 "(VALUE > 1) CONSTRAINT a_my_int_two CHECK (VALUE < 42) "
                 "CHECK(VALUE != 22)",
             ]:
-                try:
-                    con.exec_driver_sql(ddl)
-                except exc.DBAPIError as e:
-                    if "already exists" not in str(e):
-                        raise e
+                con.exec_driver_sql(ddl)
+
             con.exec_driver_sql(
                 "CREATE TABLE testtable (question integer, answer "
                 "testdomain)"
@@ -446,7 +446,12 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             )
 
             con.exec_driver_sql(
-                "CREATE TABLE array_test (id integer, data arraydomain)"
+                "CREATE TABLE array_test ("
+                "id integer, "
+                "datas arraydomain, "
+                "datass arraydomain_2d, "
+                "datasss arraydomain_3d"
+                ")"
             )
 
             con.exec_driver_sql(
@@ -473,6 +478,8 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             con.exec_driver_sql("DROP TYPE testtype")
             con.exec_driver_sql("DROP TABLE array_test")
             con.exec_driver_sql("DROP DOMAIN arraydomain")
+            con.exec_driver_sql("DROP DOMAIN arraydomain_2d")
+            con.exec_driver_sql("DROP DOMAIN arraydomain_3d")
             con.exec_driver_sql('DROP DOMAIN "SomeSchema"."Quoted.Domain"')
             con.exec_driver_sql('DROP SCHEMA "SomeSchema"')
 
@@ -489,7 +496,9 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             {"question", "answer"},
             "Columns of reflected table didn't equal expected columns",
         )
-        assert isinstance(table.c.answer.type, Integer)
+        assert isinstance(table.c.answer.type, DOMAIN)
+        assert table.c.answer.type.name, "testdomain"
+        assert isinstance(table.c.answer.type.data_type, Integer)
 
     def test_nullable_from_domain(self, connection):
         metadata = MetaData()
@@ -514,18 +523,36 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     def test_enum_domain_is_reflected(self, connection):
         metadata = MetaData()
         table = Table("enum_test", metadata, autoload_with=connection)
-        eq_(table.c.data.type.enums, ["test"])
+        assert isinstance(table.c.data.type, DOMAIN)
+        eq_(table.c.data.type.data_type.enums, ["test"])
 
     def test_array_domain_is_reflected(self, connection):
         metadata = MetaData()
         table = Table("array_test", metadata, autoload_with=connection)
-        eq_(table.c.data.type.__class__, ARRAY)
-        eq_(table.c.data.type.item_type.__class__, INTEGER)
+
+        def assert_is_integer_array_domain(domain, name):
+            # Postgres does not persist the dimensionality of the array.
+            # It's always treated as integer[]
+            assert isinstance(domain, DOMAIN)
+            assert domain.name == name
+            assert isinstance(domain.data_type, ARRAY)
+            assert isinstance(domain.data_type.item_type, INTEGER)
+
+        array_domain = table.c.datas.type
+        assert_is_integer_array_domain(array_domain, "arraydomain")
+
+        array_domain_2d = table.c.datass.type
+        assert_is_integer_array_domain(array_domain_2d, "arraydomain_2d")
+
+        array_domain_3d = table.c.datasss.type
+        assert_is_integer_array_domain(array_domain_3d, "arraydomain_3d")
 
     def test_quoted_remote_schema_domain_is_reflected(self, connection):
         metadata = MetaData()
         table = Table("quote_test", metadata, autoload_with=connection)
-        eq_(table.c.data.type.__class__, INTEGER)
+        assert isinstance(table.c.data.type, DOMAIN)
+        assert table.c.data.type.name, "Quoted.Domain"
+        assert isinstance(table.c.data.type.data_type, Integer)
 
     def test_table_is_reflected_test_schema(self, connection):
         metadata = MetaData()
@@ -603,6 +630,27 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "type": "integer[]",
                     "default": None,
                     "constraints": [],
+                    "collation": None,
+                },
+                {
+                    "visible": True,
+                    "name": "arraydomain_2d",
+                    "schema": "public",
+                    "nullable": True,
+                    "type": "integer[]",
+                    "default": None,
+                    "constraints": [],
+                    "collation": None,
+                },
+                {
+                    "visible": True,
+                    "name": "arraydomain_3d",
+                    "schema": "public",
+                    "nullable": True,
+                    "type": "integer[]",
+                    "default": None,
+                    "constraints": [],
+                    "collation": None,
                 },
                 {
                     "visible": True,
@@ -612,6 +660,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "type": "testtype",
                     "default": None,
                     "constraints": [],
+                    "collation": None,
                 },
                 {
                     "visible": True,
@@ -626,6 +675,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                         # autogenerated name by pg
                         {"check": "VALUE <> 22", "name": "my_int_check"},
                     ],
+                    "collation": None,
                 },
                 {
                     "visible": True,
@@ -635,6 +685,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "type": "text",
                     "default": None,
                     "constraints": [],
+                    "collation": "default",
                 },
                 {
                     "visible": True,
@@ -651,6 +702,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                             "name": "nullable_domain_check",
                         }
                     ],
+                    "collation": "C",
                 },
                 {
                     "visible": True,
@@ -660,6 +712,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "type": "integer",
                     "default": "42",
                     "constraints": [],
+                    "collation": None,
                 },
             ],
             "test_schema": [
@@ -671,6 +724,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "type": "integer",
                     "default": "0",
                     "constraints": [],
+                    "collation": None,
                 }
             ],
             "SomeSchema": [
@@ -682,13 +736,20 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                     "type": "integer",
                     "default": "0",
                     "constraints": [],
+                    "collation": None,
                 }
             ],
         }
 
     def test_inspect_domains(self, connection):
         inspector = inspect(connection)
-        eq_(inspector.get_domains(), self.all_domains["public"])
+        domains = inspector.get_domains()
+
+        domain_names = {d["name"] for d in domains}
+        expect_domain_names = {d["name"] for d in self.all_domains["public"]}
+        eq_(domain_names, expect_domain_names)
+
+        eq_(domains, self.all_domains["public"])
 
     def test_inspect_domains_schema(self, connection):
         inspector = inspect(connection)
@@ -705,7 +766,38 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         all_ = [d for dl in self.all_domains.values() for d in dl]
         all_ += inspector.get_domains("information_schema")
         exp = sorted(all_, key=lambda d: (d["schema"], d["name"]))
-        eq_(inspector.get_domains("*"), exp)
+        domains = inspector.get_domains("*")
+
+        eq_(domains, exp)
+
+
+class ArrayReflectionTest(fixtures.TablesTest):
+    __only_on__ = "postgresql >= 10"
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "array_table",
+            metadata,
+            Column("id", INTEGER, primary_key=True),
+            Column("datas", ARRAY(INTEGER)),
+            Column("datass", ARRAY(INTEGER, dimensions=2)),
+            Column("datasss", ARRAY(INTEGER, dimensions=3)),
+        )
+
+    def test_array_table_is_reflected(self, connection):
+        metadata = MetaData()
+        table = Table("array_table", metadata, autoload_with=connection)
+
+        def assert_is_integer_array(data_type):
+            assert isinstance(data_type, ARRAY)
+            # posgres treats all arrays as one-dimensional arrays
+            assert isinstance(data_type.item_type, INTEGER)
+
+        assert_is_integer_array(table.c.datas.type)
+        assert_is_integer_array(table.c.datass.type)
+        assert_is_integer_array(table.c.datasss.type)
 
 
 class ReflectionTest(
