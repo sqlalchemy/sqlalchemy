@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import doctest
 import logging
 import os
@@ -178,19 +177,8 @@ class DocTest(fixtures.TestBase):
     def test_orm_quickstart(self):
         self._run_doctest("orm/quickstart.rst")
 
-    @config.fixture(scope="class")
-    def restore_asyncio(self):
-        # NOTE: this is required since test_asyncio will remove the global
-        # loop. 2.1 uses runners that don't require this hack
-        yield
-        ep = asyncio.get_event_loop_policy()
-        try:
-            ep.get_event_loop()
-        except RuntimeError:
-            ep.set_event_loop(ep.new_event_loop())
-
     @requires.greenlet
-    def test_asyncio(self, restore_asyncio):
+    def test_asyncio(self):
         try:
             make_url("sqlite+aiosqlite://").get_dialect().import_dbapi()
         except ImportError:
