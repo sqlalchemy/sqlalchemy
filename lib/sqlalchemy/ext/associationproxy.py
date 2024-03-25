@@ -50,7 +50,6 @@ from .. import exc
 from .. import inspect
 from .. import orm
 from .. import util
-from ..orm import collections
 from ..orm import InspectionAttrExtensionType
 from ..orm import interfaces
 from ..orm import ORMDescriptor
@@ -1593,12 +1592,10 @@ class _AssociationList(_AssociationSingleItem[_T], MutableSequence[_T]):
         # backing objects for each copy.  *= on proxied lists is a bit of
         # a stretch anyhow, and this interpretation of the __imul__ contract
         # is more plausibly useful than copying the backing objects.
-        if not isinstance(n, int):
-            raise NotImplementedError()
         if n == 0:
             self.clear()
-        elif n > 1:
-            self.extend(list(self) * (n - 1))
+        elif int(n) > 1:
+            self.extend(list(self) * (int(n) - 1))
         return self
 
     if typing.TYPE_CHECKING:
@@ -1872,8 +1869,6 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
     def __ior__(  # type: ignore
         self, other: AbstractSet[_S]
     ) -> MutableSet[Union[_T, _S]]:
-        if not collections._set_binops_check_strict(self, other):
-            raise NotImplementedError()
         for value in other:
             self.add(value)
         return self
@@ -1899,8 +1894,6 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
                 self.discard(value)
 
     def __isub__(self, s: AbstractSet[Any]) -> Self:
-        if not collections._set_binops_check_strict(self, s):
-            raise NotImplementedError()
         for value in s:
             self.discard(value)
         return self
@@ -1923,8 +1916,6 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
                 self.add(value)
 
     def __iand__(self, s: AbstractSet[Any]) -> Self:
-        if not collections._set_binops_check_strict(self, s):
-            raise NotImplementedError()
         want = self.intersection(s)
         have: Set[_T] = set(self)
 
@@ -1953,9 +1944,6 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
             self.add(value)
 
     def __ixor__(self, other: AbstractSet[_S]) -> MutableSet[Union[_T, _S]]:  # type: ignore  # noqa: E501
-        if not collections._set_binops_check_strict(self, other):
-            raise NotImplementedError()
-
         self.symmetric_difference_update(other)
         return self
 
