@@ -1,6 +1,7 @@
 from typing import Any
 
 from sqlalchemy import Connection
+from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -71,3 +72,8 @@ async def asyncio() -> None:
     ce.statement
     cc = select(1).compile(conn)
     cc.statement
+
+    async with e.connect() as conn:
+        metadata = MetaData()
+
+        await conn.run_sync(metadata.reflect)
