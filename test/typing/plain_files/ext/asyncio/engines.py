@@ -76,4 +76,6 @@ async def asyncio() -> None:
     async with e.connect() as conn:
         metadata = MetaData()
 
+        await conn.run_sync(metadata.create_all)
         await conn.run_sync(metadata.reflect)
+        await conn.run_sync(metadata.drop_all)
