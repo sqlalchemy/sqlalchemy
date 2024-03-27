@@ -2516,7 +2516,10 @@ class JSON(Indexable, TypeEngine[Any]):
             return operator, index, self.type
 
         def as_boolean(self):
-            """Cast an indexed value as boolean.
+            """Consider an indexed value as boolean.
+
+            This is similar to using :class:`_sql.type_coerce`, and will
+            usually not apply a ``CAST()``.
 
             e.g.::
 
@@ -2532,7 +2535,10 @@ class JSON(Indexable, TypeEngine[Any]):
             return self._binary_w_type(Boolean(), "as_boolean")
 
         def as_string(self):
-            """Cast an indexed value as string.
+            """Consider an indexed value as string.
+
+            This is similar to using :class:`_sql.type_coerce`, and will
+            usually not apply a ``CAST()``.
 
             e.g.::
 
@@ -2549,7 +2555,10 @@ class JSON(Indexable, TypeEngine[Any]):
             return self._binary_w_type(Unicode(), "as_string")
 
         def as_integer(self):
-            """Cast an indexed value as integer.
+            """Consider an indexed value as integer.
+
+            This is similar to using :class:`_sql.type_coerce`, and will
+            usually not apply a ``CAST()``.
 
             e.g.::
 
@@ -2565,7 +2574,10 @@ class JSON(Indexable, TypeEngine[Any]):
             return self._binary_w_type(Integer(), "as_integer")
 
         def as_float(self):
-            """Cast an indexed value as float.
+            """Consider an indexed value as float.
+
+            This is similar to using :class:`_sql.type_coerce`, and will
+            usually not apply a ``CAST()``.
 
             e.g.::
 
@@ -2581,7 +2593,10 @@ class JSON(Indexable, TypeEngine[Any]):
             return self._binary_w_type(Float(), "as_float")
 
         def as_numeric(self, precision, scale, asdecimal=True):
-            """Cast an indexed value as numeric/decimal.
+            """Consider an indexed value as numeric/decimal.
+
+            This is similar to using :class:`_sql.type_coerce`, and will
+            usually not apply a ``CAST()``.
 
             e.g.::
 
@@ -2600,7 +2615,10 @@ class JSON(Indexable, TypeEngine[Any]):
             )
 
         def as_json(self):
-            """Cast an indexed value as JSON.
+            """Consider an indexed value as JSON.
+
+            This is similar to using :class:`_sql.type_coerce`, and will
+            usually not apply a ``CAST()``.
 
             e.g.::
 
