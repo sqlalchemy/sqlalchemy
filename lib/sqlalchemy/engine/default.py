@@ -168,7 +168,10 @@ class DefaultDialect(Dialect):
     tuple_in_values = False
 
     connection_characteristics = util.immutabledict(
-        {"isolation_level": characteristics.IsolationLevelCharacteristic()}
+        {
+            "isolation_level": characteristics.IsolationLevelCharacteristic(),
+            "logging_token": characteristics.LoggingTokenCharacteristic(),
+        }
     )
 
     engine_config_types: Mapping[str, Any] = util.immutabledict(
@@ -660,7 +663,7 @@ class DefaultDialect(Dialect):
         if connection.in_transaction():
             trans_objs = [
                 (name, obj)
-                for name, obj, value in characteristic_values
+                for name, obj, _ in characteristic_values
                 if obj.transactional
             ]
             if trans_objs:
@@ -673,8 +676,10 @@ class DefaultDialect(Dialect):
                 )
 
         dbapi_connection = connection.connection.dbapi_connection
-        for name, characteristic, value in characteristic_values:
-            characteristic.set_characteristic(self, dbapi_connection, value)
+        for _, characteristic, value in characteristic_values:
+            characteristic.set_connection_characteristic(
+                self, connection, dbapi_connection, value
+            )
         connection.connection._connection_record.finalize_callback.append(
             functools.partial(self._reset_characteristics, characteristics)
         )

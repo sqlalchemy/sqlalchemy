@@ -174,13 +174,9 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         if self._has_events or self.engine._has_events:
             self.dispatch.engine_connect(self)
 
-    @util.memoized_property
-    def _message_formatter(self) -> Any:
-        if "logging_token" in self._execution_options:
-            token = self._execution_options["logging_token"]
-            return lambda msg: "[%s] %s" % (token, msg)
-        else:
-            return None
+    # this can be assigned differently via
+    # characteristics.LoggingTokenCharacteristic
+    _message_formatter: Any = None
 
     def _log_info(self, message: str, *arg: Any, **kw: Any) -> None:
         fmt = self._message_formatter
