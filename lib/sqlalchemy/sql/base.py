@@ -1028,6 +1028,7 @@ class Executable(roles.StatementRole):
     ]
 
     is_select = False
+    is_from_statement = False
     is_update = False
     is_insert = False
     is_text = False

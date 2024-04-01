@@ -580,22 +580,67 @@ class ORMExecuteState(util.MemoizedSlots):
 
     @property
     def is_select(self) -> bool:
-        """return True if this is a SELECT operation."""
+        """return True if this is a SELECT operation.
+
+        .. versionchanged:: 2.0.30 - the attribute is also True for a
+           :meth:`_sql.Select.from_statement` construct that is itself against
+           a :class:`_sql.Select` construct, such as
+           ``select(Entity).from_statement(select(..))``
+
+        """
         return self.statement.is_select
 
     @property
+    def is_from_statement(self) -> bool:
+        """return True if this operation is a
+        :meth:`_sql.Select.from_statement` operation.
+
+        This is independent from :attr:`_orm.ORMExecuteState.is_select`, as a
+        ``select().from_statement()`` construct can be used with
+        INSERT/UPDATE/DELETE RETURNING types of statements as well.
+        :attr:`_orm.ORMExecuteState.is_select` will only be set if the
+        :meth:`_sql.Select.from_statement` is itself against a
+        :class:`_sql.Select` construct.
+
+        .. versionadded:: 2.0.30
+
+        """
+        return self.statement.is_from_statement
+
+    @property
     def is_insert(self) -> bool:
-        """return True if this is an INSERT operation."""
+        """return True if this is an INSERT operation.
+
+        .. versionchanged:: 2.0.30 - the attribute is also True for a
+           :meth:`_sql.Select.from_statement` construct that is itself against
+           a :class:`_sql.Insert` construct, such as
+           ``select(Entity).from_statement(insert(..))``
+
+        """
         return self.statement.is_dml and self.statement.is_insert
 
     @property
     def is_update(self) -> bool:
-        """return True if this is an UPDATE operation."""
+        """return True if this is an UPDATE operation.
+
+        .. versionchanged:: 2.0.30 - the attribute is also True for a
+           :meth:`_sql.Select.from_statement` construct that is itself against
+           a :class:`_sql.Update` construct, such as
+           ``select(Entity).from_statement(update(..))``
+
+        """
         return self.statement.is_dml and self.statement.is_update
 
     @property
     def is_delete(self) -> bool:
-        """return True if this is a DELETE operation."""
+        """return True if this is a DELETE operation.
+
+        .. versionchanged:: 2.0.30 - the attribute is also True for a
+           :meth:`_sql.Select.from_statement` construct that is itself against
+           a :class:`_sql.Delete` construct, such as
+           ``select(Entity).from_statement(delete(..))``
+
+        """
         return self.statement.is_dml and self.statement.is_delete
 
     @property

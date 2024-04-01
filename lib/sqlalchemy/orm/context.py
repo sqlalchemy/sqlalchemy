@@ -897,6 +897,8 @@ class FromStatement(GroupedElement, Generative, TypedReturnsRows[Unpack[_Ts]]):
         ("_compile_options", InternalTraversal.dp_has_cache_key)
     ]
 
+    is_from_statement = True
+
     def __init__(
         self,
         entities: Iterable[_ColumnsClauseArgument[Any]],
@@ -914,6 +916,10 @@ class FromStatement(GroupedElement, Generative, TypedReturnsRows[Unpack[_Ts]]):
         ]
         self.element = element
         self.is_dml = element.is_dml
+        self.is_select = element.is_select
+        self.is_delete = element.is_delete
+        self.is_insert = element.is_insert
+        self.is_update = element.is_update
         self._label_style = (
             element._label_style if is_select_base(element) else None
         )

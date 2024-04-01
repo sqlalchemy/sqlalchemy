@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 11220
+
+    Added new attribute :attr:`_orm.ORMExecuteState.is_from_statement`, to
+    detect statements of the form ``select().from_statement()``, and also
+    enhanced ``FromStatement`` to set :attr:`_orm.ORMExecuteState.is_select`,
+    :attr:`_orm.ORMExecuteState.is_insert`,
+    :attr:`_orm.ORMExecuteState.is_update`, and
+    :attr:`_orm.ORMExecuteState.is_delete` according to the element that is
+    sent to the :meth:`_sql.Select.from_statement` method itself.
