@@ -126,7 +126,7 @@
         :ref:`change_6980` failed to accommodate for the ``.copy()`` method, which
         will lose the variant mappings that are set up. This becomes an issue for
         the very specific case of a "schema" type, which includes types such as
-        :class:`.Enum` and :class:`.ARRAY`, when they are then used in the context
+        :class:`.Enum` and :class:`_types.ARRAY`, when they are then used in the context
         of an ORM Declarative mapping with mixins where copying of types comes into
         play.  The variant mapping is now copied as well.
 
