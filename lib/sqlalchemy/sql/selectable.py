@@ -6648,7 +6648,7 @@ class Exists(UnaryExpression[bool]):
         assert isinstance(return_value, SelectStatementGrouping)
         return return_value
 
-    def select(self) -> Select[Any]:
+    def select(self) -> Select[Tuple[bool]]:
         r"""Return a SELECT of this :class:`_expression.Exists`.
 
         e.g.::
