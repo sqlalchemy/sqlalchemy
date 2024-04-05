@@ -5616,6 +5616,38 @@ class MetaData(HasSchemaAttr):
             sorted(self.tables.values(), key=lambda t: t.key)  # type: ignore
         )
 
+    # overload needed to work around mypy this mypy
+    # https://github.com/python/mypy/issues/17093
+    @overload
+    def reflect(
+        self,
+        bind: Engine,
+        schema: Optional[str] = ...,
+        views: bool = ...,
+        only: Union[
+            _typing_Sequence[str], Callable[[str, MetaData], bool], None
+        ] = ...,
+        extend_existing: bool = ...,
+        autoload_replace: bool = ...,
+        resolve_fks: bool = ...,
+        **dialect_kwargs: Any,
+    ) -> None: ...
+
+    @overload
+    def reflect(
+        self,
+        bind: Connection,
+        schema: Optional[str] = ...,
+        views: bool = ...,
+        only: Union[
+            _typing_Sequence[str], Callable[[str, MetaData], bool], None
+        ] = ...,
+        extend_existing: bool = ...,
+        autoload_replace: bool = ...,
+        resolve_fks: bool = ...,
+        **dialect_kwargs: Any,
+    ) -> None: ...
+
     @util.preload_module("sqlalchemy.engine.reflection")
     def reflect(
         self,
