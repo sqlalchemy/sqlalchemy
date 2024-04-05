@@ -1,6 +1,8 @@
 from typing import Any
 
 from sqlalchemy import Connection
+from sqlalchemy import Enum
+from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -71,3 +73,25 @@ async def asyncio() -> None:
     ce.statement
     cc = select(1).compile(conn)
     cc.statement
+
+    async with e.connect() as conn:
+        metadata = MetaData()
+
+        await conn.run_sync(metadata.create_all)
+        await conn.run_sync(metadata.reflect)
+        await conn.run_sync(metadata.drop_all)
+
+        # Just to avoid creating new constructs manually:
+        for _, table in metadata.tables.items():
+            await conn.run_sync(table.create)
+            await conn.run_sync(table.drop)
+
+            # Indexes:
+            for index in table.indexes:
+                await conn.run_sync(index.create)
+                await conn.run_sync(index.drop)
+
+        # Test for enum types:
+        enum = Enum("a", "b")
+        await conn.run_sync(enum.create)
+        await conn.run_sync(enum.drop)
