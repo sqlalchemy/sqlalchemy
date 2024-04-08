@@ -242,7 +242,7 @@ Psycopg2 Fast Execution Helpers
 
 Modern versions of psycopg2 include a feature known as
 `Fast Execution Helpers \
-<https://initd.org/psycopg/docs/extras.html#fast-execution-helpers>`_, which
+<https://www.psycopg.org/docs/extras.html#fast-execution-helpers>`_, which
 have been shown in benchmarking to improve psycopg2's executemany()
 performance, primarily with INSERT statements, by at least
 an order of magnitude.
