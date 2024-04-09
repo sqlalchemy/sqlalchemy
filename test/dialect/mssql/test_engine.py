@@ -216,6 +216,55 @@ class ParseConnectTest(fixtures.TestBase):
             connection,
         )
 
+    @testing.combinations(
+        (
+            "quoted_plus",
+            (
+                "mssql+pyodbc:///?odbc_connect=DSN%3Dmydsn%3B"
+                "UID%3Ded%3BPWD%3Dpass%2Bword"
+            ),
+            "DSN=mydsn;UID=ed;PWD=pass+word",
+            ("DSN=mydsn;UID=ed;PWD=pass+word",),
+            "",
+        ),
+        (
+            "plus_for_space",
+            (
+                "mssql+pyodbc:///?odbc_connect=DSN%3Dmydsn%3B"
+                "UID%3Ded%3BPWD%3Dpass+word"
+            ),
+            "DSN=mydsn;UID=ed;PWD=pass word",
+            ("DSN=mydsn;UID=ed;PWD=pass word",),
+            "",
+        ),
+        (
+            "issue_11250_breaking_change",
+            (
+                "mssql+pyodbc:///?odbc_connect=DSN%3Dmydsn%3B"
+                "UID%3Ded%3BPWD%3Dpass%252Bword"
+            ),
+            "DSN=mydsn;UID=ed;PWD=pass%2Bword",
+            ("DSN=mydsn;UID=ed;PWD=pass%2Bword",),
+            "pre-11250 would unquote_plus() to PWD=pass+word",
+        ),
+        argnames="quoted_url, value_in_url_object, connection_string",
+        id_="iaaai",
+    )
+    def test_pyodbc_odbc_connect_with_pwd_plus(
+        self, quoted_url, value_in_url_object, connection_string
+    ):
+        dialect = pyodbc.dialect()
+        u = url.make_url(quoted_url)
+        eq_(value_in_url_object, u.query["odbc_connect"])
+        connection = dialect.create_connect_args(u)
+        eq_(
+            (
+                (connection_string),
+                {},
+            ),
+            connection,
+        )
+
     def test_pyodbc_odbc_connect_ignores_other_values(self):
         dialect = pyodbc.dialect()
         u = url.make_url(

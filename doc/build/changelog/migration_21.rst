@@ -134,3 +134,26 @@ lambdas which do the same::
 
 :ticket:`10050`
 
+
+.. _change_11250:
+
+Potential breaking change to odbc_connect= handling for mssql+pyodbc
+--------------------------------------------------------------------
+
+Fixed a mssql+pyodbc issue where valid plus signs in an already-unquoted
+``odbc_connect=`` (raw DBAPI) connection string were replaced with spaces.
+
+Previously, the pyodbc connector would always pass the odbc_connect value
+to unquote_plus(), even if it was not required. So, if the (unquoted)
+odbc_connect value contained ``PWD=pass+word`` that would get changed to
+``PWD=pass word``, and the login would fail. One workaround was to quote
+just the plus sign — ``PWD=pass%2Bword`` — which would then get unquoted
+to ``PWD=pass+word``.
+
+Implementations using the above workaround with :meth:`_engine.URL.create`
+to specify a plus sign in the ``PWD=`` argument of an odbc_connect string
+will have to remove the workaround and just pass the ``PWD=`` value as it
+would appear in a valid ODBC connection string (i.e., the same as would be
+required if using the connection string directly with ``pyodbc.connect()``).
+
+:ticket:`11250`
