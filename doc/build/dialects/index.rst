@@ -81,6 +81,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | CrateDB                                        | crate-python_                         |
 +------------------------------------------------+---------------------------------------+
+| Databend                                       | databend-sqlalchemy_                  |
++------------------------------------------------+---------------------------------------+
 | EXASolution                                    | sqlalchemy_exasol_                    |
 +------------------------------------------------+---------------------------------------+
 | Elasticsearch (readonly)                       | elasticsearch-dbapi_                  |
@@ -92,6 +94,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 | Google BigQuery                                | pybigquery_                           |
 +------------------------------------------------+---------------------------------------+
 | Google Sheets                                  | gsheets_                              |
++------------------------------------------------+---------------------------------------+
+| Greenplum [2]_                                 | sqlalchemy-greenplum_                 |
 +------------------------------------------------+---------------------------------------+
 | IBM DB2 and Informix                           | ibm-db-sa_                            |
 +------------------------------------------------+---------------------------------------+
@@ -125,6 +129,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 
 .. [1] Supports version 1.3.x only at the moment.
+.. [2] Supports version 1.4.x only at the moment.
 
 .. _openGauss-sqlalchemy: https://gitee.com/opengauss/openGauss-sqlalchemy
 .. _rockset-sqlalchemy: https://pypi.org/project/rockset-sqlalchemy
@@ -156,3 +161,5 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _pyathena: https://github.com/laughingman7743/PyAthena/
 .. _sqlalchemy-yugabytedb: https://pypi.org/project/sqlalchemy-yugabytedb/
 .. _impyla: https://pypi.org/project/impyla/
+.. _databend-sqlalchemy: https://github.com/datafuselabs/databend-sqlalchemy
+.. _sqlalchemy-greenplum: https://github.com/PlaidCloud/sqlalchemy-greenplum
