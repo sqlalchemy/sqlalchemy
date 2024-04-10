@@ -5991,11 +5991,26 @@ class Select(
     @_generative
     def distinct(self, *expr: _ColumnExpressionArgument[Any]) -> Self:
         r"""Return a new :func:`_expression.select` construct which
-        will apply DISTINCT to its columns clause.
+        will apply DISTINCT to the SELECT statement overall.
+
+        E.g.::
+
+            from sqlalchemy import select
+            stmt = select(users_table.c.id, users_table.c.name).distinct()
+
+        The above would produce an statement resembling::
+
+            SELECT DISTINCT user.id, user.name FROM user
+
+        The method also accepts an ``*expr`` parameter which produces the
+        PostgreSQL dialect-specific ``DISTINCT ON`` expression.  Using this
+        parameter on other backends which don't support this syntax will
+        raise an error.
 
         :param \*expr: optional column expressions.  When present,
-         the PostgreSQL dialect will render a ``DISTINCT ON (<expressions>>)``
-         construct.
+         the PostgreSQL dialect will render a ``DISTINCT ON (<expressions>)``
+         construct.  A deprecation warning and/or :class:`_exc.CompileError`
+         will be raised on other backends.
 
          .. deprecated:: 1.4 Using \*expr in other dialects is deprecated
             and will raise :class:`_exc.CompileError` in a future version.

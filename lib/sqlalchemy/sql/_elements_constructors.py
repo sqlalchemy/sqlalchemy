@@ -1090,16 +1090,23 @@ def desc(
 def distinct(expr: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
     """Produce an column-expression-level unary ``DISTINCT`` clause.
 
-    This applies the ``DISTINCT`` keyword to an individual column
-    expression, and is typically contained within an aggregate function,
-    as in::
+    This applies the ``DISTINCT`` keyword to an **individual column
+    expression** (e.g. not the whole statement), and renders **specifically
+    in that column position**; this is used for containment within
+    an aggregate function, as in::
 
         from sqlalchemy import distinct, func
-        stmt = select(func.count(distinct(users_table.c.name)))
+        stmt = select(users_table.c.id, func.count(distinct(users_table.c.name)))
 
-    The above would produce an expression resembling::
+    The above would produce an statement resembling::
 
-        SELECT COUNT(DISTINCT name) FROM user
+        SELECT user.id, count(DISTINCT user.name) FROM user
+
+    .. tip:: The :func:`_sql.distinct` function does **not** apply DISTINCT
+       to the full SELECT statement, instead applying a DISTINCT modifier
+       to **individual column expressions**.  For general ``SELECT DISTINCT``
+       support, use the
+       :meth:`_sql.Select.distinct` method on :class:`_sql.Select`.
 
     The :func:`.distinct` function is also available as a column-level
     method, e.g. :meth:`_expression.ColumnElement.distinct`, as in::
@@ -1122,7 +1129,7 @@ def distinct(expr: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
 
         :data:`.func`
 
-    """
+    """  # noqa: E501
     return UnaryExpression._create_distinct(expr)
 
 
