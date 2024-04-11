@@ -3683,7 +3683,7 @@ class SQLCompiler(Compiled):
                             bind_expression_template=wrapped,
                             **kwargs,
                         )
-                        return "(%s)" % ret
+                        return f"({ret})"
 
                 return wrapped
 
@@ -3702,7 +3702,7 @@ class SQLCompiler(Compiled):
                 bindparam, within_columns_clause=True, **kwargs
             )
             if bindparam.expanding:
-                ret = "(%s)" % ret
+                ret = f"({ret})"
             return ret
 
         name = self._truncate_bindparam(bindparam)
@@ -3799,7 +3799,7 @@ class SQLCompiler(Compiled):
         )
 
         if bindparam.expanding:
-            ret = "(%s)" % ret
+            ret = f"({ret})"
 
         return ret
 

@@ -35,6 +35,11 @@ def _is_compiled() -> bool:
 
 # END GENERATED CYTHON IMPORT
 
+if cython.compiled:
+    from cython.cimports.sqlalchemy.util._collections_cy import _get_id
+else:
+    _get_id = id
+
 
 @cython.cclass
 class prefix_anon_map(Dict[str, str]):
@@ -67,7 +72,7 @@ class prefix_anon_map(Dict[str, str]):
 class anon_map(
     Dict[
         Union[int, str, "Literal[CacheConst.NO_CACHE]"],
-        Union[Literal[True], str],
+        Union[int, Literal[True]],
     ]
 ):
     """A map that creates new keys for missing key access.
@@ -90,19 +95,41 @@ class anon_map(
     else:
         _index: int = 0  # type: ignore[no-redef]
 
-    def get_anon(self, obj: object, /) -> Tuple[str, bool]:
+    @cython.cfunc  # type:ignore[misc]
+    @cython.inline  # type:ignore[misc]
+    def _add_missing(
+        self: anon_map, key: Union[int, str, "Literal[CacheConst.NO_CACHE]"], /
+    ) -> int:
+        val: int = self._index
+        self._index += 1
+        self_dict: dict = self  # type: ignore[type-arg]
+        self_dict[key] = val
+        return val
+
+    def get_anon(self: anon_map, obj: object, /) -> Tuple[int, bool]:
         self_dict: dict = self  # type: ignore[type-arg]
 
-        idself = id(obj)
+        idself: int = _get_id(obj)
         if idself in self_dict:
             return self_dict[idself], True
         else:
-            return self.__missing__(idself), False
+            return self._add_missing(idself), False
 
-    def __missing__(self, key: Union[int, str], /) -> str:
-        val: str
-        self_dict: dict = self  # type: ignore[type-arg]
+    if cython.compiled:
 
-        self_dict[key] = val = str(self._index)
-        self._index += 1
-        return val
+        def __getitem__(
+            self: anon_map,
+            key: Union[int, str, "Literal[CacheConst.NO_CACHE]"],
+            /,
+        ) -> Union[int, Literal[True]]:
+            self_dict: dict = self  # type: ignore[type-arg]
+
+            if key in self_dict:
+                return self_dict[key]  # type:ignore[no-any-return]
+            else:
+                return self._add_missing(key)  # type:ignore[no-any-return]
+
+    def __missing__(
+        self: anon_map, key: Union[int, str, "Literal[CacheConst.NO_CACHE]"], /
+    ) -> int:
+        return self._add_missing(key)  # type:ignore[no-any-return]
