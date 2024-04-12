@@ -1376,6 +1376,7 @@ $$ LANGUAGE plpgsql;
                 conn.exec_driver_sql("SELECT note('another note')")
             finally:
                 trans.rollback()
+                conn.close()
         finally:
             log.removeHandler(buf)
             log.setLevel(lev)
@@ -1720,3 +1721,37 @@ class Psycopg3Test(fixtures.TestBase):
     def test_async_version(self):
         e = create_engine("postgresql+psycopg_async://")
         is_true(isinstance(e.dialect, psycopg_dialect.PGDialectAsync_psycopg))
+
+    @testing.skip_if(lambda c: c.db.dialect.is_async)
+    def test_client_side_cursor(self, testing_engine):
+        from psycopg import ClientCursor
+
+        engine = testing_engine(
+            options={"connect_args": {"cursor_factory": ClientCursor}}
+        )
+
+        with engine.connect() as c:
+            res = c.execute(select(1, 2, 3)).one()
+            eq_(res, (1, 2, 3))
+            with c.connection.driver_connection.cursor() as cursor:
+                is_true(isinstance(cursor, ClientCursor))
+
+    @config.async_test
+    @testing.skip_if(lambda c: not c.db.dialect.is_async)
+    async def test_async_client_side_cursor(self, testing_engine):
+        from psycopg import AsyncClientCursor
+
+        engine = testing_engine(
+            options={"connect_args": {"cursor_factory": AsyncClientCursor}},
+            asyncio=True,
+        )
+
+        async with engine.connect() as c:
+            res = (await c.execute(select(1, 2, 3))).one()
+            eq_(res, (1, 2, 3))
+            async with (
+                await c.get_raw_connection()
+            ).driver_connection.cursor() as cursor:
+                is_true(isinstance(cursor, AsyncClientCursor))
+
+        await engine.dispose()

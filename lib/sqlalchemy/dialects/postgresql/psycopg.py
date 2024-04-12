@@ -50,6 +50,38 @@ The asyncio version of the dialect may also be specified explicitly using the
     dialect shares most of its behavior with the ``psycopg2`` dialect.
     Further documentation is available there.
 
+Using a different Cursor class
+------------------------------
+
+One of the differences between ``psycopg`` and the older ``psycopg2``
+is how bound parameters are handled: ``psycopg2`` would bind them
+client side, while ``psycopg`` by default will bind them server side.
+
+It's possible to configure ``psycopg`` to do client side binding by
+specifying the ``cursor_factory`` to be ``ClientCursor`` when creating
+the engine::
+
+    from psycopg import ClientCursor
+
+    client_side_engine = create_engine(
+        "postgresql+psycopg://...",
+        connect_args={"cursor_factory": ClientCursor},
+    )
+
+Similarly when using an async engine the ``AsyncClientCursor`` can be
+specified::
+
+    from psycopg import AsyncClientCursor
+
+    client_side_engine = create_async_engine(
+        "postgresql+psycopg://...",
+        connect_args={"cursor_factory": AsyncClientCursor},
+    )
+
+.. seealso::
+
+    `Client-side-binding cursors <https://www.psycopg.org/psycopg3/docs/advanced/cursors.html#client-side-binding-cursors>`_
+
 """  # noqa
 from __future__ import annotations
 
