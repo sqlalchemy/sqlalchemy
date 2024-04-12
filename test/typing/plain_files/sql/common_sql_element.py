@@ -98,6 +98,11 @@ stmt2 = (
 # EXPECTED_TYPE: Select[int]
 reveal_type(stmt2)
 
+stmt3 = select(User.id).exists().select()
+
+# EXPECTED_TYPE: Select[bool]
+reveal_type(stmt3)
+
 
 receives_str_col_expr(User.email)
 receives_str_col_expr(User.email + "some expr")
