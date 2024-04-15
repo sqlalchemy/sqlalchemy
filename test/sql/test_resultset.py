@@ -530,8 +530,14 @@ class CursorResultTest(fixtures.TablesTest):
             "import sqlalchemy; import pickle; print(["
             f"r[0] for r in pickle.load(open('''{name}''', 'rb'))])"
         )
+        parts = list(sys.path)
+        if os.environ.get("PYTHONPATH"):
+            parts.append(os.environ["PYTHONPATH"])
+        pythonpath = os.pathsep.join(parts)
         proc = subprocess.run(
-            [sys.executable, "-c", code], stdout=subprocess.PIPE
+            [sys.executable, "-c", code],
+            stdout=subprocess.PIPE,
+            env={**os.environ, "PYTHONPATH": pythonpath},
         )
         exp = str([r[0] for r in result]).encode()
         eq_(proc.returncode, 0)
