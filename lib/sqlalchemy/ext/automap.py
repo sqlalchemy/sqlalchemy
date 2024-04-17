@@ -64,7 +64,7 @@ asking it to reflect the schema and produce mappings::
     # collection-based relationships are by default named
     # "<classname>_collection"
     u1 = session.query(User).first()
-    print (u1.address_collection)
+    print(u1.address_collection)
 
 Above, calling :meth:`.AutomapBase.prepare` while passing along the
 :paramref:`.AutomapBase.prepare.reflect` parameter indicates that the
@@ -101,6 +101,7 @@ explicit table declaration::
 
     from sqlalchemy import create_engine, MetaData, Table, Column, ForeignKey
     from sqlalchemy.ext.automap import automap_base
+
     engine = create_engine("sqlite:///mydatabase.db")
 
     # produce our own MetaData object
@@ -108,13 +109,15 @@ explicit table declaration::
 
     # we can reflect it ourselves from a database, using options
     # such as 'only' to limit what tables we look at...
-    metadata.reflect(engine, only=['user', 'address'])
+    metadata.reflect(engine, only=["user", "address"])
 
     # ... or just define our own Table objects with it (or combine both)
-    Table('user_order', metadata,
-                    Column('id', Integer, primary_key=True),
-                    Column('user_id', ForeignKey('user.id'))
-                )
+    Table(
+        "user_order",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("user_id", ForeignKey("user.id")),
+    )
 
     # we can then produce a set of mappings from this MetaData.
     Base = automap_base(metadata=metadata)
@@ -123,8 +126,9 @@ explicit table declaration::
     Base.prepare()
 
     # mapped classes are ready
-    User, Address, Order = Base.classes.user, Base.classes.address,\
-        Base.classes.user_order
+    User = Base.classes.user
+    Address = Base.classes.address
+    Order = Base.classes.user_order
 
 .. _automap_by_module:
 
@@ -177,18 +181,19 @@ the schema name ``default`` is used if no schema is present::
 
     Base.metadata.create_all(e)
 
+
     def module_name_for_table(cls, tablename, table):
         if table.schema is not None:
             return f"mymodule.{table.schema}"
         else:
             return f"mymodule.default"
 
+
     Base = automap_base()
 
     Base.prepare(e, modulename_for_table=module_name_for_table)
     Base.prepare(e, schema="test_schema", modulename_for_table=module_name_for_table)
     Base.prepare(e, schema="test_schema_2", modulename_for_table=module_name_for_table)
-
 
 The same named-classes are organized into a hierarchical collection available
 at :attr:`.AutomapBase.by_module`.  This collection is traversed using the
@@ -251,18 +256,20 @@ established based on the table name we use.  If our schema contains tables
     # automap base
     Base = automap_base()
 
+
     # pre-declare User for the 'user' table
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         # override schema elements like Columns
-        user_name = Column('name', String)
+        user_name = Column("name", String)
 
         # override relationships too, if desired.
         # we must use the same name that automap would use for the
         # relationship, and also must refer to the class name that automap will
         # generate for "address"
         address_collection = relationship("address", collection_class=set)
+
 
     # reflect
     engine = create_engine("sqlite:///mydatabase.db")
@@ -274,11 +281,11 @@ established based on the table name we use.  If our schema contains tables
     Address = Base.classes.address
 
     u1 = session.query(User).first()
-    print (u1.address_collection)
+    print(u1.address_collection)
 
     # the backref is still there:
     a1 = session.query(Address).first()
-    print (a1.user)
+    print(a1.user)
 
 Above, one of the more intricate details is that we illustrated overriding
 one of the :func:`_orm.relationship` objects that automap would have created.
@@ -305,24 +312,37 @@ scheme for class names and a "pluralizer" for collection names using the
     import re
     import inflect
 
+
     def camelize_classname(base, tablename, table):
-        "Produce a 'camelized' class name, e.g. "
+        "Produce a 'camelized' class name, e.g."
         "'words_and_underscores' -> 'WordsAndUnderscores'"
 
-        return str(tablename[0].upper() + \
-                re.sub(r'_([a-z])', lambda m: m.group(1).upper(), tablename[1:]))
+        return str(
+            tablename[0].upper()
+            + re.sub(
+                r"_([a-z])",
+                lambda m: m.group(1).upper(),
+                tablename[1:],
+            )
+        )
+
 
     _pluralizer = inflect.engine()
+
+
     def pluralize_collection(base, local_cls, referred_cls, constraint):
-        "Produce an 'uncamelized', 'pluralized' class name, e.g. "
+        "Produce an 'uncamelized', 'pluralized' class name, e.g."
         "'SomeTerm' -> 'some_terms'"
 
         referred_name = referred_cls.__name__
-        uncamelized = re.sub(r'[A-Z]',
-                             lambda m: "_%s" % m.group(0).lower(),
-                             referred_name)[1:]
+        uncamelized = re.sub(
+            r"[A-Z]",
+            lambda m: "_%s" % m.group(0).lower(),
+            referred_name,
+        )[1:]
         pluralized = _pluralizer.plural(uncamelized)
         return pluralized
+
 
     from sqlalchemy.ext.automap import automap_base
 
@@ -330,10 +350,11 @@ scheme for class names and a "pluralizer" for collection names using the
 
     engine = create_engine("sqlite:///mydatabase.db")
 
-    Base.prepare(autoload_with=engine,
-                classname_for_table=camelize_classname,
-                name_for_collection_relationship=pluralize_collection
-        )
+    Base.prepare(
+        autoload_with=engine,
+        classname_for_table=camelize_classname,
+        name_for_collection_relationship=pluralize_collection,
+    )
 
 From the above mapping, we would now have classes ``User`` and ``Address``,
 where the collection from ``User`` to ``Address`` is called
@@ -422,16 +443,21 @@ Below is an illustration of how to send
 options along to all one-to-many relationships::
 
     from sqlalchemy.ext.automap import generate_relationship
+    from sqlalchemy.orm import interfaces
 
-    def _gen_relationship(base, direction, return_fn,
-                                    attrname, local_cls, referred_cls, **kw):
+
+    def _gen_relationship(
+        base, direction, return_fn, attrname, local_cls, referred_cls, **kw
+    ):
         if direction is interfaces.ONETOMANY:
-            kw['cascade'] = 'all, delete-orphan'
-            kw['passive_deletes'] = True
+            kw["cascade"] = "all, delete-orphan"
+            kw["passive_deletes"] = True
         # make use of the built-in function to actually return
         # the result.
-        return generate_relationship(base, direction, return_fn,
-                                     attrname, local_cls, referred_cls, **kw)
+        return generate_relationship(
+            base, direction, return_fn, attrname, local_cls, referred_cls, **kw
+        )
+
 
     from sqlalchemy.ext.automap import automap_base
     from sqlalchemy import create_engine
@@ -440,8 +466,7 @@ options along to all one-to-many relationships::
     Base = automap_base()
 
     engine = create_engine("sqlite:///mydatabase.db")
-    Base.prepare(autoload_with=engine,
-                generate_relationship=_gen_relationship)
+    Base.prepare(autoload_with=engine, generate_relationship=_gen_relationship)
 
 Many-to-Many relationships
 --------------------------
@@ -482,18 +507,20 @@ two classes that are in an inheritance relationship.   That is, with two
 classes given as follows::
 
     class Employee(Base):
-        __tablename__ = 'employee'
+        __tablename__ = "employee"
         id = Column(Integer, primary_key=True)
         type = Column(String(50))
         __mapper_args__ = {
-             'polymorphic_identity':'employee', 'polymorphic_on': type
+            "polymorphic_identity": "employee",
+            "polymorphic_on": type,
         }
 
+
     class Engineer(Employee):
-        __tablename__ = 'engineer'
-        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+        __tablename__ = "engineer"
+        id = Column(Integer, ForeignKey("employee.id"), primary_key=True)
         __mapper_args__ = {
-            'polymorphic_identity':'engineer',
+            "polymorphic_identity": "engineer",
         }
 
 The foreign key from ``Engineer`` to ``Employee`` is used not for a
@@ -508,25 +535,26 @@ we want as well as the ``inherit_condition``, as these are not things
 SQLAlchemy can guess::
 
     class Employee(Base):
-        __tablename__ = 'employee'
+        __tablename__ = "employee"
         id = Column(Integer, primary_key=True)
         type = Column(String(50))
 
         __mapper_args__ = {
-            'polymorphic_identity':'employee', 'polymorphic_on':type
+            "polymorphic_identity": "employee",
+            "polymorphic_on": type,
         }
 
-    class Engineer(Employee):
-        __tablename__ = 'engineer'
-        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
-        favorite_employee_id = Column(Integer, ForeignKey('employee.id'))
 
-        favorite_employee = relationship(Employee,
-                                         foreign_keys=favorite_employee_id)
+    class Engineer(Employee):
+        __tablename__ = "engineer"
+        id = Column(Integer, ForeignKey("employee.id"), primary_key=True)
+        favorite_employee_id = Column(Integer, ForeignKey("employee.id"))
+
+        favorite_employee = relationship(Employee, foreign_keys=favorite_employee_id)
 
         __mapper_args__ = {
-            'polymorphic_identity':'engineer',
-            'inherit_condition': id == Employee.id
+            "polymorphic_identity": "engineer",
+            "inherit_condition": id == Employee.id,
         }
 
 Handling Simple Naming Conflicts
@@ -564,15 +592,15 @@ We can resolve this conflict by using an underscore as follows::
         local_table = local_cls.__table__
         if name in local_table.columns:
             newname = name + "_"
-            warnings.warn(
-                "Already detected name %s present.  using %s" %
-                (name, newname))
+            warnings.warn("Already detected name %s present.  using %s" % (name, newname))
             return newname
         return name
 
 
-    Base.prepare(autoload_with=engine,
-        name_for_scalar_relationship=name_for_scalar_relationship)
+    Base.prepare(
+        autoload_with=engine,
+        name_for_scalar_relationship=name_for_scalar_relationship,
+    )
 
 Alternatively, we can change the name on the column side.   The columns
 that are mapped can be modified using the technique described at
@@ -581,12 +609,13 @@ to a new name::
 
     Base = automap_base()
 
+
     class TableB(Base):
-        __tablename__ = 'table_b'
-        _table_a = Column('table_a', ForeignKey('table_a.id'))
+        __tablename__ = "table_b"
+        _table_a = Column("table_a", ForeignKey("table_a.id"))
+
 
     Base.prepare(autoload_with=engine)
-
 
 Using Automap with Explicit Declarations
 ========================================
@@ -603,26 +632,29 @@ defines table metadata::
 
     Base = automap_base()
 
+
     class User(Base):
-        __tablename__ = 'user'
+        __tablename__ = "user"
 
         id = Column(Integer, primary_key=True)
         name = Column(String)
 
+
     class Address(Base):
-        __tablename__ = 'address'
+        __tablename__ = "address"
 
         id = Column(Integer, primary_key=True)
         email = Column(String)
-        user_id = Column(ForeignKey('user.id'))
+        user_id = Column(ForeignKey("user.id"))
+
 
     # produce relationships
     Base.prepare()
 
     # mapping is complete, with "address_collection" and
     # "user" relationships
-    a1 = Address(email='u1')
-    a2 = Address(email='u2')
+    a1 = Address(email="u1")
+    a2 = Address(email="u2")
     u1 = User(address_collection=[a1, a2])
     assert a1.user is u1
 
@@ -651,7 +683,8 @@ be applied as::
     @event.listens_for(Base.metadata, "column_reflect")
     def column_reflect(inspector, table, column_info):
         # set column.key = "attr_<lower_case_name>"
-        column_info['key'] = "attr_%s" % column_info['name'].lower()
+        column_info["key"] = "attr_%s" % column_info["name"].lower()
+
 
     # run reflection
     Base.prepare(autoload_with=engine)
