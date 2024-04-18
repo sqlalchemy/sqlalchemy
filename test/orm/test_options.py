@@ -419,7 +419,10 @@ class OptionsTest(PathTest, QueryTest):
         # loader option works this way right now; the rest all use
         # defaultload() for the "chain" elements
         return strategy_options._generate_from_keys(
-            strategy_options.Load.contains_eager, arg, True, {}
+            strategy_options.Load.contains_eager,
+            arg,
+            True,
+            dict(_propagate_to_loaders=True),
         )
 
     @testing.combinations(
