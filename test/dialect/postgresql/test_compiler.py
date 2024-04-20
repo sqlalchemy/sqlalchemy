@@ -950,6 +950,26 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             postgresql_with={"buffering": "off"},
         )
 
+        idx4 = Index(
+            "test_idx4",
+            tbl.c.data,
+            postgresql_using="gin",
+            postgresql_with={
+                "fastupdate": False,
+                "gin_pending_list_limit": 4096,
+            },
+        )
+
+        idx5 = Index(
+            "test_idx5",
+            tbl.c.data,
+            postgresql_using="brin",
+            postgresql_with={
+                "pages_per_range": 1,
+                "autosummarize": None,
+            },
+        )
+
         self.assert_compile(
             schema.CreateIndex(idx1),
             "CREATE INDEX test_idx1 ON testtbl (data)",
@@ -964,7 +984,19 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateIndex(idx3),
             "CREATE INDEX test_idx3 ON testtbl "
             "USING gist (data) "
-            "WITH (buffering = off)",
+            "WITH (buffering = 'off')",
+        )
+        self.assert_compile(
+            schema.CreateIndex(idx4),
+            "CREATE INDEX test_idx4 ON testtbl "
+            "USING gin (data) "
+            "WITH (fastupdate = false, gin_pending_list_limit = 4096)",
+        )
+        self.assert_compile(
+            schema.CreateIndex(idx5),
+            "CREATE INDEX test_idx5 ON testtbl "
+            "USING brin (data) "
+            "WITH (pages_per_range = 1, autosummarize)",
         )
 
     def test_create_index_with_using_unusual_conditions(self):

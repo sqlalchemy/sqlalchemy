@@ -2349,14 +2349,16 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         withclause = index.dialect_options["postgresql"]["with"]
         if withclause:
-            text += " WITH (%s)" % (
-                ", ".join(
-                    [
-                        "%s = %s" % storage_parameter
-                        for storage_parameter in withclause.items()
-                    ]
-                )
-            )
+            with_opts = []
+            for param, value in withclause.items():
+                if value is not None:
+                    processed_value = self.sql_compiler.process(
+                        sql.literal(value), literal_binds=True
+                    )
+                    with_opts.append("%s = %s" % (param, processed_value))
+                else:
+                    with_opts.append("%s" % param)
+            text += "\n WITH (%s)" % (", ".join(with_opts))
 
         tablespace_name = index.dialect_options["postgresql"]["tablespace"]
         if tablespace_name:
