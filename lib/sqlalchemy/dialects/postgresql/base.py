@@ -2276,6 +2276,18 @@ class PGDDLCompiler(compiler.DDLCompiler):
         domain = drop.element
         return f"DROP DOMAIN {self.preparer.format_type(domain)}"
 
+    def _prepare_withclause_opts(self, withclause: dict[str, Any]) -> str:
+        with_opts = []
+        for param, value in withclause.items():
+            if value is not None:
+                processed_value = self.sql_compiler.process(
+                    sql.literal(value), literal_binds=True
+                )
+                with_opts.append("%s = %s" % (param, processed_value))
+            else:
+                with_opts.append("%s" % param)
+        return ", ".join(with_opts)
+
     def visit_create_index(self, create, **kw):
         preparer = self.preparer
         index = create.element
@@ -2349,16 +2361,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         withclause = index.dialect_options["postgresql"]["with"]
         if withclause:
-            with_opts = []
-            for param, value in withclause.items():
-                if value is not None:
-                    processed_value = self.sql_compiler.process(
-                        sql.literal(value), literal_binds=True
-                    )
-                    with_opts.append("%s = %s" % (param, processed_value))
-                else:
-                    with_opts.append("%s" % param)
-            text += "\n WITH (%s)" % (", ".join(with_opts))
+            text += "\n WITH (%s)" % self._prepare_withclause_opts(withclause)
 
         tablespace_name = index.dialect_options["postgresql"]["tablespace"]
         if tablespace_name:
@@ -2456,16 +2459,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
             table_opts.append("\n USING %s" % pg_opts["using"])
 
         if pg_opts["with"]:
-            with_opts = []
-            for param, value in pg_opts["with"].items():
-                if value is not None:
-                    processed_value = self.sql_compiler.process(
-                        sql.literal(value), literal_binds=True
-                    )
-                    with_opts.append("%s = %s" % (param, processed_value))
-                else:
-                    with_opts.append("%s" % param)
-            table_opts.append("\n WITH (%s)" % (", ".join(with_opts)))
+            table_opts.append(
+                "\n WITH (%s)" % self._prepare_withclause_opts(pg_opts["with"])
+            )
 
         if pg_opts["with_oids"] is True:
             table_opts.append("\n WITH OIDS")
