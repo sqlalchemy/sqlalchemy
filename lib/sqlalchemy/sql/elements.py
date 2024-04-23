@@ -1071,7 +1071,7 @@ class SQLCoreOperations(Generic[_T_co], ColumnOperators, TypingOnly):
 
         @overload
         def __add__(self, other: Any) -> ColumnElement[Any]: ...
-            
+
         def __add__(self, other: Any) -> ColumnElement[Any]: ...
 
         @overload
