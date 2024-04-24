@@ -2280,7 +2280,6 @@ class EnumOrLiteralTypeMapTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
         is_(Foo.__table__.c.status.type.native_enum, False)
 
-
     @testing.variation("override_in_type_map", [True, False])
     @testing.variation("indicate_type_explicitly", [True, False])
     def test_pep586_literal_checks_the_arguments(
