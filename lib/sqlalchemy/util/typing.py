@@ -337,7 +337,7 @@ def flatten_newtype(type_: NewType) -> Type[Any]:
     super_type = type_.__supertype__
     while is_newtype(super_type):
         super_type = super_type.__supertype__
-    return super_type
+    return super_type  # type: ignore[return-value]
 
 
 def is_fwd_ref(
