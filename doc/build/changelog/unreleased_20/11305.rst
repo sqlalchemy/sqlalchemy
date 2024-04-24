@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 11305
+
+    Fixed typing issue where literals defined as Python 3.12
+    pep-695 type alias could not be inferred as :class:`.Enum`.
