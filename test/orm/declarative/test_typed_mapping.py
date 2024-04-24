@@ -105,6 +105,8 @@ _StrTypeAlias: TypeAlias = str
 _StrPep695: TypeAlias = Union[_SomeDict1, _SomeDict2]
 _UnionPep695: TypeAlias = str
 
+_Status695: TypeAlias = Literal["to-do", "in-progress", "done"]
+
 if compat.py312:
     exec(
         """
@@ -118,7 +120,7 @@ strtypalias_tat: typing.TypeAliasType = Annotated[
 
 strtypalias_plain = Annotated[str, mapped_column(info={"hi": "there"})]
 
-type Status695 = Literal["to-do", "in-progress", "done"]
+type _Status695 = Literal["to-do", "in-progress", "done"]
 """,
         globals(),
     )
@@ -2261,7 +2263,7 @@ class EnumOrLiteralTypeMapTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             __tablename__ = "footable"
 
             id: Mapped[int] = mapped_column(primary_key=True)
-            status: Mapped[Status695]
+            status: Mapped[_Status695]
 
         is_true(isinstance(Foo.__table__.c.status.type, Enum))
 
