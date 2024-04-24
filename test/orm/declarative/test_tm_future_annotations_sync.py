@@ -126,6 +126,8 @@ strtypalias_tat: typing.TypeAliasType = Annotated[
     str, mapped_column(info={"hi": "there"})]
 
 strtypalias_plain = Annotated[str, mapped_column(info={"hi": "there"})]
+
+type Status695 = Literal["to-do", "in-progress", "done"]
 """,
         globals(),
     )
@@ -2264,15 +2266,11 @@ class EnumOrLiteralTypeMapTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_pep695_literal_defaults_to_enum(self, decl_base):
         """test #11305."""
 
-        type Status = Literal["to-do", "in-progress", "done"]
-
         class Foo(decl_base):
             __tablename__ = "footable"
 
             id: Mapped[int] = mapped_column(primary_key=True)
-            status: Mapped[Status] = mapped_column(
-                Enum("to-do", "in-progress", "done")
-            )
+            status: Mapped[Status695]
 
         is_true(isinstance(Foo.__table__.c.status.type, Enum))
 
@@ -2280,7 +2278,7 @@ class EnumOrLiteralTypeMapTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             Foo.__table__.c.status.type.enums,
             ["to-do", "in-progress", "done"],
         )
-        is_(Foo.__table__.c.status.type.native_enum, True)
+        is_(Foo.__table__.c.status.type.native_enum, False)
 
 
     @testing.variation("override_in_type_map", [True, False])
