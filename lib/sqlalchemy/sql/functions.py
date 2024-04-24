@@ -69,6 +69,7 @@ if TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrLiteralArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
+    from ._typing import _StarOrOne
     from ._typing import _TypeEngineArgument
     from .base import _EntityNamespace
     from .elements import ClauseElement
@@ -1721,7 +1722,9 @@ class count(GenericFunction[int]):
 
     def __init__(
         self,
-        expression: Optional[_ColumnExpressionArgument[Any]] = None,
+        expression: Union[
+            _ColumnExpressionArgument[Any], _StarOrOne, None
+        ] = None,
         **kwargs: Any,
     ):
         if expression is None:
