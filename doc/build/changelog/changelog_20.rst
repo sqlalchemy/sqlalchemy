@@ -12,6 +12,13 @@
     :version: 2.0.30
     :include_notes_from: unreleased_20
 
+    .. change::
+        :tags: bug, typing
+        :tickets: 11305
+
+        Fixed typing issue where literals defined as Python 3.12
+        pep-695 type alias could not be inferred as :class:`.Enum`.
+
 .. changelog::
     :version: 2.0.29
     :released: March 23, 2024

@@ -1250,9 +1250,16 @@ class registry:
             python_type_type = flatten_newtype(python_type)
             search = ((python_type, python_type_type),)
         elif is_pep695(python_type):
-            python_type_type = python_type.__value__
-            flattened = None
-            search = ((python_type, python_type_type),)
+            if is_literal(python_type.__value__):
+                python_type_type = cast("Type[Any]", python_type.__value__)
+                search = (
+                    (python_type, python_type_type),
+                    (Literal, python_type_type),  # type: ignore[assignment]
+                )
+            else:
+                python_type_type = python_type.__value__
+                flattened = None
+                search = ((python_type, python_type_type),)
         else:
             python_type_type = cast("Type[Any]", python_type)
             flattened = None
