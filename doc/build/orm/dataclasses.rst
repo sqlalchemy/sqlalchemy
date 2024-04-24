@@ -787,8 +787,8 @@ example at :ref:`orm_declarative_mixins_relationships`::
 
     class RefTargetMixin:
         @declared_attr
-        def target_id(cls):
-            return Column("target_id", ForeignKey("target.id"))
+        def target_id(cls) -> Mapped[int]:
+            return mapped_column("target_id", ForeignKey("target.id"))
 
         @declared_attr
         def target(cls):
