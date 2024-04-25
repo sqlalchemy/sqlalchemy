@@ -7292,7 +7292,7 @@ class StrSQLTypeCompiler(GenericTypeCompiler):
 
 
 class _SchemaForObjectCallable(Protocol):
-    def __call__(self, obj: Any) -> str: ...
+    def __call__(self, obj: Any, /) -> str: ...
 
 
 class _BindNameForColProtocol(Protocol):
