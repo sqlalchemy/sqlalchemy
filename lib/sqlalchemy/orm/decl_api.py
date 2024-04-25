@@ -1232,31 +1232,39 @@ class registry:
     def _resolve_type(
         self, python_type: _MatchedOnType
     ) -> Optional[sqltypes.TypeEngine[Any]]:
-        search: Iterable[Tuple[_MatchedOnType, Type[Any]]]
-        python_type_type: Type[Any]
 
-        if is_generic(python_type):
-            if is_literal(python_type):
-                python_type_type = cast("Type[Any]", python_type)
+        python_type_to_check = python_type
+        while is_pep695(python_type_to_check):
+            python_type_to_check = python_type_to_check.__value__
+
+        check_is_pt = python_type is python_type_to_check
+
+        python_type_type: Type[Any]
+        search: Iterable[Tuple[_MatchedOnType, Type[Any]]]
+
+        if is_generic(python_type_to_check):
+            if is_literal(python_type_to_check):
+                python_type_type = cast("Type[Any]", python_type_to_check)
 
                 search = (  # type: ignore[assignment]
                     (python_type, python_type_type),
                     (Literal, python_type_type),
                 )
             else:
-                python_type_type = python_type.__origin__
+                python_type_type = python_type_to_check.__origin__
                 search = ((python_type, python_type_type),)
-        elif is_newtype(python_type):
-            python_type_type = flatten_newtype(python_type)
+        elif is_newtype(python_type_to_check):
+            python_type_type = flatten_newtype(python_type_to_check)
             search = ((python_type, python_type_type),)
-        elif is_pep695(python_type):
-            python_type_type = python_type.__value__
-            flattened = None
-            search = ((python_type, python_type_type),)
+        elif isinstance(python_type_to_check, type):
+            python_type_type = python_type_to_check
+            search = (
+                (pt if check_is_pt else python_type, pt)
+                for pt in python_type_type.__mro__
+            )
         else:
-            python_type_type = cast("Type[Any]", python_type)
-            flattened = None
-            search = ((pt, pt) for pt in python_type_type.__mro__)
+            python_type_type = python_type_to_check  # type: ignore[assignment]
+            search = ((python_type, python_type_type),)
 
         for pt, flattened in search:
             # we search through full __mro__ for types.  however...
