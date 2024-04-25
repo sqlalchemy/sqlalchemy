@@ -1096,7 +1096,7 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
         self.expr = _unwrap_classmethod(expr)
         self.custom_comparator = _unwrap_classmethod(custom_comparator)
         self.update_expr = _unwrap_classmethod(update_expr)
-        util.update_wrapper(self, fget)
+        util.update_wrapper(self, fget)  # type: ignore[arg-type]
 
     @overload
     def __get__(self, instance: Any, owner: Literal[None]) -> Self: ...
