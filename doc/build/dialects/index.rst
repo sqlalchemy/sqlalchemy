@@ -83,6 +83,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Databend                                       | databend-sqlalchemy_                  |
 +------------------------------------------------+---------------------------------------+
+| Databricks                                     | databricks_                           |
++------------------------------------------------+---------------------------------------+
 | EXASolution                                    | sqlalchemy_exasol_                    |
 +------------------------------------------------+---------------------------------------+
 | Elasticsearch (readonly)                       | elasticsearch-dbapi_                  |
@@ -163,3 +165,4 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _impyla: https://pypi.org/project/impyla/
 .. _databend-sqlalchemy: https://github.com/datafuselabs/databend-sqlalchemy
 .. _sqlalchemy-greenplum: https://github.com/PlaidCloud/sqlalchemy-greenplum
+.. _databricks: https://docs.databricks.com/en/dev-tools/sqlalchemy.html
