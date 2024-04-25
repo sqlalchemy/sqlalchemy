@@ -111,8 +111,13 @@ _UnionTypeAlias: TypeAlias = Union[_SomeDict1, _SomeDict2]
 
 _StrTypeAlias: TypeAlias = str
 
-_StrPep695: TypeAlias = Union[_SomeDict1, _SomeDict2]
-_UnionPep695: TypeAlias = str
+_StrPep695: TypeAlias = str
+_UnionPep695: TypeAlias = Union[_SomeDict1, _SomeDict2]
+
+_Literal695: TypeAlias = Literal["to-do", "in-progress", "done"]
+_Recursive695_0: TypeAlias = _Literal695
+_Recursive695_1: TypeAlias = _Recursive695_0
+_Recursive695_2: TypeAlias = _Recursive695_1
 
 if compat.py312:
     exec(
@@ -126,6 +131,11 @@ strtypalias_tat: typing.TypeAliasType = Annotated[
     str, mapped_column(info={"hi": "there"})]
 
 strtypalias_plain = Annotated[str, mapped_column(info={"hi": "there"})]
+
+type _Literal695 = Literal["to-do", "in-progress", "done"]
+type _Recursive695_0 = _Literal695
+type _Recursive695_1 = _Recursive695_0
+type _Recursive695_2 = _Recursive695_1
 """,
         globals(),
     )
@@ -838,9 +848,10 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         class Test(decl_base):
             __tablename__ = "test"
             id: Mapped[int] = mapped_column(primary_key=True)
-            data: Mapped[_StrPep695]  # type: ignore
-            structure: Mapped[_UnionPep695]  # type: ignore
+            data: Mapped[_StrPep695]
+            structure: Mapped[_UnionPep695]
 
+        eq_(Test.__table__.c.data.type._type_affinity, String)
         eq_(Test.__table__.c.data.type.length, 30)
         is_(Test.__table__.c.structure.type._type_affinity, JSON)
 
@@ -869,6 +880,22 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         assert table is not None
 
         eq_(MyClass.data_one.expression.info, {"hi": "there"})
+
+    @testing.requires.python312
+    def test_pep695_literal_defaults_to_enum(self, decl_base):
+        """test #11305."""
+
+        class Foo(decl_base):
+            __tablename__ = "footable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            status: Mapped[_Literal695]
+            r2: Mapped[_Recursive695_2]
+
+        for col in (Foo.__table__.c.status, Foo.__table__.c.r2):
+            is_true(isinstance(col.type, Enum))
+            eq_(col.type.enums, ["to-do", "in-progress", "done"])
+            is_(col.type.native_enum, False)
 
     @testing.requires.python310
     def test_we_got_all_attrs_test_annotated(self):
