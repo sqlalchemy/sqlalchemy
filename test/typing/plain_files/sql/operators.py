@@ -1,3 +1,4 @@
+import datetime as dt
 from decimal import Decimal
 from typing import Any
 from typing import List
@@ -6,6 +7,7 @@ from sqlalchemy import ARRAY
 from sqlalchemy import BigInteger
 from sqlalchemy import column
 from sqlalchemy import ColumnElement
+from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
@@ -100,6 +102,10 @@ adds: "ColumnElement[str]" = A.string + A.string
 add1: "ColumnElement[int]" = A.id + A.id
 add2: "ColumnElement[int]" = A.id + 1
 add3: "ColumnElement[int]" = 1 + A.id
+add_date: "ColumnElement[dt.date]" = func.current_date() + dt.timedelta(days=1)
+add_datetime: "ColumnElement[dt.datetime]" = (
+    func.current_timestamp() + dt.timedelta(seconds=1)
+)
 
 sub1: "ColumnElement[int]" = A.id - A.id
 sub2: "ColumnElement[int]" = A.id - 1
