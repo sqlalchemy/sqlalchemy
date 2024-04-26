@@ -132,7 +132,7 @@ def listens_for(
     The :func:`.listens_for` decorator is part of the primary interface for the
     SQLAlchemy event system, documented at :ref:`event_toplevel`.
 
-    This function generally shares the same kwargs as :func:`.listens`.
+    This function generally shares the same kwargs as :func:`.listen`.
 
     e.g.::
 
