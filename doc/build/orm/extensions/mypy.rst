@@ -497,7 +497,7 @@ plugin that a particular class intends to serve as a declarative mixin::
     class HasCompany:
         @declared_attr
         def company_id(cls) -> Mapped[int]:  # uses Mapped
-            return Column(ForeignKey("company.id"))
+            return mapped_column(ForeignKey("company.id"))
 
         @declared_attr
         def company(cls) -> Mapped["Company"]:

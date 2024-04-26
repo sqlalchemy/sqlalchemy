@@ -306,10 +306,10 @@ def decorator(target: Callable[..., Any]) -> Callable[[_Fn], _Fn]:
         )
         decorated.__defaults__ = getattr(fn, "__func__", fn).__defaults__
 
-        decorated.__wrapped__ = fn  # type: ignore
-        return cast(_Fn, update_wrapper(decorated, fn))
+        decorated.__wrapped__ = fn  # type: ignore[attr-defined]
+        return update_wrapper(decorated, fn)  # type: ignore[return-value]
 
-    return update_wrapper(decorate, target)
+    return update_wrapper(decorate, target)  # type: ignore[return-value]
 
 
 def _update_argspec_defaults_into_env(spec, env):
