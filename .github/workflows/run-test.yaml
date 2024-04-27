@@ -29,6 +29,7 @@ jobs:
           - "ubuntu-latest"
           - "windows-latest"
           - "macos-latest"
+          - "macos-13"
         python-version:
           - "3.8"
           - "3.9"
@@ -42,6 +43,7 @@ jobs:
         architecture:
           - x64
           - x86
+          - arm64
 
         include:
           # autocommit tests fail on the ci for some reason
@@ -50,11 +52,29 @@ jobs:
           - os: "ubuntu-latest"
             pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
 
+
         exclude:
-          # linux and osx do not have x86 python
+          # linux do not have x86 / arm64 python
           - os: "ubuntu-latest"
             architecture: x86
+          - os: "ubuntu-latest"
+            architecture: arm64
+          # windows des not have arm64 python
+          - os: "windows-latest"
+            architecture: arm64
+          # macos: latests uses arm macs. only 3.10+; no x86/x64
           - os: "macos-latest"
+            architecture: x86
+          - os: "macos-latest"
+            architecture: x64
+          - os: "macos-latest"
+            python-version: "3.8"
+          - os: "macos-latest"
+            python-version: "3.9"
+          # macos 13: uses intel macs. no arm64, x86
+          - os: "macos-13"
+            architecture: arm64
+          - os: "macos-13"
             architecture: x86
           # pypy does not have cext or x86
           - python-version: "pypy-3.10"
@@ -93,6 +113,7 @@ jobs:
         continue-on-error: ${{ matrix.python-version == 'pypy-3.10' }}
 
   run-test-arm64:
+    # Hopefully something native can be used at some point https://github.blog/changelog/2023-10-30-accelerate-your-ci-cd-with-arm-based-hosted-runners-in-github-actions/
     name: test-arm64-${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.os }}
     runs-on: ubuntu-latest
     strategy:

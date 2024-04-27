@@ -27,7 +27,8 @@ jobs:
           - compiled
         os:
           - "windows-2022"
-          - "macos-12"
+          # TODO: macos-14 uses arm macs (only python 3.10+) - make arm wheel on it
+          - "macos-13"
           - "ubuntu-22.04"
         linux_archs:
           # this is only meaningful on linux. windows and macos ignore exclude all but one arch
@@ -43,7 +44,7 @@ jobs:
         exclude:
           - os: "windows-2022"
             linux_archs: "aarch64"
-          - os: "macos-12"
+          - os: "macos-13"
             linux_archs: "aarch64"
 
       fail-fast: false
