@@ -1010,21 +1010,38 @@ def _instance_processor(
             # loading does not apply
             assert only_load_props is None
 
-            callable_ = _load_subclass_via_in(
-                context,
-                path,
-                selectin_load_via,
-                _polymorphic_from,
-                option_entities,
-            )
-            PostLoad.callable_for_path(
-                context,
-                load_path,
-                selectin_load_via.mapper,
-                selectin_load_via,
-                callable_,
-                selectin_load_via,
-            )
+            if selectin_load_via.is_mapper:
+                _load_supers = []
+                _endmost_mapper = selectin_load_via
+                while (
+                    _endmost_mapper
+                    and _endmost_mapper is not _polymorphic_from
+                ):
+                    _load_supers.append(_endmost_mapper)
+                    _endmost_mapper = _endmost_mapper.inherits
+            else:
+                _load_supers = [selectin_load_via]
+
+            for _selectinload_entity in _load_supers:
+                if PostLoad.path_exists(
+                    context, load_path, _selectinload_entity
+                ):
+                    continue
+                callable_ = _load_subclass_via_in(
+                    context,
+                    path,
+                    _selectinload_entity,
+                    _polymorphic_from,
+                    option_entities,
+                )
+                PostLoad.callable_for_path(
+                    context,
+                    load_path,
+                    _selectinload_entity.mapper,
+                    _selectinload_entity,
+                    callable_,
+                    _selectinload_entity,
+                )
 
     post_load = PostLoad.for_context(context, load_path, only_load_props)
 
