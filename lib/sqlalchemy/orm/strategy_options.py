@@ -98,6 +98,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         attr: _AttrType,
         alias: Optional[_FromClauseArgument] = None,
         _is_chain: bool = False,
+        _propagate_to_loaders: bool = False,
     ) -> Self:
         r"""Indicate that the given attribute should be eagerly loaded from
         columns stated manually in the query.
@@ -158,7 +159,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         cloned = self._set_relationship_strategy(
             attr,
             {"lazy": "joined"},
-            propagate_to_loaders=False,
+            propagate_to_loaders=_propagate_to_loaders,
             opts={"eager_from_alias": coerced_alias},
             _reconcile_to_other=True if _is_chain else None,
         )
@@ -1146,7 +1147,20 @@ class Load(_AbstractLoad):
             mapper_entities, raiseerr
         )
 
+        # if the context has a current path, this is a lazy load
+        has_current_path = bool(compile_state.compile_options._current_path)
+
         for loader in self.context:
+            # issue #11292
+            # historically, propagate_to_loaders was only considered at
+            # object loading time, whether or not to carry along options
+            # onto an object's loaded state where it would be used by lazyload.
+            # however, the defaultload() option needs to propagate in case
+            # its sub-options propagate_to_loaders, but its sub-options
+            # that dont propagate should not be applied for lazy loaders.
+            # so we check again
+            if has_current_path and not loader.propagate_to_loaders:
+                continue
             loader.process_compile_state(
                 self,
                 compile_state,
