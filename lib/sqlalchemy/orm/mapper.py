@@ -3807,6 +3807,7 @@ class Mapper(
         this subclass as a SELECT with IN.
 
         """
+
         strategy_options = util.preloaded.orm_strategy_options
 
         assert self.inherits
