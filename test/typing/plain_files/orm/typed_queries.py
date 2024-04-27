@@ -97,7 +97,7 @@ def t_select_3() -> None:
     # awkwardnesses that aren't really worth it
     ua(id=1, name="foo")
 
-    # EXPECTED_TYPE: type[User]
+    # EXPECTED_RE_TYPE: [tT]ype\[.*\.User\]
     reveal_type(ua)
 
     stmt = select(ua.id, ua.name).filter(User.id == 5)
@@ -529,13 +529,13 @@ def t_aliased_fromclause() -> None:
 
     a4 = aliased(user_table)
 
-    # EXPECTED_TYPE: type[User]
+    # EXPECTED_RE_TYPE: [tT]ype\[.*\.User\]
     reveal_type(a1)
 
-    # EXPECTED_TYPE: type[User]
+    # EXPECTED_RE_TYPE: [tT]ype\[.*\.User\]
     reveal_type(a2)
 
-    # EXPECTED_TYPE: type[User]
+    # EXPECTED_RE_TYPE: [tT]ype\[.*\.User\]
     reveal_type(a3)
 
     # EXPECTED_TYPE: FromClause
