@@ -1641,6 +1641,9 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
     def __eq__(self, other: Any) -> bool:
         return self.compare(other)
 
+    @overload
+    def get(self, key: str, default: _COL_co) -> _COL_co: ...
+
     def get(
         self, key: str, default: Optional[_COL_co] = None
     ) -> Optional[_COL_co]:
