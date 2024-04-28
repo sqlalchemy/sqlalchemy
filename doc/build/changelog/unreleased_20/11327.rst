@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 11327
+
+    Fixed issue in :func:`_orm.selectin_polymorhpic` loader option where the
+    SELECT emitted would only accommodate for the child-most class among the
+    result rows that were returned, leading intermediary-class attributes to be
+    unloaded if there were no concrete instances of that intermediary-class
+    present in the result.   This issue only presented itself for multi-level
+    inheritance hierarchies.
