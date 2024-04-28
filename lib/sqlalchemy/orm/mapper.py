@@ -3831,7 +3831,7 @@ class Mapper(
             classes_to_include.add(m)
             m = m.inherits
 
-        for prop in self.attrs:
+        for prop in self.column_attrs + self.relationships:
             # skip prop keys that are not instrumented on the mapped class.
             # this is primarily the "_sa_polymorphic_on" property that gets
             # created for an ad-hoc polymorphic_on SQL expression, issue #8704
