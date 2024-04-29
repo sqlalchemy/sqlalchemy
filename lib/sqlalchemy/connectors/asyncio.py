@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import collections
-import itertools
 
 from ..engine import AdaptedConnection
 from ..util.concurrency import asyncio
@@ -114,11 +113,8 @@ class AsyncAdapt_dbapi_cursor:
     def fetchmany(self, size=None):
         if size is None:
             size = self.arraysize
-
-        rr = iter(self._rows)
-        retval = list(itertools.islice(rr, 0, size))
-        self._rows = collections.deque(rr)
-        return retval
+        rr = self._rows
+        return [rr.popleft() for _ in range(min(size, len(rr)))]
 
     def fetchall(self):
         retval = list(self._rows)
