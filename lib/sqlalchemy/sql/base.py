@@ -1650,9 +1650,7 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
         self, key: str, default: Optional[_COL_co] = None
     ) -> Optional[_COL_co]: ...
 
-    def get(
-        self, key: str, default: Optional[_COL_co] = None
-    ) -> Optional[_COL_co]:
+    def get(self, key, default=None):
         """Get a :class:`_sql.ColumnClause` or :class:`_schema.Column` object
         based on a string key name from this
         :class:`_expression.ColumnCollection`."""
