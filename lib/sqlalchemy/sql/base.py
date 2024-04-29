@@ -1353,6 +1353,7 @@ class _SentinelColumnCharacterization(NamedTuple):
 _COLKEY = TypeVar("_COLKEY", Union[None, str], str)
 
 _COL_co = TypeVar("_COL_co", bound="ColumnElement[Any]", covariant=True)
+_CE = TypeVar("_CE", bound="ColumnElement[Any]")
 _COL = TypeVar("_COL", bound="KeyedColumnElement[Any]")
 
 
@@ -1642,7 +1643,7 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
         return self.compare(other)
 
     @overload
-    def get(self, key: str, default: _COL) -> _COL: ...
+    def get(self, key: str, default: _CE) -> _CE: ...
 
     @overload
     def get(
