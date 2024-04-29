@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import asyncio
 import collections
-import itertools
 import sys
 from typing import Any
 from typing import Deque
@@ -232,11 +231,8 @@ class AsyncAdapt_dbapi_cursor:
     def fetchmany(self, size: Optional[int] = None) -> Sequence[Any]:
         if size is None:
             size = self.arraysize
-
-        rr = iter(self._rows)
-        retval = list(itertools.islice(rr, 0, size))
-        self._rows = collections.deque(rr)
-        return retval
+        rr = self._rows
+        return [rr.popleft() for _ in range(min(size, len(rr)))]
 
     def fetchall(self) -> Sequence[Any]:
         retval = list(self._rows)

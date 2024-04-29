@@ -1252,8 +1252,9 @@ class BufferedRowCursorFetchStrategy(CursorFetchStrategy):
         if size is None:
             return self.fetchall(result, dbapi_cursor)
 
-        buf = list(self._rowbuffer)
-        lb = len(buf)
+        rb = self._rowbuffer
+        lb = len(rb)
+        close = False
         if size > lb:
             try:
                 new = dbapi_cursor.fetchmany(size - lb)
@@ -1261,13 +1262,15 @@ class BufferedRowCursorFetchStrategy(CursorFetchStrategy):
                 self.handle_exception(result, dbapi_cursor, e)
             else:
                 if not new:
-                    result._soft_close()
+                    # defer closing since it may clear the row buffer
+                    close = True
                 else:
-                    buf.extend(new)
+                    rb.extend(new)
 
-        result = buf[0:size]
-        self._rowbuffer = collections.deque(buf[size:])
-        return result
+        res = [rb.popleft() for _ in range(min(size, len(rb)))]
+        if close:
+            result._soft_close()
+        return res
 
     def fetchall(self, result, dbapi_cursor):
         try:
@@ -1321,9 +1324,8 @@ class FullyBufferedCursorFetchStrategy(CursorFetchStrategy):
         if size is None:
             return self.fetchall(result, dbapi_cursor)
 
-        buf = list(self._rowbuffer)
-        rows = buf[0:size]
-        self._rowbuffer = collections.deque(buf[size:])
+        rb = self._rowbuffer
+        rows = [rb.popleft() for _ in range(min(size, len(rb)))]
         if not rows:
             result._soft_close()
         return rows
