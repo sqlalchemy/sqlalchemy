@@ -1642,7 +1642,7 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
         return self.compare(other)
 
     @overload
-    def get(self, key: str, default: _COL_co) -> _COL_co: ...
+    def get(self, key: str, default: _COL) -> _COL: ...
 
     @overload
     def get(
