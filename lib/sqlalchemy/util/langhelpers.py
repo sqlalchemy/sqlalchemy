@@ -1973,6 +1973,7 @@ class TypingOnly:
                     "__slots__",
                     "__orig_bases__",
                     "__annotations__",
+                    "__static_attributes__",
                 }
             )
             if remaining:
