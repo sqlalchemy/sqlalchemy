@@ -158,7 +158,7 @@ SQLAlchemy Documentation
       This section describes notes, options, and usage patterns regarding individual dialects.
 
       :doc:`PostgreSQL <dialects/postgresql>` |
-      :doc:`MySQL <dialects/mysql>` |
+      :doc:`MySQL and MariaDB <dialects/mysql>` |
       :doc:`SQLite <dialects/sqlite>` |
       :doc:`Oracle <dialects/oracle>` |
       :doc:`Microsoft SQL Server <dialects/mssql>`
