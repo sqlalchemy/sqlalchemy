@@ -1470,18 +1470,10 @@ class NoBaseWPPlusAliasedTest(
 
 
 class CompositeAttributesTest(fixtures.TestBase):
-    @testing.fixture
-    def mapping_fixture(self, registry, connection):
+
+    @testing.fixture(params=("base", "sub"))
+    def mapping_fixture(self, request, registry, connection):
         Base = registry.generate_base()
-
-        class BaseCls(Base):
-            __tablename__ = "base"
-            id = Column(
-                Integer, primary_key=True, test_needs_autoincrement=True
-            )
-            type = Column(String(50))
-
-            __mapper_args__ = {"polymorphic_on": type}
 
         class XYThing:
             def __init__(self, x, y):
@@ -1501,13 +1493,28 @@ class CompositeAttributesTest(fixtures.TestBase):
             def __ne__(self, other):
                 return not self.__eq__(other)
 
+        class BaseCls(Base):
+            __tablename__ = "base"
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            type = Column(String(50))
+
+            if request.param == "base":
+                comp1 = composite(
+                    XYThing, Column("x1", Integer), Column("y1", Integer)
+                )
+
+            __mapper_args__ = {"polymorphic_on": type}
+
         class A(ComparableEntity, BaseCls):
             __tablename__ = "a"
             id = Column(ForeignKey(BaseCls.id), primary_key=True)
             thing1 = Column(String(50))
-            comp1 = composite(
-                XYThing, Column("x1", Integer), Column("y1", Integer)
-            )
+            if request.param == "sub":
+                comp1 = composite(
+                    XYThing, Column("x1", Integer), Column("y1", Integer)
+                )
 
             __mapper_args__ = {
                 "polymorphic_identity": "a",
