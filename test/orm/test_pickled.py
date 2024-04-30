@@ -654,6 +654,17 @@ class PickleTest(fixtures.MappedTest):
             )
             is_not_none(collections.collection_adapter(repickled.addresses))
 
+    def test_bulk_save_objects_defaults_pickle(self):
+        "Test for #11332"
+        users = self.tables.users
+
+        self.mapper_registry.map_imperatively(User, users)
+        pes = [User(name=f"foo{i}") for i in range(3)]
+        s = fixture_session()
+        s.bulk_save_objects(pes, return_defaults=True)
+        state = pickle.dumps(pes)
+        pickle.loads(state)
+
 
 class OptionsTest(_Polymorphic):
     def test_options_of_type(self):

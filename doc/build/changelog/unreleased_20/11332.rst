@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 11332
+
+    Fixes issue in :meth:`_orm.Session.bulk_save_objects` where it would write a
+    wrong identity key when using ``return_defaults=True``.
+    The wrong identity key could lead to an index error when entities are then pickled.
