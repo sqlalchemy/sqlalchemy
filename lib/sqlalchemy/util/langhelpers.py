@@ -1967,14 +1967,7 @@ class TypingOnly:
     def __init_subclass__(cls) -> None:
         if TypingOnly in cls.__bases__:
             remaining = set(cls.__dict__).difference(
-                {
-                    "__module__",
-                    "__doc__",
-                    "__slots__",
-                    "__orig_bases__",
-                    "__annotations__",
-                    "__static_attributes__",
-                }
+                {name for name in cls.__dict__ if re.match("^__.+__$", name)}
             )
             if remaining:
                 raise AssertionError(
