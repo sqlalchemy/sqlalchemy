@@ -35,7 +35,7 @@ from ..sql.cache_key import HasCacheKey
 
 if TYPE_CHECKING:
     from ._typing import _InternalEntityType
-    from .interfaces import MapperProperty
+    from .interfaces import StrategizedProperty
     from .mapper import Mapper
     from .relationships import RelationshipProperty
     from .util import AliasedInsp
@@ -57,13 +57,13 @@ else:
 _SerializedPath = List[Any]
 _StrPathToken = str
 _PathElementType = Union[
-    _StrPathToken, "_InternalEntityType[Any]", "MapperProperty[Any]"
+    _StrPathToken, "_InternalEntityType[Any]", "StrategizedProperty[Any]"
 ]
 
 # the representation is in fact
 # a tuple with alternating:
-# [_InternalEntityType[Any], Union[str, MapperProperty[Any]],
-# _InternalEntityType[Any], Union[str, MapperProperty[Any]], ...]
+# [_InternalEntityType[Any], Union[str, StrategizedProperty[Any]],
+# _InternalEntityType[Any], Union[str, StrategizedProperty[Any]], ...]
 # this might someday be a tuple of 2-tuples instead, but paths can be
 # chopped at odd intervals as well so this is less flexible
 _PathRepresentation = Tuple[_PathElementType, ...]
@@ -71,7 +71,7 @@ _PathRepresentation = Tuple[_PathElementType, ...]
 # NOTE: these names are weird since the array is 0-indexed,
 # the "_Odd" entries are at 0, 2, 4, etc
 _OddPathRepresentation = Sequence["_InternalEntityType[Any]"]
-_EvenPathRepresentation = Sequence[Union["MapperProperty[Any]", str]]
+_EvenPathRepresentation = Sequence[Union["StrategizedProperty[Any]", str]]
 
 
 log = logging.getLogger(__name__)
@@ -197,7 +197,9 @@ class PathRegistry(HasCacheKey):
     ) -> AbstractEntityRegistry: ...
 
     @overload
-    def __getitem__(self, entity: MapperProperty[Any]) -> PropRegistry: ...
+    def __getitem__(
+        self, entity: StrategizedProperty[Any]
+    ) -> PropRegistry: ...
 
     def __getitem__(
         self,
@@ -206,7 +208,7 @@ class PathRegistry(HasCacheKey):
             int,
             slice,
             _InternalEntityType[Any],
-            MapperProperty[Any],
+            StrategizedProperty[Any],
         ],
     ) -> Union[
         TokenRegistry,
@@ -225,7 +227,7 @@ class PathRegistry(HasCacheKey):
     def pairs(
         self,
     ) -> Iterator[
-        Tuple[_InternalEntityType[Any], Union[str, MapperProperty[Any]]]
+        Tuple[_InternalEntityType[Any], Union[str, StrategizedProperty[Any]]]
     ]:
         odd_path = cast(_OddPathRepresentation, self.path)
         even_path = cast(_EvenPathRepresentation, odd_path)
@@ -531,15 +533,16 @@ class PropRegistry(PathRegistry):
     inherit_cache = True
     is_property = True
 
-    prop: MapperProperty[Any]
+    prop: StrategizedProperty[Any]
     mapper: Optional[Mapper[Any]]
     entity: Optional[_InternalEntityType[Any]]
 
     def __init__(
-        self, parent: AbstractEntityRegistry, prop: MapperProperty[Any]
+        self, parent: AbstractEntityRegistry, prop: StrategizedProperty[Any]
     ):
+
         # restate this path in terms of the
-        # given MapperProperty's parent.
+        # given StrategizedProperty's parent.
         insp = cast("_InternalEntityType[Any]", parent[-1])
         natural_parent: AbstractEntityRegistry = parent
 
