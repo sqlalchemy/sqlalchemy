@@ -59,6 +59,7 @@ def _history_mapper(local_mapper):
         for idx in history_table.indexes:
             if idx.name is not None:
                 idx.name += "_history"
+            idx.unique = False
 
         for orig_c, history_c in zip(
             local_mapper.local_table.c, history_table.c
