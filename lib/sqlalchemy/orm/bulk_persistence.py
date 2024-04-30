@@ -78,6 +78,7 @@ def _bulk_insert(
     mapper: Mapper[_O],
     mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
     session_transaction: SessionTransaction,
+    *,
     isstates: bool,
     return_defaults: bool,
     render_nulls: bool,
@@ -91,6 +92,7 @@ def _bulk_insert(
     mapper: Mapper[_O],
     mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
     session_transaction: SessionTransaction,
+    *,
     isstates: bool,
     return_defaults: bool,
     render_nulls: bool,
@@ -103,6 +105,7 @@ def _bulk_insert(
     mapper: Mapper[_O],
     mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
     session_transaction: SessionTransaction,
+    *,
     isstates: bool,
     return_defaults: bool,
     render_nulls: bool,
@@ -220,6 +223,7 @@ def _bulk_insert(
             state.key = (
                 identity_cls,
                 tuple([dict_[key] for key in identity_props]),
+                None,
             )
 
     if use_orm_insert_stmt is not None:
@@ -232,6 +236,7 @@ def _bulk_update(
     mapper: Mapper[Any],
     mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
     session_transaction: SessionTransaction,
+    *,
     isstates: bool,
     update_changed_only: bool,
     use_orm_update_stmt: Literal[None] = ...,
@@ -244,6 +249,7 @@ def _bulk_update(
     mapper: Mapper[Any],
     mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
     session_transaction: SessionTransaction,
+    *,
     isstates: bool,
     update_changed_only: bool,
     use_orm_update_stmt: Optional[dml.Update] = ...,
@@ -255,6 +261,7 @@ def _bulk_update(
     mapper: Mapper[Any],
     mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
     session_transaction: SessionTransaction,
+    *,
     isstates: bool,
     update_changed_only: bool,
     use_orm_update_stmt: Optional[dml.Update] = None,

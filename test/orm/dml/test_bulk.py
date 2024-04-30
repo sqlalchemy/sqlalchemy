@@ -2,6 +2,7 @@ from sqlalchemy import FetchedValue
 from sqlalchemy import ForeignKey
 from sqlalchemy import Identity
 from sqlalchemy import insert
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -146,6 +147,17 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
         )
         if statement_type == "save_objects":
             eq_(objects[0].__dict__["id"], 1)
+
+    def test_bulk_save_objects_defaults_key(self):
+        User = self.classes.User
+
+        pes = [User(name=f"foo{i}") for i in range(3)]
+        s = fixture_session()
+        s.bulk_save_objects(pes, return_defaults=True)
+        key = inspect(pes[0]).key
+
+        s.commit()
+        eq_(inspect(s.get(User, 1)).key, key)
 
     def test_bulk_save_mappings_preserve_order(self):
         (User,) = self.classes("User")

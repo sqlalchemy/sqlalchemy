@@ -4591,11 +4591,11 @@ class Session(_SessionClassMethods, EventTarget):
             self._bulk_save_mappings(
                 mapper,
                 states,
-                isupdate,
-                True,
-                return_defaults,
-                update_changed_only,
-                False,
+                isupdate=isupdate,
+                isstates=True,
+                return_defaults=return_defaults,
+                update_changed_only=update_changed_only,
+                render_nulls=False,
             )
 
     def bulk_insert_mappings(
@@ -4674,11 +4674,11 @@ class Session(_SessionClassMethods, EventTarget):
         self._bulk_save_mappings(
             mapper,
             mappings,
-            False,
-            False,
-            return_defaults,
-            False,
-            render_nulls,
+            isupdate=False,
+            isstates=False,
+            return_defaults=return_defaults,
+            update_changed_only=False,
+            render_nulls=render_nulls,
         )
 
     def bulk_update_mappings(
@@ -4720,13 +4720,20 @@ class Session(_SessionClassMethods, EventTarget):
 
         """
         self._bulk_save_mappings(
-            mapper, mappings, True, False, False, False, False
+            mapper,
+            mappings,
+            isupdate=True,
+            isstates=False,
+            return_defaults=False,
+            update_changed_only=False,
+            render_nulls=False,
         )
 
     def _bulk_save_mappings(
         self,
         mapper: Mapper[_O],
         mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
+        *,
         isupdate: bool,
         isstates: bool,
         return_defaults: bool,
@@ -4743,17 +4750,17 @@ class Session(_SessionClassMethods, EventTarget):
                     mapper,
                     mappings,
                     transaction,
-                    isstates,
-                    update_changed_only,
+                    isstates=isstates,
+                    update_changed_only=update_changed_only,
                 )
             else:
                 bulk_persistence._bulk_insert(
                     mapper,
                     mappings,
                     transaction,
-                    isstates,
-                    return_defaults,
-                    render_nulls,
+                    isstates=isstates,
+                    return_defaults=return_defaults,
+                    render_nulls=render_nulls,
                 )
             transaction.commit()
 
