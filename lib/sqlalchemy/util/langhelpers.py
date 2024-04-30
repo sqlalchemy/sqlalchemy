@@ -1956,6 +1956,9 @@ def attrsetter(attrname):
     return env["set"]
 
 
+_dunders = re.compile("^__.+__$")
+
+
 class TypingOnly:
     """A mixin class that marks a class as 'typing only', meaning it has
     absolutely no methods, attributes, or runtime functionality whatsoever.
@@ -1966,15 +1969,9 @@ class TypingOnly:
 
     def __init_subclass__(cls) -> None:
         if TypingOnly in cls.__bases__:
-            remaining = set(cls.__dict__).difference(
-                {
-                    "__module__",
-                    "__doc__",
-                    "__slots__",
-                    "__orig_bases__",
-                    "__annotations__",
-                }
-            )
+            remaining = {
+                name for name in cls.__dict__ if not _dunders.match(name)
+            }
             if remaining:
                 raise AssertionError(
                     f"Class {cls} directly inherits TypingOnly but has "
