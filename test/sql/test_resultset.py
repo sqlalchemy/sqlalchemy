@@ -2572,6 +2572,60 @@ class KeyTargetingTest(fixtures.TablesTest):
         eq_(row[6], "d3")
         eq_(row[7], "d3")
 
+    @testing.requires.duplicate_names_in_cursor_description
+    @testing.combinations((None,), (0,), (1,), (2,), argnames="pos")
+    @testing.variation("texttype", ["literal", "text"])
+    def test_dupe_col_targeting(self, connection, pos, texttype):
+        """test #11306"""
+
+        keyed2 = self.tables.keyed2
+        col = keyed2.c.b
+        data_value = "b2"
+
+        cols = [col, col, col]
+        expected = [data_value, data_value, data_value]
+
+        if pos is not None:
+            if texttype.literal:
+                cols[pos] = literal_column("10")
+            elif texttype.text:
+                cols[pos] = text("10")
+            else:
+                texttype.fail()
+
+            expected[pos] = 10
+
+        stmt = select(*cols)
+
+        result = connection.execute(stmt)
+
+        if texttype.text and pos is not None:
+            # when using text(), the name of the col is taken from
+            # cursor.description directly since we don't know what's
+            # inside a text()
+            key_for_text_col = result.cursor.description[pos][0]
+        elif texttype.literal and pos is not None:
+            # for literal_column(), we use the text
+            key_for_text_col = "10"
+
+        eq_(result.all(), [tuple(expected)])
+
+        result = connection.execute(stmt).mappings()
+        if pos is None:
+            eq_(set(result.keys()), {"b", "b__1", "b__2"})
+            eq_(
+                result.all(),
+                [{"b": data_value, "b__1": data_value, "b__2": data_value}],
+            )
+
+        else:
+            eq_(set(result.keys()), {"b", "b__1", key_for_text_col})
+
+            eq_(
+                result.all(),
+                [{"b": data_value, "b__1": data_value, key_for_text_col: 10}],
+            )
+
     def test_columnclause_schema_column_one(self, connection):
         # originally addressed by [ticket:2932], however liberalized
         # Column-targeting rules are deprecated

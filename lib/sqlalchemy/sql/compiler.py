@@ -2938,7 +2938,7 @@ class SQLCompiler(Compiled):
         **kwargs: Any,
     ) -> str:
         if add_to_result_map is not None:
-            add_to_result_map(func.name, func.name, (), func.type)
+            add_to_result_map(func.name, func.name, (func.name,), func.type)
 
         disp = getattr(self, "visit_%s_func" % func.name.lower(), None)
 
@@ -4388,6 +4388,11 @@ class SQLCompiler(Compiled):
         objects: Tuple[Any, ...],
         type_: TypeEngine[Any],
     ) -> None:
+
+        # note objects must be non-empty for cursor.py to handle the
+        # collection properly
+        assert objects
+
         if keyname is None or keyname == "*":
             self._ordered_columns = False
             self._ad_hoc_textual = True
@@ -4461,7 +4466,7 @@ class SQLCompiler(Compiled):
                 _add_to_result_map = add_to_result_map
 
                 def add_to_result_map(keyname, name, objects, type_):
-                    _add_to_result_map(keyname, name, (), type_)
+                    _add_to_result_map(keyname, name, (keyname,), type_)
 
             # if we redefined col_expr for type expressions, wrap the
             # callable with one that adds the original column to the targets
