@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 11347
+
+    Fixed issue where attribute key names in :class:`_orm.Bundle` would not be
+    correct when using ORM enabled :class:`_sql.select` vs.
+    :class:`_orm.Query`, when the statement contained duplicate column names.
+
+.. change::
+    :tags: bug, typing
+
+    Fixed issue in typing for :class:`_orm.Bundle` where creating a nested
+    :class:`_orm.Bundle` structure were not allowed.

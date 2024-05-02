@@ -159,6 +159,65 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
             select(b1.c.d1, b1.c.d2), "SELECT data.d1, data.d2 FROM data"
         )
 
+    @testing.variation("stmt_type", ["legacy", "newstyle"])
+    def test_dupe_col_name(self, stmt_type):
+        """test #11347"""
+        Data = self.classes.Data
+        sess = fixture_session()
+
+        b1 = Bundle("b1", Data.d1, Data.d3)
+
+        if stmt_type.legacy:
+            row = (
+                sess.query(Data.d1, Data.d2, b1)
+                .filter(Data.d1 == "d0d1")
+                .one()
+            )
+        elif stmt_type.newstyle:
+            row = sess.execute(
+                select(Data.d1, Data.d2, b1).filter(Data.d1 == "d0d1")
+            ).one()
+
+        eq_(row[2]._mapping, {"d1": "d0d1", "d3": "d0d3"})
+
+    @testing.variation("stmt_type", ["legacy", "newstyle"])
+    def test_dupe_col_name_nested(self, stmt_type):
+        """test #11347"""
+        Data = self.classes.Data
+        sess = fixture_session()
+
+        class DictBundle(Bundle):
+            def create_row_processor(self, query, procs, labels):
+                def proc(row):
+                    return dict(zip(labels, (proc(row) for proc in procs)))
+
+                return proc
+
+        b1 = DictBundle("b1", Data.d1, Data.d3)
+        b2 = DictBundle("b2", Data.d2, Data.d3)
+        b3 = DictBundle("b3", Data.d2, Data.d3, b1, b2)
+
+        if stmt_type.legacy:
+            row = (
+                sess.query(Data.d1, Data.d2, b3)
+                .filter(Data.d1 == "d0d1")
+                .one()
+            )
+        elif stmt_type.newstyle:
+            row = sess.execute(
+                select(Data.d1, Data.d2, b3).filter(Data.d1 == "d0d1")
+            ).one()
+
+        eq_(
+            row[2],
+            {
+                "d2": "d0d2",
+                "d3": "d0d3",
+                "b1": {"d1": "d0d1", "d3": "d0d3"},
+                "b2": {"d2": "d0d2", "d3": "d0d3"},
+            },
+        )
+
     def test_result(self):
         Data = self.classes.Data
         sess = fixture_session()
