@@ -42,7 +42,7 @@ def _is_compiled() -> bool:
 
 # END GENERATED CYTHON IMPORT
 
-_Empty_Tuple: Tuple[Any, ...] = cython.declare(tuple, ())
+_Empty_Tuple: tuple[Any, ...] = cython.declare(tuple, ())
 
 
 @cython.inline
@@ -74,7 +74,7 @@ def _validate_execute_many_item(params: Sequence[Any]) -> cython.bint:
 # _is_mapping_or_tuple and _validate_execute_many_item could be
 # inlined if pure python perf is a problem
 def _distill_params_20(
-    params: Optional[_CoreAnyExecuteParams],
+    params: _CoreAnyExecuteParams | None,
 ) -> _CoreMultiExecuteParams:
     if params is None:
         return _Empty_Tuple
@@ -92,7 +92,7 @@ def _distill_params_20(
 
 
 def _distill_raw_params(
-    params: Optional[_DBAPIAnyExecuteParams],
+    params: _DBAPIAnyExecuteParams | None,
 ) -> _DBAPIMultiExecuteParams:
     if params is None:
         return _Empty_Tuple
@@ -107,7 +107,7 @@ def _distill_raw_params(
 
 
 @cython.cfunc
-def _is_contiguous(indexes: Tuple[int, ...]) -> cython.bint:
+def _is_contiguous(indexes: tuple[int, ...]) -> cython.bint:
     i: cython.Py_ssize_t
     prev: cython.Py_ssize_t
     curr: cython.Py_ssize_t

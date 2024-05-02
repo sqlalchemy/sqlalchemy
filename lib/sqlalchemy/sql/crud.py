@@ -105,10 +105,10 @@ _CrudParamSequence = List[_CrudParamElement]
 
 class _CrudParams(NamedTuple):
     single_params: _CrudParamSequence
-    all_multi_params: List[Sequence[_CrudParamElementStr]]
+    all_multi_params: list[Sequence[_CrudParamElementStr]]
     is_default_metavalue_only: bool = False
     use_insertmanyvalues: bool = False
-    use_sentinel_columns: Optional[Sequence[Column[Any]]] = None
+    use_sentinel_columns: Sequence[Column[Any]] | None = None
 
 
 def _get_crud_params(
@@ -217,10 +217,10 @@ def _get_crud_params(
             [],
         )
 
-    stmt_parameter_tuples: Optional[
-        List[Tuple[Union[str, ColumnClause[Any]], Any]]
-    ]
-    spd: Optional[MutableMapping[_DMLColumnElement, Any]]
+    stmt_parameter_tuples: None | (
+        list[tuple[str | ColumnClause[Any], Any]]
+    )
+    spd: MutableMapping[_DMLColumnElement, Any] | None
 
     if (
         _compile_state_isinsert(compile_state)
@@ -260,7 +260,7 @@ def _get_crud_params(
         }
 
     # create a list of column assignment clauses as tuples
-    values: List[_CrudParamElement] = []
+    values: list[_CrudParamElement] = []
 
     if stmt_parameter_tuples is not None:
         _get_stmt_parameter_tuples_params(
@@ -273,7 +273,7 @@ def _get_crud_params(
             kw,
         )
 
-    check_columns: Dict[str, ColumnClause[Any]] = {}
+    check_columns: dict[str, ColumnClause[Any]] = {}
 
     # special logic that only occurs for multi-table UPDATE
     # statements
@@ -334,7 +334,7 @@ def _get_crud_params(
         if check:
             raise exc.CompileError(
                 "Unconsumed column names: %s"
-                % (", ".join("%s" % (c,) for c in check))
+                % (", ".join("{}".format(c) for c in check))
             )
 
     is_default_metavalue_only = False
@@ -392,7 +392,7 @@ def _create_bind_param(
     value: Any,
     process: Literal[True] = ...,
     required: bool = False,
-    name: Optional[str] = None,
+    name: str | None = None,
     **kw: Any,
 ) -> str: ...
 
@@ -412,9 +412,9 @@ def _create_bind_param(
     value: Any,
     process: bool = True,
     required: bool = False,
-    name: Optional[str] = None,
+    name: str | None = None,
     **kw: Any,
-) -> Union[str, elements.BindParameter[Any]]:
+) -> str | elements.BindParameter[Any]:
     if name is None:
         name = col.key
     bindparam = elements.BindParameter(
@@ -467,9 +467,9 @@ def _handle_values_anonymous_param(compiler, col, value, name, **kw):
 
 def _key_getters_for_crud_column(
     compiler: SQLCompiler, stmt: ValuesBase, compile_state: DMLState
-) -> Tuple[
-    Callable[[Union[str, ColumnClause[Any]]], Union[str, Tuple[str, str]]],
-    Callable[[ColumnClause[Any]], Union[str, Tuple[str, str]]],
+) -> tuple[
+    Callable[[str | ColumnClause[Any]], str | tuple[str, str]],
+    Callable[[ColumnClause[Any]], str | tuple[str, str]],
     _BindNameForColProtocol,
 ]:
     if dml.isupdate(compile_state) and compile_state._extra_froms:
@@ -486,8 +486,8 @@ def _key_getters_for_crud_column(
         )
 
         def _column_as_key(
-            key: Union[ColumnClause[Any], str]
-        ) -> Union[str, Tuple[str, str]]:
+            key: ColumnClause[Any] | str
+        ) -> str | tuple[str, str]:
             str_key = c_key_role(key)
             if hasattr(key, "table") and key.table in _et:
                 return (key.table.name, str_key)  # type: ignore
@@ -496,7 +496,7 @@ def _key_getters_for_crud_column(
 
         def _getattr_col_key(
             col: ColumnClause[Any],
-        ) -> Union[str, Tuple[str, str]]:
+        ) -> str | tuple[str, str]:
             if col.table in _et:
                 return (col.table.name, col.key)  # type: ignore
             else:
@@ -506,7 +506,7 @@ def _key_getters_for_crud_column(
             if col.table in _et:
                 if TYPE_CHECKING:
                     assert isinstance(col.table, TableClause)
-                return "%s_%s" % (col.table.name, col.key)
+                return "{}_{}".format(col.table.name, col.key)
             else:
                 return col.key
 
@@ -538,7 +538,7 @@ def _scan_insert_from_select_cols(
 
     compiler.stack[-1]["insert_from_select"] = stmt.select
 
-    add_select_cols: List[_CrudParamElementSQLExpr] = []
+    add_select_cols: list[_CrudParamElementSQLExpr] = []
     if stmt.include_insert_from_select_defaults:
         col_set = set(cols)
         for col in stmt.table.columns:
@@ -836,7 +836,7 @@ def _append_param_parameter(
         c, use_table=compile_state.include_table_with_column_exprs
     )
 
-    accumulated_bind_names: Set[str] = set()
+    accumulated_bind_names: set[str] = set()
 
     if coercions._is_literal(value):
         if (
@@ -941,7 +941,7 @@ def _append_param_insert_pk_returning(compiler, stmt, c, values, kw):
                 not c.default.optional
                 or not compiler.dialect.sequences_optional
             ):
-                accumulated_bind_names: Set[str] = set()
+                accumulated_bind_names: set[str] = set()
                 values.append(
                     (
                         c,
@@ -1074,7 +1074,7 @@ def _append_param_insert_hasdefault(
         if compiler.dialect.supports_sequences and (
             not c.default.optional or not compiler.dialect.sequences_optional
         ):
-            accumulated_bind_names: Set[str] = set()
+            accumulated_bind_names: set[str] = set()
             values.append(
                 (
                     c,
@@ -1126,8 +1126,8 @@ def _append_param_insert_select_hasdefault(
     compiler: SQLCompiler,
     stmt: ValuesBase,
     c: ColumnClause[Any],
-    values: List[_CrudParamElementSQLExpr],
-    kw: Dict[str, Any],
+    values: list[_CrudParamElementSQLExpr],
+    kw: dict[str, Any],
 ) -> None:
     if default_is_sequence(c.default):
         if compiler.dialect.supports_sequences and (
@@ -1231,9 +1231,9 @@ def _create_insert_prefetch_bind_param(
     compiler: SQLCompiler,
     c: ColumnElement[Any],
     process: bool = True,
-    name: Optional[str] = None,
+    name: str | None = None,
     **kw: Any,
-) -> Union[elements.BindParameter[Any], str]:
+) -> elements.BindParameter[Any] | str:
     param = _create_bind_param(
         compiler, c, None, process=process, name=name, **kw
     )
@@ -1263,9 +1263,9 @@ def _create_update_prefetch_bind_param(
     compiler: SQLCompiler,
     c: ColumnElement[Any],
     process: bool = True,
-    name: Optional[str] = None,
+    name: str | None = None,
     **kw: Any,
-) -> Union[elements.BindParameter[Any], str]:
+) -> elements.BindParameter[Any] | str:
     param = _create_bind_param(
         compiler, c, None, process=process, name=name, **kw
     )
@@ -1314,7 +1314,7 @@ def _process_multiparam_default_bind(
     stmt: ValuesBase,
     c: KeyedColumnElement[Any],
     index: int,
-    kw: Dict[str, Any],
+    kw: dict[str, Any],
 ) -> str:
     if not c.default:
         raise exc.CompileError(
@@ -1430,15 +1430,15 @@ def _extend_values_for_multiparams(
     compile_state: DMLState,
     initial_values: Sequence[_CrudParamElementStr],
     _column_as_key: Callable[..., str],
-    kw: Dict[str, Any],
-) -> List[Sequence[_CrudParamElementStr]]:
+    kw: dict[str, Any],
+) -> list[Sequence[_CrudParamElementStr]]:
     values_0 = initial_values
     values = [initial_values]
 
     mp = compile_state._multi_parameters
     assert mp is not None
     for i, row in enumerate(mp[1:]):
-        extension: List[_CrudParamElementStr] = []
+        extension: list[_CrudParamElementStr] = []
 
         row = {_column_as_key(key): v for key, v in row.items()}
 

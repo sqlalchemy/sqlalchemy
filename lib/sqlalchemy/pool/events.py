@@ -60,9 +60,9 @@ class PoolEvents(event.Events[Pool]):
     @classmethod
     def _accept_with(
         cls,
-        target: Union[Pool, Type[Pool], Engine, Type[Engine]],
+        target: Pool | type[Pool] | Engine | type[Engine],
         identifier: str,
-    ) -> Optional[Union[Pool, Type[Pool]]]:
+    ) -> Pool | type[Pool] | None:
         if not typing.TYPE_CHECKING:
             Engine = util.preloaded.engine.Engine
 
@@ -173,7 +173,7 @@ class PoolEvents(event.Events[Pool]):
 
     def checkin(
         self,
-        dbapi_connection: Optional[DBAPIConnection],
+        dbapi_connection: DBAPIConnection | None,
         connection_record: ConnectionPoolEntry,
     ) -> None:
         """Called when a connection returns to the pool.
@@ -258,7 +258,7 @@ class PoolEvents(event.Events[Pool]):
         self,
         dbapi_connection: DBAPIConnection,
         connection_record: ConnectionPoolEntry,
-        exception: Optional[BaseException],
+        exception: BaseException | None,
     ) -> None:
         """Called when a DBAPI connection is to be "invalidated".
 
@@ -288,7 +288,7 @@ class PoolEvents(event.Events[Pool]):
         self,
         dbapi_connection: DBAPIConnection,
         connection_record: ConnectionPoolEntry,
-        exception: Optional[BaseException],
+        exception: BaseException | None,
     ) -> None:
         """Called when a DBAPI connection is to be "soft invalidated".
 

@@ -10,7 +10,7 @@ if len(sys.argv) > 1:
         start = "-".join(str(t).split("-")[:2])
         if to_check.lower() == start:
             print(
-                "Wheel tag {0} matches installed version {1}.".format(
+                "Wheel tag {} matches installed version {}.".format(
                     to_check, t
                 )
             )
@@ -18,7 +18,7 @@ if len(sys.argv) > 1:
             break
 if not found:
     print(
-        "Wheel tag {0} not found in installed version tags {1}.".format(
+        "Wheel tag {} not found in installed version tags {}.".format(
             to_check, [str(t) for t in tags.sys_tags()]
         )
     )

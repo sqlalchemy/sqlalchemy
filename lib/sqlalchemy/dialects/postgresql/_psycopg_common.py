@@ -93,7 +93,7 @@ class _PGExecutionContext_common_psycopg(PGExecutionContext):
         # https://www.psycopg.org/psycopg3/docs/advanced/cursors.html#server-side-cursors
         # psycopg2
         # https://www.psycopg.org/docs/usage.html#server-side-cursors
-        ident = "c_%s_%s" % (hex(id(self))[2:], hex(_server_side_id())[2:])
+        ident = f"c_{hex(id(self))[2:]}_{hex(_server_side_id())[2:]}"
         return self._dbapi_connection.cursor(ident)
 
 

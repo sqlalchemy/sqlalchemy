@@ -421,7 +421,7 @@ def _parametrize_cls(module, cls):
             for param in full_param_set
             for token in param.id.split("-")
         )
-        name = "%s_%s" % (cls.__name__, parametrized_name)
+        name = "{}_{}".format(cls.__name__, parametrized_name)
         newcls = type.__new__(type, name, (cls,), cls_variables)
         setattr(module, name, newcls)
         classes.append(newcls)

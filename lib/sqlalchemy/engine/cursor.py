@@ -160,10 +160,10 @@ class CursorResultMetaData(ResultMetaData):
 
     _keymap: _CursorKeyMapType
     _processors: _ProcessorsType
-    _keymap_by_result_column_idx: Optional[Dict[int, _KeyMapRecType]]
+    _keymap_by_result_column_idx: dict[int, _KeyMapRecType] | None
     _unpickled: bool
     _safe_for_cache: bool
-    _translated_indexes: Optional[List[int]]
+    _translated_indexes: list[int] | None
 
     returns_rows: ClassVar[bool] = True
 
@@ -183,8 +183,8 @@ class CursorResultMetaData(ResultMetaData):
         processors: _ProcessorsType,
         keys: Sequence[str],
         keymap: _KeyMapType,
-        tuplefilter: Optional[_TupleGetterType],
-        translated_indexes: Optional[List[int]],
+        tuplefilter: _TupleGetterType | None,
+        translated_indexes: list[int] | None,
         safe_for_cache: bool,
         keymap_by_result_column_idx: Any,
     ) -> CursorResultMetaData:
@@ -256,7 +256,7 @@ class CursorResultMetaData(ResultMetaData):
         recs = list(self._metadata_for_keys(keys))
 
         indexes = [rec[MD_INDEX] for rec in recs]
-        new_keys: List[str] = [rec[MD_LOOKUP_KEY] for rec in recs]
+        new_keys: list[str] = [rec[MD_LOOKUP_KEY] for rec in recs]
 
         if self._translated_indexes:
             indexes = [self._translated_indexes[idx] for idx in indexes]
@@ -422,7 +422,7 @@ class CursorResultMetaData(ResultMetaData):
                 # new in 1.4: get the complete set of all possible keys,
                 # strings, objects, whatever, that are dupes across two
                 # different records, first.
-                index_by_key: Dict[Any, Any] = {}
+                index_by_key: dict[Any, Any] = {}
                 dupes = set()
                 for metadata_entry in raw:
                     for key in (metadata_entry[MD_RENDERED_NAME],) + (
@@ -754,19 +754,19 @@ class CursorResultMetaData(ResultMetaData):
     @classmethod
     def _create_description_match_map(
         cls,
-        result_columns: List[ResultColumnsEntry],
+        result_columns: list[ResultColumnsEntry],
         loose_column_name_matching: bool = False,
-    ) -> Dict[
-        Union[str, object], Tuple[str, Tuple[Any, ...], TypeEngine[Any], int]
+    ) -> dict[
+        str | object, tuple[str, tuple[Any, ...], TypeEngine[Any], int]
     ]:
         """when matching cursor.description to a set of names that are present
         in a Compiled object, as is the case with TextualSelect, get all the
         names we expect might match those in cursor.description.
         """
 
-        d: Dict[
-            Union[str, object],
-            Tuple[str, Tuple[Any, ...], TypeEngine[Any], int],
+        d: dict[
+            str | object,
+            tuple[str, tuple[Any, ...], TypeEngine[Any], int],
         ] = {}
         for ridx, elem in enumerate(result_columns):
             key = elem[RM_RENDERED_NAME]
@@ -813,8 +813,8 @@ class CursorResultMetaData(ResultMetaData):
     if not TYPE_CHECKING:
 
         def _key_fallback(
-            self, key: Any, err: Optional[Exception], raiseerr: bool = True
-        ) -> Optional[NoReturn]:
+            self, key: Any, err: Exception | None, raiseerr: bool = True
+        ) -> NoReturn | None:
             if raiseerr:
                 if self._unpickled and isinstance(key, elements.ColumnElement):
                     raise exc.NoSuchColumnError(
@@ -835,7 +835,7 @@ class CursorResultMetaData(ResultMetaData):
             "result set column descriptions" % rec[MD_LOOKUP_KEY]
         )
 
-    def _index_for_key(self, key: Any, raiseerr: bool = True) -> Optional[int]:
+    def _index_for_key(self, key: Any, raiseerr: bool = True) -> int | None:
         # TODO: can consider pre-loading ints and negative ints
         # into _keymap - also no coverage here
         if isinstance(key, int):
@@ -927,26 +927,26 @@ class ResultFetchStrategy:
 
     __slots__ = ()
 
-    alternate_cursor_description: Optional[_DBAPICursorDescription] = None
+    alternate_cursor_description: _DBAPICursorDescription | None = None
 
     def soft_close(
         self,
         result: CursorResult[Unpack[TupleAny]],
-        dbapi_cursor: Optional[DBAPICursor],
+        dbapi_cursor: DBAPICursor | None,
     ) -> None:
         raise NotImplementedError()
 
     def hard_close(
         self,
         result: CursorResult[Unpack[TupleAny]],
-        dbapi_cursor: Optional[DBAPICursor],
+        dbapi_cursor: DBAPICursor | None,
     ) -> None:
         raise NotImplementedError()
 
     def yield_per(
         self,
         result: CursorResult[Unpack[TupleAny]],
-        dbapi_cursor: Optional[DBAPICursor],
+        dbapi_cursor: DBAPICursor | None,
         num: int,
     ) -> None:
         return
@@ -963,7 +963,7 @@ class ResultFetchStrategy:
         self,
         result: CursorResult[Unpack[TupleAny]],
         dbapi_cursor: DBAPICursor,
-        size: Optional[int] = None,
+        size: int | None = None,
     ) -> Any:
         raise NotImplementedError()
 
@@ -977,7 +977,7 @@ class ResultFetchStrategy:
     def handle_exception(
         self,
         result: CursorResult[Unpack[TupleAny]],
-        dbapi_cursor: Optional[DBAPICursor],
+        dbapi_cursor: DBAPICursor | None,
         err: BaseException,
     ) -> NoReturn:
         raise err
@@ -1068,19 +1068,19 @@ class CursorFetchStrategy(ResultFetchStrategy):
     __slots__ = ()
 
     def soft_close(
-        self, result: CursorResult[Any], dbapi_cursor: Optional[DBAPICursor]
+        self, result: CursorResult[Any], dbapi_cursor: DBAPICursor | None
     ) -> None:
         result.cursor_strategy = _NO_CURSOR_DQL
 
     def hard_close(
-        self, result: CursorResult[Any], dbapi_cursor: Optional[DBAPICursor]
+        self, result: CursorResult[Any], dbapi_cursor: DBAPICursor | None
     ) -> None:
         result.cursor_strategy = _NO_CURSOR_DQL
 
     def handle_exception(
         self,
         result: CursorResult[Any],
-        dbapi_cursor: Optional[DBAPICursor],
+        dbapi_cursor: DBAPICursor | None,
         err: BaseException,
     ) -> NoReturn:
         result.connection._handle_dbapi_exception(
@@ -1090,7 +1090,7 @@ class CursorFetchStrategy(ResultFetchStrategy):
     def yield_per(
         self,
         result: CursorResult[Any],
-        dbapi_cursor: Optional[DBAPICursor],
+        dbapi_cursor: DBAPICursor | None,
         num: int,
     ) -> None:
         result.cursor_strategy = BufferedRowCursorFetchStrategy(
@@ -1118,7 +1118,7 @@ class CursorFetchStrategy(ResultFetchStrategy):
         self,
         result: CursorResult[Any],
         dbapi_cursor: DBAPICursor,
-        size: Optional[int] = None,
+        size: int | None = None,
     ) -> Any:
         try:
             if size is None:
@@ -1413,7 +1413,7 @@ class CursorResult(Result[Unpack[_Ts]]):
         "connection",
     )
 
-    _metadata: Union[CursorResultMetaData, _NoResultMetaData]
+    _metadata: CursorResultMetaData | _NoResultMetaData
     _no_result_metadata = _NO_RESULT_METADATA
     _soft_closed: bool = False
     closed: bool = False
@@ -1428,7 +1428,7 @@ class CursorResult(Result[Unpack[_Ts]]):
         self,
         context: DefaultExecutionContext,
         cursor_strategy: ResultFetchStrategy,
-        cursor_description: Optional[_DBAPICursorDescription],
+        cursor_description: _DBAPICursorDescription | None,
     ):
         self.context = context
         self.dialect = context.dialect

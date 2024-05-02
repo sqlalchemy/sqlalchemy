@@ -671,9 +671,9 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             autoload_with=connection,
         )
 
-        self.assert_(isinstance(table.c.col1.type, sa.Integer))
-        self.assert_(isinstance(table.c.col2.type, sa.Unicode))
-        self.assert_(isinstance(table.c.col4.type, sa.String))
+        self.assertTrue(isinstance(table.c.col1.type, sa.Integer))
+        self.assertTrue(isinstance(table.c.col2.type, sa.Unicode))
+        self.assertTrue(isinstance(table.c.col4.type, sa.String))
 
     def test_override_upgrade_pk_flag(self, connection, metadata):
         meta = metadata
@@ -1138,7 +1138,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         self.assert_tables_equal(multi2, table2)
         j = sa.join(table, table2)
 
-        self.assert_(
+        self.assertTrue(
             sa.and_(
                 table.c.multi_id == table2.c.foo,
                 table.c.multi_rev == table2.c.bar,
@@ -1724,7 +1724,7 @@ class UnicodeReflectionTest(fixtures.TablesTest):
             # on reflection.
 
             nfc = {unicodedata.normalize("NFC", n) for n in names}
-            self.assert_(nfc == names)
+            self.assertTrue(nfc == names)
 
             # Yep.  But still ensure that bulk reflection and
             # create/drop work with either normalization.
@@ -1981,7 +1981,7 @@ def createTables(meta, schema=None):
 def createIndexes(con, schema=None):
     fullname = "users"
     if schema:
-        fullname = "%s.%s" % (schema, "users")
+        fullname = "{}.{}".format(schema, "users")
     query = "CREATE INDEX users_t_idx ON %s (test1, test2)" % fullname
     con.execute(sa.sql.text(query))
 
@@ -1991,9 +1991,9 @@ def _create_views(conn, schema=None):
     for table_name in ("users", "email_addresses"):
         fullname = table_name
         if schema:
-            fullname = "%s.%s" % (schema, table_name)
+            fullname = "{}.{}".format(schema, table_name)
         view_name = fullname + "_v"
-        query = "CREATE VIEW %s AS SELECT * FROM %s" % (
+        query = "CREATE VIEW {} AS SELECT * FROM {}".format(
             view_name,
             fullname,
         )
@@ -2005,7 +2005,7 @@ def _drop_views(conn, schema=None):
     for table_name in ("email_addresses", "users"):
         fullname = table_name
         if schema:
-            fullname = "%s.%s" % (schema, table_name)
+            fullname = "{}.{}".format(schema, table_name)
         view_name = fullname + "_v"
         query = "DROP VIEW %s" % view_name
         conn.execute(sa.sql.text(query))

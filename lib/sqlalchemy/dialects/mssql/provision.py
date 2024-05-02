@@ -30,7 +30,7 @@ from ...testing.provision import temp_table_keyword_args
 def generate_driver_url(url, driver, query_str):
     backend = url.get_backend_name()
 
-    new_url = url.set(drivername="%s+%s" % (backend, driver))
+    new_url = url.set(drivername=f"{backend}+{driver}")
 
     if driver not in ("pyodbc", "aioodbc"):
         new_url = new_url.set(query="")

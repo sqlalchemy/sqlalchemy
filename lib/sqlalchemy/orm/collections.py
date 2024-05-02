@@ -529,7 +529,7 @@ class CollectionAdapter:
         return self._data()._sa_appender
 
     def append_with_event(
-        self, item: Any, initiator: Optional[AttributeEventToken] = None
+        self, item: Any, initiator: AttributeEventToken | None = None
     ) -> None:
         """Add an entity to the collection, firing mutation events."""
 
@@ -576,7 +576,7 @@ class CollectionAdapter:
         return self._data()._sa_remover
 
     def remove_with_event(
-        self, item: Any, initiator: Optional[AttributeEventToken] = None
+        self, item: Any, initiator: AttributeEventToken | None = None
     ) -> None:
         """Remove an entity from the collection, firing mutation events."""
         self._data()._sa_remover(item, _sa_initiator=initiator)
@@ -588,7 +588,7 @@ class CollectionAdapter:
         self._data()._sa_remover(item, _sa_initiator=False)
 
     def clear_with_event(
-        self, initiator: Optional[AttributeEventToken] = None
+        self, initiator: AttributeEventToken | None = None
     ) -> None:
         """Empty the collection, firing a mutation event for each entity."""
 
@@ -811,7 +811,7 @@ def bulk_replace(values, existing_adapter, new_adapter, initiator=None):
 
 
 def prepare_instrumentation(
-    factory: Union[Type[Collection[Any]], _CollectionFactoryType],
+    factory: type[Collection[Any]] | _CollectionFactoryType,
 ) -> _CollectionFactoryType:
     """Prepare a callable for future use as a collection class factory.
 
@@ -832,7 +832,7 @@ def prepare_instrumentation(
     else:
         impl_factory = cast(_CollectionFactoryType, factory)
 
-    cls: Union[_CollectionFactoryType, Type[Collection[Any]]]
+    cls: _CollectionFactoryType | type[Collection[Any]]
 
     # Create a specimen
     cls = type(impl_factory())
@@ -885,8 +885,8 @@ def _locate_roles_and_methods(cls):
 
     """
 
-    roles: Dict[str, str] = {}
-    methods: Dict[str, Tuple[Optional[str], Optional[int], Optional[str]]] = {}
+    roles: dict[str, str] = {}
+    methods: dict[str, tuple[str | None, int | None, str | None]] = {}
 
     for supercls in cls.__mro__:
         for name, method in vars(supercls).items():
@@ -906,8 +906,8 @@ def _locate_roles_and_methods(cls):
 
             # transfer instrumentation requests from decorated function
             # to the combined queue
-            before: Optional[Tuple[str, int]] = None
-            after: Optional[str] = None
+            before: tuple[str, int] | None = None
+            after: str | None = None
 
             if hasattr(method, "_sa_instrument_before"):
                 op, argument = method._sa_instrument_before
@@ -1117,7 +1117,7 @@ def __before_pop(collection, _sa_initiator=None):
         executor.fire_pre_remove_event(_sa_initiator)
 
 
-def _list_decorators() -> Dict[str, Callable[[_FN], _FN]]:
+def _list_decorators() -> dict[str, Callable[[_FN], _FN]]:
     """Tailored instrumentation wrappers for any list-like class."""
 
     def _tidy(fn):
@@ -1258,7 +1258,7 @@ def _list_decorators() -> Dict[str, Callable[[_FN], _FN]]:
     return l
 
 
-def _dict_decorators() -> Dict[str, Callable[[_FN], _FN]]:
+def _dict_decorators() -> dict[str, Callable[[_FN], _FN]]:
     """Tailored instrumentation wrappers for any dict-like mapping class."""
 
     def _tidy(fn):
@@ -1379,7 +1379,7 @@ def _set_binops_check_loose(self: Any, obj: Any) -> bool:
     )
 
 
-def _set_decorators() -> Dict[str, Callable[[_FN], _FN]]:
+def _set_decorators() -> dict[str, Callable[[_FN], _FN]]:
     """Tailored instrumentation wrappers for any set-like class."""
 
     def _tidy(fn):
@@ -1566,9 +1566,9 @@ __canned_instrumentation = cast(
 
 __interfaces: util.immutabledict[
     Any,
-    Tuple[
-        Dict[str, str],
-        Dict[str, Callable[..., Any]],
+    tuple[
+        dict[str, str],
+        dict[str, Callable[..., Any]],
     ],
 ] = util.immutabledict(
     {

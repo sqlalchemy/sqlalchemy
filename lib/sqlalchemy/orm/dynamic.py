@@ -64,7 +64,7 @@ class DynamicCollectionHistory(WriteOnlyHistory[_T]):
         attr: DynamicAttributeImpl,
         state: InstanceState[_T],
         passive: PassiveFlag,
-        apply_to: Optional[DynamicCollectionHistory[_T]] = None,
+        apply_to: DynamicCollectionHistory[_T] | None = None,
     ) -> None:
         if apply_to:
             coll = AppenderQuery(attr, state).autoflush(False)
@@ -82,16 +82,16 @@ class DynamicCollectionHistory(WriteOnlyHistory[_T]):
 class DynamicAttributeImpl(WriteOnlyAttributeImpl):
     _supports_dynamic_iteration = True
     collection_history_cls = DynamicCollectionHistory[Any]
-    query_class: Type[AppenderMixin[Any]]  # type: ignore[assignment]
+    query_class: type[AppenderMixin[Any]]  # type: ignore[assignment]
 
     def __init__(
         self,
-        class_: Union[Type[Any], AliasedClass[Any]],
+        class_: type[Any] | AliasedClass[Any],
         key: str,
         dispatch: _Dispatch[QueryableAttribute[Any]],
         target_mapper: Mapper[_T],
         order_by: _RelationshipOrderByArg,
-        query_class: Optional[Type[AppenderMixin[_T]]] = None,
+        query_class: type[AppenderMixin[_T]] | None = None,
         **kw: Any,
     ) -> None:
         attributes.AttributeImpl.__init__(
@@ -120,8 +120,8 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
 
     """
 
-    query_class: Optional[Type[Query[_T]]] = None
-    _order_by_clauses: Tuple[ColumnElement[Any], ...]
+    query_class: type[Query[_T]] | None = None
+    _order_by_clauses: tuple[ColumnElement[Any], ...]
 
     def __init__(
         self, attr: DynamicAttributeImpl, state: InstanceState[_T]
@@ -134,7 +134,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
         super().__init__(attr, state)
 
     @property
-    def session(self) -> Optional[Session]:
+    def session(self) -> Session | None:
         sess = object_session(self.instance)
         if sess is not None and sess.autoflush and self.instance in sess:
             sess.flush()
@@ -147,7 +147,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
     def session(self, session: Session) -> None:
         self.sess = session
 
-    def _iter(self) -> Union[result.ScalarResult[_T], result.Result[_T]]:
+    def _iter(self) -> result.ScalarResult[_T] | result.Result[_T]:
         sess = self.session
         if sess is None:
             state = attributes.instance_state(self.instance)
@@ -174,7 +174,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
 
         def __iter__(self) -> Iterator[_T]: ...
 
-    def __getitem__(self, index: Any) -> Union[_T, List[_T]]:
+    def __getitem__(self, index: Any) -> _T | list[_T]:
         sess = self.session
         if sess is None:
             return self.attr._get_collection_history(
@@ -198,7 +198,7 @@ class AppenderMixin(AbstractCollectionWriter[_T]):
 
     def _generate(
         self,
-        sess: Optional[Session] = None,
+        sess: Session | None = None,
     ) -> Query[_T]:
         # note we're returning an entirely new Query class instance
         # here without any assignment capabilities; the class of this

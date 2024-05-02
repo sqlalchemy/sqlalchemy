@@ -132,8 +132,8 @@ class DefaultDialect(Dialect):
 
     bind_typing = interfaces.BindTyping.NONE
 
-    include_set_input_sizes: Optional[Set[Any]] = None
-    exclude_set_input_sizes: Optional[Set[Any]] = None
+    include_set_input_sizes: set[Any] | None = None
+    exclude_set_input_sizes: set[Any] | None = None
 
     # the first value we'd get for an autoincrement column.
     default_sequence_base = 1
@@ -199,19 +199,19 @@ class DefaultDialect(Dialect):
     # length at which to truncate
     # any identifier.
     max_identifier_length = 9999
-    _user_defined_max_identifier_length: Optional[int] = None
+    _user_defined_max_identifier_length: int | None = None
 
-    isolation_level: Optional[str] = None
+    isolation_level: str | None = None
 
     # sub-categories of max_identifier_length.
     # currently these accommodate for MySQL which allows alias names
     # of 255 but DDL names only of 64.
-    max_index_name_length: Optional[int] = None
-    max_constraint_name_length: Optional[int] = None
+    max_index_name_length: int | None = None
+    max_constraint_name_length: int | None = None
 
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
-    colspecs: MutableMapping[Type[TypeEngine[Any]], Type[TypeEngine[Any]]] = {}
+    colspecs: MutableMapping[type[TypeEngine[Any]], type[TypeEngine[Any]]] = {}
     default_paramstyle = "named"
 
     supports_default_values = False
@@ -253,7 +253,7 @@ class DefaultDialect(Dialect):
 
     server_version_info = None
 
-    default_schema_name: Optional[str] = None
+    default_schema_name: str | None = None
 
     # indicates symbol names are
     # UPPERCASEd if they are case insensitive
@@ -292,15 +292,15 @@ class DefaultDialect(Dialect):
     )
     def __init__(
         self,
-        paramstyle: Optional[_ParamStyle] = None,
-        isolation_level: Optional[IsolationLevel] = None,
-        dbapi: Optional[ModuleType] = None,
+        paramstyle: _ParamStyle | None = None,
+        isolation_level: IsolationLevel | None = None,
+        dbapi: ModuleType | None = None,
         implicit_returning: Literal[True] = True,
-        supports_native_boolean: Optional[bool] = None,
-        max_identifier_length: Optional[int] = None,
-        label_length: Optional[int] = None,
-        insertmanyvalues_page_size: Union[_NoArg, int] = _NoArg.NO_ARG,
-        use_insertmanyvalues: Optional[bool] = None,
+        supports_native_boolean: bool | None = None,
+        max_identifier_length: int | None = None,
+        label_length: int | None = None,
+        insertmanyvalues_page_size: _NoArg | int = _NoArg.NO_ARG,
+        use_insertmanyvalues: bool | None = None,
         # util.deprecated_params decorator cannot render the
         # Linting.NO_LINTING constant
         compiler_linting: Linting = int(compiler.NO_LINTING),  # type: ignore
@@ -490,8 +490,8 @@ class DefaultDialect(Dialect):
         return self.supports_sane_rowcount
 
     @classmethod
-    def get_pool_class(cls, url: URL) -> Type[Pool]:
-        default: Type[pool.Pool]
+    def get_pool_class(cls, url: URL) -> type[Pool]:
+        default: type[pool.Pool]
         if cls.is_async:
             default = pool.AsyncAdaptedQueuePool
         else:
@@ -499,7 +499,7 @@ class DefaultDialect(Dialect):
 
         return getattr(cls, "poolclass", default)
 
-    def get_dialect_pool_class(self, url: URL) -> Type[Pool]:
+    def get_dialect_pool_class(self, url: URL) -> type[Pool]:
         return self.get_pool_class(url)
 
     @classmethod
@@ -510,7 +510,7 @@ class DefaultDialect(Dialect):
         except ImportError:
             pass
 
-    def _builtin_onconnect(self) -> Optional[_ListenerFnType]:
+    def _builtin_onconnect(self) -> _ListenerFnType | None:
         if self._on_connect_isolation_level is not None:
 
             def builtin_connect(dbapi_conn, conn_rec):
@@ -777,9 +777,9 @@ class DefaultDialect(Dialect):
         compiled = cast(SQLCompiler, context.compiled)
 
         _composite_sentinel_proc: Sequence[
-            Optional[_ResultProcessorType[Any]]
+            _ResultProcessorType[Any] | None
         ] = ()
-        _scalar_sentinel_proc: Optional[_ResultProcessorType[Any]] = None
+        _scalar_sentinel_proc: _ResultProcessorType[Any] | None = None
         _sentinel_proc_initialized: bool = False
 
         compiled_parameters = context.compiled_parameters
@@ -800,7 +800,7 @@ class DefaultDialect(Dialect):
             schema_translate_map = None
 
         if is_returning:
-            result: Optional[List[Any]] = []
+            result: list[Any] | None = []
             context._insertmanyvalues_rows = result
 
             sort_by_parameter_order = imv.sort_by_parameter_order
@@ -865,10 +865,10 @@ class DefaultDialect(Dialect):
                             )
                         _sentinel_proc_initialized = True
 
-                    rows_by_sentinel: Union[
-                        Dict[Tuple[Any, ...], Any],
-                        Dict[Any, Any],
-                    ]
+                    rows_by_sentinel: (
+                        dict[tuple[Any, ...], Any] |
+                        dict[Any, Any]
+                    )
                     if composite_sentinel:
                         rows_by_sentinel = {
                             tuple(
@@ -1188,17 +1188,17 @@ class DefaultExecutionContext(ExecutionContext):
 
     execute_style: ExecuteStyle = ExecuteStyle.EXECUTE
 
-    compiled: Optional[Compiled] = None
-    result_column_struct: Optional[
-        Tuple[List[ResultColumnsEntry], bool, bool, bool, bool]
-    ] = None
-    returned_default_rows: Optional[Sequence[Row[Unpack[TupleAny]]]] = None
+    compiled: Compiled | None = None
+    result_column_struct: None | (
+        tuple[list[ResultColumnsEntry], bool, bool, bool, bool]
+    ) = None
+    returned_default_rows: Sequence[Row[Unpack[TupleAny]]] | None = None
 
     execution_options: _ExecuteOptions = util.EMPTY_DICT
 
     cursor_fetch_strategy = _cursor._DEFAULT_FETCH
 
-    invoked_statement: Optional[Executable] = None
+    invoked_statement: Executable | None = None
 
     _is_implicit_returning = False
     _is_explicit_returning = False
@@ -1207,14 +1207,14 @@ class DefaultExecutionContext(ExecutionContext):
 
     _soft_closed = False
 
-    _rowcount: Optional[int] = None
+    _rowcount: int | None = None
 
     # a hook for SQLite's translation of
     # result column names
     # NOTE: pyhive is using this hook, can't remove it :(
-    _translate_colname: Optional[Callable[[str], str]] = None
+    _translate_colname: Callable[[str], str] | None = None
 
-    _expanded_parameters: Mapping[str, List[str]] = util.immutabledict()
+    _expanded_parameters: Mapping[str, list[str]] = util.immutabledict()
     """used by set_input_sizes().
 
     This collection comes from ``ExpandedState.parameter_expansion``.
@@ -1228,13 +1228,13 @@ class DefaultExecutionContext(ExecutionContext):
     dialect: Dialect
     unicode_statement: str
     cursor: DBAPICursor
-    compiled_parameters: List[_MutableCoreSingleExecuteParams]
+    compiled_parameters: list[_MutableCoreSingleExecuteParams]
     parameters: _DBAPIMultiExecuteParams
-    extracted_parameters: Optional[Sequence[BindParameter[Any]]]
+    extracted_parameters: Sequence[BindParameter[Any]] | None
 
     _empty_dict_params = cast("Mapping[str, Any]", util.EMPTY_DICT)
 
-    _insertmanyvalues_rows: Optional[List[Tuple[Any, ...]]] = None
+    _insertmanyvalues_rows: list[tuple[Any, ...]] | None = None
     _num_sentinel_cols: int = 0
 
     @classmethod
@@ -1292,7 +1292,7 @@ class DefaultExecutionContext(ExecutionContext):
         compiled: SQLCompiler,
         parameters: _CoreMultiExecuteParams,
         invoked_statement: Executable,
-        extracted_parameters: Optional[Sequence[BindParameter[Any]]],
+        extracted_parameters: Sequence[BindParameter[Any]] | None,
         cache_hit: CacheStats = CacheStats.CACHING_DISABLED,
     ) -> ExecutionContext:
         """Initialize execution context for a Compiled construct."""
@@ -1463,7 +1463,7 @@ class DefaultExecutionContext(ExecutionContext):
             core_positional_parameters: MutableSequence[Sequence[Any]] = []
             assert positiontup is not None
             for compiled_params in self.compiled_parameters:
-                l_param: List[Any] = [
+                l_param: list[Any] = [
                     (
                         flattened_processors[key](compiled_params[key])
                         if key in flattened_processors
@@ -1477,7 +1477,7 @@ class DefaultExecutionContext(ExecutionContext):
 
             self.parameters = core_positional_parameters
         else:
-            core_dict_parameters: MutableSequence[Dict[str, Any]] = []
+            core_dict_parameters: MutableSequence[dict[str, Any]] = []
             escaped_names = compiled.escaped_bind_names
 
             # note that currently, "expanded" parameters will be present
@@ -1485,7 +1485,7 @@ class DefaultExecutionContext(ExecutionContext):
             # slightly inconsistent with the approach taken as of
             # #8056 where self.compiled_parameters is meant to contain unquoted
             # param names.
-            d_param: Dict[str, Any]
+            d_param: dict[str, Any]
             for compiled_params in self.compiled_parameters:
                 if escaped_names:
                     d_param = {
@@ -1586,21 +1586,21 @@ class DefaultExecutionContext(ExecutionContext):
         assert gen_time is not None
 
         if ch is NO_CACHE_KEY:
-            return "no key %.5fs" % (now - gen_time,)
+            return f"no key {now - gen_time:.5f}s"
         elif ch is CACHE_HIT:
-            return "cached since %.4gs ago" % (now - gen_time,)
+            return f"cached since {now - gen_time:.4g}s ago"
         elif ch is CACHE_MISS:
-            return "generated in %.5fs" % (now - gen_time,)
+            return f"generated in {now - gen_time:.5f}s"
         elif ch is CACHING_DISABLED:
             if "_cache_disable_reason" in self.execution_options:
-                return "caching disabled (%s) %.5fs " % (
+                return "caching disabled ({}) {:.5f}s ".format(
                     self.execution_options["_cache_disable_reason"],
                     now - gen_time,
                 )
             else:
-                return "caching disabled %.5fs" % (now - gen_time,)
+                return f"caching disabled {now - gen_time:.5f}s"
         elif ch is NO_DIALECT_SUPPORT:
-            return "dialect %s+%s does not support caching %.5fs" % (
+            return "dialect {}+{} does not support caching {:.5f}s".format(
                 self.dialect.name,
                 self.dialect.driver,
                 now - gen_time,
@@ -1631,13 +1631,13 @@ class DefaultExecutionContext(ExecutionContext):
         return self.root_connection.engine
 
     @util.memoized_property
-    def postfetch_cols(self) -> Optional[Sequence[Column[Any]]]:
+    def postfetch_cols(self) -> Sequence[Column[Any]] | None:
         if TYPE_CHECKING:
             assert isinstance(self.compiled, SQLCompiler)
         return self.compiled.postfetch
 
     @util.memoized_property
-    def prefetch_cols(self) -> Optional[Sequence[Column[Any]]]:
+    def prefetch_cols(self) -> Sequence[Column[Any]] | None:
         if TYPE_CHECKING:
             assert isinstance(self.compiled, SQLCompiler)
         if self.isinsert:
@@ -2036,7 +2036,7 @@ class DefaultExecutionContext(ExecutionContext):
 
     def _prepare_set_input_sizes(
         self,
-    ) -> Optional[List[Tuple[str, Any, TypeEngine[Any]]]]:
+    ) -> list[tuple[str, Any, TypeEngine[Any]]] | None:
         """Given a cursor and ClauseParameters, prepare arguments
         in order to call the appropriate
         style of ``setinputsizes()`` on the cursor, using DB-API types
@@ -2088,7 +2088,7 @@ class DefaultExecutionContext(ExecutionContext):
                 for bindparam, key in compiled.bind_names.items()
             ]
 
-        generic_inputsizes: List[Tuple[str, Any, TypeEngine[Any]]] = []
+        generic_inputsizes: list[tuple[str, Any, TypeEngine[Any]]] = []
         for key, bindparam in items:
             if bindparam in compiled.literal_execute_params:
                 continue
@@ -2194,7 +2194,7 @@ class DefaultExecutionContext(ExecutionContext):
             str(compiled), type_, parameters=parameters
         )
 
-    current_parameters: Optional[_CoreSingleExecuteParams] = None
+    current_parameters: _CoreSingleExecuteParams | None = None
     """A dictionary of parameters applied to the current row.
 
     This attribute is only available in the context of a user-defined default

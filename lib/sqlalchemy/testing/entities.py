@@ -26,11 +26,11 @@ class BasicEntity:
             return object.__repr__(self)
         _repr_stack.add(id(self))
         try:
-            return "%s(%s)" % (
+            return "{}({})".format(
                 (self.__class__.__name__),
                 ", ".join(
                     [
-                        "%s=%r" % (key, getattr(self, key))
+                        "{}={!r}".format(key, getattr(self, key))
                         for key in sorted(self.__dict__.keys())
                         if not key.startswith("_")
                     ]

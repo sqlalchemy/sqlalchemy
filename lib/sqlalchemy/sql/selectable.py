@@ -159,7 +159,7 @@ _LabelConventionCallable = Callable[
 
 class _JoinTargetProtocol(Protocol):
     @util.ro_non_memoized_property
-    def _from_objects(self) -> List[FromClause]: ...
+    def _from_objects(self) -> list[FromClause]: ...
 
     @util.ro_non_memoized_property
     def entity_namespace(self) -> _EntityNamespace: ...
@@ -194,7 +194,7 @@ class _OffsetLimitParam(BindParameter[int]):
     inherit_cache = True
 
     @property
-    def _limit_offset_value(self) -> Optional[int]:
+    def _limit_offset_value(self) -> int | None:
         return self.effective_value
 
 
@@ -235,7 +235,7 @@ class ReturnsRows(roles.ReturnsRowsRole, DQLDMLClauseElement):
         """
         raise NotImplementedError()
 
-    def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
+    def is_derived_from(self, fromclause: FromClause | None) -> bool:
         """Return ``True`` if this :class:`.ReturnsRows` is
         'derived' from the given :class:`.FromClause`.
 
@@ -300,7 +300,7 @@ class Selectable(ReturnsRows):
     def _refresh_for_new_column(self, column: ColumnElement[Any]) -> None:
         raise NotImplementedError()
 
-    def lateral(self, name: Optional[str] = None) -> LateralFromClause:
+    def lateral(self, name: str | None = None) -> LateralFromClause:
         """Return a LATERAL alias of this :class:`_expression.Selectable`.
 
         The return value is the :class:`_expression.Lateral` construct also
@@ -330,7 +330,7 @@ class Selectable(ReturnsRows):
 
     def corresponding_column(
         self, column: KeyedColumnElement[Any], require_embedded: bool = False
-    ) -> Optional[KeyedColumnElement[Any]]:
+    ) -> KeyedColumnElement[Any] | None:
         """Given a :class:`_expression.ColumnElement`, return the exported
         :class:`_expression.ColumnElement` object from the
         :attr:`_expression.Selectable.exported_columns`
@@ -369,7 +369,7 @@ class Selectable(ReturnsRows):
 
 
 class HasPrefixes:
-    _prefixes: Tuple[Tuple[DQLDMLClauseElement, str], ...] = ()
+    _prefixes: tuple[tuple[DQLDMLClauseElement, str], ...] = ()
 
     _has_prefixes_traverse_internals: _TraverseInternalsType = [
         ("_prefixes", InternalTraversal.dp_prefix_sequence)
@@ -421,7 +421,7 @@ class HasPrefixes:
 
 
 class HasSuffixes:
-    _suffixes: Tuple[Tuple[DQLDMLClauseElement, str], ...] = ()
+    _suffixes: tuple[tuple[DQLDMLClauseElement, str], ...] = ()
 
     _has_suffixes_traverse_internals: _TraverseInternalsType = [
         ("_suffixes", InternalTraversal.dp_prefix_sequence)
@@ -468,10 +468,10 @@ class HasSuffixes:
 
 
 class HasHints:
-    _hints: util.immutabledict[Tuple[FromClause, str], str] = (
+    _hints: util.immutabledict[tuple[FromClause, str], str] = (
         util.immutabledict()
     )
-    _statement_hints: Tuple[Tuple[str, str], ...] = ()
+    _statement_hints: tuple[tuple[str, str], ...] = ()
 
     _has_hints_traverse_internals: _TraverseInternalsType = [
         ("_statement_hints", InternalTraversal.dp_statement_hint_list),
@@ -548,7 +548,7 @@ class HasHints:
 
     def _with_hint(
         self,
-        selectable: Optional[_FromClauseArgument],
+        selectable: _FromClauseArgument | None,
         text: str,
         dialect_name: str,
     ) -> Self:
@@ -594,11 +594,11 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
     def _hide_froms(self) -> Iterable[FromClause]:
         return ()
 
-    _is_clone_of: Optional[FromClause]
+    _is_clone_of: FromClause | None
 
     _columns: ColumnCollection[Any, Any]
 
-    schema: Optional[str] = None
+    schema: str | None = None
     """Define the 'schema' attribute for this :class:`_expression.FromClause`.
 
     This is typically ``None`` for most objects except that of
@@ -632,7 +632,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
     def join(
         self,
         right: _FromClauseArgument,
-        onclause: Optional[_ColumnExpressionArgument[bool]] = None,
+        onclause: _ColumnExpressionArgument[bool] | None = None,
         isouter: bool = False,
         full: bool = False,
     ) -> Join:
@@ -682,7 +682,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
     def outerjoin(
         self,
         right: _FromClauseArgument,
-        onclause: Optional[_ColumnExpressionArgument[bool]] = None,
+        onclause: _ColumnExpressionArgument[bool] | None = None,
         full: bool = False,
     ) -> Join:
         """Return a :class:`_expression.Join` from this
@@ -729,7 +729,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         return Join(self, right, onclause, True, full)
 
     def alias(
-        self, name: Optional[str] = None, flat: bool = False
+        self, name: str | None = None, flat: bool = False
     ) -> NamedFromClause:
         """Return an alias of this :class:`_expression.FromClause`.
 
@@ -753,9 +753,9 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
     def tablesample(
         self,
-        sampling: Union[float, Function[Any]],
-        name: Optional[str] = None,
-        seed: Optional[roles.ExpressionElementRole[Any]] = None,
+        sampling: float | Function[Any],
+        name: str | None = None,
+        seed: roles.ExpressionElementRole[Any] | None = None,
     ) -> TableSample:
         """Return a TABLESAMPLE alias of this :class:`_expression.FromClause`.
 
@@ -772,7 +772,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
             self, sampling=sampling, name=name, seed=seed
         )
 
-    def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
+    def is_derived_from(self, fromclause: FromClause | None) -> bool:
         """Return ``True`` if this :class:`_expression.FromClause` is
         'derived' from the given ``FromClause``.
 
@@ -983,15 +983,15 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         self._reset_column_collection()
 
     def _anonymous_fromclause(
-        self, *, name: Optional[str] = None, flat: bool = False
+        self, *, name: str | None = None, flat: bool = False
     ) -> FromClause:
         return self.alias(name=name)
 
     if TYPE_CHECKING:
 
         def self_group(
-            self, against: Optional[OperatorType] = None
-        ) -> Union[FromGrouping, Self]: ...
+            self, against: OperatorType | None = None
+        ) -> FromGrouping | Self: ...
 
 
 class NamedFromClause(FromClause):
@@ -1176,7 +1176,7 @@ class Join(roles.DMLTableRole, FromClause):
 
     left: FromClause
     right: FromClause
-    onclause: Optional[ColumnElement[bool]]
+    onclause: ColumnElement[bool] | None
     isouter: bool
     full: bool
 
@@ -1184,7 +1184,7 @@ class Join(roles.DMLTableRole, FromClause):
         self,
         left: _FromClauseArgument,
         right: _FromClauseArgument,
-        onclause: Optional[_OnClauseArgument] = None,
+        onclause: _OnClauseArgument | None = None,
         isouter: bool = False,
         full: bool = False,
     ):
@@ -1235,7 +1235,7 @@ class Join(roles.DMLTableRole, FromClause):
             id(self.right),
         )
 
-    def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
+    def is_derived_from(self, fromclause: FromClause | None) -> bool:
         return (
             # use hash() to ensure direct comparison to annotated works
             # as well
@@ -1245,7 +1245,7 @@ class Join(roles.DMLTableRole, FromClause):
         )
 
     def self_group(
-        self, against: Optional[OperatorType] = None
+        self, against: OperatorType | None = None
     ) -> FromGrouping:
         ...
         return FromGrouping(self)
@@ -1253,7 +1253,7 @@ class Join(roles.DMLTableRole, FromClause):
     @util.preload_module("sqlalchemy.sql.util")
     def _populate_column_collection(self) -> None:
         sqlutil = util.preloaded.sql_util
-        columns: List[KeyedColumnElement[Any]] = [c for c in self.left.c] + [
+        columns: list[KeyedColumnElement[Any]] = [c for c in self.left.c] + [
             c for c in self.right.c
         ]
 
@@ -1291,9 +1291,9 @@ class Join(roles.DMLTableRole, FromClause):
         # ColumnClause with parent table referring to those
         # replaced FromClause objects
         def replace(
-            obj: Union[BinaryExpression[Any], ColumnClause[Any]],
+            obj: BinaryExpression[Any] | ColumnClause[Any],
             **kw: Any,
-        ) -> Optional[KeyedColumnElement[ColumnElement[Any]]]:
+        ) -> KeyedColumnElement[ColumnElement[Any]] | None:
             if isinstance(obj, ColumnClause) and obj.table in new_froms:
                 newelem = new_froms[obj.table].corresponding_column(obj)
                 return newelem
@@ -1330,10 +1330,10 @@ class Join(roles.DMLTableRole, FromClause):
         a: FromClause,
         b: FromClause,
         *,
-        a_subset: Optional[FromClause] = None,
-        consider_as_foreign_keys: Optional[
+        a_subset: FromClause | None = None,
+        consider_as_foreign_keys: None | (
             AbstractSet[ColumnClause[Any]]
-        ] = None,
+        ) = None,
     ) -> ColumnElement[bool]:
         """Create a join condition between two tables or selectables.
 
@@ -1375,9 +1375,9 @@ class Join(roles.DMLTableRole, FromClause):
         left: FromClause,
         right: FromClause,
         *,
-        consider_as_foreign_keys: Optional[
+        consider_as_foreign_keys: None | (
             AbstractSet[ColumnClause[Any]]
-        ] = None,
+        ) = None,
     ) -> bool:
         if isinstance(left, Join):
             left_right = left.right
@@ -1398,12 +1398,12 @@ class Join(roles.DMLTableRole, FromClause):
     def _joincond_scan_left_right(
         cls,
         a: FromClause,
-        a_subset: Optional[FromClause],
+        a_subset: FromClause | None,
         b: FromClause,
-        consider_as_foreign_keys: Optional[AbstractSet[ColumnClause[Any]]],
+        consider_as_foreign_keys: AbstractSet[ColumnClause[Any]] | None,
     ) -> collections.defaultdict[
-        Optional[ForeignKeyConstraint],
-        List[Tuple[ColumnClause[Any], ColumnClause[Any]]],
+        ForeignKeyConstraint | None,
+        list[tuple[ColumnClause[Any], ColumnClause[Any]]],
     ]:
         sql_util = util.preloaded.sql_util
 
@@ -1411,8 +1411,8 @@ class Join(roles.DMLTableRole, FromClause):
         b = coercions.expect(roles.FromClauseRole, b)
 
         constraints: collections.defaultdict[
-            Optional[ForeignKeyConstraint],
-            List[Tuple[ColumnClause[Any], ColumnClause[Any]]],
+            ForeignKeyConstraint | None,
+            list[tuple[ColumnClause[Any], ColumnClause[Any]]],
         ] = collections.defaultdict(list)
 
         for left in (a_subset, a):
@@ -1468,8 +1468,8 @@ class Join(roles.DMLTableRole, FromClause):
         cls,
         a: FromClause,
         b: FromClause,
-        constraints: Dict[Any, Any],
-        consider_as_foreign_keys: Optional[Any],
+        constraints: dict[Any, Any],
+        consider_as_foreign_keys: Any | None,
     ) -> None:
         # more than one constraint matched.  narrow down the list
         # to include just those FKCs that match exactly to
@@ -1518,7 +1518,7 @@ class Join(roles.DMLTableRole, FromClause):
 
     @util.preload_module("sqlalchemy.sql.util")
     def _anonymous_fromclause(
-        self, name: Optional[str] = None, flat: bool = False
+        self, name: str | None = None, flat: bool = False
     ) -> TODO_Any:
         sqlutil = util.preloaded.sql_util
         if flat:
@@ -1553,8 +1553,8 @@ class Join(roles.DMLTableRole, FromClause):
         )
 
     @util.ro_non_memoized_property
-    def _from_objects(self) -> List[FromClause]:
-        self_list: List[FromClause] = [self]
+    def _from_objects(self) -> list[FromClause]:
+        self_list: list[FromClause] = [self]
         return self_list + self.left._from_objects + self.right._from_objects
 
 
@@ -1607,14 +1607,14 @@ class AliasedReturnsRows(NoInit, NamedFromClause):
         cls,
         selectable: Any,
         *,
-        name: Optional[str] = None,
+        name: str | None = None,
         **kw: Any,
     ) -> Self:
         obj = cls.__new__(cls)
         obj._init(selectable, name=name, **kw)
         return obj
 
-    def _init(self, selectable: Any, *, name: Optional[str] = None) -> None:
+    def _init(self, selectable: Any, *, name: str | None = None) -> None:
         self.element = coercions.expect(
             roles.ReturnsRowsRole, selectable, apply_propagate_attrs=self
         )
@@ -1655,7 +1655,7 @@ class AliasedReturnsRows(NoInit, NamedFromClause):
         """Legacy for dialects that are referring to Alias.original."""
         return self.element
 
-    def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
+    def is_derived_from(self, fromclause: FromClause | None) -> bool:
         if fromclause in self._cloned_set:
             return True
         return self.element.is_derived_from(fromclause)
@@ -1675,7 +1675,7 @@ class AliasedReturnsRows(NoInit, NamedFromClause):
             self._reset_column_collection()
 
     @property
-    def _from_objects(self) -> List[FromClause]:
+    def _from_objects(self) -> list[FromClause]:
         return [self]
 
 
@@ -1711,7 +1711,7 @@ class Alias(roles.DMLTableRole, FromClauseAlias):
     def _factory(
         cls,
         selectable: FromClause,
-        name: Optional[str] = None,
+        name: str | None = None,
         flat: bool = False,
     ) -> NamedFromClause:
         return coercions.expect(
@@ -1762,8 +1762,8 @@ class TableValuedAlias(LateralFromClause, Alias):
         self,
         selectable: Any,
         *,
-        name: Optional[str] = None,
-        table_value_type: Optional[TableValueType] = None,
+        name: str | None = None,
+        table_value_type: TableValueType | None = None,
         joins_implicitly: bool = False,
     ) -> None:
         super()._init(selectable, name=name)
@@ -1800,7 +1800,7 @@ class TableValuedAlias(LateralFromClause, Alias):
         return TableValuedColumn(self, self._tableval_type)
 
     def alias(
-        self, name: Optional[str] = None, flat: bool = False
+        self, name: str | None = None, flat: bool = False
     ) -> TableValuedAlias:
         """Return a new alias of this :class:`_sql.TableValuedAlias`.
 
@@ -1822,7 +1822,7 @@ class TableValuedAlias(LateralFromClause, Alias):
 
         return tva
 
-    def lateral(self, name: Optional[str] = None) -> LateralFromClause:
+    def lateral(self, name: str | None = None) -> LateralFromClause:
         """Return a new :class:`_sql.TableValuedAlias` with the lateral flag
         set, so that it renders as LATERAL.
 
@@ -1837,7 +1837,7 @@ class TableValuedAlias(LateralFromClause, Alias):
 
     def render_derived(
         self,
-        name: Optional[str] = None,
+        name: str | None = None,
         with_types: bool = False,
     ) -> TableValuedAlias:
         """Apply "render derived" to this :class:`_sql.TableValuedAlias`.
@@ -1927,8 +1927,8 @@ class Lateral(FromClauseAlias, LateralFromClause):
     @classmethod
     def _factory(
         cls,
-        selectable: Union[SelectBase, _FromClauseArgument],
-        name: Optional[str] = None,
+        selectable: SelectBase | _FromClauseArgument,
+        name: str | None = None,
     ) -> LateralFromClause:
         return coercions.expect(
             roles.FromClauseRole, selectable, explicit_subquery=True
@@ -1963,9 +1963,9 @@ class TableSample(FromClauseAlias):
     def _factory(
         cls,
         selectable: _FromClauseArgument,
-        sampling: Union[float, Function[Any]],
-        name: Optional[str] = None,
-        seed: Optional[roles.ExpressionElementRole[Any]] = None,
+        sampling: float | Function[Any],
+        name: str | None = None,
+        seed: roles.ExpressionElementRole[Any] | None = None,
     ) -> TableSample:
         return coercions.expect(roles.FromClauseRole, selectable).tablesample(
             sampling, name=name, seed=seed
@@ -1976,9 +1976,9 @@ class TableSample(FromClauseAlias):
         self,
         selectable: Any,
         *,
-        name: Optional[str] = None,
-        sampling: Union[float, Function[Any]],
-        seed: Optional[roles.ExpressionElementRole[Any]] = None,
+        name: str | None = None,
+        sampling: float | Function[Any],
+        seed: roles.ExpressionElementRole[Any] | None = None,
     ) -> None:
         assert sampling is not None
         functions = util.preloaded.sql_functions
@@ -2039,7 +2039,7 @@ class CTE(
     def _factory(
         cls,
         selectable: HasCTE,
-        name: Optional[str] = None,
+        name: str | None = None,
         recursive: bool = False,
     ) -> CTE:
         r"""Return a new :class:`_expression.CTE`,
@@ -2056,13 +2056,13 @@ class CTE(
         self,
         selectable: Select[Unpack[TupleAny]],
         *,
-        name: Optional[str] = None,
+        name: str | None = None,
         recursive: bool = False,
         nesting: bool = False,
-        _cte_alias: Optional[CTE] = None,
-        _restates: Optional[CTE] = None,
-        _prefixes: Optional[Tuple[()]] = None,
-        _suffixes: Optional[Tuple[()]] = None,
+        _cte_alias: CTE | None = None,
+        _restates: CTE | None = None,
+        _prefixes: tuple[()] | None = None,
+        _suffixes: tuple[()] | None = None,
     ) -> None:
         self.recursive = recursive
         self.nesting = nesting
@@ -2081,7 +2081,7 @@ class CTE(
         else:
             self.element._generate_fromclause_column_proxies(self)
 
-    def alias(self, name: Optional[str] = None, flat: bool = False) -> CTE:
+    def alias(self, name: str | None = None, flat: bool = False) -> CTE:
         """Return an :class:`_expression.Alias` of this
         :class:`_expression.CTE`.
 
@@ -2178,27 +2178,27 @@ class _CTEOpts(NamedTuple):
 
 
 class _ColumnsPlusNames(NamedTuple):
-    required_label_name: Optional[str]
+    required_label_name: str | None
     """
     string label name, if non-None, must be rendered as a
     label, i.e. "AS <name>"
     """
 
-    proxy_key: Optional[str]
+    proxy_key: str | None
     """
     proxy_key that is to be part of the result map for this
     col.  this is also the key in a fromclause.c or
     select.selected_columns collection
     """
 
-    fallback_label_name: Optional[str]
+    fallback_label_name: str | None
     """
     name that can be used to render an "AS <name>" when
     we have to render a label even though
     required_label_name was not given
     """
 
-    column: Union[ColumnElement[Any], TextClause]
+    column: ColumnElement[Any] | TextClause
     """
     the ColumnElement itself
     """
@@ -2219,8 +2219,8 @@ class SelectsRows(ReturnsRows):
     def _generate_columns_plus_names(
         self,
         anon_for_dupe_key: bool,
-        cols: Optional[_SelectIterable] = None,
-    ) -> List[_ColumnsPlusNames]:
+        cols: _SelectIterable | None = None,
+    ) -> list[_ColumnsPlusNames]:
         """Generate column names as rendered in a SELECT statement by
         the compiler.
 
@@ -2240,7 +2240,7 @@ class SelectsRows(ReturnsRows):
 
         names = {}
 
-        result: List[_ColumnsPlusNames] = []
+        result: list[_ColumnsPlusNames] = []
         result_append = result.append
 
         table_qualified = self._label_style is LABEL_STYLE_TABLENAME_PLUS_COL
@@ -2392,8 +2392,8 @@ class HasCTE(roles.HasCTERole, SelectsRows):
         ("_independent_ctes_opts", InternalTraversal.dp_plain_obj),
     ]
 
-    _independent_ctes: Tuple[CTE, ...] = ()
-    _independent_ctes_opts: Tuple[_CTEOpts, ...] = ()
+    _independent_ctes: tuple[CTE, ...] = ()
+    _independent_ctes_opts: tuple[_CTEOpts, ...] = ()
 
     @_generative
     def add_cte(self, *ctes: CTE, nest_here: bool = False) -> Self:
@@ -2502,7 +2502,7 @@ class HasCTE(roles.HasCTERole, SelectsRows):
 
     def cte(
         self,
-        name: Optional[str] = None,
+        name: str | None = None,
         recursive: bool = False,
         nesting: bool = False,
     ) -> CTE:
@@ -2814,7 +2814,7 @@ class Subquery(AliasedReturnsRows):
 
     @classmethod
     def _factory(
-        cls, selectable: SelectBase, name: Optional[str] = None
+        cls, selectable: SelectBase, name: str | None = None
     ) -> Subquery:
         """Return a :class:`.Subquery` object."""
 
@@ -2869,11 +2869,11 @@ class FromGrouping(GroupedElement, FromClause):
     def foreign_keys(self) -> Iterable[ForeignKey]:
         return self.element.foreign_keys
 
-    def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
+    def is_derived_from(self, fromclause: FromClause | None) -> bool:
         return self.element.is_derived_from(fromclause)
 
     def alias(
-        self, name: Optional[str] = None, flat: bool = False
+        self, name: str | None = None, flat: bool = False
     ) -> NamedFromGrouping:
         return NamedFromGrouping(self.element.alias(name=name, flat=flat))
 
@@ -2885,13 +2885,13 @@ class FromGrouping(GroupedElement, FromClause):
         return self.element._hide_froms
 
     @util.ro_non_memoized_property
-    def _from_objects(self) -> List[FromClause]:
+    def _from_objects(self) -> list[FromClause]:
         return self.element._from_objects
 
-    def __getstate__(self) -> Dict[str, FromClause]:
+    def __getstate__(self) -> dict[str, FromClause]:
         return {"element": self.element}
 
-    def __setstate__(self, state: Dict[str, FromClause]) -> None:
+    def __setstate__(self, state: dict[str, FromClause]) -> None:
         self.element = state["element"]
 
 
@@ -2956,7 +2956,7 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
     -level defaults, so implicit returning doesn't apply."""
 
     @util.ro_memoized_property
-    def _autoincrement_column(self) -> Optional[ColumnClause[Any]]:
+    def _autoincrement_column(self) -> ColumnClause[Any] | None:
         """No PK or default support so no autoincrement column."""
         return None
 
@@ -2973,7 +2973,7 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
         if schema is not None:
             self.schema = schema
         if self.schema is not None:
-            self.fullname = "%s.%s" % (self.schema, self.name)
+            self.fullname = "{}.{}".format(self.schema, self.name)
         else:
             self.fullname = self.name
         if kw:
@@ -3062,7 +3062,7 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
         return util.preloaded.sql_dml.Delete(self)
 
     @util.ro_non_memoized_property
-    def _from_objects(self) -> List[FromClause]:
+    def _from_objects(self) -> list[FromClause]:
         return [self]
 
 
@@ -3077,7 +3077,7 @@ class ForUpdateArg(ClauseElement):
         ("skip_locked", InternalTraversal.dp_boolean),
     ]
 
-    of: Optional[Sequence[ClauseElement]]
+    of: Sequence[ClauseElement] | None
     nowait: bool
     read: bool
     skip_locked: bool
@@ -3085,7 +3085,7 @@ class ForUpdateArg(ClauseElement):
     @classmethod
     def _from_argument(
         cls, with_for_update: ForUpdateParameter
-    ) -> Optional[ForUpdateArg]:
+    ) -> ForUpdateArg | None:
         if isinstance(with_for_update, ForUpdateArg):
             return with_for_update
         elif with_for_update in (None, False):
@@ -3116,7 +3116,7 @@ class ForUpdateArg(ClauseElement):
         *,
         nowait: bool = False,
         read: bool = False,
-        of: Optional[_ForUpdateOfArgument] = None,
+        of: _ForUpdateOfArgument | None = None,
         skip_locked: bool = False,
         key_share: bool = False,
     ):
@@ -3151,7 +3151,7 @@ class Values(roles.InElementRole, Generative, LateralFromClause):
 
     __visit_name__ = "values"
 
-    _data: Tuple[Sequence[Tuple[Any, ...]], ...] = ()
+    _data: tuple[Sequence[tuple[Any, ...]], ...] = ()
 
     _unnamed: bool
     _traverse_internals: _TraverseInternalsType = [
@@ -3164,7 +3164,7 @@ class Values(roles.InElementRole, Generative, LateralFromClause):
     def __init__(
         self,
         *columns: ColumnClause[Any],
-        name: Optional[str] = None,
+        name: str | None = None,
         literal_binds: bool = False,
     ):
         super().__init__()
@@ -3180,11 +3180,11 @@ class Values(roles.InElementRole, Generative, LateralFromClause):
         self.named_with_column = not self._unnamed
 
     @property
-    def _column_types(self) -> List[TypeEngine[Any]]:
+    def _column_types(self) -> list[TypeEngine[Any]]:
         return [col.type for col in self._column_args]
 
     @_generative
-    def alias(self, name: Optional[str] = None, flat: bool = False) -> Self:
+    def alias(self, name: str | None = None, flat: bool = False) -> Self:
         """Return a new :class:`_expression.Values`
         construct that is a copy of this
         one with the given name.
@@ -3212,7 +3212,7 @@ class Values(roles.InElementRole, Generative, LateralFromClause):
         return self
 
     @_generative
-    def lateral(self, name: Optional[str] = None) -> LateralFromClause:
+    def lateral(self, name: str | None = None) -> LateralFromClause:
         """Return a new :class:`_expression.Values` with the lateral flag set,
         so that
         it renders as LATERAL.
@@ -3235,7 +3235,7 @@ class Values(roles.InElementRole, Generative, LateralFromClause):
         return self
 
     @_generative
-    def data(self, values: Sequence[Tuple[Any, ...]]) -> Self:
+    def data(self, values: Sequence[tuple[Any, ...]]) -> Self:
         """Return a new :class:`_expression.Values` construct,
         adding the given data to the data list.
 
@@ -3274,7 +3274,7 @@ class Values(roles.InElementRole, Generative, LateralFromClause):
             c.table = self
 
     @util.ro_non_memoized_property
-    def _from_objects(self) -> List[FromClause]:
+    def _from_objects(self) -> list[FromClause]:
         return [self]
 
 
@@ -3302,7 +3302,7 @@ class ScalarValues(roles.InElementRole, GroupedElement, ColumnElement[Any]):
     def __init__(
         self,
         columns: Sequence[ColumnClause[Any]],
-        data: Tuple[Sequence[Tuple[Any, ...]], ...],
+        data: tuple[Sequence[tuple[Any, ...]], ...],
         literal_binds: bool,
     ):
         super().__init__()
@@ -3311,7 +3311,7 @@ class ScalarValues(roles.InElementRole, GroupedElement, ColumnElement[Any]):
         self.literal_binds = literal_binds
 
     @property
-    def _column_types(self) -> List[TypeEngine[Any]]:
+    def _column_types(self) -> list[TypeEngine[Any]]:
         return [col.type for col in self._column_args]
 
     def __clause_element__(self) -> ScalarValues:
@@ -3381,9 +3381,9 @@ class SelectBase(
         self,
         subquery: FromClause,
         *,
-        proxy_compound_columns: Optional[
+        proxy_compound_columns: None | (
             Iterable[Sequence[ColumnElement[Any]]]
-        ] = None,
+        ) = None,
     ) -> None:
         raise NotImplementedError()
 
@@ -3545,7 +3545,7 @@ class SelectBase(
 
         return ScalarSelect(self)
 
-    def label(self, name: Optional[str]) -> Label[Any]:
+    def label(self, name: str | None) -> Label[Any]:
         """Return a 'scalar' representation of this selectable, embedded as a
         subquery with a label.
 
@@ -3556,7 +3556,7 @@ class SelectBase(
         """
         return self.scalar_subquery().label(name)
 
-    def lateral(self, name: Optional[str] = None) -> LateralFromClause:
+    def lateral(self, name: str | None = None) -> LateralFromClause:
         """Return a LATERAL alias of this :class:`_expression.Selectable`.
 
         The return value is the :class:`_expression.Lateral` construct also
@@ -3569,7 +3569,7 @@ class SelectBase(
         """
         return Lateral._factory(self, name)
 
-    def subquery(self, name: Optional[str] = None) -> Subquery:
+    def subquery(self, name: str | None = None) -> Subquery:
         """Return a subquery of this :class:`_expression.SelectBase`.
 
         A subquery is from a SQL perspective a parenthesized, named
@@ -3622,7 +3622,7 @@ class SelectBase(
         raise NotImplementedError()
 
     def alias(
-        self, name: Optional[str] = None, flat: bool = False
+        self, name: str | None = None, flat: bool = False
     ) -> Subquery:
         """Return a named subquery against this
         :class:`_expression.SelectBase`.
@@ -3688,7 +3688,7 @@ class SelectStatementGrouping(GroupedElement, SelectBase, Generic[_SB]):
     def select_statement(self) -> _SB:
         return self.element
 
-    def self_group(self, against: Optional[OperatorType] = None) -> Self:
+    def self_group(self, against: OperatorType | None = None) -> Self:
         ...
         return self
 
@@ -3705,9 +3705,9 @@ class SelectStatementGrouping(GroupedElement, SelectBase, Generic[_SB]):
         self,
         subquery: FromClause,
         *,
-        proxy_compound_columns: Optional[
+        proxy_compound_columns: None | (
             Iterable[Sequence[ColumnElement[Any]]]
-        ] = None,
+        ) = None,
     ) -> None:
         self.element._generate_fromclause_column_proxies(
             subquery, proxy_compound_columns=proxy_compound_columns
@@ -3734,7 +3734,7 @@ class SelectStatementGrouping(GroupedElement, SelectBase, Generic[_SB]):
         return self.element.selected_columns
 
     @util.ro_non_memoized_property
-    def _from_objects(self) -> List[FromClause]:
+    def _from_objects(self) -> list[FromClause]:
         return self.element._from_objects
 
 
@@ -3754,13 +3754,13 @@ class GenerativeSelect(SelectBase, Generative):
 
     """
 
-    _order_by_clauses: Tuple[ColumnElement[Any], ...] = ()
-    _group_by_clauses: Tuple[ColumnElement[Any], ...] = ()
-    _limit_clause: Optional[ColumnElement[Any]] = None
-    _offset_clause: Optional[ColumnElement[Any]] = None
-    _fetch_clause: Optional[ColumnElement[Any]] = None
-    _fetch_clause_options: Optional[Dict[str, bool]] = None
-    _for_update_arg: Optional[ForUpdateArg] = None
+    _order_by_clauses: tuple[ColumnElement[Any], ...] = ()
+    _group_by_clauses: tuple[ColumnElement[Any], ...] = ()
+    _limit_clause: ColumnElement[Any] | None = None
+    _offset_clause: ColumnElement[Any] | None = None
+    _fetch_clause: ColumnElement[Any] | None = None
+    _fetch_clause_options: dict[str, bool] | None = None
+    _for_update_arg: ForUpdateArg | None = None
 
     def __init__(self, _label_style: SelectLabelStyle = LABEL_STYLE_DEFAULT):
         self._label_style = _label_style
@@ -3771,7 +3771,7 @@ class GenerativeSelect(SelectBase, Generative):
         *,
         nowait: bool = False,
         read: bool = False,
-        of: Optional[_ForUpdateOfArgument] = None,
+        of: _ForUpdateOfArgument | None = None,
         skip_locked: bool = False,
         key_share: bool = False,
     ) -> Self:
@@ -3898,8 +3898,8 @@ class GenerativeSelect(SelectBase, Generative):
     def _offset_or_limit_clause(
         self,
         element: _LimitOffsetType,
-        name: Optional[str] = None,
-        type_: Optional[_TypeEngineArgument[int]] = None,
+        name: str | None = None,
+        type_: _TypeEngineArgument[int] | None = None,
     ) -> ColumnElement[Any]:
         """Convert the given value to an "offset or limit" clause.
 
@@ -3918,12 +3918,12 @@ class GenerativeSelect(SelectBase, Generative):
 
     @overload
     def _offset_or_limit_clause_asint(
-        self, clause: Optional[_OffsetLimitParam], attrname: str
-    ) -> Optional[int]: ...
+        self, clause: _OffsetLimitParam | None, attrname: str
+    ) -> int | None: ...
 
     def _offset_or_limit_clause_asint(
-        self, clause: Optional[ColumnElement[Any]], attrname: str
-    ) -> Union[NoReturn, Optional[int]]:
+        self, clause: ColumnElement[Any] | None, attrname: str
+    ) -> NoReturn | int | None:
         """Convert the "offset or limit" clause of a select construct to an
         integer.
 
@@ -3944,7 +3944,7 @@ class GenerativeSelect(SelectBase, Generative):
             return util.asint(value)
 
     @property
-    def _limit(self) -> Optional[int]:
+    def _limit(self) -> int | None:
         """Get an integer value for the limit.  This should only be used
         by code that cannot support a limit as a BindParameter or
         other custom clause as it will throw an exception if the limit
@@ -3960,7 +3960,7 @@ class GenerativeSelect(SelectBase, Generative):
         return isinstance(clause, _OffsetLimitParam)
 
     @property
-    def _offset(self) -> Optional[int]:
+    def _offset(self) -> int | None:
         """Get an integer value for the offset.  This should only be used
         by code that cannot support an offset as a BindParameter or
         other custom clause as it will throw an exception if the
@@ -4145,10 +4145,10 @@ class GenerativeSelect(SelectBase, Generative):
     @_generative
     def order_by(
         self,
-        __first: Union[
-            Literal[None, _NoArg.NO_ARG],
-            _ColumnExpressionOrStrLabelArgument[Any],
-        ] = _NoArg.NO_ARG,
+        __first: (
+            Literal[None, _NoArg.NO_ARG] |
+            _ColumnExpressionOrStrLabelArgument[Any]
+        ) = _NoArg.NO_ARG,
         /,
         *clauses: _ColumnExpressionOrStrLabelArgument[Any],
     ) -> Self:
@@ -4193,10 +4193,10 @@ class GenerativeSelect(SelectBase, Generative):
     @_generative
     def group_by(
         self,
-        __first: Union[
-            Literal[None, _NoArg.NO_ARG],
-            _ColumnExpressionOrStrLabelArgument[Any],
-        ] = _NoArg.NO_ARG,
+        __first: (
+            Literal[None, _NoArg.NO_ARG] |
+            _ColumnExpressionOrStrLabelArgument[Any]
+        ) = _NoArg.NO_ARG,
         /,
         *clauses: _ColumnExpressionOrStrLabelArgument[Any],
     ) -> Self:
@@ -4240,10 +4240,10 @@ class CompoundSelectState(CompileState):
     @util.memoized_property
     def _label_resolve_dict(
         self,
-    ) -> Tuple[
-        Dict[str, ColumnElement[Any]],
-        Dict[str, ColumnElement[Any]],
-        Dict[str, ColumnElement[Any]],
+    ) -> tuple[
+        dict[str, ColumnElement[Any]],
+        dict[str, ColumnElement[Any]],
+        dict[str, ColumnElement[Any]],
     ]:
         # TODO: this is hacky and slow
         hacky_subquery = self.statement.subquery()
@@ -4296,7 +4296,7 @@ class CompoundSelect(HasCompileState, GenerativeSelect, ExecutableReturnsRows):
         ("keyword", InternalTraversal.dp_string),
     ] + SupportsCloneAnnotations._clone_annotations_traverse_internals
 
-    selects: List[SelectBase]
+    selects: list[SelectBase]
 
     _is_from_container = True
     _auto_correlate = False
@@ -4356,11 +4356,11 @@ class CompoundSelect(HasCompileState, GenerativeSelect, ExecutableReturnsRows):
         return self.selects[0]._scalar_type()
 
     def self_group(
-        self, against: Optional[OperatorType] = None
+        self, against: OperatorType | None = None
     ) -> GroupedElement:
         return SelectStatementGrouping(self)
 
-    def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
+    def is_derived_from(self, fromclause: FromClause | None) -> bool:
         for s in self.selects:
             if s.is_derived_from(fromclause):
                 return True
@@ -4386,9 +4386,9 @@ class CompoundSelect(HasCompileState, GenerativeSelect, ExecutableReturnsRows):
         self,
         subquery: FromClause,
         *,
-        proxy_compound_columns: Optional[
+        proxy_compound_columns: None | (
             Iterable[Sequence[ColumnElement[Any]]]
-        ] = None,
+        ) = None,
     ) -> None:
         # this is a slightly hacky thing - the union exports a
         # column that resembles just that of the *first* selectable.
@@ -4488,12 +4488,12 @@ class SelectState(util.MemoizedSlots, CompileState):
         @classmethod
         def get_plugin_class(
             cls, statement: Executable
-        ) -> Type[SelectState]: ...
+        ) -> type[SelectState]: ...
 
     def __init__(
         self,
         statement: Select[Unpack[TupleAny]],
-        compiler: Optional[SQLCompiler],
+        compiler: SQLCompiler | None,
         **kw: Any,
     ):
         self.statement = statement
@@ -4521,7 +4521,7 @@ class SelectState(util.MemoizedSlots, CompileState):
     @classmethod
     def get_column_descriptions(
         cls, statement: Select[Unpack[TupleAny]]
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         return [
             {
                 "name": name,
@@ -4544,7 +4544,7 @@ class SelectState(util.MemoizedSlots, CompileState):
     @classmethod
     def get_columns_clause_froms(
         cls, statement: Select[Unpack[TupleAny]]
-    ) -> List[FromClause]:
+    ) -> list[FromClause]:
         return cls._normalize_froms(
             itertools.chain.from_iterable(
                 element._from_objects for element in statement._raw_columns
@@ -4562,9 +4562,9 @@ class SelectState(util.MemoizedSlots, CompileState):
         names = set()
 
         def go(
-            c: Union[ColumnElement[Any], TextClause],
-            col_name: Optional[str] = None,
-        ) -> Optional[str]:
+            c: ColumnElement[Any] | TextClause,
+            col_name: str | None = None,
+        ) -> str | None:
             if is_text_clause(c):
                 return None
             elif TYPE_CHECKING:
@@ -4600,7 +4600,7 @@ class SelectState(util.MemoizedSlots, CompileState):
 
     def _get_froms(
         self, statement: Select[Unpack[TupleAny]]
-    ) -> List[FromClause]:
+    ) -> list[FromClause]:
         ambiguous_table_name_map: _AmbiguousTableNameMap
         self._ambiguous_table_name_map = ambiguous_table_name_map = {}
 
@@ -4628,9 +4628,9 @@ class SelectState(util.MemoizedSlots, CompileState):
     def _normalize_froms(
         cls,
         iterable_of_froms: Iterable[FromClause],
-        check_statement: Optional[Select[Unpack[TupleAny]]] = None,
-        ambiguous_table_name_map: Optional[_AmbiguousTableNameMap] = None,
-    ) -> List[FromClause]:
+        check_statement: Select[Unpack[TupleAny]] | None = None,
+        ambiguous_table_name_map: _AmbiguousTableNameMap | None = None,
+    ) -> list[FromClause]:
         """given an iterable of things to select FROM, reduce them to what
         would actually render in the FROM clause of a SELECT.
 
@@ -4639,8 +4639,8 @@ class SelectState(util.MemoizedSlots, CompileState):
         etc.
 
         """
-        seen: Set[FromClause] = set()
-        froms: List[FromClause] = []
+        seen: set[FromClause] = set()
+        froms: list[FromClause] = []
 
         for item in iterable_of_froms:
             if is_subquery(item) and item.element is check_statement:
@@ -4682,9 +4682,9 @@ class SelectState(util.MemoizedSlots, CompileState):
 
     def _get_display_froms(
         self,
-        explicit_correlate_froms: Optional[Sequence[FromClause]] = None,
-        implicit_correlate_froms: Optional[Sequence[FromClause]] = None,
-    ) -> List[FromClause]:
+        explicit_correlate_froms: Sequence[FromClause] | None = None,
+        implicit_correlate_froms: Sequence[FromClause] | None = None,
+    ) -> list[FromClause]:
         """Return the full list of 'from' clauses to be displayed.
 
         Takes into account a set of existing froms which may be
@@ -4750,22 +4750,22 @@ class SelectState(util.MemoizedSlots, CompileState):
 
     def _memoized_attr__label_resolve_dict(
         self,
-    ) -> Tuple[
-        Dict[str, ColumnElement[Any]],
-        Dict[str, ColumnElement[Any]],
-        Dict[str, ColumnElement[Any]],
+    ) -> tuple[
+        dict[str, ColumnElement[Any]],
+        dict[str, ColumnElement[Any]],
+        dict[str, ColumnElement[Any]],
     ]:
-        with_cols: Dict[str, ColumnElement[Any]] = {
+        with_cols: dict[str, ColumnElement[Any]] = {
             c._tq_label or c.key: c
             for c in self.statement._all_selected_columns
             if c._allow_label_resolve
         }
-        only_froms: Dict[str, ColumnElement[Any]] = {
+        only_froms: dict[str, ColumnElement[Any]] = {
             c.key: c  # type: ignore
             for c in _select_iterables(self.froms)
             if c._allow_label_resolve
         }
-        only_cols: Dict[str, ColumnElement[Any]] = with_cols.copy()
+        only_cols: dict[str, ColumnElement[Any]] = with_cols.copy()
         for key, value in only_froms.items():
             with_cols.setdefault(key, value)
 
@@ -4774,7 +4774,7 @@ class SelectState(util.MemoizedSlots, CompileState):
     @classmethod
     def determine_last_joined_entity(
         cls, stmt: Select[Unpack[TupleAny]]
-    ) -> Optional[_JoinTargetElement]:
+    ) -> _JoinTargetElement | None:
         if stmt._setup_joins:
             return stmt._setup_joins[-1][0]
         else:
@@ -4788,8 +4788,8 @@ class SelectState(util.MemoizedSlots, CompileState):
 
     def _setup_joins(
         self,
-        args: Tuple[_SetupJoinsElement, ...],
-        raw_columns: List[_ColumnsClauseElement],
+        args: tuple[_SetupJoinsElement, ...],
+        raw_columns: list[_ColumnsClauseElement],
     ) -> None:
         for right, onclause, left, flags in args:
             if TYPE_CHECKING:
@@ -4848,11 +4848,11 @@ class SelectState(util.MemoizedSlots, CompileState):
     @util.preload_module("sqlalchemy.sql.util")
     def _join_determine_implicit_left_side(
         self,
-        raw_columns: List[_ColumnsClauseElement],
-        left: Optional[FromClause],
+        raw_columns: list[_ColumnsClauseElement],
+        left: FromClause | None,
         right: _JoinTargetElement,
-        onclause: Optional[ColumnElement[Any]],
-    ) -> Tuple[Optional[FromClause], Optional[int]]:
+        onclause: ColumnElement[Any] | None,
+    ) -> tuple[FromClause | None, int | None]:
         """When join conditions don't express the left side explicitly,
         determine if an existing FROM or entity in this query
         can serve as the left hand side.
@@ -4861,12 +4861,12 @@ class SelectState(util.MemoizedSlots, CompileState):
 
         sql_util = util.preloaded.sql_util
 
-        replace_from_obj_index: Optional[int] = None
+        replace_from_obj_index: int | None = None
 
         from_clauses = self.from_clauses
 
         if from_clauses:
-            indexes: List[int] = sql_util.find_left_clause_to_join_from(
+            indexes: list[int] = sql_util.find_left_clause_to_join_from(
                 from_clauses, right, onclause
             )
 
@@ -4920,15 +4920,15 @@ class SelectState(util.MemoizedSlots, CompileState):
     @util.preload_module("sqlalchemy.sql.util")
     def _join_place_explicit_left_side(
         self, left: FromClause
-    ) -> Optional[int]:
-        replace_from_obj_index: Optional[int] = None
+    ) -> int | None:
+        replace_from_obj_index: int | None = None
 
         sql_util = util.preloaded.sql_util
 
         from_clauses = list(self.statement._iterate_from_elements())
 
         if from_clauses:
-            indexes: List[int] = sql_util.find_left_clause_that_matches_given(
+            indexes: list[int] = sql_util.find_left_clause_that_matches_given(
                 self.from_clauses, left
             )
         else:
@@ -4955,9 +4955,9 @@ class SelectState(util.MemoizedSlots, CompileState):
 class _SelectFromElements:
     __slots__ = ()
 
-    _raw_columns: List[_ColumnsClauseElement]
-    _where_criteria: Tuple[ColumnElement[Any], ...]
-    _from_obj: Tuple[FromClause, ...]
+    _raw_columns: list[_ColumnsClauseElement]
+    _where_criteria: tuple[ColumnElement[Any], ...]
+    _from_obj: tuple[FromClause, ...]
 
     def _iterate_from_elements(self) -> Iterator[FromClause]:
         # note this does not include elements
@@ -5014,10 +5014,10 @@ class _MemoizedSelectEntities(
         ("_with_options", InternalTraversal.dp_executable_options),
     ]
 
-    _is_clone_of: Optional[ClauseElement]
-    _raw_columns: List[_ColumnsClauseElement]
-    _setup_joins: Tuple[_SetupJoinsElement, ...]
-    _with_options: Tuple[ExecutableOption, ...]
+    _is_clone_of: ClauseElement | None
+    _raw_columns: list[_ColumnsClauseElement]
+    _setup_joins: tuple[_SetupJoinsElement, ...]
+    _with_options: tuple[ExecutableOption, ...]
 
     _annotations = util.EMPTY_DICT
 
@@ -5067,18 +5067,18 @@ class Select(
 
     __visit_name__ = "select"
 
-    _setup_joins: Tuple[_SetupJoinsElement, ...] = ()
-    _memoized_select_entities: Tuple[TODO_Any, ...] = ()
+    _setup_joins: tuple[_SetupJoinsElement, ...] = ()
+    _memoized_select_entities: tuple[TODO_Any, ...] = ()
 
-    _raw_columns: List[_ColumnsClauseElement]
+    _raw_columns: list[_ColumnsClauseElement]
 
     _distinct: bool = False
-    _distinct_on: Tuple[ColumnElement[Any], ...] = ()
-    _correlate: Tuple[FromClause, ...] = ()
-    _correlate_except: Optional[Tuple[FromClause, ...]] = None
-    _where_criteria: Tuple[ColumnElement[Any], ...] = ()
-    _having_criteria: Tuple[ColumnElement[Any], ...] = ()
-    _from_obj: Tuple[FromClause, ...] = ()
+    _distinct_on: tuple[ColumnElement[Any], ...] = ()
+    _correlate: tuple[FromClause, ...] = ()
+    _correlate_except: tuple[FromClause, ...] | None = None
+    _where_criteria: tuple[ColumnElement[Any], ...] = ()
+    _having_criteria: tuple[ColumnElement[Any], ...] = ()
+    _from_obj: tuple[FromClause, ...] = ()
     _auto_correlate = True
     _is_select_statement = True
     _compile_options: CacheableOptions = (
@@ -5121,7 +5121,7 @@ class Select(
         ("_compile_options", InternalTraversal.dp_has_cache_key)
     ]
 
-    _compile_state_factory: Type[SelectState]
+    _compile_state_factory: type[SelectState]
 
     @classmethod
     def _create_raw_select(cls, **kw: Any) -> Select[Unpack[TupleAny]]:
@@ -5166,9 +5166,9 @@ class Select(
 
     def _filter_by_zero(
         self,
-    ) -> Union[
-        FromClause, _JoinTargetProtocol, ColumnElement[Any], TextClause
-    ]:
+    ) -> (
+        FromClause | _JoinTargetProtocol | ColumnElement[Any] | TextClause
+    ):
         if self._setup_joins:
             meth = SelectState.get_plugin_class(
                 self
@@ -5285,7 +5285,7 @@ class Select(
     def join(
         self,
         target: _JoinTargetArgument,
-        onclause: Optional[_OnClauseArgument] = None,
+        onclause: _OnClauseArgument | None = None,
         *,
         isouter: bool = False,
         full: bool = False,
@@ -5369,7 +5369,7 @@ class Select(
         self,
         from_: _FromClauseArgument,
         target: _JoinTargetArgument,
-        onclause: Optional[_OnClauseArgument] = None,
+        onclause: _OnClauseArgument | None = None,
         *,
         full: bool = False,
     ) -> Self:
@@ -5389,7 +5389,7 @@ class Select(
         self,
         from_: _FromClauseArgument,
         target: _JoinTargetArgument,
-        onclause: Optional[_OnClauseArgument] = None,
+        onclause: _OnClauseArgument | None = None,
         *,
         isouter: bool = False,
         full: bool = False,
@@ -5463,7 +5463,7 @@ class Select(
     def outerjoin(
         self,
         target: _JoinTargetArgument,
-        onclause: Optional[_OnClauseArgument] = None,
+        onclause: _OnClauseArgument | None = None,
         *,
         full: bool = False,
     ) -> Self:
@@ -5558,7 +5558,7 @@ class Select(
         return self.get_final_froms()
 
     @property
-    def columns_clause_froms(self) -> List[FromClause]:
+    def columns_clause_froms(self) -> list[FromClause]:
         """Return the set of :class:`_expression.FromClause` objects implied
         by the columns clause of this SELECT statement.
 
@@ -5591,7 +5591,7 @@ class Select(
 
         return iter(self._all_selected_columns)
 
-    def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
+    def is_derived_from(self, fromclause: FromClause | None) -> bool:
         if fromclause is not None and self in fromclause._cloned_set:
             return True
 
@@ -5640,9 +5640,9 @@ class Select(
         # 3. clone everything else, making sure we use columns
         # corresponding to the froms we just made.
         def replace(
-            obj: Union[BinaryExpression[Any], ColumnClause[Any]],
+            obj: BinaryExpression[Any] | ColumnClause[Any],
             **kw: Any,
-        ) -> Optional[KeyedColumnElement[ColumnElement[Any]]]:
+        ) -> KeyedColumnElement[ColumnElement[Any]] | None:
             if isinstance(obj, ColumnClause) and obj.table in new_froms:
                 newelem = new_froms[obj.table].corresponding_column(obj)
                 return newelem
@@ -5938,7 +5938,7 @@ class Select(
         return self
 
     @property
-    def whereclause(self) -> Optional[ColumnElement[Any]]:
+    def whereclause(self) -> ColumnElement[Any] | None:
         """Return the completed WHERE clause for this
         :class:`_expression.Select` statement.
 
@@ -6073,7 +6073,7 @@ class Select(
     @_generative
     def correlate(
         self,
-        *fromclauses: Union[Literal[None, False], _FromClauseArgument],
+        *fromclauses: Literal[None, False] | _FromClauseArgument,
     ) -> Self:
         r"""Return a new :class:`_expression.Select`
         which will correlate the given FROM
@@ -6146,7 +6146,7 @@ class Select(
     @_generative
     def correlate_except(
         self,
-        *fromclauses: Union[Literal[None, False], _FromClauseArgument],
+        *fromclauses: Literal[None, False] | _FromClauseArgument,
     ) -> Self:
         r"""Return a new :class:`_expression.Select`
         which will omit the given FROM
@@ -6280,9 +6280,9 @@ class Select(
         self,
         subquery: FromClause,
         *,
-        proxy_compound_columns: Optional[
+        proxy_compound_columns: None | (
             Iterable[Sequence[ColumnElement[Any]]]
-        ] = None,
+        ) = None,
     ) -> None:
         """Generate column proxies to place in the exported ``.c``
         collection of a subquery."""
@@ -6340,8 +6340,8 @@ class Select(
         )
 
     def self_group(
-        self, against: Optional[OperatorType] = None
-    ) -> Union[SelectStatementGrouping[Self], Self]:
+        self, against: OperatorType | None = None
+    ) -> SelectStatementGrouping[Self] | Self:
         ...
         """Return a 'grouping' construct as per the
         :class:`_expression.ClauseElement` specification.
@@ -6492,7 +6492,7 @@ class ScalarSelect(
         ("type", InternalTraversal.dp_type),
     ]
 
-    _from_objects: List[FromClause] = []
+    _from_objects: list[FromClause] = []
     _is_from_container = True
     if not TYPE_CHECKING:
         _is_implicitly_boolean = False
@@ -6508,10 +6508,10 @@ class ScalarSelect(
     def __getattr__(self, attr: str) -> Any:
         return getattr(self.element, attr)
 
-    def __getstate__(self) -> Dict[str, Any]:
+    def __getstate__(self) -> dict[str, Any]:
         return {"element": self.element, "type": self.type}
 
-    def __setstate__(self, state: Dict[str, Any]) -> None:
+    def __setstate__(self, state: dict[str, Any]) -> None:
         self.element = state["element"]
         self.type = state["type"]
 
@@ -6538,16 +6538,16 @@ class ScalarSelect(
 
     @overload
     def self_group(
-        self: ScalarSelect[Any], against: Optional[OperatorType] = None
+        self: ScalarSelect[Any], against: OperatorType | None = None
     ) -> ScalarSelect[Any]: ...
 
     @overload
     def self_group(
-        self: ColumnElement[Any], against: Optional[OperatorType] = None
+        self: ColumnElement[Any], against: OperatorType | None = None
     ) -> ColumnElement[Any]: ...
 
     def self_group(
-        self, against: Optional[OperatorType] = None
+        self, against: OperatorType | None = None
     ) -> ColumnElement[Any]:
         return self
 
@@ -6558,7 +6558,7 @@ class ScalarSelect(
     @_generative
     def correlate(
         self,
-        *fromclauses: Union[Literal[None, False], _FromClauseArgument],
+        *fromclauses: Literal[None, False] | _FromClauseArgument,
     ) -> Self:
         r"""Return a new :class:`_expression.ScalarSelect`
         which will correlate the given FROM
@@ -6594,7 +6594,7 @@ class ScalarSelect(
     @_generative
     def correlate_except(
         self,
-        *fromclauses: Union[Literal[None, False], _FromClauseArgument],
+        *fromclauses: Literal[None, False] | _FromClauseArgument,
     ) -> Self:
         r"""Return a new :class:`_expression.ScalarSelect`
         which will omit the given FROM
@@ -6641,16 +6641,16 @@ class Exists(UnaryExpression[bool]):
     """
 
     inherit_cache = True
-    element: Union[
-        SelectStatementGrouping[Select[Unpack[TupleAny]]],
-        ScalarSelect[Any],
-    ]
+    element: (
+        SelectStatementGrouping[Select[Unpack[TupleAny]]] |
+        ScalarSelect[Any]
+    )
 
     def __init__(
         self,
-        __argument: Optional[
-            Union[_ColumnsClauseArgument[Any], SelectBase, ScalarSelect[Any]]
-        ] = None,
+        __argument: None | (
+            _ColumnsClauseArgument[Any] | SelectBase | ScalarSelect[Any]
+        ) = None,
         /,
     ):
         s: ScalarSelect[Any]
@@ -6675,7 +6675,7 @@ class Exists(UnaryExpression[bool]):
         )
 
     @util.ro_non_memoized_property
-    def _from_objects(self) -> List[FromClause]:
+    def _from_objects(self) -> list[FromClause]:
         return []
 
     def _regroup(
@@ -6711,7 +6711,7 @@ class Exists(UnaryExpression[bool]):
 
     def correlate(
         self,
-        *fromclauses: Union[Literal[None, False], _FromClauseArgument],
+        *fromclauses: Literal[None, False] | _FromClauseArgument,
     ) -> Self:
         """Apply correlation to the subquery noted by this
         :class:`_sql.Exists`.
@@ -6729,7 +6729,7 @@ class Exists(UnaryExpression[bool]):
 
     def correlate_except(
         self,
-        *fromclauses: Union[Literal[None, False], _FromClauseArgument],
+        *fromclauses: Literal[None, False] | _FromClauseArgument,
     ) -> Self:
         """Apply correlation to the subquery noted by this
         :class:`_sql.Exists`.
@@ -6825,7 +6825,7 @@ class TextualSelect(SelectBase, ExecutableReturnsRows, Generative):
     def __init__(
         self,
         text: TextClause,
-        columns: List[_ColumnExpressionArgument[Any]],
+        columns: list[_ColumnExpressionArgument[Any]],
         positional: bool = False,
     ) -> None:
         self._init(
@@ -6841,7 +6841,7 @@ class TextualSelect(SelectBase, ExecutableReturnsRows, Generative):
     def _init(
         self,
         text: TextClause,
-        columns: List[NamedColumn[Any]],
+        columns: list[NamedColumn[Any]],
         positional: bool = False,
     ) -> None:
         self.element = text
@@ -6899,9 +6899,9 @@ class TextualSelect(SelectBase, ExecutableReturnsRows, Generative):
         self,
         fromclause: FromClause,
         *,
-        proxy_compound_columns: Optional[
+        proxy_compound_columns: None | (
             Iterable[Sequence[ColumnElement[Any]]]
-        ] = None,
+        ) = None,
     ) -> None:
         if TYPE_CHECKING:
             assert isinstance(fromclause, Subquery)
@@ -6918,7 +6918,7 @@ class TextualSelect(SelectBase, ExecutableReturnsRows, Generative):
                 c._make_proxy(fromclause) for c in self.column_args
             )
 
-    def _scalar_type(self) -> Union[TypeEngine[Any], Any]:
+    def _scalar_type(self) -> TypeEngine[Any] | Any:
         return self.column_args[0].type
 
 

@@ -116,24 +116,24 @@ class safe_reraise:
 
     __slots__ = ("_exc_info",)
 
-    _exc_info: Union[
-        None,
-        Tuple[
-            Type[BaseException],
+    _exc_info: (
+        None |
+        tuple[
+            type[BaseException],
             BaseException,
             types.TracebackType,
-        ],
-        Tuple[None, None, None],
-    ]
+        ] |
+        tuple[None, None, None]
+    )
 
     def __enter__(self) -> None:
         self._exc_info = sys.exc_info()
 
     def __exit__(
         self,
-        type_: Optional[Type[BaseException]],
-        value: Optional[BaseException],
-        traceback: Optional[types.TracebackType],
+        type_: type[BaseException] | None,
+        value: BaseException | None,
+        traceback: types.TracebackType | None,
     ) -> NoReturn:
         assert self._exc_info is not None
         # see #2703 for notes
@@ -148,8 +148,8 @@ class safe_reraise:
             raise value.with_traceback(traceback)
 
 
-def walk_subclasses(cls: Type[_T]) -> Iterator[Type[_T]]:
-    seen: Set[Any] = set()
+def walk_subclasses(cls: type[_T]) -> Iterator[type[_T]]:
+    seen: set[Any] = set()
 
     stack = [cls]
     while stack:
@@ -173,14 +173,14 @@ def string_or_unprintable(element: Any) -> str:
 
 
 def clsname_as_plain_name(
-    cls: Type[Any], use_name: Optional[str] = None
+    cls: type[Any], use_name: str | None = None
 ) -> str:
     name = use_name or cls.__name__
     return " ".join(n.lower() for n in re.findall(r"([A-Z][a-z]+|SQL)", name))
 
 
 def method_is_overridden(
-    instance_or_cls: Union[Type[Any], object],
+    instance_or_cls: type[Any] | object,
     against_method: Callable[..., Any],
 ) -> bool:
     """Return True if the two class methods don't match."""
@@ -197,13 +197,13 @@ def method_is_overridden(
     return current_method != against_method
 
 
-def decode_slice(slc: slice) -> Tuple[Any, ...]:
+def decode_slice(slc: slice) -> tuple[Any, ...]:
     """decode a slice object as sent to __getitem__.
 
     takes into account the 2.5 __index__() method, basically.
 
     """
-    ret: List[Any] = []
+    ret: list[Any] = []
     for x in slc.start, slc.stop, slc.step:
         if hasattr(x, "__index__"):
             x = x.__index__()
@@ -249,7 +249,7 @@ def decorator(target: Callable[..., Any]) -> Callable[[_Fn], _Fn]:
             raise Exception("not a decoratable function")
 
         spec = compat.inspect_getfullargspec(fn)
-        env: Dict[str, Any] = {}
+        env: dict[str, Any] = {}
 
         spec = _update_argspec_defaults_into_env(spec, env)
 
@@ -260,7 +260,7 @@ def decorator(target: Callable[..., Any]) -> Callable[[_Fn], _Fn]:
         )
         targ_name, fn_name = _unique_symbols(names, "target", "fn")
 
-        metadata: Dict[str, Optional[str]] = dict(target=targ_name, fn=fn_name)
+        metadata: dict[str, str | None] = dict(target=targ_name, fn=fn_name)
         metadata.update(format_argspec_plus(spec, grouped=False))
         metadata["name"] = fn.__name__
 
@@ -334,7 +334,7 @@ def _update_argspec_defaults_into_env(spec, env):
 
 
 def _exec_code_in_env(
-    code: Union[str, types.CodeType], env: Dict[str, Any], fn_name: str
+    code: str | types.CodeType, env: dict[str, Any], fn_name: str
 ) -> Callable[..., Any]:
     exec(code, env)
     return env[fn_name]  # type: ignore[no-any-return]
@@ -346,10 +346,10 @@ _TE = TypeVar("_TE")
 
 class PluginLoader:
     def __init__(
-        self, group: str, auto_fn: Optional[Callable[..., Any]] = None
+        self, group: str, auto_fn: Callable[..., Any] | None = None
     ):
         self.group = group
-        self.impls: Dict[str, Any] = {}
+        self.impls: dict[str, Any] = {}
         self.auto_fn = auto_fn
 
     def clear(self):
@@ -371,7 +371,7 @@ class PluginLoader:
                 return impl.load()
 
         raise exc.NoSuchModuleError(
-            "Can't load plugin: %s:%s" % (self.group, name)
+            "Can't load plugin: {}:{}".format(self.group, name)
         )
 
     def register(self, name: str, modulepath: str, objname: str) -> None:
@@ -408,20 +408,20 @@ def _inspect_func_args(fn):
 def get_cls_kwargs(
     cls: type,
     *,
-    _set: Optional[Set[str]] = None,
+    _set: set[str] | None = None,
     raiseerr: Literal[True] = ...,
-) -> Set[str]: ...
+) -> set[str]: ...
 
 
 @overload
 def get_cls_kwargs(
-    cls: type, *, _set: Optional[Set[str]] = None, raiseerr: bool = False
-) -> Optional[Set[str]]: ...
+    cls: type, *, _set: set[str] | None = None, raiseerr: bool = False
+) -> set[str] | None: ...
 
 
 def get_cls_kwargs(
-    cls: type, *, _set: Optional[Set[str]] = None, raiseerr: bool = False
-) -> Optional[Set[str]]:
+    cls: type, *, _set: set[str] | None = None, raiseerr: bool = False
+) -> set[str] | None:
     r"""Return the full set of inherited kwargs for the given `cls`.
 
     Probes a class's __init__ method, collecting all named arguments.  If the
@@ -472,7 +472,7 @@ def get_cls_kwargs(
     return _set
 
 
-def get_func_kwargs(func: Callable[..., Any]) -> List[str]:
+def get_func_kwargs(func: Callable[..., Any]) -> list[str]:
     """Return the set of legal kwargs for the given `func`.
 
     Uses getargspec so is safe to call for methods, functions,
@@ -540,8 +540,8 @@ def get_callable_argspec(
 
 
 def format_argspec_plus(
-    fn: Union[Callable[..., Any], compat.FullArgSpec], grouped: bool = True
-) -> Dict[str, Optional[str]]:
+    fn: Callable[..., Any] | compat.FullArgSpec, grouped: bool = True
+) -> dict[str, str | None]:
     """Returns a dictionary of formatted, introspected function arguments.
 
     A enhanced variant of inspect.formatargspec to support code generation.
@@ -610,7 +610,7 @@ def format_argspec_plus(
 
     name_args = spec[0] + spec[4]
 
-    defaulted_vals: Union[List[str], Tuple[()]]
+    defaulted_vals: list[str] | tuple[()]
 
     if num_defaults:
         defaulted_vals = name_args[0 - num_defaults :]
@@ -688,7 +688,7 @@ def format_argspec_init(method, grouped=True):
 
 
 def create_proxy_methods(
-    target_cls: Type[Any],
+    target_cls: type[Any],
     target_cls_sphinx_name: str,
     proxy_cls_sphinx_name: str,
     classmethods: Sequence[str] = (),
@@ -744,8 +744,8 @@ def unbound_method_to_callable(func_or_cls):
 
 def generic_repr(
     obj: Any,
-    additional_kw: Sequence[Tuple[str, Any]] = (),
-    to_inspect: Optional[Union[object, List[object]]] = None,
+    additional_kw: Sequence[tuple[str, Any]] = (),
+    to_inspect: object | list[object] | None = None,
     omit_kwarg: Sequence[str] = (),
 ) -> str:
     """Produce a __repr__() based on direct association of the __init__()
@@ -791,7 +791,7 @@ def generic_repr(
                         )
                     ]
                 )
-    output: List[str] = []
+    output: list[str] = []
 
     output.extend(repr(getattr(obj, arg, None)) for arg in pos_args)
 
@@ -804,7 +804,7 @@ def generic_repr(
         try:
             val = getattr(obj, arg, missing)
             if val is not missing and val != defval:
-                output.append("%s=%r" % (arg, val))
+                output.append("{}={!r}".format(arg, val))
         except Exception:
             pass
 
@@ -813,11 +813,11 @@ def generic_repr(
             try:
                 val = getattr(obj, arg, missing)
                 if val is not missing and val != defval:
-                    output.append("%s=%r" % (arg, val))
+                    output.append("{}={!r}".format(arg, val))
             except Exception:
                 pass
 
-    return "%s(%s)" % (obj.__class__.__name__, ", ".join(output))
+    return "{}({})".format(obj.__class__.__name__, ", ".join(output))
 
 
 class portable_instancemethod:
@@ -960,7 +960,7 @@ def monkeypatch_proxied_specials(
             "return %(name)s.%(method)s%(d_args)s" % locals()
         )
 
-        env: Dict[str, types.FunctionType] = (
+        env: dict[str, types.FunctionType] = (
             from_instance is not None and {name: from_instance} or {}
         )
         exec(py, env)
@@ -1052,7 +1052,7 @@ def as_interface(obj, cls=None, methods=None, required=None):
         if method not in interface:
             raise TypeError("%r: unknown in this interface" % method)
         if not callable(impl):
-            raise TypeError("%r=%r is not callable" % (method, impl))
+            raise TypeError("{!r}={!r} is not callable".format(method, impl))
         setattr(AnonymousInterface, method, staticmethod(impl))
         found.add(method)
 
@@ -1080,10 +1080,10 @@ class generic_fn_descriptor(Generic[_T_co]):
     """
 
     fget: Callable[..., _T_co]
-    __doc__: Optional[str]
+    __doc__: str | None
     __name__: str
 
-    def __init__(self, fget: Callable[..., _T_co], doc: Optional[str] = None):
+    def __init__(self, fget: Callable[..., _T_co], doc: str | None = None):
         self.fget = fget
         self.__doc__ = doc or fget.__doc__
         self.__name__ = fget.__name__
@@ -1094,7 +1094,7 @@ class generic_fn_descriptor(Generic[_T_co]):
     @overload
     def __get__(self, obj: object, cls: Any) -> _T_co: ...
 
-    def __get__(self: _GFD, obj: Any, cls: Any) -> Union[_GFD, _T_co]:
+    def __get__(self: _GFD, obj: Any, cls: Any) -> _GFD | _T_co:
         raise NotImplementedError()
 
     if TYPE_CHECKING:
@@ -1209,7 +1209,7 @@ class HasMemoized:
         # slot for __dict__.  not sure if that requires base __slots__ here.
         __slots__ = ()
 
-    _memoized_keys: FrozenSet[str] = frozenset()
+    _memoized_keys: frozenset[str] = frozenset()
 
     def _reset_memoizations(self) -> None:
         for elem in self._memoized_keys:
@@ -1231,10 +1231,10 @@ class HasMemoized:
         """
 
         fget: Callable[..., _T]
-        __doc__: Optional[str]
+        __doc__: str | None
         __name__: str
 
-        def __init__(self, fget: Callable[..., _T], doc: Optional[str] = None):
+        def __init__(self, fget: Callable[..., _T], doc: str | None = None):
             self.fget = fget
             self.__doc__ = doc or fget.__doc__
             self.__name__ = fget.__name__
@@ -1339,13 +1339,13 @@ def asbool(obj: Any) -> bool:
     return bool(obj)
 
 
-def bool_or_str(*text: str) -> Callable[[str], Union[str, bool]]:
+def bool_or_str(*text: str) -> Callable[[str], str | bool]:
     """Return a callable that will evaluate a string as
     boolean, or one of a set of "alternate" string values.
 
     """
 
-    def bool_or_value(obj: str) -> Union[str, bool]:
+    def bool_or_value(obj: str) -> str | bool:
         if obj in text:
             return obj
         else:
@@ -1354,7 +1354,7 @@ def bool_or_str(*text: str) -> Callable[[str], Union[str, bool]]:
     return bool_or_value
 
 
-def asint(value: Any) -> Optional[int]:
+def asint(value: Any) -> int | None:
     """Coerce to integer."""
 
     if value is None:
@@ -1363,11 +1363,11 @@ def asint(value: Any) -> Optional[int]:
 
 
 def coerce_kw_type(
-    kw: Dict[str, Any],
+    kw: dict[str, Any],
     key: str,
-    type_: Type[Any],
+    type_: type[Any],
     flexi_bool: bool = True,
-    dest: Optional[Dict[str, Any]] = None,
+    dest: dict[str, Any] | None = None,
 ) -> None:
     r"""If 'key' is present in dict 'kw', coerce its value to type 'type\_' if
     necessary.  If 'flexi_bool' is True, the string '0' is considered false
@@ -1388,7 +1388,7 @@ def coerce_kw_type(
             dest[key] = type_(kw[key])
 
 
-def constructor_key(obj: Any, cls: Type[Any]) -> Tuple[Any, ...]:
+def constructor_key(obj: Any, cls: type[Any]) -> tuple[Any, ...]:
     """Produce a tuple structure that is cacheable using the __dict__ of
     obj to retrieve values
 
@@ -1399,7 +1399,7 @@ def constructor_key(obj: Any, cls: Type[Any]) -> Tuple[Any, ...]:
     )
 
 
-def constructor_copy(obj: _T, cls: Type[_T], *args: Any, **kw: Any) -> _T:
+def constructor_copy(obj: _T, cls: type[_T], *args: Any, **kw: Any) -> _T:
     """Instantiate cls using the __dict__ of obj as constructor arguments.
 
     Uses inspect to match the named arguments of ``cls``.
@@ -1428,8 +1428,8 @@ def counter() -> Callable[[], int]:
 
 
 def duck_type_collection(
-    specimen: Any, default: Optional[Type[Any]] = None
-) -> Optional[Type[Any]]:
+    specimen: Any, default: type[Any] | None = None
+) -> type[Any] | None:
     """Given an instance or class, guess if it is or is acting as one of
     the basic collection types: list, set and dict.  If the __emulates__
     property is present, return that preferentially.
@@ -1463,7 +1463,7 @@ def duck_type_collection(
 
 
 def assert_arg_type(
-    arg: Any, argtype: Union[Tuple[Type[Any], ...], Type[Any]], name: str
+    arg: Any, argtype: tuple[type[Any], ...] | type[Any], name: str
 ) -> Any:
     if isinstance(arg, argtype):
         return arg
@@ -1521,7 +1521,7 @@ class classproperty(property):
         super().__init__(fget, *arg, **kw)
         self.__doc__ = fget.__doc__
 
-    def __get__(self, obj: Any, cls: Optional[type] = None) -> Any:
+    def __get__(self, obj: Any, cls: type | None = None) -> Any:
         return self.fget(cls)
 
 
@@ -1546,7 +1546,7 @@ class rw_hybridproperty(Generic[_T]):
     def __init__(self, func: Callable[..., _T]):
         self.func = func
         self.clslevel = func
-        self.setfn: Optional[Callable[..., Any]] = None
+        self.setfn: Callable[..., Any] | None = None
 
     def __get__(self, instance: Any, owner: Any) -> _T:
         if instance is None:
@@ -1603,14 +1603,14 @@ class symbol(int):
 
     name: str
 
-    symbols: Dict[str, symbol] = {}
+    symbols: dict[str, symbol] = {}
     _lock = threading.Lock()
 
     def __new__(
         cls,
         name: str,
-        doc: Optional[str] = None,
-        canonical: Optional[int] = None,
+        doc: str | None = None,
+        canonical: int | None = None,
     ) -> symbol:
         with cls._lock:
             sym = cls.symbols.get(name)
@@ -1650,11 +1650,11 @@ class _IntFlagMeta(type):
     def __init__(
         cls,
         classname: str,
-        bases: Tuple[Type[Any], ...],
-        dict_: Dict[str, Any],
+        bases: tuple[type[Any], ...],
+        dict_: dict[str, Any],
         **kw: Any,
     ) -> None:
-        items: List[symbol]
+        items: list[symbol]
         cls._items = items = []
         for k, v in dict_.items():
             if isinstance(v, int):
@@ -1701,10 +1701,10 @@ _E = TypeVar("_E", bound=enum.Enum)
 
 def parse_user_argument_for_enum(
     arg: Any,
-    choices: Dict[_E, List[Any]],
+    choices: dict[_E, list[Any]],
     name: str,
     resolve_symbol_names: bool = False,
-) -> Optional[_E]:
+) -> _E | None:
     """Given a user parameter, parse the parameter into a chosen value
     from a list of choice objects, typically Enum values.
 
@@ -1800,7 +1800,7 @@ class _hash_limit_string(str):
         return hash(self) == hash(other)
 
 
-def warn(msg: str, code: Optional[str] = None) -> None:
+def warn(msg: str, code: str | None = None) -> None:
     """Issue a warning.
 
     If msg is a string, :class:`.exc.SAWarning` is used as
@@ -1823,11 +1823,11 @@ def warn_limited(msg: str, args: Sequence[Any]) -> None:
     _warnings_warn(msg, exc.SAWarning)
 
 
-_warning_tags: Dict[CodeType, Tuple[str, Type[Warning]]] = {}
+_warning_tags: dict[CodeType, tuple[str, type[Warning]]] = {}
 
 
 def tag_method_for_warnings(
-    message: str, category: Type[Warning]
+    message: str, category: type[Warning]
 ) -> Callable[[_F], _F]:
     def go(fn):
         _warning_tags[fn.__code__] = (message, category)
@@ -1840,8 +1840,8 @@ _not_sa_pattern = re.compile(r"^(?:sqlalchemy\.(?!testing)|alembic\.)")
 
 
 def _warnings_warn(
-    message: Union[str, Warning],
-    category: Optional[Type[Warning]] = None,
+    message: str | Warning,
+    category: type[Warning] | None = None,
     stacklevel: int = 2,
 ) -> None:
     # adjust the given stacklevel to be outside of SQLAlchemy
@@ -1892,13 +1892,13 @@ def _warnings_warn(
 
 def only_once(
     fn: Callable[..., _T], retry_on_exception: bool
-) -> Callable[..., Optional[_T]]:
+) -> Callable[..., _T | None]:
     """Decorate the given function to be a no-op after it is called exactly
     once."""
 
     once = [fn]
 
-    def go(*arg: Any, **kw: Any) -> Optional[_T]:
+    def go(*arg: Any, **kw: Any) -> _T | None:
         # strong reference fn so that it isn't garbage collected,
         # which interferes with the event system's expectations
         strong_fn = fn  # noqa
@@ -1921,10 +1921,10 @@ _UNITTEST_RE = re.compile(r"unit(?:2|test2?/)")
 
 
 def chop_traceback(
-    tb: List[str],
+    tb: list[str],
     exclude_prefix: re.Pattern[str] = _UNITTEST_RE,
     exclude_suffix: re.Pattern[str] = _SQLA_RE,
-) -> List[str]:
+) -> list[str]:
     """Chop extraneous lines off beginning and end of a traceback.
 
     :param tb:
@@ -2069,7 +2069,7 @@ def quoted_token_parser(value):
     # 0 = outside of quotes
     # 1 = inside of quotes
     state = 0
-    result: List[List[str]] = [[]]
+    result: list[list[str]] = [[]]
     idx = 0
     lv = len(value)
     while idx < lv:
@@ -2115,7 +2115,7 @@ def _dedent_docstring(text: str) -> str:
 
 
 def inject_docstring_text(
-    given_doctext: Optional[str], injecttext: str, pos: int
+    given_doctext: str | None, injecttext: str, pos: int
 ) -> str:
     doctext: str = _dedent_docstring(given_doctext or "")
     lines = doctext.split("\n")
@@ -2137,7 +2137,7 @@ def inject_docstring_text(
 _param_reg = re.compile(r"(\s+):param (.+?):")
 
 
-def inject_param_text(doctext: str, inject_params: Dict[str, str]) -> str:
+def inject_param_text(doctext: str, inject_params: dict[str, str]) -> str:
     doclines = collections.deque(doctext.splitlines())
     lines = []
 
@@ -2180,7 +2180,7 @@ def inject_param_text(doctext: str, inject_params: Dict[str, str]) -> str:
     return "\n".join(lines)
 
 
-def repr_tuple_names(names: List[str]) -> Optional[str]:
+def repr_tuple_names(names: list[str]) -> str | None:
     """Trims a list of strings from the middle and return a string of up to
     four elements. Strings greater than 11 characters will be truncated"""
     if len(names) == 0:
@@ -2191,7 +2191,7 @@ def repr_tuple_names(names: List[str]) -> Optional[str]:
     if flag:
         return ", ".join(res)
     else:
-        return "%s, ..., %s" % (", ".join(res[0:3]), res[-1])
+        return "{}, ..., {}".format(", ".join(res[0:3]), res[-1])
 
 
 def has_compiled_ext(raise_=False):

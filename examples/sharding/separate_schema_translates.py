@@ -33,7 +33,7 @@ with engine.connect() as conn:
         if os.path.exists("schema_%s.db" % i):
             os.remove("schema_%s.db" % i)
         conn.exec_driver_sql(
-            'ATTACH DATABASE "schema_%s.db" AS schema_%s' % (i, i)
+            f'ATTACH DATABASE "schema_{i}.db" AS schema_{i}'
         )
 
 db1 = engine.execution_options(schema_translate_map={None: "schema_1"})

@@ -32,8 +32,8 @@ class NamedType(sqltypes.TypeEngine):
     """Base for named types."""
 
     __abstract__ = True
-    DDLGenerator: Type[NamedTypeGenerator]
-    DDLDropper: Type[NamedTypeDropper]
+    DDLGenerator: type[NamedTypeGenerator]
+    DDLDropper: type[NamedTypeDropper]
     create_type: bool
 
     def create(self, bind, checkfirst=True, **kw):
@@ -239,7 +239,7 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
     def __init__(
         self,
         *enums,
-        name: Union[str, _NoArg, None] = _NoArg.NO_ARG,
+        name: str | _NoArg | None = _NoArg.NO_ARG,
         create_type: bool = True,
         **kw,
     ):
@@ -415,11 +415,11 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
         name: str,
         data_type: _TypeEngineArgument[Any],
         *,
-        collation: Optional[str] = None,
-        default: Union[elements.TextClause, str, None] = None,
-        constraint_name: Optional[str] = None,
-        not_null: Optional[bool] = None,
-        check: Union[elements.TextClause, str, None] = None,
+        collation: str | None = None,
+        default: elements.TextClause | str | None = None,
+        constraint_name: str | None = None,
+        not_null: bool | None = None,
+        check: elements.TextClause | str | None = None,
         create_type: bool = True,
         **kw: Any,
     ):

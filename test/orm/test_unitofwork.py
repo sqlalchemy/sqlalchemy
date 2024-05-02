@@ -130,13 +130,13 @@ class UnicodeTest(fixtures.MappedTest):
 
         txt = "\u0160\u0110\u0106\u010c\u017d"
         t1 = Test(id=1, txt=txt)
-        self.assert_(t1.txt == txt)
+        self.assertTrue(t1.txt == txt)
 
         session = fixture_session()
         session.add(t1)
         session.commit()
 
-        self.assert_(t1.txt == txt)
+        self.assertTrue(t1.txt == txt)
 
     def test_relationship(self):
         Test, uni_t2, uni_t1, Test2 = (
@@ -376,7 +376,7 @@ class PKTest(fixtures.MappedTest):
         session.expunge_all()
 
         e2 = session.get(Entry, (e.multi_id, 2))
-        self.assert_(e is not e2)
+        self.assertTrue(e is not e2)
         state = sa.orm.attributes.instance_state(e)
         state2 = sa.orm.attributes.instance_state(e2)
         eq_(state.key, state2.key)
@@ -1169,7 +1169,7 @@ class DefaultTest(fixtures.MappedTest):
 
         def go():
             # test deferred load of attributes, one select per instance
-            self.assert_(h2.hoho == h4.hoho == h5.hoho == hohoval)
+            self.assertTrue(h2.hoho == h4.hoho == h5.hoho == hohoval)
 
         if mp._prefer_eager_defaults(testing.db.dialect, default_t):
             self.sql_count_(0, go)
@@ -1177,7 +1177,7 @@ class DefaultTest(fixtures.MappedTest):
             self.sql_count_(3, go)
 
         def go():
-            self.assert_(h1.counter == h4.counter == h5.counter == 7)
+            self.assertTrue(h1.counter == h4.counter == h5.counter == 7)
 
         if mp._prefer_eager_defaults(testing.db.dialect, default_t):
             self.sql_count_(0, go)
@@ -1185,9 +1185,9 @@ class DefaultTest(fixtures.MappedTest):
             self.sql_count_(1, go)
 
         def go():
-            self.assert_(h3.counter == h2.counter == 12)
-            self.assert_(h2.foober == h3.foober == h4.foober == "im foober")
-            self.assert_(h5.foober == "im the new foober")
+            self.assertTrue(h3.counter == h2.counter == 12)
+            self.assertTrue(h2.foober == h3.foober == h4.foober == "im foober")
+            self.assertTrue(h5.foober == "im the new foober")
 
         self.sql_count_(0, go)
 
@@ -1197,10 +1197,10 @@ class DefaultTest(fixtures.MappedTest):
 
         eq_(h1.hoho, althohoval)
         eq_(h3.hoho, althohoval)
-        self.assert_(h2.hoho == h4.hoho == h5.hoho == hohoval)
-        self.assert_(h3.counter == h2.counter == 12)
-        self.assert_(h1.counter == h4.counter == h5.counter == 7)
-        self.assert_(h2.foober == h3.foober == h4.foober == "im foober")
+        self.assertTrue(h2.hoho == h4.hoho == h5.hoho == hohoval)
+        self.assertTrue(h3.counter == h2.counter == 12)
+        self.assertTrue(h1.counter == h4.counter == h5.counter == 7)
+        self.assertTrue(h2.foober == h3.foober == h4.foober == "im foober")
         eq_(h5.foober, "im the new foober")
 
     def test_eager_defaults(self):
@@ -1570,7 +1570,7 @@ class OneToManyTest(_fixtures.FixtureTest):
             addresses.select().where(addresses.c.id == addressid)
         ).fetchall()
         eq_(list(address_rows[0]), [addressid, userid, "somethingnew@foo.com"])
-        self.assert_(u.id == userid and a2.id == addressid)
+        self.assertTrue(u.id == userid and a2.id == addressid)
 
     def test_one_to_many_2(self):
         """Modifying the child items of an object."""

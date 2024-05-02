@@ -389,9 +389,9 @@ def _serialize_hstore(val):
             return '"%s"' % s.replace("\\", "\\\\").replace('"', r"\"")
         else:
             raise ValueError(
-                "%r in %s position is not a string." % (s, position)
+                f"{s!r} in {position} position is not a string."
             )
 
     return ", ".join(
-        "%s=>%s" % (esc(k, "key"), esc(v, "value")) for k, v in val.items()
+        "{}=>{}".format(esc(k, "key"), esc(v, "value")) for k, v in val.items()
     )

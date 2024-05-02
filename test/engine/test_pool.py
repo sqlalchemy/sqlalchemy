@@ -141,23 +141,23 @@ class PoolTest(PoolTestBase):
         p = self._queuepool_fixture(pool_size=1, max_overflow=0)
 
         c = p.connect()
-        self.assert_(not c.info)
-        self.assert_(c.info is c._connection_record.info)
+        self.assertTrue(not c.info)
+        self.assertTrue(c.info is c._connection_record.info)
 
         c.info["foo"] = "bar"
         c.close()
         del c
 
         c = p.connect()
-        self.assert_("foo" in c.info)
+        self.assertTrue("foo" in c.info)
 
         c.invalidate()
         c = p.connect()
-        self.assert_("foo" not in c.info)
+        self.assertTrue("foo" not in c.info)
 
         c.info["foo2"] = "bar2"
         c.detach()
-        self.assert_("foo2" in c.info)
+        self.assertTrue("foo2" in c.info)
 
         c2 = p.connect()
         is_not(c.dbapi_connection, c2.dbapi_connection)
@@ -168,19 +168,19 @@ class PoolTest(PoolTestBase):
         p = self._queuepool_fixture(pool_size=1, max_overflow=0)
 
         c = p.connect()
-        self.assert_(not c.record_info)
-        self.assert_(c.record_info is c._connection_record.record_info)
+        self.assertTrue(not c.record_info)
+        self.assertTrue(c.record_info is c._connection_record.record_info)
 
         c.record_info["foo"] = "bar"
         c.close()
         del c
 
         c = p.connect()
-        self.assert_("foo" in c.record_info)
+        self.assertTrue("foo" in c.record_info)
 
         c.invalidate()
         c = p.connect()
-        self.assert_("foo" in c.record_info)
+        self.assertTrue("foo" in c.record_info)
 
         c.record_info["foo2"] = "bar2"
         c.detach()
@@ -1025,17 +1025,17 @@ class QueuePoolTest(PoolTestBase):
             )
 
         c1 = p.connect()
-        self.assert_(status(p) == (3, 0, -2, 1))
+        self.assertTrue(status(p) == (3, 0, -2, 1))
         c2 = p.connect()
-        self.assert_(status(p) == (3, 0, -1, 2))
+        self.assertTrue(status(p) == (3, 0, -1, 2))
         c3 = p.connect()
-        self.assert_(status(p) == (3, 0, 0, 3))
+        self.assertTrue(status(p) == (3, 0, 0, 3))
         c4 = p.connect()
-        self.assert_(status(p) == (3, 0, 1, 4))
+        self.assertTrue(status(p) == (3, 0, 1, 4))
         c5 = p.connect()
-        self.assert_(status(p) == (3, 0, 2, 5))
+        self.assertTrue(status(p) == (3, 0, 2, 5))
         c6 = p.connect()
-        self.assert_(status(p) == (3, 0, 3, 6))
+        self.assertTrue(status(p) == (3, 0, 3, 6))
         if useclose:
             c4.close()
             c3.close()
@@ -1051,16 +1051,16 @@ class QueuePoolTest(PoolTestBase):
         else:
             c1 = c5 = c6 = None
             lazy_gc()
-        self.assert_(status(p) == (3, 3, 0, 0))
+        self.assertTrue(status(p) == (3, 3, 0, 0))
         c1 = p.connect()
         c2 = p.connect()
-        self.assert_(status(p) == (3, 1, 0, 2), status(p))
+        self.assertTrue(status(p) == (3, 1, 0, 2), status(p))
         if useclose:
             c2.close()
         else:
             c2 = None
             lazy_gc()
-        self.assert_(status(p) == (3, 2, 0, 1))
+        self.assertTrue(status(p) == (3, 2, 0, 1))
         c1.close()
 
     def test_timeout_accessor(self):
@@ -1171,7 +1171,7 @@ class QueuePoolTest(PoolTestBase):
         for th in threads:
             th.join(join_timeout)
 
-        self.assert_(max(peaks) <= max_overflow)
+        self.assertTrue(max(peaks) <= max_overflow)
 
         reaper.assert_all_closed()
 

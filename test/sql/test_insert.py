@@ -78,9 +78,9 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     )
     def test_return_defaults_generative(
         self,
-        initial_keys: Tuple[str, ...],
-        second_keys: Tuple[str, ...],
-        expected_keys: Tuple[str, ...],
+        initial_keys: tuple[str, ...],
+        second_keys: tuple[str, ...],
+        expected_keys: tuple[str, ...],
     ):
         t = table("foo", column("x"), column("y"), column("z"))
 

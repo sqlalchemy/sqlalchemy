@@ -272,7 +272,7 @@ $$ LANGUAGE plpgsql;"""
         event.listen(
             metadata,
             "before_drop",
-            DDL("DROP FUNCTION %s.version" % (default_schema_name,)),
+            DDL("DROP FUNCTION {}.version".format(default_schema_name)),
         )
 
         metadata.create_all(future_connection)
@@ -285,7 +285,7 @@ $$ LANGUAGE plpgsql;"""
             conn = dialect.dbapi.connect(*cargs, **cparams)
             cursor = conn.cursor()
             cursor.execute(
-                "set search_path = %s,pg_catalog" % (default_schema_name,)
+                "set search_path = {},pg_catalog".format(default_schema_name)
             )
             cursor.close()
             return conn

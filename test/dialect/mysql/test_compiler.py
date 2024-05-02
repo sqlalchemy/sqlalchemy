@@ -265,7 +265,7 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
         dialect = mysql.dialect()
         self.assert_compile(
             schema.DropConstraint(constraint),
-            "ALTER TABLE %s DROP CHECK `%s`" % (table_name, constraint_name),
+            "ALTER TABLE {} DROP CHECK `{}`".format(table_name, constraint_name),
             dialect=dialect,
         )
 
@@ -876,7 +876,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(ix1),
-            "CREATE INDEX %s ON %s (%s)" % (exp, tname, cname),
+            "CREATE INDEX {} ON {} ({})".format(exp, tname, cname),
         )
 
     def test_innodb_autoincrement(self):

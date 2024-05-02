@@ -72,20 +72,20 @@ _StmtLambdaElementType = Callable[[_E], Any]
 class LambdaOptions(Options):
     enable_tracking = True
     track_closure_variables = True
-    track_on: Optional[object] = None
+    track_on: object | None = None
     global_track_bound_values = True
     track_bound_values = True
-    lambda_cache: Optional[_LambdaCacheType] = None
+    lambda_cache: _LambdaCacheType | None = None
 
 
 def lambda_stmt(
     lmb: _StmtLambdaType,
     enable_tracking: bool = True,
     track_closure_variables: bool = True,
-    track_on: Optional[object] = None,
+    track_on: object | None = None,
     global_track_bound_values: bool = True,
     track_bound_values: bool = True,
-    lambda_cache: Optional[_LambdaCacheType] = None,
+    lambda_cache: _LambdaCacheType | None = None,
 ) -> StatementLambdaElement:
     """Produce a SQL statement that is cached as a lambda.
 
@@ -179,18 +179,18 @@ class LambdaElement(elements.ClauseElement):
         ("_resolved", visitors.InternalTraversal.dp_clauseelement)
     ]
 
-    _transforms: Tuple[_CloneCallableType, ...] = ()
+    _transforms: tuple[_CloneCallableType, ...] = ()
 
-    _resolved_bindparams: List[BindParameter[Any]]
-    parent_lambda: Optional[StatementLambdaElement] = None
-    closure_cache_key: Union[Tuple[Any, ...], Literal[CacheConst.NO_CACHE]]
-    role: Type[SQLRole]
-    _rec: Union[AnalyzedFunction, NonAnalyzedFunction]
+    _resolved_bindparams: list[BindParameter[Any]]
+    parent_lambda: StatementLambdaElement | None = None
+    closure_cache_key: tuple[Any, ...] | Literal[CacheConst.NO_CACHE]
+    role: type[SQLRole]
+    _rec: AnalyzedFunction | NonAnalyzedFunction
     fn: _AnyLambdaType
-    tracker_key: Tuple[CodeType, ...]
+    tracker_key: tuple[CodeType, ...]
 
     def __repr__(self):
-        return "%s(%r)" % (
+        return "{}({!r})".format(
             self.__class__.__name__,
             self.fn.__code__,
         )
@@ -198,9 +198,9 @@ class LambdaElement(elements.ClauseElement):
     def __init__(
         self,
         fn: _LambdaType,
-        role: Type[SQLRole],
-        opts: Union[Type[LambdaOptions], LambdaOptions] = LambdaOptions,
-        apply_propagate_attrs: Optional[ClauseElement] = None,
+        role: type[SQLRole],
+        opts: type[LambdaOptions] | LambdaOptions = LambdaOptions,
+        apply_propagate_attrs: ClauseElement | None = None,
     ):
         self.fn = fn
         self.role = role
@@ -232,7 +232,7 @@ class LambdaElement(elements.ClauseElement):
             opts,
         )
 
-        bindparams: List[BindParameter[Any]]
+        bindparams: list[BindParameter[Any]]
         self._resolved_bindparams = bindparams = []
 
         if self.parent_lambda is not None:
@@ -240,7 +240,7 @@ class LambdaElement(elements.ClauseElement):
         else:
             parent_closure_cache_key = ()
 
-        cache_key: Union[Tuple[Any, ...], Literal[CacheConst.NO_CACHE]]
+        cache_key: tuple[Any, ...] | Literal[CacheConst.NO_CACHE]
 
         if parent_closure_cache_key is not _cache_key.NO_CACHE:
             anon_map = visitors.anon_map()
@@ -299,7 +299,7 @@ class LambdaElement(elements.ClauseElement):
             if self.parent_lambda is not None:
                 bindparams[:0] = self.parent_lambda._resolved_bindparams
 
-            lambda_element: Optional[LambdaElement] = self
+            lambda_element: LambdaElement | None = self
             while lambda_element is not None:
                 rec = lambda_element._rec
                 if rec.bindparam_trackers:
@@ -348,8 +348,8 @@ class LambdaElement(elements.ClauseElement):
         bindparam_lookup = {b.key: b for b in self._resolved_bindparams}
 
         def replace(
-            element: Optional[visitors.ExternallyTraversible], **kw: Any
-        ) -> Optional[visitors.ExternallyTraversible]:
+            element: visitors.ExternallyTraversible | None, **kw: Any
+        ) -> visitors.ExternallyTraversible | None:
             if isinstance(element, elements.BindParameter):
                 if element.key in bindparam_lookup:
                     bind = bindparam_lookup[element.key]
@@ -374,7 +374,7 @@ class LambdaElement(elements.ClauseElement):
     def _copy_internals(
         self,
         clone: _CloneCallableType = _clone,
-        deferred_copy_internals: Optional[_CloneCallableType] = None,
+        deferred_copy_internals: _CloneCallableType | None = None,
         **kw: Any,
     ) -> None:
         # TODO: this needs A LOT of tests
@@ -407,7 +407,7 @@ class LambdaElement(elements.ClauseElement):
 
         while parent is not None:
             assert parent.closure_cache_key is not CacheConst.NO_CACHE
-            parent_closure_cache_key: Tuple[Any, ...] = (
+            parent_closure_cache_key: tuple[Any, ...] = (
                 parent.closure_cache_key
             )
 
@@ -438,9 +438,9 @@ class DeferredLambdaElement(LambdaElement):
     def __init__(
         self,
         fn: _AnyLambdaType,
-        role: Type[roles.SQLRole],
-        opts: Union[Type[LambdaOptions], LambdaOptions] = LambdaOptions,
-        lambda_args: Tuple[Any, ...] = (),
+        role: type[roles.SQLRole],
+        opts: type[LambdaOptions] | LambdaOptions = LambdaOptions,
+        lambda_args: tuple[Any, ...] = (),
     ):
         self.lambda_args = lambda_args
         super().__init__(fn, role, opts)
@@ -532,9 +532,9 @@ class StatementLambdaElement(
         def __init__(
             self,
             fn: _StmtLambdaType,
-            role: Type[SQLRole],
-            opts: Union[Type[LambdaOptions], LambdaOptions] = LambdaOptions,
-            apply_propagate_attrs: Optional[ClauseElement] = None,
+            role: type[SQLRole],
+            opts: type[LambdaOptions] | LambdaOptions = LambdaOptions,
+            apply_propagate_attrs: ClauseElement | None = None,
         ): ...
 
     def __add__(
@@ -546,7 +546,7 @@ class StatementLambdaElement(
         self,
         other: _StmtLambdaElementType[Any],
         enable_tracking: bool = True,
-        track_on: Optional[Any] = None,
+        track_on: Any | None = None,
         track_closure_variables: bool = True,
         track_bound_values: bool = True,
     ) -> StatementLambdaElement:
@@ -714,7 +714,7 @@ class LinkedLambdaElement(StatementLambdaElement):
         self,
         fn: _StmtLambdaElementType[Any],
         parent_lambda: StatementLambdaElement,
-        opts: Union[Type[LambdaOptions], LambdaOptions],
+        opts: type[LambdaOptions] | LambdaOptions,
     ):
         self.opts = opts
         self.fn = fn
@@ -1087,8 +1087,8 @@ class AnalyzedCode:
 class NonAnalyzedFunction:
     __slots__ = ("expr",)
 
-    closure_bindparams: Optional[List[BindParameter[Any]]] = None
-    bindparam_trackers: Optional[List[_BoundParameterGetter]] = None
+    closure_bindparams: list[BindParameter[Any]] | None = None
+    bindparam_trackers: list[_BoundParameterGetter] | None = None
 
     is_sequence = False
 
@@ -1116,9 +1116,9 @@ class AnalyzedFunction:
         "closure_bindparams",
     )
 
-    closure_bindparams: Optional[List[BindParameter[Any]]]
-    expected_expr: Union[ClauseElement, List[ClauseElement]]
-    bindparam_trackers: Optional[List[_BoundParameterGetter]]
+    closure_bindparams: list[BindParameter[Any]] | None
+    expected_expr: ClauseElement | list[ClauseElement]
+    bindparam_trackers: list[_BoundParameterGetter] | None
 
     def __init__(
         self,
@@ -1260,7 +1260,7 @@ class AnalyzedFunction:
 
         code = "def make_cells():\n"
         if cell_values:
-            code += "    (%s) = (%s)\n" % (
+            code += "    ({}) = ({})\n".format(
                 ", ".join("i%d" % i for i in argrange),
                 ", ".join("o%d" % i for i in argrange),
             )

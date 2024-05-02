@@ -49,13 +49,13 @@ dottedgetter = operator.attrgetter
 
 
 class FullArgSpec(typing.NamedTuple):
-    args: List[str]
-    varargs: Optional[str]
-    varkw: Optional[str]
-    defaults: Optional[Tuple[Any, ...]]
-    kwonlyargs: List[str]
-    kwonlydefaults: Dict[str, Any]
-    annotations: Dict[str, Any]
+    args: list[str]
+    varargs: str | None
+    varkw: str | None
+    defaults: tuple[Any, ...] | None
+    kwonlyargs: list[str]
+    kwonlydefaults: dict[str, Any]
+    annotations: dict[str, Any]
 
 
 def inspect_getfullargspec(func: Callable[..., Any]) -> FullArgSpec:
@@ -187,12 +187,12 @@ def _formatannotation(annotation, base_module=None):
 
 
 def inspect_formatargspec(
-    args: List[str],
-    varargs: Optional[str] = None,
-    varkw: Optional[str] = None,
-    defaults: Optional[Sequence[Any]] = None,
-    kwonlyargs: Optional[Sequence[str]] = (),
-    kwonlydefaults: Optional[Mapping[str, Any]] = {},
+    args: list[str],
+    varargs: str | None = None,
+    varkw: str | None = None,
+    defaults: Sequence[Any] | None = None,
+    kwonlyargs: Sequence[str] | None = (),
+    kwonlydefaults: Mapping[str, Any] | None = {},
     annotations: Mapping[str, Any] = {},
     formatarg: Callable[[str], str] = str,
     formatvarargs: Callable[[str], str] = lambda name: "*" + name,
@@ -258,7 +258,7 @@ def inspect_formatargspec(
     return result
 
 
-def dataclass_fields(cls: Type[Any]) -> Iterable[dataclasses.Field[Any]]:
+def dataclass_fields(cls: type[Any]) -> Iterable[dataclasses.Field[Any]]:
     """Return a sequence of all dataclasses.Field objects associated
     with a class as an already processed dataclass.
 
@@ -272,7 +272,7 @@ def dataclass_fields(cls: Type[Any]) -> Iterable[dataclasses.Field[Any]]:
         return []
 
 
-def local_dataclass_fields(cls: Type[Any]) -> Iterable[dataclasses.Field[Any]]:
+def local_dataclass_fields(cls: type[Any]) -> Iterable[dataclasses.Field[Any]]:
     """Return a sequence of all dataclasses.Field objects associated with
     an already processed dataclass, excluding those that originate from a
     superclass.
@@ -282,7 +282,7 @@ def local_dataclass_fields(cls: Type[Any]) -> Iterable[dataclasses.Field[Any]]:
     """
 
     if dataclasses.is_dataclass(cls):
-        super_fields: Set[dataclasses.Field[Any]] = set()
+        super_fields: set[dataclasses.Field[Any]] = set()
         for sup in cls.__bases__:
             super_fields.update(dataclass_fields(sup))
         return [f for f in dataclasses.fields(cls) if f not in super_fields]

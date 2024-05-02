@@ -129,12 +129,12 @@ class _ClsLevelDispatch(RefCollection[_ET]):
     has_kw: bool
     legacy_signatures: MutableSequence[legacy._LegacySignatureType]
     _clslevel: MutableMapping[
-        Type[_ET], _ListenerFnSequenceType[_ListenerFnType]
+        type[_ET], _ListenerFnSequenceType[_ListenerFnType]
     ]
 
     def __init__(
         self,
-        parent_dispatch_cls: Type[_HasEventsDispatch[_ET]],
+        parent_dispatch_cls: type[_HasEventsDispatch[_ET]],
         fn: _ListenerFnType,
     ):
         self.name = fn.__name__
@@ -187,7 +187,7 @@ class _ClsLevelDispatch(RefCollection[_ET]):
                 f"Can't assign an event directly to the {target} class"
             )
 
-        cls: Type[_ET]
+        cls: type[_ET]
 
         for cls in util.walk_subclasses(target):
             if cls is not target and cls not in self._clslevel:
@@ -207,7 +207,7 @@ class _ClsLevelDispatch(RefCollection[_ET]):
     def append(self, event_key: _EventKey[_ET], propagate: bool) -> None:
         self._do_insert_or_append(event_key, is_append=True)
 
-    def update_subclass(self, target: Type[_ET]) -> None:
+    def update_subclass(self, target: type[_ET]) -> None:
         if target not in self._clslevel:
             if getattr(target, "_sa_propagate_class_events", True):
                 self._clslevel[target] = collections.deque()
@@ -215,7 +215,7 @@ class _ClsLevelDispatch(RefCollection[_ET]):
                 self._clslevel[target] = _empty_collection()
 
         clslevel = self._clslevel[target]
-        cls: Type[_ET]
+        cls: type[_ET]
         for cls in target.__mro__[1:]:
             if cls in self._clslevel:
                 clslevel.extend(
@@ -224,7 +224,7 @@ class _ClsLevelDispatch(RefCollection[_ET]):
 
     def remove(self, event_key: _EventKey[_ET]) -> None:
         target = event_key.dispatch_target
-        cls: Type[_ET]
+        cls: type[_ET]
         for cls in util.walk_subclasses(target):
             if cls in self._clslevel:
                 self._clslevel[cls].remove(event_key._listen_fn)
@@ -233,7 +233,7 @@ class _ClsLevelDispatch(RefCollection[_ET]):
     def clear(self) -> None:
         """Clear all class level listeners"""
 
-        to_clear: Set[_ListenerFnType] = set()
+        to_clear: set[_ListenerFnType] = set()
         for dispatcher in self._clslevel.values():
             to_clear.update(dispatcher)
             dispatcher.clear()
@@ -316,13 +316,13 @@ class _EmptyListener(_InstanceLevelDispatch[_ET]):
 
     __slots__ = "parent", "parent_listeners", "name"
 
-    propagate: FrozenSet[_ListenerFnType] = frozenset()
-    listeners: Tuple[()] = ()
+    propagate: frozenset[_ListenerFnType] = frozenset()
+    listeners: tuple[()] = ()
     parent: _ClsLevelDispatch[_ET]
     parent_listeners: _ListenerFnSequenceType[_ListenerFnType]
     name: str
 
-    def __init__(self, parent: _ClsLevelDispatch[_ET], target_cls: Type[_ET]):
+    def __init__(self, parent: _ClsLevelDispatch[_ET], target_cls: type[_ET]):
         if target_cls not in parent._clslevel:
             parent.update_subclass(target_cls)
         self.parent = parent
@@ -395,10 +395,10 @@ class _MutexProtocol(Protocol):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
-    ) -> Optional[bool]: ...
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> bool | None: ...
 
 
 class _CompoundListener(_InstanceLevelDispatch[_ET]):
@@ -532,9 +532,9 @@ class _ListenerCollection(_CompoundListener[_ET]):
     parent: _ClsLevelDispatch[_ET]
     name: str
     listeners: Deque[_ListenerFnType]
-    propagate: Set[_ListenerFnType]
+    propagate: set[_ListenerFnType]
 
-    def __init__(self, parent: _ClsLevelDispatch[_ET], target_cls: Type[_ET]):
+    def __init__(self, parent: _ClsLevelDispatch[_ET], target_cls: type[_ET]):
         super().__init__()
         if target_cls not in parent._clslevel:
             parent.update_subclass(target_cls)

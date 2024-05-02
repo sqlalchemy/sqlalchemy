@@ -420,7 +420,7 @@ class QuotedNameArgumentTest(fixtures.TablesTest):
                     "quote ' one",
                 ]
             for name in names:
-                query = "CREATE VIEW %s AS SELECT * FROM %s" % (
+                query = "CREATE VIEW {} AS SELECT * FROM {}".format(
                     config.db.dialect.identifier_preparer.quote(
                         "view %s" % name
                     ),

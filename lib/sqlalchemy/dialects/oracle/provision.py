@@ -34,7 +34,7 @@ def _oracle_create_db(cfg, eng, ident):
         conn.exec_driver_sql("create user %s identified by xe" % ident)
         conn.exec_driver_sql("create user %s_ts1 identified by xe" % ident)
         conn.exec_driver_sql("create user %s_ts2 identified by xe" % ident)
-        conn.exec_driver_sql("grant dba to %s" % (ident,))
+        conn.exec_driver_sql(f"grant dba to {ident}")
         conn.exec_driver_sql("grant unlimited tablespace to %s" % ident)
         conn.exec_driver_sql("grant unlimited tablespace to %s_ts1" % ident)
         conn.exec_driver_sql("grant unlimited tablespace to %s_ts2" % ident)

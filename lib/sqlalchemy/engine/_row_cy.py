@@ -47,21 +47,21 @@ class BaseRow:
 
     if cython.compiled:
         _parent: ResultMetaData = cython.declare(object, visibility="readonly")
-        _key_to_index: Dict[_KeyType, int] = cython.declare(
+        _key_to_index: dict[_KeyType, int] = cython.declare(
             dict, visibility="readonly"
         )
-        _data: Tuple[Any, ...] = cython.declare(tuple, visibility="readonly")
+        _data: tuple[Any, ...] = cython.declare(tuple, visibility="readonly")
 
     def __init__(
         self,
         parent: ResultMetaData,
-        processors: Optional[_ProcessorsType],
-        key_to_index: Dict[_KeyType, int],
+        processors: _ProcessorsType | None,
+        key_to_index: dict[_KeyType, int],
         data: Sequence[Any],
     ) -> None:
         """Row objects are constructed by CursorResult objects."""
 
-        data_tuple: Tuple[Any, ...] = (
+        data_tuple: tuple[Any, ...] = (
             _apply_processors(processors, data)
             if processors is not None
             else tuple(data)
@@ -73,8 +73,8 @@ class BaseRow:
     def _set_attrs(  # type: ignore[no-untyped-def] # cython crashes
         self,
         parent: ResultMetaData,
-        key_to_index: Dict[_KeyType, int],
-        data: Tuple[Any, ...],
+        key_to_index: dict[_KeyType, int],
+        data: tuple[Any, ...],
     ):
         if cython.compiled:
             # cython does not use __setattr__
@@ -87,20 +87,20 @@ class BaseRow:
             object.__setattr__(self, "_key_to_index", key_to_index)
             object.__setattr__(self, "_data", data)
 
-    def __reduce__(self) -> Tuple[Any, Any]:
+    def __reduce__(self) -> tuple[Any, Any]:
         return (
             rowproxy_reconstructor,
             (self.__class__, self.__getstate__()),
         )
 
-    def __getstate__(self) -> Dict[str, Any]:
+    def __getstate__(self) -> dict[str, Any]:
         return {"_parent": self._parent, "_data": self._data}
 
-    def __setstate__(self, state: Dict[str, Any]) -> None:
+    def __setstate__(self, state: dict[str, Any]) -> None:
         parent = state["_parent"]
         self._set_attrs(parent, parent._key_to_index, state["_data"])
 
-    def _values_impl(self) -> List[Any]:
+    def _values_impl(self) -> list[Any]:
         return list(self._data)
 
     def __iter__(self) -> Iterator[Any]:
@@ -120,7 +120,7 @@ class BaseRow:
 
     @cython.cfunc
     def _get_by_key_impl(self, key: _KeyType, attr_err: cython.bint) -> object:
-        index: Optional[int] = self._key_to_index.get(key)
+        index: int | None = self._key_to_index.get(key)
         if index is not None:
             return self._data[index]
         self._parent._key_not_found(key, attr_err)
@@ -129,7 +129,7 @@ class BaseRow:
     def __getattr__(self, name: str) -> Any:
         return self._get_by_key_impl(name, True)
 
-    def _to_tuple_instance(self) -> Tuple[Any, ...]:
+    def _to_tuple_instance(self) -> tuple[Any, ...]:
         return self._data
 
 
@@ -137,8 +137,8 @@ class BaseRow:
 @cython.cfunc
 def _apply_processors(
     proc: _ProcessorsType, data: Sequence[Any]
-) -> Tuple[Any, ...]:
-    res: List[Any] = list(data)
+) -> tuple[Any, ...]:
+    res: list[Any] = list(data)
     proc_size: cython.Py_ssize_t = len(proc)
     # TODO: would be nice to do this only on the fist row
     assert len(res) == proc_size
@@ -155,7 +155,7 @@ def _apply_processors(
 # class too.
 @cython.annotation_typing(False)
 def rowproxy_reconstructor(
-    cls: Type[BaseRow], state: Dict[str, Any]
+    cls: type[BaseRow], state: dict[str, Any]
 ) -> BaseRow:
     obj = cls.__new__(cls)
     obj.__setstate__(state)

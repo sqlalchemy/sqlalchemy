@@ -86,28 +86,28 @@ class _repr_sym:
 
 
 classes: collections.defaultdict[
-    str, Dict[str, Tuple[Any, ...]]
+    str, dict[str, tuple[Any, ...]]
 ] = collections.defaultdict(dict)
 
 _T = TypeVar("_T", bound="Any")
 
 
 def create_proxy_methods(
-    target_cls: Type[Any],
+    target_cls: type[Any],
     target_cls_sphinx_name: str,
     proxy_cls_sphinx_name: str,
     classmethods: Iterable[str] = (),
     methods: Iterable[str] = (),
     attributes: Iterable[str] = (),
     use_intermediate_variable: Iterable[str] = (),
-) -> Callable[[Type[_T]], Type[_T]]:
+) -> Callable[[type[_T]], type[_T]]:
     """A class decorator that will copy attributes to a proxy class.
 
     The class to be instrumented must define a single accessor "_proxied".
 
     """
 
-    def decorate(cls: Type[_T]) -> Type[_T]:
+    def decorate(cls: type[_T]) -> type[_T]:
         # collect the class as a separate step.  since the decorator
         # is called as a result of imports, the order in which classes
         # are collected (like in asyncio) can't be well controlled.  however,
@@ -176,14 +176,14 @@ def _grab_overloads(fn):
 
 def process_class(
     buf: TextIO,
-    target_cls: Type[Any],
+    target_cls: type[Any],
     target_cls_sphinx_name: str,
     proxy_cls_sphinx_name: str,
     classmethods: Iterable[str],
     methods: Iterable[str],
     attributes: Iterable[str],
     use_intermediate_variable: Iterable[str],
-    cls: Type[Any],
+    cls: type[Any],
 ):
     sphinx_symbol_match = re.match(r":class:`(.+)`", target_cls_sphinx_name)
     if not sphinx_symbol_match:

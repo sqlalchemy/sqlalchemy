@@ -87,7 +87,7 @@ class UnmappedInstanceError(UnmappedError):
     """An mapping operation was requested for an unknown instance."""
 
     @util.preload_module("sqlalchemy.orm.base")
-    def __init__(self, obj: object, msg: Optional[str] = None):
+    def __init__(self, obj: object, msg: str | None = None):
         base = util.preloaded.orm_base
 
         if not msg:
@@ -116,7 +116,7 @@ class UnmappedInstanceError(UnmappedError):
 class UnmappedClassError(UnmappedError):
     """An mapping operation was requested for an unknown class."""
 
-    def __init__(self, cls: Type[_T], msg: Optional[str] = None):
+    def __init__(self, cls: type[_T], msg: str | None = None):
         if not msg:
             msg = _default_unmapped(cls)
         UnmappedError.__init__(self, msg)
@@ -146,7 +146,7 @@ class ObjectDeletedError(sa_exc.InvalidRequestError):
     """
 
     @util.preload_module("sqlalchemy.orm.base")
-    def __init__(self, state: InstanceState[Any], msg: Optional[str] = None):
+    def __init__(self, state: InstanceState[Any], msg: str | None = None):
         base = util.preloaded.orm_base
 
         if not msg:
@@ -170,11 +170,11 @@ class LoaderStrategyException(sa_exc.InvalidRequestError):
 
     def __init__(
         self,
-        applied_to_property_type: Type[Any],
+        applied_to_property_type: type[Any],
         requesting_property: MapperProperty[Any],
-        applies_to: Optional[Type[MapperProperty[Any]]],
-        actual_strategy_type: Optional[Type[LoaderStrategy]],
-        strategy_key: Tuple[Any, ...],
+        applies_to: type[MapperProperty[Any]] | None,
+        actual_strategy_type: type[LoaderStrategy] | None,
+        strategy_key: tuple[Any, ...],
     ):
         if actual_strategy_type is None:
             sa_exc.InvalidRequestError.__init__(
@@ -198,8 +198,8 @@ class LoaderStrategyException(sa_exc.InvalidRequestError):
             )
 
 
-def _safe_cls_name(cls: Type[Any]) -> str:
-    cls_name: Optional[str]
+def _safe_cls_name(cls: type[Any]) -> str:
+    cls_name: str | None
     try:
         cls_name = ".".join((cls.__module__, cls.__name__))
     except AttributeError:
@@ -210,7 +210,7 @@ def _safe_cls_name(cls: Type[Any]) -> str:
 
 
 @util.preload_module("sqlalchemy.orm.base")
-def _default_unmapped(cls: Type[Any]) -> Optional[str]:
+def _default_unmapped(cls: type[Any]) -> str | None:
     base = util.preloaded.orm_base
 
     try:

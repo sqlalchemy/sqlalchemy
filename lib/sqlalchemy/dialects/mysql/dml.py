@@ -179,7 +179,7 @@ class Insert(StandardInsert):
 class OnDuplicateClause(ClauseElement):
     __visit_name__ = "on_duplicate_key_update"
 
-    _parameter_ordering: Optional[List[str]] = None
+    _parameter_ordering: list[str] | None = None
 
     stringify_dialect = "mysql"
 

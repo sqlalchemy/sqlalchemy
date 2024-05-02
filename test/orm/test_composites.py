@@ -652,7 +652,7 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
                 return self.x, self.y
 
             def __repr__(self):
-                return "Point(x=%r, y=%r)" % (self.x, self.y)
+                return "Point(x={!r}, y={!r})".format(self.x, self.y)
 
             def __eq__(self, other):
                 return (
@@ -707,7 +707,7 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
                 return self.x, self.y
 
             def __repr__(self):
-                return "Point(x=%r, y=%r)" % (self.x, self.y)
+                return "Point(x={!r}, y={!r})".format(self.x, self.y)
 
             def __eq__(self, other):
                 return (
@@ -1221,7 +1221,7 @@ class DefaultsTest(fixtures.MappedTest):
                 return not self.__eq__(other)
 
             def __repr__(self):
-                return "FBComposite(%r, %r, %r, %r)" % (
+                return "FBComposite({!r}, {!r}, {!r}, {!r})".format(
                     self.goofy_x1,
                     self.x2,
                     self.x3,

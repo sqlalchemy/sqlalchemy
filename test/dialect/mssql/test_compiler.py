@@ -686,7 +686,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         schema_no_brackets = schemaname.strip("[]")
 
         if " " in schemaname:
-            rendered_schema = "[%s]" % (schema_no_brackets,)
+            rendered_schema = "[{}]".format(schema_no_brackets)
         else:
             rendered_schema = schema_no_brackets
 

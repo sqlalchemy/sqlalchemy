@@ -86,7 +86,7 @@ class Row(BaseRow, _RowBase[Unpack[_Ts]], Generic[Unpack[_Ts]]):
         "The :meth:`.Row._tuple` method is deprecated, :class:`.Row` "
         "now behaves like a tuple and can unpack types directly.",
     )
-    def _tuple(self) -> Tuple[Unpack[_Ts]]:
+    def _tuple(self) -> tuple[Unpack[_Ts]]:
         """Return a 'tuple' form of this :class:`.Row`.
 
         At runtime, this method returns "self"; the :class:`.Row` object is
@@ -120,7 +120,7 @@ class Row(BaseRow, _RowBase[Unpack[_Ts]], Generic[Unpack[_Ts]]):
         "methods and library-level attributes are intended to be underscored "
         "to avoid name conflicts.  Please use :meth:`Row._tuple`.",
     )
-    def tuple(self) -> Tuple[Unpack[_Ts]]:
+    def tuple(self) -> tuple[Unpack[_Ts]]:
         """Return a 'tuple' form of this :class:`.Row`.
 
         .. versionadded:: 2.0
@@ -139,7 +139,7 @@ class Row(BaseRow, _RowBase[Unpack[_Ts]], Generic[Unpack[_Ts]]):
         "The :attr:`.Row._t` attribute is deprecated, :class:`.Row` "
         "now behaves like a tuple and can unpack types directly.",
     )
-    def _t(self) -> Tuple[Unpack[_Ts]]:
+    def _t(self) -> tuple[Unpack[_Ts]]:
         """A synonym for :meth:`.Row._tuple`.
 
         .. versionadded:: 2.0.19 - The :attr:`.Row._t` attribute supersedes
@@ -164,7 +164,7 @@ class Row(BaseRow, _RowBase[Unpack[_Ts]], Generic[Unpack[_Ts]]):
         "methods and library-level attributes are intended to be underscored "
         "to avoid name conflicts.  Please use :attr:`Row._t`.",
     )
-    def t(self) -> Tuple[Unpack[_Ts]]:
+    def t(self) -> tuple[Unpack[_Ts]]:
         """A synonym for :meth:`.Row._tuple`.
 
         .. versionadded:: 2.0
@@ -195,7 +195,7 @@ class Row(BaseRow, _RowBase[Unpack[_Ts]], Generic[Unpack[_Ts]]):
         return RowMapping(self._parent, None, self._key_to_index, self._data)
 
     def _filter_on_values(
-        self, processor: Optional[_ProcessorsType]
+        self, processor: _ProcessorsType | None
     ) -> Row[Unpack[_Ts]]:
         return Row(self._parent, processor, self._key_to_index, self._data)
 
@@ -256,7 +256,7 @@ class Row(BaseRow, _RowBase[Unpack[_Ts]], Generic[Unpack[_Ts]]):
         return repr(sql_util._repr_row(self))
 
     @property
-    def _fields(self) -> Tuple[str, ...]:
+    def _fields(self) -> tuple[str, ...]:
         """Return a tuple of string keys as represented by this
         :class:`.Row`.
 
@@ -276,7 +276,7 @@ class Row(BaseRow, _RowBase[Unpack[_Ts]], Generic[Unpack[_Ts]]):
         """
         return tuple([k for k in self._parent.keys if k is not None])
 
-    def _asdict(self) -> Dict[str, Any]:
+    def _asdict(self) -> dict[str, Any]:
         """Return a new dict which maps field names to their corresponding
         values.
 
@@ -302,10 +302,10 @@ class ROMappingView(ABC):
     __slots__ = ()
 
     _items: Sequence[Any]
-    _mapping: Mapping["_KeyType", Any]
+    _mapping: Mapping[_KeyType, Any]
 
     def __init__(
-        self, mapping: Mapping["_KeyType", Any], items: Sequence[Any]
+        self, mapping: Mapping[_KeyType, Any], items: Sequence[Any]
     ):
         self._mapping = mapping  # type: ignore[misc]
         self._items = items  # type: ignore[misc]
@@ -375,7 +375,7 @@ class RowMapping(BaseRow, typing.Mapping["_KeyType", Any]):
     else:
         __getitem__ = BaseRow._get_by_key_impl_mapping
 
-    def _values_impl(self) -> List[Any]:
+    def _values_impl(self) -> list[Any]:
         return list(self._data)
 
     def __iter__(self) -> Iterator[str]:

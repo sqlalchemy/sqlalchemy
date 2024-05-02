@@ -420,7 +420,7 @@ class DeferredReflection:
 
     @classmethod
     def prepare(
-        cls, bind: Union[Engine, Connection], **reflect_kw: Any
+        cls, bind: Engine | Connection, **reflect_kw: Any
     ) -> None:
         r"""Reflect all :class:`_schema.Table` objects for all current
         :class:`.DeferredReflection` subclasses

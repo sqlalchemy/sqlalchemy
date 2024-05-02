@@ -860,7 +860,7 @@ class ColumnCollectionCommon(testing.AssertsCompiledSQL):
             [("col1", c1), ("col2", c2), ("col3", c3)]
         )
 
-        eq_(str(cc), "%s(%s, %s, %s)" % (type(cc).__name__, c1, c2, c3))
+        eq_(str(cc), "{}({}, {}, {})".format(type(cc).__name__, c1, c2, c3))
         eq_(repr(cc), object.__repr__(cc))
 
 

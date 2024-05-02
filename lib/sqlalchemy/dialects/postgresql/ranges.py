@@ -79,10 +79,10 @@ class Range(Generic[_T]):
 
     """
 
-    lower: Optional[_T] = None
+    lower: _T | None = None
     """the lower bound"""
 
-    upper: Optional[_T] = None
+    upper: _T | None = None
     """the upper bound"""
 
     if TYPE_CHECKING:
@@ -96,8 +96,8 @@ class Range(Generic[_T]):
 
         def __init__(
             self,
-            lower: Optional[_T] = None,
-            upper: Optional[_T] = None,
+            lower: _T | None = None,
+            upper: _T | None = None,
             *,
             bounds: _BoundsType = "[)",
             empty: bool = False,
@@ -209,9 +209,9 @@ class Range(Generic[_T]):
 
     def _compare_edges(
         self,
-        value1: Optional[_T],
+        value1: _T | None,
         bound1: str,
-        value2: Optional[_T],
+        value2: _T | None,
         bound2: str,
         only_values: bool = False,
     ) -> int:
@@ -352,7 +352,7 @@ class Range(Generic[_T]):
 
         return True
 
-    def contains(self, value: Union[_T, Range[_T]]) -> bool:
+    def contains(self, value: _T | Range[_T]) -> bool:
         "Determine whether this range contains `value`."
 
         if isinstance(value, Range):
@@ -458,9 +458,9 @@ class Range(Generic[_T]):
 
     def _upper_edge_adjacent_to_lower(
         self,
-        value1: Optional[_T],
+        value1: _T | None,
         bound1: str,
-        value2: Optional[_T],
+        value2: _T | None,
         bound2: str,
     ) -> bool:
         """Determine whether an upper bound is immediately successive to a
@@ -744,16 +744,16 @@ class AbstractRange(sqltypes.TypeEngine[_T]):
     __abstract__ = True
 
     @overload
-    def adapt(self, cls: Type[_TE], **kw: Any) -> _TE: ...
+    def adapt(self, cls: type[_TE], **kw: Any) -> _TE: ...
 
     @overload
     def adapt(
-        self, cls: Type[TypeEngineMixin], **kw: Any
+        self, cls: type[TypeEngineMixin], **kw: Any
     ) -> TypeEngine[Any]: ...
 
     def adapt(
         self,
-        cls: Type[Union[TypeEngine[Any], TypeEngineMixin]],
+        cls: type[TypeEngine[Any] | TypeEngineMixin],
         **kw: Any,
     ) -> TypeEngine[Any]:
         """Dynamically adapt a range type to an abstract impl.

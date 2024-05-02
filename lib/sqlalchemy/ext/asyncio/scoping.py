@@ -476,8 +476,8 @@ class async_scoped_session(Generic[_AS]):
 
     async def connection(
         self,
-        bind_arguments: Optional[_BindArguments] = None,
-        execution_options: Optional[CoreExecuteOptionsParameter] = None,
+        bind_arguments: _BindArguments | None = None,
+        execution_options: CoreExecuteOptionsParameter | None = None,
         **kw: Any,
     ) -> AsyncConnection:
         r"""Return a :class:`_asyncio.AsyncConnection` object corresponding to
@@ -534,45 +534,45 @@ class async_scoped_session(Generic[_AS]):
     async def execute(
         self,
         statement: TypedReturnsRows[Unpack[_Ts]],
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
+        bind_arguments: _BindArguments | None = None,
+        _parent_execute_state: Any | None = None,
+        _add_event: Any | None = None,
     ) -> Result[Unpack[_Ts]]: ...
 
     @overload
     async def execute(
         self,
         statement: UpdateBase,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
+        bind_arguments: _BindArguments | None = None,
+        _parent_execute_state: Any | None = None,
+        _add_event: Any | None = None,
     ) -> CursorResult[Unpack[TupleAny]]: ...
 
     @overload
     async def execute(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
+        bind_arguments: _BindArguments | None = None,
+        _parent_execute_state: Any | None = None,
+        _add_event: Any | None = None,
     ) -> Result[Unpack[TupleAny]]: ...
 
     async def execute(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> Result[Unpack[TupleAny]]:
         r"""Execute a statement and return a buffered
@@ -599,7 +599,7 @@ class async_scoped_session(Generic[_AS]):
         )
 
     def expire(
-        self, instance: object, attribute_names: Optional[Iterable[str]] = None
+        self, instance: object, attribute_names: Iterable[str] | None = None
     ) -> None:
         r"""Expire the attributes on an instance.
 
@@ -743,7 +743,7 @@ class async_scoped_session(Generic[_AS]):
 
         return self._proxied.expunge_all()
 
-    async def flush(self, objects: Optional[Sequence[Any]] = None) -> None:
+    async def flush(self, objects: Sequence[Any] | None = None) -> None:
         r"""Flush all the object changes to the database.
 
         .. container:: class_bases
@@ -762,11 +762,11 @@ class async_scoped_session(Generic[_AS]):
 
     def get_bind(
         self,
-        mapper: Optional[_EntityBindKey[_O]] = None,
-        clause: Optional[ClauseElement] = None,
-        bind: Optional[_SessionBind] = None,
+        mapper: _EntityBindKey[_O] | None = None,
+        clause: ClauseElement | None = None,
+        bind: _SessionBind | None = None,
         **kw: Any,
-    ) -> Union[Engine, Connection]:
+    ) -> Engine | Connection:
         r"""Return a "bind" to which the synchronous proxied :class:`_orm.Session`
         is bound.
 
@@ -939,7 +939,7 @@ class async_scoped_session(Generic[_AS]):
         instance: _O,
         *,
         load: bool = True,
-        options: Optional[Sequence[ORMOption]] = None,
+        options: Sequence[ORMOption] | None = None,
     ) -> _O:
         r"""Copy the state of a given instance into a corresponding instance
         within this :class:`_asyncio.AsyncSession`.
@@ -961,7 +961,7 @@ class async_scoped_session(Generic[_AS]):
     async def refresh(
         self,
         instance: object,
-        attribute_names: Optional[Iterable[str]] = None,
+        attribute_names: Iterable[str] | None = None,
         with_for_update: ForUpdateParameter = None,
     ) -> None:
         r"""Expire and refresh the attributes on the given instance.
@@ -1011,31 +1011,31 @@ class async_scoped_session(Generic[_AS]):
     async def scalar(
         self,
         statement: TypedReturnsRows[_T],
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
-    ) -> Optional[_T]: ...
+    ) -> _T | None: ...
 
     @overload
     async def scalar(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> Any: ...
 
     async def scalar(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> Any:
         r"""Execute a statement and return a scalar result.
@@ -1064,10 +1064,10 @@ class async_scoped_session(Generic[_AS]):
     async def scalars(
         self,
         statement: TypedReturnsRows[_T],
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> ScalarResult[_T]: ...
 
@@ -1075,20 +1075,20 @@ class async_scoped_session(Generic[_AS]):
     async def scalars(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> ScalarResult[Any]: ...
 
     async def scalars(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> ScalarResult[Any]:
         r"""Execute a statement and return scalar results.
@@ -1127,12 +1127,12 @@ class async_scoped_session(Generic[_AS]):
         entity: _EntityBindKey[_O],
         ident: _PKIdentityArgument,
         *,
-        options: Optional[Sequence[ORMOption]] = None,
+        options: Sequence[ORMOption] | None = None,
         populate_existing: bool = False,
         with_for_update: ForUpdateParameter = None,
-        identity_token: Optional[Any] = None,
+        identity_token: Any | None = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-    ) -> Union[_O, None]:
+    ) -> _O | None:
         r"""Return an instance based on the given primary key identifier,
         or ``None`` if not found.
 
@@ -1165,10 +1165,10 @@ class async_scoped_session(Generic[_AS]):
         entity: _EntityBindKey[_O],
         ident: _PKIdentityArgument,
         *,
-        options: Optional[Sequence[ORMOption]] = None,
+        options: Sequence[ORMOption] | None = None,
         populate_existing: bool = False,
         with_for_update: ForUpdateParameter = None,
-        identity_token: Optional[Any] = None,
+        identity_token: Any | None = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
     ) -> _O:
         r"""Return an instance based on the given primary key identifier,
@@ -1205,10 +1205,10 @@ class async_scoped_session(Generic[_AS]):
     async def stream(
         self,
         statement: TypedReturnsRows[Unpack[_Ts]],
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> AsyncResult[Unpack[_Ts]]: ...
 
@@ -1216,20 +1216,20 @@ class async_scoped_session(Generic[_AS]):
     async def stream(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> AsyncResult[Unpack[TupleAny]]: ...
 
     async def stream(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> AsyncResult[Unpack[TupleAny]]:
         r"""Execute a statement and return a streaming
@@ -1255,10 +1255,10 @@ class async_scoped_session(Generic[_AS]):
     async def stream_scalars(
         self,
         statement: TypedReturnsRows[_T],
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> AsyncScalarResult[_T]: ...
 
@@ -1266,20 +1266,20 @@ class async_scoped_session(Generic[_AS]):
     async def stream_scalars(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> AsyncScalarResult[Any]: ...
 
     async def stream_scalars(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> AsyncScalarResult[Any]:
         r"""Execute a statement and return a stream of scalar results.
@@ -1558,7 +1558,7 @@ class async_scoped_session(Generic[_AS]):
         return await AsyncSession.close_all()
 
     @classmethod
-    def object_session(cls, instance: object) -> Optional[Session]:
+    def object_session(cls, instance: object) -> Session | None:
         r"""Return the :class:`.Session` to which an object belongs.
 
         .. container:: class_bases
@@ -1582,12 +1582,12 @@ class async_scoped_session(Generic[_AS]):
     @classmethod
     def identity_key(
         cls,
-        class_: Optional[Type[Any]] = None,
-        ident: Union[Any, Tuple[Any, ...]] = None,
+        class_: type[Any] | None = None,
+        ident: Any | tuple[Any, ...] = None,
         *,
-        instance: Optional[Any] = None,
-        row: Optional[Union[Row[Unpack[TupleAny]], RowMapping]] = None,
-        identity_token: Optional[Any] = None,
+        instance: Any | None = None,
+        row: Row[Unpack[TupleAny]] | RowMapping | None = None,
+        identity_token: Any | None = None,
     ) -> _IdentityKeyType[Any]:
         r"""Return an identity key.
 

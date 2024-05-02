@@ -145,7 +145,7 @@ def _document_text_coercion(
 def _expression_collection_was_a_list(
     attrname: str,
     fnname: str,
-    args: Union[Sequence[_T], Sequence[Sequence[_T]]],
+    args: Sequence[_T] | Sequence[Sequence[_T]],
 ) -> Sequence[_T]:
     if args and isinstance(args[0], (list, set, dict)) and len(args) == 1:
         if isinstance(args[0], list):
@@ -162,7 +162,7 @@ def _expression_collection_was_a_list(
 
 @overload
 def expect(
-    role: Type[roles.TruncatedLabelRole],
+    role: type[roles.TruncatedLabelRole],
     element: Any,
     **kw: Any,
 ) -> str: ...
@@ -170,7 +170,7 @@ def expect(
 
 @overload
 def expect(
-    role: Type[roles.DMLColumnRole],
+    role: type[roles.DMLColumnRole],
     element: Any,
     *,
     as_key: Literal[True] = ...,
@@ -180,7 +180,7 @@ def expect(
 
 @overload
 def expect(
-    role: Type[roles.LiteralValueRole],
+    role: type[roles.LiteralValueRole],
     element: Any,
     **kw: Any,
 ) -> BindParameter[Any]: ...
@@ -188,7 +188,7 @@ def expect(
 
 @overload
 def expect(
-    role: Type[roles.DDLReferredColumnRole],
+    role: type[roles.DDLReferredColumnRole],
     element: Any,
     **kw: Any,
 ) -> Column[Any]: ...
@@ -196,15 +196,15 @@ def expect(
 
 @overload
 def expect(
-    role: Type[roles.DDLConstraintColumnRole],
+    role: type[roles.DDLConstraintColumnRole],
     element: Any,
     **kw: Any,
-) -> Union[Column[Any], str]: ...
+) -> Column[Any] | str: ...
 
 
 @overload
 def expect(
-    role: Type[roles.StatementOptionRole],
+    role: type[roles.StatementOptionRole],
     element: Any,
     **kw: Any,
 ) -> DQLDMLClauseElement: ...
@@ -212,7 +212,7 @@ def expect(
 
 @overload
 def expect(
-    role: Type[roles.LabeledColumnExprRole[Any]],
+    role: type[roles.LabeledColumnExprRole[Any]],
     element: _ColumnExpressionArgument[_T],
     **kw: Any,
 ) -> NamedColumn[_T]: ...
@@ -220,11 +220,11 @@ def expect(
 
 @overload
 def expect(
-    role: Union[
-        Type[roles.ExpressionElementRole[Any]],
-        Type[roles.LimitOffsetRole],
-        Type[roles.WhereHavingRole],
-    ],
+    role: (
+        type[roles.ExpressionElementRole[Any]] |
+        type[roles.LimitOffsetRole] |
+        type[roles.WhereHavingRole]
+    ),
     element: _ColumnExpressionArgument[_T],
     **kw: Any,
 ) -> ColumnElement[_T]: ...
@@ -232,13 +232,13 @@ def expect(
 
 @overload
 def expect(
-    role: Union[
-        Type[roles.ExpressionElementRole[Any]],
-        Type[roles.LimitOffsetRole],
-        Type[roles.WhereHavingRole],
-        Type[roles.OnClauseRole],
-        Type[roles.ColumnArgumentRole],
-    ],
+    role: (
+        type[roles.ExpressionElementRole[Any]] |
+        type[roles.LimitOffsetRole] |
+        type[roles.WhereHavingRole] |
+        type[roles.OnClauseRole] |
+        type[roles.ColumnArgumentRole]
+    ),
     element: Any,
     **kw: Any,
 ) -> ColumnElement[Any]: ...
@@ -246,7 +246,7 @@ def expect(
 
 @overload
 def expect(
-    role: Type[roles.DMLTableRole],
+    role: type[roles.DMLTableRole],
     element: _DMLTableArgument,
     **kw: Any,
 ) -> _DMLTableElement: ...
@@ -254,7 +254,7 @@ def expect(
 
 @overload
 def expect(
-    role: Type[roles.HasCTERole],
+    role: type[roles.HasCTERole],
     element: HasCTE,
     **kw: Any,
 ) -> HasCTE: ...
@@ -262,7 +262,7 @@ def expect(
 
 @overload
 def expect(
-    role: Type[roles.SelectStatementRole],
+    role: type[roles.SelectStatementRole],
     element: SelectBase,
     **kw: Any,
 ) -> SelectBase: ...
@@ -270,7 +270,7 @@ def expect(
 
 @overload
 def expect(
-    role: Type[roles.FromClauseRole],
+    role: type[roles.FromClauseRole],
     element: _FromClauseArgument,
     **kw: Any,
 ) -> FromClause: ...
@@ -278,7 +278,7 @@ def expect(
 
 @overload
 def expect(
-    role: Type[roles.FromClauseRole],
+    role: type[roles.FromClauseRole],
     element: SelectBase,
     *,
     explicit_subquery: Literal[True] = ...,
@@ -288,7 +288,7 @@ def expect(
 
 @overload
 def expect(
-    role: Type[roles.ColumnsClauseRole],
+    role: type[roles.ColumnsClauseRole],
     element: _ColumnsClauseArgument[Any],
     **kw: Any,
 ) -> _ColumnsClauseElement: ...
@@ -296,7 +296,7 @@ def expect(
 
 @overload
 def expect(
-    role: Type[roles.JoinTargetRole],
+    role: type[roles.JoinTargetRole],
     element: _JoinTargetProtocol,
     **kw: Any,
 ) -> _JoinTargetProtocol: ...
@@ -305,18 +305,18 @@ def expect(
 # catchall for not-yet-implemented overloads
 @overload
 def expect(
-    role: Type[_SR],
+    role: type[_SR],
     element: Any,
     **kw: Any,
 ) -> Any: ...
 
 
 def expect(
-    role: Type[_SR],
+    role: type[_SR],
     element: Any,
     *,
-    apply_propagate_attrs: Optional[ClauseElement] = None,
-    argname: Optional[str] = None,
+    apply_propagate_attrs: ClauseElement | None = None,
+    argname: str | None = None,
     post_inspect: bool = False,
     disable_inspection: bool = False,
     **kw: Any,
@@ -428,33 +428,33 @@ def expect(
 
 
 def expect_as_key(
-    role: Type[roles.DMLColumnRole], element: Any, **kw: Any
+    role: type[roles.DMLColumnRole], element: Any, **kw: Any
 ) -> str:
     kw.pop("as_key", None)
     return expect(role, element, as_key=True, **kw)
 
 
 def expect_col_expression_collection(
-    role: Type[roles.DDLConstraintColumnRole],
+    role: type[roles.DDLConstraintColumnRole],
     expressions: Iterable[_DDLColumnArgument],
 ) -> Iterator[
-    Tuple[
-        Union[str, Column[Any]],
-        Optional[ColumnClause[Any]],
-        Optional[str],
-        Optional[Union[Column[Any], str]],
+    tuple[
+        str | Column[Any],
+        ColumnClause[Any] | None,
+        str | None,
+        Column[Any] | str | None,
     ]
 ]:
     for expr in expressions:
         strname = None
         column = None
 
-        resolved: Union[Column[Any], str] = expect(role, expr)
+        resolved: Column[Any] | str = expect(role, expr)
         if isinstance(resolved, str):
             assert isinstance(expr, str)
             strname = resolved = expr
         else:
-            cols: List[Column[Any]] = []
+            cols: list[Column[Any]] = []
             col_append: _TraverseCallableType[Column[Any]] = cols.append
             visitors.traverse(resolved, {}, {"column": col_append})
             if cols:
@@ -483,7 +483,7 @@ class RoleImpl:
         self,
         element: Any,
         resolved: Any,
-        argname: Optional[str] = None,
+        argname: str | None = None,
         **kw: Any,
     ) -> Any:
         self._raise_for_expected(element, argname, resolved)
@@ -491,26 +491,26 @@ class RoleImpl:
     def _raise_for_expected(
         self,
         element: Any,
-        argname: Optional[str] = None,
-        resolved: Optional[Any] = None,
-        advice: Optional[str] = None,
-        code: Optional[str] = None,
-        err: Optional[Exception] = None,
+        argname: str | None = None,
+        resolved: Any | None = None,
+        advice: str | None = None,
+        code: str | None = None,
+        err: Exception | None = None,
         **kw: Any,
     ) -> NoReturn:
         if resolved is not None and resolved is not element:
-            got = "%r object resolved from %r object" % (resolved, element)
+            got = "{!r} object resolved from {!r} object".format(resolved, element)
         else:
             got = repr(element)
 
         if argname:
-            msg = "%s expected for argument %r; got %s." % (
+            msg = "{} expected for argument {!r}; got {}.".format(
                 self.name,
                 argname,
                 got,
             )
         else:
-            msg = "%s expected, got %s." % (self.name, got)
+            msg = "{} expected, got {}.".format(self.name, got)
 
         if advice:
             msg += " " + advice
@@ -576,17 +576,17 @@ class _ColumnCoercions(RoleImpl):
 
 def _no_text_coercion(
     element: Any,
-    argname: Optional[str] = None,
-    exc_cls: Type[exc.SQLAlchemyError] = exc.ArgumentError,
-    extra: Optional[str] = None,
-    err: Optional[Exception] = None,
+    argname: str | None = None,
+    exc_cls: type[exc.SQLAlchemyError] = exc.ArgumentError,
+    extra: str | None = None,
+    err: Exception | None = None,
 ) -> NoReturn:
     raise exc_cls(
         "%(extra)sTextual SQL expression %(expr)r %(argname)sshould be "
         "explicitly declared as text(%(expr)r)"
         % {
             "expr": util.ellipses_string(element),
-            "argname": "for argument %s" % (argname,) if argname else "",
+            "argname": "for argument {}".format(argname) if argname else "",
             "extra": "%s " % extra if extra else "",
         }
     ) from err
@@ -669,11 +669,11 @@ class _SelectIsNotFrom(RoleImpl):
     def _raise_for_expected(
         self,
         element: Any,
-        argname: Optional[str] = None,
-        resolved: Optional[Any] = None,
-        advice: Optional[str] = None,
-        code: Optional[str] = None,
-        err: Optional[Exception] = None,
+        argname: str | None = None,
+        resolved: Any | None = None,
+        advice: str | None = None,
+        code: str | None = None,
+        err: Exception | None = None,
         **kw: Any,
     ) -> NoReturn:
         if (
@@ -710,7 +710,7 @@ class HasCacheKeyImpl(RoleImpl):
         self,
         element: Any,
         resolved: Any,
-        argname: Optional[str] = None,
+        argname: str | None = None,
         **kw: Any,
     ) -> Any:
         if isinstance(element, HasCacheKey):
@@ -729,7 +729,7 @@ class ExecutableOptionImpl(RoleImpl):
         self,
         element: Any,
         resolved: Any,
-        argname: Optional[str] = None,
+        argname: str | None = None,
         **kw: Any,
     ) -> Any:
         if isinstance(element, ExecutableOption):
@@ -810,7 +810,7 @@ class InElementImpl(RoleImpl):
         self,
         element: Any,
         resolved: Any,
-        argname: Optional[str] = None,
+        argname: str | None = None,
         **kw: Any,
     ) -> Any:
         if resolved._is_from_clause:
@@ -835,8 +835,8 @@ class InElementImpl(RoleImpl):
 
     def _literal_coercion(self, element, expr, operator, **kw):
         if util.is_non_string_iterable(element):
-            non_literal_expressions: Dict[
-                Optional[operators.ColumnOperators],
+            non_literal_expressions: dict[
+                operators.ColumnOperators | None,
                 operators.ColumnOperators,
             ] = {}
             element = list(element)
@@ -971,7 +971,7 @@ class GroupByImpl(ByOfImpl, RoleImpl):
         self,
         element: Any,
         resolved: Any,
-        argname: Optional[str] = None,
+        argname: str | None = None,
         **kw: Any,
     ) -> Any:
         if is_from_clause(resolved):
@@ -1011,7 +1011,7 @@ class TruncatedLabelImpl(_StringOnly, RoleImpl):
         self,
         element: Any,
         resolved: Any,
-        argname: Optional[str] = None,
+        argname: str | None = None,
         **kw: Any,
     ) -> Any:
         if isinstance(element, str):
@@ -1061,7 +1061,7 @@ class LimitOffsetImpl(RoleImpl):
         self,
         element: Any,
         resolved: Any,
-        argname: Optional[str] = None,
+        argname: str | None = None,
         **kw: Any,
     ) -> Any:
         if resolved is None:
@@ -1086,7 +1086,7 @@ class LabeledColumnExprImpl(ExpressionElementImpl):
         self,
         element: Any,
         resolved: Any,
-        argname: Optional[str] = None,
+        argname: str | None = None,
         **kw: Any,
     ) -> Any:
         if isinstance(resolved, roles.ExpressionElementRole):
@@ -1134,7 +1134,7 @@ class ColumnsClauseImpl(_SelectIsNotFrom, _CoerceLiterals, RoleImpl):
             "for more specificity"
             % {
                 "column": util.ellipses_string(element),
-                "argname": "for argument %s" % (argname,) if argname else "",
+                "argname": "for argument {}".format(argname) if argname else "",
                 "literal_column": (
                     "literal_column" if guess_is_literal else "column"
                 ),
@@ -1175,7 +1175,7 @@ class StatementImpl(_CoerceLiterals, RoleImpl):
         self,
         element: Any,
         resolved: Any,
-        argname: Optional[str] = None,
+        argname: str | None = None,
         **kw: Any,
     ) -> Any:
         if resolved._is_lambda_element:
@@ -1193,7 +1193,7 @@ class SelectStatementImpl(_NoTextCoercion, RoleImpl):
         self,
         element: Any,
         resolved: Any,
-        argname: Optional[str] = None,
+        argname: str | None = None,
         **kw: Any,
     ) -> Any:
         if resolved._is_text_clause:
@@ -1222,7 +1222,7 @@ class JoinTargetImpl(RoleImpl):
         self,
         element: Any,
         resolved: Any,
-        argname: Optional[str] = None,
+        argname: str | None = None,
         legacy: bool = False,
         **kw: Any,
     ) -> Any:
@@ -1255,7 +1255,7 @@ class FromClauseImpl(_SelectIsNotFrom, _NoTextCoercion, RoleImpl):
         self,
         element: Any,
         resolved: Any,
-        argname: Optional[str] = None,
+        argname: str | None = None,
         explicit_subquery: bool = False,
         allow_select: bool = True,
         **kw: Any,
@@ -1291,7 +1291,7 @@ class StrictFromClauseImpl(FromClauseImpl):
         self,
         element: Any,
         resolved: Any,
-        argname: Optional[str] = None,
+        argname: str | None = None,
         explicit_subquery: bool = False,
         allow_select: bool = False,
         **kw: Any,
@@ -1335,7 +1335,7 @@ class DMLSelectImpl(_NoTextCoercion, RoleImpl):
         self,
         element: Any,
         resolved: Any,
-        argname: Optional[str] = None,
+        argname: str | None = None,
         **kw: Any,
     ) -> Any:
         if resolved._is_from_clause:

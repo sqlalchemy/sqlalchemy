@@ -140,8 +140,8 @@ __all__ = ["ordering_list"]
 
 def ordering_list(
     attr: str,
-    count_from: Optional[int] = None,
-    ordering_func: Optional[OrderingFunc] = None,
+    count_from: int | None = None,
+    ordering_func: OrderingFunc | None = None,
     reorder_on_append: bool = False,
 ) -> Callable[[], OrderingList]:
     """Prepares an :class:`OrderingList` factory for use in mapper definitions.
@@ -243,8 +243,8 @@ class OrderingList(List[_T]):
 
     def __init__(
         self,
-        ordering_attr: Optional[str] = None,
-        ordering_func: Optional[OrderingFunc] = None,
+        ordering_attr: str | None = None,
+        ordering_func: OrderingFunc | None = None,
         reorder_on_append: bool = False,
     ):
         """A custom list that manages position information for its children.

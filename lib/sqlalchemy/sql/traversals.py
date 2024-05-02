@@ -51,7 +51,7 @@ def compare(obj1: Any, obj2: Any, **kw: Any) -> bool:
     return strategy.compare(obj1, obj2, **kw)
 
 
-def _preconfigure_traversals(target_hierarchy: Type[Any]) -> None:
+def _preconfigure_traversals(target_hierarchy: type[Any]) -> None:
     for cls in util.walk_subclasses(target_hierarchy):
         if hasattr(cls, "_generate_cache_attrs") and hasattr(
             cls, "_traverse_internals"
@@ -83,10 +83,10 @@ class HasShallowCopy(HasTraverseInternals):
         def _generated_shallow_copy_traversal(self, other: Self) -> None: ...
 
         def _generated_shallow_from_dict_traversal(
-            self, d: Dict[str, Any]
+            self, d: dict[str, Any]
         ) -> None: ...
 
-        def _generated_shallow_to_dict_traversal(self) -> Dict[str, Any]: ...
+        def _generated_shallow_to_dict_traversal(self) -> dict[str, Any]: ...
 
     @classmethod
     def _generate_shallow_copy(
@@ -106,7 +106,7 @@ class HasShallowCopy(HasTraverseInternals):
         cls,
         internal_dispatch: _TraverseInternalsType,
         method_name: str,
-    ) -> Callable[[Self], Dict[str, Any]]:
+    ) -> Callable[[Self], dict[str, Any]]:
         code = ",\n".join(
             f"    '{attrname}': self.{attrname}"
             for attrname, _ in internal_dispatch
@@ -119,7 +119,7 @@ class HasShallowCopy(HasTraverseInternals):
         cls,
         internal_dispatch: _TraverseInternalsType,
         method_name: str,
-    ) -> Callable[[Self, Dict[str, Any]], None]:
+    ) -> Callable[[Self, dict[str, Any]], None]:
         code = "\n".join(
             f"    self.{attrname} = d['{attrname}']"
             for attrname, _ in internal_dispatch
@@ -127,10 +127,10 @@ class HasShallowCopy(HasTraverseInternals):
         meth_text = f"def {method_name}(self, d):\n{code}\n"
         return langhelpers._exec_code_in_env(meth_text, {}, method_name)
 
-    def _shallow_from_dict(self, d: Dict[str, Any]) -> None:
+    def _shallow_from_dict(self, d: dict[str, Any]) -> None:
         cls = self.__class__
 
-        shallow_from_dict: Callable[[HasShallowCopy, Dict[str, Any]], None]
+        shallow_from_dict: Callable[[HasShallowCopy, dict[str, Any]], None]
         try:
             shallow_from_dict = cls.__dict__[
                 "_generated_shallow_from_dict_traversal"
@@ -145,10 +145,10 @@ class HasShallowCopy(HasTraverseInternals):
 
         shallow_from_dict(self, d)
 
-    def _shallow_to_dict(self) -> Dict[str, Any]:
+    def _shallow_to_dict(self) -> dict[str, Any]:
         cls = self.__class__
 
-        shallow_to_dict: Callable[[HasShallowCopy], Dict[str, Any]]
+        shallow_to_dict: Callable[[HasShallowCopy], dict[str, Any]]
 
         try:
             shallow_to_dict = cls.__dict__[
@@ -469,9 +469,9 @@ class TraversalComparatorStrategy(HasTraversalDispatch, util.MemoizedSlots):
 
     def __init__(self):
         self.stack: Deque[
-            Tuple[
-                Optional[ExternallyTraversible],
-                Optional[ExternallyTraversible],
+            tuple[
+                ExternallyTraversible | None,
+                ExternallyTraversible | None,
             ]
         ] = deque()
         self.cache = set()
@@ -682,7 +682,7 @@ class TraversalComparatorStrategy(HasTraversalDispatch, util.MemoizedSlots):
         if seq1 is None:
             return seq2 is None
 
-        completed: Set[object] = set()
+        completed: set[object] = set()
         for clause in seq1:
             for other_clause in set(seq2).difference(completed):
                 if self.compare_inner(clause, other_clause, **kw):

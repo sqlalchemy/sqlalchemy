@@ -32,7 +32,7 @@ def eval_eq(clause, testcases=None):
     evaluator = compiler.process(clause)
 
     def testeval(obj=None, expected_result=None):
-        assert evaluator(obj) == expected_result, "%s != %r for %s with %r" % (
+        assert evaluator(obj) == expected_result, "{} != {!r} for {} with {!r}".format(
             evaluator(obj),
             expected_result,
             clause,

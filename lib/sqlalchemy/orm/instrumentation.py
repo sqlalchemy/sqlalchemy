@@ -83,13 +83,13 @@ class _ExpiredAttributeLoaderProto(Protocol):
     def __call__(
         self,
         state: state.InstanceState[Any],
-        toload: Set[str],
+        toload: set[str],
         passive: base.PassiveFlag,
     ) -> None: ...
 
 
 class _ManagerFactory(Protocol):
-    def __call__(self, class_: Type[_O]) -> ClassManager[_O]: ...
+    def __call__(self, class_: type[_O]) -> ClassManager[_O]: ...
 
 
 class ClassManager(
@@ -110,12 +110,12 @@ class ClassManager(
     expired_attribute_loader: _ExpiredAttributeLoaderProto
     "previously known as deferred_scalar_loader"
 
-    init_method: Optional[Callable[..., None]]
-    original_init: Optional[Callable[..., None]] = None
+    init_method: Callable[..., None] | None
+    original_init: Callable[..., None] | None = None
 
-    factory: Optional[_ManagerFactory]
+    factory: _ManagerFactory | None
 
-    declarative_scan: Optional[weakref.ref[_MapperConfig]] = None
+    declarative_scan: weakref.ref[_MapperConfig] | None = None
 
     registry: _RegistryType
 
@@ -123,9 +123,9 @@ class ClassManager(
         # starts as None during setup
         registry = None
 
-    class_: Type[_O]
+    class_: type[_O]
 
-    _bases: List[ClassManager[Any]]
+    _bases: list[ClassManager[Any]]
 
     @property
     @util.deprecated(
@@ -193,13 +193,13 @@ class ClassManager(
     def _update_state(
         self,
         finalize: bool = False,
-        mapper: Optional[Mapper[_O]] = None,
-        registry: Optional[_RegistryType] = None,
-        declarative_scan: Optional[_MapperConfig] = None,
-        expired_attribute_loader: Optional[
+        mapper: Mapper[_O] | None = None,
+        registry: _RegistryType | None = None,
+        declarative_scan: _MapperConfig | None = None,
+        expired_attribute_loader: None | (
             _ExpiredAttributeLoaderProto
-        ] = None,
-        init_method: Optional[Callable[..., None]] = None,
+        ) = None,
+        init_method: Callable[..., None] | None = None,
     ) -> None:
         if mapper:
             self.mapper = mapper  #
@@ -286,7 +286,7 @@ class ClassManager(
 
         """
 
-        found: Dict[str, Any] = {}
+        found: dict[str, Any] = {}
 
         # constraints:
         # 1. yield keys in cls.__dict__ order
@@ -326,7 +326,7 @@ class ClassManager(
 
         return key in self and self[key].impl is not None
 
-    def _subclass_manager(self, cls: Type[_T]) -> ClassManager[_T]:
+    def _subclass_manager(self, cls: type[_T]) -> ClassManager[_T]:
         """Create a new ClassManager for a subclass of this ClassManager's
         class.
 
@@ -344,7 +344,7 @@ class ClassManager(
         self.install_member("__init__", self.new_init)
 
     @util.memoized_property
-    def _state_constructor(self) -> Type[state.InstanceState[_O]]:
+    def _state_constructor(self) -> type[state.InstanceState[_O]]:
         self.dispatch.first_init(self, self.class_)
         return state.InstanceState
 
@@ -468,7 +468,7 @@ class ClassManager(
             delattr(self.class_, key)
 
     def instrument_collection_class(
-        self, key: str, collection_class: Type[Collection[Any]]
+        self, key: str, collection_class: type[Collection[Any]]
     ) -> _CollectionFactoryType:
         return collections.prepare_instrumentation(collection_class)
 
@@ -477,7 +477,7 @@ class ClassManager(
         key: str,
         state: InstanceState[_O],
         factory: _CollectionFactoryType,
-    ) -> Tuple[collections.CollectionAdapter, _AdaptedCollectionProtocol]:
+    ) -> tuple[collections.CollectionAdapter, _AdaptedCollectionProtocol]:
         user_data = factory()
         impl = self.get_impl(key)
         assert _is_collection_attribute_impl(impl)
@@ -499,7 +499,7 @@ class ClassManager(
 
     # InstanceState management
 
-    def new_instance(self, state: Optional[InstanceState[_O]] = None) -> _O:
+    def new_instance(self, state: InstanceState[_O] | None = None) -> _O:
         # here, we would prefer _O to be bound to "object"
         # so that mypy sees that __new__ is present.   currently
         # it's bound to Any as there were other problems not having
@@ -511,7 +511,7 @@ class ClassManager(
         return instance
 
     def setup_instance(
-        self, instance: _O, state: Optional[InstanceState[_O]] = None
+        self, instance: _O, state: InstanceState[_O] | None = None
     ) -> None:
         if state is None:
             state = self._state_constructor(instance, self)
@@ -521,13 +521,13 @@ class ClassManager(
         delattr(instance, self.STATE_ATTR)
 
     def _serialize(
-        self, state: InstanceState[_O], state_dict: Dict[str, Any]
+        self, state: InstanceState[_O], state_dict: dict[str, Any]
     ) -> _SerializeManager:
         return _SerializeManager(state, state_dict)
 
     def _new_state_if_none(
         self, instance: _O
-    ) -> Union[Literal[False], InstanceState[_O]]:
+    ) -> Literal[False] | InstanceState[_O]:
         """Install a default InstanceState if none is present.
 
         A private convenience method used by the __init__ decorator.
@@ -563,7 +563,7 @@ class ClassManager(
         return True
 
     def __repr__(self) -> str:
-        return "<%s of %r at %x>" % (
+        return "<{} of {!r} at {:x}>".format(
             self.__class__.__name__,
             self.class_,
             id(self),
@@ -578,7 +578,7 @@ class _SerializeManager:
 
     """
 
-    def __init__(self, state: state.InstanceState[Any], d: Dict[str, Any]):
+    def __init__(self, state: state.InstanceState[Any], d: dict[str, Any]):
         self.class_ = state.class_
         manager = state.manager
         manager.dispatch.pickle(state, d)
@@ -609,7 +609,7 @@ class InstrumentationFactory(EventTarget):
 
     dispatch: dispatcher[InstrumentationFactory]
 
-    def create_manager_for_cls(self, class_: Type[_O]) -> ClassManager[_O]:
+    def create_manager_for_cls(self, class_: type[_O]) -> ClassManager[_O]:
         assert class_ is not None
         assert opt_manager_of_class(class_) is None
 
@@ -630,17 +630,17 @@ class InstrumentationFactory(EventTarget):
         return manager
 
     def _locate_extended_factory(
-        self, class_: Type[_O]
-    ) -> Tuple[Optional[ClassManager[_O]], Optional[_ManagerFactory]]:
+        self, class_: type[_O]
+    ) -> tuple[ClassManager[_O] | None, _ManagerFactory | None]:
         """Overridden by a subclass to do an extended lookup."""
         return None, None
 
     def _check_conflicts(
-        self, class_: Type[_O], factory: Callable[[Type[_O]], ClassManager[_O]]
+        self, class_: type[_O], factory: Callable[[type[_O]], ClassManager[_O]]
     ) -> None:
         """Overridden by a subclass to test for conflicting factories."""
 
-    def unregister(self, class_: Type[_O]) -> None:
+    def unregister(self, class_: type[_O]) -> None:
         manager = manager_of_class(class_)
         manager.unregister()
         self.dispatch.class_uninstrument(class_)
@@ -662,13 +662,13 @@ opt_manager_of_class = _default_opt_manager_getter = base.opt_manager_of_class
 
 
 def register_class(
-    class_: Type[_O],
+    class_: type[_O],
     finalize: bool = True,
-    mapper: Optional[Mapper[_O]] = None,
-    registry: Optional[_RegistryType] = None,
-    declarative_scan: Optional[_MapperConfig] = None,
-    expired_attribute_loader: Optional[_ExpiredAttributeLoaderProto] = None,
-    init_method: Optional[Callable[..., None]] = None,
+    mapper: Mapper[_O] | None = None,
+    registry: _RegistryType | None = None,
+    declarative_scan: _MapperConfig | None = None,
+    expired_attribute_loader: _ExpiredAttributeLoaderProto | None = None,
+    init_method: Callable[..., None] | None = None,
 ) -> ClassManager[_O]:
     """Register class instrumentation.
 

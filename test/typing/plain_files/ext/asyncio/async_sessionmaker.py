@@ -34,7 +34,7 @@ class A(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     data: Mapped[str]
-    bs: Mapped[List[B]] = relationship()
+    bs: Mapped[list[B]] = relationship()
 
 
 class B(Base):
@@ -48,7 +48,7 @@ def work_with_a_session_one(sess: Session) -> Any:
     pass
 
 
-def work_with_a_session_two(sess: Session, param: Optional[str] = None) -> Any:
+def work_with_a_session_two(sess: Session, param: str | None = None) -> Any:
     pass
 
 

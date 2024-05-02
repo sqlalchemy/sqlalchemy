@@ -110,7 +110,7 @@ class PolymorphicVerticalProperty:
             return self._case() != cast(other, String)
 
     def __repr__(self):
-        return "<%s %r=%r>" % (self.__class__.__name__, self.key, self.value)
+        return f"<{self.__class__.__name__} {self.key!r}={self.value!r}>"
 
 
 @event.listens_for(

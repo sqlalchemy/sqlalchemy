@@ -76,7 +76,7 @@ class Address(Base):
         return self.postal_code.country
 
     def __str__(self):
-        return "%s\t%s, %s\t%s" % (
+        return "{}\t{}, {}\t{}".format(
             self.street,
             self.city.name,
             self.postal_code.code,

@@ -31,7 +31,7 @@ if __name__ == "__main__":
 
     class Base:
         def receive_change_event(self, verb, key, value, oldvalue):
-            s = "Value '%s' %s on attribute '%s', " % (value, verb, key)
+            s = f"Value '{value}' {verb} on attribute '{key}', "
             if oldvalue:
                 s += "which replaced the value '%s', " % oldvalue
             s += "on object %s" % self

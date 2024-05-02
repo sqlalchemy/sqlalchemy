@@ -293,11 +293,11 @@ class MappedColumnTest(_MappedColumnTest):
             data: Mapped[str] = mapped_column(default="some default")
 
             if reference_type.container_w_remote_mapped:
-                status: ClassVar[Dict[str, MyOtherClass]]
+                status: ClassVar[dict[str, MyOtherClass]]
             elif reference_type.container_w_local_mapped:
-                status: ClassVar[Dict[str, MyClass]]
+                status: ClassVar[dict[str, MyClass]]
             elif reference_type.plain_optional:
-                status: ClassVar[Optional[int]]
+                status: ClassVar[int | None]
             elif reference_type.plain:
                 status: ClassVar[int]
 
@@ -331,7 +331,7 @@ class RelationshipLHSTest(_RelationshipLHSTest):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
-            bs: Mapped[List[B]] = relationship(back_populates="a")
+            bs: Mapped[list[B]] = relationship(back_populates="a")
 
         class B(decl_base):
             __tablename__ = "b"
@@ -377,7 +377,7 @@ class RelationshipLHSTest(_RelationshipLHSTest):
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
 
-            bs: Mapped[KeyFuncDict[str, "B"]] = relationship(  # noqa: F821
+            bs: Mapped[KeyFuncDict[str, B]] = relationship(  # noqa: F821
                 collection_class=attribute_keyed_dict("name")
             )
 
@@ -404,7 +404,7 @@ class RelationshipLHSTest(_RelationshipLHSTest):
                 id: Mapped[int] = mapped_column(primary_key=True)
                 data: Mapped[str] = mapped_column()
 
-                bs: Mapped[MyCollection["B"]] = relationship(  # noqa: F821
+                bs: Mapped[MyCollection[B]] = relationship(  # noqa: F821
                     collection_class=attribute_keyed_dict("name")
                 )
 
@@ -415,7 +415,7 @@ class RelationshipLHSTest(_RelationshipLHSTest):
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
 
-            bs: Mapped[MappedOneArg["B"]] = relationship(  # noqa: F821
+            bs: Mapped[MappedOneArg[B]] = relationship(  # noqa: F821
                 collection_class=attribute_keyed_dict("name")
             )
 
@@ -463,7 +463,7 @@ class RelationshipLHSTest(_RelationshipLHSTest):
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
 
-            bs: Mapped[List[BNonExistent]] = relationship("B")
+            bs: Mapped[list[BNonExistent]] = relationship("B")
 
         self.assert_compile(
             select(A).join(A.bs),

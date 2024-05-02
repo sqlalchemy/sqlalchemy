@@ -263,7 +263,7 @@ class _RelationshipArg(Generic[_T1, _T2]):
     __slots__ = "name", "argument", "resolved"
     name: str
     argument: _T1
-    resolved: Optional[_T2]
+    resolved: _T2 | None
 
     def _is_populated(self) -> bool:
         return self.argument is not None
@@ -315,26 +315,26 @@ class _RelationshipArgs(NamedTuple):
     """
 
     secondary: _RelationshipArg[
-        Optional[_RelationshipSecondaryArgument],
-        Optional[FromClause],
+        _RelationshipSecondaryArgument | None,
+        FromClause | None,
     ]
     primaryjoin: _RelationshipArg[
-        Optional[_RelationshipJoinConditionArgument],
-        Optional[ColumnElement[Any]],
+        _RelationshipJoinConditionArgument | None,
+        ColumnElement[Any] | None,
     ]
     secondaryjoin: _RelationshipArg[
-        Optional[_RelationshipJoinConditionArgument],
-        Optional[ColumnElement[Any]],
+        _RelationshipJoinConditionArgument | None,
+        ColumnElement[Any] | None,
     ]
     order_by: _RelationshipArg[_ORMOrderByArgument, _RelationshipOrderByArg]
     foreign_keys: _RelationshipArg[
-        Optional[_ORMColCollectionArgument], Set[ColumnElement[Any]]
+        _ORMColCollectionArgument | None, set[ColumnElement[Any]]
     ]
     remote_side: _RelationshipArg[
-        Optional[_ORMColCollectionArgument], Set[ColumnElement[Any]]
+        _ORMColCollectionArgument | None, set[ColumnElement[Any]]
     ]
     back_populates: _StringRelationshipArg[
-        Optional[_RelationshipBackPopulatesArgument], str
+        _RelationshipBackPopulatesArgument | None, str
     ]
 
 
@@ -372,24 +372,24 @@ class RelationshipProperty(
         cascade_backrefs=False,
     )
 
-    _dependency_processor: Optional[DependencyProcessor] = None
+    _dependency_processor: DependencyProcessor | None = None
 
     primaryjoin: ColumnElement[bool]
-    secondaryjoin: Optional[ColumnElement[bool]]
-    secondary: Optional[FromClause]
+    secondaryjoin: ColumnElement[bool] | None
+    secondary: FromClause | None
     _join_condition: JoinCondition
     order_by: _RelationshipOrderByArg
 
-    _user_defined_foreign_keys: Set[ColumnElement[Any]]
-    _calculated_foreign_keys: Set[ColumnElement[Any]]
+    _user_defined_foreign_keys: set[ColumnElement[Any]]
+    _calculated_foreign_keys: set[ColumnElement[Any]]
 
-    remote_side: Set[ColumnElement[Any]]
-    local_columns: Set[ColumnElement[Any]]
+    remote_side: set[ColumnElement[Any]]
+    local_columns: set[ColumnElement[Any]]
 
     synchronize_pairs: _ColumnPairs
-    secondary_synchronize_pairs: Optional[_ColumnPairs]
+    secondary_synchronize_pairs: _ColumnPairs | None
 
-    local_remote_pairs: Optional[_ColumnPairs]
+    local_remote_pairs: _ColumnPairs | None
 
     direction: RelationshipDirection
 
@@ -397,46 +397,46 @@ class RelationshipProperty(
 
     def __init__(
         self,
-        argument: Optional[_RelationshipArgumentType[_T]] = None,
-        secondary: Optional[_RelationshipSecondaryArgument] = None,
+        argument: _RelationshipArgumentType[_T] | None = None,
+        secondary: _RelationshipSecondaryArgument | None = None,
         *,
-        uselist: Optional[bool] = None,
-        collection_class: Optional[
-            Union[Type[Collection[Any]], Callable[[], Collection[Any]]]
-        ] = None,
-        primaryjoin: Optional[_RelationshipJoinConditionArgument] = None,
-        secondaryjoin: Optional[_RelationshipJoinConditionArgument] = None,
-        back_populates: Optional[_RelationshipBackPopulatesArgument] = None,
+        uselist: bool | None = None,
+        collection_class: None | (
+            type[Collection[Any]] | Callable[[], Collection[Any]]
+        ) = None,
+        primaryjoin: _RelationshipJoinConditionArgument | None = None,
+        secondaryjoin: _RelationshipJoinConditionArgument | None = None,
+        back_populates: _RelationshipBackPopulatesArgument | None = None,
         order_by: _ORMOrderByArgument = False,
-        backref: Optional[ORMBackrefArgument] = None,
-        overlaps: Optional[str] = None,
+        backref: ORMBackrefArgument | None = None,
+        overlaps: str | None = None,
         post_update: bool = False,
         cascade: str = "save-update, merge",
         viewonly: bool = False,
-        attribute_options: Optional[_AttributeOptions] = None,
+        attribute_options: _AttributeOptions | None = None,
         lazy: _LazyLoadArgumentType = "select",
-        passive_deletes: Union[Literal["all"], bool] = False,
+        passive_deletes: Literal["all"] | bool = False,
         passive_updates: bool = True,
         active_history: bool = False,
         enable_typechecks: bool = True,
-        foreign_keys: Optional[_ORMColCollectionArgument] = None,
-        remote_side: Optional[_ORMColCollectionArgument] = None,
-        join_depth: Optional[int] = None,
-        comparator_factory: Optional[
-            Type[RelationshipProperty.Comparator[Any]]
-        ] = None,
+        foreign_keys: _ORMColCollectionArgument | None = None,
+        remote_side: _ORMColCollectionArgument | None = None,
+        join_depth: int | None = None,
+        comparator_factory: None | (
+            type[RelationshipProperty.Comparator[Any]]
+        ) = None,
         single_parent: bool = False,
         innerjoin: bool = False,
-        distinct_target_key: Optional[bool] = None,
+        distinct_target_key: bool | None = None,
         load_on_pending: bool = False,
-        query_class: Optional[Type[Query[Any]]] = None,
-        info: Optional[_InfoType] = None,
+        query_class: type[Query[Any]] | None = None,
+        info: _InfoType | None = None,
         omit_join: Literal[None, False] = None,
-        sync_backref: Optional[bool] = None,
-        doc: Optional[str] = None,
+        sync_backref: bool | None = None,
+        doc: str | None = None,
         bake_queries: Literal[True] = True,
         cascade_backrefs: Literal[False] = False,
-        _local_remote_pairs: Optional[_ColumnPairs] = None,
+        _local_remote_pairs: _ColumnPairs | None = None,
         _legacy_inactive_history_style: bool = False,
     ):
         super().__init__(attribute_options=attribute_options)
@@ -512,7 +512,7 @@ class RelationshipProperty(
 
         self.strategy_key = (("lazy", self.lazy),)
 
-        self._reverse_property: Set[RelationshipProperty[Any]] = set()
+        self._reverse_property: set[RelationshipProperty[Any]] = set()
 
         if overlaps:
             self._overlaps = set(re.split(r"\s*,\s*", overlaps))  # type: ignore  # noqa: E501
@@ -597,15 +597,15 @@ class RelationshipProperty(
         )
 
         prop: RODescriptorReference[RelationshipProperty[_PT]]
-        _of_type: Optional[_EntityType[_PT]]
+        _of_type: _EntityType[_PT] | None
 
         def __init__(
             self,
             prop: RelationshipProperty[_PT],
             parentmapper: _InternalEntityType[Any],
-            adapt_to_entity: Optional[AliasedInsp[Any]] = None,
-            of_type: Optional[_EntityType[_PT]] = None,
-            extra_criteria: Tuple[ColumnElement[bool], ...] = (),
+            adapt_to_entity: AliasedInsp[Any] | None = None,
+            of_type: _EntityType[_PT] | None = None,
+            extra_criteria: tuple[ColumnElement[bool], ...] = (),
         ):
             """Construction of :class:`.RelationshipProperty.Comparator`
             is internal to the ORM's attribute mechanics.
@@ -805,7 +805,7 @@ class RelationshipProperty(
 
         def _criterion_exists(
             self,
-            criterion: Optional[_ColumnExpressionArgument[bool]] = None,
+            criterion: _ColumnExpressionArgument[bool] | None = None,
             **kwargs: Any,
         ) -> Exists:
             where_criteria = (
@@ -815,7 +815,7 @@ class RelationshipProperty(
             )
 
             if getattr(self, "_of_type", None):
-                info: Optional[_InternalEntityType[Any]] = inspect(
+                info: _InternalEntityType[Any] | None = inspect(
                     self._of_type
                 )
                 assert info is not None
@@ -907,7 +907,7 @@ class RelationshipProperty(
 
         def any(
             self,
-            criterion: Optional[_ColumnExpressionArgument[bool]] = None,
+            criterion: _ColumnExpressionArgument[bool] | None = None,
             **kwargs: Any,
         ) -> ColumnElement[bool]:
             """Produce an expression that tests a collection against
@@ -960,7 +960,7 @@ class RelationshipProperty(
 
         def has(
             self,
-            criterion: Optional[_ColumnExpressionArgument[bool]] = None,
+            criterion: _ColumnExpressionArgument[bool] | None = None,
             **kwargs: Any,
         ) -> ColumnElement[bool]:
             """Produce an expression that tests a scalar reference against
@@ -1191,12 +1191,12 @@ class RelationshipProperty(
         self,
         instance: object,
         alias_secondary: bool = True,
-        from_entity: Optional[_EntityType[Any]] = None,
+        from_entity: _EntityType[Any] | None = None,
     ) -> ColumnElement[bool]:
         assert instance is not None
-        adapt_source: Optional[_CoreAdapterProto] = None
+        adapt_source: _CoreAdapterProto | None = None
         if from_entity is not None:
-            insp: Optional[_InternalEntityType[Any]] = inspect(from_entity)
+            insp: _InternalEntityType[Any] | None = inspect(from_entity)
             assert insp is not None
             if insp_is_aliased_class(insp):
                 adapt_source = insp._adapter.adapt_clause
@@ -1211,7 +1211,7 @@ class RelationshipProperty(
         self,
         state: Any,
         value_is_parent: bool = False,
-        adapt_source: Optional[_CoreAdapterProto] = None,
+        adapt_source: _CoreAdapterProto | None = None,
         alias_secondary: bool = True,
     ) -> ColumnElement[bool]:
         if state is not None:
@@ -1385,7 +1385,7 @@ class RelationshipProperty(
     def _lazy_none_clause(
         self,
         reverse_direction: bool = False,
-        adapt_source: Optional[_CoreAdapterProto] = None,
+        adapt_source: _CoreAdapterProto | None = None,
     ) -> ColumnElement[bool]:
         if not reverse_direction:
             criterion, bind_to_col = (
@@ -1415,8 +1415,8 @@ class RelationshipProperty(
         dest_state: InstanceState[Any],
         dest_dict: _InstanceDict,
         load: bool,
-        _recursive: Dict[Any, object],
-        _resolve_conflict_map: Dict[_IdentityKeyType[Any], object],
+        _recursive: dict[Any, object],
+        _resolve_conflict_map: dict[_IdentityKeyType[Any], object],
     ) -> None:
         if load:
             for r in self._reverse_property:
@@ -1510,7 +1510,7 @@ class RelationshipProperty(
         dict_: _InstanceDict,
         key: str,
         passive: PassiveFlag = PassiveFlag.PASSIVE_OFF,
-    ) -> Sequence[Tuple[InstanceState[_O], _O]]:
+    ) -> Sequence[tuple[InstanceState[_O], _O]]:
         """Return a list of tuples (state, obj) for the given
         key.
 
@@ -1534,9 +1534,9 @@ class RelationshipProperty(
         type_: str,
         state: InstanceState[Any],
         dict_: _InstanceDict,
-        visited_states: Set[InstanceState[Any]],
-        halt_on: Optional[Callable[[InstanceState[Any]], bool]] = None,
-    ) -> Iterator[Tuple[Any, Mapper[Any], InstanceState[Any], _InstanceDict]]:
+        visited_states: set[InstanceState[Any]],
+        halt_on: Callable[[InstanceState[Any]], bool] | None = None,
+    ) -> Iterator[tuple[Any, Mapper[Any], InstanceState[Any], _InstanceDict]]:
         # assert type_ in self._cascade
 
         # only actively lazy load on the 'delete' cascade
@@ -1776,12 +1776,12 @@ class RelationshipProperty(
         self,
         decl_scan: _ClassScanMapperConfig,
         registry: _RegistryType,
-        cls: Type[Any],
-        originating_module: Optional[str],
+        cls: type[Any],
+        originating_module: str | None,
         key: str,
-        mapped_container: Optional[Type[Mapped[Any]]],
-        annotation: Optional[_AnnotationScanType],
-        extracted_mapped_annotation: Optional[_AnnotationScanType],
+        mapped_container: type[Mapped[Any]] | None,
+        annotation: _AnnotationScanType | None,
+        extracted_mapped_annotation: _AnnotationScanType | None,
         is_dataclass_field: bool,
     ) -> None:
         argument = extracted_mapped_annotation
@@ -1959,15 +1959,15 @@ class RelationshipProperty(
     @property
     def _clsregistry_resolve_name(
         self,
-    ) -> Callable[[str], Callable[[], Union[Type[Any], Table, _ModNS]]]:
+    ) -> Callable[[str], Callable[[], type[Any] | Table | _ModNS]]:
         return self._clsregistry_resolvers[0]
 
     @util.memoized_property
     @util.preload_module("sqlalchemy.orm.clsregistry")
     def _clsregistry_resolvers(
         self,
-    ) -> Tuple[
-        Callable[[str], Callable[[], Union[Type[Any], Table, _ModNS]]],
+    ) -> tuple[
+        Callable[[str], Callable[[], type[Any] | Table | _ModNS]],
         Callable[[str, bool], _class_resolver],
     ]:
         _resolver = util.preloaded.orm_clsregistry._resolver
@@ -2001,10 +2001,10 @@ class RelationshipProperty(
         return self._cascade
 
     @cascade.setter
-    def cascade(self, cascade: Union[str, CascadeOptions]) -> None:
+    def cascade(self, cascade: str | CascadeOptions) -> None:
         self._set_cascade(cascade)
 
-    def _set_cascade(self, cascade_arg: Union[str, CascadeOptions]) -> None:
+    def _set_cascade(self, cascade_arg: str | CascadeOptions) -> None:
         cascade = CascadeOptions(cascade_arg)
 
         if self.viewonly:
@@ -2102,7 +2102,7 @@ class RelationshipProperty(
         resolve_back_populates = self._init_args.back_populates.resolved
 
         if self.backref is not None and not resolve_back_populates:
-            kwargs: Dict[str, Any]
+            kwargs: dict[str, Any]
             if isinstance(self.backref, str):
                 backref_key, kwargs = self.backref, {}
             else:
@@ -2211,18 +2211,18 @@ class RelationshipProperty(
     def _create_joins(
         self,
         source_polymorphic: bool = False,
-        source_selectable: Optional[FromClause] = None,
-        dest_selectable: Optional[FromClause] = None,
-        of_type_entity: Optional[_InternalEntityType[Any]] = None,
+        source_selectable: FromClause | None = None,
+        dest_selectable: FromClause | None = None,
+        of_type_entity: _InternalEntityType[Any] | None = None,
         alias_secondary: bool = False,
-        extra_criteria: Tuple[ColumnElement[bool], ...] = (),
-    ) -> Tuple[
+        extra_criteria: tuple[ColumnElement[bool], ...] = (),
+    ) -> tuple[
         ColumnElement[bool],
-        Optional[ColumnElement[bool]],
+        ColumnElement[bool] | None,
         FromClause,
         FromClause,
-        Optional[FromClause],
-        Optional[ClauseAdapter],
+        FromClause | None,
+        ClauseAdapter | None,
     ]:
         aliased = False
 
@@ -2306,10 +2306,10 @@ def _annotate_columns(element: _CE, annotations: _AnnotationDict) -> _CE:
 
 
 class JoinCondition:
-    primaryjoin_initial: Optional[ColumnElement[bool]]
+    primaryjoin_initial: ColumnElement[bool] | None
     primaryjoin: ColumnElement[bool]
-    secondaryjoin: Optional[ColumnElement[bool]]
-    secondary: Optional[FromClause]
+    secondaryjoin: ColumnElement[bool] | None
+    secondary: FromClause | None
     prop: RelationshipProperty[Any]
 
     synchronize_pairs: _ColumnPairs
@@ -2321,7 +2321,7 @@ class JoinCondition:
     parent_local_selectable: FromClause
     child_local_selectable: FromClause
 
-    _local_remote_pairs: Optional[_ColumnPairs]
+    _local_remote_pairs: _ColumnPairs | None
 
     def __init__(
         self,
@@ -2330,13 +2330,13 @@ class JoinCondition:
         parent_local_selectable: FromClause,
         child_local_selectable: FromClause,
         *,
-        primaryjoin: Optional[ColumnElement[bool]] = None,
-        secondary: Optional[FromClause] = None,
-        secondaryjoin: Optional[ColumnElement[bool]] = None,
-        parent_equivalents: Optional[_EquivalentColumnMap] = None,
-        child_equivalents: Optional[_EquivalentColumnMap] = None,
+        primaryjoin: ColumnElement[bool] | None = None,
+        secondary: FromClause | None = None,
+        secondaryjoin: ColumnElement[bool] | None = None,
+        parent_equivalents: _EquivalentColumnMap | None = None,
+        child_equivalents: _EquivalentColumnMap | None = None,
         consider_as_foreign_keys: Any = None,
-        local_remote_pairs: Optional[_ColumnPairs] = None,
+        local_remote_pairs: _ColumnPairs | None = None,
         remote_side: Any = None,
         self_referential: Any = False,
         prop: RelationshipProperty[Any],
@@ -2384,14 +2384,14 @@ class JoinCondition:
             "%s synchronize pairs [%s]",
             self.prop,
             ",".join(
-                "(%s => %s)" % (l, r) for (l, r) in self.synchronize_pairs
+                "({} => {})".format(l, r) for (l, r) in self.synchronize_pairs
             ),
         )
         log.info(
             "%s secondary synchronize pairs [%s]",
             self.prop,
             ",".join(
-                "(%s => %s)" % (l, r)
+                "({} => {})".format(l, r)
                 for (l, r) in self.secondary_synchronize_pairs or []
             ),
         )
@@ -2399,7 +2399,7 @@ class JoinCondition:
             "%s local/remote pairs [%s]",
             self.prop,
             ",".join(
-                "(%s / %s)" % (l, r) for (l, r) in self.local_remote_pairs
+                "({} / {})".format(l, r) for (l, r) in self.local_remote_pairs
             ),
         )
         log.info(
@@ -2549,7 +2549,7 @@ class JoinCondition:
         """
         if self._has_remote_annotations:
 
-            def replace(element: _CE, **kw: Any) -> Optional[_CE]:
+            def replace(element: _CE, **kw: Any) -> _CE | None:
                 if "remote" in element._annotations:
                     v = dict(element._annotations)
                     del v["remote"]
@@ -2603,7 +2603,7 @@ class JoinCondition:
             self._annotate_present_fks()
 
     def _annotate_from_fk_list(self) -> None:
-        def check_fk(element: _CE, **kw: Any) -> Optional[_CE]:
+        def check_fk(element: _CE, **kw: Any) -> _CE | None:
             if element in self.consider_as_foreign_keys:
                 return element._annotate({"foreign": True})
             return None
@@ -2624,7 +2624,7 @@ class JoinCondition:
 
         def is_foreign(
             a: ColumnElement[Any], b: ColumnElement[Any]
-        ) -> Optional[ColumnElement[Any]]:
+        ) -> ColumnElement[Any] | None:
             if isinstance(a, schema.Column) and isinstance(b, schema.Column):
                 if a.references(b):
                     return a
@@ -2729,7 +2729,7 @@ class JoinCondition:
         assert self.secondary is not None
         fixed_secondary = self.secondary
 
-        def repl(element: _CE, **kw: Any) -> Optional[_CE]:
+        def repl(element: _CE, **kw: Any) -> _CE | None:
             if fixed_secondary.c.contains_column(element):
                 return element._annotate({"remote": True})
             return None
@@ -2790,7 +2790,7 @@ class JoinCondition:
             self._annotate_selfref(lambda col: col in remote_side, True)
         else:
 
-            def repl(element: _CE, **kw: Any) -> Optional[_CE]:
+            def repl(element: _CE, **kw: Any) -> _CE | None:
                 # use set() to avoid generating ``__eq__()`` expressions
                 # against each element
                 if element in set(remote_side):
@@ -2823,7 +2823,7 @@ class JoinCondition:
 
         def proc_left_right(
             left: ColumnElement[Any], right: ColumnElement[Any]
-        ) -> Tuple[ColumnElement[Any], ColumnElement[Any]]:
+        ) -> tuple[ColumnElement[Any], ColumnElement[Any]]:
             if isinstance(left, expression.ColumnClause) and isinstance(
                 right, expression.ColumnClause
             ):
@@ -2857,7 +2857,7 @@ class JoinCondition:
 
         """
 
-        def repl(element: _CE, **kw: Any) -> Optional[_CE]:
+        def repl(element: _CE, **kw: Any) -> _CE | None:
             if self.child_persist_selectable.c.contains_column(element) and (
                 not self.parent_local_selectable.c.contains_column(element)
                 or self.child_local_selectable.c.contains_column(element)
@@ -2897,7 +2897,7 @@ class JoinCondition:
         else:
             local_side = util.column_set(self.parent_persist_selectable.c)
 
-        def locals_(element: _CE, **kw: Any) -> Optional[_CE]:
+        def locals_(element: _CE, **kw: Any) -> _CE | None:
             if "remote" not in element._annotations and element in local_side:
                 return element._annotate({"local": True})
             return None
@@ -2907,7 +2907,7 @@ class JoinCondition:
         )
 
     def _annotate_parentmapper(self) -> None:
-        def parentmappers_(element: _CE, **kw: Any) -> Optional[_CE]:
+        def parentmappers_(element: _CE, **kw: Any) -> _CE | None:
             if "remote" in element._annotations:
                 return element._annotate({"parentmapper": self.prop.mapper})
             elif "local" in element._annotations:
@@ -3109,7 +3109,7 @@ class JoinCondition:
 
     def _setup_pairs(self) -> None:
         sync_pairs: _MutableColumnPairs = []
-        lrp: util.OrderedSet[Tuple[ColumnElement[Any], ColumnElement[Any]]] = (
+        lrp: util.OrderedSet[tuple[ColumnElement[Any], ColumnElement[Any]]] = (
             util.OrderedSet([])
         )
         secondary_sync_pairs: _MutableColumnPairs = []
@@ -3241,7 +3241,7 @@ class JoinCondition:
                             to_,
                             ", ".join(
                                 sorted(
-                                    "'%s' (copies %s to %s)" % (pr, fr_, to_)
+                                    "'{}' (copies {} to {})".format(pr, fr_, to_)
                                     for (pr, fr_) in other_props
                                 )
                             ),
@@ -3253,20 +3253,20 @@ class JoinCondition:
                 self._track_overlapping_sync_targets[to_][self.prop] = from_
 
     @util.memoized_property
-    def remote_columns(self) -> Set[ColumnElement[Any]]:
+    def remote_columns(self) -> set[ColumnElement[Any]]:
         return self._gather_join_annotations("remote")
 
     @util.memoized_property
-    def local_columns(self) -> Set[ColumnElement[Any]]:
+    def local_columns(self) -> set[ColumnElement[Any]]:
         return self._gather_join_annotations("local")
 
     @util.memoized_property
-    def foreign_key_columns(self) -> Set[ColumnElement[Any]]:
+    def foreign_key_columns(self) -> set[ColumnElement[Any]]:
         return self._gather_join_annotations("foreign")
 
     def _gather_join_annotations(
         self, annotation: str
-    ) -> Set[ColumnElement[Any]]:
+    ) -> set[ColumnElement[Any]]:
         s = set(
             self._gather_columns_with_annotation(self.primaryjoin, annotation)
         )
@@ -3280,7 +3280,7 @@ class JoinCondition:
 
     def _gather_columns_with_annotation(
         self, clause: ColumnElement[Any], *annotation: Iterable[str]
-    ) -> Set[ColumnElement[Any]]:
+    ) -> set[ColumnElement[Any]]:
         annotation_set = set(annotation)
         return {
             cast(ColumnElement[Any], col)
@@ -3289,7 +3289,7 @@ class JoinCondition:
         }
 
     @util.memoized_property
-    def _secondary_lineage_set(self) -> FrozenSet[ColumnElement[Any]]:
+    def _secondary_lineage_set(self) -> frozenset[ColumnElement[Any]]:
         if self.secondary is not None:
             return frozenset(
                 itertools.chain(*[c.proxy_set for c in self.secondary.c])
@@ -3299,16 +3299,16 @@ class JoinCondition:
 
     def join_targets(
         self,
-        source_selectable: Optional[FromClause],
+        source_selectable: FromClause | None,
         dest_selectable: FromClause,
         aliased: bool,
-        single_crit: Optional[ColumnElement[bool]] = None,
-        extra_criteria: Tuple[ColumnElement[bool], ...] = (),
-    ) -> Tuple[
+        single_crit: ColumnElement[bool] | None = None,
+        extra_criteria: tuple[ColumnElement[bool], ...] = (),
+    ) -> tuple[
         ColumnElement[bool],
-        Optional[ColumnElement[bool]],
-        Optional[FromClause],
-        Optional[ClauseAdapter],
+        ColumnElement[bool] | None,
+        FromClause | None,
+        ClauseAdapter | None,
         FromClause,
     ]:
         """Given a source and destination selectable, create a
@@ -3436,13 +3436,13 @@ class JoinCondition:
             dest_selectable,
         )
 
-    def create_lazy_clause(self, reverse_direction: bool = False) -> Tuple[
+    def create_lazy_clause(self, reverse_direction: bool = False) -> tuple[
         ColumnElement[bool],
-        Dict[str, ColumnElement[Any]],
-        Dict[ColumnElement[Any], ColumnElement[Any]],
+        dict[str, ColumnElement[Any]],
+        dict[ColumnElement[Any], ColumnElement[Any]],
     ]:
-        binds: Dict[ColumnElement[Any], BindParameter[Any]] = {}
-        equated_columns: Dict[ColumnElement[Any], ColumnElement[Any]] = {}
+        binds: dict[ColumnElement[Any], BindParameter[Any]] = {}
+        equated_columns: dict[ColumnElement[Any], ColumnElement[Any]] = {}
 
         has_secondary = self.secondaryjoin is not None
 
@@ -3460,7 +3460,7 @@ class JoinCondition:
 
         def col_to_bind(
             element: ColumnElement[Any], **kw: Any
-        ) -> Optional[BindParameter[Any]]:
+        ) -> BindParameter[Any] | None:
             if (
                 (not reverse_direction and "local" in element._annotations)
                 or reverse_direction

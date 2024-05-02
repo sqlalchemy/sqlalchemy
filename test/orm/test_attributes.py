@@ -246,20 +246,20 @@ class AttributesTest(fixtures.ORMTest):
         u.user_id = 7
         u.user_name = "john"
         u.email_address = "lala@123.com"
-        self.assert_(
+        self.assertTrue(
             u.user_id == 7
             and u.user_name == "john"
             and u.email_address == "lala@123.com"
         )
         attributes.instance_state(u)._commit_all(attributes.instance_dict(u))
-        self.assert_(
+        self.assertTrue(
             u.user_id == 7
             and u.user_name == "john"
             and u.email_address == "lala@123.com"
         )
         u.user_name = "heythere"
         u.email_address = "foo@bar.com"
-        self.assert_(
+        self.assertTrue(
             u.user_id == 7
             and u.user_name == "heythere"
             and u.email_address == "foo@bar.com"
@@ -313,12 +313,12 @@ class AttributesTest(fixtures.ORMTest):
 
         # and lastly make sure we still have our data after all that.
         # identical serialzation is great, *if* it's complete :)
-        self.assert_(o4.user_id == 7)
-        self.assert_(o4.user_name is None)
-        self.assert_(o4.email_address is None)
-        self.assert_(len(o4.mt2) == 1)
-        self.assert_(o4.mt2[0].a == "abcde")
-        self.assert_(o4.mt2[0].b is None)
+        self.assertTrue(o4.user_id == 7)
+        self.assertTrue(o4.user_name is None)
+        self.assertTrue(o4.email_address is None)
+        self.assertTrue(len(o4.mt2) == 1)
+        self.assertTrue(o4.mt2[0].a == "abcde")
+        self.assertTrue(o4.mt2[0].b is None)
 
     @testing.requires.predictable_gc
     def test_state_gc(self):
@@ -554,7 +554,7 @@ class AttributesTest(fixtures.ORMTest):
         a.email_address = "lala@123.com"
         u.addresses.append(a)
 
-        self.assert_(
+        self.assertTrue(
             u.user_id == 7
             and u.user_name == "john"
             and u.addresses[0].email_address == "lala@123.com"
@@ -565,7 +565,7 @@ class AttributesTest(fixtures.ORMTest):
                 attributes.instance_dict(a)
             ),
         )
-        self.assert_(
+        self.assertTrue(
             u.user_id == 7
             and u.user_name == "john"
             and u.addresses[0].email_address == "lala@123.com"
@@ -1173,17 +1173,17 @@ class BackrefTest(fixtures.ORMTest):
         s = Student()
         c = Course()
         s.courses.append(c)
-        self.assert_(c.students == [s])
+        self.assertTrue(c.students == [s])
         s.courses.remove(c)
-        self.assert_(c.students == [])
+        self.assertTrue(c.students == [])
 
         (s1, s2, s3) = (Student(), Student(), Student())
 
         c.students = [s1, s2, s3]
-        self.assert_(s2.courses == [c])
-        self.assert_(s1.courses == [c])
+        self.assertTrue(s2.courses == [c])
+        self.assertTrue(s1.courses == [c])
         s1.courses.remove(c)
-        self.assert_(c.students == [s2, s3])
+        self.assertTrue(c.students == [s2, s3])
 
     def test_o2m(self):
         class Post:
@@ -1215,18 +1215,18 @@ class BackrefTest(fixtures.ORMTest):
         b.posts.append(p1)
         b.posts.append(p2)
         b.posts.append(p3)
-        self.assert_(b.posts == [p1, p2, p3])
-        self.assert_(p2.blog is b)
+        self.assertTrue(b.posts == [p1, p2, p3])
+        self.assertTrue(p2.blog is b)
 
         p3.blog = None
-        self.assert_(b.posts == [p1, p2])
+        self.assertTrue(b.posts == [p1, p2])
         p4 = Post()
         p4.blog = b
-        self.assert_(b.posts == [p1, p2, p4])
+        self.assertTrue(b.posts == [p1, p2, p4])
 
         p4.blog = b
         p4.blog = b
-        self.assert_(b.posts == [p1, p2, p4])
+        self.assertTrue(b.posts == [p1, p2, p4])
 
         # assert no failure removing None
         p5 = Post()
@@ -1254,11 +1254,11 @@ class BackrefTest(fixtures.ORMTest):
         p = Port()
         j = Jack()
         p.jack = j
-        self.assert_(j.port is p)
-        self.assert_(p.jack is not None)
+        self.assertTrue(j.port is p)
+        self.assertTrue(p.jack is not None)
 
         j.port = None
-        self.assert_(p.jack is None)
+        self.assertTrue(p.jack is None)
 
     def test_symmetric_o2o_inheritance(self):
         """Test that backref 'initiator' catching goes against

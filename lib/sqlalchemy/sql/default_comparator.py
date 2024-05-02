@@ -53,10 +53,10 @@ def _boolean_compare(
     op: OperatorType,
     obj: Any,
     *,
-    negate_op: Optional[OperatorType] = None,
+    negate_op: OperatorType | None = None,
     reverse: bool = False,
-    _python_is_types: Tuple[Type[Any], ...] = (type(None), bool),
-    result_type: Optional[TypeEngine[bool]] = None,
+    _python_is_types: tuple[type[Any], ...] = (type(None), bool),
+    result_type: TypeEngine[bool] | None = None,
     **kwargs: Any,
 ) -> OperatorExpression[bool]:
     if result_type is None:
@@ -147,7 +147,7 @@ def _custom_op_operate(
     op: custom_op[Any],
     obj: Any,
     reverse: bool = False,
-    result_type: Optional[TypeEngine[Any]] = None,
+    result_type: TypeEngine[Any] | None = None,
     **kw: Any,
 ) -> ColumnElement[Any]:
     if result_type is None:
@@ -167,7 +167,7 @@ def _binary_operate(
     obj: roles.BinaryElementRole[Any],
     *,
     reverse: bool = False,
-    result_type: Optional[TypeEngine[_T]] = None,
+    result_type: TypeEngine[_T] | None = None,
     **kw: Any,
 ) -> OperatorExpression[_T]:
     coerced_obj = coercions.expect(
@@ -361,7 +361,7 @@ def _regexp_match_impl(
     expr: ColumnElement[str],
     op: OperatorType,
     pattern: Any,
-    flags: Optional[str],
+    flags: str | None,
     **kw: Any,
 ) -> ColumnElement[Any]:
     return BinaryExpression(
@@ -383,7 +383,7 @@ def _regexp_replace_impl(
     op: OperatorType,
     pattern: Any,
     replacement: Any,
-    flags: Optional[str],
+    flags: str | None,
     **kw: Any,
 ) -> ColumnElement[Any]:
     return BinaryExpression(
@@ -412,12 +412,12 @@ def _regexp_replace_impl(
 
 # a mapping of operators with the method they use, along with
 # additional keyword arguments to be passed
-operator_lookup: Dict[
+operator_lookup: dict[
     str,
-    Tuple[
+    tuple[
         Callable[..., ColumnElement[Any]],
         util.immutabledict[
-            str, Union[OperatorType, Callable[..., ColumnElement[Any]]]
+            str, OperatorType | Callable[..., ColumnElement[Any]]
         ],
     ],
 ] = {

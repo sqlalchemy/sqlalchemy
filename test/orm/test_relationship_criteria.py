@@ -1247,7 +1247,7 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "SELECT %s FROM users WHERE users.name != some_crit" % (expected,),
+            "SELECT {} FROM users WHERE users.name != some_crit".format(expected),
         )
 
     def test_select_from_aliased_inclaliased_criteria(
@@ -2527,7 +2527,7 @@ class SubqueryCriteriaTest(fixtures.DeclarativeMappedTest):
             token: Mapped[str] = mapped_column(String(50))
             color_id: Mapped[int] = mapped_column(ForeignKey("color.id"))
             color: Mapped[Color] = relationship()
-            connected_rooms: Mapped[List["Room"]] = relationship(  # noqa: F821
+            connected_rooms: Mapped[list[Room]] = relationship(  # noqa: F821
                 secondary=room_connections,
                 primaryjoin=id == room_connections.c.room_a_id,
                 secondaryjoin=id == room_connections.c.room_b_id,

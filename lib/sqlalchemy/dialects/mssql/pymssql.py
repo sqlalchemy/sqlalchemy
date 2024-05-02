@@ -89,7 +89,7 @@ class MSDialect_pymssql(MSDialect):
         opts.update(url.query)
         port = opts.pop("port", None)
         if port and "host" in opts:
-            opts["host"] = "%s:%s" % (opts["host"], port)
+            opts["host"] = "{}:{}".format(opts["host"], port)
         return ([], opts)
 
     def is_disconnect(self, e, connection, cursor):

@@ -20,11 +20,11 @@ class Milestone:
     id: Mapped[int] = mapped_column(primary_key=True)
 
     @declared_attr
-    def users(self) -> Mapped[List["User"]]:
+    def users(self) -> Mapped[list[User]]:
         return relationship("User")
 
     @declared_attr
-    def user_ids(self) -> AssociationProxy[List[int]]:
+    def user_ids(self) -> AssociationProxy[list[int]]:
         return association_proxy("users", "id")
 
 

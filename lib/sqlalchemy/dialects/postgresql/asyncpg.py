@@ -482,13 +482,13 @@ class PGIdentifierPreparer_asyncpg(PGIdentifierPreparer):
 
 class _AsyncpgConnection(Protocol):
     async def executemany(
-        self, operation: Any, seq_of_parameters: Sequence[Tuple[Any, ...]]
+        self, operation: Any, seq_of_parameters: Sequence[tuple[Any, ...]]
     ) -> Any: ...
 
     async def reload_schema_state(self) -> None: ...
 
     async def prepare(
-        self, operation: Any, *, name: Optional[str] = None
+        self, operation: Any, *, name: str | None = None
     ) -> Any: ...
 
     def is_closed(self) -> bool: ...
@@ -496,7 +496,7 @@ class _AsyncpgConnection(Protocol):
     def transaction(
         self,
         *,
-        isolation: Optional[str] = None,
+        isolation: str | None = None,
         readonly: bool = False,
         deferrable: bool = False,
     ) -> Any: ...
@@ -524,7 +524,7 @@ class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
 
     _adapt_connection: AsyncAdapt_asyncpg_connection
     _connection: _AsyncpgConnection
-    _cursor: Optional[_AsyncpgCursor]
+    _cursor: _AsyncpgCursor | None
 
     def __init__(self, adapt_connection: AsyncAdapt_asyncpg_connection):
         self._adapt_connection = adapt_connection
@@ -591,7 +591,7 @@ class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
                 self._handle_exception(error)
 
     @property
-    def description(self) -> Optional[_DBAPICursorDescription]:
+    def description(self) -> _DBAPICursorDescription | None:
         return self._description
 
     @property
@@ -816,7 +816,7 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
             for super_ in type(error).__mro__:
                 if super_ in exception_mapping:
                     translated_error = exception_mapping[super_](
-                        "%s: %s" % (type(error), error)
+                        f"{type(error)}: {error}"
                     )
                     translated_error.pgcode = translated_error.sqlstate = (
                         getattr(error, "sqlstate", None)

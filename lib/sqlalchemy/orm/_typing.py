@@ -108,7 +108,7 @@ class _ORMAdapterProto(Protocol):
 
     """
 
-    def __call__(self, obj: _CE, key: Optional[str] = None) -> _CE: ...
+    def __call__(self, obj: _CE, key: str | None = None) -> _CE: ...
 
 
 class _LoaderCallable(Protocol):

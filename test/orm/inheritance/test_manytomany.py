@@ -373,8 +373,8 @@ class InheritTest3(fixtures.MappedTest):
 
         result = sess.query(Blub).all()
         print(result)
-        self.assert_(repr(result[0]) == compare)
+        self.assertTrue(repr(result[0]) == compare)
         sess.expunge_all()
         x = sess.query(Blub).filter_by(id=blubid).one()
         print(x)
-        self.assert_(repr(x) == compare)
+        self.assertTrue(repr(x) == compare)

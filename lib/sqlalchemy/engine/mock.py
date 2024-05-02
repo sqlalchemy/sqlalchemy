@@ -45,7 +45,7 @@ class MockConnection:
     def connect(self, **kwargs: Any) -> MockConnection:
         return self
 
-    def schema_for_object(self, obj: HasSchemaAttr) -> Optional[str]:
+    def schema_for_object(self, obj: HasSchemaAttr) -> str | None:
         return obj.schema
 
     def execution_options(self, **kw: Any) -> MockConnection:
@@ -53,7 +53,7 @@ class MockConnection:
 
     def _run_ddl_visitor(
         self,
-        visitorcallable: Type[Union[SchemaGenerator, SchemaDropper]],
+        visitorcallable: type[SchemaGenerator | SchemaDropper],
         element: SchemaItem,
         **kwargs: Any,
     ) -> None:
@@ -63,14 +63,14 @@ class MockConnection:
     def execute(
         self,
         obj: Executable,
-        parameters: Optional[_CoreAnyExecuteParams] = None,
-        execution_options: Optional[CoreExecuteOptionsParameter] = None,
+        parameters: _CoreAnyExecuteParams | None = None,
+        execution_options: CoreExecuteOptionsParameter | None = None,
     ) -> Any:
         return self._execute_impl(obj, parameters)
 
 
 def create_mock_engine(
-    url: Union[str, URL], executor: Any, **kw: Any
+    url: str | URL, executor: Any, **kw: Any
 ) -> MockConnection:
     """Create a "mock" engine used for echoing DDL.
 

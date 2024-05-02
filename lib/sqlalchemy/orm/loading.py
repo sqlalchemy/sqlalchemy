@@ -368,9 +368,9 @@ def merge_frozen_result(session, statement, frozen_result, load=True):
 @util.preload_module("sqlalchemy.orm.context")
 def merge_result(
     query: Query[Any],
-    iterator: Union[FrozenResult, Iterable[Sequence[Any]], Iterable[object]],
+    iterator: FrozenResult | Iterable[Sequence[Any]] | Iterable[object],
     load: bool = True,
-) -> Union[FrozenResult, Iterable[Any]]:
+) -> FrozenResult | Iterable[Any]:
     """Merge a result into the given :class:`.Query` object's Session.
 
     See :meth:`_orm.Query.merge_result` for top-level documentation on this
@@ -455,7 +455,7 @@ def get_from_identity(
     mapper: Mapper[_O],
     key: _IdentityKeyType[_O],
     passive: PassiveFlag,
-) -> Union[LoaderCallableStatus, Optional[_O]]:
+) -> LoaderCallableStatus | _O | None:
     """Look up the given key in the given session's identity map,
     check the object for expired state if found.
 
@@ -490,13 +490,13 @@ def get_from_identity(
 
 def load_on_ident(
     session: Session,
-    statement: Union[Select, FromStatement],
-    key: Optional[_IdentityKeyType],
+    statement: Select | FromStatement,
+    key: _IdentityKeyType | None,
     *,
-    load_options: Optional[Sequence[ORMOption]] = None,
-    refresh_state: Optional[InstanceState[Any]] = None,
-    with_for_update: Optional[ForUpdateArg] = None,
-    only_load_props: Optional[Iterable[str]] = None,
+    load_options: Sequence[ORMOption] | None = None,
+    refresh_state: InstanceState[Any] | None = None,
+    with_for_update: ForUpdateArg | None = None,
+    only_load_props: Iterable[str] | None = None,
     no_autoflush: bool = False,
     bind_arguments: Mapping[str, Any] = util.EMPTY_DICT,
     execution_options: _ExecuteOptions = util.EMPTY_DICT,
@@ -529,14 +529,14 @@ def load_on_ident(
 
 def load_on_pk_identity(
     session: Session,
-    statement: Union[Select, FromStatement],
-    primary_key_identity: Optional[Tuple[Any, ...]],
+    statement: Select | FromStatement,
+    primary_key_identity: tuple[Any, ...] | None,
     *,
-    load_options: Optional[Sequence[ORMOption]] = None,
-    refresh_state: Optional[InstanceState[Any]] = None,
-    with_for_update: Optional[ForUpdateArg] = None,
-    only_load_props: Optional[Iterable[str]] = None,
-    identity_token: Optional[Any] = None,
+    load_options: Sequence[ORMOption] | None = None,
+    refresh_state: InstanceState[Any] | None = None,
+    with_for_update: ForUpdateArg | None = None,
+    only_load_props: Iterable[str] | None = None,
+    identity_token: Any | None = None,
     no_autoflush: bool = False,
     bind_arguments: Mapping[str, Any] = util.EMPTY_DICT,
     execution_options: _ExecuteOptions = util.EMPTY_DICT,

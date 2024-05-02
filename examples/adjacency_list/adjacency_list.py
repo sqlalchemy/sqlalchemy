@@ -24,12 +24,12 @@ class TreeNode(MappedAsDataclass, Base):
     __tablename__ = "tree"
 
     id: Mapped[int] = mapped_column(primary_key=True, init=False)
-    parent_id: Mapped[Optional[int]] = mapped_column(
+    parent_id: Mapped[int | None] = mapped_column(
         ForeignKey("tree.id"), init=False
     )
     name: Mapped[str]
 
-    children: Mapped[Dict[str, TreeNode]] = relationship(
+    children: Mapped[dict[str, TreeNode]] = relationship(
         cascade="all, delete-orphan",
         back_populates="parent",
         collection_class=attribute_keyed_dict("name"),
@@ -37,7 +37,7 @@ class TreeNode(MappedAsDataclass, Base):
         repr=False,
     )
 
-    parent: Mapped[Optional[TreeNode]] = relationship(
+    parent: Mapped[TreeNode | None] = relationship(
         back_populates="children", remote_side=id, default=None
     )
 

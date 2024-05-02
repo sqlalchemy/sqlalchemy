@@ -1271,9 +1271,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         m2 = MetaData()
         tbl2 = tbl.to_metadata(m2, name="bar")
-        (cons2,) = [
+        (cons2,) = (
             c for c in tbl2.constraints if isinstance(c, ExcludeConstraint)
-        ]
+        )
         self.assert_compile(
             schema.AddConstraint(cons2),
             expected.format(name="bar"),

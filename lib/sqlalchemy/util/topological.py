@@ -28,9 +28,9 @@ __all__ = ["sort", "sort_as_subsets", "find_cycles"]
 
 
 def sort_as_subsets(
-    tuples: Collection[Tuple[_T, _T]], allitems: Collection[_T]
+    tuples: Collection[tuple[_T, _T]], allitems: Collection[_T]
 ) -> Iterator[Sequence[_T]]:
-    edges: DefaultDict[_T, Set[_T]] = util.defaultdict(set)
+    edges: DefaultDict[_T, set[_T]] = util.defaultdict(set)
     for parent, child in tuples:
         edges[child].add(parent)
 
@@ -56,7 +56,7 @@ def sort_as_subsets(
 
 
 def sort(
-    tuples: Collection[Tuple[_T, _T]],
+    tuples: Collection[tuple[_T, _T]],
     allitems: Collection[_T],
     deterministic_order: bool = True,
 ) -> Iterator[_T]:
@@ -75,12 +75,12 @@ def sort(
 
 
 def find_cycles(
-    tuples: Iterable[Tuple[_T, _T]], allitems: Iterable[_T]
-) -> Set[_T]:
+    tuples: Iterable[tuple[_T, _T]], allitems: Iterable[_T]
+) -> set[_T]:
     # adapted from:
     # https://neopythonic.blogspot.com/2009/01/detecting-cycles-in-directed-graph.html
 
-    edges: DefaultDict[_T, Set[_T]] = util.defaultdict(set)
+    edges: DefaultDict[_T, set[_T]] = util.defaultdict(set)
     for parent, child in tuples:
         edges[parent].add(child)
     nodes_to_test = set(edges)
@@ -116,5 +116,5 @@ def find_cycles(
     return output
 
 
-def _gen_edges(edges: DefaultDict[_T, Set[_T]]) -> Set[Tuple[_T, _T]]:
+def _gen_edges(edges: DefaultDict[_T, set[_T]]) -> set[tuple[_T, _T]]:
     return {(right, left) for left in edges for right in edges[left]}

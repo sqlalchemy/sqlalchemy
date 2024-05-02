@@ -47,11 +47,11 @@ if typing.TYPE_CHECKING:
 
 @overload
 def create_engine(
-    url: Union[str, URL],
+    url: str | URL,
     *,
-    connect_args: Dict[Any, Any] = ...,
+    connect_args: dict[Any, Any] = ...,
     convert_unicode: bool = ...,
-    creator: Union[_CreatorFnType, _CreatorWRecFnType] = ...,
+    creator: _CreatorFnType | _CreatorWRecFnType = ...,
     echo: _EchoFlagType = ...,
     echo_pool: _EchoFlagType = ...,
     enable_from_linting: bool = ...,
@@ -63,22 +63,22 @@ def create_engine(
     isolation_level: IsolationLevel = ...,
     json_deserializer: Callable[..., Any] = ...,
     json_serializer: Callable[..., Any] = ...,
-    label_length: Optional[int] = ...,
+    label_length: int | None = ...,
     logging_name: str = ...,
-    max_identifier_length: Optional[int] = ...,
+    max_identifier_length: int | None = ...,
     max_overflow: int = ...,
-    module: Optional[Any] = ...,
-    paramstyle: Optional[_ParamStyle] = ...,
-    pool: Optional[Pool] = ...,
-    poolclass: Optional[Type[Pool]] = ...,
+    module: Any | None = ...,
+    paramstyle: _ParamStyle | None = ...,
+    pool: Pool | None = ...,
+    poolclass: type[Pool] | None = ...,
     pool_logging_name: str = ...,
     pool_pre_ping: bool = ...,
     pool_size: int = ...,
     pool_recycle: int = ...,
-    pool_reset_on_return: Optional[_ResetStyleArgType] = ...,
+    pool_reset_on_return: _ResetStyleArgType | None = ...,
     pool_timeout: float = ...,
     pool_use_lifo: bool = ...,
-    plugins: List[str] = ...,
+    plugins: list[str] = ...,
     query_cache_size: int = ...,
     use_insertmanyvalues: bool = ...,
     **kwargs: Any,
@@ -86,7 +86,7 @@ def create_engine(
 
 
 @overload
-def create_engine(url: Union[str, URL], **kwargs: Any) -> Engine: ...
+def create_engine(url: str | URL, **kwargs: Any) -> Engine: ...
 
 
 @util.deprecated_params(
@@ -113,7 +113,7 @@ def create_engine(url: Union[str, URL], **kwargs: Any) -> Engine: ...
         "is deprecated and will be removed in a future release. ",
     ),
 )
-def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
+def create_engine(url: str | _url.URL, **kwargs: Any) -> Engine:
     """Create a new :class:`_engine.Engine` instance.
 
     The standard calling form is to send the :ref:`URL <database_urls>` as the
@@ -556,7 +556,7 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
 
     if kwargs.pop("_coerce_config", False):
 
-        def pop_kwarg(key: str, default: Optional[Any] = None) -> Any:
+        def pop_kwarg(key: str, default: Any | None = None) -> Any:
             value = kwargs.pop(key, default)
             if key in dialect_cls.engine_config_types:
                 value = dialect_cls.engine_config_types[key](value)
@@ -621,7 +621,7 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
     if pool is None:
 
         def connect(
-            connection_record: Optional[ConnectionPoolEntry] = None,
+            connection_record: ConnectionPoolEntry | None = None,
         ) -> DBAPIConnection:
             if dialect._has_events:
                 for fn in dialect.dispatch.do_connect:
@@ -768,7 +768,7 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
 
 
 def engine_from_config(
-    configuration: Dict[str, Any], prefix: str = "sqlalchemy.", **kwargs: Any
+    configuration: dict[str, Any], prefix: str = "sqlalchemy.", **kwargs: Any
 ) -> Engine:
     """Create a new Engine instance using a configuration dictionary.
 
@@ -814,14 +814,14 @@ def engine_from_config(
 
 @overload
 def create_pool_from_url(
-    url: Union[str, URL],
+    url: str | URL,
     *,
-    poolclass: Optional[Type[Pool]] = ...,
+    poolclass: type[Pool] | None = ...,
     logging_name: str = ...,
     pre_ping: bool = ...,
     size: int = ...,
     recycle: int = ...,
-    reset_on_return: Optional[_ResetStyleArgType] = ...,
+    reset_on_return: _ResetStyleArgType | None = ...,
     timeout: float = ...,
     use_lifo: bool = ...,
     **kwargs: Any,
@@ -829,10 +829,10 @@ def create_pool_from_url(
 
 
 @overload
-def create_pool_from_url(url: Union[str, URL], **kwargs: Any) -> Pool: ...
+def create_pool_from_url(url: str | URL, **kwargs: Any) -> Pool: ...
 
 
-def create_pool_from_url(url: Union[str, URL], **kwargs: Any) -> Pool:
+def create_pool_from_url(url: str | URL, **kwargs: Any) -> Pool:
     """Create a pool instance from the given url.
 
     If ``poolclass`` is not provided the pool class used

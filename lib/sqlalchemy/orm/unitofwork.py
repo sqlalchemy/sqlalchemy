@@ -157,9 +157,9 @@ def track_cascade_events(descriptor, prop):
 class UOWTransaction:
     session: Session
     transaction: SessionTransaction
-    attributes: Dict[str, Any]
-    deps: util.defaultdict[Mapper[Any], Set[DependencyProcessor]]
-    mappers: util.defaultdict[Mapper[Any], Set[InstanceState[Any]]]
+    attributes: dict[str, Any]
+    deps: util.defaultdict[Mapper[Any], set[DependencyProcessor]]
+    mappers: util.defaultdict[Mapper[Any], set[InstanceState[Any]]]
 
     def __init__(self, session: Session):
         self.session = session
@@ -309,8 +309,8 @@ class UOWTransaction:
         isdelete: bool = False,
         listonly: bool = False,
         cancel_delete: bool = False,
-        operation: Optional[str] = None,
-        prop: Optional[MapperProperty] = None,
+        operation: str | None = None,
+        prop: MapperProperty | None = None,
     ) -> bool:
         if not self.session._contains_state(state):
             # this condition is normal when objects are registered
@@ -598,7 +598,7 @@ class ProcessAll(IterateMappersMixin, PostSortRec):
         return iter([])
 
     def __repr__(self):
-        return "%s(%s, isdelete=%s)" % (
+        return "{}({}, isdelete={})".format(
             self.__class__.__name__,
             self.dependency_processor,
             self.isdelete,
@@ -663,7 +663,7 @@ class SaveUpdateAll(PostSortRec):
             dep.per_state_flush_actions(uow, states_for_prop, False)
 
     def __repr__(self):
-        return "%s(%s)" % (self.__class__.__name__, self.mapper)
+        return "{}({})".format(self.__class__.__name__, self.mapper)
 
 
 class DeleteAll(PostSortRec):
@@ -700,7 +700,7 @@ class DeleteAll(PostSortRec):
             dep.per_state_flush_actions(uow, states_for_prop, True)
 
     def __repr__(self):
-        return "%s(%s)" % (self.__class__.__name__, self.mapper)
+        return "{}({})".format(self.__class__.__name__, self.mapper)
 
 
 class ProcessState(PostSortRec):
@@ -731,7 +731,7 @@ class ProcessState(PostSortRec):
             dependency_processor.process_saves(uow, states)
 
     def __repr__(self):
-        return "%s(%s, %s, delete=%s)" % (
+        return "{}({}, {}, delete={})".format(
             self.__class__.__name__,
             self.dependency_processor,
             orm_util.state_str(self.state),
@@ -761,7 +761,7 @@ class SaveUpdateState(PostSortRec):
         )
 
     def __repr__(self):
-        return "%s(%s)" % (
+        return "{}({})".format(
             self.__class__.__name__,
             orm_util.state_str(self.state),
         )
@@ -790,7 +790,7 @@ class DeleteState(PostSortRec):
         )
 
     def __repr__(self):
-        return "%s(%s)" % (
+        return "{}({})".format(
             self.__class__.__name__,
             orm_util.state_str(self.state),
         )

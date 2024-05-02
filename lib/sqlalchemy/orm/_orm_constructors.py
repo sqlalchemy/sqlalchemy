@@ -86,7 +86,7 @@ _T = typing.TypeVar("_T")
     "via :meth:`.Query.from_statement` and now does nothing.",
     enable_warnings=False,  # AliasOption itself warns
 )
-def contains_alias(alias: Union[Alias, Subquery]) -> AliasOption:
+def contains_alias(alias: Alias | Subquery) -> AliasOption:
     r"""Return a :class:`.MapperOption` that will indicate to the
     :class:`_query.Query`
     that the main table has been aliased.
@@ -96,45 +96,45 @@ def contains_alias(alias: Union[Alias, Subquery]) -> AliasOption:
 
 
 def mapped_column(
-    __name_pos: Optional[
-        Union[str, _TypeEngineArgument[Any], SchemaEventTarget]
-    ] = None,
-    __type_pos: Optional[
-        Union[_TypeEngineArgument[Any], SchemaEventTarget]
-    ] = None,
+    __name_pos: None | (
+        str | _TypeEngineArgument[Any] | SchemaEventTarget
+    ) = None,
+    __type_pos: None | (
+        _TypeEngineArgument[Any] | SchemaEventTarget
+    ) = None,
     /,
     *args: SchemaEventTarget,
-    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
-    default: Optional[Any] = _NoArg.NO_ARG,
-    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
-    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    nullable: Optional[
-        Union[bool, Literal[SchemaConst.NULL_UNSPECIFIED]]
-    ] = SchemaConst.NULL_UNSPECIFIED,
-    primary_key: Optional[bool] = False,
-    deferred: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    deferred_group: Optional[str] = None,
-    deferred_raiseload: Optional[bool] = None,
+    init: _NoArg | bool = _NoArg.NO_ARG,
+    repr: _NoArg | bool = _NoArg.NO_ARG,  # noqa: A002
+    default: Any | None = _NoArg.NO_ARG,
+    default_factory: _NoArg | Callable[[], _T] = _NoArg.NO_ARG,
+    compare: _NoArg | bool = _NoArg.NO_ARG,
+    kw_only: _NoArg | bool = _NoArg.NO_ARG,
+    nullable: None | (
+        bool | Literal[SchemaConst.NULL_UNSPECIFIED]
+    ) = SchemaConst.NULL_UNSPECIFIED,
+    primary_key: bool | None = False,
+    deferred: _NoArg | bool = _NoArg.NO_ARG,
+    deferred_group: str | None = None,
+    deferred_raiseload: bool | None = None,
     use_existing_column: bool = False,
-    name: Optional[str] = None,
-    type_: Optional[_TypeEngineArgument[Any]] = None,
+    name: str | None = None,
+    type_: _TypeEngineArgument[Any] | None = None,
     autoincrement: _AutoIncrementType = "auto",
-    doc: Optional[str] = None,
-    key: Optional[str] = None,
-    index: Optional[bool] = None,
-    unique: Optional[bool] = None,
-    info: Optional[_InfoType] = None,
-    onupdate: Optional[Any] = None,
-    insert_default: Optional[Any] = _NoArg.NO_ARG,
-    server_default: Optional[_ServerDefaultArgument] = None,
-    server_onupdate: Optional[FetchedValue] = None,
+    doc: str | None = None,
+    key: str | None = None,
+    index: bool | None = None,
+    unique: bool | None = None,
+    info: _InfoType | None = None,
+    onupdate: Any | None = None,
+    insert_default: Any | None = _NoArg.NO_ARG,
+    server_default: _ServerDefaultArgument | None = None,
+    server_onupdate: FetchedValue | None = None,
     active_history: bool = False,
-    quote: Optional[bool] = None,
+    quote: bool | None = None,
     system: bool = False,
-    comment: Optional[str] = None,
-    sort_order: Union[_NoArg, int] = _NoArg.NO_ARG,
+    comment: str | None = None,
+    sort_order: _NoArg | int = _NoArg.NO_ARG,
     **kw: Any,
 ) -> MappedColumn[Any]:
     r"""declare a new ORM-mapped :class:`_schema.Column` construct
@@ -348,10 +348,10 @@ def mapped_column(
 
 
 def orm_insert_sentinel(
-    name: Optional[str] = None,
-    type_: Optional[_TypeEngineArgument[Any]] = None,
+    name: str | None = None,
+    type_: _TypeEngineArgument[Any] | None = None,
     *,
-    default: Optional[Any] = None,
+    default: Any | None = None,
     omit_from_statements: bool = True,
 ) -> MappedColumn[Any]:
     """Provides a surrogate :func:`_orm.mapped_column` that generates
@@ -413,20 +413,20 @@ def orm_insert_sentinel(
 def column_property(
     column: _ORMColumnExprArgument[_T],
     *additional_columns: _ORMColumnExprArgument[Any],
-    group: Optional[str] = None,
+    group: str | None = None,
     deferred: bool = False,
     raiseload: bool = False,
-    comparator_factory: Optional[Type[PropComparator[_T]]] = None,
-    init: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
-    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
-    default: Optional[Any] = _NoArg.NO_ARG,
-    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
-    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    comparator_factory: type[PropComparator[_T]] | None = None,
+    init: _NoArg | bool = _NoArg.NO_ARG,  # noqa: A002
+    repr: _NoArg | bool = _NoArg.NO_ARG,  # noqa: A002
+    default: Any | None = _NoArg.NO_ARG,
+    default_factory: _NoArg | Callable[[], _T] = _NoArg.NO_ARG,
+    compare: _NoArg | bool = _NoArg.NO_ARG,
+    kw_only: _NoArg | bool = _NoArg.NO_ARG,
     active_history: bool = False,
     expire_on_flush: bool = True,
-    info: Optional[_InfoType] = None,
-    doc: Optional[str] = None,
+    info: _InfoType | None = None,
+    doc: str | None = None,
 ) -> MappedSQLExpression[_T]:
     r"""Provide a column-level property for use with a mapping.
 
@@ -548,41 +548,41 @@ def composite(
     _class_or_attr: _CompositeAttrType[Any],
     /,
     *attrs: _CompositeAttrType[Any],
-    group: Optional[str] = None,
+    group: str | None = None,
     deferred: bool = False,
     raiseload: bool = False,
-    comparator_factory: Optional[Type[Composite.Comparator[_T]]] = None,
+    comparator_factory: type[Composite.Comparator[_T]] | None = None,
     active_history: bool = False,
-    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
-    default: Optional[Any] = _NoArg.NO_ARG,
-    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
-    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    info: Optional[_InfoType] = None,
-    doc: Optional[str] = None,
+    init: _NoArg | bool = _NoArg.NO_ARG,
+    repr: _NoArg | bool = _NoArg.NO_ARG,  # noqa: A002
+    default: Any | None = _NoArg.NO_ARG,
+    default_factory: _NoArg | Callable[[], _T] = _NoArg.NO_ARG,
+    compare: _NoArg | bool = _NoArg.NO_ARG,
+    kw_only: _NoArg | bool = _NoArg.NO_ARG,
+    info: _InfoType | None = None,
+    doc: str | None = None,
     **__kw: Any,
 ) -> Composite[Any]: ...
 
 
 @overload
 def composite(
-    _class_or_attr: Type[_CC],
+    _class_or_attr: type[_CC],
     /,
     *attrs: _CompositeAttrType[Any],
-    group: Optional[str] = None,
+    group: str | None = None,
     deferred: bool = False,
     raiseload: bool = False,
-    comparator_factory: Optional[Type[Composite.Comparator[_T]]] = None,
+    comparator_factory: type[Composite.Comparator[_T]] | None = None,
     active_history: bool = False,
-    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
-    default: Optional[Any] = _NoArg.NO_ARG,
-    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
-    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    info: Optional[_InfoType] = None,
-    doc: Optional[str] = None,
+    init: _NoArg | bool = _NoArg.NO_ARG,
+    repr: _NoArg | bool = _NoArg.NO_ARG,  # noqa: A002
+    default: Any | None = _NoArg.NO_ARG,
+    default_factory: _NoArg | Callable[[], _T] = _NoArg.NO_ARG,
+    compare: _NoArg | bool = _NoArg.NO_ARG,
+    kw_only: _NoArg | bool = _NoArg.NO_ARG,
+    info: _InfoType | None = None,
+    doc: str | None = None,
     **__kw: Any,
 ) -> Composite[_CC]: ...
 
@@ -592,42 +592,42 @@ def composite(
     _class_or_attr: Callable[..., _CC],
     /,
     *attrs: _CompositeAttrType[Any],
-    group: Optional[str] = None,
+    group: str | None = None,
     deferred: bool = False,
     raiseload: bool = False,
-    comparator_factory: Optional[Type[Composite.Comparator[_T]]] = None,
+    comparator_factory: type[Composite.Comparator[_T]] | None = None,
     active_history: bool = False,
-    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
-    default: Optional[Any] = _NoArg.NO_ARG,
-    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
-    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    info: Optional[_InfoType] = None,
-    doc: Optional[str] = None,
+    init: _NoArg | bool = _NoArg.NO_ARG,
+    repr: _NoArg | bool = _NoArg.NO_ARG,  # noqa: A002
+    default: Any | None = _NoArg.NO_ARG,
+    default_factory: _NoArg | Callable[[], _T] = _NoArg.NO_ARG,
+    compare: _NoArg | bool = _NoArg.NO_ARG,
+    kw_only: _NoArg | bool = _NoArg.NO_ARG,
+    info: _InfoType | None = None,
+    doc: str | None = None,
     **__kw: Any,
 ) -> Composite[_CC]: ...
 
 
 def composite(
-    _class_or_attr: Union[
-        None, Type[_CC], Callable[..., _CC], _CompositeAttrType[Any]
-    ] = None,
+    _class_or_attr: (
+        None | type[_CC] | Callable[..., _CC] | _CompositeAttrType[Any]
+    ) = None,
     /,
     *attrs: _CompositeAttrType[Any],
-    group: Optional[str] = None,
+    group: str | None = None,
     deferred: bool = False,
     raiseload: bool = False,
-    comparator_factory: Optional[Type[Composite.Comparator[_T]]] = None,
+    comparator_factory: type[Composite.Comparator[_T]] | None = None,
     active_history: bool = False,
-    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
-    default: Optional[Any] = _NoArg.NO_ARG,
-    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
-    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    info: Optional[_InfoType] = None,
-    doc: Optional[str] = None,
+    init: _NoArg | bool = _NoArg.NO_ARG,
+    repr: _NoArg | bool = _NoArg.NO_ARG,  # noqa: A002
+    default: Any | None = _NoArg.NO_ARG,
+    default_factory: _NoArg | Callable[[], _T] = _NoArg.NO_ARG,
+    compare: _NoArg | bool = _NoArg.NO_ARG,
+    kw_only: _NoArg | bool = _NoArg.NO_ARG,
+    info: _InfoType | None = None,
+    doc: str | None = None,
     **__kw: Any,
 ) -> Composite[Any]:
     r"""Return a composite column-based property for use with a Mapper.
@@ -722,10 +722,10 @@ def composite(
 
 def with_loader_criteria(
     entity_or_base: _EntityType[Any],
-    where_criteria: Union[
-        _ColumnExpressionArgument[bool],
-        Callable[[Any], _ColumnExpressionArgument[bool]],
-    ],
+    where_criteria: (
+        _ColumnExpressionArgument[bool] |
+        Callable[[Any], _ColumnExpressionArgument[bool]]
+    ),
     loader_only: bool = False,
     include_aliases: bool = False,
     propagate_to_loaders: bool = True,
@@ -914,47 +914,47 @@ def with_loader_criteria(
 
 
 def relationship(
-    argument: Optional[_RelationshipArgumentType[Any]] = None,
-    secondary: Optional[_RelationshipSecondaryArgument] = None,
+    argument: _RelationshipArgumentType[Any] | None = None,
+    secondary: _RelationshipSecondaryArgument | None = None,
     *,
-    uselist: Optional[bool] = None,
-    collection_class: Optional[
-        Union[Type[Collection[Any]], Callable[[], Collection[Any]]]
-    ] = None,
-    primaryjoin: Optional[_RelationshipJoinConditionArgument] = None,
-    secondaryjoin: Optional[_RelationshipJoinConditionArgument] = None,
-    back_populates: Optional[_RelationshipBackPopulatesArgument] = None,
+    uselist: bool | None = None,
+    collection_class: None | (
+        type[Collection[Any]] | Callable[[], Collection[Any]]
+    ) = None,
+    primaryjoin: _RelationshipJoinConditionArgument | None = None,
+    secondaryjoin: _RelationshipJoinConditionArgument | None = None,
+    back_populates: _RelationshipBackPopulatesArgument | None = None,
     order_by: _ORMOrderByArgument = False,
-    backref: Optional[ORMBackrefArgument] = None,
-    overlaps: Optional[str] = None,
+    backref: ORMBackrefArgument | None = None,
+    overlaps: str | None = None,
     post_update: bool = False,
     cascade: str = "save-update, merge",
     viewonly: bool = False,
-    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
-    default: Union[_NoArg, _T] = _NoArg.NO_ARG,
-    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
-    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    init: _NoArg | bool = _NoArg.NO_ARG,
+    repr: _NoArg | bool = _NoArg.NO_ARG,  # noqa: A002
+    default: _NoArg | _T = _NoArg.NO_ARG,
+    default_factory: _NoArg | Callable[[], _T] = _NoArg.NO_ARG,
+    compare: _NoArg | bool = _NoArg.NO_ARG,
+    kw_only: _NoArg | bool = _NoArg.NO_ARG,
     lazy: _LazyLoadArgumentType = "select",
-    passive_deletes: Union[Literal["all"], bool] = False,
+    passive_deletes: Literal["all"] | bool = False,
     passive_updates: bool = True,
     active_history: bool = False,
     enable_typechecks: bool = True,
-    foreign_keys: Optional[_ORMColCollectionArgument] = None,
-    remote_side: Optional[_ORMColCollectionArgument] = None,
-    join_depth: Optional[int] = None,
-    comparator_factory: Optional[
-        Type[RelationshipProperty.Comparator[Any]]
-    ] = None,
+    foreign_keys: _ORMColCollectionArgument | None = None,
+    remote_side: _ORMColCollectionArgument | None = None,
+    join_depth: int | None = None,
+    comparator_factory: None | (
+        type[RelationshipProperty.Comparator[Any]]
+    ) = None,
     single_parent: bool = False,
     innerjoin: bool = False,
-    distinct_target_key: Optional[bool] = None,
+    distinct_target_key: bool | None = None,
     load_on_pending: bool = False,
-    query_class: Optional[Type[Query[Any]]] = None,
-    info: Optional[_InfoType] = None,
+    query_class: type[Query[Any]] | None = None,
+    info: _InfoType | None = None,
     omit_join: Literal[None, False] = None,
-    sync_backref: Optional[bool] = None,
+    sync_backref: bool | None = None,
     **kw: Any,
 ) -> _RelationshipDeclared[Any]:
     """Provide a relationship between two mapped classes.
@@ -1803,17 +1803,17 @@ def relationship(
 def synonym(
     name: str,
     *,
-    map_column: Optional[bool] = None,
-    descriptor: Optional[Any] = None,
-    comparator_factory: Optional[Type[PropComparator[_T]]] = None,
-    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
-    default: Union[_NoArg, _T] = _NoArg.NO_ARG,
-    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
-    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    info: Optional[_InfoType] = None,
-    doc: Optional[str] = None,
+    map_column: bool | None = None,
+    descriptor: Any | None = None,
+    comparator_factory: type[PropComparator[_T]] | None = None,
+    init: _NoArg | bool = _NoArg.NO_ARG,
+    repr: _NoArg | bool = _NoArg.NO_ARG,  # noqa: A002
+    default: _NoArg | _T = _NoArg.NO_ARG,
+    default_factory: _NoArg | Callable[[], _T] = _NoArg.NO_ARG,
+    compare: _NoArg | bool = _NoArg.NO_ARG,
+    kw_only: _NoArg | bool = _NoArg.NO_ARG,
+    info: _InfoType | None = None,
+    doc: str | None = None,
 ) -> Synonym[Any]:
     """Denote an attribute name as a synonym to a mapped property,
     in that the attribute will mirror the value and expression behavior
@@ -1930,7 +1930,7 @@ def synonym(
 
 
 def create_session(
-    bind: Optional[_SessionBind] = None, **kwargs: Any
+    bind: _SessionBind | None = None, **kwargs: Any
 ) -> Session:
     r"""Create a new :class:`.Session`
     with no automation enabled by default.
@@ -1995,7 +1995,7 @@ def _mapper_fn(*arg: Any, **kw: Any) -> NoReturn:
 
 
 def dynamic_loader(
-    argument: Optional[_RelationshipArgumentType[Any]] = None, **kw: Any
+    argument: _RelationshipArgumentType[Any] | None = None, **kw: Any
 ) -> RelationshipProperty[Any]:
     """Construct a dynamically-loading mapper property.
 
@@ -2044,19 +2044,19 @@ def backref(name: str, **kwargs: Any) -> ORMBackrefArgument:
 def deferred(
     column: _ORMColumnExprArgument[_T],
     *additional_columns: _ORMColumnExprArgument[Any],
-    group: Optional[str] = None,
+    group: str | None = None,
     raiseload: bool = False,
-    comparator_factory: Optional[Type[PropComparator[_T]]] = None,
-    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
-    default: Optional[Any] = _NoArg.NO_ARG,
-    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
-    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
-    kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    comparator_factory: type[PropComparator[_T]] | None = None,
+    init: _NoArg | bool = _NoArg.NO_ARG,
+    repr: _NoArg | bool = _NoArg.NO_ARG,  # noqa: A002
+    default: Any | None = _NoArg.NO_ARG,
+    default_factory: _NoArg | Callable[[], _T] = _NoArg.NO_ARG,
+    compare: _NoArg | bool = _NoArg.NO_ARG,
+    kw_only: _NoArg | bool = _NoArg.NO_ARG,
     active_history: bool = False,
     expire_on_flush: bool = True,
-    info: Optional[_InfoType] = None,
-    doc: Optional[str] = None,
+    info: _InfoType | None = None,
+    doc: str | None = None,
 ) -> MappedSQLExpression[_T]:
     r"""Indicate a column-based mapped attribute that by default will
     not load unless accessed.
@@ -2103,11 +2103,11 @@ def deferred(
 def query_expression(
     default_expr: _ORMColumnExprArgument[_T] = sql.null(),
     *,
-    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
-    compare: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    repr: _NoArg | bool = _NoArg.NO_ARG,  # noqa: A002
+    compare: _NoArg | bool = _NoArg.NO_ARG,  # noqa: A002
     expire_on_flush: bool = True,
-    info: Optional[_InfoType] = None,
-    doc: Optional[str] = None,
+    info: _InfoType | None = None,
+    doc: str | None = None,
 ) -> MappedSQLExpression[_T]:
     """Indicate an attribute that populates from a query-time SQL expression.
 
@@ -2178,9 +2178,9 @@ AliasedType = Annotated[Type[_O], "aliased"]
 
 @overload
 def aliased(
-    element: Type[_O],
-    alias: Optional[FromClause] = None,
-    name: Optional[str] = None,
+    element: type[_O],
+    alias: FromClause | None = None,
+    name: str | None = None,
     flat: bool = False,
     adapt_on_names: bool = False,
 ) -> AliasedType[_O]: ...
@@ -2188,9 +2188,9 @@ def aliased(
 
 @overload
 def aliased(
-    element: Union[AliasedClass[_O], Mapper[_O], AliasedInsp[_O]],
-    alias: Optional[FromClause] = None,
-    name: Optional[str] = None,
+    element: AliasedClass[_O] | Mapper[_O] | AliasedInsp[_O],
+    alias: FromClause | None = None,
+    name: str | None = None,
     flat: bool = False,
     adapt_on_names: bool = False,
 ) -> AliasedClass[_O]: ...
@@ -2200,19 +2200,19 @@ def aliased(
 def aliased(
     element: FromClause,
     alias: None = None,
-    name: Optional[str] = None,
+    name: str | None = None,
     flat: bool = False,
     adapt_on_names: bool = False,
 ) -> FromClause: ...
 
 
 def aliased(
-    element: Union[_EntityType[_O], FromClause],
-    alias: Optional[FromClause] = None,
-    name: Optional[str] = None,
+    element: _EntityType[_O] | FromClause,
+    alias: FromClause | None = None,
+    name: str | None = None,
     flat: bool = False,
     adapt_on_names: bool = False,
-) -> Union[AliasedClass[_O], FromClause, AliasedType[_O]]:
+) -> AliasedClass[_O] | FromClause | AliasedType[_O]:
     """Produce an alias of the given element, usually an :class:`.AliasedClass`
     instance.
 
@@ -2315,11 +2315,11 @@ def aliased(
 
 
 def with_polymorphic(
-    base: Union[Type[_O], Mapper[_O]],
-    classes: Union[Literal["*"], Iterable[Type[Any]]],
-    selectable: Union[Literal[False, None], FromClause] = False,
+    base: type[_O] | Mapper[_O],
+    classes: Literal["*"] | Iterable[type[Any]],
+    selectable: Literal[False, None] | FromClause = False,
     flat: bool = False,
-    polymorphic_on: Optional[ColumnElement[Any]] = None,
+    polymorphic_on: ColumnElement[Any] | None = None,
     aliased: bool = False,
     innerjoin: bool = False,
     adapt_on_names: bool = False,
@@ -2411,7 +2411,7 @@ def with_polymorphic(
 def join(
     left: _FromClauseArgument,
     right: _FromClauseArgument,
-    onclause: Optional[_OnClauseArgument] = None,
+    onclause: _OnClauseArgument | None = None,
     isouter: bool = False,
     full: bool = False,
 ) -> _ORMJoin:
@@ -2464,7 +2464,7 @@ def join(
 def outerjoin(
     left: _FromClauseArgument,
     right: _FromClauseArgument,
-    onclause: Optional[_OnClauseArgument] = None,
+    onclause: _OnClauseArgument | None = None,
     full: bool = False,
 ) -> _ORMJoin:
     """Produce a left outer join between left and right clauses.

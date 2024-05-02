@@ -101,17 +101,15 @@ class InstrumentationEvents(event.Events[InstrumentationFactory]):
     @classmethod
     def _accept_with(
         cls,
-        target: Union[
-            InstrumentationFactory,
-            Type[InstrumentationFactory],
-        ],
+        target: (
+            InstrumentationFactory |
+            type[InstrumentationFactory]
+        ),
         identifier: str,
-    ) -> Optional[
-        Union[
-            InstrumentationFactory,
-            Type[InstrumentationFactory],
-        ]
-    ]:
+    ) -> None | (
+            InstrumentationFactory |
+            type[InstrumentationFactory]
+    ):
         if isinstance(target, type):
             return _InstrumentationEventsHold(target)  # type: ignore [return-value] # noqa: E501
         else:
@@ -127,7 +125,7 @@ class InstrumentationEvents(event.Events[InstrumentationFactory]):
             event_key._listen_fn,
         )
 
-        def listen(target_cls: type, *arg: Any) -> Optional[Any]:
+        def listen(target_cls: type, *arg: Any) -> Any | None:
             listen_cls = target()
 
             # if weakref were collected, however this is not something
@@ -255,7 +253,7 @@ class InstanceEvents(event.Events[ClassManager[Any]]):
     @classmethod
     def _new_classmanager_instance(
         cls,
-        class_: Union[DeclarativeAttributeIntercept, DeclarativeMeta, type],
+        class_: DeclarativeAttributeIntercept | DeclarativeMeta | type,
         classmanager: ClassManager[_O],
     ) -> None:
         _InstanceEventsHold.populate(class_, classmanager)
@@ -264,12 +262,12 @@ class InstanceEvents(event.Events[ClassManager[Any]]):
     @util.preload_module("sqlalchemy.orm")
     def _accept_with(
         cls,
-        target: Union[
-            ClassManager[Any],
-            Type[ClassManager[Any]],
-        ],
+        target: (
+            ClassManager[Any] |
+            type[ClassManager[Any]]
+        ),
         identifier: str,
-    ) -> Optional[Union[ClassManager[Any], Type[ClassManager[Any]]]]:
+    ) -> ClassManager[Any] | type[ClassManager[Any]] | None:
         orm = util.preloaded.orm
 
         if isinstance(target, ClassManager):
@@ -310,7 +308,7 @@ class InstanceEvents(event.Events[ClassManager[Any]]):
 
             def wrap(
                 state: InstanceState[_O], *arg: Any, **kw: Any
-            ) -> Optional[Any]:
+            ) -> Any | None:
                 if not raw:
                     target: Any = state.obj()
                 else:
@@ -336,7 +334,7 @@ class InstanceEvents(event.Events[ClassManager[Any]]):
         super()._clear()
         _InstanceEventsHold._clear()
 
-    def first_init(self, manager: ClassManager[_O], cls: Type[_O]) -> None:
+    def first_init(self, manager: ClassManager[_O], cls: type[_O]) -> None:
         """Called when the first instance of a particular mapping is called.
 
         This event is called when the ``__init__`` method of a class
@@ -505,7 +503,7 @@ class InstanceEvents(event.Events[ClassManager[Any]]):
         """
 
     def refresh(
-        self, target: _O, context: QueryContext, attrs: Optional[Iterable[str]]
+        self, target: _O, context: QueryContext, attrs: Iterable[str] | None
     ) -> None:
         """Receive an object instance after one or more attributes have
         been refreshed from a query.
@@ -544,7 +542,7 @@ class InstanceEvents(event.Events[ClassManager[Any]]):
         self,
         target: _O,
         flush_context: UOWTransaction,
-        attrs: Optional[Iterable[str]],
+        attrs: Iterable[str] | None,
     ) -> None:
         """Receive an object instance after one or more attributes that
         contain a column-level default or onupdate handler have been refreshed
@@ -587,7 +585,7 @@ class InstanceEvents(event.Events[ClassManager[Any]]):
 
         """
 
-    def expire(self, target: _O, attrs: Optional[Iterable[str]]) -> None:
+    def expire(self, target: _O, attrs: Iterable[str] | None) -> None:
         """Receive an object instance after its attributes or some subset
         have been expired.
 
@@ -645,7 +643,7 @@ class _EventsHold(event.RefCollection[_ET]):
 
     def __init__(
         self,
-        class_: Union[DeclarativeAttributeIntercept, DeclarativeMeta, type],
+        class_: DeclarativeAttributeIntercept | DeclarativeMeta | type,
     ) -> None:
         self.class_ = class_
 
@@ -654,7 +652,7 @@ class _EventsHold(event.RefCollection[_ET]):
         cls.all_holds.clear()
 
     class HoldEvents(Generic[_ET2]):
-        _dispatch_target: Optional[Type[_ET2]] = None
+        _dispatch_target: type[_ET2] | None = None
 
         @classmethod
         def _listen(
@@ -704,8 +702,8 @@ class _EventsHold(event.RefCollection[_ET]):
     @classmethod
     def populate(
         cls,
-        class_: Union[DeclarativeAttributeIntercept, DeclarativeMeta, type],
-        subject: Union[ClassManager[_O], Mapper[_O]],
+        class_: DeclarativeAttributeIntercept | DeclarativeMeta | type,
+        subject: ClassManager[_O] | Mapper[_O],
     ) -> None:
         for subclass in class_.__mro__:
             if subclass in cls.all_holds:
@@ -733,7 +731,7 @@ class _InstanceEventsHold(_EventsHold[_ET]):
         weakref.WeakKeyDictionary()
     )
 
-    def resolve(self, class_: Type[_O]) -> Optional[ClassManager[_O]]:
+    def resolve(self, class_: type[_O]) -> ClassManager[_O] | None:
         return instrumentation.opt_manager_of_class(class_)
 
     class HoldInstanceEvents(_EventsHold.HoldEvents[_ET], InstanceEvents):  # type: ignore [misc] # noqa: E501
@@ -814,7 +812,7 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
     @classmethod
     def _new_mapper_instance(
         cls,
-        class_: Union[DeclarativeAttributeIntercept, DeclarativeMeta, type],
+        class_: DeclarativeAttributeIntercept | DeclarativeMeta | type,
         mapper: Mapper[_O],
     ) -> None:
         _MapperEventsHold.populate(class_, mapper)
@@ -823,9 +821,9 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
     @util.preload_module("sqlalchemy.orm")
     def _accept_with(
         cls,
-        target: Union[mapperlib.Mapper[Any], Type[mapperlib.Mapper[Any]]],
+        target: mapperlib.Mapper[Any] | type[mapperlib.Mapper[Any]],
         identifier: str,
-    ) -> Optional[Union[mapperlib.Mapper[Any], Type[mapperlib.Mapper[Any]]]]:
+    ) -> mapperlib.Mapper[Any] | type[mapperlib.Mapper[Any]] | None:
         orm = util.preloaded.orm
 
         if target is orm.mapper:  # type: ignore [attr-defined]
@@ -908,7 +906,7 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         super()._clear()
         _MapperEventsHold._clear()
 
-    def instrument_class(self, mapper: Mapper[_O], class_: Type[_O]) -> None:
+    def instrument_class(self, mapper: Mapper[_O], class_: type[_O]) -> None:
         r"""Receive a class when the mapper is first constructed,
         before instrumentation is applied to the mapped class.
 
@@ -940,7 +938,7 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         """
 
     def after_mapper_constructed(
-        self, mapper: Mapper[_O], class_: Type[_O]
+        self, mapper: Mapper[_O], class_: type[_O]
     ) -> None:
         """Receive a class and mapper when the :class:`_orm.Mapper` has been
         fully constructed.
@@ -974,7 +972,7 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         """
 
     def before_mapper_configured(
-        self, mapper: Mapper[_O], class_: Type[_O]
+        self, mapper: Mapper[_O], class_: type[_O]
     ) -> None:
         """Called right before a specific mapper is to be configured.
 
@@ -1023,7 +1021,7 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
 
         """
 
-    def mapper_configured(self, mapper: Mapper[_O], class_: Type[_O]) -> None:
+    def mapper_configured(self, mapper: Mapper[_O], class_: type[_O]) -> None:
         r"""Called when a specific mapper has completed its own configuration
         within the scope of the :func:`.configure_mappers` call.
 
@@ -1536,8 +1534,8 @@ class _MapperEventsHold(_EventsHold[_ET]):
     all_holds = weakref.WeakKeyDictionary()
 
     def resolve(
-        self, class_: Union[Type[_T], _InternalEntityType[_T]]
-    ) -> Optional[Mapper[_T]]:
+        self, class_: type[_T] | _InternalEntityType[_T]
+    ) -> Mapper[_T] | None:
         return _mapper_or_none(class_)
 
     class HoldMapperEvents(_EventsHold.HoldEvents[_ET], MapperEvents):  # type: ignore [misc] # noqa: E501
@@ -1546,7 +1544,7 @@ class _MapperEventsHold(_EventsHold[_ET]):
     dispatch = event.dispatcher(HoldMapperEvents)
 
 
-_sessionevents_lifecycle_event_names: Set[str] = set()
+_sessionevents_lifecycle_event_names: set[str] = set()
 
 
 class SessionEvents(event.Events[Session]):
@@ -1603,7 +1601,7 @@ class SessionEvents(event.Events[Session]):
     @classmethod
     def _accept_with(  # type: ignore [return]
         cls, target: Any, identifier: str
-    ) -> Union[Session, type]:
+    ) -> Session | type:
         if isinstance(target, scoped_session):
             target = target.session_factory
             if not isinstance(target, sessionmaker) and (
@@ -1652,7 +1650,7 @@ class SessionEvents(event.Events[Session]):
                     state: InstanceState[_O],
                     *arg: Any,
                     **kw: Any,
-                ) -> Optional[Any]:
+                ) -> Any | None:
                     if not raw:
                         target = state.obj()
                         if target is None:
@@ -1953,7 +1951,7 @@ class SessionEvents(event.Events[Session]):
         self,
         session: Session,
         flush_context: UOWTransaction,
-        instances: Optional[Sequence[_O]],
+        instances: Sequence[_O] | None,
     ) -> None:
         """Execute before flush process has started.
 
@@ -2498,7 +2496,7 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
 
     @staticmethod
     def _set_dispatch(
-        cls: Type[_HasEventsDispatch[Any]], dispatch_cls: Type[_Dispatch[Any]]
+        cls: type[_HasEventsDispatch[Any]], dispatch_cls: type[_Dispatch[Any]]
     ) -> _Dispatch[Any]:
         dispatch = event.Events._set_dispatch(cls, dispatch_cls)
         dispatch_cls._active_history = False
@@ -2507,9 +2505,9 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
     @classmethod
     def _accept_with(
         cls,
-        target: Union[QueryableAttribute[Any], Type[QueryableAttribute[Any]]],
+        target: QueryableAttribute[Any] | type[QueryableAttribute[Any]],
         identifier: str,
-    ) -> Union[QueryableAttribute[Any], Type[QueryableAttribute[Any]]]:
+    ) -> QueryableAttribute[Any] | type[QueryableAttribute[Any]]:
         # TODO: coverage
         if isinstance(target, interfaces.MapperProperty):
             return getattr(target.parent.class_, target.key)
@@ -2573,7 +2571,7 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
         initiator: Event,
         *,
         key: EventConstants = NO_KEY,
-    ) -> Optional[_T]:
+    ) -> _T | None:
         """Receive a collection append event.
 
         The append event is invoked for each element as it is appended
@@ -2672,7 +2670,7 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
         values: Iterable[_T],
         initiator: Event,
         *,
-        keys: Optional[Iterable[EventConstants]] = None,
+        keys: Iterable[EventConstants] | None = None,
     ) -> None:
         """Receive a collection 'bulk replace' event.
 
@@ -2811,7 +2809,7 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
         """
 
     def init_scalar(
-        self, target: _O, value: _T, dict_: Dict[Any, Any]
+        self, target: _O, value: _T, dict_: dict[Any, Any]
     ) -> None:
         r"""Receive a scalar "init" event.
 
@@ -2935,7 +2933,7 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
     def init_collection(
         self,
         target: _O,
-        collection: Type[Collection[Any]],
+        collection: type[Collection[Any]],
         collection_adapter: CollectionAdapter,
     ) -> None:
         """Receive a 'collection init' event.

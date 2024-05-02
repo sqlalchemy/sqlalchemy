@@ -62,13 +62,13 @@ class MappedColumnTest(
             )
 
             if construct.Mapped:
-                bars: orm.Mapped[typing.List[Bar]] = orm.relationship()
+                bars: orm.Mapped[list[Bar]] = orm.relationship()
             elif construct.WriteOnlyMapped:
-                bars: orm.WriteOnlyMapped[typing.List[Bar]] = (
+                bars: orm.WriteOnlyMapped[list[Bar]] = (
                     orm.relationship()
                 )
             elif construct.DynamicMapped:
-                bars: orm.DynamicMapped[typing.List[Bar]] = orm.relationship()
+                bars: orm.DynamicMapped[list[Bar]] = orm.relationship()
             else:
                 construct.fail()
 

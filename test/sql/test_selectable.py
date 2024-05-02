@@ -660,7 +660,7 @@ class SelectableTest(
         # be a FROM the "bar_col1" label would be directly in the join()
         # object.  However this was a useless join() object because PG and
         # MySQL don't accept unnamed subqueries in joins in any case.
-        name = "%s_bar_col1" % (jj.name,)
+        name = "{}_bar_col1".format(jj.name)
 
         assert jjj.corresponding_column(jjj.c.table1_col1) is jjj.c.table1_col1
         assert jjj.corresponding_column(jj.c.bar_col1) is jjj.c[name]
@@ -927,7 +927,7 @@ class SelectableTest(
         j = join(a, table2)
 
         criterion = a.c.col1 == table2.c.col2
-        self.assert_(criterion.compare(j.onclause))
+        self.assertTrue(criterion.compare(j.onclause))
 
     def test_join_doesnt_derive_from_onclause(self):
         # test issue #4621.   the hide froms from the join comes from
@@ -1414,14 +1414,14 @@ class SelectableTest(
         j = join(a, b)
         print(str(j))
         criterion = a.c.table1_col1 == b.c.col2
-        self.assert_(criterion.compare(j.onclause))
+        self.assertTrue(criterion.compare(j.onclause))
 
     def test_select_subquery_join(self):
         a = table1.select().alias("a")
         j = join(a, table2)
 
         criterion = a.c.col1 == table2.c.col2
-        self.assert_(criterion.compare(j.onclause))
+        self.assertTrue(criterion.compare(j.onclause))
 
     def test_subquery_labels_join(self):
         a = (
@@ -1432,7 +1432,7 @@ class SelectableTest(
         j = join(a, table2)
 
         criterion = a.c.table1_col1 == table2.c.col2
-        self.assert_(criterion.compare(j.onclause))
+        self.assertTrue(criterion.compare(j.onclause))
 
     def test_scalar_cloned_comparator(self):
         sel = select(table1.c.col1).scalar_subquery()
@@ -1451,7 +1451,7 @@ class SelectableTest(
         ).subquery()
         j = join(a, table2)
         criterion = a.c.acol1 == table2.c.col2
-        self.assert_(criterion.compare(j.onclause))
+        self.assertTrue(criterion.compare(j.onclause))
 
     def test_labeled_select_corresponding(self):
         l1 = select(func.max(table1.c.col1)).label("foo")
@@ -1480,7 +1480,7 @@ class SelectableTest(
         j = join(a, table1)
 
         criterion = table1.c.col1 == a.c.table2_col2
-        self.assert_(criterion.compare(j.onclause))
+        self.assertTrue(criterion.compare(j.onclause))
 
     def test_table_joined_to_select_of_table(self):
         metadata = MetaData()

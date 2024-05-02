@@ -214,11 +214,11 @@ class TestVersioning(AssertsCompiledSQL):
                 constraint_type.fail()
 
         eq_(
-            set(idx.name + "_history" for idx in SomeClass.__table__.indexes),
-            set(
+            {idx.name + "_history" for idx in SomeClass.__table__.indexes},
+            {
                 idx.name
                 for idx in SomeClass.__history_mapper__.local_table.indexes
-            ),
+            },
         )
         self.create_tables()
 

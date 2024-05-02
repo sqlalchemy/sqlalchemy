@@ -58,11 +58,11 @@ _ClsRegistryType = MutableMapping[str, Union[type, "ClsRegistryToken"]]
 # the _decl_class_registry, which is usually weak referencing.
 # the internal registries here link to classes with weakrefs and remove
 # themselves when all references to contained classes are removed.
-_registries: Set[ClsRegistryToken] = set()
+_registries: set[ClsRegistryToken] = set()
 
 
 def add_class(
-    classname: str, cls: Type[_T], decl_class_registry: _ClsRegistryType
+    classname: str, cls: type[_T], decl_class_registry: _ClsRegistryType
 ) -> None:
     """Add a class to the _decl_class_registry associated with the
     given declarative class.
@@ -116,7 +116,7 @@ def add_class(
 
 
 def remove_class(
-    classname: str, cls: Type[Any], decl_class_registry: _ClsRegistryType
+    classname: str, cls: type[Any], decl_class_registry: _ClsRegistryType
 ) -> None:
     if classname in decl_class_registry:
         existing = decl_class_registry[classname]
@@ -194,13 +194,13 @@ class _MultipleClassMarker(ClsRegistryToken):
 
     __slots__ = "on_remove", "contents", "__weakref__"
 
-    contents: Set[weakref.ref[Type[Any]]]
-    on_remove: CallableReference[Optional[Callable[[], None]]]
+    contents: set[weakref.ref[type[Any]]]
+    on_remove: CallableReference[Callable[[], None] | None]
 
     def __init__(
         self,
-        classes: Iterable[Type[Any]],
-        on_remove: Optional[Callable[[], None]] = None,
+        classes: Iterable[type[Any]],
+        on_remove: Callable[[], None] | None = None,
     ):
         self.on_remove = on_remove
         self.contents = {
@@ -208,13 +208,13 @@ class _MultipleClassMarker(ClsRegistryToken):
         }
         _registries.add(self)
 
-    def remove_item(self, cls: Type[Any]) -> None:
+    def remove_item(self, cls: type[Any]) -> None:
         self._remove_item(weakref.ref(cls))
 
-    def __iter__(self) -> Generator[Optional[Type[Any]], None, None]:
+    def __iter__(self) -> Generator[type[Any] | None, None, None]:
         return (ref() for ref in self.contents)
 
-    def attempt_get(self, path: List[str], key: str) -> Type[Any]:
+    def attempt_get(self, path: list[str], key: str) -> type[Any]:
         if len(self.contents) > 1:
             raise exc.InvalidRequestError(
                 'Multiple classes found for path "%s" '
@@ -229,14 +229,14 @@ class _MultipleClassMarker(ClsRegistryToken):
                 raise NameError(key)
             return cls
 
-    def _remove_item(self, ref: weakref.ref[Type[Any]]) -> None:
+    def _remove_item(self, ref: weakref.ref[type[Any]]) -> None:
         self.contents.discard(ref)
         if not self.contents:
             _registries.discard(self)
             if self.on_remove:
                 self.on_remove()
 
-    def add_item(self, item: Type[Any]) -> None:
+    def add_item(self, item: type[Any]) -> None:
         # protect against class registration race condition against
         # asynchronous garbage collection calling _remove_item,
         # [ticket:3208] and [ticket:10782]
@@ -263,12 +263,12 @@ class _ModuleMarker(ClsRegistryToken):
 
     __slots__ = "parent", "name", "contents", "mod_ns", "path", "__weakref__"
 
-    parent: Optional[_ModuleMarker]
-    contents: Dict[str, Union[_ModuleMarker, _MultipleClassMarker]]
+    parent: _ModuleMarker | None
+    contents: dict[str, _ModuleMarker | _MultipleClassMarker]
     mod_ns: _ModNS
-    path: List[str]
+    path: list[str]
 
-    def __init__(self, name: str, parent: Optional[_ModuleMarker]):
+    def __init__(self, name: str, parent: _ModuleMarker | None):
         self.parent = parent
         self.name = name
         self.contents = {}
@@ -291,7 +291,7 @@ class _ModuleMarker(ClsRegistryToken):
             self.parent._remove_item(self.name)
             _registries.discard(self)
 
-    def resolve_attr(self, key: str) -> Union[_ModNS, Type[Any]]:
+    def resolve_attr(self, key: str) -> _ModNS | type[Any]:
         return self.mod_ns.__getattr__(key)
 
     def get_module(self, name: str) -> _ModuleMarker:
@@ -302,7 +302,7 @@ class _ModuleMarker(ClsRegistryToken):
             marker = cast(_ModuleMarker, self.contents[name])
         return marker
 
-    def add_class(self, name: str, cls: Type[Any]) -> None:
+    def add_class(self, name: str, cls: type[Any]) -> None:
         if name in self.contents:
             existing = cast(_MultipleClassMarker, self.contents[name])
             try:
@@ -320,7 +320,7 @@ class _ModuleMarker(ClsRegistryToken):
                 [cls], on_remove=lambda: self._remove_item(name)
             )
 
-    def remove_class(self, name: str, cls: Type[Any]) -> None:
+    def remove_class(self, name: str, cls: type[Any]) -> None:
         if name in self.contents:
             existing = cast(_MultipleClassMarker, self.contents[name])
             existing.remove_item(cls)
@@ -334,7 +334,7 @@ class _ModNS:
     def __init__(self, parent: _ModuleMarker):
         self.__parent = parent
 
-    def __getattr__(self, key: str) -> Union[_ModNS, Type[Any]]:
+    def __getattr__(self, key: str) -> _ModNS | type[Any]:
         try:
             value = self.__parent.contents[key]
         except KeyError:
@@ -355,9 +355,9 @@ class _ModNS:
 class _GetColumns:
     __slots__ = ("cls",)
 
-    cls: Type[Any]
+    cls: type[Any]
 
-    def __init__(self, cls: Type[Any]):
+    def __init__(self, cls: type[Any]):
         self.cls = cls
 
     def __getattr__(self, key: str) -> Any:
@@ -420,16 +420,16 @@ class _class_resolver:
         "favor_tables",
     )
 
-    cls: Type[Any]
+    cls: type[Any]
     prop: RelationshipProperty[Any]
     fallback: Mapping[str, Any]
     arg: str
     favor_tables: bool
-    _resolvers: Tuple[Callable[[str], Any], ...]
+    _resolvers: tuple[Callable[[str], Any], ...]
 
     def __init__(
         self,
-        cls: Type[Any],
+        cls: type[Any],
         prop: RelationshipProperty[Any],
         fallback: Mapping[str, Any],
         arg: str,
@@ -505,7 +505,7 @@ class _class_resolver:
                 % (self.prop.parent, self.arg, name, self.cls)
             ) from err
 
-    def _resolve_name(self) -> Union[Table, Type[Any], _ModNS]:
+    def _resolve_name(self) -> Table | type[Any] | _ModNS:
         name = self.arg
         d = self._dict
         rval = None
@@ -542,8 +542,8 @@ class _class_resolver:
 _fallback_dict: Mapping[str, Any] = None  # type: ignore
 
 
-def _resolver(cls: Type[Any], prop: RelationshipProperty[Any]) -> Tuple[
-    Callable[[str], Callable[[], Union[Type[Any], Table, _ModNS]]],
+def _resolver(cls: type[Any], prop: RelationshipProperty[Any]) -> tuple[
+    Callable[[str], Callable[[], type[Any] | Table | _ModNS]],
     Callable[[str, bool], _class_resolver],
 ]:
     global _fallback_dict
@@ -564,7 +564,7 @@ def _resolver(cls: Type[Any], prop: RelationshipProperty[Any]) -> Tuple[
 
     def resolve_name(
         arg: str,
-    ) -> Callable[[], Union[Type[Any], Table, _ModNS]]:
+    ) -> Callable[[], type[Any] | Table | _ModNS]:
         return _class_resolver(cls, prop, _fallback_dict, arg)._resolve_name
 
     return resolve_name, resolve_arg

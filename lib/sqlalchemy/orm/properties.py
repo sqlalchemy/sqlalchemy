@@ -114,13 +114,13 @@ class ColumnProperty(
 
     _links_to_entity = False
 
-    columns: List[NamedColumn[Any]]
+    columns: list[NamedColumn[Any]]
 
     _is_polymorphic_discriminator: bool
 
-    _mapped_by_synonym: Optional[str]
+    _mapped_by_synonym: str | None
 
-    comparator_factory: Type[PropComparator[_T]]
+    comparator_factory: type[PropComparator[_T]]
 
     __slots__ = (
         "columns",
@@ -143,15 +143,15 @@ class ColumnProperty(
         self,
         column: _ORMColumnExprArgument[_T],
         *additional_columns: _ORMColumnExprArgument[Any],
-        attribute_options: Optional[_AttributeOptions] = None,
-        group: Optional[str] = None,
+        attribute_options: _AttributeOptions | None = None,
+        group: str | None = None,
         deferred: bool = False,
         raiseload: bool = False,
-        comparator_factory: Optional[Type[PropComparator[_T]]] = None,
+        comparator_factory: type[PropComparator[_T]] | None = None,
         active_history: bool = False,
         expire_on_flush: bool = True,
-        info: Optional[_InfoType] = None,
-        doc: Optional[str] = None,
+        info: _InfoType | None = None,
+        doc: str | None = None,
         _instrument: bool = True,
         _assume_readonly_dc_attributes: bool = False,
     ):
@@ -202,12 +202,12 @@ class ColumnProperty(
         self,
         decl_scan: _ClassScanMapperConfig,
         registry: _RegistryType,
-        cls: Type[Any],
-        originating_module: Optional[str],
+        cls: type[Any],
+        originating_module: str | None,
         key: str,
-        mapped_container: Optional[Type[Mapped[Any]]],
-        annotation: Optional[_AnnotationScanType],
-        extracted_mapped_annotation: Optional[_AnnotationScanType],
+        mapped_container: type[Mapped[Any]] | None,
+        annotation: _AnnotationScanType | None,
+        extracted_mapped_annotation: _AnnotationScanType | None,
         is_dataclass_field: bool,
     ) -> None:
         column = self.columns[0]
@@ -217,11 +217,11 @@ class ColumnProperty(
             column.name = key
 
     @property
-    def mapper_property_to_assign(self) -> Optional[MapperProperty[_T]]:
+    def mapper_property_to_assign(self) -> MapperProperty[_T] | None:
         return self
 
     @property
-    def columns_to_assign(self) -> List[Tuple[Column[Any], int]]:
+    def columns_to_assign(self) -> list[tuple[Column[Any], int]]:
         # mypy doesn't care about the isinstance here
         return [
             (c, 0)  # type: ignore
@@ -334,8 +334,8 @@ class ColumnProperty(
         dest_state: InstanceState[Any],
         dest_dict: _InstanceDict,
         load: bool,
-        _recursive: Dict[Any, object],
-        _resolve_conflict_map: Dict[_IdentityKeyType[Any], object],
+        _recursive: dict[Any, object],
+        _resolve_conflict_map: dict[_IdentityKeyType[Any], object],
     ) -> None:
         if not self.instrument:
             return
@@ -402,7 +402,7 @@ class ColumnProperty(
             """
 
             pe = self._parententity
-            annotations: Dict[str, Any] = {
+            annotations: dict[str, Any] = {
                 "entity_namespace": pe,
                 "parententity": pe,
                 "parentmapper": pe,
@@ -543,12 +543,12 @@ class MappedColumn(
         "_use_existing_column",
     )
 
-    deferred: Union[_NoArg, bool]
+    deferred: _NoArg | bool
     deferred_raiseload: bool
-    deferred_group: Optional[str]
+    deferred_group: str | None
 
     column: Column[_T]
-    foreign_keys: Optional[Set[ForeignKey]]
+    foreign_keys: set[ForeignKey] | None
     _attribute_options: _AttributeOptions
 
     def __init__(self, *arg: Any, **kw: Any):
@@ -612,7 +612,7 @@ class MappedColumn(
         return self.column.name
 
     @property
-    def mapper_property_to_assign(self) -> Optional[MapperProperty[_T]]:
+    def mapper_property_to_assign(self) -> MapperProperty[_T] | None:
         effective_deferred = self.deferred
         if effective_deferred is _NoArg.NO_ARG:
             effective_deferred = bool(
@@ -632,7 +632,7 @@ class MappedColumn(
             return None
 
     @property
-    def columns_to_assign(self) -> List[Tuple[Column[Any], int]]:
+    def columns_to_assign(self) -> list[tuple[Column[Any], int]]:
         return [
             (
                 self.column,
@@ -667,12 +667,12 @@ class MappedColumn(
         self,
         decl_scan: _ClassScanMapperConfig,
         registry: _RegistryType,
-        cls: Type[Any],
-        originating_module: Optional[str],
+        cls: type[Any],
+        originating_module: str | None,
         key: str,
-        mapped_container: Optional[Type[Mapped[Any]]],
-        annotation: Optional[_AnnotationScanType],
-        extracted_mapped_annotation: Optional[_AnnotationScanType],
+        mapped_container: type[Mapped[Any]] | None,
+        annotation: _AnnotationScanType | None,
+        extracted_mapped_annotation: _AnnotationScanType | None,
         is_dataclass_field: bool,
     ) -> None:
         column = self.column
@@ -717,8 +717,8 @@ class MappedColumn(
     def declarative_scan_for_composite(
         self,
         registry: _RegistryType,
-        cls: Type[Any],
-        originating_module: Optional[str],
+        cls: type[Any],
+        originating_module: str | None,
         key: str,
         param_name: str,
         param_annotation: _AnnotationScanType,
@@ -731,10 +731,10 @@ class MappedColumn(
 
     def _init_column_for_annotation(
         self,
-        cls: Type[Any],
+        cls: type[Any],
         registry: _RegistryType,
         argument: _AnnotationScanType,
-        originating_module: Optional[str],
+        originating_module: str | None,
     ) -> None:
         sqltype = self.column.type
 

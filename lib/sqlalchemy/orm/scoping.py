@@ -91,7 +91,7 @@ class QueryPropertyDescriptor(Protocol):
 
     """
 
-    def __get__(self, instance: Any, owner: Type[_T]) -> Query[_T]: ...
+    def __get__(self, instance: Any, owner: type[_T]) -> Query[_T]: ...
 
 
 _O = TypeVar("_O", bound=object)
@@ -173,7 +173,7 @@ class scoped_session(Generic[_S]):
     def __init__(
         self,
         session_factory: sessionmaker[_S],
-        scopefunc: Optional[Callable[[], Any]] = None,
+        scopefunc: Callable[[], Any] | None = None,
     ):
         """Construct a new :class:`.scoped_session`.
 
@@ -267,7 +267,7 @@ class scoped_session(Generic[_S]):
         self.registry.clear()
 
     def query_property(
-        self, query_cls: Optional[Type[Query[_T]]] = None
+        self, query_cls: type[Query[_T]] | None = None
     ) -> QueryPropertyDescriptor:
         """return a class property which produces a legacy
         :class:`_query.Query` object against the class and the current
@@ -303,7 +303,7 @@ class scoped_session(Generic[_S]):
         """
 
         class query:
-            def __get__(s, instance: Any, owner: Type[_O]) -> Query[_O]:
+            def __get__(s, instance: Any, owner: type[_O]) -> Query[_O]:
                 if query_cls:
                     # custom query class
                     return query_cls(owner, session=self.registry())  # type: ignore  # noqa: E501
@@ -603,8 +603,8 @@ class scoped_session(Generic[_S]):
 
     def connection(
         self,
-        bind_arguments: Optional[_BindArguments] = None,
-        execution_options: Optional[CoreExecuteOptionsParameter] = None,
+        bind_arguments: _BindArguments | None = None,
+        execution_options: CoreExecuteOptionsParameter | None = None,
     ) -> Connection:
         r"""Return a :class:`_engine.Connection` object corresponding to this
         :class:`.Session` object's transactional state.
@@ -680,47 +680,47 @@ class scoped_session(Generic[_S]):
     def execute(
         self,
         statement: TypedReturnsRows[Unpack[_Ts]],
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
+        bind_arguments: _BindArguments | None = None,
+        _parent_execute_state: Any | None = None,
+        _add_event: Any | None = None,
     ) -> Result[Unpack[_Ts]]: ...
 
     @overload
     def execute(
         self,
         statement: UpdateBase,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
+        bind_arguments: _BindArguments | None = None,
+        _parent_execute_state: Any | None = None,
+        _add_event: Any | None = None,
     ) -> CursorResult[Unpack[TupleAny]]: ...
 
     @overload
     def execute(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
+        bind_arguments: _BindArguments | None = None,
+        _parent_execute_state: Any | None = None,
+        _add_event: Any | None = None,
     ) -> Result[Unpack[TupleAny]]: ...
 
     def execute(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
+        bind_arguments: _BindArguments | None = None,
+        _parent_execute_state: Any | None = None,
+        _add_event: Any | None = None,
     ) -> Result[Unpack[TupleAny]]:
         r"""Execute a SQL expression construct.
 
@@ -790,7 +790,7 @@ class scoped_session(Generic[_S]):
         )
 
     def expire(
-        self, instance: object, attribute_names: Optional[Iterable[str]] = None
+        self, instance: object, attribute_names: Iterable[str] | None = None
     ) -> None:
         r"""Expire the attributes on an instance.
 
@@ -910,7 +910,7 @@ class scoped_session(Generic[_S]):
 
         return self._proxied.expunge_all()
 
-    def flush(self, objects: Optional[Sequence[Any]] = None) -> None:
+    def flush(self, objects: Sequence[Any] | None = None) -> None:
         r"""Flush all the object changes to the database.
 
         .. container:: class_bases
@@ -946,13 +946,13 @@ class scoped_session(Generic[_S]):
         entity: _EntityBindKey[_O],
         ident: _PKIdentityArgument,
         *,
-        options: Optional[Sequence[ORMOption]] = None,
+        options: Sequence[ORMOption] | None = None,
         populate_existing: bool = False,
         with_for_update: ForUpdateParameter = None,
-        identity_token: Optional[Any] = None,
+        identity_token: Any | None = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-    ) -> Optional[_O]:
+        bind_arguments: _BindArguments | None = None,
+    ) -> _O | None:
         r"""Return an instance based on the given primary key identifier,
         or ``None`` if not found.
 
@@ -1078,12 +1078,12 @@ class scoped_session(Generic[_S]):
         entity: _EntityBindKey[_O],
         ident: _PKIdentityArgument,
         *,
-        options: Optional[Sequence[ORMOption]] = None,
+        options: Sequence[ORMOption] | None = None,
         populate_existing: bool = False,
         with_for_update: ForUpdateParameter = None,
-        identity_token: Optional[Any] = None,
+        identity_token: Any | None = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
     ) -> _O:
         r"""Return exactly one instance based on the given primary key
         identifier, or raise an exception if not found.
@@ -1125,14 +1125,14 @@ class scoped_session(Generic[_S]):
 
     def get_bind(
         self,
-        mapper: Optional[_EntityBindKey[_O]] = None,
+        mapper: _EntityBindKey[_O] | None = None,
         *,
-        clause: Optional[ClauseElement] = None,
-        bind: Optional[_SessionBind] = None,
-        _sa_skip_events: Optional[bool] = None,
+        clause: ClauseElement | None = None,
+        bind: _SessionBind | None = None,
+        _sa_skip_events: bool | None = None,
         _sa_skip_for_implicit_returning: bool = False,
         **kw: Any,
-    ) -> Union[Engine, Connection]:
+    ) -> Engine | Connection:
         r"""Return a "bind" to which this :class:`.Session` is bound.
 
         .. container:: class_bases
@@ -1373,7 +1373,7 @@ class scoped_session(Generic[_S]):
     def bulk_insert_mappings(
         self,
         mapper: Mapper[Any],
-        mappings: Iterable[Dict[str, Any]],
+        mappings: Iterable[dict[str, Any]],
         return_defaults: bool = False,
         render_nulls: bool = False,
     ) -> None:
@@ -1458,7 +1458,7 @@ class scoped_session(Generic[_S]):
         )
 
     def bulk_update_mappings(
-        self, mapper: Mapper[Any], mappings: Iterable[Dict[str, Any]]
+        self, mapper: Mapper[Any], mappings: Iterable[dict[str, Any]]
     ) -> None:
         r"""Perform a bulk update of the given list of mapping dictionaries.
 
@@ -1509,7 +1509,7 @@ class scoped_session(Generic[_S]):
         instance: _O,
         *,
         load: bool = True,
-        options: Optional[Sequence[ORMOption]] = None,
+        options: Sequence[ORMOption] | None = None,
     ) -> _O:
         r"""Copy the state of a given instance into a corresponding instance
         within this :class:`.Session`.
@@ -1698,7 +1698,7 @@ class scoped_session(Generic[_S]):
     def refresh(
         self,
         instance: object,
-        attribute_names: Optional[Iterable[str]] = None,
+        attribute_names: Iterable[str] | None = None,
         with_for_update: ForUpdateParameter = None,
     ) -> None:
         r"""Expire and refresh attributes on the given instance.
@@ -1812,31 +1812,31 @@ class scoped_session(Generic[_S]):
     def scalar(
         self,
         statement: TypedReturnsRows[_T],
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: _CoreSingleExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
-    ) -> Optional[_T]: ...
+    ) -> _T | None: ...
 
     @overload
     def scalar(
         self,
         statement: Executable,
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: _CoreSingleExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> Any: ...
 
     def scalar(
         self,
         statement: Executable,
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: _CoreSingleExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> Any:
         r"""Execute a statement and return a scalar result.
@@ -1865,10 +1865,10 @@ class scoped_session(Generic[_S]):
     def scalars(
         self,
         statement: TypedReturnsRows[_T],
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> ScalarResult[_T]: ...
 
@@ -1876,20 +1876,20 @@ class scoped_session(Generic[_S]):
     def scalars(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> ScalarResult[Any]: ...
 
     def scalars(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> ScalarResult[Any]:
         r"""Execute a statement and return the results as scalars.
@@ -1927,7 +1927,7 @@ class scoped_session(Generic[_S]):
         )
 
     @property
-    def bind(self) -> Optional[Union[Engine, Connection]]:
+    def bind(self) -> Engine | Connection | None:
         r"""Proxy for the :attr:`_orm.Session.bind` attribute
         on behalf of the :class:`_orm.scoping.scoped_session` class.
 
@@ -1936,7 +1936,7 @@ class scoped_session(Generic[_S]):
         return self._proxied.bind
 
     @bind.setter
-    def bind(self, attr: Optional[Union[Engine, Connection]]) -> None:
+    def bind(self, attr: Engine | Connection | None) -> None:
         self._proxied.bind = attr
 
     @property
@@ -2126,7 +2126,7 @@ class scoped_session(Generic[_S]):
         return Session.close_all()
 
     @classmethod
-    def object_session(cls, instance: object) -> Optional[Session]:
+    def object_session(cls, instance: object) -> Session | None:
         r"""Return the :class:`.Session` to which an object belongs.
 
         .. container:: class_bases
@@ -2144,12 +2144,12 @@ class scoped_session(Generic[_S]):
     @classmethod
     def identity_key(
         cls,
-        class_: Optional[Type[Any]] = None,
-        ident: Union[Any, Tuple[Any, ...]] = None,
+        class_: type[Any] | None = None,
+        ident: Any | tuple[Any, ...] = None,
         *,
-        instance: Optional[Any] = None,
-        row: Optional[Union[Row[Unpack[TupleAny]], RowMapping]] = None,
-        identity_token: Optional[Any] = None,
+        instance: Any | None = None,
+        row: Row[Unpack[TupleAny]] | RowMapping | None = None,
+        identity_token: Any | None = None,
     ) -> _IdentityKeyType[Any]:
         r"""Return an identity key.
 

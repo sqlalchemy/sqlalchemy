@@ -74,7 +74,7 @@ class OperatorType(Protocol):
     def __call__(
         self,
         left: ColumnExpressionArgument[Any],
-        right: Optional[Any] = None,
+        right: Any | None = None,
         *other: Any,
         **kwargs: Any,
     ) -> ColumnElement[Any]: ...
@@ -83,7 +83,7 @@ class OperatorType(Protocol):
     def __call__(
         self,
         left: Operators,
-        right: Optional[Any] = None,
+        right: Any | None = None,
         *other: Any,
         **kwargs: Any,
     ) -> Operators: ...
@@ -91,7 +91,7 @@ class OperatorType(Protocol):
     def __call__(
         self,
         left: Any,
-        right: Optional[Any] = None,
+        right: Any | None = None,
         *other: Any,
         **kwargs: Any,
     ) -> Operators: ...
@@ -206,10 +206,10 @@ class Operators:
         opstring: str,
         precedence: int = 0,
         is_comparison: bool = False,
-        return_type: Optional[
-            Union[Type[TypeEngine[Any]], TypeEngine[Any]]
-        ] = None,
-        python_impl: Optional[Callable[..., Any]] = None,
+        return_type: None | (
+            type[TypeEngine[Any]] | TypeEngine[Any]
+        ) = None,
+        python_impl: Callable[..., Any] | None = None,
     ) -> Callable[[Any], Operators]:
         """Produce a generic operator function.
 
@@ -312,7 +312,7 @@ class Operators:
         self,
         opstring: str,
         precedence: int = 0,
-        python_impl: Optional[Callable[..., Any]] = None,
+        python_impl: Callable[..., Any] | None = None,
     ) -> Callable[[Any], Operators]:
         """Return a custom boolean operator.
 
@@ -419,12 +419,12 @@ class custom_op(OperatorType, Generic[_T]):
         opstring: str,
         precedence: int = 0,
         is_comparison: bool = False,
-        return_type: Optional[
-            Union[Type[TypeEngine[_T]], TypeEngine[_T]]
-        ] = None,
+        return_type: None | (
+            type[TypeEngine[_T]] | TypeEngine[_T]
+        ) = None,
         natural_self_precedent: bool = False,
         eager_grouping: bool = False,
-        python_impl: Optional[Callable[..., Any]] = None,
+        python_impl: Callable[..., Any] | None = None,
     ):
         self.opstring = opstring
         self.precedence = precedence
@@ -445,7 +445,7 @@ class custom_op(OperatorType, Generic[_T]):
     def __hash__(self) -> int:
         return hash(self._hash_key())
 
-    def _hash_key(self) -> Union[CacheConst, Tuple[Any, ...]]:
+    def _hash_key(self) -> CacheConst | tuple[Any, ...]:
         return (
             self.__class__,
             self.opstring,
@@ -460,7 +460,7 @@ class custom_op(OperatorType, Generic[_T]):
     def __call__(
         self,
         left: ColumnExpressionArgument[Any],
-        right: Optional[Any] = None,
+        right: Any | None = None,
         *other: Any,
         **kwargs: Any,
     ) -> ColumnElement[Any]: ...
@@ -469,7 +469,7 @@ class custom_op(OperatorType, Generic[_T]):
     def __call__(
         self,
         left: Operators,
-        right: Optional[Any] = None,
+        right: Any | None = None,
         *other: Any,
         **kwargs: Any,
     ) -> Operators: ...
@@ -477,7 +477,7 @@ class custom_op(OperatorType, Generic[_T]):
     def __call__(
         self,
         left: Any,
-        right: Optional[Any] = None,
+        right: Any | None = None,
         *other: Any,
         **kwargs: Any,
     ) -> Operators:
@@ -694,7 +694,7 @@ class ColumnOperators(Operators):
         return self.reverse_operate(concat_op, other)
 
     def like(
-        self, other: Any, escape: Optional[str] = None
+        self, other: Any, escape: str | None = None
     ) -> ColumnOperators:
         r"""Implement the ``like`` operator.
 
@@ -721,7 +721,7 @@ class ColumnOperators(Operators):
         return self.operate(like_op, other, escape=escape)
 
     def ilike(
-        self, other: Any, escape: Optional[str] = None
+        self, other: Any, escape: str | None = None
     ) -> ColumnOperators:
         r"""Implement the ``ilike`` operator, e.g. case insensitive LIKE.
 
@@ -961,7 +961,7 @@ class ColumnOperators(Operators):
         notin_ = not_in
 
     def not_like(
-        self, other: Any, escape: Optional[str] = None
+        self, other: Any, escape: str | None = None
     ) -> ColumnOperators:
         """implement the ``NOT LIKE`` operator.
 
@@ -983,14 +983,14 @@ class ColumnOperators(Operators):
     if TYPE_CHECKING:
 
         def notlike(
-            self, other: Any, escape: Optional[str] = None
+            self, other: Any, escape: str | None = None
         ) -> ColumnOperators: ...
 
     else:
         notlike = not_like
 
     def not_ilike(
-        self, other: Any, escape: Optional[str] = None
+        self, other: Any, escape: str | None = None
     ) -> ColumnOperators:
         """implement the ``NOT ILIKE`` operator.
 
@@ -1012,7 +1012,7 @@ class ColumnOperators(Operators):
     if TYPE_CHECKING:
 
         def notilike(
-            self, other: Any, escape: Optional[str] = None
+            self, other: Any, escape: str | None = None
         ) -> ColumnOperators: ...
 
     else:
@@ -1059,7 +1059,7 @@ class ColumnOperators(Operators):
     def startswith(
         self,
         other: Any,
-        escape: Optional[str] = None,
+        escape: str | None = None,
         autoescape: bool = False,
     ) -> ColumnOperators:
         r"""Implement the ``startswith`` operator.
@@ -1145,7 +1145,7 @@ class ColumnOperators(Operators):
     def istartswith(
         self,
         other: Any,
-        escape: Optional[str] = None,
+        escape: str | None = None,
         autoescape: bool = False,
     ) -> ColumnOperators:
         r"""Implement the ``istartswith`` operator, e.g. case insensitive
@@ -1227,7 +1227,7 @@ class ColumnOperators(Operators):
     def endswith(
         self,
         other: Any,
-        escape: Optional[str] = None,
+        escape: str | None = None,
         autoescape: bool = False,
     ) -> ColumnOperators:
         r"""Implement the 'endswith' operator.
@@ -1313,7 +1313,7 @@ class ColumnOperators(Operators):
     def iendswith(
         self,
         other: Any,
-        escape: Optional[str] = None,
+        escape: str | None = None,
         autoescape: bool = False,
     ) -> ColumnOperators:
         r"""Implement the ``iendswith`` operator, e.g. case insensitive
@@ -1579,7 +1579,7 @@ class ColumnOperators(Operators):
         return self.operate(match_op, other, **kwargs)
 
     def regexp_match(
-        self, pattern: Any, flags: Optional[str] = None
+        self, pattern: Any, flags: str | None = None
     ) -> ColumnOperators:
         """Implements a database-specific 'regexp match' operator.
 
@@ -1637,7 +1637,7 @@ class ColumnOperators(Operators):
         return self.operate(regexp_match_op, pattern, flags=flags)
 
     def regexp_replace(
-        self, pattern: Any, replacement: Any, flags: Optional[str] = None
+        self, pattern: Any, replacement: Any, flags: str | None = None
     ) -> ColumnOperators:
         """Implements a database-specific 'regexp replace' operator.
 
@@ -1905,8 +1905,8 @@ class ColumnOperators(Operators):
         return self.reverse_operate(floordiv, other)
 
 
-_commutative: Set[Any] = {eq, ne, add, mul}
-_comparison: Set[Any] = {eq, ne, lt, gt, ge, le}
+_commutative: set[Any] = {eq, ne, add, mul}
+_comparison: set[Any] = {eq, ne, lt, gt, ge, le}
 
 
 def _operator_fn(fn: Callable[..., Any]) -> OperatorType:
@@ -2030,13 +2030,13 @@ def op(a: Any, opstring: str, b: Any) -> Any:
 
 @comparison_op
 @_operator_fn
-def like_op(a: Any, b: Any, escape: Optional[str] = None) -> Any:
+def like_op(a: Any, b: Any, escape: str | None = None) -> Any:
     return a.like(b, escape=escape)
 
 
 @comparison_op
 @_operator_fn
-def not_like_op(a: Any, b: Any, escape: Optional[str] = None) -> Any:
+def not_like_op(a: Any, b: Any, escape: str | None = None) -> Any:
     return a.notlike(b, escape=escape)
 
 
@@ -2044,7 +2044,7 @@ def not_like_op(a: Any, b: Any, escape: Optional[str] = None) -> Any:
 if TYPE_CHECKING:
 
     @_operator_fn
-    def notlike_op(a: Any, b: Any, escape: Optional[str] = None) -> Any: ...
+    def notlike_op(a: Any, b: Any, escape: str | None = None) -> Any: ...
 
 else:
     notlike_op = not_like_op
@@ -2052,13 +2052,13 @@ else:
 
 @comparison_op
 @_operator_fn
-def ilike_op(a: Any, b: Any, escape: Optional[str] = None) -> Any:
+def ilike_op(a: Any, b: Any, escape: str | None = None) -> Any:
     return a.ilike(b, escape=escape)
 
 
 @comparison_op
 @_operator_fn
-def not_ilike_op(a: Any, b: Any, escape: Optional[str] = None) -> Any:
+def not_ilike_op(a: Any, b: Any, escape: str | None = None) -> Any:
     return a.not_ilike(b, escape=escape)
 
 
@@ -2066,7 +2066,7 @@ def not_ilike_op(a: Any, b: Any, escape: Optional[str] = None) -> Any:
 if TYPE_CHECKING:
 
     @_operator_fn
-    def notilike_op(a: Any, b: Any, escape: Optional[str] = None) -> Any: ...
+    def notilike_op(a: Any, b: Any, escape: str | None = None) -> Any: ...
 
 else:
     notilike_op = not_ilike_op
@@ -2134,7 +2134,7 @@ def all_op(a: Any) -> Any:
 
 
 def _escaped_like_impl(
-    fn: Callable[..., Any], other: Any, escape: Optional[str], autoescape: bool
+    fn: Callable[..., Any], other: Any, escape: str | None, autoescape: bool
 ) -> Any:
     if autoescape:
         if autoescape is not True:
@@ -2158,7 +2158,7 @@ def _escaped_like_impl(
 @comparison_op
 @_operator_fn
 def startswith_op(
-    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: str | None = None, autoescape: bool = False
 ) -> Any:
     return _escaped_like_impl(a.startswith, b, escape, autoescape)
 
@@ -2166,7 +2166,7 @@ def startswith_op(
 @comparison_op
 @_operator_fn
 def not_startswith_op(
-    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: str | None = None, autoescape: bool = False
 ) -> Any:
     return ~_escaped_like_impl(a.startswith, b, escape, autoescape)
 
@@ -2176,7 +2176,7 @@ if TYPE_CHECKING:
 
     @_operator_fn
     def notstartswith_op(
-        a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+        a: Any, b: Any, escape: str | None = None, autoescape: bool = False
     ) -> Any: ...
 
 else:
@@ -2186,7 +2186,7 @@ else:
 @comparison_op
 @_operator_fn
 def istartswith_op(
-    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: str | None = None, autoescape: bool = False
 ) -> Any:
     return _escaped_like_impl(a.istartswith, b, escape, autoescape)
 
@@ -2194,7 +2194,7 @@ def istartswith_op(
 @comparison_op
 @_operator_fn
 def not_istartswith_op(
-    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: str | None = None, autoescape: bool = False
 ) -> Any:
     return ~_escaped_like_impl(a.istartswith, b, escape, autoescape)
 
@@ -2202,7 +2202,7 @@ def not_istartswith_op(
 @comparison_op
 @_operator_fn
 def endswith_op(
-    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: str | None = None, autoescape: bool = False
 ) -> Any:
     return _escaped_like_impl(a.endswith, b, escape, autoescape)
 
@@ -2210,7 +2210,7 @@ def endswith_op(
 @comparison_op
 @_operator_fn
 def not_endswith_op(
-    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: str | None = None, autoescape: bool = False
 ) -> Any:
     return ~_escaped_like_impl(a.endswith, b, escape, autoescape)
 
@@ -2220,7 +2220,7 @@ if TYPE_CHECKING:
 
     @_operator_fn
     def notendswith_op(
-        a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+        a: Any, b: Any, escape: str | None = None, autoescape: bool = False
     ) -> Any: ...
 
 else:
@@ -2230,7 +2230,7 @@ else:
 @comparison_op
 @_operator_fn
 def iendswith_op(
-    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: str | None = None, autoescape: bool = False
 ) -> Any:
     return _escaped_like_impl(a.iendswith, b, escape, autoescape)
 
@@ -2238,7 +2238,7 @@ def iendswith_op(
 @comparison_op
 @_operator_fn
 def not_iendswith_op(
-    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: str | None = None, autoescape: bool = False
 ) -> Any:
     return ~_escaped_like_impl(a.iendswith, b, escape, autoescape)
 
@@ -2246,7 +2246,7 @@ def not_iendswith_op(
 @comparison_op
 @_operator_fn
 def contains_op(
-    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: str | None = None, autoescape: bool = False
 ) -> Any:
     return _escaped_like_impl(a.contains, b, escape, autoescape)
 
@@ -2254,7 +2254,7 @@ def contains_op(
 @comparison_op
 @_operator_fn
 def not_contains_op(
-    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: str | None = None, autoescape: bool = False
 ) -> Any:
     return ~_escaped_like_impl(a.contains, b, escape, autoescape)
 
@@ -2264,7 +2264,7 @@ if TYPE_CHECKING:
 
     @_operator_fn
     def notcontains_op(
-        a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+        a: Any, b: Any, escape: str | None = None, autoescape: bool = False
     ) -> Any: ...
 
 else:
@@ -2274,7 +2274,7 @@ else:
 @comparison_op
 @_operator_fn
 def icontains_op(
-    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: str | None = None, autoescape: bool = False
 ) -> Any:
     return _escaped_like_impl(a.icontains, b, escape, autoescape)
 
@@ -2282,7 +2282,7 @@ def icontains_op(
 @comparison_op
 @_operator_fn
 def not_icontains_op(
-    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+    a: Any, b: Any, escape: str | None = None, autoescape: bool = False
 ) -> Any:
     return ~_escaped_like_impl(a.icontains, b, escape, autoescape)
 
@@ -2295,19 +2295,19 @@ def match_op(a: Any, b: Any, **kw: Any) -> Any:
 
 @comparison_op
 @_operator_fn
-def regexp_match_op(a: Any, b: Any, flags: Optional[str] = None) -> Any:
+def regexp_match_op(a: Any, b: Any, flags: str | None = None) -> Any:
     return a.regexp_match(b, flags=flags)
 
 
 @comparison_op
 @_operator_fn
-def not_regexp_match_op(a: Any, b: Any, flags: Optional[str] = None) -> Any:
+def not_regexp_match_op(a: Any, b: Any, flags: str | None = None) -> Any:
     return ~a.regexp_match(b, flags=flags)
 
 
 @_operator_fn
 def regexp_replace_op(
-    a: Any, b: Any, replacement: Any, flags: Optional[str] = None
+    a: Any, b: Any, replacement: Any, flags: str | None = None
 ) -> Any:
     return a.regexp_replace(b, replacement=replacement, flags=flags)
 
@@ -2493,7 +2493,7 @@ class _OpLimit(IntEnum):
     _largest = 100
 
 
-_PRECEDENCE: Dict[OperatorType, int] = {
+_PRECEDENCE: dict[OperatorType, int] = {
     from_: 15,
     function_as_comparison_op: 15,
     any_op: 15,
@@ -2556,7 +2556,7 @@ _PRECEDENCE: Dict[OperatorType, int] = {
 
 
 def is_precedent(
-    operator: OperatorType, against: Optional[OperatorType]
+    operator: OperatorType, against: OperatorType | None
 ) -> bool:
     if operator is against and is_natural_self_precedent(operator):
         return False

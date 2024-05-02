@@ -211,7 +211,7 @@ class Insert(StandardInsert):
 class OnConflictClause(ClauseElement):
     stringify_dialect = "postgresql"
 
-    constraint_target: Optional[str]
+    constraint_target: str | None
     inferred_target_elements: _OnConflictIndexElementsT
     inferred_target_whereclause: _OnConflictIndexWhereT
 

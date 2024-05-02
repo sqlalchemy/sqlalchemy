@@ -230,13 +230,13 @@ class TraversalTest(
         if positional:
             self.assert_compile(
                 expr,
-                '"%(name)s" IN (?, ?, ?)' % {"name": name},
+                '"{name}" IN (?, ?, ?)'.format(name=name),
                 checkpositional=(1, 2, 3),
                 render_postcompile=True,
                 dialect="default_qmark",
             )
         else:
-            tokens = ["%s_1_%s" % (token, i) for i in range(1, 4)]
+            tokens = ["{}_1_{}".format(token, i) for i in range(1, 4)]
             self.assert_compile(
                 expr,
                 '"%(name)s" IN (:%(token)s_1_1, '

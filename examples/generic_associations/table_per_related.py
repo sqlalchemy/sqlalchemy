@@ -57,7 +57,7 @@ class Address:
     zip = Column(String)
 
     def __repr__(self):
-        return "%s(street=%r, city=%r, zip=%r)" % (
+        return "{}(street={!r}, city={!r}, zip={!r})".format(
             self.__class__.__name__,
             self.street,
             self.city,

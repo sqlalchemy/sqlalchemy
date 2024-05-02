@@ -835,7 +835,7 @@ class ReflectionTest(
         meta2 = MetaData()
         subject = Table("subject", meta2, autoload_with=connection)
         referer = Table("referer", meta2, autoload_with=connection)
-        self.assert_(
+        self.assertTrue(
             (subject.c["id$"] == referer.c.ref).compare(
                 subject.join(referer).onclause
             )
@@ -945,7 +945,7 @@ class ReflectionTest(
         )
         users = Table("users", meta2, must_exist=True, schema="test_schema")
         j = join(users, addresses)
-        self.assert_(
+        self.assertTrue(
             (users.c.user_id == addresses.c.remote_user_id).compare(j.onclause)
         )
 
@@ -967,7 +967,7 @@ class ReflectionTest(
         referer = Table(
             "referer", meta2, schema="test_schema", autoload_with=connection
         )
-        self.assert_(
+        self.assertTrue(
             (subject.c.id == referer.c.ref).compare(
                 subject.join(referer).onclause
             )
@@ -996,7 +996,7 @@ class ReflectionTest(
         referer = Table(
             "referer", meta2, autoload_with=connection, schema="test_schema"
         )
-        self.assert_(
+        self.assertTrue(
             (subject.c.id == referer.c.ref).compare(
                 subject.join(referer).onclause
             )
@@ -1038,7 +1038,7 @@ class ReflectionTest(
             schema="test_schema",
             postgresql_ignore_search_path=True,
         )
-        self.assert_(
+        self.assertTrue(
             (subject.c.id == referer.c.ref).compare(
                 subject.join(referer).onclause
             )
@@ -1076,7 +1076,7 @@ class ReflectionTest(
             postgresql_ignore_search_path=True,
         )
         assert subject.schema == default_schema
-        self.assert_(
+        self.assertTrue(
             (subject.c.id == referer.c.ref).compare(
                 subject.join(referer).onclause
             )
@@ -2067,8 +2067,8 @@ class ReflectionTest(
             i["name"] for i in insp.get_unique_constraints("pgsql_uc")
         }
 
-        self.assert_("uc_a" in indexes)
-        self.assert_("uc_a" in constraints)
+        self.assertTrue("uc_a" in indexes)
+        self.assertTrue("uc_a" in constraints)
 
         # reflection corrects for the dupe
         reflected = Table("pgsql_uc", MetaData(), autoload_with=connection)
@@ -2076,8 +2076,8 @@ class ReflectionTest(
         indexes = {i.name for i in reflected.indexes}
         constraints = {uc.name for uc in reflected.constraints}
 
-        self.assert_("uc_a" not in indexes)
-        self.assert_("uc_a" in constraints)
+        self.assertTrue("uc_a" not in indexes)
+        self.assertTrue("uc_a" in constraints)
 
     @testing.requires.btree_gist
     def test_reflection_with_exclude_constraint(self, metadata, connection):
@@ -2137,18 +2137,18 @@ class ReflectionTest(
             i["name"] for i in insp.get_unique_constraints("pgsql_uc")
         }
 
-        self.assert_("ix_a" in indexes)
+        self.assertTrue("ix_a" in indexes)
         assert indexes["ix_a"]["unique"]
-        self.assert_("ix_a" not in constraints)
+        self.assertTrue("ix_a" not in constraints)
 
         reflected = Table("pgsql_uc", MetaData(), autoload_with=connection)
 
         indexes = {i.name: i for i in reflected.indexes}
         constraints = {uc.name for uc in reflected.constraints}
 
-        self.assert_("ix_a" in indexes)
+        self.assertTrue("ix_a" in indexes)
         assert indexes["ix_a"].unique
-        self.assert_("ix_a" not in constraints)
+        self.assertTrue("ix_a" not in constraints)
 
     def test_reflect_check_constraint(self, metadata, connection):
         meta = metadata

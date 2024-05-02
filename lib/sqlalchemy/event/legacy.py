@@ -34,8 +34,8 @@ _LegacySignatureType = Tuple[str, List[str], Optional[Callable[..., Any]]]
 
 def _legacy_signature(
     since: str,
-    argnames: List[str],
-    converter: Optional[Callable[..., Any]] = None,
+    argnames: list[str],
+    converter: Callable[..., Any] | None = None,
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """legacy sig decorator
 
@@ -72,7 +72,7 @@ def _wrap_fn_for_legacy(
         if len(argnames) == len(argspec.args) and has_kw is bool(
             argspec.varkw
         ):
-            formatted_def = "def %s(%s%s)" % (
+            formatted_def = "def {}({}{})".format(
                 dispatch_collection.name,
                 ", ".join(dispatch_collection.arg_names),
                 ", **kw" if has_kw else "",
@@ -125,7 +125,7 @@ def _standard_listen_example(
 ) -> str:
     example_kw_arg = _indent(
         "\n".join(
-            "%(arg)s = kw['%(arg)s']" % {"arg": arg}
+            "{arg} = kw['{arg}']".format(arg=arg)
             for arg in dispatch_collection.arg_names[0:2]
         ),
         "    ",
@@ -188,7 +188,7 @@ def _legacy_listen_examples(
 
 
 def _version_signature_changes(
-    parent_dispatch_cls: Type[_HasEventsDispatch[_ET]],
+    parent_dispatch_cls: type[_HasEventsDispatch[_ET]],
     dispatch_collection: _ClsLevelDispatch[_ET],
 ) -> str:
     since, args, conv = dispatch_collection.legacy_signatures[0]
@@ -219,7 +219,7 @@ def _version_signature_changes(
 
 def _augment_fn_docs(
     dispatch_collection: _ClsLevelDispatch[_ET],
-    parent_dispatch_cls: Type[_HasEventsDispatch[_ET]],
+    parent_dispatch_cls: type[_HasEventsDispatch[_ET]],
     fn: _ListenerFnType,
 ) -> str:
     header = (

@@ -43,7 +43,7 @@ else:
 class HasDescriptionCode:
     """helper which adds 'code' as an attribute and '_code_str' as a method"""
 
-    code: Optional[str] = None
+    code: str | None = None
 
     def __init__(self, *arg: Any, **kw: Any):
         code = kw.pop("code", None)
@@ -65,7 +65,7 @@ class HasDescriptionCode:
     def __str__(self) -> str:
         message = super().__str__()
         if self.code:
-            message = "%s %s" % (message, self._code_str())
+            message = f"{message} {self._code_str()}"
         return message
 
 
@@ -107,7 +107,7 @@ class SQLAlchemyError(HasDescriptionCode, Exception):
         message = self._message()
 
         if self.code:
-            message = "%s %s" % (message, self._code_str())
+            message = f"{message} {self._code_str()}"
 
         return message
 
@@ -142,7 +142,7 @@ class ObjectNotExecutableError(ArgumentError):
         super().__init__("Not an executable object: %r" % target)
         self.target = target
 
-    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
+    def __reduce__(self) -> str | tuple[Any, ...]:
         return self.__class__, (self.target,)
 
 
@@ -194,8 +194,8 @@ class CircularDependencyError(SQLAlchemyError):
         message: str,
         cycles: Any,
         edges: Any,
-        msg: Optional[str] = None,
-        code: Optional[str] = None,
+        msg: str | None = None,
+        code: str | None = None,
     ):
         if msg is None:
             message += " (%s)" % ", ".join(repr(s) for s in cycles)
@@ -205,7 +205,7 @@ class CircularDependencyError(SQLAlchemyError):
         self.cycles = cycles
         self.edges = edges
 
-    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
+    def __reduce__(self) -> str | tuple[Any, ...]:
         return (
             self.__class__,
             (None, self.cycles, self.edges, self.args[0]),
@@ -231,9 +231,9 @@ class UnsupportedCompilationError(CompileError):
 
     def __init__(
         self,
-        compiler: Union[Compiled, TypeCompiler],
-        element_type: Type[ClauseElement],
-        message: Optional[str] = None,
+        compiler: Compiled | TypeCompiler,
+        element_type: type[ClauseElement],
+        message: str | None = None,
     ):
         super().__init__(
             "Compiler %r can't render element of type %s%s"
@@ -243,7 +243,7 @@ class UnsupportedCompilationError(CompileError):
         self.element_type = element_type
         self.message = message
 
-    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
+    def __reduce__(self) -> str | tuple[Any, ...]:
         return self.__class__, (self.compiler, self.element_type, self.message)
 
 
@@ -385,7 +385,7 @@ class NoReferencedTableError(NoReferenceError):
         NoReferenceError.__init__(self, message)
         self.table_name = tname
 
-    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
+    def __reduce__(self) -> str | tuple[Any, ...]:
         return self.__class__, (self.args[0], self.table_name)
 
 
@@ -400,7 +400,7 @@ class NoReferencedColumnError(NoReferenceError):
         self.table_name = tname
         self.column_name = cname
 
-    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
+    def __reduce__(self) -> str | tuple[Any, ...]:
         return (
             self.__class__,
             (self.args[0], self.table_name, self.column_name),
@@ -458,18 +458,18 @@ class StatementError(SQLAlchemyError):
 
     """
 
-    statement: Optional[str] = None
+    statement: str | None = None
     """The string SQL statement being invoked when this exception occurred."""
 
-    params: Optional[_AnyExecuteParams] = None
+    params: _AnyExecuteParams | None = None
     """The parameter list being used when this exception occurred."""
 
-    orig: Optional[BaseException] = None
+    orig: BaseException | None = None
     """The original exception that was thrown.
 
     """
 
-    ismulti: Optional[bool] = None
+    ismulti: bool | None = None
     """multi parameter passed to repr_params().  None is meaningful."""
 
     connection_invalidated: bool = False
@@ -477,12 +477,12 @@ class StatementError(SQLAlchemyError):
     def __init__(
         self,
         message: str,
-        statement: Optional[str],
-        params: Optional[_AnyExecuteParams],
-        orig: Optional[BaseException],
+        statement: str | None,
+        params: _AnyExecuteParams | None,
+        orig: BaseException | None,
         hide_parameters: bool = False,
-        code: Optional[str] = None,
-        ismulti: Optional[bool] = None,
+        code: str | None = None,
+        ismulti: bool | None = None,
     ):
         SQLAlchemyError.__init__(self, message, code=code)
         self.statement = statement
@@ -490,12 +490,12 @@ class StatementError(SQLAlchemyError):
         self.orig = orig
         self.ismulti = ismulti
         self.hide_parameters = hide_parameters
-        self.detail: List[str] = []
+        self.detail: list[str] = []
 
     def add_detail(self, msg: str) -> None:
         self.detail.append(msg)
 
-    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
+    def __reduce__(self) -> str | tuple[Any, ...]:
         return (
             self.__class__,
             (
@@ -563,56 +563,56 @@ class DBAPIError(StatementError):
     @classmethod
     def instance(
         cls,
-        statement: Optional[str],
-        params: Optional[_AnyExecuteParams],
+        statement: str | None,
+        params: _AnyExecuteParams | None,
         orig: Exception,
-        dbapi_base_err: Type[Exception],
+        dbapi_base_err: type[Exception],
         hide_parameters: bool = False,
         connection_invalidated: bool = False,
-        dialect: Optional[Dialect] = None,
-        ismulti: Optional[bool] = None,
+        dialect: Dialect | None = None,
+        ismulti: bool | None = None,
     ) -> StatementError: ...
 
     @overload
     @classmethod
     def instance(
         cls,
-        statement: Optional[str],
-        params: Optional[_AnyExecuteParams],
+        statement: str | None,
+        params: _AnyExecuteParams | None,
         orig: DontWrapMixin,
-        dbapi_base_err: Type[Exception],
+        dbapi_base_err: type[Exception],
         hide_parameters: bool = False,
         connection_invalidated: bool = False,
-        dialect: Optional[Dialect] = None,
-        ismulti: Optional[bool] = None,
+        dialect: Dialect | None = None,
+        ismulti: bool | None = None,
     ) -> DontWrapMixin: ...
 
     @overload
     @classmethod
     def instance(
         cls,
-        statement: Optional[str],
-        params: Optional[_AnyExecuteParams],
+        statement: str | None,
+        params: _AnyExecuteParams | None,
         orig: BaseException,
-        dbapi_base_err: Type[Exception],
+        dbapi_base_err: type[Exception],
         hide_parameters: bool = False,
         connection_invalidated: bool = False,
-        dialect: Optional[Dialect] = None,
-        ismulti: Optional[bool] = None,
+        dialect: Dialect | None = None,
+        ismulti: bool | None = None,
     ) -> BaseException: ...
 
     @classmethod
     def instance(
         cls,
-        statement: Optional[str],
-        params: Optional[_AnyExecuteParams],
-        orig: Union[BaseException, DontWrapMixin],
-        dbapi_base_err: Type[Exception],
+        statement: str | None,
+        params: _AnyExecuteParams | None,
+        orig: BaseException | DontWrapMixin,
+        dbapi_base_err: type[Exception],
         hide_parameters: bool = False,
         connection_invalidated: bool = False,
-        dialect: Optional[Dialect] = None,
-        ismulti: Optional[bool] = None,
-    ) -> Union[BaseException, DontWrapMixin]:
+        dialect: Dialect | None = None,
+        ismulti: bool | None = None,
+    ) -> BaseException | DontWrapMixin:
         # Don't ever wrap these, just return them directly as if
         # DBAPIError didn't exist.
         if (
@@ -674,7 +674,7 @@ class DBAPIError(StatementError):
             ismulti=ismulti,
         )
 
-    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
+    def __reduce__(self) -> str | tuple[Any, ...]:
         return (
             self.__class__,
             (
@@ -691,13 +691,13 @@ class DBAPIError(StatementError):
 
     def __init__(
         self,
-        statement: Optional[str],
-        params: Optional[_AnyExecuteParams],
+        statement: str | None,
+        params: _AnyExecuteParams | None,
         orig: BaseException,
         hide_parameters: bool = False,
         connection_invalidated: bool = False,
-        code: Optional[str] = None,
-        ismulti: Optional[bool] = None,
+        code: str | None = None,
+        ismulti: bool | None = None,
     ):
         try:
             text = str(orig)
@@ -780,7 +780,7 @@ class SATestSuiteWarning(Warning):
 class SADeprecationWarning(HasDescriptionCode, DeprecationWarning):
     """Issued for usage of deprecated APIs."""
 
-    deprecated_since: Optional[str] = None
+    deprecated_since: str | None = None
     "Indicates the version that started raising this deprecation warning"
 
 
@@ -796,7 +796,7 @@ class Base20DeprecationWarning(SADeprecationWarning):
 
     """
 
-    deprecated_since: Optional[str] = "1.4"
+    deprecated_since: str | None = "1.4"
     "Indicates the version that started raising this deprecation warning"
 
     def __str__(self) -> str:
@@ -820,7 +820,7 @@ class SAPendingDeprecationWarning(PendingDeprecationWarning):
 
     """
 
-    deprecated_since: Optional[str] = None
+    deprecated_since: str | None = None
     "Indicates the version that started raising this deprecation warning"
 
 

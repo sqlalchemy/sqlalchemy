@@ -850,7 +850,7 @@ class MultipleDialectShardTest(ShardTest, fixtures.MappedTest):
         with e2.begin() as conn:
             for i in [2, 4]:
                 conn.exec_driver_sql(
-                    "CREATE SCHEMA IF NOT EXISTS shard%s" % (i,)
+                    "CREATE SCHEMA IF NOT EXISTS shard{}".format(i)
                 )
 
         db1 = e1.execution_options(schema_translate_map={"changeme": "shard1"})
@@ -875,7 +875,7 @@ class MultipleDialectShardTest(ShardTest, fixtures.MappedTest):
         with self.postgresql_engine.begin() as conn:
             self.tables_test_metadata.drop_all(conn)
             for i in [2, 4]:
-                conn.exec_driver_sql("DROP SCHEMA shard%s CASCADE" % (i,))
+                conn.exec_driver_sql("DROP SCHEMA shard{} CASCADE".format(i))
         self.postgresql_engine.dispose()
 
 

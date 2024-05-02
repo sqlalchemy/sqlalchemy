@@ -426,7 +426,7 @@ class MutableBase:
         return weakref.WeakKeyDictionary()
 
     @classmethod
-    def coerce(cls, key: str, value: Any) -> Optional[Any]:
+    def coerce(cls, key: str, value: Any) -> Any | None:
         """Given a value, coerce it into the target type.
 
         Can be overridden by custom subclasses to coerce incoming
@@ -455,7 +455,7 @@ class MutableBase:
         raise ValueError(msg % (key, type(value)))
 
     @classmethod
-    def _get_listen_keys(cls, attribute: QueryableAttribute[Any]) -> Set[str]:
+    def _get_listen_keys(cls, attribute: QueryableAttribute[Any]) -> set[str]:
         """Given a descriptor attribute, return a ``set()`` of the attribute
         keys which indicate a change in the state of this attribute.
 
@@ -509,7 +509,7 @@ class MutableBase:
 
         def load_attrs(
             state: InstanceState[_O],
-            ctx: Union[object, QueryContext, UOWTransaction],
+            ctx: object | QueryContext | UOWTransaction,
             attrs: Iterable[Any],
         ) -> None:
             if not attrs or listen_keys.intersection(attrs):
@@ -541,7 +541,7 @@ class MutableBase:
             return value
 
         def pickle(
-            state: InstanceState[_O], state_dict: Dict[str, Any]
+            state: InstanceState[_O], state_dict: dict[str, Any]
         ) -> None:
             val = state.dict.get(key, None)
             if val is not None:
@@ -550,7 +550,7 @@ class MutableBase:
                 state_dict["ext.mutable.values"][key].append(val)
 
         def unpickle(
-            state: InstanceState[_O], state_dict: Dict[str, Any]
+            state: InstanceState[_O], state_dict: dict[str, Any]
         ) -> None:
             if "ext.mutable.values" in state_dict:
                 collection = state_dict["ext.mutable.values"]
@@ -690,7 +690,7 @@ class Mutable(MutableBase):
 
         def listen_for_type(
             mapper: Mapper[_T],
-            class_: Union[DeclarativeAttributeIntercept, type],
+            class_: DeclarativeAttributeIntercept | type,
         ) -> None:
             if mapper.non_primary:
                 return
@@ -732,7 +732,7 @@ class MutableComposite(MutableBase):
     """
 
     @classmethod
-    def _get_listen_keys(cls, attribute: QueryableAttribute[_O]) -> Set[str]:
+    def _get_listen_keys(cls, attribute: QueryableAttribute[_O]) -> set[str]:
         return {attribute.key}.union(attribute.property._attribute_keys)
 
     def changed(self) -> None:
@@ -799,8 +799,8 @@ class MutableDict(Mutable, Dict[_KT, _VT]):
 
         @overload
         def setdefault(
-            self: MutableDict[_KT, Optional[_T]], key: _KT, value: None = None
-        ) -> Optional[_T]: ...
+            self: MutableDict[_KT, _T | None], key: _KT, value: None = None
+        ) -> _T | None: ...
 
         @overload
         def setdefault(self, key: _KT, value: _VT) -> _VT: ...
@@ -842,7 +842,7 @@ class MutableDict(Mutable, Dict[_KT, _VT]):
             self.changed()
             return result
 
-    def popitem(self) -> Tuple[_KT, _VT]:
+    def popitem(self) -> tuple[_KT, _VT]:
         result = super().popitem()
         self.changed()
         return result
@@ -861,11 +861,11 @@ class MutableDict(Mutable, Dict[_KT, _VT]):
         else:
             return value
 
-    def __getstate__(self) -> Dict[_KT, _VT]:
+    def __getstate__(self) -> dict[_KT, _VT]:
         return dict(self)
 
     def __setstate__(
-        self, state: Union[Dict[str, int], Dict[str, str]]
+        self, state: dict[str, int] | dict[str, str]
     ) -> None:
         self.update(state)
 
@@ -895,7 +895,7 @@ class MutableList(Mutable, List[_T]):
 
     def __reduce_ex__(
         self, proto: SupportsIndex
-    ) -> Tuple[type, Tuple[List[int]]]:
+    ) -> tuple[type, tuple[list[int]]]:
         return (self.__class__, (list(self),))
 
     # needed for backwards compatibility with
@@ -964,7 +964,7 @@ class MutableList(Mutable, List[_T]):
     @classmethod
     def coerce(
         cls, key: str, value: MutableList[_T] | _T
-    ) -> Optional[MutableList[_T]]:
+    ) -> MutableList[_T] | None:
         """Convert plain list to instance of this class."""
         if not isinstance(value, cls):
             if isinstance(value, list):
@@ -1052,7 +1052,7 @@ class MutableSet(Mutable, Set[_T]):
         self.changed()
 
     @classmethod
-    def coerce(cls, index: str, value: Any) -> Optional[MutableSet[_T]]:
+    def coerce(cls, index: str, value: Any) -> MutableSet[_T] | None:
         """Convert plain set to instance of this class."""
         if not isinstance(value, cls):
             if isinstance(value, set):
@@ -1061,7 +1061,7 @@ class MutableSet(Mutable, Set[_T]):
         else:
             return value
 
-    def __getstate__(self) -> Set[_T]:
+    def __getstate__(self) -> set[_T]:
         return set(self)
 
     def __setstate__(self, state: Iterable[_T]) -> None:
@@ -1069,5 +1069,5 @@ class MutableSet(Mutable, Set[_T]):
 
     def __reduce_ex__(
         self, proto: SupportsIndex
-    ) -> Tuple[type, Tuple[List[int]]]:
+    ) -> tuple[type, tuple[list[int]]]:
         return (self.__class__, (list(self),))

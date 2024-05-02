@@ -275,26 +275,26 @@ def int_within_variance(expected, received, variance):
 
 
 def eq_regex(a, b, msg=None):
-    assert re.match(b, a), msg or "%r !~ %r" % (a, b)
+    assert re.match(b, a), msg or "{!r} !~ {!r}".format(a, b)
 
 
 def eq_(a, b, msg=None):
     """Assert a == b, with repr messaging on failure."""
-    assert a == b, msg or "%r != %r" % (a, b)
+    assert a == b, msg or "{!r} != {!r}".format(a, b)
 
 
 def ne_(a, b, msg=None):
     """Assert a != b, with repr messaging on failure."""
-    assert a != b, msg or "%r == %r" % (a, b)
+    assert a != b, msg or "{!r} == {!r}".format(a, b)
 
 
 def le_(a, b, msg=None):
     """Assert a <= b, with repr messaging on failure."""
-    assert a <= b, msg or "%r != %r" % (a, b)
+    assert a <= b, msg or "{!r} != {!r}".format(a, b)
 
 
 def is_instance_of(a, b, msg=None):
-    assert isinstance(a, b), msg or "%r is not an instance of %r" % (a, b)
+    assert isinstance(a, b), msg or "{!r} is not an instance of {!r}".format(a, b)
 
 
 def is_none(a, msg=None):
@@ -315,12 +315,12 @@ def is_false(a, msg=None):
 
 def is_(a, b, msg=None):
     """Assert a is b, with repr messaging on failure."""
-    assert a is b, msg or "%r is not %r" % (a, b)
+    assert a is b, msg or "{!r} is not {!r}".format(a, b)
 
 
 def is_not(a, b, msg=None):
     """Assert a is not b, with repr messaging on failure."""
-    assert a is not b, msg or "%r is %r" % (a, b)
+    assert a is not b, msg or "{!r} is {!r}".format(a, b)
 
 
 # deprecated.  See #5429
@@ -329,12 +329,12 @@ is_not_ = is_not
 
 def in_(a, b, msg=None):
     """Assert a in b, with repr messaging on failure."""
-    assert a in b, msg or "%r not in %r" % (a, b)
+    assert a in b, msg or "{!r} not in {!r}".format(a, b)
 
 
 def not_in(a, b, msg=None):
     """Assert a in not b, with repr messaging on failure."""
-    assert a not in b, msg or "%r is in %r" % (a, b)
+    assert a not in b, msg or "{!r} is in {!r}".format(a, b)
 
 
 # deprecated.  See #5429
@@ -343,7 +343,7 @@ not_in_ = not_in
 
 def startswith_(a, fragment, msg=None):
     """Assert a.startswith(fragment), with repr messaging on failure."""
-    assert a.startswith(fragment), msg or "%r does not start with %r" % (
+    assert a.startswith(fragment), msg or "{!r} does not start with {!r}".format(
         a,
         fragment,
     )
@@ -357,7 +357,7 @@ def eq_ignore_whitespace(a, b, msg=None):
     b = re.sub(r" {2,}", " ", b)
     b = re.sub(r"\t", "", b)
 
-    assert a == b, msg or "%r != %r" % (a, b)
+    assert a == b, msg or "{!r} != {!r}".format(a, b)
 
 
 def _assert_proper_exception_context(exception):
@@ -470,7 +470,7 @@ def _expect_raises(except_cls, msg=None, check_context=False):
             # I'm often pdbing here, and "err" above isn't
             # in scope, so assign the string explicitly
             error_as_string = str(err)
-            assert re.search(msg, error_as_string, re.UNICODE), "%r !~ %s" % (
+            assert re.search(msg, error_as_string, re.UNICODE), "{!r} !~ {}".format(
                 msg,
                 error_as_string,
             )
@@ -662,7 +662,7 @@ class AssertsCompiledSQL:
 
         cc = re.sub(r"[\n\t]", "", str(c))
 
-        eq_(cc, result, "%r != %r on dialect %r" % (cc, result, dialect))
+        eq_(cc, result, "{!r} != {!r} on dialect {!r}".format(cc, result, dialect))
 
         if checkparams is not None:
             if render_postcompile:
@@ -739,11 +739,11 @@ class AssertsCompiledSQL:
                     else:
                         start = 0
                     esc = escaped.get(v, v)
-                    pos = stmt.index("%%(%s)s" % (esc,), start) + 2
+                    pos = stmt.index("%({})s".format(esc), start) + 2
                     positions.append(pos)
                     pos_by_value[v].append(pos)
                 except ValueError:
-                    msg = "Expected to find bindparam %r in %r" % (v, stmt)
+                    msg = "Expected to find bindparam {!r} in {!r}".format(v, stmt)
                     assert False, msg
 
             ordered = all(
@@ -808,7 +808,7 @@ class ComparesTables:
     def assert_types_base(self, c1, c2):
         assert c1.type._compare_type_affinity(
             c2.type
-        ), "On column %r, type '%s' doesn't correspond to type '%s'" % (
+        ), "On column {!r}, type '{}' doesn't correspond to type '{}'".format(
             c1.name,
             c1.type,
             c2.type,
@@ -822,7 +822,7 @@ class AssertsExecutionResults:
         self.assert_list(result, class_, objects)
 
     def assert_list(self, result, class_, list_):
-        self.assert_(
+        self.assertTrue(
             len(result) == len(list_),
             "result list is not the same size as test list, "
             + "for class "
@@ -832,7 +832,7 @@ class AssertsExecutionResults:
             self.assert_row(class_, result[i], list_[i])
 
     def assert_row(self, class_, rowobj, desc):
-        self.assert_(
+        self.assertTrue(
             rowobj.__class__ is class_, "item class is not " + repr(class_)
         )
         for key, value in desc.items():
@@ -842,7 +842,7 @@ class AssertsExecutionResults:
                 else:
                     self.assert_row(value[0], getattr(rowobj, key), value[1])
             else:
-                self.assert_(
+                self.assertTrue(
                     getattr(rowobj, key) == value,
                     "attribute %s value %s does not match %s"
                     % (key, getattr(rowobj, key), value),

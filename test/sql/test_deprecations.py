@@ -418,7 +418,7 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
         j = join(a._implicit_subquery, self.table2)
 
         criterion = a._implicit_subquery.c.table1_col1 == self.table2.c.col2
-        self.assert_(criterion.compare(j.onclause))
+        self.assertTrue(criterion.compare(j.onclause))
 
 
 class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -618,28 +618,28 @@ class PKIncrementTest(fixtures.TablesTest):
         ids = set()
         rs = connection.execute(aitable.insert(), int1=1)
         last = rs.inserted_primary_key[0]
-        self.assert_(last)
-        self.assert_(last not in ids)
+        self.assertTrue(last)
+        self.assertTrue(last not in ids)
         ids.add(last)
 
         rs = connection.execute(aitable.insert(), str1="row 2")
         last = rs.inserted_primary_key[0]
-        self.assert_(last)
-        self.assert_(last not in ids)
+        self.assertTrue(last)
+        self.assertTrue(last not in ids)
         ids.add(last)
 
         rs = connection.execute(aitable.insert(), int1=3, str1="row 3")
         last = rs.inserted_primary_key[0]
-        self.assert_(last)
-        self.assert_(last not in ids)
+        self.assertTrue(last)
+        self.assertTrue(last not in ids)
         ids.add(last)
 
         rs = connection.execute(
             aitable.insert().values({"int1": func.length("four")})
         )
         last = rs.inserted_primary_key[0]
-        self.assert_(last)
-        self.assert_(last not in ids)
+        self.assertTrue(last)
+        self.assertTrue(last not in ids)
         ids.add(last)
 
         eq_(

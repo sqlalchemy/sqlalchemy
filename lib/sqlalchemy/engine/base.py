@@ -119,25 +119,25 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     _sqla_logger_namespace = "sqlalchemy.engine.Connection"
 
     # used by sqlalchemy.engine.util.TransactionalContext
-    _trans_context_manager: Optional[TransactionalContext] = None
+    _trans_context_manager: TransactionalContext | None = None
 
     # legacy as of 2.0, should be eventually deprecated and
     # removed.  was used in the "pre_ping" recipe that's been in the docs
     # a long time
     should_close_with_result = False
 
-    _dbapi_connection: Optional[PoolProxiedConnection]
+    _dbapi_connection: PoolProxiedConnection | None
 
     _execution_options: _ExecuteOptions
 
-    _transaction: Optional[RootTransaction]
-    _nested_transaction: Optional[NestedTransaction]
+    _transaction: RootTransaction | None
+    _nested_transaction: NestedTransaction | None
 
     def __init__(
         self,
         engine: Engine,
-        connection: Optional[PoolProxiedConnection] = None,
-        _has_events: Optional[bool] = None,
+        connection: PoolProxiedConnection | None = None,
+        _has_events: bool | None = None,
         _allow_revalidate: bool = True,
         _allow_autobegin: bool = True,
     ):
@@ -205,21 +205,21 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         self.engine.logger.debug(message, *arg, **kw)
 
     @property
-    def _schema_translate_map(self) -> Optional[SchemaTranslateMapType]:
-        schema_translate_map: Optional[SchemaTranslateMapType] = (
+    def _schema_translate_map(self) -> SchemaTranslateMapType | None:
+        schema_translate_map: SchemaTranslateMapType | None = (
             self._execution_options.get("schema_translate_map", None)
         )
 
         return schema_translate_map
 
-    def schema_for_object(self, obj: HasSchemaAttr) -> Optional[str]:
+    def schema_for_object(self, obj: HasSchemaAttr) -> str | None:
         """Return the schema name for the given schema item taking into
         account current schema translate map.
 
         """
 
         name = obj.schema
-        schema_translate_map: Optional[SchemaTranslateMapType] = (
+        schema_translate_map: SchemaTranslateMapType | None = (
             self._execution_options.get("schema_translate_map", None)
         )
 
@@ -242,7 +242,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     def execution_options(
         self,
         *,
-        compiled_cache: Optional[CompiledCacheType] = ...,
+        compiled_cache: CompiledCacheType | None = ...,
         logging_token: str = ...,
         isolation_level: IsolationLevel = ...,
         no_parameters: bool = False,
@@ -250,7 +250,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         max_row_buffer: int = ...,
         yield_per: int = ...,
         insertmanyvalues_page_size: int = ...,
-        schema_translate_map: Optional[SchemaTranslateMapType] = ...,
+        schema_translate_map: SchemaTranslateMapType | None = ...,
         preserve_rowcount: bool = False,
         **opt: Any,
     ) -> Connection: ...
@@ -639,7 +639,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             self._handle_dbapi_exception(e, None, None, None, None)
 
     @property
-    def default_isolation_level(self) -> Optional[IsolationLevel]:
+    def default_isolation_level(self) -> IsolationLevel | None:
         """The initial-connection time isolation level associated with the
         :class:`_engine.Dialect` in use.
 
@@ -697,7 +697,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
         return self.connection.info
 
-    def invalidate(self, exception: Optional[BaseException] = None) -> None:
+    def invalidate(self, exception: BaseException | None = None) -> None:
         """Invalidate the underlying DBAPI connection associated with
         this :class:`_engine.Connection`.
 
@@ -950,7 +950,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
         return NestedTransaction(self)
 
-    def begin_twophase(self, xid: Optional[Any] = None) -> TwoPhaseTransaction:
+    def begin_twophase(self, xid: Any | None = None) -> TwoPhaseTransaction:
         """Begin a two-phase or XA transaction and return a transaction
         handle.
 
@@ -1030,7 +1030,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         if self._transaction:
             self._transaction.rollback()
 
-    def recover_twophase(self) -> List[Any]:
+    def recover_twophase(self) -> list[Any]:
         return self.engine.dialect.do_recover_twophase(self)
 
     def rollback_prepared(self, xid: Any, recover: bool = False) -> None:
@@ -1075,7 +1075,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             )
         return trans
 
-    def get_transaction(self) -> Optional[RootTransaction]:
+    def get_transaction(self) -> RootTransaction | None:
         """Return the current root transaction in progress, if any.
 
         .. versionadded:: 1.4
@@ -1084,7 +1084,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
         return self._transaction
 
-    def get_nested_transaction(self) -> Optional[NestedTransaction]:
+    def get_nested_transaction(self) -> NestedTransaction | None:
         """Return the current nested transaction in progress, if any.
 
         .. versionadded:: 1.4
@@ -1149,7 +1149,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         except BaseException as e:
             self._handle_dbapi_exception(e, None, None, None, None)
 
-    def _savepoint_impl(self, name: Optional[str] = None) -> str:
+    def _savepoint_impl(self, name: str | None = None) -> str:
         if self._has_events or self.engine._has_events:
             self.dispatch.savepoint(self, name)
 
@@ -1271,26 +1271,26 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     def scalar(
         self,
         statement: TypedReturnsRows[_T],
-        parameters: Optional[_CoreSingleExecuteParams] = None,
+        parameters: _CoreSingleExecuteParams | None = None,
         *,
-        execution_options: Optional[CoreExecuteOptionsParameter] = None,
-    ) -> Optional[_T]: ...
+        execution_options: CoreExecuteOptionsParameter | None = None,
+    ) -> _T | None: ...
 
     @overload
     def scalar(
         self,
         statement: Executable,
-        parameters: Optional[_CoreSingleExecuteParams] = None,
+        parameters: _CoreSingleExecuteParams | None = None,
         *,
-        execution_options: Optional[CoreExecuteOptionsParameter] = None,
+        execution_options: CoreExecuteOptionsParameter | None = None,
     ) -> Any: ...
 
     def scalar(
         self,
         statement: Executable,
-        parameters: Optional[_CoreSingleExecuteParams] = None,
+        parameters: _CoreSingleExecuteParams | None = None,
         *,
-        execution_options: Optional[CoreExecuteOptionsParameter] = None,
+        execution_options: CoreExecuteOptionsParameter | None = None,
     ) -> Any:
         r"""Executes a SQL statement construct and returns a scalar object.
 
@@ -1318,26 +1318,26 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     def scalars(
         self,
         statement: TypedReturnsRows[_T],
-        parameters: Optional[_CoreAnyExecuteParams] = None,
+        parameters: _CoreAnyExecuteParams | None = None,
         *,
-        execution_options: Optional[CoreExecuteOptionsParameter] = None,
+        execution_options: CoreExecuteOptionsParameter | None = None,
     ) -> ScalarResult[_T]: ...
 
     @overload
     def scalars(
         self,
         statement: Executable,
-        parameters: Optional[_CoreAnyExecuteParams] = None,
+        parameters: _CoreAnyExecuteParams | None = None,
         *,
-        execution_options: Optional[CoreExecuteOptionsParameter] = None,
+        execution_options: CoreExecuteOptionsParameter | None = None,
     ) -> ScalarResult[Any]: ...
 
     def scalars(
         self,
         statement: Executable,
-        parameters: Optional[_CoreAnyExecuteParams] = None,
+        parameters: _CoreAnyExecuteParams | None = None,
         *,
-        execution_options: Optional[CoreExecuteOptionsParameter] = None,
+        execution_options: CoreExecuteOptionsParameter | None = None,
     ) -> ScalarResult[Any]:
         """Executes and returns a scalar result set, which yields scalar values
         from the first column of each row.
@@ -1361,26 +1361,26 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     def execute(
         self,
         statement: TypedReturnsRows[Unpack[_Ts]],
-        parameters: Optional[_CoreAnyExecuteParams] = None,
+        parameters: _CoreAnyExecuteParams | None = None,
         *,
-        execution_options: Optional[CoreExecuteOptionsParameter] = None,
+        execution_options: CoreExecuteOptionsParameter | None = None,
     ) -> CursorResult[Unpack[_Ts]]: ...
 
     @overload
     def execute(
         self,
         statement: Executable,
-        parameters: Optional[_CoreAnyExecuteParams] = None,
+        parameters: _CoreAnyExecuteParams | None = None,
         *,
-        execution_options: Optional[CoreExecuteOptionsParameter] = None,
+        execution_options: CoreExecuteOptionsParameter | None = None,
     ) -> CursorResult[Unpack[TupleAny]]: ...
 
     def execute(
         self,
         statement: Executable,
-        parameters: Optional[_CoreAnyExecuteParams] = None,
+        parameters: _CoreAnyExecuteParams | None = None,
         *,
-        execution_options: Optional[CoreExecuteOptionsParameter] = None,
+        execution_options: CoreExecuteOptionsParameter | None = None,
     ) -> CursorResult[Unpack[TupleAny]]:
         r"""Executes a SQL statement construct and returns a
         :class:`_engine.CursorResult`.
@@ -1447,8 +1447,8 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
         exec_opts = self._execution_options.merge_with(execution_options)
 
-        event_multiparams: Optional[_CoreMultiExecuteParams]
-        event_params: Optional[_CoreAnyExecuteParams]
+        event_multiparams: _CoreMultiExecuteParams | None
+        event_params: _CoreAnyExecuteParams | None
 
         # note for event handlers, the "distilled parameters" which is always
         # a list of dicts is broken out into separate "multiparams" and
@@ -1506,8 +1506,8 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             self._execution_options, execution_options
         )
 
-        event_multiparams: Optional[_CoreMultiExecuteParams]
-        event_params: Optional[_CoreSingleExecuteParams]
+        event_multiparams: _CoreMultiExecuteParams | None
+        event_params: _CoreSingleExecuteParams | None
 
         if self._has_events or self.engine._has_events:
             (
@@ -1552,7 +1552,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         elem: Any,
         distilled_params: _CoreMultiExecuteParams,
         execution_options: _ExecuteOptions,
-    ) -> Tuple[
+    ) -> tuple[
         Any,
         _CoreMultiExecuteParams,
         _CoreMultiExecuteParams,
@@ -1625,7 +1625,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
         schema_translate_map = exec_opts.get("schema_translate_map", None)
 
-        compiled_cache: Optional[CompiledCacheType] = exec_opts.get(
+        compiled_cache: CompiledCacheType | None = exec_opts.get(
             "compiled_cache", self.engine._compiled_cache
         )
 
@@ -1713,8 +1713,8 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     def exec_driver_sql(
         self,
         statement: str,
-        parameters: Optional[_DBAPIAnyExecuteParams] = None,
-        execution_options: Optional[CoreExecuteOptionsParameter] = None,
+        parameters: _DBAPIAnyExecuteParams | None = None,
+        execution_options: CoreExecuteOptionsParameter | None = None,
     ) -> CursorResult[Unpack[TupleAny]]:
         r"""Executes a string SQL statement on the DBAPI cursor directly,
         without any SQL compilation steps.
@@ -1790,8 +1790,8 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         self,
         dialect: Dialect,
         constructor: Callable[..., ExecutionContext],
-        statement: Union[str, Compiled],
-        parameters: Optional[_AnyMultiExecuteParams],
+        statement: str | Compiled,
+        parameters: _AnyMultiExecuteParams | None,
         execution_options: _ExecuteOptions,
         *args: Any,
         **kw: Any,
@@ -1849,8 +1849,8 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         self,
         dialect: Dialect,
         context: ExecutionContext,
-        statement: Union[str, Compiled],
-        parameters: Optional[_AnyMultiExecuteParams],
+        statement: str | Compiled,
+        parameters: _AnyMultiExecuteParams | None,
     ) -> CursorResult[Unpack[TupleAny]]:
         """continue the _execute_context() method for a single DBAPI
         cursor.execute() or cursor.executemany() call.
@@ -1875,7 +1875,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             context.parameters,
         )
 
-        effective_parameters: Optional[_AnyExecuteParams]
+        effective_parameters: _AnyExecuteParams | None
 
         if not context.executemany:
             effective_parameters = parameters[0]
@@ -2161,7 +2161,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         cursor: DBAPICursor,
         statement: str,
         parameters: _DBAPISingleExecuteParams,
-        context: Optional[ExecutionContext] = None,
+        context: ExecutionContext | None = None,
     ) -> None:
         """Execute a statement + params on the given cursor.
 
@@ -2221,10 +2221,10 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     def _handle_dbapi_exception(
         self,
         e: BaseException,
-        statement: Optional[str],
-        parameters: Optional[_AnyExecuteParams],
-        cursor: Optional[DBAPICursor],
-        context: Optional[ExecutionContext],
+        statement: str | None,
+        parameters: _AnyExecuteParams | None,
+        cursor: DBAPICursor | None,
+        context: ExecutionContext | None,
         is_sub_exec: bool = False,
     ) -> NoReturn:
         exc_info = sys.exc_info()
@@ -2368,8 +2368,8 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         cls,
         e: BaseException,
         dialect: Dialect,
-        engine: Optional[Engine] = None,
-        is_disconnect: Optional[bool] = None,
+        engine: Engine | None = None,
+        is_disconnect: bool | None = None,
         invalidate_pool_on_disconnect: bool = True,
         is_pre_ping: bool = False,
     ) -> NoReturn:
@@ -2442,7 +2442,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
     def _run_ddl_visitor(
         self,
-        visitorcallable: Type[Union[SchemaGenerator, SchemaDropper]],
+        visitorcallable: type[SchemaGenerator | SchemaDropper],
         element: SchemaItem,
         **kwargs: Any,
     ) -> None:
@@ -2477,14 +2477,14 @@ class ExceptionContextImpl(ExceptionContext):
     def __init__(
         self,
         exception: BaseException,
-        sqlalchemy_exception: Optional[exc.StatementError],
-        engine: Optional[Engine],
+        sqlalchemy_exception: exc.StatementError | None,
+        engine: Engine | None,
         dialect: Dialect,
-        connection: Optional[Connection],
-        cursor: Optional[DBAPICursor],
-        statement: Optional[str],
-        parameters: Optional[_DBAPIAnyExecuteParams],
-        context: Optional[ExecutionContext],
+        connection: Connection | None,
+        cursor: DBAPICursor | None,
+        statement: str | None,
+        parameters: _DBAPIAnyExecuteParams | None,
+        context: ExecutionContext | None,
         is_disconnect: bool,
         invalidate_pool_on_disconnect: bool,
         is_pre_ping: bool,
@@ -2929,16 +2929,16 @@ class Engine(
 
     dispatch: dispatcher[ConnectionEventsTarget]
 
-    _compiled_cache: Optional[CompiledCacheType]
+    _compiled_cache: CompiledCacheType | None
 
     _execution_options: _ExecuteOptions = _EMPTY_EXECUTION_OPTS
     _has_events: bool = False
-    _connection_cls: Type[Connection] = Connection
+    _connection_cls: type[Connection] = Connection
     _sqla_logger_namespace: str = "sqlalchemy.engine.Engine"
     _is_future: bool = False
 
-    _schema_translate_map: Optional[SchemaTranslateMapType] = None
-    _option_cls: Type[OptionEngine]
+    _schema_translate_map: SchemaTranslateMapType | None = None
+    _option_cls: type[OptionEngine]
 
     dialect: Dialect
     pool: Pool
@@ -2950,10 +2950,10 @@ class Engine(
         pool: Pool,
         dialect: Dialect,
         url: URL,
-        logging_name: Optional[str] = None,
-        echo: Optional[_EchoFlagType] = None,
+        logging_name: str | None = None,
+        echo: _EchoFlagType | None = None,
         query_cache_size: int = 500,
-        execution_options: Optional[Mapping[str, Any]] = None,
+        execution_options: Mapping[str, Any] | None = None,
         hide_parameters: bool = False,
     ):
         self.pool = pool
@@ -3031,11 +3031,11 @@ class Engine(
     def execution_options(
         self,
         *,
-        compiled_cache: Optional[CompiledCacheType] = ...,
+        compiled_cache: CompiledCacheType | None = ...,
         logging_token: str = ...,
         isolation_level: IsolationLevel = ...,
         insertmanyvalues_page_size: int = ...,
-        schema_translate_map: Optional[SchemaTranslateMapType] = ...,
+        schema_translate_map: SchemaTranslateMapType | None = ...,
         **opt: Any,
     ) -> OptionEngine: ...
 
@@ -3154,7 +3154,7 @@ class Engine(
     echo = log.echo_property()
 
     def __repr__(self) -> str:
-        return "Engine(%r)" % (self.url,)
+        return f"Engine({self.url!r})"
 
     def dispose(self, close: bool = True) -> None:
         """Dispose of the connection pool used by this
@@ -3200,7 +3200,7 @@ class Engine(
 
     @contextlib.contextmanager
     def _optional_conn_ctx_manager(
-        self, connection: Optional[Connection] = None
+        self, connection: Connection | None = None
     ) -> Iterator[Connection]:
         if connection is None:
             with self.connect() as conn:
@@ -3241,7 +3241,7 @@ class Engine(
 
     def _run_ddl_visitor(
         self,
-        visitorcallable: Type[Union[SchemaGenerator, SchemaDropper]],
+        visitorcallable: type[SchemaGenerator | SchemaDropper],
         element: SchemaItem,
         **kwargs: Any,
     ) -> None:
@@ -3302,7 +3302,7 @@ class OptionEngineMixin(log.Identified):
     _sa_propagate_class_events = False
 
     dispatch: dispatcher[ConnectionEventsTarget]
-    _compiled_cache: Optional[CompiledCacheType]
+    _compiled_cache: CompiledCacheType | None
     dialect: Dialect
     pool: Pool
     url: URL

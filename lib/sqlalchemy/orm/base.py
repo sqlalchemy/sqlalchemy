@@ -309,7 +309,7 @@ def _assertions(
 
 if TYPE_CHECKING:
 
-    def manager_of_class(cls: Type[_O]) -> ClassManager[_O]: ...
+    def manager_of_class(cls: type[_O]) -> ClassManager[_O]: ...
 
     @overload
     def opt_manager_of_class(cls: AliasedClass[Any]) -> None: ...
@@ -317,15 +317,15 @@ if TYPE_CHECKING:
     @overload
     def opt_manager_of_class(
         cls: _ExternalEntityType[_O],
-    ) -> Optional[ClassManager[_O]]: ...
+    ) -> ClassManager[_O] | None: ...
 
     def opt_manager_of_class(
         cls: _ExternalEntityType[_O],
-    ) -> Optional[ClassManager[_O]]: ...
+    ) -> ClassManager[_O] | None: ...
 
     def instance_state(instance: _O) -> InstanceState[_O]: ...
 
-    def instance_dict(instance: object) -> Dict[str, Any]: ...
+    def instance_dict(instance: object) -> dict[str, Any]: ...
 
 else:
     # these can be replaced by sqlalchemy.ext.instrumentation
@@ -359,7 +359,7 @@ def state_str(state: InstanceState[Any]) -> str:
     if state is None:
         return "None"
     else:
-        return "<%s at 0x%x>" % (state.class_.__name__, id(state.obj()))
+        return "<{} at 0x{:x}>".format(state.class_.__name__, id(state.obj()))
 
 
 def state_class_str(state: InstanceState[Any]) -> str:
@@ -370,7 +370,7 @@ def state_class_str(state: InstanceState[Any]) -> str:
     if state is None:
         return "None"
     else:
-        return "<%s>" % (state.class_.__name__,)
+        return "<{}>".format(state.class_.__name__)
 
 
 def attribute_str(instance: object, attribute: str) -> str:
@@ -425,7 +425,7 @@ def object_state(instance: _T) -> InstanceState[_T]:
 
 
 @inspection._inspects(object)
-def _inspect_mapped_object(instance: _T) -> Optional[InstanceState[_T]]:
+def _inspect_mapped_object(instance: _T) -> InstanceState[_T] | None:
     try:
         return instance_state(instance)
     except (exc.UnmappedClassError,) + exc.NO_STATE:
@@ -433,7 +433,7 @@ def _inspect_mapped_object(instance: _T) -> Optional[InstanceState[_T]]:
 
 
 def _class_to_mapper(
-    class_or_mapper: Union[Mapper[_T], Type[_T]]
+    class_or_mapper: Mapper[_T] | type[_T]
 ) -> Mapper[_T]:
     # can't get mypy to see an overload for this
     insp = inspection.inspect(class_or_mapper, False)
@@ -445,8 +445,8 @@ def _class_to_mapper(
 
 
 def _mapper_or_none(
-    entity: Union[Type[_T], _InternalEntityType[_T]]
-) -> Optional[Mapper[_T]]:
+    entity: type[_T] | _InternalEntityType[_T]
+) -> Mapper[_T] | None:
     """Return the :class:`_orm.Mapper` for the given class or None if the
     class is not mapped.
     """
@@ -501,7 +501,7 @@ def _entity_descriptor(entity: _EntityType[Any], key: str) -> Any:
         return getattr(entity, key)
     except AttributeError as err:
         raise sa_exc.InvalidRequestError(
-            "Entity '%s' has no property '%s'" % (description, key)
+            "Entity '{}' has no property '{}'".format(description, key)
         ) from err
 
 
@@ -514,8 +514,8 @@ else:
 
 
 def _inspect_mapped_class(
-    class_: Type[_O], configure: bool = False
-) -> Optional[Mapper[_O]]:
+    class_: type[_O], configure: bool = False
+) -> Mapper[_O] | None:
     try:
         class_manager = opt_manager_of_class(class_)
         if class_manager is None or not class_manager.is_mapped:
@@ -529,7 +529,7 @@ def _inspect_mapped_class(
         return mapper
 
 
-def _parse_mapper_argument(arg: Union[Mapper[_O], Type[_O]]) -> Mapper[_O]:
+def _parse_mapper_argument(arg: Mapper[_O] | type[_O]) -> Mapper[_O]:
     insp = inspection.inspect(arg, raiseerr=False)
     if insp_is_mapper(insp):
         return insp
@@ -537,7 +537,7 @@ def _parse_mapper_argument(arg: Union[Mapper[_O], Type[_O]]) -> Mapper[_O]:
     raise sa_exc.ArgumentError(f"Mapper or mapped class expected, got {arg!r}")
 
 
-def class_mapper(class_: Type[_O], configure: bool = True) -> Mapper[_O]:
+def class_mapper(class_: type[_O], configure: bool = True) -> Mapper[_O]:
     """Given a class, return the primary :class:`_orm.Mapper` associated
     with the key.
 
@@ -558,7 +558,7 @@ def class_mapper(class_: Type[_O], configure: bool = True) -> Mapper[_O]:
     if mapper is None:
         if not isinstance(class_, type):
             raise sa_exc.ArgumentError(
-                "Class object expected, got '%r'." % (class_,)
+                "Class object expected, got '{!r}'.".format(class_)
             )
         raise exc.UnmappedClassError(class_)
     else:
@@ -580,7 +580,7 @@ class InspectionAttr:
 
     """
 
-    __slots__: Tuple[str, ...] = ()
+    __slots__: tuple[str, ...] = ()
 
     is_selectable = False
     """Return True if this object is an instance of
@@ -688,13 +688,13 @@ class SQLORMOperations(SQLCoreOperations[_T_co], TypingOnly):
 
         def any(  # noqa: A001
             self,
-            criterion: Optional[_ColumnExpressionArgument[bool]] = None,
+            criterion: _ColumnExpressionArgument[bool] | None = None,
             **kwargs: Any,
         ) -> ColumnElement[bool]: ...
 
         def has(
             self,
-            criterion: Optional[_ColumnExpressionArgument[bool]] = None,
+            criterion: _ColumnExpressionArgument[bool] | None = None,
             **kwargs: Any,
         ) -> ColumnElement[bool]: ...
 
@@ -722,7 +722,7 @@ class ORMDescriptor(Generic[_T_co], TypingOnly):
 
         def __get__(
             self, instance: object, owner: Any
-        ) -> Union[ORMDescriptor[_T_co], SQLCoreOperations[_T_co], _T_co]: ...
+        ) -> ORMDescriptor[_T_co] | SQLCoreOperations[_T_co] | _T_co: ...
 
 
 class _MappedAnnotationBase(Generic[_T_co], TypingOnly):
@@ -814,14 +814,14 @@ class Mapped(
         def __get__(self, instance: object, owner: Any) -> _T_co: ...
 
         def __get__(
-            self, instance: Optional[object], owner: Any
-        ) -> Union[InstrumentedAttribute[_T_co], _T_co]: ...
+            self, instance: object | None, owner: Any
+        ) -> InstrumentedAttribute[_T_co] | _T_co: ...
 
         @classmethod
         def _empty_constructor(cls, arg1: Any) -> Mapped[_T_co]: ...
 
         def __set__(
-            self, instance: Any, value: Union[SQLCoreOperations[_T_co], _T_co]
+            self, instance: Any, value: SQLCoreOperations[_T_co] | _T_co
         ) -> None: ...
 
         def __delete__(self, instance: Any) -> None: ...
@@ -909,8 +909,8 @@ class DynamicMapped(_MappedAnnotationBase[_T_co]):
         ) -> AppenderQuery[_T_co]: ...
 
         def __get__(
-            self, instance: Optional[object], owner: Any
-        ) -> Union[InstrumentedAttribute[_T_co], AppenderQuery[_T_co]]: ...
+            self, instance: object | None, owner: Any
+        ) -> InstrumentedAttribute[_T_co] | AppenderQuery[_T_co]: ...
 
         def __set__(
             self, instance: Any, value: typing.Collection[_T_co]
@@ -961,10 +961,10 @@ class WriteOnlyMapped(_MappedAnnotationBase[_T_co]):
         ) -> WriteOnlyCollection[_T_co]: ...
 
         def __get__(
-            self, instance: Optional[object], owner: Any
-        ) -> Union[
-            InstrumentedAttribute[_T_co], WriteOnlyCollection[_T_co]
-        ]: ...
+            self, instance: object | None, owner: Any
+        ) -> (
+            InstrumentedAttribute[_T_co] | WriteOnlyCollection[_T_co]
+        ): ...
 
         def __set__(
             self, instance: Any, value: typing.Collection[_T_co]

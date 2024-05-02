@@ -41,13 +41,13 @@ _DT = TypeVar(
 
 def str_to_datetime_processor_factory(
     regexp: Pattern[str], type_: Callable[..., _DT]
-) -> Callable[[Optional[str]], Optional[_DT]]:
+) -> Callable[[str | None], _DT | None]:
     rmatch = regexp.match
     # Even on python2.6 datetime.strptime is both slower than this code
     # and it does not support microseconds.
     has_named_groups = bool(regexp.groupindex)
 
-    def process(value: Optional[str]) -> Optional[_DT]:
+    def process(value: str | None) -> _DT | None:
         if value is None:
             return None
         else:

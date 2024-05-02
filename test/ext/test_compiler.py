@@ -154,7 +154,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
 
         @compiles(InsertFromSelect)
         def visit_insert_from_select(element, compiler, **kw):
-            return "INSERT INTO %s (%s)" % (
+            return "INSERT INTO {} ({})".format(
                 compiler.process(element.table, asfrom=True),
                 compiler.process(element.select),
             )
@@ -348,7 +348,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
 
         @compiles(myfunc)
         def visit_myfunc(element, compiler, **kw):
-            return "myfunc%s" % (compiler.process(element.clause_expr, **kw),)
+            return "myfunc{}".format(compiler.process(element.clause_expr, **kw))
 
         self.assert_compile(myfunc(), "myfunc()")
 
@@ -369,7 +369,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
         @compiles(greatest, "mssql")
         def case_greatest(element, compiler, **kw):
             arg1, arg2 = list(element.clauses)
-            return "CASE WHEN %s > %s THEN %s ELSE %s END" % (
+            return "CASE WHEN {} > {} THEN {} ELSE {} END".format(
                 compiler.process(arg1),
                 compiler.process(arg2),
                 compiler.process(arg1),

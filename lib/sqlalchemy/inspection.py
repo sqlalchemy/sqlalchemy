@@ -50,7 +50,7 @@ _F = TypeVar("_F", bound=Callable[..., Any])
 
 _IN = TypeVar("_IN", bound=Any)
 
-_registrars: Dict[type, Union[Literal[True], Callable[[Any], Any]]] = {}
+_registrars: dict[type, Literal[True] | Callable[[Any], Any]] = {}
 
 
 class Inspectable(Generic[_T]):
@@ -88,7 +88,7 @@ class _InspectableProtocol(Protocol[_TCov]):
 
 @overload
 def inspect(
-    subject: Type[_InspectableTypeProtocol[_IN]], raiseerr: bool = True
+    subject: type[_InspectableTypeProtocol[_IN]], raiseerr: bool = True
 ) -> _IN: ...
 
 
@@ -103,7 +103,7 @@ def inspect(subject: Inspectable[_IN], raiseerr: bool = True) -> _IN: ...
 
 
 @overload
-def inspect(subject: Any, raiseerr: Literal[False] = ...) -> Optional[Any]: ...
+def inspect(subject: Any, raiseerr: Literal[False] = ...) -> Any | None: ...
 
 
 @overload
@@ -152,7 +152,7 @@ def inspect(subject: Any, raiseerr: bool = True) -> Any:
 
 
 def _inspects(
-    *types: Type[Any],
+    *types: type[Any],
 ) -> Callable[[_F], _F]:
     def decorate(fn_or_cls: _F) -> _F:
         for type_ in types:

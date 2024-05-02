@@ -19,8 +19,8 @@ class TestInitialSupport(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, init=False)
     data: Mapped[str]
-    x: Mapped[Optional[int]] = mapped_column(default=None)
-    y: Mapped[Optional[int]] = mapped_column(kw_only=True)
+    x: Mapped[int | None] = mapped_column(default=None)
+    y: Mapped[int | None] = mapped_column(kw_only=True)
 
 
 tis = TestInitialSupport(data="some data", y=5)

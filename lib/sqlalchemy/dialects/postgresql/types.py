@@ -169,7 +169,7 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
     __visit_name__ = "TIMESTAMP"
 
     def __init__(
-        self, timezone: bool = False, precision: Optional[int] = None
+        self, timezone: bool = False, precision: int | None = None
     ) -> None:
         """Construct a TIMESTAMP.
 
@@ -189,7 +189,7 @@ class TIME(sqltypes.TIME):
     __visit_name__ = "TIME"
 
     def __init__(
-        self, timezone: bool = False, precision: Optional[int] = None
+        self, timezone: bool = False, precision: int | None = None
     ) -> None:
         """Construct a TIME.
 
@@ -210,7 +210,7 @@ class INTERVAL(type_api.NativeForEmulated, sqltypes._AbstractInterval):
     native = True
 
     def __init__(
-        self, precision: Optional[int] = None, fields: Optional[str] = None
+        self, precision: int | None = None, fields: str | None = None
     ) -> None:
         """Construct an INTERVAL.
 
@@ -232,19 +232,19 @@ class INTERVAL(type_api.NativeForEmulated, sqltypes._AbstractInterval):
         return INTERVAL(precision=interval.second_precision)
 
     @property
-    def _type_affinity(self) -> Type[sqltypes.Interval]:
+    def _type_affinity(self) -> type[sqltypes.Interval]:
         return sqltypes.Interval
 
     def as_generic(self, allow_nulltype: bool = False) -> sqltypes.Interval:
         return sqltypes.Interval(native=True, second_precision=self.precision)
 
     @property
-    def python_type(self) -> Type[dt.timedelta]:
+    def python_type(self) -> type[dt.timedelta]:
         return dt.timedelta
 
     def literal_processor(
         self, dialect: Dialect
-    ) -> Optional[_LiteralProcessorType[dt.timedelta]]:
+    ) -> _LiteralProcessorType[dt.timedelta] | None:
         def process(value: dt.timedelta) -> str:
             return f"make_interval(secs=>{value.total_seconds()})"
 
@@ -258,7 +258,7 @@ class BIT(sqltypes.TypeEngine[int]):
     __visit_name__ = "BIT"
 
     def __init__(
-        self, length: Optional[int] = None, varying: bool = False
+        self, length: int | None = None, varying: bool = False
     ) -> None:
         if varying:
             # BIT VARYING can be unlimited-length, so no default
@@ -298,6 +298,6 @@ class CITEXT(sqltypes.TEXT):
     __visit_name__ = "CITEXT"
 
     def coerce_compared_value(
-        self, op: Optional[OperatorType], value: Any
+        self, op: OperatorType | None, value: Any
     ) -> TypeEngine[Any]:
         return self

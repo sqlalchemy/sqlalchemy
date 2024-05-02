@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 __all__ = ("mssql", "mysql", "oracle", "postgresql", "sqlite")
 
 
-def _auto_fn(name: str) -> Optional[Callable[[], Type[Dialect]]]:
+def _auto_fn(name: str) -> Callable[[], type[Dialect]] | None:
     """default dialect importer.
 
     plugs into the :class:`.PluginLoader`
@@ -44,7 +44,7 @@ def _auto_fn(name: str) -> Optional[Callable[[], Type[Dialect]]]:
             ).dialects.mysql.mariadb
             return module.loader(driver)  # type: ignore
         else:
-            module = __import__("sqlalchemy.dialects.%s" % (dialect,)).dialects
+            module = __import__(f"sqlalchemy.dialects.{dialect}").dialects
             module = getattr(module, dialect)
     except ImportError:
         return None

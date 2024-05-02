@@ -749,12 +749,12 @@ _VT = TypeVar("_VT", bound=Any)
 
 class PythonNameForTableType(Protocol):
     def __call__(
-        self, base: Type[Any], tablename: str, table: Table
+        self, base: type[Any], tablename: str, table: Table
     ) -> str: ...
 
 
 def classname_for_table(
-    base: Type[Any],
+    base: type[Any],
     tablename: str,
     table: Table,
 ) -> str:
@@ -793,17 +793,17 @@ def classname_for_table(
 class NameForScalarRelationshipType(Protocol):
     def __call__(
         self,
-        base: Type[Any],
-        local_cls: Type[Any],
-        referred_cls: Type[Any],
+        base: type[Any],
+        local_cls: type[Any],
+        referred_cls: type[Any],
         constraint: ForeignKeyConstraint,
     ) -> str: ...
 
 
 def name_for_scalar_relationship(
-    base: Type[Any],
-    local_cls: Type[Any],
-    referred_cls: Type[Any],
+    base: type[Any],
+    local_cls: type[Any],
+    referred_cls: type[Any],
     constraint: ForeignKeyConstraint,
 ) -> str:
     """Return the attribute name that should be used to refer from one
@@ -833,17 +833,17 @@ def name_for_scalar_relationship(
 class NameForCollectionRelationshipType(Protocol):
     def __call__(
         self,
-        base: Type[Any],
-        local_cls: Type[Any],
-        referred_cls: Type[Any],
+        base: type[Any],
+        local_cls: type[Any],
+        referred_cls: type[Any],
         constraint: ForeignKeyConstraint,
     ) -> str: ...
 
 
 def name_for_collection_relationship(
-    base: Type[Any],
-    local_cls: Type[Any],
-    referred_cls: Type[Any],
+    base: type[Any],
+    local_cls: type[Any],
+    referred_cls: type[Any],
     constraint: ForeignKeyConstraint,
 ) -> str:
     """Return the attribute name that should be used to refer from one
@@ -875,76 +875,76 @@ class GenerateRelationshipType(Protocol):
     @overload
     def __call__(
         self,
-        base: Type[Any],
+        base: type[Any],
         direction: RelationshipDirection,
         return_fn: Callable[..., Relationship[Any]],
         attrname: str,
-        local_cls: Type[Any],
-        referred_cls: Type[Any],
+        local_cls: type[Any],
+        referred_cls: type[Any],
         **kw: Any,
     ) -> Relationship[Any]: ...
 
     @overload
     def __call__(
         self,
-        base: Type[Any],
+        base: type[Any],
         direction: RelationshipDirection,
         return_fn: Callable[..., ORMBackrefArgument],
         attrname: str,
-        local_cls: Type[Any],
-        referred_cls: Type[Any],
+        local_cls: type[Any],
+        referred_cls: type[Any],
         **kw: Any,
     ) -> ORMBackrefArgument: ...
 
     def __call__(
         self,
-        base: Type[Any],
+        base: type[Any],
         direction: RelationshipDirection,
-        return_fn: Union[
-            Callable[..., Relationship[Any]], Callable[..., ORMBackrefArgument]
-        ],
+        return_fn: (
+            Callable[..., Relationship[Any]] | Callable[..., ORMBackrefArgument]
+        ),
         attrname: str,
-        local_cls: Type[Any],
-        referred_cls: Type[Any],
+        local_cls: type[Any],
+        referred_cls: type[Any],
         **kw: Any,
-    ) -> Union[ORMBackrefArgument, Relationship[Any]]: ...
+    ) -> ORMBackrefArgument | Relationship[Any]: ...
 
 
 @overload
 def generate_relationship(
-    base: Type[Any],
+    base: type[Any],
     direction: RelationshipDirection,
     return_fn: Callable[..., Relationship[Any]],
     attrname: str,
-    local_cls: Type[Any],
-    referred_cls: Type[Any],
+    local_cls: type[Any],
+    referred_cls: type[Any],
     **kw: Any,
 ) -> Relationship[Any]: ...
 
 
 @overload
 def generate_relationship(
-    base: Type[Any],
+    base: type[Any],
     direction: RelationshipDirection,
     return_fn: Callable[..., ORMBackrefArgument],
     attrname: str,
-    local_cls: Type[Any],
-    referred_cls: Type[Any],
+    local_cls: type[Any],
+    referred_cls: type[Any],
     **kw: Any,
 ) -> ORMBackrefArgument: ...
 
 
 def generate_relationship(
-    base: Type[Any],
+    base: type[Any],
     direction: RelationshipDirection,
-    return_fn: Union[
-        Callable[..., Relationship[Any]], Callable[..., ORMBackrefArgument]
-    ],
+    return_fn: (
+        Callable[..., Relationship[Any]] | Callable[..., ORMBackrefArgument]
+    ),
     attrname: str,
-    local_cls: Type[Any],
-    referred_cls: Type[Any],
+    local_cls: type[Any],
+    referred_cls: type[Any],
     **kw: Any,
-) -> Union[Relationship[Any], ORMBackrefArgument]:
+) -> Relationship[Any] | ORMBackrefArgument:
     r"""Generate a :func:`_orm.relationship` or :func:`.backref`
     on behalf of two
     mapped classes.
@@ -1024,7 +1024,7 @@ class AutomapBase:
 
     __abstract__ = True
 
-    classes: ClassVar[Properties[Type[Any]]]
+    classes: ClassVar[Properties[type[Any]]]
     """An instance of :class:`.util.Properties` containing classes.
 
     This object behaves much like the ``.c`` collection on a table.  Classes
@@ -1103,24 +1103,24 @@ class AutomapBase:
         ),
     )
     def prepare(
-        cls: Type[AutomapBase],
-        autoload_with: Optional[Engine] = None,
-        engine: Optional[Any] = None,
+        cls: type[AutomapBase],
+        autoload_with: Engine | None = None,
+        engine: Any | None = None,
         reflect: bool = False,
-        schema: Optional[str] = None,
-        classname_for_table: Optional[PythonNameForTableType] = None,
-        modulename_for_table: Optional[PythonNameForTableType] = None,
-        collection_class: Optional[Any] = None,
-        name_for_scalar_relationship: Optional[
+        schema: str | None = None,
+        classname_for_table: PythonNameForTableType | None = None,
+        modulename_for_table: PythonNameForTableType | None = None,
+        collection_class: Any | None = None,
+        name_for_scalar_relationship: None | (
             NameForScalarRelationshipType
-        ] = None,
-        name_for_collection_relationship: Optional[
+        ) = None,
+        name_for_collection_relationship: None | (
             NameForCollectionRelationshipType
-        ] = None,
-        generate_relationship: Optional[GenerateRelationshipType] = None,
-        reflection_options: Union[
-            Dict[_KT, _VT], immutabledict[_KT, _VT]
-        ] = util.EMPTY_DICT,
+        ) = None,
+        generate_relationship: GenerateRelationshipType | None = None,
+        reflection_options: (
+            dict[_KT, _VT] | immutabledict[_KT, _VT]
+        ) = util.EMPTY_DICT,
     ) -> None:
         """Extract mapped classes and relationships from the
         :class:`_schema.MetaData` and perform mappings.
@@ -1255,18 +1255,18 @@ class AutomapBase:
             cls.metadata.reflect(autoload_with, **opts)  # type: ignore[arg-type]  # noqa: E501
 
         with _CONFIGURE_MUTEX:
-            table_to_map_config: Union[
-                Dict[Optional[Table], _DeferredMapperConfig],
-                Dict[Table, _DeferredMapperConfig],
-            ] = {
+            table_to_map_config: (
+                dict[Table | None, _DeferredMapperConfig] |
+                dict[Table, _DeferredMapperConfig]
+            ) = {
                 cast("Table", m.local_table): m
                 for m in _DeferredMapperConfig.classes_for_base(
                     cls, sort=False
                 )
             }
 
-            many_to_many: List[
-                Tuple[Table, Table, List[ForeignKeyConstraint], Table]
+            many_to_many: list[
+                tuple[Table, Table, list[ForeignKeyConstraint], Table]
             ]
             many_to_many = []
 
@@ -1287,7 +1287,7 @@ class AutomapBase:
                 elif not table.primary_key:
                     continue
                 elif table not in table_to_map_config:
-                    clsdict: Dict[str, Any] = {"__table__": table}
+                    clsdict: dict[str, Any] = {"__table__": table}
                     if modulename_for_table is not None:
                         new_module = modulename_for_table(
                             cls, table.name, table
@@ -1405,11 +1405,11 @@ class AutomapBase:
 class _Bookkeeping:
     __slots__ = ("table_keys",)
 
-    table_keys: Set[str]
+    table_keys: set[str]
 
 
 def automap_base(
-    declarative_base: Optional[Type[Any]] = None, **kw: Any
+    declarative_base: type[Any] | None = None, **kw: Any
 ) -> Any:
     r"""Produce a declarative automap base.
 
@@ -1448,9 +1448,9 @@ def automap_base(
 
 
 def _is_many_to_many(
-    automap_base: Type[Any], table: Table
-) -> Tuple[
-    Optional[Table], Optional[Table], Optional[list[ForeignKeyConstraint]]
+    automap_base: type[Any], table: Table
+) -> tuple[
+    Table | None, Table | None, list[ForeignKeyConstraint] | None
 ]:
     fk_constraints = [
         const
@@ -1460,7 +1460,7 @@ def _is_many_to_many(
     if len(fk_constraints) != 2:
         return None, None, None
 
-    cols: List[Column[Any]] = sum(
+    cols: list[Column[Any]] = sum(
         [
             [fk.parent for fk in fk_constraint.elements]
             for fk_constraint in fk_constraints
@@ -1479,12 +1479,12 @@ def _is_many_to_many(
 
 
 def _relationships_for_fks(
-    automap_base: Type[Any],
+    automap_base: type[Any],
     map_config: _DeferredMapperConfig,
-    table_to_map_config: Union[
-        Dict[Optional[Table], _DeferredMapperConfig],
-        Dict[Table, _DeferredMapperConfig],
-    ],
+    table_to_map_config: (
+        dict[Table | None, _DeferredMapperConfig] |
+        dict[Table, _DeferredMapperConfig]
+    ),
     collection_class: type,
     name_for_scalar_relationship: NameForScalarRelationshipType,
     name_for_collection_relationship: NameForCollectionRelationshipType,
@@ -1518,7 +1518,7 @@ def _relationships_for_fks(
                 automap_base, referred_cls, local_cls, constraint
             )
 
-            o2m_kws: Dict[str, Union[str, bool]] = {}
+            o2m_kws: dict[str, str | bool] = {}
             nullable = False not in {fk.parent.nullable for fk in fks}
             if not nullable:
                 o2m_kws["cascade"] = "all, delete-orphan"
@@ -1589,15 +1589,15 @@ def _relationships_for_fks(
 
 
 def _m2m_relationship(
-    automap_base: Type[Any],
+    automap_base: type[Any],
     lcl_m2m: Table,
     rem_m2m: Table,
-    m2m_const: List[ForeignKeyConstraint],
+    m2m_const: list[ForeignKeyConstraint],
     table: Table,
-    table_to_map_config: Union[
-        Dict[Optional[Table], _DeferredMapperConfig],
-        Dict[Table, _DeferredMapperConfig],
-    ],
+    table_to_map_config: (
+        dict[Table | None, _DeferredMapperConfig] |
+        dict[Table, _DeferredMapperConfig]
+    ),
     collection_class: type,
     name_for_scalar_relationship: NameForCollectionRelationshipType,
     name_for_collection_relationship: NameForCollectionRelationshipType,

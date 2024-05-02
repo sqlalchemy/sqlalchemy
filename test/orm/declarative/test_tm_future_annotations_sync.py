@@ -146,11 +146,11 @@ class DeclarativeBaseTest(fixtures.TestBase):
 
         class CommonBase(Generic[T]):
             @classmethod
-            def boring(cls: Type[T]) -> Type[T]:
+            def boring(cls: type[T]) -> type[T]:
                 return cls
 
             @classmethod
-            def more_boring(cls: Type[T]) -> int:
+            def more_boring(cls: type[T]) -> int:
                 return 27
 
         @as_declarative()
@@ -382,7 +382,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             name: Mapped[str] = mapped_column()
-            data: Mapped[Optional[str]] = mapped_column()
+            data: Mapped[str | None] = mapped_column()
 
         self.assert_compile(
             select(User), "SELECT users.id, users.name, users.data FROM users"
@@ -398,7 +398,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             name: Mapped[str]
-            data: Mapped[Optional[str]]
+            data: Mapped[str | None]
             x: Mapped[int]
             y: Mapped[int]
             created_at: Mapped[datetime.datetime]
@@ -558,7 +558,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int]
             name: Mapped[str]
-            data: Mapped[Optional[str]]
+            data: Mapped[str | None]
             x: Mapped[int]
             y: Mapped[int]
             created_at: Mapped[datetime.datetime]
@@ -679,11 +679,11 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             lnnl_rndf: Mapped[str] = mapped_column(*args)
             lnnl_rnnl: Mapped[str] = mapped_column(*args, nullable=False)
             lnnl_rnl: Mapped[str] = mapped_column(*args, nullable=True)
-            lnl_rndf: Mapped[Optional[str]] = mapped_column(*args)
-            lnl_rnnl: Mapped[Optional[str]] = mapped_column(
+            lnl_rndf: Mapped[str | None] = mapped_column(*args)
+            lnl_rnnl: Mapped[str | None] = mapped_column(
                 *args, nullable=False
             )
-            lnl_rnl: Mapped[Optional[str]] = mapped_column(
+            lnl_rnl: Mapped[str | None] = mapped_column(
                 *args, nullable=True
             )
 
@@ -702,7 +702,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             anno_3a: Mapped[anno_str_mc] = mapped_column(*args)
             anno_3b: Mapped[anno_str_mc] = mapped_column(*args, nullable=True)
-            anno_3c: Mapped[Optional[anno_str_mc]] = mapped_column(*args)
+            anno_3c: Mapped[anno_str_mc | None] = mapped_column(*args)
 
             anno_4a: Mapped[anno_str_optional_mc] = mapped_column(*args)
             anno_4b: Mapped[anno_str_optional_mc] = mapped_column(
@@ -770,15 +770,15 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_false(User.__table__.c.lnl_rnnl._copy().nullable)
         is_true(User.__table__.c.lnl_rnl._copy().nullable)
 
-    def test_fwd_refs(self, decl_base: Type[DeclarativeBase]):
+    def test_fwd_refs(self, decl_base: type[DeclarativeBase]):
         class MyClass(decl_base):
             __tablename__ = "my_table"
 
-            id: Mapped["int"] = mapped_column(primary_key=True)
-            data_one: Mapped["str"]
+            id: Mapped[int] = mapped_column(primary_key=True)
+            data_one: Mapped[str]
 
     def test_pep593_types_as_typemap_keys(
-        self, decl_base: Type[DeclarativeBase]
+        self, decl_base: type[DeclarativeBase]
     ):
         """neat!!!"""
         global str50, str30, opt_str50, opt_str30
@@ -801,7 +801,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             data_three: Mapped[str50]
             data_four: Mapped[opt_str50]
             data_five: Mapped[str]
-            data_six: Mapped[Optional[str]]
+            data_six: Mapped[str | None]
 
         eq_(MyClass.__table__.c.data_one.type.length, 30)
         is_false(MyClass.__table__.c.data_one.nullable)
@@ -810,7 +810,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         eq_(MyClass.__table__.c.data_three.type.length, 50)
 
     def test_plain_typealias_as_typemap_keys(
-        self, decl_base: Type[DeclarativeBase]
+        self, decl_base: type[DeclarativeBase]
     ):
         decl_base.registry.update_type_annotation_map(
             {_UnionTypeAlias: JSON, _StrTypeAlias: String(30)}
@@ -827,7 +827,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     @testing.requires.python312
     def test_pep695_typealias_as_typemap_keys(
-        self, decl_base: Type[DeclarativeBase]
+        self, decl_base: type[DeclarativeBase]
     ):
         """test #10807"""
 
@@ -847,7 +847,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     @testing.variation("alias_type", ["none", "typekeyword", "typealiastype"])
     @testing.requires.python312
     def test_extract_pep593_from_pep695(
-        self, decl_base: Type[DeclarativeBase], alias_type
+        self, decl_base: type[DeclarativeBase], alias_type
     ):
         """test #11130"""
 
@@ -1128,7 +1128,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             is_(result, orig)
 
     def test_pep484_newtypes_as_typemap_keys(
-        self, decl_base: Type[DeclarativeBase]
+        self, decl_base: type[DeclarativeBase]
     ):
         global str50, str30, str3050
 
@@ -1146,7 +1146,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped[str50] = mapped_column(primary_key=True)
             data_one: Mapped[str30]
             data_two: Mapped[str50]
-            data_three: Mapped[Optional[str30]]
+            data_three: Mapped[str30 | None]
             data_four: Mapped[str3050]
 
         eq_(MyClass.__table__.c.data_one.type.length, 30)
@@ -1162,7 +1162,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_false(MyClass.__table__.c.data_four.nullable)
 
     def test_extract_base_type_from_pep593(
-        self, decl_base: Type[DeclarativeBase]
+        self, decl_base: type[DeclarativeBase]
     ):
         """base type is extracted from an Annotated structure if not otherwise
         in the type lookup dictionary"""
@@ -1177,15 +1177,15 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_(MyClass.__table__.c.id.type._type_affinity, Integer)
 
     def test_extract_sqla_from_pep593_not_yet(
-        self, decl_base: Type[DeclarativeBase]
+        self, decl_base: type[DeclarativeBase]
     ):
         """https://twitter.com/zzzeek/status/1536693554621341697"""
 
         global SomeRelated
 
         class SomeRelated(decl_base):
-            __tablename__: ClassVar[Optional[str]] = "some_related"
-            id: Mapped["int"] = mapped_column(primary_key=True)
+            __tablename__: ClassVar[str | None] = "some_related"
+            id: Mapped[int] = mapped_column(primary_key=True)
 
         with expect_raises_message(
             NotImplementedError,
@@ -1196,11 +1196,11 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             class MyClass(decl_base):
                 __tablename__ = "my_table"
 
-                id: Mapped["int"] = mapped_column(primary_key=True)
-                data_one: Mapped[Annotated["SomeRelated", relationship()]]
+                id: Mapped[int] = mapped_column(primary_key=True)
+                data_one: Mapped[Annotated[SomeRelated, relationship()]]
 
     def test_extract_sqla_from_pep593_plain(
-        self, decl_base: Type[DeclarativeBase]
+        self, decl_base: type[DeclarativeBase]
     ):
         """extraction of mapped_column() from the Annotated type
 
@@ -1254,7 +1254,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             is_true(table.c.data_four.nullable)
 
     def test_extract_sqla_from_pep593_mixin(
-        self, decl_base: Type[DeclarativeBase]
+        self, decl_base: type[DeclarativeBase]
     ):
         """extraction of mapped_column() from the Annotated type
 
@@ -1301,7 +1301,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     @testing.variation("to_assert", ["ddl", "fkcount", "references"])
     @testing.variation("assign_blank", [True, False])
     def test_extract_fk_col_from_pep593(
-        self, decl_base: Type[DeclarativeBase], to_assert, assign_blank
+        self, decl_base: type[DeclarativeBase], to_assert, assign_blank
     ):
         global intpk, element_ref
         intpk = Annotated[int, mapped_column(primary_key=True)]
@@ -1430,7 +1430,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     @testing.combinations(True, False, argnames="include_existing_col")
     def test_combine_args_from_pep593(
         self,
-        decl_base: Type[DeclarativeBase],
+        decl_base: type[DeclarativeBase],
         paramname,
         value,
         include_existing_col,
@@ -1496,7 +1496,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     @testing.combinations(True, False, argnames="include_existing_col")
     def test_combine_args_from_pep593_identity_nullable(
         self,
-        decl_base: Type[DeclarativeBase],
+        decl_base: type[DeclarativeBase],
         specify_identity,
         specify_nullable,
         optional,
@@ -1559,7 +1559,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     )
     def test_dont_combine_args_from_pep593(
         self,
-        decl_base: Type[DeclarativeBase],
+        decl_base: type[DeclarativeBase],
         paramname,
         value,
         override_value,
@@ -1618,21 +1618,21 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
 
-            data: Mapped[Union[float, Decimal]] = mapped_column()
-            reverse_data: Mapped[Union[Decimal, float]] = mapped_column()
+            data: Mapped[float | Decimal] = mapped_column()
+            reverse_data: Mapped[Decimal | float] = mapped_column()
 
-            optional_data: Mapped[Optional[Union[float, Decimal]]] = (
+            optional_data: Mapped[float | Decimal | None] = (
                 mapped_column()
             )
 
             # use Optional directly
-            reverse_optional_data: Mapped[Optional[Union[Decimal, float]]] = (
+            reverse_optional_data: Mapped[Decimal | float | None] = (
                 mapped_column()
             )
 
             # use Union with None, same as Optional but presents differently
             # (Optional object with __origin__ Union vs. Union)
-            reverse_u_optional_data: Mapped[Union[Decimal, float, None]] = (
+            reverse_u_optional_data: Mapped[Decimal | float | None] = (
                 mapped_column()
             )
 
@@ -1645,9 +1645,9 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 pep604_optional: Mapped[Decimal | float | None] = (
                     mapped_column()
                 )
-                pep604_data_fwd: Mapped["float | Decimal"] = mapped_column()
-                pep604_reverse_fwd: Mapped["Decimal | float"] = mapped_column()
-                pep604_optional_fwd: Mapped["Decimal | float | None"] = (
+                pep604_data_fwd: Mapped[float | Decimal] = mapped_column()
+                pep604_reverse_fwd: Mapped[Decimal | float] = mapped_column()
+                pep604_optional_fwd: Mapped[Decimal | float | None] = (
                     mapped_column()
                 )
 
@@ -1715,17 +1715,17 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             data: Mapped[str] = mapped_column()
 
             if optional_on_json == "not_optional":
-                json: Mapped[Dict[str, str]] = mapped_column()  # type: ignore
+                json: Mapped[dict[str, str]] = mapped_column()  # type: ignore
             elif optional_on_json == "optional":
-                json: Mapped[Optional[Dict[str, str]]] = mc
+                json: Mapped[dict[str, str] | None] = mc
             elif optional_on_json == "optional_fwd_ref":
-                json: Mapped["Optional[Dict[str, str]]"] = mc
+                json: Mapped[Optional[Dict[str, str]]] = mc
             elif optional_on_json == "union_none":
-                json: Mapped[Union[Dict[str, str], None]] = mc
+                json: Mapped[dict[str, str] | None] = mc
             elif optional_on_json == "pep604":
                 json: Mapped[dict[str, str] | None] = mc
             elif optional_on_json == "pep604_fwd_ref":
-                json: Mapped["dict[str, str] | None"] = mc
+                json: Mapped[dict[str, str] | None] = mc
 
         is_(A.__table__.c.json.type._type_affinity, JSON)
         if optional_on_json == "not_optional":
@@ -1756,7 +1756,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
                     id: Mapped[int] = mapped_column(primary_key=True)
                     if optional:
-                        type_test: Mapped[Optional[T]] = mapped_column()
+                        type_test: Mapped[T | None] = mapped_column()
                     else:
                         type_test: Mapped[T] = mapped_column()
 
@@ -1773,12 +1773,12 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
                 if add_to_type_map:
                     if optional:
-                        type_test: Mapped[Optional[T]] = mapped_column()
+                        type_test: Mapped[T | None] = mapped_column()
                     else:
                         type_test: Mapped[T] = mapped_column()
                 else:
                     if optional:
-                        type_test: Mapped[Optional[T]] = mapped_column(JSON())
+                        type_test: Mapped[T | None] = mapped_column(JSON())
                     else:
                         type_test: Mapped[T] = mapped_column(JSON())
 
@@ -1807,7 +1807,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             name: Mapped[str] = mapped_column()
-            data: Mapped[Optional[str]] = mapped_column("the_data")
+            data: Mapped[str | None] = mapped_column("the_data")
 
         self.assert_compile(
             select(User.data), "SELECT users.the_data FROM users"
@@ -1918,7 +1918,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 __tablename__ = "a"
 
                 id: Mapped[int] = mapped_column(primary_key=True)
-                data: Mapped["fake"]  # noqa
+                data: Mapped[fake]  # noqa
 
     def test_type_dont_mis_resolve_on_superclass(self):
         """test for #8859.
@@ -1977,7 +1977,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 if dict_key.plain:
                     data: Mapped[dict[str, str]]
                 elif dict_key.typing:
-                    data: Mapped[Dict[str, str]]
+                    data: Mapped[dict[str, str]]
 
     def test_type_secondary_resolution(self):
         class MyString(String):
@@ -2446,14 +2446,14 @@ class MixinTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped[int] = mapped_column(primary_key=True)
 
             @declared_attr
-            def users(self) -> Mapped[List[User]]:
+            def users(self) -> Mapped[list[User]]:
                 return relationship(User)
 
             if use_directive:
                 if use_annotation:
 
                     @declared_attr.directive
-                    def user_ids(self) -> AssociationProxy[List[int]]:
+                    def user_ids(self) -> AssociationProxy[list[int]]:
                         return association_proxy("users", "id")
 
                 else:
@@ -2466,7 +2466,7 @@ class MixinTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 if use_annotation:
 
                     @declared_attr
-                    def user_ids(self) -> AssociationProxy[List[int]]:
+                    def user_ids(self) -> AssociationProxy[list[int]]:
                         return association_proxy("users", "id")
 
                 else:
@@ -2519,13 +2519,13 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             # for future annotations support, need to write these
             # directly in source code
             if mapped_cls is Relationship:
-                bs: Relationship[List[B]] = relationship()
+                bs: Relationship[list[B]] = relationship()
             elif mapped_cls is Mapped:
-                bs: Mapped[List[B]] = relationship()
+                bs: Mapped[list[B]] = relationship()
             elif mapped_cls is WriteOnlyMapped:
-                bs: WriteOnlyMapped[List[B]] = relationship()
+                bs: WriteOnlyMapped[list[B]] = relationship()
             elif mapped_cls is DynamicMapped:
-                bs: DynamicMapped[List[B]] = relationship()
+                bs: DynamicMapped[list[B]] = relationship()
 
         decl_base.registry.configure()
         assert isinstance(A.bs.impl, implcls)
@@ -2586,7 +2586,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             __sa_dataclass_metadata_key__ = "sa"
 
             id: Mapped[int] = mapped_column(primary_key=True)
-            bs: List["B"] = dataclasses.field(  # noqa: F821
+            bs: list[B] = dataclasses.field(  # noqa: F821
                 default_factory=list, metadata={"sa": relationship()}
             )
 
@@ -2713,22 +2713,22 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             data: str = Column(String)
 
             if collection_type.list:
-                bs: list["B"] = relationship(  # noqa: F821
+                bs: list[B] = relationship(  # noqa: F821
                     "B",
                     back_populates="a",
                 )
             elif collection_type.List:
-                bs: List["B"] = relationship(  # noqa: F821
+                bs: list[B] = relationship(  # noqa: F821
                     "B",
                     back_populates="a",
                 )
             elif collection_type.set:
-                bs: set["B"] = relationship(  # noqa: F821
+                bs: set[B] = relationship(  # noqa: F821
                     "B",
                     back_populates="a",
                 )
             elif collection_type.Set:
-                bs: Set["B"] = relationship(  # noqa: F821
+                bs: set[B] = relationship(  # noqa: F821
                     "B",
                     back_populates="a",
                 )
@@ -2767,7 +2767,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
-            bs: Mapped[List["B"]] = relationship(  # noqa: F821
+            bs: Mapped[list[B]] = relationship(  # noqa: F821
                 back_populates="a"
             )
 
@@ -2777,15 +2777,15 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
 
             if optional_on_m2o == "optional":
-                a: Mapped[Optional["A"]] = relationship(
+                a: Mapped[A | None] = relationship(
                     back_populates="bs", primaryjoin=a_id == A.id
                 )
             elif optional_on_m2o == "optional_fwd_ref":
-                a: Mapped["Optional[A]"] = relationship(
+                a: Mapped[Optional[A]] = relationship(
                     back_populates="bs", primaryjoin=a_id == A.id
                 )
             elif optional_on_m2o == "union_none":
-                a: Mapped["Union[A, None]"] = relationship(
+                a: Mapped[Union[A, None]] = relationship(
                     back_populates="bs", primaryjoin=a_id == A.id
                 )
             elif optional_on_m2o == "pep604":
@@ -2793,7 +2793,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                     back_populates="bs", primaryjoin=a_id == A.id
                 )
             else:
-                a: Mapped["A"] = relationship(
+                a: Mapped[A] = relationship(
                     back_populates="bs", primaryjoin=a_id == A.id
                 )
 
@@ -2809,7 +2809,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 __tablename__ = "a"
 
                 id: Mapped[int] = mapped_column(primary_key=True)
-                data: "B" = relationship()  # type: ignore  # noqa
+                data: B = relationship()  # type: ignore  # noqa
 
     def test_wrong_annotation_type_two(self, decl_base):
         with expect_annotation_syntax_error("A.data"):
@@ -2837,7 +2837,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 __tablename__ = "a"
 
                 id: Mapped[int] = mapped_column(primary_key=True)
-                data: "List[B]" = relationship()  # type: ignore  # noqa
+                data: List[B] = relationship()  # type: ignore  # noqa
 
     def test_collection_class_uselist(self, decl_base):
         class A(decl_base):
@@ -2845,25 +2845,25 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
-            bs_list: Mapped[List["B"]] = relationship(  # noqa: F821
+            bs_list: Mapped[list[B]] = relationship(  # noqa: F821
                 viewonly=True
             )
-            bs_set: Mapped[Set["B"]] = relationship(  # noqa: F821
+            bs_set: Mapped[set[B]] = relationship(  # noqa: F821
                 viewonly=True
             )
-            bs_list_warg: Mapped[List["B"]] = relationship(  # noqa: F821
+            bs_list_warg: Mapped[list[B]] = relationship(  # noqa: F821
                 "B", viewonly=True
             )
-            bs_set_warg: Mapped[Set["B"]] = relationship(  # noqa: F821
+            bs_set_warg: Mapped[set[B]] = relationship(  # noqa: F821
                 "B", viewonly=True
             )
 
             # note this is string annotation
-            b_one_to_one: Mapped["B"] = relationship(  # noqa: F821
+            b_one_to_one: Mapped[B] = relationship(  # noqa: F821
                 viewonly=True
             )
 
-            b_one_to_one_warg: Mapped["B"] = relationship(  # noqa: F821
+            b_one_to_one_warg: Mapped[B] = relationship(  # noqa: F821
                 "B", viewonly=True
             )
 
@@ -2872,8 +2872,8 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped[int] = mapped_column(Integer, primary_key=True)
             a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
 
-            a: Mapped["A"] = relationship(viewonly=True)
-            a_warg: Mapped["A"] = relationship("A", viewonly=True)
+            a: Mapped[A] = relationship(viewonly=True)
+            a_warg: Mapped[A] = relationship("A", viewonly=True)
 
         is_(A.__mapper__.attrs["bs_list"].collection_class, list)
         is_(A.__mapper__.attrs["bs_set"].collection_class, set)
@@ -2890,7 +2890,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_false(B.__mapper__.attrs["a"].uselist)
         is_false(B.__mapper__.attrs["a_warg"].uselist)
 
-    def test_one_to_one_example_quoted(self, decl_base: Type[DeclarativeBase]):
+    def test_one_to_one_example_quoted(self, decl_base: type[DeclarativeBase]):
         """test example in the relationship docs will derive uselist=False
         correctly"""
 
@@ -2898,7 +2898,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             __tablename__ = "parent"
 
             id: Mapped[int] = mapped_column(primary_key=True)
-            child: Mapped["Child"] = relationship(  # noqa: F821
+            child: Mapped[Child] = relationship(  # noqa: F821
                 back_populates="parent"
             )
 
@@ -2907,7 +2907,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
-            parent: Mapped["Parent"] = relationship(back_populates="child")
+            parent: Mapped[Parent] = relationship(back_populates="child")
 
         c1 = Child()
         p1 = Parent(child=c1)
@@ -2915,7 +2915,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_(c1.parent, p1)
 
     def test_one_to_one_example_non_quoted(
-        self, decl_base: Type[DeclarativeBase]
+        self, decl_base: type[DeclarativeBase]
     ):
         """test example in the relationship docs will derive uselist=False
         correctly"""
@@ -2925,7 +2925,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
-            parent: Mapped["Parent"] = relationship(back_populates="child")
+            parent: Mapped[Parent] = relationship(back_populates="child")
 
         class Parent(decl_base):
             __tablename__ = "parent"
@@ -2946,7 +2946,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
-            bs: Mapped[Dict[str, "B"]] = relationship()  # noqa: F821
+            bs: Mapped[dict[str, B]] = relationship()  # noqa: F821
 
         class B(decl_base):
             __tablename__ = "b"
@@ -2969,7 +2969,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
 
-            bs: Mapped[KeyFuncDict[str, "B"]] = relationship(  # noqa: F821
+            bs: Mapped[KeyFuncDict[str, B]] = relationship(  # noqa: F821
                 collection_class=attribute_keyed_dict("name")
             )
 
@@ -3018,14 +3018,14 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             if indirect_name == "indirect_name":
                 if include_relationship == "include_relationship":
-                    bs: Mapped[List[B_]] = relationship("B")
+                    bs: Mapped[list[B_]] = relationship("B")
                 else:
-                    bs: Mapped[List[B_]] = relationship()
+                    bs: Mapped[list[B_]] = relationship()
             else:
                 if include_relationship == "include_relationship":
-                    bs: Mapped[List[B]] = relationship("B")
+                    bs: Mapped[list[B]] = relationship("B")
                 else:
-                    bs: Mapped[List[B]] = relationship()
+                    bs: Mapped[list[B]] = relationship()
 
         self.assert_compile(
             select(A).join(A.bs),
@@ -3103,7 +3103,7 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             __tablename__ = "graph"
             id: Mapped[int] = mapped_column(primary_key=True)
 
-            edges: Mapped[List[Edge]] = relationship()
+            edges: Mapped[list[Edge]] = relationship()
 
         decl_base.metadata.create_all(testing.db)
         return Point, Graph, Edge
@@ -3134,7 +3134,7 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             # round trip!
             eq_(g1.edges[0].end, Point(3, 4))
 
-    def test_named_setup(self, decl_base: Type[DeclarativeBase]):
+    def test_named_setup(self, decl_base: type[DeclarativeBase]):
         @dataclasses.dataclass
         class Address:
             street: str
@@ -3183,7 +3183,7 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped[int] = mapped_column(primary_key=True)
             name: Mapped[str] = mapped_column()
 
-            address: Mapped["Address"] = composite(
+            address: Mapped[Address] = composite(
                 mapped_column(), mapped_column(), mapped_column("zip")
             )
 
@@ -3209,7 +3209,7 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 id: Mapped[int] = mapped_column(primary_key=True)
                 name: Mapped[str] = mapped_column()
 
-                address: "Address" = composite(  # type: ignore
+                address: Address = composite(  # type: ignore
                     mapped_column(), mapped_column(), mapped_column("zip")
                 )
 
@@ -3281,7 +3281,7 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped[int] = mapped_column(primary_key=True)
             name: Mapped[str] = mapped_column()
 
-            address: Mapped["Address"] = composite(
+            address: Mapped[Address] = composite(
                 Address, mapped_column(), mapped_column(), mapped_column("zip")
             )
 
@@ -3312,7 +3312,7 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             zip_: Mapped[str] = mapped_column(name="zip", key="zip_")
 
-            address: Mapped["Address"] = composite(
+            address: Mapped[Address] = composite(
                 Address, "street", "state", "zip_"
             )
 
@@ -3436,7 +3436,7 @@ class AllYourFavoriteHitsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     __dialect__ = "default"
 
-    def test_employee_joined_inh(self, decl_base: Type[DeclarativeBase]):
+    def test_employee_joined_inh(self, decl_base: type[DeclarativeBase]):
         global str50, str30, opt_str50
         str50 = Annotated[str, 50]
         str30 = Annotated[str, 30]
@@ -3453,7 +3453,7 @@ class AllYourFavoriteHitsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             name: Mapped[str50]
 
-            employees: Mapped[Set["Person"]] = relationship()  # noqa: F821
+            employees: Mapped[set[Person]] = relationship()  # noqa: F821
 
         class Person(decl_base):
             __tablename__ = "person"

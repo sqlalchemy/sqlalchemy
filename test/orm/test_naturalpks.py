@@ -1791,7 +1791,7 @@ class UnsortablePKTest(fixtures.MappedTest):
             cache_ok = True
 
             def process_bind_param(self, value, dialect):
-                return "%s,%s" % (value["x"], value["y"])
+                return "{},{}".format(value["x"], value["y"])
 
             def process_result_value(self, value, dialect):
                 rec = value.split(",")

@@ -498,11 +498,11 @@ from sqlalchemy import Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 
-class %s(SuperCls):
-    %s
+class {}(SuperCls):
+    {}
 
-%s
-""" % (
+{}
+""".format(
             clsname,
             "__tablename__ = 'mytable'" if base is supercls else "",
             "\n".join(

@@ -187,32 +187,32 @@ class Query(
     """
 
     # elements that are in Core and can be cached in the same way
-    _where_criteria: Tuple[ColumnElement[Any], ...] = ()
-    _having_criteria: Tuple[ColumnElement[Any], ...] = ()
+    _where_criteria: tuple[ColumnElement[Any], ...] = ()
+    _having_criteria: tuple[ColumnElement[Any], ...] = ()
 
-    _order_by_clauses: Tuple[ColumnElement[Any], ...] = ()
-    _group_by_clauses: Tuple[ColumnElement[Any], ...] = ()
-    _limit_clause: Optional[ColumnElement[Any]] = None
-    _offset_clause: Optional[ColumnElement[Any]] = None
+    _order_by_clauses: tuple[ColumnElement[Any], ...] = ()
+    _group_by_clauses: tuple[ColumnElement[Any], ...] = ()
+    _limit_clause: ColumnElement[Any] | None = None
+    _offset_clause: ColumnElement[Any] | None = None
 
     _distinct: bool = False
-    _distinct_on: Tuple[ColumnElement[Any], ...] = ()
+    _distinct_on: tuple[ColumnElement[Any], ...] = ()
 
-    _for_update_arg: Optional[ForUpdateArg] = None
-    _correlate: Tuple[FromClause, ...] = ()
+    _for_update_arg: ForUpdateArg | None = None
+    _correlate: tuple[FromClause, ...] = ()
     _auto_correlate: bool = True
-    _from_obj: Tuple[FromClause, ...] = ()
-    _setup_joins: Tuple[_SetupJoinsElement, ...] = ()
+    _from_obj: tuple[FromClause, ...] = ()
+    _setup_joins: tuple[_SetupJoinsElement, ...] = ()
 
     _label_style: SelectLabelStyle = SelectLabelStyle.LABEL_STYLE_LEGACY_ORM
 
     _memoized_select_entities = ()
 
-    _compile_options: Union[Type[CacheableOptions], CacheableOptions] = (
+    _compile_options: type[CacheableOptions] | CacheableOptions = (
         ORMCompileState.default_compile_options
     )
 
-    _with_options: Tuple[ExecutableOption, ...]
+    _with_options: tuple[ExecutableOption, ...]
     load_options = QueryContext.default_load_options + {
         "_legacy_uniquing": True
     }
@@ -223,7 +223,7 @@ class Query(
     # compilation or execution
     _enable_assertions = True
 
-    _statement: Optional[ExecutableReturnsRows] = None
+    _statement: ExecutableReturnsRows | None = None
 
     session: Session
 
@@ -238,10 +238,10 @@ class Query(
 
     def __init__(
         self,
-        entities: Union[
-            _ColumnsClauseArgument[Any], Sequence[_ColumnsClauseArgument[Any]]
-        ],
-        session: Optional[Session] = None,
+        entities: (
+            _ColumnsClauseArgument[Any] | Sequence[_ColumnsClauseArgument[Any]]
+        ),
+        session: Session | None = None,
     ):
         """Construct a :class:`_query.Query` directly.
 
@@ -284,9 +284,9 @@ class Query(
 
     def _set_entities(
         self,
-        entities: Union[
-            _ColumnsClauseArgument[Any], Iterable[_ColumnsClauseArgument[Any]]
-        ],
+        entities: (
+            _ColumnsClauseArgument[Any] | Iterable[_ColumnsClauseArgument[Any]]
+        ),
     ) -> None:
         self._raw_columns = [
             coercions.expect(
@@ -303,7 +303,7 @@ class Query(
         "The :meth:`.Query.tuples` method is deprecated, :class:`.Row` "
         "now behaves like a tuple and can unpack types directly.",
     )
-    def tuples(self: Query[_O]) -> Query[Tuple[_O]]:
+    def tuples(self: Query[_O]) -> Query[tuple[_O]]:
         """return a tuple-typed form of this :class:`.Query`.
 
         This method invokes the :meth:`.Query.only_return_tuples`
@@ -332,7 +332,7 @@ class Query(
         """
         return self.only_return_tuples(True)  # type: ignore
 
-    def _entity_from_pre_ent_zero(self) -> Optional[_InternalEntityType[Any]]:
+    def _entity_from_pre_ent_zero(self) -> _InternalEntityType[Any] | None:
         if not self._raw_columns:
             return None
 
@@ -465,14 +465,14 @@ class Query(
 
     def _get_options(
         self,
-        populate_existing: Optional[bool] = None,
-        version_check: Optional[bool] = None,
-        only_load_props: Optional[Sequence[str]] = None,
-        refresh_state: Optional[InstanceState[Any]] = None,
-        identity_token: Optional[Any] = None,
+        populate_existing: bool | None = None,
+        version_check: bool | None = None,
+        only_load_props: Sequence[str] | None = None,
+        refresh_state: InstanceState[Any] | None = None,
+        identity_token: Any | None = None,
     ) -> Self:
-        load_options: Dict[str, Any] = {}
-        compile_options: Dict[str, Any] = {}
+        load_options: dict[str, Any] = {}
+        compile_options: dict[str, Any] = {}
 
         if version_check:
             load_options["_version_check"] = version_check
@@ -504,7 +504,7 @@ class Query(
         return cast("Select[_T]", self.statement)
 
     @property
-    def statement(self) -> Union[Select[_T], FromStatement[_T]]:
+    def statement(self) -> Select[_T] | FromStatement[_T]:
         """The full SELECT statement represented by this Query.
 
         The statement by default will not have disambiguating labels
@@ -566,7 +566,7 @@ class Query(
 
     def _statement_20(
         self, for_statement: bool = False, use_legacy_query_style: bool = True
-    ) -> Union[Select[_T], FromStatement[_T]]:
+    ) -> Select[_T] | FromStatement[_T]:
         # TODO: this event needs to be deprecated, as it currently applies
         # only to ORM query and occurs at this spot that is now more
         # or less an artificial spot
@@ -584,7 +584,7 @@ class Query(
             "_use_legacy_query_style": use_legacy_query_style,
         }
 
-        stmt: Union[Select[_T], FromStatement[_T]]
+        stmt: Select[_T] | FromStatement[_T]
 
         if self._statement is not None:
             stmt = FromStatement(self._raw_columns, self._statement)
@@ -618,7 +618,7 @@ class Query(
 
     def subquery(
         self,
-        name: Optional[str] = None,
+        name: str | None = None,
         with_labels: bool = False,
         reduce_columns: bool = False,
     ) -> Subquery:
@@ -663,7 +663,7 @@ class Query(
 
     def cte(
         self,
-        name: Optional[str] = None,
+        name: str | None = None,
         recursive: bool = False,
         nesting: bool = False,
     ) -> CTE:
@@ -727,7 +727,7 @@ class Query(
             .cte(name=name, recursive=recursive, nesting=nesting)
         )
 
-    def label(self, name: Optional[str]) -> Label[Any]:
+    def label(self, name: str | None) -> Label[Any]:
         """Return the full SELECT statement represented by this
         :class:`_query.Query`, converted
         to a scalar subquery with a label of the given name.
@@ -746,12 +746,12 @@ class Query(
 
     @overload
     def as_scalar(
-        self: Query[Tuple[_MAYBE_ENTITY]],
+        self: Query[tuple[_MAYBE_ENTITY]],
     ) -> ScalarSelect[_MAYBE_ENTITY]: ...
 
     @overload
     def as_scalar(
-        self: Query[Tuple[_NOT_ENTITY]],
+        self: Query[tuple[_NOT_ENTITY]],
     ) -> ScalarSelect[_NOT_ENTITY]: ...
 
     @overload
@@ -772,12 +772,12 @@ class Query(
 
     @overload
     def scalar_subquery(
-        self: Query[Tuple[_MAYBE_ENTITY]],
+        self: Query[tuple[_MAYBE_ENTITY]],
     ) -> ScalarSelect[Any]: ...
 
     @overload
     def scalar_subquery(
-        self: Query[Tuple[_NOT_ENTITY]],
+        self: Query[tuple[_NOT_ENTITY]],
     ) -> ScalarSelect[_NOT_ENTITY]: ...
 
     @overload
@@ -806,7 +806,7 @@ class Query(
         )
 
     @property
-    def selectable(self) -> Union[Select[_T], FromStatement[_T]]:
+    def selectable(self) -> Select[_T] | FromStatement[_T]:
         """Return the :class:`_expression.Select` object emitted by this
         :class:`_query.Query`.
 
@@ -817,7 +817,7 @@ class Query(
         """
         return self.__clause_element__()
 
-    def __clause_element__(self) -> Union[Select[_T], FromStatement[_T]]:
+    def __clause_element__(self) -> Select[_T] | FromStatement[_T]:
         return (
             self._with_compile_options(
                 _enable_eagerloads=False, _render_for_subquery=True
@@ -997,7 +997,7 @@ class Query(
         return self
 
     @property
-    def whereclause(self) -> Optional[ColumnElement[bool]]:
+    def whereclause(self) -> ColumnElement[bool] | None:
         """A readonly attribute which returns the current WHERE criterion for
         this Query.
 
@@ -1056,7 +1056,7 @@ class Query(
         ":meth:`_orm.Query.get`",
         alternative="The method is now available as :meth:`_orm.Session.get`",
     )
-    def get(self, ident: _PKIdentityArgument) -> Optional[Any]:
+    def get(self, ident: _PKIdentityArgument) -> Any | None:
         """Return an instance based on the given primary key identifier,
         or ``None`` if not found.
 
@@ -1144,8 +1144,8 @@ class Query(
         self,
         primary_key_identity: _PKIdentityArgument,
         db_load_fn: Callable[..., Any],
-        identity_token: Optional[Any] = None,
-    ) -> Optional[Any]:
+        identity_token: Any | None = None,
+    ) -> Any | None:
         mapper = self._only_full_mapper_zero("get")
         return self.session._get_impl(
             mapper,
@@ -1159,7 +1159,7 @@ class Query(
         )
 
     @property
-    def lazy_loaded_from(self) -> Optional[InstanceState[Any]]:
+    def lazy_loaded_from(self) -> InstanceState[Any] | None:
         """An :class:`.InstanceState` that is using this :class:`_query.Query`
         for a lazy load operation.
 
@@ -1182,7 +1182,7 @@ class Query(
     @_generative
     def correlate(
         self,
-        *fromclauses: Union[Literal[None, False], _FromClauseArgument],
+        *fromclauses: Literal[None, False] | _FromClauseArgument,
     ) -> Self:
         """Return a :class:`.Query` construct which will correlate the given
         FROM clauses to that of an enclosing :class:`.Query` or
@@ -1265,10 +1265,10 @@ class Query(
     def with_parent(
         self,
         instance: object,
-        property: Optional[  # noqa: A002
+        property: None | (  # noqa: A002
             attributes.QueryableAttribute[Any]
-        ] = None,
-        from_entity: Optional[_ExternalEntityType[Any]] = None,
+        ) = None,
+        from_entity: _ExternalEntityType[Any] | None = None,
     ) -> Self:
         """Add filtering criterion that relates the given instance
         to a child object or collection, using its attribute state
@@ -1335,7 +1335,7 @@ class Query(
     def add_entity(
         self,
         entity: _EntityType[Any],
-        alias: Optional[Union[Alias, Subquery]] = None,
+        alias: Alias | Subquery | None = None,
     ) -> Query[Any]:
         """add a mapped entity to the list of result columns
         to be returned.
@@ -1486,7 +1486,7 @@ class Query(
     def with_entities(
         self,
         _colexpr: roles.TypedColumnsClauseRole[_T],
-    ) -> RowReturningQuery[Tuple[_T]]: ...
+    ) -> RowReturningQuery[tuple[_T]]: ...
 
     # START OVERLOADED FUNCTIONS self.with_entities RowReturningQuery 2-8
 
@@ -1721,7 +1721,7 @@ class Query(
     def execution_options(
         self,
         *,
-        compiled_cache: Optional[CompiledCacheType] = ...,
+        compiled_cache: CompiledCacheType | None = ...,
         logging_token: str = ...,
         isolation_level: IsolationLevel = ...,
         no_parameters: bool = False,
@@ -1729,7 +1729,7 @@ class Query(
         max_row_buffer: int = ...,
         yield_per: int = ...,
         insertmanyvalues_page_size: int = ...,
-        schema_translate_map: Optional[SchemaTranslateMapType] = ...,
+        schema_translate_map: SchemaTranslateMapType | None = ...,
         populate_existing: bool = False,
         autoflush: bool = False,
         preserve_rowcount: bool = False,
@@ -1794,7 +1794,7 @@ class Query(
         *,
         nowait: bool = False,
         read: bool = False,
-        of: Optional[_ForUpdateOfArgument] = None,
+        of: _ForUpdateOfArgument | None = None,
         skip_locked: bool = False,
         key_share: bool = False,
     ) -> Self:
@@ -1856,7 +1856,7 @@ class Query(
 
     @_generative
     def params(
-        self, __params: Optional[Dict[str, Any]] = None, /, **kw: Any
+        self, __params: dict[str, Any] | None = None, /, **kw: Any
     ) -> Self:
         r"""Add values for bind parameters which may have been
         specified in filter().
@@ -1924,7 +1924,7 @@ class Query(
     @util.memoized_property
     def _last_joined_entity(
         self,
-    ) -> Optional[Union[_InternalEntityType[Any], _JoinTargetElement]]:
+    ) -> _InternalEntityType[Any] | _JoinTargetElement | None:
         if self._setup_joins:
             return _determine_last_joined_entity(
                 self._setup_joins,
@@ -2011,10 +2011,10 @@ class Query(
     @_generative
     def order_by(
         self,
-        __first: Union[
-            Literal[None, False, _NoArg.NO_ARG],
-            _ColumnExpressionOrStrLabelArgument[Any],
-        ] = _NoArg.NO_ARG,
+        __first: (
+            Literal[None, False, _NoArg.NO_ARG] |
+            _ColumnExpressionOrStrLabelArgument[Any]
+        ) = _NoArg.NO_ARG,
         /,
         *clauses: _ColumnExpressionOrStrLabelArgument[Any],
     ) -> Self:
@@ -2063,10 +2063,10 @@ class Query(
     @_generative
     def group_by(
         self,
-        __first: Union[
-            Literal[None, False, _NoArg.NO_ARG],
-            _ColumnExpressionOrStrLabelArgument[Any],
-        ] = _NoArg.NO_ARG,
+        __first: (
+            Literal[None, False, _NoArg.NO_ARG] |
+            _ColumnExpressionOrStrLabelArgument[Any]
+        ) = _NoArg.NO_ARG,
         /,
         *clauses: _ColumnExpressionOrStrLabelArgument[Any],
     ) -> Self:
@@ -2251,7 +2251,7 @@ class Query(
     def join(
         self,
         target: _JoinTargetArgument,
-        onclause: Optional[_OnClauseArgument] = None,
+        onclause: _OnClauseArgument | None = None,
         *,
         isouter: bool = False,
         full: bool = False,
@@ -2474,7 +2474,7 @@ class Query(
     def outerjoin(
         self,
         target: _JoinTargetArgument,
-        onclause: Optional[_OnClauseArgument] = None,
+        onclause: _OnClauseArgument | None = None,
         *,
         full: bool = False,
     ) -> Self:
@@ -2672,7 +2672,7 @@ class Query(
             self._distinct = True
         return self
 
-    def all(self) -> List[_T]:
+    def all(self) -> list[_T]:
         """Return the results represented by this :class:`_query.Query`
         as a list.
 
@@ -2721,7 +2721,7 @@ class Query(
         self._statement = statement
         return self
 
-    def first(self) -> Optional[_T]:
+    def first(self) -> _T | None:
         """Return the first result of this ``Query`` or
         None if the result doesn't contain any row.
 
@@ -2751,7 +2751,7 @@ class Query(
         else:
             return self.limit(1)._iter().first()  # type: ignore
 
-    def one_or_none(self) -> Optional[_T]:
+    def one_or_none(self) -> _T | None:
         """Return at most one result or raise an exception.
 
         Returns ``None`` if the query selects
@@ -2843,12 +2843,12 @@ class Query(
             result._soft_close()
             raise
 
-    def _iter(self) -> Union[ScalarResult[_T], Result[_T]]:
+    def _iter(self) -> ScalarResult[_T] | Result[_T]:
         # new style execution.
         params = self._params
 
         statement = self._statement_20()
-        result: Union[ScalarResult[_T], Result[_T]] = self.session.execute(
+        result: ScalarResult[_T] | Result[_T] = self.session.execute(
             statement,
             params,
             execution_options={"_sa_orm_load_options": self.load_options},
@@ -2881,7 +2881,7 @@ class Query(
         return str(statement.compile(bind))
 
     @property
-    def column_descriptions(self) -> List[ORMColumnDescription]:
+    def column_descriptions(self) -> list[ORMColumnDescription]:
         """Return metadata about the columns which would be
         returned by this :class:`_query.Query`.
 
@@ -2941,7 +2941,7 @@ class Query(
     def instances(
         self,
         result_proxy: CursorResult[Any],
-        context: Optional[QueryContext] = None,
+        context: QueryContext | None = None,
     ) -> Any:
         """Return an ORM result given a :class:`_engine.CursorResult` and
         :class:`.QueryContext`.
@@ -2985,11 +2985,11 @@ class Query(
     )
     def merge_result(
         self,
-        iterator: Union[
-            FrozenResult[Any], Iterable[Sequence[Any]], Iterable[object]
-        ],
+        iterator: (
+            FrozenResult[Any] | Iterable[Sequence[Any]] | Iterable[object]
+        ),
         load: bool = True,
-    ) -> Union[FrozenResult[Any], Iterable[Any]]:
+    ) -> FrozenResult[Any] | Iterable[Any]:
         """Merge a result into this :class:`_query.Query` object's Session.
 
         Given an iterator returned by a :class:`_query.Query`
@@ -3194,9 +3194,9 @@ class Query(
 
     def update(
         self,
-        values: Dict[_DMLColumnArgument, Any],
+        values: dict[_DMLColumnArgument, Any],
         synchronize_session: SynchronizeSessionArgument = "auto",
-        update_args: Optional[Dict[Any, Any]] = None,
+        update_args: dict[Any, Any] | None = None,
     ) -> int:
         r"""Perform an UPDATE with an arbitrary WHERE clause.
 
@@ -3336,7 +3336,7 @@ class AliasOption(interfaces.LoaderOption):
         "for entities to be matched up to a query that is established "
         "via :meth:`.Query.from_statement` and now does nothing.",
     )
-    def __init__(self, alias: Union[Alias, Subquery]):
+    def __init__(self, alias: Alias | Subquery):
         r"""Return a :class:`.MapperOption` that will indicate to the
         :class:`_query.Query`
         that the main table has been aliased.
@@ -3396,8 +3396,8 @@ class BulkUpdate(BulkUD):
     def __init__(
         self,
         query: Query[Any],
-        values: Dict[_DMLColumnArgument, Any],
-        update_kwargs: Optional[Dict[Any, Any]],
+        values: dict[_DMLColumnArgument, Any],
+        update_kwargs: dict[Any, Any] | None,
     ):
         super().__init__(query)
         self.values = values
@@ -3411,5 +3411,5 @@ class BulkDelete(BulkUD):
 class RowReturningQuery(Query[Row[Unpack[_Ts]]]):
     if TYPE_CHECKING:
 
-        def tuples(self) -> Query[Tuple[Unpack[_Ts]]]:  # type: ignore
+        def tuples(self) -> Query[tuple[Unpack[_Ts]]]:  # type: ignore
             ...

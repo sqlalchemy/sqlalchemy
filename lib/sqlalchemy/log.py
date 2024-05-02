@@ -58,17 +58,17 @@ def _add_default_handler(logger: logging.Logger) -> None:
     logger.addHandler(handler)
 
 
-_logged_classes: Set[Type[Identified]] = set()
+_logged_classes: set[type[Identified]] = set()
 
 
-def _qual_logger_name_for_cls(cls: Type[Identified]) -> str:
+def _qual_logger_name_for_cls(cls: type[Identified]) -> str:
     return (
         getattr(cls, "_sqla_logger_namespace", None)
         or cls.__module__ + "." + cls.__name__
     )
 
 
-def class_logger(cls: Type[_IT]) -> Type[_IT]:
+def class_logger(cls: type[_IT]) -> type[_IT]:
     logger = logging.getLogger(_qual_logger_name_for_cls(cls))
     cls._should_log_debug = lambda self: logger.isEnabledFor(  # type: ignore[method-assign]  # noqa: E501
         logging.DEBUG
@@ -87,7 +87,7 @@ _IdentifiedLoggerType = Union[logging.Logger, "InstanceLogger"]
 class Identified:
     __slots__ = ()
 
-    logging_name: Optional[str] = None
+    logging_name: str | None = None
 
     logger: _IdentifiedLoggerType
 
@@ -226,7 +226,7 @@ def instance_logger(
     """create a logger for an instance that implements :class:`.Identified`."""
 
     if instance.logging_name:
-        name = "%s.%s" % (
+        name = "{}.{}".format(
             _qual_logger_name_for_cls(instance.__class__),
             instance.logging_name,
         )
@@ -235,7 +235,7 @@ def instance_logger(
 
     instance._echo = echoflag  # type: ignore
 
-    logger: Union[logging.Logger, InstanceLogger]
+    logger: logging.Logger | InstanceLogger
 
     if echoflag in (False, None):
         # if no echo setting or False, return a Logger directly,
@@ -263,17 +263,17 @@ class echo_property:
 
     @overload
     def __get__(
-        self, instance: Literal[None], owner: Type[Identified]
+        self, instance: Literal[None], owner: type[Identified]
     ) -> echo_property: ...
 
     @overload
     def __get__(
-        self, instance: Identified, owner: Type[Identified]
+        self, instance: Identified, owner: type[Identified]
     ) -> _EchoFlagType: ...
 
     def __get__(
-        self, instance: Optional[Identified], owner: Type[Identified]
-    ) -> Union[echo_property, _EchoFlagType]:
+        self, instance: Identified | None, owner: type[Identified]
+    ) -> echo_property | _EchoFlagType:
         if instance is None:
             return self
         else:

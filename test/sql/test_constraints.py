@@ -817,7 +817,7 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
 
                 self.assert_compile(
                     schema.CreateIndex(ix1),
-                    "CREATE INDEX %s ON %s (%s)" % (exp, tname, cname),
+                    "CREATE INDEX {} ON {} ({})".format(exp, tname, cname),
                     dialect=dialect,
                 )
 

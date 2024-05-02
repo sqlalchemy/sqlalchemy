@@ -245,7 +245,7 @@ else:
     class _Runner:
         """Runner implementation for test only"""
 
-        _loop: Union[None, asyncio.AbstractEventLoop, Literal[False]]
+        _loop: None | asyncio.AbstractEventLoop | Literal[False]
 
         def __init__(self) -> None:
             self._loop = None

@@ -190,13 +190,13 @@ class _ConnectionCallableProto(Protocol):
 
     def __call__(
         self,
-        mapper: Optional[Mapper[Any]] = None,
-        instance: Optional[object] = None,
+        mapper: Mapper[Any] | None = None,
+        instance: object | None = None,
         **kw: Any,
     ) -> Connection: ...
 
 
-def _state_session(state: InstanceState[Any]) -> Optional[Session]:
+def _state_session(state: InstanceState[Any]) -> Session | None:
     """Given an :class:`.InstanceState`, return the :class:`.Session`
     associated, if any.
     """
@@ -222,12 +222,12 @@ class _SessionClassMethods:
     @util.preload_module("sqlalchemy.orm.util")
     def identity_key(
         cls,
-        class_: Optional[Type[Any]] = None,
-        ident: Union[Any, Tuple[Any, ...]] = None,
+        class_: type[Any] | None = None,
+        ident: Any | tuple[Any, ...] = None,
         *,
-        instance: Optional[Any] = None,
-        row: Optional[Union[Row[Unpack[TupleAny]], RowMapping]] = None,
-        identity_token: Optional[Any] = None,
+        instance: Any | None = None,
+        row: Row[Unpack[TupleAny]] | RowMapping | None = None,
+        identity_token: Any | None = None,
     ) -> _IdentityKeyType[Any]:
         """Return an identity key.
 
@@ -243,7 +243,7 @@ class _SessionClassMethods:
         )
 
     @classmethod
-    def object_session(cls, instance: object) -> Optional[Session]:
+    def object_session(cls, instance: object) -> Session | None:
         """Return the :class:`.Session` to which an object belongs.
 
         This is an alias of :func:`.object_session`.
@@ -306,7 +306,7 @@ class ORMExecuteState(util.MemoizedSlots):
     :class:`_sql.select` that was generated from the ORM query.
     """
 
-    parameters: Optional[_CoreAnyExecuteParams]
+    parameters: _CoreAnyExecuteParams | None
     """Dictionary of parameters that was passed to
     :meth:`_orm.Session.execute`."""
 
@@ -349,20 +349,20 @@ class ORMExecuteState(util.MemoizedSlots):
 
     """
 
-    _compile_state_cls: Optional[Type[ORMCompileState]]
+    _compile_state_cls: type[ORMCompileState] | None
     _starting_event_idx: int
-    _events_todo: List[Any]
-    _update_execution_options: Optional[_ExecuteOptions]
+    _events_todo: list[Any]
+    _update_execution_options: _ExecuteOptions | None
 
     def __init__(
         self,
         session: Session,
         statement: Executable,
-        parameters: Optional[_CoreAnyExecuteParams],
+        parameters: _CoreAnyExecuteParams | None,
         execution_options: _ExecuteOptions,
         bind_arguments: _BindArguments,
-        compile_state_cls: Optional[Type[ORMCompileState]],
-        events_todo: List[_InstanceLevelDispatch[Session]],
+        compile_state_cls: type[ORMCompileState] | None,
+        events_todo: list[_InstanceLevelDispatch[Session]],
     ):
         """Construct a new :class:`_orm.ORMExecuteState`.
 
@@ -380,15 +380,15 @@ class ORMExecuteState(util.MemoizedSlots):
         self._compile_state_cls = compile_state_cls
         self._events_todo = list(events_todo)
 
-    def _remaining_events(self) -> List[_InstanceLevelDispatch[Session]]:
+    def _remaining_events(self) -> list[_InstanceLevelDispatch[Session]]:
         return self._events_todo[self._starting_event_idx + 1 :]
 
     def invoke_statement(
         self,
-        statement: Optional[Executable] = None,
-        params: Optional[_CoreAnyExecuteParams] = None,
-        execution_options: Optional[OrmExecuteOptionsParameter] = None,
-        bind_arguments: Optional[_BindArguments] = None,
+        statement: Executable | None = None,
+        params: _CoreAnyExecuteParams | None = None,
+        execution_options: OrmExecuteOptionsParameter | None = None,
+        bind_arguments: _BindArguments | None = None,
     ) -> Result[Unpack[TupleAny]]:
         """Execute the statement represented by this
         :class:`.ORMExecuteState`, without re-invoking events that have
@@ -448,7 +448,7 @@ class ORMExecuteState(util.MemoizedSlots):
             _bind_arguments.update(bind_arguments)
         _bind_arguments["_sa_skip_events"] = True
 
-        _params: Optional[_CoreAnyExecuteParams]
+        _params: _CoreAnyExecuteParams | None
         if params:
             if self.is_executemany:
                 _params = []
@@ -490,7 +490,7 @@ class ORMExecuteState(util.MemoizedSlots):
         )
 
     @property
-    def bind_mapper(self) -> Optional[Mapper[Any]]:
+    def bind_mapper(self) -> Mapper[Any] | None:
         """Return the :class:`_orm.Mapper` that is the primary "bind" mapper.
 
         For an :class:`_orm.ORMExecuteState` object invoking an ORM
@@ -515,7 +515,7 @@ class ORMExecuteState(util.MemoizedSlots):
 
 
         """
-        mp: Optional[Mapper[Any]] = self.bind_arguments.get("mapper", None)
+        mp: Mapper[Any] | None = self.bind_arguments.get("mapper", None)
         return mp
 
     @property
@@ -653,12 +653,10 @@ class ORMExecuteState(util.MemoizedSlots):
 
     def _orm_compile_options(
         self,
-    ) -> Optional[
-        Union[
-            context.ORMCompileState.default_compile_options,
-            Type[context.ORMCompileState.default_compile_options],
-        ]
-    ]:
+    ) -> None | (
+            context.ORMCompileState.default_compile_options |
+            type[context.ORMCompileState.default_compile_options]
+    ):
         if not self.is_select:
             return None
         try:
@@ -674,7 +672,7 @@ class ORMExecuteState(util.MemoizedSlots):
             return None
 
     @property
-    def lazy_loaded_from(self) -> Optional[InstanceState[Any]]:
+    def lazy_loaded_from(self) -> InstanceState[Any] | None:
         """An :class:`.InstanceState` that is using this statement execution
         for a lazy load operation.
 
@@ -689,7 +687,7 @@ class ORMExecuteState(util.MemoizedSlots):
         return self.load_options._lazy_loaded_from
 
     @property
-    def loader_strategy_path(self) -> Optional[PathRegistry]:
+    def loader_strategy_path(self) -> PathRegistry | None:
         """Return the :class:`.PathRegistry` for the current load path.
 
         This object represents the "path" in a query along relationships
@@ -758,10 +756,10 @@ class ORMExecuteState(util.MemoizedSlots):
     @property
     def load_options(
         self,
-    ) -> Union[
-        context.QueryContext.default_load_options,
-        Type[context.QueryContext.default_load_options],
-    ]:
+    ) -> (
+        context.QueryContext.default_load_options |
+        type[context.QueryContext.default_load_options]
+    ):
         """Return the load_options that will be used for this execution."""
 
         if not self.is_select:
@@ -770,10 +768,10 @@ class ORMExecuteState(util.MemoizedSlots):
                 "so there are no load options."
             )
 
-        lo: Union[
-            context.QueryContext.default_load_options,
-            Type[context.QueryContext.default_load_options],
-        ] = self.execution_options.get(
+        lo: (
+            context.QueryContext.default_load_options |
+            type[context.QueryContext.default_load_options]
+        ) = self.execution_options.get(
             "_sa_orm_load_options", context.QueryContext.default_load_options
         )
         return lo
@@ -781,10 +779,10 @@ class ORMExecuteState(util.MemoizedSlots):
     @property
     def update_delete_options(
         self,
-    ) -> Union[
-        bulk_persistence.BulkUDCompileState.default_update_options,
-        Type[bulk_persistence.BulkUDCompileState.default_update_options],
-    ]:
+    ) -> (
+        bulk_persistence.BulkUDCompileState.default_update_options |
+        type[bulk_persistence.BulkUDCompileState.default_update_options]
+    ):
         """Return the update_delete_options that will be used for this
         execution."""
 
@@ -793,10 +791,10 @@ class ORMExecuteState(util.MemoizedSlots):
                 "This ORM execution is not against an UPDATE or DELETE "
                 "statement so there are no update options."
             )
-        uo: Union[
-            bulk_persistence.BulkUDCompileState.default_update_options,
-            Type[bulk_persistence.BulkUDCompileState.default_update_options],
-        ] = self.execution_options.get(
+        uo: (
+            bulk_persistence.BulkUDCompileState.default_update_options |
+            type[bulk_persistence.BulkUDCompileState.default_update_options]
+        ) = self.execution_options.get(
             "_sa_orm_update_options",
             bulk_persistence.BulkUDCompileState.default_update_options,
         )
@@ -886,13 +884,13 @@ class SessionTransaction(_StateChange, TransactionalContext):
 
     """
 
-    _rollback_exception: Optional[BaseException] = None
+    _rollback_exception: BaseException | None = None
 
-    _connections: Dict[
-        Union[Engine, Connection], Tuple[Connection, Transaction, bool, bool]
+    _connections: dict[
+        Engine | Connection, tuple[Connection, Transaction, bool, bool]
     ]
     session: Session
-    _parent: Optional[SessionTransaction]
+    _parent: SessionTransaction | None
 
     _state: SessionTransactionState
 
@@ -900,7 +898,7 @@ class SessionTransaction(_StateChange, TransactionalContext):
     _deleted: weakref.WeakKeyDictionary[InstanceState[Any], object]
     _dirty: weakref.WeakKeyDictionary[InstanceState[Any], object]
     _key_switches: weakref.WeakKeyDictionary[
-        InstanceState[Any], Tuple[Any, Any]
+        InstanceState[Any], tuple[Any, Any]
     ]
 
     origin: SessionTransactionOrigin
@@ -931,7 +929,7 @@ class SessionTransaction(_StateChange, TransactionalContext):
         self,
         session: Session,
         origin: SessionTransactionOrigin,
-        parent: Optional[SessionTransaction] = None,
+        parent: SessionTransaction | None = None,
     ):
         TransactionalContext._trans_ctx_check(session)
 
@@ -1004,7 +1002,7 @@ class SessionTransaction(_StateChange, TransactionalContext):
             )
 
     @property
-    def parent(self) -> Optional[SessionTransaction]:
+    def parent(self) -> SessionTransaction | None:
         """The parent :class:`.SessionTransaction` of this
         :class:`.SessionTransaction`.
 
@@ -1036,8 +1034,8 @@ class SessionTransaction(_StateChange, TransactionalContext):
     )
     def connection(
         self,
-        bindkey: Optional[Mapper[Any]],
-        execution_options: Optional[_ExecuteOptions] = None,
+        bindkey: Mapper[Any] | None,
+        execution_options: _ExecuteOptions | None = None,
         **kwargs: Any,
     ) -> Connection:
         bind = self.session.get_bind(bindkey, **kwargs)
@@ -1058,10 +1056,10 @@ class SessionTransaction(_StateChange, TransactionalContext):
         )
 
     def _iterate_self_and_parents(
-        self, upto: Optional[SessionTransaction] = None
+        self, upto: SessionTransaction | None = None
     ) -> Iterable[SessionTransaction]:
         current = self
-        result: Tuple[SessionTransaction, ...] = ()
+        result: tuple[SessionTransaction, ...] = ()
         while current:
             result += (current,)
             if current._parent is upto:
@@ -1160,7 +1158,7 @@ class SessionTransaction(_StateChange, TransactionalContext):
     def _connection_for_bind(
         self,
         bind: _SessionBind,
-        execution_options: Optional[CoreExecuteOptionsParameter],
+        execution_options: CoreExecuteOptionsParameter | None,
     ) -> Connection:
         if bind in self._connections:
             if execution_options:
@@ -1475,39 +1473,39 @@ class Session(_SessionClassMethods, EventTarget):
 
     """
 
-    _new: Dict[InstanceState[Any], Any]
-    _deleted: Dict[InstanceState[Any], Any]
-    bind: Optional[Union[Engine, Connection]]
-    __binds: Dict[_SessionBindKey, _SessionBind]
+    _new: dict[InstanceState[Any], Any]
+    _deleted: dict[InstanceState[Any], Any]
+    bind: Engine | Connection | None
+    __binds: dict[_SessionBindKey, _SessionBind]
     _flushing: bool
     _warn_on_events: bool
-    _transaction: Optional[SessionTransaction]
-    _nested_transaction: Optional[SessionTransaction]
+    _transaction: SessionTransaction | None
+    _nested_transaction: SessionTransaction | None
     hash_key: int
     autoflush: bool
     expire_on_commit: bool
     enable_baked_queries: bool
     twophase: bool
     join_transaction_mode: JoinTransactionMode
-    _query_cls: Type[Query[Any]]
+    _query_cls: type[Query[Any]]
     _close_state: _SessionCloseState
 
     def __init__(
         self,
-        bind: Optional[_SessionBind] = None,
+        bind: _SessionBind | None = None,
         *,
         autoflush: bool = True,
         future: Literal[True] = True,
         expire_on_commit: bool = True,
         autobegin: bool = True,
         twophase: bool = False,
-        binds: Optional[Dict[_SessionBindKey, _SessionBind]] = None,
+        binds: dict[_SessionBindKey, _SessionBind] | None = None,
         enable_baked_queries: bool = True,
-        info: Optional[_InfoType] = None,
-        query_cls: Optional[Type[Query[Any]]] = None,
+        info: _InfoType | None = None,
+        query_cls: type[Query[Any]] | None = None,
         autocommit: Literal[False] = False,
         join_transaction_mode: JoinTransactionMode = "conditional_savepoint",
-        close_resets_only: Union[bool, _NoArg] = _NoArg.NO_ARG,
+        close_resets_only: bool | _NoArg = _NoArg.NO_ARG,
     ):
         r"""Construct a new :class:`_orm.Session`.
 
@@ -1790,9 +1788,9 @@ class Session(_SessionClassMethods, EventTarget):
         _sessions[self.hash_key] = self
 
     # used by sqlalchemy.engine.util.TransactionalContext
-    _trans_context_manager: Optional[TransactionalContext] = None
+    _trans_context_manager: TransactionalContext | None = None
 
-    connection_callable: Optional[_ConnectionCallableProto] = None
+    connection_callable: _ConnectionCallableProto | None = None
 
     def __enter__(self: _S) -> _S:
         return self
@@ -1828,7 +1826,7 @@ class Session(_SessionClassMethods, EventTarget):
         """
         return self._nested_transaction is not None
 
-    def get_transaction(self) -> Optional[SessionTransaction]:
+    def get_transaction(self) -> SessionTransaction | None:
         """Return the current root transaction in progress, if any.
 
         .. versionadded:: 1.4
@@ -1839,7 +1837,7 @@ class Session(_SessionClassMethods, EventTarget):
             trans = trans._parent
         return trans
 
-    def get_nested_transaction(self) -> Optional[SessionTransaction]:
+    def get_nested_transaction(self) -> SessionTransaction | None:
         """Return the current nested transaction in progress, if any.
 
         .. versionadded:: 1.4
@@ -2040,8 +2038,8 @@ class Session(_SessionClassMethods, EventTarget):
 
     def connection(
         self,
-        bind_arguments: Optional[_BindArguments] = None,
-        execution_options: Optional[CoreExecuteOptionsParameter] = None,
+        bind_arguments: _BindArguments | None = None,
+        execution_options: CoreExecuteOptionsParameter | None = None,
     ) -> Connection:
         r"""Return a :class:`_engine.Connection` object corresponding to this
         :class:`.Session` object's transactional state.
@@ -2089,7 +2087,7 @@ class Session(_SessionClassMethods, EventTarget):
     def _connection_for_bind(
         self,
         engine: _SessionBind,
-        execution_options: Optional[CoreExecuteOptionsParameter] = None,
+        execution_options: CoreExecuteOptionsParameter | None = None,
         **kw: Any,
     ) -> Connection:
         TransactionalContext._trans_ctx_check(self)
@@ -2103,12 +2101,12 @@ class Session(_SessionClassMethods, EventTarget):
     def _execute_internal(
         self,
         statement: Executable,
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: _CoreSingleExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
+        bind_arguments: _BindArguments | None = None,
+        _parent_execute_state: Any | None = None,
+        _add_event: Any | None = None,
         _scalar_result: Literal[True] = ...,
     ) -> Any: ...
 
@@ -2116,24 +2114,24 @@ class Session(_SessionClassMethods, EventTarget):
     def _execute_internal(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
+        bind_arguments: _BindArguments | None = None,
+        _parent_execute_state: Any | None = None,
+        _add_event: Any | None = None,
         _scalar_result: bool = ...,
     ) -> Result[Unpack[TupleAny]]: ...
 
     def _execute_internal(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
+        bind_arguments: _BindArguments | None = None,
+        _parent_execute_state: Any | None = None,
+        _add_event: Any | None = None,
         _scalar_result: bool = False,
     ) -> Any:
         statement = coercions.expect(roles.StatementRole, statement)
@@ -2198,7 +2196,7 @@ class Session(_SessionClassMethods, EventTarget):
             )
             for idx, fn in enumerate(events_todo):
                 orm_exec_state._starting_event_idx = idx
-                fn_result: Optional[Result[Unpack[TupleAny]]] = fn(
+                fn_result: Result[Unpack[TupleAny]] | None = fn(
                     orm_exec_state
                 )
                 if fn_result:
@@ -2264,47 +2262,47 @@ class Session(_SessionClassMethods, EventTarget):
     def execute(
         self,
         statement: TypedReturnsRows[Unpack[_Ts]],
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
+        bind_arguments: _BindArguments | None = None,
+        _parent_execute_state: Any | None = None,
+        _add_event: Any | None = None,
     ) -> Result[Unpack[_Ts]]: ...
 
     @overload
     def execute(
         self,
         statement: UpdateBase,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
+        bind_arguments: _BindArguments | None = None,
+        _parent_execute_state: Any | None = None,
+        _add_event: Any | None = None,
     ) -> CursorResult[Unpack[TupleAny]]: ...
 
     @overload
     def execute(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
+        bind_arguments: _BindArguments | None = None,
+        _parent_execute_state: Any | None = None,
+        _add_event: Any | None = None,
     ) -> Result[Unpack[TupleAny]]: ...
 
     def execute(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-        _parent_execute_state: Optional[Any] = None,
-        _add_event: Optional[Any] = None,
+        bind_arguments: _BindArguments | None = None,
+        _parent_execute_state: Any | None = None,
+        _add_event: Any | None = None,
     ) -> Result[Unpack[TupleAny]]:
         r"""Execute a SQL expression construct.
 
@@ -2370,31 +2368,31 @@ class Session(_SessionClassMethods, EventTarget):
     def scalar(
         self,
         statement: TypedReturnsRows[_T],
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: _CoreSingleExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
-    ) -> Optional[_T]: ...
+    ) -> _T | None: ...
 
     @overload
     def scalar(
         self,
         statement: Executable,
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: _CoreSingleExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> Any: ...
 
     def scalar(
         self,
         statement: Executable,
-        params: Optional[_CoreSingleExecuteParams] = None,
+        params: _CoreSingleExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> Any:
         """Execute a statement and return a scalar result.
@@ -2418,10 +2416,10 @@ class Session(_SessionClassMethods, EventTarget):
     def scalars(
         self,
         statement: TypedReturnsRows[_T],
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> ScalarResult[_T]: ...
 
@@ -2429,20 +2427,20 @@ class Session(_SessionClassMethods, EventTarget):
     def scalars(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> ScalarResult[Any]: ...
 
     def scalars(
         self,
         statement: Executable,
-        params: Optional[_CoreAnyExecuteParams] = None,
+        params: _CoreAnyExecuteParams | None = None,
         *,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
     ) -> ScalarResult[Any]:
         """Execute a statement and return the results as scalars.
@@ -2685,14 +2683,14 @@ class Session(_SessionClassMethods, EventTarget):
 
     def get_bind(
         self,
-        mapper: Optional[_EntityBindKey[_O]] = None,
+        mapper: _EntityBindKey[_O] | None = None,
         *,
-        clause: Optional[ClauseElement] = None,
-        bind: Optional[_SessionBind] = None,
-        _sa_skip_events: Optional[bool] = None,
+        clause: ClauseElement | None = None,
+        bind: _SessionBind | None = None,
+        _sa_skip_events: bool | None = None,
         _sa_skip_for_implicit_returning: bool = False,
         **kw: Any,
-    ) -> Union[Engine, Connection]:
+    ) -> Engine | Connection:
         """Return a "bind" to which this :class:`.Session` is bound.
 
         The "bind" is usually an instance of :class:`_engine.Engine`,
@@ -2960,13 +2958,13 @@ class Session(_SessionClassMethods, EventTarget):
     def _identity_lookup(
         self,
         mapper: Mapper[_O],
-        primary_key_identity: Union[Any, Tuple[Any, ...]],
+        primary_key_identity: Any | tuple[Any, ...],
         identity_token: Any = None,
         passive: PassiveFlag = PassiveFlag.PASSIVE_OFF,
-        lazy_loaded_from: Optional[InstanceState[Any]] = None,
+        lazy_loaded_from: InstanceState[Any] | None = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-    ) -> Union[Optional[_O], LoaderCallableStatus]:
+        bind_arguments: _BindArguments | None = None,
+    ) -> _O | None | LoaderCallableStatus:
         """Locate an object in the identity map.
 
         Given a primary key identity, constructs an identity key and then
@@ -3069,7 +3067,7 @@ class Session(_SessionClassMethods, EventTarget):
     def refresh(
         self,
         instance: object,
-        attribute_names: Optional[Iterable[str]] = None,
+        attribute_names: Iterable[str] | None = None,
         with_for_update: ForUpdateParameter = None,
     ) -> None:
         """Expire and refresh attributes on the given instance.
@@ -3223,7 +3221,7 @@ class Session(_SessionClassMethods, EventTarget):
             state._expire(state.dict, self.identity_map._modified)
 
     def expire(
-        self, instance: object, attribute_names: Optional[Iterable[str]] = None
+        self, instance: object, attribute_names: Iterable[str] | None = None
     ) -> None:
         """Expire the attributes on an instance.
 
@@ -3270,7 +3268,7 @@ class Session(_SessionClassMethods, EventTarget):
     def _expire_state(
         self,
         state: InstanceState[Any],
-        attribute_names: Optional[Iterable[str]],
+        attribute_names: Iterable[str] | None,
     ) -> None:
         self._validate_persistent(state)
         if attribute_names:
@@ -3286,7 +3284,7 @@ class Session(_SessionClassMethods, EventTarget):
                 self._conditional_expire(st_)
 
     def _conditional_expire(
-        self, state: InstanceState[Any], autoflush: Optional[bool] = None
+        self, state: InstanceState[Any], autoflush: bool | None = None
     ) -> None:
         """Expire a state if persistent, else expunge if pending"""
 
@@ -3334,7 +3332,7 @@ class Session(_SessionClassMethods, EventTarget):
             states, self, to_transient=to_transient
         )
 
-    def _register_persistent(self, states: Set[InstanceState[Any]]) -> None:
+    def _register_persistent(self, states: set[InstanceState[Any]]) -> None:
         """Register all persistent objects from a flush.
 
         This is used both for pending objects moving to the persistent
@@ -3587,13 +3585,13 @@ class Session(_SessionClassMethods, EventTarget):
         entity: _EntityBindKey[_O],
         ident: _PKIdentityArgument,
         *,
-        options: Optional[Sequence[ORMOption]] = None,
+        options: Sequence[ORMOption] | None = None,
         populate_existing: bool = False,
         with_for_update: ForUpdateParameter = None,
-        identity_token: Optional[Any] = None,
+        identity_token: Any | None = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-    ) -> Optional[_O]:
+        bind_arguments: _BindArguments | None = None,
+    ) -> _O | None:
         """Return an instance based on the given primary key identifier,
         or ``None`` if not found.
 
@@ -3713,12 +3711,12 @@ class Session(_SessionClassMethods, EventTarget):
         entity: _EntityBindKey[_O],
         ident: _PKIdentityArgument,
         *,
-        options: Optional[Sequence[ORMOption]] = None,
+        options: Sequence[ORMOption] | None = None,
         populate_existing: bool = False,
         with_for_update: ForUpdateParameter = None,
-        identity_token: Optional[Any] = None,
+        identity_token: Any | None = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
     ) -> _O:
         """Return exactly one instance based on the given primary key
         identifier, or raise an exception if not found.
@@ -3765,13 +3763,13 @@ class Session(_SessionClassMethods, EventTarget):
         primary_key_identity: _PKIdentityArgument,
         db_load_fn: Callable[..., _O],
         *,
-        options: Optional[Sequence[ExecutableOption]] = None,
+        options: Sequence[ExecutableOption] | None = None,
         populate_existing: bool = False,
         with_for_update: ForUpdateParameter = None,
-        identity_token: Optional[Any] = None,
+        identity_token: Any | None = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
-    ) -> Optional[_O]:
+        bind_arguments: _BindArguments | None = None,
+    ) -> _O | None:
         # convert composite types to individual args
         if (
             is_composite_class(primary_key_identity)
@@ -3783,7 +3781,7 @@ class Session(_SessionClassMethods, EventTarget):
             ]
             primary_key_identity = getter(primary_key_identity)
 
-        mapper: Optional[Mapper[_O]] = inspect(entity)
+        mapper: Mapper[_O] | None = inspect(entity)
 
         if mapper is None or not mapper.is_mapper:
             raise sa_exc.ArgumentError(
@@ -3891,7 +3889,7 @@ class Session(_SessionClassMethods, EventTarget):
         instance: _O,
         *,
         load: bool = True,
-        options: Optional[Sequence[ORMOption]] = None,
+        options: Sequence[ORMOption] | None = None,
     ) -> _O:
         """Copy the state of a given instance into a corresponding instance
         within this :class:`.Session`.
@@ -3951,8 +3949,8 @@ class Session(_SessionClassMethods, EventTarget):
         if self._warn_on_events:
             self._flush_warning("Session.merge()")
 
-        _recursive: Dict[InstanceState[Any], object] = {}
-        _resolve_conflict_map: Dict[_IdentityKeyType[Any], object] = {}
+        _recursive: dict[InstanceState[Any], object] = {}
+        _resolve_conflict_map: dict[_IdentityKeyType[Any], object] = {}
 
         if load:
             # flush current contents if we expect to load data
@@ -3978,10 +3976,10 @@ class Session(_SessionClassMethods, EventTarget):
         state: InstanceState[_O],
         state_dict: _InstanceDict,
         *,
-        options: Optional[Sequence[ORMOption]] = None,
+        options: Sequence[ORMOption] | None = None,
         load: bool,
-        _recursive: Dict[Any, object],
-        _resolve_conflict_map: Dict[_IdentityKeyType[Any], object],
+        _recursive: dict[Any, object],
+        _resolve_conflict_map: dict[_IdentityKeyType[Any], object],
     ) -> _O:
         mapper: Mapper[_O] = _state_mapper(state)
         if state in _recursive:
@@ -3990,7 +3988,7 @@ class Session(_SessionClassMethods, EventTarget):
         new_instance = False
         key = state.key
 
-        merged: Optional[_O]
+        merged: _O | None
 
         if key is None:
             if state in self._new:
@@ -4325,7 +4323,7 @@ class Session(_SessionClassMethods, EventTarget):
     def _contains_state(self, state: InstanceState[Any]) -> bool:
         return state in self._new or self.identity_map.contains_state(state)
 
-    def flush(self, objects: Optional[Sequence[Any]] = None) -> None:
+    def flush(self, objects: Sequence[Any] | None = None) -> None:
         """Flush all the object changes to the database.
 
         Writes out all pending object creations, deletions and modifications
@@ -4374,7 +4372,7 @@ class Session(_SessionClassMethods, EventTarget):
             and not self._new
         )
 
-    def _flush(self, objects: Optional[Sequence[object]] = None) -> None:
+    def _flush(self, objects: Sequence[object] | None = None) -> None:
         dirty = self._dirty_states
         if not dirty and not self._deleted and not self._new:
             self.identity_map._modified.clear()
@@ -4582,7 +4580,7 @@ class Session(_SessionClassMethods, EventTarget):
 
         def grouping_key(
             state: InstanceState[_O],
-        ) -> Tuple[Mapper[_O], bool]:
+        ) -> tuple[Mapper[_O], bool]:
             return (state.mapper, state.key is not None)
 
         for (mapper, isupdate), states in itertools.groupby(
@@ -4601,7 +4599,7 @@ class Session(_SessionClassMethods, EventTarget):
     def bulk_insert_mappings(
         self,
         mapper: Mapper[Any],
-        mappings: Iterable[Dict[str, Any]],
+        mappings: Iterable[dict[str, Any]],
         return_defaults: bool = False,
         render_nulls: bool = False,
     ) -> None:
@@ -4682,7 +4680,7 @@ class Session(_SessionClassMethods, EventTarget):
         )
 
     def bulk_update_mappings(
-        self, mapper: Mapper[Any], mappings: Iterable[Dict[str, Any]]
+        self, mapper: Mapper[Any], mappings: Iterable[dict[str, Any]]
     ) -> None:
         """Perform a bulk update of the given list of mapping dictionaries.
 
@@ -4732,7 +4730,7 @@ class Session(_SessionClassMethods, EventTarget):
     def _bulk_save_mappings(
         self,
         mapper: Mapper[_O],
-        mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
+        mappings: Iterable[InstanceState[_O]] | Iterable[dict[str, Any]],
         *,
         isupdate: bool,
         isstates: bool,
@@ -5029,39 +5027,39 @@ class sessionmaker(_SessionClassMethods, Generic[_S]):
 
     """
 
-    class_: Type[_S]
+    class_: type[_S]
 
     @overload
     def __init__(
         self,
-        bind: Optional[_SessionBind] = ...,
+        bind: _SessionBind | None = ...,
         *,
-        class_: Type[_S],
+        class_: type[_S],
         autoflush: bool = ...,
         expire_on_commit: bool = ...,
-        info: Optional[_InfoType] = ...,
+        info: _InfoType | None = ...,
         **kw: Any,
     ): ...
 
     @overload
     def __init__(
-        self: "sessionmaker[Session]",
-        bind: Optional[_SessionBind] = ...,
+        self: sessionmaker[Session],
+        bind: _SessionBind | None = ...,
         *,
         autoflush: bool = ...,
         expire_on_commit: bool = ...,
-        info: Optional[_InfoType] = ...,
+        info: _InfoType | None = ...,
         **kw: Any,
     ): ...
 
     def __init__(
         self,
-        bind: Optional[_SessionBind] = None,
+        bind: _SessionBind | None = None,
         *,
-        class_: Type[_S] = Session,  # type: ignore
+        class_: type[_S] = Session,  # type: ignore
         autoflush: bool = True,
         expire_on_commit: bool = True,
-        info: Optional[_InfoType] = None,
+        info: _InfoType | None = None,
         **kw: Any,
     ):
         r"""Construct a new :class:`.sessionmaker`.
@@ -5159,10 +5157,10 @@ class sessionmaker(_SessionClassMethods, Generic[_S]):
         self.kw.update(new_kw)
 
     def __repr__(self) -> str:
-        return "%s(class_=%r, %s)" % (
+        return "{}(class_={!r}, {})".format(
             self.__class__.__name__,
             self.class_.__name__,
-            ", ".join("%s=%r" % (k, v) for k, v in self.kw.items()),
+            ", ".join("{}={!r}".format(k, v) for k, v in self.kw.items()),
         )
 
 
@@ -5288,7 +5286,7 @@ def make_transient_to_detached(instance: object) -> None:
     state._expire_attributes(state.dict, state.unloaded)
 
 
-def object_session(instance: object) -> Optional[Session]:
+def object_session(instance: object) -> Session | None:
     """Return the :class:`.Session` to which the given instance belongs.
 
     This is essentially the same as the :attr:`.InstanceState.session`

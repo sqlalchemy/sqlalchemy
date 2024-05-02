@@ -53,7 +53,7 @@ class Item(Base):
         self.price = price
 
     def __repr__(self):
-        return "Item(%r, %r)" % (self.description, self.price)
+        return f"Item({self.description!r}, {self.price!r})"
 
 
 class OrderItem(Base):

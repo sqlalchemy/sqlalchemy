@@ -55,13 +55,13 @@ _S = TypeVar("_S")
 
 
 @cython.ccall
-def unique_list(seq: Iterable[_T]) -> List[_T]:
+def unique_list(seq: Iterable[_T]) -> list[_T]:
     # this version seems somewhat faster for smaller sizes, but it's
     # significantly slower on larger sizes
     # w = {x:None for x in seq}
     # return PyDict_Keys(w) if cython.compiled else list(w)
     if cython.compiled:
-        seen: Set[_T] = set()
+        seen: set[_T] = set()
         return [x for x in seq if x not in seen and not set.add(seen, x)]
     else:
         return list(dict.fromkeys(seq))
@@ -90,13 +90,13 @@ class OrderedSet(Set[_T]):
     """A set implementation that maintains insertion order."""
 
     __slots__ = ("_list",)
-    _list: List[_T]
+    _list: list[_T]
 
     @classmethod
     def __class_getitem__(cls, key: Any) -> type[Self]:
         return cls
 
-    def __init__(self, d: Optional[Iterable[_T]] = None) -> None:
+    def __init__(self, d: Iterable[_T] | None = None) -> None:
         if d is not None:
             if isinstance(d, set) or isinstance(d, dict):
                 self._list = list(d)
@@ -113,7 +113,7 @@ class OrderedSet(Set[_T]):
     @cython.final
     @cython.cfunc
     @cython.inline
-    def _from_list(self, new_list: List[_T]) -> OrderedSet:  # type: ignore[type-arg] # noqa: E501
+    def _from_list(self, new_list: list[_T]) -> OrderedSet:  # type: ignore[type-arg] # noqa: E501
         new: OrderedSet = OrderedSet.__new__(OrderedSet)  # type: ignore[type-arg] # noqa: E501
         new._list = new_list
         set.update(new, new_list)
@@ -161,7 +161,7 @@ class OrderedSet(Set[_T]):
         return self.union(other)
 
     def __repr__(self) -> str:
-        return "%s(%r)" % (self.__class__.__name__, self._list)
+        return "{}({!r})".format(self.__class__.__name__, self._list)
 
     __str__ = __repr__
 
@@ -177,23 +177,23 @@ class OrderedSet(Set[_T]):
                     set.add(self, element)
 
     def __ior__(
-        self: OrderedSet[Union[_T, _S]], iterable: AbstractSet[_S]
-    ) -> OrderedSet[Union[_T, _S]]:
+        self: OrderedSet[_T | _S], iterable: AbstractSet[_S]
+    ) -> OrderedSet[_T | _S]:
         self.update(iterable)
         return self
 
     # @cython.ccall # cdef function cannot have star argument
-    def union(self, *other: Iterable[_S]) -> OrderedSet[Union[_T, _S]]:
-        result: OrderedSet[Union[_T, _S]] = self._from_list(list(self._list))
+    def union(self, *other: Iterable[_S]) -> OrderedSet[_T | _S]:
+        result: OrderedSet[_T | _S] = self._from_list(list(self._list))
         result.update(*other)
         return result
 
-    def __or__(self, other: AbstractSet[_S]) -> OrderedSet[Union[_T, _S]]:
+    def __or__(self, other: AbstractSet[_S]) -> OrderedSet[_T | _S]:
         return self.union(other)
 
     # @cython.ccall # cdef function cannot have star argument
     def intersection(self, *other: Iterable[Hashable]) -> OrderedSet[_T]:
-        other_set: Set[Any] = set.intersection(self, *other)
+        other_set: set[Any] = set.intersection(self, *other)
         return self._from_list([a for a in self._list if a in other_set])
 
     def __and__(self, other: AbstractSet[Hashable]) -> OrderedSet[_T]:
@@ -203,9 +203,9 @@ class OrderedSet(Set[_T]):
     @cython.annotation_typing(False)  # avoid cython crash from generic return
     def symmetric_difference(
         self, other: Iterable[_S], /
-    ) -> OrderedSet[Union[_T, _S]]:
+    ) -> OrderedSet[_T | _S]:
         collection: Iterable[Any]
-        other_set: Set[_S]
+        other_set: set[_S]
         if isinstance(other, set):
             other_set = cython.cast(set, other)
             collection = other_set
@@ -215,18 +215,18 @@ class OrderedSet(Set[_T]):
         else:
             collection = list(other)
             other_set = set(collection)
-        result: OrderedSet[Union[_T, _S]] = self._from_list(
+        result: OrderedSet[_T | _S] = self._from_list(
             [a for a in self._list if a not in other_set]
         )
         result.update([a for a in collection if a not in self])
         return result
 
-    def __xor__(self, other: AbstractSet[_S]) -> OrderedSet[Union[_T, _S]]:
+    def __xor__(self, other: AbstractSet[_S]) -> OrderedSet[_T | _S]:
         return self.symmetric_difference(other)
 
     # @cython.ccall # cdef function cannot have star argument
     def difference(self, *other: Iterable[Hashable]) -> OrderedSet[_T]:
-        other_set: Set[Any] = set.difference(self, *other)
+        other_set: set[Any] = set.difference(self, *other)
         return self._from_list([a for a in self._list if a in other_set])
 
     def __sub__(self, other: AbstractSet[Hashable]) -> OrderedSet[_T]:
@@ -250,8 +250,8 @@ class OrderedSet(Set[_T]):
         self._list += [a for a in collection if a in self]
 
     def __ixor__(
-        self: OrderedSet[Union[_T, _S]], other: AbstractSet[_S]
-    ) -> OrderedSet[Union[_T, _S]]:
+        self: OrderedSet[_T | _S], other: AbstractSet[_S]
+    ) -> OrderedSet[_T | _S]:
         self.symmetric_difference_update(other)
         return self
 
@@ -293,9 +293,9 @@ class IdentitySet:
     """
 
     __slots__ = ("_members",)
-    _members: Dict[int, Any]
+    _members: dict[int, Any]
 
-    def __init__(self, iterable: Optional[Iterable[Any]] = None):
+    def __init__(self, iterable: Iterable[Any] | None = None):
         # the code assumes this class is ordered
         self._members = {}
         if iterable:
@@ -318,7 +318,7 @@ class IdentitySet:
             pass
 
     def pop(self) -> Any:
-        pair: Tuple[Any, Any]
+        pair: tuple[Any, Any]
         try:
             pair = self._members.popitem()
             return pair[1]
@@ -398,7 +398,7 @@ class IdentitySet:
 
     @cython.ccall
     def update(self, iterable: Iterable[Any], /):
-        members: Dict[int, Any] = self._members
+        members: dict[int, Any] = self._members
         if isinstance(iterable, IdentitySet):
             members.update(cython.cast(IdentitySet, iterable)._members)
         else:
@@ -473,7 +473,7 @@ class IdentitySet:
     @cython.ccall
     def symmetric_difference(self, iterable: Iterable[Any], /) -> IdentitySet:
         result: IdentitySet = self.__new__(self.__class__)
-        other: Dict[int, Any]
+        other: dict[int, Any]
         if isinstance(iterable, IdentitySet):
             other = cython.cast(IdentitySet, iterable)._members
         else:
@@ -522,7 +522,7 @@ class IdentitySet:
         raise TypeError("set objects are unhashable")
 
     def __repr__(self) -> str:
-        return "%s(%r)" % (
+        return "{}({!r})".format(
             self.__class__.__name__,
             list(self._members.values()),
         )

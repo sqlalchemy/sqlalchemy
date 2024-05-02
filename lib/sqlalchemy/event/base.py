@@ -42,7 +42,7 @@ from .registry import _EventKey
 from .. import util
 from ..util.typing import Literal
 
-_registrars: MutableMapping[str, List[Type[_HasEventsDispatch[Any]]]] = (
+_registrars: MutableMapping[str, list[type[_HasEventsDispatch[Any]]]] = (
     util.defaultdict(list)
 )
 
@@ -63,7 +63,7 @@ class _UnpickleDispatch:
 
     """
 
-    def __call__(self, _instance_cls: Type[_ET]) -> _Dispatch[_ET]:
+    def __call__(self, _instance_cls: type[_ET]) -> _Dispatch[_ET]:
         for cls in _instance_cls.__mro__:
             if "dispatch" in cls.__dict__:
                 return cast(
@@ -76,7 +76,7 @@ class _UnpickleDispatch:
 class _DispatchCommon(Generic[_ET]):
     __slots__ = ()
 
-    _instance_cls: Optional[Type[_ET]]
+    _instance_cls: type[_ET] | None
 
     def _join(self, other: _DispatchCommon[_ET]) -> _JoinedDispatcher[_ET]:
         raise NotImplementedError()
@@ -85,7 +85,7 @@ class _DispatchCommon(Generic[_ET]):
         raise NotImplementedError()
 
     @property
-    def _events(self) -> Type[_HasEventsDispatch[_ET]]:
+    def _events(self) -> type[_HasEventsDispatch[_ET]]:
         raise NotImplementedError()
 
 
@@ -116,18 +116,18 @@ class _Dispatch(_DispatchCommon[_ET]):
     _active_history: bool
 
     _empty_listener_reg: MutableMapping[
-        Type[_ET], Dict[str, _EmptyListener[_ET]]
+        type[_ET], dict[str, _EmptyListener[_ET]]
     ] = weakref.WeakKeyDictionary()
 
-    _empty_listeners: Dict[str, _EmptyListener[_ET]]
+    _empty_listeners: dict[str, _EmptyListener[_ET]]
 
-    _event_names: List[str]
+    _event_names: list[str]
 
-    _instance_cls: Optional[Type[_ET]]
+    _instance_cls: type[_ET] | None
 
-    _joined_dispatch_cls: Type[_JoinedDispatcher[_ET]]
+    _joined_dispatch_cls: type[_JoinedDispatcher[_ET]]
 
-    _events: Type[_HasEventsDispatch[_ET]]
+    _events: type[_HasEventsDispatch[_ET]]
     """reference back to the Events class.
 
     Bidirectional against _HasEventsDispatch.dispatch
@@ -136,8 +136,8 @@ class _Dispatch(_DispatchCommon[_ET]):
 
     def __init__(
         self,
-        parent: Optional[_Dispatch[_ET]],
-        instance_cls: Optional[Type[_ET]] = None,
+        parent: _Dispatch[_ET] | None,
+        instance_cls: type[_ET] | None = None,
     ):
         self._parent = parent
         self._instance_cls = instance_cls
@@ -177,7 +177,7 @@ class _Dispatch(_DispatchCommon[_ET]):
     def _listen(self, event_key: _EventKey[_ET], **kw: Any) -> None:
         return self._events._listen(event_key, **kw)
 
-    def _for_class(self, instance_cls: Type[_ET]) -> _Dispatch[_ET]:
+    def _for_class(self, instance_cls: type[_ET]) -> _Dispatch[_ET]:
         return self.__class__(self, instance_cls)
 
     def _for_instance(self, instance: _ET) -> _Dispatch[_ET]:
@@ -200,7 +200,7 @@ class _Dispatch(_DispatchCommon[_ET]):
             self.__class__._joined_dispatch_cls = cls
         return self._joined_dispatch_cls(self, other)
 
-    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
+    def __reduce__(self) -> str | tuple[Any, ...]:
         return _UnpickleDispatch(), (self._instance_cls,)
 
     def _update(
@@ -220,7 +220,7 @@ class _Dispatch(_DispatchCommon[_ET]):
             ls.for_modify(self).clear()
 
 
-def _remove_dispatcher(cls: Type[_HasEventsDispatch[_ET]]) -> None:
+def _remove_dispatcher(cls: type[_HasEventsDispatch[_ET]]) -> None:
     for k in cls.dispatch._event_names:
         _registrars[k].remove(cls)
         if not _registrars[k]:
@@ -228,7 +228,7 @@ def _remove_dispatcher(cls: Type[_HasEventsDispatch[_ET]]) -> None:
 
 
 class _HasEventsDispatch(Generic[_ET]):
-    _dispatch_target: Optional[Type[_ET]]
+    _dispatch_target: type[_ET] | None
     """class which will receive the .dispatch collection"""
 
     dispatch: _Dispatch[_ET]
@@ -250,8 +250,8 @@ class _HasEventsDispatch(Generic[_ET]):
 
     @classmethod
     def _accept_with(
-        cls, target: Union[_ET, Type[_ET]], identifier: str
-    ) -> Optional[Union[_ET, Type[_ET]]]:
+        cls, target: _ET | type[_ET], identifier: str
+    ) -> _ET | type[_ET] | None:
         raise NotImplementedError()
 
     @classmethod
@@ -268,8 +268,8 @@ class _HasEventsDispatch(Generic[_ET]):
 
     @staticmethod
     def _set_dispatch(
-        klass: Type[_HasEventsDispatch[_ET]],
-        dispatch_cls: Type[_Dispatch[_ET]],
+        klass: type[_HasEventsDispatch[_ET]],
+        dispatch_cls: type[_Dispatch[_ET]],
     ) -> _Dispatch[_ET]:
         # This allows an Events subclass to define additional utility
         # methods made available to the target via
@@ -282,7 +282,7 @@ class _HasEventsDispatch(Generic[_ET]):
 
     @classmethod
     def _create_dispatcher_class(
-        cls, classname: str, bases: Tuple[type, ...], dict_: Mapping[str, Any]
+        cls, classname: str, bases: tuple[type, ...], dict_: Mapping[str, Any]
     ) -> None:
         """Create a :class:`._Dispatch` class corresponding to an
         :class:`.Events` class."""
@@ -334,12 +334,12 @@ class Events(_HasEventsDispatch[_ET]):
 
     @classmethod
     def _accept_with(
-        cls, target: Union[_ET, Type[_ET]], identifier: str
-    ) -> Optional[Union[_ET, Type[_ET]]]:
-        def dispatch_is(*types: Type[Any]) -> bool:
+        cls, target: _ET | type[_ET], identifier: str
+    ) -> _ET | type[_ET] | None:
+        def dispatch_is(*types: type[Any]) -> bool:
             return all(isinstance(target.dispatch, t) for t in types)
 
-        def dispatch_parent_is(t: Type[Any]) -> bool:
+        def dispatch_parent_is(t: type[Any]) -> bool:
             return isinstance(
                 cast("_JoinedDispatcher[_ET]", target.dispatch).parent, t
             )
@@ -389,7 +389,7 @@ class _JoinedDispatcher(_DispatchCommon[_ET]):
 
     local: _DispatchCommon[_ET]
     parent: _DispatchCommon[_ET]
-    _instance_cls: Optional[Type[_ET]]
+    _instance_cls: type[_ET] | None
 
     def __init__(
         self, local: _DispatchCommon[_ET], parent: _DispatchCommon[_ET]
@@ -410,7 +410,7 @@ class _JoinedDispatcher(_DispatchCommon[_ET]):
         return self.parent._listen(event_key, **kw)
 
     @property
-    def _events(self) -> Type[_HasEventsDispatch[_ET]]:
+    def _events(self) -> type[_HasEventsDispatch[_ET]]:
         return self.parent._events
 
 
@@ -422,19 +422,19 @@ class dispatcher(Generic[_ET]):
 
     """
 
-    def __init__(self, events: Type[_HasEventsDispatch[_ET]]):
+    def __init__(self, events: type[_HasEventsDispatch[_ET]]):
         self.dispatch = events.dispatch
         self.events = events
 
     @overload
     def __get__(
-        self, obj: Literal[None], cls: Type[Any]
-    ) -> Type[_Dispatch[_ET]]: ...
+        self, obj: Literal[None], cls: type[Any]
+    ) -> type[_Dispatch[_ET]]: ...
 
     @overload
-    def __get__(self, obj: Any, cls: Type[Any]) -> _DispatchCommon[_ET]: ...
+    def __get__(self, obj: Any, cls: type[Any]) -> _DispatchCommon[_ET]: ...
 
-    def __get__(self, obj: Any, cls: Type[Any]) -> Any:
+    def __get__(self, obj: Any, cls: type[Any]) -> Any:
         if obj is None:
             return self.dispatch
 
@@ -450,7 +450,7 @@ class dispatcher(Generic[_ET]):
 
 
 class slots_dispatcher(dispatcher[_ET]):
-    def __get__(self, obj: Any, cls: Type[Any]) -> Any:
+    def __get__(self, obj: Any, cls: type[Any]) -> Any:
         if obj is None:
             return self.dispatch
 

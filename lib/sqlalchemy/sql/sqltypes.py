@@ -101,7 +101,7 @@ class HasExpressionLookup(TypeEngineMixin):
             self,
             op: OperatorType,
             other_comparator: TypeEngine.Comparator[Any],
-        ) -> Tuple[OperatorType, TypeEngine[Any]]:
+        ) -> tuple[OperatorType, TypeEngine[Any]]:
             othertype = other_comparator.type._type_affinity
             if TYPE_CHECKING:
                 assert isinstance(self.type, HasExpressionLookup)
@@ -129,7 +129,7 @@ class Concatenable(TypeEngineMixin):
             self,
             op: OperatorType,
             other_comparator: TypeEngine.Comparator[Any],
-        ) -> Tuple[OperatorType, TypeEngine[Any]]:
+        ) -> tuple[OperatorType, TypeEngine[Any]]:
             if op is operators.add and isinstance(
                 other_comparator,
                 (Concatenable.Comparator, NullType.Comparator),
@@ -181,8 +181,8 @@ class String(Concatenable, TypeEngine[str]):
 
     def __init__(
         self,
-        length: Optional[int] = None,
-        collation: Optional[str] = None,
+        length: int | None = None,
+        collation: str | None = None,
     ):
         """
         Create a string-holding type.
@@ -331,7 +331,7 @@ class Integer(HasExpressionLookup, TypeEngine[int]):
     if TYPE_CHECKING:
 
         @util.ro_memoized_property
-        def _type_affinity(self) -> Type[Integer]: ...
+        def _type_affinity(self) -> type[Integer]: ...
 
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
@@ -433,33 +433,33 @@ class Numeric(HasExpressionLookup, TypeEngine[_N]):
     if TYPE_CHECKING:
 
         @util.ro_memoized_property
-        def _type_affinity(self) -> Type[Numeric[_N]]: ...
+        def _type_affinity(self) -> type[Numeric[_N]]: ...
 
     _default_decimal_return_scale = 10
 
     @overload
     def __init__(
         self: Numeric[decimal.Decimal],
-        precision: Optional[int] = ...,
-        scale: Optional[int] = ...,
-        decimal_return_scale: Optional[int] = ...,
+        precision: int | None = ...,
+        scale: int | None = ...,
+        decimal_return_scale: int | None = ...,
         asdecimal: Literal[True] = ...,
     ): ...
 
     @overload
     def __init__(
         self: Numeric[float],
-        precision: Optional[int] = ...,
-        scale: Optional[int] = ...,
-        decimal_return_scale: Optional[int] = ...,
+        precision: int | None = ...,
+        scale: int | None = ...,
+        decimal_return_scale: int | None = ...,
         asdecimal: Literal[False] = ...,
     ): ...
 
     def __init__(
         self,
-        precision: Optional[int] = None,
-        scale: Optional[int] = None,
-        decimal_return_scale: Optional[int] = None,
+        precision: int | None = None,
+        scale: int | None = None,
+        decimal_return_scale: int | None = None,
         asdecimal: bool = True,
     ):
         """
@@ -603,24 +603,24 @@ class Float(Numeric[_N]):
     @overload
     def __init__(
         self: Float[float],
-        precision: Optional[int] = ...,
+        precision: int | None = ...,
         asdecimal: Literal[False] = ...,
-        decimal_return_scale: Optional[int] = ...,
+        decimal_return_scale: int | None = ...,
     ): ...
 
     @overload
     def __init__(
         self: Float[decimal.Decimal],
-        precision: Optional[int] = ...,
+        precision: int | None = ...,
         asdecimal: Literal[True] = ...,
-        decimal_return_scale: Optional[int] = ...,
+        decimal_return_scale: int | None = ...,
     ): ...
 
     def __init__(
         self: Float[_N],
-        precision: Optional[int] = None,
+        precision: int | None = None,
         asdecimal: bool = False,
-        decimal_return_scale: Optional[int] = None,
+        decimal_return_scale: int | None = None,
     ):
         r"""
         Construct a Float.
@@ -863,7 +863,7 @@ class Time(_RenderISO8601NoT, HasExpressionLookup, TypeEngine[dt.time]):
 class _Binary(TypeEngine[bytes]):
     """Define base behavior for binary types."""
 
-    def __init__(self, length: Optional[int] = None):
+    def __init__(self, length: int | None = None):
         self.length = length
 
     def literal_processor(self, dialect):
@@ -934,7 +934,7 @@ class LargeBinary(_Binary):
 
     __visit_name__ = "large_binary"
 
-    def __init__(self, length: Optional[int] = None):
+    def __init__(self, length: int | None = None):
         """
         Construct a LargeBinary type.
 
@@ -971,17 +971,17 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
 
     _use_schema_map = True
 
-    name: Optional[str]
+    name: str | None
 
     def __init__(
         self,
-        name: Optional[str] = None,
-        schema: Optional[str] = None,
-        metadata: Optional[MetaData] = None,
+        name: str | None = None,
+        schema: str | None = None,
+        metadata: MetaData | None = None,
         inherit_schema: bool = False,
-        quote: Optional[bool] = None,
+        quote: bool | None = None,
         _create_events: bool = True,
-        _adapted_from: Optional[SchemaType] = None,
+        _adapted_from: SchemaType | None = None,
     ):
         if name is not None:
             self.name = quoted_name(name, quote)
@@ -1084,15 +1084,15 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         )
 
     @overload
-    def adapt(self, cls: Type[_TE], **kw: Any) -> _TE: ...
+    def adapt(self, cls: type[_TE], **kw: Any) -> _TE: ...
 
     @overload
     def adapt(
-        self, cls: Type[TypeEngineMixin], **kw: Any
+        self, cls: type[TypeEngineMixin], **kw: Any
     ) -> TypeEngine[Any]: ...
 
     def adapt(
-        self, cls: Type[Union[TypeEngine[Any], TypeEngineMixin]], **kw: Any
+        self, cls: type[TypeEngine[Any] | TypeEngineMixin], **kw: Any
     ) -> TypeEngine[Any]:
         kw.setdefault("_create_events", False)
         kw.setdefault("_adapted_from", self)
@@ -1487,10 +1487,10 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
 
     def _resolve_for_python_type(
         self,
-        python_type: Type[Any],
+        python_type: type[Any],
         matched_on: _MatchedOnType,
-        matched_on_flattened: Type[Any],
-    ) -> Optional[Enum]:
+        matched_on_flattened: type[Any],
+    ) -> Enum | None:
         # "generic form" indicates we were placed in a type map
         # as ``sqlalchemy.Enum(enum.Enum)`` which indicates we need to
         # get enumerated values from the datatype
@@ -1597,7 +1597,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
             self,
             op: OperatorType,
             other_comparator: TypeEngine.Comparator[Any],
-        ) -> Tuple[OperatorType, TypeEngine[Any]]:
+        ) -> tuple[OperatorType, TypeEngine[Any]]:
             op, typ = super()._adapt_expression(op, other_comparator)
             if op is operators.concat_op:
                 typ = String(self.type.length)
@@ -1763,8 +1763,8 @@ class PickleType(TypeDecorator[object]):
         self,
         protocol: int = pickle.HIGHEST_PROTOCOL,
         pickler: Any = None,
-        comparator: Optional[Callable[[Any, Any], bool]] = None,
-        impl: Optional[_TypeEngineArgument[Any]] = None,
+        comparator: Callable[[Any, Any], bool] | None = None,
+        impl: _TypeEngineArgument[Any] | None = None,
     ):
         """
         Construct a PickleType.
@@ -1873,9 +1873,9 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
     def __init__(
         self,
         create_constraint: bool = False,
-        name: Optional[str] = None,
+        name: str | None = None,
         _create_events: bool = True,
-        _adapted_from: Optional[SchemaType] = None,
+        _adapted_from: SchemaType | None = None,
     ):
         """Construct a Boolean.
 
@@ -1940,10 +1940,10 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
     def _strict_as_bool(self, value):
         if value not in self._strict_bools:
             if not isinstance(value, int):
-                raise TypeError("Not a boolean value: %r" % (value,))
+                raise TypeError("Not a boolean value: {!r}".format(value))
             else:
                 raise ValueError(
-                    "Value %r is not None, True, or False" % (value,)
+                    "Value {!r} is not None, True, or False".format(value)
                 )
         return value
 
@@ -1960,7 +1960,7 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
     def bind_processor(self, dialect):
         _strict_as_bool = self._strict_as_bool
 
-        _coerce: Union[Type[bool], Type[int]]
+        _coerce: type[bool] | type[int]
 
         if dialect.supports_native_boolean:
             _coerce = bool
@@ -2001,7 +2001,7 @@ class _AbstractInterval(HasExpressionLookup, TypeEngine[dt.timedelta]):
         }
 
     @util.ro_non_memoized_property
-    def _type_affinity(self) -> Type[Interval]:
+    def _type_affinity(self) -> type[Interval]:
         return Interval
 
 
@@ -2029,8 +2029,8 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
     def __init__(
         self,
         native: bool = True,
-        second_precision: Optional[int] = None,
-        day_precision: Optional[int] = None,
+        second_precision: int | None = None,
+        day_precision: int | None = None,
     ):
         """Construct an Interval object.
 
@@ -2082,7 +2082,7 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
             fixed_impl_processor = impl_processor
 
             def process(
-                value: Optional[dt.timedelta],
+                value: dt.timedelta | None,
             ) -> Any:
                 if value is not None:
                     dt_value = epoch + value
@@ -2093,7 +2093,7 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
         else:
 
             def process(
-                value: Optional[dt.timedelta],
+                value: dt.timedelta | None,
             ) -> Any:
                 if value is not None:
                     dt_value = epoch + value
@@ -2113,7 +2113,7 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
         if impl_processor:
             fixed_impl_processor = impl_processor
 
-            def process(value: Any) -> Optional[dt.timedelta]:
+            def process(value: Any) -> dt.timedelta | None:
                 dt_value = fixed_impl_processor(value)
                 if dt_value is None:
                     return None
@@ -2121,7 +2121,7 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
 
         else:
 
-            def process(value: Any) -> Optional[dt.timedelta]:
+            def process(value: Any) -> dt.timedelta | None:
                 if value is None:
                     return None
                 return value - epoch  # type: ignore
@@ -2832,7 +2832,7 @@ class ARRAY(
         self,
         item_type: _TypeEngineArgument[Any],
         as_tuple: bool = False,
-        dimensions: Optional[int] = None,
+        dimensions: int | None = None,
         zero_indexes: bool = False,
     ):
         """Construct an :class:`_types.ARRAY`.
@@ -3125,7 +3125,7 @@ class TupleType(TypeEngine[TupleAny]):
 
     _is_tuple_type = True
 
-    types: List[TypeEngine[Any]]
+    types: list[TypeEngine[Any]]
 
     def __init__(self, *types: _TypeEngineArgument[Any]):
         self._fully_typed = NULLTYPE not in types
@@ -3135,7 +3135,7 @@ class TupleType(TypeEngine[TupleAny]):
         ]
 
     def coerce_compared_value(
-        self, op: Optional[OperatorType], value: Any
+        self, op: OperatorType | None, value: Any
     ) -> TypeEngine[Any]:
         if value is type_api._NO_VALUE_IN_LIST:
             return super().coerce_compared_value(op, value)
@@ -3430,7 +3430,7 @@ class NullType(TypeEngine[None]):
             self,
             op: OperatorType,
             other_comparator: TypeEngine.Comparator[Any],
-        ) -> Tuple[OperatorType, TypeEngine[Any]]:
+        ) -> tuple[OperatorType, TypeEngine[Any]]:
             if isinstance(
                 other_comparator, NullType.Comparator
             ) or not operators.is_commutative(op):
@@ -3450,7 +3450,7 @@ class TableValueType(HasCacheKey, TypeEngine[Any]):
         ("_elements", InternalTraversal.dp_clauseelement_list),
     ]
 
-    def __init__(self, *elements: Union[str, _ColumnExpressionArgument[Any]]):
+    def __init__(self, *elements: str | _ColumnExpressionArgument[Any]):
         self._elements = [
             coercions.expect(roles.StrAsPlainColumnRole, elem)
             for elem in elements
@@ -3527,7 +3527,7 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
 
     __visit_name__ = "uuid"
 
-    collation: Optional[str] = None
+    collation: str | None = None
 
     @overload
     def __init__(
@@ -3727,7 +3727,7 @@ _TIME = Time()
 _STRING = String()
 _UNICODE = Unicode()
 
-_type_map: Dict[Type[Any], TypeEngine[Any]] = {
+_type_map: dict[type[Any], TypeEngine[Any]] = {
     int: Integer(),
     float: Float(),
     bool: BOOLEANTYPE,
@@ -3766,7 +3766,7 @@ def _resolve_value_to_type(value: Any) -> TypeEngine[Any]:
             insp.__class__ in inspection._registrars
         ):
             raise exc.ArgumentError(
-                "Object %r is not legal as a SQL literal value" % (value,)
+                "Object {!r} is not legal as a SQL literal value".format(value)
             )
         return NULLTYPE
     else:

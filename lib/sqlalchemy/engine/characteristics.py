@@ -140,7 +140,7 @@ class LoggingTokenCharacteristic(ConnectionCharacteristic):
         value: Any,
     ) -> None:
         if value:
-            conn._message_formatter = lambda msg: "[%s] %s" % (value, msg)
+            conn._message_formatter = lambda msg: f"[{value}] {msg}"
         else:
             del conn._message_formatter
 

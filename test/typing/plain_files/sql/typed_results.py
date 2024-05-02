@@ -37,7 +37,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
-    value: Mapped[Optional[str]]
+    value: Mapped[str | None]
 
 
 t_user = Table(
@@ -683,14 +683,14 @@ def test_outerjoin_10173() -> None:
     stmt: Select[User, Other] = select(User, Other).outerjoin(
         Other, User.id == Other.id
     )
-    stmt2: Select[User, Optional[Other]] = select(
+    stmt2: Select[User, Other | None] = select(
         User, Nullable(Other)
     ).outerjoin(Other, User.id == Other.id)
-    stmt3: Select[int, Optional[str]] = select(
+    stmt3: Select[int, str | None] = select(
         User.id, Nullable(Other.name)
     ).outerjoin(Other, User.id == Other.id)
 
-    def go(W: Optional[Type[Other]]) -> None:
+    def go(W: type[Other] | None) -> None:
         stmt4: Select[str, Other] = select(
             NotNullable(User.value), NotNullable(W)
         ).where(User.value.is_not(None))

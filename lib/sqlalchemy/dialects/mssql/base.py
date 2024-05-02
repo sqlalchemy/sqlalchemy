@@ -1239,7 +1239,7 @@ class _MSDate(sqltypes.Date):
                 m = self._reg.match(value)
                 if not m:
                     raise ValueError(
-                        "could not parse %r as a date value" % (value,)
+                        f"could not parse {value!r} as a date value"
                     )
                 return datetime.date(*[int(x or 0) for x in m.groups()])
             else:
@@ -1281,7 +1281,7 @@ class TIME(sqltypes.TIME):
                 m = self._reg.match(value)
                 if not m:
                     raise ValueError(
-                        "could not parse %r as a time value" % (value,)
+                        f"could not parse {value!r} as a time value"
                     )
                 return datetime.time(*[int(x or 0) for x in m.groups()])
             else:
@@ -1677,7 +1677,7 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
         if precision is None:
             return "FLOAT"
         else:
-            return "FLOAT(%(precision)s)" % {"precision": precision}
+            return f"FLOAT({precision})"
 
     def visit_TINYINT(self, type_, **kw):
         return "TINYINT"
@@ -2022,7 +2022,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
         return " + ".join(self.process(elem, **kw) for elem in clauselist)
 
     def visit_concat_op_binary(self, binary, operator, **kw):
-        return "%s + %s" % (
+        return "{} + {}".format(
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         )
@@ -2034,7 +2034,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
         return "0"
 
     def visit_match_op_binary(self, binary, operator, **kw):
-        return "CONTAINS (%s, %s)" % (
+        return "CONTAINS ({}, {})".format(
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         )
@@ -2129,7 +2129,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             return ""
 
     def visit_try_cast(self, element, **kw):
-        return "TRY_CAST (%s AS %s)" % (
+        return "TRY_CAST ({} AS {})".format(
             self.process(element.clause, **kw),
             self.process(element.typeclause, **kw),
         )
@@ -2239,7 +2239,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
     def visit_extract(self, extract, **kw):
         field = self.extract_map.get(extract.field, extract.field)
-        return "DATEPART(%s, %s)" % (field, self.process(extract.expr, **kw))
+        return f"DATEPART({field}, {self.process(extract.expr, **kw)})"
 
     def visit_savepoint(self, savepoint_stmt, **kw):
         return "SAVE TRANSACTION %s" % self.preparer.format_savepoint(
@@ -2404,13 +2404,13 @@ class MSSQLCompiler(compiler.SQLCompiler):
         return "SELECT 1 WHERE 1!=1"
 
     def visit_is_distinct_from_binary(self, binary, operator, **kw):
-        return "NOT EXISTS (SELECT %s INTERSECT SELECT %s)" % (
+        return "NOT EXISTS (SELECT {} INTERSECT SELECT {})".format(
             self.process(binary.left),
             self.process(binary.right),
         )
 
     def visit_is_not_distinct_from_binary(self, binary, operator, **kw):
-        return "EXISTS (SELECT %s INTERSECT SELECT %s)" % (
+        return "EXISTS (SELECT {} INTERSECT SELECT {})".format(
             self.process(binary.left),
             self.process(binary.right),
         )
@@ -2421,24 +2421,24 @@ class MSSQLCompiler(compiler.SQLCompiler):
         # by positional parameter rendering
 
         if binary.type._type_affinity is sqltypes.JSON:
-            return "JSON_QUERY(%s, %s)" % (
+            return "JSON_QUERY({}, {})".format(
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
             )
 
         # as with other dialects, start with an explicit test for NULL
-        case_expression = "CASE JSON_VALUE(%s, %s) WHEN NULL THEN NULL" % (
+        case_expression = "CASE JSON_VALUE({}, {}) WHEN NULL THEN NULL".format(
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         )
 
         if binary.type._type_affinity is sqltypes.Integer:
-            type_expression = "ELSE CAST(JSON_VALUE(%s, %s) AS INTEGER)" % (
+            type_expression = "ELSE CAST(JSON_VALUE({}, {}) AS INTEGER)".format(
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
             )
         elif binary.type._type_affinity is sqltypes.Numeric:
-            type_expression = "ELSE CAST(JSON_VALUE(%s, %s) AS %s)" % (
+            type_expression = "ELSE CAST(JSON_VALUE({}, {}) AS {})".format(
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
                 (
@@ -2458,13 +2458,13 @@ class MSSQLCompiler(compiler.SQLCompiler):
             # TODO: does this comment (from mysql) apply to here, too?
             #       this fails with a JSON value that's a four byte unicode
             #       string.  SQLite has the same problem at the moment
-            type_expression = "ELSE JSON_VALUE(%s, %s)" % (
+            type_expression = "ELSE JSON_VALUE({}, {})".format(
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
             )
         else:
             # other affinity....this is not expected right now
-            type_expression = "ELSE JSON_QUERY(%s, %s)" % (
+            type_expression = "ELSE JSON_QUERY({}, {})".format(
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
             )
@@ -2494,14 +2494,14 @@ class MSSQLStrictCompiler(MSSQLCompiler):
 
     def visit_in_op_binary(self, binary, operator, **kw):
         kw["literal_execute"] = True
-        return "%s IN %s" % (
+        return "{} IN {}".format(
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         )
 
     def visit_not_in_op_binary(self, binary, operator, **kw):
         kw["literal_execute"] = True
-        return "%s NOT IN %s" % (
+        return "{} NOT IN {}".format(
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         )
@@ -2610,7 +2610,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         if columnstore:
             text += "COLUMNSTORE "
 
-        text += "INDEX %s ON %s" % (
+        text += "INDEX {} ON {}".format(
             self._prepared_index_name(index, include_schema=include_schema),
             preparer.format_table(index.table),
         )
@@ -2650,7 +2650,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         return text
 
     def visit_drop_index(self, drop, **kw):
-        return "\nDROP INDEX %s ON %s" % (
+        return "\nDROP INDEX {} ON {}".format(
             self._prepared_index_name(drop.element, include_schema=False),
             self.preparer.format_table(drop.element.table),
         )
@@ -2779,7 +2779,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         if identity.start is not None or identity.increment is not None:
             start = 1 if identity.start is None else identity.start
             increment = 1 if identity.increment is None else identity.increment
-            text += "(%s,%s)" % (start, increment)
+            text += f"({start},{increment})"
         return text
 
 
@@ -2819,7 +2819,7 @@ class MSIdentifierPreparer(compiler.IdentifierPreparer):
 
         dbname, owner = _schema_elements(schema)
         if dbname:
-            result = "%s.%s" % (self.quote(dbname), self.quote(owner))
+            result = f"{self.quote(dbname)}.{self.quote(owner)}"
         elif owner:
             result = self.quote(owner)
         else:

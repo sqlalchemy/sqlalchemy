@@ -33,42 +33,42 @@ def _is_compiled() -> bool:
 
 
 @cython.annotation_typing(False)
-def int_to_boolean(value: Any) -> Optional[bool]:
+def int_to_boolean(value: Any) -> bool | None:
     if value is None:
         return None
     return True if value else False
 
 
 @cython.annotation_typing(False)
-def to_str(value: Any) -> Optional[str]:
+def to_str(value: Any) -> str | None:
     if value is None:
         return None
     return str(value)
 
 
 @cython.annotation_typing(False)
-def to_float(value: Any) -> Optional[float]:
+def to_float(value: Any) -> float | None:
     if value is None:
         return None
     return float(value)
 
 
 @cython.annotation_typing(False)
-def str_to_datetime(value: Optional[str]) -> Optional[datetime_cls]:
+def str_to_datetime(value: str | None) -> datetime_cls | None:
     if value is None:
         return None
     return datetime_cls.fromisoformat(value)
 
 
 @cython.annotation_typing(False)
-def str_to_time(value: Optional[str]) -> Optional[time_cls]:
+def str_to_time(value: str | None) -> time_cls | None:
     if value is None:
         return None
     return time_cls.fromisoformat(value)
 
 
 @cython.annotation_typing(False)
-def str_to_date(value: Optional[str]) -> Optional[date_cls]:
+def str_to_date(value: str | None) -> date_cls | None:
     if value is None:
         return None
     return date_cls.fromisoformat(value)
@@ -85,7 +85,7 @@ class to_decimal_processor_factory:
         self.type_ = type_
         self.format_ = f"%.{scale}f"
 
-    def __call__(self, value: Optional[Any]) -> object:
+    def __call__(self, value: Any | None) -> object:
         if value is None:
             return None
         else:

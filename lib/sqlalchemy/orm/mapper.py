@@ -139,7 +139,7 @@ _mapper_registries: weakref.WeakKeyDictionary[_RegistryType, bool] = (
 )
 
 
-def _all_registries() -> Set[registry]:
+def _all_registries() -> set[registry]:
     with _CONFIGURE_MUTEX:
         return set(_mapper_registries)
 
@@ -202,35 +202,35 @@ class Mapper(
     )
     def __init__(
         self,
-        class_: Type[_O],
-        local_table: Optional[FromClause] = None,
-        properties: Optional[Mapping[str, MapperProperty[Any]]] = None,
-        primary_key: Optional[Iterable[_ORMColumnExprArgument[Any]]] = None,
+        class_: type[_O],
+        local_table: FromClause | None = None,
+        properties: Mapping[str, MapperProperty[Any]] | None = None,
+        primary_key: Iterable[_ORMColumnExprArgument[Any]] | None = None,
         non_primary: bool = False,
-        inherits: Optional[Union[Mapper[Any], Type[Any]]] = None,
-        inherit_condition: Optional[_ColumnExpressionArgument[bool]] = None,
-        inherit_foreign_keys: Optional[
+        inherits: Mapper[Any] | type[Any] | None = None,
+        inherit_condition: _ColumnExpressionArgument[bool] | None = None,
+        inherit_foreign_keys: None | (
             Sequence[_ORMColumnExprArgument[Any]]
-        ] = None,
+        ) = None,
         always_refresh: bool = False,
-        version_id_col: Optional[_ORMColumnExprArgument[Any]] = None,
-        version_id_generator: Optional[
-            Union[Literal[False], Callable[[Any], Any]]
-        ] = None,
-        polymorphic_on: Optional[
-            Union[_ORMColumnExprArgument[Any], str, MapperProperty[Any]]
-        ] = None,
-        _polymorphic_map: Optional[Dict[Any, Mapper[Any]]] = None,
-        polymorphic_identity: Optional[Any] = None,
+        version_id_col: _ORMColumnExprArgument[Any] | None = None,
+        version_id_generator: None | (
+            Literal[False] | Callable[[Any], Any]
+        ) = None,
+        polymorphic_on: None | (
+            _ORMColumnExprArgument[Any] | str | MapperProperty[Any]
+        ) = None,
+        _polymorphic_map: dict[Any, Mapper[Any]] | None = None,
+        polymorphic_identity: Any | None = None,
         concrete: bool = False,
-        with_polymorphic: Optional[_WithPolymorphicArg] = None,
+        with_polymorphic: _WithPolymorphicArg | None = None,
         polymorphic_abstract: bool = False,
-        polymorphic_load: Optional[Literal["selectin", "inline"]] = None,
+        polymorphic_load: Literal["selectin", "inline"] | None = None,
         allow_partial_pks: bool = True,
         batch: bool = True,
-        column_prefix: Optional[str] = None,
-        include_properties: Optional[Sequence[str]] = None,
-        exclude_properties: Optional[Sequence[str]] = None,
+        column_prefix: str | None = None,
+        include_properties: Sequence[str] | None = None,
+        exclude_properties: Sequence[str] | None = None,
         passive_updates: bool = True,
         passive_deletes: bool = False,
         confirm_deleted_rows: bool = True,
@@ -715,7 +715,7 @@ class Mapper(
 
         """
         self.class_ = util.assert_arg_type(class_, type, "class_")
-        self._sort_key = "%s.%s" % (
+        self._sort_key = "{}.{}".format(
             self.class_.__module__,
             self.class_.__name__,
         )
@@ -902,30 +902,30 @@ class Mapper(
         """
         return self.class_
 
-    class_: Type[_O]
+    class_: type[_O]
     """The class to which this :class:`_orm.Mapper` is mapped."""
 
-    _identity_class: Type[_O]
+    _identity_class: type[_O]
 
-    _delete_orphans: List[Tuple[str, Type[Any]]]
-    _dependency_processors: List[DependencyProcessor]
-    _memoized_values: Dict[Any, Callable[[], Any]]
+    _delete_orphans: list[tuple[str, type[Any]]]
+    _dependency_processors: list[DependencyProcessor]
+    _memoized_values: dict[Any, Callable[[], Any]]
     _inheriting_mappers: util.WeakSequence[Mapper[Any]]
-    _all_tables: Set[TableClause]
-    _polymorphic_attr_key: Optional[str]
+    _all_tables: set[TableClause]
+    _polymorphic_attr_key: str | None
 
-    _pks_by_table: Dict[FromClause, OrderedSet[ColumnClause[Any]]]
-    _cols_by_table: Dict[FromClause, OrderedSet[ColumnElement[Any]]]
+    _pks_by_table: dict[FromClause, OrderedSet[ColumnClause[Any]]]
+    _cols_by_table: dict[FromClause, OrderedSet[ColumnElement[Any]]]
 
     _props: util.OrderedDict[str, MapperProperty[Any]]
-    _init_properties: Dict[str, MapperProperty[Any]]
+    _init_properties: dict[str, MapperProperty[Any]]
 
     _columntoproperty: _ColumnMapping
 
-    _set_polymorphic_identity: Optional[Callable[[InstanceState[_O]], None]]
-    _validate_polymorphic_identity: Optional[
+    _set_polymorphic_identity: Callable[[InstanceState[_O]], None] | None
+    _validate_polymorphic_identity: None | (
         Callable[[Mapper[_O], InstanceState[_O], _InstanceDict], None]
-    ]
+    )
 
     tables: Sequence[TableClause]
     """A sequence containing the collection of :class:`_schema.Table`
@@ -943,7 +943,7 @@ class Mapper(
 
     """
 
-    validators: util.immutabledict[str, Tuple[str, Dict[str, Any]]]
+    validators: util.immutabledict[str, tuple[str, dict[str, Any]]]
     """An immutable dictionary of attributes which have been decorated
     using the :func:`_orm.validates` decorator.
 
@@ -954,16 +954,16 @@ class Mapper(
 
     always_refresh: bool
     allow_partial_pks: bool
-    version_id_col: Optional[ColumnElement[Any]]
+    version_id_col: ColumnElement[Any] | None
 
-    with_polymorphic: Optional[
-        Tuple[
-            Union[Literal["*"], Sequence[Union[Mapper[Any], Type[Any]]]],
-            Optional[FromClause],
+    with_polymorphic: None | (
+        tuple[
+            Literal["*"] | Sequence[Mapper[Any] | type[Any]],
+            FromClause | None,
         ]
-    ]
+    )
 
-    version_id_generator: Optional[Union[Literal[False], Callable[[Any], Any]]]
+    version_id_generator: Literal[False] | Callable[[Any], Any] | None
 
     local_table: FromClause
     """The immediate :class:`_expression.FromClause` to which this
@@ -1016,13 +1016,13 @@ class Mapper(
 
     """
 
-    inherits: Optional[Mapper[Any]]
+    inherits: Mapper[Any] | None
     """References the :class:`_orm.Mapper` which this :class:`_orm.Mapper`
     inherits from, if any.
 
     """
 
-    inherit_condition: Optional[ColumnElement[bool]]
+    inherit_condition: ColumnElement[bool] | None
 
     configured: bool = False
     """Represent ``True`` if this :class:`_orm.Mapper` has been configured.
@@ -1045,7 +1045,7 @@ class Mapper(
 
     """
 
-    primary_key: Tuple[Column[Any], ...]
+    primary_key: tuple[Column[Any], ...]
     """An iterable containing the collection of :class:`_schema.Column`
     objects
     which comprise the 'primary key' of the mapped table, from the
@@ -1099,7 +1099,7 @@ class Mapper(
 
     """
 
-    polymorphic_on: Optional[KeyedColumnElement[Any]]
+    polymorphic_on: KeyedColumnElement[Any] | None
     """The :class:`_schema.Column` or SQL expression specified as the
     ``polymorphic_on`` argument
     for this :class:`_orm.Mapper`, within an inheritance scenario.
@@ -1113,7 +1113,7 @@ class Mapper(
 
     """
 
-    polymorphic_map: Dict[Any, Mapper[Any]]
+    polymorphic_map: dict[Any, Mapper[Any]]
     """A mapping of "polymorphic identity" identifiers mapped to
     :class:`_orm.Mapper` instances, within an inheritance scenario.
 
@@ -1129,7 +1129,7 @@ class Mapper(
 
     """
 
-    polymorphic_identity: Optional[Any]
+    polymorphic_identity: Any | None
     """Represent an identifier which is matched against the
     :attr:`_orm.Mapper.polymorphic_on` column during result row loading.
 
@@ -1376,7 +1376,7 @@ class Mapper(
             )
 
     def _set_with_polymorphic(
-        self, with_polymorphic: Optional[_WithPolymorphicArg]
+        self, with_polymorphic: _WithPolymorphicArg | None
     ) -> None:
         if with_polymorphic == "*":
             self.with_polymorphic = ("*", None)
@@ -1714,10 +1714,10 @@ class Mapper(
         # table columns mapped to MapperProperty
         self._columntoproperty = _ColumnMapping(self)
 
-        explicit_col_props_by_column: Dict[
-            KeyedColumnElement[Any], Tuple[str, ColumnProperty[Any]]
+        explicit_col_props_by_column: dict[
+            KeyedColumnElement[Any], tuple[str, ColumnProperty[Any]]
         ] = {}
-        explicit_col_props_by_key: Dict[str, ColumnProperty[Any]] = {}
+        explicit_col_props_by_key: dict[str, ColumnProperty[Any]] = {}
 
         # step 1: go through properties that were explicitly passed
         # in the properties dictionary.  For Columns that are local, put them
@@ -1833,7 +1833,7 @@ class Mapper(
 
         """
         setter = False
-        polymorphic_key: Optional[str] = None
+        polymorphic_key: str | None = None
 
         if self.polymorphic_on is not None:
             setter = True
@@ -2078,7 +2078,7 @@ class Mapper(
     def _configure_property(
         self,
         key: str,
-        prop_arg: Union[KeyedColumnElement[Any], MapperProperty[Any]],
+        prop_arg: KeyedColumnElement[Any] | MapperProperty[Any],
         *,
         init: bool = True,
         setparent: bool = True,
@@ -2248,9 +2248,9 @@ class Mapper(
     def _make_prop_from_column(
         self,
         key: str,
-        column: Union[
-            Sequence[KeyedColumnElement[Any]], KeyedColumnElement[Any]
-        ],
+        column: (
+            Sequence[KeyedColumnElement[Any]] | KeyedColumnElement[Any]
+        ),
     ) -> ColumnProperty[Any]:
         columns = util.to_list(column)
         mapped_column = []
@@ -2281,8 +2281,8 @@ class Mapper(
         key: str,
         existing_prop: MapperProperty[Any],
         warn_only: bool,
-        incoming_prop: Optional[ColumnProperty[Any]] = None,
-        single_column: Optional[KeyedColumnElement[Any]] = None,
+        incoming_prop: ColumnProperty[Any] | None = None,
+        single_column: KeyedColumnElement[Any] | None = None,
     ) -> ColumnProperty[Any]:
         if incoming_prop and (
             self.concrete
@@ -2421,7 +2421,7 @@ class Mapper(
             self.add_property(key, value)
 
     def add_property(
-        self, key: str, prop: Union[Column[Any], MapperProperty[Any]]
+        self, key: str, prop: Column[Any] | MapperProperty[Any]
     ) -> None:
         """Add an individual MapperProperty to this mapper.
 
@@ -2463,10 +2463,10 @@ class Mapper(
         self.logger.debug("%s " + msg, *((self._log_desc,) + args))
 
     def __repr__(self) -> str:
-        return "<Mapper at 0x%x; %s>" % (id(self), self.class_.__name__)
+        return "<Mapper at 0x{:x}; {}>".format(id(self), self.class_.__name__)
 
     def __str__(self) -> str:
-        return "Mapper[%s%s(%s)]" % (
+        return "Mapper[{}{}({})]".format(
             self.class_.__name__,
             self.non_primary and " (non-primary)" or "",
             (
@@ -2531,7 +2531,7 @@ class Mapper(
         return iter(self._props.values())
 
     def _mappers_from_spec(
-        self, spec: Any, selectable: Optional[FromClause]
+        self, spec: Any, selectable: FromClause | None
     ) -> Sequence[Mapper[Any]]:
         """given a with_polymorphic() argument, return the set of mappers it
         represents.
@@ -2548,7 +2548,7 @@ class Mapper(
                 m = _class_to_mapper(m)
                 if not m.isa(self):
                     raise sa_exc.InvalidRequestError(
-                        "%r does not inherit from %r" % (m, self)
+                        "{!r} does not inherit from {!r}".format(m, self)
                     )
 
                 if selectable is None:
@@ -2778,7 +2778,7 @@ class Mapper(
     @HasMemoized.memoized_attribute
     def _server_default_cols(
         self,
-    ) -> Mapping[FromClause, FrozenSet[Column[Any]]]:
+    ) -> Mapping[FromClause, frozenset[Column[Any]]]:
         return {
             table: frozenset(
                 [
@@ -2797,7 +2797,7 @@ class Mapper(
     @HasMemoized.memoized_attribute
     def _server_onupdate_default_cols(
         self,
-    ) -> Mapping[FromClause, FrozenSet[Column[Any]]]:
+    ) -> Mapping[FromClause, frozenset[Column[Any]]]:
         return {
             table: frozenset(
                 [
@@ -2814,7 +2814,7 @@ class Mapper(
         }
 
     @HasMemoized.memoized_attribute
-    def _server_default_col_keys(self) -> Mapping[FromClause, FrozenSet[str]]:
+    def _server_default_col_keys(self) -> Mapping[FromClause, frozenset[str]]:
         return {
             table: frozenset(col.key for col in cols if col.key is not None)
             for table, cols in self._server_default_cols.items()
@@ -2823,15 +2823,15 @@ class Mapper(
     @HasMemoized.memoized_attribute
     def _server_onupdate_default_col_keys(
         self,
-    ) -> Mapping[FromClause, FrozenSet[str]]:
+    ) -> Mapping[FromClause, frozenset[str]]:
         return {
             table: frozenset(col.key for col in cols if col.key is not None)
             for table, cols in self._server_onupdate_default_cols.items()
         }
 
     @HasMemoized.memoized_attribute
-    def _server_default_plus_onupdate_propkeys(self) -> Set[str]:
-        result: Set[str] = set()
+    def _server_default_plus_onupdate_propkeys(self) -> set[str]:
+        result: set[str] = set()
 
         col_to_property = self._columntoproperty
         for table, columns in self._server_default_cols.items():
@@ -2848,7 +2848,7 @@ class Mapper(
 
     @HasMemoized.memoized_instancemethod
     def __clause_element__(self):
-        annotations: Dict[str, Any] = {
+        annotations: dict[str, Any] = {
             "entity_namespace": self,
             "parententity": self,
             "parentmapper": self,
@@ -2902,9 +2902,9 @@ class Mapper(
     def _with_polymorphic_args(
         self,
         spec: Any = None,
-        selectable: Union[Literal[False, None], FromClause] = False,
+        selectable: Literal[False, None] | FromClause = False,
         innerjoin: bool = False,
-    ) -> Tuple[Sequence[Mapper[Any]], FromClause]:
+    ) -> tuple[Sequence[Mapper[Any]], FromClause]:
         if selectable not in (None, False):
             selectable = coercions.expect(
                 roles.StrictFromClauseRole, selectable, allow_select=True
@@ -2959,7 +2959,7 @@ class Mapper(
         ]
 
     @HasMemoized.memoized_attribute
-    def _polymorphic_adapter(self) -> Optional[orm_util.ORMAdapter]:
+    def _polymorphic_adapter(self) -> orm_util.ORMAdapter | None:
         if self._has_aliased_polymorphic_fromclause:
             return orm_util.ORMAdapter(
                 orm_util._TraceAdaptRole.MAPPER_POLYMORPHIC_ADAPTER,
@@ -3109,7 +3109,7 @@ class Mapper(
 
     @HasMemoized.memoized_attribute
     @util.preload_module("sqlalchemy.orm.descriptor_props")
-    def _pk_synonyms(self) -> Dict[str, str]:
+    def _pk_synonyms(self) -> dict[str, str]:
         """return a dictionary of {syn_attribute_name: pk_attr_name} for
         all synonyms that refer to primary key columns
 
@@ -3209,7 +3209,7 @@ class Mapper(
         )
 
     def _filter_properties(
-        self, type_: Type[_MP]
+        self, type_: type[_MP]
     ) -> util.ReadOnlyProperties[_MP]:
         self._check_configure()
         return util.ReadOnlyProperties(
@@ -3371,13 +3371,13 @@ class Mapper(
     def isa(self, other: Mapper[Any]) -> bool:
         """Return True if the this mapper inherits from the given mapper."""
 
-        m: Optional[Mapper[Any]] = self
+        m: Mapper[Any] | None = self
         while m and m is not other:
             m = m.inherits
         return bool(m)
 
     def iterate_to_root(self) -> Iterator[Mapper[Any]]:
-        m: Optional[Mapper[Any]] = self
+        m: Mapper[Any] | None = self
         while m:
             yield m
             m = m.inherits
@@ -3434,9 +3434,9 @@ class Mapper(
 
     def identity_key_from_row(
         self,
-        row: Optional[Union[Row[Unpack[TupleAny]], RowMapping]],
-        identity_token: Optional[Any] = None,
-        adapter: Optional[ORMAdapter] = None,
+        row: Row[Unpack[TupleAny]] | RowMapping | None,
+        identity_token: Any | None = None,
+        adapter: ORMAdapter | None = None,
     ) -> _IdentityKeyType[_O]:
         """Return an identity-map key for use in storing/retrieving an
         item from the identity map.
@@ -3466,8 +3466,8 @@ class Mapper(
 
     def identity_key_from_primary_key(
         self,
-        primary_key: Tuple[Any, ...],
-        identity_token: Optional[Any] = None,
+        primary_key: tuple[Any, ...],
+        identity_token: Any | None = None,
     ) -> _IdentityKeyType[_O]:
         """Return an identity-map key for use in storing/retrieving an
         item from an identity map.
@@ -3515,7 +3515,7 @@ class Mapper(
             state.identity_token,
         )
 
-    def primary_key_from_instance(self, instance: _O) -> Tuple[Any, ...]:
+    def primary_key_from_instance(self, instance: _O) -> tuple[Any, ...]:
         """Return the list of primary key values for the given
         instance.
 
@@ -3556,14 +3556,14 @@ class Mapper(
 
     @HasMemoized.memoized_attribute
     def _all_pk_cols(self):
-        collection: Set[ColumnClause[Any]] = set()
+        collection: set[ColumnClause[Any]] = set()
         for table in self.tables:
             collection.update(self._pks_by_table[table])
         return collection
 
     @HasMemoized.memoized_attribute
     def _should_undefer_in_wildcard(self):
-        cols: Set[ColumnElement[Any]] = set(self.primary_key)
+        cols: set[ColumnElement[Any]] = set(self.primary_key)
         if self.polymorphic_on is not None:
             cols.add(self.polymorphic_on)
         return cols
@@ -3620,7 +3620,7 @@ class Mapper(
         col_attribute_names = set(attribute_names).intersection(
             state.mapper.column_attrs.keys()
         )
-        tables: Set[FromClause] = set(
+        tables: set[FromClause] = set(
             chain(
                 *[
                     sql_util.find_tables(c, check_columns=True)
@@ -3664,7 +3664,7 @@ class Mapper(
                     None, rightval, type_=binary.right.type
                 )
 
-        allconds: List[ColumnElement[bool]] = []
+        allconds: list[ColumnElement[bool]] = []
 
         start = False
 
@@ -3822,7 +3822,7 @@ class Mapper(
         enable_opt = strategy_options.Load(entity)
 
         classes_to_include = {self}
-        m: Optional[Mapper[Any]] = self.inherits
+        m: Mapper[Any] | None = self.inherits
         while (
             m is not None
             and m is not polymorphic_from
@@ -3908,9 +3908,9 @@ class Mapper(
         self,
         type_: str,
         state: InstanceState[_O],
-        halt_on: Optional[Callable[[InstanceState[Any]], bool]] = None,
+        halt_on: Callable[[InstanceState[Any]], bool] | None = None,
     ) -> Iterator[
-        Tuple[object, Mapper[Any], InstanceState[Any], _InstanceDict]
+        tuple[object, Mapper[Any], InstanceState[Any], _InstanceDict]
     ]:
         r"""Iterate each element and its mapper in an object graph,
         for all relationships that meet the given cascade rule.
@@ -3936,7 +3936,7 @@ class Mapper(
             traverse all objects without relying on cascades.
 
         """
-        visited_states: Set[InstanceState[Any]] = set()
+        visited_states: set[InstanceState[Any]] = set()
         prp, mpp = object(), object()
 
         assert state.mapper.isa(self)
@@ -3944,11 +3944,11 @@ class Mapper(
         # this is actually a recursive structure, fully typing it seems
         # a little too difficult for what it's worth here
         visitables: Deque[
-            Tuple[
+            tuple[
                 Deque[Any],
                 object,
-                Optional[InstanceState[Any]],
-                Optional[_InstanceDict],
+                InstanceState[Any] | None,
+                _InstanceDict | None,
             ]
         ]
 
@@ -4011,7 +4011,7 @@ class Mapper(
 
     @HasMemoized.memoized_attribute
     def _sorted_tables(self):
-        table_to_mapper: Dict[TableClause, Mapper[Any]] = {}
+        table_to_mapper: dict[TableClause, Mapper[Any]] = {}
 
         for mapper in self.base_mapper.self_and_descendants:
             for t in mapper.tables:
@@ -4074,10 +4074,10 @@ class Mapper(
 
         result: util.defaultdict[
             Table,
-            List[
-                Tuple[
+            list[
+                tuple[
                     Mapper[Any],
-                    List[Tuple[ColumnElement[Any], ColumnElement[Any]]],
+                    list[tuple[ColumnElement[Any], ColumnElement[Any]]],
                 ]
             ],
         ] = util.defaultdict(list)
@@ -4176,7 +4176,7 @@ def configure_mappers() -> None:
 
 
 def _configure_registries(
-    registries: Set[_RegistryType], cascade: bool
+    registries: set[_RegistryType], cascade: bool
 ) -> None:
     for reg in registries:
         if reg._new_mappers:
@@ -4211,7 +4211,7 @@ def _configure_registries(
 
 @util.preload_module("sqlalchemy.orm.decl_api")
 def _do_configure_registries(
-    registries: Set[_RegistryType], cascade: bool
+    registries: set[_RegistryType], cascade: bool
 ) -> None:
     registry = util.preloaded.orm_decl_api.registry
 
@@ -4263,7 +4263,7 @@ def _do_configure_registries(
 
 
 @util.preload_module("sqlalchemy.orm.decl_api")
-def _dispose_registries(registries: Set[_RegistryType], cascade: bool) -> None:
+def _dispose_registries(registries: set[_RegistryType], cascade: bool) -> None:
     registry = util.preloaded.orm_decl_api.registry
 
     orig = set(registries)

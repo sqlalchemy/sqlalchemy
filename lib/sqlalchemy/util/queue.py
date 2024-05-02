@@ -69,14 +69,14 @@ class QueueCommon(Generic[_T]):
         raise NotImplementedError()
 
     def put(
-        self, item: _T, block: bool = True, timeout: Optional[float] = None
+        self, item: _T, block: bool = True, timeout: float | None = None
     ) -> None:
         raise NotImplementedError()
 
     def get_nowait(self) -> _T:
         raise NotImplementedError()
 
-    def get(self, block: bool = True, timeout: Optional[float] = None) -> _T:
+    def get(self, block: bool = True, timeout: float | None = None) -> _T:
         raise NotImplementedError()
 
 
@@ -127,7 +127,7 @@ class Queue(QueueCommon[_T]):
             return self._full()
 
     def put(
-        self, item: _T, block: bool = True, timeout: Optional[float] = None
+        self, item: _T, block: bool = True, timeout: float | None = None
     ) -> None:
         """Put an item into the queue.
 
@@ -168,7 +168,7 @@ class Queue(QueueCommon[_T]):
         """
         return self.put(item, False)
 
-    def get(self, block: bool = True, timeout: Optional[float] = None) -> _T:
+    def get(self, block: bool = True, timeout: float | None = None) -> _T:
         """Remove and return an item from the queue.
 
         If optional args `block` is True and `timeout` is None (the
@@ -272,7 +272,7 @@ class AsyncAdaptedQueue(QueueCommon[_T]):
             raise Full() from err
 
     def put(
-        self, item: _T, block: bool = True, timeout: Optional[float] = None
+        self, item: _T, block: bool = True, timeout: float | None = None
     ) -> None:
         if not block:
             return self.put_nowait(item)
@@ -291,7 +291,7 @@ class AsyncAdaptedQueue(QueueCommon[_T]):
         except asyncio.QueueEmpty as err:
             raise Empty() from err
 
-    def get(self, block: bool = True, timeout: Optional[float] = None) -> _T:
+    def get(self, block: bool = True, timeout: float | None = None) -> _T:
         if not block:
             return self.get_nowait()
 

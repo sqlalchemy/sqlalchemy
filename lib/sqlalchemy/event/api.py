@@ -34,7 +34,7 @@ def _event_key(
             return _EventKey(target, identifier, fn, tgt)
     else:
         raise exc.InvalidRequestError(
-            "No such event '%s' for target '%s'" % (identifier, target)
+            f"No such event '{identifier}' for target '{target}'"
         )
 
 

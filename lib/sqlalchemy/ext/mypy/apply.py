@@ -45,8 +45,8 @@ from .names import NAMED_TYPE_SQLA_MAPPED
 def apply_mypy_mapped_attr(
     cls: ClassDef,
     api: SemanticAnalyzerPluginInterface,
-    item: Union[NameExpr, StrExpr],
-    attributes: List[util.SQLAlchemyAttribute],
+    item: NameExpr | StrExpr,
+    attributes: list[util.SQLAlchemyAttribute],
 ) -> None:
     if isinstance(item, NameExpr):
         name = item.name
@@ -98,7 +98,7 @@ def apply_mypy_mapped_attr(
 def re_apply_declarative_assignments(
     cls: ClassDef,
     api: SemanticAnalyzerPluginInterface,
-    attributes: List[util.SQLAlchemyAttribute],
+    attributes: list[util.SQLAlchemyAttribute],
 ) -> None:
     """For multiple class passes, re-apply our left-hand side types as mypy
     seems to reset them in place.
@@ -184,8 +184,8 @@ def apply_type_to_mapped_statement(
     api: SemanticAnalyzerPluginInterface,
     stmt: AssignmentStmt,
     lvalue: NameExpr,
-    left_hand_explicit_type: Optional[ProperType],
-    python_type_for_type: Optional[ProperType],
+    left_hand_explicit_type: ProperType | None,
+    python_type_for_type: ProperType | None,
 ) -> None:
     """Apply the Mapped[<type>] annotation and right hand object to a
     declarative assignment statement.
@@ -251,7 +251,7 @@ def apply_type_to_mapped_statement(
 def add_additional_orm_attributes(
     cls: ClassDef,
     api: SemanticAnalyzerPluginInterface,
-    attributes: List[util.SQLAlchemyAttribute],
+    attributes: list[util.SQLAlchemyAttribute],
 ) -> None:
     """Apply __init__, __table__ and other attributes to the mapped class."""
 

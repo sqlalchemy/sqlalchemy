@@ -257,7 +257,7 @@ class MiscTest(fixtures.TestBase):
 
             id: Mapped[int] = mapped_column(primary_key=True)
 
-            json: Mapped[Dict[str, Any]] = mapped_column(
+            json: Mapped[dict[str, Any]] = mapped_column(
                 MutableDict.as_mutable(JSON())
             )
 

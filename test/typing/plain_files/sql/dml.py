@@ -41,11 +41,11 @@ d1: dict[str, Any] = {}
 stmt1 = insert(User).values(d1)
 
 
-d2: Dict[str, Any] = {}
+d2: dict[str, Any] = {}
 stmt2 = insert(User).values(d2)
 
 
-d3: Dict[Column[str], Any] = {}
+d3: dict[Column[str], Any] = {}
 stmt3 = insert(User).values(d3)
 
 stmt4 = insert(User).from_select(

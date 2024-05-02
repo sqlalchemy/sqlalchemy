@@ -229,7 +229,7 @@ class ARRAY(sqltypes.ARRAY):
         self,
         item_type: _TypeEngineArgument[Any],
         as_tuple: bool = False,
-        dimensions: Optional[int] = None,
+        dimensions: int | None = None,
         zero_indexes: bool = False,
     ):
         """Construct an ARRAY.

@@ -625,7 +625,7 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
                 # sorting of keys is for unit test support
                 filename += "?" + (
                     "&".join(
-                        "%s=%s" % (key, uri_opts[key])
+                        f"{key}={uri_opts[key]}"
                         for key in sorted(uri_opts)
                     )
                 )

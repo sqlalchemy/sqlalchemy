@@ -66,7 +66,7 @@ _RelFullNames = {
     "sqlalchemy.orm.RelationshipProperty",
 }
 
-_lookup: Dict[str, Tuple[int, Set[str]]] = {
+_lookup: dict[str, tuple[int, set[str]]] = {
     "Column": (
         COLUMN,
         {
@@ -223,7 +223,7 @@ def has_base_type_id(info: TypeInfo, type_id: int) -> bool:
     return mr.fullname in fullnames
 
 
-def mro_has_id(mro: List[TypeInfo], type_id: int) -> bool:
+def mro_has_id(mro: list[TypeInfo], type_id: int) -> bool:
     for mr in mro:
         check_type_id, fullnames = _lookup.get(mr.name, (None, None))
         if check_type_id == type_id:
@@ -239,7 +239,7 @@ def mro_has_id(mro: List[TypeInfo], type_id: int) -> bool:
 
 def type_id_for_unbound_type(
     type_: UnboundType, cls: ClassDef, api: SemanticAnalyzerPluginInterface
-) -> Optional[int]:
+) -> int | None:
     sym = api.lookup_qualified(type_.name, type_)
     if sym is not None:
         if isinstance(sym.node, TypeAlias):
@@ -252,7 +252,7 @@ def type_id_for_unbound_type(
     return None
 
 
-def type_id_for_callee(callee: Expression) -> Optional[int]:
+def type_id_for_callee(callee: Expression) -> int | None:
     if isinstance(callee, (MemberExpr, NameExpr)):
         if isinstance(callee.node, Decorator) and isinstance(
             callee.node.func, FuncDef
@@ -297,8 +297,8 @@ def type_id_for_callee(callee: Expression) -> Optional[int]:
 
 
 def type_id_for_named_node(
-    node: Union[NameExpr, MemberExpr, SymbolNode]
-) -> Optional[int]:
+    node: NameExpr | MemberExpr | SymbolNode
+) -> int | None:
     type_id, fullnames = _lookup.get(node.name, (None, None))
 
     if type_id is None or fullnames is None:
@@ -309,7 +309,7 @@ def type_id_for_named_node(
         return None
 
 
-def type_id_for_fullname(fullname: str) -> Optional[int]:
+def type_id_for_fullname(fullname: str) -> int | None:
     tokens = fullname.split(".")
     immediate = tokens[-1]
 

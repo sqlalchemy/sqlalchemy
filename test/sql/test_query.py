@@ -322,7 +322,7 @@ class QueryTest(fixtures.TablesTest):
             if got != wanted:
                 print("Wanted %s" % wanted)
                 print("Received %s" % got)
-            self.assert_(got == wanted, got)
+            self.assertTrue(got == wanted, got)
 
         a_eq(prep("select foo"), "select foo")
         a_eq(prep("time='12:30:00'"), "time='12:30:00'")
@@ -1005,7 +1005,7 @@ class LimitTest(fixtures.TablesTest):
         r = connection.execute(
             users.select().limit(3).order_by(users.c.user_id)
         ).fetchall()
-        self.assert_(r == [(1, "john"), (2, "jack"), (3, "ed")], repr(r))
+        self.assertTrue(r == [(1, "john"), (2, "jack"), (3, "ed")], repr(r))
 
     @testing.requires.offset
     def test_select_limit_offset(self, connection):
@@ -1016,11 +1016,11 @@ class LimitTest(fixtures.TablesTest):
         r = connection.execute(
             users.select().limit(3).offset(2).order_by(users.c.user_id)
         ).fetchall()
-        self.assert_(r == [(3, "ed"), (4, "wendy"), (5, "laura")])
+        self.assertTrue(r == [(3, "ed"), (4, "wendy"), (5, "laura")])
         r = connection.execute(
             users.select().offset(5).order_by(users.c.user_id)
         ).fetchall()
-        self.assert_(r == [(6, "ralph"), (7, "fido")])
+        self.assertTrue(r == [(6, "ralph"), (7, "fido")])
 
     def test_select_distinct_limit(self, connection):
         """Test the interaction between limit and distinct"""
@@ -1035,8 +1035,8 @@ class LimitTest(fixtures.TablesTest):
                 )
             ]
         )
-        self.assert_(len(r) == 3, repr(r))
-        self.assert_(r[0] != r[1] and r[1] != r[2], repr(r))
+        self.assertTrue(len(r) == 3, repr(r))
+        self.assertTrue(r[0] != r[1] and r[1] != r[2], repr(r))
 
     @testing.requires.offset
     def test_select_distinct_offset(self, connection):
@@ -1056,7 +1056,7 @@ class LimitTest(fixtures.TablesTest):
             ]
         )
         eq_(len(r), 4)
-        self.assert_(r[0] != r[1] and r[1] != r[2] and r[2] != [3], repr(r))
+        self.assertTrue(r[0] != r[1] and r[1] != r[2] and r[2] != [3], repr(r))
 
     @testing.requires.offset
     def test_select_distinct_limit_offset(self, connection):
@@ -1071,8 +1071,8 @@ class LimitTest(fixtures.TablesTest):
             .offset(2)
             .limit(3)
         ).fetchall()
-        self.assert_(len(r) == 3, repr(r))
-        self.assert_(r[0] != r[1] and r[1] != r[2], repr(r))
+        self.assertTrue(len(r) == 3, repr(r))
+        self.assertTrue(r[0] != r[1] and r[1] != r[2], repr(r))
 
 
 class CompoundTest(fixtures.TablesTest):

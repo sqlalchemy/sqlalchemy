@@ -1379,8 +1379,8 @@ class EagerLazyTest(fixtures.MappedTest):
 
         sess = fixture_session()
         q = sess.query(Bar)
-        self.assert_(len(q.first().lazy) == 1)
-        self.assert_(len(q.first().eager) == 1)
+        self.assertTrue(len(q.first().lazy) == 1)
+        self.assertTrue(len(q.first().eager) == 1)
 
 
 class EagerTargetingTest(fixtures.MappedTest):

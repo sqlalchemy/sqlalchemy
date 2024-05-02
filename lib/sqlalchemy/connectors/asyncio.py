@@ -72,7 +72,7 @@ class AsyncIODBAPICursor(Protocol):
     async def execute(
         self,
         operation: Any,
-        parameters: Optional[_DBAPISingleExecuteParams] = None,
+        parameters: _DBAPISingleExecuteParams | None = None,
     ) -> Any: ...
 
     async def executemany(
@@ -81,9 +81,9 @@ class AsyncIODBAPICursor(Protocol):
         parameters: _DBAPIMultiExecuteParams,
     ) -> Any: ...
 
-    async def fetchone(self) -> Optional[Any]: ...
+    async def fetchone(self) -> Any | None: ...
 
-    async def fetchmany(self, size: Optional[int] = ...) -> Sequence[Any]: ...
+    async def fetchmany(self, size: int | None = ...) -> Sequence[Any]: ...
 
     async def fetchall(self) -> Sequence[Any]: ...
 
@@ -95,7 +95,7 @@ class AsyncIODBAPICursor(Protocol):
         self, procname: str, parameters: Sequence[Any] = ...
     ) -> Any: ...
 
-    async def nextset(self) -> Optional[bool]: ...
+    async def nextset(self) -> bool | None: ...
 
 
 class AsyncAdapt_dbapi_cursor:
@@ -133,7 +133,7 @@ class AsyncAdapt_dbapi_cursor:
         return connection.cursor()
 
     @property
-    def description(self) -> Optional[_DBAPICursorDescription]:
+    def description(self) -> _DBAPICursorDescription | None:
         return self._cursor.description
 
     @property
@@ -160,7 +160,7 @@ class AsyncAdapt_dbapi_cursor:
     def execute(
         self,
         operation: Any,
-        parameters: Optional[_DBAPISingleExecuteParams] = None,
+        parameters: _DBAPISingleExecuteParams | None = None,
     ) -> Any:
         try:
             return await_(self._execute_async(operation, parameters))
@@ -180,7 +180,7 @@ class AsyncAdapt_dbapi_cursor:
             self._adapt_connection._handle_exception(error)
 
     async def _execute_async(
-        self, operation: Any, parameters: Optional[_DBAPISingleExecuteParams]
+        self, operation: Any, parameters: _DBAPISingleExecuteParams | None
     ) -> Any:
         async with self._adapt_connection._execute_mutex:
             if parameters is None:
@@ -222,13 +222,13 @@ class AsyncAdapt_dbapi_cursor:
         while self._rows:
             yield self._rows.popleft()
 
-    def fetchone(self) -> Optional[Any]:
+    def fetchone(self) -> Any | None:
         if self._rows:
             return self._rows.popleft()
         else:
             return None
 
-    def fetchmany(self, size: Optional[int] = None) -> Sequence[Any]:
+    def fetchmany(self, size: int | None = None) -> Sequence[Any]:
         if size is None:
             size = self.arraysize
         rr = self._rows
@@ -249,10 +249,10 @@ class AsyncAdapt_dbapi_ss_cursor(AsyncAdapt_dbapi_cursor):
             await_(self._cursor.close())
             self._cursor = None  # type: ignore
 
-    def fetchone(self) -> Optional[Any]:
+    def fetchone(self) -> Any | None:
         return await_(self._cursor.fetchone())
 
-    def fetchmany(self, size: Optional[int] = None) -> Any:
+    def fetchmany(self, size: int | None = None) -> Any:
         return await_(self._cursor.fetchmany(size=size))
 
     def fetchall(self) -> Sequence[Any]:
@@ -281,7 +281,7 @@ class AsyncAdapt_dbapi_connection(AdaptedConnection):
     def execute(
         self,
         operation: Any,
-        parameters: Optional[_DBAPISingleExecuteParams] = None,
+        parameters: _DBAPISingleExecuteParams | None = None,
     ) -> Any:
         """lots of DBAPIs seem to provide this, so include it"""
         cursor = self.cursor()

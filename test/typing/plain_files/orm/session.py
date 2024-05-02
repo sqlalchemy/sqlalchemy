@@ -26,7 +26,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
-    addresses: Mapped[List[Address]] = relationship(back_populates="user")
+    addresses: Mapped[list[Address]] = relationship(back_populates="user")
 
 
 class Address(Base):

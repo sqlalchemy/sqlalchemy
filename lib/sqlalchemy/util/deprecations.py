@@ -42,9 +42,9 @@ _F = TypeVar("_F", bound="Callable[..., Any]")
 def _warn_with_version(
     msg: str,
     version: str,
-    type_: Type[exc.SADeprecationWarning],
+    type_: type[exc.SADeprecationWarning],
     stacklevel: int,
-    code: Optional[str] = None,
+    code: str | None = None,
 ) -> None:
     warn = type_(msg, code=code)
     warn.deprecated_since = version
@@ -53,7 +53,7 @@ def _warn_with_version(
 
 
 def warn_deprecated(
-    msg: str, version: str, stacklevel: int = 3, code: Optional[str] = None
+    msg: str, version: str, stacklevel: int = 3, code: str | None = None
 ) -> None:
     _warn_with_version(
         msg, version, exc.SADeprecationWarning, stacklevel, code=code
@@ -65,7 +65,7 @@ def warn_deprecated_limited(
     args: Sequence[Any],
     version: str,
     stacklevel: int = 3,
-    code: Optional[str] = None,
+    code: str | None = None,
 ) -> None:
     """Issue a deprecation warning with a parameterized string,
     limiting the number of registrations.
@@ -79,11 +79,11 @@ def warn_deprecated_limited(
 
 
 def deprecated_cls(
-    version: str, message: str, constructor: Optional[str] = "__init__"
-) -> Callable[[Type[_T]], Type[_T]]:
-    header = ".. deprecated:: %s %s" % (version, (message or ""))
+    version: str, message: str, constructor: str | None = "__init__"
+) -> Callable[[type[_T]], type[_T]]:
+    header = ".. deprecated:: {} {}".format(version, (message or ""))
 
-    def decorate(cls: Type[_T]) -> Type[_T]:
+    def decorate(cls: type[_T]) -> type[_T]:
         return _decorate_cls_with_warning(
             cls,
             constructor,
@@ -98,9 +98,9 @@ def deprecated_cls(
 
 def deprecated(
     version: str,
-    message: Optional[str] = None,
+    message: str | None = None,
     add_deprecation_to_docstring: bool = True,
-    warning: Optional[Type[exc.SADeprecationWarning]] = None,
+    warning: type[exc.SADeprecationWarning] | None = None,
     enable_warnings: bool = True,
 ) -> Callable[[_F], _F]:
     """Decorates a function and issues a deprecation warning on use.
@@ -120,7 +120,7 @@ def deprecated(
     """
 
     if add_deprecation_to_docstring:
-        header = ".. deprecated:: %s %s" % (
+        header = ".. deprecated:: {} {}".format(
             version,
             (message or ""),
         )
@@ -159,7 +159,7 @@ def moved_20(
 
 
 def became_legacy_20(
-    api_name: str, alternative: Optional[str] = None, **kw: Any
+    api_name: str, alternative: str | None = None, **kw: Any
 ) -> Callable[[_F], _F]:
     type_reg = re.match("^:(attr|func|meth):", api_name)
     if type_reg:
@@ -196,7 +196,7 @@ def became_legacy_20(
     return deprecated("2.0", message=message, warning=warning_cls, **kw)
 
 
-def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_F], _F]:
+def deprecated_params(**specs: tuple[str, str]) -> Callable[[_F], _F]:
     """Decorates a function to warn on use of certain parameters.
 
     e.g. ::
@@ -212,9 +212,9 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_F], _F]:
 
     """
 
-    messages: Dict[str, str] = {}
-    versions: Dict[str, str] = {}
-    version_warnings: Dict[str, Type[exc.SADeprecationWarning]] = {}
+    messages: dict[str, str] = {}
+    versions: dict[str, str] = {}
+    version_warnings: dict[str, type[exc.SADeprecationWarning]] = {}
 
     for param, (version, message) in specs.items():
         versions[param] = version
@@ -224,7 +224,7 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_F], _F]:
     def decorate(fn: _F) -> _F:
         spec = compat.inspect_getfullargspec(fn)
 
-        check_defaults: Union[Set[str], Tuple[()]]
+        check_defaults: set[str] | tuple[()]
         if spec.defaults is not None:
             defaults = dict(
                 zip(
@@ -309,13 +309,13 @@ def _sanitize_restructured_text(text: str) -> str:
 
 
 def _decorate_cls_with_warning(
-    cls: Type[_T],
-    constructor: Optional[str],
-    wtype: Type[exc.SADeprecationWarning],
+    cls: type[_T],
+    constructor: str | None,
+    wtype: type[exc.SADeprecationWarning],
     message: str,
     version: str,
-    docstring_header: Optional[str] = None,
-) -> Type[_T]:
+    docstring_header: str | None = None,
+) -> type[_T]:
     doc = cls.__doc__ is not None and cls.__doc__ or ""
     if docstring_header is not None:
         if constructor is not None:
@@ -358,10 +358,10 @@ def _decorate_cls_with_warning(
 
 def _decorate_with_warning(
     func: _F,
-    wtype: Type[exc.SADeprecationWarning],
+    wtype: type[exc.SADeprecationWarning],
     message: str,
     version: str,
-    docstring_header: Optional[str] = None,
+    docstring_header: str | None = None,
     enable_warnings: bool = True,
 ) -> _F:
     """Wrap a function with a warnings.warn and augmented docstring."""

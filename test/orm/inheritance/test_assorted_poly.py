@@ -577,11 +577,11 @@ class RelationshipTest4(fixtures.MappedTest):
 
         class Engineer(Person):
             def __repr__(self):
-                return "Engineer %s, status %s" % (self.name, self.status)
+                return "Engineer {}, status {}".format(self.name, self.status)
 
         class Manager(Person):
             def __repr__(self):
-                return "Manager %s, status %s" % (
+                return "Manager {}, status {}".format(
                     self.name,
                     self.longer_status,
                 )
@@ -755,11 +755,11 @@ class RelationshipTest5(fixtures.MappedTest):
 
         class Engineer(Person):
             def __repr__(self):
-                return "Engineer %s, status %s" % (self.name, self.status)
+                return "Engineer {}, status {}".format(self.name, self.status)
 
         class Manager(Person):
             def __repr__(self):
-                return "Manager %s, status %s" % (
+                return "Manager {}, status {}".format(
                     self.name,
                     self.longer_status,
                 )
@@ -972,11 +972,11 @@ class RelationshipTest7(fixtures.MappedTest):
 
         class Engineer(Person):
             def __repr__(self):
-                return "Engineer %s, field %s" % (self.name, self.field)
+                return "Engineer {}, field {}".format(self.name, self.field)
 
         class Manager(Person):
             def __repr__(self):
-                return "Manager %s, category %s" % (self.name, self.category)
+                return "Manager {}, category {}".format(self.name, self.category)
 
         class Car(PersistentObject):
             def __repr__(self):
@@ -2620,7 +2620,7 @@ class PolyIntoSelfReferentialTest(
             )
             name: Mapped[str]
 
-            parent_id: Mapped[Optional[int]] = mapped_column(
+            parent_id: Mapped[int | None] = mapped_column(
                 ForeignKey("other_related.id")
             )
             parent = relationship("OtherRelated", lazy="raise", remote_side=id)

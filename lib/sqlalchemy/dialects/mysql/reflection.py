@@ -162,7 +162,7 @@ class MySQLTableDefinitionParser:
             options.pop(nope, None)
 
         for opt, val in options.items():
-            state.table_options["%s_%s" % (self.dialect.name, opt)] = val
+            state.table_options[f"{self.dialect.name}_{opt}"] = val
 
     def _parse_partition_options(self, line, state):
         options = {}
@@ -194,7 +194,7 @@ class MySQLTableDefinitionParser:
                         # final line of MariaDB partition endswith ")"
                         new_line = new_line[:-1]
 
-                defs = "%s_%s_definitions" % (self.dialect.name, directive)
+                defs = f"{self.dialect.name}_{directive}_definitions"
                 options[defs] = new_line
 
             else:
@@ -213,12 +213,12 @@ class MySQLTableDefinitionParser:
                 if opt not in state.table_options:
                     state.table_options[opt] = val
                 else:
-                    state.table_options[opt] = "%s, %s" % (
+                    state.table_options[opt] = "{}, {}".format(
                         state.table_options[opt],
                         val,
                     )
             else:
-                state.table_options["%s_%s" % (self.dialect.name, opt)] = val
+                state.table_options[f"{self.dialect.name}_{opt}"] = val
 
     def _parse_column(self, line, state):
         """Extract column details.
@@ -250,7 +250,7 @@ class MySQLTableDefinitionParser:
             col_type = self.dialect.ischema_names[type_]
         except KeyError:
             util.warn(
-                "Did not recognize type '%s' of column '%s'" % (type_, name)
+                f"Did not recognize type '{type_}' of column '{name}'"
             )
             col_type = sqltypes.NullType
 
@@ -608,7 +608,7 @@ class MySQLTableDefinitionParser:
                 self._optional_equals,
             )
         else:
-            regex = r"(?<!\S)(?P<directive>%s)(?!\S)" % (re.escape(directive),)
+            regex = fr"(?<!\S)(?P<directive>{re.escape(directive)})(?!\S)"
         self._pr_options.append(_pr_compile(regex))
 
     def _add_option_regex(self, directive, regex):

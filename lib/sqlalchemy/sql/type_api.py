@@ -87,27 +87,27 @@ class _LiteralProcessorType(Protocol[_T_co]):
 
 
 class _BindProcessorType(Protocol[_T_con]):
-    def __call__(self, value: Optional[_T_con]) -> Any: ...
+    def __call__(self, value: _T_con | None) -> Any: ...
 
 
 class _ResultProcessorType(Protocol[_T_co]):
-    def __call__(self, value: Any) -> Optional[_T_co]: ...
+    def __call__(self, value: Any) -> _T_co | None: ...
 
 
 class _SentinelProcessorType(Protocol[_T_co]):
-    def __call__(self, value: Any) -> Optional[_T_co]: ...
+    def __call__(self, value: Any) -> _T_co | None: ...
 
 
 class _BaseTypeMemoDict(TypedDict):
     impl: TypeEngine[Any]
-    result: Dict[Any, Optional[_ResultProcessorType[Any]]]
+    result: dict[Any, _ResultProcessorType[Any] | None]
 
 
 class _TypeMemoDict(_BaseTypeMemoDict, total=False):
-    literal: Optional[_LiteralProcessorType[Any]]
-    bind: Optional[_BindProcessorType[Any]]
-    sentinel: Optional[_SentinelProcessorType[Any]]
-    custom: Dict[Any, object]
+    literal: _LiteralProcessorType[Any] | None
+    bind: _BindProcessorType[Any] | None
+    sentinel: _SentinelProcessorType[Any] | None
+    custom: dict[Any, object]
 
 
 class _ComparatorFactory(Protocol[_T]):
@@ -207,7 +207,7 @@ class TypeEngine(Visitable, Generic[_T]):
             self,
             op: OperatorType,
             other_comparator: TypeEngine.Comparator[Any],
-        ) -> Tuple[OperatorType, TypeEngine[Any]]:
+        ) -> tuple[OperatorType, TypeEngine[Any]]:
             """evaluate the return type of <self> <op> <othertype>,
             and apply any adaptations to the given operator.
 
@@ -267,7 +267,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
     """
 
-    sort_key_function: Optional[Callable[[Any], Any]] = None
+    sort_key_function: Callable[[Any], Any] | None = None
     """A sorting function that can be passed as the key to sorted.
 
     The default value of ``None`` indicates that the values stored by
@@ -359,7 +359,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
     def literal_processor(
         self, dialect: Dialect
-    ) -> Optional[_LiteralProcessorType[_T]]:
+    ) -> _LiteralProcessorType[_T] | None:
         """Return a conversion function for processing literal values that are
         to be rendered directly without using binds.
 
@@ -396,7 +396,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
     def bind_processor(
         self, dialect: Dialect
-    ) -> Optional[_BindProcessorType[_T]]:
+    ) -> _BindProcessorType[_T] | None:
         """Return a conversion function for processing bind values.
 
         Returns a callable which will receive a bind parameter value
@@ -432,7 +432,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
     def result_processor(
         self, dialect: Dialect, coltype: object
-    ) -> Optional[_ResultProcessorType[_T]]:
+    ) -> _ResultProcessorType[_T] | None:
         """Return a conversion function for processing result row values.
 
         Returns a callable which will receive a result row column
@@ -469,7 +469,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
     def column_expression(
         self, colexpr: ColumnElement[_T]
-    ) -> Optional[ColumnElement[_T]]:
+    ) -> ColumnElement[_T] | None:
         """Given a SELECT column expression, return a wrapping SQL expression.
 
         This is typically a SQL function that wraps a column expression
@@ -528,7 +528,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
     def bind_expression(
         self, bindvalue: BindParameter[_T]
-    ) -> Optional[ColumnElement[_T]]:
+    ) -> ColumnElement[_T] | None:
         """Given a bind value (i.e. a :class:`.BindParameter` instance),
         return a SQL expression in its place.
 
@@ -586,7 +586,7 @@ class TypeEngine(Visitable, Generic[_T]):
         return util.method_is_overridden(self, TypeEngine.bind_expression)
 
     @staticmethod
-    def _to_instance(cls_or_self: Union[Type[_TE], _TE]) -> _TE:
+    def _to_instance(cls_or_self: type[_TE] | _TE) -> _TE:
         return to_instance(cls_or_self)
 
     def compare_values(self, x: Any, y: Any) -> bool:
@@ -594,7 +594,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
         return x == y  # type: ignore[no-any-return]
 
-    def get_dbapi_type(self, dbapi: ModuleType) -> Optional[Any]:
+    def get_dbapi_type(self, dbapi: ModuleType) -> Any | None:
         """Return the corresponding type object from the underlying DB-API, if
         any.
 
@@ -604,7 +604,7 @@ class TypeEngine(Visitable, Generic[_T]):
         return None
 
     @property
-    def python_type(self) -> Type[Any]:
+    def python_type(self) -> type[Any]:
         """Return the Python type object expected to be returned
         by instances of this type, if known.
 
@@ -707,10 +707,10 @@ class TypeEngine(Visitable, Generic[_T]):
 
     def _resolve_for_python_type(
         self,
-        python_type: Type[Any],
+        python_type: type[Any],
         matched_on: _MatchedOnType,
-        matched_on_flattened: Type[Any],
-    ) -> Optional[Self]:
+        matched_on_flattened: type[Any],
+    ) -> Self | None:
         """given a Python type (e.g. ``int``, ``str``, etc. ) return an
         instance of this :class:`.TypeEngine` that's appropriate for this type.
 
@@ -756,7 +756,7 @@ class TypeEngine(Visitable, Generic[_T]):
         return self
 
     @util.ro_memoized_property
-    def _type_affinity(self) -> Optional[Type[TypeEngine[_T]]]:
+    def _type_affinity(self) -> type[TypeEngine[_T]] | None:
         """Return a rudimental 'affinity' value expressing the general class
         of type."""
 
@@ -772,7 +772,7 @@ class TypeEngine(Visitable, Generic[_T]):
     @util.ro_memoized_property
     def _generic_type_affinity(
         self,
-    ) -> Type[TypeEngine[_T]]:
+    ) -> type[TypeEngine[_T]]:
         best_camelcase = None
         best_uppercase = None
 
@@ -871,7 +871,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
     def _cached_literal_processor(
         self, dialect: Dialect
-    ) -> Optional[_LiteralProcessorType[_T]]:
+    ) -> _LiteralProcessorType[_T] | None:
         """Return a dialect-specific literal processor for this type."""
 
         try:
@@ -887,7 +887,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
     def _cached_bind_processor(
         self, dialect: Dialect
-    ) -> Optional[_BindProcessorType[_T]]:
+    ) -> _BindProcessorType[_T] | None:
         """Return a dialect-specific bind processor for this type."""
 
         try:
@@ -903,7 +903,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
     def _cached_result_processor(
         self, dialect: Dialect, coltype: Any
-    ) -> Optional[_ResultProcessorType[_T]]:
+    ) -> _ResultProcessorType[_T] | None:
         """Return a dialect-specific result processor for this type."""
 
         try:
@@ -970,7 +970,7 @@ class TypeEngine(Visitable, Generic[_T]):
     @util.memoized_property
     def _static_cache_key(
         self,
-    ) -> Union[CacheConst, Tuple[Any, ...]]:
+    ) -> CacheConst | tuple[Any, ...]:
         names = util.get_cls_kwargs(self.__class__)
         return (self.__class__,) + tuple(
             (
@@ -988,15 +988,15 @@ class TypeEngine(Visitable, Generic[_T]):
         )
 
     @overload
-    def adapt(self, cls: Type[_TE], **kw: Any) -> _TE: ...
+    def adapt(self, cls: type[_TE], **kw: Any) -> _TE: ...
 
     @overload
     def adapt(
-        self, cls: Type[TypeEngineMixin], **kw: Any
+        self, cls: type[TypeEngineMixin], **kw: Any
     ) -> TypeEngine[Any]: ...
 
     def adapt(
-        self, cls: Type[Union[TypeEngine[Any], TypeEngineMixin]], **kw: Any
+        self, cls: type[TypeEngine[Any] | TypeEngineMixin], **kw: Any
     ) -> TypeEngine[Any]:
         """Produce an "adapted" form of this type, given an "impl" class
         to work with.
@@ -1012,7 +1012,7 @@ class TypeEngine(Visitable, Generic[_T]):
         return typ
 
     def coerce_compared_value(
-        self, op: Optional[OperatorType], value: Any
+        self, op: OperatorType | None, value: Any
     ) -> TypeEngine[Any]:
         """Suggest a type for a 'coerced' Python value in an expression.
 
@@ -1044,7 +1044,7 @@ class TypeEngine(Visitable, Generic[_T]):
     def _compare_type_affinity(self, other: TypeEngine[Any]) -> bool:
         return self._type_affinity is other._type_affinity
 
-    def compile(self, dialect: Optional[Dialect] = None) -> str:
+    def compile(self, dialect: Dialect | None = None) -> str:
         """Produce a string-compiled form of this :class:`.TypeEngine`.
 
         When called with no arguments, uses a "default" dialect
@@ -1088,18 +1088,18 @@ class TypeEngineMixin:
         @util.memoized_property
         def _static_cache_key(
             self,
-        ) -> Union[CacheConst, Tuple[Any, ...]]: ...
+        ) -> CacheConst | tuple[Any, ...]: ...
 
         @overload
-        def adapt(self, cls: Type[_TE], **kw: Any) -> _TE: ...
+        def adapt(self, cls: type[_TE], **kw: Any) -> _TE: ...
 
         @overload
         def adapt(
-            self, cls: Type[TypeEngineMixin], **kw: Any
+            self, cls: type[TypeEngineMixin], **kw: Any
         ) -> TypeEngine[Any]: ...
 
         def adapt(
-            self, cls: Type[Union[TypeEngine[Any], TypeEngineMixin]], **kw: Any
+            self, cls: type[TypeEngine[Any] | TypeEngineMixin], **kw: Any
         ) -> TypeEngine[Any]: ...
 
         def dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]: ...
@@ -1120,7 +1120,7 @@ class ExternalType(TypeEngineMixin):
 
     """
 
-    cache_ok: Optional[bool] = None
+    cache_ok: bool | None = None
     """Indicate if statements using this :class:`.ExternalType` are "safe to
     cache".
 
@@ -1260,7 +1260,7 @@ class ExternalType(TypeEngineMixin):
     @util.non_memoized_property
     def _static_cache_key(
         self,
-    ) -> Union[CacheConst, Tuple[Any, ...]]:
+    ) -> CacheConst | tuple[Any, ...]:
         cache_ok = self.__class__.__dict__.get("cache_ok", None)
 
         if cache_ok is None:
@@ -1352,7 +1352,7 @@ class UserDefinedType(
     ensure_kwarg = "get_col_spec"
 
     def coerce_compared_value(
-        self, op: Optional[OperatorType], value: Any
+        self, op: OperatorType | None, value: Any
     ) -> TypeEngine[Any]:
         """Suggest a type for a 'coerced' Python value in an expression.
 
@@ -1389,7 +1389,7 @@ class Emulated(TypeEngineMixin):
 
     def adapt_to_emulated(
         self,
-        impltype: Type[Union[TypeEngine[Any], TypeEngineMixin]],
+        impltype: type[TypeEngine[Any] | TypeEngineMixin],
         **kw: Any,
     ) -> TypeEngine[Any]:
         """Given an impl class, adapt this type to the impl assuming
@@ -1404,15 +1404,15 @@ class Emulated(TypeEngineMixin):
         return super().adapt(impltype, **kw)
 
     @overload
-    def adapt(self, cls: Type[_TE], **kw: Any) -> _TE: ...
+    def adapt(self, cls: type[_TE], **kw: Any) -> _TE: ...
 
     @overload
     def adapt(
-        self, cls: Type[TypeEngineMixin], **kw: Any
+        self, cls: type[TypeEngineMixin], **kw: Any
     ) -> TypeEngine[Any]: ...
 
     def adapt(
-        self, cls: Type[Union[TypeEngine[Any], TypeEngineMixin]], **kw: Any
+        self, cls: type[TypeEngine[Any] | TypeEngineMixin], **kw: Any
     ) -> TypeEngine[Any]:
         if _is_native_for_emulated(cls):
             if self.native:
@@ -1434,8 +1434,8 @@ class Emulated(TypeEngineMixin):
 
 
 def _is_native_for_emulated(
-    typ: Type[Union[TypeEngine[Any], TypeEngineMixin]],
-) -> TypeGuard[Type[NativeForEmulated]]:
+    typ: type[TypeEngine[Any] | TypeEngineMixin],
+) -> TypeGuard[type[NativeForEmulated]]:
     return hasattr(typ, "adapt_emulated_to_native")
 
 
@@ -1449,7 +1449,7 @@ class NativeForEmulated(TypeEngineMixin):
     @classmethod
     def adapt_native_to_emulated(
         cls,
-        impl: Union[TypeEngine[Any], TypeEngineMixin],
+        impl: TypeEngine[Any] | TypeEngineMixin,
         **kw: Any,
     ) -> TypeEngine[Any]:
         """Given an impl, adapt this type's class to the impl assuming
@@ -1463,7 +1463,7 @@ class NativeForEmulated(TypeEngineMixin):
     @classmethod
     def adapt_emulated_to_native(
         cls,
-        impl: Union[TypeEngine[Any], TypeEngineMixin],
+        impl: TypeEngine[Any] | TypeEngineMixin,
         **kw: Any,
     ) -> TypeEngine[Any]:
         """Given an impl, adapt this type's class to the impl assuming
@@ -1633,7 +1633,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
     # great pattern, and there is zero chance Python typing tools will ever be
     # OK with it.  For TypeDecorator.impl, this is a highly public attribute so
     # we really can't change its behavior without a major deprecation routine.
-    impl: Union[TypeEngine[Any], Type[TypeEngine[Any]]]
+    impl: TypeEngine[Any] | type[TypeEngine[Any]]
 
     # we are changing its behavior *slightly*, which is that we now consume
     # the instance level version from this memoized property instead, so you
@@ -1672,7 +1672,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
 
         self.impl = to_instance(self.__class__.impl, *args, **kwargs)
 
-    coerce_to_is_types: Sequence[Type[Any]] = (type(None),)
+    coerce_to_is_types: Sequence[type[Any]] = (type(None),)
     """Specify those Python types which should be coerced at the expression
     level to "IS <constant>" when compared using ``==`` (and same for
     ``IS NOT`` in conjunction with ``!=``).
@@ -1757,7 +1757,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
         return tt
 
     @util.ro_non_memoized_property
-    def _type_affinity(self) -> Optional[Type[TypeEngine[Any]]]:
+    def _type_affinity(self) -> type[TypeEngine[Any]] | None:
         return self.impl_instance._type_affinity
 
     def _set_parent(
@@ -1835,7 +1835,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
         return getattr(self.impl_instance, key)
 
     def process_literal_param(
-        self, value: Optional[_T], dialect: Dialect
+        self, value: _T | None, dialect: Dialect
     ) -> str:
         """Receive a literal parameter value to be rendered inline within
         a statement.
@@ -1859,7 +1859,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
         """
         raise NotImplementedError()
 
-    def process_bind_param(self, value: Optional[_T], dialect: Dialect) -> Any:
+    def process_bind_param(self, value: _T | None, dialect: Dialect) -> Any:
         """Receive a bound parameter value to be converted.
 
         Custom subclasses of :class:`_types.TypeDecorator` should override
@@ -1887,8 +1887,8 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
         raise NotImplementedError()
 
     def process_result_value(
-        self, value: Optional[Any], dialect: Dialect
-    ) -> Optional[_T]:
+        self, value: Any | None, dialect: Dialect
+    ) -> _T | None:
         """Receive a result-row column value to be converted.
 
         Custom subclasses of :class:`_types.TypeDecorator` should override
@@ -1940,7 +1940,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
 
     def literal_processor(
         self, dialect: Dialect
-    ) -> Optional[_LiteralProcessorType[_T]]:
+    ) -> _LiteralProcessorType[_T] | None:
         """Provide a literal processing function for the given
         :class:`.Dialect`.
 
@@ -2007,7 +2007,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
 
     def bind_processor(
         self, dialect: Dialect
-    ) -> Optional[_BindProcessorType[_T]]:
+    ) -> _BindProcessorType[_T] | None:
         """Provide a bound value processing function for the
         given :class:`.Dialect`.
 
@@ -2032,7 +2032,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
                 fixed_impl_processor = impl_processor
                 fixed_process_param = process_param
 
-                def process(value: Optional[_T]) -> Any:
+                def process(value: _T | None) -> Any:
                     return fixed_impl_processor(
                         fixed_process_param(value, dialect)
                     )
@@ -2040,7 +2040,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
             else:
                 fixed_process_param = process_param
 
-                def process(value: Optional[_T]) -> Any:
+                def process(value: _T | None) -> Any:
                     return fixed_process_param(value, dialect)
 
             return process
@@ -2063,7 +2063,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
 
     def result_processor(
         self, dialect: Dialect, coltype: Any
-    ) -> Optional[_ResultProcessorType[_T]]:
+    ) -> _ResultProcessorType[_T] | None:
         """Provide a result value processing function for the given
         :class:`.Dialect`.
 
@@ -2091,7 +2091,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
                 fixed_process_value = process_value
                 fixed_impl_processor = impl_processor
 
-                def process(value: Any) -> Optional[_T]:
+                def process(value: Any) -> _T | None:
                     return fixed_process_value(
                         fixed_impl_processor(value), dialect
                     )
@@ -2099,7 +2099,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
             else:
                 fixed_process_value = process_value
 
-                def process(value: Any) -> Optional[_T]:
+                def process(value: Any) -> _T | None:
                     return fixed_process_value(value, dialect)
 
             return process
@@ -2115,7 +2115,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
 
     def bind_expression(
         self, bindparam: BindParameter[_T]
-    ) -> Optional[ColumnElement[_T]]:
+    ) -> ColumnElement[_T] | None:
         """Given a bind value (i.e. a :class:`.BindParameter` instance),
         return a SQL expression which will typically wrap the given parameter.
 
@@ -2152,7 +2152,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
 
     def column_expression(
         self, column: ColumnElement[_T]
-    ) -> Optional[ColumnElement[_T]]:
+    ) -> ColumnElement[_T] | None:
         """Given a SELECT column expression, return a wrapping SQL expression.
 
         .. note::
@@ -2177,7 +2177,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
         return self.impl_instance.column_expression(column)
 
     def coerce_compared_value(
-        self, op: Optional[OperatorType], value: Any
+        self, op: OperatorType | None, value: Any
     ) -> Any:
         """Suggest a type for a 'coerced' Python value in an expression.
 
@@ -2210,7 +2210,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
         instance.__dict__.update(self.__dict__)
         return instance
 
-    def get_dbapi_type(self, dbapi: ModuleType) -> Optional[Any]:
+    def get_dbapi_type(self, dbapi: ModuleType) -> Any | None:
         """Return the DBAPI type object represented by this
         :class:`.TypeDecorator`.
 
@@ -2236,7 +2236,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
 
     # mypy property bug
     @property
-    def sort_key_function(self) -> Optional[Callable[[Any], Any]]:  # type: ignore # noqa: E501
+    def sort_key_function(self) -> Callable[[Any], Any] | None:  # type: ignore # noqa: E501
         return self.impl_instance.sort_key_function
 
     def __repr__(self) -> str:
@@ -2258,7 +2258,7 @@ class Variant(TypeDecorator[_T]):
 
 @overload
 def to_instance(
-    typeobj: Union[Type[_TE], _TE], *arg: Any, **kw: Any
+    typeobj: type[_TE] | _TE, *arg: Any, **kw: Any
 ) -> _TE: ...
 
 
@@ -2267,8 +2267,8 @@ def to_instance(typeobj: None, *arg: Any, **kw: Any) -> TypeEngine[None]: ...
 
 
 def to_instance(
-    typeobj: Union[Type[_TE], _TE, None], *arg: Any, **kw: Any
-) -> Union[_TE, TypeEngine[None]]:
+    typeobj: type[_TE] | _TE | None, *arg: Any, **kw: Any
+) -> _TE | TypeEngine[None]:
     if typeobj is None:
         return NULLTYPE
 
@@ -2280,7 +2280,7 @@ def to_instance(
 
 def adapt_type(
     typeobj: TypeEngine[Any],
-    colspecs: Mapping[Type[Any], Type[TypeEngine[Any]]],
+    colspecs: Mapping[type[Any], type[TypeEngine[Any]]],
 ) -> TypeEngine[Any]:
     if isinstance(typeobj, type):
         typeobj = typeobj()

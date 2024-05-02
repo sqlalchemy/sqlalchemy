@@ -868,7 +868,7 @@ class PreparerTest(fixtures.TestBase):
             if have != want:
                 print("Wanted %s" % want)
                 print("Received %s" % have)
-            self.assert_(have == want)
+            self.assertTrue(have == want)
 
         a_eq(unformat("foo"), ["foo"])
         a_eq(unformat('"foo"'), ["foo"])
@@ -897,7 +897,7 @@ class PreparerTest(fixtures.TestBase):
             if have != want:
                 print("Wanted %s" % want)
                 print("Received %s" % have)
-            self.assert_(have == want)
+            self.assertTrue(have == want)
 
         a_eq(unformat("foo"), ["foo"])
         a_eq(unformat("`foo`"), ["foo"])

@@ -88,9 +88,9 @@ _FN = TypeVar("_FN", bound=Callable[..., Any])
 
 
 def combinations(
-    *comb: Union[Any, Tuple[Any, ...]],
-    argnames: Optional[str] = None,
-    id_: Optional[str] = None,
+    *comb: Any | tuple[Any, ...],
+    argnames: str | None = None,
+    id_: str | None = None,
     **kw: str,
 ) -> Callable[[_FN], _FN]:
     r"""Deliver multiple versions of a test based on positional combinations.
@@ -160,7 +160,7 @@ def combinations(
     )
 
 
-def combinations_list(arg_iterable: Iterable[Tuple[Any, ...]], **kw):
+def combinations_list(arg_iterable: Iterable[tuple[Any, ...]], **kw):
     "As combination, but takes a single iterable"
     return combinations(*arg_iterable, **kw)
 
@@ -341,9 +341,9 @@ class Config:
         suffix = "_async" if db.dialect.is_async else ""
         if db.dialect.server_version_info:
             svi = ".".join(str(tok) for tok in db.dialect.server_version_info)
-            self.name = "%s+%s%s_[%s]" % (db.name, db.driver, suffix, svi)
+            self.name = "{}+{}{}_[{}]".format(db.name, db.driver, suffix, svi)
         else:
-            self.name = "%s+%s%s" % (db.name, db.driver, suffix)
+            self.name = "{}+{}{}".format(db.name, db.driver, suffix)
 
     @classmethod
     def register(cls, db, db_opts, options, file_config):

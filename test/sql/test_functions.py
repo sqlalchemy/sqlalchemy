@@ -127,7 +127,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             select(1).where(expr),
-            "SELECT 1 WHERE %s" % (expected,),
+            "SELECT 1 WHERE {}".format(expected),
             literal_binds=True,
             render_postcompile=True,
             dialect="default_enhanced",
@@ -513,7 +513,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                     sqltypes.DateTime,
                 ),
             ]:
-                assert isinstance(fn(*args).type, type_), "%s / %r != %s" % (
+                assert isinstance(fn(*args).type, type_), "{} / {!r} != {}".format(
                     fn(),
                     fn(*args).type,
                     type_,

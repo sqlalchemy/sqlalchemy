@@ -904,7 +904,7 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         col_expr = str(case)
         self.assert_compile(
-            stmt, "SELECT %s AS a ORDER BY %s" % (col_expr, expected)
+            stmt, "SELECT {} AS a ORDER BY {}".format(col_expr, expected)
         )
 
     def test_order_by_named_label_from_anon_label(self):

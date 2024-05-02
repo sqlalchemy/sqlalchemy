@@ -115,12 +115,12 @@ _DMLTableElement = Union[TableClause, Alias, Join]
 
 class DMLState(CompileState):
     _no_parameters = True
-    _dict_parameters: Optional[MutableMapping[_DMLColumnElement, Any]] = None
-    _multi_parameters: Optional[
-        List[MutableMapping[_DMLColumnElement, Any]]
-    ] = None
-    _ordered_values: Optional[List[Tuple[_DMLColumnElement, Any]]] = None
-    _parameter_ordering: Optional[List[_DMLColumnElement]] = None
+    _dict_parameters: MutableMapping[_DMLColumnElement, Any] | None = None
+    _multi_parameters: None | (
+        list[MutableMapping[_DMLColumnElement, Any]]
+    ) = None
+    _ordered_values: list[tuple[_DMLColumnElement, Any]] | None = None
+    _parameter_ordering: list[_DMLColumnElement] | None = None
     _primary_table: FromClause
     _supports_implicit_returning = True
 
@@ -136,7 +136,7 @@ class DMLState(CompileState):
         raise NotImplementedError()
 
     @classmethod
-    def get_entity_description(cls, statement: UpdateBase) -> Dict[str, Any]:
+    def get_entity_description(cls, statement: UpdateBase) -> dict[str, Any]:
         return {
             "name": (
                 statement.table.name
@@ -149,7 +149,7 @@ class DMLState(CompileState):
     @classmethod
     def get_returning_column_descriptions(
         cls, statement: UpdateBase
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         return [
             {
                 "name": c.key,
@@ -166,14 +166,14 @@ class DMLState(CompileState):
     if TYPE_CHECKING:
 
         @classmethod
-        def get_plugin_class(cls, statement: Executable) -> Type[DMLState]: ...
+        def get_plugin_class(cls, statement: Executable) -> type[DMLState]: ...
 
     @classmethod
     def _get_multi_crud_kv_pairs(
         cls,
         statement: UpdateBase,
-        multi_kv_iterator: Iterable[Dict[_DMLColumnArgument, Any]],
-    ) -> List[Dict[_DMLColumnElement, Any]]:
+        multi_kv_iterator: Iterable[dict[_DMLColumnArgument, Any]],
+    ) -> list[dict[_DMLColumnElement, Any]]:
         return [
             {
                 coercions.expect(roles.DMLColumnRole, k): v
@@ -186,9 +186,9 @@ class DMLState(CompileState):
     def _get_crud_kv_pairs(
         cls,
         statement: UpdateBase,
-        kv_iterator: Iterable[Tuple[_DMLColumnArgument, Any]],
+        kv_iterator: Iterable[tuple[_DMLColumnArgument, Any]],
         needs_to_be_cacheable: bool,
-    ) -> List[Tuple[_DMLColumnElement, Any]]:
+    ) -> list[tuple[_DMLColumnElement, Any]]:
         return [
             (
                 coercions.expect(roles.DMLColumnRole, k),
@@ -208,8 +208,8 @@ class DMLState(CompileState):
 
     def _make_extra_froms(
         self, statement: DMLWhereBase
-    ) -> Tuple[FromClause, List[FromClause]]:
-        froms: List[FromClause] = []
+    ) -> tuple[FromClause, list[FromClause]]:
+        froms: list[FromClause] = []
 
         all_tables = list(sql_util.tables_from_leftmost(statement.table))
         primary_table = all_tables[0]
@@ -292,7 +292,7 @@ class InsertDMLState(DMLState):
             self._process_multi_values(statement)
 
     @util.memoized_property
-    def _insert_col_keys(self) -> List[str]:
+    def _insert_col_keys(self) -> list[str]:
         # this is also done in crud.py -> _key_getters_for_crud_column
         return [
             coercions.expect(roles.DMLColumnRole, col, as_key=True)
@@ -309,7 +309,7 @@ class InsertDMLState(DMLState):
 
     def _process_multi_values(self, statement: ValuesBase) -> None:
         for parameters in statement._multi_values:
-            multi_parameters: List[MutableMapping[_DMLColumnElement, Any]] = [
+            multi_parameters: list[MutableMapping[_DMLColumnElement, Any]] = [
                 (
                     {
                         c.key: value
@@ -402,7 +402,7 @@ class UpdateBase(
 
     __visit_name__ = "update_base"
 
-    _hints: util.immutabledict[Tuple[_DMLTableElement, str], str] = (
+    _hints: util.immutabledict[tuple[_DMLTableElement, str], str] = (
         util.EMPTY_DICT
     )
     named_with_column = False
@@ -413,11 +413,11 @@ class UpdateBase(
     table: _DMLTableElement
 
     _return_defaults = False
-    _return_defaults_columns: Optional[Tuple[_ColumnsClauseElement, ...]] = (
+    _return_defaults_columns: tuple[_ColumnsClauseElement, ...] | None = (
         None
     )
-    _supplemental_returning: Optional[Tuple[_ColumnsClauseElement, ...]] = None
-    _returning: Tuple[_ColumnsClauseElement, ...] = ()
+    _supplemental_returning: tuple[_ColumnsClauseElement, ...] | None = None
+    _returning: tuple[_ColumnsClauseElement, ...] = ()
 
     is_dml = True
 
@@ -464,7 +464,7 @@ class UpdateBase(
     def return_defaults(
         self,
         *cols: _DMLColumnArgument,
-        supplemental_cols: Optional[Iterable[_DMLColumnArgument]] = None,
+        supplemental_cols: Iterable[_DMLColumnArgument] | None = None,
         sort_by_parameter_order: bool = False,
     ) -> Self:
         """Make use of a :term:`RETURNING` clause for the purpose
@@ -806,7 +806,7 @@ class UpdateBase(
 
     def corresponding_column(
         self, column: KeyedColumnElement[Any], require_embedded: bool = False
-    ) -> Optional[ColumnElement[Any]]:
+    ) -> ColumnElement[Any] | None:
         return self.exported_columns.corresponding_column(
             column, require_embedded=require_embedded
         )
@@ -818,7 +818,7 @@ class UpdateBase(
     @util.ro_memoized_property
     def exported_columns(
         self,
-    ) -> ReadOnlyColumnCollection[Optional[str], ColumnElement[Any]]:
+    ) -> ReadOnlyColumnCollection[str | None, ColumnElement[Any]]:
         """Return the RETURNING columns as a column collection for this
         statement.
 
@@ -835,7 +835,7 @@ class UpdateBase(
     def with_hint(
         self,
         text: str,
-        selectable: Optional[_DMLTableArgument] = None,
+        selectable: _DMLTableArgument | None = None,
         dialect_name: str = "*",
     ) -> Self:
         """Add a table hint for a single table to this
@@ -875,7 +875,7 @@ class UpdateBase(
         return self
 
     @property
-    def entity_description(self) -> Dict[str, Any]:
+    def entity_description(self) -> dict[str, Any]:
         """Return a :term:`plugin-enabled` description of the table and/or
         entity which this DML construct is operating against.
 
@@ -911,7 +911,7 @@ class UpdateBase(
         return meth(self)
 
     @property
-    def returning_column_descriptions(self) -> List[Dict[str, Any]]:
+    def returning_column_descriptions(self) -> list[dict[str, Any]]:
         """Return a :term:`plugin-enabled` description of the columns
         which this DML construct is RETURNING against, in other words
         the expressions established as part of :meth:`.UpdateBase.returning`.
@@ -966,25 +966,25 @@ class ValuesBase(UpdateBase):
 
     _supports_multi_parameters = False
 
-    select: Optional[Select[Unpack[TupleAny]]] = None
+    select: Select[Unpack[TupleAny]] | None = None
     """SELECT statement for INSERT .. FROM SELECT"""
 
-    _post_values_clause: Optional[ClauseElement] = None
+    _post_values_clause: ClauseElement | None = None
     """used by extensions to Insert etc. to add additional syntacitcal
     constructs, e.g. ON CONFLICT etc."""
 
-    _values: Optional[util.immutabledict[_DMLColumnElement, Any]] = None
-    _multi_values: Tuple[
-        Union[
-            Sequence[Dict[_DMLColumnElement, Any]],
-            Sequence[Sequence[Any]],
-        ],
+    _values: util.immutabledict[_DMLColumnElement, Any] | None = None
+    _multi_values: tuple[
+        (
+            Sequence[dict[_DMLColumnElement, Any]] |
+            Sequence[Sequence[Any]]
+        ),
         ...,
     ] = ()
 
-    _ordered_values: Optional[List[Tuple[_DMLColumnElement, Any]]] = None
+    _ordered_values: list[tuple[_DMLColumnElement, Any]] | None = None
 
-    _select_names: Optional[List[str]] = None
+    _select_names: list[str] | None = None
     _inline: bool = False
 
     def __init__(self, table: _DMLTableArgument):
@@ -1004,10 +1004,10 @@ class ValuesBase(UpdateBase):
     )
     def values(
         self,
-        *args: Union[
-            _DMLColumnKeyMapping[Any],
-            Sequence[Any],
-        ],
+        *args: (
+            _DMLColumnKeyMapping[Any] |
+            Sequence[Any]
+        ),
         **kwargs: Any,
     ) -> Self:
         r"""Specify a fixed VALUES clause for an INSERT statement, or the SET
@@ -1432,7 +1432,7 @@ class ReturningInsert(Insert, TypedReturnsRows[Unpack[_Ts]]):
 
 class DMLWhereBase:
     table: _DMLTableElement
-    _where_criteria: Tuple[ColumnElement[Any], ...] = ()
+    _where_criteria: tuple[ColumnElement[Any], ...] = ()
 
     @_generative
     def where(self, *whereclause: _ColumnExpressionArgument[bool]) -> Self:
@@ -1489,7 +1489,7 @@ class DMLWhereBase:
         return self.filter(*clauses)
 
     @property
-    def whereclause(self) -> Optional[ColumnElement[Any]]:
+    def whereclause(self) -> ColumnElement[Any] | None:
         """Return the completed WHERE clause for this :class:`.DMLWhereBase`
         statement.
 
@@ -1543,7 +1543,7 @@ class Update(DMLWhereBase, ValuesBase):
         super().__init__(table)
 
     @_generative
-    def ordered_values(self, *args: Tuple[_DMLColumnArgument, Any]) -> Self:
+    def ordered_values(self, *args: tuple[_DMLColumnArgument, Any]) -> Self:
         """Specify the VALUES clause of this UPDATE statement with an explicit
         parameter ordering that will be maintained in the SET clause of the
         resulting UPDATE statement.

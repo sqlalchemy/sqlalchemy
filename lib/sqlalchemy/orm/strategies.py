@@ -546,7 +546,7 @@ class DeferredColumnLoader(LoaderStrategy):
 
     def _invoke_raise_load(self, state, passive, lazy):
         raise sa_exc.InvalidRequestError(
-            "'%s' is not available due to raiseload=True" % (self,)
+            "'{}' is not available due to raiseload=True".format(self)
         )
 
 
@@ -695,14 +695,14 @@ class LazyLoader(
     )
 
     _lazywhere: ColumnElement[bool]
-    _bind_to_col: Dict[str, ColumnElement[Any]]
+    _bind_to_col: dict[str, ColumnElement[Any]]
     _rev_lazywhere: ColumnElement[bool]
-    _rev_bind_to_col: Dict[str, ColumnElement[Any]]
+    _rev_bind_to_col: dict[str, ColumnElement[Any]]
 
     parent_property: RelationshipProperty[Any]
 
     def __init__(
-        self, parent: RelationshipProperty[Any], strategy_key: Tuple[Any, ...]
+        self, parent: RelationshipProperty[Any], strategy_key: tuple[Any, ...]
     ):
         super().__init__(parent, strategy_key)
         self._raise_always = self.strategy_opts["lazy"] == "raise"
@@ -861,7 +861,7 @@ class LazyLoader(
 
     def _invoke_raise_load(self, state, passive, lazy):
         raise sa_exc.InvalidRequestError(
-            "'%s' is not available due to lazy='%s'" % (self, lazy)
+            "'{}' is not available due to lazy='{}'".format(self, lazy)
         )
 
     def _load_for_state(

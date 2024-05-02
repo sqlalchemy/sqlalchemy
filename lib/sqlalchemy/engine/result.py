@@ -92,13 +92,13 @@ class ResultMetaData:
 
     __slots__ = ()
 
-    _tuplefilter: Optional[_TupleGetterType] = None
-    _translated_indexes: Optional[Sequence[int]] = None
-    _unique_filters: Optional[Sequence[Callable[[Any], Any]]] = None
+    _tuplefilter: _TupleGetterType | None = None
+    _translated_indexes: Sequence[int] | None = None
+    _unique_filters: Sequence[Callable[[Any], Any]] | None = None
     _keymap: _KeyMapType
     _keys: Sequence[str]
-    _processors: Optional[_ProcessorsType]
-    _key_to_index: Dict[_KeyType, int]
+    _processors: _ProcessorsType | None
+    _key_to_index: dict[_KeyType, int]
 
     @property
     def keys(self) -> RMKeyView:
@@ -112,25 +112,25 @@ class ResultMetaData:
 
     @overload
     def _key_fallback(
-        self, key: Any, err: Optional[Exception], raiseerr: Literal[True] = ...
+        self, key: Any, err: Exception | None, raiseerr: Literal[True] = ...
     ) -> NoReturn: ...
 
     @overload
     def _key_fallback(
         self,
         key: Any,
-        err: Optional[Exception],
+        err: Exception | None,
         raiseerr: Literal[False] = ...,
     ) -> None: ...
 
     @overload
     def _key_fallback(
-        self, key: Any, err: Optional[Exception], raiseerr: bool = ...
-    ) -> Optional[NoReturn]: ...
+        self, key: Any, err: Exception | None, raiseerr: bool = ...
+    ) -> NoReturn | None: ...
 
     def _key_fallback(
-        self, key: Any, err: Optional[Exception], raiseerr: bool = True
-    ) -> Optional[NoReturn]:
+        self, key: Any, err: Exception | None, raiseerr: bool = True
+    ) -> NoReturn | None:
         assert raiseerr
         raise KeyError(key) from err
 
@@ -144,7 +144,7 @@ class ResultMetaData:
 
     def _index_for_key(
         self, key: _KeyIndexType, raiseerr: bool
-    ) -> Optional[int]:
+    ) -> int | None:
         raise NotImplementedError()
 
     def _indexes_for_keys(
@@ -162,7 +162,7 @@ class ResultMetaData:
 
     def _getter(
         self, key: Any, raiseerr: bool = True
-    ) -> Optional[Callable[[Row[Unpack[TupleAny]]], Any]]:
+    ) -> Callable[[Row[Unpack[TupleAny]]], Any] | None:
         index = self._index_for_key(key, raiseerr)
 
         if index is not None:
@@ -178,7 +178,7 @@ class ResultMetaData:
 
     def _make_key_to_index(
         self, keymap: Mapping[_KeyType, Sequence[Any]], index: int
-    ) -> Dict[_KeyType, int]:
+    ) -> dict[_KeyType, int]:
         return {
             key: rec[index]
             for key, rec in keymap.items()
@@ -200,7 +200,7 @@ class ResultMetaData:
                 self._key_fallback(key, None)
 
     @property
-    def _effective_processors(self) -> Optional[_ProcessorsType]:
+    def _effective_processors(self) -> _ProcessorsType | None:
         if not self._processors or NONE_SET.issuperset(self._processors):
             return None
         else:
@@ -259,11 +259,11 @@ class SimpleResultMetaData(ResultMetaData):
     def __init__(
         self,
         keys: Sequence[str],
-        extra: Optional[Sequence[Any]] = None,
-        _processors: Optional[_ProcessorsType] = None,
-        _tuplefilter: Optional[_TupleGetterType] = None,
-        _translated_indexes: Optional[Sequence[int]] = None,
-        _unique_filters: Optional[Sequence[Callable[[Any], Any]]] = None,
+        extra: Sequence[Any] | None = None,
+        _processors: _ProcessorsType | None = None,
+        _tuplefilter: _TupleGetterType | None = None,
+        _translated_indexes: Sequence[int] | None = None,
+        _unique_filters: Sequence[Callable[[Any], Any]] | None = None,
     ):
         self._keys = list(keys)
         self._tuplefilter = _tuplefilter
@@ -305,13 +305,13 @@ class SimpleResultMetaData(ResultMetaData):
             _unique_filters=unique_filters,
         )
 
-    def __getstate__(self) -> Dict[str, Any]:
+    def __getstate__(self) -> dict[str, Any]:
         return {
             "_keys": self._keys,
             "_translated_indexes": self._translated_indexes,
         }
 
-    def __setstate__(self, state: Dict[str, Any]) -> None:
+    def __setstate__(self, state: dict[str, Any]) -> None:
         if state["_translated_indexes"]:
             _translated_indexes = state["_translated_indexes"]
             _tuplefilter = tuplegetter(*_translated_indexes)
@@ -384,7 +384,7 @@ class SimpleResultMetaData(ResultMetaData):
 
 
 def result_tuple(
-    fields: Sequence[str], extra: Optional[Any] = None
+    fields: Sequence[str], extra: Any | None = None
 ) -> Callable[[Iterable[Any]], Row[Unpack[TupleAny]]]:
     parent = SimpleResultMetaData(fields, extra)
     return functools.partial(
@@ -405,12 +405,12 @@ _NO_ROW = _NoRow._NO_ROW
 class ResultInternal(InPlaceGenerative, Generic[_R]):
     __slots__ = ()
 
-    _real_result: Optional[Result[Unpack[TupleAny]]] = None
+    _real_result: Result[Unpack[TupleAny]] | None = None
     _generate_rows: bool = True
-    _row_logging_fn: Optional[Callable[[Any], Any]]
+    _row_logging_fn: Callable[[Any], Any] | None
 
-    _unique_filter_state: Optional[_UniqueFilterStateType] = None
-    _post_creational_filter: Optional[Callable[[Any], Any]] = None
+    _unique_filter_state: _UniqueFilterStateType | None = None
+    _post_creational_filter: Callable[[Any], Any] | None = None
     _is_cursor = False
 
     _metadata: ResultMetaData
@@ -424,24 +424,24 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
     def _fetchone_impl(
         self, hard_close: bool = False
-    ) -> Optional[_InterimRowType[Row[Unpack[TupleAny]]]]:
+    ) -> _InterimRowType[Row[Unpack[TupleAny]]] | None:
         raise NotImplementedError()
 
     def _fetchmany_impl(
-        self, size: Optional[int] = None
-    ) -> List[_InterimRowType[Row[Unpack[TupleAny]]]]:
+        self, size: int | None = None
+    ) -> list[_InterimRowType[Row[Unpack[TupleAny]]]]:
         raise NotImplementedError()
 
     def _fetchall_impl(
         self,
-    ) -> List[_InterimRowType[Row[Unpack[TupleAny]]]]:
+    ) -> list[_InterimRowType[Row[Unpack[TupleAny]]]]:
         raise NotImplementedError()
 
     def _soft_close(self, hard: bool = False) -> None:
         raise NotImplementedError()
 
     @HasMemoized_ro_memoized_attribute
-    def _row_getter(self) -> Optional[Callable[..., _R]]:
+    def _row_getter(self) -> Callable[..., _R] | None:
         real_result: Result[Unpack[TupleAny]] = (
             self._real_result
             if self._real_result
@@ -456,8 +456,8 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
                 def process_row(
                     metadata: ResultMetaData,
-                    processors: Optional[_ProcessorsType],
-                    key_to_index: Dict[_KeyType, int],
+                    processors: _ProcessorsType | None,
+                    key_to_index: dict[_KeyType, int],
                     scalar_obj: Any,
                 ) -> Row[Unpack[TupleAny]]:
                     return _proc(
@@ -535,25 +535,25 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
         return iterrows
 
-    def _raw_all_rows(self) -> List[_R]:
+    def _raw_all_rows(self) -> list[_R]:
         make_row = self._row_getter
         assert make_row is not None
         rows = self._fetchall_impl()
         return [make_row(row) for row in rows]
 
-    def _allrows(self) -> List[_R]:
+    def _allrows(self) -> list[_R]:
         post_creational_filter = self._post_creational_filter
 
         make_row = self._row_getter
 
         rows = self._fetchall_impl()
-        made_rows: List[_InterimRowType[_R]]
+        made_rows: list[_InterimRowType[_R]]
         if make_row:
             made_rows = [make_row(row) for row in rows]
         else:
             made_rows = rows  # type: ignore
 
-        interim_rows: List[_R]
+        interim_rows: list[_R]
 
         if self._unique_filter_state:
             uniques, strategy = self._unique_strategy
@@ -581,7 +581,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
     @HasMemoized_ro_memoized_attribute
     def _onerow_getter(
         self,
-    ) -> Callable[..., Union[Literal[_NoRow._NO_ROW], _R]]:
+    ) -> Callable[..., Literal[_NoRow._NO_ROW] | _R]:
         make_row = self._row_getter
 
         post_creational_filter = self._post_creational_filter
@@ -589,7 +589,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         if self._unique_filter_state:
             uniques, strategy = self._unique_strategy
 
-            def onerow(self: Result[Unpack[TupleAny]]) -> Union[_NoRow, _R]:
+            def onerow(self: Result[Unpack[TupleAny]]) -> _NoRow | _R:
                 _onerow = self._fetchone_impl
                 while True:
                     row = _onerow()
@@ -610,7 +610,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
         else:
 
-            def onerow(self: Result[Unpack[TupleAny]]) -> Union[_NoRow, _R]:
+            def onerow(self: Result[Unpack[TupleAny]]) -> _NoRow | _R:
                 row = self._fetchone_impl()
                 if row is None:
                     return _NO_ROW
@@ -625,7 +625,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         return onerow
 
     @HasMemoized_ro_memoized_attribute
-    def _manyrow_getter(self) -> Callable[..., List[_R]]:
+    def _manyrow_getter(self) -> Callable[..., list[_R]]:
         make_row = self._row_getter
 
         post_creational_filter = self._post_creational_filter
@@ -634,11 +634,11 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
             uniques, strategy = self._unique_strategy
 
             def filterrows(
-                make_row: Optional[Callable[..., _R]],
-                rows: List[Any],
-                strategy: Optional[Callable[[List[Any]], Any]],
-                uniques: Set[Any],
-            ) -> List[_R]:
+                make_row: Callable[..., _R] | None,
+                rows: list[Any],
+                strategy: Callable[[list[Any]], Any] | None,
+                uniques: set[Any],
+            ) -> list[_R]:
                 if make_row:
                     rows = [make_row(row) for row in rows]
 
@@ -655,9 +655,9 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                 ]
 
             def manyrows(
-                self: ResultInternal[_R], num: Optional[int]
-            ) -> List[_R]:
-                collect: List[_R] = []
+                self: ResultInternal[_R], num: int | None
+            ) -> list[_R]:
+                collect: list[_R] = []
 
                 _manyrows = self._fetchmany_impl
 
@@ -704,8 +704,8 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         else:
 
             def manyrows(
-                self: ResultInternal[_R], num: Optional[int]
-            ) -> List[_R]:
+                self: ResultInternal[_R], num: int | None
+            ) -> list[_R]:
                 if num is None:
                     real_result = (
                         self._real_result
@@ -714,7 +714,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                     )
                     num = real_result._yield_per
 
-                rows: List[_InterimRowType[Any]] = self._fetchmany_impl(num)
+                rows: list[_InterimRowType[Any]] = self._fetchmany_impl(num)
                 if make_row:
                     rows = [make_row(row) for row in rows]
                 if post_creational_filter:
@@ -737,17 +737,17 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         raise_for_second_row: bool,
         raise_for_none: bool,
         scalar: bool,
-    ) -> Optional[_R]: ...
+    ) -> _R | None: ...
 
     def _only_one_row(
         self,
         raise_for_second_row: bool,
         raise_for_none: bool,
         scalar: bool,
-    ) -> Optional[_R]:
+    ) -> _R | None:
         onerow = self._fetchone_impl
 
-        row: Optional[_InterimRowType[Any]] = onerow(hard_close=True)
+        row: _InterimRowType[Any] | None = onerow(hard_close=True)
         if row is None:
             if raise_for_none:
                 raise exc.NoResultFound(
@@ -930,13 +930,13 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
 
     __slots__ = ("_metadata", "__dict__")
 
-    _row_logging_fn: Optional[
+    _row_logging_fn: None | (
         Callable[[Row[Unpack[TupleAny]]], Row[Unpack[TupleAny]]]
-    ] = None
+    ) = None
 
     _source_supports_scalars: bool = False
 
-    _yield_per: Optional[int] = None
+    _yield_per: int | None = None
 
     _attributes: util.immutabledict[Any, Any] = util.immutabledict()
 
@@ -1037,7 +1037,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         return self
 
     @_generative
-    def unique(self, strategy: Optional[_UniqueFilterType] = None) -> Self:
+    def unique(self, strategy: _UniqueFilterType | None = None) -> Self:
         """Apply unique filtering to the objects returned by this
         :class:`_engine.Result`.
 
@@ -1164,7 +1164,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
 
     def _getter(
         self, key: _KeyIndexType, raiseerr: bool = True
-    ) -> Optional[Callable[[Row[Unpack[TupleAny]]], Any]]:
+    ) -> Callable[[Row[Unpack[TupleAny]]], Any] | None:
         """return a callable that will retrieve the given key from a
         :class:`_engine.Row`.
 
@@ -1209,7 +1209,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         "The :attr:`.Result.t` method is deprecated, :class:`.Row` "
         "now behaves like a tuple and can unpack types directly.",
     )
-    def t(self) -> TupleResult[Tuple[Unpack[_Ts]]]:
+    def t(self) -> TupleResult[tuple[Unpack[_Ts]]]:
         """Apply a "typed tuple" typing filter to returned rows.
 
         The :attr:`_engine.Result.t` attribute is a synonym for
@@ -1230,7 +1230,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         "The :meth:`.Result.tuples` method is deprecated, :class:`.Row` "
         "now behaves like a tuple and can unpack types directly.",
     )
-    def tuples(self) -> TupleResult[Tuple[Unpack[_Ts]]]:
+    def tuples(self) -> TupleResult[tuple[Unpack[_Ts]]]:
         """Apply a "typed tuple" typing filter to returned rows.
 
         This method returns the same :class:`_engine.Result` object
@@ -1275,7 +1275,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         return self._next_impl()
 
     def partitions(
-        self, size: Optional[int] = None
+        self, size: int | None = None
     ) -> Iterator[Sequence[Row[Unpack[_Ts]]]]:
         """Iterate through sub-lists of rows of the size given.
 
@@ -1337,7 +1337,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
 
         return self._allrows()
 
-    def fetchone(self) -> Optional[Row[Unpack[_Ts]]]:
+    def fetchone(self) -> Row[Unpack[_Ts]] | None:
         """Fetch one row.
 
         When all rows are exhausted, returns None.
@@ -1360,7 +1360,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
             return row
 
     def fetchmany(
-        self, size: Optional[int] = None
+        self, size: int | None = None
     ) -> Sequence[Row[Unpack[_Ts]]]:
         """Fetch many rows.
 
@@ -1401,7 +1401,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
 
         return self._allrows()
 
-    def first(self) -> Optional[Row[Unpack[_Ts]]]:
+    def first(self) -> Row[Unpack[_Ts]] | None:
         """Fetch the first row or ``None`` if no row is present.
 
         Closes the result set and discards remaining rows.
@@ -1440,7 +1440,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
             raise_for_second_row=False, raise_for_none=False, scalar=False
         )
 
-    def one_or_none(self) -> Optional[Row[Unpack[_Ts]]]:
+    def one_or_none(self) -> Row[Unpack[_Ts]] | None:
         """Return at most one result or raise an exception.
 
         Returns ``None`` if the result has no rows.
@@ -1489,12 +1489,12 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         )
 
     @overload
-    def scalar_one_or_none(self: Result[_T]) -> Optional[_T]: ...
+    def scalar_one_or_none(self: Result[_T]) -> _T | None: ...
 
     @overload
-    def scalar_one_or_none(self) -> Optional[Any]: ...
+    def scalar_one_or_none(self) -> Any | None: ...
 
-    def scalar_one_or_none(self) -> Optional[Any]:
+    def scalar_one_or_none(self) -> Any | None:
         """Return exactly one scalar result or ``None``.
 
         This is equivalent to calling :meth:`_engine.Result.scalars` and
@@ -1545,7 +1545,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         )
 
     @overload
-    def scalar(self: Result[_T]) -> Optional[_T]: ...
+    def scalar(self: Result[_T]) -> _T | None: ...
 
     @overload
     def scalar(self) -> Any: ...
@@ -1628,7 +1628,7 @@ class FilterResult(ResultInternal[_R]):
         "__dict__",
     )
 
-    _post_creational_filter: Optional[Callable[[Any], Any]]
+    _post_creational_filter: Callable[[Any], Any] | None
 
     _real_result: Result[Unpack[TupleAny]]
 
@@ -1686,7 +1686,7 @@ class FilterResult(ResultInternal[_R]):
         self._real_result.close()
 
     @property
-    def _attributes(self) -> Dict[Any, Any]:
+    def _attributes(self) -> dict[Any, Any]:
         return self._real_result._attributes
 
     def _fetchiter_impl(
@@ -1696,17 +1696,17 @@ class FilterResult(ResultInternal[_R]):
 
     def _fetchone_impl(
         self, hard_close: bool = False
-    ) -> Optional[_InterimRowType[Row[Unpack[TupleAny]]]]:
+    ) -> _InterimRowType[Row[Unpack[TupleAny]]] | None:
         return self._real_result._fetchone_impl(hard_close=hard_close)
 
     def _fetchall_impl(
         self,
-    ) -> List[_InterimRowType[Row[Unpack[TupleAny]]]]:
+    ) -> list[_InterimRowType[Row[Unpack[TupleAny]]]]:
         return self._real_result._fetchall_impl()
 
     def _fetchmany_impl(
-        self, size: Optional[int] = None
-    ) -> List[_InterimRowType[Row[Unpack[TupleAny]]]]:
+        self, size: int | None = None
+    ) -> list[_InterimRowType[Row[Unpack[TupleAny]]]]:
         return self._real_result._fetchmany_impl(size=size)
 
 
@@ -1730,7 +1730,7 @@ class ScalarResult(FilterResult[_R]):
 
     _generate_rows = False
 
-    _post_creational_filter: Optional[Callable[[Any], Any]]
+    _post_creational_filter: Callable[[Any], Any] | None
 
     def __init__(
         self, real_result: Result[Unpack[TupleAny]], index: _KeyIndexType
@@ -1746,7 +1746,7 @@ class ScalarResult(FilterResult[_R]):
 
         self._unique_filter_state = real_result._unique_filter_state
 
-    def unique(self, strategy: Optional[_UniqueFilterType] = None) -> Self:
+    def unique(self, strategy: _UniqueFilterType | None = None) -> Self:
         """Apply unique filtering to the objects returned by this
         :class:`_engine.ScalarResult`.
 
@@ -1756,7 +1756,7 @@ class ScalarResult(FilterResult[_R]):
         self._unique_filter_state = (set(), strategy)
         return self
 
-    def partitions(self, size: Optional[int] = None) -> Iterator[Sequence[_R]]:
+    def partitions(self, size: int | None = None) -> Iterator[Sequence[_R]]:
         """Iterate through sub-lists of elements of the size given.
 
         Equivalent to :meth:`_engine.Result.partitions` except that
@@ -1779,7 +1779,7 @@ class ScalarResult(FilterResult[_R]):
 
         return self._allrows()
 
-    def fetchmany(self, size: Optional[int] = None) -> Sequence[_R]:
+    def fetchmany(self, size: int | None = None) -> Sequence[_R]:
         """Fetch many objects.
 
         Equivalent to :meth:`_engine.Result.fetchmany` except that
@@ -1805,7 +1805,7 @@ class ScalarResult(FilterResult[_R]):
     def __next__(self) -> _R:
         return self._next_impl()
 
-    def first(self) -> Optional[_R]:
+    def first(self) -> _R | None:
         """Fetch the first object or ``None`` if no object is present.
 
         Equivalent to :meth:`_engine.Result.first` except that
@@ -1818,7 +1818,7 @@ class ScalarResult(FilterResult[_R]):
             raise_for_second_row=False, raise_for_none=False, scalar=False
         )
 
-    def one_or_none(self) -> Optional[_R]:
+    def one_or_none(self) -> _R | None:
         """Return at most one object or raise an exception.
 
         Equivalent to :meth:`_engine.Result.one_or_none` except that
@@ -1858,7 +1858,7 @@ class TupleResult(FilterResult[_R], util.TypingOnly):
     if TYPE_CHECKING:
 
         def partitions(
-            self, size: Optional[int] = None
+            self, size: int | None = None
         ) -> Iterator[Sequence[_R]]:
             """Iterate through sub-lists of elements of the size given.
 
@@ -1869,7 +1869,7 @@ class TupleResult(FilterResult[_R], util.TypingOnly):
             """
             ...
 
-        def fetchone(self) -> Optional[_R]:
+        def fetchone(self) -> _R | None:
             """Fetch one tuple.
 
             Equivalent to :meth:`_engine.Result.fetchone` except that
@@ -1883,7 +1883,7 @@ class TupleResult(FilterResult[_R], util.TypingOnly):
             """A synonym for the :meth:`_engine.ScalarResult.all` method."""
             ...
 
-        def fetchmany(self, size: Optional[int] = None) -> Sequence[_R]:
+        def fetchmany(self, size: int | None = None) -> Sequence[_R]:
             """Fetch many objects.
 
             Equivalent to :meth:`_engine.Result.fetchmany` except that
@@ -1907,7 +1907,7 @@ class TupleResult(FilterResult[_R], util.TypingOnly):
 
         def __next__(self) -> _R: ...
 
-        def first(self) -> Optional[_R]:
+        def first(self) -> _R | None:
             """Fetch the first object or ``None`` if no object is present.
 
             Equivalent to :meth:`_engine.Result.first` except that
@@ -1918,7 +1918,7 @@ class TupleResult(FilterResult[_R], util.TypingOnly):
             """
             ...
 
-        def one_or_none(self) -> Optional[_R]:
+        def one_or_none(self) -> _R | None:
             """Return at most one object or raise an exception.
 
             Equivalent to :meth:`_engine.Result.one_or_none` except that
@@ -1939,7 +1939,7 @@ class TupleResult(FilterResult[_R], util.TypingOnly):
             ...
 
         @overload
-        def scalar_one(self: TupleResult[Tuple[_T]]) -> _T: ...
+        def scalar_one(self: TupleResult[tuple[_T]]) -> _T: ...
 
         @overload
         def scalar_one(self) -> Any: ...
@@ -1961,13 +1961,13 @@ class TupleResult(FilterResult[_R], util.TypingOnly):
 
         @overload
         def scalar_one_or_none(
-            self: TupleResult[Tuple[_T]],
-        ) -> Optional[_T]: ...
+            self: TupleResult[tuple[_T]],
+        ) -> _T | None: ...
 
         @overload
-        def scalar_one_or_none(self) -> Optional[Any]: ...
+        def scalar_one_or_none(self) -> Any | None: ...
 
-        def scalar_one_or_none(self) -> Optional[Any]:
+        def scalar_one_or_none(self) -> Any | None:
             """Return exactly one or no scalar result.
 
             This is equivalent to calling :meth:`_engine.Result.scalars`
@@ -1983,7 +1983,7 @@ class TupleResult(FilterResult[_R], util.TypingOnly):
             ...
 
         @overload
-        def scalar(self: TupleResult[Tuple[_T]]) -> Optional[_T]: ...
+        def scalar(self: TupleResult[tuple[_T]]) -> _T | None: ...
 
         @overload
         def scalar(self) -> Any: ...
@@ -2028,7 +2028,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
         if result._source_supports_scalars:
             self._metadata = self._metadata._reduce([0])
 
-    def unique(self, strategy: Optional[_UniqueFilterType] = None) -> Self:
+    def unique(self, strategy: _UniqueFilterType | None = None) -> Self:
         """Apply unique filtering to the objects returned by this
         :class:`_engine.MappingResult`.
 
@@ -2043,7 +2043,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
         return self._column_slices(col_expressions)
 
     def partitions(
-        self, size: Optional[int] = None
+        self, size: int | None = None
     ) -> Iterator[Sequence[RowMapping]]:
         """Iterate through sub-lists of elements of the size given.
 
@@ -2067,7 +2067,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
 
         return self._allrows()
 
-    def fetchone(self) -> Optional[RowMapping]:
+    def fetchone(self) -> RowMapping | None:
         """Fetch one object.
 
         Equivalent to :meth:`_engine.Result.fetchone` except that
@@ -2082,7 +2082,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
         else:
             return row
 
-    def fetchmany(self, size: Optional[int] = None) -> Sequence[RowMapping]:
+    def fetchmany(self, size: int | None = None) -> Sequence[RowMapping]:
         """Fetch many objects.
 
         Equivalent to :meth:`_engine.Result.fetchmany` except that
@@ -2110,7 +2110,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
     def __next__(self) -> RowMapping:
         return self._next_impl()
 
-    def first(self) -> Optional[RowMapping]:
+    def first(self) -> RowMapping | None:
         """Fetch the first object or ``None`` if no object is present.
 
         Equivalent to :meth:`_engine.Result.first` except that
@@ -2123,7 +2123,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
             raise_for_second_row=False, raise_for_none=False, scalar=False
         )
 
-    def one_or_none(self) -> Optional[RowMapping]:
+    def one_or_none(self) -> RowMapping | None:
         """Return at most one object or raise an exception.
 
         Equivalent to :meth:`_engine.Result.one_or_none` except that
@@ -2243,7 +2243,7 @@ class IteratorResult(Result[Unpack[_Ts]]):
         self,
         cursor_metadata: ResultMetaData,
         iterator: Iterator[_InterimSupportsScalarsRowType],
-        raw: Optional[Result[Any]] = None,
+        raw: Result[Any] | None = None,
         _source_supports_scalars: bool = False,
     ):
         self._metadata = cursor_metadata
@@ -2283,7 +2283,7 @@ class IteratorResult(Result[Unpack[_Ts]]):
 
     def _fetchone_impl(
         self, hard_close: bool = False
-    ) -> Optional[_InterimRowType[Row[Unpack[TupleAny]]]]:
+    ) -> _InterimRowType[Row[Unpack[TupleAny]]] | None:
         if self._hard_closed:
             self._raise_hard_closed()
 
@@ -2296,7 +2296,7 @@ class IteratorResult(Result[Unpack[_Ts]]):
 
     def _fetchall_impl(
         self,
-    ) -> List[_InterimRowType[Row[Unpack[TupleAny]]]]:
+    ) -> list[_InterimRowType[Row[Unpack[TupleAny]]]]:
         if self._hard_closed:
             self._raise_hard_closed()
         try:
@@ -2305,8 +2305,8 @@ class IteratorResult(Result[Unpack[_Ts]]):
             self._soft_close()
 
     def _fetchmany_impl(
-        self, size: Optional[int] = None
-    ) -> List[_InterimRowType[Row[Unpack[TupleAny]]]]:
+        self, size: int | None = None
+    ) -> list[_InterimRowType[Row[Unpack[TupleAny]]]]:
         if self._hard_closed:
             self._raise_hard_closed()
 
@@ -2337,10 +2337,10 @@ class ChunkedIteratorResult(IteratorResult[Unpack[_Ts]]):
         self,
         cursor_metadata: ResultMetaData,
         chunks: Callable[
-            [Optional[int]], Iterator[Sequence[_InterimRowType[_R]]]
+            [int | None], Iterator[Sequence[_InterimRowType[_R]]]
         ],
         source_supports_scalars: bool = False,
-        raw: Optional[Result[Any]] = None,
+        raw: Result[Any] | None = None,
         dynamic_yield_per: bool = False,
     ):
         self._metadata = cursor_metadata
@@ -2367,8 +2367,8 @@ class ChunkedIteratorResult(IteratorResult[Unpack[_Ts]]):
         self.chunks = lambda size: []  # type: ignore
 
     def _fetchmany_impl(
-        self, size: Optional[int] = None
-    ) -> List[_InterimRowType[Row[Unpack[TupleAny]]]]:
+        self, size: int | None = None
+    ) -> list[_InterimRowType[Row[Unpack[TupleAny]]]]:
         if self.dynamic_yield_per:
             self.iterator = itertools.chain.from_iterable(self.chunks(size))
         return super()._fetchmany_impl(size=size)
@@ -2385,7 +2385,7 @@ class MergedResult(IteratorResult[Unpack[_Ts]]):
     """
 
     closed = False
-    rowcount: Optional[int]
+    rowcount: int | None
 
     def __init__(
         self,

@@ -173,11 +173,11 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
                 return set(col)
 
         def assert_eq():
-            self.assert_(to_set(direct) == canary.data)
-            self.assert_(set(adapter) == canary.data)
+            self.assertTrue(to_set(direct) == canary.data)
+            self.assertTrue(set(adapter) == canary.data)
 
         def assert_ne():
-            self.assert_(to_set(direct) != canary.data)
+            self.assertTrue(to_set(direct) != canary.data)
 
         e1, e2 = creator(), creator()
 
@@ -507,51 +507,51 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         e2 = creator()
         like_me.append(e2)
 
-        self.assert_(obj.attr is direct)
+        self.assertTrue(obj.attr is direct)
         obj.attr = like_me
-        self.assert_(obj.attr is not direct)
-        self.assert_(obj.attr is not like_me)
-        self.assert_(set(obj.attr) == {e2})
-        self.assert_(e1 in canary.removed)
-        self.assert_(e2 in canary.added)
+        self.assertTrue(obj.attr is not direct)
+        self.assertTrue(obj.attr is not like_me)
+        self.assertTrue(set(obj.attr) == {e2})
+        self.assertTrue(e1 in canary.removed)
+        self.assertTrue(e2 in canary.added)
 
         e3 = creator()
         real_list = [e3]
         obj.attr = real_list
-        self.assert_(obj.attr is not real_list)
-        self.assert_(set(obj.attr) == {e3})
-        self.assert_(e2 in canary.removed)
-        self.assert_(e3 in canary.added)
+        self.assertTrue(obj.attr is not real_list)
+        self.assertTrue(set(obj.attr) == {e3})
+        self.assertTrue(e2 in canary.removed)
+        self.assertTrue(e3 in canary.added)
 
         e4 = creator()
         try:
             obj.attr = {e4}
-            self.assert_(False)
+            self.assertTrue(False)
         except TypeError:
-            self.assert_(e4 not in canary.data)
-            self.assert_(e3 in canary.data)
+            self.assertTrue(e4 not in canary.data)
+            self.assertTrue(e3 in canary.data)
 
         e5 = creator()
         e6 = creator()
         e7 = creator()
         obj.attr = [e5, e6, e7]
-        self.assert_(e5 in canary.added)
-        self.assert_(e6 in canary.added)
-        self.assert_(e7 in canary.added)
+        self.assertTrue(e5 in canary.added)
+        self.assertTrue(e6 in canary.added)
+        self.assertTrue(e7 in canary.added)
 
         obj.attr = [e6, e7]
-        self.assert_(e5 in canary.removed)
-        self.assert_(e6 in canary.added)
-        self.assert_(e7 in canary.added)
-        self.assert_(e6 not in canary.removed)
-        self.assert_(e7 not in canary.removed)
+        self.assertTrue(e5 in canary.removed)
+        self.assertTrue(e6 in canary.added)
+        self.assertTrue(e7 in canary.added)
+        self.assertTrue(e6 not in canary.removed)
+        self.assertTrue(e7 not in canary.removed)
 
     def _test_list_dataclasses(self, typecallable):
         creator = self.SimpleComparableEntity
 
         @dataclasses.dataclass
         class Foo:
-            attr: List[Any] = dataclasses.field(default_factory=list)
+            attr: list[Any] = dataclasses.field(default_factory=list)
 
         canary = Canary()
         instrumentation.register_class(Foo)
@@ -640,7 +640,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self._test_list(MyList)
         self._test_list_bulk(MyList)
         self._test_list_dataclasses(MyList)
-        self.assert_(getattr(MyList, "_sa_instrumented") == id(MyList))
+        self.assertTrue(getattr(MyList, "_sa_instrumented") == id(MyList))
 
     def test_list_duck(self):
         class ListLike:
@@ -676,7 +676,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self._test_adapter(ListLike)
         self._test_list(ListLike)
         self._test_list_bulk(ListLike)
-        self.assert_(getattr(ListLike, "_sa_instrumented") == id(ListLike))
+        self.assertTrue(getattr(ListLike, "_sa_instrumented") == id(ListLike))
 
     def test_list_emulates(self):
         class ListIsh:
@@ -714,7 +714,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self._test_adapter(ListIsh)
         self._test_list(ListIsh)
         self._test_list_bulk(ListIsh)
-        self.assert_(getattr(ListIsh, "_sa_instrumented") == id(ListIsh))
+        self.assertTrue(getattr(ListIsh, "_sa_instrumented") == id(ListIsh))
 
     def _test_set_wo_mutation(self, typecallable, creator=None):
         if creator is None:
@@ -816,9 +816,9 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
                 direct.remove(e)
             except KeyError:
                 assert_eq()
-                self.assert_(e not in canary.removed)
+                self.assertTrue(e not in canary.removed)
             else:
-                self.assert_(False)
+                self.assertTrue(False)
 
         if hasattr(direct, "discard"):
             e = creator()
@@ -830,7 +830,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
 
             e = creator()
             direct.discard(e)
-            self.assert_(e not in canary.removed)
+            self.assertTrue(e not in canary.removed)
             assert_eq()
 
         if hasattr(direct, "update"):
@@ -1054,29 +1054,29 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         e2 = creator()
         like_me.add(e2)
 
-        self.assert_(obj.attr is direct)
+        self.assertTrue(obj.attr is direct)
         obj.attr = like_me
-        self.assert_(obj.attr is not direct)
-        self.assert_(obj.attr is not like_me)
-        self.assert_(obj.attr == {e2})
-        self.assert_(e1 in canary.removed)
-        self.assert_(e2 in canary.added)
+        self.assertTrue(obj.attr is not direct)
+        self.assertTrue(obj.attr is not like_me)
+        self.assertTrue(obj.attr == {e2})
+        self.assertTrue(e1 in canary.removed)
+        self.assertTrue(e2 in canary.added)
 
         e3 = creator()
         real_set = {e3}
         obj.attr = real_set
-        self.assert_(obj.attr is not real_set)
-        self.assert_(obj.attr == {e3})
-        self.assert_(e2 in canary.removed)
-        self.assert_(e3 in canary.added)
+        self.assertTrue(obj.attr is not real_set)
+        self.assertTrue(obj.attr == {e3})
+        self.assertTrue(e2 in canary.removed)
+        self.assertTrue(e3 in canary.added)
 
         e4 = creator()
         try:
             obj.attr = [e4]
-            self.assert_(False)
+            self.assertTrue(False)
         except TypeError:
-            self.assert_(e4 not in canary.data)
-            self.assert_(e3 in canary.data)
+            self.assertTrue(e4 not in canary.data)
+            self.assertTrue(e3 in canary.data)
 
     def _test_set_dataclasses(self, typecallable):
         creator = self.SimpleComparableEntity
@@ -1122,7 +1122,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self._test_set(MySet)
         self._test_set_bulk(MySet)
         self._test_set_dataclasses(MySet)
-        self.assert_(getattr(MySet, "_sa_instrumented") == id(MySet))
+        self.assertTrue(getattr(MySet, "_sa_instrumented") == id(MySet))
 
     def test_set_duck(self):
         class SetLike:
@@ -1159,7 +1159,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self._test_set(SetLike)
         self._test_set_bulk(SetLike)
         self._test_set_dataclasses(SetLike)
-        self.assert_(getattr(SetLike, "_sa_instrumented") == id(SetLike))
+        self.assertTrue(getattr(SetLike, "_sa_instrumented") == id(SetLike))
 
     def test_set_emulates(self):
         class SetIsh:
@@ -1198,7 +1198,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self._test_set(SetIsh)
         self._test_set_bulk(SetIsh)
         self._test_set_dataclasses(SetIsh)
-        self.assert_(getattr(SetIsh, "_sa_instrumented") == id(SetIsh))
+        self.assertTrue(getattr(SetIsh, "_sa_instrumented") == id(SetIsh))
 
     def _test_dict_wo_mutation(self, typecallable, creator=None):
         if creator is None:
@@ -1285,9 +1285,9 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         control = dict()
 
         def assert_eq():
-            self.assert_(set(direct.values()) == canary.data)
-            self.assert_(set(adapter) == canary.data)
-            self.assert_(direct == control)
+            self.assertTrue(set(direct.values()) == canary.data)
+            self.assertTrue(set(adapter) == canary.data)
+            self.assertTrue(direct == control)
 
         def addall(*values):
             for item in values:
@@ -1326,7 +1326,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             try:
                 del direct[e.a]
             except KeyError:
-                self.assert_(e not in canary.removed)
+                self.assertTrue(e not in canary.removed)
 
         if hasattr(direct, "clear"):
             addall(creator(), creator(), creator())
@@ -1351,7 +1351,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             try:
                 direct.pop(e.a)
             except KeyError:
-                self.assert_(e not in canary.removed)
+                self.assertTrue(e not in canary.removed)
 
         if hasattr(direct, "popitem"):
             zap()
@@ -1368,12 +1368,12 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             val_a = direct.setdefault(e.a, e)
             val_b = control.setdefault(e.a, e)
             assert_eq()
-            self.assert_(val_a is val_b)
+            self.assertTrue(val_a is val_b)
 
             val_a = direct.setdefault(e.a, e)
             val_b = control.setdefault(e.a, e)
             assert_eq()
-            self.assert_(val_a is val_b)
+            self.assertTrue(val_a is val_b)
 
         if hasattr(direct, "update"):
             e = creator()
@@ -1417,13 +1417,13 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         e2 = creator()
         like_me.set(e2)
 
-        self.assert_(obj.attr is direct)
+        self.assertTrue(obj.attr is direct)
         obj.attr = like_me
-        self.assert_(obj.attr is not direct)
-        self.assert_(obj.attr is not like_me)
-        self.assert_(set(collections.collection_adapter(obj.attr)) == {e2})
-        self.assert_(e1 in canary.removed)
-        self.assert_(e2 in canary.added)
+        self.assertTrue(obj.attr is not direct)
+        self.assertTrue(obj.attr is not like_me)
+        self.assertTrue(set(collections.collection_adapter(obj.attr)) == {e2})
+        self.assertTrue(e1 in canary.removed)
+        self.assertTrue(e2 in canary.added)
 
         # key validity on bulk assignment is a basic feature of
         # MappedCollection but is not present in basic, @converter-less
@@ -1431,11 +1431,11 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         e3 = creator()
         real_dict = dict(keyignored1=e3)
         obj.attr = real_dict
-        self.assert_(obj.attr is not real_dict)
-        self.assert_("keyignored1" not in obj.attr)
+        self.assertTrue(obj.attr is not real_dict)
+        self.assertTrue("keyignored1" not in obj.attr)
         eq_(set(collections.collection_adapter(obj.attr)), {e3})
-        self.assert_(e2 in canary.removed)
-        self.assert_(e3 in canary.added)
+        self.assertTrue(e2 in canary.removed)
+        self.assertTrue(e3 in canary.added)
 
         obj.attr = typecallable()
         eq_(list(collections.collection_adapter(obj.attr)), [])
@@ -1443,9 +1443,9 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         e4 = creator()
         try:
             obj.attr = [e4]
-            self.assert_(False)
+            self.assertTrue(False)
         except TypeError:
-            self.assert_(e4 not in canary.data)
+            self.assertTrue(e4 not in canary.data)
 
     def test_dict(self):
         assert_raises_message(
@@ -1516,7 +1516,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self._test_dict_bulk(MyDict)
         self._test_dict_wo_mutation(MyDict)
         self._test_dict_dataclasses(MyDict)
-        self.assert_(getattr(MyDict, "_sa_instrumented") == id(MyDict))
+        self.assertTrue(getattr(MyDict, "_sa_instrumented") == id(MyDict))
 
     def test_dict_subclass2(self):
         class MyEasyDict(collections.KeyFuncDict):
@@ -1530,7 +1530,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self._test_dict_bulk(MyEasyDict)
         self._test_dict_wo_mutation(MyEasyDict)
         self._test_dict_dataclasses(MyEasyDict)
-        self.assert_(getattr(MyEasyDict, "_sa_instrumented") == id(MyEasyDict))
+        self.assertTrue(getattr(MyEasyDict, "_sa_instrumented") == id(MyEasyDict))
 
     def test_dict_subclass3(self, ordered_dict_mro):
         class MyOrdered(ordered_dict_mro):
@@ -1547,7 +1547,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self._test_dict_bulk(MyOrdered)
         self._test_dict_wo_mutation(MyOrdered)
         self._test_dict_dataclasses(MyOrdered)
-        self.assert_(getattr(MyOrdered, "_sa_instrumented") == id(MyOrdered))
+        self.assertTrue(getattr(MyOrdered, "_sa_instrumented") == id(MyOrdered))
 
     def test_dict_duck(self):
         class DictLike:
@@ -1599,7 +1599,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self._test_dict_bulk(DictLike)
         self._test_dict_wo_mutation(DictLike)
         self._test_dict_dataclasses(DictLike)
-        self.assert_(getattr(DictLike, "_sa_instrumented") == id(DictLike))
+        self.assertTrue(getattr(DictLike, "_sa_instrumented") == id(DictLike))
 
     def test_dict_emulates(self):
         class DictIsh:
@@ -1653,7 +1653,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self._test_dict_bulk(DictIsh)
         self._test_dict_wo_mutation(DictIsh)
         self._test_dict_dataclasses(DictIsh)
-        self.assert_(getattr(DictIsh, "_sa_instrumented") == id(DictIsh))
+        self.assertTrue(getattr(DictIsh, "_sa_instrumented") == id(DictIsh))
 
     def _test_object(self, typecallable, creator=None):
         if creator is None:
@@ -1679,9 +1679,9 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         control = set()
 
         def assert_eq():
-            self.assert_(set(direct) == canary.data)
-            self.assert_(set(adapter) == canary.data)
-            self.assert_(direct == control)
+            self.assertTrue(set(direct) == canary.data)
+            self.assertTrue(set(adapter) == canary.data)
+            self.assertTrue(direct == control)
 
         # There is no API for object collections.  We'll make one up
         # for the purposes of the test.
@@ -1739,7 +1739,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
 
         self._test_adapter(MyCollection)
         self._test_object(MyCollection)
-        self.assert_(
+        self.assertTrue(
             getattr(MyCollection, "_sa_instrumented") == id(MyCollection)
         )
 
@@ -1780,7 +1780,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
 
         self._test_adapter(MyCollection2)
         self._test_object(MyCollection2)
-        self.assert_(
+        self.assertTrue(
             getattr(MyCollection2, "_sa_instrumented") == id(MyCollection2)
         )
 
@@ -1836,9 +1836,9 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         control = list()
 
         def assert_eq():
-            self.assert_(set(direct) == canary.data)
-            self.assert_(set(adapter) == canary.data)
-            self.assert_(list(direct) == control)
+            self.assertTrue(set(direct) == canary.data)
+            self.assertTrue(set(adapter) == canary.data)
+            self.assertTrue(list(direct) == control)
 
         creator = self.entity_maker
 
@@ -1879,18 +1879,18 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         control.insert(0, e6)
         cr1 = control.pop()
         assert_eq()
-        self.assert_(dr1 is cr1)
+        self.assertTrue(dr1 is cr1)
 
         dr2 = direct.replace(arg=1, entity=e7)
         control.insert(0, e7)
         cr2 = control.pop()
         assert_eq()
-        self.assert_(dr2 is cr2)
+        self.assertTrue(dr2 is cr2)
 
         dr3 = direct.pop("blah")
         cr3 = control.pop()
         assert_eq()
-        self.assert_(dr3 is cr3)
+        self.assertTrue(dr3 is cr3)
 
     def test_lifecycle(self):
         class Foo:
@@ -1915,20 +1915,20 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
 
         # as of [ticket:3913] the old collection
         # remains unchanged
-        self.assert_(len(col1) == 1)
+        self.assertTrue(len(col1) == 1)
 
-        self.assert_(len(canary.data) == 1)
-        self.assert_(obj.attr is not col1)
-        self.assert_(obj.attr is not bulk1)
-        self.assert_(obj.attr == bulk1)
+        self.assertTrue(len(canary.data) == 1)
+        self.assertTrue(obj.attr is not col1)
+        self.assertTrue(obj.attr is not bulk1)
+        self.assertTrue(obj.attr == bulk1)
 
         e3 = creator()
         col1.append(e3)
-        self.assert_(e3 not in canary.data)
-        self.assert_(collections.collection_adapter(col1) is None)
+        self.assertTrue(e3 not in canary.data)
+        self.assertTrue(collections.collection_adapter(col1) is None)
 
         obj.attr[0] = e3
-        self.assert_(e3 in canary.data)
+        self.assertTrue(e3 in canary.data)
 
 
 class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
@@ -2034,17 +2034,17 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
 
         p = session.get(Parent, pid)
 
-        self.assert_(set(p.children.keys()) == {"foo", "bar"})
-        self.assert_(p.children["foo"].id != cid)
+        self.assertTrue(set(p.children.keys()) == {"foo", "bar"})
+        self.assertTrue(p.children["foo"].id != cid)
 
-        self.assert_(
+        self.assertTrue(
             len(list(collections.collection_adapter(p.children))) == 2
         )
         session.flush()
         session.expunge_all()
 
         p = session.get(Parent, pid)
-        self.assert_(
+        self.assertTrue(
             len(list(collections.collection_adapter(p.children))) == 2
         )
 
@@ -2052,26 +2052,26 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
             p.children["foo"]
         )
 
-        self.assert_(
+        self.assertTrue(
             len(list(collections.collection_adapter(p.children))) == 1
         )
         session.flush()
         session.expunge_all()
 
         p = session.get(Parent, pid)
-        self.assert_(
+        self.assertTrue(
             len(list(collections.collection_adapter(p.children))) == 1
         )
 
         del p.children["bar"]
-        self.assert_(
+        self.assertTrue(
             len(list(collections.collection_adapter(p.children))) == 0
         )
         session.flush()
         session.expunge_all()
 
         p = session.get(Parent, pid)
-        self.assert_(
+        self.assertTrue(
             len(list(collections.collection_adapter(p.children))) == 0
         )
 
@@ -2149,7 +2149,7 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
 
         p = session.get(Parent, pid)
 
-        self.assert_(set(p.children.keys()) == {("foo", "1"), ("foo", "2")})
+        self.assertTrue(set(p.children.keys()) == {("foo", "1"), ("foo", "2")})
         cid = p.children[("foo", "1")].id
 
         collections.collection_adapter(p.children).append_with_event(
@@ -2161,10 +2161,10 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
 
         p = session.get(Parent, pid)
 
-        self.assert_(set(p.children.keys()) == {("foo", "1"), ("foo", "2")})
-        self.assert_(p.children[("foo", "1")].id != cid)
+        self.assertTrue(set(p.children.keys()) == {("foo", "1"), ("foo", "2")})
+        self.assertTrue(p.children[("foo", "1")].id != cid)
 
-        self.assert_(
+        self.assertTrue(
             len(list(collections.collection_adapter(p.children))) == 2
         )
 

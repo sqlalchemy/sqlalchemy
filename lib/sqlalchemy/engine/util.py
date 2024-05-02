@@ -42,7 +42,7 @@ def connection_memoize(key: str) -> Callable[[_C], _C]:
 
 
 class _TConsSubject(Protocol):
-    _trans_context_manager: Optional[TransactionalContext]
+    _trans_context_manager: TransactionalContext | None
 
 
 class TransactionalContext:
@@ -55,7 +55,7 @@ class TransactionalContext:
 
     __slots__ = ("_outer_trans_ctx", "_trans_subject", "__weakref__")
 
-    _trans_subject: Optional[_TConsSubject]
+    _trans_subject: _TConsSubject | None
 
     def _transaction_is_active(self) -> bool:
         raise NotImplementedError()

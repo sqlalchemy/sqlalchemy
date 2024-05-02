@@ -173,7 +173,7 @@ class ExpressionElementRole(TypedColumnsClauseRole[_T_co]):
     __slots__ = ()
     _role_name = "SQL expression element"
 
-    def label(self, name: Optional[str]) -> Label[_T]:
+    def label(self, name: str | None) -> Label[_T]:
         raise NotImplementedError()
 
 
@@ -226,7 +226,7 @@ class AnonymizedFromClauseRole(StrictFromClauseRole):
     if TYPE_CHECKING:
 
         def _anonymous_fromclause(
-            self, *, name: Optional[str] = None, flat: bool = False
+            self, *, name: str | None = None, flat: bool = False
         ) -> FromClause: ...
 
 

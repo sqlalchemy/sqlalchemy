@@ -327,11 +327,11 @@ if TYPE_CHECKING:
     def is_selectable(t: Any) -> TypeGuard[Selectable]: ...
 
     def is_select_base(
-        t: Union[Executable, ReturnsRows]
+        t: Executable | ReturnsRows
     ) -> TypeGuard[SelectBase]: ...
 
     def is_select_statement(
-        t: Union[Executable, ReturnsRows]
+        t: Executable | ReturnsRows
     ) -> TypeGuard[Select[Unpack[TupleAny]]]: ...
 
     def is_table(t: FromClause) -> TypeGuard[TableClause]: ...
@@ -381,30 +381,30 @@ def _no_kw() -> exc.ArgumentError:
     )
 
 
-def _unexpected_kw(methname: str, kw: Dict[str, Any]) -> NoReturn:
+def _unexpected_kw(methname: str, kw: dict[str, Any]) -> NoReturn:
     k = list(kw)[0]
     raise TypeError(f"{methname} got an unexpected keyword argument '{k}'")
 
 
 @overload
 def Nullable(
-    val: "SQLCoreOperations[_T]",
-) -> "SQLCoreOperations[Optional[_T]]": ...
+    val: SQLCoreOperations[_T],
+) -> SQLCoreOperations[Optional[_T]]: ...
 
 
 @overload
 def Nullable(
     val: roles.ExpressionElementRole[_T],
-) -> roles.ExpressionElementRole[Optional[_T]]: ...
+) -> roles.ExpressionElementRole[_T | None]: ...
 
 
 @overload
-def Nullable(val: Type[_T]) -> Type[Optional[_T]]: ...
+def Nullable(val: type[_T]) -> type[_T | None]: ...
 
 
 def Nullable(
     val: _TypedColumnClauseArgument[_T],
-) -> _TypedColumnClauseArgument[Optional[_T]]:
+) -> _TypedColumnClauseArgument[_T | None]:
     """Types a column or ORM class as nullable.
 
     This can be used in select and other contexts to express that the value of
@@ -422,26 +422,26 @@ def Nullable(
 
 @overload
 def NotNullable(
-    val: "SQLCoreOperations[Optional[_T]]",
-) -> "SQLCoreOperations[_T]": ...
+    val: SQLCoreOperations[Optional[_T]],
+) -> SQLCoreOperations[_T]: ...
 
 
 @overload
 def NotNullable(
-    val: roles.ExpressionElementRole[Optional[_T]],
+    val: roles.ExpressionElementRole[_T | None],
 ) -> roles.ExpressionElementRole[_T]: ...
 
 
 @overload
-def NotNullable(val: Type[Optional[_T]]) -> Type[_T]: ...
+def NotNullable(val: type[_T | None]) -> type[_T]: ...
 
 
 @overload
-def NotNullable(val: Optional[Type[_T]]) -> Type[_T]: ...
+def NotNullable(val: type[_T] | None) -> type[_T]: ...
 
 
 def NotNullable(
-    val: Union[_TypedColumnClauseArgument[Optional[_T]], Optional[Type[_T]]],
+    val: _TypedColumnClauseArgument[_T | None] | type[_T] | None,
 ) -> _TypedColumnClauseArgument[_T]:
     """Types a column or ORM class as not nullable.
 

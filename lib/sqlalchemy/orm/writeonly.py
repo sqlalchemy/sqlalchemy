@@ -87,7 +87,7 @@ class WriteOnlyHistory(Generic[_T]):
         attr: WriteOnlyAttributeImpl,
         state: InstanceState[_T],
         passive: PassiveFlag,
-        apply_to: Optional[WriteOnlyHistory[_T]] = None,
+        apply_to: WriteOnlyHistory[_T] | None = None,
     ) -> None:
         if apply_to:
             if passive & PassiveFlag.SQL_OK:
@@ -110,11 +110,11 @@ class WriteOnlyHistory(Generic[_T]):
             self._reconcile_collection = False
 
     @property
-    def added_plus_unchanged(self) -> List[_T]:
+    def added_plus_unchanged(self) -> list[_T]:
         return list(self.added_items.union(self.unchanged_items))
 
     @property
-    def all_items(self) -> List[_T]:
+    def all_items(self) -> list[_T]:
         return list(
             self.added_items.union(self.unchanged_items).union(
                 self.deleted_items
@@ -134,7 +134,7 @@ class WriteOnlyHistory(Generic[_T]):
             )
         return attributes.History(list(added), list(unchanged), list(deleted))
 
-    def indexed(self, index: Union[int, slice]) -> Union[List[_T], _T]:
+    def indexed(self, index: int | slice) -> list[_T] | _T:
         return list(self.added_items)[index]
 
     def add_added(self, value: _T) -> None:
@@ -157,13 +157,13 @@ class WriteOnlyAttributeImpl(
     collection: bool = False
     dynamic: bool = True
     order_by: _RelationshipOrderByArg = ()
-    collection_history_cls: Type[WriteOnlyHistory[Any]] = WriteOnlyHistory
+    collection_history_cls: type[WriteOnlyHistory[Any]] = WriteOnlyHistory
 
-    query_class: Type[WriteOnlyCollection[Any]]
+    query_class: type[WriteOnlyCollection[Any]]
 
     def __init__(
         self,
-        class_: Union[Type[Any], AliasedClass[Any]],
+        class_: type[Any] | AliasedClass[Any],
         key: str,
         dispatch: _Dispatch[QueryableAttribute[Any]],
         target_mapper: Mapper[_T],
@@ -181,7 +181,7 @@ class WriteOnlyAttributeImpl(
         state: InstanceState[Any],
         dict_: _InstanceDict,
         passive: PassiveFlag = PassiveFlag.PASSIVE_OFF,
-    ) -> Union[util.OrderedIdentitySet, WriteOnlyCollection[Any]]:
+    ) -> util.OrderedIdentitySet | WriteOnlyCollection[Any]:
         if not passive & PassiveFlag.SQL_OK:
             return self._get_collection_history(
                 state, PassiveFlag.PASSIVE_NO_INITIALIZE
@@ -212,21 +212,21 @@ class WriteOnlyAttributeImpl(
         self,
         state: InstanceState[Any],
         dict_: _InstanceDict,
-        user_data: Optional[_AdaptedCollectionProtocol] = ...,
+        user_data: _AdaptedCollectionProtocol | None = ...,
         passive: PassiveFlag = ...,
-    ) -> Union[
-        Literal[LoaderCallableStatus.PASSIVE_NO_RESULT], CollectionAdapter
-    ]: ...
+    ) -> (
+        Literal[LoaderCallableStatus.PASSIVE_NO_RESULT] | CollectionAdapter
+    ): ...
 
     def get_collection(
         self,
         state: InstanceState[Any],
         dict_: _InstanceDict,
-        user_data: Optional[_AdaptedCollectionProtocol] = None,
+        user_data: _AdaptedCollectionProtocol | None = None,
         passive: PassiveFlag = PassiveFlag.PASSIVE_OFF,
-    ) -> Union[
-        Literal[LoaderCallableStatus.PASSIVE_NO_RESULT], CollectionAdapter
-    ]:
+    ) -> (
+        Literal[LoaderCallableStatus.PASSIVE_NO_RESULT] | CollectionAdapter
+    ):
         data: Collection[Any]
         if not passive & PassiveFlag.SQL_OK:
             data = self._get_collection_history(state, passive).added_items
@@ -252,8 +252,8 @@ class WriteOnlyAttributeImpl(
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken],
-        collection_history: Optional[WriteOnlyHistory[Any]] = None,
+        initiator: AttributeEventToken | None,
+        collection_history: WriteOnlyHistory[Any] | None = None,
     ) -> None:
         if collection_history is None:
             collection_history = self._modified_event(state, dict_)
@@ -271,8 +271,8 @@ class WriteOnlyAttributeImpl(
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken],
-        collection_history: Optional[WriteOnlyHistory[Any]] = None,
+        initiator: AttributeEventToken | None,
+        collection_history: WriteOnlyHistory[Any] | None = None,
     ) -> None:
         if collection_history is None:
             collection_history = self._modified_event(state, dict_)
@@ -305,7 +305,7 @@ class WriteOnlyAttributeImpl(
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken] = None,
+        initiator: AttributeEventToken | None = None,
         passive: PassiveFlag = PassiveFlag.PASSIVE_OFF,
         check_old: Any = None,
         pop: bool = False,
@@ -385,7 +385,7 @@ class WriteOnlyAttributeImpl(
         state: InstanceState[Any],
         dict_: _InstanceDict,
         passive: PassiveFlag = PassiveFlag.PASSIVE_NO_INITIALIZE,
-    ) -> List[Tuple[InstanceState[Any], Any]]:
+    ) -> list[tuple[InstanceState[Any], Any]]:
         c = self._get_collection_history(state, passive)
         return [(attributes.instance_state(x), x) for x in c.all_items]
 
@@ -412,7 +412,7 @@ class WriteOnlyAttributeImpl(
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken],
+        initiator: AttributeEventToken | None,
         passive: PassiveFlag = PassiveFlag.PASSIVE_NO_FETCH,
     ) -> None:
         if initiator is not self:
@@ -423,7 +423,7 @@ class WriteOnlyAttributeImpl(
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken],
+        initiator: AttributeEventToken | None,
         passive: PassiveFlag = PassiveFlag.PASSIVE_NO_FETCH,
     ) -> None:
         if initiator is not self:
@@ -434,7 +434,7 @@ class WriteOnlyAttributeImpl(
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken],
+        initiator: AttributeEventToken | None,
         passive: PassiveFlag = PassiveFlag.PASSIVE_NO_FETCH,
     ) -> None:
         self.remove(state, dict_, value, initiator, passive=passive)
@@ -499,7 +499,7 @@ class AbstractCollectionWriter(Generic[_T]):
         __slots__ = ()
 
     instance: _T
-    _from_obj: Tuple[FromClause, ...]
+    _from_obj: tuple[FromClause, ...]
 
     def __init__(self, attr: WriteOnlyAttributeImpl, state: InstanceState[_T]):
         instance = state.obj()
@@ -622,7 +622,7 @@ class WriteOnlyCollection(AbstractCollectionWriter[_T]):
                 "INSERT along with add_all()."
             )
 
-        dict_: Dict[str, Any] = {}
+        dict_: dict[str, Any] = {}
 
         for l, r in prop.synchronize_pairs:
             fn = prop._get_attr_w_warn_on_none(

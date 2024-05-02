@@ -143,10 +143,10 @@ class ORMColumnDescription(TypedDict):
     name: str
     # TODO: add python_type and sql_type here; combining them
     # into "type" is a bad idea
-    type: Union[Type[Any], TypeEngine[Any]]
+    type: type[Any] | TypeEngine[Any]
     aliased: bool
     expr: _ColumnsClauseArgument[Any]
-    entity: Optional[_ColumnsClauseArgument[Any]]
+    entity: _ColumnsClauseArgument[Any] | None
 
 
 class _IntrospectsAnnotations:
@@ -169,12 +169,12 @@ class _IntrospectsAnnotations:
         self,
         decl_scan: _ClassScanMapperConfig,
         registry: RegistryType,
-        cls: Type[Any],
-        originating_module: Optional[str],
+        cls: type[Any],
+        originating_module: str | None,
         key: str,
-        mapped_container: Optional[Type[Mapped[Any]]],
-        annotation: Optional[_AnnotationScanType],
-        extracted_mapped_annotation: Optional[_AnnotationScanType],
+        mapped_container: type[Mapped[Any]] | None,
+        annotation: _AnnotationScanType | None,
+        extracted_mapped_annotation: _AnnotationScanType | None,
         is_dataclass_field: bool,
     ) -> None:
         """Perform class-specific initializaton at early declarative scanning
@@ -184,7 +184,7 @@ class _IntrospectsAnnotations:
 
         """
 
-    def _raise_for_required(self, key: str, cls: Type[Any]) -> NoReturn:
+    def _raise_for_required(self, key: str, cls: type[Any]) -> NoReturn:
         raise sa_exc.ArgumentError(
             f"Python typing annotation is required for attribute "
             f'"{cls.__name__}.{key}" when primary argument(s) for '
@@ -203,17 +203,17 @@ class _AttributeOptions(NamedTuple):
 
     """
 
-    dataclasses_init: Union[_NoArg, bool]
-    dataclasses_repr: Union[_NoArg, bool]
-    dataclasses_default: Union[_NoArg, Any]
-    dataclasses_default_factory: Union[_NoArg, Callable[[], Any]]
-    dataclasses_compare: Union[_NoArg, bool]
-    dataclasses_kw_only: Union[_NoArg, bool]
+    dataclasses_init: _NoArg | bool
+    dataclasses_repr: _NoArg | bool
+    dataclasses_default: _NoArg | Any
+    dataclasses_default_factory: _NoArg | Callable[[], Any]
+    dataclasses_compare: _NoArg | bool
+    dataclasses_kw_only: _NoArg | bool
 
     def _as_dataclass_field(self, key: str) -> Any:
         """Return a ``dataclasses.Field`` object given these arguments."""
 
-        kw: Dict[str, Any] = {}
+        kw: dict[str, Any] = {}
         if self.dataclasses_default_factory is not _NoArg.NO_ARG:
             kw["default_factory"] = self.dataclasses_default_factory
         if self.dataclasses_default is not _NoArg.NO_ARG:
@@ -262,12 +262,12 @@ class _AttributeOptions(NamedTuple):
         cls,
         key: str,
         annotation: _AnnotationScanType,
-        mapped_container: Optional[Any],
+        mapped_container: Any | None,
         elem: _T,
-    ) -> Union[
-        Tuple[str, _AnnotationScanType],
-        Tuple[str, _AnnotationScanType, dataclasses.Field[Any]],
-    ]:
+    ) -> (
+        tuple[str, _AnnotationScanType] |
+        tuple[str, _AnnotationScanType, dataclasses.Field[Any]]
+    ):
         """given attribute key, annotation, and value from a class, return
         the argument tuple we would pass to dataclasses.make_dataclass()
         for this attribute.
@@ -348,12 +348,12 @@ class _MapsColumns(_DCAttributeOptions, _MappedAttribute[_T]):
     __slots__ = ()
 
     @property
-    def mapper_property_to_assign(self) -> Optional[MapperProperty[_T]]:
+    def mapper_property_to_assign(self) -> MapperProperty[_T] | None:
         """return a MapperProperty to be assigned to the declarative mapping"""
         raise NotImplementedError()
 
     @property
-    def columns_to_assign(self) -> List[Tuple[Column[_T], int]]:
+    def columns_to_assign(self) -> list[tuple[Column[_T], int]]:
         """A list of Column objects that should be declaratively added to the
         new Table object.
 
@@ -433,7 +433,7 @@ class MapperProperty(
 
     """
 
-    doc: Optional[str]
+    doc: str | None
     """optional documentation string"""
 
     info: _InfoType
@@ -477,7 +477,7 @@ class MapperProperty(
         context: ORMCompileState,
         query_entity: _MapperEntity,
         path: AbstractEntityRegistry,
-        adapter: Optional[ORMAdapter],
+        adapter: ORMAdapter | None,
         **kwargs: Any,
     ) -> None:
         """Called by Query for the purposes of constructing a SQL statement.
@@ -495,7 +495,7 @@ class MapperProperty(
         path: AbstractEntityRegistry,
         mapper: Mapper[Any],
         result: Result[Unpack[TupleAny]],
-        adapter: Optional[ORMAdapter],
+        adapter: ORMAdapter | None,
         populators: _PopulatorDict,
     ) -> None:
         """Produce row processing functions and append to the given
@@ -508,10 +508,10 @@ class MapperProperty(
         type_: str,
         state: InstanceState[Any],
         dict_: _InstanceDict,
-        visited_states: Set[InstanceState[Any]],
-        halt_on: Optional[Callable[[InstanceState[Any]], bool]] = None,
+        visited_states: set[InstanceState[Any]],
+        halt_on: Callable[[InstanceState[Any]], bool] | None = None,
     ) -> Iterator[
-        Tuple[object, Mapper[Any], InstanceState[Any], _InstanceDict]
+        tuple[object, Mapper[Any], InstanceState[Any], _InstanceDict]
     ]:
         """Iterate through instances related to the given instance for
         a particular 'cascade', starting with this MapperProperty.
@@ -558,7 +558,7 @@ class MapperProperty(
 
     def __init__(
         self,
-        attribute_options: Optional[_AttributeOptions] = None,
+        attribute_options: _AttributeOptions | None = None,
         _assume_readonly_dc_attributes: bool = False,
     ) -> None:
         self._configure_started = False
@@ -645,8 +645,8 @@ class MapperProperty(
         dest_state: InstanceState[Any],
         dest_dict: _InstanceDict,
         load: bool,
-        _recursive: Dict[Any, object],
-        _resolve_conflict_map: Dict[_IdentityKeyType[Any], object],
+        _recursive: dict[Any, object],
+        _resolve_conflict_map: dict[_IdentityKeyType[Any], object],
     ) -> None:
         """Merge the attribute represented by this ``MapperProperty``
         from source to destination object.
@@ -654,7 +654,7 @@ class MapperProperty(
         """
 
     def __repr__(self) -> str:
-        return "<%s at 0x%x; %s>" % (
+        return "<{} at 0x{:x}; {}>".format(
             self.__class__.__name__,
             id(self),
             getattr(self, "key", "no key"),
@@ -749,14 +749,14 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
     __visit_name__ = "orm_prop_comparator"
 
     _parententity: _InternalEntityType[Any]
-    _adapt_to_entity: Optional[AliasedInsp[Any]]
+    _adapt_to_entity: AliasedInsp[Any] | None
     prop: RODescriptorReference[MapperProperty[_T_co]]
 
     def __init__(
         self,
         prop: MapperProperty[_T],
         parentmapper: _InternalEntityType[Any],
-        adapt_to_entity: Optional[AliasedInsp[Any]] = None,
+        adapt_to_entity: AliasedInsp[Any] | None = None,
     ):
         self.prop = prop
         self._parententity = adapt_to_entity or parentmapper
@@ -780,7 +780,7 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
     def _bulk_update_tuples(
         self, value: Any
-    ) -> Sequence[Tuple[_DMLColumnArgument, Any]]:
+    ) -> Sequence[tuple[_DMLColumnArgument, Any]]:
         """Receive a SQL expression that represents a value in the SET
         clause of an UPDATE statement.
 
@@ -807,13 +807,13 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
     def _criterion_exists(
         self,
-        criterion: Optional[_ColumnExpressionArgument[bool]] = None,
+        criterion: _ColumnExpressionArgument[bool] | None = None,
         **kwargs: Any,
     ) -> ColumnElement[Any]:
         return self.prop.comparator._criterion_exists(criterion, **kwargs)
 
     @util.ro_non_memoized_property
-    def adapter(self) -> Optional[_ORMAdapterProto]:
+    def adapter(self) -> _ORMAdapterProto | None:
         """Produce a callable that adapts column expressions
         to suit an aliased version of this comparator.
 
@@ -912,7 +912,7 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
     def any(
         self,
-        criterion: Optional[_ColumnExpressionArgument[bool]] = None,
+        criterion: _ColumnExpressionArgument[bool] | None = None,
         **kwargs: Any,
     ) -> ColumnElement[bool]:
         r"""Return a SQL expression representing true if this element
@@ -934,7 +934,7 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
     def has(
         self,
-        criterion: Optional[_ColumnExpressionArgument[bool]] = None,
+        criterion: _ColumnExpressionArgument[bool] | None = None,
         **kwargs: Any,
     ) -> ColumnElement[bool]:
         r"""Return a SQL expression representing true if this element
@@ -984,16 +984,16 @@ class StrategizedProperty(MapperProperty[_T]):
 
     strategy_key: _StrategyKey
 
-    _strategies: Dict[_StrategyKey, LoaderStrategy]
+    _strategies: dict[_StrategyKey, LoaderStrategy]
 
-    def _memoized_attr__wildcard_token(self) -> Tuple[str]:
+    def _memoized_attr__wildcard_token(self) -> tuple[str]:
         return (
             f"{self.strategy_wildcard_key}:{path_registry._WILDCARD_TOKEN}",
         )
 
     def _memoized_attr__default_path_loader_key(
         self,
-    ) -> Tuple[str, Tuple[str]]:
+    ) -> tuple[str, tuple[str]]:
         return (
             "loader",
             (f"{self.strategy_wildcard_key}:{path_registry._DEFAULT_TOKEN}",),
@@ -1001,8 +1001,8 @@ class StrategizedProperty(MapperProperty[_T]):
 
     def _get_context_loader(
         self, context: ORMCompileState, path: AbstractEntityRegistry
-    ) -> Optional[_LoadElement]:
-        load: Optional[_LoadElement] = None
+    ) -> _LoadElement | None:
+        load: _LoadElement | None = None
 
         search_path = path[self]
 
@@ -1045,7 +1045,7 @@ class StrategizedProperty(MapperProperty[_T]):
         context: ORMCompileState,
         query_entity: _MapperEntity,
         path: AbstractEntityRegistry,
-        adapter: Optional[ORMAdapter],
+        adapter: ORMAdapter | None,
         **kwargs: Any,
     ) -> None:
         loader = self._get_context_loader(context, path)
@@ -1064,7 +1064,7 @@ class StrategizedProperty(MapperProperty[_T]):
         path: AbstractEntityRegistry,
         mapper: Mapper[Any],
         result: Result[Unpack[TupleAny]],
-        adapter: Optional[ORMAdapter],
+        adapter: ORMAdapter | None,
         populators: _PopulatorDict,
     ) -> None:
         loader = self._get_context_loader(context, path)
@@ -1095,7 +1095,7 @@ class StrategizedProperty(MapperProperty[_T]):
             self.strategy.init_class_attribute(mapper)
 
     _all_strategies: collections.defaultdict[
-        Type[MapperProperty[Any]], Dict[_StrategyKey, Type[LoaderStrategy]]
+        type[MapperProperty[Any]], dict[_StrategyKey, type[LoaderStrategy]]
     ] = collections.defaultdict(dict)
 
     @classmethod
@@ -1115,7 +1115,7 @@ class StrategizedProperty(MapperProperty[_T]):
     @classmethod
     def _strategy_lookup(
         cls, requesting_property: MapperProperty[Any], *key: Any
-    ) -> Type[LoaderStrategy]:
+    ) -> type[LoaderStrategy]:
         requesting_property.parent._with_polymorphic_mappers
 
         for prop_cls in cls.__mro__:
@@ -1310,7 +1310,7 @@ class CriteriaOption(CompileStateOption):
 
     _is_criteria_option = True
 
-    def get_global_criteria(self, attributes: Dict[str, Any]) -> None:
+    def get_global_criteria(self, attributes: dict[str, Any]) -> None:
         """update additional entity criteria options in the given
         attributes dictionary.
 
@@ -1336,7 +1336,7 @@ class UserDefinedOption(ORMOption):
 
     """
 
-    def __init__(self, payload: Optional[Any] = None):
+    def __init__(self, payload: Any | None = None):
         self.payload = payload
 
 
@@ -1414,7 +1414,7 @@ class LoaderStrategy:
         "strategy_opts",
     )
 
-    _strategy_keys: ClassVar[List[_StrategyKey]]
+    _strategy_keys: ClassVar[list[_StrategyKey]]
 
     def __init__(
         self, parent: MapperProperty[Any], strategy_key: _StrategyKey
@@ -1434,8 +1434,8 @@ class LoaderStrategy:
         compile_state: ORMCompileState,
         query_entity: _MapperEntity,
         path: AbstractEntityRegistry,
-        loadopt: Optional[_LoadElement],
-        adapter: Optional[ORMAdapter],
+        loadopt: _LoadElement | None,
+        adapter: ORMAdapter | None,
         **kwargs: Any,
     ) -> None:
         """Establish column and other state for a given QueryContext.
@@ -1452,10 +1452,10 @@ class LoaderStrategy:
         context: ORMCompileState,
         query_entity: _MapperEntity,
         path: AbstractEntityRegistry,
-        loadopt: Optional[_LoadElement],
+        loadopt: _LoadElement | None,
         mapper: Mapper[Any],
         result: Result[Unpack[TupleAny]],
-        adapter: Optional[ORMAdapter],
+        adapter: ORMAdapter | None,
         populators: _PopulatorDict,
     ) -> None:
         """Establish row processing functions for a given QueryContext.

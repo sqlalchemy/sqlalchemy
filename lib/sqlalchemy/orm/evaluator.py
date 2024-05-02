@@ -355,7 +355,7 @@ class _EvaluatorCompiler:
         return lambda obj: val
 
 
-def __getattr__(name: str) -> Type[_EvaluatorCompiler]:
+def __getattr__(name: str) -> type[_EvaluatorCompiler]:
     if name == "EvaluatorCompiler":
         warn_deprecated(
             "Direct use of 'EvaluatorCompiler' is not supported, and this "

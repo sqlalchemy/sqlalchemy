@@ -106,9 +106,9 @@ class _DeclMappedClassProtocol(MappedClassProtocol[_O], Protocol):
     metadata: MetaData
     __tablename__: str
     __mapper_args__: _MapperKwArgs
-    __table_args__: Optional[_TableArgsType]
+    __table_args__: _TableArgsType | None
 
-    _sa_apply_dc_transforms: Optional[_DataclassArguments]
+    _sa_apply_dc_transforms: _DataclassArguments | None
 
     def __declare_first__(self) -> None: ...
 
@@ -116,19 +116,19 @@ class _DeclMappedClassProtocol(MappedClassProtocol[_O], Protocol):
 
 
 class _DataclassArguments(TypedDict):
-    init: Union[_NoArg, bool]
-    repr: Union[_NoArg, bool]
-    eq: Union[_NoArg, bool]
-    order: Union[_NoArg, bool]
-    unsafe_hash: Union[_NoArg, bool]
-    match_args: Union[_NoArg, bool]
-    kw_only: Union[_NoArg, bool]
-    dataclass_callable: Union[_NoArg, Callable[..., Type[Any]]]
+    init: _NoArg | bool
+    repr: _NoArg | bool
+    eq: _NoArg | bool
+    order: _NoArg | bool
+    unsafe_hash: _NoArg | bool
+    match_args: _NoArg | bool
+    kw_only: _NoArg | bool
+    dataclass_callable: _NoArg | Callable[..., type[Any]]
 
 
 def _declared_mapping_info(
-    cls: Type[Any],
-) -> Optional[Union[_DeferredMapperConfig, Mapper[Any]]]:
+    cls: type[Any],
+) -> _DeferredMapperConfig | Mapper[Any] | None:
     # deferred mapping
     if _DeferredMapperConfig.has_cls(cls):
         return _DeferredMapperConfig.config_for_cls(cls)
@@ -139,7 +139,7 @@ def _declared_mapping_info(
         return None
 
 
-def _is_supercls_for_inherits(cls: Type[Any]) -> bool:
+def _is_supercls_for_inherits(cls: type[Any]) -> bool:
     """return True if this class will be used as a superclass to set in
     'inherits'.
 
@@ -161,11 +161,11 @@ def _is_supercls_for_inherits(cls: Type[Any]) -> bool:
         return False
 
 
-def _resolve_for_abstract_or_classical(cls: Type[Any]) -> Optional[Type[Any]]:
+def _resolve_for_abstract_or_classical(cls: type[Any]) -> type[Any] | None:
     if cls is object:
         return None
 
-    sup: Optional[Type[Any]]
+    sup: type[Any] | None
 
     if cls.__dict__.get("__abstract__", False):
         for base_ in cls.__bases__:
@@ -184,8 +184,8 @@ def _resolve_for_abstract_or_classical(cls: Type[Any]) -> Optional[Type[Any]]:
 
 
 def _get_immediate_cls_attr(
-    cls: Type[Any], attrname: str, strict: bool = False
-) -> Optional[Any]:
+    cls: type[Any], attrname: str, strict: bool = False
+) -> Any | None:
     """return an attribute of the class that is either present directly
     on the class, e.g. not on a superclass, or is from a superclass but
     this superclass is a non-mapped mixin, that is, not a descendant of
@@ -222,13 +222,13 @@ def _get_immediate_cls_attr(
         return None
 
 
-def _dive_for_cls_manager(cls: Type[_O]) -> Optional[ClassManager[_O]]:
+def _dive_for_cls_manager(cls: type[_O]) -> ClassManager[_O] | None:
     # because the class manager registration is pluggable,
     # we need to do the search for every class in the hierarchy,
     # rather than just a simple "cls._sa_class_manager"
 
     for base in cls.__mro__:
-        manager: Optional[ClassManager[_O]] = attributes.opt_manager_of_class(
+        manager: ClassManager[_O] | None = attributes.opt_manager_of_class(
             base
         )
         if manager:
@@ -237,8 +237,8 @@ def _dive_for_cls_manager(cls: Type[_O]) -> Optional[ClassManager[_O]]:
 
 
 def _as_declarative(
-    registry: _RegistryType, cls: Type[Any], dict_: _ClassDict
-) -> Optional[_MapperConfig]:
+    registry: _RegistryType, cls: type[Any], dict_: _ClassDict
+) -> _MapperConfig | None:
     # declarative scans the class for attributes.  no table or mapper
     # args passed separately.
     return _MapperConfig.setup_mapping(registry, cls, dict_, None, {})
@@ -246,8 +246,8 @@ def _as_declarative(
 
 def _mapper(
     registry: _RegistryType,
-    cls: Type[_O],
-    table: Optional[FromClause],
+    cls: type[_O],
+    table: FromClause | None,
     mapper_kw: _MapperKwArgs,
 ) -> Mapper[_O]:
     _ImperativeMapperConfig(registry, cls, table, mapper_kw)
@@ -262,7 +262,7 @@ def _is_declarative_props(obj: Any) -> bool:
 
 
 def _check_declared_props_nocascade(
-    obj: Any, name: str, cls: Type[_O]
+    obj: Any, name: str, cls: type[_O]
 ) -> bool:
     if _is_declarative_props(obj):
         if getattr(obj, "_cascading", False):
@@ -285,25 +285,25 @@ class _MapperConfig:
         "__weakref__",
     )
 
-    cls: Type[Any]
+    cls: type[Any]
     classname: str
     properties: util.OrderedDict[
         str,
-        Union[
-            Sequence[NamedColumn[Any]], NamedColumn[Any], MapperProperty[Any]
-        ],
+        (
+            Sequence[NamedColumn[Any]] | NamedColumn[Any] | MapperProperty[Any]
+        ),
     ]
-    declared_attr_reg: Dict[declared_attr[Any], Any]
+    declared_attr_reg: dict[declared_attr[Any], Any]
 
     @classmethod
     def setup_mapping(
         cls,
         registry: _RegistryType,
-        cls_: Type[_O],
+        cls_: type[_O],
         dict_: _ClassDict,
-        table: Optional[FromClause],
+        table: FromClause | None,
         mapper_kw: _MapperKwArgs,
-    ) -> Optional[_MapperConfig]:
+    ) -> _MapperConfig | None:
         manager = attributes.opt_manager_of_class(cls)
         if manager and manager.class_ is cls_:
             raise exc.InvalidRequestError(
@@ -329,7 +329,7 @@ class _MapperConfig:
     def __init__(
         self,
         registry: _RegistryType,
-        cls_: Type[Any],
+        cls_: type[Any],
         mapper_kw: _MapperKwArgs,
     ):
         self.cls = util.assert_arg_type(cls_, type, "cls_")
@@ -372,8 +372,8 @@ class _ImperativeMapperConfig(_MapperConfig):
     def __init__(
         self,
         registry: _RegistryType,
-        cls_: Type[_O],
-        table: Optional[FromClause],
+        cls_: type[_O],
+        table: FromClause | None,
         mapper_kw: _MapperKwArgs,
     ):
         super().__init__(registry, cls_, mapper_kw)
@@ -430,12 +430,12 @@ class _ImperativeMapperConfig(_MapperConfig):
 
 class _CollectedAnnotation(NamedTuple):
     raw_annotation: _AnnotationScanType
-    mapped_container: Optional[Type[Mapped[Any]]]
-    extracted_mapped_annotation: Union[Type[Any], str]
+    mapped_container: type[Mapped[Any]] | None
+    extracted_mapped_annotation: type[Any] | str
     is_dataclass: bool
     attr_value: Any
     originating_module: str
-    originating_class: Type[Any]
+    originating_class: type[Any]
 
 
 class _ClassScanMapperConfig(_MapperConfig):
@@ -464,27 +464,27 @@ class _ClassScanMapperConfig(_MapperConfig):
     is_deferred = False
     registry: _RegistryType
     clsdict_view: _ClassDict
-    collected_annotations: Dict[str, _CollectedAnnotation]
-    collected_attributes: Dict[str, Any]
-    local_table: Optional[FromClause]
-    persist_selectable: Optional[FromClause]
+    collected_annotations: dict[str, _CollectedAnnotation]
+    collected_attributes: dict[str, Any]
+    local_table: FromClause | None
+    persist_selectable: FromClause | None
     declared_columns: util.OrderedSet[Column[Any]]
-    column_ordering: Dict[Column[Any], int]
-    column_copies: Dict[
-        Union[MappedColumn[Any], Column[Any]],
-        Union[MappedColumn[Any], Column[Any]],
+    column_ordering: dict[Column[Any], int]
+    column_copies: dict[
+        MappedColumn[Any] | Column[Any],
+        MappedColumn[Any] | Column[Any],
     ]
-    tablename: Optional[str]
+    tablename: str | None
     mapper_args: Mapping[str, Any]
-    table_args: Optional[_TableArgsType]
-    mapper_args_fn: Optional[Callable[[], Dict[str, Any]]]
-    inherits: Optional[Type[Any]]
+    table_args: _TableArgsType | None
+    mapper_args_fn: Callable[[], dict[str, Any]] | None
+    inherits: type[Any] | None
     single: bool
 
     is_dataclass_prior_to_mapping: bool
     allow_unmapped_annotations: bool
 
-    dataclass_setup_arguments: Optional[_DataclassArguments]
+    dataclass_setup_arguments: _DataclassArguments | None
     """if the class has SQLAlchemy native dataclass parameters, where
     we will turn the class into a dataclass within the declarative mapping
     process.
@@ -504,9 +504,9 @@ class _ClassScanMapperConfig(_MapperConfig):
     def __init__(
         self,
         registry: _RegistryType,
-        cls_: Type[_O],
+        cls_: type[_O],
         dict_: _ClassDict,
-        table: Optional[FromClause],
+        table: FromClause | None,
         mapper_kw: _MapperKwArgs,
     ):
         # grab class dict before the instrumentation manager has been added.
@@ -596,7 +596,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                 ).__declare_first__()
 
     def _cls_attr_override_checker(
-        self, cls: Type[_O]
+        self, cls: type[_O]
     ) -> Callable[[str, Any], bool]:
         """Produce a function that checks if a class has overridden an
         attribute, taking SQLAlchemy-enabled dataclass fields into account.
@@ -681,8 +681,8 @@ class _ClassScanMapperConfig(_MapperConfig):
     _match_exclude_dunders = re.compile(r"^(?:_sa_|__)")
 
     def _cls_attr_resolver(
-        self, cls: Type[Any]
-    ) -> Callable[[], Iterable[Tuple[str, Any, Any, bool]]]:
+        self, cls: type[Any]
+    ) -> Callable[[], Iterable[tuple[str, Any, Any, bool]]]:
         """produce a function to iterate the "attributes" of a class
         which we want to consider for mapping, adjusting for SQLAlchemy fields
         embedded in dataclass fields.
@@ -704,7 +704,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         ]
 
         if self.allow_dataclass_fields:
-            sa_dataclass_metadata_key: Optional[str] = _get_immediate_cls_attr(
+            sa_dataclass_metadata_key: str | None = _get_immediate_cls_attr(
                 cls, "__sa_dataclass_metadata_key__"
             )
         else:
@@ -713,7 +713,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         if not sa_dataclass_metadata_key:
 
             def local_attributes_for_class() -> (
-                Iterable[Tuple[str, Any, Any, bool]]
+                Iterable[tuple[str, Any, Any, bool]]
             ):
                 return (
                     (
@@ -733,7 +733,7 @@ class _ClassScanMapperConfig(_MapperConfig):
             fixed_sa_dataclass_metadata_key = sa_dataclass_metadata_key
 
             def local_attributes_for_class() -> (
-                Iterable[Tuple[str, Any, Any, bool]]
+                Iterable[tuple[str, Any, Any, bool]]
             ):
                 for name in names:
                     field = dataclass_fields.get(name, None)
@@ -829,7 +829,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                             # make a copy of it so a class-level dictionary
                             # is not overwritten when we update column-based
                             # arguments.
-                            def _mapper_args_fn() -> Dict[str, Any]:
+                            def _mapper_args_fn() -> dict[str, Any]:
                                 return dict(cls_as_Decl.__mapper_args__)
 
                             mapper_args_fn = _mapper_args_fn
@@ -1051,7 +1051,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         warn_for_non_dc_attrs = collections.defaultdict(list)
 
         def _allow_dataclass_field(
-            key: str, originating_class: Type[Any]
+            key: str, originating_class: type[Any]
         ) -> bool:
             if (
                 originating_class is not self.cls
@@ -1144,7 +1144,7 @@ class _ClassScanMapperConfig(_MapperConfig):
 
     @classmethod
     def _update_annotations_for_non_mapped_class(
-        cls, klass: Type[_O]
+        cls, klass: type[_O]
     ) -> Mapping[str, _AnnotationScanType]:
         cls_annotations = util.get_annotations(klass)
 
@@ -1172,7 +1172,7 @@ class _ClassScanMapperConfig(_MapperConfig):
     def _apply_dataclasses_to_any_class(
         cls,
         dataclass_setup_arguments: _DataclassArguments,
-        klass: Type[_O],
+        klass: type[_O],
         use_annotations: Mapping[str, _AnnotationScanType],
     ) -> None:
         cls._assert_dc_arguments(dataclass_setup_arguments)
@@ -1181,7 +1181,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         if dataclass_callable is _NoArg.NO_ARG:
             dataclass_callable = dataclasses.dataclass
 
-        restored: Optional[Any]
+        restored: Any | None
 
         if use_annotations:
             # apply constructed annotations that should look "normal" to a
@@ -1244,10 +1244,10 @@ class _ClassScanMapperConfig(_MapperConfig):
         self,
         name: str,
         raw_annotation: _AnnotationScanType,
-        originating_class: Type[Any],
-        expect_mapped: Optional[bool],
+        originating_class: type[Any],
+        expect_mapped: bool | None,
         attr_value: Any,
-    ) -> Optional[_CollectedAnnotation]:
+    ) -> _CollectedAnnotation | None:
         if name in self.collected_annotations:
             return self.collected_annotations[name]
 
@@ -1317,7 +1317,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         return ca
 
     def _warn_for_decl_attributes(
-        self, cls: Type[Any], key: str, c: Any
+        self, cls: type[Any], key: str, c: Any
     ) -> None:
         if isinstance(c, expression.ColumnElement):
             util.warn(
@@ -1332,12 +1332,12 @@ class _ClassScanMapperConfig(_MapperConfig):
     def _produce_column_copies(
         self,
         attributes_for_class: Callable[
-            [], Iterable[Tuple[str, Any, Any, bool]]
+            [], Iterable[tuple[str, Any, Any, bool]]
         ],
         attribute_is_overridden: Callable[[str, Any], bool],
         fixed_table: bool,
-        originating_class: Type[Any],
-    ) -> Dict[str, Union[Column[Any], MappedColumn[Any]]]:
+        originating_class: type[Any],
+    ) -> dict[str, Column[Any] | MappedColumn[Any]]:
         cls = self.cls
         dict_ = self.clsdict_view
         locally_collected_attributes = {}
@@ -1675,7 +1675,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                     % (self.classname, name, (", ".join(sorted(keys))))
                 )
 
-    def _setup_table(self, table: Optional[FromClause] = None) -> None:
+    def _setup_table(self, table: FromClause | None = None) -> None:
         cls = self.cls
         cls_as_Decl = cast("MappedClassProtocol[Any]", cls)
 
@@ -1697,8 +1697,8 @@ class _ClassScanMapperConfig(_MapperConfig):
                 table_cls = Table
 
             if tablename is not None:
-                args: Tuple[Any, ...] = ()
-                table_kw: Dict[str, Any] = {}
+                args: tuple[Any, ...] = ()
+                table_kw: dict[str, Any] = {}
 
                 if table_args:
                     if isinstance(table_args, dict):
@@ -1745,7 +1745,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         self.local_table = table
 
     def _metadata_for_cls(self, manager: ClassManager[Any]) -> MetaData:
-        meta: Optional[MetaData] = getattr(self.cls, "metadata", None)
+        meta: MetaData | None = getattr(self.cls, "metadata", None)
         if meta is not None:
             return meta
         else:
@@ -1971,12 +1971,12 @@ def _as_dc_declaredattr(
 
 
 class _DeferredMapperConfig(_ClassScanMapperConfig):
-    _cls: weakref.ref[Type[Any]]
+    _cls: weakref.ref[type[Any]]
 
     is_deferred = True
 
     _configs: util.OrderedDict[
-        weakref.ref[Type[Any]], _DeferredMapperConfig
+        weakref.ref[type[Any]], _DeferredMapperConfig
     ] = util.OrderedDict()
 
     def _early_mapping(self, mapper_kw: _MapperKwArgs) -> None:
@@ -1984,25 +1984,25 @@ class _DeferredMapperConfig(_ClassScanMapperConfig):
 
     # mypy disallows plain property override of variable
     @property  # type: ignore
-    def cls(self) -> Type[Any]:
+    def cls(self) -> type[Any]:
         return self._cls()  # type: ignore
 
     @cls.setter
-    def cls(self, class_: Type[Any]) -> None:
+    def cls(self, class_: type[Any]) -> None:
         self._cls = weakref.ref(class_, self._remove_config_cls)
         self._configs[self._cls] = self
 
     @classmethod
-    def _remove_config_cls(cls, ref: weakref.ref[Type[Any]]) -> None:
+    def _remove_config_cls(cls, ref: weakref.ref[type[Any]]) -> None:
         cls._configs.pop(ref, None)
 
     @classmethod
-    def has_cls(cls, class_: Type[Any]) -> bool:
+    def has_cls(cls, class_: type[Any]) -> bool:
         # 2.6 fails on weakref if class_ is an old style class
         return isinstance(class_, type) and weakref.ref(class_) in cls._configs
 
     @classmethod
-    def raise_unmapped_for_cls(cls, class_: Type[Any]) -> NoReturn:
+    def raise_unmapped_for_cls(cls, class_: type[Any]) -> NoReturn:
         if hasattr(class_, "_sa_raise_deferred_config"):
             class_._sa_raise_deferred_config()
 
@@ -2015,13 +2015,13 @@ class _DeferredMapperConfig(_ClassScanMapperConfig):
         )
 
     @classmethod
-    def config_for_cls(cls, class_: Type[Any]) -> _DeferredMapperConfig:
+    def config_for_cls(cls, class_: type[Any]) -> _DeferredMapperConfig:
         return cls._configs[weakref.ref(class_)]
 
     @classmethod
     def classes_for_base(
-        cls, base_cls: Type[Any], sort: bool = True
-    ) -> List[_DeferredMapperConfig]:
+        cls, base_cls: type[Any], sort: bool = True
+    ) -> list[_DeferredMapperConfig]:
         classes_for_base = [
             m
             for m, cls_ in [(m, m.cls) for m in cls._configs.values()]
@@ -2033,7 +2033,7 @@ class _DeferredMapperConfig(_ClassScanMapperConfig):
 
         all_m_by_cls = {m.cls: m for m in classes_for_base}
 
-        tuples: List[Tuple[_DeferredMapperConfig, _DeferredMapperConfig]] = []
+        tuples: list[tuple[_DeferredMapperConfig, _DeferredMapperConfig]] = []
         for m_cls in all_m_by_cls:
             tuples.extend(
                 (all_m_by_cls[base_cls], all_m_by_cls[m_cls])
@@ -2048,7 +2048,7 @@ class _DeferredMapperConfig(_ClassScanMapperConfig):
 
 
 def _add_attribute(
-    cls: Type[Any], key: str, value: MapperProperty[Any]
+    cls: type[Any], key: str, value: MapperProperty[Any]
 ) -> None:
     """add an attribute to an existing declarative class.
 
@@ -2099,7 +2099,7 @@ def _add_attribute(
         type.__setattr__(cls, key, value)
 
 
-def _del_attribute(cls: Type[Any], key: str) -> None:
+def _del_attribute(cls: type[Any], key: str) -> None:
     if (
         "__mapper__" in cls.__dict__
         and key in cls.__dict__
@@ -2137,7 +2137,7 @@ def _declarative_constructor(self: Any, **kwargs: Any) -> None:
     for k in kwargs:
         if not hasattr(cls_, k):
             raise TypeError(
-                "%r is an invalid keyword argument for %s" % (k, cls_.__name__)
+                "{!r} is an invalid keyword argument for {}".format(k, cls_.__name__)
             )
         setattr(self, k, kwargs[k])
 

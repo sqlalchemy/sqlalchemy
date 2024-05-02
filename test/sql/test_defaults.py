@@ -1051,28 +1051,28 @@ class PKIncrementTest(fixtures.TablesTest):
         ids = set()
         rs = connection.execute(aitable.insert(), dict(int1=1))
         last = rs.inserted_primary_key[0]
-        self.assert_(last)
-        self.assert_(last not in ids)
+        self.assertTrue(last)
+        self.assertTrue(last not in ids)
         ids.add(last)
 
         rs = connection.execute(aitable.insert(), dict(str1="row 2"))
         last = rs.inserted_primary_key[0]
-        self.assert_(last)
-        self.assert_(last not in ids)
+        self.assertTrue(last)
+        self.assertTrue(last not in ids)
         ids.add(last)
 
         rs = connection.execute(aitable.insert(), dict(int1=3, str1="row 3"))
         last = rs.inserted_primary_key[0]
-        self.assert_(last)
-        self.assert_(last not in ids)
+        self.assertTrue(last)
+        self.assertTrue(last not in ids)
         ids.add(last)
 
         rs = connection.execute(
             aitable.insert().values({"int1": func.length("four")})
         )
         last = rs.inserted_primary_key[0]
-        self.assert_(last)
-        self.assert_(last not in ids)
+        self.assertTrue(last)
+        self.assertTrue(last not in ids)
         ids.add(last)
 
         eq_(

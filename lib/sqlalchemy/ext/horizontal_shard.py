@@ -83,9 +83,9 @@ ShardIdentifier = str
 class ShardChooser(Protocol):
     def __call__(
         self,
-        mapper: Optional[Mapper[_T]],
+        mapper: Mapper[_T] | None,
         instance: Any,
-        clause: Optional[ClauseElement],
+        clause: ClauseElement | None,
     ) -> Any: ...
 
 
@@ -95,7 +95,7 @@ class IdentityChooser(Protocol):
         mapper: Mapper[_T],
         primary_key: _PKIdentityArgument,
         *,
-        lazy_loaded_from: Optional[InstanceState[Any]],
+        lazy_loaded_from: InstanceState[Any] | None,
         execution_options: OrmExecuteOptionsParameter,
         bind_arguments: _BindArguments,
         **kw: Any,
@@ -145,17 +145,17 @@ class ShardedSession(Session):
     def __init__(
         self,
         shard_chooser: ShardChooser,
-        identity_chooser: Optional[IdentityChooser] = None,
-        execute_chooser: Optional[
+        identity_chooser: IdentityChooser | None = None,
+        execute_chooser: None | (
             Callable[[ORMExecuteState], Iterable[Any]]
-        ] = None,
-        shards: Optional[Dict[str, Any]] = None,
-        query_cls: Type[Query[_T]] = ShardedQuery,
+        ) = None,
+        shards: dict[str, Any] | None = None,
+        query_cls: type[Query[_T]] = ShardedQuery,
         *,
-        id_chooser: Optional[
+        id_chooser: None | (
             Callable[[Query[_T], Iterable[_T]], Iterable[Any]]
-        ] = None,
-        query_chooser: Optional[Callable[[Executable], Iterable[Any]]] = None,
+        ) = None,
+        query_chooser: Callable[[Executable], Iterable[Any]] | None = None,
         **kwargs: Any,
     ) -> None:
         """Construct a ShardedSession.
@@ -205,7 +205,7 @@ class ShardedSession(Session):
                 mapper: Mapper[_T],
                 primary_key: _PKIdentityArgument,
                 *,
-                lazy_loaded_from: Optional[InstanceState[Any]],
+                lazy_loaded_from: InstanceState[Any] | None,
                 execution_options: OrmExecuteOptionsParameter,
                 bind_arguments: _BindArguments,
                 **kw: Any,
@@ -249,7 +249,7 @@ class ShardedSession(Session):
                 "execute_chooser or query_chooser is required"
             )
         self.execute_chooser = execute_chooser
-        self.__shards: Dict[ShardIdentifier, _SessionBind] = {}
+        self.__shards: dict[ShardIdentifier, _SessionBind] = {}
         if shards is not None:
             for k in shards:
                 self.bind_shard(k, shards[k])
@@ -257,14 +257,14 @@ class ShardedSession(Session):
     def _identity_lookup(
         self,
         mapper: Mapper[_O],
-        primary_key_identity: Union[Any, Tuple[Any, ...]],
-        identity_token: Optional[Any] = None,
+        primary_key_identity: Any | tuple[Any, ...],
+        identity_token: Any | None = None,
         passive: PassiveFlag = PassiveFlag.PASSIVE_OFF,
-        lazy_loaded_from: Optional[InstanceState[Any]] = None,
+        lazy_loaded_from: InstanceState[Any] | None = None,
         execution_options: OrmExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[_BindArguments] = None,
+        bind_arguments: _BindArguments | None = None,
         **kw: Any,
-    ) -> Union[Optional[_O], LoaderCallableStatus]:
+    ) -> _O | None | LoaderCallableStatus:
         """override the default :meth:`.Session._identity_lookup` method so
         that we search for a given non-token primary key identity across all
         possible identity tokens (e.g. shard ids).
@@ -305,7 +305,7 @@ class ShardedSession(Session):
 
     def _choose_shard_and_assign(
         self,
-        mapper: Optional[_EntityBindKey[_O]],
+        mapper: _EntityBindKey[_O] | None,
         instance: Any,
         **kw: Any,
     ) -> Any:
@@ -326,9 +326,9 @@ class ShardedSession(Session):
 
     def connection_callable(  # type: ignore [override]
         self,
-        mapper: Optional[Mapper[_T]] = None,
-        instance: Optional[Any] = None,
-        shard_id: Optional[ShardIdentifier] = None,
+        mapper: Mapper[_T] | None = None,
+        instance: Any | None = None,
+        shard_id: ShardIdentifier | None = None,
         **kw: Any,
     ) -> Connection:
         """Provide a :class:`_engine.Connection` to use in the unit of work
@@ -356,11 +356,11 @@ class ShardedSession(Session):
 
     def get_bind(
         self,
-        mapper: Optional[_EntityBindKey[_O]] = None,
+        mapper: _EntityBindKey[_O] | None = None,
         *,
-        shard_id: Optional[ShardIdentifier] = None,
-        instance: Optional[Any] = None,
-        clause: Optional[ClauseElement] = None,
+        shard_id: ShardIdentifier | None = None,
+        instance: Any | None = None,
+        clause: ClauseElement | None = None,
         **kw: Any,
     ) -> _SessionBind:
         if shard_id is None:
@@ -371,7 +371,7 @@ class ShardedSession(Session):
         return self.__shards[shard_id]
 
     def bind_shard(
-        self, shard_id: ShardIdentifier, bind: Union[Engine, OptionEngine]
+        self, shard_id: ShardIdentifier, bind: Engine | OptionEngine
     ) -> None:
         self.__shards[shard_id] = bind
 
@@ -429,13 +429,13 @@ class set_shard_id(ORMOption):
 def execute_and_instances(
     orm_context: ORMExecuteState,
 ) -> Result[Unpack[TupleAny]]:
-    active_options: Union[
-        None,
-        QueryContext.default_load_options,
-        Type[QueryContext.default_load_options],
-        BulkUDCompileState.default_update_options,
-        Type[BulkUDCompileState.default_update_options],
-    ]
+    active_options: (
+        None |
+        QueryContext.default_load_options |
+        type[QueryContext.default_load_options] |
+        BulkUDCompileState.default_update_options |
+        type[BulkUDCompileState.default_update_options]
+    )
 
     if orm_context.is_select:
         active_options = orm_context.load_options

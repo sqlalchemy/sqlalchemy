@@ -89,13 +89,13 @@ class ImmutableDictBase(Dict[_KT, _VT]):
     def clear(self) -> NoReturn:
         _immutable_fn(self)
 
-    def pop(self, key: Any, default: Optional[Any] = None) -> NoReturn:
+    def pop(self, key: Any, default: Any | None = None) -> NoReturn:
         _immutable_fn(self)
 
     def popitem(self) -> NoReturn:
         _immutable_fn(self)
 
-    def setdefault(self, key: Any, default: Optional[Any] = None) -> NoReturn:
+    def setdefault(self, key: Any, default: Any | None = None) -> NoReturn:
         _immutable_fn(self)
 
     def update(self, *arg: Any, **kw: Any) -> NoReturn:
@@ -128,13 +128,13 @@ class immutabledict(Dict[_KT, _VT]):
     def clear(self) -> NoReturn:
         _immutable_fn(self)
 
-    def pop(self, key: Any, default: Optional[Any] = None) -> NoReturn:
+    def pop(self, key: Any, default: Any | None = None) -> NoReturn:
         _immutable_fn(self)
 
     def popitem(self) -> NoReturn:
         _immutable_fn(self)
 
-    def setdefault(self, key: Any, default: Optional[Any] = None) -> NoReturn:
+    def setdefault(self, key: Any, default: Any | None = None) -> NoReturn:
         _immutable_fn(self)
 
     def update(self, *arg: Any, **kw: Any) -> NoReturn:
@@ -147,7 +147,7 @@ class immutabledict(Dict[_KT, _VT]):
 
     @cython.annotation_typing(False)  # avoid cython crash from generic return
     def union(
-        self, other: Optional[Mapping[_KT, _VT]] = None, /
+        self, other: Mapping[_KT, _VT] | None = None, /
     ) -> immutabledict[_KT, _VT]:
         if not other:
             return self
@@ -163,9 +163,9 @@ class immutabledict(Dict[_KT, _VT]):
 
     @cython.annotation_typing(False)  # avoid cython crash from generic return
     def merge_with(
-        self, *dicts: Optional[Mapping[_KT, _VT]]
+        self, *dicts: Mapping[_KT, _VT] | None
     ) -> immutabledict[_KT, _VT]:
-        result: Optional[immutabledict] = None  # type: ignore[type-arg]
+        result: immutabledict | None = None  # type: ignore[type-arg]
         d: object
         if not dicts:
             return self

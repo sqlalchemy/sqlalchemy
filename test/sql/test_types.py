@@ -221,7 +221,7 @@ class AdaptTest(fixtures.TestBase):
         except NotImplementedError:
             return
 
-        assert compiled in expected, "%r matches none of %r for dialect %s" % (
+        assert compiled in expected, "{!r} matches none of {!r} for dialect {}".format(
             compiled,
             expected,
             dialect.name,
@@ -229,14 +229,14 @@ class AdaptTest(fixtures.TestBase):
 
         assert (
             str(types.to_instance(type_)) in expected
-        ), "default str() of type %r not expected, %r" % (type_, expected)
+        ), "default str() of type {!r} not expected, {!r}".format(type_, expected)
 
     def _adaptions():
         for typ in _all_types(omit_special_types=True):
             # up adapt from LowerCase to UPPERCASE,
             # as well as to all non-sqltypes
             up_adaptions = [typ] + typ.__subclasses__()
-            yield "%s.%s" % (
+            yield "{}.{}".format(
                 typ.__module__,
                 typ.__name__,
             ), False, typ, up_adaptions
@@ -246,7 +246,7 @@ class AdaptTest(fixtures.TestBase):
                     and typ is not TypeDecorator
                     and "sqlalchemy" in subcl.__module__
                 ):
-                    yield "%s.%s" % (
+                    yield "{}.{}".format(
                         subcl.__module__,
                         subcl.__name__,
                     ), True, subcl, [typ]
@@ -419,7 +419,7 @@ class TypeAffinityTest(fixtures.TestBase):
         id_="rra",
     )
     def test_compare_type_affinity(self, t1, t2, comp):
-        eq_(t1._compare_type_affinity(t2), comp, "%s %s" % (t1, t2))
+        eq_(t1._compare_type_affinity(t2), comp, "{} {}".format(t1, t2))
 
     def test_decorator_doesnt_cache(self):
         from sqlalchemy.dialects import postgresql

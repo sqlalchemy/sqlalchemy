@@ -115,7 +115,7 @@ def all_(expr: _ColumnExpressionArgument[_T]) -> CollectionAggregate[bool]:
 
 
 def and_(  # type: ignore[empty-body]
-    initial_clause: Union[Literal[True], _ColumnExpressionArgument[bool]],
+    initial_clause: Literal[True] | _ColumnExpressionArgument[bool],
     *clauses: _ColumnExpressionArgument[bool],
 ) -> ColumnElement[bool]:
     r"""Produce a conjunction of expressions joined by ``AND``.
@@ -422,7 +422,7 @@ def between(
 
 
 def outparam(
-    key: str, type_: Optional[TypeEngine[_T]] = None
+    key: str, type_: TypeEngine[_T] | None = None
 ) -> BindParameter[_T]:
     """Create an 'OUT' parameter for usage in functions (stored procedures),
     for databases which support them.
@@ -457,13 +457,13 @@ def not_(clause: _ColumnExpressionArgument[_T]) -> ColumnElement[_T]:
 
 
 def bindparam(
-    key: Optional[str],
+    key: str | None,
     value: Any = _NoArg.NO_ARG,
-    type_: Optional[_TypeEngineArgument[_T]] = None,
+    type_: _TypeEngineArgument[_T] | None = None,
     unique: bool = False,
-    required: Union[bool, Literal[_NoArg.NO_ARG]] = _NoArg.NO_ARG,
-    quote: Optional[bool] = None,
-    callable_: Optional[Callable[[], Any]] = None,
+    required: bool | Literal[_NoArg.NO_ARG] = _NoArg.NO_ARG,
+    quote: bool | None = None,
+    callable_: Callable[[], Any] | None = None,
     expanding: bool = False,
     isoutparam: bool = False,
     literal_execute: bool = False,
@@ -721,11 +721,11 @@ def bindparam(
 
 
 def case(
-    *whens: Union[
-        typing_Tuple[_ColumnExpressionArgument[bool], Any], Mapping[Any, Any]
-    ],
-    value: Optional[Any] = None,
-    else_: Optional[Any] = None,
+    *whens: (
+        typing_Tuple[_ColumnExpressionArgument[bool], Any] | Mapping[Any, Any]
+    ),
+    value: Any | None = None,
+    else_: Any | None = None,
 ) -> Case[Any]:
     r"""Produce a ``CASE`` expression.
 
@@ -952,9 +952,9 @@ def try_cast(
 
 def column(
     text: str,
-    type_: Optional[_TypeEngineArgument[_T]] = None,
+    type_: _TypeEngineArgument[_T] | None = None,
     is_literal: bool = False,
-    _selectable: Optional[FromClause] = None,
+    _selectable: FromClause | None = None,
 ) -> ColumnClause[_T]:
     """Produce a :class:`.ColumnClause` object.
 
@@ -1263,7 +1263,7 @@ def funcfilter(
 def label(
     name: str,
     element: _ColumnExpressionArgument[_T],
-    type_: Optional[_TypeEngineArgument[_T]] = None,
+    type_: _TypeEngineArgument[_T] | None = None,
 ) -> Label[_T]:
     """Return a :class:`Label` object for the
     given :class:`_expression.ColumnElement`.
@@ -1378,7 +1378,7 @@ def nulls_last(column: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
 
 
 def or_(  # type: ignore[empty-body]
-    initial_clause: Union[Literal[False], _ColumnExpressionArgument[bool]],
+    initial_clause: Literal[False] | _ColumnExpressionArgument[bool],
     *clauses: _ColumnExpressionArgument[bool],
 ) -> ColumnElement[bool]:
     """Produce a conjunction of expressions joined by ``OR``.
@@ -1490,10 +1490,10 @@ if not TYPE_CHECKING:
 
 def over(
     element: FunctionElement[_T],
-    partition_by: Optional[_ByArgument] = None,
-    order_by: Optional[_ByArgument] = None,
-    range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
-    rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+    partition_by: _ByArgument | None = None,
+    order_by: _ByArgument | None = None,
+    range_: typing_Tuple[int | None, int | None] | None = None,
+    rows: typing_Tuple[int | None, int | None] | None = None,
 ) -> Over[_T]:
     r"""Produce an :class:`.Over` object against a function.
 
@@ -1693,7 +1693,7 @@ def true() -> True_:
 
 def tuple_(
     *clauses: _ColumnExpressionArgument[Any],
-    types: Optional[Sequence[_TypeEngineArgument[Any]]] = None,
+    types: Sequence[_TypeEngineArgument[Any]] | None = None,
 ) -> Tuple:
     """Return a :class:`.Tuple`.
 

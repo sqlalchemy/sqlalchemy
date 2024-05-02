@@ -105,7 +105,7 @@ _DeclaredAttrDecorated = Callable[
 ]
 
 
-def has_inherited_table(cls: Type[_O]) -> bool:
+def has_inherited_table(cls: type[_O]) -> bool:
     """Given a class, return True if any of the classes it inherits from has a
     mapped table, otherwise return False.
 
@@ -261,10 +261,10 @@ class _declared_attr_common:
         self._quiet = quiet
         self.__doc__ = fn.__doc__
 
-    def _collect_return_annotation(self) -> Optional[Type[Any]]:
+    def _collect_return_annotation(self) -> type[Any] | None:
         return util.get_annotations(self.fget).get("return")
 
-    def __get__(self, instance: Optional[object], owner: Any) -> Any:
+    def __get__(self, instance: object | None, owner: Any) -> Any:
         # the declared_attr needs to make use of a cache that exists
         # for the span of the declarative scan_attributes() phase.
         # to achieve this we look at the class manager that's configured.
@@ -315,7 +315,7 @@ class _declared_directive(_declared_attr_common, Generic[_T]):
             cascading: bool = False,
         ): ...
 
-        def __get__(self, instance: Optional[object], owner: Any) -> _T: ...
+        def __get__(self, instance: object | None, owner: Any) -> _T: ...
 
         def __set__(self, instance: Any, value: Any) -> None: ...
 
@@ -443,8 +443,8 @@ class declared_attr(interfaces._MappedAttribute[_T], _declared_attr_common):
         def __get__(self, instance: object, owner: Any) -> _T: ...
 
         def __get__(
-            self, instance: Optional[object], owner: Any
-        ) -> Union[InstrumentedAttribute[_T], _T]: ...
+            self, instance: object | None, owner: Any
+        ) -> InstrumentedAttribute[_T] | _T: ...
 
     @hybridmethod
     def _stateful(cls, **kw: Any) -> _stateful_declared_attr[_T]:
@@ -462,7 +462,7 @@ class declared_attr(interfaces._MappedAttribute[_T], _declared_attr_common):
 
 
 class _stateful_declared_attr(declared_attr[_T]):
-    kw: Dict[str, Any]
+    kw: dict[str, Any]
 
     def __init__(self, **kw: Any):
         self.kw = kw
@@ -477,7 +477,7 @@ class _stateful_declared_attr(declared_attr[_T]):
         return declared_attr(fn, **self.kw)
 
 
-def declarative_mixin(cls: Type[_T]) -> Type[_T]:
+def declarative_mixin(cls: type[_T]) -> type[_T]:
     """Mark a class as providing the feature of "declarative mixin".
 
     E.g.::
@@ -519,7 +519,7 @@ def declarative_mixin(cls: Type[_T]) -> Type[_T]:
     return cls
 
 
-def _setup_declarative_base(cls: Type[Any]) -> None:
+def _setup_declarative_base(cls: type[Any]) -> None:
     if "metadata" in cls.__dict__:
         metadata = cls.__dict__["metadata"]
     else:
@@ -575,16 +575,16 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
 
     def __init_subclass__(
         cls,
-        init: Union[_NoArg, bool] = _NoArg.NO_ARG,
-        repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
-        eq: Union[_NoArg, bool] = _NoArg.NO_ARG,
-        order: Union[_NoArg, bool] = _NoArg.NO_ARG,
-        unsafe_hash: Union[_NoArg, bool] = _NoArg.NO_ARG,
-        match_args: Union[_NoArg, bool] = _NoArg.NO_ARG,
-        kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
-        dataclass_callable: Union[
-            _NoArg, Callable[..., Type[Any]]
-        ] = _NoArg.NO_ARG,
+        init: _NoArg | bool = _NoArg.NO_ARG,
+        repr: _NoArg | bool = _NoArg.NO_ARG,  # noqa: A002
+        eq: _NoArg | bool = _NoArg.NO_ARG,
+        order: _NoArg | bool = _NoArg.NO_ARG,
+        unsafe_hash: _NoArg | bool = _NoArg.NO_ARG,
+        match_args: _NoArg | bool = _NoArg.NO_ARG,
+        kw_only: _NoArg | bool = _NoArg.NO_ARG,
+        dataclass_callable: (
+            _NoArg | Callable[..., type[Any]]
+        ) = _NoArg.NO_ARG,
         **kw: Any,
     ) -> None:
         apply_dc_transforms: _DataclassArguments = {
@@ -837,7 +837,7 @@ class DeclarativeBase(
         super().__init_subclass__(**kw)
 
 
-def _check_not_declarative(cls: Type[Any], base: Type[Any]) -> None:
+def _check_not_declarative(cls: type[Any], base: type[Any]) -> None:
     cls_dict = cls.__dict__
     if (
         "__table__" in cls_dict
@@ -895,7 +895,7 @@ class DeclarativeBaseNoMeta(
 
     """
 
-    __table__: Optional[FromClause]
+    __table__: FromClause | None
     """The :class:`_sql.FromClause` to which a particular subclass is
     mapped.
 
@@ -960,7 +960,7 @@ class DeclarativeBaseNoMeta(
 
 
 def add_mapped_attribute(
-    target: Type[_O], key: str, attr: MapperProperty[Any]
+    target: type[_O], key: str, attr: MapperProperty[Any]
 ) -> None:
     """Add a new mapped attribute to an ORM mapped class.
 
@@ -980,14 +980,14 @@ def add_mapped_attribute(
 
 def declarative_base(
     *,
-    metadata: Optional[MetaData] = None,
-    mapper: Optional[Callable[..., Mapper[Any]]] = None,
-    cls: Type[Any] = object,
+    metadata: MetaData | None = None,
+    mapper: Callable[..., Mapper[Any]] | None = None,
+    cls: type[Any] = object,
     name: str = "Base",
-    class_registry: Optional[clsregistry._ClsRegistryType] = None,
-    type_annotation_map: Optional[_TypeAnnotationMapType] = None,
+    class_registry: clsregistry._ClsRegistryType | None = None,
+    type_annotation_map: _TypeAnnotationMapType | None = None,
     constructor: Callable[..., None] = _declarative_constructor,
-    metaclass: Type[Any] = DeclarativeMeta,
+    metaclass: type[Any] = DeclarativeMeta,
 ) -> Any:
     r"""Construct a base class for declarative class definitions.
 
@@ -1140,16 +1140,16 @@ class registry:
     metadata: MetaData
     constructor: CallableReference[Callable[..., None]]
     type_annotation_map: _MutableTypeAnnotationMapType
-    _dependents: Set[_RegistryType]
-    _dependencies: Set[_RegistryType]
+    _dependents: set[_RegistryType]
+    _dependencies: set[_RegistryType]
     _new_mappers: bool
 
     def __init__(
         self,
         *,
-        metadata: Optional[MetaData] = None,
-        class_registry: Optional[clsregistry._ClsRegistryType] = None,
-        type_annotation_map: Optional[_TypeAnnotationMapType] = None,
+        metadata: MetaData | None = None,
+        class_registry: clsregistry._ClsRegistryType | None = None,
+        type_annotation_map: _TypeAnnotationMapType | None = None,
         constructor: Callable[..., None] = _declarative_constructor,
     ):
         r"""Construct a new :class:`_orm.registry`
@@ -1231,9 +1231,9 @@ class registry:
 
     def _resolve_type(
         self, python_type: _MatchedOnType
-    ) -> Optional[sqltypes.TypeEngine[Any]]:
-        search: Iterable[Tuple[_MatchedOnType, Type[Any]]]
-        python_type_type: Type[Any]
+    ) -> sqltypes.TypeEngine[Any] | None:
+        search: Iterable[tuple[_MatchedOnType, type[Any]]]
+        python_type_type: type[Any]
 
         if is_generic(python_type):
             if is_literal(python_type):
@@ -1283,7 +1283,7 @@ class registry:
         return None
 
     @property
-    def mappers(self) -> FrozenSet[Mapper[Any]]:
+    def mappers(self) -> frozenset[Mapper[Any]]:
         """read only collection of all :class:`_orm.Mapper` objects."""
 
         return frozenset(manager.mapper for manager in self._managers).union(
@@ -1306,7 +1306,7 @@ class registry:
 
     @classmethod
     def _recurse_with_dependents(
-        cls, registries: Set[RegistryType]
+        cls, registries: set[RegistryType]
     ) -> Iterator[RegistryType]:
         todo = registries
         done = set()
@@ -1325,7 +1325,7 @@ class registry:
 
     @classmethod
     def _recurse_with_dependencies(
-        cls, registries: Set[RegistryType]
+        cls, registries: set[RegistryType]
     ) -> Iterator[RegistryType]:
         todo = registries
         done = set()
@@ -1362,7 +1362,7 @@ class registry:
     def _add_non_primary_mapper(self, np_mapper: Mapper[Any]) -> None:
         self._non_primary_mappers[np_mapper] = True
 
-    def _dispose_cls(self, cls: Type[_O]) -> None:
+    def _dispose_cls(self, cls: type[_O]) -> None:
         clsregistry.remove_class(cls.__name__, cls, self._class_registry)
 
     def _add_manager(self, manager: ClassManager[Any]) -> None:
@@ -1454,10 +1454,10 @@ class registry:
 
     def generate_base(
         self,
-        mapper: Optional[Callable[..., Mapper[Any]]] = None,
-        cls: Type[Any] = object,
+        mapper: Callable[..., Mapper[Any]] | None = None,
+        cls: type[Any] = object,
         name: str = "Base",
-        metaclass: Type[Any] = DeclarativeMeta,
+        metaclass: type[Any] = DeclarativeMeta,
     ) -> Any:
         """Generate a declarative base class.
 
@@ -1534,7 +1534,7 @@ class registry:
 
         bases = not isinstance(cls, tuple) and (cls,) or cls
 
-        class_dict: Dict[str, Any] = dict(registry=self, metadata=metadata)
+        class_dict: dict[str, Any] = dict(registry=self, metadata=metadata)
         if isinstance(cls, type):
             class_dict["__doc__"] = cls.__doc__
 
@@ -1547,7 +1547,7 @@ class registry:
 
         if hasattr(cls, "__class_getitem__"):
 
-            def __class_getitem__(cls: Type[_T], key: Any) -> Type[_T]:
+            def __class_getitem__(cls: type[_T], key: Any) -> type[_T]:
                 # allow generic classes in py3.9+
                 return cls
 
@@ -1569,7 +1569,7 @@ class registry:
         ),
     )
     @overload
-    def mapped_as_dataclass(self, __cls: Type[_O], /) -> Type[_O]: ...
+    def mapped_as_dataclass(self, __cls: type[_O], /) -> type[_O]: ...
 
     @overload
     def mapped_as_dataclass(
@@ -1577,32 +1577,32 @@ class registry:
         __cls: Literal[None] = ...,
         /,
         *,
-        init: Union[_NoArg, bool] = ...,
-        repr: Union[_NoArg, bool] = ...,  # noqa: A002
-        eq: Union[_NoArg, bool] = ...,
-        order: Union[_NoArg, bool] = ...,
-        unsafe_hash: Union[_NoArg, bool] = ...,
-        match_args: Union[_NoArg, bool] = ...,
-        kw_only: Union[_NoArg, bool] = ...,
-        dataclass_callable: Union[_NoArg, Callable[..., Type[Any]]] = ...,
-    ) -> Callable[[Type[_O]], Type[_O]]: ...
+        init: _NoArg | bool = ...,
+        repr: _NoArg | bool = ...,  # noqa: A002
+        eq: _NoArg | bool = ...,
+        order: _NoArg | bool = ...,
+        unsafe_hash: _NoArg | bool = ...,
+        match_args: _NoArg | bool = ...,
+        kw_only: _NoArg | bool = ...,
+        dataclass_callable: _NoArg | Callable[..., type[Any]] = ...,
+    ) -> Callable[[type[_O]], type[_O]]: ...
 
     def mapped_as_dataclass(
         self,
-        __cls: Optional[Type[_O]] = None,
+        __cls: type[_O] | None = None,
         /,
         *,
-        init: Union[_NoArg, bool] = _NoArg.NO_ARG,
-        repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
-        eq: Union[_NoArg, bool] = _NoArg.NO_ARG,
-        order: Union[_NoArg, bool] = _NoArg.NO_ARG,
-        unsafe_hash: Union[_NoArg, bool] = _NoArg.NO_ARG,
-        match_args: Union[_NoArg, bool] = _NoArg.NO_ARG,
-        kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
-        dataclass_callable: Union[
-            _NoArg, Callable[..., Type[Any]]
-        ] = _NoArg.NO_ARG,
-    ) -> Union[Type[_O], Callable[[Type[_O]], Type[_O]]]:
+        init: _NoArg | bool = _NoArg.NO_ARG,
+        repr: _NoArg | bool = _NoArg.NO_ARG,  # noqa: A002
+        eq: _NoArg | bool = _NoArg.NO_ARG,
+        order: _NoArg | bool = _NoArg.NO_ARG,
+        unsafe_hash: _NoArg | bool = _NoArg.NO_ARG,
+        match_args: _NoArg | bool = _NoArg.NO_ARG,
+        kw_only: _NoArg | bool = _NoArg.NO_ARG,
+        dataclass_callable: (
+            _NoArg | Callable[..., type[Any]]
+        ) = _NoArg.NO_ARG,
+    ) -> type[_O] | Callable[[type[_O]], type[_O]]:
         """Class decorator that will apply the Declarative mapping process
         to a given class, and additionally convert the class to be a
         Python dataclass.
@@ -1618,7 +1618,7 @@ class registry:
 
         """
 
-        def decorate(cls: Type[_O]) -> Type[_O]:
+        def decorate(cls: type[_O]) -> type[_O]:
             setattr(
                 cls,
                 "_sa_apply_dc_transforms",
@@ -1641,7 +1641,7 @@ class registry:
         else:
             return decorate
 
-    def mapped(self, cls: Type[_O]) -> Type[_O]:
+    def mapped(self, cls: type[_O]) -> type[_O]:
         """Class decorator that will apply the Declarative mapping process
         to a given class.
 
@@ -1681,7 +1681,7 @@ class registry:
         _as_declarative(self, cls, cls.__dict__)
         return cls
 
-    def as_declarative_base(self, **kw: Any) -> Callable[[Type[_T]], Type[_T]]:
+    def as_declarative_base(self, **kw: Any) -> Callable[[type[_T]], type[_T]]:
         """
         Class decorator which will invoke
         :meth:`_orm.registry.generate_base`
@@ -1709,14 +1709,14 @@ class registry:
 
         """
 
-        def decorate(cls: Type[_T]) -> Type[_T]:
+        def decorate(cls: type[_T]) -> type[_T]:
             kw["cls"] = cls
             kw["name"] = cls.__name__
             return self.generate_base(**kw)  # type: ignore
 
         return decorate
 
-    def map_declaratively(self, cls: Type[_O]) -> Mapper[_O]:
+    def map_declaratively(self, cls: type[_O]) -> Mapper[_O]:
         """Map a class declaratively.
 
         In this form of mapping, the class is scanned for mapping information,
@@ -1766,8 +1766,8 @@ class registry:
 
     def map_imperatively(
         self,
-        class_: Type[_O],
-        local_table: Optional[FromClause] = None,
+        class_: type[_O],
+        local_table: FromClause | None = None,
         **kw: Any,
     ) -> Mapper[_O]:
         r"""Map a class imperatively.
@@ -1828,7 +1828,7 @@ if not TYPE_CHECKING:
     _RegistryType = registry  # noqa
 
 
-def as_declarative(**kw: Any) -> Callable[[Type[_T]], Type[_T]]:
+def as_declarative(**kw: Any) -> Callable[[type[_T]], type[_T]]:
     """
     Class decorator which will adapt a given class into a
     :func:`_orm.declarative_base`.
@@ -1869,8 +1869,8 @@ def as_declarative(**kw: Any) -> Callable[[Type[_T]], Type[_T]]:
 @inspection._inspects(
     DeclarativeMeta, DeclarativeBase, DeclarativeAttributeIntercept
 )
-def _inspect_decl_meta(cls: Type[Any]) -> Optional[Mapper[Any]]:
-    mp: Optional[Mapper[Any]] = _inspect_mapped_class(cls)
+def _inspect_decl_meta(cls: type[Any]) -> Mapper[Any] | None:
+    mp: Mapper[Any] | None = _inspect_mapped_class(cls)
     if mp is None:
         if _DeferredMapperConfig.has_cls(cls):
             _DeferredMapperConfig.raise_unmapped_for_cls(cls)

@@ -90,7 +90,7 @@ class ArgsTypeProcotol(Protocol):
 
     """
 
-    __args__: Tuple[_AnnotationScanType, ...]
+    __args__: tuple[_AnnotationScanType, ...]
 
 
 class GenericProtocol(Protocol[_T]):
@@ -100,8 +100,8 @@ class GenericProtocol(Protocol[_T]):
 
     """
 
-    __args__: Tuple[_AnnotationScanType, ...]
-    __origin__: Type[_T]
+    __args__: tuple[_AnnotationScanType, ...]
+    __origin__: type[_T]
 
     # Python's builtin _GenericAlias has this method, however builtins like
     # list, dict, etc. do not, even though they have ``__origin__`` and
@@ -124,15 +124,15 @@ _LiteralStar = Literal["*"]
 
 
 def de_stringify_annotation(
-    cls: Type[Any],
+    cls: type[Any],
     annotation: _AnnotationScanType,
     originating_module: str,
     locals_: Mapping[str, Any],
     *,
-    str_cleanup_fn: Optional[Callable[[str, str], str]] = None,
+    str_cleanup_fn: Callable[[str, str], str] | None = None,
     include_generic: bool = False,
-    _already_seen: Optional[Set[Any]] = None,
-) -> Type[Any]:
+    _already_seen: set[Any] | None = None,
+) -> type[Any]:
     """Resolve annotations that may be string based into real objects.
 
     This is particularly important if a module defines "from __future__ import
@@ -194,8 +194,8 @@ def de_stringify_annotation(
 
 
 def _copy_generic_annotation_with(
-    annotation: GenericProtocol[_T], elements: Tuple[_AnnotationScanType, ...]
-) -> Type[_T]:
+    annotation: GenericProtocol[_T], elements: tuple[_AnnotationScanType, ...]
+) -> type[_T]:
     if hasattr(annotation, "copy_with"):
         # List, Dict, etc. real generics
         return annotation.copy_with(elements)  # type: ignore
@@ -208,11 +208,11 @@ def eval_expression(
     expression: str,
     module_name: str,
     *,
-    locals_: Optional[Mapping[str, Any]] = None,
-    in_class: Optional[Type[Any]] = None,
+    locals_: Mapping[str, Any] | None = None,
+    in_class: type[Any] | None = None,
 ) -> Any:
     try:
-        base_globals: Dict[str, Any] = sys.modules[module_name].__dict__
+        base_globals: dict[str, Any] = sys.modules[module_name].__dict__
     except KeyError as ke:
         raise NameError(
             f"Module {module_name} isn't present in sys.modules; can't "
@@ -244,13 +244,13 @@ def eval_name_only(
     name: str,
     module_name: str,
     *,
-    locals_: Optional[Mapping[str, Any]] = None,
+    locals_: Mapping[str, Any] | None = None,
 ) -> Any:
     if "." in name:
         return eval_expression(name, module_name, locals_=locals_)
 
     try:
-        base_globals: Dict[str, Any] = sys.modules[module_name].__dict__
+        base_globals: dict[str, Any] = sys.modules[module_name].__dict__
     except KeyError as ke:
         raise NameError(
             f"Module {module_name} isn't present in sys.modules; can't "
@@ -284,13 +284,13 @@ def resolve_name_to_real_class_name(name: str, module_name: str) -> str:
 
 
 def de_stringify_union_elements(
-    cls: Type[Any],
+    cls: type[Any],
     annotation: ArgsTypeProcotol,
     originating_module: str,
     locals_: Mapping[str, Any],
     *,
-    str_cleanup_fn: Optional[Callable[[str, str], str]] = None,
-) -> Type[Any]:
+    str_cleanup_fn: Callable[[str, str], str] | None = None,
+) -> type[Any]:
     return make_union_type(
         *[
             de_stringify_annotation(
@@ -305,7 +305,7 @@ def de_stringify_union_elements(
     )
 
 
-def is_pep593(type_: Optional[_AnnotationScanType]) -> bool:
+def is_pep593(type_: _AnnotationScanType | None) -> bool:
     return type_ is not None and typing_get_origin(type_) is Annotated
 
 
@@ -319,7 +319,7 @@ def is_literal(type_: _AnnotationScanType) -> bool:
     return get_origin(type_) is Literal
 
 
-def is_newtype(type_: Optional[_AnnotationScanType]) -> TypeGuard[NewType]:
+def is_newtype(type_: _AnnotationScanType | None) -> TypeGuard[NewType]:
     return hasattr(type_, "__supertype__")
 
     # doesn't work in 3.8, 3.7 as it passes a closure, not an
@@ -335,7 +335,7 @@ def is_pep695(type_: _AnnotationScanType) -> TypeGuard[TypeAliasType]:
     return isinstance(type_, TypeAliasType)
 
 
-def flatten_newtype(type_: NewType) -> Type[Any]:
+def flatten_newtype(type_: NewType) -> type[Any]:
     super_type = type_.__supertype__
     while is_newtype(super_type):
         super_type = super_type.__supertype__
@@ -358,7 +358,7 @@ def de_optionalize_union_types(type_: str) -> str: ...
 
 
 @overload
-def de_optionalize_union_types(type_: Type[Any]) -> Type[Any]: ...
+def de_optionalize_union_types(type_: type[Any]) -> type[Any]: ...
 
 
 @overload
@@ -421,7 +421,7 @@ def de_optionalize_fwd_ref_union_types(
     return type_
 
 
-def make_union_type(*types: _AnnotationScanType) -> Type[Any]:
+def make_union_type(*types: _AnnotationScanType) -> type[Any]:
     """Make a Union type.
 
     This is needed by :func:`.de_optionalize_union_types` which removes
@@ -432,8 +432,8 @@ def make_union_type(*types: _AnnotationScanType) -> Type[Any]:
 
 
 def expand_unions(
-    type_: Type[Any], include_union: bool = False, discard_none: bool = False
-) -> Tuple[Type[Any], ...]:
+    type_: type[Any], include_union: bool = False, discard_none: bool = False
+) -> tuple[type[Any], ...]:
     """Return a type as a tuple of individual types, expanding for
     ``Union`` types."""
 
@@ -469,7 +469,7 @@ def is_union(type_: Any) -> TypeGuard[ArgsTypeProcotol]:
 
 
 def is_origin_of_cls(
-    type_: Any, class_obj: Union[Tuple[Type[Any], ...], Type[Any]]
+    type_: Any, class_obj: tuple[type[Any], ...] | type[Any]
 ) -> bool:
     """return True if the given type has an __origin__ that shares a base
     with the given class"""
@@ -482,7 +482,7 @@ def is_origin_of_cls(
 
 
 def is_origin_of(
-    type_: Any, *names: str, module: Optional[str] = None
+    type_: Any, *names: str, module: str | None = None
 ) -> bool:
     """return True if the given type has an __origin__ with the given name
     and optional module."""
@@ -496,7 +496,7 @@ def is_origin_of(
     )
 
 
-def _get_type_name(type_: Type[Any]) -> str:
+def _get_type_name(type_: type[Any]) -> str:
     if compat.py310:
         return type_.__name__
     else:

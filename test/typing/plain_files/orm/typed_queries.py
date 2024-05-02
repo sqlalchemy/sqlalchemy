@@ -392,7 +392,7 @@ def t_select_w_core_selectables() -> None:
     reveal_type(s2)
 
     # so a fully explicit type may be given
-    s2_typed: Select[Tuple[int, str]] = select(User.id, s1.c.name)
+    s2_typed: Select[tuple[int, str]] = select(User.id, s1.c.name)
 
     # EXPECTED_TYPE: Select[Tuple[int, str]]
     reveal_type(s2_typed)

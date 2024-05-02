@@ -80,7 +80,7 @@ if not TYPE_CHECKING:
 
 
 class _InstanceDictProto(Protocol):
-    def __call__(self) -> Optional[IdentityMap]: ...
+    def __call__(self) -> IdentityMap | None: ...
 
 
 class _InstallLoaderCallableProto(Protocol[_O]):
@@ -141,16 +141,16 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     )
 
     manager: ClassManager[_O]
-    session_id: Optional[int] = None
-    key: Optional[_IdentityKeyType[_O]] = None
-    runid: Optional[int] = None
-    load_options: Tuple[ORMOption, ...] = ()
+    session_id: int | None = None
+    key: _IdentityKeyType[_O] | None = None
+    runid: int | None = None
+    load_options: tuple[ORMOption, ...] = ()
     load_path: PathRegistry = PathRegistry.root
-    insert_order: Optional[int] = None
-    _strong_obj: Optional[object] = None
+    insert_order: int | None = None
+    _strong_obj: object | None = None
     obj: weakref.ref[_O]
 
-    committed_state: Dict[str, Any]
+    committed_state: dict[str, Any]
 
     modified: bool = False
     expired: bool = False
@@ -159,7 +159,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     _orphaned_outside_of_session: bool = False
     is_instance: bool = True
     identity_token: object = None
-    _last_known_values: Optional[Dict[str, Any]] = None
+    _last_known_values: dict[str, Any] | None = None
 
     _instance_dict: _InstanceDictProto
     """A weak reference, or in the default case a plain callable, that
@@ -172,7 +172,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
             """default 'weak reference' for _instance_dict"""
             return None
 
-    expired_attributes: Set[str]
+    expired_attributes: set[str]
     """The set of keys which are 'expired' to be loaded by
        the manager's deferred scalar loader, assuming no pending
        changes.
@@ -180,7 +180,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
        see also the ``unmodified`` collection which is intersected
        against this set when a refresh operation occurs."""
 
-    callables: Dict[str, Callable[[InstanceState[_O], PassiveFlag], Any]]
+    callables: dict[str, Callable[[InstanceState[_O], PassiveFlag], Any]]
     """A namespace where a per-state loader callable can be associated.
 
     In SQLAlchemy 1.0, this is only used for lazy loaders / deferred
@@ -341,7 +341,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
             lkv[key] = NO_VALUE
 
     @property
-    def session(self) -> Optional[Session]:
+    def session(self) -> Session | None:
         """Return the owning :class:`.Session` for this instance,
         or ``None`` if none available.
 
@@ -365,7 +365,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         return None
 
     @property
-    def async_session(self) -> Optional[AsyncSession]:
+    def async_session(self) -> AsyncSession | None:
         """Return the owning :class:`_asyncio.AsyncSession` for this instance,
         or ``None`` if none available.
 
@@ -393,7 +393,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
             return None
 
     @property
-    def object(self) -> Optional[_O]:
+    def object(self) -> _O | None:
         """Return the mapped object represented by this
         :class:`.InstanceState`.
 
@@ -403,7 +403,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         return self.obj()
 
     @property
-    def identity(self) -> Optional[Tuple[Any, ...]]:
+    def identity(self) -> tuple[Any, ...] | None:
         """Return the mapped identity of the mapped object.
         This is the primary key identity as persisted by the ORM
         which can always be passed directly to
@@ -423,7 +423,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
             return self.key[1]
 
     @property
-    def identity_key(self) -> Optional[_IdentityKeyType[_O]]:
+    def identity_key(self) -> _IdentityKeyType[_O] | None:
         """Return the identity key for the mapped object.
 
         This is the key used to locate the object within
@@ -435,15 +435,15 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         return self.key
 
     @util.memoized_property
-    def parents(self) -> Dict[int, Union[Literal[False], InstanceState[Any]]]:
+    def parents(self) -> dict[int, Literal[False] | InstanceState[Any]]:
         return {}
 
     @util.memoized_property
-    def _pending_mutations(self) -> Dict[str, PendingCollection]:
+    def _pending_mutations(self) -> dict[str, PendingCollection]:
         return {}
 
     @util.memoized_property
-    def _empty_collections(self) -> Dict[str, _AdaptedCollectionProtocol]:
+    def _empty_collections(self) -> dict[str, _AdaptedCollectionProtocol]:
         return {}
 
     @util.memoized_property
@@ -499,7 +499,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
 
             state._strong_obj = None
 
-    def _detach(self, session: Optional[Session] = None) -> None:
+    def _detach(self, session: Session | None = None) -> None:
         if session:
             InstanceState._detach_states([self], session)
         else:
@@ -580,8 +580,8 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
             self._pending_mutations[key] = PendingCollection()
         return self._pending_mutations[key]
 
-    def __getstate__(self) -> Dict[str, Any]:
-        state_dict: Dict[str, Any] = {
+    def __getstate__(self) -> dict[str, Any]:
+        state_dict: dict[str, Any] = {
             "instance": self.obj(),
             "class_": self.class_,
             "committed_state": self.committed_state,
@@ -610,7 +610,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
 
         return state_dict
 
-    def __setstate__(self, state_dict: Dict[str, Any]) -> None:
+    def __setstate__(self, state_dict: dict[str, Any]) -> None:
         inst = state_dict["instance"]
         if inst is not None:
             self.obj = weakref.ref(inst, self._cleanup)
@@ -701,7 +701,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         return _set_callable
 
     def _expire(
-        self, dict_: _InstanceDict, modified_set: Set[InstanceState[Any]]
+        self, dict_: _InstanceDict, modified_set: set[InstanceState[Any]]
     ) -> None:
         self.expired = True
         if self.modified:
@@ -813,12 +813,12 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         return ATTR_WAS_SET
 
     @property
-    def unmodified(self) -> Set[str]:
+    def unmodified(self) -> set[str]:
         """Return the set of keys which have no uncommitted changes"""
 
         return set(self.manager).difference(self.committed_state)
 
-    def unmodified_intersection(self, keys: Iterable[str]) -> Set[str]:
+    def unmodified_intersection(self, keys: Iterable[str]) -> set[str]:
         """Return self.unmodified.intersection(keys)."""
 
         return (
@@ -828,7 +828,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         )
 
     @property
-    def unloaded(self) -> Set[str]:
+    def unloaded(self) -> set[str]:
         """Return the set of keys which do not have a loaded value.
 
         This includes expired attributes and any other attribute that was never
@@ -847,7 +847,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         "The :attr:`.InstanceState.unloaded_expirable` attribute is "
         "deprecated.  Please use :attr:`.InstanceState.unloaded`.",
     )
-    def unloaded_expirable(self) -> Set[str]:
+    def unloaded_expirable(self) -> set[str]:
         """Synonymous with :attr:`.InstanceState.unloaded`.
 
         This attribute was added as an implementation-specific detail at some
@@ -857,7 +857,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
         return self.unloaded
 
     @property
-    def _unloaded_non_object(self) -> Set[str]:
+    def _unloaded_non_object(self) -> set[str]:
         return self.unloaded.intersection(
             attr
             for attr in self.manager
@@ -867,7 +867,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     def _modified_event(
         self,
         dict_: _InstanceDict,
-        attr: Optional[AttributeImpl],
+        attr: AttributeImpl | None,
         previous: Any,
         collection: bool = False,
         is_userland: bool = False,
@@ -966,7 +966,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
                 del self.callables[key]
 
     def _commit_all(
-        self, dict_: _InstanceDict, instance_dict: Optional[IdentityMap] = None
+        self, dict_: _InstanceDict, instance_dict: IdentityMap | None = None
     ) -> None:
         """commit all attributes unconditionally.
 
@@ -988,8 +988,8 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     @classmethod
     def _commit_all_states(
         self,
-        iter_: Iterable[Tuple[InstanceState[Any], _InstanceDict]],
-        instance_dict: Optional[IdentityMap] = None,
+        iter_: Iterable[tuple[InstanceState[Any], _InstanceDict]],
+        instance_dict: IdentityMap | None = None,
     ) -> None:
         """Mass / highly inlined version of commit_all()."""
 

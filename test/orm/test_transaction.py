@@ -131,8 +131,8 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         connection = connection_no_trans
 
-        t1: Optional[Transaction]
-        s1: Optional[NestedTransaction]
+        t1: Transaction | None
+        s1: NestedTransaction | None
 
         if external_state.none:
             t1 = s1 = None

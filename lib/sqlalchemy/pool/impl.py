@@ -64,7 +64,7 @@ class QueuePool(Pool):
 
     _is_asyncio = False  # type: ignore[assignment]
 
-    _queue_class: Type[sqla_queue.QueueCommon[ConnectionPoolEntry]] = (
+    _queue_class: type[sqla_queue.QueueCommon[ConnectionPoolEntry]] = (
         sqla_queue.Queue
     )
 
@@ -72,7 +72,7 @@ class QueuePool(Pool):
 
     def __init__(
         self,
-        creator: Union[_CreatorFnType, _CreatorWRecFnType],
+        creator: _CreatorFnType | _CreatorWRecFnType,
         pool_size: int = 5,
         max_overflow: int = 10,
         timeout: float = 30.0,
@@ -272,7 +272,7 @@ class AsyncAdaptedQueuePool(QueuePool):
     """
 
     _is_asyncio = True  # type: ignore[assignment]
-    _queue_class: Type[sqla_queue.QueueCommon[ConnectionPoolEntry]] = (
+    _queue_class: type[sqla_queue.QueueCommon[ConnectionPoolEntry]] = (
         sqla_queue.AsyncAdaptedQueue
     )
 
@@ -358,14 +358,14 @@ class SingletonThreadPool(Pool):
 
     def __init__(
         self,
-        creator: Union[_CreatorFnType, _CreatorWRecFnType],
+        creator: _CreatorFnType | _CreatorWRecFnType,
         pool_size: int = 5,
         **kw: Any,
     ):
         Pool.__init__(self, creator, **kw)
         self._conn = threading.local()
         self._fairy = threading.local()
-        self._all_conns: Set[ConnectionPoolEntry] = set()
+        self._all_conns: set[ConnectionPoolEntry] = set()
         self.size = pool_size
 
     def recreate(self) -> SingletonThreadPool:
@@ -521,8 +521,8 @@ class AssertionPool(Pool):
 
     """
 
-    _conn: Optional[ConnectionPoolEntry]
-    _checkout_traceback: Optional[List[str]]
+    _conn: ConnectionPoolEntry | None
+    _checkout_traceback: list[str] | None
 
     def __init__(self, *args: Any, **kw: Any):
         self._conn = None

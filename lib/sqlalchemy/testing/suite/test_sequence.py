@@ -182,7 +182,7 @@ class SequenceCompilerTest(testing.AssertsCompiledSQL, fixtures.TestBase):
         ).visit_sequence(normalize_sequence(config, Sequence("y_seq")))
         self.assert_compile(
             stmt,
-            "INSERT INTO x (y, q) VALUES (%s, 5)" % (seq_nextval,),
+            "INSERT INTO x (y, q) VALUES ({}, 5)".format(seq_nextval),
             literal_binds=True,
             dialect=connection.dialect,
         )

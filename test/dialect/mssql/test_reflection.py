@@ -451,10 +451,10 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
 
         dbname = connection.exec_driver_sql("select db_name()").scalar()
         owner = connection.exec_driver_sql("SELECT user_name()").scalar()
-        referred_schema = "%(dbname)s.%(owner)s" % {
-            "dbname": dbname,
-            "owner": owner,
-        }
+        referred_schema = "{dbname}.{owner}".format(
+            dbname=dbname,
+            owner=owner,
+        )
 
         inspector = inspect(connection)
         bar_via_db = inspector.get_foreign_keys("bar", schema=referred_schema)

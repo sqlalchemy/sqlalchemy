@@ -50,11 +50,11 @@ _KT = TypeVar("_KT", bound=Any)
 _VT = TypeVar("_VT", bound=Any)
 _T_co = TypeVar("_T_co", covariant=True)
 
-EMPTY_SET: FrozenSet[Any] = frozenset()
-NONE_SET: FrozenSet[Any] = frozenset([None])
+EMPTY_SET: frozenset[Any] = frozenset()
+NONE_SET: frozenset[Any] = frozenset([None])
 
 
-def merge_lists_w_ordering(a: List[Any], b: List[Any]) -> List[Any]:
+def merge_lists_w_ordering(a: list[Any], b: list[Any]) -> list[Any]:
     """merge two lists, maintaining ordering as much as possible.
 
     this is to reconcile vars(cls) with cls.__annotations__.
@@ -156,9 +156,9 @@ class Properties(Generic[_T]):
 
     __slots__ = ("_data",)
 
-    _data: Dict[str, _T]
+    _data: dict[str, _T]
 
-    def __init__(self, data: Dict[str, _T]):
+    def __init__(self, data: dict[str, _T]):
         object.__setattr__(self, "_data", data)
 
     def __len__(self) -> int:
@@ -167,10 +167,10 @@ class Properties(Generic[_T]):
     def __iter__(self) -> Iterator[_T]:
         return iter(list(self._data.values()))
 
-    def __dir__(self) -> List[str]:
+    def __dir__(self) -> list[str]:
         return dir(super()) + [str(k) for k in self._data.keys()]
 
-    def __add__(self, other: Properties[_F]) -> List[Union[_T, _F]]:
+    def __add__(self, other: Properties[_F]) -> list[_T | _F]:
         return list(self) + list(other)
 
     def __setitem__(self, key: str, obj: _T) -> None:
@@ -185,10 +185,10 @@ class Properties(Generic[_T]):
     def __setattr__(self, key: str, obj: _T) -> None:
         self._data[key] = obj
 
-    def __getstate__(self) -> Dict[str, Any]:
+    def __getstate__(self) -> dict[str, Any]:
         return {"_data": self._data}
 
-    def __setstate__(self, state: Dict[str, Any]) -> None:
+    def __setstate__(self, state: dict[str, Any]) -> None:
         object.__setattr__(self, "_data", state["_data"])
 
     def __getattr__(self, key: str) -> _T:
@@ -205,30 +205,30 @@ class Properties(Generic[_T]):
 
         return ReadOnlyProperties(self._data)
 
-    def update(self, value: Dict[str, _T]) -> None:
+    def update(self, value: dict[str, _T]) -> None:
         self._data.update(value)
 
     @overload
-    def get(self, key: str) -> Optional[_T]: ...
+    def get(self, key: str) -> _T | None: ...
 
     @overload
-    def get(self, key: str, default: Union[_DT, _T]) -> Union[_DT, _T]: ...
+    def get(self, key: str, default: _DT | _T) -> _DT | _T: ...
 
     def get(
-        self, key: str, default: Optional[Union[_DT, _T]] = None
-    ) -> Optional[Union[_T, _DT]]:
+        self, key: str, default: _DT | _T | None = None
+    ) -> _T | _DT | None:
         if key in self:
             return self[key]
         else:
             return default
 
-    def keys(self) -> List[str]:
+    def keys(self) -> list[str]:
         return list(self._data)
 
-    def values(self) -> List[_T]:
+    def values(self) -> list[_T]:
         return list(self._data.values())
 
-    def items(self) -> List[Tuple[str, _T]]:
+    def items(self) -> list[tuple[str, _T]]:
         return list(self._data.items())
 
     def has_key(self, key: str) -> bool:
@@ -355,14 +355,14 @@ class UniqueAppender(Generic[_T]):
 
     __slots__ = "data", "_data_appender", "_unique"
 
-    data: Union[Iterable[_T], Set[_T], List[_T]]
+    data: Iterable[_T] | set[_T] | list[_T]
     _data_appender: Callable[[_T], None]
-    _unique: Dict[int, Literal[True]]
+    _unique: dict[int, Literal[True]]
 
     def __init__(
         self,
-        data: Union[Iterable[_T], Set[_T], List[_T]],
-        via: Optional[str] = None,
+        data: Iterable[_T] | set[_T] | list[_T],
+        via: str | None = None,
     ):
         self.data = data
         self._unique = {}
@@ -383,14 +383,14 @@ class UniqueAppender(Generic[_T]):
         return iter(self.data)
 
 
-def coerce_generator_arg(arg: Any) -> List[Any]:
+def coerce_generator_arg(arg: Any) -> list[Any]:
     if len(arg) == 1 and isinstance(arg[0], types.GeneratorType):
         return list(arg[0])
     else:
         return cast("List[Any]", arg)
 
 
-def to_list(x: Any, default: Optional[List[Any]] = None) -> List[Any]:
+def to_list(x: Any, default: list[Any] | None = None) -> list[Any]:
     if x is None:
         return default  # type: ignore
     if not is_non_string_iterable(x):
@@ -421,7 +421,7 @@ def to_set(x):
         return x
 
 
-def to_column_set(x: Any) -> Set[Any]:
+def to_column_set(x: Any) -> set[Any]:
     if x is None:
         return column_set()
     if not isinstance(x, column_set):
@@ -474,34 +474,34 @@ class LRUCache(typing.MutableMapping[_KT, _VT]):
 
     capacity: int
     threshold: float
-    size_alert: Optional[Callable[[LRUCache[_KT, _VT]], None]]
+    size_alert: Callable[[LRUCache[_KT, _VT]], None] | None
 
     def __init__(
         self,
         capacity: int = 100,
         threshold: float = 0.5,
-        size_alert: Optional[Callable[..., None]] = None,
+        size_alert: Callable[..., None] | None = None,
     ):
         self.capacity = capacity
         self.threshold = threshold
         self.size_alert = size_alert
         self._counter = 0
         self._mutex = threading.Lock()
-        self._data: Dict[_KT, Tuple[_KT, _VT, List[int]]] = {}
+        self._data: dict[_KT, tuple[_KT, _VT, list[int]]] = {}
 
     def _inc_counter(self):
         self._counter += 1
         return self._counter
 
     @overload
-    def get(self, key: _KT) -> Optional[_VT]: ...
+    def get(self, key: _KT) -> _VT | None: ...
 
     @overload
-    def get(self, key: _KT, default: Union[_VT, _T]) -> Union[_VT, _T]: ...
+    def get(self, key: _KT, default: _VT | _T) -> _VT | _T: ...
 
     def get(
-        self, key: _KT, default: Optional[Union[_VT, _T]] = None
-    ) -> Optional[Union[_VT, _T]]:
+        self, key: _KT, default: _VT | _T | None = None
+    ) -> _VT | _T | None:
         item = self._data.get(key)
         if item is not None:
             item[2][0] = self._inc_counter()

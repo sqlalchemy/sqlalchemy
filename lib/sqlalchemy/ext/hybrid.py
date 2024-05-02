@@ -915,8 +915,8 @@ class _HybridUpdaterType(Protocol[_T_con]):
     def __call__(
         s,
         cls: Any,
-        value: Union[_T_con, _ColumnExpressionArgument[_T_con]],
-    ) -> List[Tuple[_DMLColumnArgument, Any]]: ...
+        value: _T_con | _ColumnExpressionArgument[_T_con],
+    ) -> list[tuple[_DMLColumnArgument, Any]]: ...
 
 
 class _HybridDeleterType(Protocol[_T_co]):
@@ -926,7 +926,7 @@ class _HybridDeleterType(Protocol[_T_co]):
 class _HybridExprCallableType(Protocol[_T_co]):
     def __call__(
         s, cls: Any
-    ) -> Union[_HasClauseElement[_T_co], SQLColumnExpression[_T_co]]: ...
+    ) -> _HasClauseElement[_T_co] | SQLColumnExpression[_T_co]: ...
 
 
 class _HybridComparatorCallableType(Protocol[_T]):
@@ -973,9 +973,9 @@ class hybrid_method(interfaces.InspectionAttrInfo, Generic[_P, _R]):
     def __init__(
         self,
         func: Callable[Concatenate[Any, _P], _R],
-        expr: Optional[
+        expr: None | (
             Callable[Concatenate[Any, _P], SQLCoreOperations[_R]]
-        ] = None,
+        ) = None,
     ):
         """Create a new :class:`.hybrid_method`.
 
@@ -1019,17 +1019,17 @@ class hybrid_method(interfaces.InspectionAttrInfo, Generic[_P, _R]):
 
     @overload
     def __get__(
-        self, instance: Literal[None], owner: Type[object]
+        self, instance: Literal[None], owner: type[object]
     ) -> Callable[_P, SQLCoreOperations[_R]]: ...
 
     @overload
     def __get__(
-        self, instance: object, owner: Type[object]
+        self, instance: object, owner: type[object]
     ) -> Callable[_P, _R]: ...
 
     def __get__(
-        self, instance: Optional[object], owner: Type[object]
-    ) -> Union[Callable[_P, _R], Callable[_P, SQLCoreOperations[_R]]]:
+        self, instance: object | None, owner: type[object]
+    ) -> Callable[_P, _R] | Callable[_P, SQLCoreOperations[_R]]:
         if instance is None:
             return self.expr.__get__(owner, owner)  # type: ignore
         else:
@@ -1068,11 +1068,11 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
     def __init__(
         self,
         fget: _HybridGetterType[_T],
-        fset: Optional[_HybridSetterType[_T]] = None,
-        fdel: Optional[_HybridDeleterType[_T]] = None,
-        expr: Optional[_HybridExprCallableType[_T]] = None,
-        custom_comparator: Optional[Comparator[_T]] = None,
-        update_expr: Optional[_HybridUpdaterType[_T]] = None,
+        fset: _HybridSetterType[_T] | None = None,
+        fdel: _HybridDeleterType[_T] | None = None,
+        expr: _HybridExprCallableType[_T] | None = None,
+        custom_comparator: Comparator[_T] | None = None,
+        update_expr: _HybridUpdaterType[_T] | None = None,
     ):
         """Create a new :class:`.hybrid_property`.
 
@@ -1103,15 +1103,15 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
 
     @overload
     def __get__(
-        self, instance: Literal[None], owner: Type[object]
+        self, instance: Literal[None], owner: type[object]
     ) -> _HybridClassLevelAccessor[_T]: ...
 
     @overload
-    def __get__(self, instance: object, owner: Type[object]) -> _T: ...
+    def __get__(self, instance: object, owner: type[object]) -> _T: ...
 
     def __get__(
-        self, instance: Optional[object], owner: Optional[Type[object]]
-    ) -> Union[hybrid_property[_T], _HybridClassLevelAccessor[_T], _T]:
+        self, instance: object | None, owner: type[object] | None
+    ) -> hybrid_property[_T] | _HybridClassLevelAccessor[_T] | _T:
         if owner is None:
             return self
         elif instance is None:
@@ -1404,7 +1404,7 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
         proxy_attr = attributes.create_proxied_attribute(self)
 
         def expr_comparator(
-            owner: Type[object],
+            owner: type[object],
         ) -> _HybridClassLevelAccessor[_T]:
             # because this is the descriptor protocol, we don't really know
             # what our attribute name is.  so search for it through the
@@ -1437,7 +1437,7 @@ class Comparator(interfaces.PropComparator[_T]):
     classes for usage with hybrids."""
 
     def __init__(
-        self, expression: Union[_HasClauseElement[_T], SQLColumnExpression[_T]]
+        self, expression: _HasClauseElement[_T] | SQLColumnExpression[_T]
     ):
         self.expression = expression
 
@@ -1471,8 +1471,8 @@ class Comparator(interfaces.PropComparator[_T]):
 class ExprComparator(Comparator[_T]):
     def __init__(
         self,
-        cls: Type[Any],
-        expression: Union[_HasClauseElement[_T], SQLColumnExpression[_T]],
+        cls: type[Any],
+        expression: _HasClauseElement[_T] | SQLColumnExpression[_T],
         hybrid: hybrid_property[_T],
     ):
         self.cls = cls
@@ -1488,7 +1488,7 @@ class ExprComparator(Comparator[_T]):
 
     def _bulk_update_tuples(
         self, value: Any
-    ) -> Sequence[Tuple[_DMLColumnArgument, Any]]:
+    ) -> Sequence[tuple[_DMLColumnArgument, Any]]:
         if isinstance(self.expression, attributes.QueryableAttribute):
             return self.expression._bulk_update_tuples(value)
         elif self.hybrid.update_expr is not None:

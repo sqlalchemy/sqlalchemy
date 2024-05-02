@@ -233,12 +233,12 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
         )
 
     @property
-    def python_type(self) -> Type[dt.timedelta]:
+    def python_type(self) -> type[dt.timedelta]:
         return dt.timedelta
 
     def literal_processor(
         self, dialect: Dialect
-    ) -> Optional[_LiteralProcessorType[dt.timedelta]]:
+    ) -> _LiteralProcessorType[dt.timedelta] | None:
         def process(value: dt.timedelta) -> str:
             return f"NUMTODSINTERVAL({value.total_seconds()}, 'SECOND')"
 

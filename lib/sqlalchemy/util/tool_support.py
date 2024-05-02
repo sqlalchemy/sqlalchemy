@@ -78,7 +78,7 @@ class code_writer_cmd:
             },
         )
 
-    def _run_console_script(self, path: str, options: Dict[str, Any]) -> None:
+    def _run_console_script(self, path: str, options: dict[str, Any]) -> None:
         """Run a Python console application from within the process.
 
         Used for black, zimports
@@ -102,7 +102,7 @@ class code_writer_cmd:
             cmdline_options_str, posix=is_posix
         ) + [path]
 
-        kw: Dict[str, Any] = {}
+        kw: dict[str, Any] = {}
         if self.suppress_output:
             kw["stdout"] = kw["stderr"] = subprocess.DEVNULL
 
@@ -110,7 +110,7 @@ class code_writer_cmd:
             [
                 sys.executable,
                 "-c",
-                "import %s; %s.%s()" % (impl.module, impl.module, impl.attr),
+                "import {}; {}.{}()".format(impl.module, impl.module, impl.attr),
             ]
             + cmdline_options_list,
             cwd=str(self.source_root),
@@ -122,7 +122,7 @@ class code_writer_cmd:
             sys.stderr.write(" ".join(text))
 
     def write_output_file_from_text(
-        self, text: str, destination_path: Union[str, Path]
+        self, text: str, destination_path: str | Path
     ) -> None:
         if self.args.check:
             self._run_diff(destination_path, source=text)
@@ -152,10 +152,10 @@ class code_writer_cmd:
 
     def _run_diff(
         self,
-        destination_path: Union[str, Path],
+        destination_path: str | Path,
         *,
-        source: Optional[str] = None,
-        source_file: Optional[str] = None,
+        source: str | None = None,
+        source_file: str | None = None,
     ) -> None:
         if source_file:
             with open(source_file, encoding="utf-8") as tf:

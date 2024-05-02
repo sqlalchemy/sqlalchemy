@@ -65,7 +65,7 @@ class PolymorphicCircularTest(fixtures.MappedTest):
                     self.data = data
 
             def __repr__(self):
-                return "%s(%s, %s, %s)" % (
+                return "{}({}, {}, {})".format(
                     self.__class__.__name__,
                     self.id,
                     repr(str(self.name)),
@@ -86,7 +86,7 @@ class PolymorphicCircularTest(fixtures.MappedTest):
                 self.data = data
 
             def __repr__(self):
-                return "%s(%s, %s)" % (
+                return "{}({}, {})".format(
                     self.__class__.__name__,
                     self.id,
                     repr(str(self.data)),

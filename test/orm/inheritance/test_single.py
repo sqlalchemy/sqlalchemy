@@ -2113,8 +2113,8 @@ class AbstractPolymorphicTest(
             __tablename__ = "company"
             id = Column(Integer, primary_key=True)
 
-            executives: Mapped[List[Executive]] = relationship()
-            technologists: Mapped[List[Technologist]] = relationship()
+            executives: Mapped[list[Executive]] = relationship()
+            technologists: Mapped[list[Technologist]] = relationship()
 
         class Employee(Base):
             __tablename__ = "employee"

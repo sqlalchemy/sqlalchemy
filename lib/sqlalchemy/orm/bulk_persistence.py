@@ -76,42 +76,42 @@ _O = TypeVar("_O", bound=object)
 @overload
 def _bulk_insert(
     mapper: Mapper[_O],
-    mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
+    mappings: Iterable[InstanceState[_O]] | Iterable[dict[str, Any]],
     session_transaction: SessionTransaction,
     *,
     isstates: bool,
     return_defaults: bool,
     render_nulls: bool,
     use_orm_insert_stmt: Literal[None] = ...,
-    execution_options: Optional[OrmExecuteOptionsParameter] = ...,
+    execution_options: OrmExecuteOptionsParameter | None = ...,
 ) -> None: ...
 
 
 @overload
 def _bulk_insert(
     mapper: Mapper[_O],
-    mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
+    mappings: Iterable[InstanceState[_O]] | Iterable[dict[str, Any]],
     session_transaction: SessionTransaction,
     *,
     isstates: bool,
     return_defaults: bool,
     render_nulls: bool,
-    use_orm_insert_stmt: Optional[dml.Insert] = ...,
-    execution_options: Optional[OrmExecuteOptionsParameter] = ...,
+    use_orm_insert_stmt: dml.Insert | None = ...,
+    execution_options: OrmExecuteOptionsParameter | None = ...,
 ) -> cursor.CursorResult[Any]: ...
 
 
 def _bulk_insert(
     mapper: Mapper[_O],
-    mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
+    mappings: Iterable[InstanceState[_O]] | Iterable[dict[str, Any]],
     session_transaction: SessionTransaction,
     *,
     isstates: bool,
     return_defaults: bool,
     render_nulls: bool,
-    use_orm_insert_stmt: Optional[dml.Insert] = None,
-    execution_options: Optional[OrmExecuteOptionsParameter] = None,
-) -> Optional[cursor.CursorResult[Any]]:
+    use_orm_insert_stmt: dml.Insert | None = None,
+    execution_options: OrmExecuteOptionsParameter | None = None,
+) -> cursor.CursorResult[Any] | None:
     base_mapper = mapper.base_mapper
 
     if session_transaction.session.connection_callable:
@@ -132,7 +132,7 @@ def _bulk_insert(
 
     connection = session_transaction.connection(base_mapper)
 
-    return_result: Optional[cursor.CursorResult[Any]] = None
+    return_result: cursor.CursorResult[Any] | None = None
 
     mappers_to_run = [
         (table, mp)
@@ -234,7 +234,7 @@ def _bulk_insert(
 @overload
 def _bulk_update(
     mapper: Mapper[Any],
-    mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
+    mappings: Iterable[InstanceState[_O]] | Iterable[dict[str, Any]],
     session_transaction: SessionTransaction,
     *,
     isstates: bool,
@@ -247,26 +247,26 @@ def _bulk_update(
 @overload
 def _bulk_update(
     mapper: Mapper[Any],
-    mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
+    mappings: Iterable[InstanceState[_O]] | Iterable[dict[str, Any]],
     session_transaction: SessionTransaction,
     *,
     isstates: bool,
     update_changed_only: bool,
-    use_orm_update_stmt: Optional[dml.Update] = ...,
+    use_orm_update_stmt: dml.Update | None = ...,
     enable_check_rowcount: bool = True,
 ) -> _result.Result[Unpack[TupleAny]]: ...
 
 
 def _bulk_update(
     mapper: Mapper[Any],
-    mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
+    mappings: Iterable[InstanceState[_O]] | Iterable[dict[str, Any]],
     session_transaction: SessionTransaction,
     *,
     isstates: bool,
     update_changed_only: bool,
-    use_orm_update_stmt: Optional[dml.Update] = None,
+    use_orm_update_stmt: dml.Update | None = None,
     enable_check_rowcount: bool = True,
-) -> Optional[_result.Result[Unpack[TupleAny]]]:
+) -> _result.Result[Unpack[TupleAny]] | None:
     base_mapper = mapper.base_mapper
 
     search_keys = mapper._primary_key_propkeys
@@ -366,7 +366,7 @@ def _expand_composites(mapper, mappings):
 
 class ORMDMLState(AbstractORMCompileState):
     is_dml_returning = True
-    from_statement_ctx: Optional[ORMFromStatementCompileState] = None
+    from_statement_ctx: ORMFromStatementCompileState | None = None
 
     @classmethod
     def _get_orm_crud_kv_pairs(
@@ -618,7 +618,7 @@ class BulkUDCompileState(ORMDMLState):
         _is_delete_using: bool = False
         _is_update_from: bool = False
         _autoflush: bool = True
-        _subject_mapper: Optional[Mapper[Any]] = None
+        _subject_mapper: Mapper[Any] | None = None
         _resolved_values = EMPTY_DICT
         _eval_condition = None
         _matched_rows = None
@@ -1146,11 +1146,11 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
         _dml_strategy: DMLStrategyArgument = "auto"
         _render_nulls: bool = False
         _return_defaults: bool = False
-        _subject_mapper: Optional[Mapper[Any]] = None
+        _subject_mapper: Mapper[Any] | None = None
         _autoflush: bool = True
         _populate_existing: bool = False
 
-    select_statement: Optional[FromStatement] = None
+    select_statement: FromStatement | None = None
 
     @classmethod
     def orm_pre_session_exec(

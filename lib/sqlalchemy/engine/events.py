@@ -126,9 +126,9 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
     @classmethod
     def _accept_with(
         cls,
-        target: Union[ConnectionEventsTarget, Type[ConnectionEventsTarget]],
+        target: ConnectionEventsTarget | type[ConnectionEventsTarget],
         identifier: str,
-    ) -> Optional[Union[ConnectionEventsTarget, Type[ConnectionEventsTarget]]]:
+    ) -> ConnectionEventsTarget | type[ConnectionEventsTarget] | None:
         default_dispatch = super()._accept_with(target, identifier)
         if default_dispatch is None and hasattr(
             target, "_no_async_engine_events"
@@ -215,9 +215,9 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
         multiparams: _CoreMultiExecuteParams,
         params: _CoreSingleExecuteParams,
         execution_options: _ExecuteOptions,
-    ) -> Optional[
-        Tuple[Executable, _CoreMultiExecuteParams, _CoreSingleExecuteParams]
-    ]:
+    ) -> None | (
+        tuple[Executable, _CoreMultiExecuteParams, _CoreSingleExecuteParams]
+    ):
         """Intercept high level execute() events, receiving uncompiled
         SQL constructs and other objects prior to rendering into SQL.
 
@@ -302,9 +302,9 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
         cursor: DBAPICursor,
         statement: str,
         parameters: _DBAPIAnyExecuteParams,
-        context: Optional[ExecutionContext],
+        context: ExecutionContext | None,
         executemany: bool,
-    ) -> Optional[Tuple[str, _DBAPIAnyExecuteParams]]:
+    ) -> tuple[str, _DBAPIAnyExecuteParams] | None:
         """Intercept low-level cursor execute() events before execution,
         receiving the string SQL statement and DBAPI-specific parameter list to
         be invoked against a cursor.
@@ -350,7 +350,7 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
         cursor: DBAPICursor,
         statement: str,
         parameters: _DBAPIAnyExecuteParams,
-        context: Optional[ExecutionContext],
+        context: ExecutionContext | None,
         executemany: bool,
     ) -> None:
         """Intercept low-level cursor execute() events after execution.
@@ -410,7 +410,7 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
         """
 
     def set_connection_execution_options(
-        self, conn: Connection, opts: Dict[str, Any]
+        self, conn: Connection, opts: dict[str, Any]
     ) -> None:
         """Intercept when the :meth:`_engine.Connection.execution_options`
         method is called.
@@ -448,7 +448,7 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
         """
 
     def set_engine_execution_options(
-        self, engine: Engine, opts: Dict[str, Any]
+        self, engine: Engine, opts: dict[str, Any]
     ) -> None:
         """Intercept when the :meth:`_engine.Engine.execution_options`
         method is called.
@@ -657,9 +657,9 @@ class DialectEvents(event.Events[Dialect]):
     @classmethod
     def _accept_with(
         cls,
-        target: Union[Engine, Type[Engine], Dialect, Type[Dialect]],
+        target: Engine | type[Engine] | Dialect | type[Dialect],
         identifier: str,
-    ) -> Optional[Union[Dialect, Type[Dialect]]]:
+    ) -> Dialect | type[Dialect] | None:
         if isinstance(target, type):
             if issubclass(target, Engine):
                 return Dialect
@@ -683,7 +683,7 @@ class DialectEvents(event.Events[Dialect]):
 
     def handle_error(
         self, exception_context: ExceptionContext
-    ) -> Optional[BaseException]:
+    ) -> BaseException | None:
         r"""Intercept all exceptions processed by the
         :class:`_engine.Dialect`, typically but not limited to those
         emitted within the scope of a :class:`_engine.Connection`.
@@ -825,9 +825,9 @@ class DialectEvents(event.Events[Dialect]):
         self,
         dialect: Dialect,
         conn_rec: ConnectionPoolEntry,
-        cargs: Tuple[Any, ...],
-        cparams: Dict[str, Any],
-    ) -> Optional[DBAPIConnection]:
+        cargs: tuple[Any, ...],
+        cparams: dict[str, Any],
+    ) -> DBAPIConnection | None:
         """Receive connection arguments before a connection is made.
 
         This event is useful in that it allows the handler to manipulate the
@@ -863,7 +863,7 @@ class DialectEvents(event.Events[Dialect]):
         statement: str,
         parameters: _DBAPIMultiExecuteParams,
         context: ExecutionContext,
-    ) -> Optional[Literal[True]]:
+    ) -> Literal[True] | None:
         """Receive a cursor to have executemany() called.
 
         Return the value True to halt further events from invoking,
@@ -874,7 +874,7 @@ class DialectEvents(event.Events[Dialect]):
 
     def do_execute_no_params(
         self, cursor: DBAPICursor, statement: str, context: ExecutionContext
-    ) -> Optional[Literal[True]]:
+    ) -> Literal[True] | None:
         """Receive a cursor to have execute() with no parameters called.
 
         Return the value True to halt further events from invoking,
@@ -889,7 +889,7 @@ class DialectEvents(event.Events[Dialect]):
         statement: str,
         parameters: _DBAPISingleExecuteParams,
         context: ExecutionContext,
-    ) -> Optional[Literal[True]]:
+    ) -> Literal[True] | None:
         """Receive a cursor to have execute() called.
 
         Return the value True to halt further events from invoking,
@@ -900,7 +900,7 @@ class DialectEvents(event.Events[Dialect]):
 
     def do_setinputsizes(
         self,
-        inputsizes: Dict[BindParameter[Any], Any],
+        inputsizes: dict[BindParameter[Any], Any],
         cursor: DBAPICursor,
         statement: str,
         parameters: _DBAPIAnyExecuteParams,

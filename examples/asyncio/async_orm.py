@@ -31,18 +31,18 @@ class A(Base):
     __tablename__ = "a"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    data: Mapped[Optional[str]]
+    data: Mapped[str | None]
     create_date: Mapped[datetime.datetime] = mapped_column(
         server_default=func.now()
     )
-    bs: Mapped[List[B]] = relationship()
+    bs: Mapped[list[B]] = relationship()
 
 
 class B(Base):
     __tablename__ = "b"
     id: Mapped[int] = mapped_column(primary_key=True)
     a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
-    data: Mapped[Optional[str]]
+    data: Mapped[str | None]
 
 
 async def async_main():

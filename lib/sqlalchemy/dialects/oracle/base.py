@@ -665,7 +665,7 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
             return self.visit_VARCHAR2(type_, **kw)
 
     def visit_INTERVAL(self, type_, **kw):
-        return "INTERVAL DAY%s TO SECOND%s" % (
+        return "INTERVAL DAY{} TO SECOND{}".format(
             type_.day_precision is not None
             and "(%d)" % type_.day_precision
             or "",
@@ -762,7 +762,7 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
 
     def _visit_varchar(self, type_, n, num):
         if not type_.length:
-            return "%(n)sVARCHAR%(two)s" % {"two": num, "n": n}
+            return f"{n}VARCHAR{num}"
         elif not n and self.dialect._supports_char_length:
             varchar = "VARCHAR%(two)s(%(length)s CHAR)"
             return varchar % {"length": type_.length, "two": num}
@@ -790,7 +790,7 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_RAW(self, type_, **kw):
         if type_.length:
-            return "RAW(%(length)s)" % {"length": type_.length}
+            return f"RAW({type_.length})"
         else:
             return "RAW"
 
@@ -814,7 +814,7 @@ class OracleCompiler(compiler.SQLCompiler):
         super().__init__(*args, **kwargs)
 
     def visit_mod_binary(self, binary, operator, **kw):
-        return "mod(%s, %s)" % (
+        return "mod({}, {})".format(
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         )
@@ -826,7 +826,7 @@ class OracleCompiler(compiler.SQLCompiler):
         return "LENGTH" + self.function_argspec(fn, **kw)
 
     def visit_match_op_binary(self, binary, operator, **kw):
-        return "CONTAINS (%s, %s)" % (
+        return "CONTAINS ({}, {})".format(
             self.process(binary.left),
             self.process(binary.right),
         )
@@ -1208,13 +1208,13 @@ class OracleCompiler(compiler.SQLCompiler):
         return tmp
 
     def visit_is_distinct_from_binary(self, binary, operator, **kw):
-        return "DECODE(%s, %s, 0, 1) = 1" % (
+        return "DECODE({}, {}, 0, 1) = 1".format(
             self.process(binary.left),
             self.process(binary.right),
         )
 
     def visit_is_not_distinct_from_binary(self, binary, operator, **kw):
-        return "DECODE(%s, %s, 0, 1) = 0" % (
+        return "DECODE({}, {}, 0, 1) = 0".format(
             self.process(binary.left),
             self.process(binary.right),
         )
@@ -1224,9 +1224,9 @@ class OracleCompiler(compiler.SQLCompiler):
         pattern = self.process(binary.right, **kw)
         flags = binary.modifiers["flags"]
         if flags is None:
-            return "REGEXP_LIKE(%s, %s)" % (string, pattern)
+            return f"REGEXP_LIKE({string}, {pattern})"
         else:
-            return "REGEXP_LIKE(%s, %s, %s)" % (
+            return "REGEXP_LIKE({}, {}, {})".format(
                 string,
                 pattern,
                 self.render_literal_value(flags, sqltypes.STRINGTYPE),
@@ -1242,12 +1242,12 @@ class OracleCompiler(compiler.SQLCompiler):
         pattern_replace = self.process(binary.right, **kw)
         flags = binary.modifiers["flags"]
         if flags is None:
-            return "REGEXP_REPLACE(%s, %s)" % (
+            return "REGEXP_REPLACE({}, {})".format(
                 string,
                 pattern_replace,
             )
         else:
-            return "REGEXP_REPLACE(%s, %s, %s)" % (
+            return "REGEXP_REPLACE({}, {}, {})".format(
                 string,
                 pattern_replace,
                 self.render_literal_value(flags, sqltypes.STRINGTYPE),
@@ -1290,7 +1290,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
             text += "UNIQUE "
         if index.dialect_options["oracle"]["bitmap"]:
             text += "BITMAP "
-        text += "INDEX %s ON %s (%s)" % (
+        text += "INDEX {} ON {} ({})".format(
             self._prepared_index_name(index, include_schema=True),
             preparer.format_table(index.table, use_schema=True),
             ", ".join(
@@ -1711,7 +1711,7 @@ class OracleDialect(default.DefaultDialect):
         ).mappings()
         return result.all()
 
-    @lru_cache()
+    @lru_cache
     def _all_objects_query(
         self, owner, scope, kind, has_filter_names, has_mat_views
     ):
@@ -2045,7 +2045,7 @@ class OracleDialect(default.DefaultDialect):
         )
         return self._value_or_raise(data, table_name, schema)
 
-    @lru_cache()
+    @lru_cache
     def _table_options_query(
         self, owner, scope, kind, has_filter_names, has_mat_views
     ):
@@ -2195,7 +2195,7 @@ class OracleDialect(default.DefaultDialect):
             else:
                 yield from result
 
-    @lru_cache()
+    @lru_cache
     def _column_query(self, owner):
         all_cols = dictionary.all_tab_cols
         all_comments = dictionary.all_col_comments
@@ -2451,7 +2451,7 @@ class OracleDialect(default.DefaultDialect):
         )
         return self._value_or_raise(data, table_name, schema)
 
-    @lru_cache()
+    @lru_cache
     def _comment_query(self, owner, scope, kind, has_filter_names):
         # NOTE: all_tab_comments / all_mview_comments have a row for all
         # object even if they don't have comments
@@ -2563,7 +2563,7 @@ class OracleDialect(default.DefaultDialect):
         )
         return self._value_or_raise(data, table_name, schema)
 
-    @lru_cache()
+    @lru_cache
     def _index_query(self, owner):
         return (
             select(
@@ -2745,7 +2745,7 @@ class OracleDialect(default.DefaultDialect):
         )
         return self._value_or_raise(data, table_name, schema)
 
-    @lru_cache()
+    @lru_cache
     def _constraint_query(self, owner):
         local = dictionary.all_cons_columns.alias("local")
         remote = dictionary.all_cons_columns.alias("remote")

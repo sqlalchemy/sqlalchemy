@@ -37,8 +37,8 @@ _O = TypeVar("_O", bound=object)
 class IdentityMap:
     _wr: weakref.ref[IdentityMap]
 
-    _dict: Dict[_IdentityKeyType[Any], Any]
-    _modified: Set[InstanceState[Any]]
+    _dict: dict[_IdentityKeyType[Any], Any]
+    _modified: set[InstanceState[Any]]
 
     def __init__(self) -> None:
         self._dict = {}
@@ -48,7 +48,7 @@ class IdentityMap:
     def _kill(self) -> None:
         self._add_unpresent = _killed  # type: ignore
 
-    def all_states(self) -> List[InstanceState[Any]]:
+    def all_states(self) -> list[InstanceState[Any]]:
         raise NotImplementedError()
 
     def contains_state(self, state: InstanceState[Any]) -> bool:
@@ -64,13 +64,13 @@ class IdentityMap:
         raise NotImplementedError()
 
     def get(
-        self, key: _IdentityKeyType[_O], default: Optional[_O] = None
-    ) -> Optional[_O]:
+        self, key: _IdentityKeyType[_O], default: _O | None = None
+    ) -> _O | None:
         raise NotImplementedError()
 
     def fast_get_state(
         self, key: _IdentityKeyType[_O]
-    ) -> Optional[InstanceState[_O]]:
+    ) -> InstanceState[_O] | None:
         raise NotImplementedError()
 
     def keys(self) -> Iterable[_IdentityKeyType[Any]]:
@@ -79,7 +79,7 @@ class IdentityMap:
     def values(self) -> Iterable[object]:
         raise NotImplementedError()
 
-    def replace(self, state: InstanceState[_O]) -> Optional[InstanceState[_O]]:
+    def replace(self, state: InstanceState[_O]) -> InstanceState[_O] | None:
         raise NotImplementedError()
 
     def add(self, state: InstanceState[Any]) -> bool:
@@ -106,7 +106,7 @@ class IdentityMap:
         if state.modified:
             self._modified.discard(state)
 
-    def _dirty_states(self) -> Set[InstanceState[Any]]:
+    def _dirty_states(self) -> set[InstanceState[Any]]:
         return self._modified
 
     def check_modified(self) -> bool:
@@ -124,7 +124,7 @@ class IdentityMap:
 
 
 class WeakInstanceDict(IdentityMap):
-    _dict: Dict[_IdentityKeyType[Any], InstanceState[Any]]
+    _dict: dict[_IdentityKeyType[Any], InstanceState[Any]]
 
     def __getitem__(self, key: _IdentityKeyType[_O]) -> _O:
         state = cast("InstanceState[_O]", self._dict[key])
@@ -158,7 +158,7 @@ class WeakInstanceDict(IdentityMap):
 
     def replace(
         self, state: InstanceState[Any]
-    ) -> Optional[InstanceState[Any]]:
+    ) -> InstanceState[Any] | None:
         assert state.key is not None
         if state.key in self._dict:
             try:
@@ -213,12 +213,12 @@ class WeakInstanceDict(IdentityMap):
 
     def fast_get_state(
         self, key: _IdentityKeyType[_O]
-    ) -> Optional[InstanceState[_O]]:
+    ) -> InstanceState[_O] | None:
         return self._dict.get(key)
 
     def get(
-        self, key: _IdentityKeyType[_O], default: Optional[_O] = None
-    ) -> Optional[_O]:
+        self, key: _IdentityKeyType[_O], default: _O | None = None
+    ) -> _O | None:
         if key not in self._dict:
             return default
         try:
@@ -232,7 +232,7 @@ class WeakInstanceDict(IdentityMap):
                 return default
             return o
 
-    def items(self) -> List[Tuple[_IdentityKeyType[Any], InstanceState[Any]]]:
+    def items(self) -> list[tuple[_IdentityKeyType[Any], InstanceState[Any]]]:
         values = self.all_states()
         result = []
         for state in values:
@@ -243,7 +243,7 @@ class WeakInstanceDict(IdentityMap):
                 result.append((key, value))
         return result
 
-    def values(self) -> List[object]:
+    def values(self) -> list[object]:
         values = self.all_states()
         result = []
         for state in values:
@@ -256,7 +256,7 @@ class WeakInstanceDict(IdentityMap):
     def __iter__(self) -> Iterator[_IdentityKeyType[Any]]:
         return iter(self.keys())
 
-    def all_states(self) -> List[InstanceState[Any]]:
+    def all_states(self) -> list[InstanceState[Any]]:
         return list(self._dict.values())
 
     def _fast_discard(self, state: InstanceState[Any]) -> None:

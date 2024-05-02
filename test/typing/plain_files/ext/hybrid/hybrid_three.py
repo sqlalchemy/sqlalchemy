@@ -32,17 +32,17 @@ class UserStyleOne(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100))
 
-    accounts: Mapped[List[SavingsAccount]] = relationship()
+    accounts: Mapped[list[SavingsAccount]] = relationship()
 
     @hybrid_property
-    def _balance_getter(self) -> Optional[Decimal]:
+    def _balance_getter(self) -> Decimal | None:
         if self.accounts:
             return self.accounts[0].balance
         else:
             return None
 
     @_balance_getter.setter
-    def _balance_setter(self, value: Optional[Decimal]) -> None:
+    def _balance_setter(self, value: Decimal | None) -> None:
         assert value is not None
         if not self.accounts:
             account = SavingsAccount(owner=self)
@@ -51,7 +51,7 @@ class UserStyleOne(Base):
         account.balance = value
 
     @_balance_setter.expression
-    def balance(cls) -> SQLColumnExpression[Optional[Decimal]]:
+    def balance(cls) -> SQLColumnExpression[Decimal | None]:
         return cast(
             "SQLColumnExpression[Optional[Decimal]]", SavingsAccount.balance
         )
@@ -62,17 +62,17 @@ class UserStyleTwo(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100))
 
-    accounts: Mapped[List[SavingsAccount]] = relationship()
+    accounts: Mapped[list[SavingsAccount]] = relationship()
 
     @hybrid_property
-    def balance(self) -> Optional[Decimal]:
+    def balance(self) -> Decimal | None:
         if self.accounts:
             return self.accounts[0].balance
         else:
             return None
 
     @balance.inplace.setter
-    def _balance_setter(self, value: Optional[Decimal]) -> None:
+    def _balance_setter(self, value: Decimal | None) -> None:
         assert value is not None
         if not self.accounts:
             account = SavingsAccount(owner=self)
@@ -81,7 +81,7 @@ class UserStyleTwo(Base):
         account.balance = value
 
     @balance.inplace.expression
-    def _balance_expression(cls) -> SQLColumnExpression[Optional[Decimal]]:
+    def _balance_expression(cls) -> SQLColumnExpression[Decimal | None]:
         return cast(
             "SQLColumnExpression[Optional[Decimal]]", SavingsAccount.balance
         )

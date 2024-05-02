@@ -665,7 +665,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(list(row), expected)
         for i, val in enumerate(expected):
             if isinstance(val, bool):
-                self.assert_(val is row[i])
+                self.assertTrue(val is row[i])
 
     @testing.combinations(
         ([None, None, None, None, None], None),
@@ -700,7 +700,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(list(row), expected)
         for i, val in enumerate(expected):
             if isinstance(val, bool):
-                self.assert_(val is row[i])
+                self.assertTrue(val is row[i])
 
     class MyTime(TypeDecorator):
         impl = TIMESTAMP
@@ -778,7 +778,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
         )
 
         for col in year_table.c:
-            self.assert_(repr(col))
+            self.assertTrue(repr(col))
         year_table.create(connection)
         reflected = Table("mysql_year", MetaData(), autoload_with=connection)
 
@@ -788,7 +788,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
             )
             row = connection.execute(table.select()).first()
             eq_(list(row), [1950, 2050, None, 1950])
-            self.assert_(colspec(table.c.y1).startswith("y1 YEAR"))
+            self.assertTrue(colspec(table.c.y1).startswith("y1 YEAR"))
             eq_regex(colspec(table.c.y5), r"y5 YEAR(?:\(4\))?")
 
 
@@ -1279,7 +1279,7 @@ class EnumSetTest(
         )
 
         for col in enum_table.c:
-            self.assert_(repr(col))
+            self.assertTrue(repr(col))
 
         enum_table.create(connection)
         reflected = Table("mysql_enum", MetaData(), autoload_with=connection)
@@ -1315,7 +1315,7 @@ class EnumSetTest(
         )
 
         for col in set_table.c:
-            self.assert_(repr(col))
+            self.assertTrue(repr(col))
 
         set_table.create(connection)
 

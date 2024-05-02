@@ -49,7 +49,7 @@ def scan_declarative_assignments_and_apply_types(
     cls: ClassDef,
     api: SemanticAnalyzerPluginInterface,
     is_mixin_scan: bool = False,
-) -> Optional[List[util.SQLAlchemyAttribute]]:
+) -> list[util.SQLAlchemyAttribute] | None:
     info = util.info_for_cls(cls, api)
 
     if info is None:
@@ -58,7 +58,7 @@ def scan_declarative_assignments_and_apply_types(
     elif cls.fullname.startswith("builtins"):
         return None
 
-    mapped_attributes: Optional[List[util.SQLAlchemyAttribute]] = (
+    mapped_attributes: list[util.SQLAlchemyAttribute] | None = (
         util.get_mapped_attributes(info, api)
     )
 
@@ -116,7 +116,7 @@ def _scan_symbol_table_entry(
     api: SemanticAnalyzerPluginInterface,
     name: str,
     value: SymbolTableNode,
-    attributes: List[util.SQLAlchemyAttribute],
+    attributes: list[util.SQLAlchemyAttribute],
 ) -> None:
     """Extract mapping information from a SymbolTableNode that's in the
     type.names dictionary.
@@ -150,7 +150,7 @@ def _scan_symbol_table_entry(
         if not value_type.args:
             err = True
         else:
-            typeengine_arg: Union[ProperType, TypeInfo] = get_proper_type(
+            typeengine_arg: ProperType | TypeInfo = get_proper_type(
                 value_type.args[0]
             )
             if isinstance(typeengine_arg, Instance):
@@ -204,7 +204,7 @@ def _scan_declarative_decorator_stmt(
     cls: ClassDef,
     api: SemanticAnalyzerPluginInterface,
     stmt: Decorator,
-    attributes: List[util.SQLAlchemyAttribute],
+    attributes: list[util.SQLAlchemyAttribute],
 ) -> None:
     """Extract mapping information from a @declared_attr in a declarative
     class.
@@ -239,7 +239,7 @@ def _scan_declarative_decorator_stmt(
 
     dec_index = cls.defs.body.index(stmt)
 
-    left_hand_explicit_type: Optional[ProperType] = None
+    left_hand_explicit_type: ProperType | None = None
 
     if util.name_is_dunder(stmt.name):
         # for dunder names like __table_args__, __tablename__,
@@ -360,7 +360,7 @@ def _scan_declarative_assignment_stmt(
     cls: ClassDef,
     api: SemanticAnalyzerPluginInterface,
     stmt: AssignmentStmt,
-    attributes: List[util.SQLAlchemyAttribute],
+    attributes: list[util.SQLAlchemyAttribute],
 ) -> None:
     """Extract mapping information from an assignment statement in a
     declarative class.
@@ -400,8 +400,8 @@ def _scan_declarative_assignment_stmt(
                 if isinstance(item, (NameExpr, StrExpr)):
                     apply.apply_mypy_mapped_attr(cls, api, item, attributes)
 
-    left_hand_mapped_type: Optional[Type] = None
-    left_hand_explicit_type: Optional[ProperType] = None
+    left_hand_mapped_type: Type | None = None
+    left_hand_explicit_type: ProperType | None = None
 
     if node.is_inferred or node.type is None:
         if isinstance(stmt.type, UnboundType):

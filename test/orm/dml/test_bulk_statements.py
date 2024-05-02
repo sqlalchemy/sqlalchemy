@@ -69,7 +69,7 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
             __tablename__ = "a"
             id: Mapped[int] = mapped_column(Identity(), primary_key=True)
             data: Mapped[str]
-            x: Mapped[Optional[int]] = mapped_column("xcol")
+            x: Mapped[int | None] = mapped_column("xcol")
 
             if not enable_implicit_returning:
                 __table_args__ = {"implicit_returning": False}
@@ -150,7 +150,7 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
             __tablename__ = "a"
             id: Mapped[int] = mapped_column(Identity(), primary_key=True)
             data: Mapped[str]
-            x: Mapped[Optional[int]]
+            x: Mapped[int | None]
 
         decl_base.metadata.create_all(testing.db)
         s = fixture_session()
@@ -208,7 +208,7 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
             __tablename__ = "a"
             id: Mapped[int] = mapped_column(Identity(), primary_key=True)
             data: Mapped[str]
-            x: Mapped[Optional[int]] = mapped_column("xcol")
+            x: Mapped[int | None] = mapped_column("xcol")
 
         decl_base.metadata.create_all(testing.db)
         s = fixture_session()
@@ -235,7 +235,7 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
             id: Mapped[int] = mapped_column(Identity(), primary_key=True)
 
             name: Mapped[str] = mapped_column()
-            other_thing: Mapped[Optional[str]]
+            other_thing: Mapped[str | None]
             server_thing: Mapped[str] = mapped_column(server_default="thing")
 
         decl_base.metadata.create_all(testing.db)
@@ -282,7 +282,7 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
             id: Mapped[int] = mapped_column(Identity(), primary_key=True)
 
             name: Mapped[str] = mapped_column()
-            other_thing: Mapped[Optional[str]]
+            other_thing: Mapped[str | None]
             server_thing: Mapped[str] = mapped_column(server_default="thing")
 
         decl_base.metadata.create_all(testing.db)
@@ -1241,7 +1241,7 @@ class BulkDMLReturningInhTest:
 
         for i in range(3):
             result = s.execute(stmt)
-            expected: List[Any] = [(A(data="d3", x=5, y=9), "D3")]
+            expected: list[Any] = [(A(data="d3", x=5, y=9), "D3")]
             if not single_element:
                 expected.append((A(data="d4", x=10, y=8), "D4"))
             eq_(result.all(), expected)
@@ -1268,7 +1268,7 @@ class BulkDMLReturningInhTest:
 
         for i in range(3):
             result = s.execute(stmt, data)
-            expected: Set[Any] = {
+            expected: set[Any] = {
                 (A(data="dd", x=5, y=9), "DD"),
                 (A(data="dd", x=10, y=8), "DD"),
             }
@@ -1292,7 +1292,7 @@ class BulkDMLReturningInhTest:
 
         for i in range(3):
             result = s.execute(stmt, data)
-            expected: Set[Any] = {
+            expected: set[Any] = {
                 (B(bd="bd1", data="dd", q=4, type="b", x=1, y=2, z=3), "DD"),
                 (B(bd="bd2", data="dd", q=8, type="b", x=5, y=6, z=7), "DD"),
             }
@@ -2003,8 +2003,8 @@ class BulkDMLReturningJoinedInhTest(
             id: Mapped[int] = mapped_column(Identity(), primary_key=True)
             type: Mapped[str]
             data: Mapped[str]
-            x: Mapped[Optional[int]] = mapped_column("xcol")
-            y: Mapped[Optional[int]]
+            x: Mapped[int | None] = mapped_column("xcol")
+            y: Mapped[int | None]
 
             if cls.use_sentinel:
                 _sentinel: Mapped[int] = orm_insert_sentinel()
@@ -2020,8 +2020,8 @@ class BulkDMLReturningJoinedInhTest(
                 ForeignKey("a.id"), primary_key=True
             )
             bd: Mapped[str]
-            z: Mapped[Optional[int]] = mapped_column("zcol")
-            q: Mapped[Optional[int]]
+            z: Mapped[int | None] = mapped_column("zcol")
+            q: Mapped[int | None]
 
             if cls.use_sentinel:
                 _sentinel: Mapped[int] = orm_insert_sentinel()
@@ -2117,8 +2117,8 @@ class BulkDMLReturningSingleInhTest(
             id: Mapped[int] = mapped_column(Identity(), primary_key=True)
             type: Mapped[str]
             data: Mapped[str]
-            x: Mapped[Optional[int]] = mapped_column("xcol")
-            y: Mapped[Optional[int]]
+            x: Mapped[int | None] = mapped_column("xcol")
+            y: Mapped[int | None]
 
             __mapper_args__ = {
                 "polymorphic_identity": "a",
@@ -2127,8 +2127,8 @@ class BulkDMLReturningSingleInhTest(
 
         class B(A):
             bd: Mapped[str] = mapped_column(nullable=True)
-            z: Mapped[Optional[int]] = mapped_column("zcol")
-            q: Mapped[Optional[int]]
+            z: Mapped[int | None] = mapped_column("zcol")
+            q: Mapped[int | None]
 
             __mapper_args__ = {"polymorphic_identity": "b"}
 
@@ -2160,8 +2160,8 @@ class BulkDMLReturningConcreteInhTest(
             id: Mapped[int] = mapped_column(Identity(), primary_key=True)
             type: Mapped[str]
             data: Mapped[str]
-            x: Mapped[Optional[int]] = mapped_column("xcol")
-            y: Mapped[Optional[int]]
+            x: Mapped[int | None] = mapped_column("xcol")
+            y: Mapped[int | None]
 
             __mapper_args__ = {
                 "polymorphic_identity": "a",
@@ -2173,12 +2173,12 @@ class BulkDMLReturningConcreteInhTest(
             id: Mapped[int] = mapped_column(Identity(), primary_key=True)
             type: Mapped[str]
             data: Mapped[str]
-            x: Mapped[Optional[int]] = mapped_column("xcol")
-            y: Mapped[Optional[int]]
+            x: Mapped[int | None] = mapped_column("xcol")
+            y: Mapped[int | None]
 
             bd: Mapped[str] = mapped_column(nullable=True)
-            z: Mapped[Optional[int]] = mapped_column("zcol")
-            q: Mapped[Optional[int]]
+            z: Mapped[int | None] = mapped_column("zcol")
+            q: Mapped[int | None]
 
             __mapper_args__ = {
                 "polymorphic_identity": "b",

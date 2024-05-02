@@ -52,7 +52,7 @@ class _StateChange:
 
     _next_state: _StateChangeState = _StateChangeStates.ANY
     _state: _StateChangeState = _StateChangeStates.NO_CHANGE
-    _current_fn: Optional[Callable[..., Any]] = None
+    _current_fn: Callable[..., Any] | None = None
 
     def _raise_for_prerequisite_state(
         self, operation_name: str, state: _StateChangeState
@@ -66,9 +66,9 @@ class _StateChange:
     @classmethod
     def declare_states(
         cls,
-        prerequisite_states: Union[
-            Literal[_StateChangeStates.ANY], Tuple[_StateChangeState, ...]
-        ],
+        prerequisite_states: (
+            Literal[_StateChangeStates.ANY] | tuple[_StateChangeState, ...]
+        ),
         moves_to: _StateChangeState,
     ) -> Callable[[_F], _F]:
         """Method decorator declaring valid states.

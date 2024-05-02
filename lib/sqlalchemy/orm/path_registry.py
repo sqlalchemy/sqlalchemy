@@ -123,7 +123,7 @@ class PathRegistry(HasCacheKey):
 
     path: _PathRepresentation
     natural_path: _PathRepresentation
-    parent: Optional[PathRegistry]
+    parent: PathRegistry | None
     root: RootRegistry
 
     _cache_key_traversal: _CacheKeyTraversalType = [
@@ -151,24 +151,24 @@ class PathRegistry(HasCacheKey):
             return True
 
     @property
-    def _path_for_compare(self) -> Optional[_PathRepresentation]:
+    def _path_for_compare(self) -> _PathRepresentation | None:
         return self.path
 
     def odd_element(self, index: int) -> _InternalEntityType[Any]:
         return self.path[index]  # type: ignore
 
-    def set(self, attributes: Dict[Any, Any], key: Any, value: Any) -> None:
+    def set(self, attributes: dict[Any, Any], key: Any, value: Any) -> None:
         log.debug("set '%s' on path '%s' to '%s'", key, self, value)
         attributes[(key, self.natural_path)] = value
 
     def setdefault(
-        self, attributes: Dict[Any, Any], key: Any, value: Any
+        self, attributes: dict[Any, Any], key: Any, value: Any
     ) -> None:
         log.debug("setdefault '%s' on path '%s' to '%s'", key, self, value)
         attributes.setdefault((key, self.natural_path), value)
 
     def get(
-        self, attributes: Dict[Any, Any], key: Any, value: Optional[Any] = None
+        self, attributes: dict[Any, Any], key: Any, value: Any | None = None
     ) -> Any:
         key = (key, self.natural_path)
         if key in attributes:
@@ -203,20 +203,20 @@ class PathRegistry(HasCacheKey):
 
     def __getitem__(
         self,
-        entity: Union[
-            _StrPathToken,
-            int,
-            slice,
-            _InternalEntityType[Any],
-            StrategizedProperty[Any],
-        ],
-    ) -> Union[
-        TokenRegistry,
-        _PathElementType,
-        _PathRepresentation,
-        PropRegistry,
-        AbstractEntityRegistry,
-    ]:
+        entity: (
+            _StrPathToken |
+            int |
+            slice |
+            _InternalEntityType[Any] |
+            StrategizedProperty[Any]
+        ),
+    ) -> (
+        TokenRegistry |
+        _PathElementType |
+        _PathRepresentation |
+        PropRegistry |
+        AbstractEntityRegistry
+    ):
         raise NotImplementedError()
 
     # TODO: what are we using this for?
@@ -227,7 +227,7 @@ class PathRegistry(HasCacheKey):
     def pairs(
         self,
     ) -> Iterator[
-        Tuple[_InternalEntityType[Any], Union[str, StrategizedProperty[Any]]]
+        tuple[_InternalEntityType[Any], str | StrategizedProperty[Any]]
     ]:
         odd_path = cast(_OddPathRepresentation, self.path)
         even_path = cast(_EvenPathRepresentation, odd_path)
@@ -242,7 +242,7 @@ class PathRegistry(HasCacheKey):
         else:
             return False
 
-    def contains(self, attributes: Dict[Any, Any], key: Any) -> bool:
+    def contains(self, attributes: dict[Any, Any], key: Any) -> bool:
         return (key, self.path) in attributes
 
     def __reduce__(self) -> Any:
@@ -384,7 +384,7 @@ class RootRegistry(CreatesToken):
 
     def _getitem(
         self, entity: Any
-    ) -> Union[TokenRegistry, AbstractEntityRegistry]:
+    ) -> TokenRegistry | AbstractEntityRegistry:
         if entity in PathToken._intern:
             if TYPE_CHECKING:
                 assert isinstance(entity, _StrPathToken)
@@ -410,15 +410,15 @@ PathRegistry.root = RootRegistry()
 class PathToken(orm_base.InspectionAttr, HasCacheKey, str):
     """cacheable string token"""
 
-    _intern: Dict[str, PathToken] = {}
+    _intern: dict[str, PathToken] = {}
 
     def _gen_cache_key(
-        self, anon_map: anon_map, bindparams: List[BindParameter[Any]]
-    ) -> Tuple[Any, ...]:
+        self, anon_map: anon_map, bindparams: list[BindParameter[Any]]
+    ) -> tuple[Any, ...]:
         return (str(self),)
 
     @property
-    def _path_for_compare(self) -> Optional[_PathRepresentation]:
+    def _path_for_compare(self) -> _PathRepresentation | None:
         return None
 
     @classmethod
@@ -534,8 +534,8 @@ class PropRegistry(PathRegistry):
     is_property = True
 
     prop: StrategizedProperty[Any]
-    mapper: Optional[Mapper[Any]]
-    entity: Optional[_InternalEntityType[Any]]
+    mapper: Mapper[Any] | None
+    entity: _InternalEntityType[Any] | None
 
     def __init__(
         self, parent: AbstractEntityRegistry, prop: StrategizedProperty[Any]
@@ -644,8 +644,8 @@ class PropRegistry(PathRegistry):
         return self[self.entity]
 
     def _getitem(
-        self, entity: Union[int, slice, _InternalEntityType[Any]]
-    ) -> Union[AbstractEntityRegistry, _PathElementType, _PathRepresentation]:
+        self, entity: int | slice | _InternalEntityType[Any]
+    ) -> AbstractEntityRegistry | _PathElementType | _PathRepresentation:
         if isinstance(entity, (int, slice)):
             return self.path[entity]
         else:
@@ -668,14 +668,14 @@ class AbstractEntityRegistry(CreatesToken):
     has_entity = True
     is_entity = True
 
-    parent: Union[RootRegistry, PropRegistry]
+    parent: RootRegistry | PropRegistry
     key: _InternalEntityType[Any]
     entity: _InternalEntityType[Any]
     is_aliased_class: bool
 
     def __init__(
         self,
-        parent: Union[RootRegistry, PropRegistry],
+        parent: RootRegistry | PropRegistry,
         entity: _InternalEntityType[Any],
     ):
         self.key = entity
@@ -739,7 +739,7 @@ class AbstractEntityRegistry(CreatesToken):
 
     def _getitem(
         self, entity: Any
-    ) -> Union[_PathElementType, _PathRepresentation, PathRegistry]:
+    ) -> _PathElementType | _PathRepresentation | PathRegistry:
         if isinstance(entity, (int, slice)):
             return self.path[entity]
         elif entity in PathToken._intern:
@@ -777,7 +777,7 @@ class CachingEntityRegistry(AbstractEntityRegistry):
 
     def __init__(
         self,
-        parent: Union[RootRegistry, PropRegistry],
+        parent: RootRegistry | PropRegistry,
         entity: _InternalEntityType[Any],
     ):
         super().__init__(parent, entity)

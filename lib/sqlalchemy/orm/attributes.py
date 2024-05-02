@@ -186,9 +186,9 @@ class QueryableAttribute(
     parententity: _InternalEntityType[Any]
     impl: AttributeImpl
     comparator: interfaces.PropComparator[_T_co]
-    _of_type: Optional[_InternalEntityType[Any]]
-    _extra_criteria: Tuple[ColumnElement[bool], ...]
-    _doc: Optional[str]
+    _of_type: _InternalEntityType[Any] | None
+    _extra_criteria: tuple[ColumnElement[bool], ...]
+    _doc: str | None
 
     # PropComparator has a __visit_name__ to participate within
     # traversals.   Disambiguate the attribute vs. a comparator.
@@ -200,9 +200,9 @@ class QueryableAttribute(
         key: str,
         parententity: _InternalEntityType[_O],
         comparator: interfaces.PropComparator[_T_co],
-        impl: Optional[AttributeImpl] = None,
-        of_type: Optional[_InternalEntityType[Any]] = None,
-        extra_criteria: Tuple[ColumnElement[bool], ...] = (),
+        impl: AttributeImpl | None = None,
+        of_type: _InternalEntityType[Any] | None = None,
+        extra_criteria: tuple[ColumnElement[bool], ...] = (),
     ):
         self.class_ = class_
         self.key = key
@@ -381,12 +381,12 @@ class QueryableAttribute(
         return self.expression
 
     @property
-    def _from_objects(self) -> List[FromClause]:
+    def _from_objects(self) -> list[FromClause]:
         return self.expression._from_objects
 
     def _bulk_update_tuples(
         self, value: Any
-    ) -> Sequence[Tuple[_DMLColumnArgument, Any]]:
+    ) -> Sequence[tuple[_DMLColumnArgument, Any]]:
         """Return setter tuples for a bulk UPDATE."""
 
         return self.comparator._bulk_update_tuples(value)
@@ -444,7 +444,7 @@ class QueryableAttribute(
             extra_criteria=self._extra_criteria,
         )
 
-    def label(self, name: Optional[str]) -> Label[_T_co]:
+    def label(self, name: str | None) -> Label[_T_co]:
         return self.__clause_element__().label(name)
 
     def operate(
@@ -485,13 +485,13 @@ class QueryableAttribute(
     def __str__(self) -> str:
         return f"{self.class_.__name__}.{self.key}"
 
-    def _memoized_attr_property(self) -> Optional[MapperProperty[Any]]:
+    def _memoized_attr_property(self) -> MapperProperty[Any] | None:
         return self.comparator.property
 
 
 def _queryable_attribute_unreduce(
     key: str,
-    mapped_class: Type[_O],
+    mapped_class: type[_O],
     parententity: _InternalEntityType[_O],
     entity: _ExternalEntityType[Any],
 ) -> Any:
@@ -522,15 +522,15 @@ class InstrumentedAttribute(QueryableAttribute[_T_co]):
     # __doc__ correct
 
     @util.rw_hybridproperty
-    def __doc__(self) -> Optional[str]:
+    def __doc__(self) -> str | None:
         return self._doc
 
     @__doc__.setter  # type: ignore
-    def __doc__(self, value: Optional[str]) -> None:
+    def __doc__(self, value: str | None) -> None:
         self._doc = value
 
     @__doc__.classlevel  # type: ignore
-    def __doc__(cls) -> Optional[str]:
+    def __doc__(cls) -> str | None:
         return super().__doc__
 
     def __set__(self, instance: object, value: Any) -> None:
@@ -550,8 +550,8 @@ class InstrumentedAttribute(QueryableAttribute[_T_co]):
     def __get__(self, instance: object, owner: Any) -> _T_co: ...
 
     def __get__(
-        self, instance: Optional[object], owner: Any
-    ) -> Union[InstrumentedAttribute[_T_co], _T_co]:
+        self, instance: object | None, owner: Any
+    ) -> InstrumentedAttribute[_T_co] | _T_co:
         if instance is None:
             return self
 
@@ -834,15 +834,15 @@ class AttributeImpl:
         self,
         class_: _ExternalEntityType[_O],
         key: str,
-        callable_: Optional[_LoaderCallable],
+        callable_: _LoaderCallable | None,
         dispatch: _Dispatch[QueryableAttribute[Any]],
         trackparent: bool = False,
-        compare_function: Optional[Callable[..., bool]] = None,
+        compare_function: Callable[..., bool] | None = None,
         active_history: bool = False,
-        parent_token: Optional[AttributeEventToken] = None,
+        parent_token: AttributeEventToken | None = None,
         load_on_unexpire: bool = True,
         send_modified_events: bool = True,
-        accepts_scalar_loader: Optional[bool] = None,
+        accepts_scalar_loader: bool | None = None,
         **kwargs: Any,
     ):
         r"""Construct an AttributeImpl.
@@ -1127,7 +1127,7 @@ class AttributeImpl:
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken],
+        initiator: AttributeEventToken | None,
         passive: PassiveFlag = PASSIVE_OFF,
     ) -> None:
         self.set(state, dict_, value, initiator, passive=passive)
@@ -1137,7 +1137,7 @@ class AttributeImpl:
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken],
+        initiator: AttributeEventToken | None,
         passive: PassiveFlag = PASSIVE_OFF,
     ) -> None:
         self.set(
@@ -1149,7 +1149,7 @@ class AttributeImpl:
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken],
+        initiator: AttributeEventToken | None,
         passive: PassiveFlag = PASSIVE_OFF,
     ) -> None:
         self.set(
@@ -1167,7 +1167,7 @@ class AttributeImpl:
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken] = None,
+        initiator: AttributeEventToken | None = None,
         passive: PassiveFlag = PASSIVE_OFF,
         check_old: Any = None,
         pop: bool = False,
@@ -1242,7 +1242,7 @@ class ScalarAttributeImpl(AttributeImpl):
     def get_history(
         self,
         state: InstanceState[Any],
-        dict_: Dict[str, Any],
+        dict_: dict[str, Any],
         passive: PassiveFlag = PASSIVE_OFF,
     ) -> History:
         if self.key in dict_:
@@ -1261,11 +1261,11 @@ class ScalarAttributeImpl(AttributeImpl):
     def set(
         self,
         state: InstanceState[Any],
-        dict_: Dict[str, Any],
+        dict_: dict[str, Any],
         value: Any,
-        initiator: Optional[AttributeEventToken] = None,
+        initiator: AttributeEventToken | None = None,
         passive: PassiveFlag = PASSIVE_OFF,
-        check_old: Optional[object] = None,
+        check_old: object | None = None,
         pop: bool = False,
     ) -> None:
         if self.dispatch._active_history:
@@ -1286,7 +1286,7 @@ class ScalarAttributeImpl(AttributeImpl):
         dict_: _InstanceDict,
         value: _T,
         previous: Any,
-        initiator: Optional[AttributeEventToken],
+        initiator: AttributeEventToken | None,
     ) -> _T:
         for fn in self.dispatch.set:
             value = fn(
@@ -1299,7 +1299,7 @@ class ScalarAttributeImpl(AttributeImpl):
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken],
+        initiator: AttributeEventToken | None,
     ) -> None:
         for fn in self.dispatch.remove:
             fn(state, value, initiator or self._remove_token)
@@ -1427,7 +1427,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken] = None,
+        initiator: AttributeEventToken | None = None,
         passive: PassiveFlag = PASSIVE_OFF,
         check_old: Any = None,
         pop: bool = False,
@@ -1472,7 +1472,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken],
+        initiator: AttributeEventToken | None,
     ) -> None:
         if self.trackparent and value not in (
             None,
@@ -1492,7 +1492,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         dict_: _InstanceDict,
         value: _T,
         previous: Any,
-        initiator: Optional[AttributeEventToken],
+        initiator: AttributeEventToken | None,
     ) -> _T:
         if self.trackparent:
             if previous is not value and previous not in (
@@ -1554,21 +1554,21 @@ class HasCollectionAdapter:
         self,
         state: InstanceState[Any],
         dict_: _InstanceDict,
-        user_data: Optional[_AdaptedCollectionProtocol] = ...,
+        user_data: _AdaptedCollectionProtocol | None = ...,
         passive: PassiveFlag = ...,
-    ) -> Union[
-        Literal[LoaderCallableStatus.PASSIVE_NO_RESULT], CollectionAdapter
-    ]: ...
+    ) -> (
+        Literal[LoaderCallableStatus.PASSIVE_NO_RESULT] | CollectionAdapter
+    ): ...
 
     def get_collection(
         self,
         state: InstanceState[Any],
         dict_: _InstanceDict,
-        user_data: Optional[_AdaptedCollectionProtocol] = None,
+        user_data: _AdaptedCollectionProtocol | None = None,
         passive: PassiveFlag = PassiveFlag.PASSIVE_OFF,
-    ) -> Union[
-        Literal[LoaderCallableStatus.PASSIVE_NO_RESULT], CollectionAdapter
-    ]:
+    ) -> (
+        Literal[LoaderCallableStatus.PASSIVE_NO_RESULT] | CollectionAdapter
+    ):
         raise NotImplementedError()
 
     def set(
@@ -1576,7 +1576,7 @@ class HasCollectionAdapter:
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken] = None,
+        initiator: AttributeEventToken | None = None,
         passive: PassiveFlag = PassiveFlag.PASSIVE_OFF,
         check_old: Any = None,
         pop: bool = False,
@@ -1745,8 +1745,8 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: _T,
-        initiator: Optional[AttributeEventToken],
-        key: Optional[Any],
+        initiator: AttributeEventToken | None,
+        key: Any | None,
     ) -> _T:
         for fn in self.dispatch.append:
             value = fn(state, value, initiator or self._append_token, key=key)
@@ -1763,8 +1763,8 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: _T,
-        initiator: Optional[AttributeEventToken],
-        key: Optional[Any],
+        initiator: AttributeEventToken | None,
+        key: Any | None,
     ) -> _T:
         for fn in self.dispatch.append_wo_mutation:
             value = fn(state, value, initiator or self._append_token, key=key)
@@ -1775,8 +1775,8 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         self,
         state: InstanceState[Any],
         dict_: _InstanceDict,
-        initiator: Optional[AttributeEventToken],
-        key: Optional[Any],
+        initiator: AttributeEventToken | None,
+        key: Any | None,
     ) -> None:
         """A special event used for pop() operations.
 
@@ -1793,8 +1793,8 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken],
-        key: Optional[Any],
+        initiator: AttributeEventToken | None,
+        key: Any | None,
     ) -> None:
         if self.trackparent and value is not None:
             self.sethasparent(instance_state(value), state, False)
@@ -1836,7 +1836,7 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
 
     def _initialize_collection(
         self, state: InstanceState[Any]
-    ) -> Tuple[CollectionAdapter, _AdaptedCollectionProtocol]:
+    ) -> tuple[CollectionAdapter, _AdaptedCollectionProtocol]:
         adapter, collection = state.manager.initialize_collection(
             self.key, state, self.collection_factory
         )
@@ -1850,7 +1850,7 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken],
+        initiator: AttributeEventToken | None,
         passive: PassiveFlag = PASSIVE_OFF,
     ) -> None:
         collection = self.get_collection(
@@ -1874,7 +1874,7 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken],
+        initiator: AttributeEventToken | None,
         passive: PassiveFlag = PASSIVE_OFF,
     ) -> None:
         collection = self.get_collection(
@@ -1896,7 +1896,7 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken],
+        initiator: AttributeEventToken | None,
         passive: PassiveFlag = PASSIVE_OFF,
     ) -> None:
         try:
@@ -1912,7 +1912,7 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         state: InstanceState[Any],
         dict_: _InstanceDict,
         value: Any,
-        initiator: Optional[AttributeEventToken] = None,
+        initiator: AttributeEventToken | None = None,
         passive: PassiveFlag = PassiveFlag.PASSIVE_OFF,
         check_old: Any = None,
         pop: bool = False,
@@ -2061,21 +2061,21 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         self,
         state: InstanceState[Any],
         dict_: _InstanceDict,
-        user_data: Optional[_AdaptedCollectionProtocol] = ...,
+        user_data: _AdaptedCollectionProtocol | None = ...,
         passive: PassiveFlag = PASSIVE_OFF,
-    ) -> Union[
-        Literal[LoaderCallableStatus.PASSIVE_NO_RESULT], CollectionAdapter
-    ]: ...
+    ) -> (
+        Literal[LoaderCallableStatus.PASSIVE_NO_RESULT] | CollectionAdapter
+    ): ...
 
     def get_collection(
         self,
         state: InstanceState[Any],
         dict_: _InstanceDict,
-        user_data: Optional[_AdaptedCollectionProtocol] = None,
+        user_data: _AdaptedCollectionProtocol | None = None,
         passive: PassiveFlag = PASSIVE_OFF,
-    ) -> Union[
-        Literal[LoaderCallableStatus.PASSIVE_NO_RESULT], CollectionAdapter
-    ]:
+    ) -> (
+        Literal[LoaderCallableStatus.PASSIVE_NO_RESULT] | CollectionAdapter
+    ):
         """Retrieve the CollectionAdapter associated with the given state.
 
         if user_data is None, retrieves it from the state using normal
@@ -2240,7 +2240,7 @@ def backref_listeners(
             )
             child_impl = child_state.manager[key].impl
 
-            check_replace_token: Optional[AttributeEventToken]
+            check_replace_token: AttributeEventToken | None
 
             # tokens to test for a recursive loop.
             if not child_impl.collection and not child_impl.dynamic:
@@ -2332,9 +2332,9 @@ class History(NamedTuple):
 
     """
 
-    added: Union[Tuple[()], List[Any]]
-    unchanged: Union[Tuple[()], List[Any]]
-    deleted: Union[Tuple[()], List[Any]]
+    added: tuple[()] | list[Any]
+    unchanged: tuple[()] | list[Any]
+    deleted: tuple[()] | list[Any]
 
     def __bool__(self) -> bool:
         return self != HISTORY_BLANK
@@ -2401,7 +2401,7 @@ class History(NamedTuple):
     ) -> History:
         original = state.committed_state.get(attribute.key, _NO_HISTORY)
 
-        deleted: Union[Tuple[()], List[Any]]
+        deleted: tuple[()] | list[Any]
 
         if original is _NO_HISTORY:
             if current is NO_VALUE:
@@ -2441,7 +2441,7 @@ class History(NamedTuple):
         current: Any,
         original: Any = _NO_HISTORY,
     ) -> History:
-        deleted: Union[Tuple[()], List[Any]]
+        deleted: tuple[()] | list[Any]
 
         if original is _NO_HISTORY:
             original = state.committed_state.get(attribute.key, _NO_HISTORY)
@@ -2558,7 +2558,7 @@ def get_state_history(
 
 
 def has_parent(
-    cls: Type[_O], obj: _O, key: str, optimistic: bool = False
+    cls: type[_O], obj: _O, key: str, optimistic: bool = False
 ) -> bool:
     """TODO"""
     manager = manager_of_class(cls)
@@ -2567,12 +2567,12 @@ def has_parent(
 
 
 def register_attribute(
-    class_: Type[_O],
+    class_: type[_O],
     key: str,
     *,
     comparator: interfaces.PropComparator[_T],
     parententity: _InternalEntityType[_O],
-    doc: Optional[str] = None,
+    doc: str | None = None,
     **kw: Any,
 ) -> InstrumentedAttribute[_T]:
     desc = register_descriptor(
@@ -2583,13 +2583,13 @@ def register_attribute(
 
 
 def register_attribute_impl(
-    class_: Type[_O],
+    class_: type[_O],
     key: str,
     uselist: bool = False,
-    callable_: Optional[_LoaderCallable] = None,
+    callable_: _LoaderCallable | None = None,
     useobject: bool = False,
-    impl_class: Optional[Type[AttributeImpl]] = None,
-    backref: Optional[str] = None,
+    impl_class: type[AttributeImpl] | None = None,
+    backref: str | None = None,
     **kw: Any,
 ) -> QueryableAttribute[Any]:
     manager = manager_of_class(class_)
@@ -2634,12 +2634,12 @@ def register_attribute_impl(
 
 
 def register_descriptor(
-    class_: Type[Any],
+    class_: type[Any],
     key: str,
     *,
     comparator: interfaces.PropComparator[_T],
     parententity: _InternalEntityType[Any],
-    doc: Optional[str] = None,
+    doc: str | None = None,
 ) -> InstrumentedAttribute[_T]:
     manager = manager_of_class(class_)
 
@@ -2653,7 +2653,7 @@ def register_descriptor(
     return descriptor
 
 
-def unregister_attribute(class_: Type[Any], key: str) -> None:
+def unregister_attribute(class_: type[Any], key: str) -> None:
     manager_of_class(class_).uninstrument_attribute(key)
 
 
@@ -2730,7 +2730,7 @@ def set_attribute(
     instance: object,
     key: str,
     value: Any,
-    initiator: Optional[AttributeEventToken] = None,
+    initiator: AttributeEventToken | None = None,
 ) -> None:
     """Set the value of an attribute, firing history events.
 

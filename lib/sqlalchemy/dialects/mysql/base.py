@@ -1258,14 +1258,14 @@ class MySQLCompiler(compiler.SQLCompiler):
         # by positional parameter rendering
 
         if binary.type._type_affinity is sqltypes.JSON:
-            return "JSON_EXTRACT(%s, %s)" % (
+            return "JSON_EXTRACT({}, {})".format(
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
             )
 
         # for non-JSON, MySQL doesn't handle JSON null at all so it has to
         # be explicit
-        case_expression = "CASE JSON_EXTRACT(%s, %s) WHEN 'null' THEN NULL" % (
+        case_expression = "CASE JSON_EXTRACT({}, {}) WHEN 'null' THEN NULL".format(
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         )
@@ -1311,13 +1311,13 @@ class MySQLCompiler(compiler.SQLCompiler):
             # string.  SQLite has the same problem at the moment
             # (zzzeek): I'm not really sure.  let's take a look at a test case
             # that hits each backend and maybe make a requires rule for it?
-            type_expression = "ELSE JSON_UNQUOTE(JSON_EXTRACT(%s, %s))" % (
+            type_expression = "ELSE JSON_UNQUOTE(JSON_EXTRACT({}, {}))".format(
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
             )
         else:
             # other affinity....this is not expected right now
-            type_expression = "ELSE JSON_EXTRACT(%s, %s)" % (
+            type_expression = "ELSE JSON_EXTRACT({}, {})".format(
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
             )
@@ -1398,7 +1398,7 @@ class MySQLCompiler(compiler.SQLCompiler):
                 value_text = self.process(val.self_group(), use_schema=False)
 
             name_text = self.preparer.quote(column.name)
-            clauses.append("%s = %s" % (name_text, value_text))
+            clauses.append(f"{name_text} = {value_text}")
 
         non_matching = set(on_duplicate.update) - {c.key for c in cols}
         if non_matching:
@@ -1427,7 +1427,7 @@ class MySQLCompiler(compiler.SQLCompiler):
         )
 
     def visit_concat_op_binary(self, binary, operator, **kw):
-        return "concat(%s, %s)" % (
+        return "concat({}, {})".format(
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         )
@@ -1492,7 +1492,7 @@ class MySQLCompiler(compiler.SQLCompiler):
 
             against_clause = " ".join(against_clause)
 
-        return "MATCH (%s) AGAINST (%s)" % (match_clause, against_clause)
+        return f"MATCH ({match_clause}) AGAINST ({against_clause})"
 
     def get_from_hint_text(self, table, text):
         return text
@@ -1552,7 +1552,7 @@ class MySQLCompiler(compiler.SQLCompiler):
             )
             return self.process(cast.clause.self_group(), **kw)
 
-        return "CAST(%s AS %s)" % (self.process(cast.clause, **kw), type_)
+        return f"CAST({self.process(cast.clause, **kw)} AS {type_})"
 
     def render_literal_value(self, value, type_):
         value = super().render_literal_value(value, type_)
@@ -1663,18 +1663,18 @@ class MySQLCompiler(compiler.SQLCompiler):
                 # needed consistent with the usage of the upper
                 # bound as part of MySQL's "syntax" for OFFSET with
                 # no LIMIT.
-                return " \n LIMIT %s, %s" % (
+                return " \n LIMIT {}, {}".format(
                     self.process(offset_clause, **kw),
                     "18446744073709551615",
                 )
             else:
-                return " \n LIMIT %s, %s" % (
+                return " \n LIMIT {}, {}".format(
                     self.process(offset_clause, **kw),
                     self.process(limit_clause, **kw),
                 )
         else:
             # No offset provided, so just use the limit
-            return " \n LIMIT %s" % (self.process(limit_clause, **kw),)
+            return f" \n LIMIT {self.process(limit_clause, **kw)}"
 
     def update_limit_clause(self, update_stmt):
         limit = update_stmt.kwargs.get("%s_limit" % self.dialect.name, None)
@@ -1730,19 +1730,19 @@ class MySQLCompiler(compiler.SQLCompiler):
         )
 
     def visit_is_distinct_from_binary(self, binary, operator, **kw):
-        return "NOT (%s <=> %s)" % (
+        return "NOT ({} <=> {})".format(
             self.process(binary.left),
             self.process(binary.right),
         )
 
     def visit_is_not_distinct_from_binary(self, binary, operator, **kw):
-        return "%s <=> %s" % (
+        return "{} <=> {}".format(
             self.process(binary.left),
             self.process(binary.right),
         )
 
     def _mariadb_regexp_flags(self, flags, pattern, **kw):
-        return "CONCAT('(?', %s, ')', %s)" % (
+        return "CONCAT('(?', {}, ')', {})".format(
             self.render_literal_value(flags, sqltypes.STRINGTYPE),
             self.process(pattern, **kw),
         )
@@ -1752,13 +1752,13 @@ class MySQLCompiler(compiler.SQLCompiler):
         if flags is None:
             return self._generate_generic_binary(binary, op_string, **kw)
         elif self.dialect.is_mariadb:
-            return "%s%s%s" % (
+            return "{}{}{}".format(
                 self.process(binary.left, **kw),
                 op_string,
                 self._mariadb_regexp_flags(flags, binary.right),
             )
         else:
-            text = "REGEXP_LIKE(%s, %s, %s)" % (
+            text = "REGEXP_LIKE({}, {}, {})".format(
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
                 self.render_literal_value(flags, sqltypes.STRINGTYPE),
@@ -1777,18 +1777,18 @@ class MySQLCompiler(compiler.SQLCompiler):
     def visit_regexp_replace_op_binary(self, binary, operator, **kw):
         flags = binary.modifiers["flags"]
         if flags is None:
-            return "REGEXP_REPLACE(%s, %s)" % (
+            return "REGEXP_REPLACE({}, {})".format(
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
             )
         elif self.dialect.is_mariadb:
-            return "REGEXP_REPLACE(%s, %s, %s)" % (
+            return "REGEXP_REPLACE({}, {}, {})".format(
                 self.process(binary.left, **kw),
                 self._mariadb_regexp_flags(flags, binary.right.clauses[0]),
                 self.process(binary.right.clauses[1], **kw),
             )
         else:
-            return "REGEXP_REPLACE(%s, %s, %s)" % (
+            return "REGEXP_REPLACE({}, {}, {})".format(
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
                 self.render_literal_value(flags, sqltypes.STRINGTYPE),
@@ -1977,7 +1977,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         text += "INDEX "
         if create.if_not_exists:
             text += "IF NOT EXISTS "
-        text += "%s ON %s " % (name, table)
+        text += f"{name} ON {table} "
 
         length = index.dialect_options[self.dialect.name]["length"]
         if length is not None:
@@ -2009,7 +2009,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
         parser = index.dialect_options["mysql"]["with_parser"]
         if parser is not None:
-            text += " WITH PARSER %s" % (parser,)
+            text += f" WITH PARSER {parser}"
 
         using = index.dialect_options["mysql"]["using"]
         if using is not None:
@@ -2030,7 +2030,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         if drop.if_exists:
             text += "IF EXISTS "
 
-        return text + "%s ON %s" % (
+        return text + "{} ON {}".format(
             self._prepared_index_name(index, include_schema=False),
             self.preparer.format_table(index.table),
         )
@@ -2055,7 +2055,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         else:
             qual = ""
             const = self.preparer.format_constraint(constraint)
-        return "ALTER TABLE %s DROP %s%s" % (
+        return "ALTER TABLE {} DROP {}{}".format(
             self.preparer.format_table(constraint.table),
             qual,
             const,
@@ -2070,7 +2070,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         return ""
 
     def visit_set_table_comment(self, create, **kw):
-        return "ALTER TABLE %s COMMENT %s" % (
+        return "ALTER TABLE {} COMMENT {}".format(
             self.preparer.format_table(create.element),
             self.sql_compiler.render_literal_value(
                 create.element.comment, sqltypes.String()
@@ -2083,7 +2083,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         )
 
     def visit_set_column_comment(self, create, **kw):
-        return "ALTER TABLE %s CHANGE %s %s" % (
+        return "ALTER TABLE {} CHANGE {} {}".format(
             self.preparer.format_table(create.element.table),
             self.preparer.format_column(create.element),
             self.get_column_specification(create.element),
@@ -2146,7 +2146,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         elif type_.scale is None:
             return self._extend_numeric(
                 type_,
-                "NUMERIC(%(precision)s)" % {"precision": type_.precision},
+                f"NUMERIC({type_.precision})",
             )
         else:
             return self._extend_numeric(
@@ -2161,7 +2161,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         elif type_.scale is None:
             return self._extend_numeric(
                 type_,
-                "DECIMAL(%(precision)s)" % {"precision": type_.precision},
+                f"DECIMAL({type_.precision})",
             )
         else:
             return self._extend_numeric(
@@ -2197,11 +2197,11 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
             and type_.precision is not None
         ):
             return self._extend_numeric(
-                type_, "FLOAT(%s, %s)" % (type_.precision, type_.scale)
+                type_, f"FLOAT({type_.precision}, {type_.scale})"
             )
         elif type_.precision is not None:
             return self._extend_numeric(
-                type_, "FLOAT(%s)" % (type_.precision,)
+                type_, f"FLOAT({type_.precision})"
             )
         else:
             return self._extend_numeric(type_, "FLOAT")
@@ -2313,7 +2313,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
     def visit_CHAR(self, type_, **kw):
         if type_.length is not None:
             return self._extend_string(
-                type_, {}, "CHAR(%(length)s)" % {"length": type_.length}
+                type_, {}, f"CHAR({type_.length})"
             )
         else:
             return self._extend_string(type_, {}, "CHAR")
@@ -2325,7 +2325,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
             return self._extend_string(
                 type_,
                 {"national": True},
-                "VARCHAR(%(length)s)" % {"length": type_.length},
+                f"VARCHAR({type_.length})",
             )
         else:
             raise exc.CompileError(
@@ -2339,7 +2339,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
             return self._extend_string(
                 type_,
                 {"national": True},
-                "CHAR(%(length)s)" % {"length": type_.length},
+                f"CHAR({type_.length})",
             )
         else:
             return self._extend_string(type_, {"national": True}, "CHAR")
@@ -2382,7 +2382,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         for e in enumerated_values:
             quoted_enums.append("'%s'" % e.replace("'", "''"))
         return self._extend_string(
-            type_, {}, "%s(%s)" % (name, ",".join(quoted_enums))
+            type_, {}, "{}({})".format(name, ",".join(quoted_enums))
         )
 
     def visit_ENUM(self, type_, **kw):

@@ -111,7 +111,7 @@ class compound:
     def _do(self, cfg, fn, *args, **kw):
         for skip in self.skips:
             if skip(cfg):
-                msg = "'%s' : %s" % (
+                msg = "'{}' : {}".format(
                     config.get_current_test_name(),
                     skip._as_string(cfg),
                 )
@@ -286,9 +286,9 @@ class SpecPredicate(Predicate):
                 return "%s" % self.db
         else:
             if negate:
-                return "not %s %s %s" % (self.db, self.op, self.spec)
+                return "not {} {} {}".format(self.db, self.op, self.spec)
             else:
-                return "%s %s %s" % (self.db, self.op, self.spec)
+                return "{} {} {}".format(self.db, self.op, self.spec)
 
 
 class LambdaPredicate(Predicate):

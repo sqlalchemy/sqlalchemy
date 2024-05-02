@@ -102,9 +102,9 @@ class O2OTest(fixtures.MappedTest):
 
         if not active_history and not _legacy_inactive_history_style:
             session.flush()
-            self.assert_(p.jack is None)
+            self.assertTrue(p.jack is None)
         else:
-            self.assert_(p.jack is None)
+            self.assertTrue(p.jack is None)
             session.flush()
 
         session.delete(j)

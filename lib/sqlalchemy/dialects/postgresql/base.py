@@ -1767,7 +1767,7 @@ class PGCompiler(compiler.SQLCompiler):
         return "ARRAY[%s]" % self.visit_clauselist(element, **kw)
 
     def visit_slice(self, element, **kw):
-        return "%s:%s" % (
+        return "{}:{}".format(
             self.process(element.start, **kw),
             self.process(element.stop, **kw),
         )
@@ -1807,13 +1807,13 @@ class PGCompiler(compiler.SQLCompiler):
         )
 
     def visit_getitem_binary(self, binary, operator, **kw):
-        return "%s[%s]" % (
+        return "{}[{}]".format(
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         )
 
     def visit_aggregate_order_by(self, element, **kw):
-        return "%s ORDER BY %s" % (
+        return "{} ORDER BY {}".format(
             self.process(element.target, **kw),
             self.process(element.order_by, **kw),
         )
@@ -1824,12 +1824,12 @@ class PGCompiler(compiler.SQLCompiler):
                 binary.modifiers["postgresql_regconfig"], sqltypes.STRINGTYPE
             )
             if regconfig:
-                return "%s @@ plainto_tsquery(%s, %s)" % (
+                return "{} @@ plainto_tsquery({}, {})".format(
                     self.process(binary.left, **kw),
                     regconfig,
                     self.process(binary.right, **kw),
                 )
-        return "%s @@ plainto_tsquery(%s)" % (
+        return "{} @@ plainto_tsquery({})".format(
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         )
@@ -1840,7 +1840,7 @@ class PGCompiler(compiler.SQLCompiler):
     def visit_ilike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
 
-        return "%s ILIKE %s" % (
+        return "{} ILIKE {}".format(
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         ) + (
@@ -1851,7 +1851,7 @@ class PGCompiler(compiler.SQLCompiler):
 
     def visit_not_ilike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
-        return "%s NOT ILIKE %s" % (
+        return "{} NOT ILIKE {}".format(
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         ) + (
@@ -1870,7 +1870,7 @@ class PGCompiler(compiler.SQLCompiler):
             return self._generate_generic_binary(
                 binary, " %s* " % base_op, **kw
             )
-        return "%s %s CONCAT('(?', %s, ')', %s)" % (
+        return "{} {} CONCAT('(?', {}, ')', {})".format(
             self.process(binary.left, **kw),
             base_op,
             self.render_literal_value(flags, sqltypes.STRINGTYPE),
@@ -1888,12 +1888,12 @@ class PGCompiler(compiler.SQLCompiler):
         pattern_replace = self.process(binary.right, **kw)
         flags = binary.modifiers["flags"]
         if flags is None:
-            return "REGEXP_REPLACE(%s, %s)" % (
+            return "REGEXP_REPLACE({}, {})".format(
                 string,
                 pattern_replace,
             )
         else:
-            return "REGEXP_REPLACE(%s, %s, %s)" % (
+            return "REGEXP_REPLACE({}, {}, {})".format(
                 string,
                 pattern_replace,
                 self.render_literal_value(flags, sqltypes.STRINGTYPE),
@@ -1903,7 +1903,7 @@ class PGCompiler(compiler.SQLCompiler):
         # cast the empty set to the type we are comparing against.  if
         # we are comparing against the null type, pick an arbitrary
         # datatype for the empty set
-        return "SELECT %s WHERE 1!=1" % (
+        return "SELECT {} WHERE 1!=1".format(
             ", ".join(
                 "CAST(NULL AS %s)"
                 % self.dialect.type_compiler_instance.process(
@@ -1994,9 +1994,9 @@ class PGCompiler(compiler.SQLCompiler):
         start = self.process(func.clauses.clauses[1], **kw)
         if len(func.clauses.clauses) > 2:
             length = self.process(func.clauses.clauses[2], **kw)
-            return "SUBSTRING(%s FROM %s FOR %s)" % (s, start, length)
+            return f"SUBSTRING({s} FROM {start} FOR {length})"
         else:
-            return "SUBSTRING(%s FROM %s)" % (s, start)
+            return f"SUBSTRING({s} FROM {start})"
 
     def _on_conflict_target(self, clause, **kw):
         if clause.constraint_target is not None:
@@ -2074,7 +2074,7 @@ class PGCompiler(compiler.SQLCompiler):
             value_text = self.process(value.self_group(), use_schema=False)
 
             key_text = self.preparer.quote(c.name)
-            action_set_ops.append("%s = %s" % (key_text, value_text))
+            action_set_ops.append(f"{key_text} = {value_text}")
 
         # check for names that don't match columns
         if set_parameters:
@@ -2096,7 +2096,7 @@ class PGCompiler(compiler.SQLCompiler):
                     coercions.expect(roles.ExpressionElementRole, v),
                     use_schema=False,
                 )
-                action_set_ops.append("%s = %s" % (key_text, value_text))
+                action_set_ops.append(f"{key_text} = {value_text}")
 
         action_text = ", ".join(action_set_ops)
         if clause.update_whereclause is not None:
@@ -2104,7 +2104,7 @@ class PGCompiler(compiler.SQLCompiler):
                 clause.update_whereclause, include_table=True, use_schema=False
             )
 
-        return "ON CONFLICT %s DO UPDATE SET %s" % (target_text, action_text)
+        return f"ON CONFLICT {target_text} DO UPDATE SET {action_text}"
 
     def update_from_clause(
         self, update_stmt, from_table, extra_froms, from_hints, **kw
@@ -2135,7 +2135,7 @@ class PGCompiler(compiler.SQLCompiler):
                 select._offset_clause, **kw
             )
         if select._fetch_clause is not None:
-            text += "\n FETCH FIRST (%s)%s ROWS %s" % (
+            text += "\n FETCH FIRST ({}){} ROWS {}".format(
                 self.process(select._fetch_clause, **kw),
                 " PERCENT" if select._fetch_clause_options["percent"] else "",
                 (
@@ -2232,7 +2232,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
     def visit_create_enum_type(self, create, **kw):
         type_ = create.element
 
-        return "CREATE TYPE %s AS ENUM (%s)" % (
+        return "CREATE TYPE {} AS ENUM ({})".format(
             self.preparer.format_type(type_),
             ", ".join(
                 self.sql_compiler.process(sql.literal(e), literal_binds=True)
@@ -2295,7 +2295,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
         if create.if_not_exists:
             text += "IF NOT EXISTS "
 
-        text += "%s ON %s " % (
+        text += "{} ON {} ".format(
             self._prepared_index_name(index, include_schema=False),
             preparer.format_table(index.table),
         )
@@ -2420,8 +2420,8 @@ class PGDDLCompiler(compiler.DDLCompiler):
                 else ""
             )
 
-            elements.append("%s WITH %s" % (exclude_element, op))
-        text += "EXCLUDE USING %s (%s)" % (
+            elements.append(f"{exclude_element} WITH {op}")
+        text += "EXCLUDE USING {} ({})".format(
             self.preparer.validate_sql_phrase(
                 constraint.using, IDX_USING
             ).lower(),
@@ -2507,7 +2507,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
     def visit_set_constraint_comment(self, create, **kw):
         self._can_comment_on_constraint(create)
-        return "COMMENT ON CONSTRAINT %s ON %s IS %s" % (
+        return "COMMENT ON CONSTRAINT {} ON {} IS {}".format(
             self.preparer.format_constraint(create.element),
             self.preparer.format_table(create.element.table),
             self.sql_compiler.render_literal_value(
@@ -2517,7 +2517,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
     def visit_drop_constraint_comment(self, drop, **kw):
         self._can_comment_on_constraint(drop)
-        return "COMMENT ON CONSTRAINT %s ON %s IS NULL" % (
+        return "COMMENT ON CONSTRAINT {} ON {} IS NULL".format(
             self.preparer.format_constraint(drop.element),
             self.preparer.format_table(drop.element.table),
         )
@@ -2561,7 +2561,7 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         if not type_.precision:
             return "FLOAT"
         else:
-            return "FLOAT(%(precision)s)" % {"precision": type_.precision}
+            return f"FLOAT({type_.precision})"
 
     def visit_double(self, type_, **kw):
         return self.visit_DOUBLE_PRECISION(type, **kw)
@@ -2640,7 +2640,7 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         return identifier_preparer.format_type(type_)
 
     def visit_TIMESTAMP(self, type_, **kw):
-        return "TIMESTAMP%s %s" % (
+        return "TIMESTAMP{} {}".format(
             (
                 "(%d)" % type_.precision
                 if getattr(type_, "precision", None) is not None
@@ -2650,7 +2650,7 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         )
 
     def visit_TIME(self, type_, **kw):
-        return "TIME%s %s" % (
+        return "TIME{} {}".format(
             (
                 "(%d)" % type_.precision
                 if getattr(type_, "precision", None) is not None
@@ -2768,22 +2768,22 @@ class ReflectedDomain(ReflectedNamedType):
     """The string name of the underlying data type of the domain."""
     nullable: bool
     """Indicates if the domain allows null or not."""
-    default: Optional[str]
+    default: str | None
     """The string representation of the default value of this domain
     or ``None`` if none present.
     """
-    constraints: List[ReflectedDomainConstraint]
+    constraints: list[ReflectedDomainConstraint]
     """The constraints defined in the domain, if any.
     The constraint are in order of evaluation by postgresql.
     """
-    collation: Optional[str]
+    collation: str | None
     """The collation for the domain."""
 
 
 class ReflectedEnum(ReflectedNamedType):
     """Represents a reflected enum."""
 
-    labels: List[str]
+    labels: list[str]
     """The labels that compose the enum."""
 
 
@@ -2791,7 +2791,7 @@ class PGInspector(reflection.Inspector):
     dialect: PGDialect
 
     def get_table_oid(
-        self, table_name: str, schema: Optional[str] = None
+        self, table_name: str, schema: str | None = None
     ) -> int:
         """Return the OID for the given table name.
 
@@ -2810,8 +2810,8 @@ class PGInspector(reflection.Inspector):
             )
 
     def get_domains(
-        self, schema: Optional[str] = None
-    ) -> List[ReflectedDomain]:
+        self, schema: str | None = None
+    ) -> list[ReflectedDomain]:
         """Return a list of DOMAIN objects.
 
         Each member is a dictionary containing these fields:
@@ -2840,7 +2840,7 @@ class PGInspector(reflection.Inspector):
                 conn, schema, info_cache=self.info_cache
             )
 
-    def get_enums(self, schema: Optional[str] = None) -> List[ReflectedEnum]:
+    def get_enums(self, schema: str | None = None) -> list[ReflectedEnum]:
         """Return a list of ENUM objects.
 
         Each member is a dictionary containing these fields:
@@ -2862,8 +2862,8 @@ class PGInspector(reflection.Inspector):
             )
 
     def get_foreign_table_names(
-        self, schema: Optional[str] = None
-    ) -> List[str]:
+        self, schema: str | None = None
+    ) -> list[str]:
         """Return a list of FOREIGN TABLE names.
 
         Behavior is similar to that of
@@ -2878,7 +2878,7 @@ class PGInspector(reflection.Inspector):
             )
 
     def has_type(
-        self, type_name: str, schema: Optional[str] = None, **kw: Any
+        self, type_name: str, schema: str | None = None, **kw: Any
     ) -> bool:
         """Return if the database has the specified type in the provided
         schema.
@@ -2929,7 +2929,7 @@ class PGExecutionContext(default.DefaultExecutionContext):
                     col = column.name
                     tab = tab[0 : 29 + max(0, (29 - len(col)))]
                     col = col[0 : 29 + max(0, (29 - len(tab)))]
-                    name = "%s_%s_seq" % (tab, col)
+                    name = f"{tab}_{col}_seq"
                     column._postgresql_seq_name = seq_name = name
 
                 if column.table is not None:
@@ -2940,12 +2940,12 @@ class PGExecutionContext(default.DefaultExecutionContext):
                     effective_schema = None
 
                 if effective_schema is not None:
-                    exc = 'select nextval(\'"%s"."%s"\')' % (
+                    exc = 'select nextval(\'"{}"."{}"\')'.format(
                         effective_schema,
                         seq_name,
                     )
                 else:
-                    exc = "select nextval('\"%s\"')" % (seq_name,)
+                    exc = f"select nextval('\"{seq_name}\"')"
 
                 return self._execute_scalar(exc, column.type)
 
@@ -3163,12 +3163,12 @@ class PGDialect(default.DefaultDialect):
     def get_deferrable(self, connection):
         raise NotImplementedError()
 
-    def _split_multihost_from_url(self, url: URL) -> Union[
-        Tuple[None, None],
-        Tuple[Tuple[Optional[str], ...], Tuple[Optional[int], ...]],
-    ]:
-        hosts: Optional[Tuple[Optional[str], ...]] = None
-        ports_str: Union[str, Tuple[Optional[str], ...], None] = None
+    def _split_multihost_from_url(self, url: URL) -> (
+        tuple[None, None] |
+        tuple[tuple[str | None, ...], tuple[int | None, ...]]
+    ):
+        hosts: tuple[str | None, ...] | None = None
+        ports_str: str | tuple[str | None, ...] | None = None
 
         integrated_multihost = False
 
@@ -3220,7 +3220,7 @@ class PGDialect(default.DefaultDialect):
             elif isinstance(url.query["port"], str):
                 ports_str = tuple(url.query["port"].split(","))
 
-        ports: Optional[Tuple[Optional[int], ...]] = None
+        ports: tuple[int | None, ...] | None = None
 
         if ports_str:
             try:
@@ -3328,7 +3328,7 @@ class PGDialect(default.DefaultDialect):
         # that 'IN could not convert type character to "char"'
         return pg_class_table.c.relkind == sql.any_(_array.array(relkinds))
 
-    @lru_cache()
+    @lru_cache
     def _has_table_query(self, schema):
         query = select(pg_catalog.pg_class.c.relname).where(
             pg_catalog.pg_class.c.relname == bindparam("table_name"),
@@ -3523,7 +3523,7 @@ class PGDialect(default.DefaultDialect):
         else:
             return False, {}
 
-    def _kind_to_relkinds(self, kind: ObjectKind) -> Tuple[str, ...]:
+    def _kind_to_relkinds(self, kind: ObjectKind) -> tuple[str, ...]:
         if kind is ObjectKind.ANY:
             return pg_catalog.RELKINDS_ALL_TABLE_LIKE
         relkinds = ()
@@ -3547,7 +3547,7 @@ class PGDialect(default.DefaultDialect):
         )
         return self._value_or_raise(data, table_name, schema)
 
-    @lru_cache()
+    @lru_cache
     def _columns_query(self, schema, has_filter_names, scope, kind):
         # NOTE: the query with the default and identity options scalar
         # subquery is faster than trying to use outer joins for them
@@ -3715,7 +3715,7 @@ class PGDialect(default.DefaultDialect):
 
     def _reflect_type(
         self,
-        format_type: Optional[str],
+        format_type: str | None,
         domains: dict[str, ReflectedDomain],
         enums: dict[str, ReflectedEnum],
         type_description: str,
@@ -3941,7 +3941,7 @@ class PGDialect(default.DefaultDialect):
 
         return columns
 
-    @lru_cache()
+    @lru_cache
     def _table_oids_query(self, schema, has_filter_names, scope, kind):
         relkinds = self._kind_to_relkinds(kind)
         oid_q = select(
@@ -3969,7 +3969,7 @@ class PGDialect(default.DefaultDialect):
         result = connection.execute(oid_q, params)
         return result.all()
 
-    @lru_cache()
+    @lru_cache
     def _constraint_query(self, is_unique):
         con_sq = (
             select(
@@ -4158,7 +4158,7 @@ class PGDialect(default.DefaultDialect):
         )
         return self._value_or_raise(data, table_name, schema)
 
-    @lru_cache()
+    @lru_cache
     def _foreing_key_query(self, schema, has_filter_names, scope, kind):
         pg_class_ref = pg_catalog.pg_class.alias("cls_ref")
         pg_namespace_ref = pg_catalog.pg_namespace.alias("nsp_ref")
@@ -4674,7 +4674,7 @@ class PGDialect(default.DefaultDialect):
         )
         return self._value_or_raise(data, table_name, schema)
 
-    @lru_cache()
+    @lru_cache
     def _comment_query(self, schema, has_filter_names, scope, kind):
         relkinds = self._kind_to_relkinds(kind)
         query = (
@@ -4728,7 +4728,7 @@ class PGDialect(default.DefaultDialect):
         )
         return self._value_or_raise(data, table_name, schema)
 
-    @lru_cache()
+    @lru_cache
     def _check_constraint_query(self, schema, has_filter_names, scope, kind):
         relkinds = self._kind_to_relkinds(kind)
         query = (
@@ -4840,7 +4840,7 @@ class PGDialect(default.DefaultDialect):
             query = query.where(pg_catalog.pg_namespace.c.nspname == schema)
         return query
 
-    @lru_cache()
+    @lru_cache
     def _enum_query(self, schema):
         lbl_agg_sq = (
             select(
@@ -4902,7 +4902,7 @@ class PGDialect(default.DefaultDialect):
             )
         return enums
 
-    @lru_cache()
+    @lru_cache
     def _domain_query(self, schema):
         con_sq = (
             select(
@@ -4966,11 +4966,11 @@ class PGDialect(default.DefaultDialect):
     def _load_domains(self, connection, schema=None, **kw):
         result = connection.execute(self._domain_query(schema))
 
-        domains: List[ReflectedDomain] = []
+        domains: list[ReflectedDomain] = []
         for domain in result.mappings():
             # strip (30) from character varying(30)
             attype = re.search(r"([^\(]+)", domain["attype"]).group(1)
-            constraints: List[ReflectedDomainConstraint] = []
+            constraints: list[ReflectedDomainConstraint] = []
             if domain["connames"]:
                 # When a domain has multiple CHECK constraints, they will
                 # be tested in alphabetical order by name.

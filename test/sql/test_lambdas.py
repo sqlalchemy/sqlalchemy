@@ -2151,7 +2151,7 @@ def generate_lambda_stmt(wanted):
         exec(code, d)
         generate_lambda_stmt = d["generate_lambda_stmt"]
 
-        runs: List[Optional[int]] = [None for _ in range(self.THREADS)]
+        runs: list[int | None] = [None for _ in range(self.THREADS)]
         conns = [engine.connect() for _ in range(self.THREADS)]
 
         def run(num):

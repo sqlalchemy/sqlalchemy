@@ -1330,7 +1330,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
 
     def visit_extract(self, extract, **kw):
         try:
-            return "CAST(STRFTIME('%s', %s) AS INTEGER)" % (
+            return "CAST(STRFTIME('{}', {}) AS INTEGER)".format(
                 self.extract_map[extract.field],
                 self.process(extract.expr, **kw),
             )
@@ -1378,13 +1378,13 @@ class SQLiteCompiler(compiler.SQLCompiler):
         )
 
     def visit_is_distinct_from_binary(self, binary, operator, **kw):
-        return "%s IS NOT %s" % (
+        return "{} IS NOT {}".format(
             self.process(binary.left),
             self.process(binary.right),
         )
 
     def visit_is_not_distinct_from_binary(self, binary, operator, **kw):
-        return "%s IS %s" % (
+        return "{} IS {}".format(
             self.process(binary.left),
             self.process(binary.right),
         )
@@ -1417,7 +1417,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
         return self.visit_empty_set_expr(type_)
 
     def visit_empty_set_expr(self, element_types, **kw):
-        return "SELECT %s FROM (SELECT %s) WHERE 1!=1" % (
+        return "SELECT {} FROM (SELECT {}) WHERE 1!=1".format(
             ", ".join("1" for type_ in element_types or [INTEGER()]),
             ", ".join("1" for type_ in element_types or [INTEGER()]),
         )
@@ -1496,7 +1496,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
             value_text = self.process(value.self_group(), use_schema=False)
 
             key_text = self.preparer.quote(c.name)
-            action_set_ops.append("%s = %s" % (key_text, value_text))
+            action_set_ops.append(f"{key_text} = {value_text}")
 
         # check for names that don't match columns
         if set_parameters:
@@ -1518,7 +1518,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
                     coercions.expect(roles.ExpressionElementRole, v),
                     use_schema=False,
                 )
-                action_set_ops.append("%s = %s" % (key_text, value_text))
+                action_set_ops.append(f"{key_text} = {value_text}")
 
         action_text = ", ".join(action_set_ops)
         if clause.update_whereclause is not None:
@@ -1526,7 +1526,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
                 clause.update_whereclause, include_table=True, use_schema=False
             )
 
-        return "ON CONFLICT %s DO UPDATE SET %s" % (target_text, action_text)
+        return f"ON CONFLICT {target_text} DO UPDATE SET {action_text}"
 
 
 class SQLiteDDLCompiler(compiler.DDLCompiler):
@@ -1680,7 +1680,7 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         if create.if_not_exists:
             text += "IF NOT EXISTS "
 
-        text += "%s ON %s (%s)" % (
+        text += "{} ON {} ({})".format(
             self._prepared_index_name(index, include_schema=True),
             preparer.format_table(index.table, use_schema=False),
             ", ".join(
@@ -2093,7 +2093,7 @@ class SQLiteDialect(default.DefaultDialect):
         self,
         table: str,
         type_: str,
-        schema: Optional[str],
+        schema: str | None,
         sqlite_include_internal: bool,
     ):
         main = self._format_schema(schema, table)

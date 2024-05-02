@@ -181,7 +181,7 @@ class DBAPICursor(Protocol):
     def execute(
         self,
         operation: Any,
-        parameters: Optional[_DBAPISingleExecuteParams] = None,
+        parameters: _DBAPISingleExecuteParams | None = None,
     ) -> Any: ...
 
     def executemany(
@@ -190,7 +190,7 @@ class DBAPICursor(Protocol):
         parameters: _DBAPIMultiExecuteParams,
     ) -> Any: ...
 
-    def fetchone(self) -> Optional[Any]: ...
+    def fetchone(self) -> Any | None: ...
 
     def fetchmany(self, size: int = ...) -> Sequence[Any]: ...
 
@@ -204,7 +204,7 @@ class DBAPICursor(Protocol):
         self, procname: str, parameters: Sequence[Any] = ...
     ) -> Any: ...
 
-    def nextset(self) -> Optional[bool]: ...
+    def nextset(self) -> bool | None: ...
 
     def __getattr__(self, key: str) -> Any: ...
 
@@ -261,7 +261,7 @@ IsolationLevel = Literal[
 
 
 class _CoreKnownExecutionOptions(TypedDict, total=False):
-    compiled_cache: Optional[CompiledCacheType]
+    compiled_cache: CompiledCacheType | None
     logging_token: str
     isolation_level: IsolationLevel
     no_parameters: bool
@@ -269,7 +269,7 @@ class _CoreKnownExecutionOptions(TypedDict, total=False):
     max_row_buffer: int
     yield_per: int
     insertmanyvalues_page_size: int
-    schema_translate_map: Optional[SchemaTranslateMapType]
+    schema_translate_map: SchemaTranslateMapType | None
     preserve_rowcount: bool
 
 
@@ -317,7 +317,7 @@ class ReflectedIdentity(TypedDict):
     """allows the sequence to wrap around when the maxvalue
     or minvalue has been reached."""
 
-    cache: Optional[int]
+    cache: int | None
     """number of future values in the
     sequence which are calculated in advance."""
 
@@ -361,7 +361,7 @@ class ReflectedColumn(TypedDict):
     nullable: bool
     """boolean flag if the column is NULL or NOT NULL"""
 
-    default: Optional[str]
+    default: str | None
     """column default expression as a SQL string"""
 
     autoincrement: NotRequired[bool]
@@ -377,7 +377,7 @@ class ReflectedColumn(TypedDict):
 
     """
 
-    comment: NotRequired[Optional[str]]
+    comment: NotRequired[str | None]
     """comment for the column, if present.
     Only some dialects return this key
     """
@@ -396,7 +396,7 @@ class ReflectedColumn(TypedDict):
     .. versionadded:: 1.4 - added support for identity column reflection.
     """
 
-    dialect_options: NotRequired[Dict[str, Any]]
+    dialect_options: NotRequired[dict[str, Any]]
     """Additional dialect-specific options detected for this reflected
     object"""
 
@@ -408,10 +408,10 @@ class ReflectedConstraint(TypedDict):
     A base class for all constraints
     """
 
-    name: Optional[str]
+    name: str | None
     """constraint name"""
 
-    comment: NotRequired[Optional[str]]
+    comment: NotRequired[str | None]
     """comment for the constraint, if present"""
 
 
@@ -427,7 +427,7 @@ class ReflectedCheckConstraint(ReflectedConstraint):
     sqltext: str
     """the check constraint's SQL expression"""
 
-    dialect_options: NotRequired[Dict[str, Any]]
+    dialect_options: NotRequired[dict[str, Any]]
     """Additional dialect-specific options detected for this check constraint
 
     .. versionadded:: 1.3.8
@@ -443,13 +443,13 @@ class ReflectedUniqueConstraint(ReflectedConstraint):
 
     """
 
-    column_names: List[str]
+    column_names: list[str]
     """column names which comprise the unique constraint"""
 
-    duplicates_index: NotRequired[Optional[str]]
+    duplicates_index: NotRequired[str | None]
     "Indicates if this unique constraint duplicates an index with this name"
 
-    dialect_options: NotRequired[Dict[str, Any]]
+    dialect_options: NotRequired[dict[str, Any]]
     """Additional dialect-specific options detected for this unique
     constraint"""
 
@@ -463,10 +463,10 @@ class ReflectedPrimaryKeyConstraint(ReflectedConstraint):
 
     """
 
-    constrained_columns: List[str]
+    constrained_columns: list[str]
     """column names which comprise the primary key"""
 
-    dialect_options: NotRequired[Dict[str, Any]]
+    dialect_options: NotRequired[dict[str, Any]]
     """Additional dialect-specific options detected for this primary key"""
 
 
@@ -479,19 +479,19 @@ class ReflectedForeignKeyConstraint(ReflectedConstraint):
 
     """
 
-    constrained_columns: List[str]
+    constrained_columns: list[str]
     """local column names which comprise the foreign key"""
 
-    referred_schema: Optional[str]
+    referred_schema: str | None
     """schema name of the table being referred"""
 
     referred_table: str
     """name of the table being referred"""
 
-    referred_columns: List[str]
+    referred_columns: list[str]
     """referred column names that correspond to ``constrained_columns``"""
 
-    options: NotRequired[Dict[str, Any]]
+    options: NotRequired[dict[str, Any]]
     """Additional options detected for this foreign key constraint"""
 
 
@@ -504,16 +504,16 @@ class ReflectedIndex(TypedDict):
 
     """
 
-    name: Optional[str]
+    name: str | None
     """index name"""
 
-    column_names: List[Optional[str]]
+    column_names: list[str | None]
     """column names which the index references.
     An element of this list is ``None`` if it's an expression and is
     returned in the ``expressions`` list.
     """
 
-    expressions: NotRequired[List[str]]
+    expressions: NotRequired[list[str]]
     """Expressions that compose the index. This list, when present, contains
     both plain column names (that are also in ``column_names``) and
     expressions (that are ``None`` in ``column_names``).
@@ -522,10 +522,10 @@ class ReflectedIndex(TypedDict):
     unique: bool
     """whether or not the index has a unique flag"""
 
-    duplicates_constraint: NotRequired[Optional[str]]
+    duplicates_constraint: NotRequired[str | None]
     "Indicates if this index mirrors a constraint with this name"
 
-    include_columns: NotRequired[List[str]]
+    include_columns: NotRequired[list[str]]
     """columns to include in the INCLUDE clause for supporting databases.
 
     .. deprecated:: 2.0
@@ -535,7 +535,7 @@ class ReflectedIndex(TypedDict):
 
     """
 
-    column_sorting: NotRequired[Dict[str, Tuple[str]]]
+    column_sorting: NotRequired[dict[str, tuple[str]]]
     """optional dict mapping column names or expressions to tuple of sort
     keywords, which may include ``asc``, ``desc``, ``nulls_first``,
     ``nulls_last``.
@@ -543,7 +543,7 @@ class ReflectedIndex(TypedDict):
     .. versionadded:: 1.3.5
     """
 
-    dialect_options: NotRequired[Dict[str, Any]]
+    dialect_options: NotRequired[dict[str, Any]]
     """Additional dialect-specific options detected for this index"""
 
 
@@ -556,7 +556,7 @@ class ReflectedTableComment(TypedDict):
 
     """
 
-    text: Optional[str]
+    text: str | None
     """text of the comment"""
 
 
@@ -658,7 +658,7 @@ class Dialect(EventTarget):
 
     dialect_description: str
 
-    dbapi: Optional[ModuleType]
+    dbapi: ModuleType | None
     """A reference to the DBAPI module object itself.
 
     SQLAlchemy dialects import DBAPI modules using the classmethod
@@ -701,13 +701,13 @@ class Dialect(EventTarget):
 
     compiler_linting: Linting
 
-    statement_compiler: Type[SQLCompiler]
+    statement_compiler: type[SQLCompiler]
     """a :class:`.Compiled` class used to compile SQL statements"""
 
-    ddl_compiler: Type[DDLCompiler]
+    ddl_compiler: type[DDLCompiler]
     """a :class:`.Compiled` class used to compile DDL statements"""
 
-    type_compiler_cls: ClassVar[Type[TypeCompiler]]
+    type_compiler_cls: ClassVar[type[TypeCompiler]]
     """a :class:`.Compiled` class used to compile SQL type objects
 
     .. versionadded:: 2.0
@@ -730,7 +730,7 @@ class Dialect(EventTarget):
 
     """
 
-    preparer: Type[IdentifierPreparer]
+    preparer: type[IdentifierPreparer]
     """a :class:`.IdentifierPreparer` class used to
     quote identifiers.
     """
@@ -741,14 +741,14 @@ class Dialect(EventTarget):
 
     """
 
-    server_version_info: Optional[Tuple[Any, ...]]
+    server_version_info: tuple[Any, ...] | None
     """a tuple containing a version number for the DB backend in use.
 
     This value is only available for supporting dialects, and is
     typically populated during the initial connection to the database.
     """
 
-    default_schema_name: Optional[str]
+    default_schema_name: str | None
     """the name of the default schema.  This value is only available for
     supporting dialects, and is typically populated during the
     initial connection to the database.
@@ -757,18 +757,18 @@ class Dialect(EventTarget):
 
     # NOTE: this does not take into effect engine-level isolation level.
     # not clear if this should be changed, seems like it should
-    default_isolation_level: Optional[IsolationLevel]
+    default_isolation_level: IsolationLevel | None
     """the isolation that is implicitly present on new connections"""
 
     # create_engine()  -> isolation_level  currently goes here
-    _on_connect_isolation_level: Optional[IsolationLevel]
+    _on_connect_isolation_level: IsolationLevel | None
 
-    execution_ctx_cls: Type[ExecutionContext]
+    execution_ctx_cls: type[ExecutionContext]
     """a :class:`.ExecutionContext` class used to handle statement execution"""
 
-    execute_sequence_format: Union[
-        Type[Tuple[Any, ...]], Type[Tuple[List[Any]]]
-    ]
+    execute_sequence_format: (
+        type[tuple[Any, ...]] | type[tuple[list[Any]]]
+    )
     """either the 'tuple' or 'list' type, depending on what cursor.execute()
     accepts for the second argument (they vary)."""
 
@@ -994,7 +994,7 @@ class Dialect(EventTarget):
     """target database, when given a CTE with an INSERT statement, needs
     the CTE to be below the INSERT"""
 
-    colspecs: MutableMapping[Type[TypeEngine[Any]], Type[TypeEngine[Any]]]
+    colspecs: MutableMapping[type[TypeEngine[Any]], type[TypeEngine[Any]]]
     """A dictionary of TypeEngine classes from sqlalchemy.types mapped
       to subclasses that are specific to the dialect class.  This
       dictionary is class-level only and is not accessed from the
@@ -1051,9 +1051,9 @@ class Dialect(EventTarget):
 
     """
 
-    construct_arguments: Optional[
-        List[Tuple[Type[Union[SchemaItem, ClauseElement]], Mapping[str, Any]]]
-    ] = None
+    construct_arguments: None | (
+        list[tuple[type[SchemaItem | ClauseElement], Mapping[str, Any]]]
+    ) = None
     """Optional set of argument specifiers for various SQLAlchemy
     constructs, typically schema items.
 
@@ -1166,10 +1166,10 @@ class Dialect(EventTarget):
 
     """
 
-    label_length: Optional[int]
+    label_length: int | None
     """optional user-defined max length for SQL labels"""
 
-    include_set_input_sizes: Optional[Set[Any]]
+    include_set_input_sizes: set[Any] | None
     """set of DBAPI type objects that should be included in
     automatic cursor.setinputsizes() calls.
 
@@ -1177,7 +1177,7 @@ class Dialect(EventTarget):
 
     """
 
-    exclude_set_input_sizes: Optional[Set[Any]]
+    exclude_set_input_sizes: set[Any] | None
     """set of DBAPI type objects that should be excluded in
     automatic cursor.setinputsizes() calls.
 
@@ -1199,7 +1199,7 @@ class Dialect(EventTarget):
 
     _type_memos: MutableMapping[TypeEngine[Any], _TypeMemoDict]
 
-    def _builtin_onconnect(self) -> Optional[_ListenerFnType]:
+    def _builtin_onconnect(self) -> _ListenerFnType | None:
         raise NotImplementedError()
 
     def create_connect_args(self, url: URL) -> ConnectArgsType:
@@ -1296,9 +1296,9 @@ class Dialect(EventTarget):
         self,
         connection: Connection,
         table_name: str,
-        schema: Optional[str] = None,
+        schema: str | None = None,
         **kw: Any,
-    ) -> List[ReflectedColumn]:
+    ) -> list[ReflectedColumn]:
         """Return information about columns in ``table_name``.
 
         Given a :class:`_engine.Connection`, a string
@@ -1316,10 +1316,10 @@ class Dialect(EventTarget):
     def get_multi_columns(
         self,
         connection: Connection,
-        schema: Optional[str] = None,
-        filter_names: Optional[Collection[str]] = None,
+        schema: str | None = None,
+        filter_names: Collection[str] | None = None,
         **kw: Any,
-    ) -> Iterable[Tuple[TableKey, List[ReflectedColumn]]]:
+    ) -> Iterable[tuple[TableKey, list[ReflectedColumn]]]:
         """Return information about columns in all tables in the
         given ``schema``.
 
@@ -1344,7 +1344,7 @@ class Dialect(EventTarget):
         self,
         connection: Connection,
         table_name: str,
-        schema: Optional[str] = None,
+        schema: str | None = None,
         **kw: Any,
     ) -> ReflectedPrimaryKeyConstraint:
         """Return information about the primary key constraint on
@@ -1364,10 +1364,10 @@ class Dialect(EventTarget):
     def get_multi_pk_constraint(
         self,
         connection: Connection,
-        schema: Optional[str] = None,
-        filter_names: Optional[Collection[str]] = None,
+        schema: str | None = None,
+        filter_names: Collection[str] | None = None,
         **kw: Any,
-    ) -> Iterable[Tuple[TableKey, ReflectedPrimaryKeyConstraint]]:
+    ) -> Iterable[tuple[TableKey, ReflectedPrimaryKeyConstraint]]:
         """Return information about primary key constraints in
         all tables in the given ``schema``.
 
@@ -1391,9 +1391,9 @@ class Dialect(EventTarget):
         self,
         connection: Connection,
         table_name: str,
-        schema: Optional[str] = None,
+        schema: str | None = None,
         **kw: Any,
-    ) -> List[ReflectedForeignKeyConstraint]:
+    ) -> list[ReflectedForeignKeyConstraint]:
         """Return information about foreign_keys in ``table_name``.
 
         Given a :class:`_engine.Connection`, a string
@@ -1410,10 +1410,10 @@ class Dialect(EventTarget):
     def get_multi_foreign_keys(
         self,
         connection: Connection,
-        schema: Optional[str] = None,
-        filter_names: Optional[Collection[str]] = None,
+        schema: str | None = None,
+        filter_names: Collection[str] | None = None,
         **kw: Any,
-    ) -> Iterable[Tuple[TableKey, List[ReflectedForeignKeyConstraint]]]:
+    ) -> Iterable[tuple[TableKey, list[ReflectedForeignKeyConstraint]]]:
         """Return information about foreign_keys in all tables
         in the given ``schema``.
 
@@ -1435,8 +1435,8 @@ class Dialect(EventTarget):
         raise NotImplementedError()
 
     def get_table_names(
-        self, connection: Connection, schema: Optional[str] = None, **kw: Any
-    ) -> List[str]:
+        self, connection: Connection, schema: str | None = None, **kw: Any
+    ) -> list[str]:
         """Return a list of table names for ``schema``.
 
         This is an internal dialect method. Applications should use
@@ -1447,8 +1447,8 @@ class Dialect(EventTarget):
         raise NotImplementedError()
 
     def get_temp_table_names(
-        self, connection: Connection, schema: Optional[str] = None, **kw: Any
-    ) -> List[str]:
+        self, connection: Connection, schema: str | None = None, **kw: Any
+    ) -> list[str]:
         """Return a list of temporary table names on the given connection,
         if supported by the underlying backend.
 
@@ -1460,8 +1460,8 @@ class Dialect(EventTarget):
         raise NotImplementedError()
 
     def get_view_names(
-        self, connection: Connection, schema: Optional[str] = None, **kw: Any
-    ) -> List[str]:
+        self, connection: Connection, schema: str | None = None, **kw: Any
+    ) -> list[str]:
         """Return a list of all non-materialized view names available in the
         database.
 
@@ -1475,8 +1475,8 @@ class Dialect(EventTarget):
         raise NotImplementedError()
 
     def get_materialized_view_names(
-        self, connection: Connection, schema: Optional[str] = None, **kw: Any
-    ) -> List[str]:
+        self, connection: Connection, schema: str | None = None, **kw: Any
+    ) -> list[str]:
         """Return a list of all materialized view names available in the
         database.
 
@@ -1492,8 +1492,8 @@ class Dialect(EventTarget):
         raise NotImplementedError()
 
     def get_sequence_names(
-        self, connection: Connection, schema: Optional[str] = None, **kw: Any
-    ) -> List[str]:
+        self, connection: Connection, schema: str | None = None, **kw: Any
+    ) -> list[str]:
         """Return a list of all sequence names available in the database.
 
         This is an internal dialect method. Applications should use
@@ -1507,8 +1507,8 @@ class Dialect(EventTarget):
         raise NotImplementedError()
 
     def get_temp_view_names(
-        self, connection: Connection, schema: Optional[str] = None, **kw: Any
-    ) -> List[str]:
+        self, connection: Connection, schema: str | None = None, **kw: Any
+    ) -> list[str]:
         """Return a list of temporary view names on the given connection,
         if supported by the underlying backend.
 
@@ -1519,7 +1519,7 @@ class Dialect(EventTarget):
 
         raise NotImplementedError()
 
-    def get_schema_names(self, connection: Connection, **kw: Any) -> List[str]:
+    def get_schema_names(self, connection: Connection, **kw: Any) -> list[str]:
         """Return a list of all schema names available in the database.
 
         This is an internal dialect method. Applications should use
@@ -1531,7 +1531,7 @@ class Dialect(EventTarget):
         self,
         connection: Connection,
         view_name: str,
-        schema: Optional[str] = None,
+        schema: str | None = None,
         **kw: Any,
     ) -> str:
         """Return plain or materialized view definition.
@@ -1550,9 +1550,9 @@ class Dialect(EventTarget):
         self,
         connection: Connection,
         table_name: str,
-        schema: Optional[str] = None,
+        schema: str | None = None,
         **kw: Any,
-    ) -> List[ReflectedIndex]:
+    ) -> list[ReflectedIndex]:
         """Return information about indexes in ``table_name``.
 
         Given a :class:`_engine.Connection`, a string
@@ -1569,10 +1569,10 @@ class Dialect(EventTarget):
     def get_multi_indexes(
         self,
         connection: Connection,
-        schema: Optional[str] = None,
-        filter_names: Optional[Collection[str]] = None,
+        schema: str | None = None,
+        filter_names: Collection[str] | None = None,
         **kw: Any,
-    ) -> Iterable[Tuple[TableKey, List[ReflectedIndex]]]:
+    ) -> Iterable[tuple[TableKey, list[ReflectedIndex]]]:
         """Return information about indexes in in all tables
         in the given ``schema``.
 
@@ -1597,9 +1597,9 @@ class Dialect(EventTarget):
         self,
         connection: Connection,
         table_name: str,
-        schema: Optional[str] = None,
+        schema: str | None = None,
         **kw: Any,
-    ) -> List[ReflectedUniqueConstraint]:
+    ) -> list[ReflectedUniqueConstraint]:
         r"""Return information about unique constraints in ``table_name``.
 
         Given a string ``table_name`` and an optional string ``schema``, return
@@ -1615,10 +1615,10 @@ class Dialect(EventTarget):
     def get_multi_unique_constraints(
         self,
         connection: Connection,
-        schema: Optional[str] = None,
-        filter_names: Optional[Collection[str]] = None,
+        schema: str | None = None,
+        filter_names: Collection[str] | None = None,
         **kw: Any,
-    ) -> Iterable[Tuple[TableKey, List[ReflectedUniqueConstraint]]]:
+    ) -> Iterable[tuple[TableKey, list[ReflectedUniqueConstraint]]]:
         """Return information about unique constraints in all tables
         in the given ``schema``.
 
@@ -1643,9 +1643,9 @@ class Dialect(EventTarget):
         self,
         connection: Connection,
         table_name: str,
-        schema: Optional[str] = None,
+        schema: str | None = None,
         **kw: Any,
-    ) -> List[ReflectedCheckConstraint]:
+    ) -> list[ReflectedCheckConstraint]:
         r"""Return information about check constraints in ``table_name``.
 
         Given a string ``table_name`` and an optional string ``schema``, return
@@ -1662,10 +1662,10 @@ class Dialect(EventTarget):
     def get_multi_check_constraints(
         self,
         connection: Connection,
-        schema: Optional[str] = None,
-        filter_names: Optional[Collection[str]] = None,
+        schema: str | None = None,
+        filter_names: Collection[str] | None = None,
         **kw: Any,
-    ) -> Iterable[Tuple[TableKey, List[ReflectedCheckConstraint]]]:
+    ) -> Iterable[tuple[TableKey, list[ReflectedCheckConstraint]]]:
         """Return information about check constraints in all tables
         in the given ``schema``.
 
@@ -1690,9 +1690,9 @@ class Dialect(EventTarget):
         self,
         connection: Connection,
         table_name: str,
-        schema: Optional[str] = None,
+        schema: str | None = None,
         **kw: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Return a dictionary of options specified when ``table_name``
         was created.
 
@@ -1704,10 +1704,10 @@ class Dialect(EventTarget):
     def get_multi_table_options(
         self,
         connection: Connection,
-        schema: Optional[str] = None,
-        filter_names: Optional[Collection[str]] = None,
+        schema: str | None = None,
+        filter_names: Collection[str] | None = None,
         **kw: Any,
-    ) -> Iterable[Tuple[TableKey, Dict[str, Any]]]:
+    ) -> Iterable[tuple[TableKey, dict[str, Any]]]:
         """Return a dictionary of options specified when the tables in the
         given schema were created.
 
@@ -1731,7 +1731,7 @@ class Dialect(EventTarget):
         self,
         connection: Connection,
         table_name: str,
-        schema: Optional[str] = None,
+        schema: str | None = None,
         **kw: Any,
     ) -> ReflectedTableComment:
         r"""Return the "comment" for the table identified by ``table_name``.
@@ -1755,10 +1755,10 @@ class Dialect(EventTarget):
     def get_multi_table_comment(
         self,
         connection: Connection,
-        schema: Optional[str] = None,
-        filter_names: Optional[Collection[str]] = None,
+        schema: str | None = None,
+        filter_names: Collection[str] | None = None,
         **kw: Any,
-    ) -> Iterable[Tuple[TableKey, ReflectedTableComment]]:
+    ) -> Iterable[tuple[TableKey, ReflectedTableComment]]:
         """Return information about the table comment in all tables
         in the given ``schema``.
 
@@ -1803,7 +1803,7 @@ class Dialect(EventTarget):
         self,
         connection: Connection,
         table_name: str,
-        schema: Optional[str] = None,
+        schema: str | None = None,
         **kw: Any,
     ) -> bool:
         """For internal dialect use, check the existence of a particular table
@@ -1845,7 +1845,7 @@ class Dialect(EventTarget):
         connection: Connection,
         table_name: str,
         index_name: str,
-        schema: Optional[str] = None,
+        schema: str | None = None,
         **kw: Any,
     ) -> bool:
         """Check the existence of a particular index name in the database.
@@ -1871,7 +1871,7 @@ class Dialect(EventTarget):
         self,
         connection: Connection,
         sequence_name: str,
-        schema: Optional[str] = None,
+        schema: str | None = None,
         **kw: Any,
     ) -> bool:
         """Check the existence of a particular sequence in the database.
@@ -2135,7 +2135,7 @@ class Dialect(EventTarget):
 
         raise NotImplementedError()
 
-    def do_recover_twophase(self, connection: Connection) -> List[Any]:
+    def do_recover_twophase(self, connection: Connection) -> list[Any]:
         """Recover list of uncommitted prepared two phase transaction
         identifiers on the given connection.
 
@@ -2150,7 +2150,7 @@ class Dialect(EventTarget):
         cursor: DBAPICursor,
         statement: str,
         parameters: _DBAPIMultiExecuteParams,
-        generic_setinputsizes: Optional[_GenericSetInputSizesType],
+        generic_setinputsizes: _GenericSetInputSizesType | None,
         context: ExecutionContext,
     ) -> Iterator[_InsertManyValuesBatch]:
         """convert executemany parameters for an INSERT into an iterator
@@ -2165,7 +2165,7 @@ class Dialect(EventTarget):
         cursor: DBAPICursor,
         statement: str,
         parameters: _DBAPIMultiExecuteParams,
-        context: Optional[ExecutionContext] = None,
+        context: ExecutionContext | None = None,
     ) -> None:
         """Provide an implementation of ``cursor.executemany(statement,
         parameters)``."""
@@ -2176,8 +2176,8 @@ class Dialect(EventTarget):
         self,
         cursor: DBAPICursor,
         statement: str,
-        parameters: Optional[_DBAPISingleExecuteParams],
-        context: Optional[ExecutionContext] = None,
+        parameters: _DBAPISingleExecuteParams | None,
+        context: ExecutionContext | None = None,
     ) -> None:
         """Provide an implementation of ``cursor.execute(statement,
         parameters)``."""
@@ -2188,7 +2188,7 @@ class Dialect(EventTarget):
         self,
         cursor: DBAPICursor,
         statement: str,
-        context: Optional[ExecutionContext] = None,
+        context: ExecutionContext | None = None,
     ) -> None:
         """Provide an implementation of ``cursor.execute(statement)``.
 
@@ -2201,8 +2201,8 @@ class Dialect(EventTarget):
     def is_disconnect(
         self,
         e: Exception,
-        connection: Optional[Union[PoolProxiedConnection, DBAPIConnection]],
-        cursor: Optional[DBAPICursor],
+        connection: PoolProxiedConnection | DBAPIConnection | None,
+        cursor: DBAPICursor | None,
     ) -> bool:
         """Return True if the given DB-API error indicates an invalid
         connection"""
@@ -2243,7 +2243,7 @@ class Dialect(EventTarget):
         """
         raise NotImplementedError()
 
-    def on_connect_url(self, url: URL) -> Optional[Callable[[Any], Any]]:
+    def on_connect_url(self, url: URL) -> Callable[[Any], Any] | None:
         """return a callable which sets up a newly created DBAPI connection.
 
         This method is a new hook that supersedes the
@@ -2304,7 +2304,7 @@ class Dialect(EventTarget):
         """
         return self.on_connect()
 
-    def on_connect(self) -> Optional[Callable[[Any], Any]]:
+    def on_connect(self) -> Callable[[Any], Any] | None:
         """return a callable which sets up a newly created DBAPI connection.
 
         The callable should accept a single argument "conn" which is the
@@ -2477,7 +2477,7 @@ class Dialect(EventTarget):
 
     def get_isolation_level_values(
         self, dbapi_conn: DBAPIConnection
-    ) -> List[IsolationLevel]:
+    ) -> list[IsolationLevel]:
         """return a sequence of string isolation level names that are accepted
         by this dialect.
 
@@ -2525,7 +2525,7 @@ class Dialect(EventTarget):
         raise NotImplementedError()
 
     @classmethod
-    def get_dialect_cls(cls, url: URL) -> Type[Dialect]:
+    def get_dialect_cls(cls, url: URL) -> type[Dialect]:
         """Given a URL, return the :class:`.Dialect` that will be used.
 
         This is a hook that allows an external plugin to provide functionality
@@ -2539,7 +2539,7 @@ class Dialect(EventTarget):
         return cls
 
     @classmethod
-    def get_async_dialect_cls(cls, url: URL) -> Type[Dialect]:
+    def get_async_dialect_cls(cls, url: URL) -> type[Dialect]:
         """Given a URL, return the :class:`.Dialect` that will be used by
         an async engine.
 
@@ -2647,7 +2647,7 @@ class Dialect(EventTarget):
         """
         raise NotImplementedError()
 
-    def get_dialect_pool_class(self, url: URL) -> Type[Pool]:
+    def get_dialect_pool_class(self, url: URL) -> type[Pool]:
         """return a Pool class to use for a given URL"""
         raise NotImplementedError()
 
@@ -2825,7 +2825,7 @@ class CreateEnginePlugin:
 
     """  # noqa: E501
 
-    def __init__(self, url: URL, kwargs: Dict[str, Any]):
+    def __init__(self, url: URL, kwargs: dict[str, Any]):
         """Construct a new :class:`.CreateEnginePlugin`.
 
         The plugin object is instantiated individually for each call
@@ -2870,12 +2870,12 @@ class CreateEnginePlugin:
         raise NotImplementedError()
 
     def handle_dialect_kwargs(
-        self, dialect_cls: Type[Dialect], dialect_args: Dict[str, Any]
+        self, dialect_cls: type[Dialect], dialect_args: dict[str, Any]
     ) -> None:
         """parse and modify dialect kwargs"""
 
     def handle_pool_kwargs(
-        self, pool_cls: Type[Pool], pool_args: Dict[str, Any]
+        self, pool_cls: type[Pool], pool_args: dict[str, Any]
     ) -> None:
         """parse and modify pool kwargs"""
 
@@ -2913,7 +2913,7 @@ class ExecutionContext:
     cursor: DBAPICursor
     """DB-API cursor procured from the connection"""
 
-    compiled: Optional[Compiled]
+    compiled: Compiled | None
     """if passed to constructor, sqlalchemy.engine.base.Compiled object
       being executed"""
 
@@ -2922,7 +2922,7 @@ class ExecutionContext:
       passed to the constructor, or must be created from the
       sql.Compiled object by the time pre_exec() has completed."""
 
-    invoked_statement: Optional[Executable]
+    invoked_statement: Executable | None
     """The Executable statement object that was given in the first place.
 
     This should be structurally equivalent to compiled.statement, but not
@@ -2969,11 +2969,11 @@ class ExecutionContext:
 
     """
 
-    prefetch_cols: util.generic_fn_descriptor[Optional[Sequence[Column[Any]]]]
+    prefetch_cols: util.generic_fn_descriptor[Sequence[Column[Any]] | None]
     """a list of Column objects for which a client-side default
       was fired off.  Applies to inserts and updates."""
 
-    postfetch_cols: util.generic_fn_descriptor[Optional[Sequence[Column[Any]]]]
+    postfetch_cols: util.generic_fn_descriptor[Sequence[Column[Any]] | None]
     """a list of Column objects for which a server-side default or
       inline SQL expression value was fired off.  Applies to inserts
       and updates."""
@@ -3002,7 +3002,7 @@ class ExecutionContext:
         compiled: SQLCompiler,
         parameters: _CoreMultiExecuteParams,
         invoked_statement: Executable,
-        extracted_parameters: Optional[Sequence[BindParameter[Any]]],
+        extracted_parameters: Sequence[BindParameter[Any]] | None,
         cache_hit: CacheStats = CacheStats.CACHING_DISABLED,
     ) -> ExecutionContext:
         raise NotImplementedError()
@@ -3031,15 +3031,15 @@ class ExecutionContext:
 
     def _exec_default(
         self,
-        column: Optional[Column[Any]],
+        column: Column[Any] | None,
         default: DefaultGenerator,
-        type_: Optional[TypeEngine[Any]],
+        type_: TypeEngine[Any] | None,
     ) -> Any:
         raise NotImplementedError()
 
     def _prepare_set_input_sizes(
         self,
-    ) -> Optional[List[Tuple[str, Any, TypeEngine[Any]]]]:
+    ) -> list[tuple[str, Any, TypeEngine[Any]]] | None:
         raise NotImplementedError()
 
     def _get_cache_stats(self) -> str:
@@ -3133,7 +3133,7 @@ class ExecutionContext:
 
         raise NotImplementedError()
 
-    def get_rowcount(self) -> Optional[int]:
+    def get_rowcount(self) -> int | None:
         """Return the DBAPI ``cursor.rowcount`` value, or in some
         cases an interpreted value.
 
@@ -3199,7 +3199,7 @@ class ExceptionContext:
 
     """
 
-    connection: Optional[Connection]
+    connection: Connection | None
     """The :class:`_engine.Connection` in use during the exception.
 
     This member is present, except in the case of a failure when
@@ -3212,7 +3212,7 @@ class ExceptionContext:
 
     """
 
-    engine: Optional[Engine]
+    engine: Engine | None
     """The :class:`_engine.Engine` in use during the exception.
 
     This member is present in all cases except for when handling an error
@@ -3220,21 +3220,21 @@ class ExceptionContext:
 
     """
 
-    cursor: Optional[DBAPICursor]
+    cursor: DBAPICursor | None
     """The DBAPI cursor object.
 
     May be None.
 
     """
 
-    statement: Optional[str]
+    statement: str | None
     """String SQL statement that was emitted directly to the DBAPI.
 
     May be None.
 
     """
 
-    parameters: Optional[_DBAPIAnyExecuteParams]
+    parameters: _DBAPIAnyExecuteParams | None
     """Parameter collection that was emitted directly to the DBAPI.
 
     May be None.
@@ -3248,7 +3248,7 @@ class ExceptionContext:
 
     """
 
-    sqlalchemy_exception: Optional[StatementError]
+    sqlalchemy_exception: StatementError | None
     """The :class:`sqlalchemy.exc.StatementError` which wraps the original,
     and will be raised if exception handling is not circumvented by the event.
 
@@ -3258,7 +3258,7 @@ class ExceptionContext:
 
     """
 
-    chained_exception: Optional[BaseException]
+    chained_exception: BaseException | None
     """The exception that was returned by the previous handler in the
     exception chain, if any.
 
@@ -3269,7 +3269,7 @@ class ExceptionContext:
 
     """
 
-    execution_context: Optional[ExecutionContext]
+    execution_context: ExecutionContext | None
     """The :class:`.ExecutionContext` corresponding to the execution
     operation in progress.
 

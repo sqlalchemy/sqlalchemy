@@ -45,7 +45,7 @@ final = _no_op
 pointer = _no_op  # not sure how to express a pointer to a type
 
 
-def declare(t: Type[_T], value: Any = None, **kw: Any) -> _T:
+def declare(t: type[_T], value: Any = None, **kw: Any) -> _T:
     return value  # type: ignore[no-any-return]
 
 
@@ -57,5 +57,5 @@ def exceptval(value: Any = None, *, check: bool = False) -> _NO_OP[_T]:
     return _no_op
 
 
-def cast(type_: Type[_T], value: Any, *, typecheck: bool = False) -> _T:
+def cast(type_: type[_T], value: Any, *, typecheck: bool = False) -> _T:
     return value  # type: ignore[no-any-return]

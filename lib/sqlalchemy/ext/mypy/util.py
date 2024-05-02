@@ -65,7 +65,7 @@ class SQLAlchemyAttribute:
         name: str,
         line: int,
         column: int,
-        typ: Optional[Type],
+        typ: Type | None,
         info: TypeInfo,
     ) -> None:
         self.name = name
@@ -112,11 +112,11 @@ def _set_info_metadata(info: TypeInfo, key: str, data: Any) -> None:
     info.metadata.setdefault("sqlalchemy", {})[key] = data
 
 
-def _get_info_metadata(info: TypeInfo, key: str) -> Optional[Any]:
+def _get_info_metadata(info: TypeInfo, key: str) -> Any | None:
     return info.metadata.get("sqlalchemy", {}).get(key, None)
 
 
-def _get_info_mro_metadata(info: TypeInfo, key: str) -> Optional[Any]:
+def _get_info_mro_metadata(info: TypeInfo, key: str) -> Any | None:
     if info.mro:
         for base in info.mro:
             metadata = _get_info_metadata(base, key)
@@ -154,14 +154,14 @@ def get_has_table(info: TypeInfo) -> bool:
 
 def get_mapped_attributes(
     info: TypeInfo, api: SemanticAnalyzerPluginInterface
-) -> Optional[List[SQLAlchemyAttribute]]:
-    mapped_attributes: Optional[List[JsonDict]] = _get_info_metadata(
+) -> list[SQLAlchemyAttribute] | None:
+    mapped_attributes: list[JsonDict] | None = _get_info_metadata(
         info, "mapped_attributes"
     )
     if mapped_attributes is None:
         return None
 
-    attributes: List[SQLAlchemyAttribute] = []
+    attributes: list[SQLAlchemyAttribute] = []
 
     for data in mapped_attributes:
         attr = SQLAlchemyAttribute.deserialize(info, data, api)
@@ -179,7 +179,7 @@ def format_type(typ_: Type, options: Options) -> str:
 
 
 def set_mapped_attributes(
-    info: TypeInfo, attributes: List[SQLAlchemyAttribute]
+    info: TypeInfo, attributes: list[SQLAlchemyAttribute]
 ) -> None:
     _set_info_metadata(
         info,
@@ -194,7 +194,7 @@ def fail(api: SemanticAnalyzerPluginInterface, msg: str, ctx: Context) -> None:
 
 
 def add_global(
-    ctx: Union[ClassDefContext, DynamicClassDefContext],
+    ctx: ClassDefContext | DynamicClassDefContext,
     module: str,
     symbol_name: str,
     asname: str,
@@ -212,7 +212,7 @@ def add_global(
 @overload
 def get_callexpr_kwarg(
     callexpr: CallExpr, name: str, *, expr_types: None = ...
-) -> Optional[Union[CallExpr, NameExpr]]: ...
+) -> CallExpr | NameExpr | None: ...
 
 
 @overload
@@ -220,16 +220,16 @@ def get_callexpr_kwarg(
     callexpr: CallExpr,
     name: str,
     *,
-    expr_types: Tuple[TypingType[_TArgType], ...],
-) -> Optional[_TArgType]: ...
+    expr_types: tuple[TypingType[_TArgType], ...],
+) -> _TArgType | None: ...
 
 
 def get_callexpr_kwarg(
     callexpr: CallExpr,
     name: str,
     *,
-    expr_types: Optional[Tuple[TypingType[Any], ...]] = None,
-) -> Optional[Any]:
+    expr_types: tuple[TypingType[Any], ...] | None = None,
+) -> Any | None:
     try:
         arg_idx = callexpr.arg_names.index(name)
     except ValueError:
@@ -256,7 +256,7 @@ def flatten_typechecking(stmts: Iterable[Statement]) -> Iterator[Statement]:
             yield stmt
 
 
-def type_for_callee(callee: Expression) -> Optional[Union[Instance, TypeInfo]]:
+def type_for_callee(callee: Expression) -> Instance | TypeInfo | None:
     if isinstance(callee, (MemberExpr, NameExpr)):
         if isinstance(callee.node, FuncDef):
             if callee.node.type and isinstance(callee.node.type, CallableType):
@@ -327,7 +327,7 @@ def unbound_to_instance(
 
 def info_for_cls(
     cls: ClassDef, api: SemanticAnalyzerPluginInterface
-) -> Optional[TypeInfo]:
+) -> TypeInfo | None:
     if cls.info is CLASSDEF_NO_INFO:
         sym = api.lookup_qualified(cls.name, cls)
         if sym is None:

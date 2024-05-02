@@ -94,7 +94,7 @@ class DescriptorProperty(MapperProperty[_T]):
     """:class:`.MapperProperty` which proxies access to a
     user-defined descriptor."""
 
-    doc: Optional[str] = None
+    doc: str | None = None
 
     uses_objects = False
     _links_to_entity = False
@@ -175,7 +175,7 @@ _CC = TypeVar("_CC", bound=Any)
 
 
 _composite_getters: weakref.WeakKeyDictionary[
-    Type[Any], Callable[[Any], Tuple[Any, ...]]
+    type[Any], Callable[[Any], tuple[Any, ...]]
 ] = weakref.WeakKeyDictionary()
 
 
@@ -194,27 +194,27 @@ class CompositeProperty(
 
     """
 
-    composite_class: Union[Type[_CC], Callable[..., _CC]]
-    attrs: Tuple[_CompositeAttrType[Any], ...]
+    composite_class: type[_CC] | Callable[..., _CC]
+    attrs: tuple[_CompositeAttrType[Any], ...]
 
     _generated_composite_accessor: CallableReference[
-        Optional[Callable[[_CC], Tuple[Any, ...]]]
+        Callable[[_CC], tuple[Any, ...]] | None
     ]
 
-    comparator_factory: Type[Comparator[_CC]]
+    comparator_factory: type[Comparator[_CC]]
 
     def __init__(
         self,
-        _class_or_attr: Union[
-            None, Type[_CC], Callable[..., _CC], _CompositeAttrType[Any]
-        ] = None,
+        _class_or_attr: (
+            None | type[_CC] | Callable[..., _CC] | _CompositeAttrType[Any]
+        ) = None,
         *attrs: _CompositeAttrType[Any],
-        attribute_options: Optional[_AttributeOptions] = None,
+        attribute_options: _AttributeOptions | None = None,
         active_history: bool = False,
         deferred: bool = False,
-        group: Optional[str] = None,
-        comparator_factory: Optional[Type[Comparator[_CC]]] = None,
-        info: Optional[_InfoType] = None,
+        group: str | None = None,
+        comparator_factory: type[Comparator[_CC]] | None = None,
+        info: _InfoType | None = None,
         **kwargs: Any,
     ):
         super().__init__(attribute_options=attribute_options)
@@ -247,7 +247,7 @@ class CompositeProperty(
         super().instrument_class(mapper)
         self._setup_event_handlers()
 
-    def _composite_values_from_instance(self, value: _CC) -> Tuple[Any, ...]:
+    def _composite_values_from_instance(self, value: _CC) -> tuple[Any, ...]:
         if self._generated_composite_accessor:
             return self._generated_composite_accessor(value)
         else:
@@ -350,12 +350,12 @@ class CompositeProperty(
         self,
         decl_scan: _ClassScanMapperConfig,
         registry: _RegistryType,
-        cls: Type[Any],
-        originating_module: Optional[str],
+        cls: type[Any],
+        originating_module: str | None,
         key: str,
-        mapped_container: Optional[Type[Mapped[Any]]],
-        annotation: Optional[_AnnotationScanType],
-        extracted_mapped_annotation: Optional[_AnnotationScanType],
+        mapped_container: type[Mapped[Any]] | None,
+        annotation: _AnnotationScanType | None,
+        extracted_mapped_annotation: _AnnotationScanType | None,
         is_dataclass_field: bool,
     ) -> None:
         MappedColumn = util.preloaded.orm_properties.MappedColumn
@@ -435,8 +435,8 @@ class CompositeProperty(
     def _setup_for_dataclass(
         self,
         registry: _RegistryType,
-        cls: Type[Any],
-        originating_module: Optional[str],
+        cls: type[Any],
+        originating_module: str | None,
         key: str,
     ) -> None:
         MappedColumn = util.preloaded.orm_properties.MappedColumn
@@ -513,11 +513,11 @@ class CompositeProperty(
         ]
 
     @property
-    def mapper_property_to_assign(self) -> Optional[MapperProperty[_CC]]:
+    def mapper_property_to_assign(self) -> MapperProperty[_CC] | None:
         return self
 
     @property
-    def columns_to_assign(self) -> List[Tuple[schema.Column[Any], int]]:
+    def columns_to_assign(self) -> list[tuple[schema.Column[Any], int]]:
         return [(c, 0) for c in self.columns if c.table is None]
 
     @util.preload_module("orm.properties")
@@ -551,7 +551,7 @@ class CompositeProperty(
         def refresh_handler(
             state: InstanceState[Any],
             context: ORMCompileState,
-            to_load: Optional[Sequence[str]],
+            to_load: Sequence[str] | None,
         ) -> None:
             # note this corresponds to sqlalchemy.ext.mutable load_attrs()
 
@@ -563,7 +563,7 @@ class CompositeProperty(
         def _load_refresh_handler(
             state: InstanceState[Any],
             context: ORMCompileState,
-            to_load: Optional[Sequence[str]],
+            to_load: Sequence[str] | None,
             is_refresh: bool,
         ) -> None:
             dict_ = state.dict
@@ -594,7 +594,7 @@ class CompositeProperty(
             )
 
         def expire_handler(
-            state: InstanceState[Any], keys: Optional[Sequence[str]]
+            state: InstanceState[Any], keys: Sequence[str] | None
         ) -> None:
             if keys is None or set(self._attribute_keys).intersection(keys):
                 state.dict.pop(self.key, None)
@@ -641,17 +641,17 @@ class CompositeProperty(
 
     def _populate_composite_bulk_save_mappings_fn(
         self,
-    ) -> Callable[[Dict[str, Any]], None]:
+    ) -> Callable[[dict[str, Any]], None]:
         if self._generated_composite_accessor:
             get_values = self._generated_composite_accessor
         else:
 
-            def get_values(val: Any) -> Tuple[Any]:
+            def get_values(val: Any) -> tuple[Any]:
                 return val.__composite_values__()  # type: ignore
 
         attrs = [prop.key for prop in self.props]
 
-        def populate(dest_dict: Dict[str, Any]) -> None:
+        def populate(dest_dict: dict[str, Any]) -> None:
             dest_dict.update(
                 {
                     key: val
@@ -671,8 +671,8 @@ class CompositeProperty(
     ) -> History:
         """Provided for userland code that uses attributes.get_history()."""
 
-        added: List[Any] = []
-        deleted: List[Any] = []
+        added: list[Any] = []
+        deleted: list[Any] = []
 
         has_history = False
         for prop in self.props:
@@ -773,7 +773,7 @@ class CompositeProperty(
 
         def _bulk_update_tuples(
             self, value: Any
-        ) -> Sequence[Tuple[_DMLColumnArgument, Any]]:
+        ) -> Sequence[tuple[_DMLColumnArgument, Any]]:
             if isinstance(value, BindParameter):
                 value = value.value
 
@@ -887,7 +887,7 @@ class ConcreteInheritedProperty(DescriptorProperty[_T]):
 
     def _comparator_factory(
         self, mapper: Mapper[Any]
-    ) -> Type[PropComparator[_T]]:
+    ) -> type[PropComparator[_T]]:
         comparator_callable = None
 
         for m in self.parent.iterate_to_root():
@@ -938,17 +938,17 @@ class SynonymProperty(DescriptorProperty[_T]):
 
     """
 
-    comparator_factory: Optional[Type[PropComparator[_T]]]
+    comparator_factory: type[PropComparator[_T]] | None
 
     def __init__(
         self,
         name: str,
-        map_column: Optional[bool] = None,
-        descriptor: Optional[Any] = None,
-        comparator_factory: Optional[Type[PropComparator[_T]]] = None,
-        attribute_options: Optional[_AttributeOptions] = None,
-        info: Optional[_InfoType] = None,
-        doc: Optional[str] = None,
+        map_column: bool | None = None,
+        descriptor: Any | None = None,
+        comparator_factory: type[PropComparator[_T]] | None = None,
+        attribute_options: _AttributeOptions | None = None,
+        info: _InfoType | None = None,
+        doc: str | None = None,
     ):
         super().__init__(attribute_options=attribute_options)
 
@@ -979,7 +979,7 @@ class SynonymProperty(DescriptorProperty[_T]):
     @util.memoized_property
     def _proxied_object(
         self,
-    ) -> Union[MapperProperty[_T], SQLORMOperations[_T]]:
+    ) -> MapperProperty[_T] | SQLORMOperations[_T]:
         attr = getattr(self.parent.class_, self.name)
         if not hasattr(attr, "property") or not isinstance(
             attr.property, MapperProperty

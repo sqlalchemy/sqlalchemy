@@ -30,13 +30,13 @@ expr2 = c2.in_([1, 2, 3])
 
 expr2_set = c2.in_({1, 2, 3})
 
-expr2_gen = c2.in_((x for x in (1, 2, 3)))
+expr2_gen = c2.in_(x for x in (1, 2, 3))
 
 nexpr2 = c2.not_in([1, 2, 3])
 
 nexpr2_set = c2.not_in({1, 2, 3})
 
-nexpr2_gen = c2.not_in((x for x in (1, 2, 3)))
+nexpr2_gen = c2.not_in(x for x in (1, 2, 3))
 
 short_cir1 = and_(True, c2 == 5)
 short_cir2 = or_(False, c2 == 5)

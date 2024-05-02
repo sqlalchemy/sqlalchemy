@@ -69,7 +69,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         )
 
         o = Order()
-        self.assert_(o.description is None)
+        self.assertTrue(o.description is None)
 
         q = fixture_session().query(Order).order_by(Order.id)
 
@@ -139,7 +139,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         )
 
     @testing.combinations(True, False, None, argnames="deferred_parameter")
-    def test_group_defer_newstyle(self, deferred_parameter: Union[bool, None]):
+    def test_group_defer_newstyle(self, deferred_parameter: bool | None):
         class Base(DeclarativeBase):
             pass
 

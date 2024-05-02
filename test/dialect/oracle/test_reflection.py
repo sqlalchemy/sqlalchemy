@@ -728,10 +728,10 @@ class ViewReflectionTest(fixtures.TestBase):
                 "sqla_testing", "oracle_db_link"
             )
             sql += """
-    CREATE SYNONYM syn_link FOR tbl_plain_v@%(link)s;
-    """ % {
-                "link": cls.dblink
-            }
+    CREATE SYNONYM syn_link FOR tbl_plain_v@{link};
+    """.format(
+                link=cls.dblink
+            )
         with testing.db.begin() as conn:
             for stmt in (
                 sql % {"test_schema": testing.config.test_schema}

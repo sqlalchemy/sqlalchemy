@@ -131,7 +131,7 @@ class QueryContext:
     )
 
     runid: int
-    post_load_paths: Dict[PathRegistry, PostLoad]
+    post_load_paths: dict[PathRegistry, PostLoad]
     compile_state: ORMCompileState
 
     class default_load_options(Options):
@@ -151,18 +151,18 @@ class QueryContext:
     def __init__(
         self,
         compile_state: CompileState,
-        statement: Union[
-            Select[Unpack[TupleAny]],
-            FromStatement[Unpack[TupleAny]],
-        ],
+        statement: (
+            Select[Unpack[TupleAny]] |
+            FromStatement[Unpack[TupleAny]]
+        ),
         params: _CoreSingleExecuteParams,
         session: Session,
-        load_options: Union[
-            Type[QueryContext.default_load_options],
-            QueryContext.default_load_options,
-        ],
-        execution_options: Optional[OrmExecuteOptionsParameter] = None,
-        bind_arguments: Optional[_BindArguments] = None,
+        load_options: (
+            type[QueryContext.default_load_options] |
+            QueryContext.default_load_options
+        ),
+        execution_options: OrmExecuteOptionsParameter | None = None,
+        bind_arguments: _BindArguments | None = None,
     ):
         self.load_options = load_options
         self.execution_options = execution_options or _EMPTY_DICT
@@ -259,8 +259,8 @@ class AbstractORMCompileState(CompileState):
     @classmethod
     def create_for_statement(
         cls,
-        statement: Union[Select, FromStatement],
-        compiler: Optional[SQLCompiler],
+        statement: Select | FromStatement,
+        compiler: SQLCompiler | None,
         **kw: Any,
     ) -> AbstractORMCompileState:
         """Create a context for a statement given a :class:`.Compiler`.
@@ -405,25 +405,25 @@ class ORMCompileState(AbstractORMCompileState):
         _render_for_subquery = False
         _is_star = False
 
-    attributes: Dict[Any, Any]
-    global_attributes: Dict[Any, Any]
+    attributes: dict[Any, Any]
+    global_attributes: dict[Any, Any]
 
-    statement: Union[Select[Unpack[TupleAny]], FromStatement[Unpack[TupleAny]]]
-    select_statement: Union[
-        Select[Unpack[TupleAny]], FromStatement[Unpack[TupleAny]]
-    ]
-    _entities: List[_QueryEntity]
-    _polymorphic_adapters: Dict[_InternalEntityType, ORMAdapter]
-    compile_options: Union[
-        Type[default_compile_options], default_compile_options
-    ]
-    _primary_entity: Optional[_QueryEntity]
+    statement: Select[Unpack[TupleAny]] | FromStatement[Unpack[TupleAny]]
+    select_statement: (
+        Select[Unpack[TupleAny]] | FromStatement[Unpack[TupleAny]]
+    )
+    _entities: list[_QueryEntity]
+    _polymorphic_adapters: dict[_InternalEntityType, ORMAdapter]
+    compile_options: (
+        type[default_compile_options] | default_compile_options
+    )
+    _primary_entity: _QueryEntity | None
     use_legacy_query_style: bool
     _label_convention: _LabelConventionCallable
-    primary_columns: List[ColumnElement[Any]]
-    secondary_columns: List[ColumnElement[Any]]
-    dedupe_columns: Set[ColumnElement[Any]]
-    create_eager_joins: List[
+    primary_columns: list[ColumnElement[Any]]
+    secondary_columns: list[ColumnElement[Any]]
+    dedupe_columns: set[ColumnElement[Any]]
+    create_eager_joins: list[
         # TODO: this structure is set up by JoinedLoader
         TupleAny
     ]
@@ -438,8 +438,8 @@ class ORMCompileState(AbstractORMCompileState):
         @classmethod
         def create_for_statement(
             cls,
-            statement: Union[Select, FromStatement],
-            compiler: Optional[SQLCompiler],
+            statement: Select | FromStatement,
+            compiler: SQLCompiler | None,
             **kw: Any,
         ) -> ORMCompileState: ...
 
@@ -699,8 +699,8 @@ class ORMFromStatementCompileState(ORMCompileState):
     _has_mapper_entities = False
 
     statement_container: FromStatement
-    requested_statement: Union[SelectBase, TextClause, UpdateBase]
-    dml_table: Optional[_DMLTableElement] = None
+    requested_statement: SelectBase | TextClause | UpdateBase
+    dml_table: _DMLTableElement | None = None
 
     _has_orm_entities = False
     multi_row_eager_loaders = False
@@ -713,8 +713,8 @@ class ORMFromStatementCompileState(ORMCompileState):
     @classmethod
     def create_for_statement(
         cls,
-        statement_container: Union[Select, FromStatement],
-        compiler: Optional[SQLCompiler],
+        statement_container: Select | FromStatement,
+        compiler: SQLCompiler | None,
         **kw: Any,
     ) -> ORMFromStatementCompileState:
         assert isinstance(statement_container, FromStatement)
@@ -884,7 +884,7 @@ class FromStatement(GroupedElement, Generative, TypedReturnsRows[Unpack[_Ts]]):
 
     _for_update_arg = None
 
-    element: Union[ExecutableReturnsRows, TextClause]
+    element: ExecutableReturnsRows | TextClause
 
     _adapt_on_names: bool
 
@@ -902,7 +902,7 @@ class FromStatement(GroupedElement, Generative, TypedReturnsRows[Unpack[_Ts]]):
     def __init__(
         self,
         entities: Iterable[_ColumnsClauseArgument[Any]],
-        element: Union[ExecutableReturnsRows, TextClause],
+        element: ExecutableReturnsRows | TextClause,
         _adapt_on_names: bool = True,
     ):
         self._raw_columns = [
@@ -1015,8 +1015,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
     @classmethod
     def create_for_statement(
         cls,
-        statement: Union[Select, FromStatement],
-        compiler: Optional[SQLCompiler],
+        statement: Select | FromStatement,
+        compiler: SQLCompiler | None,
         **kw: Any,
     ) -> ORMSelectCompileState:
         """compiler hook, we arrive here from compiler.visit_select() only."""
@@ -2428,10 +2428,10 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
 
 def _column_descriptions(
-    query_or_select_stmt: Union[Query, Select, FromStatement],
-    compile_state: Optional[ORMSelectCompileState] = None,
+    query_or_select_stmt: Query | Select | FromStatement,
+    compile_state: ORMSelectCompileState | None = None,
     legacy: bool = False,
-) -> List[ORMColumnDescription]:
+) -> list[ORMColumnDescription]:
     if compile_state is None:
         compile_state = ORMSelectCompileState._create_entities_collection(
             query_or_select_stmt, legacy=legacy
@@ -2458,8 +2458,8 @@ def _column_descriptions(
 
 
 def _legacy_filter_by_entity_zero(
-    query_or_augmented_select: Union[Query[Any], Select[Unpack[TupleAny]]]
-) -> Optional[_InternalEntityType[Any]]:
+    query_or_augmented_select: Query[Any] | Select[Unpack[TupleAny]]
+) -> _InternalEntityType[Any] | None:
     self = query_or_augmented_select
     if self._setup_joins:
         _last_joined_entity = self._last_joined_entity
@@ -2473,8 +2473,8 @@ def _legacy_filter_by_entity_zero(
 
 
 def _entity_from_pre_ent_zero(
-    query_or_augmented_select: Union[Query[Any], Select[Unpack[TupleAny]]]
-) -> Optional[_InternalEntityType[Any]]:
+    query_or_augmented_select: Query[Any] | Select[Unpack[TupleAny]]
+) -> _InternalEntityType[Any] | None:
     self = query_or_augmented_select
     if not self._raw_columns:
         return None
@@ -2492,9 +2492,9 @@ def _entity_from_pre_ent_zero(
 
 
 def _determine_last_joined_entity(
-    setup_joins: Tuple[_SetupJoinsElement, ...],
-    entity_zero: Optional[_InternalEntityType[Any]] = None,
-) -> Optional[Union[_InternalEntityType[Any], _JoinTargetElement]]:
+    setup_joins: tuple[_SetupJoinsElement, ...],
+    entity_zero: _InternalEntityType[Any] | None = None,
+) -> _InternalEntityType[Any] | _JoinTargetElement | None:
     if not setup_joins:
         return None
 
@@ -2520,10 +2520,10 @@ class _QueryEntity:
     _null_column_type = False
     use_id_for_hash = False
 
-    _label_name: Optional[str]
-    type: Union[Type[Any], TypeEngine[Any]]
-    expr: Union[_InternalEntityType, ColumnElement[Any]]
-    entity_zero: Optional[_InternalEntityType]
+    _label_name: str | None
+    type: type[Any] | TypeEngine[Any]
+    expr: _InternalEntityType | ColumnElement[Any]
+    entity_zero: _InternalEntityType | None
 
     def setup_compile_state(self, compile_state: ORMCompileState) -> None:
         raise NotImplementedError()
@@ -2788,9 +2788,9 @@ class _BundleEntity(_QueryEntity):
         "supports_single_entity",
     )
 
-    _entities: List[_QueryEntity]
+    _entities: list[_QueryEntity]
     bundle: Bundle
-    type: Type[Any]
+    type: type[Any]
     _label_name: str
     supports_single_entity: bool
     expr: Bundle

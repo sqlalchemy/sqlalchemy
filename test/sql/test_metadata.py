@@ -149,7 +149,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         msgs = []
 
         def write(c, t):
-            msgs.append("attach %s.%s" % (t.name, c.name))
+            msgs.append("attach {}.{}".format(t.name, c.name))
 
         c1 = Column("foo", String())
         m = MetaData()
@@ -4342,7 +4342,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
             if "special" not in column.info:
                 return compiler.visit_create_column(element, **kw)
 
-            text = "%s SPECIAL DIRECTIVE %s" % (
+            text = "{} SPECIAL DIRECTIVE {}".format(
                 column.name,
                 compiler.type_compiler.process(column.type),
             )
@@ -4760,11 +4760,11 @@ class CatchAllEventsTest(fixtures.RemovesEvents, fixtures.TestBase):
 
         def before_attach(obj, parent):
             canary.append(
-                "%s->%s" % (obj.__class__.__name__, parent.__class__.__name__)
+                "{}->{}".format(obj.__class__.__name__, parent.__class__.__name__)
             )
 
         def after_attach(obj, parent):
-            canary.append("%s->%s" % (obj.__class__.__name__, parent))
+            canary.append("{}->{}".format(obj.__class__.__name__, parent))
 
         self.event_listen(
             schema.SchemaItem, "before_parent_attach", before_attach
@@ -4814,12 +4814,12 @@ class CatchAllEventsTest(fixtures.RemovesEvents, fixtures.TestBase):
         def evt(target):
             def before_attach(obj, parent):
                 canary.append(
-                    "%s->%s" % (target.__name__, parent.__class__.__name__)
+                    "{}->{}".format(target.__name__, parent.__class__.__name__)
                 )
 
             def after_attach(obj, parent):
                 assert hasattr(obj, "name")  # so we can change it
-                canary.append("%s->%s" % (target.__name__, parent))
+                canary.append("{}->{}".format(target.__name__, parent))
 
             self.event_listen(target, "before_parent_attach", before_attach)
             self.event_listen(target, "after_parent_attach", after_attach)

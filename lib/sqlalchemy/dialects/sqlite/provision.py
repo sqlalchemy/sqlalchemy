@@ -77,7 +77,7 @@ def _format_url(url, driver, ident):
     if needs_enc:
         url = url.set(password="test")
 
-    url = url.set(drivername="sqlite+%s" % (driver,))
+    url = url.set(drivername=f"sqlite+{driver}")
 
     return url
 

@@ -96,7 +96,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
     def contains_eager(
         self,
         attr: _AttrType,
-        alias: Optional[_FromClauseArgument] = None,
+        alias: _FromClauseArgument | None = None,
         _is_chain: bool = False,
         _propagate_to_loaders: bool = False,
     ) -> Self:
@@ -150,7 +150,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
         elif getattr(attr, "_of_type", None):
             assert isinstance(attr, QueryableAttribute)
-            ot: Optional[_InternalEntityType[Any]] = inspect(attr._of_type)
+            ot: _InternalEntityType[Any] | None = inspect(attr._of_type)
             assert ot is not None
             coerced_alias = ot.selectable
         else:
@@ -243,7 +243,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
     def joinedload(
         self,
         attr: _AttrType,
-        innerjoin: Optional[bool] = None,
+        innerjoin: bool | None = None,
     ) -> Self:
         """Indicate that the given attribute should be loaded using joined
         eager loading.
@@ -374,7 +374,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
     def selectinload(
         self,
         attr: _AttrType,
-        recursion_depth: Optional[int] = None,
+        recursion_depth: int | None = None,
     ) -> Self:
         """Indicate that the given attribute should be loaded using
         SELECT IN eager loading.
@@ -448,7 +448,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
     def immediateload(
         self,
         attr: _AttrType,
-        recursion_depth: Optional[int] = None,
+        recursion_depth: int | None = None,
     ) -> Self:
         """Indicate that the given attribute should be loaded using
         an immediate load with a per-attribute SELECT statement.
@@ -773,7 +773,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             (key,), {"query_expression": True}, extra_criteria=(expression,)
         )
 
-    def selectin_polymorphic(self, classes: Iterable[Type[Any]]) -> Self:
+    def selectin_polymorphic(self, classes: Iterable[type[Any]]) -> Self:
         """Indicate an eager load should take place for all attributes
         specific to a subclass.
 
@@ -805,8 +805,8 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
     def _coerce_strat(self, strategy: Literal[None]) -> None: ...
 
     def _coerce_strat(
-        self, strategy: Optional[_StrategySpec]
-    ) -> Optional[_StrategyKey]:
+        self, strategy: _StrategySpec | None
+    ) -> _StrategyKey | None:
         if strategy is not None:
             strategy_key = tuple(sorted(strategy.items()))
         else:
@@ -817,10 +817,10 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
     def _set_relationship_strategy(
         self,
         attr: _AttrType,
-        strategy: Optional[_StrategySpec],
+        strategy: _StrategySpec | None,
         propagate_to_loaders: bool = True,
-        opts: Optional[_OptsType] = None,
-        _reconcile_to_other: Optional[bool] = None,
+        opts: _OptsType | None = None,
+        _reconcile_to_other: bool | None = None,
     ) -> Self:
         strategy_key = self._coerce_strat(strategy)
 
@@ -837,10 +837,10 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
     @_generative
     def _set_column_strategy(
         self,
-        attrs: Tuple[_AttrType, ...],
-        strategy: Optional[_StrategySpec],
-        opts: Optional[_OptsType] = None,
-        extra_criteria: Optional[Tuple[Any, ...]] = None,
+        attrs: tuple[_AttrType, ...],
+        strategy: _StrategySpec | None,
+        opts: _OptsType | None = None,
+        extra_criteria: tuple[Any, ...] | None = None,
     ) -> Self:
         strategy_key = self._coerce_strat(strategy)
 
@@ -857,9 +857,9 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
     @_generative
     def _set_generic_strategy(
         self,
-        attrs: Tuple[_AttrType, ...],
+        attrs: tuple[_AttrType, ...],
         strategy: _StrategySpec,
-        _reconcile_to_other: Optional[bool] = None,
+        _reconcile_to_other: bool | None = None,
     ) -> Self:
         strategy_key = self._coerce_strat(strategy)
         self._clone_for_bind_strategy(
@@ -900,14 +900,14 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
     def _clone_for_bind_strategy(
         self,
-        attrs: Optional[Tuple[_AttrType, ...]],
-        strategy: Optional[_StrategyKey],
-        wildcard_key: Optional[_WildcardKeyType],
-        opts: Optional[_OptsType] = None,
-        attr_group: Optional[_AttrGroupType] = None,
+        attrs: tuple[_AttrType, ...] | None,
+        strategy: _StrategyKey | None,
+        wildcard_key: _WildcardKeyType | None,
+        opts: _OptsType | None = None,
+        attr_group: _AttrGroupType | None = None,
         propagate_to_loaders: bool = True,
-        reconcile_to_other: Optional[bool] = None,
-        extra_criteria: Optional[Tuple[Any, ...]] = None,
+        reconcile_to_other: bool | None = None,
+        extra_criteria: tuple[Any, ...] | None = None,
     ) -> Self:
         raise NotImplementedError()
 
@@ -954,7 +954,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         to_chop: _PathRepresentation,
         path: PathRegistry,
         debug: bool = False,
-    ) -> Optional[_PathRepresentation]:
+    ) -> _PathRepresentation | None:
         i = -1
 
         for i, (c_token, p_token) in enumerate(
@@ -1025,8 +1025,8 @@ class Load(_AbstractLoad):
     _cache_key_traversal = None
 
     path: PathRegistry
-    context: Tuple[_LoadElement, ...]
-    additional_source_entities: Tuple[_InternalEntityType[Any], ...]
+    context: tuple[_LoadElement, ...]
+    additional_source_entities: tuple[_InternalEntityType[Any], ...]
 
     def __init__(self, entity: _EntityType[Any]):
         insp = cast("Union[Mapper[Any], AliasedInsp[Any]]", inspect(entity))
@@ -1254,14 +1254,14 @@ class Load(_AbstractLoad):
 
     def _clone_for_bind_strategy(
         self,
-        attrs: Optional[Tuple[_AttrType, ...]],
-        strategy: Optional[_StrategyKey],
-        wildcard_key: Optional[_WildcardKeyType],
-        opts: Optional[_OptsType] = None,
-        attr_group: Optional[_AttrGroupType] = None,
+        attrs: tuple[_AttrType, ...] | None,
+        strategy: _StrategyKey | None,
+        wildcard_key: _WildcardKeyType | None,
+        opts: _OptsType | None = None,
+        attr_group: _AttrGroupType | None = None,
         propagate_to_loaders: bool = True,
-        reconcile_to_other: Optional[bool] = None,
-        extra_criteria: Optional[Tuple[Any, ...]] = None,
+        reconcile_to_other: bool | None = None,
+        extra_criteria: tuple[Any, ...] | None = None,
     ) -> Self:
         # for individual strategy that needs to propagate, set the whole
         # Load container to also propagate, so that it shows up in
@@ -1373,9 +1373,9 @@ class _WildcardLoad(_AbstractLoad):
     ]
     cache_key_traversal: _CacheKeyTraversalType = None
 
-    strategy: Optional[Tuple[Any, ...]]
+    strategy: tuple[Any, ...] | None
     local_opts: _OptsType
-    path: Union[Tuple[()], Tuple[str]]
+    path: tuple[()] | tuple[str]
     propagate_to_loaders = False
 
     def __init__(self) -> None:
@@ -1509,7 +1509,7 @@ class _WildcardLoad(_AbstractLoad):
         entities: Iterable[_InternalEntityType[Any]],
         token: str,
         raiseerr: bool,
-    ) -> Optional[_InternalEntityType[Any]]:
+    ) -> _InternalEntityType[Any] | None:
         if token.endswith(f":{_WILDCARD_TOKEN}"):
             if len(list(entities)) != 1:
                 if raiseerr:
@@ -1542,11 +1542,11 @@ class _WildcardLoad(_AbstractLoad):
             else:
                 return None
 
-    def __getstate__(self) -> Dict[str, Any]:
+    def __getstate__(self) -> dict[str, Any]:
         d = self._shallow_to_dict()
         return d
 
-    def __setstate__(self, state: Dict[str, Any]) -> None:
+    def __setstate__(self, state: dict[str, Any]) -> None:
         self._shallow_from_dict(state)
 
 
@@ -1587,10 +1587,10 @@ class _LoadElement(
     ]
     _cache_key_traversal = None
 
-    _extra_criteria: Tuple[Any, ...]
+    _extra_criteria: tuple[Any, ...]
 
-    _reconcile_to_other: Optional[bool]
-    strategy: Optional[_StrategyKey]
+    _reconcile_to_other: bool | None
+    strategy: _StrategyKey | None
     path: PathRegistry
     propagate_to_loaders: bool
 
@@ -1621,12 +1621,12 @@ class _LoadElement(
         new.local_opts = new.local_opts.union(kw)
         return new
 
-    def __getstate__(self) -> Dict[str, Any]:
+    def __getstate__(self) -> dict[str, Any]:
         d = self._shallow_to_dict()
         d["path"] = self.path.serialize()
         return d
 
-    def __setstate__(self, state: Dict[str, Any]) -> None:
+    def __setstate__(self, state: dict[str, Any]) -> None:
         state["path"] = PathRegistry.deserialize(state["path"])
         self._shallow_from_dict(state)
 
@@ -1662,7 +1662,7 @@ class _LoadElement(
 
     def _adjust_effective_path_for_current_path(
         self, effective_path: PathRegistry, current_path: PathRegistry
-    ) -> Optional[PathRegistry]:
+    ) -> PathRegistry | None:
         """receives the 'current_path' entry from an :class:`.ORMCompileState`
         instance, which is set during lazy loads and secondary loader strategy
         loads, and adjusts the given path to be relative to the
@@ -1752,15 +1752,15 @@ class _LoadElement(
     def create(
         cls,
         path: PathRegistry,
-        attr: Union[_AttrType, _StrPathToken, None],
-        strategy: Optional[_StrategyKey],
-        wildcard_key: Optional[_WildcardKeyType],
-        local_opts: Optional[_OptsType],
+        attr: _AttrType | _StrPathToken | None,
+        strategy: _StrategyKey | None,
+        wildcard_key: _WildcardKeyType | None,
+        local_opts: _OptsType | None,
         propagate_to_loaders: bool,
         raiseerr: bool = True,
-        attr_group: Optional[_AttrGroupType] = None,
-        reconcile_to_other: Optional[bool] = None,
-        extra_criteria: Optional[Tuple[Any, ...]] = None,
+        attr_group: _AttrGroupType | None = None,
+        reconcile_to_other: bool | None = None,
+        extra_criteria: tuple[Any, ...] | None = None,
     ) -> _LoadElement:
         """Create a new :class:`._LoadElement` object."""
 
@@ -1918,8 +1918,8 @@ class _AttributeStrategyLoad(_LoadElement):
         ),
     ]
 
-    _of_type: Union[Mapper[Any], AliasedInsp[Any], None]
-    _path_with_polymorphic_path: Optional[PathRegistry]
+    _of_type: Mapper[Any] | AliasedInsp[Any] | None
+    _path_with_polymorphic_path: PathRegistry | None
 
     is_class_strategy = False
     is_token_strategy = False
@@ -2297,11 +2297,11 @@ class _ClassStrategyLoad(_LoadElement):
 
 def _generate_from_keys(
     meth: Callable[..., _AbstractLoad],
-    keys: Tuple[_AttrType, ...],
+    keys: tuple[_AttrType, ...],
     chained: bool,
     kw: Any,
 ) -> _AbstractLoad:
-    lead_element: Optional[_AbstractLoad] = None
+    lead_element: _AbstractLoad | None = None
 
     attr: Any
     for is_default, _keys in (True, keys[0:-1]), (False, keys[-1:]):
@@ -2361,7 +2361,7 @@ def _generate_from_keys(
 
 def _parse_attr_argument(
     attr: _AttrType,
-) -> Tuple[InspectionAttr, _InternalEntityType[Any], MapperProperty[Any]]:
+) -> tuple[InspectionAttr, _InternalEntityType[Any], MapperProperty[Any]]:
     """parse an attribute or wildcard argument to produce an
     :class:`._AbstractLoad` instance.
 
@@ -2443,7 +2443,7 @@ def subqueryload(*keys: _AttrType) -> _AbstractLoad:
 
 @loader_unbound_fn
 def selectinload(
-    *keys: _AttrType, recursion_depth: Optional[int] = None
+    *keys: _AttrType, recursion_depth: int | None = None
 ) -> _AbstractLoad:
     return _generate_from_keys(
         Load.selectinload, keys, False, {"recursion_depth": recursion_depth}
@@ -2457,7 +2457,7 @@ def lazyload(*keys: _AttrType) -> _AbstractLoad:
 
 @loader_unbound_fn
 def immediateload(
-    *keys: _AttrType, recursion_depth: Optional[int] = None
+    *keys: _AttrType, recursion_depth: int | None = None
 ) -> _AbstractLoad:
     return _generate_from_keys(
         Load.immediateload, keys, False, {"recursion_depth": recursion_depth}
@@ -2528,7 +2528,7 @@ def with_expression(
 
 @loader_unbound_fn
 def selectin_polymorphic(
-    base_cls: _EntityType[Any], classes: Iterable[Type[Any]]
+    base_cls: _EntityType[Any], classes: Iterable[type[Any]]
 ) -> _AbstractLoad:
     ul = Load(base_cls)
     return ul.selectin_polymorphic(classes)

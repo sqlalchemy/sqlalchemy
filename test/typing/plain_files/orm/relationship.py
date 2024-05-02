@@ -36,8 +36,8 @@ class Group(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column()
 
-    addresses_style_one_anno_only: Mapped[List["User"]]
-    addresses_style_two_anno_only: Mapped[Set["User"]]
+    addresses_style_one_anno_only: Mapped[list[User]]
+    addresses_style_two_anno_only: Mapped[set[User]]
 
 
 class User(Base):
@@ -52,11 +52,11 @@ class User(Base):
     # anyway
     name_this_works_atm: Mapped[str] = mapped_column(nullable=True)
 
-    extra: Mapped[Optional[str]] = mapped_column()
-    extra_name: Mapped[Optional[str]] = mapped_column("extra_name")
+    extra: Mapped[str | None] = mapped_column()
+    extra_name: Mapped[str | None] = mapped_column("extra_name")
 
-    addresses_style_one: Mapped[List["Address"]] = relationship()
-    addresses_style_two: Mapped[Set["Address"]] = relationship()
+    addresses_style_one: Mapped[list[Address]] = relationship()
+    addresses_style_two: Mapped[set[Address]] = relationship()
 
 
 class Address(Base):
@@ -68,12 +68,12 @@ class Address(Base):
     email_name: Mapped[str] = mapped_column("email_name")
 
     user_style_one: Mapped[User] = relationship()
-    user_style_two: Mapped["User"] = relationship()
+    user_style_two: Mapped[User] = relationship()
 
-    rel_style_one: Relationship[List["MoreMail"]] = relationship()
+    rel_style_one: Relationship[list[MoreMail]] = relationship()
     # everything works even if using Relationship instead of Mapped
     # users should use Mapped though
-    rel_style_one_anno_only: Relationship[Set["MoreMail"]]
+    rel_style_one_anno_only: Relationship[set[MoreMail]]
 
 
 class MoreMail(Base):
@@ -94,14 +94,14 @@ class SelfReferential(Base):
 
     not_anno = mapped_column(Integer)
 
-    selfref_1: Mapped[Optional[SelfReferential]] = relationship(
+    selfref_1: Mapped[SelfReferential | None] = relationship(
         remote_side=idx
     )
-    selfref_2: Mapped[Optional[SelfReferential]] = relationship(
+    selfref_2: Mapped[SelfReferential | None] = relationship(
         foreign_keys=mytable_id
     )
 
-    selfref_3: Mapped[Optional[SelfReferential]] = relationship(
+    selfref_3: Mapped[SelfReferential | None] = relationship(
         remote_side=not_anno
     )
 

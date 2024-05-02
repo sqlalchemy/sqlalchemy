@@ -1554,10 +1554,10 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
                     return self.amount
 
             def __str__(self):
-                return "%2.4f %s" % (self.amount, self.currency)
+                return "{:2.4f} {}".format(self.amount, self.currency)
 
             def __repr__(self):
-                return "Amount(%r, %r)" % (self.amount, self.currency)
+                return "Amount({!r}, {!r})".format(self.amount, self.currency)
 
         Base = declarative_base()
 

@@ -1125,14 +1125,14 @@ class AsyncAttrsTest(
             __tablename__ = "a"
 
             id: Mapped[int] = mapped_column(Identity(), primary_key=True)
-            data: Mapped[Optional[str]]
-            bs: Mapped[List[B]] = relationship(order_by=lambda: B.id)
+            data: Mapped[str | None]
+            bs: Mapped[list[B]] = relationship(order_by=lambda: B.id)
 
         class B(decl_base):
             __tablename__ = "b"
             id: Mapped[int] = mapped_column(Identity(), primary_key=True)
             a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
-            data: Mapped[Optional[str]]
+            data: Mapped[str | None]
 
         decl_base.metadata.create_all(testing.db)
 

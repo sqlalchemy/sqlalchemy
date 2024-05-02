@@ -66,7 +66,7 @@ _RefCollectionToListenerType = Dict[
     "weakref.ref[_ListenerFnType]",
 ]
 
-_key_to_collection: Dict[_EventKeyTupleType, _RefCollectionToListenerType] = (
+_key_to_collection: dict[_EventKeyTupleType, _RefCollectionToListenerType] = (
     collections.defaultdict(dict)
 )
 """
@@ -84,7 +84,7 @@ _ListenerToEventKeyType = Dict[
     "weakref.ref[_ListenerFnType]",
     _EventKeyTupleType,
 ]
-_collection_to_key: Dict[
+_collection_to_key: dict[
     weakref.ref[RefCollection[Any]],
     _ListenerToEventKeyType,
 ] = collections.defaultdict(dict)
@@ -229,7 +229,7 @@ class _EventKey(Generic[_ET]):
     fn: _ListenerFnType
     fn_key: _ListenerFnKeyType
     dispatch_target: Any
-    _fn_wrap: Optional[_ListenerFnType]
+    _fn_wrap: _ListenerFnType | None
 
     def __init__(
         self,
@@ -237,7 +237,7 @@ class _EventKey(Generic[_ET]):
         identifier: str,
         fn: _ListenerFnType,
         dispatch_target: Any,
-        _fn_wrap: Optional[_ListenerFnType] = None,
+        _fn_wrap: _ListenerFnType | None = None,
     ):
         self.target = target
         self.identifier = identifier
@@ -335,7 +335,7 @@ class _EventKey(Generic[_ET]):
         propagate: bool = False,
         insert: bool = False,
         named: bool = False,
-        retval: Optional[bool] = None,
+        retval: bool | None = None,
         asyncio: bool = False,
     ) -> None:
         target, identifier = self.dispatch_target, self.identifier

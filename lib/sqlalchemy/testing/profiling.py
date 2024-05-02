@@ -220,7 +220,7 @@ class ProfileStatsFile:
             for platform_key in sorted(per_fn):
                 per_platform = per_fn[platform_key]
                 c = ",".join(str(count) for count in per_platform["counts"])
-                profile_f.write("%s %s %s\n" % (test_key, platform_key, c))
+                profile_f.write("{} {} {}\n".format(test_key, platform_key, c))
         profile_f.close()
 
 
@@ -296,7 +296,7 @@ def count_functions(variance=0.05):
     if _profile_stats.dump:
         base, ext = os.path.splitext(_profile_stats.dump)
         test_name = _current_test.split(".")[-1]
-        dumpfile = "%s_%s%s" % (base, test_name, ext or ".profile")
+        dumpfile = "{}_{}{}".format(base, test_name, ext or ".profile")
         stats.dump_stats(dumpfile)
         print("Dumped stats to file %s" % dumpfile)
     # stats.print_callers()

@@ -59,19 +59,19 @@ else:
 class SQLAlchemyPlugin(Plugin):
     def get_dynamic_class_hook(
         self, fullname: str
-    ) -> Optional[Callable[[DynamicClassDefContext], None]]:
+    ) -> Callable[[DynamicClassDefContext], None] | None:
         if names.type_id_for_fullname(fullname) is names.DECLARATIVE_BASE:
             return _dynamic_class_hook
         return None
 
     def get_customize_class_mro_hook(
         self, fullname: str
-    ) -> Optional[Callable[[ClassDefContext], None]]:
+    ) -> Callable[[ClassDefContext], None] | None:
         return _fill_in_decorators
 
     def get_class_decorator_hook(
         self, fullname: str
-    ) -> Optional[Callable[[ClassDefContext], None]]:
+    ) -> Callable[[ClassDefContext], None] | None:
         sym = self.lookup_fully_qualified(fullname)
 
         if sym is not None and sym.node is not None:
@@ -90,7 +90,7 @@ class SQLAlchemyPlugin(Plugin):
 
     def get_metaclass_hook(
         self, fullname: str
-    ) -> Optional[Callable[[ClassDefContext], None]]:
+    ) -> Callable[[ClassDefContext], None] | None:
         if names.type_id_for_fullname(fullname) is names.DECLARATIVE_META:
             # Set any classes that explicitly have metaclass=DeclarativeMeta
             # as declarative so the check in `get_base_class_hook()` works
@@ -100,7 +100,7 @@ class SQLAlchemyPlugin(Plugin):
 
     def get_base_class_hook(
         self, fullname: str
-    ) -> Optional[Callable[[ClassDefContext], None]]:
+    ) -> Callable[[ClassDefContext], None] | None:
         sym = self.lookup_fully_qualified(fullname)
 
         if (
@@ -114,7 +114,7 @@ class SQLAlchemyPlugin(Plugin):
 
     def get_attribute_hook(
         self, fullname: str
-    ) -> Optional[Callable[[AttributeContext], Type]]:
+    ) -> Callable[[AttributeContext], Type] | None:
         if fullname.startswith(
             "sqlalchemy.orm.attributes.QueryableAttribute."
         ):
@@ -124,7 +124,7 @@ class SQLAlchemyPlugin(Plugin):
 
     def get_additional_deps(
         self, file: MypyFile
-    ) -> List[Tuple[int, str, int]]:
+    ) -> list[tuple[int, str, int]]:
         return [
             #
             (10, "sqlalchemy.orm", -1),
@@ -283,7 +283,7 @@ def _queryable_getattr_hook(ctx: AttributeContext) -> Type:
     return ctx.default_attr_type
 
 
-def _add_globals(ctx: Union[ClassDefContext, DynamicClassDefContext]) -> None:
+def _add_globals(ctx: ClassDefContext | DynamicClassDefContext) -> None:
     """Add __sa_DeclarativeMeta and __sa_Mapped symbol to the global space
     for all class defs
 

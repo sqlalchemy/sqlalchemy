@@ -2869,11 +2869,11 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             )
             eq_(
                 str(cast(1234, Text).compile(dialect=dialect)),
-                "CAST(%s AS %s)" % (literal, expected_results[3]),
+                "CAST({} AS {})".format(literal, expected_results[3]),
             )
             eq_(
                 str(cast("test", String(20)).compile(dialect=dialect)),
-                "CAST(%s AS %s)" % (literal, expected_results[4]),
+                "CAST({} AS {})".format(literal, expected_results[4]),
             )
 
             # fixme: shoving all of this dialect-specific stuff in one test
@@ -3375,10 +3375,10 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
             if lbl:
                 self.assert_compile(
-                    s1, "SELECT %s AS %s FROM mytable" % (expr, lbl)
+                    s1, "SELECT {} AS {} FROM mytable".format(expr, lbl)
                 )
             else:
-                self.assert_compile(s1, "SELECT %s FROM mytable" % (expr,))
+                self.assert_compile(s1, "SELECT {} FROM mytable".format(expr))
 
             s1 = select(s1.subquery())
             if lbl:
@@ -3911,7 +3911,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(len(t.bindparams), total_params)
         c = t.compile()
         pp = c.construct_params(params)
-        eq_(len(set(pp)), total_params, "%s %s" % (len(set(pp)), len(pp)))
+        eq_(len(set(pp)), total_params, "{} {}".format(len(set(pp)), len(pp)))
         eq_(len(set(pp.values())), total_params)
 
     def test_bind_anon_name_no_special_chars(self):

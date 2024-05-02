@@ -46,7 +46,7 @@ class PyODBCConnector(Connector):
 
     # for non-DSN connections, this *may* be used to
     # hold the desired driver name
-    pyodbc_driver_name: Optional[str] = None
+    pyodbc_driver_name: str | None = None
 
     dbapi: ModuleType
 
@@ -67,8 +67,8 @@ class PyODBCConnector(Connector):
 
         query = url.query
 
-        connect_args: Dict[str, Any] = {}
-        connectors: List[str]
+        connect_args: dict[str, Any] = {}
+        connectors: list[str]
 
         for param in ("ansi", "unicode_results", "autocommit"):
             if param in keys:
@@ -111,7 +111,7 @@ class PyODBCConnector(Connector):
 
                 connectors.extend(
                     [
-                        "Server=%s%s" % (keys.pop("host", ""), port),
+                        "Server={}{}".format(keys.pop("host", ""), port),
                         "Database=%s" % keys.pop("database", ""),
                     ]
                 )
@@ -138,17 +138,17 @@ class PyODBCConnector(Connector):
                     "AutoTranslate=%s" % keys.pop("odbc_autotranslate")
                 )
 
-            connectors.extend(["%s=%s" % (k, v) for k, v in keys.items()])
+            connectors.extend([f"{k}={v}" for k, v in keys.items()])
 
         return ((";".join(connectors),), connect_args)
 
     def is_disconnect(
         self,
         e: Exception,
-        connection: Optional[
-            Union[pool.PoolProxiedConnection, interfaces.DBAPIConnection]
-        ],
-        cursor: Optional[interfaces.DBAPICursor],
+        connection: None | (
+            pool.PoolProxiedConnection | interfaces.DBAPIConnection
+        ),
+        cursor: interfaces.DBAPICursor | None,
     ) -> bool:
         if isinstance(e, self.dbapi.ProgrammingError):
             return "The cursor's connection has been closed." in str(
@@ -180,7 +180,7 @@ class PyODBCConnector(Connector):
         # freetds is in use.   Implement database-specific server version
         # queries.
         dbapi_con = connection.connection.dbapi_connection
-        version: Tuple[Union[int, str], ...] = ()
+        version: tuple[int | str, ...] = ()
         r = re.compile(r"[.\-]")
         for n in r.split(dbapi_con.getinfo(self.dbapi.SQL_DBMS_VER)):  # type: ignore[union-attr]  # noqa: E501
             try:
@@ -192,7 +192,7 @@ class PyODBCConnector(Connector):
     def do_set_input_sizes(
         self,
         cursor: interfaces.DBAPICursor,
-        list_of_tuples: List[Tuple[str, Any, TypeEngine[Any]]],
+        list_of_tuples: list[tuple[str, Any, TypeEngine[Any]]],
         context: ExecutionContext,
     ) -> None:
         # the rules for these types seems a little strange, as you can pass
@@ -228,7 +228,7 @@ class PyODBCConnector(Connector):
 
     def get_isolation_level_values(
         self, dbapi_connection: interfaces.DBAPIConnection
-    ) -> List[IsolationLevel]:
+    ) -> list[IsolationLevel]:
         return super().get_isolation_level_values(dbapi_connection) + [
             "AUTOCOMMIT"
         ]

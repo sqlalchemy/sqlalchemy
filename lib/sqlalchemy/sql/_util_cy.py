@@ -90,7 +90,7 @@ class anon_map(
     else:
         _index: int = 0  # type: ignore[no-redef]
 
-    def get_anon(self, obj: object, /) -> Tuple[str, bool]:
+    def get_anon(self, obj: object, /) -> tuple[str, bool]:
         self_dict: dict = self  # type: ignore[type-arg]
 
         idself = id(obj)
@@ -99,7 +99,7 @@ class anon_map(
         else:
             return self.__missing__(idself), False
 
-    def __missing__(self, key: Union[int, str], /) -> str:
+    def __missing__(self, key: int | str, /) -> str:
         val: str
         self_dict: dict = self  # type: ignore[type-arg]
 

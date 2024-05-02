@@ -407,18 +407,18 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
             b.posts.append(p1)
             b.posts.append(p2)
             b.posts.append(p3)
-            self.assert_(b.posts == [p1, p2, p3])
-            self.assert_(p2.blog is b)
+            self.assertTrue(b.posts == [p1, p2, p3])
+            self.assertTrue(p2.blog is b)
 
             p3.blog = None
-            self.assert_(b.posts == [p1, p2])
+            self.assertTrue(b.posts == [p1, p2])
             p4 = Post()
             p4.blog = b
-            self.assert_(b.posts == [p1, p2, p4])
+            self.assertTrue(b.posts == [p1, p2, p4])
 
             p4.blog = b
             p4.blog = b
-            self.assert_(b.posts == [p1, p2, p4])
+            self.assertTrue(b.posts == [p1, p2, p4])
 
             # assert no failure removing None
             p5 = Post()

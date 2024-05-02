@@ -160,23 +160,23 @@ class Pool(log.Identified, event.EventTarget):
     dispatch: dispatcher[Pool]
     echo: log._EchoFlagType
 
-    _orig_logging_name: Optional[str]
-    _dialect: Union[_ConnDialect, Dialect] = _ConnDialect()
-    _creator_arg: Union[_CreatorFnType, _CreatorWRecFnType]
+    _orig_logging_name: str | None
+    _dialect: _ConnDialect | Dialect = _ConnDialect()
+    _creator_arg: _CreatorFnType | _CreatorWRecFnType
     _invoke_creator: _CreatorWRecFnType
     _invalidate_time: float
 
     def __init__(
         self,
-        creator: Union[_CreatorFnType, _CreatorWRecFnType],
+        creator: _CreatorFnType | _CreatorWRecFnType,
         recycle: int = -1,
         echo: log._EchoFlagType = None,
-        logging_name: Optional[str] = None,
+        logging_name: str | None = None,
         reset_on_return: _ResetStyleArgType = True,
-        events: Optional[List[Tuple[_ListenerFnType, str]]] = None,
-        dialect: Optional[Union[_ConnDialect, Dialect]] = None,
+        events: list[tuple[_ListenerFnType, str]] | None = None,
+        dialect: _ConnDialect | Dialect | None = None,
         pre_ping: bool = False,
-        _dispatch: Optional[_DispatchCommon[Pool]] = None,
+        _dispatch: _DispatchCommon[Pool] | None = None,
     ):
         """
         Construct a Pool.
@@ -309,12 +309,12 @@ class Pool(log.Identified, event.EventTarget):
         return self._dialect.is_async
 
     @property
-    def _creator(self) -> Union[_CreatorFnType, _CreatorWRecFnType]:
+    def _creator(self) -> _CreatorFnType | _CreatorWRecFnType:
         return self._creator_arg
 
     @_creator.setter
     def _creator(
-        self, creator: Union[_CreatorFnType, _CreatorWRecFnType]
+        self, creator: _CreatorFnType | _CreatorWRecFnType
     ) -> None:
         self._creator_arg = creator
 
@@ -329,7 +329,7 @@ class Pool(log.Identified, event.EventTarget):
         del self._invoke_creator
 
     def _should_wrap_creator(
-        self, creator: Union[_CreatorFnType, _CreatorWRecFnType]
+        self, creator: _CreatorFnType | _CreatorWRecFnType
     ) -> _CreatorWRecFnType:
         """Detect if creator accepts a single argument, or is sent
         as a legacy style no-arg function.
@@ -392,7 +392,7 @@ class Pool(log.Identified, event.EventTarget):
     def _invalidate(
         self,
         connection: PoolProxiedConnection,
-        exception: Optional[BaseException] = None,
+        exception: BaseException | None = None,
         _checkin: bool = True,
     ) -> None:
         """Mark all connections established within the generation
@@ -484,7 +484,7 @@ class ManagesConnection:
 
     __slots__ = ()
 
-    dbapi_connection: Optional[DBAPIConnection]
+    dbapi_connection: DBAPIConnection | None
     """A reference to the actual DBAPI connection being tracked.
 
     This is a :pep:`249`-compliant object that for traditional sync-style
@@ -505,7 +505,7 @@ class ManagesConnection:
 
     """
 
-    driver_connection: Optional[Any]
+    driver_connection: Any | None
     """The "driver level" connection object as used by the Python
     DBAPI or database driver.
 
@@ -553,7 +553,7 @@ class ManagesConnection:
         raise NotImplementedError()
 
     @util.ro_memoized_property
-    def record_info(self) -> Optional[_InfoType]:
+    def record_info(self) -> _InfoType | None:
         """Persistent info dictionary associated with this
         :class:`.ManagesConnection`.
 
@@ -577,7 +577,7 @@ class ManagesConnection:
         raise NotImplementedError()
 
     def invalidate(
-        self, e: Optional[BaseException] = None, soft: bool = False
+        self, e: BaseException | None = None, soft: bool = False
     ) -> None:
         """Mark the managed connection as invalidated.
 
@@ -660,7 +660,7 @@ class _ConnectionRecord(ConnectionPoolEntry):
 
     finalize_callback: Deque[Callable[[DBAPIConnection], None]]
     fresh: bool
-    fairy_ref: Optional[weakref.ref[_ConnectionFairy]]
+    fairy_ref: weakref.ref[_ConnectionFairy] | None
     starttime: float
 
     def __init__(self, pool: Pool, connect: bool = True):
@@ -674,10 +674,10 @@ class _ConnectionRecord(ConnectionPoolEntry):
             self.__connect()
         self.finalize_callback = deque()
 
-    dbapi_connection: Optional[DBAPIConnection]
+    dbapi_connection: DBAPIConnection | None
 
     @property
-    def driver_connection(self) -> Optional[Any]:  # type: ignore[override]  # mypy#4125  # noqa: E501
+    def driver_connection(self) -> Any | None:  # type: ignore[override]  # mypy#4125  # noqa: E501
         if self.dbapi_connection is None:
             return None
         else:
@@ -691,7 +691,7 @@ class _ConnectionRecord(ConnectionPoolEntry):
         "The _ConnectionRecord.connection attribute is deprecated; "
         "please use 'driver_connection'",
     )
-    def connection(self) -> Optional[DBAPIConnection]:
+    def connection(self) -> DBAPIConnection | None:
         return self.dbapi_connection
 
     _soft_invalidate_time: float = 0
@@ -701,7 +701,7 @@ class _ConnectionRecord(ConnectionPoolEntry):
         return {}
 
     @util.ro_memoized_property
-    def record_info(self) -> Optional[_InfoType]:
+    def record_info(self) -> _InfoType | None:
         return {}
 
     @classmethod
@@ -784,7 +784,7 @@ class _ConnectionRecord(ConnectionPoolEntry):
             self.__close()
 
     def invalidate(
-        self, e: Optional[BaseException] = None, soft: bool = False
+        self, e: BaseException | None = None, soft: bool = False
     ) -> None:
         # already invalidated
         if self.dbapi_connection is None:
@@ -915,15 +915,15 @@ class _ConnectionRecord(ConnectionPoolEntry):
 
 
 def _finalize_fairy(
-    dbapi_connection: Optional[DBAPIConnection],
-    connection_record: Optional[_ConnectionRecord],
+    dbapi_connection: DBAPIConnection | None,
+    connection_record: _ConnectionRecord | None,
     pool: Pool,
-    ref: Optional[
+    ref: None | (
         weakref.ref[_ConnectionFairy]
-    ],  # this is None when called directly, not by the gc
-    echo: Optional[log._EchoFlagType],
+    ),  # this is None when called directly, not by the gc
+    echo: log._EchoFlagType | None,
     transaction_was_reset: bool = False,
-    fairy: Optional[_ConnectionFairy] = None,
+    fairy: _ConnectionFairy | None = None,
 ) -> None:
     """Cleanup for a :class:`._ConnectionFairy` whether or not it's already
     been garbage collected.
@@ -1050,7 +1050,7 @@ def _finalize_fairy(
 # GC under pypy will call ConnectionFairy finalizers.  linked directly to the
 # weakref that will empty itself when collected so that it should not create
 # any unmanaged memory references.
-_strong_ref_connection_records: Dict[
+_strong_ref_connection_records: dict[
     weakref.ref[_ConnectionFairy], _ConnectionRecord
 ] = {}
 
@@ -1168,12 +1168,12 @@ class _AdhocProxiedConnection(PoolProxiedConnection):
         return self._is_valid
 
     def invalidate(
-        self, e: Optional[BaseException] = None, soft: bool = False
+        self, e: BaseException | None = None, soft: bool = False
     ) -> None:
         self._is_valid = False
 
     @util.ro_non_memoized_property
-    def record_info(self) -> Optional[_InfoType]:
+    def record_info(self) -> _InfoType | None:
         return self._connection_record.record_info
 
     def cursor(self, *args: Any, **kwargs: Any) -> DBAPICursor:
@@ -1235,10 +1235,10 @@ class _ConnectionFairy(PoolProxiedConnection):
         self._connection_record = connection_record
         self._echo = echo
 
-    _connection_record: Optional[_ConnectionRecord]
+    _connection_record: _ConnectionRecord | None
 
     @property
-    def driver_connection(self) -> Optional[Any]:  # type: ignore[override]  # mypy#4125  # noqa: E501
+    def driver_connection(self) -> Any | None:  # type: ignore[override]  # mypy#4125  # noqa: E501
         if self._connection_record is None:
             return None
         return self._connection_record.driver_connection
@@ -1256,8 +1256,8 @@ class _ConnectionFairy(PoolProxiedConnection):
     def _checkout(
         cls,
         pool: Pool,
-        threadconns: Optional[threading.local] = None,
-        fairy: Optional[_ConnectionFairy] = None,
+        threadconns: threading.local | None = None,
+        fairy: _ConnectionFairy | None = None,
     ) -> _ConnectionFairy:
         if not fairy:
             fairy = _ConnectionRecord.checkout(pool)
@@ -1458,14 +1458,14 @@ class _ConnectionFairy(PoolProxiedConnection):
             return self._connection_record.info
 
     @util.ro_non_memoized_property
-    def record_info(self) -> Optional[_InfoType]:
+    def record_info(self) -> _InfoType | None:
         if self._connection_record is None:
             return None
         else:
             return self._connection_record.record_info
 
     def invalidate(
-        self, e: Optional[BaseException] = None, soft: bool = False
+        self, e: BaseException | None = None, soft: bool = False
     ) -> None:
         if self.dbapi_connection is None:
             util.warn("Can't invalidate an already-closed connection.")

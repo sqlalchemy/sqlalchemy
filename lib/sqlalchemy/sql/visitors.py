@@ -447,7 +447,7 @@ class HasTraverseInternals:
 
     @util.preload_module("sqlalchemy.sql.traversals")
     def get_children(
-        self, *, omit_attrs: Tuple[str, ...] = (), **kw: Any
+        self, *, omit_attrs: tuple[str, ...] = (), **kw: Any
     ) -> Iterable[HasTraverseInternals]:
         r"""Return immediate child :class:`.visitors.HasTraverseInternals`
         elements of this :class:`.visitors.HasTraverseInternals`.
@@ -493,7 +493,7 @@ class HasTraversalDispatch:
 
     __slots__ = ()
 
-    _dispatch_lookup: ClassVar[Dict[Union[InternalTraversal, str], str]] = {}
+    _dispatch_lookup: ClassVar[dict[InternalTraversal | str, str]] = {}
 
     def dispatch(self, visit_symbol: InternalTraversal) -> Callable[..., Any]:
         """Given a method from :class:`.HasTraversalDispatch`, return the
@@ -524,7 +524,7 @@ class HasTraversalDispatch:
 
     def generate_dispatch(
         self,
-        target_cls: Type[object],
+        target_cls: type[object],
         internal_dispatch: _TraverseInternalsType,
         generate_dispatcher_name: str,
     ) -> _InternalTraversalDispatchType:
@@ -592,7 +592,7 @@ class ExternallyTraversible(HasTraverseInternals, Visitable):
         def _annotate(self, values: _AnnotationDict) -> Self: ...
 
         def get_children(
-            self, *, omit_attrs: Tuple[str, ...] = (), **kw: Any
+            self, *, omit_attrs: tuple[str, ...] = (), **kw: Any
         ) -> Iterable[ExternallyTraversible]: ...
 
     def _clone(self, **kw: Any) -> Self:
@@ -600,7 +600,7 @@ class ExternallyTraversible(HasTraverseInternals, Visitable):
         raise NotImplementedError()
 
     def _copy_internals(
-        self, *, omit_attrs: Tuple[str, ...] = (), **kw: Any
+        self, *, omit_attrs: tuple[str, ...] = (), **kw: Any
     ) -> None:
         """Reassign internal elements to be clones of themselves.
 
@@ -627,7 +627,7 @@ class _CloneCallableType(Protocol):
 
 
 class _TraverseTransformCallableType(Protocol[_ET]):
-    def __call__(self, element: _ET, **kw: Any) -> Optional[_ET]: ...
+    def __call__(self, element: _ET, **kw: Any) -> _ET | None: ...
 
 
 _ExtT = TypeVar("_ExtT", bound="ExternalTraversal")
@@ -644,8 +644,8 @@ class ExternalTraversal(util.MemoizedSlots):
 
     __slots__ = ("_visitor_dict", "_next")
 
-    __traverse_options__: Dict[str, Any] = {}
-    _next: Optional[ExternalTraversal]
+    __traverse_options__: dict[str, Any] = {}
+    _next: ExternalTraversal | None
 
     def traverse_single(self, obj: Visitable, **kw: Any) -> Any:
         for v in self.visitor_iterator:
@@ -654,7 +654,7 @@ class ExternalTraversal(util.MemoizedSlots):
                 return meth(obj, **kw)
 
     def iterate(
-        self, obj: Optional[ExternallyTraversible]
+        self, obj: ExternallyTraversible | None
     ) -> Iterator[ExternallyTraversible]:
         """Traverse the given expression structure, returning an iterator
         of all elements.
@@ -671,15 +671,15 @@ class ExternalTraversal(util.MemoizedSlots):
     ) -> ExternallyTraversible: ...
 
     def traverse(
-        self, obj: Optional[ExternallyTraversible]
-    ) -> Optional[ExternallyTraversible]:
+        self, obj: ExternallyTraversible | None
+    ) -> ExternallyTraversible | None:
         """Traverse and visit the given expression structure."""
 
         return traverse(obj, self.__traverse_options__, self._visitor_dict)
 
     def _memoized_attr__visitor_dict(
         self,
-    ) -> Dict[str, _TraverseCallableType[Any]]:
+    ) -> dict[str, _TraverseCallableType[Any]]:
         visitors = {}
 
         for name in dir(self):
@@ -691,7 +691,7 @@ class ExternalTraversal(util.MemoizedSlots):
     def visitor_iterator(self) -> Iterator[ExternalTraversal]:
         """Iterate through this visitor and each 'chained' visitor."""
 
-        v: Optional[ExternalTraversal] = self
+        v: ExternalTraversal | None = self
         while v:
             yield v
             v = getattr(v, "_next", None)
@@ -720,8 +720,8 @@ class CloningExternalTraversal(ExternalTraversal):
     __slots__ = ()
 
     def copy_and_process(
-        self, list_: List[ExternallyTraversible]
-    ) -> List[ExternallyTraversible]:
+        self, list_: list[ExternallyTraversible]
+    ) -> list[ExternallyTraversible]:
         """Apply cloned traversal to the given list of elements, and return
         the new list.
 
@@ -737,8 +737,8 @@ class CloningExternalTraversal(ExternalTraversal):
     ) -> ExternallyTraversible: ...
 
     def traverse(
-        self, obj: Optional[ExternallyTraversible]
-    ) -> Optional[ExternallyTraversible]:
+        self, obj: ExternallyTraversible | None
+    ) -> ExternallyTraversible | None:
         """Traverse and visit the given expression structure."""
 
         return cloned_traverse(
@@ -759,7 +759,7 @@ class ReplacingExternalTraversal(CloningExternalTraversal):
 
     def replace(
         self, elem: ExternallyTraversible
-    ) -> Optional[ExternallyTraversible]:
+    ) -> ExternallyTraversible | None:
         """Receive pre-copied elements during a cloning traversal.
 
         If the method returns a new element, the element is used
@@ -777,14 +777,14 @@ class ReplacingExternalTraversal(CloningExternalTraversal):
     ) -> ExternallyTraversible: ...
 
     def traverse(
-        self, obj: Optional[ExternallyTraversible]
-    ) -> Optional[ExternallyTraversible]:
+        self, obj: ExternallyTraversible | None
+    ) -> ExternallyTraversible | None:
         """Traverse and visit the given expression structure."""
 
         def replace(
             element: ExternallyTraversible,
             **kw: Any,
-        ) -> Optional[ExternallyTraversible]:
+        ) -> ExternallyTraversible | None:
             for v in self.visitor_iterator:
                 e = cast(ReplacingExternalTraversal, v).replace(element)
                 if e is not None:
@@ -804,7 +804,7 @@ ReplacingCloningVisitor = ReplacingExternalTraversal
 
 
 def iterate(
-    obj: Optional[ExternallyTraversible],
+    obj: ExternallyTraversible | None,
     opts: Mapping[str, Any] = util.EMPTY_DICT,
 ) -> Iterator[ExternallyTraversible]:
     r"""Traverse the given expression structure, returning an iterator.
@@ -862,9 +862,9 @@ def traverse_using(
 
 def traverse_using(
     iterator: Iterable[ExternallyTraversible],
-    obj: Optional[ExternallyTraversible],
+    obj: ExternallyTraversible | None,
     visitors: Mapping[str, _TraverseCallableType[Any]],
-) -> Optional[ExternallyTraversible]:
+) -> ExternallyTraversible | None:
     """Visit the given expression structure using the given iterator of
     objects.
 
@@ -913,10 +913,10 @@ def traverse(
 
 
 def traverse(
-    obj: Optional[ExternallyTraversible],
+    obj: ExternallyTraversible | None,
     opts: Mapping[str, Any],
     visitors: Mapping[str, _TraverseCallableType[Any]],
-) -> Optional[ExternallyTraversible]:
+) -> ExternallyTraversible | None:
     """Traverse and visit the given expression structure using the default
     iterator.
 
@@ -970,10 +970,10 @@ def cloned_traverse(
 
 
 def cloned_traverse(
-    obj: Optional[ExternallyTraversible],
+    obj: ExternallyTraversible | None,
     opts: Mapping[str, Any],
     visitors: Mapping[str, _TraverseCallableType[Any]],
-) -> Optional[ExternallyTraversible]:
+) -> ExternallyTraversible | None:
     """Clone the given expression structure, allowing modifications by
     visitors for mutable objects.
 
@@ -1014,7 +1014,7 @@ def cloned_traverse(
 
     """
 
-    cloned: Dict[int, ExternallyTraversible] = {}
+    cloned: dict[int, ExternallyTraversible] = {}
     stop_on = set(opts.get("stop_on", []))
 
     def deferred_copy_internals(
@@ -1085,10 +1085,10 @@ def replacement_traverse(
 
 
 def replacement_traverse(
-    obj: Optional[ExternallyTraversible],
+    obj: ExternallyTraversible | None,
     opts: Mapping[str, Any],
     replace: _TraverseTransformCallableType[Any],
-) -> Optional[ExternallyTraversible]:
+) -> ExternallyTraversible | None:
     """Clone the given expression structure, allowing element
     replacement by a given replacement function.
 

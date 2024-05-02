@@ -39,7 +39,7 @@ _PT = TypeVar("_PT", bound=Any)
 
 class ReversibleProxy(Generic[_PT]):
     _proxy_objects: ClassVar[
-        Dict[weakref.ref[Any], weakref.ref[ReversibleProxy[Any]]]
+        dict[weakref.ref[Any], weakref.ref[ReversibleProxy[Any]]]
     ] = {}
     __slots__ = ("__weakref__",)
 
@@ -49,7 +49,7 @@ class ReversibleProxy(Generic[_PT]):
     @overload
     def _assign_proxied(self, target: None) -> None: ...
 
-    def _assign_proxied(self, target: Optional[_PT]) -> Optional[_PT]:
+    def _assign_proxied(self, target: _PT | None) -> _PT | None:
         if target is not None:
             target_ref: weakref.ref[_PT] = weakref.ref(
                 target, ReversibleProxy._target_gced
@@ -66,7 +66,7 @@ class ReversibleProxy(Generic[_PT]):
     def _target_gced(
         cls,
         ref: weakref.ref[_PT],
-        proxy_ref: Optional[weakref.ref[Self]] = None,  # noqa: U100
+        proxy_ref: weakref.ref[Self] | None = None,  # noqa: U100
     ) -> None:
         cls._proxy_objects.pop(ref, None)
 
@@ -86,12 +86,12 @@ class ReversibleProxy(Generic[_PT]):
     @classmethod
     def _retrieve_proxy_for_target(
         cls, target: _PT, regenerate: bool = True
-    ) -> Optional[Self]: ...
+    ) -> Self | None: ...
 
     @classmethod
     def _retrieve_proxy_for_target(
         cls, target: _PT, regenerate: bool = True
-    ) -> Optional[Self]:
+    ) -> Self | None:
         try:
             proxy_ref = cls._proxy_objects[weakref.ref(target)]
         except KeyError:
@@ -123,7 +123,7 @@ class StartableContext(Awaitable[_T_co], abc.ABC):
     @abc.abstractmethod
     async def __aexit__(
         self, type_: Any, value: Any, traceback: Any
-    ) -> Optional[bool]:
+    ) -> bool | None:
         pass
 
     def _raise_for_not_started(self) -> NoReturn:
@@ -141,8 +141,8 @@ class GeneratorStartableContext(StartableContext[_T_co]):
     def __init__(
         self,
         func: Callable[..., AsyncIterator[_T_co]],
-        args: Tuple[Any, ...],
-        kwds: Dict[str, Any],
+        args: tuple[Any, ...],
+        kwds: dict[str, Any],
     ):
         self.gen = func(*args, **kwds)  # type: ignore
 
@@ -163,7 +163,7 @@ class GeneratorStartableContext(StartableContext[_T_co]):
 
     async def __aexit__(
         self, typ: Any, value: Any, traceback: Any
-    ) -> Optional[bool]:
+    ) -> bool | None:
         # vendored from contextlib.py
         if typ is None:
             try:

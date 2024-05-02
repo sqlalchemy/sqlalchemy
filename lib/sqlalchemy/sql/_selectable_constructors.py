@@ -60,7 +60,7 @@ _T = TypeVar("_T", bound=Any)
 
 
 def alias(
-    selectable: FromClause, name: Optional[str] = None, flat: bool = False
+    selectable: FromClause, name: str | None = None, flat: bool = False
 ) -> NamedFromClause:
     """Return a named alias of the given :class:`.FromClause`.
 
@@ -94,7 +94,7 @@ def alias(
 
 
 def cte(
-    selectable: HasCTE, name: Optional[str] = None, recursive: bool = False
+    selectable: HasCTE, name: str | None = None, recursive: bool = False
 ) -> CTE:
     r"""Return a new :class:`_expression.CTE`,
     or Common Table Expression instance.
@@ -138,9 +138,9 @@ def except_all(
 
 
 def exists(
-    __argument: Optional[
-        Union[_ColumnsClauseArgument[Any], SelectBase, ScalarSelect[Any]]
-    ] = None,
+    __argument: None | (
+        _ColumnsClauseArgument[Any] | SelectBase | ScalarSelect[Any]
+    ) = None,
     /,
 ) -> Exists:
     """Construct a new :class:`_expression.Exists` construct.
@@ -217,7 +217,7 @@ def intersect_all(
 def join(
     left: _FromClauseArgument,
     right: _FromClauseArgument,
-    onclause: Optional[_OnClauseArgument] = None,
+    onclause: _OnClauseArgument | None = None,
     isouter: bool = False,
     full: bool = False,
 ) -> Join:
@@ -271,8 +271,8 @@ def join(
 
 
 def lateral(
-    selectable: Union[SelectBase, _FromClauseArgument],
-    name: Optional[str] = None,
+    selectable: SelectBase | _FromClauseArgument,
+    name: str | None = None,
 ) -> LateralFromClause:
     """Return a :class:`_expression.Lateral` object.
 
@@ -297,7 +297,7 @@ def lateral(
 def outerjoin(
     left: _FromClauseArgument,
     right: _FromClauseArgument,
-    onclause: Optional[_OnClauseArgument] = None,
+    onclause: _OnClauseArgument | None = None,
     full: bool = False,
 ) -> Join:
     """Return an ``OUTER JOIN`` clause element.
@@ -518,9 +518,9 @@ def table(name: str, *columns: ColumnClause[Any], **kw: Any) -> TableClause:
 
 def tablesample(
     selectable: _FromClauseArgument,
-    sampling: Union[float, Function[Any]],
-    name: Optional[str] = None,
-    seed: Optional[roles.ExpressionElementRole[Any]] = None,
+    sampling: float | Function[Any],
+    name: str | None = None,
+    seed: roles.ExpressionElementRole[Any] | None = None,
 ) -> TableSample:
     """Return a :class:`_expression.TableSample` object.
 
@@ -607,7 +607,7 @@ def union_all(
 
 def values(
     *columns: ColumnClause[Any],
-    name: Optional[str] = None,
+    name: str | None = None,
     literal_binds: bool = False,
 ) -> Values:
     r"""Construct a :class:`_expression.Values` construct.

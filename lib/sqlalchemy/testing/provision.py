@@ -198,7 +198,7 @@ def generate_driver_url(url, driver, query_str):
     backend = url.get_backend_name()
 
     new_url = url.set(
-        drivername="%s+%s" % (backend, driver),
+        drivername="{}+{}".format(backend, driver),
     )
     if query_str:
         new_url = new_url.update_query_string(query_str)
@@ -334,14 +334,14 @@ def create_db(cfg, eng, ident):
     via `tox` or `pytest -n4`.
     """
     raise NotImplementedError(
-        "no DB creation routine for cfg: %s" % (eng.url,)
+        "no DB creation routine for cfg: {}".format(eng.url)
     )
 
 
 @register.init
 def drop_db(cfg, eng, ident):
     """Drop a database that we dynamically created for testing."""
-    raise NotImplementedError("no DB drop routine for cfg: %s" % (eng.url,))
+    raise NotImplementedError("no DB drop routine for cfg: {}".format(eng.url))
 
 
 def _adapt_update_db_opts(fn):
@@ -430,7 +430,7 @@ def temp_table_keyword_args(cfg, eng):
     ComponentReflectionTest class in suite/test_reflection.py
     """
     raise NotImplementedError(
-        "no temp table keyword args routine for cfg: %s" % (eng.url,)
+        "no temp table keyword args routine for cfg: {}".format(eng.url)
     )
 
 

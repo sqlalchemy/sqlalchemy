@@ -21,7 +21,7 @@ class Point:
         return self.x, self.y
 
     def __repr__(self) -> str:
-        return "Point(x=%r, y=%r)" % (self.x, self.y)
+        return "Point(x={!r}, y={!r})".format(self.x, self.y)
 
     def __eq__(self, other: Any) -> bool:
         return (

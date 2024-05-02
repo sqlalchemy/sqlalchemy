@@ -103,7 +103,7 @@ class OrderingListTest(fixtures.MappedTest):
                 self.text = text
 
             def __repr__(self):
-                return '<Bullet "%s" pos %s>' % (self.text, self.position)
+                return '<Bullet "{}" pos {}>'.format(self.text, self.position)
 
         clear_mappers()
         self.mapper_registry.map_imperatively(
@@ -133,40 +133,40 @@ class OrderingListTest(fixtures.MappedTest):
 
         s1 = Slide("Slide #1")
 
-        self.assert_(not s1.bullets)
-        self.assert_(len(s1.bullets) == 0)
+        self.assertTrue(not s1.bullets)
+        self.assertTrue(len(s1.bullets) == 0)
 
         s1.bullets.append(Bullet("s1/b1"))
 
-        self.assert_(s1.bullets)
-        self.assert_(len(s1.bullets) == 1)
-        self.assert_(s1.bullets[0].position == 1)
+        self.assertTrue(s1.bullets)
+        self.assertTrue(len(s1.bullets) == 1)
+        self.assertTrue(s1.bullets[0].position == 1)
 
         s1.bullets.append(Bullet("s1/b2"))
 
-        self.assert_(len(s1.bullets) == 2)
-        self.assert_(s1.bullets[0].position == 1)
-        self.assert_(s1.bullets[1].position == 2)
+        self.assertTrue(len(s1.bullets) == 2)
+        self.assertTrue(s1.bullets[0].position == 1)
+        self.assertTrue(s1.bullets[1].position == 2)
 
         bul = Bullet("s1/b100")
         bul.position = 100
         s1.bullets.append(bul)
 
-        self.assert_(s1.bullets[0].position == 1)
-        self.assert_(s1.bullets[1].position == 2)
-        self.assert_(s1.bullets[2].position == 100)
+        self.assertTrue(s1.bullets[0].position == 1)
+        self.assertTrue(s1.bullets[1].position == 2)
+        self.assertTrue(s1.bullets[2].position == 100)
 
         s1.bullets.append(Bullet("s1/b4"))
-        self.assert_(s1.bullets[0].position == 1)
-        self.assert_(s1.bullets[1].position == 2)
-        self.assert_(s1.bullets[2].position == 100)
-        self.assert_(s1.bullets[3].position == 4)
+        self.assertTrue(s1.bullets[0].position == 1)
+        self.assertTrue(s1.bullets[1].position == 2)
+        self.assertTrue(s1.bullets[2].position == 100)
+        self.assertTrue(s1.bullets[3].position == 4)
 
         s1.bullets._reorder()
-        self.assert_(s1.bullets[0].position == 1)
-        self.assert_(s1.bullets[1].position == 2)
-        self.assert_(s1.bullets[2].position == 3)
-        self.assert_(s1.bullets[3].position == 4)
+        self.assertTrue(s1.bullets[0].position == 1)
+        self.assertTrue(s1.bullets[1].position == 2)
+        self.assertTrue(s1.bullets[2].position == 3)
+        self.assertTrue(s1.bullets[3].position == 4)
 
         session = fixture_session()
         session.add(s1)
@@ -178,13 +178,13 @@ class OrderingListTest(fixtures.MappedTest):
 
         srt = session.get(Slide, id_)
 
-        self.assert_(srt.bullets)
-        self.assert_(len(srt.bullets) == 4)
+        self.assertTrue(srt.bullets)
+        self.assertTrue(len(srt.bullets) == 4)
 
         titles = ["s1/b1", "s1/b2", "s1/b100", "s1/b4"]
         found = [b.text for b in srt.bullets]
 
-        self.assert_(titles == found)
+        self.assertTrue(titles == found)
 
     def test_append_reorder(self):
         self._setup(
@@ -193,46 +193,46 @@ class OrderingListTest(fixtures.MappedTest):
 
         s1 = Slide("Slide #1")
 
-        self.assert_(not s1.bullets)
-        self.assert_(len(s1.bullets) == 0)
+        self.assertTrue(not s1.bullets)
+        self.assertTrue(len(s1.bullets) == 0)
 
         s1.bullets.append(Bullet("s1/b1"))
 
-        self.assert_(s1.bullets)
-        self.assert_(len(s1.bullets) == 1)
-        self.assert_(s1.bullets[0].position == 1)
+        self.assertTrue(s1.bullets)
+        self.assertTrue(len(s1.bullets) == 1)
+        self.assertTrue(s1.bullets[0].position == 1)
 
         s1.bullets.append(Bullet("s1/b2"))
 
-        self.assert_(len(s1.bullets) == 2)
-        self.assert_(s1.bullets[0].position == 1)
-        self.assert_(s1.bullets[1].position == 2)
+        self.assertTrue(len(s1.bullets) == 2)
+        self.assertTrue(s1.bullets[0].position == 1)
+        self.assertTrue(s1.bullets[1].position == 2)
 
         bul = Bullet("s1/b100")
         bul.position = 100
         s1.bullets.append(bul)
 
-        self.assert_(s1.bullets[0].position == 1)
-        self.assert_(s1.bullets[1].position == 2)
-        self.assert_(s1.bullets[2].position == 3)
+        self.assertTrue(s1.bullets[0].position == 1)
+        self.assertTrue(s1.bullets[1].position == 2)
+        self.assertTrue(s1.bullets[2].position == 3)
 
         s1.bullets.append(Bullet("s1/b4"))
-        self.assert_(s1.bullets[0].position == 1)
-        self.assert_(s1.bullets[1].position == 2)
-        self.assert_(s1.bullets[2].position == 3)
-        self.assert_(s1.bullets[3].position == 4)
+        self.assertTrue(s1.bullets[0].position == 1)
+        self.assertTrue(s1.bullets[1].position == 2)
+        self.assertTrue(s1.bullets[2].position == 3)
+        self.assertTrue(s1.bullets[3].position == 4)
 
         s1.bullets._reorder()
-        self.assert_(s1.bullets[0].position == 1)
-        self.assert_(s1.bullets[1].position == 2)
-        self.assert_(s1.bullets[2].position == 3)
-        self.assert_(s1.bullets[3].position == 4)
+        self.assertTrue(s1.bullets[0].position == 1)
+        self.assertTrue(s1.bullets[1].position == 2)
+        self.assertTrue(s1.bullets[2].position == 3)
+        self.assertTrue(s1.bullets[3].position == 4)
 
         s1.bullets._raw_append(Bullet("raw"))
-        self.assert_(s1.bullets[4].position is None)
+        self.assertTrue(s1.bullets[4].position is None)
 
         s1.bullets._reorder()
-        self.assert_(s1.bullets[4].position == 5)
+        self.assertTrue(s1.bullets[4].position == 5)
         session = fixture_session()
         session.add(s1)
         session.flush()
@@ -243,8 +243,8 @@ class OrderingListTest(fixtures.MappedTest):
 
         srt = session.get(Slide, id_)
 
-        self.assert_(srt.bullets)
-        self.assert_(len(srt.bullets) == 5)
+        self.assertTrue(srt.bullets)
+        self.assertTrue(len(srt.bullets) == 5)
 
         titles = ["s1/b1", "s1/b2", "s1/b100", "s1/b4", "raw"]
         found = [b.text for b in srt.bullets]
@@ -269,26 +269,26 @@ class OrderingListTest(fixtures.MappedTest):
         s1.bullets.append(Bullet("3"))
         s1.bullets.append(Bullet("4"))
 
-        self.assert_(s1.bullets[0].position == 0)
-        self.assert_(s1.bullets[1].position == 1)
-        self.assert_(s1.bullets[2].position == 2)
-        self.assert_(s1.bullets[3].position == 3)
+        self.assertTrue(s1.bullets[0].position == 0)
+        self.assertTrue(s1.bullets[1].position == 1)
+        self.assertTrue(s1.bullets[2].position == 2)
+        self.assertTrue(s1.bullets[3].position == 3)
 
         s1.bullets.insert(2, Bullet("insert_at_2"))
-        self.assert_(s1.bullets[0].position == 0)
-        self.assert_(s1.bullets[1].position == 1)
-        self.assert_(s1.bullets[2].position == 2)
-        self.assert_(s1.bullets[3].position == 3)
-        self.assert_(s1.bullets[4].position == 4)
+        self.assertTrue(s1.bullets[0].position == 0)
+        self.assertTrue(s1.bullets[1].position == 1)
+        self.assertTrue(s1.bullets[2].position == 2)
+        self.assertTrue(s1.bullets[3].position == 3)
+        self.assertTrue(s1.bullets[4].position == 4)
 
-        self.assert_(s1.bullets[1].text == "2")
-        self.assert_(s1.bullets[2].text == "insert_at_2")
-        self.assert_(s1.bullets[3].text == "3")
+        self.assertTrue(s1.bullets[1].text == "2")
+        self.assertTrue(s1.bullets[2].text == "insert_at_2")
+        self.assertTrue(s1.bullets[3].text == "3")
 
         s1.bullets.insert(999, Bullet("999"))
 
-        self.assert_(len(s1.bullets) == 6)
-        self.assert_(s1.bullets[5].position == 5)
+        self.assertTrue(len(s1.bullets) == 6)
+        self.assertTrue(s1.bullets[5].position == 5)
 
         session = fixture_session()
         session.add(s1)
@@ -300,13 +300,13 @@ class OrderingListTest(fixtures.MappedTest):
 
         srt = session.get(Slide, id_)
 
-        self.assert_(srt.bullets)
-        self.assert_(len(srt.bullets) == 6)
+        self.assertTrue(srt.bullets)
+        self.assertTrue(len(srt.bullets) == 6)
 
         texts = ["1", "2", "insert_at_2", "3", "4", "999"]
         found = [b.text for b in srt.bullets]
 
-        self.assert_(texts == found)
+        self.assertTrue(texts == found)
 
     def test_slice(self):
         self._setup(ordering_list("position"))
@@ -324,20 +324,20 @@ class OrderingListTest(fixtures.MappedTest):
         # 1, 2, 3
         s1.bullets[0:3] = b[0:3]
         for i in 0, 1, 2:
-            self.assert_(s1.bullets[i].position == i)
-            self.assert_(s1.bullets[i] == b[i])
+            self.assertTrue(s1.bullets[i].position == i)
+            self.assertTrue(s1.bullets[i] == b[i])
 
         # 1, 4, 5, 6, 3
         s1.bullets[1:2] = b[3:6]
         for li, bi in (0, 0), (1, 3), (2, 4), (3, 5), (4, 2):
-            self.assert_(s1.bullets[li].position == li)
-            self.assert_(s1.bullets[li] == b[bi])
+            self.assertTrue(s1.bullets[li].position == li)
+            self.assertTrue(s1.bullets[li] == b[bi])
 
         # 1, 6, 3
         del s1.bullets[1:3]
         for li, bi in (0, 0), (1, 5), (2, 2):
-            self.assert_(s1.bullets[li].position == li)
-            self.assert_(s1.bullets[li] == b[bi])
+            self.assertTrue(s1.bullets[li].position == li)
+            self.assertTrue(s1.bullets[li] == b[bi])
 
         session = fixture_session()
         session.add(s1)
@@ -349,13 +349,13 @@ class OrderingListTest(fixtures.MappedTest):
 
         srt = session.get(Slide, id_)
 
-        self.assert_(srt.bullets)
-        self.assert_(len(srt.bullets) == 3)
+        self.assertTrue(srt.bullets)
+        self.assertTrue(len(srt.bullets) == 3)
 
         texts = ["1", "6", "3"]
         for i, text in enumerate(texts):
-            self.assert_(srt.bullets[i].position == i)
-            self.assert_(srt.bullets[i].text == text)
+            self.assertTrue(srt.bullets[i].position == i)
+            self.assertTrue(srt.bullets[i].text == text)
 
     def test_replace(self):
         self._setup(ordering_list("position"))
@@ -363,22 +363,22 @@ class OrderingListTest(fixtures.MappedTest):
         s1 = Slide("Slide #1")
         s1.bullets = [Bullet("1"), Bullet("2"), Bullet("3")]
 
-        self.assert_(len(s1.bullets) == 3)
-        self.assert_(s1.bullets[2].position == 2)
+        self.assertTrue(len(s1.bullets) == 3)
+        self.assertTrue(s1.bullets[2].position == 2)
 
         session = fixture_session()
         session.add(s1)
         session.flush()
 
         new_bullet = Bullet("new 2")
-        self.assert_(new_bullet.position is None)
+        self.assertTrue(new_bullet.position is None)
 
         # mark existing bullet as db-deleted before replacement.
         # session.delete(s1.bullets[1])
         s1.bullets[1] = new_bullet
 
-        self.assert_(new_bullet.position == 1)
-        self.assert_(len(s1.bullets) == 3)
+        self.assertTrue(new_bullet.position == 1)
+        self.assertTrue(len(s1.bullets) == 3)
 
         id_ = s1.id
 
@@ -387,11 +387,11 @@ class OrderingListTest(fixtures.MappedTest):
 
         srt = session.get(Slide, id_)
 
-        self.assert_(srt.bullets)
-        self.assert_(len(srt.bullets) == 3)
+        self.assertTrue(srt.bullets)
+        self.assertTrue(len(srt.bullets) == 3)
 
-        self.assert_(srt.bullets[1].text == "new 2")
-        self.assert_(srt.bullets[2].text == "3")
+        self.assertTrue(srt.bullets[1].text == "new 2")
+        self.assertTrue(srt.bullets[2].text == "3")
 
     def test_replace_two(self):
         """test #3191"""
@@ -424,7 +424,7 @@ class OrderingListTest(fixtures.MappedTest):
         stepped.append(Pos())
 
         for li, pos in (0, 0), (1, 2), (2, 4), (3, 6):
-            self.assert_(stepped[li].position == pos)
+            self.assertTrue(stepped[li].position == pos)
 
         fib_factory = ordering_list(
             "position", ordering_func=fibonacci_numbering("position")
@@ -438,7 +438,7 @@ class OrderingListTest(fixtures.MappedTest):
         fibbed.append(Pos())
 
         for li, pos in (0, 1), (1, 2), (2, 3), (3, 5), (4, 8):
-            self.assert_(fibbed[li].position == pos)
+            self.assertTrue(fibbed[li].position == pos)
 
         fibbed.insert(2, Pos())
         fibbed.insert(4, Pos())
@@ -454,7 +454,7 @@ class OrderingListTest(fixtures.MappedTest):
             (6, 21),
             (7, 34),
         ):
-            self.assert_(fibbed[li].position == pos)
+            self.assertTrue(fibbed[li].position == pos)
 
         alpha_factory = ordering_list("position", ordering_func=alpha_ordering)
         alpha = alpha_factory()
@@ -465,7 +465,7 @@ class OrderingListTest(fixtures.MappedTest):
         alpha.insert(1, Pos())
 
         for li, pos in (0, "A"), (1, "B"), (2, "C"), (3, "D"):
-            self.assert_(alpha[li].position == pos)
+            self.assertTrue(alpha[li].position == pos)
 
     def test_picklability(self):
         from sqlalchemy.ext.orderinglist import OrderingList
@@ -477,8 +477,8 @@ class OrderingListTest(fixtures.MappedTest):
             pck = dumps(olist)
             copy = loads(pck)
 
-            self.assert_(copy == olist)
-            self.assert_(copy.__dict__ == olist.__dict__)
+            self.assertTrue(copy == olist)
+            self.assertTrue(copy.__dict__ == olist.__dict__)
 
 
 class DummyItem:

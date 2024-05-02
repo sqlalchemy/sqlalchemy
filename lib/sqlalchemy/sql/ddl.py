@@ -72,13 +72,13 @@ class BaseDDLElement(ClauseElement):
         self,
         dialect: Dialect,
         *,
-        compiled_cache: Optional[CompiledCacheType],
-        column_keys: List[str],
+        compiled_cache: CompiledCacheType | None,
+        column_keys: list[str],
         for_executemany: bool = False,
-        schema_translate_map: Optional[SchemaTranslateMapType] = None,
+        schema_translate_map: SchemaTranslateMapType | None = None,
         **kw: Any,
-    ) -> Tuple[
-        Compiled, Optional[typing_Sequence[BindParameter[Any]]], CacheStats
+    ) -> tuple[
+        Compiled, typing_Sequence[BindParameter[Any]] | None, CacheStats
     ]:
         raise NotImplementedError()
 
@@ -88,27 +88,27 @@ class DDLIfCallable(Protocol):
         self,
         ddl: BaseDDLElement,
         target: SchemaItem,
-        bind: Optional[Connection],
-        tables: Optional[List[Table]] = None,
-        state: Optional[Any] = None,
+        bind: Connection | None,
+        tables: list[Table] | None = None,
+        state: Any | None = None,
         *,
         dialect: Dialect,
-        compiler: Optional[DDLCompiler] = ...,
+        compiler: DDLCompiler | None = ...,
         checkfirst: bool,
     ) -> bool: ...
 
 
 class DDLIf(typing.NamedTuple):
-    dialect: Optional[str]
-    callable_: Optional[DDLIfCallable]
-    state: Optional[Any]
+    dialect: str | None
+    callable_: DDLIfCallable | None
+    state: Any | None
 
     def _should_execute(
         self,
         ddl: BaseDDLElement,
         target: SchemaItem,
-        bind: Optional[Connection],
-        compiler: Optional[DDLCompiler] = None,
+        bind: Connection | None,
+        compiler: DDLCompiler | None = None,
         **kw: Any,
     ) -> bool:
         if bind is not None:
@@ -171,8 +171,8 @@ class ExecutableDDLElement(roles.DDLRole, Executable, BaseDDLElement):
 
     """
 
-    _ddl_if: Optional[DDLIf] = None
-    target: Optional[SchemaItem] = None
+    _ddl_if: DDLIf | None = None
+    target: SchemaItem | None = None
 
     def _execute_on_connection(
         self, connection, distilled_params, execution_options
@@ -220,9 +220,9 @@ class ExecutableDDLElement(roles.DDLRole, Executable, BaseDDLElement):
     @_generative
     def execute_if(
         self,
-        dialect: Optional[str] = None,
-        callable_: Optional[DDLIfCallable] = None,
-        state: Optional[Any] = None,
+        dialect: str | None = None,
+        callable_: DDLIfCallable | None = None,
+        state: Any | None = None,
     ) -> Self:
         r"""Return a callable that will execute this
         :class:`_ddl.ExecutableDDLElement` conditionally within an event
@@ -406,7 +406,7 @@ class DDL(ExecutableDDLElement):
         if self.context:
             parts.append(f"context={self.context}")
 
-        return "<%s@%s; %s>" % (
+        return "<{}@{}; {}>".format(
             type(self).__name__,
             id(self),
             ", ".join(parts),
@@ -509,9 +509,9 @@ class CreateTable(_CreateBase):
     def __init__(
         self,
         element: Table,
-        include_foreign_key_constraints: Optional[
+        include_foreign_key_constraints: None | (
             typing_Sequence[ForeignKeyConstraint]
-        ] = None,
+        ) = None,
         if_not_exists: bool = False,
     ):
         """Create a :class:`.CreateTable` construct.
@@ -1171,11 +1171,11 @@ class SchemaDropper(InvokeDropDDLBase):
 
 def sort_tables(
     tables: Iterable[TableClause],
-    skip_fn: Optional[Callable[[ForeignKeyConstraint], bool]] = None,
-    extra_dependencies: Optional[
-        typing_Sequence[Tuple[TableClause, TableClause]]
-    ] = None,
-) -> List[Table]:
+    skip_fn: Callable[[ForeignKeyConstraint], bool] | None = None,
+    extra_dependencies: None | (
+        typing_Sequence[tuple[TableClause, TableClause]]
+    ) = None,
+) -> list[Table]:
     """Sort a collection of :class:`_schema.Table` objects based on
     dependency.
 

@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 class _ORMAdapterTrace:
     def _locate_col(
         self, col: ColumnElement[Any]
-    ) -> Optional[ColumnElement[Any]]:
+    ) -> ColumnElement[Any] | None:
         with self._tracer("_locate_col") as tracer:
             return tracer(super()._locate_col, col)
 
@@ -66,7 +66,7 @@ class _ORMAdapterTrace:
         )
         self._orm_adapter_trace_context.set(ctx)
 
-        stack: List[Any] = ctx["stack"]  # type: ignore
+        stack: list[Any] = ctx["stack"]  # type: ignore
         last_depth = len(stack)
         line_no: int = ctx["line_no"]  # type: ignore
         ctx["last_depth"] = last_depth

@@ -41,9 +41,9 @@ def infer_type_from_right_hand_nameexpr(
     api: SemanticAnalyzerPluginInterface,
     stmt: AssignmentStmt,
     node: Var,
-    left_hand_explicit_type: Optional[ProperType],
+    left_hand_explicit_type: ProperType | None,
     infer_from_right_side: RefExpr,
-) -> Optional[ProperType]:
+) -> ProperType | None:
     type_id = names.type_id_for_callee(infer_from_right_side)
     if type_id is None:
         return None
@@ -81,8 +81,8 @@ def _infer_type_from_relationship(
     api: SemanticAnalyzerPluginInterface,
     stmt: AssignmentStmt,
     node: Var,
-    left_hand_explicit_type: Optional[ProperType],
-) -> Optional[ProperType]:
+    left_hand_explicit_type: ProperType | None,
+) -> ProperType | None:
     """Infer the type of mapping from a relationship.
 
     E.g.::
@@ -109,7 +109,7 @@ def _infer_type_from_relationship(
 
     assert isinstance(stmt.rvalue, CallExpr)
     target_cls_arg = stmt.rvalue.args[0]
-    python_type_for_type: Optional[ProperType] = None
+    python_type_for_type: ProperType | None = None
 
     if isinstance(target_cls_arg, NameExpr) and isinstance(
         target_cls_arg.node, TypeInfo
@@ -133,7 +133,7 @@ def _infer_type_from_relationship(
     # isinstance(target_cls_arg, StrExpr)
 
     uselist_arg = util.get_callexpr_kwarg(stmt.rvalue, "uselist")
-    collection_cls_arg: Optional[Expression] = util.get_callexpr_kwarg(
+    collection_cls_arg: Expression | None = util.get_callexpr_kwarg(
         stmt.rvalue, "collection_class"
     )
     type_is_a_collection = False
@@ -247,8 +247,8 @@ def _infer_type_from_decl_composite_property(
     api: SemanticAnalyzerPluginInterface,
     stmt: AssignmentStmt,
     node: Var,
-    left_hand_explicit_type: Optional[ProperType],
-) -> Optional[ProperType]:
+    left_hand_explicit_type: ProperType | None,
+) -> ProperType | None:
     """Infer the type of mapping from a Composite."""
 
     assert isinstance(stmt.rvalue, CallExpr)
@@ -279,9 +279,9 @@ def _infer_type_from_mapped(
     api: SemanticAnalyzerPluginInterface,
     stmt: AssignmentStmt,
     node: Var,
-    left_hand_explicit_type: Optional[ProperType],
+    left_hand_explicit_type: ProperType | None,
     infer_from_right_side: RefExpr,
-) -> Optional[ProperType]:
+) -> ProperType | None:
     """Infer the type of mapping from a right side expression
     that returns Mapped.
 
@@ -311,8 +311,8 @@ def _infer_type_from_decl_column_property(
     api: SemanticAnalyzerPluginInterface,
     stmt: AssignmentStmt,
     node: Var,
-    left_hand_explicit_type: Optional[ProperType],
-) -> Optional[ProperType]:
+    left_hand_explicit_type: ProperType | None,
+) -> ProperType | None:
     """Infer the type of mapping from a ColumnProperty.
 
     This includes mappings against ``column_property()`` as well as the
@@ -360,9 +360,9 @@ def _infer_type_from_decl_column(
     api: SemanticAnalyzerPluginInterface,
     stmt: AssignmentStmt,
     node: Var,
-    left_hand_explicit_type: Optional[ProperType],
-    right_hand_expression: Optional[CallExpr] = None,
-) -> Optional[ProperType]:
+    left_hand_explicit_type: ProperType | None,
+    right_hand_expression: CallExpr | None = None,
+) -> ProperType | None:
     """Infer the type of mapping from a Column.
 
     E.g.::
@@ -460,9 +460,9 @@ def _infer_type_from_left_and_inferred_right(
     node: Var,
     left_hand_explicit_type: ProperType,
     python_type_for_type: ProperType,
-    orig_left_hand_type: Optional[ProperType] = None,
-    orig_python_type_for_type: Optional[ProperType] = None,
-) -> Optional[ProperType]:
+    orig_left_hand_type: ProperType | None = None,
+    orig_python_type_for_type: ProperType | None = None,
+) -> ProperType | None:
     """Validate type when a left hand annotation is present and we also
     could infer the right hand side::
 
@@ -502,7 +502,7 @@ def _infer_collection_type_from_left_and_inferred_right(
     node: Var,
     left_hand_explicit_type: Instance,
     python_type_for_type: Instance,
-) -> Optional[ProperType]:
+) -> ProperType | None:
     orig_left_hand_type = left_hand_explicit_type
     orig_python_type_for_type = python_type_for_type
 
@@ -529,8 +529,8 @@ def _infer_collection_type_from_left_and_inferred_right(
 def infer_type_from_left_hand_type_only(
     api: SemanticAnalyzerPluginInterface,
     node: Var,
-    left_hand_explicit_type: Optional[ProperType],
-) -> Optional[ProperType]:
+    left_hand_explicit_type: ProperType | None,
+) -> ProperType | None:
     """Determine the type based on explicit annotation only.
 
     if no annotation were present, note that we need one there to know
