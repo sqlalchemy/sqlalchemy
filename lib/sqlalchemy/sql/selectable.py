@@ -4556,6 +4556,7 @@ class SelectState(util.MemoizedSlots, CompileState):
         cls, label_style: SelectLabelStyle
     ) -> _LabelConventionCallable:
         table_qualified = label_style is LABEL_STYLE_TABLENAME_PLUS_COL
+
         dedupe = label_style is not LABEL_STYLE_NONE
 
         pa = prefix_anon_map()
@@ -4564,13 +4565,14 @@ class SelectState(util.MemoizedSlots, CompileState):
         def go(
             c: Union[ColumnElement[Any], TextClause],
             col_name: Optional[str] = None,
+            cancel_dedupe: bool = False,
         ) -> Optional[str]:
             if is_text_clause(c):
                 return None
             elif TYPE_CHECKING:
                 assert is_column_element(c)
 
-            if not dedupe:
+            if not dedupe or cancel_dedupe:
                 name = c._proxy_key
                 if name is None:
                     name = "_no_label"
