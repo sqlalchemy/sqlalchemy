@@ -118,10 +118,12 @@ _NOT_ENTITY = TypeVar(
     "Decimal",
 )
 
+_StarOrOne = Literal["*", 1]
+
 _MAYBE_ENTITY = TypeVar(
     "_MAYBE_ENTITY",
     roles.ColumnsClauseRole,
-    Literal["*", 1],
+    _StarOrOne,
     Type[Any],
     Inspectable[_HasClauseElement[Any]],
     _HasClauseElement[Any],
@@ -146,7 +148,7 @@ _ColumnsClauseArgument = Union[
     roles.TypedColumnsClauseRole[_T],
     roles.ColumnsClauseRole,
     "SQLCoreOperations[_T]",
-    Literal["*", 1],
+    _StarOrOne,
     Type[_T],
     Inspectable[_HasClauseElement[_T]],
     _HasClauseElement[_T],

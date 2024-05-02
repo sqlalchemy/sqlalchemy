@@ -3,6 +3,7 @@
 from sqlalchemy import column
 from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import Select
 from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import String
@@ -150,3 +151,7 @@ stmt23 = select(func.user())
 reveal_type(stmt23)
 
 # END GENERATED FUNCTION TYPING TESTS
+
+stmt_count: Select[int, int, int] = select(
+    func.count(), func.count("*"), func.count(1)
+)

@@ -40,6 +40,7 @@ test/test_schema.db
 /db_idents.txt
 .DS_Store
 .vs
+/scratch
 
 # cython complied files
 /lib/**/*.c
