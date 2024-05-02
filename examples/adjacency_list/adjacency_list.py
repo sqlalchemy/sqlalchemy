@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Dict
-from typing import Optional
 
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey

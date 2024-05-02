@@ -15,8 +15,6 @@ from __future__ import annotations
 import collections
 import itertools
 from typing import Any
-from typing import Dict
-from typing import Tuple
 from typing import TYPE_CHECKING
 
 from . import attributes

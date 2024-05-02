@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import contextlib
-from typing import List
-from typing import Optional
 
 from sqlalchemy import event
 from sqlalchemy import exc

@@ -5,7 +5,6 @@ import dataclasses
 from functools import reduce
 from operator import and_
 from typing import Any
-from typing import List
 from typing import MutableMapping
 from typing import MutableSet
 

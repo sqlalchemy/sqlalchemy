@@ -12,11 +12,7 @@ Mypy plugin for SQLAlchemy ORM.
 from __future__ import annotations
 
 from typing import Callable
-from typing import List
-from typing import Optional
-from typing import Tuple
 from typing import Type as TypingType
-from typing import Union
 
 from mypy import nodes
 from mypy.mro import calculate_mro

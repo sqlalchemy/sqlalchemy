@@ -34,18 +34,14 @@ from enum import unique
 from typing import Any
 from typing import Callable
 from typing import Collection
-from typing import Dict
 from typing import final
 from typing import Generator
 from typing import Iterable
-from typing import List
 from typing import Optional
 from typing import Sequence
-from typing import Set
 from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import TypeVar
-from typing import Union
 
 from .base import Connection
 from .base import Engine

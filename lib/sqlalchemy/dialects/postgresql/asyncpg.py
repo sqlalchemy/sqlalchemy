@@ -179,10 +179,8 @@ import re
 import time
 from typing import Any
 from typing import NoReturn
-from typing import Optional
 from typing import Protocol
 from typing import Sequence
-from typing import Tuple
 from typing import TYPE_CHECKING
 
 from . import json

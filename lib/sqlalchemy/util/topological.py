@@ -15,8 +15,6 @@ from typing import DefaultDict
 from typing import Iterable
 from typing import Iterator
 from typing import Sequence
-from typing import Set
-from typing import Tuple
 from typing import TypeVar
 
 from .. import util

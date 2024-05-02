@@ -17,14 +17,10 @@ from typing import Any
 from typing import cast
 from typing import Dict
 from typing import Iterable
-from typing import List
 from typing import MutableMapping
 from typing import NoReturn
-from typing import Optional
 from typing import overload
 from typing import Sequence
-from typing import Tuple
-from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union

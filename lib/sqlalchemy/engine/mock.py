@@ -12,9 +12,6 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import cast
-from typing import Optional
-from typing import Type
-from typing import Union
 
 from . import url as _url
 from .. import util

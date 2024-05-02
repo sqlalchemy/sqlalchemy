@@ -17,12 +17,7 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import Deque
-from typing import Dict
 from typing import Iterable
-from typing import Optional
-from typing import Set
-from typing import Tuple
-from typing import Type
 
 from . import operators
 from .cache_key import HasCacheKey

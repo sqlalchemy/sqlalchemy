@@ -6,9 +6,6 @@ from __future__ import annotations
 
 import typing
 from typing import ClassVar
-from typing import List
-from typing import Optional
-from typing import Set
 from typing import TYPE_CHECKING
 
 from sqlalchemy import create_engine

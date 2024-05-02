@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import re
 from typing import Any
-from typing import Optional
 from typing import TypeVar
 
 from .operators import CONTAINED_BY

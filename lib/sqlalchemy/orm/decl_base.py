@@ -17,11 +17,9 @@ from typing import Callable
 from typing import cast
 from typing import Dict
 from typing import Iterable
-from typing import List
 from typing import Mapping
 from typing import NamedTuple
 from typing import NoReturn
-from typing import Optional
 from typing import Protocol
 from typing import Sequence
 from typing import Tuple

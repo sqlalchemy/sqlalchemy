@@ -22,10 +22,7 @@ from __future__ import annotations
 import logging
 import sys
 from typing import Any
-from typing import Optional
 from typing import overload
-from typing import Set
-from typing import Type
 from typing import TypeVar
 from typing import Union
 

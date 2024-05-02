@@ -8,9 +8,6 @@ from __future__ import annotations
 
 import typing
 from typing import Any
-from typing import Optional
-from typing import Type
-from typing import Union
 
 from .base import ConnectionPoolEntry
 from .base import Pool

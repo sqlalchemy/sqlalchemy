@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import datetime
 import random
-from typing import List
 
 from sqlalchemy import Column
 from sqlalchemy import DateTime

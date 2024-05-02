@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import Any
 from typing import Callable
-from typing import Type
 from typing import TypeVar
 
 _T = TypeVar("_T")

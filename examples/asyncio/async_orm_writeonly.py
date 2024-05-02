@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import asyncio
 import datetime
-from typing import Optional
 
 from sqlalchemy import ForeignKey
 from sqlalchemy import func

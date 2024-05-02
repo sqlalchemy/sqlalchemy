@@ -27,7 +27,6 @@ from time import time as _time
 from typing import Any
 from typing import Deque
 from typing import Generic
-from typing import Optional
 from typing import TypeVar
 
 from .concurrency import await_

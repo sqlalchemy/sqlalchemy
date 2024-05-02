@@ -17,7 +17,6 @@ from typing import Coroutine
 from typing import NoReturn
 from typing import TYPE_CHECKING
 from typing import TypeVar
-from typing import Union
 
 from .compat import py311
 from .langhelpers import memoized_property

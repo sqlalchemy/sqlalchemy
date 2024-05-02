@@ -16,7 +16,6 @@ from typing import Awaitable
 from typing import Callable
 from typing import ClassVar
 from typing import Collection
-from typing import Dict
 from typing import Iterable
 from typing import Iterator
 from typing import List
@@ -25,9 +24,7 @@ from typing import MutableMapping
 from typing import Optional
 from typing import Protocol
 from typing import Sequence
-from typing import Set
 from typing import Tuple
-from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypedDict
 from typing import TypeVar

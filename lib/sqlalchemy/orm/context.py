@@ -11,16 +11,9 @@ from __future__ import annotations
 import itertools
 from typing import Any
 from typing import cast
-from typing import Dict
 from typing import Iterable
-from typing import List
-from typing import Optional
-from typing import Set
-from typing import Tuple
-from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
-from typing import Union
 
 from . import attributes
 from . import interfaces

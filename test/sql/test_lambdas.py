@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import List
-from typing import Optional
 
 from sqlalchemy import exc
 from sqlalchemy import testing

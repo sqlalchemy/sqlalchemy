@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Union
 
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey

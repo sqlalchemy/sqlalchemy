@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import contextlib
 import random
-from typing import Optional
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Column

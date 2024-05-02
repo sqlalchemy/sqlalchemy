@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 from typing import Any
-from typing import Optional
 
 from . import ext
 from .._typing import _OnConflictConstraintT

@@ -10,11 +10,6 @@ from __future__ import annotations
 
 import typing
 from typing import Any
-from typing import Dict
-from typing import Optional
-from typing import Tuple
-from typing import Type
-from typing import Union
 
 from .base import Connection
 from .base import Engine

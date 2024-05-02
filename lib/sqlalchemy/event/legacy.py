@@ -17,7 +17,6 @@ from typing import Callable
 from typing import List
 from typing import Optional
 from typing import Tuple
-from typing import Type
 
 from .registry import _ET
 from .registry import _ListenerFnType

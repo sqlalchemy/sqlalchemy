@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 from typing import Dict
-from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import Union
 

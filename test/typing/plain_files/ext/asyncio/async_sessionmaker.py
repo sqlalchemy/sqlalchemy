@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
-from typing import List
-from typing import Optional
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey

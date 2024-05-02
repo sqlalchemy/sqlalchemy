@@ -4,7 +4,6 @@ import copy
 import dataclasses
 import pickle
 from typing import Any
-from typing import Dict
 
 from sqlalchemy import event
 from sqlalchemy import ForeignKey

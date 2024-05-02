@@ -19,7 +19,6 @@ This module is **private, for internal use by SQLAlchemy**.
 
 from __future__ import annotations
 
-from typing import Type
 
 from . import exc as orm_exc
 from .base import LoaderCallableStatus

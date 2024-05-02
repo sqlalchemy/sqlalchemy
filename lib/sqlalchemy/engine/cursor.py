@@ -19,7 +19,6 @@ import typing
 from typing import Any
 from typing import cast
 from typing import ClassVar
-from typing import Dict
 from typing import Iterator
 from typing import List
 from typing import Mapping
@@ -28,7 +27,6 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import TYPE_CHECKING
-from typing import Union
 
 from .result import IteratorResult
 from .result import MergedResult

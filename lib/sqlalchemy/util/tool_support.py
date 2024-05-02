@@ -24,10 +24,7 @@ import shutil
 import subprocess
 import sys
 from typing import Any
-from typing import Dict
 from typing import Iterator
-from typing import Optional
-from typing import Union
 
 from . import compat
 

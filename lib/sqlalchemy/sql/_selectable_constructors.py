@@ -8,11 +8,9 @@
 from __future__ import annotations
 
 from typing import Any
-from typing import Optional
 from typing import overload
 from typing import TYPE_CHECKING
 from typing import TypeVar
-from typing import Union
 
 from . import coercions
 from . import roles

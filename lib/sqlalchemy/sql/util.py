@@ -20,18 +20,13 @@ from typing import Any
 from typing import Callable
 from typing import cast
 from typing import Collection
-from typing import Dict
 from typing import Iterable
 from typing import Iterator
-from typing import List
-from typing import Optional
 from typing import overload
 from typing import Protocol
 from typing import Sequence
-from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import TypeVar
-from typing import Union
 
 from . import coercions
 from . import operators

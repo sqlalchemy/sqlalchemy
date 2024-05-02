@@ -16,7 +16,6 @@ from typing import Any
 from typing import Deque
 from typing import Iterator
 from typing import NoReturn
-from typing import Optional
 from typing import Protocol
 from typing import Sequence
 

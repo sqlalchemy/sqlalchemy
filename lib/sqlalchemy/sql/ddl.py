@@ -18,11 +18,8 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import Iterable
-from typing import List
-from typing import Optional
 from typing import Protocol
 from typing import Sequence as typing_Sequence
-from typing import Tuple
 
 from . import roles
 from .base import _generative

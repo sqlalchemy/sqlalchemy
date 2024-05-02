@@ -11,13 +11,11 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import Mapping
-from typing import Optional
 from typing import overload
 from typing import Sequence
 from typing import Tuple as typing_Tuple
 from typing import TYPE_CHECKING
 from typing import TypeVar
-from typing import Union
 
 from . import coercions
 from . import roles

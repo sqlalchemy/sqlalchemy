@@ -11,10 +11,7 @@ import re
 from typing import Any
 from typing import Iterable
 from typing import Iterator
-from typing import List
-from typing import Optional
 from typing import overload
-from typing import Tuple
 from typing import Type as TypingType
 from typing import TypeVar
 from typing import Union

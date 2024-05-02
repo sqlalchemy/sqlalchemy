@@ -16,12 +16,7 @@ import traceback
 import typing
 from typing import Any
 from typing import cast
-from typing import List
-from typing import Optional
-from typing import Set
-from typing import Type
 from typing import TYPE_CHECKING
-from typing import Union
 import weakref
 
 from .base import _AsyncConnDialect

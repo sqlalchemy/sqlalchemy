@@ -10,9 +10,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 import operator
 from typing import Any
-from typing import Optional
 from typing import Sequence
-from typing import Tuple
 from typing import TYPE_CHECKING
 
 from sqlalchemy import exc

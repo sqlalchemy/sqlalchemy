@@ -26,7 +26,6 @@ from typing import Deque
 from typing import Dict
 from typing import Generic
 from typing import Iterable
-from typing import Optional
 from typing import Tuple
 from typing import TypeVar
 from typing import Union

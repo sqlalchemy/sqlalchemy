@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
 
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import DeclarativeBase

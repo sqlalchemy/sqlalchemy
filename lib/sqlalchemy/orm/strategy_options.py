@@ -19,11 +19,9 @@ from typing import cast
 from typing import Dict
 from typing import Final
 from typing import Iterable
-from typing import Optional
 from typing import overload
 from typing import Sequence
 from typing import Tuple
-from typing import Type
 from typing import TypeVar
 from typing import Union
 

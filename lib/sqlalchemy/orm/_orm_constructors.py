@@ -13,11 +13,9 @@ from typing import Callable
 from typing import Collection
 from typing import Iterable
 from typing import NoReturn
-from typing import Optional
 from typing import overload
 from typing import Type
 from typing import TYPE_CHECKING
-from typing import Union
 
 from . import mapperlib as mapperlib
 from ._typing import _O

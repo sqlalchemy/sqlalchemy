@@ -7,12 +7,6 @@
 
 from __future__ import annotations
 
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Set
-from typing import Tuple
-from typing import Union
 
 from mypy.nodes import ARG_POS
 from mypy.nodes import CallExpr

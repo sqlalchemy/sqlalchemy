@@ -13,8 +13,6 @@ import collections
 import re
 import typing
 from typing import Any
-from typing import Dict
-from typing import Optional
 import warnings
 import weakref
 

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from decimal import Decimal
 from typing import cast
-from typing import List
 from typing import Optional
 
 from sqlalchemy import ForeignKey

@@ -872,7 +872,6 @@ from __future__ import annotations
 import datetime
 import numbers
 import re
-from typing import Optional
 
 from .json import JSON
 from .json import JSONIndexType

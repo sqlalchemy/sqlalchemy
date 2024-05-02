@@ -15,7 +15,6 @@ import contextlib
 from typing import Any
 from typing import Callable
 from typing import TYPE_CHECKING
-from typing import Union
 
 from ... import exc as sa_exc
 from ...engine import Connection

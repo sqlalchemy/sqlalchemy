@@ -1458,12 +1458,10 @@ from functools import lru_cache
 import re
 from typing import Any
 from typing import cast
-from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import TypedDict
-from typing import Union
 
 from . import arraylib as _array
 from . import json as _json

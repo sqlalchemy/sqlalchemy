@@ -4,7 +4,6 @@ from collections import abc
 import copy
 import dataclasses
 import pickle
-from typing import List
 from unittest.mock import call
 from unittest.mock import Mock
 

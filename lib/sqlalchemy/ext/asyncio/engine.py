@@ -11,15 +11,11 @@ import contextlib
 from typing import Any
 from typing import AsyncIterator
 from typing import Callable
-from typing import Dict
 from typing import Generator
 from typing import NoReturn
-from typing import Optional
 from typing import overload
-from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
-from typing import Union
 
 from . import exc as async_exc
 from .base import asyncstartablecontext

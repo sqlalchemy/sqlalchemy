@@ -37,17 +37,11 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import cast
-from typing import Dict
 from typing import Generic
-from typing import Optional
 from typing import overload
 from typing import Protocol
-from typing import Set
-from typing import Tuple
-from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
-from typing import Union
 
 from .. import exc
 from .. import util

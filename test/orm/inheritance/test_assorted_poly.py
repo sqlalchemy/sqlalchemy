@@ -5,7 +5,6 @@ These are generally tests derived from specific user issues.
 
 from __future__ import annotations
 
-from typing import Optional
 
 from sqlalchemy import and_
 from sqlalchemy import exists

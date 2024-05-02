@@ -11,11 +11,6 @@ import re
 from types import ModuleType
 import typing
 from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
 from urllib.parse import unquote_plus
 
 from . import Connector

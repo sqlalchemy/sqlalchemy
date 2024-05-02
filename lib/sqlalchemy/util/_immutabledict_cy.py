@@ -12,7 +12,6 @@ from typing import Dict
 from typing import Hashable
 from typing import Mapping
 from typing import NoReturn
-from typing import Optional
 from typing import TypeVar
 
 from .typing import Self

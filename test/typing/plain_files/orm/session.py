@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from typing import List
 
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey

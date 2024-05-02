@@ -39,8 +39,6 @@ from sqlalchemy.orm import util
 
 if TYPE_CHECKING:
     from typing import Any
-    from typing import List
-    from typing import Optional
 
     from sqlalchemy.sql.elements import ColumnElement
 

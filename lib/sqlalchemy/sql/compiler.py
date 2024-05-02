@@ -40,7 +40,6 @@ from typing import Callable
 from typing import cast
 from typing import ClassVar
 from typing import Dict
-from typing import FrozenSet
 from typing import Iterable
 from typing import Iterator
 from typing import List
@@ -48,13 +47,10 @@ from typing import Mapping
 from typing import MutableMapping
 from typing import NamedTuple
 from typing import NoReturn
-from typing import Optional
 from typing import Pattern
 from typing import Protocol
 from typing import Sequence
-from typing import Set
 from typing import Tuple
-from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypedDict
 from typing import Union

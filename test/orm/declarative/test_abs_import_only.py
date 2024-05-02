@@ -6,7 +6,6 @@ mappings while guaranteeing that the Mapped name is not locally present
 
 from __future__ import annotations
 
-import typing
 
 import sqlalchemy
 from sqlalchemy import orm

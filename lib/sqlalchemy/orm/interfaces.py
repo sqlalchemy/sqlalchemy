@@ -25,21 +25,16 @@ from typing import Any
 from typing import Callable
 from typing import cast
 from typing import ClassVar
-from typing import Dict
 from typing import Generic
 from typing import Iterator
-from typing import List
 from typing import NamedTuple
 from typing import NoReturn
-from typing import Optional
 from typing import Sequence
-from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypedDict
 from typing import TypeVar
-from typing import Union
 
 from . import exc as orm_exc
 from . import path_registry

@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import datetime
 from typing import Callable
-from typing import Optional
 from typing import Pattern
 from typing import TypeVar
 from typing import Union

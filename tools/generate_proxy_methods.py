@@ -55,11 +55,8 @@ from tempfile import NamedTemporaryFile
 import textwrap
 from typing import Any
 from typing import Callable
-from typing import Dict
 from typing import Iterable
 from typing import TextIO
-from typing import Tuple
-from typing import Type
 from typing import TypeVar
 
 from sqlalchemy import util

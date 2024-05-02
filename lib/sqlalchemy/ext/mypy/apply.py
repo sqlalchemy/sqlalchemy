@@ -7,9 +7,6 @@
 
 from __future__ import annotations
 
-from typing import List
-from typing import Optional
-from typing import Union
 
 from mypy.nodes import ARG_NAMED_OPT
 from mypy.nodes import Argument

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Tuple
 
 from sqlalchemy import bindparam
 from sqlalchemy import Column
