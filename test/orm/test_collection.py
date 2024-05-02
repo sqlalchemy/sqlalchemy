@@ -28,6 +28,7 @@ from sqlalchemy.orm.collections import collection
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
@@ -866,11 +867,11 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             control |= values
             assert_eq()
 
-            try:
+            with expect_raises(TypeError):
+                control |= [e, creator()]
+
+            with expect_raises(TypeError):
                 direct |= [e, creator()]
-                assert False
-            except TypeError:
-                assert True
 
         addall(creator(), creator())
         direct.clear()
@@ -924,11 +925,11 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             control -= values
             assert_eq()
 
-            try:
+            with expect_raises(TypeError):
+                control -= [e, creator()]
+
+            with expect_raises(TypeError):
                 direct -= [e, creator()]
-                assert False
-            except TypeError:
-                assert True
 
         if hasattr(direct, "intersection_update"):
             zap()
@@ -965,11 +966,11 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             control &= values
             assert_eq()
 
-            try:
+            with expect_raises(TypeError):
+                control &= [e, creator()]
+
+            with expect_raises(TypeError):
                 direct &= [e, creator()]
-                assert False
-            except TypeError:
-                assert True
 
         if hasattr(direct, "symmetric_difference_update"):
             zap()
@@ -1020,11 +1021,11 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             control ^= values
             assert_eq()
 
-            try:
+            with expect_raises(TypeError):
+                control ^= [e, creator()]
+
+            with expect_raises(TypeError):
                 direct ^= [e, creator()]
-                assert False
-            except TypeError:
-                assert True
 
     def _test_set_bulk(self, typecallable, creator=None):
         if creator is None:

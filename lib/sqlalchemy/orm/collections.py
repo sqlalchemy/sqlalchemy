@@ -1371,14 +1371,6 @@ def _set_binops_check_strict(self: Any, obj: Any) -> bool:
     return isinstance(obj, _set_binop_bases + (self.__class__,))
 
 
-def _set_binops_check_loose(self: Any, obj: Any) -> bool:
-    """Allow anything set-like to participate in set binops."""
-    return (
-        isinstance(obj, _set_binop_bases + (self.__class__,))
-        or util.duck_type_collection(obj) == set
-    )
-
-
 def _set_decorators() -> Dict[str, Callable[[_FN], _FN]]:
     """Tailored instrumentation wrappers for any set-like class."""
 

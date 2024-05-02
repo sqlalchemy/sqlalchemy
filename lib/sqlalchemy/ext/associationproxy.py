@@ -1873,7 +1873,7 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
         self, other: AbstractSet[_S]
     ) -> MutableSet[Union[_T, _S]]:
         if not collections._set_binops_check_strict(self, other):
-            raise NotImplementedError()
+            return NotImplemented
         for value in other:
             self.add(value)
         return self
@@ -1885,12 +1885,16 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
         return set(self).union(*s)
 
     def __or__(self, __s: AbstractSet[_S]) -> MutableSet[Union[_T, _S]]:
+        if not collections._set_binops_check_strict(self, __s):
+            return NotImplemented
         return self.union(__s)
 
     def difference(self, *s: Iterable[Any]) -> MutableSet[_T]:
         return set(self).difference(*s)
 
     def __sub__(self, s: AbstractSet[Any]) -> MutableSet[_T]:
+        if not collections._set_binops_check_strict(self, s):
+            return NotImplemented
         return self.difference(s)
 
     def difference_update(self, *s: Iterable[Any]) -> None:
@@ -1900,7 +1904,7 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
 
     def __isub__(self, s: AbstractSet[Any]) -> Self:
         if not collections._set_binops_check_strict(self, s):
-            raise NotImplementedError()
+            return NotImplemented
         for value in s:
             self.discard(value)
         return self
@@ -1909,6 +1913,8 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
         return set(self).intersection(*s)
 
     def __and__(self, s: AbstractSet[Any]) -> MutableSet[_T]:
+        if not collections._set_binops_check_strict(self, s):
+            return NotImplemented
         return self.intersection(s)
 
     def intersection_update(self, *s: Iterable[Any]) -> None:
@@ -1924,7 +1930,7 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
 
     def __iand__(self, s: AbstractSet[Any]) -> Self:
         if not collections._set_binops_check_strict(self, s):
-            raise NotImplementedError()
+            return NotImplemented
         want = self.intersection(s)
         have: Set[_T] = set(self)
 
@@ -1940,6 +1946,8 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
         return set(self).symmetric_difference(__s)
 
     def __xor__(self, s: AbstractSet[_S]) -> MutableSet[Union[_T, _S]]:
+        if not collections._set_binops_check_strict(self, s):
+            return NotImplemented
         return self.symmetric_difference(s)
 
     def symmetric_difference_update(self, other: Iterable[Any]) -> None:
@@ -1954,7 +1962,7 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
 
     def __ixor__(self, other: AbstractSet[_S]) -> MutableSet[Union[_T, _S]]:  # type: ignore  # noqa: E501
         if not collections._set_binops_check_strict(self, other):
-            raise NotImplementedError()
+            return NotImplemented
 
         self.symmetric_difference_update(other)
         return self
