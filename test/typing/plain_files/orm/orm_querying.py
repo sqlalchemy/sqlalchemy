@@ -144,3 +144,8 @@ def test_10937() -> None:
     stmt3: ScalarSelect[str] = select(A.data + B.data).scalar_subquery()
 
     select(stmt, stmt2, stmt3, stmt1)
+
+
+def test_bundles() -> None:
+    b1 = orm.Bundle("b1", A.id, A.data)
+    orm.Bundle("b2", A.id, A.data, b1)

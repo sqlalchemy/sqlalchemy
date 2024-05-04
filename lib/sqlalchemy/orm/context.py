@@ -455,7 +455,7 @@ class ORMCompileState(AbstractORMCompileState):
     ) -> _LabelConventionCallable:
         if legacy:
 
-            def name(col, col_name=None):
+            def name(col, col_name=None, cancel_dedupe=False):
                 if col_name:
                     return col_name
                 else:
@@ -3154,7 +3154,9 @@ class _ORMColumnEntity(_ColumnEntity):
 
         if is_current_entities:
             self._label_name = compile_state._label_convention(
-                column, col_name=orm_key
+                column,
+                col_name=orm_key,
+                cancel_dedupe=parent_bundle is not None,
             )
         else:
             self._label_name = None
