@@ -455,7 +455,7 @@ class ORMCompileState(AbstractORMCompileState):
     ) -> _LabelConventionCallable:
         if legacy:
 
-            def name(col, col_name=None, cancel_dedupe=False):
+            def name(col, col_name=None):
                 if col_name:
                     return col_name
                 else:
@@ -3059,7 +3059,10 @@ class _RawColumnEntity(_ColumnEntity):
         if not is_current_entities or column._is_text_clause:
             self._label_name = None
         else:
-            self._label_name = compile_state._label_convention(column)
+            if parent_bundle:
+                self._label_name = column._proxy_key
+            else:
+                self._label_name = compile_state._label_convention(column)
 
         if parent_bundle:
             parent_bundle._entities.append(self)
@@ -3153,11 +3156,12 @@ class _ORMColumnEntity(_ColumnEntity):
         self.raw_column_index = raw_column_index
 
         if is_current_entities:
-            self._label_name = compile_state._label_convention(
-                column,
-                col_name=orm_key,
-                cancel_dedupe=parent_bundle is not None,
-            )
+            if parent_bundle:
+                self._label_name = orm_key if orm_key else column._proxy_key
+            else:
+                self._label_name = compile_state._label_convention(
+                    column, col_name=orm_key
+                )
         else:
             self._label_name = None
 
