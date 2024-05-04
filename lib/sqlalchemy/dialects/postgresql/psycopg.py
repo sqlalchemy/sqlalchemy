@@ -85,6 +85,7 @@ specified::
 """  # noqa
 from __future__ import annotations
 
+from collections import deque
 import logging
 import re
 from typing import cast
@@ -564,7 +565,7 @@ class AsyncAdapt_psycopg_cursor:
     def __init__(self, cursor, await_) -> None:
         self._cursor = cursor
         self.await_ = await_
-        self._rows = []
+        self._rows = deque()
 
     def __getattr__(self, name):
         return getattr(self._cursor, name)
@@ -591,24 +592,19 @@ class AsyncAdapt_psycopg_cursor:
         # eq/ne
         if res and res.status == self._psycopg_ExecStatus.TUPLES_OK:
             rows = self.await_(self._cursor.fetchall())
-            if not isinstance(rows, list):
-                self._rows = list(rows)
-            else:
-                self._rows = rows
+            self._rows = deque(rows)
         return result
 
     def executemany(self, query, params_seq):
         return self.await_(self._cursor.executemany(query, params_seq))
 
     def __iter__(self):
-        # TODO: try to avoid pop(0) on a list
         while self._rows:
-            yield self._rows.pop(0)
+            yield self._rows.popleft()
 
     def fetchone(self):
         if self._rows:
-            # TODO: try to avoid pop(0) on a list
-            return self._rows.pop(0)
+            return self._rows.popleft()
         else:
             return None
 
@@ -616,13 +612,12 @@ class AsyncAdapt_psycopg_cursor:
         if size is None:
             size = self._cursor.arraysize
 
-        retval = self._rows[0:size]
-        self._rows = self._rows[size:]
-        return retval
+        rr = self._rows
+        return [rr.popleft() for _ in range(min(size, len(rr)))]
 
     def fetchall(self):
-        retval = self._rows
-        self._rows = []
+        retval = list(self._rows)
+        self._rows.clear()
         return retval
 
 

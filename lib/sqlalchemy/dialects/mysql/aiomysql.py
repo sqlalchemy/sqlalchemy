@@ -27,6 +27,8 @@ This dialect should normally be used only with the
 
 
 """  # noqa
+from collections import deque
+
 from .pymysql import MySQLDialect_pymysql
 from ... import pool
 from ... import util
@@ -57,7 +59,7 @@ class AsyncAdapt_aiomysql_cursor:
 
         # see https://github.com/aio-libs/aiomysql/issues/543
         self._cursor = self.await_(cursor.__aenter__())
-        self._rows = []
+        self._rows = deque()
 
     @property
     def description(self):
@@ -87,7 +89,7 @@ class AsyncAdapt_aiomysql_cursor:
         # exhausting rows, which we already have done for sync cursor.
         # another option would be to emulate aiosqlite dialect and assign
         # cursor only if we are doing server side cursor operation.
-        self._rows[:] = []
+        self._rows.clear()
 
     def execute(self, operation, parameters=None):
         return self.await_(self._execute_async(operation, parameters))
@@ -106,7 +108,7 @@ class AsyncAdapt_aiomysql_cursor:
                 # of that here since our default result is not async.
                 # we could just as easily grab "_rows" here and be done with it
                 # but this is safer.
-                self._rows = list(await self._cursor.fetchall())
+                self._rows = deque(await self._cursor.fetchall())
             return result
 
     async def _executemany_async(self, operation, seq_of_parameters):
@@ -118,11 +120,11 @@ class AsyncAdapt_aiomysql_cursor:
 
     def __iter__(self):
         while self._rows:
-            yield self._rows.pop(0)
+            yield self._rows.popleft()
 
     def fetchone(self):
         if self._rows:
-            return self._rows.pop(0)
+            return self._rows.popleft()
         else:
             return None
 
@@ -130,13 +132,12 @@ class AsyncAdapt_aiomysql_cursor:
         if size is None:
             size = self.arraysize
 
-        retval = self._rows[0:size]
-        self._rows[:] = self._rows[size:]
-        return retval
+        rr = self._rows
+        return [rr.popleft() for _ in range(min(size, len(rr)))]
 
     def fetchall(self):
-        retval = self._rows[:]
-        self._rows[:] = []
+        retval = list(self._rows)
+        self._rows.clear()
         return retval
 
 

@@ -487,7 +487,7 @@ class AsyncAdapt_asyncpg_cursor:
     def __init__(self, adapt_connection):
         self._adapt_connection = adapt_connection
         self._connection = adapt_connection._connection
-        self._rows = []
+        self._rows = deque()
         self._cursor = None
         self.description = None
         self.arraysize = 1
@@ -495,7 +495,7 @@ class AsyncAdapt_asyncpg_cursor:
         self._invalidate_schema_cache_asof = 0
 
     def close(self):
-        self._rows[:] = []
+        self._rows.clear()
 
     def _handle_exception(self, error):
         self._adapt_connection._handle_exception(error)
@@ -535,7 +535,7 @@ class AsyncAdapt_asyncpg_cursor:
                     self._cursor = await prepared_stmt.cursor(*parameters)
                     self.rowcount = -1
                 else:
-                    self._rows = await prepared_stmt.fetch(*parameters)
+                    self._rows = deque(await prepared_stmt.fetch(*parameters))
                     status = prepared_stmt.get_statusmsg()
 
                     reg = re.match(
@@ -583,11 +583,11 @@ class AsyncAdapt_asyncpg_cursor:
 
     def __iter__(self):
         while self._rows:
-            yield self._rows.pop(0)
+            yield self._rows.popleft()
 
     def fetchone(self):
         if self._rows:
-            return self._rows.pop(0)
+            return self._rows.popleft()
         else:
             return None
 
@@ -595,13 +595,12 @@ class AsyncAdapt_asyncpg_cursor:
         if size is None:
             size = self.arraysize
 
-        retval = self._rows[0:size]
-        self._rows[:] = self._rows[size:]
-        return retval
+        rr = self._rows
+        return [rr.popleft() for _ in range(min(size, len(rr)))]
 
     def fetchall(self):
-        retval = self._rows[:]
-        self._rows[:] = []
+        retval = list(self._rows)
+        self._rows.clear()
         return retval
 
 

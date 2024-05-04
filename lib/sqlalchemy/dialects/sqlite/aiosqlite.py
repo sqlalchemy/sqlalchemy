@@ -78,6 +78,7 @@ The solution is similar to :ref:`pysqlite_serializable`. This is achieved by the
 """  # noqa
 
 import asyncio
+from collections import deque
 from functools import partial
 
 from .base import SQLiteExecutionContext
@@ -113,10 +114,10 @@ class AsyncAdapt_aiosqlite_cursor:
         self.arraysize = 1
         self.rowcount = -1
         self.description = None
-        self._rows = []
+        self._rows = deque()
 
     def close(self):
-        self._rows[:] = []
+        self._rows.clear()
 
     def execute(self, operation, parameters=None):
         try:
@@ -132,7 +133,7 @@ class AsyncAdapt_aiosqlite_cursor:
                 self.lastrowid = self.rowcount = -1
 
                 if not self.server_side:
-                    self._rows = self.await_(_cursor.fetchall())
+                    self._rows = deque(self.await_(_cursor.fetchall()))
             else:
                 self.description = None
                 self.lastrowid = _cursor.lastrowid
@@ -161,11 +162,11 @@ class AsyncAdapt_aiosqlite_cursor:
 
     def __iter__(self):
         while self._rows:
-            yield self._rows.pop(0)
+            yield self._rows.popleft()
 
     def fetchone(self):
         if self._rows:
-            return self._rows.pop(0)
+            return self._rows.popleft()
         else:
             return None
 
@@ -173,13 +174,12 @@ class AsyncAdapt_aiosqlite_cursor:
         if size is None:
             size = self.arraysize
 
-        retval = self._rows[0:size]
-        self._rows[:] = self._rows[size:]
-        return retval
+        rr = self._rows
+        return [rr.popleft() for _ in range(min(size, len(rr)))]
 
     def fetchall(self):
-        retval = self._rows[:]
-        self._rows[:] = []
+        retval = list(self._rows)
+        self._rows.clear()
         return retval
 
 
