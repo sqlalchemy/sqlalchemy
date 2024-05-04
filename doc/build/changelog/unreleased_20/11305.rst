@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 11305
+
+    Fixed issue in ORM Annotated Declarative where typing issue where literals
+    defined using :pep:`695` type aliases would not work with inference of
+    :class:`.Enum` datatypes. Pull request courtesy of Alc-Alc.
