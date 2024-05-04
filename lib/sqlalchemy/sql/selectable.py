@@ -4556,14 +4556,13 @@ class SelectState(util.MemoizedSlots, CompileState):
         def go(
             c: Union[ColumnElement[Any], TextClause],
             col_name: Optional[str] = None,
-            cancel_dedupe: bool = False,
         ) -> Optional[str]:
             if is_text_clause(c):
                 return None
             elif TYPE_CHECKING:
                 assert is_column_element(c)
 
-            if not dedupe or cancel_dedupe:
+            if not dedupe:
                 name = c._proxy_key
                 if name is None:
                     name = "_no_label"
