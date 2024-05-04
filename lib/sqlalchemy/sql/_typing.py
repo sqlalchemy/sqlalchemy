@@ -187,6 +187,7 @@ _ColumnExpressionArgument = Union[
     _HasClauseElement[_T],
     "SQLCoreOperations[_T]",
     roles.ExpressionElementRole[_T],
+    roles.TypedColumnsClauseRole[_T],
     Callable[[], "ColumnElement[_T]"],
     "LambdaElement",
 ]
