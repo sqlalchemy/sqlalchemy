@@ -154,3 +154,8 @@ reveal_type(op_a1)
 # op functions
 t1 = operators.eq(A.id, 1)
 select().where(t1)
+
+# EXPECTED_TYPE: BinaryExpression[Any]
+reveal_type(col.op("->>")("field"))
+# EXPECTED_TYPE: Union[BinaryExpression[Any], Grouping[Any]]
+reveal_type(col.op("->>")("field").self_group())
