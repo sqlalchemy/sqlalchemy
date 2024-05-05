@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 11332
-
-    Fixed issue in :meth:`_orm.Session.bulk_save_objects` where the form of the
-    identity key produced when using ``return_defaults=True`` would be
-    incorrect. This could lead to an errors during pickling as well as identity
-    map mismatches.

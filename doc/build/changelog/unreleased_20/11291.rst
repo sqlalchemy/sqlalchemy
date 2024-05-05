@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 11291
-
-    Fixed issue in  :func:`_orm.selectin_polymorphic` loader option where
-    attributes defined with :func:`_orm.composite` on a superclass would cause
-    an internal exception on load.
-

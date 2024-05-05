@@ -10,7 +10,132 @@
 
 .. changelog::
     :version: 2.0.30
-    :include_notes_from: unreleased_20
+    :released: May 5, 2024
+
+    .. change::
+        :tags: bug, typing, regression
+        :tickets: 11200
+
+        Fixed typing regression caused by :ticket:`11055` in version 2.0.29 that
+        added ``ParamSpec`` to the asyncio ``run_sync()`` methods, where using
+        :meth:`_asyncio.AsyncConnection.run_sync` with
+        :meth:`_schema.MetaData.reflect` would fail on mypy due to a mypy issue.
+        Pull request courtesy of Francisco R. Del Roio.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 11210
+
+        Fixed issue in the
+        :paramref:`_engine.Connection.execution_options.logging_token` option,
+        where changing the value of ``logging_token`` on a connection that has
+        already logged messages would not be updated to reflect the new logging
+        token.  This in particular prevented the use of
+        :meth:`_orm.Session.connection` to change the option on the connection,
+        since the BEGIN logging message would already have been emitted.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11220
+
+        Added new attribute :attr:`_orm.ORMExecuteState.is_from_statement` to
+        detect statements created using :meth:`_sql.Select.from_statement`, and
+        enhanced ``FromStatement`` to set :attr:`_orm.ORMExecuteState.is_select`,
+        :attr:`_orm.ORMExecuteState.is_insert`,
+        :attr:`_orm.ORMExecuteState.is_update`, and
+        :attr:`_orm.ORMExecuteState.is_delete` according to the element that is
+        sent to the :meth:`_sql.Select.from_statement` method itself.
+
+    .. change::
+        :tags: bug, test
+        :tickets: 11268
+
+        Ensure the ``PYTHONPATH`` variable is properly initialized when
+        using ``subprocess.run`` in the tests.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11291
+
+        Fixed issue in  :func:`_orm.selectin_polymorphic` loader option where
+        attributes defined with :func:`_orm.composite` on a superclass would cause
+        an internal exception on load.
+
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 11292
+
+        Fixed regression from 1.4 where using :func:`_orm.defaultload` in
+        conjunction with a non-propagating loader like :func:`_orm.contains_eager`
+        would nonetheless propagate the :func:`_orm.contains_eager` to a lazy load
+        operation, causing incorrect queries as this option is only intended to
+        come from an original load.
+
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11305
+
+        Fixed issue in ORM Annotated Declarative where typing issue where literals
+        defined using :pep:`695` type aliases would not work with inference of
+        :class:`.Enum` datatypes. Pull request courtesy of Alc-Alc.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 11306
+
+        Fixed issue in cursor handling which affected handling of duplicate
+        :class:`_sql.Column` or similar objcts in the columns clause of
+        :func:`_sql.select`, both in combination with arbitary :func:`_sql.text()`
+        clauses in the SELECT list, as well as when attempting to retrieve
+        :meth:`_engine.Result.mappings` for the object, which would lead to an
+        internal error.
+
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11327
+
+        Fixed issue in :func:`_orm.selectin_polymorphic` loader option where the
+        SELECT emitted would only accommodate for the child-most class among the
+        result rows that were returned, leading intermediary-class attributes to be
+        unloaded if there were no concrete instances of that intermediary-class
+        present in the result.   This issue only presented itself for multi-level
+        inheritance hierarchies.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11332
+
+        Fixed issue in :meth:`_orm.Session.bulk_save_objects` where the form of the
+        identity key produced when using ``return_defaults=True`` would be
+        incorrect. This could lead to an errors during pickling as well as identity
+        map mismatches.
+
+    .. change::
+        :tags: bug, installation
+        :tickets: 11334
+
+        Fixed an internal class that was testing for unexpected attributes to work
+        correctly under upcoming Python 3.13.   Pull request courtesy Edgar
+        Ramírez-Mondragón.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11347
+
+        Fixed issue where attribute key names in :class:`_orm.Bundle` would not be
+        correct when using ORM enabled :class:`_sql.select` vs.
+        :class:`_orm.Query`, when the statement contained duplicate column names.
+
+    .. change::
+        :tags: bug, typing
+
+        Fixed issue in typing for :class:`_orm.Bundle` where creating a nested
+        :class:`_orm.Bundle` structure were not allowed.
 
 .. changelog::
     :version: 2.0.29
