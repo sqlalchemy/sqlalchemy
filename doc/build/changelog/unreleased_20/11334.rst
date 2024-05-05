@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, installation
-    :tickets: 11334
-
-    Fixed an internal class that was testing for unexpected attributes to work
-    correctly under upcoming Python 3.13.   Pull request courtesy Edgar
-    Ramírez-Mondragón.

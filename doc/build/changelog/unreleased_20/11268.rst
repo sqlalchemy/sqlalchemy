@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, test
-    :tickets: 11268
-
-    Ensure the ``PYTHONPATH`` variable is properly initialized when
-    using ``subprocess.run`` in the tests.

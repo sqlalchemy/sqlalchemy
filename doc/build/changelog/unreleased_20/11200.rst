@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, typing, regression
-    :tickets: 11200
-
-    Fixed typing regression caused by :ticket:`11055` in version 2.0.29 that
-    added ``ParamSpec`` to the asyncio ``run_sync()`` methods, where using
-    :meth:`_asyncio.AsyncConnection.run_sync` with
-    :meth:`_schema.MetaData.reflect` would fail on mypy due to a mypy issue.
-    Pull request courtesy of Francisco R. Del Roio.
