@@ -71,7 +71,6 @@ if TYPE_CHECKING:
     from .elements import ClauseList
     from .elements import ColumnClause  # noqa
     from .elements import ColumnElement
-    from .elements import KeyedColumnElement
     from .elements import NamedColumn
     from .elements import SQLCoreOperations
     from .elements import TextClause
@@ -1353,7 +1352,7 @@ class _SentinelColumnCharacterization(NamedTuple):
 _COLKEY = TypeVar("_COLKEY", Union[None, str], str)
 
 _COL_co = TypeVar("_COL_co", bound="ColumnElement[Any]", covariant=True)
-_COL = TypeVar("_COL", bound="KeyedColumnElement[Any]")
+_COL = TypeVar("_COL", bound="ColumnElement[Any]")
 
 
 class _ColumnMetrics(Generic[_COL_co]):
@@ -1641,9 +1640,15 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
     def __eq__(self, other: Any) -> bool:
         return self.compare(other)
 
+    @overload
+    def get(self, key: str, default: None = None) -> Optional[_COL_co]: ...
+
+    @overload
+    def get(self, key: str, default: _COL) -> Union[_COL_co, _COL]: ...
+
     def get(
-        self, key: str, default: Optional[_COL_co] = None
-    ) -> Optional[_COL_co]:
+        self, key: str, default: Optional[_COL] = None
+    ) -> Optional[Union[_COL_co, _COL]]:
         """Get a :class:`_sql.ColumnClause` or :class:`_schema.Column` object
         based on a string key name from this
         :class:`_expression.ColumnCollection`."""
@@ -1924,16 +1929,15 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
 
     """
 
-    def add(
-        self, column: ColumnElement[Any], key: Optional[str] = None
+    def add(  # type: ignore[override]
+        self, column: _NAMEDCOL, key: Optional[str] = None
     ) -> None:
-        named_column = cast(_NAMEDCOL, column)
-        if key is not None and named_column.key != key:
+        if key is not None and column.key != key:
             raise exc.ArgumentError(
                 "DedupeColumnCollection requires columns be under "
                 "the same key as their .key"
             )
-        key = named_column.key
+        key = column.key
 
         if key is None:
             raise exc.ArgumentError(
@@ -1943,17 +1947,17 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
         if key in self._index:
             existing = self._index[key][1]
 
-            if existing is named_column:
+            if existing is column:
                 return
 
-            self.replace(named_column)
+            self.replace(column)
 
             # pop out memoized proxy_set as this
             # operation may very well be occurring
             # in a _make_proxy operation
-            util.memoized_property.reset(named_column, "proxy_set")
+            util.memoized_property.reset(column, "proxy_set")
         else:
-            self._append_new_column(key, named_column)
+            self._append_new_column(key, column)
 
     def _append_new_column(self, key: str, named_column: _NAMEDCOL) -> None:
         l = len(self._collection)
