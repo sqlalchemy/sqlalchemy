@@ -2,6 +2,7 @@
     :tags: bug, orm
     :tickets: 11332
 
-    Fixes issue in :meth:`_orm.Session.bulk_save_objects` where it would write a
-    wrong identity key when using ``return_defaults=True``.
-    The wrong identity key could lead to an index error when entities are then pickled.
+    Fixed issue in :meth:`_orm.Session.bulk_save_objects` where the form of the
+    identity key produced when using ``return_defaults=True`` would be
+    incorrect. This could lead to an errors during pickling as well as identity
+    map mismatches.
