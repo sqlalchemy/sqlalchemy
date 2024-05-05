@@ -77,6 +77,7 @@ from .. import util
 from ..util import HasMemoized_ro_memoized_attribute
 from ..util import TypingOnly
 from ..util.typing import Literal
+from ..util.typing import ParamSpec
 from ..util.typing import Self
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
@@ -1433,13 +1434,11 @@ class ColumnElement(
     _alt_names: Sequence[str] = ()
 
     @overload
-    def self_group(
-        self: ColumnElement[_T], against: Optional[OperatorType] = None
-    ) -> ColumnElement[_T]: ...
+    def self_group(self, against: None = None) -> ColumnElement[_T]: ...
 
     @overload
     def self_group(
-        self: ColumnElement[Any], against: Optional[OperatorType] = None
+        self, against: Optional[OperatorType] = None
     ) -> ColumnElement[Any]: ...
 
     def self_group(
@@ -2583,7 +2582,9 @@ class TextClause(
         # be using this method.
         return self.type.comparator_factory(self)  # type: ignore
 
-    def self_group(self, against=None):
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> Union[Self, Grouping[Any]]:
         if against is operators.in_op:
             return Grouping(self)
         else:
@@ -2788,7 +2789,9 @@ class ClauseList(
     def _from_objects(self) -> List[FromClause]:
         return list(itertools.chain(*[c._from_objects for c in self.clauses]))
 
-    def self_group(self, against=None):
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> Union[Self, Grouping[Any]]:
         if self.group and operators.is_precedent(self.operator, against):
             return Grouping(self)
         else:
@@ -2811,7 +2814,9 @@ class OperatorExpression(ColumnElement[_T]):
     def is_comparison(self):
         return operators.is_comparison(self.operator)
 
-    def self_group(self, against=None):
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> Union[Self, Grouping[_T]]:
         if (
             self.group
             and operators.is_precedent(self.operator, against)
@@ -3171,7 +3176,9 @@ class BooleanClauseList(ExpressionClauseList[bool]):
     def _select_iterable(self) -> _SelectIterable:
         return (self,)
 
-    def self_group(self, against=None):
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> Union[Self, Grouping[bool]]:
         if not self.clauses:
             return self
         else:
@@ -3254,7 +3261,7 @@ class Tuple(ClauseList, ColumnElement[TupleAny]):
                 ]
             )
 
-    def self_group(self, against=None):
+    def self_group(self, against: Optional[OperatorType] = None) -> Self:
         # Tuple is parenthesized by definition.
         return self
 
@@ -3487,7 +3494,9 @@ class TypeCoerce(WrapsColumnExpression[_T]):
     def wrapped_column_expression(self):
         return self.clause
 
-    def self_group(self, against=None):
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> TypeCoerce[_T]:
         grouped = self.clause.self_group(against=against)
         if grouped is not self.clause:
             return TypeCoerce(grouped, self.type)
@@ -3702,7 +3711,9 @@ class UnaryExpression(ColumnElement[_T]):
         else:
             return ClauseElement._negate(self)
 
-    def self_group(self, against=None):
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> Union[Self, Grouping[_T]]:
         if self.operator and operators.is_precedent(self.operator, against):
             return Grouping(self)
         else:
@@ -3789,7 +3800,7 @@ class AsBoolean(WrapsColumnExpression[bool], UnaryExpression[bool]):
     def wrapped_column_expression(self):
         return self.element
 
-    def self_group(self, against=None):
+    def self_group(self, against: Optional[OperatorType] = None) -> Self:
         return self
 
     def _negate(self):
@@ -3989,8 +4000,8 @@ class Slice(ColumnElement[Any]):
         )
         self.type = type_api.NULLTYPE
 
-    def self_group(self, against=None):
-        assert against is operator.getitem
+    def self_group(self, against: Optional[OperatorType] = None) -> Self:
+        assert against is operator.getitem  # type: ignore[comparison-overlap]
         return self
 
 
@@ -4008,7 +4019,7 @@ class GroupedElement(DQLDMLClauseElement):
 
     element: ClauseElement
 
-    def self_group(self, against=None):
+    def self_group(self, against: Optional[OperatorType] = None) -> Self:
         return self
 
     def _ungroup(self):
@@ -4071,6 +4082,12 @@ class Grouping(GroupedElement, ColumnElement[_T]):
     def __setstate__(self, state):
         self.element = state["element"]
         self.type = state["type"]
+
+    if TYPE_CHECKING:
+
+        def self_group(
+            self, against: Optional[OperatorType] = None
+        ) -> Self: ...
 
 
 class _OverrideBinds(Grouping[_T]):
@@ -4572,6 +4589,9 @@ class NamedColumn(KeyedColumnElement[_T]):
         return c.key, c
 
 
+_PS = ParamSpec("_PS")
+
+
 class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
     """Represents a column label (AS).
 
@@ -4669,13 +4689,18 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
     def element(self) -> ColumnElement[_T]:
         return self._element.self_group(against=operators.as_)
 
-    def self_group(self, against=None):
+    def self_group(self, against: Optional[OperatorType] = None) -> Label[_T]:
         return self._apply_to_inner(self._element.self_group, against=against)
 
     def _negate(self):
         return self._apply_to_inner(self._element._negate)
 
-    def _apply_to_inner(self, fn, *arg, **kw):
+    def _apply_to_inner(
+        self,
+        fn: Callable[_PS, ColumnElement[_T]],
+        *arg: _PS.args,
+        **kw: _PS.kwargs,
+    ) -> Label[_T]:
         sub_element = fn(*arg, **kw)
         if sub_element is not self._element:
             return Label(self.name, sub_element, type_=self.type)
