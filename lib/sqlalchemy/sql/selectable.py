@@ -1242,7 +1242,6 @@ class Join(roles.DMLTableRole, FromClause):
     def self_group(
         self, against: Optional[OperatorType] = None
     ) -> FromGrouping:
-        ...
         return FromGrouping(self)
 
     @util.preload_module("sqlalchemy.sql.util")
@@ -2889,6 +2888,12 @@ class FromGrouping(GroupedElement, FromClause):
     def __setstate__(self, state: Dict[str, FromClause]) -> None:
         self.element = state["element"]
 
+    if TYPE_CHECKING:
+
+        def self_group(
+            self, against: Optional[OperatorType] = None
+        ) -> Self: ...
+
 
 class NamedFromGrouping(FromGrouping, NamedFromClause):
     """represent a grouping of a named FROM clause
@@ -2898,6 +2903,12 @@ class NamedFromGrouping(FromGrouping, NamedFromClause):
     """
 
     inherit_cache = True
+
+    if TYPE_CHECKING:
+
+        def self_group(
+            self, against: Optional[OperatorType] = None
+        ) -> Self: ...
 
 
 class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
@@ -3312,6 +3323,12 @@ class ScalarValues(roles.InElementRole, GroupedElement, ColumnElement[Any]):
     def __clause_element__(self) -> ScalarValues:
         return self
 
+    if TYPE_CHECKING:
+
+        def self_group(
+            self, against: Optional[OperatorType] = None
+        ) -> Self: ...
+
 
 class SelectBase(
     roles.SelectStatementRole,
@@ -3684,7 +3701,6 @@ class SelectStatementGrouping(GroupedElement, SelectBase, Generic[_SB]):
         return self.element
 
     def self_group(self, against: Optional[OperatorType] = None) -> Self:
-        ...
         return self
 
     if TYPE_CHECKING:
@@ -6324,7 +6340,6 @@ class Select(
     def self_group(
         self, against: Optional[OperatorType] = None
     ) -> Union[SelectStatementGrouping[Self], Self]:
-        ...
         """Return a 'grouping' construct as per the
         :class:`_expression.ClauseElement` specification.
 
@@ -6516,19 +6531,7 @@ class ScalarSelect(
         self.element = cast("Select[Any]", self.element).where(crit)
         return self
 
-    @overload
-    def self_group(
-        self: ScalarSelect[Any], against: Optional[OperatorType] = None
-    ) -> ScalarSelect[Any]: ...
-
-    @overload
-    def self_group(
-        self: ColumnElement[Any], against: Optional[OperatorType] = None
-    ) -> ColumnElement[Any]: ...
-
-    def self_group(
-        self, against: Optional[OperatorType] = None
-    ) -> ColumnElement[Any]:
+    def self_group(self, against: Optional[OperatorType] = None) -> Self:
         return self
 
     if TYPE_CHECKING:
