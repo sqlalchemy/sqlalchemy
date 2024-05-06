@@ -2323,6 +2323,7 @@ def with_polymorphic(
     aliased: bool = False,
     innerjoin: bool = False,
     adapt_on_names: bool = False,
+    name: Optional[str] = None,
     _use_mapper_path: bool = False,
 ) -> AliasedClass[_O]:
     """Produce an :class:`.AliasedClass` construct which specifies
@@ -2394,6 +2395,10 @@ def with_polymorphic(
 
       .. versionadded:: 1.4.33
 
+    :param name: Name given to the generated :class:`.AliasedClass`.
+
+      .. versionadded:: 2.0.31
+
     """
     return AliasedInsp._with_polymorphic_factory(
         base,
@@ -2404,6 +2409,7 @@ def with_polymorphic(
         adapt_on_names=adapt_on_names,
         aliased=aliased,
         innerjoin=innerjoin,
+        name=name,
         _use_mapper_path=_use_mapper_path,
     )
 

@@ -2060,6 +2060,14 @@ class _PolymorphicTestBase:
             [(e3.name,)],
         )
 
+    def test_with_polymorphic_named(self):
+        session = fixture_session()
+        poly = with_polymorphic(Person, "*", name="poly_name")
+
+        res = session.execute(select(poly)).mappings()
+        eq_(res.keys(), ["poly_name"])
+        eq_(len(res.all()), 5)
+
 
 class PolymorphicTest(_PolymorphicTestBase, _Polymorphic):
     def test_joined_aliasing_unrelated_subuqery(self):
