@@ -1067,6 +1067,7 @@ class AliasedInsp(
         aliased: bool = False,
         innerjoin: bool = False,
         adapt_on_names: bool = False,
+        name: Optional[str] = None,
         _use_mapper_path: bool = False,
     ) -> AliasedClass[_O]:
         primary_mapper = _class_to_mapper(base)
@@ -1087,6 +1088,7 @@ class AliasedInsp(
         return AliasedClass(
             base,
             selectable,
+            name=name,
             with_polymorphic_mappers=mappers,
             adapt_on_names=adapt_on_names,
             with_polymorphic_discriminator=polymorphic_on,

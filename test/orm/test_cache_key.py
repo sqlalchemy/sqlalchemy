@@ -643,15 +643,9 @@ class PolyCacheKeyTest(fixtures.CacheKeyFixture, _poly_fixtures._Polymorphic):
         self._run_cache_key_fixture(
             lambda: (
                 inspect(Person),
-                inspect(
-                    aliased(Person, me_stmt),
-                ),
-                inspect(
-                    aliased(Person, meb_stmt),
-                ),
-                inspect(
-                    with_polymorphic(Person, [Manager, Engineer]),
-                ),
+                inspect(aliased(Person, me_stmt)),
+                inspect(aliased(Person, meb_stmt)),
+                inspect(with_polymorphic(Person, [Manager, Engineer])),
                 # aliased=True is the same as flat=True for default selectable
                 inspect(
                     with_polymorphic(
@@ -695,9 +689,7 @@ class PolyCacheKeyTest(fixtures.CacheKeyFixture, _poly_fixtures._Polymorphic):
                         aliased=True,
                     ),
                 ),
-                inspect(
-                    with_polymorphic(Person, [Manager, Engineer, Boss]),
-                ),
+                inspect(with_polymorphic(Person, [Manager, Engineer, Boss])),
                 inspect(
                     with_polymorphic(
                         Person,
@@ -712,6 +704,7 @@ class PolyCacheKeyTest(fixtures.CacheKeyFixture, _poly_fixtures._Polymorphic):
                         polymorphic_on=literal_column("bar"),
                     ),
                 ),
+                inspect(with_polymorphic(Person, "*", name="foo")),
             ),
             compare_values=True,
         )

@@ -1,0 +1,6 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 11361
+
+    Added missing parameter :paramref:`_orm.with_polymorphic.name` that
+    allows specifying the name of returned :class:`_orm.AliasedClass`.
