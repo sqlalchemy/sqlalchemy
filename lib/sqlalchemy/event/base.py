@@ -198,6 +198,10 @@ class _Dispatch(_DispatchCommon[_ET]):
                 {"__slots__": self._event_names},
             )
             self.__class__._joined_dispatch_cls = cls
+
+            # establish pickle capability by adding it to this module
+            globals()[cls.__name__] = cls
+
         return self._joined_dispatch_cls(self, other)
 
     def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
@@ -397,6 +401,9 @@ class _JoinedDispatcher(_DispatchCommon[_ET]):
         self.local = local
         self.parent = parent
         self._instance_cls = self.local._instance_cls
+
+    def __reduce__(self) -> Any:
+        return (self.__class__, (self.local, self.parent))
 
     def __getattr__(self, name: str) -> _JoinedListener[_ET]:
         # Assign _JoinedListeners as attributes on demand
