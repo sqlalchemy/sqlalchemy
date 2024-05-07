@@ -507,15 +507,22 @@ class PickleTypesTest(fixtures.TestBase):
         ("Big", BigInteger()),
         ("Num", Numeric()),
         ("Flo", Float()),
+        ("Enu", Enum("one", "two", "three")),
         ("Dat", DateTime()),
         ("Dat", Date()),
         ("Tim", Time()),
         ("Lar", LargeBinary()),
         ("Pic", PickleType()),
         ("Int", Interval()),
+        argnames="name,type_",
         id_="ar",
     )
-    def test_pickle_types(self, name, type_):
+    @testing.variation("use_adapt", [True, False])
+    def test_pickle_types(self, name, type_, use_adapt):
+
+        if use_adapt:
+            type_ = type_.copy()
+
         column_type = Column(name, type_)
         meta = MetaData()
         Table("foo", meta, column_type)
