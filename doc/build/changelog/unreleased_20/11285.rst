@@ -1,0 +1,7 @@
+.. change::
+    :tags: usecase, reflection, mysql
+    :tickets: 11285
+
+    Added missing foreign key reflection option ``SET DEFAULT``
+    in the MySQL and MariaDB dialects.
+    Pull request courtesy of Quentin Roche.
