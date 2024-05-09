@@ -60,6 +60,7 @@ from . import roles
 from . import type_api
 from . import visitors
 from .base import _DefaultDescriptionTuple
+from .base import _NoArg
 from .base import _NoneName
 from .base import _SentinelColumnCharacterization
 from .base import _SentinelDefaultCharacterization
@@ -1514,7 +1515,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         name: Optional[str] = None,
         type_: Optional[_TypeEngineArgument[_T]] = None,
         autoincrement: _AutoIncrementType = "auto",
-        default: Optional[Any] = None,
+        default: Optional[Any] = _NoArg.NO_ARG,
+        insert_default: Optional[Any] = _NoArg.NO_ARG,
         doc: Optional[str] = None,
         key: Optional[str] = None,
         index: Optional[bool] = None,
@@ -1750,6 +1752,11 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             .. seealso::
 
                 :ref:`metadata_defaults_toplevel`
+
+        :param insert_default: An alias of :paramref:`.Column.default`
+            for compatibility with :func:`_orm.mapped_column`.
+
+            .. versionadded: 2.0.31
 
         :param doc: optional String that can be used by the ORM or similar
             to document attributes on the Python side.   This attribute does
@@ -2104,12 +2111,19 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             # otherwise, add DDL-related events
             self._set_type(self.type)
 
-        if default is not None:
-            if not isinstance(default, (ColumnDefault, Sequence)):
-                default = ColumnDefault(default)
+        if insert_default is not _NoArg.NO_ARG:
+            resolved_default = insert_default
+        elif default is not _NoArg.NO_ARG:
+            resolved_default = default
+        else:
+            resolved_default = None
 
-            self.default = default
-            l_args.append(default)
+        if resolved_default is not None:
+            if not isinstance(resolved_default, (ColumnDefault, Sequence)):
+                resolved_default = ColumnDefault(resolved_default)
+
+            self.default = resolved_default
+            l_args.append(resolved_default)
         else:
             self.default = None
 

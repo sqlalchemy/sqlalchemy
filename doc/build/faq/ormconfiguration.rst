@@ -349,3 +349,94 @@ loads directly to primary key values just loaded.
 .. seealso::
 
     :ref:`subquery_eager_loading`
+
+.. _defaults_default_factory_insert_default:
+
+What are ``default``, ``default_factory`` and ``insert_default`` and what should I use?
+---------------------------------------------------------------------------------------
+
+There's a bit of a clash in SQLAlchemy's API here due to the addition of PEP-681
+dataclass transforms, which is strict about its naming conventions. PEP-681 comes
+into play if you are using :class:`_orm.MappedAsDataclass` as shown in :ref:`orm_declarative_native_dataclasses`.
+If you are not using MappedAsDataclass, then it does not apply.
+
+Part One - Classic SQLAlchemy that is not using dataclasses
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When **not** using :class:`_orm.MappedAsDataclass`, as has been the case for many years
+in SQLAlchemy, the :func:`_orm.mapped_column` (and :class:`_schema.Column`)
+construct supports a parameter :paramref:`_orm.mapped_column.default`.
+This indicates a Python-side default (as opposed to a server side default that
+would be part of your database's schema definition) that will take place when
+an ``INSERT`` statement is emitted. This default can be **any** of a static Python value
+like a string, **or** a Python callable function, **or** a SQLAlchemy SQL construct.
+Full documentation for :paramref:`_orm.mapped_column.default` is at
+:ref:`defaults_client_invoked_sql`.
+
+When using :paramref:`_orm.mapped_column.default` with an ORM mapping that is **not**
+using :class:`_orm.MappedAsDataclass`, this default value /callable **does not show
+up on your object when you first construct it**. It only takes place when SQLAlchemy
+works up an ``INSERT`` statement for your object.
+
+A very important thing to note is that when using :func:`_orm.mapped_column`
+(and :class:`_schema.Column`), the classic :paramref:`_orm.mapped_column.default`
+parameter is also available under a new name, called
+:paramref:`_orm.mapped_column.insert_default`. If you build a
+:func:`_orm.mapped_column` and you are **not** using :class:`_orm.MappedAsDataclass`, the
+:paramref:`_orm.mapped_column.default` and :paramref:`_orm.mapped_column.insert_default`
+parameters are **synonymous**.
+
+Part Two - Using Dataclasses support with MappedAsDataclass
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When you **are** using :class:`_orm.MappedAsDataclass`, that is, the specific form
+of mapping used at :ref:`orm_declarative_native_dataclasses`, the meaning of the
+:paramref:`_orm.mapped_column.default` keyword changes. We recognize that it's not
+ideal that this name changes its behavior, however there was no alternative as
+PEP-681 requires :paramref:`_orm.mapped_column.default` to take on this meaning.
+
+When dataclasses are used, the :paramref:`_orm.mapped_column.default` parameter must
+be used the way it's described at
+`Python Dataclasses <https://docs.python.org/3/library/dataclasses.html>`_ - it refers
+to a constant value like a string or a number, and **is applied to your object
+immediately when constructed**. It is also at the moment also applied to the
+:paramref:`_orm.mapped_column.default` parameter of :class:`_schema.Column` where
+it would be used in an ``INSERT`` statement automatically even if not present
+on the object. If you instead want to use a callable for your dataclass,
+which will be applied to the object when constructed, you would use
+:paramref:`_orm.mapped_column.default_factory`.
+
+To get access to the ``INSERT``-only behavior of :paramref:`_orm.mapped_column.default`
+that is described in part one above, you would use the
+:paramref:`_orm.mapped_column.insert_default` parameter instead.
+:paramref:`_orm.mapped_column.insert_default` when dataclasses are used continues
+to be a direct route to the Core-level "default" process where the parameter can
+be a static value or callable.
+
+.. list-table:: Summary Chart
+   :header-rows: 1
+
+   * - Construct
+     - Works with dataclasses?
+     - Works without dataclasses?
+     - Accepts scalar?
+     - Accepts callable?
+     - Populates object immediately?
+   * - :paramref:`_orm.mapped_column.default`
+     - ✔
+     - ✔
+     - ✔
+     - Only if no dataclasses
+     - Only if dataclasses
+   * - :paramref:`_orm.mapped_column.insert_default`
+     - ✔
+     - ✔
+     - ✔
+     - ✔
+     - ✖
+   * - :paramref:`_orm.mapped_column.default_factory`
+     - ✔
+     - ✖
+     - ✖
+     - ✔
+     - Only if dataclasses
