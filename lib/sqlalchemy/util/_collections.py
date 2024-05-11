@@ -16,6 +16,7 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import cast
+from typing import Container
 from typing import Dict
 from typing import FrozenSet
 from typing import Generic
@@ -425,15 +426,14 @@ def to_list(x: Any, default: Optional[List[Any]] = None) -> List[Any]:
         return list(x)
 
 
-def has_intersection(set_, iterable):
+def has_intersection(set_: Container[Any], iterable: Iterable[Any]) -> bool:
     r"""return True if any items of set\_ are present in iterable.
 
     Goes through special effort to ensure __hash__ is not called
     on items in iterable that don't support it.
 
     """
-    # TODO: optimize, write in C, etc.
-    return bool(set_.intersection([i for i in iterable if i.__hash__]))
+    return any(i in set_ for i in iterable if i.__hash__)
 
 
 def to_set(x):
