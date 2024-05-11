@@ -401,7 +401,7 @@ def to_list(x: Any, default: Optional[List[Any]] = None) -> List[Any]:
         return list(x)
 
 
-def has_intersection(set_, iterable):
+def has_intersection(set_: Union[Set[Any], FrozenSet[Any]], iterable: Iterable[Any]) -> bool:
     r"""return True if any items of set\_ are present in iterable.
 
     Goes through special effort to ensure __hash__ is not called
@@ -409,7 +409,7 @@ def has_intersection(set_, iterable):
 
     """
     # TODO: optimize, write in C, etc.
-    return bool(set_.intersection([i for i in iterable if i.__hash__]))
+    return any(i in set_ for i in iterable if i.__hash__)
 
 
 def to_set(x):
