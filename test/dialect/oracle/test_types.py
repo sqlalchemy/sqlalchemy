@@ -39,7 +39,6 @@ from sqlalchemy.dialects.oracle import cx_oracle
 from sqlalchemy.dialects.oracle import oracledb
 from sqlalchemy.sql import column
 from sqlalchemy.sql.sqltypes import NullType
-from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
@@ -1047,16 +1046,7 @@ class LOBFetchTest(fixtures.TablesTest):
                 )
             eq_(actual, self.data)
 
-        # this comes from cx_Oracle because these are raw
-        # cx_Oracle.Variable objects
-        if testing.requires.oracle5x.enabled:
-            assert_raises_message(
-                testing.db.dialect.dbapi.ProgrammingError,
-                "LOB variable no longer valid after subsequent fetch",
-                go,
-            )
-        else:
-            go()
+        go()
 
     def test_lobs_with_convert_many_rows(self):
         # even with low arraysize, lobs are fine in autoconvert

@@ -139,11 +139,6 @@ class DistillParam(Case):
         self.impl._distill_params_20(None)
 
     @test_case
-    def empty_sequence_20(self):
-        self.impl._distill_params_20(())
-        self.impl._distill_params_20([])
-
-    @test_case
     def list_20(self):
         self.impl._distill_params_20(self.list_tup)
 
