@@ -17,6 +17,7 @@ related in any way to the pep-593 concept of "Annotated".
 
 from __future__ import annotations
 
+from operator import itemgetter
 import typing
 from typing import Any
 from typing import Callable
@@ -103,12 +104,14 @@ class SupportsAnnotations(ExternallyTraversible):
                         else value
                     ),
                 )
-                for key, value in [
-                    (key, self._annotations[key])
-                    for key in sorted(self._annotations)
-                ]
+                for key, value in sorted(
+                    self._annotations.items(), key=_get_item0
+                )
             ),
         )
+
+
+_get_item0 = itemgetter(0)
 
 
 class SupportsWrappingAnnotations(SupportsAnnotations):

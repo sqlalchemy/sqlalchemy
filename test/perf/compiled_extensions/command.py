@@ -4,7 +4,7 @@ from .base import Case
 
 if True:
     from . import cache_key  # noqa: F401
-    from . import collections  # noqa: F401
+    from . import collections_  # noqa: F401
     from . import misc  # noqa: F401
     from . import row  # noqa: F401
 

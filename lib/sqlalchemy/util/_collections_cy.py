@@ -19,7 +19,6 @@ from typing import NoReturn
 from typing import Optional
 from typing import Set
 from typing import Tuple
-from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
@@ -42,14 +41,6 @@ def _is_compiled() -> bool:
 
 
 # END GENERATED CYTHON IMPORT
-
-if cython.compiled:
-    from cython.cimports.cpython.long import PyLong_FromUnsignedLongLong
-elif TYPE_CHECKING:
-
-    def PyLong_FromUnsignedLongLong(v: Any) -> int: ...
-
-
 _T = TypeVar("_T")
 _S = TypeVar("_S")
 
@@ -267,16 +258,12 @@ class OrderedSet(Set[_T]):
 
 if cython.compiled:
 
-    @cython.final
-    @cython.inline
     @cython.cfunc
-    @cython.annotation_typing(False)
-    def _get_id(item: Any) -> int:
-        return PyLong_FromUnsignedLongLong(
-            cython.cast(
-                cython.ulonglong,
-                cython.cast(cython.pointer(cython.void), item),
-            )
+    @cython.inline
+    def _get_id(item: object, /) -> cython.ulonglong:
+        return cython.cast(
+            cython.ulonglong,
+            cython.cast(cython.pointer(cython.void), item),
         )
 
 else:
