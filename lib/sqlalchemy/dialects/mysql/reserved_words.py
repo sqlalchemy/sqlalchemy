@@ -290,6 +290,7 @@ RESERVED_WORDS_MARIADB = {
 # excludes: MySQL x.0 New Keywords and Reserved Words,
 #       MySQL x.0 Removed Keywords and Reserved Words
 RESERVED_WORDS_MYSQL = {
+    "accept",
     "accessible",
     "add",
     "admin",
@@ -301,6 +302,8 @@ RESERVED_WORDS_MYSQL = {
     "as",
     "asc",
     "asensitive",
+    "aws_bedrock_invoke_model",
+    "aws_sagemaker_invoke_endpoint",
     "before",
     "between",
     "bigint",
@@ -319,6 +322,7 @@ RESERVED_WORDS_MYSQL = {
     "column",
     "condition",
     "constraint",
+    "content_type",
     "continue",
     "convert",
     "create",
@@ -534,6 +538,7 @@ RESERVED_WORDS_MYSQL = {
     "table",
     "terminated",
     "then",
+    "timeout_ms",
     "tinyblob",
     "tinyint",
     "tinytext",
