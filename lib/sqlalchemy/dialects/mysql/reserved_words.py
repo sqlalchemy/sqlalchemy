@@ -319,6 +319,7 @@ RESERVED_WORDS_MYSQL = {
     "column",
     "condition",
     "constraint",
+    "content_type",
     "continue",
     "convert",
     "create",
