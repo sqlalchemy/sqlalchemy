@@ -1557,7 +1557,7 @@ class RawReflectionTest(fixtures.TestBase):
             "  CONSTRAINT `addresses_user_id_fkey` "
             "FOREIGN KEY (`user_id`) "
             "REFERENCES `users` (`id`) "
-            "ON DELETE CASCADE ON UPDATE SET NULL"
+            "ON DELETE SET DEFAULT ON UPDATE SET NULL"
         )
         eq_(
             m.groups(),
@@ -1567,7 +1567,7 @@ class RawReflectionTest(fixtures.TestBase):
                 "`users`",
                 "`id`",
                 None,
-                "CASCADE",
+                "SET DEFAULT",
                 "SET NULL",
             ),
         )
