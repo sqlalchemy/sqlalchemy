@@ -18,7 +18,7 @@ attrs_ third party integration library.
 .. _orm_declarative_native_dataclasses:
 
 Declarative Dataclass Mapping
--------------------------------
+-----------------------------
 
 SQLAlchemy :ref:`Annotated Declarative Table <orm_declarative_mapped_column>`
 mappings may be augmented with an additional

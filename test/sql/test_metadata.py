@@ -751,13 +751,25 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                     comment="foo",
                 ),
                 "Column('foo', Integer(), table=None, primary_key=True, "
-                "nullable=False, onupdate=%s, default=%s, server_default=%s, "
-                "comment='foo')"
-                % (
-                    ColumnDefault(1),
-                    ColumnDefault(42),
-                    DefaultClause("42"),
+                f"nullable=False, onupdate={ColumnDefault(1)}, default="
+                f"{ColumnDefault(42)}, server_default={DefaultClause('42')}, "
+                "comment='foo')",
+            ),
+            (
+                Column(
+                    "foo",
+                    Integer,
+                    primary_key=True,
+                    nullable=False,
+                    onupdate=1,
+                    insert_default=42,
+                    server_default="42",
+                    comment="foo",
                 ),
+                "Column('foo', Integer(), table=None, primary_key=True, "
+                f"nullable=False, onupdate={ColumnDefault(1)}, default="
+                f"{ColumnDefault(42)}, server_default={DefaultClause('42')}, "
+                "comment='foo')",
             ),
             (
                 Table("bar", MetaData(), Column("x", String)),
@@ -4690,6 +4702,16 @@ class ColumnDefaultsTest(fixtures.TestBase):
         c = self._fixture(onupdate=target)
         assert c.onupdate.arg == target
         assert c.onupdate.column is c
+
+    def test_column_insert_default(self):
+        c = self._fixture(insert_default="y")
+        assert c.default.arg == "y"
+
+    def test_column_insert_default_predecende_on_default(self):
+        c = self._fixture(insert_default="x", default="y")
+        assert c.default.arg == "x"
+        c = self._fixture(default="y", insert_default="x")
+        assert c.default.arg == "x"
 
 
 class ColumnOptionsTest(fixtures.TestBase):
