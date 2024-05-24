@@ -972,11 +972,16 @@
 
     .. change::
         :tags: bug, orm
-        :tickets: 10365
+        :tickets: 10365, 11412
 
         Fixed bug where ORM :func:`_orm.with_loader_criteria` would not apply
         itself to a :meth:`_sql.Select.join` where the ON clause were given as a
         plain SQL comparison, rather than as a relationship target or similar.
+
+        **update** - this was found to also fix an issue where
+        single-inheritance criteria would not be correctly applied to a
+        subclass entity that only appeared in the ``select_from()`` list,
+        see :ticket:`11412`
 
     .. change::
         :tags: bug, sql
