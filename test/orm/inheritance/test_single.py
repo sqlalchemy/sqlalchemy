@@ -379,6 +379,58 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
 
     @testing.combinations(
         (
+            lambda Engineer, Report: select(Report.report_id)
+            .select_from(Engineer)
+            .join(Engineer.reports),
+        ),
+        (
+            lambda Engineer, Report: select(Report.report_id).select_from(
+                orm_join(Engineer, Report, Engineer.reports)
+            ),
+        ),
+        (
+            lambda Engineer, Report: select(Report.report_id).join_from(
+                Engineer, Report, Engineer.reports
+            ),
+        ),
+        (
+            lambda Engineer, Report: select(Report.report_id)
+            .select_from(Engineer)
+            .join(Report),
+        ),
+        argnames="stmt_fn",
+    )
+    @testing.combinations(True, False, argnames="alias_engineer")
+    def test_select_col_only_from_w_join(self, stmt_fn, alias_engineer):
+        """test #11412 which seems to have been fixed by #10365"""
+
+        Engineer = self.classes.Engineer
+        Report = self.classes.Report
+
+        if alias_engineer:
+            Engineer = aliased(Engineer)
+        stmt = testing.resolve_lambda(
+            stmt_fn, Engineer=Engineer, Report=Report
+        )
+
+        if alias_engineer:
+            self.assert_compile(
+                stmt,
+                "SELECT reports.report_id FROM employees AS employees_1 "
+                "JOIN reports ON employees_1.employee_id = "
+                "reports.employee_id WHERE employees_1.type "
+                "IN (__[POSTCOMPILE_type_1])",
+            )
+        else:
+            self.assert_compile(
+                stmt,
+                "SELECT reports.report_id FROM employees JOIN reports "
+                "ON employees.employee_id = reports.employee_id "
+                "WHERE employees.type IN (__[POSTCOMPILE_type_1])",
+            )
+
+    @testing.combinations(
+        (
             lambda Engineer, Report: select(Report)
             .select_from(Engineer)
             .join(Engineer.reports),
