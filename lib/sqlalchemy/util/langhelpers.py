@@ -1659,6 +1659,8 @@ class _IntFlagMeta(type):
         items: List[symbol]
         cls._items = items = []
         for k, v in dict_.items():
+            if re.match(r"^__.*__$", k):
+                continue
             if isinstance(v, int):
                 sym = symbol(k, canonical=v)
             elif not k.startswith("_"):
