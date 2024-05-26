@@ -59,7 +59,7 @@ oracle-oracledb = ["oracledb>=1.0.1"]
 postgresql = ["psycopg2>=2.7"]
 postgresql-pg8000 = ["pg8000>=1.29.3"]
 postgresql-asyncpg = [
-    "sqlalchemy[asyncio]",
+    "greenlet!=0.4.17",  # same as ".[asyncio]" if this syntax were supported
     "asyncpg",
 ]
 postgresql-psycopg2binary = ["psycopg2-binary"]
@@ -68,19 +68,19 @@ postgresql-psycopg = ["psycopg>=3.0.7,!=3.1.15"]
 postgresql-psycopgbinary = ["psycopg[binary]>=3.0.7,!=3.1.15"]
 pymysql = ["pymysql"]
 aiomysql = [
-    "sqlalchemy[asyncio]",
+    "greenlet!=0.4.17",  # same as ".[asyncio]" if this syntax were supported
     "aiomysql",
 ]
 aioodbc = [
-    "sqlalchemy[asyncio]",
+    "greenlet!=0.4.17",  # same as ".[asyncio]" if this syntax were supported
     "aioodbc",
 ]
 asyncmy = [
-    "sqlalchemy[asyncio]",
+    "greenlet!=0.4.17",  # same as ".[asyncio]" if this syntax were supported
     "asyncmy>=0.2.3,!=0.2.4,!=0.2.6",
 ]
 aiosqlite = [
-    "sqlalchemy[asyncio]",
+    "greenlet!=0.4.17",  # same as ".[asyncio]" if this syntax were supported
     "aiosqlite",
 ]
 sqlcipher = ["sqlcipher3_binary"]

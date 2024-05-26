@@ -2010,12 +2010,12 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
         # object gracefully handles this condition
-        assert not hasattr(User.x, "__name__")
+        assert not hasattr(User.x, "foobar")
         assert not hasattr(User.x, "comparator")
 
         m.add_property("some_attr", column_property(users.c.name))
 
-        assert not hasattr(User.x, "__name__")
+        assert not hasattr(User.x, "foobar")
         assert hasattr(User.x, "comparator")
 
     def test_synonym_of_non_property_raises(self):
