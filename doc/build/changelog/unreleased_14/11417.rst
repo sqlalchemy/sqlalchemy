@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, general
+    :tickets: 11417
+
+    Set up full Python 3.13 support to the extent currently possible, repairing
+    issues within internal language helpers as well as the serializer extension
+    module.
+
+    For version 1.4, this also modernizes the "extras" names in setup.cfg
+    to use dashes and not underscores for two-word names.  Underscore names
+    are still present to accommodate potential compatibility issues.
