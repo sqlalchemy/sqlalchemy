@@ -197,6 +197,25 @@ class URLTest(fixtures.TestBase):
         is_(u.password, None)
         eq_(u.render_as_string(hide_password=False), "dbtype://x@localhost")
 
+    def test_render_as_string(self):
+        u = url.URL.create(
+            drivername="postgresql",
+            username="user",
+            password="pass",
+            host="localhost",
+            port=5432,
+            database="testdb"
+        )
+
+        # Render as string
+        rendered_url = u.render_as_string(hide_password=False)
+
+        # Parse the rendered URL
+        parsed_url = url.make_url(rendered_url)
+
+        # Check if the parsed URL is the same as the original
+        eq_(u, parsed_url, f"Parsed URL {parsed_url} does not match original {u}")
+
     def test_query_string(self):
         u = url.make_url("dialect://user:pass@host/db?arg1=param1&arg2=param2")
         eq_(u.query, {"arg1": "param1", "arg2": "param2"})

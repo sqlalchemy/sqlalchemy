@@ -253,12 +253,14 @@ class URL(NamedTuple):
         @overload
         def _assert_value(
             val: str,
-        ) -> str: ...
+        ) -> str:
+            ...
 
         @overload
         def _assert_value(
             val: Sequence[str],
-        ) -> Union[str, Tuple[str, ...]]: ...
+        ) -> Union[str, Tuple[str, ...]]:
+            ...
 
         def _assert_value(
             val: Union[str, Sequence[str]],
@@ -620,7 +622,7 @@ class URL(NamedTuple):
         methods are used.   The method directly includes additional options.
 
         :param hide_password: Defaults to True.   The password is not shown
-         in the string unless this is set to False.
+        in the string unless this is set to False.
 
         """
         s = self.drivername + "://"
@@ -634,7 +636,7 @@ class URL(NamedTuple):
                 )
             s += "@"
         if self.host is not None:
-            if ":" in self.host:
+            if ":" in self.host and not self.host.startswith("["):
                 s += f"[{self.host}]"
             else:
                 s += self.host
