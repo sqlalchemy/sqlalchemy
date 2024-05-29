@@ -4356,7 +4356,7 @@ class WithinGroup(ColumnElement[_T]):
         )
 
 
-class FunctionFilter(ColumnElement[_T]):
+class FunctionFilter(Generative, ColumnElement[_T]):
     """Represent a function FILTER clause.
 
     This is a special operator against aggregate and window functions,
@@ -4389,8 +4389,9 @@ class FunctionFilter(ColumnElement[_T]):
         *criterion: _ColumnExpressionArgument[bool],
     ):
         self.func = func
-        self.filter(*criterion)
+        self.filter.non_generative(self, *criterion)  # type: ignore
 
+    @_generative
     def filter(self, *criterion: _ColumnExpressionArgument[bool]) -> Self:
         """Produce an additional FILTER against the function.
 
