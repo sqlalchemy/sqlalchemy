@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 11423
+
+    Added missing methods :meth:`_sql.FunctionFilter.within_group`
+    and :meth:`_sql.WithinGroup.filter`
