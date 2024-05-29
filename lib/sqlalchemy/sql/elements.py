@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from enum import IntEnum
+from enum import Enum
 import itertools
 import operator
 import re
@@ -4149,13 +4149,15 @@ class _OverrideBinds(Grouping[_T]):
         return ck
 
 
-class _OverRange(IntEnum):
+class _OverRange(Enum):
     RANGE_UNBOUNDED = 0
     RANGE_CURRENT = 1
 
 
 RANGE_UNBOUNDED = _OverRange.RANGE_UNBOUNDED
 RANGE_CURRENT = _OverRange.RANGE_CURRENT
+
+_IntOrRange = Union[int, _OverRange]
 
 
 class Over(ColumnElement[_T]):
@@ -4185,7 +4187,8 @@ class Over(ColumnElement[_T]):
     """The underlying expression object to which this :class:`.Over`
     object refers."""
 
-    range_: Optional[typing_Tuple[int, int]]
+    range_: Optional[typing_Tuple[_IntOrRange, _IntOrRange]]
+    rows: Optional[typing_Tuple[_IntOrRange, _IntOrRange]]
 
     def __init__(
         self,
@@ -4230,19 +4233,24 @@ class Over(ColumnElement[_T]):
         )
 
     def _interpret_range(
-        self, range_: typing_Tuple[Optional[int], Optional[int]]
-    ) -> typing_Tuple[int, int]:
+        self,
+        range_: typing_Tuple[Optional[_IntOrRange], Optional[_IntOrRange]],
+    ) -> typing_Tuple[_IntOrRange, _IntOrRange]:
         if not isinstance(range_, tuple) or len(range_) != 2:
             raise exc.ArgumentError("2-tuple expected for range/rows")
 
-        lower: int
-        upper: int
+        r0, r1 = range_
 
-        if range_[0] is None:
+        lower: _IntOrRange
+        upper: _IntOrRange
+
+        if r0 is None:
             lower = RANGE_UNBOUNDED
+        elif isinstance(r0, _OverRange):
+            lower = r0
         else:
             try:
-                lower = int(range_[0])
+                lower = int(r0)
             except ValueError as err:
                 raise exc.ArgumentError(
                     "Integer or None expected for range value"
@@ -4251,11 +4259,13 @@ class Over(ColumnElement[_T]):
                 if lower == 0:
                     lower = RANGE_CURRENT
 
-        if range_[1] is None:
+        if r1 is None:
             upper = RANGE_UNBOUNDED
+        elif isinstance(r1, _OverRange):
+            upper = r1
         else:
             try:
-                upper = int(range_[1])
+                upper = int(r1)
             except ValueError as err:
                 raise exc.ArgumentError(
                     "Integer or None expected for range value"
