@@ -127,7 +127,7 @@ class Team(Base):
 class Engineer(Employee):
     engineer_info: Mapped[str]
 
-    __mapper_args__ = {"polymorphic_identity": "engineer",}
+    __mapper_args__ = {"polymorphic_identity": "engineer"}
 
 
 if typing.TYPE_CHECKING:
@@ -226,5 +226,3 @@ with Session(e) as s:
     s.execute(select(B).options(joinedload(B.a7)))
     s.execute(select(B).options(joinedload(B.a8)))
     s.execute(select(B).options(joinedload(B.a9)))
-
-
