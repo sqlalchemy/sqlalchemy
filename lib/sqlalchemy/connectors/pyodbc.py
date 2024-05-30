@@ -16,7 +16,6 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Union
-from urllib.parse import unquote_plus
 
 from . import Connector
 from .. import ExecutionContext
@@ -75,7 +74,8 @@ class PyODBCConnector(Connector):
                 connect_args[param] = util.asbool(keys.pop(param))
 
         if "odbc_connect" in keys:
-            connectors = [unquote_plus(keys.pop("odbc_connect"))]
+            # (potential breaking change for issue #11250)
+            connectors = [keys.pop("odbc_connect")]
         else:
 
             def check_quote(token: str) -> str:
