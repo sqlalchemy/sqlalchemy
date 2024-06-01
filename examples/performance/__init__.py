@@ -206,6 +206,8 @@ We can run our new script directly::
 
 """  # noqa
 
+from __future__ import annotations
+
 import argparse
 import cProfile
 import gc
@@ -214,20 +216,28 @@ import pstats
 import re
 import sys
 import time
+from typing import Callable
+from typing import Optional
+from typing import Union
 
 
 class Profiler:
-    tests = []
+    tests: list[Callable] = []
 
     _setup = None
     _setup_once = None
     name = None
     num = 0
 
-    def __init__(self, options):
+    stats: list[TestResult]
+    dump: bool
+    profile_: bool
+    callers: bool
+
+    def __init__(self, options: argparse.Namespace):
         self.test = options.test
         self.dburl = options.dburl
-        self.profile = options.profile
+        self.profile_ = options.profile
         self.dump = options.dump
         self.raw = options.raw
         self.callers = options.callers
@@ -238,12 +248,12 @@ class Profiler:
         self.stats = []
 
     @classmethod
-    def init(cls, name, num):
+    def init(cls, name: str, num: int) -> None:
         cls.name = name
         cls.num = num
 
     @classmethod
-    def profile(cls, fn):
+    def profile(cls, fn: Callable) -> Callable:
         if cls.name is None:
             raise ValueError(
                 "Need to call Profile.init(<suitename>, <default_num>) first."
@@ -252,14 +262,14 @@ class Profiler:
         return fn
 
     @classmethod
-    def setup(cls, fn):
+    def setup(cls, fn: Callable) -> Callable:
         if cls._setup is not None:
             raise ValueError("setup function already set to %s" % cls._setup)
         cls._setup = staticmethod(fn)
         return fn
 
     @classmethod
-    def setup_once(cls, fn):
+    def setup_once(cls, fn: Callable) -> Callable:
         if cls._setup_once is not None:
             raise ValueError(
                 "setup_once function already set to %s" % cls._setup_once
@@ -267,7 +277,7 @@ class Profiler:
         cls._setup_once = staticmethod(fn)
         return fn
 
-    def run(self):
+    def run(self) -> None:
         if self.test:
             tests = [fn for fn in self.tests if fn.__name__ in self.test]
             if not tests:
@@ -283,7 +293,7 @@ class Profiler:
             self._run_test(test)
             self.stats[-1].report()
 
-    def _run_with_profile(self, fn, sort):
+    def _run_with_profile(self, fn: Callable, sort: str):
         pr = cProfile.Profile()
         pr.enable()
         try:
@@ -296,7 +306,7 @@ class Profiler:
         self.stats.append(TestResult(self, fn, stats=stats, sort=sort))
         return result
 
-    def _run_with_time(self, fn):
+    def _run_with_time(self, fn: Callable):
         now = time.time()
         try:
             return fn(self.num)
@@ -304,13 +314,13 @@ class Profiler:
             total = time.time() - now
             self.stats.append(TestResult(self, fn, total_time=total))
 
-    def _run_test(self, fn):
+    def _run_test(self, fn: Callable) -> None:
         if self._setup:
             self._setup(self.dburl, self.echo, self.num)
         if self.gc:
             # gc.set_debug(gc.DEBUG_COLLECTABLE)
             gc.set_debug(gc.DEBUG_STATS)
-        if self.profile or self.dump:
+        if self.profile_ or self.dump:
             self._run_with_profile(fn, self.sort)
         else:
             self._run_with_time(fn)
@@ -318,7 +328,7 @@ class Profiler:
             gc.set_debug(0)
 
     @classmethod
-    def main(cls):
+    def main(cls) -> None:
         parser = argparse.ArgumentParser("python -m examples.performance")
 
         if cls.name is None:
@@ -393,7 +403,7 @@ class Profiler:
         Profiler(args).run()
 
     @classmethod
-    def _suite_names(cls):
+    def _suite_names(cls) -> list[str]:
         suites = []
         for file_ in os.listdir(os.path.dirname(__file__)):
             match = re.match(r"^([a-z].*).py$", file_)
@@ -403,8 +413,18 @@ class Profiler:
 
 
 class TestResult:
+    profile: Profiler
+    total_time: Optional[float]
+    sort: str
+    stats: Optional[pstats.Stats]
+
     def __init__(
-        self, profile, test, stats=None, total_time=None, sort="cumulative"
+        self,
+        profile: Profiler,
+        test: Callable,
+        stats: Optional[pstats.Stats] = None,
+        total_time: Optional[float] = None,
+        sort: str = "cumulative",
     ):
         self.profile = profile
         self.test = test
@@ -412,12 +432,12 @@ class TestResult:
         self.total_time = total_time
         self.sort = sort
 
-    def report(self):
+    def report(self) -> None:
         print(self._summary())
-        if self.profile.profile:
+        if self.profile.profile_:
             self.report_stats()
 
-    def _summary(self):
+    def _summary(self) -> str:
         summary = "%s : %s (%d iterations)" % (
             self.test.__name__,
             self.test.__doc__,
@@ -426,20 +446,25 @@ class TestResult:
         if self.total_time:
             summary += "; total time %f sec" % self.total_time
         if self.stats:
-            summary += "; total fn calls %d" % self.stats.total_calls
+            # total_calls is not typed, but in the API
+            # https://github.com/python/cpython/blob/3.12/Lib/pstats.py#L123
+            summary += (
+                "; total fn calls %d"
+                % self.stats.total_calls  # type: ignore[attr-defined]
+            )
         return summary
 
-    def report_stats(self):
+    def report_stats(self) -> None:
         if self.profile.dump:
             self._dump(self.sort)
         elif self.profile.raw:
             self._dump_raw()
 
-    def _dump(self, sort):
+    def _dump(self, sort: str) -> None:
         self.stats.sort_stats(*re.split(r"[ ,]", self.sort))
         self.stats.print_stats()
         if self.profile.callers:
             self.stats.print_callers()
 
-    def _dump_raw(self):
+    def _dump_raw(self) -> None:
         self.stats.dump_stats(self.profile.raw)

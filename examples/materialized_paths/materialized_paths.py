@@ -26,30 +26,35 @@ already stored in the path itself. Updates require going through all
 descendants and changing the prefix.
 
 """
+from __future__ import annotations
 
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import foreign
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import remote
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import cast
 
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 
 class Node(Base):
     __tablename__ = "node"
 
-    id = Column(Integer, primary_key=True, autoincrement=False)
-    path = Column(String(500), nullable=False, index=True)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=False
+    )
+    path: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
 
     # To find the descendants of this node, we look for nodes whose path
     # starts with this node's path.
@@ -83,13 +88,13 @@ class Node(Base):
     )
 
     @property
-    def depth(self):
+    def depth(self) -> int:
         return len(self.path.split(".")) - 1
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Node(id={self.id})"
 
-    def __str__(self):
+    def __str__(self) -> str:
         root_depth = self.depth
         s = [str(self.id)]
         s.extend(
@@ -98,7 +103,7 @@ class Node(Base):
         )
         return "\n".join(s)
 
-    def move_to(self, new_parent):
+    def move_to(self, new_parent: Node) -> None:
         new_path = new_parent.path + "." + str(self.id)
         for n in self.descendants:
             n.path = new_path + n.path[len(self.path) :]

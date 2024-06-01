@@ -30,19 +30,28 @@ accessing them like a Python dict can be very convenient.  The example below
 can be used with many common vertical schemas as-is or with minor adaptations.
 
 """
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from sqlalchemy import and_
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import Unicode
 from sqlalchemy import UnicodeText
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.collections import attribute_keyed_dict
+
+if TYPE_CHECKING:
+    from typing import Any
+    from sqlalchemy import ColumnElement
+    from sqlalchemy.ext.associationproxy import AssociationProxy
 
 
 class ProxiedDictMixin:
@@ -53,6 +62,8 @@ class ProxiedDictMixin:
     should have an attribute called ``_proxied`` which points to a dictionary.
 
     """
+
+    _proxied: AssociationProxy[Any]
 
     def __len__(self):
         return len(self._proxied)
@@ -81,17 +92,19 @@ if __name__ == "__main__":
 
         __tablename__ = "animal_fact"
 
-        animal_id = Column(ForeignKey("animal.id"), primary_key=True)
-        key = Column(Unicode(64), primary_key=True)
-        value = Column(UnicodeText)
+        animal_id: Mapped[int] = mapped_column(
+            ForeignKey("animal.id"), primary_key=True
+        )
+        key: Mapped[str] = mapped_column(Unicode(64), primary_key=True)
+        value: Mapped[str] = mapped_column(UnicodeText)
 
     class Animal(ProxiedDictMixin, Base):
         """an Animal"""
 
         __tablename__ = "animal"
 
-        id = Column(Integer, primary_key=True)
-        name = Column(Unicode(100))
+        id: Mapped[int] = mapped_column(Integer, primary_key=True)
+        name: Mapped[str] = mapped_column(Unicode(100))
 
         facts = relationship(
             "AnimalFact", collection_class=attribute_keyed_dict("key")
@@ -103,14 +116,16 @@ if __name__ == "__main__":
             creator=lambda key, value: AnimalFact(key=key, value=value),
         )
 
-        def __init__(self, name):
+        def __init__(self, name: str) -> None:
             self.name = name
 
-        def __repr__(self):
+        def __repr__(self) -> str:
             return "Animal(%r)" % self.name
 
         @classmethod
-        def with_characteristic(self, key, value):
+        def with_characteristic(
+            self, key: str, value: str
+        ) -> ColumnElement[bool]:
             return self.facts.any(key=key, value=value)
 
     engine = create_engine("sqlite://")

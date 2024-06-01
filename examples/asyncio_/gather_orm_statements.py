@@ -18,8 +18,9 @@ traditional approach.
 
 import asyncio
 import random
+from typing import TYPE_CHECKING
 
-from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker as async_sessionmaker_
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.future import select
 from sqlalchemy.orm import DeclarativeBase
@@ -27,23 +28,30 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import merge_frozen_result
 
+if TYPE_CHECKING:
+    from sqlalchemy.sql.selectable import Select
+
 
 class Base(DeclarativeBase):
     pass
 
 
 class A(Base):
-    __tablename__ = "a"
+    __tablename__ = "a_gather_orm_statements"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     data: Mapped[str]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         id_, data = self.id, self.data
         return f"A({id_=}, {data=})"
 
 
-async def run_out_of_band(async_sessionmaker, statement, merge_results=True):
+async def run_out_of_band(
+    async_sessionmaker: async_sessionmaker_,
+    statement: Select,
+    merge_results: bool = True,
+):
     """run an ORM statement in a distinct session,
     returning the frozen results
     """
@@ -73,7 +81,7 @@ async def async_main():
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
-    async_session = async_sessionmaker(engine, expire_on_commit=False)
+    async_session = async_sessionmaker_(engine, expire_on_commit=False)
 
     async with async_session() as session, session.begin():
         session.add_all([A(data="a_%d" % i) for i in range(100)])

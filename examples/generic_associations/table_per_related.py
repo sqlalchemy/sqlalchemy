@@ -24,6 +24,8 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.ext.declarative import as_declarative
 from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 
@@ -39,7 +41,7 @@ class Base:
     def __tablename__(cls):
         return cls.__name__.lower()
 
-    id = Column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
 
 class Address:
@@ -52,9 +54,9 @@ class Address:
 
     """
 
-    street = Column(String)
-    city = Column(String)
-    zip = Column(String)
+    street: Mapped[str] = mapped_column(String)
+    city: Mapped[str] = mapped_column(String)
+    zip: Mapped[str] = mapped_column(String)
 
     def __repr__(self):
         return "%s(street=%r, city=%r, zip=%r)" % (
@@ -88,11 +90,11 @@ class HasAddresses:
 
 
 class Customer(HasAddresses, Base):
-    name = Column(String)
+    name: Mapped[str] = mapped_column(String)
 
 
 class Supplier(HasAddresses, Base):
-    company_name = Column(String)
+    company_name: Mapped[str] = mapped_column(String)
 
 
 engine = create_engine("sqlite://", echo=True)

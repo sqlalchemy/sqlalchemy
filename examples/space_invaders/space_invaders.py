@@ -1,22 +1,48 @@
+from __future__ import annotations
+
 import curses
 import logging
 import random
 import re
 import textwrap
 import time
+from typing import Optional
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_method
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+
+if TYPE_CHECKING:
+    from curses import window as Window
+    from typing_extensions import TypedDict
+
+    STATE = TypedDict(
+        "STATE",
+        {
+            "alt": bool,
+            "army_direction": int,
+            "field_pos": int,
+            "flip": bool,
+            "missile": Optional["GlyphCoordinate"],
+            "num_enemies": int,
+            "player": Optional["GlyphCoordinate"],
+            "saucer": Optional["GlyphCoordinate"],
+            "score": int,
+            "tick": int,
+        },
+        total=False,
+    )
 
 
 logging.basicConfig(
@@ -25,7 +51,14 @@ logging.basicConfig(
 )
 logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
-Base = declarative_base()
+
+# Used as a global, but defined/initialized in `setup_curses`
+_COLOR_PAIRS: dict[str, int]
+
+
+class Base(DeclarativeBase):
+    pass
+
 
 WINDOW_LEFT = 10
 WINDOW_TOP = 2
@@ -60,22 +93,22 @@ class Glyph(Base):
     """
 
     __tablename__ = "glyph"
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    type = Column(String)
-    width = Column(Integer)
-    height = Column(Integer)
-    data = Column(String)
-    alt_data = Column(String)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String)
+    type: Mapped[str] = mapped_column(String)
+    width: Mapped[int] = mapped_column(Integer)
+    height: Mapped[int] = mapped_column(Integer)
+    data: Mapped[str] = mapped_column(String)
+    alt_data: Mapped[str] = mapped_column(String, nullable=True)
     __mapper_args__ = {"polymorphic_on": type}
 
-    def __init__(self, name, img, alt=None):
+    def __init__(self, name: str, img: str, alt: Optional[str] = None):
         self.name = name
         self.data, self.width, self.height = self._encode_glyph(img)
         if alt is not None:
             self.alt_data, alt_w, alt_h = self._encode_glyph(alt)
 
-    def _encode_glyph(self, img):
+    def _encode_glyph(self, img: str) -> tuple[str, int, int]:
         """Receive a textual description of the glyph and
         encode into a format understood by
         GlyphCoordinate.render().
@@ -87,23 +120,23 @@ class Glyph(Base):
         data = []
         for line in lines:
             render_line = []
-            line = list(line)
-            while line:
-                char = line.pop(0)
+            line_ = list(line)
+            while line_:
+                char = line_.pop(0)
                 if char == "#":
-                    color = line.pop(0)
+                    color = line_.pop(0)
                     continue
                 render_line.append((color, char))
             data.append(render_line)
         width = max([len(rl) for rl in data])
-        data = "".join(
+        data_ = "".join(
             "".join("%s%s" % (color, char) for color, char in render_line)
             + ("W " * (width - len(render_line)))
             for render_line in data
         )
-        return data, width, len(lines)
+        return data_, width, len(lines)
 
-    def glyph_for_state(self, coord, state):
+    def glyph_for_state(self, coord: GlyphCoordinate, state: STATE) -> str:
         """Return the appropriate data representation
         for this Glyph, based on the current coordinates
         and state.
@@ -124,18 +157,25 @@ class GlyphCoordinate(Base):
     """
 
     __tablename__ = "glyph_coordinate"
-    id = Column(Integer, primary_key=True)
-    glyph_id = Column(Integer, ForeignKey("glyph.id"))
-    x = Column(Integer)
-    y = Column(Integer)
-    tick = Column(Integer)
-    label = Column(String)
-    score = Column(Integer)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    glyph_id: Mapped[int] = mapped_column(Integer, ForeignKey("glyph.id"))
+    x: Mapped[int] = mapped_column(Integer)
+    y: Mapped[int] = mapped_column(Integer)
+    tick: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    label: Mapped[str] = mapped_column(String, nullable=False)
+    score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     glyph = relationship(Glyph, innerjoin=True)
 
     def __init__(
-        self, session, glyph_name, x, y, tick=None, label=None, score=None
-    ):
+        self,
+        session: Session,
+        glyph_name: str,
+        x: int,
+        y: int,
+        tick: Optional[int] = None,
+        label: str = "",
+        score: Optional[int] = None,
+    ) -> None:
         self.glyph = session.query(Glyph).filter_by(name=glyph_name).one()
         self.x = x
         self.y = y
@@ -144,7 +184,7 @@ class GlyphCoordinate(Base):
         self.score = score
         session.add(self)
 
-    def render(self, window, state):
+    def render(self, window: Window, state: STATE) -> None:
         """Render the Glyph at this position."""
 
         col = 0
@@ -170,14 +210,14 @@ class GlyphCoordinate(Base):
         if self.label:
             self._render_label(window, False)
 
-    def _render_label(self, window, blank):
+    def _render_label(self, window: Window, blank: bool) -> None:
         label = self.label if not blank else " " * len(self.label)
         if self.x + self.width + len(self.label) < MAX_X:
             window.addstr(self.y, self.x + self.width, label)
         else:
             window.addstr(self.y, self.x - len(self.label), label)
 
-    def blank(self, window):
+    def blank(self, window: Window) -> None:
         """Render a blank box for this glyph's position and size."""
 
         glyph = self.glyph
@@ -191,43 +231,43 @@ class GlyphCoordinate(Base):
             self._render_label(window, True)
 
     @hybrid_property
-    def width(self):
+    def width(self) -> int:
         return self.glyph.width
 
     @width.expression
-    def width(cls):
+    def width(cls) -> int:
         return Glyph.width
 
     @hybrid_property
-    def height(self):
+    def height(self) -> int:
         return self.glyph.height
 
     @height.expression
-    def height(cls):
+    def height(cls) -> int:
         return Glyph.height
 
     @hybrid_property
-    def bottom_bound(self):
+    def bottom_bound(self) -> bool:
         return self.y + self.height >= MAX_Y
 
     @hybrid_property
-    def top_bound(self):
+    def top_bound(self) -> bool:
         return self.y <= 0
 
     @hybrid_property
-    def left_bound(self):
+    def left_bound(self) -> bool:
         return self.x <= 0
 
     @hybrid_property
-    def right_bound(self):
+    def right_bound(self) -> int:
         return self.x + self.width >= MAX_X
 
     @hybrid_property
-    def right_edge_bound(self):
+    def right_edge_bound(self) -> int:
         return self.x > MAX_X
 
     @hybrid_method
-    def intersects(self, other):
+    def intersects(self, other: GlyphCoordinate) -> bool:
         """Return True if this GlyphCoordinate intersects with
         the given GlyphCoordinate."""
 
@@ -250,7 +290,7 @@ class ArmyGlyph(EnemyGlyph):
 
     __mapper_args__ = {"polymorphic_identity": "army"}
 
-    def glyph_for_state(self, coord, state):
+    def glyph_for_state(self, coord: GlyphCoordinate, state: STATE) -> str:
         if state["flip"]:
             return self.alt_data
         else:
@@ -262,7 +302,7 @@ class SaucerGlyph(EnemyGlyph):
 
     __mapper_args__ = {"polymorphic_identity": "saucer"}
 
-    def glyph_for_state(self, coord, state):
+    def glyph_for_state(self, coord: GlyphCoordinate, state: STATE) -> str:
         if state["flip"] == 0:
             return self.alt_data
         else:
@@ -292,7 +332,9 @@ class SplatGlyph(Glyph):
 
     __mapper_args__ = {"polymorphic_identity": "splat"}
 
-    def glyph_for_state(self, coord, state):
+    def glyph_for_state(self, coord: GlyphCoordinate, state: STATE) -> str:
+        assert state["tick"] is not None
+        assert coord.tick is not None
         age = state["tick"] - coord.tick
         if age > 5:
             return self.alt_data
@@ -300,7 +342,7 @@ class SplatGlyph(Glyph):
             return self.data
 
 
-def init_glyph(session):
+def init_glyph(session: Session) -> None:
     """Create the glyphs used during play."""
 
     enemy1 = ArmyGlyph(
@@ -401,7 +443,7 @@ def init_glyph(session):
     )
 
 
-def setup_curses():
+def setup_curses() -> Window:
     """Setup terminal/curses state."""
 
     window = curses.initscr()
@@ -423,7 +465,7 @@ def setup_curses():
     return window
 
 
-def init_positions(session):
+def init_positions(session: Session) -> None:
     """Establish a new field of play.
 
     This generates GlyphCoordinate objects
@@ -458,7 +500,7 @@ def init_positions(session):
             )
 
 
-def draw(session, window, state):
+def draw(session: Session, window: Window, state: STATE) -> None:
     """Load all current GlyphCoordinate objects from the
     database and render.
 
@@ -472,7 +514,7 @@ def draw(session, window, state):
     window.refresh()
 
 
-def check_win(session, state):
+def check_win(session: Session, state: STATE) -> int:
     """Return the number of army glyphs remaining -
     the player wins if this is zero."""
 
@@ -483,12 +525,12 @@ def check_win(session, state):
     )
 
 
-def check_lose(session, state):
+def check_lose(session: Session, state: STATE) -> int:
     """Return the number of army glyphs either colliding
     with the player or hitting the bottom of the screen.
 
     The player loses if this is non-zero."""
-
+    assert state["player"] is not None
     player = state["player"]
     return (
         session.query(GlyphCoordinate)
@@ -500,7 +542,9 @@ def check_lose(session, state):
     )
 
 
-def render_message(session, window, msg, x, y):
+def render_message(
+    session: Session, window: Window, msg: str, x: int, y: int
+) -> GlyphCoordinate:
     """Render a message glyph.
 
     Clears the area beneath the message first
@@ -509,37 +553,37 @@ def render_message(session, window, msg, x, y):
 
     """
     # create message box
-    msg = GlyphCoordinate(session, msg, x, y)
+    msgbox = GlyphCoordinate(session, msg, x, y)
 
     # clear existing glyphs which intersect
     for gly in (
         session.query(GlyphCoordinate)
         .join(GlyphCoordinate.glyph)
-        .filter(GlyphCoordinate.intersects(msg))
+        .filter(GlyphCoordinate.intersects(msgbox))
     ):
         gly.blank(window)
 
     # render
-    msg.render(window, {})
+    msgbox.render(window, {})
     window.refresh()
-    return msg
+    return msgbox
 
 
-def win(session, window, state):
+def win(session: Session, window: Window, state: STATE) -> None:
     """Handle the win case."""
     render_message(session, window, "win_message", 15, 15)
     time.sleep(2)
     start(session, window, state, True)
 
 
-def lose(session, window, state):
+def lose(session: Session, window: Window, state: STATE) -> None:
     """Handle the lose case."""
     render_message(session, window, "lose_message", 15, 15)
     time.sleep(2)
     start(session, window, state)
 
 
-def pause(session, window, state):
+def pause(session: Session, window: Window, state: STATE) -> None:
     """Pause the game."""
     msg = render_message(session, window, "pause_message", 15, 15)
     prompt(window)
@@ -547,19 +591,19 @@ def pause(session, window, state):
     session.delete(msg)
 
 
-def prompt(window):
+def prompt(window: Window) -> None:
     """Display a prompt, quashing any keystrokes
     which might have remained."""
 
     window.move(0, 0)
-    window.nodelay(1)
+    window.nodelay(True)
     window.getch()
-    window.nodelay(0)
+    window.nodelay(False)
     window.getch()
-    window.nodelay(1)
+    window.nodelay(True)
 
 
-def move_army(session, window, state):
+def move_army(session: Session, window: Window, state: STATE) -> None:
     """Update the army position based on the current
     size of the field."""
     speed = 30 // 25 * state["num_enemies"]
@@ -610,7 +654,7 @@ def move_army(session, window, state):
             enemy_g.x -= x_slide
 
 
-def move_player(session, window, state):
+def move_player(session: Session, window: Window, state: STATE) -> None:
     """Receive player input and adjust state."""
 
     ch = window.getch()
@@ -620,6 +664,7 @@ def move_player(session, window, state):
         pause(session, window, state)
         return
 
+    assert state["player"] is not None
     player = state["player"]
     if ch == RIGHT_KEY and not player.right_bound:
         player.blank(window)
@@ -633,7 +678,7 @@ def move_player(session, window, state):
         )
 
 
-def move_missile(session, window, state):
+def move_missile(session: Session, window: Window, state: STATE) -> None:
     """Update the status of the current missile, if any."""
 
     if state["missile"] is None or state["tick"] % 2 != 0:
@@ -662,7 +707,7 @@ def move_missile(session, window, state):
         missile.y -= 1
 
 
-def move_saucer(session, window, state):
+def move_saucer(session: Session, window: Window, state: STATE) -> None:
     """Update the status of the saucer."""
 
     saucer_interval = 500
@@ -683,12 +728,14 @@ def move_saucer(session, window, state):
             state["saucer"] = None
 
 
-def update_splat(session, window, state):
+def update_splat(session: Session, window: Window, state: STATE) -> None:
     """Render splat animations."""
 
+    assert state["tick"] is not None
     for splat in session.query(GlyphCoordinate).join(
         GlyphCoordinate.glyph.of_type(SplatGlyph)
     ):
+        assert splat.tick is not None
         age = state["tick"] - splat.tick
         if age > 10:
             splat.blank(window)
@@ -697,13 +744,16 @@ def update_splat(session, window, state):
             splat.render(window, state)
 
 
-def score(session, window, state, glyph):
+def score(
+    session: Session, window: Window, state: STATE, glyph: GlyphCoordinate
+) -> None:
     """Process a glyph intersecting with a missile."""
 
     glyph.blank(window)
     session.delete(glyph)
     if state["saucer"] is glyph:
         state["saucer"] = None
+    assert glyph.score is not None
     state["score"] += glyph.score
     # render a splat !
     GlyphCoordinate(
@@ -716,7 +766,7 @@ def score(session, window, state, glyph):
     )
 
 
-def update_state(session, window, state):
+def update_state(session: Session, window: Window, state: STATE) -> None:
     """Update all state for each game tick."""
 
     num_enemies = state["num_enemies"] = check_win(session, state)
@@ -734,7 +784,9 @@ def update_state(session, window, state):
         update_splat(session, window, state)
 
 
-def start(session, window, state, continue_=False):
+def start(
+    session: Session, window: Window, state: STATE, continue_: bool = False
+) -> None:
     """Start a new field of play."""
 
     render_message(session, window, "start_message", 15, 20)
@@ -749,14 +801,14 @@ def start(session, window, state, continue_=False):
     )
     state.update(
         {
-            "field_pos": 0,
             "alt": False,
-            "tick": 0,
-            "missile": None,
-            "saucer": None,
-            "player": player,
             "army_direction": 0,
+            "field_pos": 0,
             "flip": False,
+            "missile": None,
+            "player": player,
+            "saucer": None,
+            "tick": 0,
         }
     )
     if not continue_:
@@ -767,7 +819,7 @@ def start(session, window, state, continue_=False):
     draw(session, window, state)
 
 
-def main():
+def main() -> None:
     """Initialize the database and establish the game loop."""
 
     e = create_engine("sqlite://")
@@ -776,7 +828,7 @@ def main():
     init_glyph(session)
     session.commit()
     window = setup_curses()
-    state = {}
+    state: STATE = {}
     start(session, window, state)
     while True:
         update_state(session, window, state)

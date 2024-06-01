@@ -1,9 +1,10 @@
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import sessionmaker
 
@@ -40,13 +41,16 @@ class ProxyDict:
 
 
 engine = create_engine("sqlite://", echo=True)
-Base = declarative_base(engine)
+
+
+class Base(DeclarativeBase):
+    pass
 
 
 class Parent(Base):
     __tablename__ = "parent"
-    id = Column(Integer, primary_key=True)
-    name = Column(String(50))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
     _collection = relationship(
         "Child", lazy="dynamic", cascade="all, delete-orphan"
     )
@@ -58,17 +62,17 @@ class Parent(Base):
 
 class Child(Base):
     __tablename__ = "child"
-    id = Column(Integer, primary_key=True)
-    key = Column(String(50))
-    parent_id = Column(Integer, ForeignKey("parent.id"))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key: Mapped[str] = mapped_column(String(50))
+    parent_id: Mapped[int] = mapped_column(Integer, ForeignKey("parent.id"))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Child(key=%r)" % self.key
 
 
-Base.metadata.create_all()
+Base.metadata.create_all(bind=engine)
 
-sess = sessionmaker()()
+sess = sessionmaker(bind=engine)()
 
 p1 = Parent(name="p1")
 sess.add(p1)

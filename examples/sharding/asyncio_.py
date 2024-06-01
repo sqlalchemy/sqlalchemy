@@ -7,12 +7,18 @@ in exactly the same way.   The main change is how the
 ``async_sessionmaker`` is configured, and as is specific to this example
 the routine that generates new primary keys.
 
+To run::
+
+    python -m examples.sharding.asyncio_
+
 """
 
 from __future__ import annotations
 
 import asyncio
 import datetime
+from typing import Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
@@ -31,6 +37,18 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import visitors
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine.default import DefaultExecutionContext
+    from sqlalchemy.orm import InstanceState
+    from sqlalchemy.orm import Mapper
+    from sqlalchemy.orm import ORMExecuteState
+    from sqlalchemy.sql.elements import BinaryExpression
+    from sqlalchemy.sql.elements import BindParameter
+    from sqlalchemy.sql.selectable import Select
+    from typing import Union
+
+    TYPE_shard_pkey = Union[Column, list[Column]]
 
 
 echo = True
@@ -71,12 +89,16 @@ class Base(DeclarativeBase):
 ids = Table("ids", Base.metadata, Column("nextid", Integer, nullable=False))
 
 
-def id_generator(ctx):
+def id_generator(ctx: DefaultExecutionContext) -> int:
     # id_generator is run within a "synchronous" context, where
     # we use an implicit-await API that will convert back to explicit await
     # calls when it reaches the driver.
+    # note: this is typed to the parent class `DefaultExecutionContext`
+    #  but we expect
+    #  `sqlalchemy.dialects.sqlite.aiosqlite.SQLiteExecutionContext_aiosqlite`
     with db1.sync_engine.begin() as conn:
         nextid = conn.scalar(ids.select().with_for_update())
+        assert nextid is not None
         conn.execute(ids.update().values({ids.c.nextid: ids.c.nextid + 1}))
     return nextid
 
@@ -133,7 +155,7 @@ shard_lookup = {
 }
 
 
-def shard_chooser(mapper, instance, clause=None):
+def shard_chooser(mapper: Mapper, instance: Base, clause=None) -> str:
     """shard chooser.
 
     looks at the given instance and returns a shard id
@@ -148,7 +170,13 @@ def shard_chooser(mapper, instance, clause=None):
         return shard_chooser(mapper, instance.location)
 
 
-def identity_chooser(mapper, primary_key, *, lazy_loaded_from, **kw):
+def identity_chooser(
+    mapper: Mapper,
+    primary_key: TYPE_shard_pkey,
+    *,
+    lazy_loaded_from: Optional[InstanceState],
+    **kw,
+) -> list[str]:
     """identity chooser.
 
     given a primary key, returns a list of shards
@@ -167,7 +195,7 @@ def identity_chooser(mapper, primary_key, *, lazy_loaded_from, **kw):
         return ["north_america", "asia", "europe", "south_america"]
 
 
-def execute_chooser(context):
+def execute_chooser(context: ORMExecuteState) -> list[str]:
     """statement execution chooser.
 
     this also returns a list of shard ids, which can just be all of them. but
@@ -198,7 +226,7 @@ def execute_chooser(context):
         return ids
 
 
-def _get_select_comparisons(statement):
+def _get_select_comparisons(statement: Select) -> list:
     """Search a Select or Query object for binary expressions.
 
     Returns expressions which match a Column against one or more
@@ -211,16 +239,16 @@ def _get_select_comparisons(statement):
     clauses = set()
     comparisons = []
 
-    def visit_bindparam(bind):
+    def visit_bindparam(bind: BindParameter) -> None:
         # visit a bind parameter.
 
         value = bind.effective_value
         binds[bind] = value
 
-    def visit_column(column):
+    def visit_column(column: Column) -> None:
         clauses.add(column)
 
-    def visit_binary(binary):
+    def visit_binary(binary: BinaryExpression) -> None:
         if binary.left in clauses and binary.right in binds:
             comparisons.append(
                 (binary.left, binary.operator, binds[binary.right])
@@ -255,7 +283,7 @@ Session.configure(
 )
 
 
-async def setup():
+async def setup() -> None:
     # create tables
     for db in (db1, db2, db3, db4):
         async with db.begin() as conn:
@@ -266,7 +294,7 @@ async def setup():
         await conn.execute(ids.insert(), {"nextid": 1})
 
 
-async def main():
+async def main() -> None:
     await setup()
 
     # save and load objects!
@@ -295,6 +323,7 @@ async def main():
             tokyo.id,
             options=[immediateload(WeatherLocation.reports)],
         )
+        assert t is not None
         assert t.city == tokyo.city
         assert t.reports[0].temperature == 80.0
 
