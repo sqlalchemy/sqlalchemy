@@ -844,6 +844,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "AS anon_1 FROM mytable",
         )
 
+    def test_funcfilter_more_criteria(self):
+        ff = func.rank().filter(table1.c.name > "foo")
+        ff2 = ff.filter(table1.c.myid == 1)
+        self.assert_compile(
+            select(ff, ff2),
+            "SELECT rank() FILTER (WHERE mytable.name > :name_1) AS anon_1, "
+            "rank() FILTER (WHERE mytable.name > :name_1 AND "
+            "mytable.myid = :myid_1) AS anon_2 FROM mytable",
+            {"name_1": "foo", "myid_1": 1},
+        )
+
     def test_funcfilter_within_group(self):
         stmt = select(
             table1.c.myid,
