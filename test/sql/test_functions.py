@@ -856,6 +856,18 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_funcfilter_within_group(self):
+        self.assert_compile(
+            select(
+                func.rank()
+                .filter(table1.c.name > "foo")
+                .within_group(table1.c.name)
+            ),
+            "SELECT rank() FILTER (WHERE mytable.name > :name_1) "
+            "WITHIN GROUP (ORDER BY mytable.name) "
+            "AS anon_1 FROM mytable",
+        )
+
+    def test_within_group(self):
         stmt = select(
             table1.c.myid,
             func.percentile_cont(0.5).within_group(table1.c.name),
@@ -869,7 +881,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             {"percentile_cont_1": 0.5},
         )
 
-    def test_funcfilter_within_group_multi(self):
+    def test_within_group_multi(self):
         stmt = select(
             table1.c.myid,
             func.percentile_cont(0.5).within_group(
@@ -885,7 +897,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             {"percentile_cont_1": 0.5},
         )
 
-    def test_funcfilter_within_group_desc(self):
+    def test_within_group_desc(self):
         stmt = select(
             table1.c.myid,
             func.percentile_cont(0.5).within_group(table1.c.name.desc()),
@@ -899,7 +911,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             {"percentile_cont_1": 0.5},
         )
 
-    def test_funcfilter_within_group_w_over(self):
+    def test_within_group_w_over(self):
         stmt = select(
             table1.c.myid,
             func.percentile_cont(0.5)
@@ -913,6 +925,23 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "OVER (PARTITION BY mytable.description) AS anon_1 "
             "FROM mytable",
             {"percentile_cont_1": 0.5},
+        )
+
+    def test_within_group_filter(self):
+        stmt = select(
+            table1.c.myid,
+            func.percentile_cont(0.5)
+            .within_group(table1.c.name)
+            .filter(table1.c.myid > 42),
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid, percentile_cont(:percentile_cont_1) "
+            "WITHIN GROUP (ORDER BY mytable.name) "
+            "FILTER (WHERE mytable.myid > :myid_1) "
+            "AS anon_1 "
+            "FROM mytable",
+            {"percentile_cont_1": 0.5, "myid_1": 42},
         )
 
     def test_incorrect_none_type(self):
