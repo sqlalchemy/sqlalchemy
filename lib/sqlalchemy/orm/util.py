@@ -2156,7 +2156,7 @@ def _entity_isa(given: _InternalEntityType[Any], mapper: Mapper[Any]) -> bool:
             mapper
         )
     elif given.with_polymorphic_mappers:
-        return mapper in given.with_polymorphic_mappers
+        return mapper in given.with_polymorphic_mappers or given.isa(mapper)
     else:
         return given.isa(mapper)
 
