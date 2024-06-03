@@ -4323,7 +4323,7 @@ class WithinGroup(ColumnElement[_T]):
 
     def __init__(
         self,
-        element: FunctionElement[_T],
+        element: Union[FunctionElement[_T], FunctionFilter[_T]],
         *order_by: _ColumnExpressionArgument[Any],
     ):
         self.element = element
@@ -4337,7 +4337,14 @@ class WithinGroup(ColumnElement[_T]):
             tuple(self.order_by) if self.order_by is not None else ()
         )
 
-    def over(self, partition_by=None, order_by=None, range_=None, rows=None):
+    def over(
+        self,
+        *,
+        partition_by: Optional[_ByArgument] = None,
+        order_by: Optional[_ByArgument] = None,
+        rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+        range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+    ) -> Over[_T]:
         """Produce an OVER clause against this :class:`.WithinGroup`
         construct.
 
@@ -4352,6 +4359,24 @@ class WithinGroup(ColumnElement[_T]):
             range_=range_,
             rows=rows,
         )
+
+    @overload
+    def filter(self) -> Self: ...
+
+    @overload
+    def filter(
+        self,
+        __criterion0: _ColumnExpressionArgument[bool],
+        *criterion: _ColumnExpressionArgument[bool],
+    ) -> FunctionFilter[_T]: ...
+
+    def filter(
+        self, *criterion: _ColumnExpressionArgument[bool]
+    ) -> Union[Self, FunctionFilter[_T]]:
+        """Produce a FILTER clause against this function."""
+        if not criterion:
+            return self
+        return FunctionFilter(self, *criterion)
 
     if not TYPE_CHECKING:
 
@@ -4405,7 +4430,7 @@ class FunctionFilter(Generative, ColumnElement[_T]):
 
     def __init__(
         self,
-        func: FunctionElement[_T],
+        func: Union[FunctionElement[_T], WithinGroup[_T]],
         *criterion: _ColumnExpressionArgument[bool],
     ):
         self.func = func
@@ -4475,6 +4500,19 @@ class FunctionFilter(Generative, ColumnElement[_T]):
             range_=range_,
             rows=rows,
         )
+
+    def within_group(
+        self, *order_by: _ColumnExpressionArgument[Any]
+    ) -> WithinGroup[_T]:
+        """Produce a WITHIN GROUP (ORDER BY expr) clause against
+        this function.
+        """
+        return WithinGroup(self, *order_by)
+
+    def within_group_type(
+        self, within_group: WithinGroup[_T]
+    ) -> Optional[TypeEngine[_T]]:
+        return None
 
     def self_group(
         self, against: Optional[OperatorType] = None
