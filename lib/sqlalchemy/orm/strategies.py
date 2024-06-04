@@ -2506,7 +2506,7 @@ class JoinedLoader(AbstractRelationshipLoader):
                 or query_entity.entity_zero.represents_outer_join
                 or (chained_from_outerjoin and isinstance(towrap, sql.Join)),
                 _left_memo=self.parent,
-                _right_memo=self.mapper,
+                _right_memo=path[self.mapper],
                 _extra_criteria=extra_join_criteria,
             )
         else:
@@ -2546,7 +2546,14 @@ class JoinedLoader(AbstractRelationshipLoader):
             )
 
     def _splice_nested_inner_join(
-        self, path, join_obj, clauses, onclause, extra_criteria, splicing=False
+        self,
+        path,
+        join_obj,
+        clauses,
+        onclause,
+        extra_criteria,
+        splicing=False,
+        detected_existing_path=None,
     ):
         # recursive fn to splice a nested join into an existing one.
         # splicing=False means this is the outermost call, and it
@@ -2568,13 +2575,23 @@ class JoinedLoader(AbstractRelationshipLoader):
             )
         elif not isinstance(join_obj, orm_util._ORMJoin):
             if path[-2].isa(splicing):
+
+                if detected_existing_path:
+                    # TODO: refine this into a more efficient method
+                    if not detected_existing_path.contains_mapper(splicing):
+                        return None
+                    elif path_registry.PathRegistry.coerce(
+                        detected_existing_path[len(path) :]
+                    ).contains_mapper(splicing):
+                        return None
+
                 return orm_util._ORMJoin(
                     join_obj,
                     clauses.aliased_insp,
                     onclause,
                     isouter=False,
                     _left_memo=splicing,
-                    _right_memo=path[-1].mapper,
+                    _right_memo=path[path[-1].mapper],
                     _extra_criteria=extra_criteria,
                 )
             else:
@@ -2586,7 +2603,12 @@ class JoinedLoader(AbstractRelationshipLoader):
             clauses,
             onclause,
             extra_criteria,
-            join_obj._right_memo,
+            # NOTE: this is the one place _right_memo is consumed
+            splicing=(
+                join_obj._right_memo[-1].mapper
+                if join_obj._right_memo is not None
+                else None
+            ),
         )
         if target_join is None:
             right_splice = False
@@ -2597,7 +2619,9 @@ class JoinedLoader(AbstractRelationshipLoader):
                 onclause,
                 extra_criteria,
                 join_obj._left_memo,
+                detected_existing_path=join_obj._right_memo,
             )
+
             if target_join is None:
                 # should only return None when recursively called,
                 # e.g. splicing refers to a from obj
