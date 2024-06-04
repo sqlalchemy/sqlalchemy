@@ -41,6 +41,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import RegexSQL
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -3694,6 +3695,179 @@ class InnerJoinSplicingWSecondaryTest(
             "ORDER BY d_1.id",
         )
         self._assert_result(q)
+
+
+class InnerJoinSplicingWSecondarySelfRefTest(
+    fixtures.MappedTest, testing.AssertsCompiledSQL
+):
+    """test for issue 11449"""
+
+    __dialect__ = "default"
+    __backend__ = True  # exercise hardcore join nesting on backends
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "kind",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+        )
+
+        Table(
+            "node",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+            Column(
+                "common_node_id", Integer, ForeignKey("node.id"), nullable=True
+            ),
+            Column("kind_id", Integer, ForeignKey("kind.id"), nullable=False),
+        )
+        Table(
+            "node_group",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+        )
+        Table(
+            "node_group_node",
+            metadata,
+            Column(
+                "node_group_id",
+                Integer,
+                ForeignKey("node_group.id"),
+                primary_key=True,
+            ),
+            Column(
+                "node_id", Integer, ForeignKey("node.id"), primary_key=True
+            ),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Kind(cls.Comparable):
+            pass
+
+        class Node(cls.Comparable):
+            pass
+
+        class NodeGroup(cls.Comparable):
+            pass
+
+        class NodeGroupNode(cls.Comparable):
+            pass
+
+    @classmethod
+    def insert_data(cls, connection):
+        kind = cls.tables.kind
+        connection.execute(
+            kind.insert(), [{"id": 1, "name": "a"}, {"id": 2, "name": "c"}]
+        )
+        node = cls.tables.node
+        connection.execute(
+            node.insert(),
+            {"id": 1, "name": "nc", "kind_id": 2},
+        )
+
+        connection.execute(
+            node.insert(),
+            {"id": 2, "name": "na", "kind_id": 1, "common_node_id": 1},
+        )
+
+        node_group = cls.tables.node_group
+        node_group_node = cls.tables.node_group_node
+
+        connection.execute(node_group.insert(), {"id": 1, "name": "group"})
+        connection.execute(
+            node_group_node.insert(),
+            {"id": 1, "node_group_id": 1, "node_id": 2},
+        )
+        connection.commit()
+
+    @testing.fixture(params=["common_nodes,kind", "kind,common_nodes"])
+    def node_fixture(self, request):
+        Kind, Node, NodeGroup, NodeGroupNode = self.classes(
+            "Kind", "Node", "NodeGroup", "NodeGroupNode"
+        )
+        kind, node, node_group, node_group_node = self.tables(
+            "kind", "node", "node_group", "node_group_node"
+        )
+        self.mapper_registry.map_imperatively(Kind, kind)
+
+        if request.param == "common_nodes,kind":
+            self.mapper_registry.map_imperatively(
+                Node,
+                node,
+                properties=dict(
+                    common_node=relationship(
+                        "Node",
+                        remote_side=[node.c.id],
+                    ),
+                    kind=relationship(Kind, innerjoin=True, lazy="joined"),
+                ),
+            )
+        elif request.param == "kind,common_nodes":
+            self.mapper_registry.map_imperatively(
+                Node,
+                node,
+                properties=dict(
+                    kind=relationship(Kind, innerjoin=True, lazy="joined"),
+                    common_node=relationship(
+                        "Node",
+                        remote_side=[node.c.id],
+                    ),
+                ),
+            )
+
+        self.mapper_registry.map_imperatively(
+            NodeGroup,
+            node_group,
+            properties=dict(
+                nodes=relationship(Node, secondary="node_group_node")
+            ),
+        )
+        self.mapper_registry.map_imperatively(NodeGroupNode, node_group_node)
+
+    def test_select(self, node_fixture):
+        Kind, Node, NodeGroup, NodeGroupNode = self.classes(
+            "Kind", "Node", "NodeGroup", "NodeGroupNode"
+        )
+
+        session = fixture_session()
+        with self.sql_execution_asserter(testing.db) as asserter:
+            group = (
+                session.scalars(
+                    select(NodeGroup)
+                    .where(NodeGroup.name == "group")
+                    .options(
+                        joinedload(NodeGroup.nodes).joinedload(
+                            Node.common_node
+                        )
+                    )
+                )
+                .unique()
+                .one_or_none()
+            )
+
+            eq_(group.nodes[0].common_node.kind.name, "c")
+            eq_(group.nodes[0].kind.name, "a")
+
+        asserter.assert_(
+            RegexSQL(
+                r"SELECT .* FROM node_group "
+                r"LEFT OUTER JOIN \(node_group_node AS node_group_node_1 "
+                r"JOIN node AS node_2 "
+                r"ON node_2.id = node_group_node_1.node_id "
+                r"JOIN kind AS kind_\d ON kind_\d.id = node_2.kind_id\) "
+                r"ON node_group.id = node_group_node_1.node_group_id "
+                r"LEFT OUTER JOIN "
+                r"\(node AS node_1 JOIN kind AS kind_\d "
+                r"ON kind_\d.id = node_1.kind_id\) "
+                r"ON node_1.id = node_2.common_node_id "
+                r"WHERE node_group.name = :name_5"
+            )
+        )
 
 
 class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
