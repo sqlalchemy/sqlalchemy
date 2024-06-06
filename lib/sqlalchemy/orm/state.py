@@ -98,7 +98,7 @@ class _InstallLoaderCallableProto(Protocol[_O]):
 
 @inspection._self_inspects
 class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
-    """tracks state information at the instance level.
+    """Tracks state information at the instance level.
 
     The :class:`.InstanceState` is a key object used by the
     SQLAlchemy ORM in order to track the state of an object;
@@ -148,7 +148,14 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     committed_state: Dict[str, Any]
 
     modified: bool = False
+    """When ``True`` the object was modified."""
     expired: bool = False
+    """When ``True`` the object is :term:`expired`.
+
+    .. seealso::
+
+        :ref:`session_expire`
+    """
     _deleted: bool = False
     _load_pending: bool = False
     _orphaned_outside_of_session: bool = False
@@ -169,11 +176,12 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
 
     expired_attributes: Set[str]
     """The set of keys which are 'expired' to be loaded by
-       the manager's deferred scalar loader, assuming no pending
-       changes.
+    the manager's deferred scalar loader, assuming no pending
+    changes.
 
-       see also the ``unmodified`` collection which is intersected
-       against this set when a refresh operation occurs."""
+    See also the ``unmodified`` collection which is intersected
+    against this set when a refresh operation occurs.
+    """
 
     callables: Dict[str, Callable[[InstanceState[_O], PassiveFlag], Any]]
     """A namespace where a per-state loader callable can be associated.
@@ -227,7 +235,6 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     @property
     def pending(self) -> bool:
         """Return ``True`` if the object is :term:`pending`.
-
 
         .. seealso::
 
