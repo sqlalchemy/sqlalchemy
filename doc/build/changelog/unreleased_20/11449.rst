@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 11449
+
+    Fixed very old issue involving the :paramref:`_orm.joinedload.innerjoin`
+    parameter where making use of this parameter mixed into a query that also
+    included joined eager loads along a self-referential or other cyclical
+    relationship, along with complicating factors like inner joins added for
+    secondary tables and such, would have the chance of splicing a particular
+    inner join to the wrong part of the query.  Additional state has been added
+    to the internal method that does this splice to make a better decision as
+    to where splicing should proceed.
