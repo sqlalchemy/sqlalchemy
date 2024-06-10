@@ -338,7 +338,6 @@ returned as well.
    on parity with other backends.
 
 
-
 ON UPDATE CASCADE
 -----------------
 
@@ -479,7 +478,7 @@ is reflected and the type is reported as ``DATE``, the time-supporting
 .. _oracle_table_options:
 
 Oracle Table Options
--------------------------
+--------------------
 
 The CREATE TABLE phrase supports the following options with Oracle
 in conjunction with the :class:`_schema.Table` construct:

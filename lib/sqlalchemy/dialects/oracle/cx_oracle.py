@@ -377,14 +377,12 @@ buffered objects with a ``read()`` method, the parameter
 ``auto_convert_lobs=False`` may be passed to :func:`_sa.create_engine`,
 which takes place only engine-wide.
 
-Two Phase Transactions Not Supported
--------------------------------------
+Two Phase Transactions Not Supported (use oracledb)
+---------------------------------------------------
 
-Two phase transactions are **not supported** under cx_Oracle due to poor
-driver support.   As of cx_Oracle 6.0b1, the interface for
-two phase transactions has been changed to be more of a direct pass-through
-to the underlying OCI layer with less automation.  The additional logic
-to support this system is not implemented in SQLAlchemy.
+Two phase transactions are **not supported** under cx_Oracle due to poor driver
+support.   The newer :ref:`oracledb` dialect however **does** support two phase
+transactions and should be preferred.
 
 .. _cx_oracle_numeric:
 
@@ -1423,13 +1421,6 @@ class OracleDialect_cx_oracle(OracleDialect):
         return False
 
     def create_xid(self):
-        """create a two-phase transaction ID.
-
-        this id will be passed to do_begin_twophase(), do_rollback_twophase(),
-        do_commit_twophase().  its format is unspecified.
-
-        """
-
         id_ = random.randint(0, 2**128)
         return (0x1234, "%032x" % id_, "%032x" % 9)
 
