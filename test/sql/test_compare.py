@@ -206,6 +206,15 @@ class CoreFixtures:
             ),
         ),
         lambda: (
+            # test #11471
+            text("select * from table")
+            .columns(a=Integer())
+            .add_cte(table_b.select().cte()),
+            text("select * from table")
+            .columns(a=Integer())
+            .add_cte(table_b.select().where(table_b.c.a > 5).cte()),
+        ),
+        lambda: (
             literal(1).op("+")(literal(1)),
             literal(1).op("-")(literal(1)),
             column("q").op("-")(literal(1)),
