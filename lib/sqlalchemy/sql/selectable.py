@@ -6790,10 +6790,14 @@ class TextualSelect(SelectBase, ExecutableReturnsRows, Generative):
 
     _label_style = LABEL_STYLE_NONE
 
-    _traverse_internals: _TraverseInternalsType = [
-        ("element", InternalTraversal.dp_clauseelement),
-        ("column_args", InternalTraversal.dp_clauseelement_list),
-    ] + SupportsCloneAnnotations._clone_annotations_traverse_internals
+    _traverse_internals: _TraverseInternalsType = (
+        [
+            ("element", InternalTraversal.dp_clauseelement),
+            ("column_args", InternalTraversal.dp_clauseelement_list),
+        ]
+        + SupportsCloneAnnotations._clone_annotations_traverse_internals
+        + HasCTE._has_ctes_traverse_internals
+    )
 
     _is_textual = True
 
