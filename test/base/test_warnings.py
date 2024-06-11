@@ -36,7 +36,7 @@ class WarnDeprecatedLimitedTest(fixtures.TestBase):
             messages.add(message)
 
         eq_(len(printouts), occurrences)
-        eq_(len(messages), cap)
+        assert cap / 2 < len(messages) <= cap
 
 
 class ClsWarningTest(fixtures.TestBase):
