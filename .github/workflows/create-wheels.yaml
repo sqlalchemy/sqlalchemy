@@ -21,7 +21,7 @@ jobs:
       matrix:
         os:
           - "windows-latest"
-          - "macos-latest"
+          - "macos-13"
         python-version:
           - "3.6"
           - "3.7"
@@ -35,7 +35,7 @@ jobs:
           - x86
 
         exclude:
-          - os: "macos-latest"
+          - os: "macos-13"
             architecture: x86
 
       fail-fast: false

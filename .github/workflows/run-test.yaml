@@ -30,7 +30,7 @@ jobs:
           - "ubuntu-20.04"
           - "ubuntu-latest"
           - "windows-latest"
-          - "macos-latest"
+          - "macos-13"
         python-version:
           - "3.6"
           - "3.7"
@@ -63,7 +63,7 @@ jobs:
             architecture: x86
           - os: "ubuntu-20.04"
             architecture: x86
-          - os: "macos-latest"
+          - os: "macos-13"
             architecture: x86
           # ubuntu-latest does not have: py27, py36
           - os: "ubuntu-latest"
