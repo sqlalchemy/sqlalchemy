@@ -74,9 +74,10 @@ def is_exit_exception(e: BaseException) -> bool:
 class _AsyncIoGreenlet(greenlet):
     dead: bool
 
+    __sqlalchemy_greenlet_provider__ = True
+
     def __init__(self, fn: Callable[..., Any], driver: greenlet):
         greenlet.__init__(self, fn, driver)
-        self.driver = driver
         if _has_gr_context:
             self.gr_context = driver.gr_context
 
@@ -102,7 +103,7 @@ def _safe_cancel_awaitable(awaitable: Awaitable[Any]) -> None:
 
 def in_greenlet() -> bool:
     current = getcurrent()
-    return isinstance(current, _AsyncIoGreenlet)
+    return getattr(current, "__sqlalchemy_greenlet_provider__", False)
 
 
 def await_only(awaitable: Awaitable[_T]) -> _T:
@@ -116,7 +117,7 @@ def await_only(awaitable: Awaitable[_T]) -> _T:
     """
     # this is called in the context greenlet while running fn
     current = getcurrent()
-    if not isinstance(current, _AsyncIoGreenlet):
+    if not getattr(current, "__sqlalchemy_greenlet_provider__", False):
         _safe_cancel_awaitable(awaitable)
 
         raise exc.MissingGreenlet(
@@ -128,7 +129,7 @@ def await_only(awaitable: Awaitable[_T]) -> _T:
     # a coroutine to run. Once the awaitable is done, the driver greenlet
     # switches back to this greenlet with the result of awaitable that is
     # then returned to the caller (or raised as error)
-    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
 
 
 def await_fallback(awaitable: Awaitable[_T]) -> _T:
@@ -148,7 +149,7 @@ def await_fallback(awaitable: Awaitable[_T]) -> _T:
 
     # this is called in the context greenlet while running fn
     current = getcurrent()
-    if not isinstance(current, _AsyncIoGreenlet):
+    if not getattr(current, "__sqlalchemy_greenlet_provider__", False):
         loop = get_event_loop()
         if loop.is_running():
             _safe_cancel_awaitable(awaitable)
@@ -160,7 +161,7 @@ def await_fallback(awaitable: Awaitable[_T]) -> _T:
             )
         return loop.run_until_complete(awaitable)
 
-    return current.driver.switch(awaitable)  # type: ignore[no-any-return]
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
 
 
 async def greenlet_spawn(
@@ -186,24 +187,21 @@ async def greenlet_spawn(
     # coroutine to wait. If the context is dead the function has
     # returned, and its result can be returned.
     switch_occurred = False
-    try:
-        result = context.switch(*args, **kwargs)
-        while not context.dead:
-            switch_occurred = True
-            try:
-                # wait for a coroutine from await_only and then return its
-                # result back to it.
-                value = await result
-            except BaseException:
-                # this allows an exception to be raised within
-                # the moderated greenlet so that it can continue
-                # its expected flow.
-                result = context.throw(*sys.exc_info())
-            else:
-                result = context.switch(value)
-    finally:
-        # clean up to avoid cycle resolution by gc
-        del context.driver
+    result = context.switch(*args, **kwargs)
+    while not context.dead:
+        switch_occurred = True
+        try:
+            # wait for a coroutine from await_only and then return its
+            # result back to it.
+            value = await result
+        except BaseException:
+            # this allows an exception to be raised within
+            # the moderated greenlet so that it can continue
+            # its expected flow.
+            result = context.throw(*sys.exc_info())
+        else:
+            result = context.switch(value)
+
     if _require_await and not switch_occurred:
         raise exc.AwaitRequired(
             "The current operation required an async execution but none was "
