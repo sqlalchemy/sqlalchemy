@@ -37,9 +37,11 @@ def is_exit_exception(e):
 
 
 class _AsyncIoGreenlet(greenlet.greenlet):
+
+    __sqlalchemy_greenlet_provider__ = True
+
     def __init__(self, fn, driver):
         greenlet.greenlet.__init__(self, fn, driver)
-        self.driver = driver
         if _has_gr_context:
             self.gr_context = driver.gr_context
 
@@ -55,7 +57,7 @@ def await_only(awaitable: Coroutine) -> Any:
     """
     # this is called in the context greenlet while running fn
     current = greenlet.getcurrent()
-    if not isinstance(current, _AsyncIoGreenlet):
+    if not getattr(current, "__sqlalchemy_greenlet_provider__", False):
         raise exc.MissingGreenlet(
             "greenlet_spawn has not been called; can't call await_only() "
             "here. Was IO attempted in an unexpected place?"
@@ -65,7 +67,7 @@ def await_only(awaitable: Coroutine) -> Any:
     # a coroutine to run. Once the awaitable is done, the driver greenlet
     # switches back to this greenlet with the result of awaitable that is
     # then returned to the caller (or raised as error)
-    return current.driver.switch(awaitable)
+    return current.parent.switch(awaitable)
 
 
 def await_fallback(awaitable: Coroutine) -> Any:
@@ -79,7 +81,7 @@ def await_fallback(awaitable: Coroutine) -> Any:
     """
     # this is called in the context greenlet while running fn
     current = greenlet.getcurrent()
-    if not isinstance(current, _AsyncIoGreenlet):
+    if not getattr(current, "__sqlalchemy_greenlet_provider__", False):
         loop = get_event_loop()
         if loop.is_running():
             raise exc.MissingGreenlet(
@@ -89,7 +91,7 @@ def await_fallback(awaitable: Coroutine) -> Any:
             )
         return loop.run_until_complete(awaitable)
 
-    return current.driver.switch(awaitable)
+    return current.parent.switch(awaitable)
 
 
 async def greenlet_spawn(
@@ -111,24 +113,21 @@ async def greenlet_spawn(
     # coroutine to wait. If the context is dead the function has
     # returned, and its result can be returned.
     switch_occurred = False
-    try:
-        result = context.switch(*args, **kwargs)
-        while not context.dead:
-            switch_occurred = True
-            try:
-                # wait for a coroutine from await_only and then return its
-                # result back to it.
-                value = await result
-            except BaseException:
-                # this allows an exception to be raised within
-                # the moderated greenlet so that it can continue
-                # its expected flow.
-                result = context.throw(*sys.exc_info())
-            else:
-                result = context.switch(value)
-    finally:
-        # clean up to avoid cycle resolution by gc
-        del context.driver
+    result = context.switch(*args, **kwargs)
+    while not context.dead:
+        switch_occurred = True
+        try:
+            # wait for a coroutine from await_only and then return its
+            # result back to it.
+            value = await result
+        except BaseException:
+            # this allows an exception to be raised within
+            # the moderated greenlet so that it can continue
+            # its expected flow.
+            result = context.throw(*sys.exc_info())
+        else:
+            result = context.switch(value)
+
     if _require_await and not switch_occurred:
         raise exc.AwaitRequired(
             "The current operation required an async execution but none was "
@@ -175,7 +174,9 @@ def _util_async_run(fn, *args, **kwargs):
         return loop.run_until_complete(greenlet_spawn(fn, *args, **kwargs))
     else:
         # allow for a wrapped test function to call another
-        assert isinstance(greenlet.getcurrent(), _AsyncIoGreenlet)
+        assert getattr(
+            greenlet.getcurrent(), "__sqlalchemy_greenlet_provider__", False
+        )
         return fn(*args, **kwargs)
 
 
