@@ -1001,8 +1001,7 @@ Wildcard Loading Strategies
 ---------------------------
 
 Each of :func:`_orm.joinedload`, :func:`.subqueryload`, :func:`.lazyload`,
-:func:`.selectinload`,
-:func:`.noload`, and :func:`.raiseload` can be used to set the default
+:func:`.selectinload`, and :func:`.raiseload` can be used to set the default
 style of :func:`_orm.relationship` loading
 for a particular query, affecting all :func:`_orm.relationship` -mapped
 attributes not otherwise
