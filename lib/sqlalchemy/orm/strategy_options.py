@@ -507,10 +507,10 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         :func:`_orm.noload` applies to :func:`_orm.relationship` attributes
         only.
 
-        .. note:: Setting this loading strategy as the default strategy
-            for a relationship using the :paramref:`.orm.relationship.lazy`
-            parameter may cause issues with flushes, such if a delete operation
-            needs to load related objects and instead ``None`` was returned.
+        .. legacy:: The :func:`_orm.noload` option is **legacy**.  As it
+           forces collections to be empty, which invariably leads to
+           non-intuitive and difficult to predict results.  There are no
+           legitimate uses for this option in modern SQLAlchemy.
 
         .. seealso::
 
