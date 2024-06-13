@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 11471
+
+    Fixed caching issue where using the :meth:`.TextualSelect.add_cte` method
+    of the :class:`.TextualSelect` construct would not set a correct cache key
+    which distinguished between different CTE expressions.
