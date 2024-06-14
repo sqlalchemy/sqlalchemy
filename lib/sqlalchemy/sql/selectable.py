@@ -3686,7 +3686,7 @@ class SelectStatementGrouping(GroupedElement, SelectBase, Generic[_SB]):
     __visit_name__ = "select_statement_grouping"
     _traverse_internals: _TraverseInternalsType = [
         ("element", InternalTraversal.dp_clauseelement)
-    ]
+    ] + SupportsCloneAnnotations._clone_annotations_traverse_internals
 
     _is_select_container = True
 
@@ -3765,6 +3765,10 @@ class SelectStatementGrouping(GroupedElement, SelectBase, Generic[_SB]):
     @util.ro_non_memoized_property
     def _from_objects(self) -> List[FromClause]:
         return self.element._from_objects
+
+    def add_cte(self, *ctes: CTE, nest_here: bool = False) -> Self:
+        # SelectStatementGrouping not generative: has no attribute '_generate'
+        raise NotImplementedError
 
 
 class GenerativeSelect(SelectBase, Generative):
@@ -4313,17 +4317,21 @@ class CompoundSelect(HasCompileState, GenerativeSelect, ExecutableReturnsRows):
 
     __visit_name__ = "compound_select"
 
-    _traverse_internals: _TraverseInternalsType = [
-        ("selects", InternalTraversal.dp_clauseelement_list),
-        ("_limit_clause", InternalTraversal.dp_clauseelement),
-        ("_offset_clause", InternalTraversal.dp_clauseelement),
-        ("_fetch_clause", InternalTraversal.dp_clauseelement),
-        ("_fetch_clause_options", InternalTraversal.dp_plain_dict),
-        ("_order_by_clauses", InternalTraversal.dp_clauseelement_list),
-        ("_group_by_clauses", InternalTraversal.dp_clauseelement_list),
-        ("_for_update_arg", InternalTraversal.dp_clauseelement),
-        ("keyword", InternalTraversal.dp_string),
-    ] + SupportsCloneAnnotations._clone_annotations_traverse_internals
+    _traverse_internals: _TraverseInternalsType = (
+        [
+            ("selects", InternalTraversal.dp_clauseelement_list),
+            ("_limit_clause", InternalTraversal.dp_clauseelement),
+            ("_offset_clause", InternalTraversal.dp_clauseelement),
+            ("_fetch_clause", InternalTraversal.dp_clauseelement),
+            ("_fetch_clause_options", InternalTraversal.dp_plain_dict),
+            ("_order_by_clauses", InternalTraversal.dp_clauseelement_list),
+            ("_group_by_clauses", InternalTraversal.dp_clauseelement_list),
+            ("_for_update_arg", InternalTraversal.dp_clauseelement),
+            ("keyword", InternalTraversal.dp_string),
+        ]
+        + SupportsCloneAnnotations._clone_annotations_traverse_internals
+        + HasCTE._has_ctes_traverse_internals
+    )
 
     selects: List[SelectBase]
 

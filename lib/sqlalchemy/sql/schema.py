@@ -80,7 +80,6 @@ from .elements import TextClause
 from .selectable import TableClause
 from .type_api import to_instance
 from .visitors import ExternallyTraversible
-from .visitors import InternalTraversal
 from .. import event
 from .. import exc
 from .. import inspection
@@ -102,7 +101,6 @@ if typing.TYPE_CHECKING:
     from .elements import BindParameter
     from .functions import Function
     from .type_api import TypeEngine
-    from .visitors import _TraverseInternalsType
     from .visitors import anon_map
     from ..engine import Connection
     from ..engine import Engine
@@ -394,11 +392,6 @@ class Table(
             :meth:`_reflection.Inspector.get_indexes`
 
     """
-
-    _traverse_internals: _TraverseInternalsType = (
-        TableClause._traverse_internals
-        + [("schema", InternalTraversal.dp_string)]
-    )
 
     if TYPE_CHECKING:
 

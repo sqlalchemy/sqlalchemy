@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 11471
+
+    Follow up of :ticket:`11471` to fix caching issue where using the
+    :meth:`.CompoundSelectState.add_cte` method of the
+    :class:`.CompoundSelectState` construct would not set a correct cache key
+    which distinguished between different CTE expressions. Also added tests
+    that would detect issues similar to the one fixed in :ticket:`11544`.
