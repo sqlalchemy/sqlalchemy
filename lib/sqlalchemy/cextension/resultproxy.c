@@ -821,6 +821,29 @@ typedef struct {
 
 static PyTypeObject tuplegetter_type;
 
+static int
+PyArg_NoKeywords(const char *funcname, PyObject *kwargs)
+{
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 13
+    /* Based on the one in CPython, removed from the public headers in 3.13
+     * (https://github.com/python/cpython/issues/110964)
+     */
+    if (kwargs == NULL)
+        return 1;
+    if (!PyDict_CheckExact(kwargs)) {
+        PyErr_BadInternalCall();
+        return 0;
+    }
+    if (PyDict_GET_SIZE(kwargs) == 0)
+        return 1;
+
+    PyErr_Format(PyExc_TypeError, "%.200s() takes no keyword arguments", funcname);
+    return 0;
+#else
+    return _PyArg_NoKeywords(funcname, kwargs);
+#endif
+}
+
 static PyObject *
 tuplegetter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
@@ -828,7 +851,7 @@ tuplegetter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     PyObject *item;
     Py_ssize_t nitems;
 
-    if (!_PyArg_NoKeywords("tuplegetter", kwds))
+    if (!PyArg_NoKeywords("tuplegetter", kwds))
         return NULL;
 
     nitems = PyTuple_GET_SIZE(args);
