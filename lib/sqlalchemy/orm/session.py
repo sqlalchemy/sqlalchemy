@@ -4761,7 +4761,7 @@ class Session(_SessionClassMethods, EventTarget):
 
         This method retrieves the history for each instrumented
         attribute on the instance and performs a comparison of the current
-        value to its previously committed value, if any.
+        value to its previously flushed or committed value, if any.
 
         It is in effect a more expensive and accurate
         version of checking for the given instance in the
