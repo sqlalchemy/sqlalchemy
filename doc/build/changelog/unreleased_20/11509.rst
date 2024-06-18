@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 11509
+
+    Fixed bug in ORM Declarative where the ``__table__`` directive could not be
+    declared as a class function with :func:`_orm.declared_attr` on a
+    superclass, including an ``__abstract__`` class as well as coming from the
+    declarative base itself.  This was a regression since 1.4 where this was
+    working, and there were apparently no tests for this particular use case.
