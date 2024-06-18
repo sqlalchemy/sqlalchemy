@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 11426
-
-    Fixed bug in :meth:`_sql.FunctionFilter.filter` that would mutate
-    the existing function in-place. It now behaves like the rest of the
-    SQLAlchemy API, returning a new instance instead of mutating the
-    original one.

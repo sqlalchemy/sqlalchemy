@@ -10,7 +10,103 @@
 
 .. changelog::
     :version: 2.0.31
-    :include_notes_from: unreleased_20
+    :released: June 18, 2024
+
+    .. change::
+        :tags: usecase, reflection, mysql
+        :tickets: 11285
+
+        Added missing foreign key reflection option ``SET DEFAULT``
+        in the MySQL and MariaDB dialects.
+        Pull request courtesy of Quentin Roche.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 11361
+
+        Added missing parameter :paramref:`_orm.with_polymorphic.name` that
+        allows specifying the name of returned :class:`_orm.AliasedClass`.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11365
+
+        Fixed issue where a :class:`.MetaData` collection would not be
+        serializable, if an :class:`.Enum` or :class:`.Boolean` datatype were
+        present which had been adapted. This specific scenario in turn could occur
+        when using the :class:`.Enum` or :class:`.Boolean` within ORM Annotated
+        Declarative form where type objects frequently get copied.
+
+    .. change::
+        :tags: schema, usecase
+        :tickets: 11374
+
+        Added :paramref:`_schema.Column.insert_default` as an alias of
+        :paramref:`_schema.Column.default` for compatibility with
+        :func:`_orm.mapped_column`.
+
+    .. change::
+        :tags: bug, general
+        :tickets: 11417
+
+        Set up full Python 3.13 support to the extent currently possible, repairing
+        issues within internal language helpers as well as the serializer extension
+        module.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 11422
+
+        Fixed issue when serializing an :func:`_sql.over` clause with
+        unbounded range or rows.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 11423
+
+        Added missing methods :meth:`_sql.FunctionFilter.within_group`
+        and :meth:`_sql.WithinGroup.filter`
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 11426
+
+        Fixed bug in :meth:`_sql.FunctionFilter.filter` that would mutate
+        the existing function in-place. It now behaves like the rest of the
+        SQLAlchemy API, returning a new instance instead of mutating the
+        original one.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11446
+
+        Fixed issue where the :func:`_orm.selectinload` and
+        :func:`_orm.subqueryload` loader options would fail to take effect when
+        made against an inherited subclass that itself included a subclass-specific
+        :paramref:`_orm.Mapper.with_polymorphic` setting.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11449
+
+        Fixed very old issue involving the :paramref:`_orm.joinedload.innerjoin`
+        parameter where making use of this parameter mixed into a query that also
+        included joined eager loads along a self-referential or other cyclical
+        relationship, along with complicating factors like inner joins added for
+        secondary tables and such, would have the chance of splicing a particular
+        inner join to the wrong part of the query.  Additional state has been added
+        to the internal method that does this splice to make a better decision as
+        to where splicing should proceed.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 11509
+
+        Fixed bug in ORM Declarative where the ``__table__`` directive could not be
+        declared as a class function with :func:`_orm.declared_attr` on a
+        superclass, including an ``__abstract__`` class as well as coming from the
+        declarative base itself.  This was a regression since 1.4 where this was
+        working, and there were apparently no tests for this particular use case.
 
 .. changelog::
     :version: 2.0.30
