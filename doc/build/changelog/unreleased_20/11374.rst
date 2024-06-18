@@ -1,7 +1,0 @@
-.. change::
-    :tags: schema, usecase
-    :tickets: 11374
-
-    Added :paramref:`_schema.Column.insert_default` as an alias of
-    :paramref:`_schema.Column.default` for compatibility with
-    :func:`_orm.mapped_column`.
