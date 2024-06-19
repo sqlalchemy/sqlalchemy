@@ -1,3 +1,11 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+    # avoid moving to https://github.com/pypa/setuptools/issues/3593
+    # until we're ready
+    "setuptools>=61.0,<69.3",
+]
+
 [tool.black]
 line-length = 79
 target-version = ['py27', 'py36']
