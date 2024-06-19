@@ -1886,3 +1886,54 @@ class IsOrIsNotDistinctFromTest(fixtures.TablesTest):
             len(result),
             expected_row_count_for_is_not,
         )
+
+
+class WindowFunctionTest(fixtures.TablesTest):
+    __requires__ = ("window_functions",)
+
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "some_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("col1", Integer),
+            Column("col2", Integer),
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.some_table.insert(),
+            [{"id": i, "col1": i, "col2": i * 5} for i in range(1, 50)],
+        )
+
+    def test_window(self, connection):
+        some_table = self.tables.some_table
+        rows = connection.execute(
+            select(
+                func.max(some_table.c.col2).over(
+                    order_by=[some_table.c.col1.desc()]
+                )
+            ).where(some_table.c.col1 < 20)
+        ).all()
+
+        eq_(rows, [(95,) for i in range(19)])
+
+    def test_window_rows_between(self, connection):
+        some_table = self.tables.some_table
+
+        # note the rows are part of the cache key right now, not handled
+        # as binds.  this is issue #11515
+        rows = connection.execute(
+            select(
+                func.max(some_table.c.col2).over(
+                    order_by=[some_table.c.col1],
+                    rows=(-5, 0),
+                )
+            )
+        ).all()
+
+        eq_(rows, [(i,) for i in range(5, 250, 5)])
