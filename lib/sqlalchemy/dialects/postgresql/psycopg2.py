@@ -866,6 +866,12 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
                 "SSL SYSCALL error: EOF detected",
                 "SSL SYSCALL error: Operation timed out",
                 "SSL SYSCALL error: Bad address",
+                # This can occur in OpenSSL 1 when an unexpected EOF occurs.
+                # https://www.openssl.org/docs/man1.1.1/man3/SSL_get_error.html#BUGS
+                # It may also occur in newer OpenSSL for a non-recoverable I/O
+                # error as a result of a system call that does not set 'errno'
+                # in libc.
+                "SSL SYSCALL error: Success",
             ]:
                 idx = str_e.find(msg)
                 if idx >= 0 and '"' not in str_e[:idx]:
