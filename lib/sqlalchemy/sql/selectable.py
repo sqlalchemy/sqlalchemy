@@ -3582,7 +3582,7 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
         :data:`_sql.LABEL_STYLE_DISAMBIGUATE_ONLY`,
         :data:`_sql.LABEL_STYLE_TABLENAME_PLUS_COL`, and
         :data:`_sql.LABEL_STYLE_NONE`.   The default style is
-        :data:`_sql.LABEL_STYLE_TABLENAME_PLUS_COL`.
+        :data:`_sql.LABEL_STYLE_DISAMBIGUATE_ONLY`.
 
         In modern SQLAlchemy, there is not generally a need to change the
         labeling style, as per-expression labels are more effectively used by
