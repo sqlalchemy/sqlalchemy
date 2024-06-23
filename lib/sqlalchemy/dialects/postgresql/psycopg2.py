@@ -844,33 +844,43 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
             # checks based on strings.  in the case that .closed
             # didn't cut it, fall back onto these.
             str_e = str(e).partition("\n")[0]
-            for msg in [
-                # these error messages from libpq: interfaces/libpq/fe-misc.c
-                # and interfaces/libpq/fe-secure.c.
-                "terminating connection",
-                "closed the connection",
-                "connection not open",
-                "could not receive data from server",
-                "could not send data to server",
-                # psycopg2 client errors, psycopg2/connection.h,
-                # psycopg2/cursor.h
-                "connection already closed",
-                "cursor already closed",
-                # not sure where this path is originally from, it may
-                # be obsolete.   It really says "losed", not "closed".
-                "losed the connection unexpectedly",
-                # these can occur in newer SSL
-                "connection has been closed unexpectedly",
-                "SSL error: decryption failed or bad record mac",
-                "SSL SYSCALL error: Bad file descriptor",
-                "SSL SYSCALL error: EOF detected",
-                "SSL SYSCALL error: Operation timed out",
-                "SSL SYSCALL error: Bad address",
-            ]:
+            for msg in self._is_disconnect_messages:
                 idx = str_e.find(msg)
                 if idx >= 0 and '"' not in str_e[:idx]:
                     return True
         return False
+
+    @util.memoized_property
+    def _is_disconnect_messages(self):
+        return (
+            # these error messages from libpq: interfaces/libpq/fe-misc.c
+            # and interfaces/libpq/fe-secure.c.
+            "terminating connection",
+            "closed the connection",
+            "connection not open",
+            "could not receive data from server",
+            "could not send data to server",
+            # psycopg2 client errors, psycopg2/connection.h,
+            # psycopg2/cursor.h
+            "connection already closed",
+            "cursor already closed",
+            # not sure where this path is originally from, it may
+            # be obsolete.   It really says "losed", not "closed".
+            "losed the connection unexpectedly",
+            # these can occur in newer SSL
+            "connection has been closed unexpectedly",
+            "SSL error: decryption failed or bad record mac",
+            "SSL SYSCALL error: Bad file descriptor",
+            "SSL SYSCALL error: EOF detected",
+            "SSL SYSCALL error: Operation timed out",
+            "SSL SYSCALL error: Bad address",
+            # This can occur in OpenSSL 1 when an unexpected EOF occurs.
+            # https://www.openssl.org/docs/man1.1.1/man3/SSL_get_error.html#BUGS
+            # It may also occur in newer OpenSSL for a non-recoverable I/O
+            # error as a result of a system call that does not set 'errno'
+            # in libc.
+            "SSL SYSCALL error: Success",
+        )
 
 
 dialect = PGDialect_psycopg2
