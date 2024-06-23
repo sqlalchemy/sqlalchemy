@@ -266,7 +266,7 @@ class NamedTypeTest(
         ("create_type", False, "create_type"),
         ("create_type", True, "create_type"),
         ("schema", "someschema", "schema"),
-        ("inherit_schema", True, "inherit_schema"),
+        ("inherit_schema", False, "inherit_schema"),
         ("metadata", MetaData(), "metadata"),
         ("values_callable", lambda x: None, "values_callable"),
     )
@@ -443,7 +443,8 @@ class NamedTypeTest(
         t1.drop(conn, checkfirst=True)
 
     @testing.combinations(
-        ("local_schema",),
+        ("inherit_schema_false",),
+        ("inherit_schema_not_provided",),
         ("metadata_schema_only",),
         ("inherit_table_schema",),
         ("override_metadata_schema",),
@@ -457,6 +458,7 @@ class NamedTypeTest(
         """test #6373"""
 
         metadata.schema = testing.config.test_schema
+        default_schema = testing.config.db.dialect.default_schema_name
 
         def make_type(**kw):
             if datatype == "enum":
@@ -481,14 +483,14 @@ class NamedTypeTest(
             )
             assert_schema = testing.config.test_schema_2
         elif test_case == "inherit_table_schema":
-            enum = make_type(
-                metadata=metadata,
-                inherit_schema=True,
-            )
+            enum = make_type(metadata=metadata, inherit_schema=True)
             assert_schema = testing.config.test_schema_2
-        elif test_case == "local_schema":
+        elif test_case == "inherit_schema_not_provided":
             enum = make_type()
-            assert_schema = testing.config.db.dialect.default_schema_name
+            assert_schema = testing.config.test_schema_2
+        elif test_case == "inherit_schema_false":
+            enum = make_type(inherit_schema=False)
+            assert_schema = default_schema
         else:
             assert False
 
@@ -509,13 +511,11 @@ class NamedTypeTest(
                         "labels": ["four", "five", "six"],
                         "name": "mytype",
                         "schema": assert_schema,
-                        "visible": assert_schema
-                        == testing.config.db.dialect.default_schema_name,
+                        "visible": assert_schema == default_schema,
                     }
                 ],
             )
         elif datatype == "domain":
-            def_schame = testing.config.db.dialect.default_schema_name
             eq_(
                 inspect(connection).get_domains(schema=assert_schema),
                 [
@@ -525,7 +525,7 @@ class NamedTypeTest(
                         "nullable": True,
                         "default": None,
                         "schema": assert_schema,
-                        "visible": assert_schema == def_schame,
+                        "visible": assert_schema == default_schema,
                         "constraints": [
                             {
                                 "name": "mytype_check",

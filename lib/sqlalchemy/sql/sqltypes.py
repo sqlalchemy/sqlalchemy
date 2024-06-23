@@ -6,9 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: allow-untyped-defs, allow-untyped-calls
 
-"""SQL specific types.
-
-"""
+"""SQL specific types."""
 from __future__ import annotations
 
 import collections.abc as collections_abc
@@ -40,6 +38,7 @@ from . import elements
 from . import operators
 from . import roles
 from . import type_api
+from .base import _NoArg
 from .base import _NONE_NAME
 from .base import NO_ARG
 from .base import SchemaEventTarget
@@ -75,6 +74,7 @@ if TYPE_CHECKING:
     from .elements import ColumnElement
     from .operators import OperatorType
     from .schema import MetaData
+    from .schema import SchemaConst
     from .type_api import _BindProcessorType
     from .type_api import _ComparatorFactory
     from .type_api import _LiteralProcessorType
@@ -1053,9 +1053,9 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
     def __init__(
         self,
         name: Optional[str] = None,
-        schema: Optional[str] = None,
+        schema: Optional[Union[str, Literal[SchemaConst.BLANK_SCHEMA]]] = None,
         metadata: Optional[MetaData] = None,
-        inherit_schema: bool = False,
+        inherit_schema: Union[bool, _NoArg] = NO_ARG,
         quote: Optional[bool] = None,
         _create_events: bool = True,
         _adapted_from: Optional[SchemaType] = None,
@@ -1066,7 +1066,18 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
             self.name = None
         self.schema = schema
         self.metadata = metadata
-        self.inherit_schema = inherit_schema
+
+        if inherit_schema is True and schema is not None:
+            raise exc.ArgumentError(
+                "Ambiguously setting inherit_schema=True while "
+                "also passing a non-None schema argument"
+            )
+        self.inherit_schema = (
+            inherit_schema
+            if inherit_schema is not NO_ARG
+            else (schema is None and metadata is None)
+        )
+        # breakpoint()
         self._create_events = _create_events
 
         if _create_events and self.metadata:
@@ -1113,6 +1124,9 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
             self.schema = table.schema
         elif self.metadata and self.schema is None and self.metadata.schema:
             self.schema = self.metadata.schema
+
+        if self.schema is not None:
+            self.inherit_schema = False
 
         if not self._create_events:
             return
@@ -1443,21 +1457,28 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
               :class:`_schema.MetaData` object if present, when passed using
               the :paramref:`_types.Enum.metadata` parameter.
 
-           Otherwise, if the :paramref:`_types.Enum.inherit_schema` flag is set
-           to ``True``, the schema will be inherited from the associated
+           Otherwise, the schema will be inherited from the associated
            :class:`_schema.Table` object if any; when
-           :paramref:`_types.Enum.inherit_schema` is at its default of
+           :paramref:`_types.Enum.inherit_schema` is set to
            ``False``, the owning table's schema is **not** used.
 
 
         :param quote: Set explicit quoting preferences for the type's name.
 
         :param inherit_schema: When ``True``, the "schema" from the owning
-           :class:`_schema.Table`
-           will be copied to the "schema" attribute of this
-           :class:`.Enum`, replacing whatever value was passed for the
-           ``schema`` attribute.   This also takes effect when using the
+           :class:`_schema.Table` will be copied to the "schema"
+           attribute of this :class:`.Enum`, replacing whatever value was
+           passed for the :paramref:`_types.Enum.schema` attribute.
+           This also takes effect when using the
            :meth:`_schema.Table.to_metadata` operation.
+           Set to ``False`` to retain the schema value provided.
+           By default the behavior will be to inherit the table schema unless
+           either :paramref:`_types.Enum.schema` and / or
+           :paramref:`_types.Enum.metadata` are set.
+
+           .. versionchanged:: 2.1 The default value of this parameter
+               was changed to ``True`` when :paramref:`_types.Enum.schema`
+               and :paramref:`_types.Enum.metadata` are not provided.
 
         :param validate_strings: when True, string values that are being
            passed to the database in a SQL statement will be checked
@@ -1545,12 +1566,13 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         # new Enum classes.
         if self.enum_class and values:
             kw.setdefault("name", self.enum_class.__name__.lower())
+
         SchemaType.__init__(
             self,
             name=kw.pop("name", None),
+            inherit_schema=kw.pop("inherit_schema", NO_ARG),
             schema=kw.pop("schema", None),
             metadata=kw.pop("metadata", None),
-            inherit_schema=kw.pop("inherit_schema", False),
             quote=kw.pop("quote", None),
             _create_events=kw.pop("_create_events", True),
             _adapted_from=kw.pop("_adapted_from", None),
