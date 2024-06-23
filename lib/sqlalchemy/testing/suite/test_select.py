@@ -1922,18 +1922,32 @@ class WindowFunctionTest(fixtures.TablesTest):
 
         eq_(rows, [(95,) for i in range(19)])
 
-    def test_window_rows_between(self, connection):
+    def test_window_rows_between_w_caching(self, connection):
         some_table = self.tables.some_table
 
-        # note the rows are part of the cache key right now, not handled
-        # as binds.  this is issue #11515
-        rows = connection.execute(
-            select(
-                func.max(some_table.c.col2).over(
-                    order_by=[some_table.c.col1],
-                    rows=(-5, 0),
-                )
-            )
-        ).all()
+        # this tests that dialects such as SQL Server which require literal
+        # rendering of ROWS BETWEEN and RANGE BETWEEN numerical values make
+        # use of literal_execute, for post-cache rendering of integer values,
+        # and not literal_binds which would include the integer values in the
+        # cached string (caching overall fixed in #11515)
+        for i in range(3):
+            for rows, expected in [
+                (
+                    (5, 20),
+                    list(range(105, 245, 5)) + ([245] * 16) + [None] * 5,
+                ),
+                (
+                    (20, 30),
+                    list(range(155, 245, 5)) + ([245] * 11) + [None] * 20,
+                ),
+            ]:
+                result_rows = connection.execute(
+                    select(
+                        func.max(some_table.c.col2).over(
+                            order_by=[some_table.c.col1],
+                            rows=rows,
+                        )
+                    )
+                ).all()
 
-        eq_(rows, [(i,) for i in range(5, 250, 5)])
+                eq_(result_rows, [(i,) for i in expected])

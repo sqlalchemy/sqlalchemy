@@ -4149,17 +4149,6 @@ class _OverrideBinds(Grouping[_T]):
         return ck
 
 
-class _OverRange(Enum):
-    RANGE_UNBOUNDED = 0
-    RANGE_CURRENT = 1
-
-
-RANGE_UNBOUNDED = _OverRange.RANGE_UNBOUNDED
-RANGE_CURRENT = _OverRange.RANGE_CURRENT
-
-_IntOrRange = Union[int, _OverRange]
-
-
 class Over(ColumnElement[_T]):
     """Represent an OVER clause.
 
@@ -4176,8 +4165,8 @@ class Over(ColumnElement[_T]):
         ("element", InternalTraversal.dp_clauseelement),
         ("order_by", InternalTraversal.dp_clauseelement),
         ("partition_by", InternalTraversal.dp_clauseelement),
-        ("range_", InternalTraversal.dp_plain_obj),
-        ("rows", InternalTraversal.dp_plain_obj),
+        ("range_", InternalTraversal.dp_clauseelement),
+        ("rows", InternalTraversal.dp_clauseelement),
     ]
 
     order_by: Optional[ClauseList] = None
@@ -4187,8 +4176,8 @@ class Over(ColumnElement[_T]):
     """The underlying expression object to which this :class:`.Over`
     object refers."""
 
-    range_: Optional[typing_Tuple[_IntOrRange, _IntOrRange]]
-    rows: Optional[typing_Tuple[_IntOrRange, _IntOrRange]]
+    range_: Optional[_FrameClause]
+    rows: Optional[_FrameClause]
 
     def __init__(
         self,
@@ -4210,7 +4199,7 @@ class Over(ColumnElement[_T]):
             )
 
         if range_:
-            self.range_ = self._interpret_range(range_)
+            self.range_ = _FrameClause(range_)
             if rows:
                 raise exc.ArgumentError(
                     "'range_' and 'rows' are mutually exclusive"
@@ -4218,63 +4207,10 @@ class Over(ColumnElement[_T]):
             else:
                 self.rows = None
         elif rows:
-            self.rows = self._interpret_range(rows)
+            self.rows = _FrameClause(rows)
             self.range_ = None
         else:
             self.rows = self.range_ = None
-
-    def __reduce__(self):
-        return self.__class__, (
-            self.element,
-            self.partition_by,
-            self.order_by,
-            self.range_,
-            self.rows,
-        )
-
-    def _interpret_range(
-        self,
-        range_: typing_Tuple[Optional[_IntOrRange], Optional[_IntOrRange]],
-    ) -> typing_Tuple[_IntOrRange, _IntOrRange]:
-        if not isinstance(range_, tuple) or len(range_) != 2:
-            raise exc.ArgumentError("2-tuple expected for range/rows")
-
-        r0, r1 = range_
-
-        lower: _IntOrRange
-        upper: _IntOrRange
-
-        if r0 is None:
-            lower = RANGE_UNBOUNDED
-        elif isinstance(r0, _OverRange):
-            lower = r0
-        else:
-            try:
-                lower = int(r0)
-            except ValueError as err:
-                raise exc.ArgumentError(
-                    "Integer or None expected for range value"
-                ) from err
-            else:
-                if lower == 0:
-                    lower = RANGE_CURRENT
-
-        if r1 is None:
-            upper = RANGE_UNBOUNDED
-        elif isinstance(r1, _OverRange):
-            upper = r1
-        else:
-            try:
-                upper = int(r1)
-            except ValueError as err:
-                raise exc.ArgumentError(
-                    "Integer or None expected for range value"
-                ) from err
-            else:
-                if upper == 0:
-                    upper = RANGE_CURRENT
-
-        return lower, upper
 
     if not TYPE_CHECKING:
 
@@ -4293,6 +4229,90 @@ class Over(ColumnElement[_T]):
                 ]
             )
         )
+
+
+class _FrameClauseType(Enum):
+    RANGE_UNBOUNDED = 0
+    RANGE_CURRENT = 1
+    RANGE_PRECEDING = 2
+    RANGE_FOLLOWING = 3
+
+
+class _FrameClause(ClauseElement):
+    """indicate the 'rows' or 'range' field of a window function, e.g. using
+    :class:`.Over`.
+
+    .. versionadded:: 2.1
+
+    """
+
+    __visit_name__ = "frame_clause"
+
+    _traverse_internals: _TraverseInternalsType = [
+        ("lower_integer_bind", InternalTraversal.dp_clauseelement),
+        ("upper_integer_bind", InternalTraversal.dp_clauseelement),
+        ("lower_type", InternalTraversal.dp_plain_obj),
+        ("upper_type", InternalTraversal.dp_plain_obj),
+    ]
+
+    def __init__(
+        self,
+        range_: typing_Tuple[Optional[int], Optional[int]],
+    ):
+        try:
+            r0, r1 = range_
+        except (ValueError, TypeError) as ve:
+            raise exc.ArgumentError("2-tuple expected for range/rows") from ve
+
+        if r0 is None:
+            self.lower_type = _FrameClauseType.RANGE_UNBOUNDED
+            self.lower_integer_bind = None
+        else:
+            try:
+                lower_integer = int(r0)
+            except ValueError as err:
+                raise exc.ArgumentError(
+                    "Integer or None expected for range value"
+                ) from err
+            else:
+                if lower_integer == 0:
+                    self.lower_type = _FrameClauseType.RANGE_CURRENT
+                    self.lower_integer_bind = None
+                elif lower_integer < 0:
+                    self.lower_type = _FrameClauseType.RANGE_PRECEDING
+                    self.lower_integer_bind = literal(
+                        abs(lower_integer), type_api.INTEGERTYPE
+                    )
+                else:
+                    self.lower_type = _FrameClauseType.RANGE_FOLLOWING
+                    self.lower_integer_bind = literal(
+                        lower_integer, type_api.INTEGERTYPE
+                    )
+
+        if r1 is None:
+            self.upper_type = _FrameClauseType.RANGE_UNBOUNDED
+            self.upper_integer_bind = None
+        else:
+            try:
+                upper_integer = int(r1)
+            except ValueError as err:
+                raise exc.ArgumentError(
+                    "Integer or None expected for range value"
+                ) from err
+            else:
+                if upper_integer == 0:
+                    self.upper_type = _FrameClauseType.RANGE_CURRENT
+                    self.upper_integer_bind = None
+                elif upper_integer < 0:
+                    self.upper_type = _FrameClauseType.RANGE_PRECEDING
+                    self.upper_integer_bind = literal(
+                        abs(upper_integer), type_api.INTEGERTYPE
+                    )
+                else:
+                    self.upper_type = _FrameClauseType.RANGE_FOLLOWING
+                    self.upper_integer_bind = literal(
+                        upper_integer, type_api.INTEGERTYPE
+                    )
 
 
 class WithinGroup(ColumnElement[_T]):
