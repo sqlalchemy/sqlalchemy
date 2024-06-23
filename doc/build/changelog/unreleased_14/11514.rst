@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 11514
+
+    Fixed issue where SQL Server drivers don't support bound parameters when
+    rendering the "frame specification" for a window function, e.g. "ROWS
+    BETWEEN", etc.
+
