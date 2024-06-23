@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 11522
+
+    It is now considered a pool-invalidating disconnect event when psycopg2
+    throws an "SSL SYSCALL error: Success" error message, which can occur when
+    the SSL connection to Postgres is terminated abnormally.
