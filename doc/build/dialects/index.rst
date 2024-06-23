@@ -95,7 +95,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | CockroachDB                                    | sqlalchemy-cockroachdb_               |
 +------------------------------------------------+---------------------------------------+
-| CrateDB                                        | crate-python_                         |
+| CrateDB                                        | sqlalchemy-cratedb_                   |
 +------------------------------------------------+---------------------------------------+
 | EXASolution                                    | sqlalchemy_exasol_                    |
 +------------------------------------------------+---------------------------------------+
@@ -152,7 +152,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _sqlalchemy-monetdb: https://github.com/gijzelaerr/sqlalchemy-monetdb
 .. _snowflake-sqlalchemy: https://github.com/snowflakedb/snowflake-sqlalchemy
 .. _sqlalchemy-tds: https://github.com/m32/sqlalchemy-tds
-.. _crate-python: https://github.com/crate/crate-python
+.. _sqlalchemy-cratedb: https://github.com/crate/sqlalchemy-cratedb
 .. _sqlalchemy-access: https://pypi.org/project/sqlalchemy-access/
 .. _elasticsearch-dbapi: https://github.com/preset-io/elasticsearch-dbapi/
 .. _pydruid: https://github.com/druid-io/pydruid
