@@ -3,6 +3,10 @@ import decimal
 import importlib
 import operator
 import os
+import pickle
+import subprocess
+import sys
+from tempfile import mkstemp
 
 import sqlalchemy as sa
 from sqlalchemy import and_
@@ -530,6 +534,59 @@ class PickleTypesTest(fixtures.TestBase):
         for loads, dumps in picklers():
             loads(dumps(column_type))
             loads(dumps(meta))
+
+    @testing.combinations(
+        ("Str", String()),
+        ("Tex", Text()),
+        ("Uni", Unicode()),
+        ("Boo", Boolean()),
+        ("Dat", DateTime()),
+        ("Dat", Date()),
+        ("Tim", Time()),
+        ("Lar", LargeBinary()),
+        ("Pic", PickleType()),
+        ("Int", Interval()),
+        ("Enu", Enum("one", "two", "three")),
+        argnames="name,type_",
+        id_="ar",
+    )
+    @testing.variation("use_adapt", [True, False])
+    def test_pickle_types_other_process(self, name, type_, use_adapt):
+        """test for #11530
+
+        this does a full exec of python interpreter so the number of variations
+        here is reduced to just a single pickler, else each case takes
+        a full second.
+
+        """
+
+        if use_adapt:
+            type_ = type_.copy()
+
+        column_type = Column(name, type_)
+        meta = MetaData()
+        Table("foo", meta, column_type)
+
+        for target in column_type, meta:
+            f, name = mkstemp("pkl")
+            with os.fdopen(f, "wb") as f:
+                pickle.dump(target, f)
+
+            name = name.replace(os.sep, "/")
+            code = (
+                "import sqlalchemy; import pickle; "
+                f"pickle.load(open('''{name}''', 'rb'))"
+            )
+            parts = list(sys.path)
+            if os.environ.get("PYTHONPATH"):
+                parts.append(os.environ["PYTHONPATH"])
+            pythonpath = os.pathsep.join(parts)
+            proc = subprocess.run(
+                [sys.executable, "-c", code],
+                env={**os.environ, "PYTHONPATH": pythonpath},
+            )
+            eq_(proc.returncode, 0)
+            os.unlink(name)
 
 
 class _UserDefinedTypeFixture:
