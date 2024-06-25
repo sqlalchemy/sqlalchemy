@@ -2836,58 +2836,44 @@ class SQLCompiler(Compiled):
             match.group(2) if match else "",
         )
 
-    def _format_frame_clause(self, range_, **kw):
-        return "%s AND %s" % (
-            (
-                "UNBOUNDED PRECEDING"
-                if range_[0] is elements.RANGE_UNBOUNDED
-                else (
-                    "CURRENT ROW"
-                    if range_[0] is elements.RANGE_CURRENT
-                    else (
-                        "%s PRECEDING"
-                        % (
-                            self.process(
-                                elements.literal(abs(range_[0])), **kw
-                            ),
-                        )
-                        if range_[0] < 0
-                        else "%s FOLLOWING"
-                        % (self.process(elements.literal(range_[0]), **kw),)
-                    )
-                )
-            ),
-            (
-                "UNBOUNDED FOLLOWING"
-                if range_[1] is elements.RANGE_UNBOUNDED
-                else (
-                    "CURRENT ROW"
-                    if range_[1] is elements.RANGE_CURRENT
-                    else (
-                        "%s PRECEDING"
-                        % (
-                            self.process(
-                                elements.literal(abs(range_[1])), **kw
-                            ),
-                        )
-                        if range_[1] < 0
-                        else "%s FOLLOWING"
-                        % (self.process(elements.literal(range_[1]), **kw),)
-                    )
-                )
-            ),
-        )
+    def visit_frame_clause(self, frameclause, **kw):
+
+        if frameclause.lower_type is elements._FrameClauseType.RANGE_UNBOUNDED:
+            left = "UNBOUNDED PRECEDING"
+        elif frameclause.lower_type is elements._FrameClauseType.RANGE_CURRENT:
+            left = "CURRENT ROW"
+        else:
+            val = self.process(frameclause.lower_integer_bind, **kw)
+            if (
+                frameclause.lower_type
+                is elements._FrameClauseType.RANGE_PRECEDING
+            ):
+                left = f"{val} PRECEDING"
+            else:
+                left = f"{val} FOLLOWING"
+
+        if frameclause.upper_type is elements._FrameClauseType.RANGE_UNBOUNDED:
+            right = "UNBOUNDED FOLLOWING"
+        elif frameclause.upper_type is elements._FrameClauseType.RANGE_CURRENT:
+            right = "CURRENT ROW"
+        else:
+            val = self.process(frameclause.upper_integer_bind, **kw)
+            if (
+                frameclause.upper_type
+                is elements._FrameClauseType.RANGE_PRECEDING
+            ):
+                right = f"{val} PRECEDING"
+            else:
+                right = f"{val} FOLLOWING"
+
+        return f"{left} AND {right}"
 
     def visit_over(self, over, **kwargs):
         text = over.element._compiler_dispatch(self, **kwargs)
-        if over.range_:
-            range_ = "RANGE BETWEEN %s" % self._format_frame_clause(
-                over.range_, **kwargs
-            )
-        elif over.rows:
-            range_ = "ROWS BETWEEN %s" % self._format_frame_clause(
-                over.rows, **kwargs
-            )
+        if over.range_ is not None:
+            range_ = f"RANGE BETWEEN {self.process(over.range_, **kwargs)}"
+        elif over.rows is not None:
+            range_ = f"ROWS BETWEEN {self.process(over.rows, **kwargs)}"
         else:
             range_ = None
 

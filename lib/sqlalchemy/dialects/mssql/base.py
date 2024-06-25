@@ -1988,9 +1988,9 @@ class MSSQLCompiler(compiler.SQLCompiler):
         self.tablealiases = {}
         super().__init__(*args, **kwargs)
 
-    def _format_frame_clause(self, range_, **kw):
+    def visit_frame_clause(self, frameclause, **kw):
         kw["literal_execute"] = True
-        return super()._format_frame_clause(range_, **kw)
+        return super().visit_frame_clause(frameclause, **kw)
 
     def _with_legacy_schema_aliasing(fn):
         def decorate(self, *arg, **kw):

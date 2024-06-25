@@ -1124,6 +1124,32 @@ class CoreFixtures:
 
     dont_compare_values_fixtures.append(_lambda_fixtures)
 
+    def _numeric_agnostic_window_functions():
+        return (
+            func.row_number().over(
+                order_by=table_a.c.a,
+                range_=(random.randint(50, 60), random.randint(60, 70)),
+            ),
+            func.row_number().over(
+                order_by=table_a.c.a,
+                range_=(random.randint(-40, -20), random.randint(60, 70)),
+            ),
+            func.row_number().over(
+                order_by=table_a.c.a,
+                rows=(random.randint(-40, -20), random.randint(60, 70)),
+            ),
+            func.row_number().over(
+                order_by=table_a.c.a,
+                range_=(None, random.randint(60, 70)),
+            ),
+            func.row_number().over(
+                order_by=table_a.c.a,
+                range_=(random.randint(50, 60), None),
+            ),
+        )
+
+    dont_compare_values_fixtures.append(_numeric_agnostic_window_functions)
+
     # like fixture but returns at least two objects that compare equally
     equal_fixtures = [
         lambda: (
