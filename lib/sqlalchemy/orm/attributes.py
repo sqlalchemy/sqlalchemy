@@ -401,7 +401,7 @@ class QueryableAttribute(
             parententity=adapt_to_entity,
         )
 
-    def of_type(self, entity: _EntityType[Any]) -> QueryableAttribute[_T]:
+    def of_type(self, entity: _EntityType[_T]) -> QueryableAttribute[_T]:
         return QueryableAttribute(
             self.class_,
             self.key,
