@@ -16,6 +16,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import Table
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Mapped
@@ -24,6 +25,7 @@ from sqlalchemy.orm import registry
 from sqlalchemy.orm import Relationship
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import with_polymorphic
 
 
 class Base(DeclarativeBase):
@@ -163,6 +165,15 @@ if typing.TYPE_CHECKING:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*.QueryableAttribute\[relationship.Engineer\]
     reveal_type(Team.employees.of_type(Engineer))
+
+    # EXPECTED_RE_TYPE: sqlalchemy.*.QueryableAttribute\[relationship.Employee\]
+    reveal_type(Team.employees.of_type(aliased(Employee)))
+
+    # EXPECTED_RE_TYPE: sqlalchemy.*.QueryableAttribute\[relationship.Engineer\]
+    reveal_type(Team.employees.of_type(aliased(Engineer)))
+
+    # EXPECTED_RE_TYPE: sqlalchemy.*.QueryableAttribute\[relationship.Employee\]
+    reveal_type(Team.employees.of_type(with_polymorphic(Employee, [Engineer])))
 
 
 mapper_registry: registry = registry()
