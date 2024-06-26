@@ -365,6 +365,7 @@ $$ LANGUAGE plpgsql;"""
             "SSL SYSCALL error: EOF detected",
             "SSL SYSCALL error: Operation timed out",
             "SSL SYSCALL error: Bad address",
+            "SSL SYSCALL error: Success",
         ]:
             eq_(dialect.is_disconnect(Error(error), None, None), True)
 
