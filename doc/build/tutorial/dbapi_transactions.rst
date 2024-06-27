@@ -11,32 +11,32 @@ Working with Transactions and the DBAPI
 
 
 
-With the :class:`_engine.Engine` object ready to go, we may now proceed
-to dive into the basic operation of an :class:`_engine.Engine` and
-its primary interactive endpoints, the :class:`_engine.Connection` and
-:class:`_engine.Result`.   We will additionally introduce the ORM's
-:term:`facade` for these objects, known as the :class:`_orm.Session`.
+With the :class:`_engine.Engine` object ready to go, we can
+dive into the basic operation of an :class:`_engine.Engine` and
+its primary endpoints, the :class:`_engine.Connection` and
+:class:`_engine.Result`. We'll also introduce the ORM's :term:`facade`
+for these objects, known as the :class:`_orm.Session`.
 
 .. container:: orm-header
 
     **Note to ORM readers**
 
-    When using the ORM, the :class:`_engine.Engine` is managed by another
-    object called the :class:`_orm.Session`.  The :class:`_orm.Session` in
-    modern SQLAlchemy emphasizes a transactional and SQL execution pattern that
-    is largely identical to that of the :class:`_engine.Connection` discussed
-    below, so while this subsection is Core-centric, all of the concepts here
-    are essentially relevant to ORM use as well and is recommended for all ORM
+    When using the ORM, the :class:`_engine.Engine` is managed by the
+    :class:`_orm.Session`.  The :class:`_orm.Session` in modern SQLAlchemy
+    emphasizes a transactional and SQL execution pattern that is largely
+    identical to that of the :class:`_engine.Connection` discussed below,
+    so while this subsection is Core-centric, all of the concepts here
+    are relevant to ORM use as well and is recommended for all ORM
     learners.   The execution pattern used by the :class:`_engine.Connection`
-    will be contrasted with that of the :class:`_orm.Session` at the end
+    will be compared to the :class:`_orm.Session` at the end
     of this section.
 
 As we have yet to introduce the SQLAlchemy Expression Language that is the
-primary feature of SQLAlchemy, we will make use of one simple construct within
-this package called the :func:`_sql.text` construct, which allows us to write
-SQL statements as **textual SQL**.   Rest assured that textual SQL in
-day-to-day SQLAlchemy use is by far the exception rather than the rule for most
-tasks, even though it always remains fully available.
+primary feature of SQLAlchemy, we'll use a simple construct within
+this package called the :func:`_sql.text` construct, to write
+SQL statements as **textual SQL**.   Rest assured that textual SQL is the 
+exception rather than the rule in day-to-day SQLAlchemy use, but it's
+always available.
 
 .. rst-class:: core-header
 
