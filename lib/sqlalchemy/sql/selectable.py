@@ -3081,6 +3081,7 @@ class ForUpdateArg(ClauseElement):
         ("nowait", InternalTraversal.dp_boolean),
         ("read", InternalTraversal.dp_boolean),
         ("skip_locked", InternalTraversal.dp_boolean),
+        ("key_share", InternalTraversal.dp_boolean),
     ]
 
     of: Optional[Sequence[ClauseElement]]

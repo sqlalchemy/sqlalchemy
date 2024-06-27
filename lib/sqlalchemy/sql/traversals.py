@@ -562,6 +562,8 @@ class TraversalComparatorStrategy(HasTraversalDispatch, util.MemoizedSlots):
                         return False
                     else:
                         continue
+                elif right_child is None:
+                    return False
 
                 comparison = dispatch(
                     left_attrname, left, left_child, right, right_child, **kw
