@@ -478,6 +478,21 @@ class CoreFixtures:
             select(table_a.c.a)
             .where(table_a.c.b == 5)
             .with_for_update(nowait=True),
+            select(table_a.c.a)
+            .where(table_a.c.b == 5)
+            .with_for_update(nowait=True, skip_locked=True),
+            select(table_a.c.a)
+            .where(table_a.c.b == 5)
+            .with_for_update(nowait=True, read=True),
+            select(table_a.c.a)
+            .where(table_a.c.b == 5)
+            .with_for_update(of=table_a.c.a),
+            select(table_a.c.a)
+            .where(table_a.c.b == 5)
+            .with_for_update(of=table_a.c.b),
+            select(table_a.c.a)
+            .where(table_a.c.b == 5)
+            .with_for_update(nowait=True, key_share=True),
             select(table_a.c.a).where(table_a.c.b == 5).correlate(table_b),
             select(table_a.c.a)
             .where(table_a.c.b == 5)
