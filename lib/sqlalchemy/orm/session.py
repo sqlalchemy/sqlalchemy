@@ -1208,30 +1208,38 @@ class SessionTransaction(_StateChange, TransactionalContext):
                 elif self.nested:
                     transaction = conn.begin_nested()
                 elif conn.in_transaction():
-                    join_transaction_mode = self.session.join_transaction_mode
 
-                    if join_transaction_mode == "conditional_savepoint":
-                        if conn.in_nested_transaction():
-                            join_transaction_mode = "create_savepoint"
-                        else:
-                            join_transaction_mode = "rollback_only"
-
-                    if join_transaction_mode in (
-                        "control_fully",
-                        "rollback_only",
-                    ):
-                        if conn.in_nested_transaction():
-                            transaction = (
-                                conn._get_required_nested_transaction()
-                            )
-                        else:
-                            transaction = conn._get_required_transaction()
-                        if join_transaction_mode == "rollback_only":
-                            should_commit = False
-                    elif join_transaction_mode == "create_savepoint":
-                        transaction = conn.begin_nested()
+                    if local_connect:
+                        _trans = conn.get_transaction()
+                        assert _trans is not None
+                        transaction = _trans
                     else:
-                        assert False, join_transaction_mode
+                        join_transaction_mode = (
+                            self.session.join_transaction_mode
+                        )
+
+                        if join_transaction_mode == "conditional_savepoint":
+                            if conn.in_nested_transaction():
+                                join_transaction_mode = "create_savepoint"
+                            else:
+                                join_transaction_mode = "rollback_only"
+
+                        if join_transaction_mode in (
+                            "control_fully",
+                            "rollback_only",
+                        ):
+                            if conn.in_nested_transaction():
+                                transaction = (
+                                    conn._get_required_nested_transaction()
+                                )
+                            else:
+                                transaction = conn._get_required_transaction()
+                            if join_transaction_mode == "rollback_only":
+                                should_commit = False
+                        elif join_transaction_mode == "create_savepoint":
+                            transaction = conn.begin_nested()
+                        else:
+                            assert False, join_transaction_mode
                 else:
                     transaction = conn.begin()
             except:
