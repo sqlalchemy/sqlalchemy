@@ -2029,6 +2029,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         rowcount = 0
 
         for imv_batch in dialect._deliver_insertmanyvalues_batches(
+            self,
             cursor,
             str_statement,
             effective_parameters,
@@ -2049,6 +2050,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                         imv_batch.replaced_parameters,
                         None,
                         context,
+                        is_sub_exec=True,
                     )
 
             sub_stmt = imv_batch.replaced_statement
