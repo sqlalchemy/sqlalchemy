@@ -1211,6 +1211,17 @@ class SessionTransaction(_StateChange, TransactionalContext):
                         else:
                             join_transaction_mode = "rollback_only"
 
+                        if local_connect:
+                            util.warn(
+                                "The engine provided as bind produced a "
+                                "connection that is already in a transaction. "
+                                "This is usually caused by a core event, "
+                                "such as 'engine_connect', that has left a "
+                                "transaction open. The effective join "
+                                "transaction mode used by this session is "
+                                f"{join_transaction_mode!r}. To silence this "
+                                "warning, do not leave transactions open"
+                            )
                     if join_transaction_mode in (
                         "control_fully",
                         "rollback_only",
