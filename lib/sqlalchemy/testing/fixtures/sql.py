@@ -470,12 +470,22 @@ def insertmanyvalues_fixture(
             return rows
 
     def _deliver_insertmanyvalues_batches(
-        cursor, statement, parameters, generic_setinputsizes, context
+        connection,
+        cursor,
+        statement,
+        parameters,
+        generic_setinputsizes,
+        context,
     ):
         if randomize_rows:
             cursor = RandomCursor(cursor)
         for batch in orig_dialect(
-            cursor, statement, parameters, generic_setinputsizes, context
+            connection,
+            cursor,
+            statement,
+            parameters,
+            generic_setinputsizes,
+            context,
         ):
             if warn_on_downgraded and batch.is_downgraded:
                 util.warn("Batches were downgraded for sorted INSERT")
