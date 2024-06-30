@@ -122,17 +122,23 @@ start numbering at 1 or some other integer, provide ``count_from=1``.
 """
 from __future__ import annotations
 
+from operator import index as index_to_int
+from typing import Any
 from typing import Callable
+from typing import Iterable
 from typing import List
 from typing import Optional
+from typing import overload
 from typing import Sequence
+from typing import SupportsIndex
 from typing import TypeVar
+from typing import Union
 
 from ..orm.collections import collection
 from ..orm.collections import collection_adapter
 
 _T = TypeVar("_T")
-OrderingFunc = Callable[[int, Sequence[_T]], int]
+OrderingFunc = Callable[[int, Sequence[_T]], object]
 
 
 __all__ = ["ordering_list"]
@@ -141,9 +147,9 @@ __all__ = ["ordering_list"]
 def ordering_list(
     attr: str,
     count_from: Optional[int] = None,
-    ordering_func: Optional[OrderingFunc] = None,
+    ordering_func: Optional[OrderingFunc[_T]] = None,
     reorder_on_append: bool = False,
-) -> Callable[[], OrderingList]:
+) -> Callable[[], OrderingList[_T]]:
     """Prepares an :class:`OrderingList` factory for use in mapper definitions.
 
     Returns an object suitable for use as an argument to a Mapper
@@ -185,22 +191,22 @@ def ordering_list(
 # Ordering utility functions
 
 
-def count_from_0(index, collection):
+def count_from_0(index: int, collection: object) -> int:
     """Numbering function: consecutive integers starting at 0."""
 
     return index
 
 
-def count_from_1(index, collection):
+def count_from_1(index: int, collection: object) -> int:
     """Numbering function: consecutive integers starting at 1."""
 
     return index + 1
 
 
-def count_from_n_factory(start):
+def count_from_n_factory(start: int) -> OrderingFunc[Any]:
     """Numbering function: consecutive integers starting at arbitrary start."""
 
-    def f(index, collection):
+    def f(index: int, collection: object) -> int:
         return index + start
 
     try:
@@ -238,13 +244,13 @@ class OrderingList(List[_T]):
     """
 
     ordering_attr: str
-    ordering_func: OrderingFunc
+    ordering_func: OrderingFunc[_T]
     reorder_on_append: bool
 
     def __init__(
         self,
-        ordering_attr: Optional[str] = None,
-        ordering_func: Optional[OrderingFunc] = None,
+        ordering_attr: str,
+        ordering_func: Optional[OrderingFunc[_T]] = None,
         reorder_on_append: bool = False,
     ):
         """A custom list that manages position information for its children.
@@ -330,13 +336,13 @@ class OrderingList(List[_T]):
         if have is not None and not reorder:
             return
 
-        should_be = self.ordering_func(index, self)
+        should_be = self.ordering_func(index_to_int(index), self)
         if have != should_be:
             self._set_order_value(entity, should_be)
 
-    def append(self, entity):
-        super().append(entity)
-        self._order_entity(len(self) - 1, entity, self.reorder_on_append)
+    def append(self, __entity: _T) -> None:
+        super().append(__entity)
+        self._order_entity(len(self) - 1, __entity, self.reorder_on_append)
 
     def _raw_append(self, entity):
         """Append without any ordering behavior."""
@@ -345,48 +351,49 @@ class OrderingList(List[_T]):
 
     _raw_append = collection.adds(1)(_raw_append)
 
-    def insert(self, index, entity):
-        super().insert(index, entity)
+    def insert(self, __index: SupportsIndex, __entity: _T) -> None:
+        super().insert(__index, __entity)
         self._reorder()
 
-    def remove(self, entity):
-        super().remove(entity)
+    def remove(self, __entity: _T) -> None:
+        super().remove(__entity)
 
         adapter = collection_adapter(self)
         if adapter and adapter._referenced_by_owner:
             self._reorder()
 
-    def pop(self, index=-1):
-        entity = super().pop(index)
+    def pop(self, __index: SupportsIndex = -1) -> _T:
+        entity = super().pop(__index)
         self._reorder()
         return entity
 
-    def __setitem__(self, index, entity):
-        if isinstance(index, slice):
-            step = index.step or 1
-            start = index.start or 0
-            if start < 0:
-                start += len(self)
-            stop = index.stop or len(self)
-            if stop < 0:
-                stop += len(self)
+    @overload
+    def __setitem__(self, __index: SupportsIndex, __entity: _T) -> None:
+        ...
 
-            for i in range(start, stop, step):
-                self.__setitem__(i, entity[i])
+    @overload
+    def __setitem__(self, __index: slice, __entity: Iterable[_T]) -> None:
+        ...
+
+    def __setitem__(
+        self,
+        __index: Union[SupportsIndex, slice],
+        __entity: Union[_T, Iterable[_T]],
+    ) -> None:
+        if isinstance(__index, slice):
+            # there are enough edge cases with slice lengths longer or shorter
+            # than the length of the assigned items, that full-on reordering
+            # is far simpler.
+            # SQLAlchemy collection instrumentation otherwise takes care of
+            # slices in all normal use of OrderingList in ORM classes.
+            super().__setitem__(__index, __entity)
+            self._reorder()
         else:
-            self._order_entity(index, entity, True)
-            super().__setitem__(index, entity)
+            self._order_entity(__index, __entity, True)
+            super().__setitem__(__index, __entity)
 
-    def __delitem__(self, index):
-        super().__delitem__(index)
-        self._reorder()
-
-    def __setslice__(self, start, end, values):
-        super().__setslice__(start, end, values)
-        self._reorder()
-
-    def __delslice__(self, start, end):
-        super().__delslice__(start, end)
+    def __delitem__(self, __index: Union[SupportsIndex, slice]) -> None:
+        super().__delitem__(__index)
         self._reorder()
 
     def __reduce__(self):

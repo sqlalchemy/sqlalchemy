@@ -322,7 +322,7 @@ class OrderingListTest(fixtures.MappedTest):
         s1 = Slide("Slide #1")
 
         # 1, 2, 3
-        s1.bullets[0:3] = b[0:3]
+        s1.bullets[0:3] = iter(b[0:3])
         for i in 0, 1, 2:
             self.assert_(s1.bullets[i].position == i)
             self.assert_(s1.bullets[i] == b[i])
