@@ -30,6 +30,7 @@ from operator import mul as _uncast_mul
 from operator import ne as _uncast_ne
 from operator import neg as _uncast_neg
 from operator import or_ as _uncast_or_
+from operator import pow as _uncast_pow
 from operator import rshift as _uncast_rshift
 from operator import sub as _uncast_sub
 from operator import truediv as _uncast_truediv
@@ -114,6 +115,7 @@ mul = cast(OperatorType, _uncast_mul)
 ne = cast(OperatorType, _uncast_ne)
 neg = cast(OperatorType, _uncast_neg)
 or_ = cast(OperatorType, _uncast_or_)
+pow = cast(OperatorType, _uncast_pow)
 rshift = cast(OperatorType, _uncast_rshift)
 sub = cast(OperatorType, _uncast_sub)
 truediv = cast(OperatorType, _uncast_truediv)
@@ -1903,6 +1905,20 @@ class ColumnOperators(Operators):
 
         """
         return self.reverse_operate(floordiv, other)
+
+        def __pow__(self, other) -> ColumnOperators:
+        """Implement the ``**`` operator.
+
+        In a column context, produces the clause ``pow(a, b)``
+        """
+        return self.operate(pow, other)
+
+    def __rpow__(self, other) -> ColumnOperators:
+        """Implement the ``**`` operator in reverse.
+
+        See :meth:`.ColumnOperators.__pow__`.
+
+        """
 
 
 _commutative: Set[Any] = {eq, ne, add, mul}
