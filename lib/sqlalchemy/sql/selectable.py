@@ -1516,11 +1516,17 @@ class Join(roles.DMLTableRole, FromClause):
     ) -> TODO_Any:
         sqlutil = util.preloaded.sql_util
         if flat:
-            if name is not None:
-                raise exc.ArgumentError("Can't send name argument with flat")
+            if isinstance(self.left, (FromGrouping, Join)):
+                left_name = name  # will recurse
+            else:
+                left_name = name and '{}_{}'.format(name, self.left.name)
+            if isinstance(self.right, (FromGrouping, Join)):
+                right_name = name  # will recurse
+            else:
+                right_name = name and '{}_{}'.format(name, self.right.name)
             left_a, right_a = (
-                self.left._anonymous_fromclause(flat=True),
-                self.right._anonymous_fromclause(flat=True),
+                self.left._anonymous_fromclause(name=left_name, flat=flat),
+                self.right._anonymous_fromclause(name=right_name, flat=flat),
             )
             adapter = sqlutil.ClauseAdapter(left_a).chain(
                 sqlutil.ClauseAdapter(right_a)
