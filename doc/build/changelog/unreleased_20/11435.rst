@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug
+    :tickets: 11435
+
+    Fixed some of the legacy class names not imported by
+    ``sqlalalchemy.orm.collections.*``.

@@ -148,10 +148,12 @@ __all__ = [
     "keyfunc_mapping",
     "column_keyed_dict",
     "attribute_keyed_dict",
-    "column_keyed_dict",
-    "attribute_keyed_dict",
-    "MappedCollection",
     "KeyFuncDict",
+    # old names in < 2.0
+    "mapped_collection",
+    "column_mapped_collection",
+    "attribute_mapped_collection",
+    "MappedCollection",
 ]
 
 __instrumentation_mutex = threading.Lock()
