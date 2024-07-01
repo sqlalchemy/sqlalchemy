@@ -290,30 +290,28 @@ class _OracleBoolean(sqltypes.Boolean):
 
 class VECTOR(UserDefinedType):
     cache_ok = True
-    _string = String()
+    __visit_name__ = "VECTOR"
 
-    def __init__(self, dim=None):
+    def __init__(self, type=None ,dim=None):
         super(UserDefinedType, self).__init__()
         self.dim = dim
+        self.type = type
 
     def get_col_spec(self, **kw):
-        if self.dim is None:
+        if self.dim is None and self.type is None:
             return 'VECTOR'
-        return 'VECTOR(%d)' % self.dim
+        elif self.dim is None:
+            return f'VECTOR({self.type})'
+        elif self.type is None:
+            return f'VECTOR({self.dim})'
+        return f'VECTOR({self.dim, self.type})'
 
     def bind_processor(self, dialect):
         def process(value):
-            return Vector._to_db(value, self.dim)
-        return process
-
-    def literal_processor(self, dialect):
-        string_literal_processor = self._string._cached_literal_processor(dialect)
-
-        def process(value):
-            return string_literal_processor(Vector._to_db(value, self.dim))
+            return value
         return process
 
     def result_processor(self, dialect, coltype):
         def process(value):
-            return Vector._from_db(value)
+            return value
         return process

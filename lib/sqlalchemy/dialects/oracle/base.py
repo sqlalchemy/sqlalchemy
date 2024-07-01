@@ -561,6 +561,7 @@ from .types import RAW
 from .types import ROWID  # noqa
 from .types import TIMESTAMP
 from .types import VARCHAR2  # noqa
+from .types import VECTOR
 from ... import Computed
 from ... import exc
 from ... import schema as sa_schema
@@ -640,6 +641,7 @@ ischema_names = {
     "BINARY_DOUBLE": BINARY_DOUBLE,
     "BINARY_FLOAT": BINARY_FLOAT,
     "ROWID": ROWID,
+    "VECTOR": VECTOR,
 }
 
 
@@ -796,6 +798,9 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_ROWID(self, type_, **kw):
         return "ROWID"
+    
+    def visit_VECTOR(self, type_, **kw):
+        return "VECTOR"
 
 
 class OracleCompiler(compiler.SQLCompiler):
