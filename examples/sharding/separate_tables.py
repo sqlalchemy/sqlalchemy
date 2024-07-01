@@ -1,9 +1,18 @@
-"""Illustrates sharding using a single SQLite database, that will however
-have multiple tables using a naming convention."""
+"""
+Illustrates sharding using a single SQLite database, that will however
+have multiple tables using a naming convention.
+
+To run::
+
+    python -m examples.sharding.separate_tables
+"""
 
 from __future__ import annotations
 
 import datetime
+from typing import Optional
+from typing import Tuple
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Column
 from sqlalchemy import create_engine
@@ -23,6 +32,22 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import visitors
 
+if TYPE_CHECKING:
+    from sqlalchemy.engine.base import Connection
+    from sqlalchemy.engine.interfaces import DBAPICursor
+    from sqlalchemy.engine.interfaces import _DBAPIAnyExecuteParams
+    from sqlalchemy.engine.interfaces import ExecutionContext
+    from sqlalchemy.engine.default import DefaultExecutionContext
+    from sqlalchemy.orm import InstanceState
+    from sqlalchemy.orm import Mapper
+    from sqlalchemy.orm import ORMExecuteState
+    from sqlalchemy.sql.elements import BinaryExpression
+    from sqlalchemy.sql.elements import BindParameter
+    from sqlalchemy.sql.selectable import Select
+    from typing import Union
+
+    TYPE_shard_pkey = Union[Column, list[Column]]
+
 echo = True
 engine = create_engine("sqlite://", echo=echo)
 
@@ -34,8 +59,13 @@ db4 = engine.execution_options(table_prefix="south_america")
 
 @event.listens_for(engine, "before_cursor_execute", retval=True)
 def before_cursor_execute(
-    conn, cursor, statement, parameters, context, executemany
-):
+    conn: Connection,
+    cursor: DBAPICursor,
+    statement: str,
+    parameters: _DBAPIAnyExecuteParams,
+    context: ExecutionContext,
+    executemany: bool,
+) -> Optional[Tuple[str, _DBAPIAnyExecuteParams]]:
     table_prefix = context.execution_options.get("table_prefix", None)
     if table_prefix:
         statement = statement.replace("_prefix_", table_prefix)
@@ -70,10 +100,11 @@ class Base(DeclarativeBase):
 ids = Table("ids", Base.metadata, Column("nextid", Integer, nullable=False))
 
 
-def id_generator(ctx):
+def id_generator(ctx: DefaultExecutionContext) -> int:
     # in reality, might want to use a separate transaction for this.
     with engine.begin() as conn:
         nextid = conn.scalar(ids.select().with_for_update())
+        assert nextid is not None
         conn.execute(ids.update().values({ids.c.nextid: ids.c.nextid + 1}))
     return nextid
 
@@ -130,7 +161,7 @@ shard_lookup = {
 }
 
 
-def shard_chooser(mapper, instance, clause=None):
+def shard_chooser(mapper: Mapper, instance: Base, clause=None) -> str:
     """shard chooser.
 
     looks at the given instance and returns a shard id
@@ -145,7 +176,13 @@ def shard_chooser(mapper, instance, clause=None):
         return shard_chooser(mapper, instance.location)
 
 
-def identity_chooser(mapper, primary_key, *, lazy_loaded_from, **kw):
+def identity_chooser(
+    mapper: Mapper,
+    primary_key: TYPE_shard_pkey,
+    *,
+    lazy_loaded_from: Optional[InstanceState],
+    **kw,
+) -> list[str]:
     """identity chooser.
 
     given a primary key, returns a list of shards
@@ -164,7 +201,7 @@ def identity_chooser(mapper, primary_key, *, lazy_loaded_from, **kw):
         return ["north_america", "asia", "europe", "south_america"]
 
 
-def execute_chooser(context):
+def execute_chooser(context: ORMExecuteState) -> list[str]:
     """statement execution chooser.
 
     this also returns a list of shard ids, which can just be all of them. but
@@ -195,7 +232,7 @@ def execute_chooser(context):
         return ids
 
 
-def _get_select_comparisons(statement):
+def _get_select_comparisons(statement: Select) -> list:
     """Search a Select or Query object for binary expressions.
 
     Returns expressions which match a Column against one or more
@@ -208,16 +245,16 @@ def _get_select_comparisons(statement):
     clauses = set()
     comparisons = []
 
-    def visit_bindparam(bind):
+    def visit_bindparam(bind: BindParameter) -> None:
         # visit a bind parameter.
 
         value = bind.effective_value
         binds[bind] = value
 
-    def visit_column(column):
+    def visit_column(column: Column) -> None:
         clauses.add(column)
 
-    def visit_binary(binary):
+    def visit_binary(binary: BinaryExpression) -> None:
         if binary.left in clauses and binary.right in binds:
             comparisons.append(
                 (binary.left, binary.operator, binds[binary.right])
@@ -252,7 +289,7 @@ Session.configure(
 )
 
 
-def setup():
+def setup() -> None:
     # create tables
     for db in (db1, db2, db3, db4):
         Base.metadata.create_all(db)
@@ -262,7 +299,7 @@ def setup():
         conn.execute(ids.insert(), {"nextid": 1})
 
 
-def main():
+def main() -> None:
     setup()
 
     # save and load objects!
@@ -287,6 +324,7 @@ def main():
         sess.commit()
 
         t = sess.get(WeatherLocation, tokyo.id)
+        assert t is not None
         assert t.city == tokyo.city
         assert t.reports[0].temperature == 80.0
 

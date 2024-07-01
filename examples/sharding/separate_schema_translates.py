@@ -3,12 +3,18 @@ where a different "schema_translates_map" can be used for each shard.
 
 In this example we will set a "shard id" at all times.
 
+To run::
+
+    python -m examples.sharding.separate_schema_translates
+
 """
 
 from __future__ import annotations
 
 import datetime
 import os
+from typing import Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
@@ -21,6 +27,15 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import sessionmaker
+
+if TYPE_CHECKING:
+    from sqlalchemy import Column
+    from sqlalchemy.orm import InstanceState
+    from sqlalchemy.orm import Mapper
+    from sqlalchemy.orm import ORMExecuteState
+    from typing import Union
+
+    TYPE_shard_pkey = Union[Column, list[Column]]
 
 
 echo = True
@@ -112,7 +127,7 @@ shard_lookup = {
 }
 
 
-def shard_chooser(mapper, instance, clause=None):
+def shard_chooser(mapper: Mapper, instance: Base, clause=None) -> str:
     """shard chooser.
 
     this is primarily invoked at persistence time.
@@ -129,7 +144,13 @@ def shard_chooser(mapper, instance, clause=None):
         return shard_chooser(mapper, instance.location)
 
 
-def identity_chooser(mapper, primary_key, *, lazy_loaded_from, **kw):
+def identity_chooser(
+    mapper: Mapper,
+    primary_key: TYPE_shard_pkey,
+    *,
+    lazy_loaded_from: Optional[InstanceState],
+    **kw,
+) -> list[str]:
     """identity chooser.
 
     given a primary key identity, return which shard we should look at.
@@ -147,7 +168,7 @@ def identity_chooser(mapper, primary_key, *, lazy_loaded_from, **kw):
         raise NotImplementedError()
 
 
-def execute_chooser(context):
+def execute_chooser(context: ORMExecuteState) -> list[str]:
     """statement execution chooser.
 
     given an :class:`.ORMExecuteState` for a statement, return a list
@@ -168,13 +189,13 @@ Session.configure(
 )
 
 
-def setup():
+def setup() -> None:
     # create tables
     for db in (db1, db2, db3, db4):
         Base.metadata.create_all(db)
 
 
-def main():
+def main() -> None:
     setup()
 
     # save and load objects!
@@ -203,6 +224,7 @@ def main():
             tokyo.id,
             identity_token="asia",
         )
+        assert t is not None
         assert t.city == tokyo.city
         assert t.reports[0].temperature == 80.0
 

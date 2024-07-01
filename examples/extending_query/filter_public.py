@@ -11,9 +11,11 @@ that should be applied on a per-request basis, etc.
 
 
 """
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
@@ -22,14 +24,19 @@ from sqlalchemy import orm
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import true
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session as Session_
 from sqlalchemy.orm import sessionmaker
 
+if TYPE_CHECKING:
+    from sqlalchemy.orm.session import ORMExecuteState
 
-@event.listens_for(Session, "do_orm_execute")
-def _add_filtering_criteria(execute_state):
+
+@event.listens_for(Session_, "do_orm_execute")
+def _add_filtering_criteria(execute_state: ORMExecuteState) -> None:
     """Intercept all ORM queries.   Add a with_loader_criteria option to all
     of them.
 
@@ -61,25 +68,27 @@ def _add_filtering_criteria(execute_state):
 class HasPrivate:
     """Mixin that identifies a class as having private entities"""
 
-    public = Column(Boolean, nullable=False)
+    public: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
 
 if __name__ == "__main__":
-    Base = declarative_base()
+
+    class Base(DeclarativeBase):
+        pass
 
     class User(HasPrivate, Base):
         __tablename__ = "user"
 
-        id = Column(Integer, primary_key=True)
-        name = Column(String)
+        id: Mapped[int] = mapped_column(Integer, primary_key=True)
+        name: Mapped[str] = mapped_column(String)
         addresses = relationship("Address", back_populates="user")
 
     class Address(HasPrivate, Base):
         __tablename__ = "address"
 
-        id = Column(Integer, primary_key=True)
-        email = Column(String)
-        user_id = Column(Integer, ForeignKey("user.id"))
+        id: Mapped[int] = mapped_column(Integer, primary_key=True)
+        email: Mapped[str] = mapped_column(String)
+        user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"))
 
         user = relationship("User", back_populates="addresses")
 
@@ -187,6 +196,7 @@ if __name__ == "__main__":
     # load an Address that is public, but its parent User is private
     # (2.0 style query)
     a1 = sess.execute(select(Address).filter_by(email="u4a2")).scalar()
+    assert a1 is not None
 
     # assuming the User isn't already in the Session, it returns None
     assert a1.user is None
@@ -194,9 +204,9 @@ if __name__ == "__main__":
     # however, if that user is present in the session, then a many-to-one
     # does a simple get() and it will be present
     sess.expire(a1, ["user"])
-    u1 = sess.execute(
+    user1 = sess.execute(
         select(User)
         .filter_by(name="u4")
         .execution_options(include_private=True)
     ).scalar()
-    assert a1.user is u1
+    assert a1.user is user1

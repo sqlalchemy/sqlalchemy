@@ -19,7 +19,6 @@ or "table_per_association" instead of this approach.
 """
 
 from sqlalchemy import and_
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy import Integer
@@ -28,6 +27,8 @@ from sqlalchemy.ext.declarative import as_declarative
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import foreign
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import remote
 from sqlalchemy.orm import Session
@@ -44,7 +45,7 @@ class Base:
     def __tablename__(cls):
         return cls.__name__.lower()
 
-    id = Column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
 
 class Address(Base):
@@ -55,14 +56,14 @@ class Address(Base):
 
     """
 
-    street = Column(String)
-    city = Column(String)
-    zip = Column(String)
+    street: Mapped[str] = mapped_column(String)
+    city: Mapped[str] = mapped_column(String)
+    zip: Mapped[str] = mapped_column(String)
 
-    discriminator = Column(String)
+    discriminator: Mapped[str] = mapped_column(String)
     """Refers to the type of parent."""
 
-    parent_id = Column(Integer)
+    parent_id: Mapped[int] = mapped_column(Integer)
     """Refers to the primary key of the parent.
 
     This could refer to any table.
@@ -76,7 +77,7 @@ class Address(Base):
         """
         return getattr(self, "parent_%s" % self.discriminator)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s(street=%r, city=%r, zip=%r)" % (
             self.__class__.__name__,
             self.street,
@@ -114,11 +115,11 @@ def setup_listener(mapper, class_):
 
 
 class Customer(HasAddresses, Base):
-    name = Column(String)
+    name: Mapped[str] = mapped_column(String)
 
 
 class Supplier(HasAddresses, Base):
-    company_name = Column(String)
+    company_name: Mapped[str] = mapped_column(String)
 
 
 engine = create_engine("sqlite://", echo=True)

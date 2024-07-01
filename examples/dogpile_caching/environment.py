@@ -6,17 +6,18 @@ bootstrap fixture data if necessary.
 from hashlib import md5
 import os
 
+from dogpile.cache.region import CacheRegion
 from dogpile.cache.region import make_region
 
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from . import caching_query
 
 
 # dogpile cache regions.  A home base for cache configurations.
-regions = {}
+regions: dict[str, CacheRegion] = {}
 
 # scoped_session.
 Session = scoped_session(sessionmaker())
@@ -30,11 +31,15 @@ Base = declarative_base()
 root = "./dogpile_data/"
 
 if not os.path.exists(root):
-    input(
-        "Will create datafiles in %r.\n"
-        "To reset the cache + database, delete this directory.\n"
-        "Press enter to continue.\n" % root
-    )
+    # display a prompt for normal users
+    # bypass this for our test suite
+    AUDIT_MODE: bool = bool(int(os.getenv("SQLA_AUDIT_MODE", "1")))
+    if not AUDIT_MODE:
+        input(
+            "Will create datafiles in %r.\n"
+            "To reset the cache + database, delete this directory.\n"
+            "Press enter to continue.\n" % root
+        )
     os.makedirs(root)
 
 dbfile = os.path.join(root, "dogpile_demo.db")
@@ -42,7 +47,7 @@ engine = create_engine("sqlite:///%s" % dbfile, echo=True)
 Session.configure(bind=engine)
 
 
-def md5_key_mangler(key):
+def md5_key_mangler(key: str) -> str:
     """Receive cache keys as long concatenated strings;
     distill them into an md5 hash.
 
@@ -72,10 +77,10 @@ regions["default"] = make_region(
 # regions['default'].invalidate()
 
 
-installed = False
+installed: bool = False
 
 
-def bootstrap():
+def bootstrap() -> None:
     global installed
     from . import fixture_data
 

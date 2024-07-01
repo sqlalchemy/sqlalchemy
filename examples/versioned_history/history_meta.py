@@ -1,6 +1,9 @@
 """Versioned mixin class and other utilities."""
 
+from __future__ import annotations
+
 import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Column
 from sqlalchemy import DateTime
@@ -15,19 +18,27 @@ from sqlalchemy.orm import object_mapper
 from sqlalchemy.orm.exc import UnmappedColumnError
 from sqlalchemy.orm.relationships import RelationshipProperty
 
+if TYPE_CHECKING:
+    from typing import Any  # used in place of `Base`
+    from typing import Iterable
+    from sqlalchemy import Table
+    from sqlalchemy.orm import Session
+    from sqlalchemy.orm.mapper import Mapper
+    from sqlalchemy.orm.unitofwork import UOWTransaction
 
-def col_references_table(col, table):
+
+def col_references_table(col: Column, table: Table) -> bool:
     for fk in col.foreign_keys:
         if fk.references(table):
             return True
     return False
 
 
-def _is_versioning_col(col):
+def _is_versioning_col(col: Column) -> bool:
     return "version_meta" in col.info
 
 
-def _history_mapper(local_mapper):
+def _history_mapper(local_mapper: Mapper) -> None:
     cls = local_mapper.class_
 
     if cls.__dict__.get("_history_mapper_configured", False):
@@ -167,6 +178,8 @@ def _history_mapper(local_mapper):
 
     super_mapper = local_mapper.inherits
 
+    bases: tuple[type, ...]
+
     if super_history_mapper:
         bases = (super_history_mapper.class_,)
 
@@ -212,19 +225,19 @@ class Versioned:
         else:
 
             @event.listens_for(cls, "after_mapper_constructed")
-            def _mapper_constructed(mapper, class_):
+            def _mapper_constructed(mapper: Mapper, class_) -> None:
                 _history_mapper(mapper)
 
         super().__init_subclass__()
 
 
-def versioned_objects(iter_):
+def versioned_objects(iter_: Iterable) -> Any:
     for obj in iter_:
         if hasattr(obj, "__history_mapper__"):
             yield obj
 
 
-def create_version(obj, session, deleted=False):
+def create_version(obj: Any, session: Session, deleted: bool = False) -> None:
     obj_mapper = object_mapper(obj)
     history_mapper = obj.__history_mapper__
     history_cls = history_mapper.class_
@@ -306,9 +319,11 @@ def create_version(obj, session, deleted=False):
     obj.version += 1
 
 
-def versioned_session(session):
+def versioned_session(session: Session) -> None:
     @event.listens_for(session, "before_flush")
-    def before_flush(session, flush_context, instances):
+    def before_flush(
+        session: Session, flush_context: UOWTransaction, instances: list[Any]
+    ) -> None:
         for obj in versioned_objects(session.dirty):
             create_version(obj, session)
         for obj in versioned_objects(session.deleted):

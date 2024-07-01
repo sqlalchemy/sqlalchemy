@@ -27,27 +27,42 @@ system can be made to store multiple version streams distinguished by
 those additional values.
 
 """
+from __future__ import annotations
 
-from sqlalchemy import Column
+from typing import TYPE_CHECKING
+
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import make_transient
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import validates
 from sqlalchemy.orm.collections import attribute_keyed_dict
 
+if TYPE_CHECKING:
+    from typing import Optional
+    from typing import Sequence
+    from typing import Union
+    from sqlalchemy.orm._typing import _O
+    from sqlalchemy.orm.unitofwork import UOWTransaction
+
 
 @event.listens_for(Session, "before_flush")
-def before_flush(session, flush_context, instances):
+def before_flush(
+    session: Session,
+    flush_context: UOWTransaction,
+    instances: Optional[Sequence[_O]],
+) -> None:
     """Apply the new_version() method of objects which are
     marked as dirty during a flush.
 
@@ -77,7 +92,7 @@ class ConfigData(Base):
 
     __tablename__ = "config"
 
-    id = Column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
     """Primary key column of this ConfigData."""
 
     elements = relationship(
@@ -118,7 +133,7 @@ class ConfigData(Base):
             element.config_value.originating_config = self
         return element
 
-    def new_version(self, session):
+    def new_version(self, session: Session) -> None:
         # convert to an INSERT
         make_transient(self)
         self.id = None
@@ -155,33 +170,37 @@ class ConfigValueAssociation(Base):
 
     __tablename__ = "config_value_association"
 
-    config_id = Column(ForeignKey("config.id"), primary_key=True)
+    config_id: Mapped[int] = mapped_column(
+        ForeignKey("config.id"), primary_key=True
+    )
     """Reference the primary key of the ConfigData object."""
 
-    config_value_id = Column(ForeignKey("config_value.id"), primary_key=True)
+    config_value_id: Mapped[int] = mapped_column(
+        ForeignKey("config_value.id"), primary_key=True
+    )
     """Reference the primary key of the ConfigValue object."""
 
     config_value = relationship("ConfigValue", lazy="joined", innerjoin=True)
     """Reference the related ConfigValue object."""
 
-    def __init__(self, config_value):
+    def __init__(self, config_value: ConfigValue):
         self.config_value = config_value
 
-    def new_version(self, session):
+    def new_version(self, session: Session) -> None:
         """Expire all pending state, as ConfigValueAssociation is immutable."""
 
         session.expire(self)
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.config_value.name
 
     @property
-    def value(self):
+    def value(self) -> Union[int, str]:
         return self.config_value.value
 
     @value.setter
-    def value(self, value):
+    def value(self, value: Union[int, str]) -> None:
         """Intercept set events.
 
         Create a new ConfigValueAssociation upon change,
@@ -205,15 +224,15 @@ class ConfigValue(Base):
 
     __tablename__ = "config_value"
 
-    id = Column(Integer, primary_key=True)
-    name = Column(String(50), nullable=False)
-    originating_config_id = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(50), nullable=False)
+    originating_config_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("config.id"), nullable=False
     )
-    int_value = Column(Integer)
-    string_value = Column(String(255))
+    int_value: Mapped[Optional[int]] = mapped_column(Integer)
+    string_value: Mapped[Optional[str]] = mapped_column(String(255))
 
-    def __init__(self, name, value):
+    def __init__(self, name: str, value: Union[int, str]):
         self.name = name
         self.value = value
 
@@ -225,11 +244,11 @@ class ConfigValue(Base):
 
     """
 
-    def new_version(self, session):
+    def new_version(self, session: Session):
         raise NotImplementedError("ConfigValue is immutable.")
 
     @property
-    def value(self):
+    def value(self) -> Optional[Union[int, str]]:
         for k in ("int_value", "string_value"):
             v = getattr(self, k)
             if v is not None:
@@ -238,7 +257,7 @@ class ConfigValue(Base):
             return None
 
     @value.setter
-    def value(self, value):
+    def value(self, value: Union[int, str]) -> None:
         if isinstance(value, int):
             self.int_value = value
             self.string_value = None
@@ -279,6 +298,7 @@ if __name__ == "__main__":
     }
 
     old_config = sess.query(ConfigData).get(version_one)
+    assert old_config is not None
     assert old_config.data == {
         "user_name": "twitter",
         "hash_id": "4fedffca37eaf",

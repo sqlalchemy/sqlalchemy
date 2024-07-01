@@ -7,7 +7,6 @@ record by primary key
 import random
 
 from sqlalchemy import bindparam
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import Identity
 from sqlalchemy import Integer
@@ -17,6 +16,8 @@ from sqlalchemy.ext import baked
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.future import select as future_select
 from sqlalchemy.orm import deferred
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import lambdas
 from . import Profiler
@@ -30,21 +31,21 @@ ids = range(1, 11000)
 
 class Customer(Base):
     __tablename__ = "customer"
-    id = Column(Integer, Identity(), primary_key=True)
-    name = Column(String(255))
-    description = Column(String(255))
-    q = Column(Integer)
-    p = Column(Integer)
-    x = deferred(Column(Integer))
-    y = deferred(Column(Integer))
-    z = deferred(Column(Integer))
+    id: Mapped[int] = mapped_column(Integer, Identity(), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(String(255))
+    q: Mapped[int] = mapped_column(Integer)
+    p: Mapped[int] = mapped_column(Integer)
+    x: Mapped[int] = deferred(mapped_column(Integer))
+    y: Mapped[int] = deferred(mapped_column(Integer))
+    z: Mapped[int] = deferred(mapped_column(Integer))
 
 
 Profiler.init("short_selects", num=10000)
 
 
 @Profiler.setup
-def setup_database(dburl, echo, num):
+def setup_database(dburl: str, echo: bool, num: int):
     global engine
     engine = create_engine(dburl, echo=echo)
     Base.metadata.drop_all(engine)
@@ -68,7 +69,7 @@ def setup_database(dburl, echo, num):
 
 
 @Profiler.profile
-def test_orm_query_classic_style(n):
+def test_orm_query_classic_style(n: int) -> None:
     """classic ORM query of the full entity."""
     session = Session(bind=engine)
     for id_ in random.sample(ids, n):
@@ -76,7 +77,7 @@ def test_orm_query_classic_style(n):
 
 
 @Profiler.profile
-def test_orm_query_new_style(n):
+def test_orm_query_new_style(n: int) -> None:
     """new style ORM select() of the full entity."""
 
     session = Session(bind=engine)
@@ -86,7 +87,7 @@ def test_orm_query_new_style(n):
 
 
 @Profiler.profile
-def test_orm_query_new_style_using_embedded_lambdas(n):
+def test_orm_query_new_style_using_embedded_lambdas(n: int) -> None:
     """new style ORM select() of the full entity w/ embedded lambdas."""
     session = Session(bind=engine)
     for id_ in random.sample(ids, n):
@@ -97,7 +98,7 @@ def test_orm_query_new_style_using_embedded_lambdas(n):
 
 
 @Profiler.profile
-def test_orm_query_new_style_using_external_lambdas(n):
+def test_orm_query_new_style_using_external_lambdas(n: int) -> None:
     """new style ORM select() of the full entity w/ external lambdas."""
 
     session = Session(bind=engine)
@@ -108,7 +109,7 @@ def test_orm_query_new_style_using_external_lambdas(n):
 
 
 @Profiler.profile
-def test_orm_query_classic_style_cols_only(n):
+def test_orm_query_classic_style_cols_only(n: int) -> None:
     """classic ORM query against columns"""
     session = Session(bind=engine)
     for id_ in random.sample(ids, n):
@@ -118,7 +119,7 @@ def test_orm_query_classic_style_cols_only(n):
 
 
 @Profiler.profile
-def test_orm_query_new_style_ext_lambdas_cols_only(n):
+def test_orm_query_new_style_ext_lambdas_cols_only(n: int) -> None:
     """new style ORM query w/ external lambdas against columns."""
     s = Session(bind=engine)
     for id_ in random.sample(ids, n):
@@ -131,7 +132,7 @@ def test_orm_query_new_style_ext_lambdas_cols_only(n):
 
 
 @Profiler.profile
-def test_baked_query(n):
+def test_baked_query(n: int) -> None:
     """test a baked query of the full entity."""
     bakery = baked.bakery()
     s = Session(bind=engine)
@@ -142,7 +143,7 @@ def test_baked_query(n):
 
 
 @Profiler.profile
-def test_baked_query_cols_only(n):
+def test_baked_query_cols_only(n: int) -> None:
     """test a baked query of only the entity columns."""
     bakery = baked.bakery()
     s = Session(bind=engine)
@@ -155,7 +156,7 @@ def test_baked_query_cols_only(n):
 
 
 @Profiler.profile
-def test_core_new_stmt_each_time(n):
+def test_core_new_stmt_each_time(n: int) -> None:
     """test core, creating a new statement each time."""
 
     with engine.connect() as conn:
@@ -166,7 +167,7 @@ def test_core_new_stmt_each_time(n):
 
 
 @Profiler.profile
-def test_core_new_stmt_each_time_compiled_cache(n):
+def test_core_new_stmt_each_time_compiled_cache(n: int) -> None:
     """test core, creating a new statement each time, but using the cache."""
 
     compiled_cache = {}
@@ -180,7 +181,7 @@ def test_core_new_stmt_each_time_compiled_cache(n):
 
 
 @Profiler.profile
-def test_core_reuse_stmt(n):
+def test_core_reuse_stmt(n: int) -> None:
     """test core, reusing the same statement (but recompiling each time)."""
 
     stmt = select(Customer.__table__).where(Customer.id == bindparam("id"))
@@ -191,7 +192,7 @@ def test_core_reuse_stmt(n):
 
 
 @Profiler.profile
-def test_core_reuse_stmt_compiled_cache(n):
+def test_core_reuse_stmt_compiled_cache(n: int) -> None:
     """test core, reusing the same statement + compiled cache."""
 
     stmt = select(Customer.__table__).where(Customer.id == bindparam("id"))

@@ -15,7 +15,7 @@ from .model import Person
 from .model import PostalCode
 
 
-def install():
+def install() -> None:
     Base.metadata.create_all(Session().bind)
 
     data = [
@@ -34,7 +34,7 @@ def install():
         ),
     ]
 
-    countries = {}
+    countries: dict[str, Country] = {}
     all_post_codes = []
     for city, country, postcodes in data:
         try:
