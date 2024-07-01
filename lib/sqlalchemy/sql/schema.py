@@ -126,6 +126,10 @@ _ServerDefaultArgument = Union[
     "FetchedValue", str, TextClause, ColumnElement[Any]
 ]
 
+_ServerOnUpdateArgument = Union[
+    "FetchedValue", str, TextClause, ColumnElement[Any]
+]
+
 
 class SchemaConst(Enum):
     RETAIN_SCHEMA = 1
@@ -1530,7 +1534,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         onupdate: Optional[Any] = None,
         primary_key: bool = False,
         server_default: Optional[_ServerDefaultArgument] = None,
-        server_onupdate: Optional[FetchedValue] = None,
+        server_onupdate: Optional[_ServerOnUpdateArgument] = None,
         quote: Optional[bool] = None,
         system: bool = False,
         comment: Optional[str] = None,
