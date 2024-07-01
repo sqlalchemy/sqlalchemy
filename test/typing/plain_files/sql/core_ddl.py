@@ -138,10 +138,18 @@ Column("name", Integer, server_default=text("now()"), nullable=False)
 Column(Integer, server_default=literal_column("42", Integer), nullable=False)
 
 # server_onupdate
-Column("name", server_onupdate=FetchedValue(), nullable=False)
 Column(server_onupdate=FetchedValue(), nullable=False)
+Column(server_onupdate="now()", nullable=False)
+Column("name", server_onupdate=FetchedValue(), nullable=False)
 Column("name", Integer, server_onupdate=FetchedValue(), nullable=False)
+Column("name", Integer, server_onupdate=text("now()"), nullable=False)
+Column(Boolean, nullable=False, server_default=true())
 Column(Integer, server_onupdate=FetchedValue(), nullable=False)
+Column(DateTime, server_onupdate="now()")
+Column(DateTime, server_onupdate=text("now()"))
+Column(DateTime, server_onupdate=FetchedValue())
+Column(Boolean, server_onupdate=literal_column("false", Boolean))
+Column(Integer, server_onupdate=literal_column("42", Integer), nullable=False)
 
 # TypeEngine.with_variant should accept both a TypeEngine instance and the Concrete Type
 Integer().with_variant(Integer, "mysql")
