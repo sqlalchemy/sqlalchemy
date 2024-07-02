@@ -2036,8 +2036,16 @@ class OracleDialect(default.DefaultDialect):
     ):
         query = select(
             dictionary.all_tables.c.table_name,
-            dictionary.all_tables.c.compression,
-            dictionary.all_tables.c.compress_for,
+            (
+                dictionary.all_tables.c.compression
+                if self._supports_table_compression
+                else sql.null().label("compression")
+            ),
+            (
+                dictionary.all_tables.c.compress_for
+                if self._supports_table_compress_for
+                else sql.null().label("compress_for")
+            ),
         ).where(dictionary.all_tables.c.owner == owner)
         if has_filter_names:
             query = query.where(
