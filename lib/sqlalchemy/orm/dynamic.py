@@ -344,10 +344,12 @@ class AppenderMixin(object):
 
             return result.IteratorResult(
                 result.SimpleResultMetaData([self.attr.class_.__name__]),
-                self.attr._get_collection_history(
-                    attributes.instance_state(self.instance),
-                    attributes.PASSIVE_NO_INITIALIZE,
-                ).added_items,
+                iter(
+                    self.attr._get_collection_history(
+                        attributes.instance_state(self.instance),
+                        attributes.PASSIVE_NO_INITIALIZE,
+                    ).added_items
+                ),
                 _source_supports_scalars=True,
             ).scalars()
         else:

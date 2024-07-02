@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 11562
+
+    Fixed regression going back to 1.4 where accessing a collection using the
+    "dynamic" strategy on a transient object and attempting to query would
+    raise an internal error rather than the expected :class:`.NoResultFound`
+    that occurred in 1.3.
