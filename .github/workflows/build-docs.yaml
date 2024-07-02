@@ -1,0 +1,64 @@
+name: Build docs
+
+on:
+  workflow_dispatch:
+  # run on push in main or rel_* branches excluding changes are only on example folders
+  push:
+    branches:
+      - main
+      - "rel_*"
+      # branches used to test the workflow
+      - "workflow_test_*"
+      - "docs_build_*"
+
+permissions:
+  contents: read
+
+jobs:
+  run-test:
+    name: build-docs
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --requirement doc/build/requirements.txt
+          pip install -U "sphinx>=6.2,<6.3"
+          pip list
+
+      - name: Build site docs
+        run: |
+          cd doc/build
+          READTHEDOCS=True make -e BUILDDIR=site_output html
+
+      - name: Build site zip docs
+        run: |
+          cd doc/build
+          make -e BUILDDIR=zip_output html
+
+      - name: Create site docs artifact
+        run: |
+          cd doc/build/site_output/html
+          tar czf ${GITHUB_WORKSPACE}/sqlalchemy_site_docs.tgz *
+
+      - name: Create site zipfile artifact
+        run: |
+          cd doc/build/zip_output/
+          mv html sqlalchemy
+          zip -r ${GITHUB_WORKSPACE}/sqlalchemy_zip_docs.zip -r sqlalchemy
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: docs-archives
+          path: sqlalchemy_*_docs.*
+          retention-days: 15
