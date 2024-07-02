@@ -2054,12 +2054,12 @@ class OracleDialect(default.DefaultDialect):
             (
                 dictionary.all_tables.c.compression
                 if self._supports_table_compression
-                else sql.literal_column("NULL").label("compression")
+                else sql.null().label("compression")
             ),
             (
                 dictionary.all_tables.c.compress_for
                 if self._supports_table_compress_for
-                else sql.literal_column("NULL").label("compress_for")
+                else sql.null().label("compress_for")
             ),
         ).where(dictionary.all_tables.c.owner == owner)
         if has_filter_names:
