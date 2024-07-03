@@ -2301,6 +2301,16 @@ def aliased(
      supported by all modern databases with regards to right-nested joins
      and generally produces more efficient queries.
 
+     When :paramref:`_orm.aliased.flat` is combined with
+     :paramref:`_orm.aliased.name`, the resulting joins will alias individual
+     tables using a naming scheme similar to ``<prefix>_<tablename>``.  This
+     naming scheme is for visibility / debugging purposes only and the
+     specific scheme is subject to change without notice.
+
+     .. versionadded:: 2.0.32 added support for combining
+        :paramref:`_orm.aliased.name` with :paramref:`_orm.aliased.flat`.
+        Previously, this would raise ``NotImplementedError``.
+
     :param adapt_on_names: if True, more liberal "matching" will be used when
      mapping the mapped columns of the ORM entity to those of the
      given selectable - a name-based match will be performed if the
