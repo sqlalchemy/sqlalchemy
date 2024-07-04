@@ -58,6 +58,7 @@ from ..sql import compiler
 from ..sql import dml
 from ..sql import expression
 from ..sql import type_api
+from ..sql import util as sql_util
 from ..sql._typing import is_tuple_type
 from ..sql.base import _NoArg
 from ..sql.compiler import DDLCompiler
@@ -762,7 +763,13 @@ class DefaultDialect(Dialect):
         connection.execute(expression.ReleaseSavepointClause(name))
 
     def _deliver_insertmanyvalues_batches(
-        self, cursor, statement, parameters, generic_setinputsizes, context
+        self,
+        connection,
+        cursor,
+        statement,
+        parameters,
+        generic_setinputsizes,
+        context,
     ):
         context = cast(DefaultExecutionContext, context)
         compiled = cast(SQLCompiler, context.compiled)
@@ -813,7 +820,17 @@ class DefaultDialect(Dialect):
 
             if is_returning:
 
-                rows = context.fetchall_for_returning(cursor)
+                try:
+                    rows = context.fetchall_for_returning(cursor)
+                except BaseException as be:
+                    connection._handle_dbapi_exception(
+                        be,
+                        sql_util._long_statement(imv_batch.replaced_statement),
+                        imv_batch.replaced_parameters,
+                        None,
+                        context,
+                        is_sub_exec=True,
+                    )
 
                 # I would have thought "is_returning: Final[bool]"
                 # would have assured this but pylance thinks not
