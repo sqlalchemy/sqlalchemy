@@ -126,9 +126,7 @@ _ServerDefaultArgument = Union[
     "FetchedValue", str, TextClause, ColumnElement[Any]
 ]
 
-_ServerOnUpdateArgument = Union[
-    "FetchedValue", str, TextClause, ColumnElement[Any]
-]
+_ServerOnUpdateArgument = _ServerDefaultArgument
 
 
 class SchemaConst(Enum):
