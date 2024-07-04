@@ -771,6 +771,27 @@ class InsertManyValuesTest(fixtures.RemovesEvents, fixtures.TablesTest):
             Column("x_value", String(50)),
             Column("y_value", String(50)),
         )
+        Table(
+            "uniq_cons",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", String(50), unique=True),
+        )
+
+    @testing.variation("use_returning", [True, False])
+    def test_returning_integrity_error(self, connection, use_returning):
+        """test for #11532"""
+
+        stmt = self.tables.uniq_cons.insert()
+        if use_returning:
+            stmt = stmt.returning(self.tables.uniq_cons.c.id)
+
+        # pymssql thought it would be funny to use OperationalError for
+        # a unique key violation.
+        with expect_raises((exc.IntegrityError, exc.OperationalError)):
+            connection.execute(
+                stmt, [{"data": "the data"}, {"data": "the data"}]
+            )
 
     def test_insert_unicode_keys(self, connection):
         table = self.tables["Unitéble2"]

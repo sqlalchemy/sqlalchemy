@@ -2147,6 +2147,7 @@ class Dialect(EventTarget):
 
     def _deliver_insertmanyvalues_batches(
         self,
+        connection: Connection,
         cursor: DBAPICursor,
         statement: str,
         parameters: _DBAPIMultiExecuteParams,
