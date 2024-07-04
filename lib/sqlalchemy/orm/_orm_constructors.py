@@ -70,7 +70,7 @@ if TYPE_CHECKING:
     from ..sql._typing import _TypeEngineArgument
     from ..sql.elements import ColumnElement
     from ..sql.schema import _ServerDefaultArgument
-    from ..sql.schema import FetchedValue
+    from ..sql.schema import _ServerOnUpdateArgument
     from ..sql.selectable import Alias
     from ..sql.selectable import Subquery
 
@@ -127,7 +127,7 @@ def mapped_column(
     onupdate: Optional[Any] = None,
     insert_default: Optional[Any] = _NoArg.NO_ARG,
     server_default: Optional[_ServerDefaultArgument] = None,
-    server_onupdate: Optional[FetchedValue] = None,
+    server_onupdate: Optional[_ServerOnUpdateArgument] = None,
     active_history: bool = False,
     quote: Optional[bool] = None,
     system: bool = False,
