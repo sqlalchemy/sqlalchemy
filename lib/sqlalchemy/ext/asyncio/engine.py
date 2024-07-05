@@ -421,6 +421,7 @@ class AsyncConnection(
         insertmanyvalues_page_size: int = ...,
         schema_translate_map: Optional[SchemaTranslateMapType] = ...,
         preserve_rowcount: bool = False,
+        driver_column_names: bool = False,
         **opt: Any,
     ) -> AsyncConnection: ...
 

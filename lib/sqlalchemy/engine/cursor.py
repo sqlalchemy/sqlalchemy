@@ -187,7 +187,7 @@ class CursorResultMetaData(ResultMetaData):
         translated_indexes: Optional[List[int]],
         safe_for_cache: bool,
         keymap_by_result_column_idx: Any,
-    ) -> CursorResultMetaData:
+    ) -> Self:
         new_obj = self.__class__.__new__(self.__class__)
         new_obj._unpickled = unpickled
         new_obj._processors = processors
@@ -200,7 +200,7 @@ class CursorResultMetaData(ResultMetaData):
         new_obj._key_to_index = self._make_key_to_index(keymap, MD_INDEX)
         return new_obj
 
-    def _remove_processors(self) -> CursorResultMetaData:
+    def _remove_processors(self) -> Self:
         assert not self._tuplefilter
         return self._make_new_metadata(
             unpickled=self._unpickled,
@@ -216,9 +216,7 @@ class CursorResultMetaData(ResultMetaData):
             keymap_by_result_column_idx=self._keymap_by_result_column_idx,
         )
 
-    def _splice_horizontally(
-        self, other: CursorResultMetaData
-    ) -> CursorResultMetaData:
+    def _splice_horizontally(self, other: CursorResultMetaData) -> Self:
         assert not self._tuplefilter
 
         keymap = dict(self._keymap)
@@ -252,7 +250,7 @@ class CursorResultMetaData(ResultMetaData):
             },
         )
 
-    def _reduce(self, keys: Sequence[_KeyIndexType]) -> ResultMetaData:
+    def _reduce(self, keys: Sequence[_KeyIndexType]) -> Self:
         recs = list(self._metadata_for_keys(keys))
 
         indexes = [rec[MD_INDEX] for rec in recs]
@@ -284,7 +282,7 @@ class CursorResultMetaData(ResultMetaData):
             keymap_by_result_column_idx=self._keymap_by_result_column_idx,
         )
 
-    def _adapt_to_context(self, context: ExecutionContext) -> ResultMetaData:
+    def _adapt_to_context(self, context: ExecutionContext) -> Self:
         """When using a cached Compiled construct that has a _result_map,
         for a new statement that used the cached Compiled, we need to ensure
         the keymap has the Column objects from our new statement as keys.
@@ -350,6 +348,8 @@ class CursorResultMetaData(ResultMetaData):
         self,
         parent: CursorResult[Unpack[TupleAny]],
         cursor_description: _DBAPICursorDescription,
+        *,
+        driver_column_names: bool = False,
     ):
         context = parent.context
         self._tuplefilter = None
@@ -383,6 +383,7 @@ class CursorResultMetaData(ResultMetaData):
             textual_ordered,
             ad_hoc_textual,
             loose_column_name_matching,
+            driver_column_names,
         )
 
         # processors in key order which are used when building up
@@ -474,15 +475,20 @@ class CursorResultMetaData(ResultMetaData):
                 for metadata_entry in raw
             }
 
-        # update keymap with "translated" names.  In SQLAlchemy this is a
-        # sqlite only thing, and in fact impacting only extremely old SQLite
-        # versions unlikely to be present in modern Python versions.
-        # however, the pyhive third party dialect is
-        # also using this hook, which means others still might use it as well.
-        # I dislike having this awkward hook here but as long as we need
-        # to use names in cursor.description in some cases we need to have
-        # some hook to accomplish this.
-        if not num_ctx_cols and context._translate_colname:
+        # update keymap with "translated" names.
+        # the "translated" name thing has a long history:
+        # 1. originally, it was used to fix an issue in very old SQLite
+        #    versions prior to 3.10.0.   This code is still there in the
+        #    sqlite dialect.
+        # 2. Next, the pyhive third party dialect started using this hook
+        #    for some driver related issue on their end.
+        # 3. Most recently, the "driver_column_names" execution option has
+        #    taken advantage of this hook to get raw DBAPI col names in the
+        #    result keys without disrupting the usual merge process.
+
+        if driver_column_names or (
+            not num_ctx_cols and context._translate_colname
+        ):
             self._keymap.update(
                 {
                     metadata_entry[MD_UNTRANSLATED]: self._keymap[
@@ -505,6 +511,7 @@ class CursorResultMetaData(ResultMetaData):
         textual_ordered,
         ad_hoc_textual,
         loose_column_name_matching,
+        driver_column_names,
     ):
         """Merge a cursor.description with compiled result column information.
 
@@ -566,6 +573,7 @@ class CursorResultMetaData(ResultMetaData):
             and cols_are_ordered
             and not textual_ordered
             and num_ctx_cols == len(cursor_description)
+            and not driver_column_names
         ):
             self._keys = [elem[0] for elem in result_columns]
             # pure positional 1-1 case; doesn't need to read
@@ -573,9 +581,11 @@ class CursorResultMetaData(ResultMetaData):
 
             # most common case for Core and ORM
 
-            # this metadata is safe to cache because we are guaranteed
+            # this metadata is safe to
+            # cache because we are guaranteed
             # to have the columns in the same order for new executions
             self._safe_for_cache = True
+
             return [
                 (
                     idx,
@@ -599,10 +609,13 @@ class CursorResultMetaData(ResultMetaData):
             if textual_ordered or (
                 ad_hoc_textual and len(cursor_description) == num_ctx_cols
             ):
-                self._safe_for_cache = True
+                self._safe_for_cache = not driver_column_names
                 # textual positional case
                 raw_iterator = self._merge_textual_cols_by_position(
-                    context, cursor_description, result_columns
+                    context,
+                    cursor_description,
+                    result_columns,
+                    driver_column_names,
                 )
             elif num_ctx_cols:
                 # compiled SQL with a mismatch of description cols
@@ -615,13 +628,14 @@ class CursorResultMetaData(ResultMetaData):
                     cursor_description,
                     result_columns,
                     loose_column_name_matching,
+                    driver_column_names,
                 )
             else:
                 # no compiled SQL, just a raw string, order of columns
                 # can change for "select *"
                 self._safe_for_cache = False
                 raw_iterator = self._merge_cols_by_none(
-                    context, cursor_description
+                    context, cursor_description, driver_column_names
                 )
 
             return [
@@ -647,39 +661,53 @@ class CursorResultMetaData(ResultMetaData):
                 ) in raw_iterator
             ]
 
-    def _colnames_from_description(self, context, cursor_description):
+    def _colnames_from_description(
+        self, context, cursor_description, driver_column_names
+    ):
         """Extract column names and data types from a cursor.description.
 
         Applies unicode decoding, column translation, "normalization",
         and case sensitivity rules to the names based on the dialect.
 
         """
-
         dialect = context.dialect
         translate_colname = context._translate_colname
         normalize_name = (
             dialect.normalize_name if dialect.requires_name_normalize else None
         )
-        untranslated = None
 
         self._keys = []
 
+        untranslated = None
+
         for idx, rec in enumerate(cursor_description):
-            colname = rec[0]
+            colname = unnormalized = rec[0]
             coltype = rec[1]
 
             if translate_colname:
+                # a None here for "untranslated" means "the dialect did not
+                # change the column name and the untranslated case can be
+                # ignored".  otherwise "untranslated" is expected to be the
+                # original, unchanged colname (e.g. is == to "unnormalized")
                 colname, untranslated = translate_colname(colname)
+
+                assert untranslated is None or untranslated == unnormalized
 
             if normalize_name:
                 colname = normalize_name(colname)
 
-            self._keys.append(colname)
+            if driver_column_names:
+                self._keys.append(unnormalized)
 
-            yield idx, colname, untranslated, coltype
+                yield idx, colname, unnormalized, coltype
+
+            else:
+                self._keys.append(colname)
+
+                yield idx, colname, untranslated, coltype
 
     def _merge_textual_cols_by_position(
-        self, context, cursor_description, result_columns
+        self, context, cursor_description, result_columns, driver_column_names
     ):
         num_ctx_cols = len(result_columns)
 
@@ -696,7 +724,9 @@ class CursorResultMetaData(ResultMetaData):
             colname,
             untranslated,
             coltype,
-        ) in self._colnames_from_description(context, cursor_description):
+        ) in self._colnames_from_description(
+            context, cursor_description, driver_column_names
+        ):
             if idx < num_ctx_cols:
                 ctx_rec = result_columns[idx]
                 obj = ctx_rec[RM_OBJECTS]
@@ -720,6 +750,7 @@ class CursorResultMetaData(ResultMetaData):
         cursor_description,
         result_columns,
         loose_column_name_matching,
+        driver_column_names,
     ):
         match_map = self._create_description_match_map(
             result_columns, loose_column_name_matching
@@ -731,7 +762,9 @@ class CursorResultMetaData(ResultMetaData):
             colname,
             untranslated,
             coltype,
-        ) in self._colnames_from_description(context, cursor_description):
+        ) in self._colnames_from_description(
+            context, cursor_description, driver_column_names
+        ):
             try:
                 ctx_rec = match_map[colname]
             except KeyError:
@@ -771,6 +804,7 @@ class CursorResultMetaData(ResultMetaData):
         ] = {}
         for ridx, elem in enumerate(result_columns):
             key = elem[RM_RENDERED_NAME]
+
             if key in d:
                 # conflicting keyname - just add the column-linked objects
                 # to the existing record.  if there is a duplicate column
@@ -794,13 +828,17 @@ class CursorResultMetaData(ResultMetaData):
                     )
         return d
 
-    def _merge_cols_by_none(self, context, cursor_description):
+    def _merge_cols_by_none(
+        self, context, cursor_description, driver_column_names
+    ):
         for (
             idx,
             colname,
             untranslated,
             coltype,
-        ) in self._colnames_from_description(context, cursor_description):
+        ) in self._colnames_from_description(
+            context, cursor_description, driver_column_names
+        ):
             yield (
                 idx,
                 None,
@@ -1489,10 +1527,20 @@ class CursorResult(Result[Unpack[_Ts]]):
             self._metadata = self._no_result_metadata
 
     def _init_metadata(self, context, cursor_description):
+        driver_column_names = context.execution_options.get(
+            "driver_column_names", False
+        )
         if context.compiled:
             compiled = context.compiled
 
-            if compiled._cached_metadata:
+            metadata: CursorResultMetaData
+
+            if driver_column_names:
+                metadata = CursorResultMetaData(
+                    self, cursor_description, driver_column_names=True
+                )
+                assert not metadata._safe_for_cache
+            elif compiled._cached_metadata:
                 metadata = compiled._cached_metadata
             else:
                 metadata = CursorResultMetaData(self, cursor_description)
@@ -1527,7 +1575,9 @@ class CursorResult(Result[Unpack[_Ts]]):
 
         else:
             self._metadata = metadata = CursorResultMetaData(
-                self, cursor_description
+                self,
+                cursor_description,
+                driver_column_names=driver_column_names,
             )
         if self._echo:
             context.connection._log_debug(

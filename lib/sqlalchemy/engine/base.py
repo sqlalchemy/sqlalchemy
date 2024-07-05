@@ -252,6 +252,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         insertmanyvalues_page_size: int = ...,
         schema_translate_map: Optional[SchemaTranslateMapType] = ...,
         preserve_rowcount: bool = False,
+        driver_column_names: bool = False,
         **opt: Any,
     ) -> Connection: ...
 
@@ -514,6 +515,18 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
             :ref:`orm_queryguide_execution_options` - documentation on all
             ORM-specific execution options
+
+        :param driver_column_names: When True, the returned
+         :class:`_engine.CursorResult` will use the column names as written in
+         ``cursor.description`` to set up the keys for the result set,
+         including the names of columns for the :class:`_engine.Row` object as
+         well as the dictionary keys when using :attr:`_engine.Row._mapping`.
+         On backends that use "name normalization" such as Oracle to correct
+         for lower case names being converted to all uppercase, this behavior
+         is turned off and the raw UPPERCASE names in cursor.description will
+         be present.
+
+         .. versionadded:: 2.1
 
         """  # noqa
         if self._has_events or self.engine._has_events:
