@@ -755,6 +755,10 @@ class TypeEngine(Visitable, Generic[_T]):
 
         return self
 
+    def _with_collation(self, collation: str) -> Self:
+        """set up error handling for the collate expression"""
+        raise NotImplementedError("this datatype does not support collation")
+
     @util.ro_memoized_property
     def _type_affinity(self) -> Optional[Type[TypeEngine[_T]]]:
         """Return a rudimental 'affinity' value expressing the general class
@@ -1732,6 +1736,16 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
                 {},
             )
 
+    def _copy_with_check(self) -> Self:
+        tt = self.copy()
+        if not isinstance(tt, self.__class__):
+            raise AssertionError(
+                "Type object %s does not properly "
+                "implement the copy() method, it must "
+                "return an object of type %s" % (self, self.__class__)
+            )
+        return tt
+
     def _gen_dialect_impl(self, dialect: Dialect) -> TypeEngine[_T]:
         if dialect.name in self._variant_mapping:
             adapted = dialect.type_descriptor(
@@ -1746,14 +1760,15 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
         # to a copy of this TypeDecorator and return
         # that.
         typedesc = self.load_dialect_impl(dialect).dialect_impl(dialect)
-        tt = self.copy()
-        if not isinstance(tt, self.__class__):
-            raise AssertionError(
-                "Type object %s does not properly "
-                "implement the copy() method, it must "
-                "return an object of type %s" % (self, self.__class__)
-            )
+        tt = self._copy_with_check()
         tt.impl = tt.impl_instance = typedesc
+        return tt
+
+    def _with_collation(self, collation: str) -> Self:
+        tt = self._copy_with_check()
+        tt.impl = tt.impl_instance = self.impl_instance._with_collation(
+            collation
+        )
         return tt
 
     @util.ro_non_memoized_property
