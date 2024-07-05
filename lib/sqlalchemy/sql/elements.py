@@ -5140,15 +5140,25 @@ class CollationClause(ColumnElement[str]):
     ]
 
     @classmethod
+    @util.preload_module("sqlalchemy.sql.sqltypes")
     def _create_collation_expression(
         cls, expression: _ColumnExpressionArgument[str], collation: str
     ) -> BinaryExpression[str]:
+
+        sqltypes = util.preloaded.sql_sqltypes
+
         expr = coercions.expect(roles.ExpressionElementRole[str], expression)
+
+        if expr.type._type_affinity is sqltypes.String:
+            collate_type = expr.type._with_collation(collation)
+        else:
+            collate_type = expr.type
+
         return BinaryExpression(
             expr,
             CollationClause(collation),
             operators.collate,
-            type_=expr.type,
+            type_=collate_type,
         )
 
     def __init__(self, collation):
