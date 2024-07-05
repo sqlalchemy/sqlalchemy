@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, reflection, oracle
+    :tickets: 11557
+
+    Fixed table reflection on Oracle 10.2 and older where compression options
+    are not supported.
