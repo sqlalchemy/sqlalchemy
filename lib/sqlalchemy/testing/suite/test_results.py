@@ -228,7 +228,7 @@ class NameDenormalizeTest(fixtures.TablesTest):
                     },
                 )
             else:
-                if stmt_type.core_select:
+                if stmt_type.core_select or stmt_type.text_cols:
                     self._assert_row_mapping(
                         row,
                         {
@@ -252,11 +252,7 @@ class NameDenormalizeTest(fixtures.TablesTest):
                             "all_lowercase_quoted": 8,
                             "all_uppercase_quoted": 9,
                         },
-                        include_cols=(
-                            self.tables.denormalize_table.c
-                            if stmt_type.text_cols
-                            else None
-                        ),
+                        include_cols=None,
                     )
 
         else:

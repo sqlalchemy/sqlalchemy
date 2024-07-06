@@ -676,8 +676,6 @@ class CursorResultMetaData(ResultMetaData):
             dialect.normalize_name if dialect.requires_name_normalize else None
         )
 
-        self._keys = []
-
         untranslated = None
 
         for idx, rec in enumerate(cursor_description):
@@ -697,14 +695,10 @@ class CursorResultMetaData(ResultMetaData):
                 colname = normalize_name(colname)
 
             if driver_column_names:
-                self._keys.append(unnormalized)
-
-                yield idx, colname, unnormalized, coltype
+                yield idx, colname, unnormalized, unnormalized, coltype
 
             else:
-                self._keys.append(colname)
-
-                yield idx, colname, untranslated, coltype
+                yield idx, colname, unnormalized, untranslated, coltype
 
     def _merge_textual_cols_by_position(
         self, context, cursor_description, result_columns, driver_column_names
@@ -719,9 +713,13 @@ class CursorResultMetaData(ResultMetaData):
             )
         seen = set()
 
+        self._keys = []
+
+        uses_denormalize = context.dialect.requires_name_normalize
         for (
             idx,
             colname,
+            unnormalized,
             untranslated,
             coltype,
         ) in self._colnames_from_description(
@@ -738,11 +736,43 @@ class CursorResultMetaData(ResultMetaData):
                         "in textual SQL: %r" % obj[0]
                     )
                 seen.add(obj[0])
+
+                # special check for all uppercase unnormalized name;
+                # use the unnormalized name as the key.
+                # see #10788
+                # if these names don't match, then we still honor the
+                # cursor.description name as the key and not what the
+                # Column has, see
+                # test_resultset.py::PositionalTextTest::test_via_column
+                if (
+                    uses_denormalize
+                    and unnormalized == ctx_rec[RM_RENDERED_NAME]
+                ):
+                    result_name = unnormalized
+                else:
+                    result_name = colname
             else:
                 mapped_type = sqltypes.NULLTYPE
                 obj = None
                 ridx = None
-            yield idx, ridx, colname, mapped_type, coltype, obj, untranslated
+
+                result_name = colname
+
+            if driver_column_names:
+                assert untranslated is not None
+                self._keys.append(untranslated)
+            else:
+                self._keys.append(result_name)
+
+            yield (
+                idx,
+                ridx,
+                result_name,
+                mapped_type,
+                coltype,
+                obj,
+                untranslated,
+            )
 
     def _merge_cols_by_name(
         self,
@@ -757,9 +787,12 @@ class CursorResultMetaData(ResultMetaData):
         )
         mapped_type: TypeEngine[Any]
 
+        self._keys = []
+
         for (
             idx,
             colname,
+            unnormalized,
             untranslated,
             coltype,
         ) in self._colnames_from_description(
@@ -775,6 +808,12 @@ class CursorResultMetaData(ResultMetaData):
                 obj = ctx_rec[1]
                 mapped_type = ctx_rec[2]
                 result_columns_idx = ctx_rec[3]
+
+            if driver_column_names:
+                assert untranslated is not None
+                self._keys.append(untranslated)
+            else:
+                self._keys.append(colname)
             yield (
                 idx,
                 result_columns_idx,
@@ -831,14 +870,24 @@ class CursorResultMetaData(ResultMetaData):
     def _merge_cols_by_none(
         self, context, cursor_description, driver_column_names
     ):
+        self._keys = []
+
         for (
             idx,
             colname,
+            unnormalized,
             untranslated,
             coltype,
         ) in self._colnames_from_description(
             context, cursor_description, driver_column_names
         ):
+
+            if driver_column_names:
+                assert untranslated is not None
+                self._keys.append(untranslated)
+            else:
+                self._keys.append(colname)
+
             yield (
                 idx,
                 None,
