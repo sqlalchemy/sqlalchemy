@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 11576
+
+    Fixed issue where the :func:`_sql.collate` construct, which explicitly sets
+    a collation for a given expression, would maintain collation settings for
+    the underlying type object from the expression, causing SQL expressions to
+    have both collations stated at once when used in further expressions for
+    specific dialects that render explicit type casts, such as that of asyncpg.
+    The :func:`_sql.collate` construct now assigns its own type to explicitly
+    include the new collation, assuming it's a string type.

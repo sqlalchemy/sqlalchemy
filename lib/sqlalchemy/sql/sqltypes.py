@@ -218,6 +218,11 @@ class String(Concatenable, TypeEngine[str]):
         self.length = length
         self.collation = collation
 
+    def _with_collation(self, collation):
+        new_type = self.copy()
+        new_type.collation = collation
+        return new_type
+
     def _resolve_for_literal(self, value):
         # I was SO PROUD of my regex trick, but we dont need it.
         # re.search(r"[^\u0000-\u007F]", value)

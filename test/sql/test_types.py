@@ -19,6 +19,7 @@ from sqlalchemy import Boolean
 from sqlalchemy import cast
 from sqlalchemy import CHAR
 from sqlalchemy import CLOB
+from sqlalchemy import collate
 from sqlalchemy import DATE
 from sqlalchemy import Date
 from sqlalchemy import DATETIME
@@ -66,9 +67,11 @@ import sqlalchemy.dialects.mysql as mysql
 import sqlalchemy.dialects.oracle as oracle
 import sqlalchemy.dialects.postgresql as pg
 from sqlalchemy.engine import default
+from sqlalchemy.engine import interfaces
 from sqlalchemy.schema import AddConstraint
 from sqlalchemy.schema import CheckConstraint
 from sqlalchemy.sql import column
+from sqlalchemy.sql import compiler
 from sqlalchemy.sql import ddl
 from sqlalchemy.sql import elements
 from sqlalchemy.sql import null
@@ -3370,6 +3373,91 @@ class ExpressionTest(
                     "BIND_INfooBIND_OUT",
                 )
             ],
+        )
+
+    @testing.fixture
+    def renders_bind_cast(self):
+        class MyText(Text):
+            render_bind_cast = True
+
+        class MyCompiler(compiler.SQLCompiler):
+            def render_bind_cast(self, type_, dbapi_type, sqltext):
+                return f"""{sqltext}->BINDCAST->[{
+                    self.dialect.type_compiler_instance.process(
+                        dbapi_type, identifier_preparer=self.preparer
+                    )
+                }]"""
+
+        class MyDialect(default.DefaultDialect):
+            bind_typing = interfaces.BindTyping.RENDER_CASTS
+            colspecs = {Text: MyText}
+            statement_compiler = MyCompiler
+
+        return MyDialect()
+
+    @testing.combinations(
+        (lambda c1: c1.like("qpr"), "q LIKE :q_1->BINDCAST->[TEXT]"),
+        (
+            lambda c2: c2.like("qpr"),
+            'q LIKE :q_1->BINDCAST->[TEXT COLLATE "xyz"]',
+        ),
+        (
+            # new behavior, a type with no collation passed into collate()
+            # now has a new type with that collation, so we get the collate
+            # on the right side bind-cast. previous to #11576 we'd only
+            # get TEXT for the bindcast.
+            lambda c1: collate(c1, "abc").like("qpr"),
+            '(q COLLATE abc) LIKE :param_1->BINDCAST->[TEXT COLLATE "abc"]',
+        ),
+        (
+            lambda c2: collate(c2, "abc").like("qpr"),
+            '(q COLLATE abc) LIKE :param_1->BINDCAST->[TEXT COLLATE "abc"]',
+        ),
+        argnames="testcase,expected",
+    )
+    @testing.variation("use_type_decorator", [True, False])
+    def test_collate_type_interaction(
+        self, renders_bind_cast, testcase, expected, use_type_decorator
+    ):
+        """test #11576.
+
+        This involves dialects that use the render_bind_cast feature only,
+        currently asycnpg and psycopg.   However, the implementation of the
+        feature is mostly in Core, so a fixture dialect / compiler is used so
+        that the test is agnostic of those dialects.
+
+        """
+
+        if use_type_decorator:
+
+            class MyTextThing(TypeDecorator):
+                cache_ok = True
+                impl = Text
+
+            c1 = Column("q", MyTextThing())
+            c2 = Column("q", MyTextThing(collation="xyz"))
+        else:
+            c1 = Column("q", Text())
+            c2 = Column("q", Text(collation="xyz"))
+
+        expr = testing.resolve_lambda(testcase, c1=c1, c2=c2)
+        if use_type_decorator:
+            assert isinstance(expr.left.type, MyTextThing)
+        self.assert_compile(expr, expected, dialect=renders_bind_cast)
+
+        # original types still work, have not been modified
+        eq_(c1.type.collation, None)
+        eq_(c2.type.collation, "xyz")
+
+        self.assert_compile(
+            c1.like("qpr"),
+            "q LIKE :q_1->BINDCAST->[TEXT]",
+            dialect=renders_bind_cast,
+        )
+        self.assert_compile(
+            c2.like("qpr"),
+            'q LIKE :q_1->BINDCAST->[TEXT COLLATE "xyz"]',
+            dialect=renders_bind_cast,
         )
 
     def test_bind_adapt(self, connection):
