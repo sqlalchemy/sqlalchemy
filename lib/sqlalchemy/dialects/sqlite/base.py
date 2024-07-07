@@ -2231,6 +2231,14 @@ class SQLiteDialect(default.DefaultDialect):
                 tablesql = self._get_table_sql(
                     connection, table_name, schema, **kw
                 )
+                # remove create table
+                match = re.match(
+                    r"create table .*?\((.*)\)$",
+                    tablesql.strip(),
+                    re.DOTALL | re.IGNORECASE,
+                )
+                assert match, f"create table not found in {tablesql}"
+                tablesql = match.group(1).strip()
 
             columns.append(
                 self._get_column_info(
@@ -2285,7 +2293,10 @@ class SQLiteDialect(default.DefaultDialect):
         if generated:
             sqltext = ""
             if tablesql:
-                pattern = r"[^,]*\s+AS\s+\(([^,]*)\)\s*(?:virtual|stored)?"
+                pattern = (
+                    r"[^,]*\s+GENERATED\s+ALWAYS\s+AS"
+                    r"\s+\((.*)\)\s*(?:virtual|stored)?"
+                )
                 match = re.search(
                     re.escape(name) + pattern, tablesql, re.IGNORECASE
                 )

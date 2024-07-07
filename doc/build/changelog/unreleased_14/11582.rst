@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, reflection, sqlite
+    :tickets: 11582
+
+    Fixed reflection of computed column in SQLite to properly account
+    for complex expressions.
