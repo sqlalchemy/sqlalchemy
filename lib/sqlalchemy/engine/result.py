@@ -1383,7 +1383,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
 
         return self._manyrow_getter(self, size)
 
-    def all(self) -> Sequence[Row[Unpack[_Ts]]]:
+    def all(self) -> List[Row[Unpack[_Ts]]]:
         """Return all rows in a sequence.
 
         Closes the result set after invocation.   Subsequent invocations
@@ -1790,7 +1790,7 @@ class ScalarResult(FilterResult[_R]):
         """
         return self._manyrow_getter(self, size)
 
-    def all(self) -> Sequence[_R]:
+    def all(self) -> List[_R]:
         """Return all scalar values in a sequence.
 
         Equivalent to :meth:`_engine.Result.all` except that
@@ -2094,7 +2094,7 @@ class MappingResult(_WithKeys, FilterResult[RowMapping]):
 
         return self._manyrow_getter(self, size)
 
-    def all(self) -> Sequence[RowMapping]:
+    def all(self) -> List[RowMapping]:
         """Return all scalar values in a sequence.
 
         Equivalent to :meth:`_engine.Result.all` except that
