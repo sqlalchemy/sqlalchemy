@@ -198,9 +198,7 @@ def instances(
                     not ent.use_id_for_hash
                     and (ent._non_hashable_value or ent._null_column_type)
                 )
-                else id
-                if ent.use_id_for_hash
-                else None
+                else id if ent.use_id_for_hash else None
             )
         )
         for ent in context.compile_state._entities
@@ -303,12 +301,7 @@ def instances(
 
 
 @util.preload_module("sqlalchemy.orm.context")
-def merge_frozen_result(
-    session: Session,
-    statement: Union[Select, FromStatement],
-    frozen_result: FrozenResult,
-    load: bool = True,
-) -> Result:
+def merge_frozen_result(session, statement, frozen_result, load=True):
     """Merge a :class:`_engine.FrozenResult` back into a :class:`_orm.Session`,
     returning a new :class:`_engine.Result` object with :term:`persistent`
     objects.
