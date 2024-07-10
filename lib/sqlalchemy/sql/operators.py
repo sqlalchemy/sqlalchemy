@@ -2474,6 +2474,12 @@ def is_associative(op: OperatorType) -> bool:
     return op in _associative
 
 
+def is_order_by_modifier(op: Optional[OperatorType]) -> bool:
+    return op in _order_by_modifier
+
+
+_order_by_modifier = {desc_op, asc_op, nulls_first_op, nulls_last_op}
+
 _natural_self_precedent = _associative.union(
     [getitem, json_getitem_op, json_path_getitem_op]
 )

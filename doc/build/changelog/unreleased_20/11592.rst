@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 11592
+
+    Fixed bug where the :meth:`.Operators.nulls_first()` and
+    :meth:`.Operators.nulls_last()` modifiers would not be treated the same way
+    as :meth:`.Operators.desc()` and :meth:`.Operators.asc()` when determining
+    if an ORDER BY should be against a label name already in the statement. All
+    four modifiers are now treated the same within ORDER BY.
