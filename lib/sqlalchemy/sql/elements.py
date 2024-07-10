@@ -3699,7 +3699,7 @@ class UnaryExpression(ColumnElement[_T]):
 
     @property
     def _order_by_label_element(self) -> Optional[Label[Any]]:
-        if self.modifier in (operators.desc_op, operators.asc_op):
+        if operators.is_order_by_modifier(self.modifier):
             return self.element._order_by_label_element
         else:
             return None
