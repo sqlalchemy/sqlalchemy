@@ -908,7 +908,6 @@ Glossary
 
     isolation
     isolated
-    Isolation
     isolation level
         The isolation property of the :term:`ACID` model
         ensures that the concurrent execution
