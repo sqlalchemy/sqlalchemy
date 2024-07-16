@@ -800,7 +800,14 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         return "ROWID"
     
     def visit_VECTOR(self, type_, **kw):
-        return "VECTOR"
+        if type_.dim is None and type_.storage_format is None:
+            return "VECTOR"
+        elif type_.storage_format is None:
+            return "VECTOR(%s)" % (type_.dim)
+        elif type_.dim is None:
+            return "VECTOR(%s)" % (type_.storage_format)
+        else:
+            return "VECTOR(%s,%s)" % (type_.dim,type_.storage_format)
 
 
 class OracleCompiler(compiler.SQLCompiler):

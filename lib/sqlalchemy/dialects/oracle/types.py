@@ -11,7 +11,7 @@ import datetime as dt
 from typing import Optional
 from typing import Type
 from typing import TYPE_CHECKING
-from sqlalchemy.types import UserDefinedType
+import sqlalchemy.types as types
 
 from ... import exc
 from ...sql import sqltypes
@@ -287,31 +287,10 @@ class _OracleBoolean(sqltypes.Boolean):
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
     
+class VECTOR(types.TypeEngine):
+        
+        __visit_name__ = "VECTOR"
 
-class VECTOR(UserDefinedType):
-    cache_ok = True
-    __visit_name__ = "VECTOR"
-
-    def __init__(self, type=None ,dim=None):
-        super(UserDefinedType, self).__init__()
-        self.dim = dim
-        self.type = type
-
-    def get_col_spec(self, **kw):
-        if self.dim is None and self.type is None:
-            return 'VECTOR'
-        elif self.dim is None:
-            return f'VECTOR({self.type})'
-        elif self.type is None:
-            return f'VECTOR({self.dim})'
-        return f'VECTOR({self.dim, self.type})'
-
-    def bind_processor(self, dialect):
-        def process(value):
-            return value
-        return process
-
-    def result_processor(self, dialect, coltype):
-        def process(value):
-            return value
-        return process
+        def __init__(self, dim=None, storage_format=None):
+              self.dim = dim
+              self.storage_format = storage_format
