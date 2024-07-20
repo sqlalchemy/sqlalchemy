@@ -1448,6 +1448,9 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
 
         new_stmt = statement._clone()
 
+        if new_stmt.table._annotations["parententity"] is mapper:
+            new_stmt.table = mapper.local_table
+
         # note if the statement has _multi_values, these
         # are passed through to the new statement, which will then raise
         # InvalidRequestError because UPDATE doesn't support multi_values
@@ -1866,6 +1869,9 @@ class BulkORMDelete(BulkUDCompileState, DeleteDMLState):
         )
 
         new_stmt = statement._clone()
+
+        if new_stmt.table._annotations["parententity"] is mapper:
+            new_stmt.table = mapper.local_table
 
         new_crit = cls._adjust_for_extra_criteria(
             self.global_attributes, mapper
