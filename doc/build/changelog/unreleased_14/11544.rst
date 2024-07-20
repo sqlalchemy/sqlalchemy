@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 11544
+
+    Fixed caching issue where the
+    :paramref:`_sql.Select.with_for_update.key_share` element of
+    :meth:`_sql.Select.with_for_update` was not considered as part of the cache
+    key, leading to incorrect caching if different variations of this parameter
+    were used with an otherwise identical statement.
