@@ -781,7 +781,9 @@ class CompositeProperty(
             elif isinstance(self.prop.composite_class, type) and isinstance(
                 value, self.prop.composite_class
             ):
-                values = self.prop._composite_values_from_instance(value)
+                values = self.prop._composite_values_from_instance(
+                    value  # type: ignore[arg-type]
+                )
             else:
                 raise sa_exc.ArgumentError(
                     "Can't UPDATE composite attribute %s to %r"

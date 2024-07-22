@@ -1681,7 +1681,7 @@ class Bundle(
     c: ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]
     """An alias for :attr:`.Bundle.columns`."""
 
-    def _clone(self):
+    def _clone(self, **kw):
         cloned = self.__class__.__new__(self.__class__)
         cloned.__dict__.update(self.__dict__)
         return cloned

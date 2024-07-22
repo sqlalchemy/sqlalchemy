@@ -6489,8 +6489,10 @@ class StrSQLCompiler(SQLCompiler):
     def visit_json_path_getitem_op_binary(self, binary, operator, **kw):
         return self.visit_getitem_binary(binary, operator, **kw)
 
-    def visit_sequence(self, seq, **kw):
-        return "<next sequence value: %s>" % self.preparer.format_sequence(seq)
+    def visit_sequence(self, sequence, **kw):
+        return (
+            f"<next sequence value: {self.preparer.format_sequence(sequence)}>"
+        )
 
     def returning_clause(
         self,
@@ -6524,7 +6526,7 @@ class StrSQLCompiler(SQLCompiler):
             for t in extra_froms
         )
 
-    def visit_empty_set_expr(self, type_, **kw):
+    def visit_empty_set_expr(self, element_types, **kw):
         return "SELECT 1 WHERE 1!=1"
 
     def get_from_hint_text(self, table, text):

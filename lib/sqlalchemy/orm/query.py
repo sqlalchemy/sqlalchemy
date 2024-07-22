@@ -731,7 +731,7 @@ class Query(
         )
 
     @overload
-    def as_scalar(
+    def as_scalar(  # type: ignore[overload-overlap]
         self: Query[Tuple[_MAYBE_ENTITY]],
     ) -> ScalarSelect[_MAYBE_ENTITY]: ...
 

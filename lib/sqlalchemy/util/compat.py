@@ -58,7 +58,7 @@ class FullArgSpec(typing.NamedTuple):
     varkw: Optional[str]
     defaults: Optional[Tuple[Any, ...]]
     kwonlyargs: List[str]
-    kwonlydefaults: Dict[str, Any]
+    kwonlydefaults: Optional[Dict[str, Any]]
     annotations: Dict[str, Any]
 
 

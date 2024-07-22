@@ -1253,8 +1253,7 @@ class Dialect(EventTarget):
         """
         raise NotImplementedError()
 
-    @classmethod
-    def type_descriptor(cls, typeobj: TypeEngine[_T]) -> TypeEngine[_T]:
+    def type_descriptor(self, typeobj: TypeEngine[_T]) -> TypeEngine[_T]:
         """Transform a generic type to a dialect-specific type.
 
         Dialect classes will usually use the
@@ -1316,6 +1315,7 @@ class Dialect(EventTarget):
     def get_multi_columns(
         self,
         connection: Connection,
+        *,
         schema: Optional[str] = None,
         filter_names: Optional[Collection[str]] = None,
         **kw: Any,
@@ -1364,6 +1364,7 @@ class Dialect(EventTarget):
     def get_multi_pk_constraint(
         self,
         connection: Connection,
+        *,
         schema: Optional[str] = None,
         filter_names: Optional[Collection[str]] = None,
         **kw: Any,
@@ -1410,6 +1411,7 @@ class Dialect(EventTarget):
     def get_multi_foreign_keys(
         self,
         connection: Connection,
+        *,
         schema: Optional[str] = None,
         filter_names: Optional[Collection[str]] = None,
         **kw: Any,
@@ -1569,6 +1571,7 @@ class Dialect(EventTarget):
     def get_multi_indexes(
         self,
         connection: Connection,
+        *,
         schema: Optional[str] = None,
         filter_names: Optional[Collection[str]] = None,
         **kw: Any,
@@ -1615,6 +1618,7 @@ class Dialect(EventTarget):
     def get_multi_unique_constraints(
         self,
         connection: Connection,
+        *,
         schema: Optional[str] = None,
         filter_names: Optional[Collection[str]] = None,
         **kw: Any,
@@ -1662,6 +1666,7 @@ class Dialect(EventTarget):
     def get_multi_check_constraints(
         self,
         connection: Connection,
+        *,
         schema: Optional[str] = None,
         filter_names: Optional[Collection[str]] = None,
         **kw: Any,
@@ -1704,6 +1709,7 @@ class Dialect(EventTarget):
     def get_multi_table_options(
         self,
         connection: Connection,
+        *,
         schema: Optional[str] = None,
         filter_names: Optional[Collection[str]] = None,
         **kw: Any,
@@ -1755,6 +1761,7 @@ class Dialect(EventTarget):
     def get_multi_table_comment(
         self,
         connection: Connection,
+        *,
         schema: Optional[str] = None,
         filter_names: Optional[Collection[str]] = None,
         **kw: Any,

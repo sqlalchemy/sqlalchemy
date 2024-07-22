@@ -2208,3 +2208,11 @@ def has_compiled_ext(raise_=False):
         )
     else:
         return False
+
+
+class _Missing(enum.Enum):
+    Missing = enum.auto()
+
+
+Missing = _Missing.Missing
+MissingOr = Union[_T, Literal[_Missing.Missing]]
