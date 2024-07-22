@@ -2137,7 +2137,7 @@ class ColumnSet(util.OrderedSet["ColumnClause[Any]"]):
                     l.append(c == local)
         return elements.and_(*l)
 
-    def __hash__(self):
+    def __hash__(self):  # type: ignore[override]
         return hash(tuple(x for x in self))
 
 

@@ -1286,7 +1286,7 @@ class _multiparam_column(elements.ColumnElement[Any]):
     def compare(self, other, **kw):
         raise NotImplementedError()
 
-    def _copy_internals(self, other, **kw):
+    def _copy_internals(self, **kw):
         raise NotImplementedError()
 
     def __eq__(self, other):

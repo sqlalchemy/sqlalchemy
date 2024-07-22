@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, mypy
+    :versions: 2.0
+
+    The deprecated mypy plugin is no longer fully functional with the latest
+    series of mypy 1.11.0, as changes in the mypy interpreter are no longer
+    compatible with the approach used by the plugin.  If code is dependent on
+    the mypy plugin with sqlalchemy2-stubs, it's recommended to pin mypy to be
+    below the 1.11.0 series.    Seek upgrading to the 2.0 series of SQLAlchemy
+    and migrating to the modern type annotations.
+
+    .. seealso::
+
+        :ref:`mypy_toplevel`

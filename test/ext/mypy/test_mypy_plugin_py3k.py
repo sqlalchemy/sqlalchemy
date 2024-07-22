@@ -1,4 +1,5 @@
 import os
+import pathlib
 import shutil
 
 from sqlalchemy import testing
@@ -25,8 +26,12 @@ def _incremental_dirs():
 
 class MypyPluginTest(fixtures.MypyTest):
     @testing.combinations(
-        *[(pathname) for pathname in _incremental_dirs()],
+        *[
+            (pathlib.Path(pathname).name, pathname)
+            for pathname in _incremental_dirs()
+        ],
         argnames="pathname",
+        id_="ia",
     )
     @testing.requires.patch_library
     def test_incremental(self, mypy_runner, per_func_cachedir, pathname):

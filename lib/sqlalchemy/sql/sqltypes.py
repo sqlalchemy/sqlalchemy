@@ -1012,7 +1012,7 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         if _adapted_from:
             self.dispatch = self.dispatch._join(_adapted_from.dispatch)
 
-    def _set_parent(self, column, **kw):
+    def _set_parent(self, parent, **kw):
         # set parent hook is when this type is associated with a column.
         # Column calls it for all SchemaEventTarget instances, either the
         # base type and/or variants in _variant_mapping.
@@ -1026,7 +1026,7 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         # on_table/metadata_create/drop in this method, which is used by
         # "native" types with a separate CREATE/DROP e.g. Postgresql.ENUM
 
-        column._on_table_attach(util.portable_instancemethod(self._set_table))
+        parent._on_table_attach(util.portable_instancemethod(self._set_table))
 
     def _variant_mapping_for_set_table(self, column):
         if column.type._variant_mapping:
@@ -1670,10 +1670,10 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         assert "_enums" in kw
         return impltype(**kw)
 
-    def adapt(self, impltype, **kw):
+    def adapt(self, cls, **kw):
         kw["_enums"] = self._enums_argument
         kw["_disable_warnings"] = True
-        return super().adapt(impltype, **kw)
+        return super().adapt(cls, **kw)
 
     def _should_create_constraint(self, compiler, **kw):
         if not self._is_impl_for_variant(compiler.dialect, kw):
@@ -3066,13 +3066,13 @@ class ARRAY(
     def compare_values(self, x, y):
         return x == y
 
-    def _set_parent(self, column, outer=False, **kw):
+    def _set_parent(self, parent, outer=False, **kw):
         """Support SchemaEventTarget"""
 
         if not outer and isinstance(self.item_type, SchemaEventTarget):
-            self.item_type._set_parent(column, **kw)
+            self.item_type._set_parent(parent, **kw)
 
-    def _set_parent_with_dispatch(self, parent):
+    def _set_parent_with_dispatch(self, parent, **kw):
         """Support SchemaEventTarget"""
 
         super()._set_parent_with_dispatch(parent, outer=True)

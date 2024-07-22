@@ -4009,7 +4009,7 @@ class Slice(ColumnElement[Any]):
         self.type = type_api.NULLTYPE
 
     def self_group(self, against: Optional[OperatorType] = None) -> Self:
-        assert against is operator.getitem  # type: ignore[comparison-overlap]
+        assert against is operator.getitem
         return self
 
 
