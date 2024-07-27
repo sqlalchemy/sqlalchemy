@@ -5,7 +5,6 @@ import random
 from typing import Optional
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Column
 from sqlalchemy import event
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import func
@@ -39,6 +38,7 @@ from sqlalchemy.testing import is_not
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.config import Variation
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.util import gc_collect
 from test.orm._fixtures import FixtureTest
 
@@ -2513,7 +2513,11 @@ class JoinIntoAnExternalTransactionFixture:
 
         self.metadata = MetaData()
         self.table = Table(
-            "t1", self.metadata, Column("id", Integer, primary_key=True)
+            "t1",
+            self.metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
         )
         with self.connection.begin():
             self.table.create(self.connection, checkfirst=True)

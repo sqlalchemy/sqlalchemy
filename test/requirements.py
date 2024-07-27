@@ -883,7 +883,7 @@ class DefaultRequirements(SuiteRequirements):
                     ),
                 ]
             )
-            + self.fail_on_oracledb_thin
+            + self.skip_on_oracledb_thin
         )
 
     @property
@@ -1871,14 +1871,14 @@ class DefaultRequirements(SuiteRequirements):
         return only_if(go)
 
     @property
-    def fail_on_oracledb_thin(self):
+    def skip_on_oracledb_thin(self):
         def go(config):
             if against(config, "oracle+oracledb"):
                 with config.db.connect() as conn:
                     return config.db.dialect.is_thin_mode(conn)
             return False
 
-        return fails_if(go)
+        return skip_if(go)
 
     @property
     def computed_columns(self):
