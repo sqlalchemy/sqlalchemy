@@ -1,5 +1,6 @@
 .. change::
     :tags: usecase, engine
+    :versions: 2.0.31
 
     Modified the internal representation used for adapting asyncio calls to
     greenlets to allow for duck-typed compatibility with third party libraries

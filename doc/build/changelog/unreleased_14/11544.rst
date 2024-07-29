@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, sql
     :tickets: 11544
+    :versions: 2.0
 
     Fixed caching issue where the
     :paramref:`_sql.Select.with_for_update.key_share` element of
