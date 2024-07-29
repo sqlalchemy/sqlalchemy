@@ -64,15 +64,12 @@ jobs:
           (cat setup.cfg) | %{$_ -replace "tag_build.?=.?dev",""} | set-content setup.cfg
 
       - name: Create wheel
-        # create the wheel using --no-use-pep517 since locally we have pyproject
-        # this flag should be removed once sqlalchemy supports pep517
         # `--no-deps` is used to only generate the wheel for the current library. Redundant in sqlalchemy since it has no dependencies
         run: |
           python -m pip install --upgrade pip
           pip --version
-          pip install 'setuptools>=44' 'wheel>=0.34'
           pip list
-          pip wheel -w dist --no-use-pep517 -v --no-deps .
+          pip wheel -w dist -v --no-deps .
 
       - name: Install wheel
         # install the created wheel without using the pypi index
@@ -209,11 +206,8 @@ jobs:
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
           python-versions: ${{ matrix.python-version }}
-          build-requirements: "setuptools>=44 wheel>=0.34"
-          # Create the wheel using --no-use-pep517 since locally we have pyproject
-          # This flag should be removed once sqlalchemy supports pep517
           # `--no-deps` is used to only generate the wheel for the current library. Redundant in sqlalchemy since it has no dependencies
-          pip-wheel-args: "-w ./dist --no-use-pep517 -v --no-deps"
+          pip-wheel-args: "-w ./dist -v --no-deps"
 
       - name: Create wheel for manylinux2014 for py3
         if: ${{ matrix.python-version != 'cp27-cp27m' && matrix.python-version != 'cp27-cp27mu' }}
@@ -225,11 +219,8 @@ jobs:
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
           python-versions: ${{ matrix.python-version }}
-          build-requirements: "setuptools>=44 wheel>=0.34"
-          # Create the wheel using --no-use-pep517 since locally we have pyproject
-          # This flag should be removed once sqlalchemy supports pep517
           # `--no-deps` is used to only generate the wheel for the current library. Redundant in sqlalchemy since it has no dependencies
-          pip-wheel-args: "-w ./dist --no-use-pep517 -v --no-deps"
+          pip-wheel-args: "-w ./dist -v --no-deps"
 
       - name: Create wheel for manylinux py2
         if: ${{ matrix.python-version == 'cp27-cp27m' || matrix.python-version == 'cp27-cp27mu' }}
@@ -241,11 +232,8 @@ jobs:
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
           python-versions: ${{ matrix.python-version }}
-          build-requirements: "setuptools>=44 wheel>=0.34"
-          # Create the wheel using --no-use-pep517 since locally we have pyproject
-          # This flag should be removed once sqlalchemy supports pep517
           # `--no-deps` is used to only generate the wheel for the current library. Redundant in sqlalchemy since it has no dependencies
-          pip-wheel-args: "-w ./dist --no-use-pep517 -v --no-deps"
+          pip-wheel-args: "-w ./dist -v --no-deps"
 
       - name: Set up Python
         if: ${{ matrix.python-version != 'cp27-cp27m' && matrix.python-version != 'cp27-cp27mu' }}
@@ -385,11 +373,8 @@ jobs:
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp37-cp37mu
           python-versions: ${{ matrix.python-version }}
-          build-requirements: "setuptools>=44 wheel>=0.34"
-          # Create the wheel using --no-use-pep517 since locally we have pyproject
-          # This flag should be removed once sqlalchemy supports pep517
           # `--no-deps` is used to only generate the wheel for the current library. Redundant in sqlalchemy since it has no dependencies
-          pip-wheel-args: "-w ./dist --no-use-pep517 -v --no-deps"
+          pip-wheel-args: "-w ./dist -v --no-deps"
 
       - name: Check created wheel
         # check that the wheel is compatible with the current installation.
