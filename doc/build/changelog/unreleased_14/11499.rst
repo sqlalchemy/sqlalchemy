@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 11499
+
+    Adjustments to the C extensions, which are specific to the SQLAlchemy 1.x
+    series, to work under Python 3.13.  Pull request courtesy Ben Beasley.
