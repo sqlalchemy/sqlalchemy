@@ -1951,3 +1951,63 @@ class WindowFunctionTest(fixtures.TablesTest):
                 ).all()
 
                 eq_(result_rows, [(i,) for i in expected])
+
+
+class BitwiseTest(fixtures.TablesTest):
+    __backend__ = True
+    run_inserts = run_deletes = "once"
+
+    inserted_data = [{"a": i, "b": i + 1} for i in range(10)]
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("bitwise", metadata, Column("a", Integer), Column("b", Integer))
+
+    @classmethod
+    def insert_data(cls, connection):
+        connection.execute(cls.tables.bitwise.insert(), cls.inserted_data)
+
+    @testing.combinations(
+        (
+            lambda a: a.bitwise_xor(5),
+            [i for i in range(10) if i != 5],
+            testing.requires.supports_bitwise_xor,
+        ),
+        (
+            lambda a: a.bitwise_or(1),
+            list(range(10)),
+            testing.requires.supports_bitwise_or,
+        ),
+        (
+            lambda a: a.bitwise_and(4),
+            list(range(4, 8)),
+            testing.requires.supports_bitwise_and,
+        ),
+        (
+            lambda a: (a - 2).bitwise_not(),
+            [0],
+            testing.requires.supports_bitwise_not,
+        ),
+        (
+            lambda a: a.bitwise_lshift(1),
+            list(range(1, 10)),
+            testing.requires.supports_bitwise_shift,
+        ),
+        (
+            lambda a: a.bitwise_rshift(2),
+            list(range(4, 10)),
+            testing.requires.supports_bitwise_shift,
+        ),
+        argnames="case, expected",
+    )
+    def test_bitwise(self, case, expected, connection):
+        tbl = self.tables.bitwise
+
+        a = tbl.c.a
+
+        op = testing.resolve_lambda(case, a=a)
+
+        stmt = select(tbl).where(op > 0).order_by(a)
+
+        res = connection.execute(stmt).mappings().all()
+        eq_(res, [self.inserted_data[i] for i in expected])

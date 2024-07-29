@@ -1528,6 +1528,13 @@ class SQLiteCompiler(compiler.SQLCompiler):
 
         return "ON CONFLICT %s DO UPDATE SET %s" % (target_text, action_text)
 
+    def visit_bitwise_xor_op_binary(self, binary, operator, **kw):
+        # sqlite has no xor. Use "a XOR b" = "(a | b) - (a & b)".
+        kw["eager_grouping"] = True
+        or_ = self._generate_generic_binary(binary, " | ", **kw)
+        and_ = self._generate_generic_binary(binary, " & ", **kw)
+        return f"({or_} - {and_})"
+
 
 class SQLiteDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
