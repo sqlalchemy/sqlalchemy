@@ -1781,3 +1781,28 @@ class SuiteRequirements(Requirements):
     def materialized_views_reflect_pk(self):
         """Target database reflect MATERIALIZED VIEWs pks."""
         return exclusions.closed()
+
+    @property
+    def supports_bitwise_or(self):
+        """Target database supports bitwise or"""
+        return exclusions.closed()
+
+    @property
+    def supports_bitwise_and(self):
+        """Target database supports bitwise and"""
+        return exclusions.closed()
+
+    @property
+    def supports_bitwise_not(self):
+        """Target database supports bitwise not"""
+        return exclusions.closed()
+
+    @property
+    def supports_bitwise_xor(self):
+        """Target database supports bitwise xor"""
+        return exclusions.closed()
+
+    @property
+    def supports_bitwise_shift(self):
+        """Target database supports bitwise left or right shift"""
+        return exclusions.closed()
