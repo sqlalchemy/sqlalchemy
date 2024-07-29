@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, reflection, sqlite
-    :tickets: 11582
-    :versions: 2.0.32
-
-    Fixed reflection of computed column in SQLite to properly account
-    for complex expressions.
