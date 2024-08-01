@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 11661
+
+    Fixed regression from version 1.4 in
+    :meth:`_orm.Session.bulk_insert_mappings` where using the
+    :paramref:`_orm.Session.bulk_insert_mappings.return_defaults` parameter
+    would not populate the passed in dictionaries with newly generated primary
+    key values.
+
