@@ -10,13 +10,16 @@
 from __future__ import annotations
 
 from collections import deque
+import contextlib
 import decimal
 import gc
 from itertools import chain
 import random
 import sys
 from sys import getsizeof
+import time
 import types
+from typing import Any
 
 from . import config
 from . import mock
@@ -517,3 +520,18 @@ def count_cache_key_tuples(tup):
             if elem:
                 stack = list(elem) + [sentinel] + stack
     return num_elements
+
+
+@contextlib.contextmanager
+def skip_if_timeout(seconds: float, cleanup: Any = None):
+
+    now = time.time()
+    yield
+    sec = time.time() - now
+    if sec > seconds:
+        try:
+            cleanup()
+        finally:
+            config.skip_test(
+                f"test took too long ({sec:.4f} seconds > {seconds})"
+            )
