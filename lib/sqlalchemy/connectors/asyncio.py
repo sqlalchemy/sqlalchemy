@@ -36,7 +36,8 @@ class AsyncAdapt_dbapi_cursor:
         cursor = self._connection.cursor()
         self._cursor = self._aenter_cursor(cursor)
 
-        self._rows = collections.deque()
+        if not self.server_side:
+            self._rows = collections.deque()
 
     def _aenter_cursor(self, cursor):
         return self.await_(cursor.__aenter__())
@@ -148,6 +149,14 @@ class AsyncAdapt_dbapi_ss_cursor(AsyncAdapt_dbapi_cursor):
 
     def fetchall(self):
         return self.await_(self._cursor.fetchall())
+
+    def __iter__(self):
+        iterator = self._cursor.__aiter__()
+        while True:
+            try:
+                yield self.await_(iterator.__anext__())
+            except StopAsyncIteration:
+                break
 
 
 class AsyncAdapt_dbapi_connection(AdaptedConnection):

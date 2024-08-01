@@ -300,10 +300,6 @@ class PoolTest(fixtures.TestBase):
             is_(fairy.connection, fairy.dbapi_connection)
 
 
-def select1(db):
-    return str(select(1).compile(dialect=db.dialect))
-
-
 class ResetEventTest(fixtures.TestBase):
     def _fixture(self, **kw):
         dbapi = Mock()
