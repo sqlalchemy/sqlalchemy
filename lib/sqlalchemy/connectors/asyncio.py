@@ -13,6 +13,7 @@ import asyncio
 import collections
 import sys
 from typing import Any
+from typing import AsyncIterator
 from typing import Deque
 from typing import Iterator
 from typing import NoReturn
@@ -97,6 +98,8 @@ class AsyncIODBAPICursor(Protocol):
 
     async def nextset(self) -> Optional[bool]: ...
 
+    def __aiter__(self) -> AsyncIterator[Any]: ...
+
 
 class AsyncAdapt_dbapi_cursor:
     server_side = False
@@ -119,7 +122,8 @@ class AsyncAdapt_dbapi_cursor:
         cursor = self._make_new_cursor(self._connection)
         self._cursor = self._aenter_cursor(cursor)
 
-        self._rows = collections.deque()
+        if not self.server_side:
+            self._rows = collections.deque()
 
     def _aenter_cursor(self, cursor: AsyncIODBAPICursor) -> AsyncIODBAPICursor:
         try:
@@ -257,6 +261,14 @@ class AsyncAdapt_dbapi_ss_cursor(AsyncAdapt_dbapi_cursor):
 
     def fetchall(self) -> Sequence[Any]:
         return await_(self._cursor.fetchall())
+
+    def __iter__(self) -> Iterator[Any]:
+        iterator = self._cursor.__aiter__()
+        while True:
+            try:
+                yield await_(iterator.__anext__())
+            except StopAsyncIteration:
+                break
 
 
 class AsyncAdapt_dbapi_connection(AdaptedConnection):

@@ -1964,13 +1964,10 @@ class EngineEventsTest(fixtures.TestBase):
     def test_new_exec_driver_sql_no_events(self):
         m1 = Mock()
 
-        def select1(db):
-            return str(select(1).compile(dialect=db.dialect))
-
         with testing.db.connect() as conn:
             event.listen(conn, "before_execute", m1.before_execute)
             event.listen(conn, "after_execute", m1.after_execute)
-            conn.exec_driver_sql(select1(testing.db))
+            conn.exec_driver_sql(str(select(1).compile(testing.db)))
         eq_(m1.mock_calls, [])
 
     def test_add_event_after_connect(self, testing_engine):

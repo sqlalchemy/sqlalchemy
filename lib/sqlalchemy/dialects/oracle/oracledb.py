@@ -94,10 +94,12 @@ import re
 from typing import Any
 from typing import TYPE_CHECKING
 
-from .cx_oracle import OracleDialect_cx_oracle as _OracleDialect_cx_oracle
+from . import cx_oracle as _cx_oracle
 from ... import exc
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
+from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
+from ...engine import default
 from ...util import await_
 
 if TYPE_CHECKING:
@@ -105,8 +107,16 @@ if TYPE_CHECKING:
     from oracledb import AsyncCursor
 
 
-class OracleDialect_oracledb(_OracleDialect_cx_oracle):
+class OracleExecutionContext_oracledb(
+    _cx_oracle.OracleExecutionContext_cx_oracle
+):
+    pass
+
+
+class OracleDialect_oracledb(_cx_oracle.OracleDialect_cx_oracle):
     supports_statement_cache = True
+    execution_ctx_cls = OracleExecutionContext_oracledb
+
     driver = "oracledb"
     _min_version = (1,)
 
@@ -257,6 +267,17 @@ class AsyncAdapt_oracledb_cursor(AsyncAdapt_dbapi_cursor):
         return await self._cursor.executemany(operation, seq_of_parameters)
 
 
+class AsyncAdapt_oracledb_ss_cursor(
+    AsyncAdapt_dbapi_ss_cursor, AsyncAdapt_oracledb_cursor
+):
+    __slots__ = ()
+
+    def close(self) -> None:
+        if self._cursor is not None:
+            self._cursor.close()
+            self._cursor = None  # type: ignore
+
+
 class AsyncAdapt_oracledb_connection(AsyncAdapt_dbapi_connection):
     _connection: AsyncConnection
     __slots__ = ()
@@ -297,6 +318,9 @@ class AsyncAdapt_oracledb_connection(AsyncAdapt_dbapi_connection):
     def cursor(self):
         return AsyncAdapt_oracledb_cursor(self)
 
+    def ss_cursor(self):
+        return AsyncAdapt_oracledb_ss_cursor(self)
+
     def xid(self, *args: Any, **kwargs: Any) -> Any:
         return self._connection.xid(*args, **kwargs)
 
@@ -331,9 +355,31 @@ class OracledbAdaptDBAPI:
         )
 
 
+class OracleExecutionContextAsync_oracledb(OracleExecutionContext_oracledb):
+    # restore default create cursor
+    create_cursor = default.DefaultExecutionContext.create_cursor
+
+    def create_default_cursor(self):
+        # copy of OracleExecutionContext_cx_oracle.create_cursor
+        c = self._dbapi_connection.cursor()
+        if self.dialect.arraysize:
+            c.arraysize = self.dialect.arraysize
+
+        return c
+
+    def create_server_side_cursor(self):
+        c = self._dbapi_connection.ss_cursor()
+        if self.dialect.arraysize:
+            c.arraysize = self.dialect.arraysize
+
+        return c
+
+
 class OracleDialectAsync_oracledb(OracleDialect_oracledb):
     is_async = True
+    supports_server_side_cursors = True
     supports_statement_cache = True
+    execution_ctx_cls = OracleExecutionContextAsync_oracledb
 
     _min_version = (2,)
 

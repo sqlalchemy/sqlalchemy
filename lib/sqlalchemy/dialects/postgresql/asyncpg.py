@@ -520,8 +520,6 @@ class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
         "_invalidate_schema_cache_asof",
     )
 
-    server_side = False
-
     _adapt_connection: AsyncAdapt_asyncpg_connection
     _connection: _AsyncpgConnection
     _cursor: Optional[_AsyncpgCursor]
@@ -636,7 +634,6 @@ class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
 class AsyncAdapt_asyncpg_ss_cursor(
     AsyncAdapt_dbapi_ss_cursor, AsyncAdapt_asyncpg_cursor
 ):
-    server_side = True
     __slots__ = ("_rowbuffer",)
 
     def __init__(self, adapt_connection):

@@ -611,15 +611,6 @@ class AsyncAdapt_psycopg_ss_cursor(
     def _make_new_cursor(self, connection):
         return connection.cursor(self.name)
 
-    # TODO: should this be on the base asyncio adapter?
-    def __iter__(self):
-        iterator = self._cursor.__aiter__()
-        while True:
-            try:
-                yield await_(iterator.__anext__())
-            except StopAsyncIteration:
-                break
-
 
 class AsyncAdapt_psycopg_connection(AsyncAdapt_dbapi_connection):
     _connection: AsyncConnection
