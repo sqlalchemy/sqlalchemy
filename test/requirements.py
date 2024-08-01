@@ -2068,3 +2068,28 @@ class DefaultRequirements(SuiteRequirements):
         statement.
         """
         return only_on(["mssql"])
+
+    @property
+    def supports_bitwise_and(self):
+        """Target database supports bitwise and"""
+        return exclusions.open()
+
+    @property
+    def supports_bitwise_or(self):
+        """Target database supports bitwise or"""
+        return fails_on(["oracle<21"])
+
+    @property
+    def supports_bitwise_not(self):
+        """Target database supports bitwise not"""
+        return fails_on(["oracle", "mysql", "mariadb"])
+
+    @property
+    def supports_bitwise_xor(self):
+        """Target database supports bitwise xor"""
+        return fails_on(["oracle<21"])
+
+    @property
+    def supports_bitwise_shift(self):
+        """Target database supports bitwise left or right shift"""
+        return fails_on(["oracle"])
