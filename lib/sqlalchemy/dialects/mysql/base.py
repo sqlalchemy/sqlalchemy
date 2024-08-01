@@ -2380,6 +2380,8 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
     def _visit_enumerated_values(self, name, type_, enumerated_values):
         quoted_enums = []
         for e in enumerated_values:
+            if self.dialect.identifier_preparer._double_percents:
+                e = e.replace("%", "%%")
             quoted_enums.append("'%s'" % e.replace("'", "''"))
         return self._extend_string(
             type_, {}, "%s(%s)" % (name, ",".join(quoted_enums))
