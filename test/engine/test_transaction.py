@@ -506,7 +506,7 @@ class TransactionTest(fixtures.TablesTest):
             # oracle transactions can't be recovered for commit after...
             # about 1 second?  OK
             with testing.skip_if_timeout(
-                0.75,
+                0.50,
                 cleanup=(
                     lambda: connection3.rollback_prepared(
                         transaction.xid, recover=True
