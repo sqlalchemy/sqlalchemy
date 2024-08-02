@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 11479
+
+    Fixed issue in MySQL dialect where ENUM values that contained percent signs
+    were not properly escaped for the driver.
+
