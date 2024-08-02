@@ -881,6 +881,79 @@ class TestVersioning(AssertsCompiledSQL):
         sc2.name = "sc2 modified"
         sess.commit()
 
+    def test_external_id(self):
+        class ObjectExternal(Versioned, self.Base, ComparableEntity):
+            __tablename__ = "externalobjects"
+
+            id1 = Column(String(3), primary_key=True)
+            id2 = Column(String(3), primary_key=True)
+            name = Column(String(50))
+
+        self.create_tables()
+        sess = self.session
+        sc = ObjectExternal(id1="aaa", id2="bbb", name="sc1")
+        sess.add(sc)
+        sess.commit()
+
+        sc.name = "sc1modified"
+        sess.commit()
+
+        assert sc.version == 2
+
+        ObjectExternalHistory = ObjectExternal.__history_mapper__.class_
+
+        eq_(
+            sess.query(ObjectExternalHistory).all(),
+            [
+                ObjectExternalHistory(
+                    version=1, id1="aaa", id2="bbb", name="sc1"
+                ),
+            ],
+        )
+
+        sess.delete(sc)
+        sess.commit()
+
+        assert sess.query(ObjectExternal).count() == 0
+
+        eq_(
+            sess.query(ObjectExternalHistory).all(),
+            [
+                ObjectExternalHistory(
+                    version=1, id1="aaa", id2="bbb", name="sc1"
+                ),
+                ObjectExternalHistory(
+                    version=2, id1="aaa", id2="bbb", name="sc1modified"
+                ),
+            ],
+        )
+
+        sc = ObjectExternal(id1="aaa", id2="bbb", name="sc1reappeared")
+        sess.add(sc)
+        sess.commit()
+
+        assert sc.version == 3
+
+        sc.name = "sc1reappearedmodified"
+        sess.commit()
+
+        assert sc.version == 4
+
+        eq_(
+            sess.query(ObjectExternalHistory).all(),
+            [
+                ObjectExternalHistory(
+                    version=1, id1="aaa", id2="bbb", name="sc1"
+                ),
+                ObjectExternalHistory(
+                    version=2, id1="aaa", id2="bbb", name="sc1modified"
+                ),
+                ObjectExternalHistory(
+                    version=3, id1="aaa", id2="bbb", name="sc1reappeared"
+                ),
+            ],
+        )
+
 
 class TestVersioningNewBase(TestVersioning):
     def make_base(self):
