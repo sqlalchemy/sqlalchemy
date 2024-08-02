@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 10834
+
+    Fixed issue where using the :meth:`_orm.Query.enable_eagerloads` and
+    :meth:`_orm.Query.yield_per` methods at the same time, in order to disable
+    eager loading that's configured on the mapper directly, would be silently
+    ignored, leading to errors or unexpected eager population of attributes.

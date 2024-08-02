@@ -1377,12 +1377,16 @@ class ImmediateLoader(PostLoader):
         adapter,
         populators,
     ):
+        if not context.compile_state.compile_options._enable_eagerloads:
+            return
+
         (
             effective_path,
             run_loader,
             execution_options,
             recursion_depth,
         ) = self._setup_for_recursion(context, path, loadopt, self.join_depth)
+
         if not run_loader:
             # this will not emit SQL and will only emit for a many-to-one
             # "use get" load.   the "_RELATED" part means it may return
@@ -2768,6 +2772,10 @@ class JoinedLoader(AbstractRelationshipLoader):
         adapter,
         populators,
     ):
+
+        if not context.compile_state.compile_options._enable_eagerloads:
+            return
+
         if not self.parent.class_manager[self.key].impl.supports_population:
             raise sa_exc.InvalidRequestError(
                 "'%s' does not support object "
@@ -3045,6 +3053,9 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         )
 
         if not run_loader:
+            return
+
+        if not context.compile_state.compile_options._enable_eagerloads:
             return
 
         if not self.parent.class_manager[self.key].impl.supports_population:
