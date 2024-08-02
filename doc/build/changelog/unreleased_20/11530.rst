@@ -1,5 +1,5 @@
 .. change::
-    :tags: bug, events
+    :tags: bug, schema
     :tickets: 11530
 
     Fixed additional issues in the event system triggered by unpickling of a

@@ -8,6 +8,3 @@
     :func:`_orm.column_mapped_collection`,
     :func:`_orm.attribute_mapped_collection`. Pull request courtesy Takashi
     Kajinami.
-
-
-    .
