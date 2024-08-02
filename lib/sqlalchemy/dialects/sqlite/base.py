@@ -2617,7 +2617,7 @@ class SQLiteDialect(default.DefaultDialect):
             connection, table_name, schema=schema, **kw
         )
 
-        CHECK_PATTERN = r"(?:CONSTRAINT (\w+) +)?" r"CHECK *\( *((.|\n)+?) *\)(, ?\n|\n) *"
+        CHECK_PATTERN = r"(?:CONSTRAINT (.+) +)?CHECK *\( *((.|\n)+?) *\)(?:, ?\n|\n) *"
         cks = []
 
         for match in re.finditer(CHECK_PATTERN, table_data or "", re.I|re.S):
