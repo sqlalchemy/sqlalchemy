@@ -33,7 +33,7 @@ class Requirements:
     pass
 
 
-class SuiteRequirements(Requirements): 
+class SuiteRequirements(Requirements):
     @property
     def create_table(self):
         """target platform can emit basic CreateTable DDL."""
