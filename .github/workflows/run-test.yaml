@@ -36,6 +36,7 @@ jobs:
           - "3.10"
           - "3.11"
           - "3.12"
+          - "3.13.0-alpha - 3.13"
           - "pypy-3.10"
         build-type:
           - "cext"
@@ -124,6 +125,7 @@ jobs:
           - cp310-cp310
           - cp311-cp311
           - cp312-cp312
+          - cp313-cp313
         build-type:
           - "cext"
           - "nocext"
@@ -164,19 +166,18 @@ jobs:
           - "3.9"
           - "3.10"
           - "3.11"
+          - "3.12"
+          - "3.13.0-alpha - 3.13"
         tox-env:
           - mypy
-          - lint
           - pep484
 
+        include:
+          # run lint only on 3.12
+          - tox-env: lint
+            python-version: "3.12"
+            os: "ubuntu-latest"
         exclude:
-          # run lint only on 3.11
-          - tox-env: lint
-            python-version: "3.8"
-          - tox-env: lint
-            python-version: "3.9"
-          - tox-env: lint
-            python-version: "3.10"
           # run pep484 only on 3.10+
           - tox-env: pep484
             python-version: "3.8"
