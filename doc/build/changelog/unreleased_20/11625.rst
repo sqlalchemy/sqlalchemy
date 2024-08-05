@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm, regression
-    :tickets: 11625
-
-    Fixed regression appearing in 2.0.21 caused by :ticket:`10279` where using
-    a :func:`_sql.delete` or :func:`_sql.update` against an ORM class that is
-    the base of an inheritance hierarchy, while also specifying that subclasses
-    should be loaded polymorphically, would leak the polymorphic joins into the
-    UPDATE or DELETE statement as well creating incorrect SQL.

@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, typing
-
-    Fixed internal typing issues to establish compatibility with mypy 1.11.0.
-    Note that this does not include issues which have arisen with the
-    deprecated mypy plugin used by SQLAlchemy 1.4-style code; see the addiional
-    change note for this plugin indicating revised compatibility.

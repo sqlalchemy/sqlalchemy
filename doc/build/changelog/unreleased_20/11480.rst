@@ -1,9 +1,0 @@
-.. change::
-    :tags: usecase, oracle
-    :tickets: 11480
-
-    Implemented two-phase transactions for the oracledb dialect. Historically,
-    this feature never worked with the cx_Oracle dialect, however recent
-    improvements to the oracledb successor now allow this to be possible.  The
-    two phase transaction API is available at the Core level via the
-    :meth:`_engine.Connection.begin_twophase` method.

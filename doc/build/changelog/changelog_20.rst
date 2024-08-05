@@ -10,7 +10,192 @@
 
 .. changelog::
     :version: 2.0.32
-    :include_notes_from: unreleased_20
+    :released: August 5, 2024
+
+    .. change::
+        :tags: bug, examples
+        :tickets: 10267
+
+        Fixed issue in history_meta example where the "version" column in the
+        versioned table needs to default to the most recent version number in the
+        history table on INSERT, to suit the use case of a table where rows are
+        deleted, and can then be replaced by new rows that re-use the same primary
+        key identity.  This fix adds an additonal SELECT query per INSERT in the
+        main table, which may be inefficient; for cases where primary keys are not
+        re-used, the default function may be omitted.  Patch courtesy  Philipp H.
+        v. Loewenfeld.
+
+
+    .. change::
+        :tags: oracle, usecase
+        :tickets: 10820
+
+        Added API support for server-side cursors for the oracledb async dialect,
+        allowing use of the :meth:`_asyncio.AsyncConnection.stream` and similar
+        stream methods.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 10834
+
+        Fixed issue where using the :meth:`_orm.Query.enable_eagerloads` and
+        :meth:`_orm.Query.yield_per` methods at the same time, in order to disable
+        eager loading that's configured on the mapper directly, would be silently
+        ignored, leading to errors or unexpected eager population of attributes.
+
+    .. change::
+        :tags: orm
+        :tickets: 11163
+
+        Added a warning noting when an
+        :meth:`_engine.ConnectionEvents.engine_connect` event may be leaving
+        a transaction open, which can alter the behavior of a
+        :class:`_orm.Session` using such an engine as bind.
+        On SQLAlchemy 2.1 :paramref:`_orm.Session.join_transaction_mode` will
+        instead be ignored in all cases when the session bind is
+        an :class:`_engine.Engine`.
+
+    .. change::
+        :tags: bug, general, regression
+        :tickets: 11435
+
+        Restored legacy class names removed from
+        ``sqlalalchemy.orm.collections.*``, including
+        :class:`_orm.MappedCollection`, :func:`_orm.mapped_collection`,
+        :func:`_orm.column_mapped_collection`,
+        :func:`_orm.attribute_mapped_collection`. Pull request courtesy Takashi
+        Kajinami.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 11471
+
+        Follow up of :ticket:`11471` to fix caching issue where using the
+        :meth:`.CompoundSelectState.add_cte` method of the
+        :class:`.CompoundSelectState` construct would not set a correct cache key
+        which distinguished between different CTE expressions. Also added tests
+        that would detect issues similar to the one fixed in :ticket:`11544`.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 11479
+
+        Fixed issue in MySQL dialect where ENUM values that contained percent signs
+        were not properly escaped for the driver.
+
+
+    .. change::
+        :tags: usecase, oracle
+        :tickets: 11480
+
+        Implemented two-phase transactions for the oracledb dialect. Historically,
+        this feature never worked with the cx_Oracle dialect, however recent
+        improvements to the oracledb successor now allow this to be possible.  The
+        two phase transaction API is available at the Core level via the
+        :meth:`_engine.Connection.begin_twophase` method.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 11522
+
+        It is now considered a pool-invalidating disconnect event when psycopg2
+        throws an "SSL SYSCALL error: Success" error message, which can occur when
+        the SSL connection to Postgres is terminated abnormally.
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 11530
+
+        Fixed additional issues in the event system triggered by unpickling of a
+        :class:`.Enum` datatype, continuing from :ticket:`11365` and
+        :ticket:`11360`,  where dynamically generated elements of the event
+        structure would not be present when unpickling in a new process.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 11532
+
+        Fixed issue in "insertmanyvalues" feature where a particular call to
+        ``cursor.fetchall()`` were not wrapped in SQLAlchemy's exception wrapper,
+        which apparently can raise a database exception during fetch when using
+        pyodbc.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 11575
+
+        The :paramref:`_orm.aliased.name` parameter to :func:`_orm.aliased` may now
+        be combined with the :paramref:`_orm.aliased.flat` parameter, producing
+        per-table names based on a name-prefixed naming convention.  Pull request
+        courtesy Eric Atkin.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 11576
+
+        Fixed issue where the :func:`_sql.collate` construct, which explicitly sets
+        a collation for a given expression, would maintain collation settings for
+        the underlying type object from the expression, causing SQL expressions to
+        have both collations stated at once when used in further expressions for
+        specific dialects that render explicit type casts, such as that of asyncpg.
+        The :func:`_sql.collate` construct now assigns its own type to explicitly
+        include the new collation, assuming it's a string type.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 11592
+
+        Fixed bug where the :meth:`.Operators.nulls_first()` and
+        :meth:`.Operators.nulls_last()` modifiers would not be treated the same way
+        as :meth:`.Operators.desc()` and :meth:`.Operators.asc()` when determining
+        if an ORDER BY should be against a label name already in the statement. All
+        four modifiers are now treated the same within ORDER BY.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 11625
+
+        Fixed regression appearing in 2.0.21 caused by :ticket:`10279` where using
+        a :func:`_sql.delete` or :func:`_sql.update` against an ORM class that is
+        the base of an inheritance hierarchy, while also specifying that subclasses
+        should be loaded polymorphically, would leak the polymorphic joins into the
+        UPDATE or DELETE statement as well creating incorrect SQL.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 11661
+
+        Fixed regression from version 1.4 in
+        :meth:`_orm.Session.bulk_insert_mappings` where using the
+        :paramref:`_orm.Session.bulk_insert_mappings.return_defaults` parameter
+        would not populate the passed in dictionaries with newly generated primary
+        key values.
+
+
+    .. change::
+        :tags: bug, oracle, sqlite
+        :tickets: 11663
+
+        Implemented bitwise operators for Oracle which was previously
+        non-functional due to a non-standard syntax used by this database.
+        Oracle's support for bitwise "or" and "xor" starts with server version 21.
+        Additionally repaired the implementation of "xor" for SQLite.
+
+        As part of this change, the dialect compliance test suite has been enhanced
+        to include support for server-side bitwise tests; third party dialect
+        authors should refer to new "supports_bitwise" methods in the
+        requirements.py file to enable these tests.
+
+
+
+
+    .. change::
+        :tags: bug, typing
+
+        Fixed internal typing issues to establish compatibility with mypy 1.11.0.
+        Note that this does not include issues which have arisen with the
+        deprecated mypy plugin used by SQLAlchemy 1.4-style code; see the addiional
+        change note for this plugin indicating revised compatibility.
 
 .. changelog::
     :version: 2.0.31
