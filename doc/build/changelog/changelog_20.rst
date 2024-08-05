@@ -29,6 +29,12 @@
         re-used, the default function may be omitted.  Patch courtesy  Philipp H.
         v. Loewenfeld.
 
+    .. change::
+        :tags: bug, oracle
+        :tickets: 11557
+
+        Fixed table reflection on Oracle 10.2 and older where compression options
+        are not supported.
 
     .. change::
         :tags: oracle, usecase
