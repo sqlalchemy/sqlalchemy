@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, engine
-    :tickets: 11532
-
-    Fixed issue in "insertmanyvalues" feature where a particular call to
-    ``cursor.fetchall()`` were not wrapped in SQLAlchemy's exception wrapper,
-    which apparently can raise a database exception during fetch when using
-    pyodbc.

@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, schema
-    :tickets: 11530
-
-    Fixed additional issues in the event system triggered by unpickling of a
-    :class:`.Enum` datatype, continuing from :ticket:`11365` and
-    :ticket:`11360`,  where dynamically generated elements of the event
-    structure would not be present when unpickling in a new process.

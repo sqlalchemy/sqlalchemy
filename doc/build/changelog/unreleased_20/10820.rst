@@ -1,7 +1,0 @@
-.. change::
-    :tags: oracle, usecase
-    :tickets: 10820
-
-    Added API support for server-side cursors for the oracledb async dialect,
-    allowing use of the :meth:`_asyncio.AsyncConnection.stream` and similar
-    stream methods.

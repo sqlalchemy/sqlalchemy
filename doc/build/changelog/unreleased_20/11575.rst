@@ -1,8 +1,0 @@
-.. change::
-    :tags: usecase, orm
-    :tickets: 11575
-
-    The :paramref:`_orm.aliased.name` parameter to :func:`_orm.aliased` may now
-    be combined with the :paramref:`_orm.aliased.flat` parameter, producing
-    per-table names based on a name-prefixed naming convention.  Pull request
-    courtesy Eric Atkin.
