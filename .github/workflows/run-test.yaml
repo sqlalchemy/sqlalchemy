@@ -37,7 +37,8 @@ jobs:
           - "3.10"
           - "3.11"
           - "3.12"
-          - "pypy-3.9"
+          - "3.13.0-alpha - 3.13"
+          - "pypy-3.10"
         build-type:
           - "cext"
           - "nocext"
@@ -48,7 +49,7 @@ jobs:
 
         include:
           # autocommit tests fail on the ci for some reason
-          - python-version: "pypy-3.9"
+          - python-version: "pypy-3.10"
             pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
           - os: "ubuntu-latest"
             pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
@@ -80,10 +81,10 @@ jobs:
           - os: "macos-13"
             architecture: x86
           # pypy does not have cext or x86
-          - python-version: "pypy-3.9"
+          - python-version: "pypy-3.10"
             build-type: "cext"
           - os: "windows-latest"
-            python-version: "pypy-3.9"
+            python-version: "pypy-3.10"
             architecture: x86
 
       fail-fast: false
@@ -113,7 +114,7 @@ jobs:
 
       - name: Run tests
         run: tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
-        continue-on-error: ${{ matrix.python-version == 'pypy-3.9' }}
+        continue-on-error: ${{ matrix.python-version == 'pypy-3.10' }}
 
   run-test-arm64:
     # Hopefully something native can be used at some point https://github.blog/changelog/2023-10-30-accelerate-your-ci-cd-with-arm-based-hosted-runners-in-github-actions/
@@ -127,6 +128,8 @@ jobs:
           - cp39-cp39
           - cp310-cp310
           - cp311-cp311
+          - cp312-cp312
+          - cp313-cp313
         build-type:
           - "cext"
           - "nocext"
@@ -167,19 +170,18 @@ jobs:
           - "3.9"
           - "3.10"
           - "3.11"
+          - "3.12"
+          - "3.13.0-alpha - 3.13"
         tox-env:
           - mypy
-          - lint
           - pep484
 
+        include:
+          # run lint only on 3.12
+          - tox-env: lint
+            python-version: "3.12"
+            os: "ubuntu-latest"
         exclude:
-          # run lint only on 3.11
-          - tox-env: lint
-            python-version: "3.8"
-          - tox-env: lint
-            python-version: "3.9"
-          - tox-env: lint
-            python-version: "3.10"
           # run pep484 only on 3.10+
           - tox-env: pep484
             python-version: "3.8"
