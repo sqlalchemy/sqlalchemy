@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 11365
-
-    Fixed issue where a :class:`.MetaData` collection would not be
-    serializable, if an :class:`.Enum` or :class:`.Boolean` datatype were
-    present which had been adapted. This specific scenario in turn could occur
-    when using the :class:`.Enum` or :class:`.Boolean` within ORM Annotated
-    Declarative form where type objects frequently get copied.

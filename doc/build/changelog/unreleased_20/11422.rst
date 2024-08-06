@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 11422
-
-    Fixed issue when serializing an :func:`_sql.over` clause with
-    unbounded range or rows.

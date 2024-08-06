@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 11446
-
-    Fixed issue where the :func:`_orm.selectinload` and
-    :func:`_orm.subqueryload` loader options would fail to take effect when
-    made against an inherited subclass that itself included a subclass-specific
-    :paramref:`_orm.Mapper.with_polymorphic` setting.

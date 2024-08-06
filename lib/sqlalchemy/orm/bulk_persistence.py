@@ -121,13 +121,35 @@ def _bulk_insert(
         )
 
     if isstates:
+        if TYPE_CHECKING:
+            mappings = cast(Iterable[InstanceState[_O]], mappings)
+
         if return_defaults:
+            # list of states allows us to attach .key for return_defaults case
             states = [(state, state.dict) for state in mappings]
             mappings = [dict_ for (state, dict_) in states]
         else:
             mappings = [state.dict for state in mappings]
     else:
-        mappings = [dict(m) for m in mappings]
+        if TYPE_CHECKING:
+            mappings = cast(Iterable[Dict[str, Any]], mappings)
+
+        if return_defaults:
+            # use dictionaries given, so that newly populated defaults
+            # can be delivered back to the caller (see #11661). This is **not**
+            # compatible with other use cases such as a session-executed
+            # insert() construct, as this will confuse the case of
+            # insert-per-subclass for joined inheritance cases (see
+            # test_bulk_statements.py::BulkDMLReturningJoinedInhTest).
+            #
+            # So in this conditional, we have **only** called
+            # session.bulk_insert_mappings() which does not have this
+            # requirement
+            mappings = list(mappings)
+        else:
+            # for all other cases we need to establish a local dictionary
+            # so that the incoming dictionaries aren't mutated
+            mappings = [dict(m) for m in mappings]
         _expand_composites(mapper, mappings)
 
     connection = session_transaction.connection(base_mapper)
@@ -1448,6 +1470,9 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
 
         new_stmt = statement._clone()
 
+        if new_stmt.table._annotations["parententity"] is mapper:
+            new_stmt.table = mapper.local_table
+
         # note if the statement has _multi_values, these
         # are passed through to the new statement, which will then raise
         # InvalidRequestError because UPDATE doesn't support multi_values
@@ -1866,6 +1891,9 @@ class BulkORMDelete(BulkUDCompileState, DeleteDMLState):
         )
 
         new_stmt = statement._clone()
+
+        if new_stmt.table._annotations["parententity"] is mapper:
+            new_stmt.table = mapper.local_table
 
         new_crit = cls._adjust_for_extra_criteria(
             self.global_attributes, mapper

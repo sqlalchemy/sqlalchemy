@@ -16,6 +16,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import Table
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Mapped
@@ -24,6 +25,7 @@ from sqlalchemy.orm import registry
 from sqlalchemy.orm import Relationship
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import with_polymorphic
 
 
 class Base(DeclarativeBase):
@@ -106,6 +108,30 @@ class SelfReferential(Base):
     )
 
 
+class Employee(Base):
+    __tablename__ = "employee"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    team_id: Mapped[int] = mapped_column(ForeignKey("team.id"))
+    team: Mapped["Team"] = relationship(back_populates="employees")
+
+    __mapper_args__ = {
+        "polymorphic_on": "type",
+        "polymorphic_identity": "employee",
+    }
+
+
+class Team(Base):
+    __tablename__ = "team"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    employees: Mapped[list[Employee]] = relationship("Employee")
+
+
+class Engineer(Employee):
+    engineer_info: Mapped[str]
+
+    __mapper_args__ = {"polymorphic_identity": "engineer"}
+
+
 if typing.TYPE_CHECKING:
     # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[Union\[builtins.str, None\]\]
     reveal_type(User.extra)
@@ -136,6 +162,18 @@ if typing.TYPE_CHECKING:
 
     # EXPECTED_RE_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.set\*?\[relationship.MoreMail\]\]
     reveal_type(Address.rel_style_one_anno_only)
+
+    # EXPECTED_RE_TYPE: sqlalchemy.*.QueryableAttribute\[relationship.Engineer\]
+    reveal_type(Team.employees.of_type(Engineer))
+
+    # EXPECTED_RE_TYPE: sqlalchemy.*.QueryableAttribute\[relationship.Employee\]
+    reveal_type(Team.employees.of_type(aliased(Employee)))
+
+    # EXPECTED_RE_TYPE: sqlalchemy.*.QueryableAttribute\[relationship.Engineer\]
+    reveal_type(Team.employees.of_type(aliased(Engineer)))
+
+    # EXPECTED_RE_TYPE: sqlalchemy.*.QueryableAttribute\[relationship.Employee\]
+    reveal_type(Team.employees.of_type(with_polymorphic(Employee, [Engineer])))
 
 
 mapper_registry: registry = registry()

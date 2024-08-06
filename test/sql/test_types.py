@@ -3,6 +3,10 @@ import decimal
 import importlib
 import operator
 import os
+import pickle
+import subprocess
+import sys
+from tempfile import mkstemp
 
 import sqlalchemy as sa
 from sqlalchemy import and_
@@ -15,6 +19,7 @@ from sqlalchemy import Boolean
 from sqlalchemy import cast
 from sqlalchemy import CHAR
 from sqlalchemy import CLOB
+from sqlalchemy import collate
 from sqlalchemy import DATE
 from sqlalchemy import Date
 from sqlalchemy import DATETIME
@@ -62,9 +67,11 @@ import sqlalchemy.dialects.mysql as mysql
 import sqlalchemy.dialects.oracle as oracle
 import sqlalchemy.dialects.postgresql as pg
 from sqlalchemy.engine import default
+from sqlalchemy.engine import interfaces
 from sqlalchemy.schema import AddConstraint
 from sqlalchemy.schema import CheckConstraint
 from sqlalchemy.sql import column
+from sqlalchemy.sql import compiler
 from sqlalchemy.sql import ddl
 from sqlalchemy.sql import elements
 from sqlalchemy.sql import null
@@ -531,6 +538,59 @@ class PickleTypesTest(fixtures.TestBase):
             loads(dumps(column_type))
             loads(dumps(meta))
 
+    @testing.combinations(
+        ("Str", String()),
+        ("Tex", Text()),
+        ("Uni", Unicode()),
+        ("Boo", Boolean()),
+        ("Dat", DateTime()),
+        ("Dat", Date()),
+        ("Tim", Time()),
+        ("Lar", LargeBinary()),
+        ("Pic", PickleType()),
+        ("Int", Interval()),
+        ("Enu", Enum("one", "two", "three")),
+        argnames="name,type_",
+        id_="ar",
+    )
+    @testing.variation("use_adapt", [True, False])
+    def test_pickle_types_other_process(self, name, type_, use_adapt):
+        """test for #11530
+
+        this does a full exec of python interpreter so the number of variations
+        here is reduced to just a single pickler, else each case takes
+        a full second.
+
+        """
+
+        if use_adapt:
+            type_ = type_.copy()
+
+        column_type = Column(name, type_)
+        meta = MetaData()
+        Table("foo", meta, column_type)
+
+        for target in column_type, meta:
+            f, name = mkstemp("pkl")
+            with os.fdopen(f, "wb") as f:
+                pickle.dump(target, f)
+
+            name = name.replace(os.sep, "/")
+            code = (
+                "import sqlalchemy; import pickle; "
+                f"pickle.load(open('''{name}''', 'rb'))"
+            )
+            parts = list(sys.path)
+            if os.environ.get("PYTHONPATH"):
+                parts.append(os.environ["PYTHONPATH"])
+            pythonpath = os.pathsep.join(parts)
+            proc = subprocess.run(
+                [sys.executable, "-c", code],
+                env={**os.environ, "PYTHONPATH": pythonpath},
+            )
+            eq_(proc.returncode, 0)
+            os.unlink(name)
+
 
 class _UserDefinedTypeFixture:
     @classmethod
@@ -730,13 +790,20 @@ class UserDefinedRoundTripTest(_UserDefinedTypeFixture, fixtures.TablesTest):
             ),
         )
 
-    def test_processing(self, connection):
+    @testing.variation("use_driver_cols", [True, False])
+    def test_processing(self, connection, use_driver_cols):
         users = self.tables.users
         self._data_fixture(connection)
 
-        result = connection.execute(
-            users.select().order_by(users.c.user_id)
-        ).fetchall()
+        if use_driver_cols:
+            result = connection.execute(
+                users.select().order_by(users.c.user_id),
+                execution_options={"driver_column_names": True},
+            ).fetchall()
+        else:
+            result = connection.execute(
+                users.select().order_by(users.c.user_id)
+            ).fetchall()
         eq_(
             result,
             [
@@ -3306,6 +3373,91 @@ class ExpressionTest(
                     "BIND_INfooBIND_OUT",
                 )
             ],
+        )
+
+    @testing.fixture
+    def renders_bind_cast(self):
+        class MyText(Text):
+            render_bind_cast = True
+
+        class MyCompiler(compiler.SQLCompiler):
+            def render_bind_cast(self, type_, dbapi_type, sqltext):
+                return f"""{sqltext}->BINDCAST->[{
+                    self.dialect.type_compiler_instance.process(
+                        dbapi_type, identifier_preparer=self.preparer
+                    )
+                }]"""
+
+        class MyDialect(default.DefaultDialect):
+            bind_typing = interfaces.BindTyping.RENDER_CASTS
+            colspecs = {Text: MyText}
+            statement_compiler = MyCompiler
+
+        return MyDialect()
+
+    @testing.combinations(
+        (lambda c1: c1.like("qpr"), "q LIKE :q_1->BINDCAST->[TEXT]"),
+        (
+            lambda c2: c2.like("qpr"),
+            'q LIKE :q_1->BINDCAST->[TEXT COLLATE "xyz"]',
+        ),
+        (
+            # new behavior, a type with no collation passed into collate()
+            # now has a new type with that collation, so we get the collate
+            # on the right side bind-cast. previous to #11576 we'd only
+            # get TEXT for the bindcast.
+            lambda c1: collate(c1, "abc").like("qpr"),
+            '(q COLLATE abc) LIKE :param_1->BINDCAST->[TEXT COLLATE "abc"]',
+        ),
+        (
+            lambda c2: collate(c2, "abc").like("qpr"),
+            '(q COLLATE abc) LIKE :param_1->BINDCAST->[TEXT COLLATE "abc"]',
+        ),
+        argnames="testcase,expected",
+    )
+    @testing.variation("use_type_decorator", [True, False])
+    def test_collate_type_interaction(
+        self, renders_bind_cast, testcase, expected, use_type_decorator
+    ):
+        """test #11576.
+
+        This involves dialects that use the render_bind_cast feature only,
+        currently asycnpg and psycopg.   However, the implementation of the
+        feature is mostly in Core, so a fixture dialect / compiler is used so
+        that the test is agnostic of those dialects.
+
+        """
+
+        if use_type_decorator:
+
+            class MyTextThing(TypeDecorator):
+                cache_ok = True
+                impl = Text
+
+            c1 = Column("q", MyTextThing())
+            c2 = Column("q", MyTextThing(collation="xyz"))
+        else:
+            c1 = Column("q", Text())
+            c2 = Column("q", Text(collation="xyz"))
+
+        expr = testing.resolve_lambda(testcase, c1=c1, c2=c2)
+        if use_type_decorator:
+            assert isinstance(expr.left.type, MyTextThing)
+        self.assert_compile(expr, expected, dialect=renders_bind_cast)
+
+        # original types still work, have not been modified
+        eq_(c1.type.collation, None)
+        eq_(c2.type.collation, "xyz")
+
+        self.assert_compile(
+            c1.like("qpr"),
+            "q LIKE :q_1->BINDCAST->[TEXT]",
+            dialect=renders_bind_cast,
+        )
+        self.assert_compile(
+            c2.like("qpr"),
+            'q LIKE :q_1->BINDCAST->[TEXT COLLATE "xyz"]',
+            dialect=renders_bind_cast,
         )
 
     def test_bind_adapt(self, connection):

@@ -14,8 +14,107 @@ This document details individual issue-level changes made throughout
 
 
 .. changelog::
-    :version: 1.4.53
+    :version: 1.4.54
     :include_notes_from: unreleased_14
+
+.. changelog::
+    :version: 1.4.53
+    :released: July 29, 2024
+
+    .. change::
+        :tags: bug, general
+        :tickets: 11417
+        :versions: 2.0.31
+
+        Set up full Python 3.13 support to the extent currently possible, repairing
+        issues within internal language helpers as well as the serializer extension
+        module.
+
+        For version 1.4, this also modernizes the "extras" names in setup.cfg
+        to use dashes and not underscores for two-word names.  Underscore names
+        are still present to accommodate potential compatibility issues.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 11471
+        :versions: 2.0.31
+
+        Fixed caching issue where using the :meth:`.TextualSelect.add_cte` method
+        of the :class:`.TextualSelect` construct would not set a correct cache key
+        which distinguished between different CTE expressions.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 11499
+
+        Adjustments to the C extensions, which are specific to the SQLAlchemy 1.x
+        series, to work under Python 3.13.  Pull request courtesy Ben Beasley.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 11514
+        :versions: 2.0.32
+
+        Fixed issue where SQL Server drivers don't support bound parameters when
+        rendering the "frame specification" for a window function, e.g. "ROWS
+        BETWEEN", etc.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 11544
+        :versions: 2.0
+
+        Fixed caching issue where the
+        :paramref:`_sql.Select.with_for_update.key_share` element of
+        :meth:`_sql.Select.with_for_update` was not considered as part of the cache
+        key, leading to incorrect caching if different variations of this parameter
+        were used with an otherwise identical statement.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 11562
+        :versions: 2.0.32
+
+        Fixed regression going back to 1.4 where accessing a collection using the
+        "dynamic" strategy on a transient object and attempting to query would
+        raise an internal error rather than the expected :class:`.NoResultFound`
+        that occurred in 1.3.
+
+    .. change::
+        :tags: bug, reflection, sqlite
+        :tickets: 11582
+        :versions: 2.0.32
+
+        Fixed reflection of computed column in SQLite to properly account
+        for complex expressions.
+
+    .. change::
+        :tags: usecase, engine
+        :versions: 2.0.31
+
+        Modified the internal representation used for adapting asyncio calls to
+        greenlets to allow for duck-typed compatibility with third party libraries
+        that implement SQLAlchemy's "greenlet-to-asyncio" pattern directly.
+        Running code within a greenlet that features the attribute
+        ``__sqlalchemy_greenlet_provider__ = True`` will allow calls to
+        :func:`sqlalchemy.util.await_only` directly.
+
+
+    .. change::
+        :tags: bug, mypy
+        :versions: 2.0.32
+
+        The deprecated mypy plugin is no longer fully functional with the latest
+        series of mypy 1.11.0, as changes in the mypy interpreter are no longer
+        compatible with the approach used by the plugin.  If code is dependent on
+        the mypy plugin with sqlalchemy2-stubs, it's recommended to pin mypy to be
+        below the 1.11.0 series.    Seek upgrading to the 2.0 series of SQLAlchemy
+        and migrating to the modern type annotations.
+
+        .. seealso::
+
+            :ref:`mypy_toplevel`
 
 .. changelog::
     :version: 1.4.52

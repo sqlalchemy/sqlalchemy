@@ -858,32 +858,27 @@ class DefaultRequirements(SuiteRequirements):
                 else:
                     return num > 0
 
-        return (
-            skip_if(
-                [
-                    no_support(
-                        "mssql", "two-phase xact not supported by drivers"
-                    ),
-                    no_support(
-                        "sqlite", "two-phase xact not supported by database"
-                    ),
-                    # in Ia3cbbf56d4882fcc7980f90519412f1711fae74d
-                    # we are evaluating which modern MySQL / MariaDB versions
-                    # can handle two-phase testing without too many problems
-                    # no_support(
-                    #     "mysql",
-                    #    "recent MySQL community editions have too many "
-                    #    "issues (late 2016), disabling for now",
-                    # ),
-                    NotPredicate(
-                        LambdaPredicate(
-                            pg_prepared_transaction,
-                            "max_prepared_transactions not available or zero",
-                        )
-                    ),
-                ]
-            )
-            + self.fail_on_oracledb_thin
+        return skip_if(
+            [
+                no_support("mssql", "two-phase xact not supported by drivers"),
+                no_support(
+                    "sqlite", "two-phase xact not supported by database"
+                ),
+                # in Ia3cbbf56d4882fcc7980f90519412f1711fae74d
+                # we are evaluating which modern MySQL / MariaDB versions
+                # can handle two-phase testing without too many problems
+                # no_support(
+                #     "mysql",
+                #    "recent MySQL community editions have too many "
+                #    "issues (late 2016), disabling for now",
+                # ),
+                NotPredicate(
+                    LambdaPredicate(
+                        pg_prepared_transaction,
+                        "max_prepared_transactions not available or zero",
+                    )
+                ),
+            ]
         )
 
     @property
@@ -893,7 +888,7 @@ class DefaultRequirements(SuiteRequirements):
                 ["mysql", "mariadb"],
                 "still can't get recover to work w/ MariaDB / MySQL",
             )
-            + skip_if("oracle", "recovery not functional")
+            + skip_if("oracle+cx_oracle", "recovery not functional")
         )
 
     @property
@@ -1871,16 +1866,6 @@ class DefaultRequirements(SuiteRequirements):
         return only_if(go)
 
     @property
-    def fail_on_oracledb_thin(self):
-        def go(config):
-            if against(config, "oracle+oracledb"):
-                with config.db.connect() as conn:
-                    return config.db.dialect.is_thin_mode(conn)
-            return False
-
-        return fails_if(go)
-
-    @property
     def computed_columns(self):
         return skip_if(["postgresql < 12", "sqlite < 3.31", "mysql < 5.7"])
 
@@ -2068,3 +2053,28 @@ class DefaultRequirements(SuiteRequirements):
         statement.
         """
         return only_on(["mssql"])
+
+    @property
+    def supports_bitwise_and(self):
+        """Target database supports bitwise and"""
+        return exclusions.open()
+
+    @property
+    def supports_bitwise_or(self):
+        """Target database supports bitwise or"""
+        return fails_on(["oracle<21"])
+
+    @property
+    def supports_bitwise_not(self):
+        """Target database supports bitwise not"""
+        return fails_on(["oracle", "mysql", "mariadb"])
+
+    @property
+    def supports_bitwise_xor(self):
+        """Target database supports bitwise xor"""
+        return fails_on(["oracle<21"])
+
+    @property
+    def supports_bitwise_shift(self):
+        """Target database supports bitwise left or right shift"""
+        return fails_on(["oracle"])

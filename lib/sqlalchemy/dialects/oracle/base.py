@@ -50,7 +50,7 @@ The :class:`_schema.Identity` object support many options to control the
 incrementing value, etc.
 In addition to the standard options, Oracle supports setting
 :paramref:`_schema.Identity.always` to ``None`` to use the default
-generated mode, rendering GENERATED AS IDENTITY in the DDL. 
+generated mode, rendering GENERATED AS IDENTITY in the DDL.
 Oracle also supports two custom options specified using dialect kwargs:
 
 * ``oracle_on_null``: when set to ``True`` renders ``ON NULL`` in conjunction
@@ -338,7 +338,6 @@ returned as well.
    on parity with other backends.
 
 
-
 ON UPDATE CASCADE
 -----------------
 
@@ -479,7 +478,7 @@ is reflected and the type is reported as ``DATE``, the time-supporting
 .. _oracle_table_options:
 
 Oracle Table Options
--------------------------
+--------------------
 
 The CREATE TABLE phrase supports the following options with Oracle
 in conjunction with the :class:`_schema.Table` construct:
@@ -1267,6 +1266,31 @@ class OracleCompiler(compiler.SQLCompiler):
 
     def visit_aggregate_strings_func(self, fn, **kw):
         return "LISTAGG%s" % self.function_argspec(fn, **kw)
+
+    def _visit_bitwise(self, binary, fn_name, custom_right=None, **kw):
+        left = self.process(binary.left, **kw)
+        right = self.process(
+            custom_right if custom_right is not None else binary.right, **kw
+        )
+        return f"{fn_name}({left}, {right})"
+
+    def visit_bitwise_xor_op_binary(self, binary, operator, **kw):
+        return self._visit_bitwise(binary, "BITXOR", **kw)
+
+    def visit_bitwise_or_op_binary(self, binary, operator, **kw):
+        return self._visit_bitwise(binary, "BITOR", **kw)
+
+    def visit_bitwise_and_op_binary(self, binary, operator, **kw):
+        return self._visit_bitwise(binary, "BITAND", **kw)
+
+    def visit_bitwise_rshift_op_binary(self, binary, operator, **kw):
+        raise exc.CompileError("Cannot compile bitwise_rshift in oracle")
+
+    def visit_bitwise_lshift_op_binary(self, binary, operator, **kw):
+        raise exc.CompileError("Cannot compile bitwise_lshift in oracle")
+
+    def visit_bitwise_not_op_unary_operator(self, element, operator, **kw):
+        raise exc.CompileError("Cannot compile bitwise_not in oracle")
 
 
 class OracleDDLCompiler(compiler.DDLCompiler):
@@ -2063,8 +2087,16 @@ class OracleDialect(default.DefaultDialect):
     ):
         query = select(
             dictionary.all_tables.c.table_name,
-            dictionary.all_tables.c.compression,
-            dictionary.all_tables.c.compress_for,
+            (
+                dictionary.all_tables.c.compression
+                if self._supports_table_compression
+                else sql.null().label("compression")
+            ),
+            (
+                dictionary.all_tables.c.compress_for
+                if self._supports_table_compress_for
+                else sql.null().label("compress_for")
+            ),
         ).where(dictionary.all_tables.c.owner == owner)
         if has_filter_names:
             query = query.where(

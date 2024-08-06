@@ -275,6 +275,33 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             use_default_dialect=True,
         )
 
+    @testing.combinations(
+        ("all", []),
+        ("one", exc.NoResultFound),
+        ("one_or_none", None),
+        argnames="method, expected",
+    )
+    @testing.variation("add_to_session", [True, False])
+    def test_transient_raise(
+        self, user_address_fixture, method, expected, add_to_session
+    ):
+        """test 11562"""
+        User, Address = user_address_fixture()
+
+        u1 = User(name="u1")
+        if add_to_session:
+            sess = fixture_session()
+            sess.add(u1)
+
+        meth = getattr(u1.addresses, method)
+        if expected is exc.NoResultFound:
+            with expect_raises_message(
+                exc.NoResultFound, "No row was found when one was required"
+            ):
+                meth()
+        else:
+            eq_(meth(), expected)
+
     def test_detached_raise(self, user_address_fixture):
         """so filtering on a detached dynamic list raises an error..."""
 

@@ -13,6 +13,9 @@ r"""
     :connectstring: oracle+oracledb://user:pass@hostname:port[/dbname][?service_name=<service>[&key=value&key=value...]]
     :url: https://oracle.github.io/python-oracledb/
 
+Description
+-----------
+
 python-oracledb is released by Oracle to supersede the cx_Oracle driver.
 It is fully compatible with cx_Oracle and features both a "thin" client
 mode that requires no dependencies, as well as a "thick" mode that uses
@@ -21,7 +24,7 @@ the Oracle Client Interface in the same way as cx_Oracle.
 .. seealso::
 
     :ref:`cx_oracle` - all of cx_Oracle's notes apply to the oracledb driver
-    as well.
+    as well, with the exception that oracledb supports two phase transactions.
 
 The SQLAlchemy ``oracledb`` dialect provides both a sync and an async
 implementation under the same dialect name. The proper version is
@@ -70,6 +73,16 @@ like the ``lib_dir`` path, a dict may be passed to this parameter, as in::
 
     https://python-oracledb.readthedocs.io/en/latest/api_manual/module.html#oracledb.init_oracle_client
 
+Two Phase Transactions Supported
+--------------------------------
+
+Two phase transactions are fully supported under oracledb. Starting with
+oracledb 2.3 two phase transactions are supported also in thin mode.    APIs
+for two phase transactions are provided at the Core level via
+:meth:`_engine.Connection.begin_twophase` and :paramref:`_orm.Session.twophase`
+for transparent ORM use.
+
+.. versionchanged:: 2.0.32 added support for two phase transactions
 
 .. versionadded:: 2.0.0 added support for oracledb driver.
 
@@ -81,10 +94,12 @@ import re
 from typing import Any
 from typing import TYPE_CHECKING
 
-from .cx_oracle import OracleDialect_cx_oracle as _OracleDialect_cx_oracle
+from . import cx_oracle as _cx_oracle
 from ... import exc
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
+from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
+from ...engine import default
 from ...util import await_
 
 if TYPE_CHECKING:
@@ -92,8 +107,16 @@ if TYPE_CHECKING:
     from oracledb import AsyncCursor
 
 
-class OracleDialect_oracledb(_OracleDialect_cx_oracle):
+class OracleExecutionContext_oracledb(
+    _cx_oracle.OracleExecutionContext_cx_oracle
+):
+    pass
+
+
+class OracleDialect_oracledb(_cx_oracle.OracleDialect_cx_oracle):
     supports_statement_cache = True
+    execution_ctx_cls = OracleExecutionContext_oracledb
+
     driver = "oracledb"
     _min_version = (1,)
 
@@ -151,6 +174,49 @@ class OracleDialect_oracledb(_OracleDialect_cx_oracle):
                 f"oracledb version {self._min_version} and above are supported"
             )
 
+    def do_begin_twophase(self, connection, xid):
+        conn_xis = connection.connection.xid(*xid)
+        connection.connection.tpc_begin(conn_xis)
+        connection.connection.info["oracledb_xid"] = conn_xis
+
+    def do_prepare_twophase(self, connection, xid):
+        should_commit = connection.connection.tpc_prepare()
+        connection.info["oracledb_should_commit"] = should_commit
+
+    def do_rollback_twophase(
+        self, connection, xid, is_prepared=True, recover=False
+    ):
+        if recover:
+            conn_xid = connection.connection.xid(*xid)
+        else:
+            conn_xid = None
+        connection.connection.tpc_rollback(conn_xid)
+
+    def do_commit_twophase(
+        self, connection, xid, is_prepared=True, recover=False
+    ):
+        conn_xid = None
+        if not is_prepared:
+            should_commit = connection.connection.tpc_prepare()
+        elif recover:
+            conn_xid = connection.connection.xid(*xid)
+            should_commit = True
+        else:
+            should_commit = connection.info["oracledb_should_commit"]
+        if should_commit:
+            connection.connection.tpc_commit(conn_xid)
+
+    def do_recover_twophase(self, connection):
+        return [
+            # oracledb seems to return bytes
+            (
+                fi,
+                gti.decode() if isinstance(gti, bytes) else gti,
+                bq.decode() if isinstance(bq, bytes) else bq,
+            )
+            for fi, gti, bq in connection.connection.tpc_recover()
+        ]
+
 
 class AsyncAdapt_oracledb_cursor(AsyncAdapt_dbapi_cursor):
     _cursor: AsyncCursor
@@ -201,6 +267,17 @@ class AsyncAdapt_oracledb_cursor(AsyncAdapt_dbapi_cursor):
         return await self._cursor.executemany(operation, seq_of_parameters)
 
 
+class AsyncAdapt_oracledb_ss_cursor(
+    AsyncAdapt_dbapi_ss_cursor, AsyncAdapt_oracledb_cursor
+):
+    __slots__ = ()
+
+    def close(self) -> None:
+        if self._cursor is not None:
+            self._cursor.close()
+            self._cursor = None  # type: ignore
+
+
 class AsyncAdapt_oracledb_connection(AsyncAdapt_dbapi_connection):
     _connection: AsyncConnection
     __slots__ = ()
@@ -241,6 +318,27 @@ class AsyncAdapt_oracledb_connection(AsyncAdapt_dbapi_connection):
     def cursor(self):
         return AsyncAdapt_oracledb_cursor(self)
 
+    def ss_cursor(self):
+        return AsyncAdapt_oracledb_ss_cursor(self)
+
+    def xid(self, *args: Any, **kwargs: Any) -> Any:
+        return self._connection.xid(*args, **kwargs)
+
+    def tpc_begin(self, *args: Any, **kwargs: Any) -> Any:
+        return await_(self._connection.tpc_begin(*args, **kwargs))
+
+    def tpc_commit(self, *args: Any, **kwargs: Any) -> Any:
+        return await_(self._connection.tpc_commit(*args, **kwargs))
+
+    def tpc_prepare(self, *args: Any, **kwargs: Any) -> Any:
+        return await_(self._connection.tpc_prepare(*args, **kwargs))
+
+    def tpc_recover(self, *args: Any, **kwargs: Any) -> Any:
+        return await_(self._connection.tpc_recover(*args, **kwargs))
+
+    def tpc_rollback(self, *args: Any, **kwargs: Any) -> Any:
+        return await_(self._connection.tpc_rollback(*args, **kwargs))
+
 
 class OracledbAdaptDBAPI:
     def __init__(self, oracledb) -> None:
@@ -257,9 +355,31 @@ class OracledbAdaptDBAPI:
         )
 
 
+class OracleExecutionContextAsync_oracledb(OracleExecutionContext_oracledb):
+    # restore default create cursor
+    create_cursor = default.DefaultExecutionContext.create_cursor
+
+    def create_default_cursor(self):
+        # copy of OracleExecutionContext_cx_oracle.create_cursor
+        c = self._dbapi_connection.cursor()
+        if self.dialect.arraysize:
+            c.arraysize = self.dialect.arraysize
+
+        return c
+
+    def create_server_side_cursor(self):
+        c = self._dbapi_connection.ss_cursor()
+        if self.dialect.arraysize:
+            c.arraysize = self.dialect.arraysize
+
+        return c
+
+
 class OracleDialectAsync_oracledb(OracleDialect_oracledb):
     is_async = True
+    supports_server_side_cursors = True
     supports_statement_cache = True
+    execution_ctx_cls = OracleExecutionContextAsync_oracledb
 
     _min_version = (2,)
 

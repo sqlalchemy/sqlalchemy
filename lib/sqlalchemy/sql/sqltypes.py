@@ -218,6 +218,11 @@ class String(Concatenable, TypeEngine[str]):
         self.length = length
         self.collation = collation
 
+    def _with_collation(self, collation):
+        new_type = self.copy()
+        new_type.collation = collation
+        return new_type
+
     def _resolve_for_literal(self, value):
         # I was SO PROUD of my regex trick, but we dont need it.
         # re.search(r"[^\u0000-\u007F]", value)
@@ -1007,7 +1012,7 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         if _adapted_from:
             self.dispatch = self.dispatch._join(_adapted_from.dispatch)
 
-    def _set_parent(self, column, **kw):
+    def _set_parent(self, parent, **kw):
         # set parent hook is when this type is associated with a column.
         # Column calls it for all SchemaEventTarget instances, either the
         # base type and/or variants in _variant_mapping.
@@ -1021,7 +1026,7 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         # on_table/metadata_create/drop in this method, which is used by
         # "native" types with a separate CREATE/DROP e.g. Postgresql.ENUM
 
-        column._on_table_attach(util.portable_instancemethod(self._set_table))
+        parent._on_table_attach(util.portable_instancemethod(self._set_table))
 
     def _variant_mapping_for_set_table(self, column):
         if column.type._variant_mapping:
@@ -1665,10 +1670,10 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         assert "_enums" in kw
         return impltype(**kw)
 
-    def adapt(self, impltype, **kw):
+    def adapt(self, cls, **kw):
         kw["_enums"] = self._enums_argument
         kw["_disable_warnings"] = True
-        return super().adapt(impltype, **kw)
+        return super().adapt(cls, **kw)
 
     def _should_create_constraint(self, compiler, **kw):
         if not self._is_impl_for_variant(compiler.dialect, kw):
@@ -2517,7 +2522,10 @@ class JSON(Indexable, TypeEngine[Any]):
             return operator, index, self.type
 
         def as_boolean(self):
-            """Cast an indexed value as boolean.
+            """Consider an indexed value as boolean.
+
+            This is similar to using :class:`_sql.type_coerce`, and will
+            usually not apply a ``CAST()``.
 
             e.g.::
 
@@ -2533,7 +2541,10 @@ class JSON(Indexable, TypeEngine[Any]):
             return self._binary_w_type(Boolean(), "as_boolean")
 
         def as_string(self):
-            """Cast an indexed value as string.
+            """Consider an indexed value as string.
+
+            This is similar to using :class:`_sql.type_coerce`, and will
+            usually not apply a ``CAST()``.
 
             e.g.::
 
@@ -2550,7 +2561,10 @@ class JSON(Indexable, TypeEngine[Any]):
             return self._binary_w_type(Unicode(), "as_string")
 
         def as_integer(self):
-            """Cast an indexed value as integer.
+            """Consider an indexed value as integer.
+
+            This is similar to using :class:`_sql.type_coerce`, and will
+            usually not apply a ``CAST()``.
 
             e.g.::
 
@@ -2566,7 +2580,10 @@ class JSON(Indexable, TypeEngine[Any]):
             return self._binary_w_type(Integer(), "as_integer")
 
         def as_float(self):
-            """Cast an indexed value as float.
+            """Consider an indexed value as float.
+
+            This is similar to using :class:`_sql.type_coerce`, and will
+            usually not apply a ``CAST()``.
 
             e.g.::
 
@@ -2582,7 +2599,10 @@ class JSON(Indexable, TypeEngine[Any]):
             return self._binary_w_type(Float(), "as_float")
 
         def as_numeric(self, precision, scale, asdecimal=True):
-            """Cast an indexed value as numeric/decimal.
+            """Consider an indexed value as numeric/decimal.
+
+            This is similar to using :class:`_sql.type_coerce`, and will
+            usually not apply a ``CAST()``.
 
             e.g.::
 
@@ -2601,7 +2621,10 @@ class JSON(Indexable, TypeEngine[Any]):
             )
 
         def as_json(self):
-            """Cast an indexed value as JSON.
+            """Consider an indexed value as JSON.
+
+            This is similar to using :class:`_sql.type_coerce`, and will
+            usually not apply a ``CAST()``.
 
             e.g.::
 
@@ -3043,13 +3066,13 @@ class ARRAY(
     def compare_values(self, x, y):
         return x == y
 
-    def _set_parent(self, column, outer=False, **kw):
+    def _set_parent(self, parent, outer=False, **kw):
         """Support SchemaEventTarget"""
 
         if not outer and isinstance(self.item_type, SchemaEventTarget):
-            self.item_type._set_parent(column, **kw)
+            self.item_type._set_parent(parent, **kw)
 
-    def _set_parent_with_dispatch(self, parent):
+    def _set_parent_with_dispatch(self, parent, **kw):
         """Support SchemaEventTarget"""
 
         super()._set_parent_with_dispatch(parent, outer=True)

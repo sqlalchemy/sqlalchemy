@@ -29,6 +29,8 @@ from .. import util
 from ..sql import coercions
 from ..sql import expression
 from ..sql import roles
+from ..util.langhelpers import Missing
+from ..util.langhelpers import MissingOr
 from ..util.typing import Literal
 
 if TYPE_CHECKING:
@@ -39,8 +41,6 @@ if TYPE_CHECKING:
 
 _KT = TypeVar("_KT", bound=Any)
 _VT = TypeVar("_VT", bound=Any)
-
-_F = TypeVar("_F", bound=Callable[[Any], Any])
 
 
 class _PlainColumnGetter(Generic[_KT]):
@@ -70,7 +70,7 @@ class _PlainColumnGetter(Generic[_KT]):
     def _cols(self, mapper: Mapper[_KT]) -> Sequence[ColumnElement[_KT]]:
         return self.cols
 
-    def __call__(self, value: _KT) -> Union[_KT, Tuple[_KT, ...]]:
+    def __call__(self, value: _KT) -> MissingOr[Union[_KT, Tuple[_KT, ...]]]:
         state = base.instance_state(value)
         m = base._state_mapper(state)
 
@@ -83,7 +83,7 @@ class _PlainColumnGetter(Generic[_KT]):
         else:
             obj = key[0]
             if obj is None:
-                return _UNMAPPED_AMBIGUOUS_NONE
+                return Missing
             else:
                 return obj
 
@@ -198,9 +198,6 @@ def column_keyed_dict(
     )
 
 
-_UNMAPPED_AMBIGUOUS_NONE = object()
-
-
 class _AttrGetter:
     __slots__ = ("attr_name", "getter")
 
@@ -217,9 +214,9 @@ class _AttrGetter:
                 dict_ = state.dict
                 obj = dict_.get(self.attr_name, base.NO_VALUE)
                 if obj is None:
-                    return _UNMAPPED_AMBIGUOUS_NONE
+                    return Missing
             else:
-                return _UNMAPPED_AMBIGUOUS_NONE
+                return Missing
 
         return obj
 
@@ -277,7 +274,7 @@ def attribute_keyed_dict(
 
 
 def keyfunc_mapping(
-    keyfunc: _F,
+    keyfunc: Callable[[Any], Any],
     *,
     ignore_unpopulated_attribute: bool = False,
 ) -> Type[KeyFuncDict[_KT, Any]]:
@@ -353,7 +350,7 @@ class KeyFuncDict(Dict[_KT, _VT]):
 
     def __init__(
         self,
-        keyfunc: _F,
+        keyfunc: Callable[[Any], Any],
         *dict_args: Any,
         ignore_unpopulated_attribute: bool = False,
     ) -> None:
@@ -377,7 +374,7 @@ class KeyFuncDict(Dict[_KT, _VT]):
     @classmethod
     def _unreduce(
         cls,
-        keyfunc: _F,
+        keyfunc: Callable[[Any], Any],
         values: Dict[_KT, _KT],
         adapter: Optional[CollectionAdapter] = None,
     ) -> "KeyFuncDict[_KT, _KT]":
@@ -464,7 +461,7 @@ class KeyFuncDict(Dict[_KT, _VT]):
                 )
             else:
                 return
-        elif key is _UNMAPPED_AMBIGUOUS_NONE:
+        elif key is Missing:
             if not self.ignore_unpopulated_attribute:
                 self._raise_for_unpopulated(
                     value, _sa_initiator, warn_only=True
@@ -492,7 +489,7 @@ class KeyFuncDict(Dict[_KT, _VT]):
                     value, _sa_initiator, warn_only=False
                 )
             return
-        elif key is _UNMAPPED_AMBIGUOUS_NONE:
+        elif key is Missing:
             if not self.ignore_unpopulated_attribute:
                 self._raise_for_unpopulated(
                     value, _sa_initiator, warn_only=True
@@ -514,7 +511,7 @@ class KeyFuncDict(Dict[_KT, _VT]):
 
 
 def _mapped_collection_cls(
-    keyfunc: _F, ignore_unpopulated_attribute: bool
+    keyfunc: Callable[[Any], Any], ignore_unpopulated_attribute: bool
 ) -> Type[KeyFuncDict[_KT, _KT]]:
     class _MKeyfuncMapped(KeyFuncDict[_KT, _KT]):
         def __init__(self, *dict_args: Any) -> None:

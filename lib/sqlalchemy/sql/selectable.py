@@ -1521,11 +1521,23 @@ class Join(roles.DMLTableRole, FromClause):
     ) -> TODO_Any:
         sqlutil = util.preloaded.sql_util
         if flat:
-            if name is not None:
-                raise exc.ArgumentError("Can't send name argument with flat")
+            if isinstance(self.left, (FromGrouping, Join)):
+                left_name = name  # will recurse
+            else:
+                if name and isinstance(self.left, NamedFromClause):
+                    left_name = f"{name}_{self.left.name}"
+                else:
+                    left_name = name
+            if isinstance(self.right, (FromGrouping, Join)):
+                right_name = name  # will recurse
+            else:
+                if name and isinstance(self.right, NamedFromClause):
+                    right_name = f"{name}_{self.right.name}"
+                else:
+                    right_name = name
             left_a, right_a = (
-                self.left._anonymous_fromclause(flat=True),
-                self.right._anonymous_fromclause(flat=True),
+                self.left._anonymous_fromclause(name=left_name, flat=flat),
+                self.right._anonymous_fromclause(name=right_name, flat=flat),
             )
             adapter = sqlutil.ClauseAdapter(left_a).chain(
                 sqlutil.ClauseAdapter(right_a)
@@ -3086,6 +3098,7 @@ class ForUpdateArg(ClauseElement):
         ("nowait", InternalTraversal.dp_boolean),
         ("read", InternalTraversal.dp_boolean),
         ("skip_locked", InternalTraversal.dp_boolean),
+        ("key_share", InternalTraversal.dp_boolean),
     ]
 
     of: Optional[Sequence[ClauseElement]]
@@ -3673,7 +3686,7 @@ class SelectStatementGrouping(GroupedElement, SelectBase, Generic[_SB]):
     __visit_name__ = "select_statement_grouping"
     _traverse_internals: _TraverseInternalsType = [
         ("element", InternalTraversal.dp_clauseelement)
-    ]
+    ] + SupportsCloneAnnotations._clone_annotations_traverse_internals
 
     _is_select_container = True
 
@@ -3752,6 +3765,10 @@ class SelectStatementGrouping(GroupedElement, SelectBase, Generic[_SB]):
     @util.ro_non_memoized_property
     def _from_objects(self) -> List[FromClause]:
         return self.element._from_objects
+
+    def add_cte(self, *ctes: CTE, nest_here: bool = False) -> Self:
+        # SelectStatementGrouping not generative: has no attribute '_generate'
+        raise NotImplementedError
 
 
 class GenerativeSelect(SelectBase, Generative):
@@ -3861,7 +3878,7 @@ class GenerativeSelect(SelectBase, Generative):
         :attr:`_sql.SelectLabelStyle.LABEL_STYLE_DISAMBIGUATE_ONLY`,
         :attr:`_sql.SelectLabelStyle.LABEL_STYLE_TABLENAME_PLUS_COL`, and
         :attr:`_sql.SelectLabelStyle.LABEL_STYLE_NONE`.   The default style is
-        :attr:`_sql.SelectLabelStyle.LABEL_STYLE_TABLENAME_PLUS_COL`.
+        :attr:`_sql.SelectLabelStyle.LABEL_STYLE_DISAMBIGUATE_ONLY`.
 
         In modern SQLAlchemy, there is not generally a need to change the
         labeling style, as per-expression labels are more effectively used by
@@ -4300,17 +4317,21 @@ class CompoundSelect(HasCompileState, GenerativeSelect, ExecutableReturnsRows):
 
     __visit_name__ = "compound_select"
 
-    _traverse_internals: _TraverseInternalsType = [
-        ("selects", InternalTraversal.dp_clauseelement_list),
-        ("_limit_clause", InternalTraversal.dp_clauseelement),
-        ("_offset_clause", InternalTraversal.dp_clauseelement),
-        ("_fetch_clause", InternalTraversal.dp_clauseelement),
-        ("_fetch_clause_options", InternalTraversal.dp_plain_dict),
-        ("_order_by_clauses", InternalTraversal.dp_clauseelement_list),
-        ("_group_by_clauses", InternalTraversal.dp_clauseelement_list),
-        ("_for_update_arg", InternalTraversal.dp_clauseelement),
-        ("keyword", InternalTraversal.dp_string),
-    ] + SupportsCloneAnnotations._clone_annotations_traverse_internals
+    _traverse_internals: _TraverseInternalsType = (
+        [
+            ("selects", InternalTraversal.dp_clauseelement_list),
+            ("_limit_clause", InternalTraversal.dp_clauseelement),
+            ("_offset_clause", InternalTraversal.dp_clauseelement),
+            ("_fetch_clause", InternalTraversal.dp_clauseelement),
+            ("_fetch_clause_options", InternalTraversal.dp_plain_dict),
+            ("_order_by_clauses", InternalTraversal.dp_clauseelement_list),
+            ("_group_by_clauses", InternalTraversal.dp_clauseelement_list),
+            ("_for_update_arg", InternalTraversal.dp_clauseelement),
+            ("keyword", InternalTraversal.dp_string),
+        ]
+        + SupportsCloneAnnotations._clone_annotations_traverse_internals
+        + HasCTE._has_ctes_traverse_internals
+    )
 
     selects: List[SelectBase]
 

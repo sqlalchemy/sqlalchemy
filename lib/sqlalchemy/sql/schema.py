@@ -80,7 +80,6 @@ from .elements import TextClause
 from .selectable import TableClause
 from .type_api import to_instance
 from .visitors import ExternallyTraversible
-from .visitors import InternalTraversal
 from .. import event
 from .. import exc
 from .. import inspection
@@ -102,7 +101,6 @@ if typing.TYPE_CHECKING:
     from .elements import BindParameter
     from .functions import Function
     from .type_api import TypeEngine
-    from .visitors import _TraverseInternalsType
     from .visitors import anon_map
     from ..engine import Connection
     from ..engine import Engine
@@ -125,6 +123,8 @@ _ConstraintNameArgument = Optional[Union[str, _NoneName]]
 _ServerDefaultArgument = Union[
     "FetchedValue", str, TextClause, ColumnElement[Any]
 ]
+
+_ServerOnUpdateArgument = _ServerDefaultArgument
 
 
 class SchemaConst(Enum):
@@ -392,11 +392,6 @@ class Table(
             :meth:`_reflection.Inspector.get_indexes`
 
     """
-
-    _traverse_internals: _TraverseInternalsType = (
-        TableClause._traverse_internals
-        + [("schema", InternalTraversal.dp_string)]
-    )
 
     if TYPE_CHECKING:
 
@@ -1530,7 +1525,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         onupdate: Optional[Any] = None,
         primary_key: bool = False,
         server_default: Optional[_ServerDefaultArgument] = None,
-        server_onupdate: Optional[FetchedValue] = None,
+        server_onupdate: Optional[_ServerOnUpdateArgument] = None,
         quote: Optional[bool] = None,
         system: bool = False,
         comment: Optional[str] = None,

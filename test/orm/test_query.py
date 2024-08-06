@@ -5540,6 +5540,25 @@ class YieldTest(_fixtures.FixtureTest):
         )
         eq_(len(q.all()), 4)
 
+    @testing.combinations(
+        "joined",
+        "subquery",
+        "selectin",
+        "select",
+        "immediate",
+        argnames="lazy",
+    )
+    def test_eagerload_config_disable(self, lazy):
+        self._eagerload_mappings(addresses_lazy=lazy)
+
+        User = self.classes.User
+        sess = fixture_session()
+        q = sess.query(User).enable_eagerloads(False).yield_per(1)
+        objs = q.all()
+        eq_(len(objs), 4)
+        for obj in objs:
+            assert "addresses" not in obj.__dict__
+
     def test_m2o_joinedload_not_others(self):
         self._eagerload_mappings(addresses_lazy="joined")
         Address = self.classes.Address

@@ -44,6 +44,10 @@ from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import not_
 from sqlalchemy import null
+from sqlalchemy import nulls_first
+from sqlalchemy import nulls_last
+from sqlalchemy import nullsfirst
+from sqlalchemy import nullslast
 from sqlalchemy import Numeric
 from sqlalchemy import or_
 from sqlalchemy import outerjoin
@@ -1668,27 +1672,13 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "foo || :param_1",
         )
 
-    def test_order_by_labels_enabled(self):
+    def test_order_by_labels_enabled_negative_cases(self):
+        """test order_by_labels enabled but the cases where we expect
+        ORDER BY the expression without the label name"""
+
         lab1 = (table1.c.myid + 12).label("foo")
         lab2 = func.somefunc(table1.c.name).label("bar")
         dialect = default.DefaultDialect()
-
-        self.assert_compile(
-            select(lab1, lab2).order_by(lab1, desc(lab2)),
-            "SELECT mytable.myid + :myid_1 AS foo, "
-            "somefunc(mytable.name) AS bar FROM mytable "
-            "ORDER BY foo, bar DESC",
-            dialect=dialect,
-        )
-
-        # the function embedded label renders as the function
-        self.assert_compile(
-            select(lab1, lab2).order_by(func.hoho(lab1), desc(lab2)),
-            "SELECT mytable.myid + :myid_1 AS foo, "
-            "somefunc(mytable.name) AS bar FROM mytable "
-            "ORDER BY hoho(mytable.myid + :myid_1), bar DESC",
-            dialect=dialect,
-        )
 
         # binary expressions render as the expression without labels
         self.assert_compile(
@@ -1709,49 +1699,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=dialect,
         )
 
-        lx = (table1.c.myid + table1.c.myid).label("lx")
-        ly = (func.lower(table1.c.name) + table1.c.description).label("ly")
-
-        self.assert_compile(
-            select(lx, ly).order_by(lx, ly.desc()),
-            "SELECT mytable.myid + mytable.myid AS lx, "
-            "lower(mytable.name) || mytable.description AS ly "
-            "FROM mytable ORDER BY lx, ly DESC",
-            dialect=dialect,
-        )
-
-        # expression isn't actually the same thing (even though label is)
-        self.assert_compile(
-            select(lab1, lab2).order_by(
-                table1.c.myid.label("foo"), desc(table1.c.name.label("bar"))
-            ),
-            "SELECT mytable.myid + :myid_1 AS foo, "
-            "somefunc(mytable.name) AS bar FROM mytable "
-            "ORDER BY mytable.myid, mytable.name DESC",
-            dialect=dialect,
-        )
-
-        # it's also an exact match, not aliased etc.
-        self.assert_compile(
-            select(lab1, lab2).order_by(
-                desc(table1.alias().c.name.label("bar"))
-            ),
-            "SELECT mytable.myid + :myid_1 AS foo, "
-            "somefunc(mytable.name) AS bar FROM mytable "
-            "ORDER BY mytable_1.name DESC",
-            dialect=dialect,
-        )
-
-        # but! it's based on lineage
-        lab2_lineage = lab2.element._clone()
-        self.assert_compile(
-            select(lab1, lab2).order_by(desc(lab2_lineage.label("bar"))),
-            "SELECT mytable.myid + :myid_1 AS foo, "
-            "somefunc(mytable.name) AS bar FROM mytable "
-            "ORDER BY bar DESC",
-            dialect=dialect,
-        )
-
         # here, 'name' is implicitly available, but w/ #3882 we don't
         # want to render a name that isn't specifically a Label elsewhere
         # in the query
@@ -1768,7 +1715,92 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.myid FROM mytable ORDER BY lower(mytable.name)",
         )
 
+    @testing.combinations(
+        (desc, "DESC"),
+        (asc, "ASC"),
+        (nulls_first, "NULLS FIRST"),
+        (nulls_last, "NULLS LAST"),
+        (nullsfirst, "NULLS FIRST"),
+        (nullslast, "NULLS LAST"),
+        (lambda c: c.desc().nulls_last(), "DESC NULLS LAST"),
+        (lambda c: c.desc().nullslast(), "DESC NULLS LAST"),
+        (lambda c: c.nulls_first().asc(), "NULLS FIRST ASC"),
+    )
+    def test_order_by_labels_enabled(self, operator, expected):
+        """test positive cases with order_by_labels enabled.  this is
+        multipled out to all the ORDER BY modifier operators
+        (see #11592)
+
+
+        """
+        lab1 = (table1.c.myid + 12).label("foo")
+        lab2 = func.somefunc(table1.c.name).label("bar")
+        dialect = default.DefaultDialect()
+
+        self.assert_compile(
+            select(lab1, lab2).order_by(lab1, operator(lab2)),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "somefunc(mytable.name) AS bar FROM mytable "
+            f"ORDER BY foo, bar {expected}",
+            dialect=dialect,
+        )
+
+        # the function embedded label renders as the function
+        self.assert_compile(
+            select(lab1, lab2).order_by(func.hoho(lab1), operator(lab2)),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "somefunc(mytable.name) AS bar FROM mytable "
+            f"ORDER BY hoho(mytable.myid + :myid_1), bar {expected}",
+            dialect=dialect,
+        )
+
+        lx = (table1.c.myid + table1.c.myid).label("lx")
+        ly = (func.lower(table1.c.name) + table1.c.description).label("ly")
+
+        self.assert_compile(
+            select(lx, ly).order_by(lx, operator(ly)),
+            "SELECT mytable.myid + mytable.myid AS lx, "
+            "lower(mytable.name) || mytable.description AS ly "
+            f"FROM mytable ORDER BY lx, ly {expected}",
+            dialect=dialect,
+        )
+
+        # expression isn't actually the same thing (even though label is)
+        self.assert_compile(
+            select(lab1, lab2).order_by(
+                table1.c.myid.label("foo"),
+                operator(table1.c.name.label("bar")),
+            ),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "somefunc(mytable.name) AS bar FROM mytable "
+            f"ORDER BY mytable.myid, mytable.name {expected}",
+            dialect=dialect,
+        )
+
+        # it's also an exact match, not aliased etc.
+        self.assert_compile(
+            select(lab1, lab2).order_by(
+                operator(table1.alias().c.name.label("bar"))
+            ),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "somefunc(mytable.name) AS bar FROM mytable "
+            f"ORDER BY mytable_1.name {expected}",
+            dialect=dialect,
+        )
+
+        # but! it's based on lineage
+        lab2_lineage = lab2.element._clone()
+        self.assert_compile(
+            select(lab1, lab2).order_by(operator(lab2_lineage.label("bar"))),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "somefunc(mytable.name) AS bar FROM mytable "
+            f"ORDER BY bar {expected}",
+            dialect=dialect,
+        )
+
     def test_order_by_labels_disabled(self):
+        """test when the order_by_labels feature is disabled entirely"""
+
         lab1 = (table1.c.myid + 12).label("foo")
         lab2 = func.somefunc(table1.c.name).label("bar")
         dialect = default.DefaultDialect()

@@ -6,10 +6,10 @@ class which represents historical versions of the target object.
 Compare to the :ref:`examples_versioned_rows` examples which write updates
 as new rows in the same table, without using a separate history table.
 
-Usage is illustrated via a unit test module ``test_versioning.py``, which can
-be run like any other module, using ``unittest`` internally::
+Usage is illustrated via a unit test module ``test_versioning.py``, which is
+run using SQLAlchemy's internal pytest plugin::
 
-    python -m examples.versioned_history.test_versioning
+    pytest test/base/test_examples.py
 
 
 A fragment of example usage, using declarative::

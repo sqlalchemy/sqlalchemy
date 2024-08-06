@@ -2232,3 +2232,11 @@ def load_uncompiled_module(module: _M) -> _M:
     assert py_spec.loader
     py_spec.loader.exec_module(py_module)
     return cast(_M, py_module)
+
+
+class _Missing(enum.Enum):
+    Missing = enum.auto()
+
+
+Missing = _Missing.Missing
+MissingOr = Union[_T, Literal[_Missing.Missing]]

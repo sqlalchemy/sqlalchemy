@@ -21,6 +21,7 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import true
 from sqlalchemy import union_all
 from sqlalchemy.engine import cursor as _cursor
 from sqlalchemy.ext.asyncio import async_engine_from_config
@@ -405,8 +406,7 @@ class AsyncEngineTest(EngineFixture):
 
     @async_test
     async def test_statement_compile(self, async_engine):
-        stmt = _select1(async_engine)
-        eq_(str(select(1).compile(async_engine)), stmt)
+        stmt = str(select(1).compile(async_engine))
         async with async_engine.connect() as conn:
             eq_(str(select(1).compile(conn)), stmt)
 
@@ -967,11 +967,11 @@ class AsyncEventTest(EngineFixture):
 
         event.listen(async_engine.sync_engine, "before_cursor_execute", canary)
 
-        s1 = _select1(async_engine)
         async with async_engine.connect() as conn:
             sync_conn = conn.sync_connection
-            await conn.execute(text(s1))
+            await conn.execute(select(1))
 
+        s1 = str(select(1).compile(async_engine))
         eq_(
             canary.mock_calls,
             [mock.call(sync_conn, mock.ANY, s1, mock.ANY, mock.ANY, False)],
@@ -981,15 +981,15 @@ class AsyncEventTest(EngineFixture):
     async def test_sync_before_cursor_execute_connection(self, async_engine):
         canary = mock.Mock()
 
-        s1 = _select1(async_engine)
         async with async_engine.connect() as conn:
             sync_conn = conn.sync_connection
 
             event.listen(
                 async_engine.sync_engine, "before_cursor_execute", canary
             )
-            await conn.execute(text(s1))
+            await conn.execute(select(1))
 
+        s1 = str(select(1).compile(async_engine))
         eq_(
             canary.mock_calls,
             [mock.call(sync_conn, mock.ANY, s1, mock.ANY, mock.ANY, False)],
@@ -1331,19 +1331,50 @@ class AsyncResultTest(EngineFixture):
             ):
                 await result.one()
 
-    @testing.combinations(
-        ("scalars",), ("stream_scalars",), argnames="filter_"
-    )
+    @testing.combinations(("scalars",), ("stream_scalars",), argnames="case")
     @async_test
-    async def test_scalars(self, async_engine, filter_):
+    async def test_scalars(self, async_engine, case):
         users = self.tables.users
         async with async_engine.connect() as conn:
-            if filter_ == "scalars":
+            if case == "scalars":
                 result = (await conn.scalars(select(users))).all()
-            elif filter_ == "stream_scalars":
+            elif case == "stream_scalars":
                 result = await (await conn.stream_scalars(select(users))).all()
 
         eq_(result, list(range(1, 20)))
+
+    @async_test
+    @testing.combinations(("stream",), ("stream_scalars",), argnames="case")
+    async def test_stream_fetch_many_not_complete(self, async_engine, case):
+        users = self.tables.users
+        big_query = select(users).join(users.alias("other"), true())
+        async with async_engine.connect() as conn:
+            if case == "stream":
+                result = await conn.stream(big_query)
+            elif case == "stream_scalars":
+                result = await conn.stream_scalars(big_query)
+
+            f1 = await result.fetchmany(5)
+            f2 = await result.fetchmany(10)
+            f3 = await result.fetchmany(7)
+            eq_(len(f1) + len(f2) + len(f3), 22)
+
+            res = await result.fetchall()
+            eq_(len(res), 19 * 19 - 22)
+
+    @async_test
+    @testing.combinations(("stream",), ("execute",), argnames="case")
+    async def test_cursor_close(self, async_engine, case):
+        users = self.tables.users
+        async with async_engine.connect() as conn:
+            if case == "stream":
+                result = await conn.stream(select(users))
+                cursor = result._real_result.cursor
+            elif case == "execute":
+                result = await conn.execute(select(users))
+                cursor = result.cursor
+
+            await conn.run_sync(lambda _: cursor.close())
 
 
 class TextSyncDBAPI(fixtures.TestBase):
@@ -1516,17 +1547,10 @@ class PoolRegenTest(EngineFixture):
 
         async def thing(engine):
             async with engine.connect() as conn:
-                await conn.exec_driver_sql("select 1")
+                await conn.exec_driver_sql(str(select(1).compile(engine)))
 
         if do_dispose:
             await engine.dispose()
 
         tasks = [thing(engine) for _ in range(10)]
         await asyncio.gather(*tasks)
-
-
-def _select1(engine):
-    if engine.dialect.name == "oracle":
-        return "SELECT 1 FROM DUAL"
-    else:
-        return "SELECT 1"

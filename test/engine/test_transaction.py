@@ -473,7 +473,8 @@ class TransactionTest(fixtures.TablesTest):
 
     @testing.requires.two_phase_transactions
     @testing.requires.two_phase_recovery
-    def test_two_phase_recover(self):
+    @testing.variation("commit", [True, False])
+    def test_two_phase_recover(self, commit):
         users = self.tables.users
 
         # 2020, still can't get this to work w/ modern MySQL or MariaDB.
@@ -501,17 +502,29 @@ class TransactionTest(fixtures.TablesTest):
                 [],
             )
         # recover_twophase needs to be run in a new transaction
-        with testing.db.connect() as connection2:
-            recoverables = connection2.recover_twophase()
-            assert transaction.xid in recoverables
-            connection2.commit_prepared(transaction.xid, recover=True)
+        with testing.db.connect() as connection3:
+            # oracle transactions can't be recovered for commit after...
+            # about 1 second?  OK
+            with testing.skip_if_timeout(
+                0.50,
+                cleanup=(
+                    lambda: connection3.rollback_prepared(
+                        transaction.xid, recover=True
+                    )
+                ),
+            ):
+                recoverables = connection3.recover_twophase()
+                assert transaction.xid in recoverables
 
-            eq_(
-                connection2.execute(
-                    select(users.c.user_id).order_by(users.c.user_id)
-                ).fetchall(),
-                [(1,)],
-            )
+            if commit:
+                connection3.commit_prepared(transaction.xid, recover=True)
+                res = [(1,)]
+            else:
+                connection3.rollback_prepared(transaction.xid, recover=True)
+                res = []
+
+            stmt = select(users.c.user_id).order_by(users.c.user_id)
+            eq_(connection3.execute(stmt).fetchall(), res)
 
     @testing.requires.two_phase_transactions
     def test_multiple_two_phase(self, local_connection):

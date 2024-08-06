@@ -1410,10 +1410,17 @@ as opposed to the "return type" of a Python function.
 
 The SQL return type of any SQL function may be accessed, typically for
 debugging purposes, by referring to the :attr:`_functions.Function.type`
-attribute::
+attribute; this will be pre-configured for a **select few** of extremely
+common SQL functions, but for most SQL functions is the "null" datatype
+if not otherwise specified::
 
+    >>> # pre-configured SQL function (only a few dozen of these)
     >>> func.now().type
     DateTime()
+
+    >>> # arbitrary SQL function (all other SQL functions)
+    >>> func.run_some_calculation().type
+    NullType()
 
 These SQL return types are significant when making
 use of the function expression in the context of a larger expression; that is,

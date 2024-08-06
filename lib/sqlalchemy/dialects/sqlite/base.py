@@ -1528,6 +1528,13 @@ class SQLiteCompiler(compiler.SQLCompiler):
 
         return "ON CONFLICT %s DO UPDATE SET %s" % (target_text, action_text)
 
+    def visit_bitwise_xor_op_binary(self, binary, operator, **kw):
+        # sqlite has no xor. Use "a XOR b" = "(a | b) - (a & b)".
+        kw["eager_grouping"] = True
+        or_ = self._generate_generic_binary(binary, " | ", **kw)
+        and_ = self._generate_generic_binary(binary, " & ", **kw)
+        return f"({or_} - {and_})"
+
 
 class SQLiteDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
@@ -2231,6 +2238,14 @@ class SQLiteDialect(default.DefaultDialect):
                 tablesql = self._get_table_sql(
                     connection, table_name, schema, **kw
                 )
+                # remove create table
+                match = re.match(
+                    r"create table .*?\((.*)\)$",
+                    tablesql.strip(),
+                    re.DOTALL | re.IGNORECASE,
+                )
+                assert match, f"create table not found in {tablesql}"
+                tablesql = match.group(1).strip()
 
             columns.append(
                 self._get_column_info(
@@ -2285,7 +2300,10 @@ class SQLiteDialect(default.DefaultDialect):
         if generated:
             sqltext = ""
             if tablesql:
-                pattern = r"[^,]*\s+AS\s+\(([^,]*)\)\s*(?:virtual|stored)?"
+                pattern = (
+                    r"[^,]*\s+GENERATED\s+ALWAYS\s+AS"
+                    r"\s+\((.*)\)\s*(?:virtual|stored)?"
+                )
                 match = re.search(
                     re.escape(name) + pattern, tablesql, re.IGNORECASE
                 )

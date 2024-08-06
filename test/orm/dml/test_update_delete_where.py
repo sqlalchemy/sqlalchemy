@@ -36,6 +36,7 @@ from sqlalchemy.sql.dml import Update
 from sqlalchemy.sql.selectable import Select
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import fixtures
@@ -2961,6 +2962,54 @@ class InheritTest(fixtures.DeclarativeMappedTest):
         eq_(
             set(s.query(Person.name, Engineer.engineer_name)),
             {("e1", "e1"), ("e22", "e55"), ("pp1", "pp1")},
+        )
+
+
+class InheritWPolyTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    @testing.fixture
+    def inherit_fixture(self, decl_base):
+        def go(poly_type):
+
+            class Person(decl_base):
+                __tablename__ = "person"
+                id = Column(Integer, primary_key=True)
+                type = Column(String(50))
+                name = Column(String(50))
+
+                if poly_type.wpoly:
+                    __mapper_args__ = {"with_polymorphic": "*"}
+
+            class Engineer(Person):
+                __tablename__ = "engineer"
+                id = Column(Integer, ForeignKey("person.id"), primary_key=True)
+                engineer_name = Column(String(50))
+
+                if poly_type.inline:
+                    __mapper_args__ = {"polymorphic_load": "inline"}
+
+            return Person, Engineer
+
+        return go
+
+    @testing.variation("poly_type", ["wpoly", "inline", "none"])
+    def test_update_base_only(self, poly_type, inherit_fixture):
+        Person, Engineer = inherit_fixture(poly_type)
+
+        self.assert_compile(
+            update(Person).values(name="n1"), "UPDATE person SET name=:name"
+        )
+
+    @testing.variation("poly_type", ["wpoly", "inline", "none"])
+    def test_delete_base_only(self, poly_type, inherit_fixture):
+        Person, Engineer = inherit_fixture(poly_type)
+
+        self.assert_compile(delete(Person), "DELETE FROM person")
+
+        self.assert_compile(
+            delete(Person).where(Person.id == 7),
+            "DELETE FROM person WHERE person.id = :id_1",
         )
 
 

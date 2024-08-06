@@ -71,7 +71,7 @@ if TYPE_CHECKING:
     from ..sql._typing import _TypeEngineArgument
     from ..sql.elements import ColumnElement
     from ..sql.schema import _ServerDefaultArgument
-    from ..sql.schema import FetchedValue
+    from ..sql.schema import _ServerOnUpdateArgument
     from ..sql.selectable import Alias
     from ..sql.selectable import Subquery
 
@@ -129,7 +129,7 @@ def mapped_column(
     onupdate: Optional[Any] = None,
     insert_default: Optional[Any] = _NoArg.NO_ARG,
     server_default: Optional[_ServerDefaultArgument] = None,
-    server_onupdate: Optional[FetchedValue] = None,
+    server_onupdate: Optional[_ServerOnUpdateArgument] = None,
     active_history: bool = False,
     quote: Optional[bool] = None,
     system: bool = False,
@@ -2300,6 +2300,16 @@ def aliased(
      inside the join, rather than creating a subquery.  This is generally
      supported by all modern databases with regards to right-nested joins
      and generally produces more efficient queries.
+
+     When :paramref:`_orm.aliased.flat` is combined with
+     :paramref:`_orm.aliased.name`, the resulting joins will alias individual
+     tables using a naming scheme similar to ``<prefix>_<tablename>``.  This
+     naming scheme is for visibility / debugging purposes only and the
+     specific scheme is subject to change without notice.
+
+     .. versionadded:: 2.0.32 added support for combining
+        :paramref:`_orm.aliased.name` with :paramref:`_orm.aliased.flat`.
+        Previously, this would raise ``NotImplementedError``.
 
     :param adapt_on_names: if True, more liberal "matching" will be used when
      mapping the mapped columns of the ORM entity to those of the

@@ -1157,6 +1157,7 @@ class Executable(roles.StatementRole):
         stream_results: bool = False,
         max_row_buffer: int = ...,
         yield_per: int = ...,
+        driver_column_names: bool = ...,
         insertmanyvalues_page_size: int = ...,
         schema_translate_map: Optional[SchemaTranslateMapType] = ...,
         populate_existing: bool = False,
@@ -2136,7 +2137,7 @@ class ColumnSet(util.OrderedSet["ColumnClause[Any]"]):
                     l.append(c == local)
         return elements.and_(*l)
 
-    def __hash__(self):
+    def __hash__(self):  # type: ignore[override]
         return hash(tuple(x for x in self))
 
 
