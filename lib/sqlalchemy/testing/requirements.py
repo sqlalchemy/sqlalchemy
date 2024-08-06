@@ -1095,8 +1095,8 @@ class SuiteRequirements(Requirements):
     
     @property
     def array_type(self):
-    """Target platform implements a native ARRAY type"""
-    return exclusions.closed()
+        """Target platform implements a native ARRAY type"""
+        return exclusions.closed()
         
     @property
     def json_type(self):
