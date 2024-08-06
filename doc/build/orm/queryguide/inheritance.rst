@@ -128,7 +128,7 @@ objects at once.  This loader option works in a similar fashion as the
 SELECT statement against each sub-table for objects loaded in the hierarchy,
 using ``IN`` to query for additional rows based on primary key.
 
-:func:`_orm.selectinload` accepts as its arguments the base entity that is
+:func:`_orm.selectin_polymorphic` accepts as its arguments the base entity that is
 being queried, followed by a sequence of subclasses of that entity for which
 their specific attributes should be loaded for incoming rows::
 
