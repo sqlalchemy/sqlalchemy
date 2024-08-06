@@ -1637,6 +1637,31 @@ class sum(ReturnTypeFromArgs[_T]):  # noqa: A001
 
     inherit_cache = True
 
+class vector_distance(ReturnTypeFromArgs[_T]):
+    """The SQL vector_distance() function"""
+    
+    inherit_cache = True 
+
+class L1_DISTANCE(ReturnTypeFromArgs[_T]):
+    """The SQL L1_DISTANCE() function"""
+
+    inherit_cache = True
+
+class L2_DISTANCE(ReturnTypeFromArgs[_T]):
+    """The SQL L2_DISTANCE() function"""
+
+    inherit_cache = True
+
+class INNER_PRODUCT(ReturnTypeFromArgs[_T]):
+    """The SQL INNER_DISTANCE() function"""
+
+    inherit_cache = True
+
+class COSINE_DISTANCE(ReturnTypeFromArgs[_T]):
+    """The SQL COSINE_DISTANCE() function"""
+
+    inherit_cache = True
+
 
 class now(GenericFunction[datetime.datetime]):
     """The SQL now() datetime function.
