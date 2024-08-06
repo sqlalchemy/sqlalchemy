@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, reflection
+    :tickets: 11687
+
+    Fixed issue in internal reflection cache where particular reflection
+    scenarios regarding same-named quoted_name() constructs would not be
+    correctly cached.  Pull request courtesy Felix Lüdin.
