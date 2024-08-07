@@ -473,6 +473,7 @@ class HasHints:
         ("_hints", InternalTraversal.dp_table_hint_list),
     ]
 
+    @_generative
     def with_statement_hint(self, text: str, dialect_name: str = "*") -> Self:
         """Add a statement hint to this :class:`_expression.Select` or
         other selectable object.
