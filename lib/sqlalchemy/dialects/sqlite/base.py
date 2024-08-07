@@ -2624,7 +2624,14 @@ class SQLiteDialect(default.DefaultDialect):
             connection, table_name, schema=schema, **kw
         )
 
-        CHECK_PATTERN = r"(?:CONSTRAINT ([^\n^\t]+) +)?CHECK *\( *(.+?) *\)(?:, ?\n|\n) *"
+        # Notes:
+        # * The pattern currently matches any character for the name of the constraint
+        #   except tab and newline characters.
+        # * Because check constraints in the table data can contain space, newline and tab characters,
+        #   the pattern matches any character untill either the beginning of the next CONSTRAINT
+        #   statement using a non-capturing non-consuming group (allowing the next one to match),
+        #   or the end of the table definition e.g. newline and closing ')'.
+        CHECK_PATTERN = r"(?:CONSTRAINT ([^\t\n]+) )?CHECK \((.+?)\)(?:, *\n\t?(?=CONSTRAINT)|\n\))"
         cks = []
 
         for match in re.finditer(CHECK_PATTERN, table_data or "", re.I|re.S):
