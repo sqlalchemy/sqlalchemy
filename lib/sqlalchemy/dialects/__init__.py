@@ -33,6 +33,9 @@ def _auto_fn(name: str) -> Optional[Callable[[], Type[Dialect]]]:
         dialect = name
         driver = "base"
 
+    if dialect == "postgres":
+        dialect = "postgresql"
+
     try:
         if dialect == "mariadb":
             # it's "OK" for us to hardcode here since _auto_fn is already
