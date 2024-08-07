@@ -1816,6 +1816,10 @@ class ConstraintReflectionTest(fixtures.TestBase):
 
             Table("q", meta, Column("id", Integer), PrimaryKeyConstraint("id"))
 
+            # intentional new line
+            Table("r", meta, Column("id", Integer), Column("value", Integer), PrimaryKeyConstraint("id"),
+                  CheckConstraint("((value > 0) AND \n(value < 100))"), CheckConstraint("id > 0"))
+
             meta.create_all(conn)
 
             # will contain an "autoindex"
@@ -1911,6 +1915,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 "b",
                 "a1",
                 "a2",
+                "r",
             ]:
                 conn.exec_driver_sql("drop table %s" % name)
 
@@ -2506,6 +2511,11 @@ class ConstraintReflectionTest(fixtures.TestBase):
         else:
             assert False
 
+    def test_multiline_check_constraints(self):
+        inspector = inspect(testing.db)
+        constraints = inspector.get_check_constraints('r')
+        eq_(constraints[0]['sqltext'], "((value > 0) AND \n(value < 100))")
+        eq_(constraints[1]['sqltext'], "id > 0")
 
 class SavepointTest(fixtures.TablesTest):
     """test that savepoints work when we use the correct event setup"""
