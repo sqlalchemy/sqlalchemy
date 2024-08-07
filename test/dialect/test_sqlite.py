@@ -1819,7 +1819,8 @@ class ConstraintReflectionTest(fixtures.TestBase):
             # intentional new line
             Table("r", meta, Column("id", Integer), Column("value", Integer), PrimaryKeyConstraint("id"),
                   CheckConstraint("id > 0"),
-                  CheckConstraint("((value > 0) AND \n\t(value < 100))", name='ck_r_value'),
+                  CheckConstraint("((value > 0) AND \n\t(value < 100))", name='ck_r_value_multiline'),
+                  CheckConstraint("value IS NOT NULL", name='ck_r_value with spaces'),
             )
 
             meta.create_all(conn)
@@ -2463,6 +2464,15 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 {"sqltext": "q > 1 AND q < 6", "name": None},
             ],
         )
+        print(inspector.get_check_constraints("r"))
+        eq_(
+            inspector.get_check_constraints("r"),
+            [
+                {"sqltext": "value IS NOT NULL", "name": "ck_r_value with spaces"},
+                {"sqltext": "((value > 0) AND \n\t(value < 100))", "name": "ck_r_value_multiline"},
+                {"sqltext": "id > 0", "name": None},
+            ],
+        )
 
     @testing.combinations(
         ("plain_name", "plain_name"),
@@ -2512,14 +2522,6 @@ class ConstraintReflectionTest(fixtures.TestBase):
             eq_(const["column_names"], [expected])
         else:
             assert False
-
-    def test_multiline_check_constraints(self):
-        inspector = inspect(testing.db)
-        constraints = inspector.get_check_constraints('r')
-        eq_(constraints[1]['name'], None)
-        eq_(constraints[1]['sqltext'], "id > 0")
-        eq_(constraints[0]['name'], "ck_r_value")
-        eq_(constraints[0]['sqltext'], "((value > 0) AND \n\t(value < 100))")
 
 class SavepointTest(fixtures.TablesTest):
     """test that savepoints work when we use the correct event setup"""
