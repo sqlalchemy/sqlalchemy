@@ -2624,7 +2624,7 @@ class SQLiteDialect(default.DefaultDialect):
             connection, table_name, schema=schema, **kw
         )
 
-        CHECK_PATTERN = r"(?:CONSTRAINT (.+) +)?CHECK *\( *((.|\n)+?) *\)(?:, ?\n|\n) *"
+        CHECK_PATTERN = r"(?:CONSTRAINT ([^\s]+) +)?CHECK *\( *(.+?) *\)(?:, ?\n|\n) *"
         cks = []
         # NOTE: we aren't using re.S here because we actually are
         # taking advantage of each CHECK constraint being all on one

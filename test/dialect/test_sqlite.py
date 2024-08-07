@@ -1818,7 +1818,9 @@ class ConstraintReflectionTest(fixtures.TestBase):
 
             # intentional new line
             Table("r", meta, Column("id", Integer), Column("value", Integer), PrimaryKeyConstraint("id"),
-                  CheckConstraint("((value > 0) AND \n(value < 100))"), CheckConstraint("id > 0"))
+                  CheckConstraint("id > 0"),
+                  CheckConstraint("((value > 0) AND \n\t(value < 100))", name='ck_r_value'),
+            )
 
             meta.create_all(conn)
 
@@ -2514,8 +2516,10 @@ class ConstraintReflectionTest(fixtures.TestBase):
     def test_multiline_check_constraints(self):
         inspector = inspect(testing.db)
         constraints = inspector.get_check_constraints('r')
-        eq_(constraints[0]['sqltext'], "((value > 0) AND \n(value < 100))")
+        eq_(constraints[1]['name'], None)
         eq_(constraints[1]['sqltext'], "id > 0")
+        eq_(constraints[0]['name'], "ck_r_value")
+        eq_(constraints[0]['sqltext'], "((value > 0) AND \n\t(value < 100))")
 
 class SavepointTest(fixtures.TablesTest):
     """test that savepoints work when we use the correct event setup"""
