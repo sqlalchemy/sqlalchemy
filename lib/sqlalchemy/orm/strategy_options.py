@@ -362,6 +362,8 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             )
 
 
+        .. deprecated:: 2.1
+
         .. seealso::
 
             :ref:`loading_toplevel`
@@ -2438,6 +2440,13 @@ def joinedload(*keys: _AttrType, **kw: Any) -> _AbstractLoad:
 
 @loader_unbound_fn
 def subqueryload(*keys: _AttrType) -> _AbstractLoad:
+    """
+    .. deprecated:: 2.1
+
+    .. seealso::
+
+        :ref:`subquery_eager_loading`
+    """
     return _generate_from_keys(Load.subqueryload, keys, False, {})
 
 
