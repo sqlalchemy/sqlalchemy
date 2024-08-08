@@ -2625,13 +2625,15 @@ class SQLiteDialect(default.DefaultDialect):
         )
 
         # Notes:
-        # * The pattern currently matches any character for the name of the constraint
-        #   non greedily.
-        # * Because check constraints in the table data can contain space, newline and tab characters,
-        #   the pattern matches any character untill either the beginning of the next CONSTRAINT
+        # * The pattern currently matches any character for the name of the constraint,
+        #   including newline and tab characters, as long as none of the SQLite's table constraints
+        #   keywords are encountered seperated by spaces.
+        #   This prevents the pattern from matching subsequent constraints as part of the name.
+        # * Because check constraints can contain special characters and newline and tab characters,
+        #   the pattern matches any character untill either the beginning of the next constraint
         #   statement using a non-capturing non-consuming group (allowing the next one to match),
         #   or the end of the table definition e.g. newline and closing ')'.
-        CHECK_PATTERN = r"(?:CONSTRAINT (.+?) )?CHECK \((.+?)\)(?:, *\n\t?(?=CONSTRAINT|CHECK)|\n\))"
+        CHECK_PATTERN = r"(?:CONSTRAINT ((?:(?! PRIMARY | FOREIGN KEY| UNIQUE | CHECK ).)+) )?CHECK \((.+?)\)(?:, *\n\t?(?=CONSTRAINT|CHECK)|\n\))"
         cks = []
         for match in re.finditer(CHECK_PATTERN, table_data or "", re.I|re.S):
             name = match.group(1)
