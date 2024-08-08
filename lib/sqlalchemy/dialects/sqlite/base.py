@@ -2631,9 +2631,9 @@ class SQLiteDialect(default.DefaultDialect):
         #   the pattern matches any character untill either the beginning of the next CONSTRAINT
         #   statement using a non-capturing non-consuming group (allowing the next one to match),
         #   or the end of the table definition e.g. newline and closing ')'.
-        CHECK_PATTERN = r"(?:CONSTRAINT ([^\t\n]+) )?CHECK \((.+?)\)(?:, *\n\t?(?=CONSTRAINT)|\n\))"
+        CHECK_PATTERN = r"(?:CONSTRAINT ([^\t\n]+) )?CHECK \((.+?)\)(?:, *\n\t?(?=CONSTRAINT|CHECK)|\n\))"
         cks = []
-
+        print(table_data)
         for match in re.finditer(CHECK_PATTERN, table_data or "", re.I|re.S):
             name = match.group(1)
 
