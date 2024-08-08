@@ -1817,15 +1817,22 @@ class ConstraintReflectionTest(fixtures.TestBase):
             Table("q", meta, Column("id", Integer), PrimaryKeyConstraint("id"))
 
             # intentional new line
-            Table("r", meta, Column("id", Integer), Column("value", Integer), Column("prefix", String), PrimaryKeyConstraint("id"),
+            Table("r", meta,
+                  Column("id", Integer),
+                  Column("value", Integer),
+                  Column("prefix", String),
+                  PrimaryKeyConstraint("id"),
                   CheckConstraint("id > 0"),
                   # Constraint definition with newline and tab characters
-                  CheckConstraint("((value > 0) AND \n\t(value < 100) AND \n\t(value != 50))", name='ck_r_value_multiline'),
-                  # Constraint name with special characters and 'check' in the name
+                  CheckConstraint(
+                      """((value > 0) AND \n\t(value < 100) AND \n\t
+                      (value != 50))""",
+                      name='ck_r_value_multiline'),
+                  # Constraint name with special chars and 'check' in the name
                   CheckConstraint("value IS NOT NULL", name="^check-r* #\n\t"),
                   # Constraint definition with special characters.
                   CheckConstraint("prefix NOT GLOB '*[^-. /#,]*'")
-            )
+                  )
 
             meta.create_all(conn)
 
@@ -2468,11 +2475,16 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 {"sqltext": "q > 1 AND q < 6", "name": None},
             ],
         )
+        print(inspector.get_check_constraints("r"))
         eq_(
             inspector.get_check_constraints("r"),
             [
                 {"sqltext": "value IS NOT NULL", "name": "^check-r* #\n\t"},
-                {"sqltext": "((value > 0) AND \n\t(value < 100) AND \n\t(value != 50))", "name": "ck_r_value_multiline"},
+                # Triple-quote multi-line definition should have added a
+                # newline and whitespace:
+                {"sqltext": "((value > 0) AND \n\t(value < 100) AND \n\t\n"
+                            "                      (value != 50))",
+                 "name": "ck_r_value_multiline"},
                 {"sqltext": "id > 0", "name": None},
                 {"sqltext": "prefix NOT GLOB '*[^-. /#,]*'", "name": None},
             ],
@@ -2526,6 +2538,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
             eq_(const["column_names"], [expected])
         else:
             assert False
+
 
 class SavepointTest(fixtures.TablesTest):
     """test that savepoints work when we use the correct event setup"""
