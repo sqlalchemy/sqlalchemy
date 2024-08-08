@@ -1817,10 +1817,14 @@ class ConstraintReflectionTest(fixtures.TestBase):
             Table("q", meta, Column("id", Integer), PrimaryKeyConstraint("id"))
 
             # intentional new line
-            Table("r", meta, Column("id", Integer), Column("value", Integer), PrimaryKeyConstraint("id"),
+            Table("r", meta, Column("id", Integer), Column("value", Integer), Column("prefix", String), PrimaryKeyConstraint("id"),
                   CheckConstraint("id > 0"),
-                  CheckConstraint("((value > 0) AND \n\t(value < 100))", name='ck_r_value_multiline'),
-                  CheckConstraint("value IS NOT NULL", name='ck_r_value with spaces'),
+                  # Constraint definition with newline and tab characters
+                  CheckConstraint("((value > 0) AND \n\t(value < 100) AND \n\t(value != 50))", name='ck_r_value_multiline'),
+                  # Constraint name with special characters and spaces.
+                  CheckConstraint("value IS NOT NULL", name='^ck-r* # Value'),
+                  # Constraint definition with special characters.
+                  CheckConstraint("prefix NOT GLOB '*[^-. /#,]*'")
             )
 
             meta.create_all(conn)
@@ -2467,9 +2471,10 @@ class ConstraintReflectionTest(fixtures.TestBase):
         eq_(
             inspector.get_check_constraints("r"),
             [
-                {"sqltext": "value IS NOT NULL", "name": "ck_r_value with spaces"},
-                {"sqltext": "((value > 0) AND \n\t(value < 100))", "name": "ck_r_value_multiline"},
+                {"sqltext": "value IS NOT NULL", "name": "^ck-r* # Value"},
+                {"sqltext": "((value > 0) AND \n\t(value < 100) AND \n\t(value != 50))", "name": "ck_r_value_multiline"},
                 {"sqltext": "id > 0", "name": None},
+                {"sqltext": "prefix NOT GLOB '*[^-. /#,]*'", "name": None},
             ],
         )
 
