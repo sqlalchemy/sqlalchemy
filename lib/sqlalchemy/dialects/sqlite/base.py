@@ -2640,9 +2640,52 @@ class SQLiteDialect(default.DefaultDialect):
         #   non-capturing and non-consuming group, allowing the next one
         #   to match, or the end of the table definition
         #   e.g. newline and closing ')'.
-        CHECK_PATTERN = r"(?:CONSTRAINT ((?:(?! PRIMARY | FOREIGN KEY| UNIQUE | CHECK ).)+) )?CHECK \((.+?)\)(?:, *\n\t?(?=CONSTRAINT|CHECK)|\n\))"
+        CHECK_PATTERN = r"""
+        # Non-capturing group for the name part of named check constraints.
+        # This group is optional as unnamed check constraints can exist.
+        (?:
+        # Match beginning of constraint definition seperated by whitespace.
+        CONSTRAINT\s
+
+        # First capturing group that matches the actual name of the constraint.
+        # Any characters is allowed, as long as none of the reserved table
+        # constraint keywords are encountered using a negative lookahead.
+        ((?:(?!\sPRIMARY\s|\sFOREIGN\sKEY|\sUNIQUE\s|\sCHECK\s).)+)
+
+        # End of optional non-capturing name group seperated by whitespace.
+        \s)?
+
+        # Match beginning of the check expression with starting parenthesis
+        # and optional whitespace.
+        CHECK\s?\(
+
+        # Match actual expression, which can be any character.
+        (.+?)
+
+        # End parenthesis of the check expression.
+        \)
+
+        # Non-capturing group that helps denote the end of the check
+        # expression part.
+        # This can either be (1) the beginning of the next constraint,
+        # or (2) the end of the table definition.
+        (?:
+
+        # (1) Matches end of check constraint with trailing comma,
+        # optional whitespace (including newline), and the beginning
+        # of the next constraint (either named or unnamed).
+        ,[\s\n]*(?=CONSTRAINT|CHECK)
+        # OR operator, seperating (1) & (2)
+        |
+        # (2) Matches end parenthesis of table definition, seperated by
+        # newline.
+        \n\)
+        # End of non-capturing group.
+        )
+        """
         cks = []
-        for match in re.finditer(CHECK_PATTERN, table_data or "", re.I | re.S):
+        for match in re.finditer(CHECK_PATTERN, table_data or "",
+                                 re.I | re.S | re.VERBOSE):
             name = match.group(1)
 
             if name:
