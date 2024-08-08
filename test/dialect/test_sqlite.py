@@ -1821,8 +1821,8 @@ class ConstraintReflectionTest(fixtures.TestBase):
                   CheckConstraint("id > 0"),
                   # Constraint definition with newline and tab characters
                   CheckConstraint("((value > 0) AND \n\t(value < 100) AND \n\t(value != 50))", name='ck_r_value_multiline'),
-                  # Constraint name with special characters.
-                  CheckConstraint("value IS NOT NULL", name="^ck-r* #\n\t"),
+                  # Constraint name with special characters and 'check' in the name
+                  CheckConstraint("value IS NOT NULL", name="^check-r* #\n\t"),
                   # Constraint definition with special characters.
                   CheckConstraint("prefix NOT GLOB '*[^-. /#,]*'")
             )
@@ -2471,7 +2471,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
         eq_(
             inspector.get_check_constraints("r"),
             [
-                {"sqltext": "value IS NOT NULL", "name": "^ck-r* #\n\t"},
+                {"sqltext": "value IS NOT NULL", "name": "^check-r* #\n\t"},
                 {"sqltext": "((value > 0) AND \n\t(value < 100) AND \n\t(value != 50))", "name": "ck_r_value_multiline"},
                 {"sqltext": "id > 0", "name": None},
                 {"sqltext": "prefix NOT GLOB '*[^-. /#,]*'", "name": None},
