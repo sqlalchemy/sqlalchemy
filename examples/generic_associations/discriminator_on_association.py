@@ -25,6 +25,8 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import as_declarative
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 
@@ -40,7 +42,7 @@ class Base:
     def __tablename__(cls):
         return cls.__name__.lower()
 
-    id = Column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
 
 class AddressAssociation(Base):
@@ -51,7 +53,7 @@ class AddressAssociation(Base):
 
     __tablename__ = "address_association"
 
-    discriminator = Column(String)
+    discriminator: Mapped[str] = mapped_column(String)
     """Refers to the type of parent."""
 
     __mapper_args__ = {"polymorphic_on": discriminator}
@@ -65,15 +67,17 @@ class Address(Base):
 
     """
 
-    association_id = Column(Integer, ForeignKey("address_association.id"))
-    street = Column(String)
-    city = Column(String)
-    zip = Column(String)
+    association_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("address_association.id")
+    )
+    street: Mapped[str] = mapped_column(String)
+    city: Mapped[str] = mapped_column(String)
+    zip: Mapped[str] = mapped_column(String)
     association = relationship("AddressAssociation", backref="addresses")
 
     parent = association_proxy("association", "parent")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s(street=%r, city=%r, zip=%r)" % (
             self.__class__.__name__,
             self.street,
@@ -89,7 +93,7 @@ class HasAddresses:
     """
 
     @declared_attr
-    def address_association_id(cls):
+    def address_association_id(cls) -> Column[int]:
         return Column(Integer, ForeignKey("address_association.id"))
 
     @declared_attr
@@ -117,11 +121,11 @@ class HasAddresses:
 
 
 class Customer(HasAddresses, Base):
-    name = Column(String)
+    name: Mapped[str] = mapped_column(String)
 
 
 class Supplier(HasAddresses, Base):
-    company_name = Column(String)
+    company_name: Mapped[str] = mapped_column(String)
 
 
 engine = create_engine("sqlite://", echo=True)

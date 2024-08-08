@@ -5,8 +5,8 @@ for asynchronous ORM use, including the optional run_sync() method.
 """
 
 import asyncio
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
@@ -15,7 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.future import select
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 
 
 class Base(AsyncAttrs, DeclarativeBase):
@@ -23,21 +26,21 @@ class Base(AsyncAttrs, DeclarativeBase):
 
 
 class A(Base):
-    __tablename__ = "a"
+    __tablename__ = "a_asyncio_greenlet_orm"
 
-    id = Column(Integer, primary_key=True)
-    data = Column(String)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    data: Mapped[str] = mapped_column(String)
     bs = relationship("B")
 
 
 class B(Base):
-    __tablename__ = "b"
-    id = Column(Integer, primary_key=True)
-    a_id = Column(ForeignKey("a.id"))
-    data = Column(String)
+    __tablename__ = "b_asyncio_greenlet_orm"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    a_id: Mapped[int] = mapped_column(ForeignKey("a_asyncio_greenlet_orm.id"))
+    data: Mapped[str] = mapped_column(String, nullable=True)
 
 
-def run_queries(session):
+def run_queries(session: Session):
     """A function written in "synchronous" style that will be invoked
     within the asyncio event loop.
 
@@ -50,16 +53,17 @@ def run_queries(session):
 
     result = session.execute(stmt)
 
-    for a1 in result.scalars():
-        print(a1)
+    for _a1 in result.scalars():
+        print(_a1)
         # lazy loads
-        for b1 in a1.bs:
+        for b1 in _a1.bs:
             print(b1)
 
     result = session.execute(select(A).order_by(A.id))
 
     a1 = result.scalars().first()
-
+    if TYPE_CHECKING:
+        assert a1 is not None
     a1.data = "new data"
 
 

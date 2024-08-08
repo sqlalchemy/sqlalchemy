@@ -12,7 +12,7 @@ from sqlalchemy import create_engine
 from sqlalchemy import DateTime
 from sqlalchemy import event
 from sqlalchemy import Integer
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Session
 
 
@@ -72,7 +72,9 @@ def default_listener(col_attr, default):
 
 
 if __name__ == "__main__":
-    Base = declarative_base()
+
+    class Base(DeclarativeBase):
+        pass
 
     event.listen(Base, "mapper_configured", configure_listener, propagate=True)
 

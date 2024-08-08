@@ -31,7 +31,7 @@ registry = _reg()
 
 
 class MyClassState(InstrumentationManager):
-    def get_instance_dict(self, class_, instance):
+    def get_instance_dict(self, class_, instance) -> dict:
         return instance._goofy_dict
 
     def initialize_instance_dict(self, class_, instance):
@@ -115,14 +115,16 @@ if __name__ == "__main__":
 
     sess.commit()
 
-    a1 = sess.query(A).get(a1.id)
+    a1_a = sess.query(A).get(a1.id)
 
-    assert a1.name == "a1"
-    assert a1.bs[0].name == "b1"
+    assert a1_a is not None
+    assert a1_a.name == "a1"
+    assert a1_a.bs[0].name == "b1"
 
-    a1.bs.remove(a1.bs[0])
+    a1_a.bs.remove(a1_a.bs[0])
 
     sess.commit()
 
-    a1 = sess.query(A).get(a1.id)
-    assert len(a1.bs) == 1
+    a1_b = sess.query(A).get(a1.id)
+    assert a1_b is not None
+    assert len(a1_b.bs) == 1

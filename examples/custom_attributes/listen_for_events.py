@@ -3,12 +3,13 @@ and listen for change events.
 
 """
 
-from sqlalchemy import Column
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 
 
@@ -29,36 +30,36 @@ def configure_listener(class_, key, inst):
 
 if __name__ == "__main__":
 
-    class Base:
-        def receive_change_event(self, verb, key, value, oldvalue):
+    class Base(DeclarativeBase):
+        def receive_change_event(self, verb, key, value, oldvalue) -> None:
             s = "Value '%s' %s on attribute '%s', " % (value, verb, key)
             if oldvalue:
                 s += "which replaced the value '%s', " % oldvalue
             s += "on object %s" % self
             print(s)
 
-    Base = declarative_base(cls=Base)
-
     event.listen(Base, "attribute_instrument", configure_listener)
 
     class MyMappedClass(Base):
         __tablename__ = "mytable"
 
-        id = Column(Integer, primary_key=True)
-        data = Column(String(50))
-        related_id = Column(Integer, ForeignKey("related.id"))
+        id: Mapped[int] = mapped_column(Integer, primary_key=True)
+        data: Mapped[str] = mapped_column(String(50))
+        related_id: Mapped[int] = mapped_column(
+            Integer, ForeignKey("related.id")
+        )
         related = relationship("Related", backref="mapped")
 
-        def __str__(self):
+        def __str__(self) -> str:
             return "MyMappedClass(data=%r)" % self.data
 
     class Related(Base):
         __tablename__ = "related"
 
-        id = Column(Integer, primary_key=True)
-        data = Column(String(50))
+        id: Mapped[int] = mapped_column(Integer, primary_key=True)
+        data: Mapped[str] = mapped_column(String(50))
 
-        def __str__(self):
+        def __str__(self) -> str:
             return "Related(data=%r)" % self.data
 
     # classes are instrumented.  Demonstrate the events !

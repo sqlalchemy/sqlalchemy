@@ -1,35 +1,42 @@
 """a directed graph example."""
+from __future__ import annotations
 
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import sessionmaker
 
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 
 class Node(Base):
     __tablename__ = "node"
 
-    node_id = Column(Integer, primary_key=True)
+    node_id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    def higher_neighbors(self):
+    def higher_neighbors(self) -> list[Node]:
         return [x.higher_node for x in self.lower_edges]
 
-    def lower_neighbors(self):
+    def lower_neighbors(self) -> list[Node]:
         return [x.lower_node for x in self.higher_edges]
 
 
 class Edge(Base):
     __tablename__ = "edge"
 
-    lower_id = Column(Integer, ForeignKey("node.node_id"), primary_key=True)
+    lower_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("node.node_id"), primary_key=True
+    )
 
-    higher_id = Column(Integer, ForeignKey("node.node_id"), primary_key=True)
+    higher_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("node.node_id"), primary_key=True
+    )
 
     lower_node = relationship(
         Node, primaryjoin=lower_id == Node.node_id, backref="lower_edges"
@@ -39,7 +46,7 @@ class Edge(Base):
         Node, primaryjoin=higher_id == Node.node_id, backref="higher_edges"
     )
 
-    def __init__(self, n1, n2):
+    def __init__(self, n1: Node, n2: Node):
         self.lower_node = n1
         self.higher_node = n2
 

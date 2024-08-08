@@ -22,13 +22,17 @@ we'll use a @hybrid_property to build a smart '.value' attribute that wraps up
 reading and writing those various '_value' columns and keeps the '.type' up to
 date.
 
+Note: Due to relative imports, this must be run from the main SQLAlchemy
+directory as:
+
+    python -m examples.vertical.dictlike-polymorphic
 """
+from typing import TYPE_CHECKING
 
 from sqlalchemy import and_
 from sqlalchemy import Boolean
 from sqlalchemy import case
 from sqlalchemy import cast
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
@@ -40,13 +44,19 @@ from sqlalchemy import String
 from sqlalchemy import Unicode
 from sqlalchemy import UnicodeText
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.collections import attribute_keyed_dict
 from sqlalchemy.orm.interfaces import PropComparator
 from .dictlike import ProxiedDictMixin
+
+if TYPE_CHECKING:
+    from sqlalchemy import ColumnElement
+    from sqlalchemy.orm import Mapper
 
 
 class PolymorphicVerticalProperty:
@@ -71,7 +81,7 @@ class PolymorphicVerticalProperty:
             return getattr(self, fieldname)
 
     @value.setter
-    def value(self, value):
+    def value(self, value) -> None:
         py_type = type(value)
         fieldname, discriminator = self.type_map[py_type]
 
@@ -80,7 +90,7 @@ class PolymorphicVerticalProperty:
             setattr(self, fieldname, value)
 
     @value.deleter
-    def value(self):
+    def value(self) -> None:
         self._set_value(None)
 
     @value.comparator
@@ -109,14 +119,14 @@ class PolymorphicVerticalProperty:
         def __ne__(self, other):
             return self._case() != cast(other, String)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<%s %r=%r>" % (self.__class__.__name__, self.key, self.value)
 
 
 @event.listens_for(
     PolymorphicVerticalProperty, "mapper_configured", propagate=True
 )
-def on_new_class(mapper, cls_):
+def on_new_class(mapper: Mapper, cls_):
     """Look for Column objects with type info in them, and work up
     a lookup table."""
 
@@ -141,23 +151,31 @@ if __name__ == "__main__":
 
         __tablename__ = "animal_fact"
 
-        animal_id = Column(ForeignKey("animal.id"), primary_key=True)
-        key = Column(Unicode(64), primary_key=True)
-        type = Column(Unicode(16))
+        animal_id: Mapped[int] = mapped_column(
+            ForeignKey("animal.id"), primary_key=True
+        )
+        key: Mapped[str] = mapped_column(Unicode(64), primary_key=True)
+        type: Mapped[str] = mapped_column(Unicode(16))
 
         # add information about storage for different types
         # in the info dictionary of Columns
-        int_value = Column(Integer, info={"type": (int, "integer")})
-        char_value = Column(UnicodeText, info={"type": (str, "string")})
-        boolean_value = Column(Boolean, info={"type": (bool, "boolean")})
+        int_value: Mapped[int] = mapped_column(
+            Integer, info={"type": (int, "integer")}
+        )
+        char_value: Mapped[str] = mapped_column(
+            UnicodeText, info={"type": (str, "string")}
+        )
+        boolean_value: Mapped[bool] = mapped_column(
+            Boolean, info={"type": (bool, "boolean")}
+        )
 
     class Animal(ProxiedDictMixin, Base):
         """an Animal"""
 
         __tablename__ = "animal"
 
-        id = Column(Integer, primary_key=True)
-        name = Column(Unicode(100))
+        id: Mapped[int] = mapped_column(Integer, primary_key=True)
+        name: Mapped[str] = mapped_column(Unicode(100))
 
         facts = relationship(
             "AnimalFact", collection_class=attribute_keyed_dict("key")
@@ -169,14 +187,16 @@ if __name__ == "__main__":
             creator=lambda key, value: AnimalFact(key=key, value=value),
         )
 
-        def __init__(self, name):
+        def __init__(self, name: str):
             self.name = name
 
-        def __repr__(self):
+        def __repr__(self) -> str:
             return "Animal(%r)" % self.name
 
         @classmethod
-        def with_characteristic(self, key, value):
+        def with_characteristic(
+            self, key: str, value: bool
+        ) -> ColumnElement[bool]:
             return self.facts.any(key=key, value=value)
 
     engine = create_engine("sqlite://", echo=True)

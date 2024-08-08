@@ -3,21 +3,28 @@
 https://www.intelligententerprise.com/001020/celko.jhtml
 
 """
+from typing import TYPE_CHECKING
 
 from sqlalchemy import case
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Session
 
+if TYPE_CHECKING:
+    from sqlalchemy.engine import Connection
+    from sqlalchemy.orm import Mapper
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 
 class Employee(Base):
@@ -29,17 +36,19 @@ class Employee(Base):
 
     parent = None
 
-    emp = Column(String, primary_key=True)
+    emp: Mapped[str] = mapped_column(String, primary_key=True)
 
-    left = Column("lft", Integer, nullable=False)
-    right = Column("rgt", Integer, nullable=False)
+    left: Mapped[int] = mapped_column("lft", Integer, nullable=False)
+    right: Mapped[int] = mapped_column("rgt", Integer, nullable=False)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Employee(%s, %d, %d)" % (self.emp, self.left, self.right)
 
 
 @event.listens_for(Employee, "before_insert")
-def before_insert(mapper, connection, instance):
+def before_insert(
+    mapper: Mapper[Employee], connection: Connection, instance: Employee
+) -> None:
     if not instance.parent:
         instance.left = 1
         instance.right = 2

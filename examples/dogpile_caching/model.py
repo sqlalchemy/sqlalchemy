@@ -24,7 +24,7 @@ class Country(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False)
 
-    def __init__(self, name):
+    def __init__(self, name: str):
         self.name = name
 
 
@@ -36,7 +36,7 @@ class City(Base):
     country_id = Column(Integer, ForeignKey("country.id"), nullable=False)
     country = relationship(Country)
 
-    def __init__(self, name, country):
+    def __init__(self, name: str, country: Country):
         self.name = name
         self.country = country
 
@@ -50,10 +50,10 @@ class PostalCode(Base):
     city = relationship(City)
 
     @property
-    def country(self):
+    def country(self) -> Country:
         return self.city.country
 
-    def __init__(self, code, city):
+    def __init__(self, code: str, city: City):
         self.code = code
         self.city = city
 
@@ -68,14 +68,14 @@ class Address(Base):
     postal_code = relationship(PostalCode)
 
     @property
-    def city(self):
+    def city(self) -> City:
         return self.postal_code.city
 
     @property
-    def country(self):
+    def country(self) -> Country:
         return self.postal_code.country
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "%s\t%s, %s\t%s" % (
             self.street,
             self.city.name,
@@ -91,17 +91,17 @@ class Person(Base):
     name = Column(String(100), nullable=False)
     addresses = relationship(Address, collection_class=set)
 
-    def __init__(self, name, *addresses):
+    def __init__(self, name: str, *addresses):
         self.name = name
         self.addresses = set(addresses)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Person(name=%r)" % self.name
 
-    def format_full(self):
+    def format_full(self) -> str:
         return "\t".join([str(x) for x in [self] + list(self.addresses)])
 
 
