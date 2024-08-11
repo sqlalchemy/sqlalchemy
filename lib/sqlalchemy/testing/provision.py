@@ -362,7 +362,7 @@ def update_db_opts(db_url, db_opts, options):
 def post_configure_engine(url, engine, follower_ident):
     """Perform extra steps after configuring an engine for testing.
 
-    (For the internal dialects, currently only used by sqlite, oracle)
+    (For the internal dialects, currently only used by sqlite, oracle, mssql)
     """
 
 

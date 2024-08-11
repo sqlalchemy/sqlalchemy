@@ -22,8 +22,15 @@ from ...testing.provision import generate_driver_url
 from ...testing.provision import get_temp_table_name
 from ...testing.provision import log
 from ...testing.provision import normalize_sequence
+from ...testing.provision import post_configure_engine
 from ...testing.provision import run_reap_dbs
 from ...testing.provision import temp_table_keyword_args
+
+
+@post_configure_engine.for_db("mssql")
+def post_configure_engine(url, engine, follower_ident):
+    if engine.driver == "pyodbc":
+        engine.dialect.dbapi.pooling = False
 
 
 @generate_driver_url.for_db("mssql")
