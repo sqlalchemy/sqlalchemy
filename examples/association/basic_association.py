@@ -105,7 +105,7 @@ if __name__ == "__main__":
     )
 
     # print customers who bought 'MySQL Crowbar' on sale
-    q = session.query(Order).join("order_items", "item")
+    q = session.query(Order).join(OrderItem).join(Item)
     q = q.filter(
         and_(Item.description == "MySQL Crowbar", Item.price > OrderItem.price)
     )
