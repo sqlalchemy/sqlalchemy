@@ -18,8 +18,15 @@ from ...testing.provision import drop_all_schema_objects_pre_tables
 from ...testing.provision import drop_db
 from ...testing.provision import get_temp_table_name
 from ...testing.provision import log
+from ...testing.provision import post_configure_engine
 from ...testing.provision import run_reap_dbs
 from ...testing.provision import temp_table_keyword_args
+
+
+@post_configure_engine.for_db("mssql")
+def post_configure_engine(url, engine, follower_ident):
+    if engine.driver == "pyodbc":
+        engine.dialect.dbapi.pooling = False
 
 
 @create_db.for_db("mssql")
