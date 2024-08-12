@@ -5283,7 +5283,14 @@ class AnnotatedColumnElement(Annotated):
 
     def _with_annotations(self, values):
         clone = super(AnnotatedColumnElement, self)._with_annotations(values)
-        clone.__dict__.pop("comparator", None)
+        for attr in (
+            "comparator",
+            "_proxy_key",
+            "_tq_key_label",
+            "_tq_label",
+            "_non_anon_label",
+        ):
+            clone.__dict__.pop(attr, None)
         return clone
 
     @util.memoized_property
