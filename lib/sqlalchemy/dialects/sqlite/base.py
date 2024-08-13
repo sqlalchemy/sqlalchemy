@@ -2684,8 +2684,9 @@ class SQLiteDialect(default.DefaultDialect):
         )
         """
         cks = []
-        for match in re.finditer(CHECK_PATTERN, table_data or "",
-                                 re.I | re.S | re.VERBOSE):
+        for match in re.finditer(
+            CHECK_PATTERN, table_data or "", re.I | re.S | re.VERBOSE
+        ):
             name = match.group(1)
 
             if name:
