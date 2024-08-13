@@ -1816,6 +1816,27 @@ class ConstraintReflectionTest(fixtures.TestBase):
 
             Table("q", meta, Column("id", Integer), PrimaryKeyConstraint("id"))
 
+            # intentional new line
+            Table(
+                "r",
+                meta,
+                Column("id", Integer),
+                Column("value", Integer),
+                Column("prefix", String),
+                PrimaryKeyConstraint("id"),
+                CheckConstraint("id > 0"),
+                # Constraint definition with newline and tab characters
+                CheckConstraint(
+                    """((value > 0) AND \n\t(value < 100) AND \n\t
+                      (value != 50))""",
+                    name="ck_r_value_multiline",
+                ),
+                # Constraint name with special chars and 'check' in the name
+                CheckConstraint("value IS NOT NULL", name="^check-r* #\n\t"),
+                # Constraint definition with special characters.
+                CheckConstraint("prefix NOT GLOB '*[^-. /#,]*'"),
+            )
+
             meta.create_all(conn)
 
             # will contain an "autoindex"
@@ -1911,6 +1932,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 "b",
                 "a1",
                 "a2",
+                "r",
             ]:
                 conn.exec_driver_sql("drop table %s" % name)
 
@@ -2454,6 +2476,22 @@ class ConstraintReflectionTest(fixtures.TestBase):
             [
                 {"sqltext": "q == 1 OR (q > 2 AND q < 5)", "name": "cq"},
                 {"sqltext": "q > 1 AND q < 6", "name": None},
+            ],
+        )
+        print(inspector.get_check_constraints("r"))
+        eq_(
+            inspector.get_check_constraints("r"),
+            [
+                {"sqltext": "value IS NOT NULL", "name": "^check-r* #\n\t"},
+                # Triple-quote multi-line definition should have added a
+                # newline and whitespace:
+                {
+                    "sqltext": "((value > 0) AND \n\t(value < 100) AND \n\t\n"
+                    "                      (value != 50))",
+                    "name": "ck_r_value_multiline",
+                },
+                {"sqltext": "id > 0", "name": None},
+                {"sqltext": "prefix NOT GLOB '*[^-. /#,]*'", "name": None},
             ],
         )
 
