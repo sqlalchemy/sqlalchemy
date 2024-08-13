@@ -55,6 +55,7 @@ from .. import util
 from ..sql import operators
 from ..sql import schema as sa_schema
 from ..sql.cache_key import _ad_hoc_cache_key_from_args
+from ..sql.elements import quoted_name
 from ..sql.elements import TextClause
 from ..sql.type_api import TypeEngine
 from ..sql.visitors import InternalTraversal
@@ -89,8 +90,16 @@ def cache(
     exclude = {"info_cache", "unreflectable"}
     key = (
         fn.__name__,
-        tuple(a for a in args if isinstance(a, str)),
-        tuple((k, v) for k, v in kw.items() if k not in exclude),
+        tuple(
+            (str(a), a.quote) if isinstance(a, quoted_name) else a
+            for a in args
+            if isinstance(a, str)
+        ),
+        tuple(
+            (k, (str(v), v.quote) if isinstance(v, quoted_name) else v)
+            for k, v in kw.items()
+            if k not in exclude
+        ),
     )
     ret: _R = info_cache.get(key)
     if ret is None:
