@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, sql, regression
+    :tickets: 11703
+
+    Fixed regression in :meth:`_sql.Select.with_statement_hint` and others
+    where the generative behavior of the method stopped producing a copy of the
+    object.

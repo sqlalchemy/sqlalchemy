@@ -77,6 +77,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Apache Solr                                    | sqlalchemy-solr_                      |
 +------------------------------------------------+---------------------------------------+
+| Clickhouse                                     | clickhouse-sqlalchemy_                |
++------------------------------------------------+---------------------------------------+
 | CockroachDB                                    | sqlalchemy-cockroachdb_               |
 +------------------------------------------------+---------------------------------------+
 | CrateDB                                        | sqlalchemy-cratedb_                   |
@@ -166,3 +168,4 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _databend-sqlalchemy: https://github.com/datafuselabs/databend-sqlalchemy
 .. _sqlalchemy-greenplum: https://github.com/PlaidCloud/sqlalchemy-greenplum
 .. _databricks: https://docs.databricks.com/en/dev-tools/sqlalchemy.html
+.. _clickhouse-sqlalchemy: https://pypi.org/project/clickhouse-sqlalchemy/

@@ -1094,6 +1094,11 @@ class SuiteRequirements(Requirements):
         return exclusions.only_if(go)
 
     @property
+    def array_type(self):
+        """Target platform implements a native ARRAY type"""
+        return exclusions.closed()
+
+    @property
     def json_type(self):
         """target platform implements a native JSON type."""
 

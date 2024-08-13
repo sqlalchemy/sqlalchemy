@@ -478,14 +478,25 @@ class HasHints:
         ("_hints", InternalTraversal.dp_table_hint_list),
     ]
 
+    @_generative
     def with_statement_hint(self, text: str, dialect_name: str = "*") -> Self:
         """Add a statement hint to this :class:`_expression.Select` or
         other selectable object.
 
-        This method is similar to :meth:`_expression.Select.with_hint`
-        except that
-        it does not require an individual table, and instead applies to the
-        statement as a whole.
+        .. tip::
+
+            :meth:`_expression.Select.with_statement_hint` generally adds hints
+            **at the trailing end** of a SELECT statement.  To place
+            dialect-specific hints such as optimizer hints at the **front** of
+            the SELECT statement after the SELECT keyword, use the
+            :meth:`_expression.Select.prefix_with` method for an open-ended
+            space, or for table-specific hints the
+            :meth:`_expression.Select.with_hint` may be used, which places
+            hints in a dialect-specific location.
+
+        This method is similar to :meth:`_expression.Select.with_hint` except
+        that it does not require an individual table, and instead applies to
+        the statement as a whole.
 
         Hints here are specific to the backend database and may include
         directives such as isolation levels, file directives, fetch directives,
@@ -497,7 +508,7 @@ class HasHints:
 
             :meth:`_expression.Select.prefix_with` - generic SELECT prefixing
             which also can suit some database-specific HINT syntaxes such as
-            MySQL optimizer hints
+            MySQL or Oracle optimizer hints
 
         """
         return self._with_hint(None, text, dialect_name)
@@ -512,6 +523,17 @@ class HasHints:
         r"""Add an indexing or other executional context hint for the given
         selectable to this :class:`_expression.Select` or other selectable
         object.
+
+        .. tip::
+
+            The :meth:`_expression.Select.with_hint` method adds hints that are
+            **specific to a single table** to a statement, in a location that
+            is **dialect-specific**.  To add generic optimizer hints to the
+            **beginning** of a statement ahead of the SELECT keyword such as
+            for MySQL or Oracle, use the :meth:`_expression.Select.prefix_with`
+            method.  To add optimizer hints to the **end** of a statement such
+            as for PostgreSQL, use the
+            :meth:`_expression.Select.with_statement_hint` method.
 
         The text of the hint is rendered in the appropriate
         location for the database backend in use, relative
@@ -541,6 +563,10 @@ class HasHints:
         .. seealso::
 
             :meth:`_expression.Select.with_statement_hint`
+
+            :meth:`_expression.Select.prefix_with` - generic SELECT prefixing
+            which also can suit some database-specific HINT syntaxes such as
+            MySQL or Oracle optimizer hints
 
         """
 
