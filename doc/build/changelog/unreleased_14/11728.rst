@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, regression, orm
+    :tickets: 11728
+    :versions: 2.0.33
+
+    Fixed regression from 1.3 where the column key used for a hybrid property
+    might be populated with that of the underlying column that it returns, for
+    a property that returns an ORM mapped column directly, rather than the key
+    used by the hybrid property itself.
