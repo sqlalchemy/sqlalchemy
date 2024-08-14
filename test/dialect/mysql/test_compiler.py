@@ -1127,6 +1127,31 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(stmt, expected_sql, dialect=dialect)
 
+    @testing.variation("version", ["mysql8", "all_others"])
+    def test_from_select(self, version: Variation):
+        stmt = insert(self.table).from_select(
+            ["id", "bar"],
+            select(self.table.c.id, literal("bar2")),
+        )
+        stmt = stmt.on_duplicate_key_update(
+            bar=stmt.inserted.bar, baz=stmt.inserted.baz
+        )
+
+        expected_sql = (
+            "INSERT INTO foos (id, bar) SELECT foos.id, %s AS anon_1 "
+            "FROM foos "
+            "ON DUPLICATE KEY UPDATE bar = VALUES(bar), baz = VALUES(baz)"
+        )
+        if version.all_others:
+            dialect = None
+        elif version.mysql8:
+            dialect = mysql.dialect()
+            dialect._requires_alias_for_on_duplicate_key = True
+        else:
+            version.fail()
+
+        self.assert_compile(stmt, expected_sql, dialect=dialect)
+
     def test_from_literal(self):
         stmt = insert(self.table).values(
             [{"id": 1, "bar": "ab"}, {"id": 2, "bar": "b"}]

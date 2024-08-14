@@ -1349,7 +1349,7 @@ class MySQLCompiler(compiler.SQLCompiler):
 
         clauses = []
 
-        requires_mysql8_alias = (
+        requires_mysql8_alias = statement.select is None and (
             self.dialect._requires_alias_for_on_duplicate_key
         )
 
