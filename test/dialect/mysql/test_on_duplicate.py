@@ -3,6 +3,8 @@ from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import literal
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy.dialects.mysql import insert
@@ -61,6 +63,22 @@ class OnDuplicateTest(fixtures.TablesTest):
         eq_(
             conn.execute(foos.select().where(foos.c.id == 1)).fetchall(),
             [(1, "ab", "bz", False)],
+        )
+
+    def test_on_duplicate_key_from_select(self, connection):
+        foos = self.tables.foos
+        conn = connection
+        conn.execute(insert(foos).values(dict(id=1, bar="b", baz="bz")))
+        stmt = insert(foos).from_select(
+            ["id", "bar", "baz"],
+            select(foos.c.id, literal("bar2"), literal("baz2")),
+        )
+        stmt = stmt.on_duplicate_key_update(bar=stmt.inserted.bar)
+
+        conn.execute(stmt)
+        eq_(
+            conn.execute(foos.select().where(foos.c.id == 1)).fetchall(),
+            [(1, "bar2", "bz", False)],
         )
 
     def test_on_duplicate_key_update_singlerow(self, connection):
