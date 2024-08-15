@@ -2478,7 +2478,6 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 {"sqltext": "q > 1 AND q < 6", "name": None},
             ],
         )
-        print(inspector.get_check_constraints("r"))
         eq_(
             inspector.get_check_constraints("r"),
             [
