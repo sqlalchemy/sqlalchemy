@@ -8,7 +8,6 @@ import time
 from typing import Dict
 from typing import List
 from typing import Optional
-from typing import TYPE_CHECKING
 from typing import Union
 
 # pypi
@@ -113,10 +112,11 @@ def examples_audit(
         sys.path.insert(0, SQLALCHEMY_DIR)  # remove in `finally` block
 
         # all examples; namespace is `sqlalchemy.FOO`
-        examples_package = __import__("examples")
+        examples_package = __import__("examples")  # noqa: F841
         examples = get_ExamplesMatrix()
 
-        # select examples with metadata; namespace is `sqlalchemy.test.examples_metadata.FOO`
+        # select examples with metadata; namespace is
+        # `sqlalchemy.test.examples_metadata.FOO`
         metadata_package = __import__("examples_metadata")
 
         # hinting
@@ -128,9 +128,9 @@ def examples_audit(
             _ExampleMetadata[package_name] = {}
 
             try:
-                _imported_meta = __import__(
+                _imported_meta = __import__(  # noqa: F841
                     "examples_metadata." + package_name
-                )  # noqa: F841
+                )
                 _packaged = getattr(metadata_package, package_name)
                 if hasattr(_packaged, "REQUIREMENTS"):
                     for fname, data in _packaged.REQUIREMENTS.items():
@@ -173,7 +173,7 @@ def examples_audit(
 
             if audit_flake8:
                 _result = c.run(
-                    "cd ../.. && flake8 examples/%s" % package_name,
+                    "cd ../../examples && flake8 %s" % package_name,
                     hide="both",
                     warn=True,
                 )
@@ -183,7 +183,7 @@ def examples_audit(
                     )
             if audit_mypy:
                 _result = c.run(
-                    "cd ../.. && mypy examples/%s" % package_name,
+                    "cd ../../examples && mypy %s" % package_name,
                     hide="both",
                     warn=True,
                 )
@@ -248,9 +248,9 @@ def examples_test(c: Connection) -> None:
                 print("Not testing `performance`")
                 continue
 
-        # useful for local testing
-        if package_name not in ("space_invaders"):
-            continue
+        # # useful for local testing
+        # if package_name not in ("space_invaders"):
+        #    continue
 
         package_files = [i for i in os.listdir(path) if _valid_example_file(i)]
 
@@ -412,7 +412,9 @@ def examples_ci(
     audit_flake8: bool = AUDIT_FLAKE8,
     audit_mypy: bool = AUDIT_MYPY,
 ) -> bool:
-    """A to-be-written routine to test the examples in SQLAlchemy's CI System"""
+    """
+    A to-be-written routine to test the examples in SQLAlchemy's CI System.
+    """
     raise ValueError("Not Implemented Yet")
 
 

@@ -15,6 +15,7 @@ carefully vetted to show that they do in fact improve performance vs a
 traditional approach.
 
 """
+from __future__ import annotations
 
 import asyncio
 import random

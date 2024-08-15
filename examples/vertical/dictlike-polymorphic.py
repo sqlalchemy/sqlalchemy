@@ -27,6 +27,8 @@ directory as:
 
     python -m examples.vertical.dictlike-polymorphic
 """
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from sqlalchemy import and_

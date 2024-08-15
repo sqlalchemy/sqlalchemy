@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from typing import Dict
+from typing import Generator
+from typing import Tuple
+from typing import Union
+
 from sqlalchemy import bindparam
 from sqlalchemy import create_engine
 from sqlalchemy import Identity
@@ -146,6 +151,7 @@ def test_dbapi_raw(n: int) -> None:
         .values(name=bindparam("name"), description=bindparam("description"))
         .compile(dialect=engine.dialect)
     )
+    args: Generator[Union[Dict[str, str], Tuple[str, str]], None, None]
     if compiled.positional:
         args = (
             ("customer name %d" % i, "customer description %d" % i)

@@ -3,8 +3,12 @@ record by primary key
 
 
 """
+from __future__ import annotations
 
 import random
+from typing import Dict
+from typing import Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import bindparam
 from sqlalchemy import create_engine
@@ -22,9 +26,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import lambdas
 from . import Profiler
 
+if TYPE_CHECKING:
+    from sqlalchemy import Engine
+
 
 Base = declarative_base()
-engine = None
+engine: Optional[Engine] = None
 
 ids = range(1, 11000)
 
@@ -158,7 +165,8 @@ def test_baked_query_cols_only(n: int) -> None:
 @Profiler.profile
 def test_core_new_stmt_each_time(n: int) -> None:
     """test core, creating a new statement each time."""
-
+    if TYPE_CHECKING:
+        assert engine is not None
     with engine.connect() as conn:
         for id_ in random.sample(ids, n):
             stmt = select(Customer.__table__).where(Customer.id == id_)
@@ -169,8 +177,9 @@ def test_core_new_stmt_each_time(n: int) -> None:
 @Profiler.profile
 def test_core_new_stmt_each_time_compiled_cache(n: int) -> None:
     """test core, creating a new statement each time, but using the cache."""
-
-    compiled_cache = {}
+    if TYPE_CHECKING:
+        assert engine is not None
+    compiled_cache: Dict = {}
     with engine.connect().execution_options(
         compiled_cache=compiled_cache
     ) as conn:
@@ -183,7 +192,8 @@ def test_core_new_stmt_each_time_compiled_cache(n: int) -> None:
 @Profiler.profile
 def test_core_reuse_stmt(n: int) -> None:
     """test core, reusing the same statement (but recompiling each time)."""
-
+    if TYPE_CHECKING:
+        assert engine is not None
     stmt = select(Customer.__table__).where(Customer.id == bindparam("id"))
     with engine.connect() as conn:
         for id_ in random.sample(ids, n):
@@ -194,9 +204,10 @@ def test_core_reuse_stmt(n: int) -> None:
 @Profiler.profile
 def test_core_reuse_stmt_compiled_cache(n: int) -> None:
     """test core, reusing the same statement + compiled cache."""
-
+    if TYPE_CHECKING:
+        assert engine is not None
     stmt = select(Customer.__table__).where(Customer.id == bindparam("id"))
-    compiled_cache = {}
+    compiled_cache: Dict = {}
     with engine.connect().execution_options(
         compiled_cache=compiled_cache
     ) as conn:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Annotated
+from typing import Dict
 
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
@@ -67,7 +68,10 @@ class Engineer(Person):
 
     company: Mapped[Company] = relationship(back_populates="employees")
 
-    __mapper_args__ = {"polymorphic_identity": "engineer", "concrete": True}
+    __mapper_args__: Dict = {
+        "polymorphic_identity": "engineer",
+        "concrete": True,
+    }
 
 
 class Manager(Person):
@@ -81,7 +85,10 @@ class Manager(Person):
 
     company: Mapped[Company] = relationship(back_populates="employees")
 
-    __mapper_args__ = {"polymorphic_identity": "manager", "concrete": True}
+    __mapper_args__: Dict = {
+        "polymorphic_identity": "manager",
+        "concrete": True,
+    }
 
     def __repr__(self) -> str:
         return (

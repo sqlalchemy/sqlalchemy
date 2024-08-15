@@ -218,6 +218,7 @@ import sys
 import time
 from typing import Callable
 from typing import Optional
+from typing import TYPE_CHECKING
 from typing import Union
 
 
@@ -461,10 +462,14 @@ class TestResult:
             self._dump_raw()
 
     def _dump(self, sort: str) -> None:
+        if TYPE_CHECKING:
+            assert self.stats is not None
         self.stats.sort_stats(*re.split(r"[ ,]", self.sort))
         self.stats.print_stats()
         if self.profile.callers:
             self.stats.print_callers()
 
     def _dump_raw(self) -> None:
+        if TYPE_CHECKING:
+            assert self.stats is not None
         self.stats.dump_stats(self.profile.raw)

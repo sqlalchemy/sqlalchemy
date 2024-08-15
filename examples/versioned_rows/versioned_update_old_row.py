@@ -4,6 +4,7 @@ Also includes a :meth:`.SessionEvents.do_orm_execute` hook to limit queries
 to only the most recent version.
 
 """
+from __future__ import annotations
 
 import datetime
 import time

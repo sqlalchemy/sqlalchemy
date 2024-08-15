@@ -3,6 +3,9 @@
 https://www.intelligententerprise.com/001020/celko.jhtml
 
 """
+from __future__ import annotations
+
+from typing import Optional
 from typing import TYPE_CHECKING
 
 from sqlalchemy import case
@@ -34,7 +37,7 @@ class Employee(Base):
         # instance before going to the next.
     }
 
-    parent = None
+    parent: Optional[Employee] = None
 
     emp: Mapped[str] = mapped_column(String, primary_key=True)
 

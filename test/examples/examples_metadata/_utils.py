@@ -5,12 +5,12 @@ ExampleMetadata = TypedDict(
     {
         "pypi": list[str],  # list of pypi packages
         "postgresql": bool,  # does this require a postgresql database?
-        "executable": bool,  # is this file executable? specify `False` if not.
+        "executable": bool,  # is this file executable? specify `False` if not
         "repeat_run": bool,  # if True, run twice in a row
         "cleanup_dir": str,  # if defined, delete this directory
         "cleanup_files": list[str],  # if defined, delete these files
         "persistent_subprocess": bool,  # if true, test as a subprocess
-        "stdout_required": str,  # if supplied, tests require this in stdout to pass
+        "stdout_required": str,  # if supplied, tests require this in stdout
     },
     total=False,
 )

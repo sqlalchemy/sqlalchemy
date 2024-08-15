@@ -3,6 +3,8 @@ an UPDATE statement on a single row into an INSERT statement, so that a new
 row is inserted with the new data, keeping the old row intact.
 
 """
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from sqlalchemy import create_engine

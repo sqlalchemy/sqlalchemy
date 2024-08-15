@@ -13,6 +13,10 @@ full blown ORM doesn't do terribly either even though mapped objects
 provide a huge amount of functionality.
 
 """
+from __future__ import annotations
+
+from typing import Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import create_engine
 from sqlalchemy import Identity
@@ -25,9 +29,11 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Session
 from . import Profiler
 
+if TYPE_CHECKING:
+    from sqlalchemy import Engine
 
 Base = declarative_base()
-engine = None
+engine: Optional[Engine] = None
 
 
 class Customer(Base):
@@ -107,7 +113,8 @@ def test_orm_columns(n: int) -> None:
 @Profiler.profile
 def test_core_fetchall(n: int) -> None:
     """Load Core result rows using fetchall."""
-
+    if TYPE_CHECKING:
+        assert engine is not None
     with engine.connect() as conn:
         result = conn.execute(Customer.__table__.select().limit(n)).fetchall()
         for row in result:
@@ -117,7 +124,8 @@ def test_core_fetchall(n: int) -> None:
 @Profiler.profile
 def test_core_fetchall_mapping(n: int) -> None:
     """Load Core result rows using fetchall."""
-
+    if TYPE_CHECKING:
+        assert engine is not None
     with engine.connect() as conn:
         result = (
             conn.execute(Customer.__table__.select().limit(n))
@@ -131,7 +139,8 @@ def test_core_fetchall_mapping(n: int) -> None:
 @Profiler.profile
 def test_core_fetchmany_w_streaming(n: int) -> None:
     """Load Core result rows using fetchmany/streaming."""
-
+    if TYPE_CHECKING:
+        assert engine is not None
     with engine.connect() as conn:
         result = conn.execution_options(stream_results=True).execute(
             Customer.__table__.select().limit(n)
@@ -147,7 +156,8 @@ def test_core_fetchmany_w_streaming(n: int) -> None:
 @Profiler.profile
 def test_core_fetchmany(n: int) -> None:
     """Load Core result rows using Core / fetchmany."""
-
+    if TYPE_CHECKING:
+        assert engine is not None
     with engine.connect() as conn:
         result = conn.execute(Customer.__table__.select().limit(n))
         while True:
@@ -173,6 +183,8 @@ def test_dbapi_fetchall_no_object(n: int) -> None:
 
 
 def _test_dbapi_raw(n: int, make_objects: bool) -> None:
+    if TYPE_CHECKING:
+        assert engine is not None
     compiled = (
         Customer.__table__.select()
         .limit(n)
