@@ -35,6 +35,7 @@ needs_sphinx = "5.0.1"
 
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.intersphinx",
     "zzzeeksphinx",
     "changelog",
     "sphinx_paramlinks",
@@ -442,6 +443,14 @@ man_pages = [
         1,
     )
 ]
+
+# -- Options for intersphinx -------------------------------------------------
+
+intersphinx_mapping = {
+    "cx-oracle": ("https://cx-oracle.readthedocs.io/en/latest/", None),
+    "dogpilecache": ("https://dogpilecache.sqlalchemy.org/en/latest/", None),
+    "geoalchemy": ("https://geoalchemy-2.readthedocs.io/en/latest/", None),
+}
 
 
 # -- Options for Epub output -------------------------------------------------

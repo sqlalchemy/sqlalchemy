@@ -1,6 +1,6 @@
 """
 Illustrates how to embed
-`dogpile.cache <https://dogpilecache.sqlalchemy.org/>`_
+:external+dogpilecache:doc:`dogpile.cache <index>`
 functionality with ORM queries, allowing full cache control
 as well as the ability to pull "lazy loaded" attributes from long term cache.
 

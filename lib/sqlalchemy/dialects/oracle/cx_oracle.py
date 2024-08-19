@@ -61,8 +61,7 @@ hostname portion of the URL, without specifying a port, database name or
     engine = create_engine("oracle+cx_oracle://scott:tiger@myalias/?encoding=UTF-8&nencoding=UTF-8")
 
 Users of Oracle Cloud should use this syntax and also configure the cloud
-wallet as shown in cx_Oracle documentation `Connecting to Autononmous Databases
-<https://cx-oracle.readthedocs.io/en/latest/user_guide/connection_handling.html#autonomousdb>`_.
+wallet as shown in cx_Oracle documentation :external+cx-oracle:ref:`autonomousdb`.
 
 SID Connections
 ^^^^^^^^^^^^^^^
