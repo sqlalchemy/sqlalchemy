@@ -62,7 +62,7 @@ hostname portion of the URL, without specifying a port, database name or
 
 Users of Oracle Cloud should use this syntax and also configure the cloud
 wallet as shown in cx_Oracle documentation `Connecting to Autononmous Databases
-<https://cx-oracle.readthedocs.io/en/latest/user_guide/connection_handling.html#connecting-to-autononmous-databases>`_.
+<https://cx-oracle.readthedocs.io/en/latest/user_guide/connection_handling.html#autonomousdb>`_.
 
 SID Connections
 ^^^^^^^^^^^^^^^
