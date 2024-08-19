@@ -2503,17 +2503,27 @@ class ConstraintReflectionTest(fixtures.TestBase):
         argnames="colname,expected",
     )
     @testing.combinations(
-        "uq", "uq_inline", "pk", "ix", argnames="constraint_type"
+        "uq",
+        "uq_inline",
+        "uq_inline_tab_before",  # tab before column params
+        "uq_inline_tab_within",  # tab within column params
+        "pk",
+        "ix",
+        argnames="constraint_type",
     )
     def test_constraint_cols(
         self, colname, expected, constraint_type, connection, metadata
     ):
-        if constraint_type == "uq_inline":
+        if constraint_type.startswith("uq_inline"):
+            inline_create_sql = {
+                "uq_inline": "CREATE TABLE t (%s INTEGER UNIQUE)",
+                "uq_inline_tab_before": "CREATE TABLE t (%s\tINTEGER UNIQUE)",
+                "uq_inline_tab_within": "CREATE TABLE t (%s INTEGER\tUNIQUE)",
+            }
+
             t = Table("t", metadata, Column(colname, Integer))
             connection.exec_driver_sql(
-                """
-            CREATE TABLE t (%s INTEGER UNIQUE)
-            """
+                inline_create_sql[constraint_type]
                 % connection.dialect.identifier_preparer.quote(colname)
             )
         else:
@@ -2531,7 +2541,12 @@ class ConstraintReflectionTest(fixtures.TestBase):
 
             t.create(connection)
 
-        if constraint_type in ("uq", "uq_inline"):
+        if constraint_type in (
+            "uq",
+            "uq_inline",
+            "uq_inline_tab_before",
+            "uq_inline_tab_within",
+        ):
             const = inspect(connection).get_unique_constraints("t")[0]
             eq_(const["column_names"], [expected])
         elif constraint_type == "pk":
