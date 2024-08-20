@@ -9,9 +9,9 @@ body:
     attributes:
       value: "
 
-**STOP**
+=STOP=
 
-**We would really prefer if you DONT open a bug report.**
+==We would really prefer if you DONT open a bug report.==
 
 **Please open a** [discussion](https://github.com/sqlalchemy/sqlalchemy/discussions/new?category=Usage-Questions) **instead of a bug report**.
 
