@@ -109,7 +109,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Microsoft Access (via pyodbc)                  | sqlalchemy-access_                    |
 +------------------------------------------------+---------------------------------------+
-| Microsoft SQL Server (via python-tds)          | sqlalchemy-tds_                       |
+| Microsoft SQL Server (via python-tds)          | sqlalchemy-pytds_                     |
 +------------------------------------------------+---------------------------------------+
 | Microsoft SQL Server (via turbodbc)            | sqlalchemy-turbodbc_                  |
 +------------------------------------------------+---------------------------------------+
@@ -151,7 +151,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _sqlalchemy-sqlany: https://github.com/sqlanywhere/sqlalchemy-sqlany
 .. _sqlalchemy-monetdb: https://github.com/gijzelaerr/sqlalchemy-monetdb
 .. _snowflake-sqlalchemy: https://github.com/snowflakedb/snowflake-sqlalchemy
-.. _sqlalchemy-tds: https://github.com/m32/sqlalchemy-tds
+.. _sqlalchemy-pytds: https://pypi.org/project/sqlalchemy-pytds/
 .. _sqlalchemy-cratedb: https://github.com/crate/sqlalchemy-cratedb
 .. _sqlalchemy-access: https://pypi.org/project/sqlalchemy-access/
 .. _elasticsearch-dbapi: https://github.com/preset-io/elasticsearch-dbapi/
