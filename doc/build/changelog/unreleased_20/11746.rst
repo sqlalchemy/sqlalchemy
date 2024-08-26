@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, sqlite
+    :tickets: 11746
+
+    Improvements to the regex used by the SQLite dialect to reflect the name
+    and contents of a UNIQUE constraint that is defined inline within a column
+    definition inside of a SQLite CREATE TABLE statement, accommodating for tab
+    characters present within the column / constraint line. Pull request
+    courtesy John A Stevenson.
+
+
+
