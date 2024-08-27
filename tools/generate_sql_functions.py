@@ -1,6 +1,7 @@
 """Generate inline stubs for generic functions on func
 
 """
+
 # mypy: ignore-errors
 
 from __future__ import annotations

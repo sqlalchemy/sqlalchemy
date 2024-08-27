@@ -16,6 +16,7 @@ combinatoric generated code approach.
 .. versionadded:: 2.0
 
 """
+
 # mypy: ignore-errors
 
 from __future__ import annotations
@@ -36,10 +37,13 @@ is_posix = os.name == "posix"
 sys.path.append(str(Path(__file__).parent.parent))
 
 
-def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
+def process_module(
+    modname: str, filename: str, expected_number: int, cmd: code_writer_cmd
+) -> str:
     # use tempfile in same path as the module, or at least in the
     # current working directory, so that black / zimports use
     # local pyproject.toml
+    found = 0
     with NamedTemporaryFile(
         mode="w",
         delete=False,
@@ -54,6 +58,7 @@ def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
                 line,
             )
             if m:
+                found += 1
                 indent = m.group(1)
                 given_fnname = current_fnname = m.group(2)
                 if current_fnname.startswith("self."):
@@ -116,16 +121,20 @@ def {current_fnname}(
 
             if not in_block:
                 buf.write(line)
+    if found != expected_number:
+        raise Exception(
+            f"{modname} processed {found}. expected {expected_number}"
+        )
     return buf.name
 
 
-def run_module(modname: str, cmd: code_writer_cmd) -> None:
+def run_module(modname: str, count: int, cmd: code_writer_cmd) -> None:
     cmd.write_status(f"importing module {modname}\n")
     mod = importlib.import_module(modname)
     destination_path = mod.__file__
     assert destination_path is not None
 
-    tempfile = process_module(modname, destination_path, cmd)
+    tempfile = process_module(modname, destination_path, count, cmd)
 
     cmd.run_zimports(tempfile)
     cmd.run_black(tempfile)
@@ -133,17 +142,17 @@ def run_module(modname: str, cmd: code_writer_cmd) -> None:
 
 
 def main(cmd: code_writer_cmd) -> None:
-    for modname in entries:
+    for modname, count in entries:
         if cmd.args.module in {"all", modname}:
-            run_module(modname, cmd)
+            run_module(modname, count, cmd)
 
 
 entries = [
-    "sqlalchemy.sql._selectable_constructors",
-    "sqlalchemy.orm.session",
-    "sqlalchemy.orm.query",
-    "sqlalchemy.sql.selectable",
-    "sqlalchemy.sql.dml",
+    ("sqlalchemy.sql._selectable_constructors", 1),
+    ("sqlalchemy.orm.session", 1),
+    ("sqlalchemy.orm.query", 1),
+    ("sqlalchemy.sql.selectable", 1),
+    ("sqlalchemy.sql.dml", 3),
 ]
 
 if __name__ == "__main__":
@@ -152,7 +161,7 @@ if __name__ == "__main__":
     with cmd.add_arguments() as parser:
         parser.add_argument(
             "--module",
-            choices=entries + ["all"],
+            choices=[n for n, _ in entries] + ["all"],
             default="all",
             help="Which file to generate. Default is to regenerate all files",
         )
