@@ -287,8 +287,9 @@ class _ModuleMarker(ClsRegistryToken):
 
     def _remove_item(self, name: str) -> None:
         self.contents.pop(name, None)
-        if not self.contents and self.parent is not None:
-            self.parent._remove_item(self.name)
+        if not self.contents:
+            if self.parent is not None:
+                self.parent._remove_item(self.name)
             _registries.discard(self)
 
     def resolve_attr(self, key: str) -> Union[_ModNS, Type[Any]]:
