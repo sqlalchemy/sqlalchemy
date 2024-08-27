@@ -5819,22 +5819,33 @@ class Select(
         )
         return woc
 
-    # START OVERLOADED FUNCTIONS self.with_only_columns Select 8
+    # START OVERLOADED FUNCTIONS self.with_only_columns Select 1-8 ", *, maintain_column_froms: bool =..." # noqa: E501
 
     # code within this block is **programmatically,
-    # statically generated** by tools/generate_sel_v1_overloads.py
-
-    @overload
-    def with_only_columns(self, __ent0: _TCCA[_T0]) -> Select[Tuple[_T0]]: ...
+    # statically generated** by tools/generate_tuple_map_overloads.py
 
     @overload
     def with_only_columns(
-        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
+        self, __ent0: _TCCA[_T0], *, maintain_column_froms: bool = ...
+    ) -> Select[Tuple[_T0]]: ...
+
+    @overload
+    def with_only_columns(
+        self,
+        __ent0: _TCCA[_T0],
+        __ent1: _TCCA[_T1],
+        *,
+        maintain_column_froms: bool = ...,
     ) -> Select[Tuple[_T0, _T1]]: ...
 
     @overload
     def with_only_columns(
-        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
+        self,
+        __ent0: _TCCA[_T0],
+        __ent1: _TCCA[_T1],
+        __ent2: _TCCA[_T2],
+        *,
+        maintain_column_froms: bool = ...,
     ) -> Select[Tuple[_T0, _T1, _T2]]: ...
 
     @overload
@@ -5844,6 +5855,8 @@ class Select(
         __ent1: _TCCA[_T1],
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
+        *,
+        maintain_column_froms: bool = ...,
     ) -> Select[Tuple[_T0, _T1, _T2, _T3]]: ...
 
     @overload
@@ -5854,6 +5867,8 @@ class Select(
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
+        *,
+        maintain_column_froms: bool = ...,
     ) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4]]: ...
 
     @overload
@@ -5865,6 +5880,8 @@ class Select(
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
+        *,
+        maintain_column_froms: bool = ...,
     ) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]: ...
 
     @overload
@@ -5877,6 +5894,8 @@ class Select(
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
+        *,
+        maintain_column_froms: bool = ...,
     ) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]: ...
 
     @overload
@@ -5890,6 +5909,8 @@ class Select(
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
         __ent7: _TCCA[_T7],
+        *,
+        maintain_column_froms: bool = ...,
     ) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]: ...
 
     # END OVERLOADED FUNCTIONS self.with_only_columns
