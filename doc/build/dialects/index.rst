@@ -99,7 +99,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Google Sheets                                  | gsheets_                              |
 +------------------------------------------------+---------------------------------------+
-| Greenplum [2]_                                 | sqlalchemy-greenplum_                 |
+| Greenplum                                      | sqlalchemy-greenplum_                 |
 +------------------------------------------------+---------------------------------------+
 | IBM DB2 and Informix                           | ibm-db-sa_                            |
 +------------------------------------------------+---------------------------------------+
@@ -133,7 +133,6 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 
 .. [1] Supports version 1.3.x only at the moment.
-.. [2] Supports version 1.4.x only at the moment.
 
 .. _openGauss-sqlalchemy: https://gitee.com/opengauss/openGauss-sqlalchemy
 .. _rockset-sqlalchemy: https://pypi.org/project/rockset-sqlalchemy
