@@ -1085,6 +1085,11 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         return self.adapt(
             cast("Type[TypeEngine[Any]]", self.__class__),
             _create_events=True,
+            metadata=(
+                kw.get("_to_metadata", self.metadata)
+                if self.metadata is not None
+                else None
+            ),
         )
 
     @overload
@@ -1907,6 +1912,13 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
         self._create_events = _create_events
         if _adapted_from:
             self.dispatch = self.dispatch._join(_adapted_from.dispatch)
+
+    def copy(self, **kw):
+        # override SchemaType.copy() to not include to_metadata logic
+        return self.adapt(
+            cast("Type[TypeEngine[Any]]", self.__class__),
+            _create_events=True,
+        )
 
     def _should_create_constraint(self, compiler, **kw):
         if not self._is_impl_for_variant(compiler.dialect, kw):
