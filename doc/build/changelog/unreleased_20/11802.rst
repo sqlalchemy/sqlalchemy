@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, schema
+    :tickets: 11802
+
+    Fixed bug where the ``metadata`` element of an ``Enum`` datatype would not
+    be transferred to the new :class:`.MetaData` object when the type had been
+    copied via a :meth:`.Table.to_metadata` operation, leading to inconsistent
+    behaviors within create/drop sequences.

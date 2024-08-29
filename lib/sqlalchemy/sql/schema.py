@@ -1435,7 +1435,7 @@ class Table(
 
         args = []
         for col in self.columns:
-            args.append(col._copy(schema=actual_schema))
+            args.append(col._copy(schema=actual_schema, _to_metadata=metadata))
         table = Table(
             name,
             metadata,
@@ -2477,6 +2477,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         server_onupdate = self.server_onupdate
         if isinstance(server_default, (Computed, Identity)):
             # TODO: likely should be copied in all cases
+            # TODO: if a Sequence, we would need to transfer the Sequence
+            # .metadata as well
             args.append(server_default._copy(**kw))
             server_default = server_onupdate = None
 
