@@ -89,6 +89,7 @@ from ..util.typing import (
     de_stringify_union_elements as _de_stringify_union_elements,
 )
 from ..util.typing import eval_name_only as _eval_name_only
+from ..util.typing import fixup_container_fwd_refs
 from ..util.typing import is_origin_of_cls
 from ..util.typing import Literal
 from ..util.typing import Protocol
@@ -2321,7 +2322,7 @@ def _extract_mapped_subtype(
     is_dataclass_field: bool,
     expect_mapped: bool = True,
     raiseerr: bool = True,
-) -> Optional[Tuple[Union[type, str], Optional[type]]]:
+) -> Optional[Tuple[Union[_AnnotationScanType, str], Optional[type]]]:
     """given an annotation, figure out if it's ``Mapped[something]`` and if
     so, return the ``something`` part.
 
@@ -2407,7 +2408,11 @@ def _extract_mapped_subtype(
                 "Expected sub-type for Mapped[] annotation"
             )
 
-        return annotated.__args__[0], annotated.__origin__
+        return (
+            # fix dict/list/set args to be ForwardRef, see #11814
+            fixup_container_fwd_refs(annotated.__args__[0]),
+            annotated.__origin__,
+        )
 
 
 def _mapper_property_as_plain_name(prop: Type[Any]) -> str:
