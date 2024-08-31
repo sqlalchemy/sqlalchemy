@@ -6,6 +6,7 @@ that it extracts from the documentation.
 .. versionadded:: 2.0
 
 """
+
 # mypy: ignore-errors
 
 from argparse import ArgumentParser
@@ -316,11 +317,13 @@ def main(
             print(
                 f"{to_reformat} file(s) would be reformatted;",
                 (
-                    f"{sum(formatting_error_counts)} formatting errors "
-                    f"reported in {len(formatting_error_counts)} files"
-                )
-                if formatting_error_counts
-                else "no formatting errors reported",
+                    (
+                        f"{sum(formatting_error_counts)} formatting errors "
+                        f"reported in {len(formatting_error_counts)} files"
+                    )
+                    if formatting_error_counts
+                    else "no formatting errors reported"
+                ),
             )
 
             exit(1)
@@ -388,9 +391,11 @@ Use --report-doctest to ignore errors on plain code blocks.
             for val in config.get("target_version", [])
             if val != "py27"
         },
-        line_length=config.get("line_length", DEFAULT_LINE_LENGTH)
-        if args.project_line_length
-        else DEFAULT_LINE_LENGTH,
+        line_length=(
+            config.get("line_length", DEFAULT_LINE_LENGTH)
+            if args.project_line_length
+            else DEFAULT_LINE_LENGTH
+        ),
     )
     REPORT_ONLY_DOCTEST = args.report_doctest
 
