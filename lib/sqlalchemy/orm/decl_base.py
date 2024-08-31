@@ -431,7 +431,7 @@ class _ImperativeMapperConfig(_MapperConfig):
 class _CollectedAnnotation(NamedTuple):
     raw_annotation: _AnnotationScanType
     mapped_container: Optional[Type[Mapped[Any]]]
-    extracted_mapped_annotation: Union[Type[Any], str]
+    extracted_mapped_annotation: Union[_AnnotationScanType, str]
     is_dataclass: bool
     attr_value: Any
     originating_module: str

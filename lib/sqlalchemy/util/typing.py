@@ -190,7 +190,48 @@ def de_stringify_annotation(
         )
 
         return _copy_generic_annotation_with(annotation, elements)
+
     return annotation  # type: ignore
+
+
+def fixup_container_fwd_refs(
+    type_: _AnnotationScanType,
+) -> _AnnotationScanType:
+    """Correct dict['x', 'y'] into dict[ForwardRef('x'), ForwardRef('y')]
+    and similar for list, set
+
+    """
+    if (
+        is_generic(type_)
+        and type_.__origin__
+        in (
+            dict,
+            set,
+            list,
+            collections_abc.MutableSet,
+            collections_abc.MutableMapping,
+            collections_abc.MutableSequence,
+            collections_abc.Mapping,
+            collections_abc.Sequence,
+        )
+        # fight, kick and scream to struggle to tell the difference between
+        # dict[] and typing.Dict[] which DO NOT compare the same and DO NOT
+        # behave the same yet there is NO WAY to distinguish between which type
+        # it is using public attributes
+        and not re.match(
+            "typing.(?:Dict|List|Set|.*Mapping|.*Sequence|.*Set)", repr(type_)
+        )
+    ):
+        # compat with py3.10 and earlier
+        return type_.__origin__.__class_getitem__(  # type: ignore
+            tuple(
+                [
+                    ForwardRef(elem) if isinstance(elem, str) else elem
+                    for elem in type_.__args__
+                ]
+            )
+        )
+    return type_
 
 
 def _copy_generic_annotation_with(

@@ -1420,21 +1420,47 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             (str, str),
         ),
         id_="sa",
+        argnames="container_typ,args",
     )
-    def test_extract_generic_from_pep593(self, container_typ, args):
-        """test #9099"""
+    @testing.variation("style", ["pep593", "alias", "direct"])
+    def test_extract_composed(self, container_typ, args, style):
+        """test #9099 (pep593)
+
+        test #11814
+
+        """
 
         global TestType
-        TestType = Annotated[container_typ[args], 0]
+
+        if style.pep593:
+            TestType = Annotated[container_typ[args], 0]
+        elif style.alias:
+            TestType = container_typ[args]
+        elif style.direct:
+            TestType = container_typ
+            double_strings = args == (str, str)
 
         class Base(DeclarativeBase):
-            type_annotation_map = {TestType: JSON()}
+            if style.direct:
+                if double_strings:
+                    type_annotation_map = {TestType[str, str]: JSON()}
+                else:
+                    type_annotation_map = {TestType[str]: JSON()}
+            else:
+                type_annotation_map = {TestType: JSON()}
 
         class MyClass(Base):
             __tablename__ = "my_table"
 
             id: Mapped[int] = mapped_column(primary_key=True)
-            data: Mapped[TestType] = mapped_column()
+
+            if style.direct:
+                if double_strings:
+                    data: Mapped[TestType[str, str]] = mapped_column()
+                else:
+                    data: Mapped[TestType[str]] = mapped_column()
+            else:
+                data: Mapped[TestType] = mapped_column()
 
         is_(MyClass.__table__.c.data.type._type_affinity, JSON)
 
