@@ -844,25 +844,45 @@ class AsyncAdapt_asyncpg_connection(AdaptedConnection):
         else:
             return AsyncAdapt_asyncpg_cursor(self)
 
+    async def _rollback_and_discard(self):
+        try:
+            await self._transaction.rollback()
+        finally:
+            # if asyncpg .rollback() was actually called, then whether or
+            # not it raised or succeeded, the transation is done, discard it
+            self._transaction = None
+            self._started = False
+
+    async def _commit_and_discard(self):
+        try:
+            await self._transaction.commit()
+        finally:
+            # if asyncpg .commit() was actually called, then whether or
+            # not it raised or succeeded, the transation is done, discard it
+            self._transaction = None
+            self._started = False
+
     def rollback(self):
         if self._started:
             try:
-                self.await_(self._transaction.rollback())
-            except Exception as error:
-                self._handle_exception(error)
-            finally:
+                self.await_(self._rollback_and_discard())
                 self._transaction = None
                 self._started = False
+            except Exception as error:
+                # don't dereference asyncpg transaction if we didn't
+                # actually try to call rollback() on it
+                self._handle_exception(error)
 
     def commit(self):
         if self._started:
             try:
-                self.await_(self._transaction.commit())
-            except Exception as error:
-                self._handle_exception(error)
-            finally:
+                self.await_(self._commit_and_discard())
                 self._transaction = None
                 self._started = False
+            except Exception as error:
+                # don't dereference asyncpg transaction if we didn't
+                # actually try to call commit() on it
+                self._handle_exception(error)
 
     def close(self):
         self.rollback()
