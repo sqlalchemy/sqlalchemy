@@ -1,0 +1,16 @@
+.. change::
+    :tags: change, general
+    :tickets: 11818
+
+    The pin for ``setuptools<69.3`` in ``pyproject.toml`` has been
+    removed.  This pin was to prevent a sudden change to :pep:`625` in
+    setuptools from taking place which changes the file name of SQLAlchemy's
+    source distribution on pypi to be an all lower case name, which is very
+    likely to cause problems with various build environments that expected a
+    particular naming style.  However, the presence of this pin is now holding
+    back environments that otherwise want to use a newer setuptools, so we've
+    decided to move forward with this change, with the assumption that build
+    environments will have largely accommodated the setuptools change by
+    now.
+
+

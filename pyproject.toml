@@ -1,9 +1,7 @@
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
-    # avoid moving to https://github.com/pypa/setuptools/issues/3593
-    # until we're ready
-    "setuptools>=61.0,<69.3",
+    "setuptools>=61.0",
     "cython>=3; platform_python_implementation == 'CPython'", # Skip cython when using pypy
 ]
 
