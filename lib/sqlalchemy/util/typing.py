@@ -355,7 +355,9 @@ def is_non_string_iterable(obj: Any) -> TypeGuard[Iterable[Any]]:
 
 
 def is_literal(type_: _AnnotationScanType) -> bool:
-    return get_origin(type_) is Literal
+    # Must use equality rather than identity since typing_extensions.Literal is
+    # different from typing.Literal until Python 3.9.8/3.10.1
+    return get_origin(type_) == Literal
 
 
 def is_newtype(type_: Optional[_AnnotationScanType]) -> TypeGuard[NewType]:
