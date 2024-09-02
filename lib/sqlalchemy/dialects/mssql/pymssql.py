@@ -103,6 +103,7 @@ class MSDialect_pymssql(MSDialect):
             "message 20006",  # Write to the server failed
             "message 20017",  # Unexpected EOF from the server
             "message 20047",  # DBPROCESS is dead or not enabled
+            "The server failed to resume the transaction",
         ):
             if msg in str(e):
                 return True
