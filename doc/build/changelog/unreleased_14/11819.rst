@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 11819
+    :versions: 2.0.33, 1.4.54
+
+    Fixed critical issue in the asyncpg driver where a rollback or commit that
+    fails specifically for the ``MissingGreenlet`` condition or any other error
+    that is not raised by asyncpg itself would discard the asyncpg transaction
+    in any case, even though the transaction were still idle, leaving to a
+    server side condition with an idle transaction that then goes back into the
+    connection pool.   The flags for "transaction closed" are now not reset for
+    errors that are raised outside of asyncpg itself.  When asyncpg itself
+    raises an error for ``.commit()`` or ``.rollback()``, asyncpg does then
+    discard of this transaction.
