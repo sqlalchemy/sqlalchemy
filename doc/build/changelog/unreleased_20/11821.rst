@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 11821
+
+    Revising the asyncpg ``terminate()`` fix first made in :ticket:`10717`
+    which improved the resiliency of this call under all circumstances, adding
+    ``asyncio.CancelledError`` to the list of exceptions that are intercepted
+    as failing for a graceful ``.close()`` which will then proceed to call
+    ``.terminate()``.
