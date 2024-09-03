@@ -1,5 +1,5 @@
 .. change::
-    :tags: bug, reflection
+    :tags: bug, engine
     :tickets: 11687
 
     Fixed issue in internal reflection cache where particular reflection
