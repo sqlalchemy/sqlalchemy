@@ -899,6 +899,7 @@ class AsyncAdapt_asyncpg_connection(AdaptedConnection):
                 self.await_(self._connection.close(timeout=2))
             except (
                 asyncio.TimeoutError,
+                asyncio.CancelledError,
                 OSError,
                 self.dbapi.asyncpg.PostgresError,
             ):
