@@ -1,5 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 11782
-
-    Fixed typing issue with :meth:`_sql.Select.with_only_columns`.

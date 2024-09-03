@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, mssql
-    :tickets: 11822
-
-    Added error "The server failed to resume the transaction" to the list of
-    error strings for the pymssql driver in determining a disconnect scenario,
-    as observed by one user using pymssql under otherwise unknown conditions as
-    leaving an unusable connection in the connection pool which fails to ping
-    cleanly.

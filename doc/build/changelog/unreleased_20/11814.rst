@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 11814
-
-    Improvements to the ORM annotated declarative type map lookup dealing with
-    composed types such as ``dict[str, Any]`` linking to JSON (or others) with
-    or without "future annotations" mode.
-
-

@@ -10,7 +10,132 @@
 
 .. changelog::
     :version: 2.0.33
-    :include_notes_from: unreleased_20
+    :released: September 3, 2024
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 11677
+
+        Improvements to the regex used by the SQLite dialect to reflect the name
+        and contents of a CHECK constraint.  Constraints with newline, tab, or
+        space characters in either or both the constraint text and constraint name
+        are now properly reflected.   Pull request courtesy Jeff Horemans.
+
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 11687
+
+        Fixed issue in internal reflection cache where particular reflection
+        scenarios regarding same-named quoted_name() constructs would not be
+        correctly cached.  Pull request courtesy Felix Lüdin.
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 11703
+
+        Fixed regression in :meth:`_sql.Select.with_statement_hint` and others
+        where the generative behavior of the method stopped producing a copy of the
+        object.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 11731
+
+        Fixed issue in MySQL dialect where using INSERT..FROM SELECT in combination
+        with ON DUPLICATE KEY UPDATE would erroneously render on MySQL 8 and above
+        the "AS new" clause, leading to syntax failures.  This clause is required
+        on MySQL 8 to follow the VALUES clause if use of the "new" alias is
+        present, however is not permitted to follow a FROM SELECT clause.
+
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 11746
+
+        Improvements to the regex used by the SQLite dialect to reflect the name
+        and contents of a UNIQUE constraint that is defined inline within a column
+        definition inside of a SQLite CREATE TABLE statement, accommodating for tab
+        characters present within the column / constraint line. Pull request
+        courtesy John A Stevenson.
+
+
+
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 11782
+
+        Fixed typing issue with :meth:`_sql.Select.with_only_columns`.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11788
+
+        Correctly cleanup the internal top-level module registry when no
+        inner modules or classes are registered into it.
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 11802
+
+        Fixed bug where the ``metadata`` element of an ``Enum`` datatype would not
+        be transferred to the new :class:`.MetaData` object when the type had been
+        copied via a :meth:`.Table.to_metadata` operation, leading to inconsistent
+        behaviors within create/drop sequences.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11814
+
+        Improvements to the ORM annotated declarative type map lookup dealing with
+        composed types such as ``dict[str, Any]`` linking to JSON (or others) with
+        or without "future annotations" mode.
+
+
+
+    .. change::
+        :tags: change, general
+        :tickets: 11818
+
+        The pin for ``setuptools<69.3`` in ``pyproject.toml`` has been removed.
+        This pin was to prevent a sudden change in setuptools to use :pep:`625`
+        from taking place, which would change the file name of SQLAlchemy's source
+        distribution on pypi to be an all lower case name, which is likely to cause
+        problems with various build environments that expected the previous naming
+        style.  However, the presence of this pin is holding back environments that
+        otherwise want to use a newer setuptools, so we've decided to move forward
+        with this change, with the assumption that build environments will have
+        largely accommodated the setuptools change by now.
+
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 11821
+
+        Revising the asyncpg ``terminate()`` fix first made in :ticket:`10717`
+        which improved the resiliency of this call under all circumstances, adding
+        ``asyncio.CancelledError`` to the list of exceptions that are intercepted
+        as failing for a graceful ``.close()`` which will then proceed to call
+        ``.terminate()``.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 11822
+
+        Added error "The server failed to resume the transaction" to the list of
+        error strings for the pymssql driver in determining a disconnect scenario,
+        as observed by one user using pymssql under otherwise unknown conditions as
+        leaving an unusable connection in the connection pool which fails to ping
+        cleanly.
+
+    .. change::
+        :tags: bug, tests
+
+        Added missing ``array_type`` property to the testing suite
+        ``SuiteRequirements`` class.
 
 .. changelog::
     :version: 2.0.32

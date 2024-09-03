@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 11788
-
-    Correctly cleanup the internal top-level module registry when no
-    inner modules or classes are registered into it.
