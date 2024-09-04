@@ -23,7 +23,7 @@ from sqlalchemy.orm import sessionmaker
 class HasTemporal:
     """Mixin that identifies a class as having a timestamp column"""
 
-    utc = partial(datetime.datetime.now, datetime.UTC)
+    utc = partial(datetime.datetime.now, datetime.timezone.utc)
     timestamp = Column(DateTime, default=utc, nullable=False)
 
 
