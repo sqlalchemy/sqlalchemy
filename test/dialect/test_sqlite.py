@@ -1823,16 +1823,18 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 Column("id", Integer),
                 Column("value", Integer),
                 Column("prefix", String),
-                PrimaryKeyConstraint("id"),
                 CheckConstraint("id > 0"),
+                UniqueConstraint("prefix", name="prefix_named"),
                 # Constraint definition with newline and tab characters
                 CheckConstraint(
                     """((value > 0) AND \n\t(value < 100) AND \n\t
                       (value != 50))""",
                     name="ck_r_value_multiline",
                 ),
+                UniqueConstraint("value"),
                 # Constraint name with special chars and 'check' in the name
                 CheckConstraint("value IS NOT NULL", name="^check-r* #\n\t"),
+                PrimaryKeyConstraint("id", name="pk_name"),
                 # Constraint definition with special characters.
                 CheckConstraint("prefix NOT GLOB '*[^-. /#,]*'"),
             )
@@ -2446,6 +2448,27 @@ class ConstraintReflectionTest(fixtures.TestBase):
         eq_(
             inspector.get_unique_constraints("n"),
             [{"column_names": ["x"], "name": None}],
+        )
+
+    def test_unique_constraint_mixed_into_ck(self, connection):
+        """test #11832"""
+
+        inspector = inspect(connection)
+        eq_(
+            inspector.get_unique_constraints("r"),
+            [
+                {"name": "prefix_named", "column_names": ["prefix"]},
+                {"name": None, "column_names": ["value"]},
+            ],
+        )
+
+    def test_primary_key_constraint_mixed_into_ck(self, connection):
+        """test #11832"""
+
+        inspector = inspect(connection)
+        eq_(
+            inspector.get_pk_constraint("r"),
+            {"constrained_columns": ["id"], "name": "pk_name"},
         )
 
     def test_primary_key_constraint_named(self):
