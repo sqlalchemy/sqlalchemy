@@ -5,6 +5,7 @@ to selected entities.
 """
 
 import datetime
+from functools import partial
 
 from sqlalchemy import Column
 from sqlalchemy import create_engine
@@ -22,9 +23,8 @@ from sqlalchemy.orm import sessionmaker
 class HasTemporal:
     """Mixin that identifies a class as having a timestamp column"""
 
-    timestamp = Column(
-        DateTime, default=datetime.datetime.now(datetime.UTC), nullable=False
-    )
+    utc = partial(datetime.datetime.now, datetime.UTC)
+    timestamp = Column(DateTime, default=utc, nullable=False)
 
 
 def temporal_range(range_lower, range_upper):
