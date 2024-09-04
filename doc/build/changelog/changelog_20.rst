@@ -9,6 +9,10 @@
 
 
 .. changelog::
+    :version: 2.0.35
+    :include_notes_from: unreleased_20
+
+.. changelog::
     :version: 2.0.34
     :released: September 4, 2024
 
