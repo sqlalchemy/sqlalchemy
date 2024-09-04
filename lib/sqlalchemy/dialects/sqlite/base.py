@@ -2674,7 +2674,7 @@ class SQLiteDialect(default.DefaultDialect):
         # (1) Matches end of check constraint with trailing comma,
         # optional whitespace (including newline), and the beginning
         # of the next constraint (either named or unnamed).
-        ,[\s\n]*(?=CONSTRAINT|CHECK)
+        ,[\s\n]*(?=CONSTRAINT|CHECK|UNIQUE|FOREIGN|PRIMARY)
         # OR operator, seperating (1) & (2)
         |
         # (2) Matches end parenthesis of table definition, seperated by
