@@ -16,6 +16,7 @@ from sqlalchemy import desc
 from sqlalchemy import Enum
 from sqlalchemy import event
 from sqlalchemy import exc
+from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import func
@@ -2133,6 +2134,58 @@ class PKAutoIncrementTest(fixtures.TestBase):
             "Column type VARCHAR on column 't.a'",
             lambda: pk._autoincrement_column,
         )
+
+    def test_float_illegal_autoinc(self):
+        """test that Float is not acceptable if autoincrement=True"""
+        t = Table("t", MetaData(), Column("a", Float, autoincrement=True))
+        pk = PrimaryKeyConstraint(t.c.a)
+        t.append_constraint(pk)
+
+        with expect_raises_message(
+            exc.ArgumentError, "Column type FLOAT with non-zero scale "
+        ):
+            pk._autoincrement_column,
+
+    def test_numeric_nonzero_scale_illegal_autoinc(self):
+        """test that Numeric() with non-zero scale is not acceptable if
+        autoincrement=True"""
+        t = Table(
+            "t", MetaData(), Column("a", Numeric(10, 5), autoincrement=True)
+        )
+        pk = PrimaryKeyConstraint(t.c.a)
+        t.append_constraint(pk)
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"Column type NUMERIC\(10, 5\) with non-zero scale 5",
+        ):
+            pk._autoincrement_column,
+
+    def test_numeric_zero_scale_autoinc_not_auto(self):
+        """test that Numeric() is not automatically assigned to
+        autoincrement"""
+        t = Table(
+            "t", MetaData(), Column("a", Numeric(10, 0), primary_key=True)
+        )
+
+        is_(t.autoincrement_column, None)
+
+    def test_integer_autoinc_is_auto(self):
+        """test that Integer() is automatically assigned to autoincrement"""
+        t = Table("t", MetaData(), Column("a", Integer, primary_key=True))
+
+        is_(t.autoincrement_column, t.c.a)
+
+    def test_numeric_zero_scale_autoinc_explicit_ok(self):
+        """test that Numeric() with zero scale is acceptable if
+        autoincrement=True"""
+        t = Table(
+            "t",
+            MetaData(),
+            Column("a", Numeric(10, 0), autoincrement=True, primary_key=True),
+        )
+
+        is_(t.autoincrement_column, t.c.a)
 
     def test_single_integer_default(self):
         t = Table(
