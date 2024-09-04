@@ -201,9 +201,10 @@ def fixup_container_fwd_refs(
     and similar for list, set
 
     """
+
     if (
         is_generic(type_)
-        and type_.__origin__
+        and typing_get_origin(type_)
         in (
             dict,
             set,
@@ -223,11 +224,11 @@ def fixup_container_fwd_refs(
         )
     ):
         # compat with py3.10 and earlier
-        return type_.__origin__.__class_getitem__(  # type: ignore
+        return typing_get_origin(type_).__class_getitem__(  # type: ignore
             tuple(
                 [
                     ForwardRef(elem) if isinstance(elem, str) else elem
-                    for elem in type_.__args__
+                    for elem in typing_get_args(type_)
                 ]
             )
         )

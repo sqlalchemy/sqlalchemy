@@ -1419,6 +1419,16 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             Dict,
             (str, str),
         ),
+        (list, None, testing.requires.python310),
+        (
+            List,
+            None,
+        ),
+        (dict, None, testing.requires.python310),
+        (
+            Dict,
+            None,
+        ),
         id_="sa",
         argnames="container_typ,args",
     )
@@ -1428,22 +1438,30 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         test #11814
 
+        test #11831, regression from #11814
         """
 
         global TestType
 
         if style.pep593:
-            TestType = Annotated[container_typ[args], 0]
+            if args is None:
+                TestType = Annotated[container_typ, 0]
+            else:
+                TestType = Annotated[container_typ[args], 0]
         elif style.alias:
-            TestType = container_typ[args]
+            if args is None:
+                TestType = container_typ
+            else:
+                TestType = container_typ[args]
         elif style.direct:
             TestType = container_typ
-            double_strings = args == (str, str)
 
         class Base(DeclarativeBase):
             if style.direct:
-                if double_strings:
+                if args == (str, str):
                     type_annotation_map = {TestType[str, str]: JSON()}
+                elif args is None:
+                    type_annotation_map = {TestType: JSON()}
                 else:
                     type_annotation_map = {TestType[str]: JSON()}
             else:
@@ -1455,8 +1473,10 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped[int] = mapped_column(primary_key=True)
 
             if style.direct:
-                if double_strings:
+                if args == (str, str):
                     data: Mapped[TestType[str, str]] = mapped_column()
+                elif args is None:
+                    data: Mapped[TestType] = mapped_column()
                 else:
                     data: Mapped[TestType[str]] = mapped_column()
             else:
