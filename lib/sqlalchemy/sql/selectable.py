@@ -3833,7 +3833,7 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
 
         For example, ::
 
-            stmt = select(User).order_by(User).id.slice(1, 3)
+            stmt = select(User).order_by(User.id).slice(1, 3)
 
         renders as
 
