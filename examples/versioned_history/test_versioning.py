@@ -1,5 +1,12 @@
-"""Unit tests illustrating usage of the ``history_meta.py``
-module functions."""
+"""
+Unit tests illustrating usage of the ``history_meta.py``
+module functions.
+
+Note: Due to relative imports, this must be run from the main SQLAlchemy
+directory as:
+
+    python -m examples.versioned_history.test_versioning
+"""
 
 import unittest
 import warnings
@@ -41,24 +48,24 @@ warnings.simplefilter("error")
 class TestVersioning(AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.engine = engine = create_engine("sqlite://")
         self.session = Session(engine)
         self.make_base()
         versioned_session(self.session)
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.session.close()
         clear_mappers()
         self.Base.metadata.drop_all(self.engine)
 
-    def make_base(self):
+    def make_base(self) -> None:
         self.Base = declarative_base()
 
-    def create_tables(self):
+    def create_tables(self) -> None:
         self.Base.metadata.create_all(self.engine)
 
-    def test_plain(self):
+    def test_plain(self) -> None:
         class SomeClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = "sometable"
 
@@ -144,7 +151,7 @@ class TestVersioning(AssertsCompiledSQL):
             "fk_constraint_explicit_name",
         ],
     )
-    def test_index_naming(self, constraint_type):
+    def test_index_naming(self, constraint_type) -> None:
         """test #10920"""
 
         if (
@@ -222,7 +229,7 @@ class TestVersioning(AssertsCompiledSQL):
         )
         self.create_tables()
 
-    def test_discussion_9546(self):
+    def test_discussion_9546(self) -> None:
         class ThingExternal(Versioned, self.Base):
             __tablename__ = "things_external"
             id = Column(Integer, primary_key=True)
@@ -253,7 +260,7 @@ class TestVersioning(AssertsCompiledSQL):
             "JOIN things_local ON things_external.id = things_local.id",
         )
 
-    def test_w_mapper_versioning(self):
+    def test_w_mapper_versioning(self) -> None:
         class SomeClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = "sometable"
             use_mapper_versioning = True
@@ -278,7 +285,7 @@ class TestVersioning(AssertsCompiledSQL):
 
         assert_raises(orm_exc.StaleDataError, s2.flush)
 
-    def test_from_null(self):
+    def test_from_null(self) -> None:
         class SomeClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = "sometable"
 
@@ -296,7 +303,7 @@ class TestVersioning(AssertsCompiledSQL):
 
         assert sc.version == 2
 
-    def test_insert_null(self):
+    def test_insert_null(self) -> None:
         class SomeClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = "sometable"
 
@@ -326,7 +333,7 @@ class TestVersioning(AssertsCompiledSQL):
 
         eq_(sc.version, 3)
 
-    def test_deferred(self):
+    def test_deferred(self) -> None:
         """test versioning of unloaded, deferred columns."""
 
         class SomeClass(Versioned, self.Base, ComparableEntity):
@@ -360,7 +367,7 @@ class TestVersioning(AssertsCompiledSQL):
             [SomeClassHistory(version=1, name="sc1", data="somedata")],
         )
 
-    def test_joined_inheritance(self):
+    def test_joined_inheritance(self) -> None:
         class BaseClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = "basetable"
 
@@ -466,7 +473,7 @@ class TestVersioning(AssertsCompiledSQL):
             ],
         )
 
-    def test_joined_inheritance_multilevel(self):
+    def test_joined_inheritance_multilevel(self) -> None:
         class BaseClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = "basetable"
 
@@ -555,7 +562,7 @@ class TestVersioning(AssertsCompiledSQL):
             ),
         )
 
-    def test_joined_inheritance_changed(self):
+    def test_joined_inheritance_changed(self) -> None:
         class BaseClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = "basetable"
 
@@ -601,7 +608,7 @@ class TestVersioning(AssertsCompiledSQL):
         eq_(h1.changed, actual_changed_base)
         eq_(h1.changed, actual_changed_sub)
 
-    def test_single_inheritance(self):
+    def test_single_inheritance(self) -> None:
         class BaseClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = "basetable"
 
@@ -660,7 +667,7 @@ class TestVersioning(AssertsCompiledSQL):
         sc.name = "modifyagain"
         sess.flush()
 
-    def test_unique(self):
+    def test_unique(self) -> None:
         class SomeClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = "sometable"
 
@@ -684,7 +691,7 @@ class TestVersioning(AssertsCompiledSQL):
 
         assert sc.version == 3
 
-    def test_relationship(self):
+    def test_relationship(self) -> None:
         class SomeRelated(self.Base, ComparableEntity):
             __tablename__ = "somerelated"
 
@@ -735,7 +742,7 @@ class TestVersioning(AssertsCompiledSQL):
 
         assert sc.version == 3
 
-    def test_backref_relationship(self):
+    def test_backref_relationship(self) -> None:
         class SomeRelated(self.Base, ComparableEntity):
             __tablename__ = "somerelated"
 
@@ -773,7 +780,7 @@ class TestVersioning(AssertsCompiledSQL):
 
         assert sc.version == 1
 
-    def test_create_double_flush(self):
+    def test_create_double_flush(self) -> None:
         class SomeClass(Versioned, self.Base, ComparableEntity):
             __tablename__ = "sometable"
 
@@ -791,7 +798,7 @@ class TestVersioning(AssertsCompiledSQL):
 
         assert sc.version == 2
 
-    def test_mutate_plain_column(self):
+    def test_mutate_plain_column(self) -> None:
         class Document(self.Base, Versioned):
             __tablename__ = "document"
             id = Column(Integer, primary_key=True, autoincrement=True)
@@ -814,7 +821,7 @@ class TestVersioning(AssertsCompiledSQL):
         eq_(v2.name, "Bar")
         eq_(v1.name, "Foo")
 
-    def test_mutate_named_column(self):
+    def test_mutate_named_column(self) -> None:
         class Document(self.Base, Versioned):
             __tablename__ = "document"
             id = Column(Integer, primary_key=True, autoincrement=True)
@@ -837,7 +844,7 @@ class TestVersioning(AssertsCompiledSQL):
         eq_(v2.description_, "Bar")
         eq_(v1.description_, "Foo")
 
-    def test_unique_identifiers_across_deletes(self):
+    def test_unique_identifiers_across_deletes(self) -> None:
         """Ensure unique integer values are used for the primary table.
 
         Checks whether the database assigns the same identifier twice
@@ -956,7 +963,7 @@ class TestVersioning(AssertsCompiledSQL):
 
 
 class TestVersioningNewBase(TestVersioning):
-    def make_base(self):
+    def make_base(self) -> None:
         class Base(DeclarativeBase):
             pass
 

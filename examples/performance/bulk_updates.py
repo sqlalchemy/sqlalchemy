@@ -4,12 +4,13 @@ of rows in bulk (under construction! there's just one test at the moment)
 
 """
 
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import Identity
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Session
 from . import Profiler
 
@@ -20,16 +21,16 @@ engine = None
 
 class Customer(Base):
     __tablename__ = "customer"
-    id = Column(Integer, Identity(), primary_key=True)
-    name = Column(String(255))
-    description = Column(String(255))
+    id: Mapped[int] = mapped_column(Integer, Identity(), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(String(255))
 
 
 Profiler.init("bulk_updates", num=100000)
 
 
 @Profiler.setup
-def setup_database(dburl, echo, num):
+def setup_database(dburl: str, echo: bool, num: int) -> None:
     global engine
     engine = create_engine(dburl, echo=echo)
     Base.metadata.drop_all(engine)
@@ -51,7 +52,7 @@ def setup_database(dburl, echo, num):
 
 
 @Profiler.profile
-def test_orm_flush(n):
+def test_orm_flush(n: int) -> None:
     """UPDATE statements via the ORM flush process."""
     session = Session(bind=engine)
     for chunk in range(0, n, 1000):

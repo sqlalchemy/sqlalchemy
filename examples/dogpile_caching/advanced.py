@@ -4,6 +4,8 @@ including front-end loading, cache invalidation and collection caching.
 
 """
 
+from typing import Sequence
+
 from sqlalchemy import select
 from .caching_query import FromCache
 from .caching_query import RelationshipCache
@@ -13,7 +15,9 @@ from .model import cache_address_bits
 from .model import Person
 
 
-def load_name_range(start, end, invalidate=False):
+def load_name_range(
+    start: int, end: int, invalidate: bool = False
+) -> Sequence[Person]:
     """Load Person objects on a range of names.
 
     start/end are integers, range is then

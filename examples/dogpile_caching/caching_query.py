@@ -19,13 +19,35 @@ The rest of what's here are standard SQLAlchemy and
 dogpile.cache constructs.
 
 """
+from __future__ import annotations
+
+from typing import Mapping
+from typing import Optional
+from typing import Sequence
+from typing import TYPE_CHECKING
+from typing import Union
 
 from dogpile.cache.api import NO_VALUE
+from dogpile.cache.region import CacheRegion
+from typing_extensions import Self
 
 from sqlalchemy import event
+from sqlalchemy.engine import Result
 from sqlalchemy.orm import loading
 from sqlalchemy.orm import Query
 from sqlalchemy.orm.interfaces import UserDefinedOption
+
+if TYPE_CHECKING:
+    from sqlalchemy import FromStatement
+    from sqlalchemy import Select
+    from sqlalchemy.engine import FrozenResult
+    from sqlalchemy.orm import ORMExecuteState
+    from sqlalchemy.orm import scoped_session
+    from sqlalchemy.orm import Session
+    from sqlalchemy.orm import sessionmaker
+
+    TYPE_STATEMENT = Union[FromStatement, Query, Select]
+    TYPE_SESSION_FACTORY = Union[scoped_session, Session, sessionmaker]
 
 
 class ORMCache:
@@ -35,14 +57,20 @@ class ORMCache:
 
     """
 
-    def __init__(self, regions):
+    _statement_cache: dict
+    cache_regions: dict[str, CacheRegion]
+
+    def __init__(self, regions: dict[str, CacheRegion]):
         self.cache_regions = regions
         self._statement_cache = {}
 
-    def listen_on_session(self, session_factory):
+    def listen_on_session(self, session_factory: TYPE_SESSION_FACTORY) -> None:
         event.listen(session_factory, "do_orm_execute", self._do_orm_execute)
 
-    def _do_orm_execute(self, orm_context):
+    def _do_orm_execute(
+        self,
+        orm_context: ORMExecuteState,
+    ) -> Optional[Result]:
         for opt in orm_context.user_defined_options:
             if isinstance(opt, RelationshipCache):
                 opt = opt._process_orm_context(orm_context)
@@ -64,7 +92,7 @@ class ORMCache:
                     )
                 else:
 
-                    def createfunc():
+                    def createfunc() -> FrozenResult:
                         return orm_context.invoke_statement().freeze()
 
                     cached_value = dogpile_region.get_or_create(
@@ -88,7 +116,12 @@ class ORMCache:
         else:
             return None
 
-    def invalidate(self, statement, parameters, opt):
+    def invalidate(
+        self,
+        statement: TYPE_STATEMENT,
+        parameters: dict,
+        opt: Union[FromCache, RelationshipCache],
+    ) -> None:
         """Invalidate the cache value represented by a statement."""
 
         if isinstance(statement, Query):
@@ -104,14 +137,14 @@ class ORMCache:
 class FromCache(UserDefinedOption):
     """Specifies that a Query should load results from a cache."""
 
-    propagate_to_loaders = False
+    propagate_to_loaders: bool = False
 
     def __init__(
         self,
-        region="default",
-        cache_key=None,
-        expiration_time=None,
-        ignore_expiration=False,
+        region: str = "default",
+        cache_key: Optional[str] = None,
+        expiration_time: Optional[int] = None,
+        ignore_expiration: bool = False,
     ):
         """Construct a new FromCache.
 
@@ -137,7 +170,12 @@ class FromCache(UserDefinedOption):
     def _gen_cache_key(self, anon_map, bindparams):
         return None
 
-    def _generate_cache_key(self, statement, parameters, orm_cache):
+    def _generate_cache_key(
+        self,
+        statement: TYPE_STATEMENT,
+        parameters: Union[Mapping, Sequence[Mapping]],
+        orm_cache: ORMCache,
+    ) -> str:
         """generate a cache key with which to key the results of a statement.
 
         This leverages the use of the SQL compilation cache key which is
@@ -157,15 +195,15 @@ class RelationshipCache(FromCache):
     """Specifies that a Query as called within a "lazy load"
     should load results from a cache."""
 
-    propagate_to_loaders = True
+    propagate_to_loaders: bool = True
 
     def __init__(
         self,
         attribute,
         region="default",
-        cache_key=None,
-        expiration_time=None,
-        ignore_expiration=False,
+        cache_key: Optional[str] = None,
+        expiration_time: Optional[int] = None,
+        ignore_expiration: bool = False,
     ):
         """Construct a new RelationshipCache.
 
@@ -188,7 +226,10 @@ class RelationshipCache(FromCache):
             (attribute.property.parent.class_, attribute.property.key): self
         }
 
-    def _process_orm_context(self, orm_context):
+    def _process_orm_context(
+        self,
+        orm_context: ORMExecuteState,
+    ):
         current_path = orm_context.loader_strategy_path
 
         if current_path:
@@ -202,7 +243,7 @@ class RelationshipCache(FromCache):
                     ]
                     return relationship_option
 
-    def and_(self, option):
+    def and_(self, option) -> Self:
         """Chain another RelationshipCache option to this one.
 
         While many RelationshipCache objects can be specified on a single

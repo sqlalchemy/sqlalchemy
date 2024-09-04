@@ -3,24 +3,36 @@ an UPDATE statement on a single row into an INSERT statement, so that a new
 row is inserted with the new data, keeping the old row intact.
 
 """
+from __future__ import annotations
 
-from sqlalchemy import Column
+from typing import TYPE_CHECKING
+
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import make_transient
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session as Session_
 from sqlalchemy.orm import sessionmaker
+
+if TYPE_CHECKING:
+    from typing import Optional
+    from typing import Sequence
+    from sqlalchemy.orm._typing import _O
+    from sqlalchemy.orm.unitofwork import UOWTransaction
 
 
 class Versioned:
-    def new_version(self, session):
+    id: Optional[Mapped[int]]
+
+    def new_version(self, session: Session_) -> None:
         # make us transient (removes persistent
         # identity).
         make_transient(self)
@@ -30,8 +42,12 @@ class Versioned:
         self.id = None
 
 
-@event.listens_for(Session, "before_flush")
-def before_flush(session, flush_context, instances):
+@event.listens_for(Session_, "before_flush")
+def before_flush(
+    session: Session_,
+    flush_context: UOWTransaction,
+    instances: Optional[Sequence[_O]],
+) -> None:
     for instance in session.dirty:
         if not isinstance(instance, Versioned):
             continue
@@ -58,8 +74,8 @@ Session = sessionmaker(engine)
 
 class Example(Versioned, Base):
     __tablename__ = "example"
-    id = Column(Integer, primary_key=True)
-    data = Column(String)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    data: Mapped[str] = mapped_column(String)
 
 
 Base.metadata.create_all(engine)
@@ -81,18 +97,18 @@ assert session.query(Example.id, Example.data).order_by(Example.id).all() == (
 
 class Parent(Base):
     __tablename__ = "parent"
-    id = Column(Integer, primary_key=True)
-    child_id = Column(Integer, ForeignKey("child.id"))
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    child_id: Mapped[int] = mapped_column(Integer, ForeignKey("child.id"))
     child = relationship("Child", backref=backref("parent", uselist=False))
 
 
 class Child(Versioned, Base):
     __tablename__ = "child"
 
-    id = Column(Integer, primary_key=True)
-    data = Column(String)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    data: Mapped[str] = mapped_column(String)
 
-    def new_version(self, session):
+    def new_version(self, session: Session_) -> None:
         # expire parent's reference to us
         session.expire(self.parent, ["child"])
 

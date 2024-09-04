@@ -10,8 +10,14 @@ with the basic operation of CachingQuery.
 
 """
 
+from typing import TYPE_CHECKING
+
 from dogpile.cache import make_region
+from dogpile.cache.api import BackendArguments
+from dogpile.cache.api import BackendFormatted
+from dogpile.cache.api import BackendSetType
 from dogpile.cache.api import CacheBackend
+from dogpile.cache.api import KeyType
 from dogpile.cache.api import NO_VALUE
 from dogpile.cache.region import register_backend
 
@@ -37,25 +43,27 @@ class ScopedSessionBackend(CacheBackend):
 
     """
 
-    def __init__(self, arguments):
+    def __init__(self, arguments: BackendArguments):
         self.scoped_session = arguments["scoped_session"]
 
-    def get(self, key):
+    def get(self, key: KeyType) -> BackendFormatted:
         return self._cache_dictionary.get(key, NO_VALUE)
 
-    def set(self, key, value):
+    def set(self, key: KeyType, value: BackendSetType) -> None:
         self._cache_dictionary[key] = value
 
-    def delete(self, key):
+    def delete(self, key: KeyType) -> None:
         self._cache_dictionary.pop(key, None)
 
     @property
-    def _cache_dictionary(self):
+    def _cache_dictionary(self) -> dict:
         """Return the cache dictionary linked to the current Session."""
 
         sess = self.scoped_session()
         try:
             cache_dict = sess._cache_dictionary
+            if TYPE_CHECKING:
+                assert isinstance(cache_dict, dict)
         except AttributeError:
             sess._cache_dictionary = cache_dict = {}
         return cache_dict
@@ -106,4 +114,6 @@ if __name__ == "__main__":
         q, {}, environment.cache
     )
 
-    assert person10 is regions["local_session"].get(cache_key)().scalar()
+    _cached = regions["local_session"].get(cache_key)
+    assert _cached is not NO_VALUE
+    assert person10 is _cached().scalar()

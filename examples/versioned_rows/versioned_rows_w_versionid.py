@@ -6,9 +6,11 @@ This example adds a numerical version_id to the Versioned class as well
 as the ability to see which row is the most "current" version.
 
 """
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy import ForeignKeyConstraint
@@ -16,28 +18,38 @@ from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import column_property
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import make_transient
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
+
+if TYPE_CHECKING:
+    from typing import Optional
+    from typing import Sequence
+    from sqlalchemy.orm._typing import _O
+    from sqlalchemy.orm.unitofwork import UOWTransaction
 
 
 class Versioned:
     # we have a composite primary key consisting of "id"
     # and "version_id"
-    id = Column(Integer, primary_key=True)
-    version_id = Column(Integer, primary_key=True, default=1)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    version_id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, default=1
+    )
 
     # optional - add a persisted is_current_version column
-    is_current_version = Column(Boolean, default=True)
+    is_current_version: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # optional - add a calculated is_current_version column
     @classmethod
-    def __declare_last__(cls):
+    def __declare_last__(cls) -> None:
         alias = cls.__table__.alias()
         cls.calc_is_current_version = column_property(
             select(func.max(alias.c.version_id) == cls.version_id).where(
@@ -45,7 +57,7 @@ class Versioned:
             )
         )
 
-    def new_version(self, session):
+    def new_version(self, session: Session) -> None:
         # optional - set previous version to have is_current_version=False
         old_id = self.id
         session.query(self.__class__).filter_by(id=old_id).update(
@@ -61,7 +73,11 @@ class Versioned:
 
 
 @event.listens_for(Session, "before_flush")
-def before_flush(session, flush_context, instances):
+def before_flush(
+    session: Session,
+    flush_context: UOWTransaction,
+    instances: Optional[Sequence[_O]],
+) -> None:
     for instance in session.dirty:
         if not isinstance(instance, Versioned):
             continue
@@ -89,7 +105,7 @@ Session = sessionmaker(engine)
 
 class Example(Versioned, Base):
     __tablename__ = "example"
-    data = Column(String)
+    data: Mapped[str] = mapped_column(String)
 
 
 Base.metadata.create_all(engine)
@@ -117,9 +133,9 @@ assert session.query(
 
 class Parent(Base):
     __tablename__ = "parent"
-    id = Column(Integer, primary_key=True)
-    child_id = Column(Integer)
-    child_version_id = Column(Integer)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    child_id: Mapped[int] = mapped_column(Integer)
+    child_version_id: Mapped[int] = mapped_column(Integer)
     child = relationship("Child", backref=backref("parent", uselist=False))
 
     __table_args__ = (
@@ -132,9 +148,9 @@ class Parent(Base):
 class Child(Versioned, Base):
     __tablename__ = "child"
 
-    data = Column(String)
+    data: Mapped[str] = mapped_column(String)
 
-    def new_version(self, session):
+    def new_version(self, session: Session) -> None:
         # expire parent's reference to us
         session.expire(self.parent, ["child"])
 

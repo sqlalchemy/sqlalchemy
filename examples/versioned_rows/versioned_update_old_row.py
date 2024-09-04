@@ -4,42 +4,54 @@ Also includes a :meth:`.SessionEvents.do_orm_execute` hook to limit queries
 to only the most recent version.
 
 """
+from __future__ import annotations
 
 import datetime
 import time
+from typing import TYPE_CHECKING
 
 from sqlalchemy import and_
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import DateTime
 from sqlalchemy import event
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import make_transient
 from sqlalchemy.orm import make_transient_to_detached
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import with_loader_criteria
+from sqlalchemy.orm.session import ORMExecuteState
 
+if TYPE_CHECKING:
+    from typing import Optional
+    from typing import Sequence
+    from sqlalchemy.orm._typing import _O
+    from sqlalchemy.orm.unitofwork import UOWTransaction
 
 Base = declarative_base()
 
 # this will be the current time as the test runs
-now = None
+now: datetime.datetime
 
 
 # in practice this would be a real "now" function
-def current_time():
+def current_time() -> datetime.datetime:
     return now
 
 
 class VersionedStartEnd:
-    start = Column(DateTime, primary_key=True)
-    end = Column(DateTime, primary_key=True)
+    id: Mapped[int]
+    start: Mapped[datetime.datetime] = mapped_column(
+        DateTime, primary_key=True
+    )
+    end: Mapped[datetime.datetime] = mapped_column(DateTime, primary_key=True)
 
     def __init__(self, **kw):
         # reduce some verbosity when we make a new object
@@ -47,7 +59,7 @@ class VersionedStartEnd:
         kw.setdefault("end", current_time() + datetime.timedelta(days=3))
         super().__init__(**kw)
 
-    def new_version(self, session):
+    def new_version(self, session: Session) -> None:
         # our current identity key, which will be used on the "old"
         # version of us to emit an UPDATE. this is just for assertion purposes
         old_identity_key = inspect(self).key
@@ -86,7 +98,11 @@ class VersionedStartEnd:
 
 
 @event.listens_for(Session, "before_flush")
-def before_flush(session, flush_context, instances):
+def before_flush(
+    session: Session,
+    flush_context: UOWTransaction,
+    instances: Optional[Sequence[_O]],
+) -> None:
     for instance in session.dirty:
         if not isinstance(instance, VersionedStartEnd):
             continue
@@ -103,7 +119,7 @@ def before_flush(session, flush_context, instances):
 
 
 @event.listens_for(Session, "do_orm_execute", retval=True)
-def do_orm_execute(execute_state):
+def do_orm_execute(execute_state: ORMExecuteState) -> None:
     """ensure all queries for VersionedStartEnd include criteria"""
 
     ct = current_time() + datetime.timedelta(seconds=1)
@@ -118,12 +134,14 @@ def do_orm_execute(execute_state):
 
 class Parent(VersionedStartEnd, Base):
     __tablename__ = "parent"
-    id = Column(Integer, primary_key=True)
-    start = Column(DateTime, primary_key=True)
-    end = Column(DateTime, primary_key=True)
-    data = Column(String)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    start: Mapped[datetime.datetime] = mapped_column(
+        DateTime, primary_key=True
+    )
+    end: Mapped[datetime.datetime] = mapped_column(DateTime, primary_key=True)
+    data: Mapped[str] = mapped_column(String)
 
-    child_n = Column(Integer)
+    child_n: Mapped[int] = mapped_column(Integer)
 
     child = relationship(
         "Child",
@@ -146,12 +164,14 @@ class Parent(VersionedStartEnd, Base):
 class Child(VersionedStartEnd, Base):
     __tablename__ = "child"
 
-    id = Column(Integer, primary_key=True)
-    start = Column(DateTime, primary_key=True)
-    end = Column(DateTime, primary_key=True)
-    data = Column(String)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    start: Mapped[datetime.datetime] = mapped_column(
+        DateTime, primary_key=True
+    )
+    end: Mapped[datetime.datetime] = mapped_column(DateTime, primary_key=True)
+    data: Mapped[str] = mapped_column(String)
 
-    def new_version(self, session):
+    def new_version(self, session: Session) -> None:
         # expire parent's reference to us
         session.expire(self.parent, ["child"])
 
@@ -162,10 +182,10 @@ class Child(VersionedStartEnd, Base):
         self.parent.child = self
 
 
-times = []
+times: list[datetime.datetime] = []
 
 
-def time_passes(s):
+def time_passes(s: Session) -> datetime.datetime:
     """keep track of timestamps in terms of the database and allow time to
     pass between steps."""
 

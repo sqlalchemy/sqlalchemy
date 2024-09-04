@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+from typing import Dict
+from typing import Generator
+from typing import Tuple
+from typing import Union
+
 from sqlalchemy import bindparam
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import Identity
 from sqlalchemy import insert
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Session
 from . import Profiler
 
@@ -18,20 +24,21 @@ of rows in bulk.
 """
 
 Base = declarative_base()
+engine = None
 
 
 class Customer(Base):
     __tablename__ = "customer"
-    id = Column(Integer, Identity(), primary_key=True)
-    name = Column(String(255))
-    description = Column(String(255))
+    id: Mapped[int] = mapped_column(Integer, Identity(), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(String(255))
 
 
 Profiler.init("bulk_inserts", num=100000)
 
 
 @Profiler.setup
-def setup_database(dburl, echo, num):
+def setup_database(dburl: str, echo: bool, num: int) -> None:
     global engine
     engine = create_engine(dburl, echo=echo)
     Base.metadata.drop_all(engine)
@@ -39,7 +46,7 @@ def setup_database(dburl, echo, num):
 
 
 @Profiler.profile
-def test_flush_no_pk(n):
+def test_flush_no_pk(n: int) -> None:
     """INSERT statements via the ORM (batched with RETURNING if available),
     fetching generated row id"""
     session = Session(bind=engine)
@@ -58,7 +65,7 @@ def test_flush_no_pk(n):
 
 
 @Profiler.profile
-def test_flush_pk_given(n):
+def test_flush_pk_given(n: int) -> None:
     """Batched INSERT statements via the ORM, PKs already defined"""
     session = Session(bind=engine)
     for chunk in range(0, n, 1000):
@@ -77,7 +84,7 @@ def test_flush_pk_given(n):
 
 
 @Profiler.profile
-def test_orm_bulk_insert(n):
+def test_orm_bulk_insert(n: int) -> None:
     """Batched INSERT statements via the ORM in "bulk", not returning rows"""
     session = Session(bind=engine)
     session.execute(
@@ -94,7 +101,7 @@ def test_orm_bulk_insert(n):
 
 
 @Profiler.profile
-def test_orm_insert_returning(n):
+def test_orm_insert_returning(n: int) -> None:
     """Batched INSERT statements via the ORM in "bulk", returning new Customer
     objects"""
     session = Session(bind=engine)
@@ -117,8 +124,9 @@ def test_orm_insert_returning(n):
 
 
 @Profiler.profile
-def test_core_insert(n):
+def test_core_insert(n: int) -> None:
     """A single Core INSERT construct inserting mappings in bulk."""
+    assert engine is not None
     with engine.begin() as conn:
         conn.execute(
             Customer.__table__.insert(),
@@ -133,9 +141,9 @@ def test_core_insert(n):
 
 
 @Profiler.profile
-def test_dbapi_raw(n):
+def test_dbapi_raw(n: int) -> None:
     """The DBAPI's API inserting rows in bulk."""
-
+    assert engine is not None
     conn = engine.pool._creator()
     cursor = conn.cursor()
     compiled = (
@@ -143,7 +151,7 @@ def test_dbapi_raw(n):
         .values(name=bindparam("name"), description=bindparam("description"))
         .compile(dialect=engine.dialect)
     )
-
+    args: Generator[Union[Dict[str, str], Tuple[str, str]], None, None]
     if compiled.positional:
         args = (
             ("customer name %d" % i, "customer description %d" % i)

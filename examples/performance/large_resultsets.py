@@ -13,34 +13,41 @@ full blown ORM doesn't do terribly either even though mapped objects
 provide a huge amount of functionality.
 
 """
+from __future__ import annotations
 
-from sqlalchemy import Column
+from typing import Optional
+from typing import TYPE_CHECKING
+
 from sqlalchemy import create_engine
 from sqlalchemy import Identity
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Bundle
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Session
 from . import Profiler
 
+if TYPE_CHECKING:
+    from sqlalchemy import Engine
 
 Base = declarative_base()
-engine = None
+engine: Optional[Engine] = None
 
 
 class Customer(Base):
     __tablename__ = "customer"
-    id = Column(Integer, Identity(), primary_key=True)
-    name = Column(String(255))
-    description = Column(String(255))
+    id: Mapped[int] = mapped_column(Integer, Identity(), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(String(255))
 
 
 Profiler.init("large_resultsets", num=500000)
 
 
 @Profiler.setup_once
-def setup_database(dburl, echo, num):
+def setup_database(dburl: str, echo: bool, num: int) -> None:
     global engine
     engine = create_engine(dburl, echo=echo)
     Base.metadata.drop_all(engine)
@@ -62,7 +69,7 @@ def setup_database(dburl, echo, num):
 
 
 @Profiler.profile
-def test_orm_full_objects_list(n):
+def test_orm_full_objects_list(n: int) -> None:
     """Load fully tracked ORM objects into one big list()."""
 
     sess = Session(engine)
@@ -70,7 +77,7 @@ def test_orm_full_objects_list(n):
 
 
 @Profiler.profile
-def test_orm_full_objects_chunks(n):
+def test_orm_full_objects_chunks(n: int) -> None:
     """Load fully tracked ORM objects a chunk at a time using yield_per()."""
 
     sess = Session(engine)
@@ -79,7 +86,7 @@ def test_orm_full_objects_chunks(n):
 
 
 @Profiler.profile
-def test_orm_bundles(n):
+def test_orm_bundles(n: int) -> None:
     """Load lightweight "bundle" objects using the ORM."""
 
     sess = Session(engine)
@@ -91,7 +98,7 @@ def test_orm_bundles(n):
 
 
 @Profiler.profile
-def test_orm_columns(n):
+def test_orm_columns(n: int) -> None:
     """Load individual columns into named tuples using the ORM."""
 
     sess = Session(engine)
@@ -104,9 +111,10 @@ def test_orm_columns(n):
 
 
 @Profiler.profile
-def test_core_fetchall(n):
+def test_core_fetchall(n: int) -> None:
     """Load Core result rows using fetchall."""
-
+    if TYPE_CHECKING:
+        assert engine is not None
     with engine.connect() as conn:
         result = conn.execute(Customer.__table__.select().limit(n)).fetchall()
         for row in result:
@@ -114,9 +122,10 @@ def test_core_fetchall(n):
 
 
 @Profiler.profile
-def test_core_fetchall_mapping(n):
+def test_core_fetchall_mapping(n: int) -> None:
     """Load Core result rows using fetchall."""
-
+    if TYPE_CHECKING:
+        assert engine is not None
     with engine.connect() as conn:
         result = (
             conn.execute(Customer.__table__.select().limit(n))
@@ -128,9 +137,10 @@ def test_core_fetchall_mapping(n):
 
 
 @Profiler.profile
-def test_core_fetchmany_w_streaming(n):
+def test_core_fetchmany_w_streaming(n: int) -> None:
     """Load Core result rows using fetchmany/streaming."""
-
+    if TYPE_CHECKING:
+        assert engine is not None
     with engine.connect() as conn:
         result = conn.execution_options(stream_results=True).execute(
             Customer.__table__.select().limit(n)
@@ -144,9 +154,10 @@ def test_core_fetchmany_w_streaming(n):
 
 
 @Profiler.profile
-def test_core_fetchmany(n):
+def test_core_fetchmany(n: int) -> None:
     """Load Core result rows using Core / fetchmany."""
-
+    if TYPE_CHECKING:
+        assert engine is not None
     with engine.connect() as conn:
         result = conn.execute(Customer.__table__.select().limit(n))
         while True:
@@ -158,20 +169,22 @@ def test_core_fetchmany(n):
 
 
 @Profiler.profile
-def test_dbapi_fetchall_plus_append_objects(n):
+def test_dbapi_fetchall_plus_append_objects(n: int) -> None:
     """Load rows using DBAPI fetchall(), generate an object for each row."""
 
     _test_dbapi_raw(n, True)
 
 
 @Profiler.profile
-def test_dbapi_fetchall_no_object(n):
+def test_dbapi_fetchall_no_object(n: int) -> None:
     """Load rows using DBAPI fetchall(), don't make any objects."""
 
     _test_dbapi_raw(n, False)
 
 
-def _test_dbapi_raw(n, make_objects):
+def _test_dbapi_raw(n: int, make_objects: bool) -> None:
+    if TYPE_CHECKING:
+        assert engine is not None
     compiled = (
         Customer.__table__.select()
         .limit(n)
@@ -185,7 +198,7 @@ def _test_dbapi_raw(n, make_objects):
         # going to do this, so see how this pushes you right back into
         # ORM land anyway :)
         class SimpleCustomer:
-            def __init__(self, id_, name, description):
+            def __init__(self, id_: int, name: str, description: str):
                 self.id_ = id_
                 self.name = name
                 self.description = description

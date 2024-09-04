@@ -6,13 +6,14 @@ a database connection, inserts the row, commits and closes.
 """
 
 from sqlalchemy import bindparam
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import Identity
 from sqlalchemy import Integer
 from sqlalchemy import pool
 from sqlalchemy import String
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import Session
 from . import Profiler
 
@@ -23,9 +24,9 @@ engine = None
 
 class Customer(Base):
     __tablename__ = "customer"
-    id = Column(Integer, Identity(), primary_key=True)
-    name = Column(String(255))
-    description = Column(String(255))
+    id: Mapped[int] = mapped_column(Integer, Identity(), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(String(255))
 
 
 Profiler.init("single_inserts", num=10000)
