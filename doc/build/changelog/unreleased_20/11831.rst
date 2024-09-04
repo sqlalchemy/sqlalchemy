@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 11831
-
-    Fixed regression caused by issue :ticket:`11814` which broke support for
-    certain flavors of :pep:`593` ``Annotated`` in the type_annotation_map when
-    builtin types such as ``list``, ``dict`` were used without an element type.
-    While this is an incomplete style of typing, these types nonetheless
-    previously would be located in the type_annotation_map correctly.

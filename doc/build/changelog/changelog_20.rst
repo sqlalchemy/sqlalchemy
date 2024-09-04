@@ -10,7 +10,27 @@
 
 .. changelog::
     :version: 2.0.34
-    :include_notes_from: unreleased_20
+    :released: September 4, 2024
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11831
+
+        Fixed regression caused by issue :ticket:`11814` which broke support for
+        certain flavors of :pep:`593` ``Annotated`` in the type_annotation_map when
+        builtin types such as ``list``, ``dict`` were used without an element type.
+        While this is an incomplete style of typing, these types nonetheless
+        previously would be located in the type_annotation_map correctly.
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 11832
+
+        Fixed regression in SQLite reflection caused by :ticket:`11677` which
+        interfered with reflection for CHECK constraints that were followed
+        by other kinds of constraints within the same table definition.   Pull
+        request courtesy Harutaka Kawamura.
+
 
 .. changelog::
     :version: 2.0.33

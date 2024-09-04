@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sqlite
-    :tickets: 11832
-
-    Fixed regression in SQLite reflection caused by :ticket:`11677` which
-    interfered with reflection for CHECK constraints that were followed
-    by other kinds of constraints within the same table definition.   Pull
-    request courtesy Harutaka Kawamura.
-
