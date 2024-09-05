@@ -1874,8 +1874,20 @@ class ConstraintReflectionTest(fixtures.TestBase):
 
             conn.exec_driver_sql(
                 "CREATE TABLE cp ("
-                "q INTEGER check (q > 1 AND q < 6),\n"
-                "CONSTRAINT cq CHECK (q == 1 OR (q > 2 AND q < 5))\n"
+                "id INTEGER NOT NULL,\n"
+                "q INTEGER, \n"
+                "p INTEGER, \n"
+                "CONSTRAINT cq CHECK (p = 1 OR (p > 2 AND p < 5)),\n"
+                "PRIMARY KEY (id)\n"
+                ")"
+            )
+
+            conn.exec_driver_sql(
+                "CREATE TABLE cp_inline (\n"
+                "id INTEGER NOT NULL,\n"
+                "q INTEGER CHECK (q > 1 AND q < 6), \n"
+                "p INTEGER CONSTRAINT cq CHECK (p = 1 OR (p > 2 AND p < 5)),\n"
+                "PRIMARY KEY (id)\n"
                 ")"
             )
 
@@ -2492,15 +2504,30 @@ class ConstraintReflectionTest(fixtures.TestBase):
             {"constrained_columns": [], "name": None},
         )
 
-    def test_check_constraint(self):
+    def test_check_constraint_plain(self):
         inspector = inspect(testing.db)
         eq_(
             inspector.get_check_constraints("cp"),
             [
-                {"sqltext": "q == 1 OR (q > 2 AND q < 5)", "name": "cq"},
+                {"sqltext": "p = 1 OR (p > 2 AND p < 5)", "name": "cq"},
+            ],
+        )
+
+    def test_check_constraint_inline_plain(self):
+        inspector = inspect(testing.db)
+        eq_(
+            inspector.get_check_constraints("cp_inline"),
+            [
+                {"sqltext": "p = 1 OR (p > 2 AND p < 5)", "name": "cq"},
                 {"sqltext": "q > 1 AND q < 6", "name": None},
             ],
         )
+
+    @testing.fails("need to come up with new regex and/or DDL parsing")
+    def test_check_constraint_multiline(self):
+        """test for #11677"""
+
+        inspector = inspect(testing.db)
         eq_(
             inspector.get_check_constraints("r"),
             [
