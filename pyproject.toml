@@ -1,9 +1,7 @@
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
-    # avoid moving to https://github.com/pypa/setuptools/issues/3593
-    # until we're ready
-    "setuptools>=44,<69.3",
+    "setuptools>=44",
 ]
 
 [tool.black]

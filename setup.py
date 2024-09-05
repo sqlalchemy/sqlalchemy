@@ -7,7 +7,6 @@ from setuptools import Distribution as _Distribution
 from setuptools import Extension
 from setuptools import setup
 from setuptools.command.build_ext import build_ext
-from setuptools.command.test import test as TestCommand
 
 # attempt to use pep-632 imports for setuptools symbols; however,
 # since these symbols were only added to setuptools as of 59.0.1,
@@ -93,24 +92,6 @@ class Distribution(_Distribution):
         # ensure that Wheel knows to treat us as if the build output is
         # platform specific.
         return True
-
-
-class UseTox(TestCommand):
-    RED = 31
-    RESET_SEQ = "\033[0m"
-    BOLD_SEQ = "\033[1m"
-    COLOR_SEQ = "\033[1;%dm"
-
-    def run_tests(self):
-        sys.stderr.write(
-            "%s%spython setup.py test is deprecated by pypa.  Please invoke "
-            "'tox' with no arguments for a basic test run.\n%s"
-            % (self.COLOR_SEQ % self.RED, self.BOLD_SEQ, self.RESET_SEQ)
-        )
-        sys.exit(1)
-
-
-cmdclass["test"] = UseTox
 
 
 def status_msgs(*msgs):
