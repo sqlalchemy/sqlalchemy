@@ -2624,69 +2624,21 @@ class SQLiteDialect(default.DefaultDialect):
             connection, table_name, schema=schema, **kw
         )
 
-        # Notes:
-        # * The pattern currently matches any character for the name of the
-        #   constraint, including newline characters (re.S flag) as long as
-        #   none of the SQLite's table constraints keywords are encountered
-        #   by a negative lookahead.
-        #   This prevents the pattern from matching subsequent constraints
-        #   as part of the name.
-        #   This is only done for those keywords if seperated by spaces, to
-        #   support constraint names that contains them e.g. "check_value".
-        #
-        # * Because check constraint definitions can also contain newline
-        #   or tab characters, the pattern matches any character untill either
-        #   the beginning of the next constraint statement using a
-        #   non-capturing and non-consuming group, allowing the next one
-        #   to match, or the end of the table definition
-        #   e.g. newline and closing ')'.
-        CHECK_PATTERN = r"""
-        # Non-capturing group for the name part of named check constraints.
-        # This group is optional as unnamed check constraints can exist.
-        (?:
-        # Match beginning of constraint definition seperated by whitespace.
-        CONSTRAINT\s
-
-        # First capturing group that matches the actual name of the constraint.
-        # Any characters is allowed, as long as none of the reserved table
-        # constraint keywords are encountered using a negative lookahead.
-        ((?:(?!\sPRIMARY\s|\sFOREIGN\sKEY|\sUNIQUE\s|\sCHECK\s).)+)
-
-        # End of optional non-capturing name group seperated by whitespace.
-        \s)?
-
-        # Match beginning of the check expression with starting parenthesis
-        # and optional whitespace.
-        CHECK\s?\(
-
-        # Match actual expression, which can be any character.
-        (.+?)
-
-        # End parenthesis of the check expression.
-        \)
-
-        # Non-capturing group that helps denote the end of the check
-        # expression part.
-        # This can either be (1) the beginning of the next constraint,
-        # or (2) the end of the table definition.
-        (?:
-
-        # (1) Matches end of check constraint with trailing comma,
-        # optional whitespace (including newline), and the beginning
-        # of the next constraint (either named or unnamed).
-        ,[\s\n]*(?=CONSTRAINT|CHECK|UNIQUE|FOREIGN|PRIMARY)
-        # OR operator, seperating (1) & (2)
-        |
-        # (2) Matches end parenthesis of table definition, seperated by
-        # newline.
-        \n\)
-        # End of non-capturing group.
-        )
-        """
+        # NOTE NOTE NOTE
+        # DO NOT CHANGE THIS REGULAR EXPRESSION.   There is no known way
+        # to parse CHECK constraints that contain newlines themselves using
+        # regular expressions, and the approach here relies upon each
+        # individual
+        # CHECK constraint being on a single line by itself.   This
+        # necessarily makes assumptions as to how the CREATE TABLE
+        # was emitted.   A more comprehensive DDL parsing solution would be
+        # needed to improve upon the current situation. See #11840 for
+        # background
+        CHECK_PATTERN = r"(?:CONSTRAINT (.+) +)?CHECK *\( *(.+) *\),? *"
         cks = []
-        for match in re.finditer(
-            CHECK_PATTERN, table_data or "", re.I | re.S | re.VERBOSE
-        ):
+
+        for match in re.finditer(CHECK_PATTERN, table_data or "", re.I):
+
             name = match.group(1)
 
             if name:

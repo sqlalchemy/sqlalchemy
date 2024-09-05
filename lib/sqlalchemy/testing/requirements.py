@@ -797,6 +797,11 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def inline_check_constraint_reflection(self):
+        """target dialect supports reflection of inline check constraints"""
+        return exclusions.closed()
+
+    @property
     def check_constraint_reflection(self):
         """target dialect supports reflection of check constraints"""
         return exclusions.closed()
