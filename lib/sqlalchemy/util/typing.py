@@ -62,6 +62,13 @@ _KT_contra = TypeVar("_KT_contra", contravariant=True)
 _VT = TypeVar("_VT")
 _VT_co = TypeVar("_VT_co", covariant=True)
 
+if compat.py38:
+    # typing_extensions.Literal is different from typing.Literal until
+    # Python 3.10.1
+    _LITERAL_TYPES = frozenset([typing.Literal, Literal])
+else:
+    _LITERAL_TYPES = frozenset([Literal])
+
 
 if compat.py310:
     # why they took until py310 to put this in stdlib is beyond me,
@@ -356,7 +363,7 @@ def is_non_string_iterable(obj: Any) -> TypeGuard[Iterable[Any]]:
 
 
 def is_literal(type_: _AnnotationScanType) -> bool:
-    return get_origin(type_) is Literal
+    return get_origin(type_) in _LITERAL_TYPES
 
 
 def is_newtype(type_: Optional[_AnnotationScanType]) -> TypeGuard[NewType]:
