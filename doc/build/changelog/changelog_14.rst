@@ -15,7 +15,59 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.54
-    :include_notes_from: unreleased_14
+    :released: September 5, 2024
+
+    .. change::
+        :tags: bug, regression, orm
+        :tickets: 11728
+        :versions: 2.0.33
+
+        Fixed regression from 1.3 where the column key used for a hybrid property
+        might be populated with that of the underlying column that it returns, for
+        a property that returns an ORM mapped column directly, rather than the key
+        used by the hybrid property itself.
+
+    .. change::
+        :tags: change, general
+        :tickets: 11818
+        :versions: 2.0.33 1.4.54
+
+        The pin for ``setuptools<69.3`` in ``pyproject.toml`` has been removed.
+        This pin was to prevent a sudden change in setuptools to use :pep:`625`
+        from taking place, which would change the file name of SQLAlchemy's source
+        distribution on pypi to be an all lower case name, which is likely to cause
+        problems with various build environments that expected the previous naming
+        style.  However, the presence of this pin is holding back environments that
+        otherwise want to use a newer setuptools, so we've decided to move forward
+        with this change, with the assumption that build environments will have
+        largely accommodated the setuptools change by now.
+
+        This change was first released in version 2.0.33 however is being
+        backported to 1.4.54 to support ongoing releases.
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 11819
+        :versions: 2.0.33, 1.4.54
+
+        Fixed critical issue in the asyncpg driver where a rollback or commit that
+        fails specifically for the ``MissingGreenlet`` condition or any other error
+        that is not raised by asyncpg itself would discard the asyncpg transaction
+        in any case, even though the transaction were still idle, leaving to a
+        server side condition with an idle transaction that then goes back into the
+        connection pool.   The flags for "transaction closed" are now not reset for
+        errors that are raised outside of asyncpg itself.  When asyncpg itself
+        raises an error for ``.commit()`` or ``.rollback()``, asyncpg does then
+        discard of this transaction.
+
+    .. change::
+        :tags: change, general
+
+        The setuptools "test" command is removed from the 1.4 series as modern
+        versions of setuptools actively refuse to accommodate this extension being
+        present.   This change was already part of the 2.0 series.   To run the
+        test suite use the ``tox`` command.
 
 .. changelog::
     :version: 1.4.53
