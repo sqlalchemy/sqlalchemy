@@ -12,6 +12,7 @@ import builtins
 import collections.abc as collections_abc
 import re
 import sys
+import typing
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -63,6 +64,10 @@ _VT = TypeVar("_VT")
 _VT_co = TypeVar("_VT_co", covariant=True)
 
 TupleAny = Tuple[Any, ...]
+
+# typing_extensions.Literal is different from typing.Literal until
+# Python 3.10.1
+_LITERAL_TYPES = frozenset([typing.Literal, Literal])
 
 
 if compat.py310:
@@ -358,7 +363,7 @@ def is_non_string_iterable(obj: Any) -> TypeGuard[Iterable[Any]]:
 
 
 def is_literal(type_: _AnnotationScanType) -> bool:
-    return get_origin(type_) is Literal
+    return get_origin(type_) in _LITERAL_TYPES
 
 
 def is_newtype(type_: Optional[_AnnotationScanType]) -> TypeGuard[NewType]:
