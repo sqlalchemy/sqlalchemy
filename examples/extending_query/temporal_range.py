@@ -23,8 +23,11 @@ from sqlalchemy.orm import sessionmaker
 class HasTemporal:
     """Mixin that identifies a class as having a timestamp column"""
 
-    utc = partial(datetime.datetime.now, datetime.timezone.utc)
-    timestamp = Column(DateTime, default=utc, nullable=False)
+    timestamp = Column(
+        DateTime,
+        default=partial(datetime.datetime.now, datetime.timezone.utc),
+        nullable=False,
+    )
 
 
 def temporal_range(range_lower, range_upper):

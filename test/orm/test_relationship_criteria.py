@@ -1661,8 +1661,11 @@ class TemporalFixtureTest(testing.fixtures.DeclarativeMappedTest):
         class HasTemporal:
             """Mixin that identifies a class as having a timestamp column"""
 
-            utc = partial(datetime.datetime.now, datetime.timezone.utc)
-            timestamp = Column(DateTime, default=utc, nullable=False)
+            timestamp = Column(
+                DateTime,
+                default=partial(datetime.datetime.now, datetime.timezone.utc),
+                nullable=False,
+            )
 
         cls.HasTemporal = HasTemporal
 
