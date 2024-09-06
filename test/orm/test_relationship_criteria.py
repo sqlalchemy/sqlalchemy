@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+from functools import partial
 import random
 from typing import List
 
@@ -1661,7 +1662,9 @@ class TemporalFixtureTest(testing.fixtures.DeclarativeMappedTest):
             """Mixin that identifies a class as having a timestamp column"""
 
             timestamp = Column(
-                DateTime, default=datetime.datetime.utcnow, nullable=False
+                DateTime,
+                default=partial(datetime.datetime.now, datetime.timezone.utc),
+                nullable=False,
             )
 
         cls.HasTemporal = HasTemporal

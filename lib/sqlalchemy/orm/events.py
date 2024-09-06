@@ -3155,7 +3155,9 @@ class QueryEvents(event.Events[Query[Any]]):
                         entity = desc['entity']
                         query = query.filter(entity.deleted == False)
 
-                        update_context.values['timestamp'] = datetime.utcnow()
+                        update_context.values['timestamp'] = (
+                            datetime.datetime.now(datetime.UTC)
+                        )
                 return query
 
         The ``.values`` dictionary of the "update context" object can also
