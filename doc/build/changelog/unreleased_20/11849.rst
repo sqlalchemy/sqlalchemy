@@ -1,0 +1,13 @@
+.. change::
+    :tags: orm, bug
+    :tickets: 11849
+
+    Fixed issue in ORM evaluator where two datatypes being evaluated with the
+    SQL concatenator operator would not be checked for
+    :class:`.UnevaluatableError` based on their datatype; this missed the case
+    of :class:`_postgresql.JSONB` values being used in a concatenate operation
+    which is supported by PostgreSQL as well as how SQLAlchemy renders the SQL
+    for this operation, but does not work at the Python level. By implementing
+    :class:`.UnevaluatableError` for this combination, ORM update statements
+    will now fall back to "expire" when a concatenated JSON value used in a SET
+    clause is to be synchronized to a Python object.
