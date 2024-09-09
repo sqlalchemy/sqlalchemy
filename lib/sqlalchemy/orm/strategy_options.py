@@ -1081,7 +1081,7 @@ class Load(_AbstractLoad):
         else:
             return self
 
-        replacement_cache_key = context.query._generate_cache_key()
+        replacement_cache_key = context.user_passed_query._generate_cache_key()
 
         if replacement_cache_key is None:
             return self

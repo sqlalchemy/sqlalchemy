@@ -619,6 +619,7 @@ class ORMDMLState(AbstractORMCompileState):
             querycontext = QueryContext(
                 compile_state.from_statement_ctx,
                 compile_state.select_statement,
+                statement,
                 params,
                 session,
                 load_options,

@@ -1961,6 +1961,18 @@ class SubqueryLoader(PostLoader):
         adapter,
         populators,
     ):
+        if (
+            loadopt
+            and context.compile_state.statement is not None
+            and context.compile_state.statement.is_dml
+        ):
+            util.warn_deprecated(
+                "The subqueryload loader option is not compatible with DML "
+                "statements such as INSERT, UPDATE.  Only SELECT may be used."
+                "This warning will become an exception in a future release.",
+                "2.0",
+            )
+
         if context.refresh_state:
             return self._immediateload_create_row_processor(
                 context,
@@ -2126,6 +2138,17 @@ class JoinedLoader(AbstractRelationshipLoader):
 
         if not compile_state.compile_options._enable_eagerloads:
             return
+        elif (
+            loadopt
+            and compile_state.statement is not None
+            and compile_state.statement.is_dml
+        ):
+            util.warn_deprecated(
+                "The joinedload loader option is not compatible with DML "
+                "statements such as INSERT, UPDATE.  Only SELECT may be used."
+                "This warning will become an exception in a future release.",
+                "2.0",
+            )
         elif self.uselist:
             compile_state.multi_row_eager_loaders = True
 
@@ -3152,7 +3175,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         orig_query = context.compile_state.select_statement
 
         # the actual statement that was requested is this one:
-        #  context_query = context.query
+        #  context_query = context.user_passed_query
         #
         # that's not the cached one, however.  So while it is of the identical
         # structure, if it has entities like AliasedInsp, which we get from
@@ -3176,11 +3199,11 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
 
         effective_path = path[self.parent_property]
 
-        if orig_query is context.query:
+        if orig_query is context.user_passed_query:
             new_options = orig_query._with_options
         else:
             cached_options = orig_query._with_options
-            uncached_options = context.query._with_options
+            uncached_options = context.user_passed_query._with_options
 
             # propagate compile state options from the original query,
             # updating their "extra_criteria" as necessary.

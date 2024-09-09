@@ -104,6 +104,7 @@ class QueryContext:
         "top_level_context",
         "compile_state",
         "query",
+        "user_passed_query",
         "params",
         "load_options",
         "bind_arguments",
@@ -148,6 +149,10 @@ class QueryContext:
         self,
         compile_state: CompileState,
         statement: Union[Select[Any], FromStatement[Any]],
+        user_passed_query: Union[
+            Select[Any],
+            FromStatement[Any],
+        ],
         params: _CoreSingleExecuteParams,
         session: Session,
         load_options: Union[
@@ -162,6 +167,13 @@ class QueryContext:
         self.bind_arguments = bind_arguments or _EMPTY_DICT
         self.compile_state = compile_state
         self.query = statement
+
+        # the query that the end user passed to Session.execute() or similar.
+        # this is usually the same as .query, except in the bulk_persistence
+        # routines where a separate FromStatement is manufactured in the
+        # compile stage; this allows differentiation in that case.
+        self.user_passed_query = user_passed_query
+
         self.session = session
         self.loaders_require_buffering = False
         self.loaders_require_uniquing = False
@@ -169,7 +181,7 @@ class QueryContext:
         self.top_level_context = load_options._sa_top_level_orm_context
 
         cached_options = compile_state.select_statement._with_options
-        uncached_options = statement._with_options
+        uncached_options = user_passed_query._with_options
 
         # see issue #7447 , #8399 for some background
         # propagated loader options will be present on loaded InstanceState
@@ -577,6 +589,7 @@ class ORMCompileState(AbstractORMCompileState):
 
         querycontext = QueryContext(
             compile_state,
+            statement,
             statement,
             params,
             session,
