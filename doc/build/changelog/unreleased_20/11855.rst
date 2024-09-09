@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 11855
+
+    Fixed issue where using loader options such as :func:`_orm.selectinload`
+    with additional criteria in combination with ORM DML such as
+    :func:`_sql.insert` with RETURNING would not correctly set up internal
+    contexts required for caching to work correctly, leading to incorrect
+    results.
