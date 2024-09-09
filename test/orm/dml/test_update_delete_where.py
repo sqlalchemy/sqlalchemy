@@ -3294,3 +3294,44 @@ class LoadFromReturningTest(fixtures.MappedTest):
             )
 
             # TODO: state of above objects should be "deleted"
+
+
+class PGIssue11849Test(fixtures.DeclarativeMappedTest):
+    __backend__ = True
+    __only_on__ = ("postgresql",)
+
+    @classmethod
+    def setup_classes(cls):
+
+        from sqlalchemy.dialects.postgresql import JSONB
+
+        Base = cls.DeclarativeBasic
+
+        class TestTbl(Base):
+            __tablename__ = "testtbl"
+
+            test_id = Column(Integer, primary_key=True)
+            test_field = Column(JSONB)
+
+    def test_issue_11849(self):
+        TestTbl = self.classes.TestTbl
+
+        session = fixture_session()
+
+        obj = TestTbl(
+            test_id=1, test_field={"test1": 1, "test2": "2", "test3": [3, "3"]}
+        )
+        session.add(obj)
+
+        query = (
+            update(TestTbl)
+            .where(TestTbl.test_id == 1)
+            .values(test_field=TestTbl.test_field + {"test3": {"test4": 4}})
+        )
+        session.execute(query)
+
+        # not loaded
+        assert "test_field" not in obj.__dict__
+
+        # synchronizes on load
+        eq_(obj.test_field, {"test1": 1, "test2": "2", "test3": {"test4": 4}})
