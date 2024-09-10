@@ -25,13 +25,21 @@ from sqlalchemy import update
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import column_property
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import immediateload
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import orm_insert_sentinel
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import subqueryload
 from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
@@ -2298,3 +2306,206 @@ class CTETest(fixtures.DeclarativeMappedTest):
         asserter.assert_(
             CompiledSQL(expected, [{"param_1": id_, "param_2": "some user"}])
         )
+
+
+class EagerLoadTest(
+    fixtures.DeclarativeMappedTest, testing.AssertsExecutionResults
+):
+    run_inserts = "each"
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = "a"
+            id: Mapped[int] = mapped_column(Integer, primary_key=True)
+            cs = relationship("C")
+
+        class B(Base):
+            __tablename__ = "b"
+            id: Mapped[int] = mapped_column(Integer, primary_key=True)
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+            a = relationship("A")
+
+        class C(Base):
+            __tablename__ = "c"
+            id: Mapped[int] = mapped_column(Integer, primary_key=True)
+            a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+
+    @classmethod
+    def insert_data(cls, connection):
+        A = cls.classes.A
+        C = cls.classes.C
+        with Session(connection) as sess:
+            sess.add_all(
+                [
+                    A(id=1, cs=[C(id=1), C(id=2)]),
+                    A(id=2),
+                    A(id=3, cs=[C(id=3), C(id=4)]),
+                ]
+            )
+            sess.commit()
+
+    @testing.fixture
+    def fixture_with_loader_opt(self):
+        def go(lazy):
+            class Base(DeclarativeBase):
+                pass
+
+            class A(Base):
+                __tablename__ = "a"
+                id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+            class B(Base):
+                __tablename__ = "b"
+                id: Mapped[int] = mapped_column(Integer, primary_key=True)
+                a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
+                a = relationship("A", lazy=lazy)
+
+            return A, B
+
+        return go
+
+    @testing.combinations(
+        (selectinload,),
+        (immediateload,),
+    )
+    def test_insert_supported(self, loader):
+        A, B = self.classes("A", "B")
+
+        sess = fixture_session()
+
+        result = sess.execute(
+            insert(B).returning(B).options(loader(B.a)),
+            [
+                {"id": 1, "a_id": 1},
+                {"id": 2, "a_id": 1},
+                {"id": 3, "a_id": 2},
+                {"id": 4, "a_id": 3},
+                {"id": 5, "a_id": 3},
+            ],
+        ).scalars()
+
+        for b in result:
+            assert "a" in b.__dict__
+
+    @testing.combinations(
+        (joinedload,),
+        (subqueryload,),
+    )
+    def test_insert_not_supported(self, loader):
+        """test #11853"""
+
+        A, B = self.classes("A", "B")
+
+        sess = fixture_session()
+
+        stmt = insert(B).returning(B).options(loader(B.a))
+
+        with expect_deprecated(
+            f"The {loader.__name__} loader option is not compatible "
+            "with DML statements",
+        ):
+            sess.execute(stmt, [{"id": 1, "a_id": 1}])
+
+    @testing.combinations(
+        (joinedload,),
+        (subqueryload,),
+        (selectinload,),
+        (immediateload,),
+    )
+    def test_secondary_opt_ok(self, loader):
+        A, B = self.classes("A", "B")
+
+        sess = fixture_session()
+
+        opt = selectinload(B.a)
+        opt = getattr(opt, loader.__name__)(A.cs)
+
+        result = sess.execute(
+            insert(B).returning(B).options(opt),
+            [
+                {"id": 1, "a_id": 1},
+                {"id": 2, "a_id": 1},
+                {"id": 3, "a_id": 2},
+                {"id": 4, "a_id": 3},
+                {"id": 5, "a_id": 3},
+            ],
+        ).scalars()
+
+        for b in result:
+            assert "a" in b.__dict__
+            assert "cs" in b.a.__dict__
+
+    @testing.combinations(
+        ("joined",),
+        ("select",),
+        ("subquery",),
+        ("selectin",),
+        ("immediate",),
+        argnames="lazy_opt",
+    )
+    def test_insert_handles_implicit(self, fixture_with_loader_opt, lazy_opt):
+        """test #11853"""
+
+        A, B = fixture_with_loader_opt(lazy_opt)
+
+        sess = fixture_session()
+
+        for b_obj in sess.execute(
+            insert(B).returning(B),
+            [
+                {"id": 1, "a_id": 1},
+                {"id": 2, "a_id": 1},
+                {"id": 3, "a_id": 2},
+                {"id": 4, "a_id": 3},
+                {"id": 5, "a_id": 3},
+            ],
+        ).scalars():
+
+            if lazy_opt in ("select", "joined", "subquery"):
+                # these aren't supported by DML
+                assert "a" not in b_obj.__dict__
+            else:
+                # the other three are
+                assert "a" in b_obj.__dict__
+
+    @testing.combinations(
+        (lazyload,), (selectinload,), (immediateload,), argnames="loader_opt"
+    )
+    @testing.combinations(
+        (joinedload,),
+        (subqueryload,),
+        (selectinload,),
+        (immediateload,),
+        (lazyload,),
+        argnames="secondary_opt",
+    )
+    def test_secondary_w_criteria_caching(self, loader_opt, secondary_opt):
+        """test #11855"""
+        A, B, C = self.classes("A", "B", "C")
+
+        for i in range(3):
+            with fixture_session() as sess:
+
+                opt = loader_opt(B.a)
+                opt = getattr(opt, secondary_opt.__name__)(
+                    A.cs.and_(C.a_id == 1)
+                )
+                stmt = insert(B).returning(B).options(opt)
+
+                b1 = sess.scalar(stmt, [{"a_id": 1}])
+
+                eq_({c.id for c in b1.a.cs}, {1, 2})
+
+                opt = loader_opt(B.a)
+                opt = getattr(opt, secondary_opt.__name__)(
+                    A.cs.and_(C.a_id == 3)
+                )
+
+                stmt = insert(B).returning(B).options(opt)
+
+                b3 = sess.scalar(stmt, [{"a_id": 3}])
+
+                eq_({c.id for c in b3.a.cs}, {3, 4})
