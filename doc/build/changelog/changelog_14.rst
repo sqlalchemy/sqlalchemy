@@ -2473,7 +2473,7 @@ This document details individual issue-level changes made throughout
         it were only against a table that's now being replaced. It also allows for
         correct behavior when constructing a :func:`_orm.aliased` without a
         selectable argument against a :func:`_orm.aliased` that's against a
-        subuquery, to create an alias of that subquery (i.e. to change its name).
+        subquery, to create an alias of that subquery (i.e. to change its name).
 
         The nesting behavior of :func:`_orm.aliased` remains in place for the case
         where the outer :func:`_orm.aliased` object is against a subquery which in
@@ -5057,7 +5057,7 @@ This document details individual issue-level changes made throughout
         columns clause of a :class:`_sql.Select` construct, which is better handled
         by using a :func:`_sql.literal_column` construct, would nonetheless prevent
         constructs like :func:`_sql.union` from working correctly. Other use cases,
-        such as constructing subuqeries, continue to work the same as in prior
+        such as constructing subqueries, continue to work the same as in prior
         versions where the :func:`_sql.text` construct is silently omitted from the
         collection of exported columns.   Also repairs similar use within the
         ORM.
