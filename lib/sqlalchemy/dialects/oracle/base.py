@@ -331,7 +331,7 @@ ON UPDATE CASCADE
 
 Oracle doesn't have native ON UPDATE CASCADE functionality.  A trigger based
 solution is available at
-https://asktom.oracle.com/tkyte/update_cascade/index.html .
+https://web.archive.org/web/20090317041251/https://asktom.oracle.com/tkyte/update_cascade/index.html
 
 When using the SQLAlchemy ORM, the ORM has limited ability to manually issue
 cascading updates - specify ForeignKey objects using the
@@ -1277,7 +1277,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
 
         # oracle has no ON UPDATE CASCADE -
         # its only available via triggers
-        # https://asktom.oracle.com/tkyte/update_cascade/index.html
+        # https://web.archive.org/web/20090317041251/https://asktom.oracle.com/tkyte/update_cascade/index.html
         if constraint.onupdate is not None:
             util.warn(
                 "Oracle does not contain native UPDATE CASCADE "

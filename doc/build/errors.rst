@@ -475,7 +475,7 @@ when a construct is stringified without any dialect-specific information.
 However, there are many constructs that are specific to some particular kind
 of database dialect, for which the :class:`.StrSQLCompiler` doesn't know how
 to turn into a string, such as the PostgreSQL
-`"insert on conflict" <postgresql_insert_on_conflict>`_ construct::
+:ref:`postgresql_insert_on_conflict` construct::
 
   >>> from sqlalchemy.dialects.postgresql import insert
   >>> from sqlalchemy import table, column
