@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 11870
+
+    Fixed issue in mariadbconnector dialect where query string arguments that
+    weren't checked integer or boolean arguments would be ignored, such as
+    string arguments like ``unix_socket``, etc.  As part of this change, the
+    argument parsing for particular elements such as ``client_flags``,
+    ``compress``, ``local_infile`` has been made more consistent across all
+    MySQL / MariaDB dialect which accept each argument. Pull request courtesy
+    Tobias Alex-Petersen.
+
