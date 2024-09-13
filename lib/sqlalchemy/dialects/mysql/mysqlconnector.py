@@ -96,6 +96,7 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
         util.coerce_kw_type(opts, "allow_local_infile", bool)
         util.coerce_kw_type(opts, "autocommit", bool)
         util.coerce_kw_type(opts, "buffered", bool)
+        util.coerce_kw_type(opts, "client_flag", int)
         util.coerce_kw_type(opts, "compress", bool)
         util.coerce_kw_type(opts, "connection_timeout", int)
         util.coerce_kw_type(opts, "connect_timeout", int)
