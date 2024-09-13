@@ -166,6 +166,7 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args()
+        opts.update(url.query)
 
         int_params = [
             "connect_timeout",

@@ -320,8 +320,10 @@ class DialectTest(fixtures.TestBase):
         [
             "mysql+mysqldb",
             "mysql+pymysql",
+            "mysql+mariadbconnector",
             "mariadb+mysqldb",
             "mariadb+pymysql",
+            "mariadb+mariadbconnector",
         ]
     )
     def test_random_arg(self):
