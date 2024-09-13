@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 11870
+
+    AddedFixed discepancy between mysqlclient and mariadbconnector where the
+    latter didn't merge url query options with the other args preventing options
+    like  ``?unix_socket=/path/to/socket.sock"`` being passed to the driver that
+    way. Pull request courtesy Tobias Alex-Petersen.
+
