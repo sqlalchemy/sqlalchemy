@@ -257,21 +257,40 @@ class DialectTest(fixtures.TestBase):
         ("read_timeout", 30),
         ("write_timeout", 30),
         ("client_flag", 1234),
-        ("local_infile", 1234),
+        ("local_infile", 1),
+        ("local_infile", True),
+        ("local_infile", False),
         ("use_unicode", False),
         ("charset", "hello"),
+        ("unix_socket", "somesocket"),
+        argnames="kwarg, value",
     )
-    def test_normal_arguments_mysqldb(self, kwarg, value):
-        from sqlalchemy.dialects.mysql import mysqldb
+    @testing.combinations(
+        ("mysql+mysqldb", ()),
+        ("mysql+mariadbconnector", {"use_unicode", "charset"}),
+        ("mariadb+mariadbconnector", {"use_unicode", "charset"}),
+        ("mysql+pymysql", ()),
+        (
+            "mysql+mysqlconnector",
+            {"read_timeout", "write_timeout", "local_infile"},
+        ),
+        argnames="dialect_name,skip",
+    )
+    def test_query_arguments(self, kwarg, value, dialect_name, skip):
 
-        dialect = mysqldb.dialect()
-        connect_args = dialect.create_connect_args(
-            make_url(
-                "mysql+mysqldb://scott:tiger@localhost:3306/test"
-                "?%s=%s" % (kwarg, value)
-            )
+        if kwarg in skip:
+            return
+
+        url_value = {True: "true", False: "false"}.get(value, value)
+
+        url = make_url(
+            f"{dialect_name}://scott:tiger@"
+            f"localhost:3306/test?{kwarg}={url_value}"
         )
 
+        dialect = url.get_dialect()()
+
+        connect_args = dialect.create_connect_args(url)
         eq_(connect_args[1][kwarg], value)
 
     def test_mysqlconnector_buffered_arg(self):
@@ -320,8 +339,10 @@ class DialectTest(fixtures.TestBase):
         [
             "mysql+mysqldb",
             "mysql+pymysql",
+            "mysql+mariadbconnector",
             "mariadb+mysqldb",
             "mariadb+pymysql",
+            "mariadb+mariadbconnector",
         ]
     )
     def test_random_arg(self):

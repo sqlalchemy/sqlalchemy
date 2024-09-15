@@ -40,6 +40,9 @@ def generate_driver_url(url, driver, query_str):
         drivername="%s+%s" % (backend, driver)
     ).update_query_string(query_str)
 
+    if driver == "mariadbconnector":
+        new_url = new_url.difference_update_query(["charset"])
+
     try:
         new_url.get_dialect()
     except exc.NoSuchModuleError:
