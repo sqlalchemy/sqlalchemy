@@ -2312,6 +2312,7 @@ class EagerLoadTest(
     fixtures.DeclarativeMappedTest, testing.AssertsExecutionResults
 ):
     run_inserts = "each"
+    __requires__ = ("insert_returning",)
 
     @classmethod
     def setup_classes(cls):
