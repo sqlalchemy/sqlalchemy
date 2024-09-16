@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, orm, typing
-    :tickets: 11820
-
-    Fixed issue where it was not possible to use ``typing.Literal`` with
-    ``Mapped[]`` on Python 3.8 and 3.9.  Pull request courtesy Frazer McLean.
