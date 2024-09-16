@@ -10,7 +10,84 @@
 
 .. changelog::
     :version: 2.0.35
-    :include_notes_from: unreleased_20
+    :released: September 16, 2024
+
+    .. change::
+        :tags: bug, orm, typing
+        :tickets: 11820
+
+        Fixed issue where it was not possible to use ``typing.Literal`` with
+        ``Mapped[]`` on Python 3.8 and 3.9.  Pull request courtesy Frazer McLean.
+
+    .. change::
+        :tags: bug, sqlite, regression
+        :tickets: 11840
+
+        The changes made for SQLite CHECK constraint reflection in versions 2.0.33
+        and 2.0.34 , :ticket:`11832` and :ticket:`11677`, have now been fully
+        reverted, as users continued to identify existing use cases that stopped
+        working after this change.   For the moment, because SQLite does not
+        provide any consistent way of delivering information about CHECK
+        constraints, SQLAlchemy is limited in what CHECK constraint syntaxes can be
+        reflected, including that a CHECK constraint must be stated all on a
+        single, independent line (or inline on a column definition)  without
+        newlines, tabs in the constraint definition or unusual characters in the
+        constraint name.  Overall, reflection for SQLite is tailored towards being
+        able to reflect CREATE TABLE statements that were originally created by
+        SQLAlchemy DDL constructs.  Long term work on a DDL parser that does not
+        rely upon regular expressions may eventually improve upon this situation.
+        A wide range of additional cross-dialect CHECK constraint reflection tests
+        have been added as it was also a bug that these changes did not trip any
+        existing tests.
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 11849
+
+        Fixed issue in ORM evaluator where two datatypes being evaluated with the
+        SQL concatenator operator would not be checked for
+        :class:`.UnevaluatableError` based on their datatype; this missed the case
+        of :class:`_postgresql.JSONB` values being used in a concatenate operation
+        which is supported by PostgreSQL as well as how SQLAlchemy renders the SQL
+        for this operation, but does not work at the Python level. By implementing
+        :class:`.UnevaluatableError` for this combination, ORM update statements
+        will now fall back to "expire" when a concatenated JSON value used in a SET
+        clause is to be synchronized to a Python object.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11853
+
+        An warning is emitted if :func:`_orm.joinedload` or
+        :func:`_orm.subqueryload` are used as a top level option against a
+        statement that is not a SELECT statement, such as with an
+        ``insert().returning()``.   There are no JOINs in INSERT statements nor is
+        there a "subquery" that can be repurposed for subquery eager loading, and
+        for UPDATE/DELETE joinedload does not support these either, so it is never
+        appropriate for this use to pass silently.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11855
+
+        Fixed issue where using loader options such as :func:`_orm.selectinload`
+        with additional criteria in combination with ORM DML such as
+        :func:`_sql.insert` with RETURNING would not correctly set up internal
+        contexts required for caching to work correctly, leading to incorrect
+        results.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 11870
+
+        Fixed issue in mariadbconnector dialect where query string arguments that
+        weren't checked integer or boolean arguments would be ignored, such as
+        string arguments like ``unix_socket``, etc.  As part of this change, the
+        argument parsing for particular elements such as ``client_flags``,
+        ``compress``, ``local_infile`` has been made more consistent across all
+        MySQL / MariaDB dialect which accept each argument. Pull request courtesy
+        Tobias Alex-Petersen.
+
 
 .. changelog::
     :version: 2.0.34
