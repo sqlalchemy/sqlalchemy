@@ -52,11 +52,11 @@ used. Double backslashes are probably needed::
     e = create_engine('sqlite:///C:\\path\\to\\database.db')
 
 To use sqlite ``:memory:`` database specify it as the filename using
-``sqlite://:memory:``. It's also the default if no filepath is
+``sqlite:///:memory:``. It's also the default if no filepath is
 present, specifying only ``sqlite://`` and nothing else::
 
-    # in-memory database
-    e = create_engine('sqlite://:memory:')
+    # in-memory database (note three slashes)
+    e = create_engine('sqlite:///:memory:')
     # also in-memory database
     e2 = create_engine('sqlite://')
 

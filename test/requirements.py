@@ -614,6 +614,16 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def inline_check_constraint_reflection(self):
+        return only_on(
+            [
+                "postgresql",
+                "sqlite",
+                "oracle",
+            ]
+        )
+
+    @property
     def check_constraint_reflection(self):
         return only_on(
             [
@@ -889,6 +899,7 @@ class DefaultRequirements(SuiteRequirements):
                 "still can't get recover to work w/ MariaDB / MySQL",
             )
             + skip_if("oracle+cx_oracle", "recovery not functional")
+            + skip_if("oracle+oracledb", "recovery can't be reliably tested")
         )
 
     @property

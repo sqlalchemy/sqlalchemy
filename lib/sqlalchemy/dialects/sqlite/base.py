@@ -2588,8 +2588,8 @@ class SQLiteDialect(default.DefaultDialect):
                 return
             UNIQUE_PATTERN = r'(?:CONSTRAINT "?(.+?)"? +)?UNIQUE *\((.+?)\)'
             INLINE_UNIQUE_PATTERN = (
-                r'(?:(".+?")|(?:[\[`])?([a-z0-9_]+)(?:[\]`])?) '
-                r"+[a-z0-9_ ]+? +UNIQUE"
+                r'(?:(".+?")|(?:[\[`])?([a-z0-9_]+)(?:[\]`])?)[\t ]'
+                r"+[a-z0-9_ ]+?[\t ]+UNIQUE"
             )
 
             for match in re.finditer(UNIQUE_PATTERN, table_data, re.I):
@@ -2624,15 +2624,21 @@ class SQLiteDialect(default.DefaultDialect):
             connection, table_name, schema=schema, **kw
         )
 
-        CHECK_PATTERN = r"(?:CONSTRAINT (.+) +)?" r"CHECK *\( *(.+) *\),? *"
-        cks = []
-        # NOTE: we aren't using re.S here because we actually are
-        # taking advantage of each CHECK constraint being all on one
-        # line in the table definition in order to delineate.  This
+        # NOTE NOTE NOTE
+        # DO NOT CHANGE THIS REGULAR EXPRESSION.   There is no known way
+        # to parse CHECK constraints that contain newlines themselves using
+        # regular expressions, and the approach here relies upon each
+        # individual
+        # CHECK constraint being on a single line by itself.   This
         # necessarily makes assumptions as to how the CREATE TABLE
-        # was emitted.
+        # was emitted.   A more comprehensive DDL parsing solution would be
+        # needed to improve upon the current situation. See #11840 for
+        # background
+        CHECK_PATTERN = r"(?:CONSTRAINT (.+) +)?CHECK *\( *(.+) *\),? *"
+        cks = []
 
         for match in re.finditer(CHECK_PATTERN, table_data or "", re.I):
+
             name = match.group(1)
 
             if name:

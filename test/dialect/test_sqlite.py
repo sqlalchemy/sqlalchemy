@@ -1816,6 +1816,29 @@ class ConstraintReflectionTest(fixtures.TestBase):
 
             Table("q", meta, Column("id", Integer), PrimaryKeyConstraint("id"))
 
+            # intentional new line
+            Table(
+                "r",
+                meta,
+                Column("id", Integer),
+                Column("value", Integer),
+                Column("prefix", String),
+                CheckConstraint("id > 0"),
+                UniqueConstraint("prefix", name="prefix_named"),
+                # Constraint definition with newline and tab characters
+                CheckConstraint(
+                    """((value > 0) AND \n\t(value < 100) AND \n\t
+                      (value != 50))""",
+                    name="ck_r_value_multiline",
+                ),
+                UniqueConstraint("value"),
+                # Constraint name with special chars and 'check' in the name
+                CheckConstraint("value IS NOT NULL", name="^check-r* #\n\t"),
+                PrimaryKeyConstraint("id", name="pk_name"),
+                # Constraint definition with special characters.
+                CheckConstraint("prefix NOT GLOB '*[^-. /#,]*'"),
+            )
+
             meta.create_all(conn)
 
             # will contain an "autoindex"
@@ -1851,8 +1874,20 @@ class ConstraintReflectionTest(fixtures.TestBase):
 
             conn.exec_driver_sql(
                 "CREATE TABLE cp ("
-                "q INTEGER check (q > 1 AND q < 6),\n"
-                "CONSTRAINT cq CHECK (q == 1 OR (q > 2 AND q < 5))\n"
+                "id INTEGER NOT NULL,\n"
+                "q INTEGER, \n"
+                "p INTEGER, \n"
+                "CONSTRAINT cq CHECK (p = 1 OR (p > 2 AND p < 5)),\n"
+                "PRIMARY KEY (id)\n"
+                ")"
+            )
+
+            conn.exec_driver_sql(
+                "CREATE TABLE cp_inline (\n"
+                "id INTEGER NOT NULL,\n"
+                "q INTEGER CHECK (q > 1 AND q < 6), \n"
+                "p INTEGER CONSTRAINT cq CHECK (p = 1 OR (p > 2 AND p < 5)),\n"
+                "PRIMARY KEY (id)\n"
                 ")"
             )
 
@@ -1911,6 +1946,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 "b",
                 "a1",
                 "a2",
+                "r",
             ]:
                 conn.exec_driver_sql("drop table %s" % name)
 
@@ -2426,6 +2462,27 @@ class ConstraintReflectionTest(fixtures.TestBase):
             [{"column_names": ["x"], "name": None}],
         )
 
+    def test_unique_constraint_mixed_into_ck(self, connection):
+        """test #11832"""
+
+        inspector = inspect(connection)
+        eq_(
+            inspector.get_unique_constraints("r"),
+            [
+                {"name": "prefix_named", "column_names": ["prefix"]},
+                {"name": None, "column_names": ["value"]},
+            ],
+        )
+
+    def test_primary_key_constraint_mixed_into_ck(self, connection):
+        """test #11832"""
+
+        inspector = inspect(connection)
+        eq_(
+            inspector.get_pk_constraint("r"),
+            {"constrained_columns": ["id"], "name": "pk_name"},
+        )
+
     def test_primary_key_constraint_named(self):
         inspector = inspect(testing.db)
         eq_(
@@ -2447,13 +2504,43 @@ class ConstraintReflectionTest(fixtures.TestBase):
             {"constrained_columns": [], "name": None},
         )
 
-    def test_check_constraint(self):
+    def test_check_constraint_plain(self):
         inspector = inspect(testing.db)
         eq_(
             inspector.get_check_constraints("cp"),
             [
-                {"sqltext": "q == 1 OR (q > 2 AND q < 5)", "name": "cq"},
+                {"sqltext": "p = 1 OR (p > 2 AND p < 5)", "name": "cq"},
+            ],
+        )
+
+    def test_check_constraint_inline_plain(self):
+        inspector = inspect(testing.db)
+        eq_(
+            inspector.get_check_constraints("cp_inline"),
+            [
+                {"sqltext": "p = 1 OR (p > 2 AND p < 5)", "name": "cq"},
                 {"sqltext": "q > 1 AND q < 6", "name": None},
+            ],
+        )
+
+    @testing.fails("need to come up with new regex and/or DDL parsing")
+    def test_check_constraint_multiline(self):
+        """test for #11677"""
+
+        inspector = inspect(testing.db)
+        eq_(
+            inspector.get_check_constraints("r"),
+            [
+                {"sqltext": "value IS NOT NULL", "name": "^check-r* #\n\t"},
+                # Triple-quote multi-line definition should have added a
+                # newline and whitespace:
+                {
+                    "sqltext": "((value > 0) AND \n\t(value < 100) AND \n\t\n"
+                    "                      (value != 50))",
+                    "name": "ck_r_value_multiline",
+                },
+                {"sqltext": "id > 0", "name": None},
+                {"sqltext": "prefix NOT GLOB '*[^-. /#,]*'", "name": None},
             ],
         )
 
@@ -2466,17 +2553,27 @@ class ConstraintReflectionTest(fixtures.TestBase):
         argnames="colname,expected",
     )
     @testing.combinations(
-        "uq", "uq_inline", "pk", "ix", argnames="constraint_type"
+        "uq",
+        "uq_inline",
+        "uq_inline_tab_before",  # tab before column params
+        "uq_inline_tab_within",  # tab within column params
+        "pk",
+        "ix",
+        argnames="constraint_type",
     )
     def test_constraint_cols(
         self, colname, expected, constraint_type, connection, metadata
     ):
-        if constraint_type == "uq_inline":
+        if constraint_type.startswith("uq_inline"):
+            inline_create_sql = {
+                "uq_inline": "CREATE TABLE t (%s INTEGER UNIQUE)",
+                "uq_inline_tab_before": "CREATE TABLE t (%s\tINTEGER UNIQUE)",
+                "uq_inline_tab_within": "CREATE TABLE t (%s INTEGER\tUNIQUE)",
+            }
+
             t = Table("t", metadata, Column(colname, Integer))
             connection.exec_driver_sql(
-                """
-            CREATE TABLE t (%s INTEGER UNIQUE)
-            """
+                inline_create_sql[constraint_type]
                 % connection.dialect.identifier_preparer.quote(colname)
             )
         else:
@@ -2494,7 +2591,12 @@ class ConstraintReflectionTest(fixtures.TestBase):
 
             t.create(connection)
 
-        if constraint_type in ("uq", "uq_inline"):
+        if constraint_type in (
+            "uq",
+            "uq_inline",
+            "uq_inline_tab_before",
+            "uq_inline_tab_within",
+        ):
             const = inspect(connection).get_unique_constraints("t")[0]
             eq_(const["column_names"], [expected])
         elif constraint_type == "pk":

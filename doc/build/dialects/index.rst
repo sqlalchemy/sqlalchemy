@@ -77,6 +77,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Apache Solr                                    | sqlalchemy-solr_                      |
 +------------------------------------------------+---------------------------------------+
+| Clickhouse                                     | clickhouse-sqlalchemy_                |
++------------------------------------------------+---------------------------------------+
 | CockroachDB                                    | sqlalchemy-cockroachdb_               |
 +------------------------------------------------+---------------------------------------+
 | CrateDB                                        | sqlalchemy-cratedb_                   |
@@ -97,7 +99,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Google Sheets                                  | gsheets_                              |
 +------------------------------------------------+---------------------------------------+
-| Greenplum [2]_                                 | sqlalchemy-greenplum_                 |
+| Greenplum                                      | sqlalchemy-greenplum_                 |
 +------------------------------------------------+---------------------------------------+
 | IBM DB2 and Informix                           | ibm-db-sa_                            |
 +------------------------------------------------+---------------------------------------+
@@ -107,7 +109,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Microsoft Access (via pyodbc)                  | sqlalchemy-access_                    |
 +------------------------------------------------+---------------------------------------+
-| Microsoft SQL Server (via python-tds)          | sqlalchemy-tds_                       |
+| Microsoft SQL Server (via python-tds)          | sqlalchemy-pytds_                     |
 +------------------------------------------------+---------------------------------------+
 | Microsoft SQL Server (via turbodbc)            | sqlalchemy-turbodbc_                  |
 +------------------------------------------------+---------------------------------------+
@@ -131,7 +133,6 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 
 .. [1] Supports version 1.3.x only at the moment.
-.. [2] Supports version 1.4.x only at the moment.
 
 .. _openGauss-sqlalchemy: https://gitee.com/opengauss/openGauss-sqlalchemy
 .. _rockset-sqlalchemy: https://pypi.org/project/rockset-sqlalchemy
@@ -149,7 +150,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _sqlalchemy-sqlany: https://github.com/sqlanywhere/sqlalchemy-sqlany
 .. _sqlalchemy-monetdb: https://github.com/gijzelaerr/sqlalchemy-monetdb
 .. _snowflake-sqlalchemy: https://github.com/snowflakedb/snowflake-sqlalchemy
-.. _sqlalchemy-tds: https://github.com/m32/sqlalchemy-tds
+.. _sqlalchemy-pytds: https://pypi.org/project/sqlalchemy-pytds/
 .. _sqlalchemy-cratedb: https://github.com/crate/sqlalchemy-cratedb
 .. _sqlalchemy-access: https://pypi.org/project/sqlalchemy-access/
 .. _elasticsearch-dbapi: https://github.com/preset-io/elasticsearch-dbapi/
@@ -166,3 +167,4 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _databend-sqlalchemy: https://github.com/datafuselabs/databend-sqlalchemy
 .. _sqlalchemy-greenplum: https://github.com/PlaidCloud/sqlalchemy-greenplum
 .. _databricks: https://docs.databricks.com/en/dev-tools/sqlalchemy.html
+.. _clickhouse-sqlalchemy: https://pypi.org/project/clickhouse-sqlalchemy/

@@ -6,6 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
+import contextlib
 import operator
 import re
 
@@ -2454,62 +2455,158 @@ class TableNoColumnsTest(fixtures.TestBase):
 class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
     __backend__ = True
 
-    @testing.combinations(
-        (True, testing.requires.schemas), (False,), argnames="use_schema"
-    )
-    @testing.requires.check_constraint_reflection
-    def test_get_check_constraints(self, metadata, connection, use_schema):
-        if use_schema:
-            schema = config.test_schema
+    @testing.fixture(params=[True, False])
+    def use_schema_fixture(self, request):
+        if request.param:
+            return config.test_schema
         else:
-            schema = None
+            return None
 
-        Table(
-            "sa_cc",
-            metadata,
-            Column("a", Integer()),
-            sa.CheckConstraint("a > 1 AND a < 5", name="cc1"),
-            sa.CheckConstraint(
-                "a = 1 OR (a > 2 AND a < 5)", name="UsesCasing"
-            ),
-            schema=schema,
-        )
-        Table(
-            "no_constraints",
-            metadata,
-            Column("data", sa.String(20)),
-            schema=schema,
-        )
+    @testing.fixture()
+    def inspect_for_table(self, metadata, connection, use_schema_fixture):
+        @contextlib.contextmanager
+        def go(tablename):
+            yield use_schema_fixture, inspect(connection)
 
-        metadata.create_all(connection)
+            metadata.create_all(connection)
 
-        insp = inspect(connection)
-        reflected = sorted(
-            insp.get_check_constraints("sa_cc", schema=schema),
-            key=operator.itemgetter("name"),
-        )
+        return go
 
+    def ck_eq(self, reflected, expected):
         # trying to minimize effect of quoting, parenthesis, etc.
         # may need to add more to this as new dialects get CHECK
         # constraint reflection support
         def normalize(sqltext):
             return " ".join(
-                re.findall(r"and|\d|=|a|or|<|>", sqltext.lower(), re.I)
+                re.findall(r"and|\d|=|a|b|c|or|<|>", sqltext.lower(), re.I)
             )
 
-        reflected = [
-            {"name": item["name"], "sqltext": normalize(item["sqltext"])}
-            for item in reflected
-        ]
-        eq_(
+        reflected = sorted(
+            [
+                {"name": item["name"], "sqltext": normalize(item["sqltext"])}
+                for item in reflected
+            ],
+            key=lambda item: (item["sqltext"]),
+        )
+
+        expected = sorted(
+            expected,
+            key=lambda item: (item["sqltext"]),
+        )
+        eq_(reflected, expected)
+
+    @testing.requires.check_constraint_reflection
+    def test_check_constraint_no_constraint(self, metadata, inspect_for_table):
+        with inspect_for_table("no_constraints") as (schema, inspector):
+            Table(
+                "no_constraints",
+                metadata,
+                Column("data", sa.String(20)),
+                schema=schema,
+            )
+
+        self.ck_eq(
+            inspector.get_check_constraints("no_constraints", schema=schema),
+            [],
+        )
+
+    @testing.requires.inline_check_constraint_reflection
+    @testing.combinations(
+        "my_inline", "MyInline", None, argnames="constraint_name"
+    )
+    def test_check_constraint_inline(
+        self, metadata, inspect_for_table, constraint_name
+    ):
+
+        with inspect_for_table("sa_cc") as (schema, inspector):
+            Table(
+                "sa_cc",
+                metadata,
+                Column("id", Integer(), primary_key=True),
+                Column(
+                    "a",
+                    Integer(),
+                    sa.CheckConstraint(
+                        "a > 1 AND a < 5", name=constraint_name
+                    ),
+                ),
+                Column("data", String(50)),
+                schema=schema,
+            )
+
+        reflected = inspector.get_check_constraints("sa_cc", schema=schema)
+
+        self.ck_eq(
             reflected,
             [
-                {"name": "UsesCasing", "sqltext": "a = 1 or a > 2 and a < 5"},
-                {"name": "cc1", "sqltext": "a > 1 and a < 5"},
+                {
+                    "name": constraint_name or mock.ANY,
+                    "sqltext": "a > 1 and a < 5",
+                },
             ],
         )
-        no_cst = "no_constraints"
-        eq_(insp.get_check_constraints(no_cst, schema=schema), [])
+
+    @testing.requires.check_constraint_reflection
+    @testing.combinations(
+        "my_ck_const", "MyCkConst", None, argnames="constraint_name"
+    )
+    def test_check_constraint_standalone(
+        self, metadata, inspect_for_table, constraint_name
+    ):
+        with inspect_for_table("sa_cc") as (schema, inspector):
+            Table(
+                "sa_cc",
+                metadata,
+                Column("a", Integer()),
+                sa.CheckConstraint(
+                    "a = 1 OR (a > 2 AND a < 5)", name=constraint_name
+                ),
+                schema=schema,
+            )
+
+        reflected = inspector.get_check_constraints("sa_cc", schema=schema)
+
+        self.ck_eq(
+            reflected,
+            [
+                {
+                    "name": constraint_name or mock.ANY,
+                    "sqltext": "a = 1 or a > 2 and a < 5",
+                },
+            ],
+        )
+
+    @testing.requires.inline_check_constraint_reflection
+    def test_check_constraint_mixed(self, metadata, inspect_for_table):
+        with inspect_for_table("sa_cc") as (schema, inspector):
+            Table(
+                "sa_cc",
+                metadata,
+                Column("id", Integer(), primary_key=True),
+                Column("a", Integer(), sa.CheckConstraint("a > 1 AND a < 5")),
+                Column(
+                    "b",
+                    Integer(),
+                    sa.CheckConstraint("b > 1 AND b < 5", name="my_inline"),
+                ),
+                Column("c", Integer()),
+                Column("data", String(50)),
+                sa.UniqueConstraint("data", name="some_uq"),
+                sa.CheckConstraint("c > 1 AND c < 5", name="cc1"),
+                sa.UniqueConstraint("c", name="some_c_uq"),
+                schema=schema,
+            )
+
+        reflected = inspector.get_check_constraints("sa_cc", schema=schema)
+
+        self.ck_eq(
+            reflected,
+            [
+                {"name": "cc1", "sqltext": "c > 1 and c < 5"},
+                {"name": "my_inline", "sqltext": "b > 1 and b < 5"},
+                {"name": mock.ANY, "sqltext": "a > 1 and a < 5"},
+            ],
+        )
 
     @testing.requires.indexes_with_expressions
     def test_reflect_expression_based_indexes(self, metadata, connection):

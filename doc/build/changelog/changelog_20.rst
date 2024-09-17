@@ -9,8 +9,242 @@
 
 
 .. changelog::
-    :version: 2.0.33
+    :version: 2.0.36
     :include_notes_from: unreleased_20
+
+.. changelog::
+    :version: 2.0.35
+    :released: September 16, 2024
+
+    .. change::
+        :tags: bug, orm, typing
+        :tickets: 11820
+
+        Fixed issue where it was not possible to use ``typing.Literal`` with
+        ``Mapped[]`` on Python 3.8 and 3.9.  Pull request courtesy Frazer McLean.
+
+    .. change::
+        :tags: bug, sqlite, regression
+        :tickets: 11840
+
+        The changes made for SQLite CHECK constraint reflection in versions 2.0.33
+        and 2.0.34 , :ticket:`11832` and :ticket:`11677`, have now been fully
+        reverted, as users continued to identify existing use cases that stopped
+        working after this change.   For the moment, because SQLite does not
+        provide any consistent way of delivering information about CHECK
+        constraints, SQLAlchemy is limited in what CHECK constraint syntaxes can be
+        reflected, including that a CHECK constraint must be stated all on a
+        single, independent line (or inline on a column definition)  without
+        newlines, tabs in the constraint definition or unusual characters in the
+        constraint name.  Overall, reflection for SQLite is tailored towards being
+        able to reflect CREATE TABLE statements that were originally created by
+        SQLAlchemy DDL constructs.  Long term work on a DDL parser that does not
+        rely upon regular expressions may eventually improve upon this situation.
+        A wide range of additional cross-dialect CHECK constraint reflection tests
+        have been added as it was also a bug that these changes did not trip any
+        existing tests.
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 11849
+
+        Fixed issue in ORM evaluator where two datatypes being evaluated with the
+        SQL concatenator operator would not be checked for
+        :class:`.UnevaluatableError` based on their datatype; this missed the case
+        of :class:`_postgresql.JSONB` values being used in a concatenate operation
+        which is supported by PostgreSQL as well as how SQLAlchemy renders the SQL
+        for this operation, but does not work at the Python level. By implementing
+        :class:`.UnevaluatableError` for this combination, ORM update statements
+        will now fall back to "expire" when a concatenated JSON value used in a SET
+        clause is to be synchronized to a Python object.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11853
+
+        An warning is emitted if :func:`_orm.joinedload` or
+        :func:`_orm.subqueryload` are used as a top level option against a
+        statement that is not a SELECT statement, such as with an
+        ``insert().returning()``.   There are no JOINs in INSERT statements nor is
+        there a "subquery" that can be repurposed for subquery eager loading, and
+        for UPDATE/DELETE joinedload does not support these either, so it is never
+        appropriate for this use to pass silently.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11855
+
+        Fixed issue where using loader options such as :func:`_orm.selectinload`
+        with additional criteria in combination with ORM DML such as
+        :func:`_sql.insert` with RETURNING would not correctly set up internal
+        contexts required for caching to work correctly, leading to incorrect
+        results.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 11870
+
+        Fixed issue in mariadbconnector dialect where query string arguments that
+        weren't checked integer or boolean arguments would be ignored, such as
+        string arguments like ``unix_socket``, etc.  As part of this change, the
+        argument parsing for particular elements such as ``client_flags``,
+        ``compress``, ``local_infile`` has been made more consistent across all
+        MySQL / MariaDB dialect which accept each argument. Pull request courtesy
+        Tobias Alex-Petersen.
+
+
+.. changelog::
+    :version: 2.0.34
+    :released: September 4, 2024
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11831
+
+        Fixed regression caused by issue :ticket:`11814` which broke support for
+        certain flavors of :pep:`593` ``Annotated`` in the type_annotation_map when
+        builtin types such as ``list``, ``dict`` were used without an element type.
+        While this is an incomplete style of typing, these types nonetheless
+        previously would be located in the type_annotation_map correctly.
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 11832
+
+        Fixed regression in SQLite reflection caused by :ticket:`11677` which
+        interfered with reflection for CHECK constraints that were followed
+        by other kinds of constraints within the same table definition.   Pull
+        request courtesy Harutaka Kawamura.
+
+
+.. changelog::
+    :version: 2.0.33
+    :released: September 3, 2024
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 11677
+
+        Improvements to the regex used by the SQLite dialect to reflect the name
+        and contents of a CHECK constraint.  Constraints with newline, tab, or
+        space characters in either or both the constraint text and constraint name
+        are now properly reflected.   Pull request courtesy Jeff Horemans.
+
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 11687
+
+        Fixed issue in internal reflection cache where particular reflection
+        scenarios regarding same-named quoted_name() constructs would not be
+        correctly cached.  Pull request courtesy Felix Lüdin.
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 11703
+
+        Fixed regression in :meth:`_sql.Select.with_statement_hint` and others
+        where the generative behavior of the method stopped producing a copy of the
+        object.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 11731
+
+        Fixed issue in MySQL dialect where using INSERT..FROM SELECT in combination
+        with ON DUPLICATE KEY UPDATE would erroneously render on MySQL 8 and above
+        the "AS new" clause, leading to syntax failures.  This clause is required
+        on MySQL 8 to follow the VALUES clause if use of the "new" alias is
+        present, however is not permitted to follow a FROM SELECT clause.
+
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 11746
+
+        Improvements to the regex used by the SQLite dialect to reflect the name
+        and contents of a UNIQUE constraint that is defined inline within a column
+        definition inside of a SQLite CREATE TABLE statement, accommodating for tab
+        characters present within the column / constraint line. Pull request
+        courtesy John A Stevenson.
+
+
+
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 11782
+
+        Fixed typing issue with :meth:`_sql.Select.with_only_columns`.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11788
+
+        Correctly cleanup the internal top-level module registry when no
+        inner modules or classes are registered into it.
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 11802
+
+        Fixed bug where the ``metadata`` element of an ``Enum`` datatype would not
+        be transferred to the new :class:`.MetaData` object when the type had been
+        copied via a :meth:`.Table.to_metadata` operation, leading to inconsistent
+        behaviors within create/drop sequences.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11814
+
+        Improvements to the ORM annotated declarative type map lookup dealing with
+        composed types such as ``dict[str, Any]`` linking to JSON (or others) with
+        or without "future annotations" mode.
+
+
+
+    .. change::
+        :tags: change, general
+        :tickets: 11818
+
+        The pin for ``setuptools<69.3`` in ``pyproject.toml`` has been removed.
+        This pin was to prevent a sudden change in setuptools to use :pep:`625`
+        from taking place, which would change the file name of SQLAlchemy's source
+        distribution on pypi to be an all lower case name, which is likely to cause
+        problems with various build environments that expected the previous naming
+        style.  However, the presence of this pin is holding back environments that
+        otherwise want to use a newer setuptools, so we've decided to move forward
+        with this change, with the assumption that build environments will have
+        largely accommodated the setuptools change by now.
+
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 11821
+
+        Revising the asyncpg ``terminate()`` fix first made in :ticket:`10717`
+        which improved the resiliency of this call under all circumstances, adding
+        ``asyncio.CancelledError`` to the list of exceptions that are intercepted
+        as failing for a graceful ``.close()`` which will then proceed to call
+        ``.terminate()``.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 11822
+
+        Added error "The server failed to resume the transaction" to the list of
+        error strings for the pymssql driver in determining a disconnect scenario,
+        as observed by one user using pymssql under otherwise unknown conditions as
+        leaving an unusable connection in the connection pool which fails to ping
+        cleanly.
+
+    .. change::
+        :tags: bug, tests
+
+        Added missing ``array_type`` property to the testing suite
+        ``SuiteRequirements`` class.
 
 .. changelog::
     :version: 2.0.32

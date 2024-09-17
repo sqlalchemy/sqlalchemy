@@ -478,14 +478,25 @@ class HasHints:
         ("_hints", InternalTraversal.dp_table_hint_list),
     ]
 
+    @_generative
     def with_statement_hint(self, text: str, dialect_name: str = "*") -> Self:
         """Add a statement hint to this :class:`_expression.Select` or
         other selectable object.
 
-        This method is similar to :meth:`_expression.Select.with_hint`
-        except that
-        it does not require an individual table, and instead applies to the
-        statement as a whole.
+        .. tip::
+
+            :meth:`_expression.Select.with_statement_hint` generally adds hints
+            **at the trailing end** of a SELECT statement.  To place
+            dialect-specific hints such as optimizer hints at the **front** of
+            the SELECT statement after the SELECT keyword, use the
+            :meth:`_expression.Select.prefix_with` method for an open-ended
+            space, or for table-specific hints the
+            :meth:`_expression.Select.with_hint` may be used, which places
+            hints in a dialect-specific location.
+
+        This method is similar to :meth:`_expression.Select.with_hint` except
+        that it does not require an individual table, and instead applies to
+        the statement as a whole.
 
         Hints here are specific to the backend database and may include
         directives such as isolation levels, file directives, fetch directives,
@@ -497,7 +508,7 @@ class HasHints:
 
             :meth:`_expression.Select.prefix_with` - generic SELECT prefixing
             which also can suit some database-specific HINT syntaxes such as
-            MySQL optimizer hints
+            MySQL or Oracle optimizer hints
 
         """
         return self._with_hint(None, text, dialect_name)
@@ -512,6 +523,17 @@ class HasHints:
         r"""Add an indexing or other executional context hint for the given
         selectable to this :class:`_expression.Select` or other selectable
         object.
+
+        .. tip::
+
+            The :meth:`_expression.Select.with_hint` method adds hints that are
+            **specific to a single table** to a statement, in a location that
+            is **dialect-specific**.  To add generic optimizer hints to the
+            **beginning** of a statement ahead of the SELECT keyword such as
+            for MySQL or Oracle, use the :meth:`_expression.Select.prefix_with`
+            method.  To add optimizer hints to the **end** of a statement such
+            as for PostgreSQL, use the
+            :meth:`_expression.Select.with_statement_hint` method.
 
         The text of the hint is rendered in the appropriate
         location for the database backend in use, relative
@@ -541,6 +563,10 @@ class HasHints:
         .. seealso::
 
             :meth:`_expression.Select.with_statement_hint`
+
+            :meth:`_expression.Select.prefix_with` - generic SELECT prefixing
+            which also can suit some database-specific HINT syntaxes such as
+            MySQL or Oracle optimizer hints
 
         """
 
@@ -4139,7 +4165,7 @@ class GenerativeSelect(SelectBase, Generative):
 
         For example, ::
 
-            stmt = select(User).order_by(User).id.slice(1, 3)
+            stmt = select(User).order_by(User.id).slice(1, 3)
 
         renders as
 
@@ -5812,22 +5838,35 @@ class Select(
         )
         return woc
 
-    # START OVERLOADED FUNCTIONS self.with_only_columns Select 8
+    # START OVERLOADED FUNCTIONS self.with_only_columns Select 1-8 ", *, maintain_column_froms: bool =..." # noqa: E501
 
     # code within this block is **programmatically,
-    # statically generated** by tools/generate_sel_v1_overloads.py
-
-    @overload
-    def with_only_columns(self, __ent0: _TCCA[_T0]) -> Select[_T0]: ...
+    # statically generated** by tools/generate_tuple_map_overloads.py
 
     @overload
     def with_only_columns(
-        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1]
+        self, __ent0: _TCCA[_T0], /, *, maintain_column_froms: bool = ...
+    ) -> Select[_T0]: ...
+
+    @overload
+    def with_only_columns(
+        self,
+        __ent0: _TCCA[_T0],
+        __ent1: _TCCA[_T1],
+        /,
+        *,
+        maintain_column_froms: bool = ...,
     ) -> Select[_T0, _T1]: ...
 
     @overload
     def with_only_columns(
-        self, __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2]
+        self,
+        __ent0: _TCCA[_T0],
+        __ent1: _TCCA[_T1],
+        __ent2: _TCCA[_T2],
+        /,
+        *,
+        maintain_column_froms: bool = ...,
     ) -> Select[_T0, _T1, _T2]: ...
 
     @overload
@@ -5837,6 +5876,9 @@ class Select(
         __ent1: _TCCA[_T1],
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
+        /,
+        *,
+        maintain_column_froms: bool = ...,
     ) -> Select[_T0, _T1, _T2, _T3]: ...
 
     @overload
@@ -5847,6 +5889,9 @@ class Select(
         __ent2: _TCCA[_T2],
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
+        /,
+        *,
+        maintain_column_froms: bool = ...,
     ) -> Select[_T0, _T1, _T2, _T3, _T4]: ...
 
     @overload
@@ -5858,6 +5903,9 @@ class Select(
         __ent3: _TCCA[_T3],
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
+        /,
+        *,
+        maintain_column_froms: bool = ...,
     ) -> Select[_T0, _T1, _T2, _T3, _T4, _T5]: ...
 
     @overload
@@ -5870,6 +5918,9 @@ class Select(
         __ent4: _TCCA[_T4],
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
+        /,
+        *,
+        maintain_column_froms: bool = ...,
     ) -> Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6]: ...
 
     @overload
@@ -5883,7 +5934,10 @@ class Select(
         __ent5: _TCCA[_T5],
         __ent6: _TCCA[_T6],
         __ent7: _TCCA[_T7],
-    ) -> Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]: ...
+        /,
+        *entities: _ColumnsClauseArgument[Any],
+        maintain_column_froms: bool = ...,
+    ) -> Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, Unpack[TupleAny]]: ...
 
     # END OVERLOADED FUNCTIONS self.with_only_columns
 

@@ -12,6 +12,7 @@ import builtins
 import collections.abc as collections_abc
 import re
 import sys
+import typing
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -63,6 +64,10 @@ _VT = TypeVar("_VT")
 _VT_co = TypeVar("_VT_co", covariant=True)
 
 TupleAny = Tuple[Any, ...]
+
+# typing_extensions.Literal is different from typing.Literal until
+# Python 3.10.1
+_LITERAL_TYPES = frozenset([typing.Literal, Literal])
 
 
 if compat.py310:
@@ -190,7 +195,49 @@ def de_stringify_annotation(
         )
 
         return _copy_generic_annotation_with(annotation, elements)
+
     return annotation  # type: ignore
+
+
+def fixup_container_fwd_refs(
+    type_: _AnnotationScanType,
+) -> _AnnotationScanType:
+    """Correct dict['x', 'y'] into dict[ForwardRef('x'), ForwardRef('y')]
+    and similar for list, set
+
+    """
+
+    if (
+        is_generic(type_)
+        and typing_get_origin(type_)
+        in (
+            dict,
+            set,
+            list,
+            collections_abc.MutableSet,
+            collections_abc.MutableMapping,
+            collections_abc.MutableSequence,
+            collections_abc.Mapping,
+            collections_abc.Sequence,
+        )
+        # fight, kick and scream to struggle to tell the difference between
+        # dict[] and typing.Dict[] which DO NOT compare the same and DO NOT
+        # behave the same yet there is NO WAY to distinguish between which type
+        # it is using public attributes
+        and not re.match(
+            "typing.(?:Dict|List|Set|.*Mapping|.*Sequence|.*Set)", repr(type_)
+        )
+    ):
+        # compat with py3.10 and earlier
+        return typing_get_origin(type_).__class_getitem__(  # type: ignore
+            tuple(
+                [
+                    ForwardRef(elem) if isinstance(elem, str) else elem
+                    for elem in typing_get_args(type_)
+                ]
+            )
+        )
+    return type_
 
 
 def _copy_generic_annotation_with(
@@ -316,7 +363,7 @@ def is_non_string_iterable(obj: Any) -> TypeGuard[Iterable[Any]]:
 
 
 def is_literal(type_: _AnnotationScanType) -> bool:
-    return get_origin(type_) is Literal
+    return get_origin(type_) in _LITERAL_TYPES
 
 
 def is_newtype(type_: Optional[_AnnotationScanType]) -> TypeGuard[NewType]:

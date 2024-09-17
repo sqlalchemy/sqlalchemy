@@ -30,6 +30,7 @@ from typing import TypeVar
 from typing import Union
 import uuid
 
+import typing_extensions
 from typing_extensions import get_args as get_args
 from typing_extensions import Literal as Literal
 from typing_extensions import TypeAlias as TypeAlias
@@ -118,6 +119,9 @@ _Literal695: TypeAlias = Literal["to-do", "in-progress", "done"]
 _Recursive695_0: TypeAlias = _Literal695
 _Recursive695_1: TypeAlias = _Recursive695_0
 _Recursive695_2: TypeAlias = _Recursive695_1
+
+_TypingLiteral = typing.Literal["a", "b"]
+_TypingExtensionsLiteral = typing_extensions.Literal["a", "b"]
 
 if compat.py312:
     exec(
@@ -897,6 +901,21 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             eq_(col.type.enums, ["to-do", "in-progress", "done"])
             is_(col.type.native_enum, False)
 
+    def test_typing_literal_identity(self, decl_base):
+        """See issue #11820"""
+
+        class Foo(decl_base):
+            __tablename__ = "footable"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            t: Mapped[_TypingLiteral]
+            te: Mapped[_TypingExtensionsLiteral]
+
+        for col in (Foo.__table__.c.t, Foo.__table__.c.te):
+            is_true(isinstance(col.type, Enum))
+            eq_(col.type.enums, ["a", "b"])
+            is_(col.type.native_enum, False)
+
     @testing.requires.python310
     def test_we_got_all_attrs_test_annotated(self):
         argnames = _py_inspect.getfullargspec(mapped_column)
@@ -1419,22 +1438,68 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             Dict,
             (str, str),
         ),
+        (list, None, testing.requires.python310),
+        (
+            List,
+            None,
+        ),
+        (dict, None, testing.requires.python310),
+        (
+            Dict,
+            None,
+        ),
         id_="sa",
+        argnames="container_typ,args",
     )
-    def test_extract_generic_from_pep593(self, container_typ, args):
-        """test #9099"""
+    @testing.variation("style", ["pep593", "alias", "direct"])
+    def test_extract_composed(self, container_typ, args, style):
+        """test #9099 (pep593)
+
+        test #11814
+
+        test #11831, regression from #11814
+        """
 
         global TestType
-        TestType = Annotated[container_typ[args], 0]
+
+        if style.pep593:
+            if args is None:
+                TestType = Annotated[container_typ, 0]
+            else:
+                TestType = Annotated[container_typ[args], 0]
+        elif style.alias:
+            if args is None:
+                TestType = container_typ
+            else:
+                TestType = container_typ[args]
+        elif style.direct:
+            TestType = container_typ
 
         class Base(DeclarativeBase):
-            type_annotation_map = {TestType: JSON()}
+            if style.direct:
+                if args == (str, str):
+                    type_annotation_map = {TestType[str, str]: JSON()}
+                elif args is None:
+                    type_annotation_map = {TestType: JSON()}
+                else:
+                    type_annotation_map = {TestType[str]: JSON()}
+            else:
+                type_annotation_map = {TestType: JSON()}
 
         class MyClass(Base):
             __tablename__ = "my_table"
 
             id: Mapped[int] = mapped_column(primary_key=True)
-            data: Mapped[TestType] = mapped_column()
+
+            if style.direct:
+                if args == (str, str):
+                    data: Mapped[TestType[str, str]] = mapped_column()
+                elif args is None:
+                    data: Mapped[TestType] = mapped_column()
+                else:
+                    data: Mapped[TestType[str]] = mapped_column()
+            else:
+                data: Mapped[TestType] = mapped_column()
 
         is_(MyClass.__table__.c.data.type._type_affinity, JSON)
 

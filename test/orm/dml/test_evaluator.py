@@ -371,6 +371,14 @@ class EvaluateTest(fixtures.MappedTest):
             r"datatypes JSON, INTEGER",
         ),
         (
+            lambda User: User.json + {"bar": "bat"},
+            "json",
+            {"foo": "bar"},
+            evaluator.UnevaluatableError,
+            r"Cannot evaluate concatenate operator \"concat_op\" for "
+            r"datatypes JSON, JSON",
+        ),
+        (
             lambda User: User.json - 12,
             "json",
             {"foo": "bar"},

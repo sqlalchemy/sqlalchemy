@@ -2961,6 +2961,7 @@ class Query(
             context = QueryContext(
                 compile_state,
                 compile_state.statement,
+                compile_state.statement,
                 self._params,
                 self.session,
                 self.load_options,
@@ -3319,6 +3320,7 @@ class Query(
         compile_state = self._compile_state(for_statement=for_statement)
         context = QueryContext(
             compile_state,
+            compile_state.statement,
             compile_state.statement,
             self._params,
             self.session,

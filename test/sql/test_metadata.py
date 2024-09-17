@@ -2395,17 +2395,27 @@ class SchemaTypeTest(fixtures.TestBase):
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, "z")
 
-    def test_to_metadata_copy_type(self):
+    @testing.variation("assign_metadata", [True, False])
+    def test_to_metadata_copy_type(self, assign_metadata):
         m1 = MetaData()
 
-        type_ = self.MyType()
+        if assign_metadata:
+            type_ = self.MyType(metadata=m1)
+        else:
+            type_ = self.MyType()
+
         t1 = Table("x", m1, Column("y", type_))
 
         m2 = MetaData()
         t2 = t1.to_metadata(m2)
 
-        # metadata isn't set
-        is_(t2.c.y.type.metadata, None)
+        if assign_metadata:
+            # metadata was transferred
+            # issue #11802
+            is_(t2.c.y.type.metadata, m2)
+        else:
+            # metadata isn't set
+            is_(t2.c.y.type.metadata, None)
 
         # our test type sets table, though
         is_(t2.c.y.type.table, t2)
@@ -2435,11 +2445,34 @@ class SchemaTypeTest(fixtures.TestBase):
 
         eq_(t2.c.y.type.schema, None)
 
-    def test_to_metadata_inherit_schema(self):
+    @testing.combinations(
+        ("name", "foobar", "name"),
+        ("schema", "someschema", "schema"),
+        ("inherit_schema", True, "inherit_schema"),
+        ("metadata", MetaData(), "metadata"),
+    )
+    def test_copy_args(self, argname, value, attrname):
+        kw = {argname: value}
+        e1 = self.MyType(**kw)
+
+        e1_copy = e1.copy()
+
+        eq_(getattr(e1_copy, attrname), value)
+
+    @testing.variation("already_has_a_schema", [True, False])
+    def test_to_metadata_inherit_schema(self, already_has_a_schema):
         m1 = MetaData()
 
-        type_ = self.MyType(inherit_schema=True)
+        if already_has_a_schema:
+            type_ = self.MyType(schema="foo", inherit_schema=True)
+            eq_(type_.schema, "foo")
+        else:
+            type_ = self.MyType(inherit_schema=True)
+
         t1 = Table("x", m1, Column("y", type_))
+        # note that inherit_schema means the schema mutates to be that
+        # of the table
+        is_(type_.schema, None)
 
         m2 = MetaData()
         t2 = t1.to_metadata(m2, schema="bar")

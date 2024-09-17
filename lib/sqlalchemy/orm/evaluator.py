@@ -28,6 +28,7 @@ from .. import exc
 from .. import inspect
 from ..sql import and_
 from ..sql import operators
+from ..sql.sqltypes import Concatenable
 from ..sql.sqltypes import Integer
 from ..sql.sqltypes import Numeric
 from ..util import warn_deprecated
@@ -311,6 +312,16 @@ class _EvaluatorCompiler:
     def visit_concat_op_binary_op(
         self, operator, eval_left, eval_right, clause
     ):
+
+        if not issubclass(
+            clause.left.type._type_affinity, Concatenable
+        ) or not issubclass(clause.right.type._type_affinity, Concatenable):
+            raise UnevaluatableError(
+                f"Cannot evaluate concatenate operator "
+                f'"{operator.__name__}" for '
+                f"datatypes {clause.left.type}, {clause.right.type}"
+            )
+
         return self._straight_evaluate(
             lambda a, b: a + b, eval_left, eval_right, clause
         )

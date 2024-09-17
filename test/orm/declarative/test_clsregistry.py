@@ -230,7 +230,7 @@ class ClsRegistryTest(fixtures.TestBase):
             del f2
             gc_collect()
 
-            eq_(len(clsregistry._registries), 1)
+            eq_(len(clsregistry._registries), 0)
 
     def test_dupe_classes_name_race(self):
         """test the race condition that the class was garbage "
