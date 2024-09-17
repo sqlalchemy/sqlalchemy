@@ -32,6 +32,7 @@ from typing import Type
 from typing import TypeVar
 
 
+py313 = sys.version_info >= (3, 13)
 py312 = sys.version_info >= (3, 12)
 py311 = sys.version_info >= (3, 11)
 py310 = sys.version_info >= (3, 10)

@@ -169,7 +169,8 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
             )
 
             # This proves SA can handle a class with non-string dict keys
-            if util.cpython:
+            # Since python 3.13 non-string key raise a runtime warning.
+            if util.cpython and not util.py313:
                 locals()[42] = 99  # Don't remove this line!
 
             def __init__(self, **kwargs):
