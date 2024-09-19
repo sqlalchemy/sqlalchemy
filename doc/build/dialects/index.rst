@@ -107,6 +107,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Impala                                         | impyla_                               |
 +------------------------------------------------+---------------------------------------+
+| Kinetica                                       | sqlalchemy-kinetica_                  |
++------------------------------------------------+---------------------------------------+
 | Microsoft Access (via pyodbc)                  | sqlalchemy-access_                    |
 +------------------------------------------------+---------------------------------------+
 | Microsoft SQL Server (via python-tds)          | sqlalchemy-pytds_                     |
@@ -168,3 +170,4 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _sqlalchemy-greenplum: https://github.com/PlaidCloud/sqlalchemy-greenplum
 .. _databricks: https://docs.databricks.com/en/dev-tools/sqlalchemy.html
 .. _clickhouse-sqlalchemy: https://pypi.org/project/clickhouse-sqlalchemy/
+.. _sqlalchemy-kinetica: https://github.com/kineticadb/sqlalchemy-kinetica/
