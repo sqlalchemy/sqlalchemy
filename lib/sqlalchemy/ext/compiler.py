@@ -455,8 +455,10 @@ Example usage::
 from __future__ import annotations
 
 from typing import Any
+
 # TODO: Change to collections.abc when 3.8 support is dropped
 from typing import Callable
+
 # TODO: Change to builtins.type when 3.8 support is dropped
 from typing import Type
 from typing import TypeVar
