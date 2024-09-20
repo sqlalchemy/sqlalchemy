@@ -452,15 +452,22 @@ Example usage::
     )
 
 """
+from typing import Any
+from typing import Callable # TODO: Change to collections.abc when 3.8 support is dropped
+from typing import Type # TODO: Change to builtins.type when 3.8 support is dropped
+from typing import TypeVar
+
 from .. import exc
 from ..sql import sqltypes
 
+_F = TypeVar("_F", bound=Callable[..., Any])
 
-def compiles(class_, *specs):
+
+def compiles(class_: Type[Any], *specs: str) -> Callable[[_F], _F]:
     """Register a function as a compiler for a
     given :class:`_expression.ClauseElement` type."""
 
-    def decorate(fn):
+    def decorate(fn: _F) -> _F:
         # get an existing @compiles handler
         existing = class_.__dict__.get("_compiler_dispatcher", None)
 
@@ -505,7 +512,7 @@ def compiles(class_, *specs):
     return decorate
 
 
-def deregister(class_):
+def deregister(class_: Type[Any]) -> None:
     """Remove all custom compilers associated with a given
     :class:`_expression.ClauseElement` type.
 
@@ -517,7 +524,7 @@ def deregister(class_):
 
 
 class _dispatcher:
-    def __init__(self):
+    def __init__(self) -> None:
         self.specs = {}
 
     def __call__(self, element, compiler, **kw):
