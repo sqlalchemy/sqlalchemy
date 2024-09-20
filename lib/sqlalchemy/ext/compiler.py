@@ -452,9 +452,13 @@ Example usage::
     )
 
 """
+from __future__ import annotations
+
 from typing import Any
-from typing import Callable # TODO: Change to collections.abc when 3.8 support is dropped
-from typing import Type # TODO: Change to builtins.type when 3.8 support is dropped
+# TODO: Change to collections.abc when 3.8 support is dropped
+from typing import Callable
+# TODO: Change to builtins.type when 3.8 support is dropped
+from typing import Type
 from typing import TypeVar
 
 from .. import exc
