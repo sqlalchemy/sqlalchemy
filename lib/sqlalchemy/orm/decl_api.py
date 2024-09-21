@@ -32,6 +32,8 @@ from typing import TypeVar
 from typing import Union
 import weakref
 
+import typing_extensions
+
 from . import attributes
 from . import clsregistry
 from . import instrumentation
@@ -1649,6 +1651,7 @@ class registry:
         else:
             return decorate
 
+    @typing_extensions.dataclass_transform()
     def mapped(self, cls: Type[_O]) -> Type[_O]:
         """Class decorator that will apply the Declarative mapping process
         to a given class.
