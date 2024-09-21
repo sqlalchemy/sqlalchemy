@@ -1704,6 +1704,7 @@ class registry:
 
             mapper_registry = registry()
 
+            @typing_extensions.dataclass_transform()
             @mapper_registry.as_declarative_base()
             class Base:
                 @declared_attr
