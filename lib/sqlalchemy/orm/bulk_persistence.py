@@ -644,6 +644,7 @@ class BulkUDCompileState(ORMDMLState):
         _eval_condition = None
         _matched_rows = None
         _identity_token = None
+        _populate_existing: bool = False
 
     @classmethod
     def can_use_returning(
@@ -676,6 +677,7 @@ class BulkUDCompileState(ORMDMLState):
             {
                 "synchronize_session",
                 "autoflush",
+                "populate_existing",
                 "identity_token",
                 "is_delete_using",
                 "is_update_from",
@@ -1590,9 +1592,19 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
         bind_arguments: _BindArguments,
         conn: Connection,
     ) -> _result.Result:
+
         update_options = execution_options.get(
             "_sa_orm_update_options", cls.default_update_options
         )
+
+        if update_options._populate_existing:
+            load_options = execution_options.get(
+                "_sa_orm_load_options", QueryContext.default_load_options
+            )
+            load_options += {"_populate_existing": True}
+            execution_options = execution_options.union(
+                {"_sa_orm_load_options": load_options}
+            )
 
         if update_options._dml_strategy not in (
             "orm",
