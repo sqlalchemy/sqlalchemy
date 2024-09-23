@@ -470,8 +470,8 @@ class CreateSchema(_CreateBase):
 
     def __init__(
         self,
-        name,
-        if_not_exists=False,
+        name: str,
+        if_not_exists: bool = False,
     ):
         """Create a new :class:`.CreateSchema` construct."""
 
@@ -491,9 +491,9 @@ class DropSchema(_DropBase):
 
     def __init__(
         self,
-        name,
-        cascade=False,
-        if_exists=False,
+        name: str,
+        cascade: bool = False,
+        if_exists: bool = False,
     ):
         """Create a new :class:`.DropSchema` construct."""
 
