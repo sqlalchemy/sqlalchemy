@@ -333,11 +333,11 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[_TP]]):
         """Return exactly one scalar result or raise an exception.
 
         This is equivalent to calling :meth:`_asyncio.AsyncResult.scalars` and
-        then :meth:`_asyncio.AsyncResult.one`.
+        then :meth:`_asyncio.AsyncScalarResult.one`.
 
         .. seealso::
 
-            :meth:`_asyncio.AsyncResult.one`
+            :meth:`_asyncio.AsyncScalarResult.one`
 
             :meth:`_asyncio.AsyncResult.scalars`
 
@@ -356,11 +356,11 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[_TP]]):
         """Return exactly one scalar result or ``None``.
 
         This is equivalent to calling :meth:`_asyncio.AsyncResult.scalars` and
-        then :meth:`_asyncio.AsyncResult.one_or_none`.
+        then :meth:`_asyncio.AsyncScalarResult.one_or_none`.
 
         .. seealso::
 
-            :meth:`_asyncio.AsyncResult.one_or_none`
+            :meth:`_asyncio.AsyncScalarResult.one_or_none`
 
             :meth:`_asyncio.AsyncResult.scalars`
 
@@ -869,11 +869,11 @@ class AsyncTupleResult(AsyncCommon[_R], util.TypingOnly):
             """Return exactly one scalar result or raise an exception.
 
             This is equivalent to calling :meth:`_engine.Result.scalars`
-            and then :meth:`_engine.Result.one`.
+            and then :meth:`_engine.AsyncScalarResult.one`.
 
             .. seealso::
 
-                :meth:`_engine.Result.one`
+                :meth:`_engine.AsyncScalarResult.one`
 
                 :meth:`_engine.Result.scalars`
 
@@ -892,11 +892,11 @@ class AsyncTupleResult(AsyncCommon[_R], util.TypingOnly):
             """Return exactly one or no scalar result.
 
             This is equivalent to calling :meth:`_engine.Result.scalars`
-            and then :meth:`_engine.Result.one_or_none`.
+            and then :meth:`_engine.AsyncScalarResult.one_or_none`.
 
             .. seealso::
 
-                :meth:`_engine.Result.one_or_none`
+                :meth:`_engine.AsyncScalarResult.one_or_none`
 
                 :meth:`_engine.Result.scalars`
 
