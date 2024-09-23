@@ -1476,11 +1476,11 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         """Return exactly one scalar result or raise an exception.
 
         This is equivalent to calling :meth:`_engine.Result.scalars` and
-        then :meth:`_engine.Result.one`.
+        then :meth:`_engine.ScalarResult.one`.
 
         .. seealso::
 
-            :meth:`_engine.Result.one`
+            :meth:`_engine.ScalarResult.one`
 
             :meth:`_engine.Result.scalars`
 
@@ -1499,11 +1499,11 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
         """Return exactly one scalar result or ``None``.
 
         This is equivalent to calling :meth:`_engine.Result.scalars` and
-        then :meth:`_engine.Result.one_or_none`.
+        then :meth:`_engine.ScalarResult.one_or_none`.
 
         .. seealso::
 
-            :meth:`_engine.Result.one_or_none`
+            :meth:`_engine.ScalarResult.one_or_none`
 
             :meth:`_engine.Result.scalars`
 
@@ -1949,11 +1949,11 @@ class TupleResult(FilterResult[_R], util.TypingOnly):
             """Return exactly one scalar result or raise an exception.
 
             This is equivalent to calling :meth:`_engine.Result.scalars`
-            and then :meth:`_engine.Result.one`.
+            and then :meth:`_engine.ScalarResult.one`.
 
             .. seealso::
 
-                :meth:`_engine.Result.one`
+                :meth:`_engine.ScalarResult.one`
 
                 :meth:`_engine.Result.scalars`
 
@@ -1972,11 +1972,11 @@ class TupleResult(FilterResult[_R], util.TypingOnly):
             """Return exactly one or no scalar result.
 
             This is equivalent to calling :meth:`_engine.Result.scalars`
-            and then :meth:`_engine.Result.one_or_none`.
+            and then :meth:`_engine.ScalarResult.one_or_none`.
 
             .. seealso::
 
-                :meth:`_engine.Result.one_or_none`
+                :meth:`_engine.ScalarResult.one_or_none`
 
                 :meth:`_engine.Result.scalars`
 
