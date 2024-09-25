@@ -1763,7 +1763,10 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
             session,
             update_options,
             statement,
+            result.context.compiled_parameters[0],
             [(obj, state, dict_) for obj, state, dict_, _ in matched_objects],
+            result.prefetch_cols(),
+            result.postfetch_cols(),
         )
 
     @classmethod
@@ -1808,6 +1811,7 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
             session,
             update_options,
             statement,
+            result.context.compiled_parameters[0],
             [
                 (
                     obj,
@@ -1816,16 +1820,26 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
                 )
                 for obj in objs
             ],
+            result.prefetch_cols(),
+            result.postfetch_cols(),
         )
 
     @classmethod
     def _apply_update_set_values_to_objects(
-        cls, session, update_options, statement, matched_objects
+        cls,
+        session,
+        update_options,
+        statement,
+        effective_params,
+        matched_objects,
+        prefetch_cols,
+        postfetch_cols,
     ):
         """apply values to objects derived from an update statement, e.g.
         UPDATE..SET <values>
 
         """
+
         mapper = update_options._subject_mapper
         target_cls = mapper.class_
         evaluator_compiler = evaluator._EvaluatorCompiler(target_cls)
@@ -1848,7 +1862,35 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
         attrib = {k for k, v in resolved_keys_as_propnames}
 
         states = set()
+
+        to_prefetch = {
+            c
+            for c in prefetch_cols
+            if c.key in effective_params
+            and c in mapper._columntoproperty
+            and c.key not in evaluated_keys
+        }
+        to_expire = {
+            mapper._columntoproperty[c].key
+            for c in postfetch_cols
+            if c in mapper._columntoproperty
+        }.difference(evaluated_keys)
+
+        prefetch_transfer = [
+            (mapper._columntoproperty[c].key, c.key) for c in to_prefetch
+        ]
+
         for obj, state, dict_ in matched_objects:
+
+            dict_.update(
+                {
+                    col_to_prop: effective_params[c_key]
+                    for col_to_prop, c_key in prefetch_transfer
+                }
+            )
+
+            state._expire_attributes(state.dict, to_expire)
+
             to_evaluate = state.unmodified.intersection(evaluated_keys)
 
             for key in to_evaluate:
