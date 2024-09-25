@@ -8,8 +8,10 @@ from typing import Set
 import uuid
 
 from sqlalchemy import bindparam
+from sqlalchemy import Computed
 from sqlalchemy import event
 from sqlalchemy import exc
+from sqlalchemy import FetchedValue
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Identity
@@ -602,78 +604,102 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
 class UpdateStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
     __backend__ = True
 
-    @testing.variation("populate_existing", [True, False])
-    @testing.requires.update_returning
-    def test_update_populate_existing(self, decl_base, populate_existing):
-        """test #11912"""
+    @testing.variation(
+        "use_onupdate",
+        [
+            "none",
+            "server",
+            "callable",
+            "clientsql",
+            ("computed", testing.requires.computed_columns),
+        ],
+    )
+    def test_bulk_update_onupdates(
+        self,
+        decl_base,
+        use_onupdate,
+    ):
+        """assert that for now, bulk ORM update by primary key does not
+        expire or refresh onupdates."""
 
         class Employee(ComparableEntity, decl_base):
             __tablename__ = "employee"
 
             uuid: Mapped[uuid.UUID] = mapped_column(primary_key=True)
-            user_name: Mapped[str] = mapped_column(nullable=False)
-            some_server_value: Mapped[str]
+            user_name: Mapped[str] = mapped_column(String(200), nullable=False)
+
+            if use_onupdate.server:
+                some_server_value: Mapped[str] = mapped_column(
+                    server_onupdate=FetchedValue()
+                )
+            elif use_onupdate.callable:
+                some_server_value: Mapped[str] = mapped_column(
+                    onupdate=lambda: "value 2"
+                )
+            elif use_onupdate.clientsql:
+                some_server_value: Mapped[str] = mapped_column(
+                    onupdate=literal("value 2")
+                )
+            elif use_onupdate.computed:
+                some_server_value: Mapped[str] = mapped_column(
+                    String(255),
+                    Computed(user_name + " computed value"),
+                    nullable=True,
+                )
+            else:
+                some_server_value: Mapped[str]
 
         decl_base.metadata.create_all(testing.db)
         s = fixture_session()
 
         uuid1 = uuid.uuid4()
-        e1 = Employee(
-            uuid=uuid1, user_name="e1 old name", some_server_value="value 1"
-        )
+
+        if use_onupdate.computed:
+            server_old_value, server_new_value = (
+                "e1 old name computed value",
+                "e1 new name computed value",
+            )
+            e1 = Employee(uuid=uuid1, user_name="e1 old name")
+        else:
+            server_old_value, server_new_value = ("value 1", "value 2")
+            e1 = Employee(
+                uuid=uuid1,
+                user_name="e1 old name",
+                some_server_value="value 1",
+            )
         s.add(e1)
         s.flush()
 
-        stmt = (
-            update(Employee)
-            .values(user_name="e1 new name")
-            .where(Employee.uuid == uuid1)
-            .returning(Employee)
-        )
+        # for computed col, make sure e1.some_server_value is loaded.
+        # this will already be the case for all RETURNING backends, so this
+        # suits just MySQL.
+        if use_onupdate.computed:
+            e1.some_server_value
+
+        stmt = update(Employee)
+
         # perform out of band UPDATE on server value to simulate
         # a computed col
-        s.connection().execute(
-            update(Employee.__table__).values(some_server_value="value 2")
+        if use_onupdate.none or use_onupdate.server:
+            s.connection().execute(
+                update(Employee.__table__).values(some_server_value="value 2")
+            )
+
+        execution_options = {}
+
+        s.execute(
+            stmt,
+            execution_options=execution_options,
+            params=[{"uuid": uuid1, "user_name": "e1 new name"}],
         )
-        if populate_existing:
-            rows = s.scalars(
-                stmt, execution_options={"populate_existing": True}
-            )
-            # SPECIAL: before we actually receive the returning rows,
-            # the existing objects have not been updated yet
-            eq_(e1.some_server_value, "value 1")
 
-            eq_(
-                set(rows),
-                {
-                    Employee(
-                        uuid=uuid1,
-                        user_name="e1 new name",
-                        some_server_value="value 2",
-                    ),
-                },
-            )
+        assert "some_server_value" in e1.__dict__
+        eq_(e1.some_server_value, server_old_value)
 
-            # now they are updated
-            eq_(e1.some_server_value, "value 2")
-        else:
-            # no populate existing
-            rows = s.scalars(stmt)
-            eq_(e1.some_server_value, "value 1")
-            eq_(
-                set(rows),
-                {
-                    Employee(
-                        uuid=uuid1,
-                        user_name="e1 new name",
-                        some_server_value="value 1",
-                    ),
-                },
-            )
-            eq_(e1.some_server_value, "value 1")
+        # do a full expire, now the new value is definitely there
         s.commit()
         s.expire_all()
-        eq_(e1.some_server_value, "value 2")
+        eq_(e1.some_server_value, server_new_value)
 
     @testing.variation(
         "returning_executemany",
@@ -2393,18 +2419,24 @@ class EagerLoadTest(
 
         class A(Base):
             __tablename__ = "a"
-            id: Mapped[int] = mapped_column(Integer, primary_key=True)
+            id: Mapped[int] = mapped_column(
+                Integer, Identity(), primary_key=True
+            )
             cs = relationship("C")
 
         class B(Base):
             __tablename__ = "b"
-            id: Mapped[int] = mapped_column(Integer, primary_key=True)
+            id: Mapped[int] = mapped_column(
+                Integer, Identity(), primary_key=True
+            )
             a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
             a = relationship("A")
 
         class C(Base):
             __tablename__ = "c"
-            id: Mapped[int] = mapped_column(Integer, primary_key=True)
+            id: Mapped[int] = mapped_column(
+                Integer, Identity(), primary_key=True
+            )
             a_id: Mapped[int] = mapped_column(ForeignKey("a.id"))
 
     @classmethod

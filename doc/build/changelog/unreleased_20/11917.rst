@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 11917
+
+    Continuing from :ticket:`11912`, columns marked with
+    :paramref:`.mapped_column.onupdate`,
+    :paramref:`.mapped_column.server_onupdate`, or :class:`.Computed` are now
+    refreshed in ORM instances when running an ORM enabled UPDATE with WHERE
+    criteria, even if the statement does not use RETURNING or
+    populate_existing.
