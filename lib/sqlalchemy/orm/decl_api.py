@@ -78,6 +78,7 @@ from ..util.typing import is_generic
 from ..util.typing import is_literal
 from ..util.typing import is_newtype
 from ..util.typing import is_pep695
+from ..util.typing import is_union
 from ..util.typing import Literal
 from ..util.typing import Self
 
@@ -1252,7 +1253,15 @@ class registry:
                 )
             else:
                 python_type_type = python_type_to_check.__origin__
-                search = ((python_type, python_type_type),)
+                if is_union(python_type_to_check):
+                    # Also search for an optional form of this type in case
+                    # that's what's in the type annotation map.
+                    search = (  # type: ignore[assignment]
+                        (python_type, python_type_type),
+                        (Optional[python_type], python_type_type),
+                    )
+                else:
+                    search = ((python_type, python_type_type),)
         elif is_newtype(python_type_to_check):
             python_type_type = flatten_newtype(python_type_to_check)
             search = ((python_type, python_type_type),)

@@ -123,6 +123,11 @@ _Recursive695_2: TypeAlias = _Recursive695_1
 _TypingLiteral = typing.Literal["a", "b"]
 _TypingExtensionsLiteral = typing_extensions.Literal["a", "b"]
 
+_JsonPrimitive: TypeAlias = Union[str, int, float, bool, None]
+_JsonObject: TypeAlias = Dict[str, "_Json"]
+_JsonArray: TypeAlias = List["_Json"]
+_Json: TypeAlias = Union[_JsonObject, _JsonArray, _JsonPrimitive]
+
 if compat.py312:
     exec(
         """
@@ -1768,6 +1773,36 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 is_false(reverse_col.nullable)
                 is_(optional_col.type, our_type)
                 is_true(optional_col.nullable)
+
+    def test_optional_in_annotation_map(self):
+        """SQLAlchemy's behaviour is clear: an optional type means the column
+        is inferred as nullable. Some types which a user may want to put in the
+        type annotation map are already optional. JSON is a good example
+        because without any constraint, the type can be None via JSON null or
+        SQL NULL.
+
+        By permitting optional types in the type annotation map, everything
+        just works, and mapped_column(nullable=False) is available if desired.
+
+        See issue #11370
+        """
+
+        class Base(DeclarativeBase):
+            type_annotation_map = {
+                _Json: JSON,
+            }
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            json1: Mapped[_Json]
+            json2: Mapped[_Json] = mapped_column(nullable=False)
+
+        is_(A.__table__.c.json1.type._type_affinity, JSON)
+        is_(A.__table__.c.json2.type._type_affinity, JSON)
+        is_true(A.__table__.c.json1.nullable)
+        is_false(A.__table__.c.json2.nullable)
 
     @testing.combinations(
         ("not_optional",),
