@@ -512,7 +512,7 @@ def is_optional_union(type_: Any) -> bool:
 
 
 def is_union(type_: Any) -> TypeGuard[ArgsTypeProcotol]:
-    return is_origin_of(type_, "Union")
+    return is_origin_of(type_, "Union", "UnionType")
 
 
 def is_origin_of_cls(
