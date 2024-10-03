@@ -25,6 +25,7 @@ import typing_extensions
 from typing_extensions import get_args as get_args
 from typing_extensions import Literal as Literal
 from typing_extensions import TypeAlias as TypeAlias
+from typing_extensions import TypeAliasType
 
 from sqlalchemy import BIGINT
 from sqlalchemy import BigInteger
@@ -32,6 +33,7 @@ from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import exc
 from sqlalchemy import exc as sa_exc
+from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Identity
@@ -85,6 +87,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing import skip_test
 from sqlalchemy.testing import Variation
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.util import compat
@@ -1694,11 +1697,30 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         else:
             is_(getattr(Element.__table__.c.data, paramname), override_value)
 
-    def test_unions(self):
+    @testing.variation("union", ["union", "pep604"])
+    @testing.variation("typealias", ["legacy", "pep695"])
+    def test_unions(self, union, typealias):
         our_type = Numeric(10, 2)
 
+        if union.union:
+            UnionType = Union[float, Decimal]
+        elif union.pep604:
+            if not compat.py310:
+                skip_test("Required Python 3.10")
+            UnionType = float | Decimal
+        else:
+            union.fail()
+
+        if typealias.legacy:
+            UnionTypeAlias = UnionType
+        elif typealias.pep695:
+            # same as type UnionTypeAlias = UnionType
+            UnionTypeAlias = TypeAliasType("UnionTypeAlias", UnionType)
+        else:
+            typealias.fail()
+
         class Base(DeclarativeBase):
-            type_annotation_map = {Union[float, Decimal]: our_type}
+            type_annotation_map = {UnionTypeAlias: our_type}
 
         class User(Base):
             __tablename__ = "users"
@@ -1739,6 +1761,10 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                     mapped_column()
                 )
 
+            if compat.py312:
+                MyTypeAlias = TypeAliasType("MyTypeAlias", float | Decimal)
+                pep695_data: Mapped[MyTypeAlias] = mapped_column()
+
         is_(User.__table__.c.data.type, our_type)
         is_false(User.__table__.c.data.nullable)
         is_(User.__table__.c.reverse_data.type, our_type)
@@ -1750,8 +1776,9 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_true(User.__table__.c.reverse_optional_data.nullable)
         is_true(User.__table__.c.reverse_u_optional_data.nullable)
 
-        is_(User.__table__.c.float_data.type, our_type)
-        is_(User.__table__.c.decimal_data.type, our_type)
+        is_true(isinstance(User.__table__.c.float_data.type, Float))
+        is_true(isinstance(User.__table__.c.float_data.type, Numeric))
+        is_not(User.__table__.c.decimal_data.type, our_type)
 
         if compat.py310:
             for suffix in ("", "_fwd"):
@@ -1764,6 +1791,9 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 is_false(reverse_col.nullable)
                 is_(optional_col.type, our_type)
                 is_true(optional_col.nullable)
+
+        if compat.py312:
+            is_(User.__table__.c.pep695_data.type, our_type)
 
     def test_optional_in_annotation_map(self):
         """SQLAlchemy's behaviour is clear: an optional type means the column
