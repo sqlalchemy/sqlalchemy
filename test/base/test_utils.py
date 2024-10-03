@@ -4,6 +4,9 @@ import inspect
 from pathlib import Path
 import pickle
 import sys
+import typing
+
+import typing_extensions
 
 from sqlalchemy import exc
 from sqlalchemy import sql
@@ -39,6 +42,7 @@ from sqlalchemy.util import WeakSequence
 from sqlalchemy.util._collections import merge_lists_w_ordering
 from sqlalchemy.util._has_cy import _import_cy_extensions
 from sqlalchemy.util._has_cy import HAS_CYEXTENSION
+from sqlalchemy.util.typing import is_union
 
 
 class WeakSequenceTest(fixtures.TestBase):
@@ -3630,3 +3634,11 @@ class CyExtensionTest(fixtures.TestBase):
             for f in cython_files
         }
         eq_({m.__name__ for m in ext}, set(names))
+
+
+class TypingTest(fixtures.TestBase):
+    def test_is_union(self):
+        assert is_union(typing.Union[str, int])
+        assert is_union(typing_extensions.Union[str, int])
+        if compat.py310:
+            assert is_union(str | int)
