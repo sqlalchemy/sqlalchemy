@@ -31,6 +31,7 @@ from typing import Set
 from typing import Tuple
 from typing import Type
 
+py313 = sys.version_info >= (3, 13)
 py312 = sys.version_info >= (3, 12)
 py311 = sys.version_info >= (3, 11)
 py310 = sys.version_info >= (3, 10)

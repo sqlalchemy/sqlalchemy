@@ -602,6 +602,79 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
 class UpdateStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
     __backend__ = True
 
+    @testing.variation("populate_existing", [True, False])
+    @testing.requires.update_returning
+    def test_update_populate_existing(self, decl_base, populate_existing):
+        """test #11912"""
+
+        class Employee(ComparableEntity, decl_base):
+            __tablename__ = "employee"
+
+            uuid: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+            user_name: Mapped[str] = mapped_column(nullable=False)
+            some_server_value: Mapped[str]
+
+        decl_base.metadata.create_all(testing.db)
+        s = fixture_session()
+
+        uuid1 = uuid.uuid4()
+        e1 = Employee(
+            uuid=uuid1, user_name="e1 old name", some_server_value="value 1"
+        )
+        s.add(e1)
+        s.flush()
+
+        stmt = (
+            update(Employee)
+            .values(user_name="e1 new name")
+            .where(Employee.uuid == uuid1)
+            .returning(Employee)
+        )
+        # perform out of band UPDATE on server value to simulate
+        # a computed col
+        s.connection().execute(
+            update(Employee.__table__).values(some_server_value="value 2")
+        )
+        if populate_existing:
+            rows = s.scalars(
+                stmt, execution_options={"populate_existing": True}
+            )
+            # SPECIAL: before we actually receive the returning rows,
+            # the existing objects have not been updated yet
+            eq_(e1.some_server_value, "value 1")
+
+            eq_(
+                set(rows),
+                {
+                    Employee(
+                        uuid=uuid1,
+                        user_name="e1 new name",
+                        some_server_value="value 2",
+                    ),
+                },
+            )
+
+            # now they are updated
+            eq_(e1.some_server_value, "value 2")
+        else:
+            # no populate existing
+            rows = s.scalars(stmt)
+            eq_(e1.some_server_value, "value 1")
+            eq_(
+                set(rows),
+                {
+                    Employee(
+                        uuid=uuid1,
+                        user_name="e1 new name",
+                        some_server_value="value 1",
+                    ),
+                },
+            )
+            eq_(e1.some_server_value, "value 1")
+        s.commit()
+        s.expire_all()
+        eq_(e1.some_server_value, "value 2")
+
     @testing.variation(
         "returning_executemany",
         [
