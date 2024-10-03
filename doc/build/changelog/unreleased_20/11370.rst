@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 11370
+
+    Fixed issue regarding ``Union`` types that would be present in the
+    :paramref:`_orm.registry.type_annotation_map` of a :class:`_orm.registry`
+    or declarative base class, where a ``Mapped[]`` element that included one
+    of the subtypes present in that ``Union`` would be matched to that entry,
+    potentially ignoring other entries that matched exactly.   The correct
+    behavior now takes place such that an entry should only match in
+    ``type_annotation_map`` exactly, as a ``Union`` type is a self-contained
+    type. For example, an attribute with ``Mapped[float]`` would previously
+    match to a ``type_annotation_map`` entry ``Union[float, Decimal]``; this
+    will no longer match and will now only match to an entry that states
+    ``float``. Pull request courtesy Frazer McLean.
