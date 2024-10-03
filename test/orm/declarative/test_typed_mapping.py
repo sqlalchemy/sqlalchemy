@@ -122,6 +122,14 @@ _JsonObject: TypeAlias = Dict[str, "_Json"]
 _JsonArray: TypeAlias = List["_Json"]
 _Json: TypeAlias = Union[_JsonObject, _JsonArray, _JsonPrimitive]
 
+if compat.py310:
+    _JsonPrimitivePep604: TypeAlias = str | int | float | bool | None
+    _JsonObjectPep604: TypeAlias = dict[str, "_JsonPep604"]
+    _JsonArrayPep604: TypeAlias = list["_JsonPep604"]
+    _JsonPep604: TypeAlias = (
+        _JsonObjectPep604 | _JsonArrayPep604 | _JsonPrimitivePep604
+    )
+
 if compat.py312:
     exec(
         """
@@ -1795,7 +1803,8 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         if compat.py312:
             is_(User.__table__.c.pep695_data.type, our_type)
 
-    def test_optional_in_annotation_map(self):
+    @testing.variation("union", ["union", "pep604"])
+    def test_optional_in_annotation_map(self, union):
         """SQLAlchemy's behaviour is clear: an optional type means the column
         is inferred as nullable. Some types which a user may want to put in the
         type annotation map are already optional. JSON is a good example
@@ -1809,16 +1818,33 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         """
 
         class Base(DeclarativeBase):
-            type_annotation_map = {
-                _Json: JSON,
-            }
+            if union.union:
+                type_annotation_map = {
+                    _Json: JSON,
+                }
+            elif union.pep604:
+                if not compat.py310:
+                    skip_test("Requires Python 3.10+")
+                type_annotation_map = {
+                    _JsonPep604: JSON,
+                }
+            else:
+                union.fail()
 
         class A(Base):
             __tablename__ = "a"
 
             id: Mapped[int] = mapped_column(primary_key=True)
-            json1: Mapped[_Json]
-            json2: Mapped[_Json] = mapped_column(nullable=False)
+            if union.union:
+                json1: Mapped[_Json]
+                json2: Mapped[_Json] = mapped_column(nullable=False)
+            elif union.pep604:
+                if not compat.py310:
+                    skip_test("Requires Python 3.10+")
+                json1: Mapped[_JsonPep604]
+                json2: Mapped[_JsonPep604] = mapped_column(nullable=False)
+            else:
+                union.fail()
 
         is_(A.__table__.c.json1.type._type_affinity, JSON)
         is_(A.__table__.c.json2.type._type_affinity, JSON)
