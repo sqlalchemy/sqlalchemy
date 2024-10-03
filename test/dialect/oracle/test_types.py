@@ -37,6 +37,7 @@ from sqlalchemy import VARCHAR
 from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.dialects.oracle import cx_oracle
 from sqlalchemy.dialects.oracle import oracledb
+from sqlalchemy.dialects.oracle import VECTOR
 from sqlalchemy.sql import column
 from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -949,6 +950,24 @@ class TypesTest(fixtures.TestBase):
             assert connection.execute(t.select()).fetchall() == [(1, "foobar")]
         finally:
             exec_sql(connection, "DROP TABLE Z_TEST")
+
+    def test_vector_dim(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("c1", VECTOR(3,'float32'))
+            )
+        t1.create(connection)
+        eq_(t1.c.c1.type.dim, 3)
+
+    def test_vector_format(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("c1", VECTOR(3,'float32'))
+            )
+        t1.create(connection)
+        eq_(t1.c.c1.type.storage_format, 'float32')
 
 
 class LOBFetchTest(fixtures.TablesTest):

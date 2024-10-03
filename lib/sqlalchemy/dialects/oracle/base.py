@@ -1326,7 +1326,9 @@ class OracleDDLCompiler(compiler.DDLCompiler):
             text += "UNIQUE "
         if index.dialect_options["oracle"]["bitmap"]:
             text += "BITMAP "
-        text += "INDEX %s ON %s (%s)" % (
+        if index.dialect_options["oracle"]["vector"]:
+            text += "VECTOR "
+        text += "INDEX %s ON %s (%s) " % (
             self._prepared_index_name(index, include_schema=True),
             preparer.format_table(index.table, use_schema=True),
             ", ".join(
@@ -1343,6 +1345,35 @@ class OracleDDLCompiler(compiler.DDLCompiler):
                 text += " COMPRESS %d" % (
                     index.dialect_options["oracle"]["compress"]
                 )
+        if index.dialect_options["oracle"]["vector"]:
+            using = index.dialect_options["oracle"]["parameters"].get("type",None)
+            if using is None:
+                text += "ORGANIZATION INMEMORY NEIGHBOR GRAPH "
+            elif using.upper() == "HNSW":
+                text += "ORGANIZATION INMEMORY NEIGHBOR GRAPH "
+            elif using.upper() == "IVF":
+                text += "ORGANIZATION NEIGHBOR PARTITIONS "
+            vector_distance = index.dialect_options["oracle"]["distance"]
+            if vector_distance is None:
+                text += "DISTANCE COSINE "
+            else:
+                text += "DISTANCE " + vector_distance + " "
+            target_accuracy = index.dialect_options["oracle"]["accuracy"]
+            if target_accuracy is None:
+                text += "WITH TARGET ACCURACY 90 "
+            else:
+                text += "WITH TARGET ACCURACY " + str(target_accuracy) + " "
+            parameter = index.dialect_options["oracle"]["parameters"]
+            if parameter:
+                text += "PARAMETERS (%s) " % (
+                    ",".join(
+                        ["%s %s" % (key, value) for key, value in parameter.items()]
+                    )
+                )
+            parallel = index.dialect_options["oracle"]["parallel"]
+            if parallel is not None:
+                text += " PARALLEL " + parallel + " "
+
         return text
 
     def post_create_table(self, table):
@@ -1485,7 +1516,18 @@ class OracleDialect(default.DefaultDialect):
             sa_schema.Table,
             {"resolve_synonyms": False, "on_commit": None, "compress": False},
         ),
-        (sa_schema.Index, {"bitmap": False, "compress": False}),
+        (
+            sa_schema.Index, 
+            {
+                "bitmap": False,
+                "compress": False, 
+                "vector": False,
+                "accuracy": None,
+                "distance": None,
+                "parameters": {},
+                "parallel": None,
+            },
+        ),
         (sa_schema.Sequence, {"order": None}),
         (sa_schema.Identity, {"order": None, "on_null": None}),
     ]
