@@ -25,6 +25,7 @@ from sqlalchemy import Index
 from sqlalchemy import INT
 from sqlalchemy import Integer
 from sqlalchemy import Interval
+from sqlalchemy import JSON
 from sqlalchemy import LargeBinary
 from sqlalchemy import literal
 from sqlalchemy import MetaData
@@ -404,6 +405,24 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(tbl),
             "CREATE TABLE testtbl (data VARCHAR(255) NOT NULL, "
             "PRIMARY KEY (data) USING btree)",
+        )
+
+    def test_create_server_default_with_function_using(self):
+        m = MetaData()
+        tbl = Table(
+            "testtbl",
+            m,
+            Column("time", DateTime, server_default=func.current_timestamp()),
+            Column("name", String(255), server_default="some str"),
+            Column("description", String(255), server_default=func.lower("hi")),
+            Column("data", JSON, server_default=func.json_object()),
+        )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE testtbl (time DATETIME DEFAULT (CURRENT_TIMESTAMP), "
+            "name VARCHAR(255) DEFAULT 'some str', "
+            "description VARCHAR(255) DEFAULT (lower('hi')), "
+            "data JSON DEFAULT (json_object()))",
         )
 
     def test_create_index_expr(self):
