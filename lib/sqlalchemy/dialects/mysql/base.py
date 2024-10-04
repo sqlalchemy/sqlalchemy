@@ -1855,7 +1855,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
     def get_column_default_string(self, column):
         if hasattr(column.server_default, 'arg') and isinstance(column.server_default.arg, functions.FunctionElement):
-            return f'({column.server_default.arg})'
+            return f'({super().get_column_default_string(column)})'
         return super().get_column_default_string(column)
 
     def post_create_table(self, table):
