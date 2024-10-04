@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 11317
+
+    Fixed a bug that caused a syntax error
+    when a function was specified to server_default when creating a column in MySQL.
