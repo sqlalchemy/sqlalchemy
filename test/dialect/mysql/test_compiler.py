@@ -414,7 +414,9 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
             m,
             Column("time", DateTime, server_default=func.current_timestamp()),
             Column("name", String(255), server_default="some str"),
-            Column("description", String(255), server_default=func.lower("hi")),
+            Column(
+                "description", String(255), server_default=func.lower("hi")
+            ),
             Column("data", JSON, server_default=func.json_object()),
         )
         self.assert_compile(

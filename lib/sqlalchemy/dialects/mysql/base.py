@@ -1850,7 +1850,9 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         else:
             default = self.get_column_default_string(column)
             if default is not None:
-                if isinstance(column.server_default.arg, functions.FunctionElement):
+                if isinstance(
+                    column.server_default.arg, functions.FunctionElement
+                ):
                     colspec.append(f"DEFAULT ({default})")
                 else:
                     colspec.append("DEFAULT " + default)
