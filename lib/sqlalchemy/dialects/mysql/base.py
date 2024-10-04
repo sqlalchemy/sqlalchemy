@@ -1850,13 +1850,11 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         else:
             default = self.get_column_default_string(column)
             if default is not None:
-                colspec.append("DEFAULT " + default)
+                if isinstance(column.server_default.arg, functions.FunctionElement):
+                    colspec.append(f"DEFAULT ({default})")
+                else:
+                    colspec.append("DEFAULT " + default)
         return " ".join(colspec)
-
-    def get_column_default_string(self, column):
-        if hasattr(column.server_default, 'arg') and isinstance(column.server_default.arg, functions.FunctionElement):
-            return f'({super().get_column_default_string(column)})'
-        return super().get_column_default_string(column)
 
     def post_create_table(self, table):
         """Build table-level CREATE options like ENGINE and COLLATE."""
