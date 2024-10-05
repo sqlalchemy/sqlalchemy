@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 r"""Provides an API for creation of custom ClauseElements and compilers.
 
@@ -452,15 +451,29 @@ Example usage::
     )
 
 """
+from __future__ import annotations
+
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import Type
+from typing import TYPE_CHECKING
+from typing import TypeVar
+
 from .. import exc
 from ..sql import sqltypes
 
+if TYPE_CHECKING:
+    from ..sql.compiler import SQLCompiler
 
-def compiles(class_, *specs):
+_F = TypeVar("_F", bound=Callable[..., Any])
+
+
+def compiles(class_: Type[Any], *specs: str) -> Callable[[_F], _F]:
     """Register a function as a compiler for a
     given :class:`_expression.ClauseElement` type."""
 
-    def decorate(fn):
+    def decorate(fn: _F) -> _F:
         # get an existing @compiles handler
         existing = class_.__dict__.get("_compiler_dispatcher", None)
 
@@ -473,7 +486,9 @@ def compiles(class_, *specs):
 
             if existing_dispatch:
 
-                def _wrap_existing_dispatch(element, compiler, **kw):
+                def _wrap_existing_dispatch(
+                    element: Any, compiler: SQLCompiler, **kw: Any
+                ) -> Any:
                     try:
                         return existing_dispatch(element, compiler, **kw)
                     except exc.UnsupportedCompilationError as uce:
@@ -505,7 +520,7 @@ def compiles(class_, *specs):
     return decorate
 
 
-def deregister(class_):
+def deregister(class_: Type[Any]) -> None:
     """Remove all custom compilers associated with a given
     :class:`_expression.ClauseElement` type.
 
@@ -517,10 +532,10 @@ def deregister(class_):
 
 
 class _dispatcher:
-    def __init__(self):
-        self.specs = {}
+    def __init__(self) -> None:
+        self.specs: Dict[str, Callable[..., Any]] = {}
 
-    def __call__(self, element, compiler, **kw):
+    def __call__(self, element: Any, compiler: SQLCompiler, **kw: Any) -> Any:
         # TODO: yes, this could also switch off of DBAPI in use.
         fn = self.specs.get(compiler.dialect.name, None)
         if not fn:
