@@ -407,7 +407,21 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
             "PRIMARY KEY (data) USING btree)",
         )
 
-    def test_create_server_default_with_function_using(self):
+    @testing.combinations(
+        (True, (10, 2, 2)),
+        (True, (10, 2, 1)),
+        (True, (10, 2, 0)),
+        (False, (8, 0, 14)),
+        (False, (8, 0, 13)),
+        (False, (8, 0, 12)),
+        argnames="is_mariadb,version",
+    )
+    def test_create_server_default_with_function_using(
+        self, is_mariadb, version
+    ):
+        dialect = mysql.dialect(is_mariadb=is_mariadb)
+        dialect.server_version_info = version
+
         m = MetaData()
         tbl = Table(
             "testtbl",
@@ -419,12 +433,17 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
             ),
             Column("data", JSON, server_default=func.json_object()),
         )
+
+        if not dialect._support_default_function:
+            return
+
         self.assert_compile(
             schema.CreateTable(tbl),
             "CREATE TABLE testtbl (time DATETIME DEFAULT (CURRENT_TIMESTAMP), "
             "name VARCHAR(255) DEFAULT 'some str', "
             "description VARCHAR(255) DEFAULT (lower('hi')), "
             "data JSON DEFAULT (json_object()))",
+            dialect=dialect,
         )
 
     def test_create_index_expr(self):
