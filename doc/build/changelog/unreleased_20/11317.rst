@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, schema
+    :tickets: 11317
+
+    Fixed a bug that caused a syntax error when a function was specified
+    to server_default when creating a column in MySQL or MariaDB.
+    Pull request courtesy of huuya.
