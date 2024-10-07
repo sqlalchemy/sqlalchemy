@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, postgresql, reflection
+    :tickets: 11961
+
+    Fixed bug in reflection of table comments where unrelated text would be
+    returned if an entry in the pg_description table happened to share the
+    same oid (objoid) as the table being reflected.
