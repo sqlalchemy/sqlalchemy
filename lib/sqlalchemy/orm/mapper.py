@@ -444,7 +444,7 @@ class Mapper(
           mapping of the class to an alternate selectable, for loading
           only.
 
-         .. seealso::
+          .. seealso::
 
             :ref:`relationship_aliased_class` - the new pattern that removes
             the need for the :paramref:`_orm.Mapper.non_primary` flag.
