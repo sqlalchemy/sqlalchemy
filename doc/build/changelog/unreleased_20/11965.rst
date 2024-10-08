@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 11965
+
+    Fixed regression caused by fixes to joined eager loading in
+    :ticket:`11449`, where a particular joinedload case could not be asserted
+    correctly.   We now have an example of that case so the assertion has been
+    repaired to allow for it.
+

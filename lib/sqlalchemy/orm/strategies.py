@@ -2694,7 +2694,8 @@ class JoinedLoader(AbstractRelationshipLoader):
         # lets look at our path we are satisfying and see if we're in the
         # wrong place.  This is specifically for when our entity may
         # appear more than once in the path, issue #11449
-        if detected_existing_path:
+        # updated in issue #11965.
+        if detected_existing_path and len(detected_existing_path) > 2:
             # this assertion is currently based on how this call is made,
             # where given a join_obj, the call will have these parameters as
             # entity_inside_join_structure=join_obj._left_memo
