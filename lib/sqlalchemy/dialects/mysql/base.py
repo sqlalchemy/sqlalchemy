@@ -1850,7 +1850,15 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         else:
             default = self.get_column_default_string(column)
             if default is not None:
-                colspec.append("DEFAULT " + default)
+                if (
+                    isinstance(
+                        column.server_default.arg, functions.FunctionElement
+                    )
+                    and self.dialect._support_default_function
+                ):
+                    colspec.append(f"DEFAULT ({default})")
+                else:
+                    colspec.append("DEFAULT " + default)
         return " ".join(colspec)
 
     def post_create_table(self, table):
@@ -2894,6 +2902,17 @@ class MySQLDialect(default.DefaultDialect):
         else:
             # ref https://dev.mysql.com/doc/relnotes/mysql/8.0/en/news-8-0-17.html#mysqld-8-0-17-feature  # noqa
             return self.server_version_info >= (8, 0, 17)
+
+    @property
+    def _support_default_function(self):
+        if not self.server_version_info:
+            return False
+        elif self.is_mariadb:
+            # ref https://mariadb.com/kb/en/mariadb-1021-release-notes/
+            return self.server_version_info >= (10, 2, 1)
+        else:
+            # ref https://dev.mysql.com/doc/refman/8.0/en/data-type-defaults.html # noqa
+            return self.server_version_info >= (8, 0, 13)
 
     @property
     def _is_mariadb(self):
