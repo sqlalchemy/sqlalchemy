@@ -27,6 +27,7 @@ from sqlalchemy import Integer
 from sqlalchemy import JSON
 from sqlalchemy import select
 from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import column_property
@@ -741,6 +742,21 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             @registry.mapped_as_dataclass
             class Foo(Mixin):
                 bar_value: Mapped[float] = mapped_column(default=78)
+
+    def test_MappedAsDataclass_table_provided(self, registry):
+        """test #11973"""
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "Class .*Foo.* already defines a '__table__'. "
+            "ORM Annotated Dataclasses do not support a pre-existing "
+            "'__table__' element",
+        ):
+
+            @registry.mapped_as_dataclass
+            class Foo:
+                __table__ = Table("foo", registry.metadata)
+                foo: Mapped[float]
 
     def test_dataclass_exception_wrapped(self, dc_decl_base):
         with expect_raises_message(
