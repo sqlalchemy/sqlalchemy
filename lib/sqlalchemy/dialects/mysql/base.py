@@ -11,7 +11,6 @@ r"""
 
 .. dialect:: mysql
     :name: MySQL / MariaDB
-    :full_support: 5.6, 5.7, 8.0 / 10.8, 10.9
     :normal_support: 5.6+ / 10+
     :best_effort: 5.0.2+ / 5.0.2+
 

@@ -24,8 +24,8 @@ Included Dialects
     oracle
     mssql
 
-Support Levels for Included Dialects
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Supported versions for Included Dialects
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The following table summarizes the support level for each included dialect.
 
@@ -35,21 +35,20 @@ The following table summarizes the support level for each included dialect.
 Support Definitions
 ^^^^^^^^^^^^^^^^^^^
 
+    .. Fully tested in CI
+    ..     **Fully tested in CI** indicates a version that is tested in the sqlalchemy
+    ..     CI system and passes all the tests in the test suite.
+
 .. glossary::
 
-    Fully tested in CI
-        **Fully tested in CI** indicates a version that is tested in the sqlalchemy
-        CI system and passes all the tests in the test suite.
-
-    Normal support
-        **Normal support** indicates that most features should work,
-        but not all versions are tested in the ci configuration so there may
-        be some not supported edge cases. We will try to fix issues that affect
-        these versions.
+    Supported version
+        **Supported version** indicates that most SQLAlchemy features should work
+        for the mentioned database version. Since not all database versions may be
+        tested in the ci there may be some not working edge cases.
 
     Best effort
-        **Best effort** indicates that we try to support basic features on them,
-        but most likely there will be unsupported features or errors in some use cases.
+        **Best effort** indicates that SQLAlchemy tries to support basic features on these
+        versions, but most likely there will be unsupported features or errors in some use cases.
         Pull requests with associated issues may be accepted to continue supporting
         older versions, which are reviewed on a case-by-case basis.
 
