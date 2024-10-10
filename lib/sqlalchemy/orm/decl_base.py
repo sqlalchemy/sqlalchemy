@@ -1067,6 +1067,16 @@ class _ClassScanMapperConfig(_MapperConfig):
                 "'@registry.mapped_as_dataclass'"
             )
 
+        # can't create a dataclass if __table__ is already there. This would
+        # fail an assertion when calling _get_arguments_for_make_dataclass:
+        # assert False, "Mapped[] received without a mapping declaration"
+        if "__table__" in self.cls.__dict__:
+            raise exc.InvalidRequestError(
+                f"Class {self.cls} already defines a '__table__'. "
+                "ORM Annotated Dataclasses do not support a pre-existing "
+                "'__table__' element"
+            )
+
         warn_for_non_dc_attrs = collections.defaultdict(list)
 
         def _allow_dataclass_field(
