@@ -1159,6 +1159,9 @@ def extract(field: str, expr: _ColumnExpressionArgument[Any]) -> Extract:
 
     :param field: The field to extract.
 
+     .. warning:: This field is used as a literal SQL string.
+         **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
+
     :param expr: A column or Python scalar expression serving as the
       right side of the ``EXTRACT`` expression.
 
