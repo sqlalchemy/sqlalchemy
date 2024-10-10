@@ -1,15 +1,22 @@
+from __future__ import annotations
+
+import uuid
+
 from sqlalchemy import Boolean
 from sqlalchemy import case
 from sqlalchemy import column
+from sqlalchemy import Computed
 from sqlalchemy import delete
 from sqlalchemy import event
 from sqlalchemy import exc
+from sqlalchemy import FetchedValue
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import insert
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import lambda_stmt
+from sqlalchemy import literal
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import or_
@@ -25,6 +32,8 @@ from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import immediateload
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
@@ -44,6 +53,7 @@ from sqlalchemy.testing import in_
 from sqlalchemy.testing import not_in
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -3294,6 +3304,219 @@ class LoadFromReturningTest(fixtures.MappedTest):
             )
 
             # TODO: state of above objects should be "deleted"
+
+
+class OnUpdatePopulationTest(fixtures.TestBase):
+    __backend__ = True
+
+    @testing.variation("populate_existing", [True, False])
+    @testing.variation(
+        "use_onupdate",
+        [
+            "none",
+            "server",
+            "callable",
+            "clientsql",
+            ("computed", testing.requires.computed_columns),
+        ],
+    )
+    @testing.variation(
+        "use_returning",
+        [
+            ("returning", testing.requires.update_returning),
+            ("defaults", testing.requires.update_returning),
+            "none",
+        ],
+    )
+    @testing.variation("synchronize", ["auto", "fetch", "evaluate"])
+    def test_update_populate_existing(
+        self,
+        decl_base,
+        populate_existing,
+        use_onupdate,
+        use_returning,
+        synchronize,
+    ):
+        """test #11912 and #11917"""
+
+        class Employee(ComparableEntity, decl_base):
+            __tablename__ = "employee"
+
+            uuid: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+            user_name: Mapped[str] = mapped_column(String(200), nullable=False)
+
+            if use_onupdate.server:
+                some_server_value: Mapped[str] = mapped_column(
+                    server_onupdate=FetchedValue()
+                )
+            elif use_onupdate.callable:
+                some_server_value: Mapped[str] = mapped_column(
+                    onupdate=lambda: "value 2"
+                )
+            elif use_onupdate.clientsql:
+                some_server_value: Mapped[str] = mapped_column(
+                    onupdate=literal("value 2")
+                )
+            elif use_onupdate.computed:
+                some_server_value: Mapped[str] = mapped_column(
+                    String(255),
+                    Computed(user_name + " computed value"),
+                    nullable=True,
+                )
+            else:
+                some_server_value: Mapped[str]
+
+        decl_base.metadata.create_all(testing.db)
+        s = fixture_session()
+
+        uuid1 = uuid.uuid4()
+
+        if use_onupdate.computed:
+            server_old_value, server_new_value = (
+                "e1 old name computed value",
+                "e1 new name computed value",
+            )
+            e1 = Employee(uuid=uuid1, user_name="e1 old name")
+        else:
+            server_old_value, server_new_value = ("value 1", "value 2")
+            e1 = Employee(
+                uuid=uuid1,
+                user_name="e1 old name",
+                some_server_value="value 1",
+            )
+        s.add(e1)
+        s.flush()
+
+        stmt = (
+            update(Employee)
+            .values(user_name="e1 new name")
+            .where(Employee.uuid == uuid1)
+        )
+
+        if use_returning.returning:
+            stmt = stmt.returning(Employee)
+        elif use_returning.defaults:
+            # NOTE: the return_defaults case here has not been analyzed for
+            # #11912 or #11917.   future enhancements may change its behavior
+            stmt = stmt.return_defaults()
+
+        # perform out of band UPDATE on server value to simulate
+        # a computed col
+        if use_onupdate.none or use_onupdate.server:
+            s.connection().execute(
+                update(Employee.__table__).values(some_server_value="value 2")
+            )
+
+        execution_options = {}
+
+        if populate_existing:
+            execution_options["populate_existing"] = True
+
+        if synchronize.evaluate:
+            execution_options["synchronize_session"] = "evaluate"
+        if synchronize.fetch:
+            execution_options["synchronize_session"] = "fetch"
+
+        if use_returning.returning:
+            rows = s.scalars(stmt, execution_options=execution_options)
+        else:
+            s.execute(stmt, execution_options=execution_options)
+
+        if (
+            use_onupdate.clientsql
+            or use_onupdate.server
+            or use_onupdate.computed
+        ):
+            if not use_returning.defaults:
+                # if server-side onupdate was generated, the col should have
+                # been expired
+                assert "some_server_value" not in e1.__dict__
+
+                # and refreshes when called.  this is even if we have RETURNING
+                # rows we didn't fetch yet.
+                eq_(e1.some_server_value, server_new_value)
+            else:
+                # using return defaults here is not expiring.   have not
+                # researched why, it may be because the explicit
+                # return_defaults interferes with the ORMs call
+                assert "some_server_value" in e1.__dict__
+                eq_(e1.some_server_value, server_old_value)
+
+        elif use_onupdate.callable:
+            if not use_returning.defaults or not synchronize.fetch:
+                # for python-side onupdate, col is populated with local value
+                assert "some_server_value" in e1.__dict__
+
+                # and is refreshed
+                eq_(e1.some_server_value, server_new_value)
+            else:
+                assert "some_server_value" in e1.__dict__
+
+                # and is not refreshed
+                eq_(e1.some_server_value, server_old_value)
+
+        else:
+            # no onupdate, then the value was not touched yet,
+            # even if we used RETURNING with populate_existing, because
+            # we did not fetch the rows yet
+            assert "some_server_value" in e1.__dict__
+            eq_(e1.some_server_value, server_old_value)
+
+        # now see if we can fetch rows
+        if use_returning.returning:
+
+            if populate_existing or not use_onupdate.none:
+                eq_(
+                    set(rows),
+                    {
+                        Employee(
+                            uuid=uuid1,
+                            user_name="e1 new name",
+                            some_server_value=server_new_value,
+                        ),
+                    },
+                )
+
+            else:
+                # if no populate existing and no server default, that column
+                # is not touched at all
+                eq_(
+                    set(rows),
+                    {
+                        Employee(
+                            uuid=uuid1,
+                            user_name="e1 new name",
+                            some_server_value=server_old_value,
+                        ),
+                    },
+                )
+
+        if use_returning.defaults:
+            # as mentioned above, the return_defaults() case here remains
+            # unanalyzed.
+            if synchronize.fetch or (
+                use_onupdate.clientsql
+                or use_onupdate.server
+                or use_onupdate.computed
+                or use_onupdate.none
+            ):
+                eq_(e1.some_server_value, server_old_value)
+            else:
+                eq_(e1.some_server_value, server_new_value)
+
+        elif (
+            populate_existing and use_returning.returning
+        ) or not use_onupdate.none:
+            eq_(e1.some_server_value, server_new_value)
+        else:
+            # no onupdate specified, and no populate existing with returning,
+            # the attribute is not refreshed
+            eq_(e1.some_server_value, server_old_value)
+
+        # do a full expire, now the new value is definitely there
+        s.commit()
+        s.expire_all()
+        eq_(e1.some_server_value, server_new_value)
 
 
 class PGIssue11849Test(fixtures.DeclarativeMappedTest):
