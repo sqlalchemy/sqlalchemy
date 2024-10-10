@@ -1946,7 +1946,7 @@ class _ORMJoin(expression.Join):
             self.onclause,
             isouter=self.isouter,
             _left_memo=self._left_memo,
-            _right_memo=None,
+            _right_memo=other._left_memo._path_registry,
         )
 
         return _ORMJoin(
