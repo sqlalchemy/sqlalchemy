@@ -1,0 +1,7 @@
+.. change::
+    :tags: orm, bug
+    :tickets: 11973
+
+    Improved the error message emitted when trying to map as dataclass a class
+    while also manually providing the ``__table__`` attribute.
+    This usage is currently not supported.
