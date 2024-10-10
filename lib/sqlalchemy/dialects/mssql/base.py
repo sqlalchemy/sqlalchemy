@@ -9,7 +9,6 @@
 """
 .. dialect:: mssql
     :name: Microsoft SQL Server
-    :full_support: 2017
     :normal_support: 2012+
     :best_effort: 2005+
 

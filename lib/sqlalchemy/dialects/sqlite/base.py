@@ -10,7 +10,6 @@
 r"""
 .. dialect:: sqlite
     :name: SQLite
-    :full_support: 3.36.0
     :normal_support: 3.12+
     :best_effort: 3.7.16+
 
