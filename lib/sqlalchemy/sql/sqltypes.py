@@ -870,6 +870,12 @@ class _Binary(TypeEngine[bytes]):
     def __init__(self, length: Optional[int] = None):
         self.length = length
 
+    @util.ro_memoized_property
+    def _generic_type_affinity(
+        self,
+    ) -> Type[TypeEngine[bytes]]:
+        return LargeBinary
+
     def literal_processor(self, dialect):
         def process(value):
             # TODO: this is useless for real world scenarios; implement

@@ -62,6 +62,7 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import types
 from sqlalchemy import Unicode
 from sqlalchemy import util
+from sqlalchemy import VARBINARY
 from sqlalchemy import VARCHAR
 import sqlalchemy.dialects.mysql as mysql
 import sqlalchemy.dialects.oracle as oracle
@@ -450,6 +451,11 @@ class TypeAffinityTest(fixtures.TestBase):
 class AsGenericTest(fixtures.TestBase):
     @testing.combinations(
         (String(), String()),
+        (VARBINARY(), LargeBinary()),
+        (mysql.BINARY(), LargeBinary()),
+        (mysql.MEDIUMBLOB(), LargeBinary()),
+        (oracle.RAW(), LargeBinary()),
+        (pg.BYTEA(), LargeBinary()),
         (VARCHAR(length=100), String(length=100)),
         (NVARCHAR(length=100), Unicode(length=100)),
         (DATE(), Date()),
@@ -472,6 +478,9 @@ class AsGenericTest(fixtures.TestBase):
             (t,)
             for t in _all_types(omit_special_types=True)
             if not util.method_is_overridden(t, TypeEngine.as_generic)
+            and not util.method_is_overridden(
+                t, TypeEngine._generic_type_affinity
+            )
         ]
     )
     def test_as_generic_all_types_heuristic(self, type_):
