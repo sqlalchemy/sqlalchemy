@@ -658,5 +658,13 @@ class PGDialect_pg8000(PGDialect):
     def _dialect_specific_select_one(self):
         return ";"
 
+    def do_terminate(self, dbapi_connection) -> None:
+        try:
+            dbapi_connection.close()
+        except self.dbapi.InterfaceError as e:
+            msg = str(e)
+            if not ("network error" in msg or "connection is closed" in msg):
+                raise e
+
 
 dialect = PGDialect_pg8000
