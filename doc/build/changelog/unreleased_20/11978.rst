@@ -1,0 +1,7 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 11978
+
+    Datatypes that are binary based such as :class:`.VARBINARY` will resolve to
+    :class:`.LargeBinary` when the :meth:`.TypeEngine.as_generic()` method is
+    called.
