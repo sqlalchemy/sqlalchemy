@@ -1051,6 +1051,13 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 "Argument 'init' is a dataclass argument"
             ),
         ),
+        (
+            "hash",
+            True,
+            exc.SADeprecationWarning(
+                "Argument 'hash' is a dataclass argument"
+            ),
+        ),
         argnames="argname, argument, assertion",
     )
     @testing.variation("use_annotated", [True, False, "control"])
@@ -1074,6 +1081,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "repr",
             "compare",
             "default_factory",
+            "hash",
         )
 
         if is_dataclass:
