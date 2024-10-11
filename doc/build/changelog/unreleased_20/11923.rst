@@ -1,0 +1,6 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 11923
+
+    Added the dataclass field ``hash`` parameter to the orm field-like methods,
+    like :meth:`_orn.mapped_column`, :meth:`_orm.relationship`, etc.
