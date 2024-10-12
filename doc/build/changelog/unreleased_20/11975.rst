@@ -1,0 +1,7 @@
+.. change::
+    :tags: mysql, performance
+    :tickets: 11975
+
+    Improved foreign keys reflection logic in MySQL 8+ to use a better
+    optimized query. The previous query could be quite slow in databases
+    with a large number of columns.

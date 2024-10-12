@@ -1197,7 +1197,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect._casing = casing
             dialect.default_schema_name = "Test"
             connection = mock.Mock(
-                dialect=dialect, execute=lambda stmt, params: ischema
+                dialect=dialect, execute=lambda stmt: ischema
             )
             dialect._correct_for_mysql_bugs_88718_96365(fkeys, connection)
             eq_(
