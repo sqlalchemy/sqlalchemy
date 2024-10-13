@@ -47,7 +47,7 @@ from .interfaces import StrategizedProperty
 from .session import _state_session
 from .state import InstanceState
 from .strategy_options import Load
-from .util import _none_set
+from .util import _none_only_set
 from .util import AliasedClass
 from .. import event
 from .. import exc as sa_exc
@@ -936,8 +936,15 @@ class LazyLoader(
             elif LoaderCallableStatus.NEVER_SET in primary_key_identity:
                 return LoaderCallableStatus.NEVER_SET
 
-            if _none_set.issuperset(primary_key_identity):
-                return None
+            # test for None alone in primary_key_identity based on
+            # allow_partial_pks preference.   PASSIVE_NO_RESULT and NEVER_SET
+            # have already been tested above
+            if not self.mapper.allow_partial_pks:
+                if _none_only_set.intersection(primary_key_identity):
+                    return None
+            else:
+                if _none_only_set.issuperset(primary_key_identity):
+                    return None
 
             if (
                 self.key in state.dict
