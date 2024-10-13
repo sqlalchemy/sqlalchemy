@@ -283,6 +283,8 @@ _never_set = frozenset([NEVER_SET])
 
 _none_set = frozenset([None, NEVER_SET, PASSIVE_NO_RESULT])
 
+_none_only_set = frozenset([None])
+
 _SET_DEFERRED_EXPIRED = util.symbol("SET_DEFERRED_EXPIRED")
 
 _DEFER_FOR_STATE = util.symbol("DEFER_FOR_STATE")

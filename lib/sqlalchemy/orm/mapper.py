@@ -298,6 +298,17 @@ class Mapper(
            particular primary key value. A "partial primary key" can occur if
            one has mapped to an OUTER JOIN, for example.
 
+           The :paramref:`.orm.Mapper.allow_partial_pks` parameter also
+           indicates to the ORM relationship lazy loader, when loading a
+           many-to-one related object, if a composite primary key that has
+           partial NULL values should result in an attempt to load from the
+           database, or if a load attempt is not necessary.
+
+           .. versionadded:: 2.0.36 :paramref:`.orm.Mapper.allow_partial_pks`
+              is consulted by the relationship lazy loader strategy, such that
+              when set to False, a SELECT for a composite primary key that
+              has partial NULL values will not be emitted.
+
         :param batch: Defaults to ``True``, indicating that save operations
            of multiple entities can be batched together for efficiency.
            Setting to False indicates
