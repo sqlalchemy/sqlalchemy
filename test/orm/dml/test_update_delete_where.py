@@ -3329,6 +3329,7 @@ class OnUpdatePopulationTest(fixtures.TestBase):
         ],
     )
     @testing.variation("synchronize", ["auto", "fetch", "evaluate"])
+    @testing.variation("pk_order", ["first", "middle"])
     def test_update_populate_existing(
         self,
         decl_base,
@@ -3336,14 +3337,19 @@ class OnUpdatePopulationTest(fixtures.TestBase):
         use_onupdate,
         use_returning,
         synchronize,
+        pk_order,
     ):
         """test #11912 and #11917"""
 
         class Employee(ComparableEntity, decl_base):
             __tablename__ = "employee"
 
-            uuid: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+            if pk_order.first:
+                uuid: Mapped[uuid.UUID] = mapped_column(primary_key=True)
             user_name: Mapped[str] = mapped_column(String(200), nullable=False)
+
+            if pk_order.middle:
+                uuid: Mapped[uuid.UUID] = mapped_column(primary_key=True)
 
             if use_onupdate.server:
                 some_server_value: Mapped[str] = mapped_column(
