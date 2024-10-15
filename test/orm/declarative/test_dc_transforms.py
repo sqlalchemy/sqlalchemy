@@ -77,6 +77,7 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         if request.param == "(MAD, DB)":
 
             class Base(MappedAsDataclass, DeclarativeBase):
+                _mad_before = True
                 metadata = _md
                 type_annotation_map = {
                     str: String().with_variant(String(50), "mysql", "mariadb")
@@ -85,6 +86,7 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         else:
             # test #8665 by reversing the order of the classes
             class Base(DeclarativeBase, MappedAsDataclass):
+                _mad_before = False
                 metadata = _md
                 type_annotation_map = {
                     str: String().with_variant(String(50), "mysql", "mariadb")
@@ -683,6 +685,27 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         fas = pyinspect.getfullargspec(A.__init__)
         eq_(fas.args, ["self", "id"])
         eq_(fas.kwonlyargs, ["data"])
+
+    @testing.combinations(True, False, argnames="unsafe_hash")
+    def test_hash_attribute(
+        self, dc_decl_base: Type[MappedAsDataclass], unsafe_hash
+    ):
+        class A(dc_decl_base, unsafe_hash=unsafe_hash):
+            __tablename__ = "a"
+
+            id: Mapped[int] = mapped_column(primary_key=True, hash=False)
+            data: Mapped[str] = mapped_column(hash=True)
+
+        a = A(id=1, data="x")
+        if not unsafe_hash or not dc_decl_base._mad_before:
+            with expect_raises(TypeError):
+                a_hash1 = hash(a)
+        else:
+            a_hash1 = hash(a)
+            a.id = 41
+            eq_(hash(a), a_hash1)
+            a.data = "y"
+            ne_(hash(a), a_hash1)
 
     @testing.requires.python310
     def test_kw_only_dataclass_constant(
@@ -1814,9 +1837,10 @@ class DataclassArgsTest(fixtures.TestBase):
                 "default_factory": list,
                 "compare": True,
                 "kw_only": False,
+                "hash": False,
             }
             exp = interfaces._AttributeOptions(
-                False, False, False, list, True, False
+                False, False, False, list, True, False, False
             )
         else:
             kw = {}
@@ -1838,7 +1862,13 @@ class DataclassArgsTest(fixtures.TestBase):
                 "compare": True,
             }
             exp = interfaces._AttributeOptions(
-                False, False, _NoArg.NO_ARG, _NoArg.NO_ARG, True, _NoArg.NO_ARG
+                False,
+                False,
+                _NoArg.NO_ARG,
+                _NoArg.NO_ARG,
+                True,
+                _NoArg.NO_ARG,
+                _NoArg.NO_ARG,
             )
         else:
             kw = {}
