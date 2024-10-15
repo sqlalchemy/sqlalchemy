@@ -512,6 +512,11 @@ class AsGenericTest(fixtures.TestBase):
         assert isinstance(gentype, TypeEngine)
 
 
+class SomeTypeDecorator(TypeDecorator):
+    impl = String()
+    cache_ok = True
+
+
 class PickleTypesTest(fixtures.TestBase):
     @testing.combinations(
         ("Boo", Boolean()),
@@ -530,6 +535,7 @@ class PickleTypesTest(fixtures.TestBase):
         ("Lar", LargeBinary()),
         ("Pic", PickleType()),
         ("Int", Interval()),
+        ("Dec", SomeTypeDecorator()),
         argnames="name,type_",
         id_="ar",
     )
@@ -543,9 +549,36 @@ class PickleTypesTest(fixtures.TestBase):
         meta = MetaData()
         Table("foo", meta, column_type)
 
+        expr = select(1).where(column_type == bindparam("q"))
+
         for loads, dumps in picklers():
             loads(dumps(column_type))
             loads(dumps(meta))
+
+            expr_str_one = str(expr)
+            ne = loads(dumps(expr))
+
+            eq_(str(ne), expr_str_one)
+
+            re_pickle_it = loads(dumps(ne))
+            eq_(str(re_pickle_it), expr_str_one)
+
+    def test_pickle_td_comparator(self):
+        comparator = SomeTypeDecorator().comparator_factory(column("q"))
+
+        expected_mro = (
+            TypeDecorator.Comparator,
+            sqltypes.Concatenable.Comparator,
+            TypeEngine.Comparator,
+        )
+        eq_(comparator.__class__.__mro__[1:4], expected_mro)
+
+        for loads, dumps in picklers():
+            unpickled = loads(dumps(comparator))
+            eq_(unpickled.__class__.__mro__[1:4], expected_mro)
+
+            reunpickled = loads(dumps(unpickled))
+            eq_(reunpickled.__class__.__mro__[1:4], expected_mro)
 
     @testing.combinations(
         ("Str", String()),
