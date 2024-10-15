@@ -4351,6 +4351,10 @@ def validates(
     modify or replace the value before proceeding. The function should
     otherwise return the given value.
 
+    Overriding validator method will invoke child validator method, in
+    order to also invoke parent validator method as well child validator
+    can explicitly invoke parent class validator(s).
+
     Note that a validator for a collection **cannot** issue a load of that
     collection within the validation routine - this usage raises
     an assertion to avoid recursion overflows.  This is a reentrant
