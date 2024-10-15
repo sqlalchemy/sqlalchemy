@@ -183,6 +183,9 @@ class TypeEngine(Visitable, Generic[_T]):
             self.expr = expr
             self.type = expr.type
 
+        def __reduce__(self) -> Any:
+            return self.__class__, (self.expr,)
+
         @util.preload_module("sqlalchemy.sql.default_comparator")
         def operate(
             self, op: OperatorType, *other: Any, **kwargs: Any
@@ -1721,20 +1724,38 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
             kwargs["_python_is_types"] = self.expr.type.coerce_to_is_types
             return super().reverse_operate(op, other, **kwargs)
 
+    @staticmethod
+    def _reduce_td_comparator(
+        impl: TypeEngine[Any], expr: ColumnElement[_T]
+    ) -> Any:
+        return TypeDecorator._create_td_comparator_type(impl)(expr)
+
+    @staticmethod
+    def _create_td_comparator_type(
+        impl: TypeEngine[Any],
+    ) -> _ComparatorFactory[Any]:
+
+        def __reduce__(self: TypeDecorator.Comparator[Any]) -> Any:
+            return (TypeDecorator._reduce_td_comparator, (impl, self.expr))
+
+        return type(
+            "TDComparator",
+            (TypeDecorator.Comparator, impl.comparator_factory),  # type: ignore # noqa: E501
+            {"__reduce__": __reduce__},
+        )
+
     @property
     def comparator_factory(  # type: ignore  # mypy properties bug
         self,
     ) -> _ComparatorFactory[Any]:
         if TypeDecorator.Comparator in self.impl.comparator_factory.__mro__:  # type: ignore # noqa: E501
-            return self.impl.comparator_factory
+            return self.impl_instance.comparator_factory
         else:
             # reconcile the Comparator class on the impl with that
-            # of TypeDecorator
-            return type(
-                "TDComparator",
-                (TypeDecorator.Comparator, self.impl.comparator_factory),  # type: ignore # noqa: E501
-                {},
-            )
+            # of TypeDecorator.
+            # the use of multiple staticmethods is to support repeated
+            # pickling of the Comparator itself
+            return TypeDecorator._create_td_comparator_type(self.impl_instance)
 
     def _copy_with_check(self) -> Self:
         tt = self.copy()
