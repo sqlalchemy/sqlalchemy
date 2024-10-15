@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, sql, regression
-    :tickets: 12002
-
-    Fixed regression from 1.4 where some datatypes such as those derived from
-    :class:`.TypeDecorator` could not be pickled when they were part of a
-    larger SQL expression composition due to internal supporting structures
-    themselves not being pickleable.

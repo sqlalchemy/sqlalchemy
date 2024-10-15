@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 11997
-
-    Fixed bug in ORM "update with WHERE clause" feature where an explicit
-    ``.returning()`` would interfere with the "fetch" synchronize strategy due
-    to an assumption that the ORM mapped class featured the primary key columns
-    in a specific position within the RETURNING.  This has been fixed to use
-    appropriate ORM column targeting.
