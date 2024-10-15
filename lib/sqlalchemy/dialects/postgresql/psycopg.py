@@ -126,8 +126,6 @@ class _PGREGCONFIG(REGCONFIG):
 
 
 class _PGJSON(JSON):
-    render_bind_cast = True
-
     def bind_processor(self, dialect):
         return self._make_bind_processor(None, dialect._psycopg_Json)
 
@@ -136,8 +134,6 @@ class _PGJSON(JSON):
 
 
 class _PGJSONB(JSONB):
-    render_bind_cast = True
-
     def bind_processor(self, dialect):
         return self._make_bind_processor(None, dialect._psycopg_Jsonb)
 

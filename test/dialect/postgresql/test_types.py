@@ -6195,7 +6195,7 @@ class JSONBTest(JSONTest):
             lambda self: self.jsoncol.has_all(
                 {"name": "r1", "data": {"k1": "r1v1", "k2": "r1v2"}}
             ),
-            "test_table.test_column ?& %(test_column_1)s",
+            "test_table.test_column ?& %(test_column_1)s::JSONB",
         ),
         (
             lambda self: self.jsoncol.has_all(self.any_),
@@ -6213,7 +6213,7 @@ class JSONBTest(JSONTest):
         ),
         (
             lambda self: self.jsoncol.contains({"k1": "r1v1"}),
-            "test_table.test_column @> %(test_column_1)s",
+            "test_table.test_column @> %(test_column_1)s::JSONB",
         ),
         (
             lambda self: self.jsoncol.contains(self.any_),
@@ -6221,7 +6221,7 @@ class JSONBTest(JSONTest):
         ),
         (
             lambda self: self.jsoncol.contained_by({"foo": "1", "bar": None}),
-            "test_table.test_column <@ %(test_column_1)s",
+            "test_table.test_column <@ %(test_column_1)s::JSONB",
         ),
         (
             lambda self: self.jsoncol.contained_by(self.any_),

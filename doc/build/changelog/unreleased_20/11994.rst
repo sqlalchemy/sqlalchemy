@@ -1,0 +1,6 @@
+.. change::
+    :tags: postgresql, usecase
+    :tickets: 11994
+
+    Render bind cast for ``JSON`` and ``JSONB`` datatype on every dialect.
+    Previously this was only enabled in a subset of dialects.

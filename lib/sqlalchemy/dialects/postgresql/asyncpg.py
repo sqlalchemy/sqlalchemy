@@ -263,15 +263,11 @@ class AsyncpgBigInteger(sqltypes.BigInteger):
 
 
 class AsyncpgJSON(json.JSON):
-    render_bind_cast = True
-
     def result_processor(self, dialect, coltype):
         return None
 
 
 class AsyncpgJSONB(json.JSONB):
-    render_bind_cast = True
-
     def result_processor(self, dialect, coltype):
         return None
 
