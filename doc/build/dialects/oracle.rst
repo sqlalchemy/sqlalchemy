@@ -31,6 +31,7 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
         TIMESTAMP,
         VARCHAR,
         VARCHAR2,
+        VECTOR,
     )
 
 .. versionadded:: 1.2.19 Added :class:`_types.NCHAR` to the list of datatypes
@@ -78,6 +79,9 @@ construction arguments, are as follows:
   :members: __init__
 
 .. autoclass:: TIMESTAMP
+  :members: __init__
+
+.. autoclass:: VECTOR
   :members: __init__
 
 .. _cx_oracle:

@@ -968,6 +968,47 @@ class TypesTest(fixtures.TestBase):
             )
         t1.create(connection)
         eq_(t1.c.c1.type.storage_format, 'float32')
+        
+    def test_vector_hnsw_index(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("c1", VECTOR(3,'float32'))
+        )
+        
+        hnsw_index = Index(
+            'hnsw_vector_index',
+            t1.c1,
+            oracle_vector = True,
+            oracle_accuracy = 95,
+            oracle_distance = "COSINE",
+            oracle_parameters = {'type':'HNSW','neighbors':20,'efconstruction':300}
+        )
+
+    def test_vector_ivf_index(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("c1", VECTOR(3,'float32'))
+        )
+
+        ivf_index = Index(
+            'ivf_vector_index',
+            t1.c1,
+            oracle_vector = True,
+            oracle_accuracy = 90,
+            oracle_distance = "DOT",
+            oracle_parameters = {'type':'IVF','neighbor partitions':10}
+        )
+
+    def test_vector(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("c1", VECTOR(3,'float32'))
+        )
+
+
 
 
 class LOBFetchTest(fixtures.TablesTest):

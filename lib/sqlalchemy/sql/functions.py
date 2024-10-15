@@ -1638,27 +1638,63 @@ class sum(ReturnTypeFromArgs[_T]):  # noqa: A001
     inherit_cache = True
 
 class vector_distance(ReturnTypeFromArgs[_T]):
-    """The SQL vector_distance() function"""
+     r"""The SQL L1_DISTANCE() function
+    This function is used as part of the GROUP BY of a statement::
     
+        query_vector = array.array("b",[2,3,4])
+        stmt = session.query(
+            table).order_by(func.vector_distance(table.c.col_1,
+        query_vector,'EUCLIDEAN'))
+    
+    """
+
     inherit_cache = True 
 
 class L1_DISTANCE(ReturnTypeFromArgs[_T]):
-    """The SQL L1_DISTANCE() function"""
+    r"""The SQL L1_DISTANCE() function
+    This function is used as part of the GROUP BY of a statement::
+    
+        query_vector = array.array("b",[2,3,4])
+        stmt = session.query(
+            table).order_by(func.L1_distance(table.c.col_1,query_vector))
+    
+    """
 
     inherit_cache = True
 
 class L2_DISTANCE(ReturnTypeFromArgs[_T]):
-    """The SQL L2_DISTANCE() function"""
+    r"""The SQL L2_DISTANCE() function
+    This function is used as part of the GROUP BY of a statement::
+
+        query_vector = array.array("b",[2,3,4])
+        stmt = session.query(
+            table).order_by(func.L2_distance(table.c.col_1,query_vector))
+
+    """
 
     inherit_cache = True
 
 class INNER_PRODUCT(ReturnTypeFromArgs[_T]):
-    """The SQL INNER_DISTANCE() function"""
+    r"""The SQL INNER_PRODUCT() function
+    This function is used as part of the GROUP BY of a statement::
+
+        query_vector = array.array("b",[2,3,4])
+        stmt = session.query(
+            table).order_by(func.INNER_PRODUCT(table.c.col_1,query_vector))
+    
+    """
 
     inherit_cache = True
 
 class COSINE_DISTANCE(ReturnTypeFromArgs[_T]):
-    """The SQL COSINE_DISTANCE() function"""
+    r"""The SQL COSINE_DISTANCE() function
+    This function is used as part of the GROUP BY of a statement::
+
+        query_vector = array.array("b",[2,3,4])
+        stmt = session.query(
+            table).order_by(func.COSINE_DISTANCE(table.c.col_1,query_vector))
+    
+    """
 
     inherit_cache = True
 

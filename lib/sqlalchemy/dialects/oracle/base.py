@@ -533,6 +533,32 @@ The ``oracle_compress`` parameter accepts either an integer specifying the
 number of prefix columns to compress, or ``True`` to use the default (all
 columns for non-unique indexes, all but the last column for unique indexes).
 
+Vector Index
+~~~~~~~~~~~~
+
+There are two vector indexes supported in vector search: IVF Flat index and HNSW 
+index. To use vector indexing specify ``oracle_vector`` parameter to True. To learn 
+more about the parameters that can be passed, please visit this link:
+https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/create-vector-index.html::
+
+    Index(
+            'hnsw_vector_index',
+            my_table.c.c1,
+            oracle_vector = True,
+            oracle_accuracy = 95,
+            oracle_distance = "COSINE",
+            oracle_parameters = {'type':'HNSW','neighbors':20,'efconstruction':300}
+        )
+
+    Index(
+            'ivf_vector_index',
+            my_table.c.c1,
+            oracle_vector = True,
+            oracle_accuracy = 90,
+            oracle_distance = "DOT",
+            oracle_parameters = {'type':'IVF','neighbor partitions':10}
+        )
+
 """  # noqa
 
 from __future__ import annotations
