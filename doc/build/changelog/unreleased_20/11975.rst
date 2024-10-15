@@ -2,6 +2,7 @@
     :tags: mysql, performance
     :tickets: 11975
 
-    Improved foreign keys reflection logic in MySQL 8+ to use a better
-    optimized query. The previous query could be quite slow in databases
-    with a large number of columns.
+    Improved a query used for the MySQL 8 backend when reflecting foreign keys
+    to be better optimized.   Previously, for a database that had millions of
+    columns across all tables, the query could be prohibitively slow; the query
+    has been reworked to take better advantage of existing indexes.
