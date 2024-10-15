@@ -1,8 +1,0 @@
-.. change::
-    :tags: usecase, orm
-    :tickets: 11923
-
-    Added new parameter :paramref:`_orm.mapped_column.hash` to ORM constructs
-    such as :meth:`_orm.mapped_column`, :meth:`_orm.relationship`, etc.,
-    which is interpreted for ORM Native Dataclasses in the same way as other
-    dataclass-specific field parameters.
