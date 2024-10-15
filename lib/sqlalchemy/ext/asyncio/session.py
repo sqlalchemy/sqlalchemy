@@ -1863,7 +1863,7 @@ class AsyncSessionTransaction(
     ) -> AsyncSessionTransaction:
         self.sync_transaction = self._assign_proxied(
             await greenlet_spawn(
-                self.session.sync_session.begin_nested  # type: ignore
+                self.session.sync_session.begin_nested
                 if self.nested
                 else self.session.sync_session.begin
             )
