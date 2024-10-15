@@ -1,6 +1,9 @@
 .. change::
-    :tags: postgresql, usecase
+    :tags: postgresql, bug
     :tickets: 11994
 
-    Render bind cast for ``JSON`` and ``JSONB`` datatype on every dialect.
-    Previously this was only enabled in a subset of dialects.
+    The :class:`.postgresql.JSON` and :class:`.postgresql.JSONB` datatypes will
+    now render a "bind cast" in all cases for all PostgreSQL backends,
+    including psycopg2, whereas previously it was only enabled for some
+    backends.   This allows greater accuracy in allowing the database server to
+    recognize when a string value is to be interpreted as JSON.
