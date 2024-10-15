@@ -864,53 +864,39 @@ class BulkUDCompileState(ORMDMLState):
         return return_crit
 
     @classmethod
-    def _interpret_returning_rows(cls, mapper, rows):
-        """translate from local inherited table columns to base mapper
-        primary key columns.
+    def _interpret_returning_rows(cls, result, mapper, rows):
+        """return rows that indicate PK cols in mapper.primary_key position
+        for RETURNING rows.
 
-        Joined inheritance mappers always establish the primary key in terms of
-        the base table.   When we UPDATE a sub-table, we can only get
-        RETURNING for the sub-table's columns.
+        Prior to 2.0.36, this method seemed to be written for some kind of
+        inheritance scenario but the scenario was unused for actual joined
+        inheritance, and the function instead seemed to perform some kind of
+        partial translation that would remove non-PK cols if the PK cols
+        happened to be first in the row, but not otherwise.  The joined
+        inheritance walk feature here seems to have never been used as it was
+        always skipped by the "local_table" check.
 
-        Here, we create a lookup from the local sub table's primary key
-        columns to the base table PK columns so that we can get identity
-        key values from RETURNING that's against the joined inheritance
-        sub-table.
-
-        the complexity here is to support more than one level deep of
-        inheritance, where we have to link columns to each other across
-        the inheritance hierarchy.
+        As of 2.0.36 the function strips away non-PK cols and provides the
+        PK cols for the table in mapper PK order.
 
         """
 
-        if mapper.local_table is not mapper.base_mapper.local_table:
-            return rows
+        try:
+            if mapper.local_table is not mapper.base_mapper.local_table:
+                # TODO: dive more into how a local table PK is used for fetch
+                # sync, not clear if this is correct as it depends on the
+                # downstream routine to fetch rows using
+                # local_table.primary_key order
+                pk_keys = result._tuple_getter(mapper.local_table.primary_key)
+            else:
+                pk_keys = result._tuple_getter(mapper.primary_key)
+        except KeyError:
+            # can't use these rows, they don't have PK cols in them
+            # this is an unusual case where the user would have used
+            # .return_defaults()
+            return []
 
-        # this starts as a mapping of
-        # local_pk_col: local_pk_col.
-        # we will then iteratively rewrite the "value" of the dict with
-        # each successive superclass column
-        local_pk_to_base_pk = {pk: pk for pk in mapper.local_table.primary_key}
-
-        for mp in mapper.iterate_to_root():
-            if mp.inherits is None:
-                break
-            elif mp.local_table is mp.inherits.local_table:
-                continue
-
-            t_to_e = dict(mp._table_to_equated[mp.inherits.local_table])
-            col_to_col = {sub_pk: super_pk for super_pk, sub_pk in t_to_e[mp]}
-            for pk, super_ in local_pk_to_base_pk.items():
-                local_pk_to_base_pk[pk] = col_to_col[super_]
-
-        lookup = {
-            local_pk_to_base_pk[lpk]: idx
-            for idx, lpk in enumerate(mapper.local_table.primary_key)
-        }
-        primary_key_convert = [
-            lookup[bpk] for bpk in mapper.base_mapper.primary_key
-        ]
-        return [tuple(row[idx] for idx in primary_key_convert) for row in rows]
+        return [pk_keys(row) for row in rows]
 
     @classmethod
     def _get_matched_objects_on_criteria(cls, update_options, states):
@@ -1778,9 +1764,8 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
         returned_defaults_rows = result.returned_defaults_rows
         if returned_defaults_rows:
             pk_rows = cls._interpret_returning_rows(
-                target_mapper, returned_defaults_rows
+                result, target_mapper, returned_defaults_rows
             )
-
             matched_rows = [
                 tuple(row) + (update_options._identity_token,)
                 for row in pk_rows
@@ -2110,7 +2095,7 @@ class BulkORMDelete(BulkUDCompileState, DeleteDMLState):
 
         if returned_defaults_rows:
             pk_rows = cls._interpret_returning_rows(
-                target_mapper, returned_defaults_rows
+                result, target_mapper, returned_defaults_rows
             )
 
             matched_rows = [
