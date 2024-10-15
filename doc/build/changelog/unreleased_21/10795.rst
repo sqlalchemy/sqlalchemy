@@ -1,0 +1,8 @@
+.. change::
+    :tags: pg8000
+    :tickets: 10795
+
+    In the pg8000 dialect the `do_terminate()` is now overriden so that it
+    discards network errors or 'connection is closed' errors. The
+    `do_terminate()` method doesn't require a graceful disconnect so any
+    exceptions encountered shouldn't be propagated.
