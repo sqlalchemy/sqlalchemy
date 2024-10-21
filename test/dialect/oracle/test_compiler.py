@@ -1659,6 +1659,46 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             cast(column("foo"), d1), "CAST(foo AS DOUBLE PRECISION)"
         )
 
+    def test_table_tablespace(self):
+        m = MetaData()
+
+        t = Table(
+            "table1",
+            m,
+            Column("x", Integer),
+            oracle_tablespace='TEST_TABLESPACE',
+        )
+        t2 = Table(
+            "table2",
+            m,
+            Column("x", Integer),
+            oracle_tablespace='test_tablespace',
+        )
+        t3 = Table(
+            "table3",
+            m,
+            Column("x", Integer),
+            oracle_tablespace='TestTableSpace',
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE "
+            "table1 (x INTEGER) "
+            'TABLESPACE "TEST_TABLESPACE"',
+        )
+        self.assert_compile(
+            schema.CreateTable(t2),
+            "CREATE TABLE "
+            "table2 (x INTEGER) "
+            'TABLESPACE test_tablespace',
+        )
+        self.assert_compile(
+            schema.CreateTable(t3),
+            "CREATE TABLE "
+            "table3 (x INTEGER) "
+            'TABLESPACE "TestTableSpace"',
+        )
+
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_basic(self):
