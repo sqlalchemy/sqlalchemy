@@ -1,0 +1,8 @@
+.. change::
+    :tags: orm, bug
+    :tickets: 12019
+
+    Fixed regression caused by an internal code change in response to recent
+    Mypy releases that caused the very unusual case of a list of ORM-mapped
+    attribute expressions passed to :meth:`.ColumnOperators.in_` to no longer
+    be accepted.

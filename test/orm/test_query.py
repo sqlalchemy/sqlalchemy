@@ -1979,6 +1979,15 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
 
         assert_raises(NotImplementedError, Address.user.in_, [User(id=5)])
 
+    def test_in_instrumented_attribute(self):
+        """test #12019"""
+        User = self.classes.User
+
+        self._test(
+            User.id.in_([User.id, User.name]),
+            "users.id IN (users.id, users.name)",
+        )
+
     def test_neg(self):
         User = self.classes.User
 
