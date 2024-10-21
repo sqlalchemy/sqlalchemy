@@ -846,15 +846,15 @@ class InElementImpl(RoleImpl):
     def _literal_coercion(self, element, *, expr, operator, **kw):
         if util.is_non_string_iterable(element):
             non_literal_expressions: Dict[
-                Optional[ColumnElement[Any]],
-                ColumnElement[Any],
+                Optional[_ColumnExpressionArgument[Any]],
+                _ColumnExpressionArgument[Any],
             ] = {}
             element = list(element)
             for o in element:
                 if not _is_literal(o):
                     if not isinstance(
                         o, util.preloaded.sql_elements.ColumnElement
-                    ):
+                    ) and not hasattr(o, "__clause_element__"):
                         self._raise_for_expected(element, **kw)
 
                     else:

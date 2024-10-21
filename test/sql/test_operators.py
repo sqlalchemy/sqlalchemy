@@ -83,6 +83,14 @@ class LoopOperate(operators.ColumnOperators):
         return op
 
 
+class ColExpressionDuckTypeOnly:
+    def __init__(self, expr):
+        self.expr = expr
+
+    def __clause_element__(self):
+        return self.expr
+
+
 class DefaultColumnComparatorTest(
     testing.AssertsCompiledSQL, fixtures.TestBase
 ):
@@ -2195,6 +2203,15 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_in_14(self):
         self.assert_compile(
             self.table1.c.myid.in_([self.table1.c.myid]),
+            "mytable.myid IN (mytable.myid)",
+        )
+
+    def test_in_14_5(self):
+        """test #12019"""
+        self.assert_compile(
+            self.table1.c.myid.in_(
+                [ColExpressionDuckTypeOnly(self.table1.c.myid)]
+            ),
             "mytable.myid IN (mytable.myid)",
         )
 
