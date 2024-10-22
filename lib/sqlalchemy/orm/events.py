@@ -336,16 +336,6 @@ class InstanceEvents(event.Events[ClassManager[Any]]):
         super()._clear()
         _InstanceEventsHold._clear()
 
-    def first_init(self, manager: ClassManager[_O], cls: Type[_O]) -> None:
-        """Called when the first instance of a particular mapping is called.
-
-        This event is called when the ``__init__`` method of a class
-        is called the first time for that particular class.    The event
-        invokes before ``__init__`` actually proceeds as well as before
-        the :meth:`.InstanceEvents.init` event is invoked.
-
-        """
-
     def init(self, target: _O, args: Any, kwargs: Any) -> None:
         """Receive an instance when its constructor is called.
 
