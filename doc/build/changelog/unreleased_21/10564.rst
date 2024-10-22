@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 10564
+
+    The :paramref:`_orm.relationship.secondary` parameter no longer uses Python
+    ``eval()`` to evaluate the given string.   This parameter when passed a
+    string should resolve to a table name that's present in the local
+    :class:`.MetaData` collection only, and never needs to be any kind of
+    Python expression otherwise.  To use a real deferred callable based on a
+    name that may not be locally present yet, use a lambda instead.

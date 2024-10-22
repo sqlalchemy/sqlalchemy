@@ -10,6 +10,7 @@ from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Index
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import join
 from sqlalchemy import literal
 from sqlalchemy import select
 from sqlalchemy import String
@@ -1906,8 +1907,9 @@ class DeclarativeMultiBaseTest(
 
             d = relationship(
                 "D",
-                secondary="join(B, D, B.d_id == D.id)."
-                "join(C, C.d_id == D.id)",
+                secondary=lambda: join(B, D, B.d_id == D.id).join(
+                    C, C.d_id == D.id
+                ),
                 primaryjoin="and_(A.b_id == B.id, A.id == C.a_id)",
                 secondaryjoin="D.id == B.d_id",
             )
