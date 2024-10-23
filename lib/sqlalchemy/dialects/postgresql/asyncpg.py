@@ -119,25 +119,20 @@ By default, asyncpg enumerates prepared statements in numeric order, which
 can lead to errors if a name has already been taken for another prepared
 statement. This issue can arise if your application uses database proxies
 such as PgBouncer to handle connections. One possible workaround is to
-use dynamic prepared statement names, which asyncpg now supports through
-an optional ``name`` value for the statement name. This allows you to
-generate your own unique names that won't conflict with existing ones.
-To achieve this, you can provide a function that will be called every time
-a prepared statement is prepared::
-
-    from uuid import uuid4
+disable prepared statement caching, which asyncpg now supports through
+setting ``statement_cache_size`` to ``0``::
 
     engine = create_async_engine(
         "postgresql+asyncpg://user:pass@somepgbouncer/dbname",
         poolclass=NullPool,
         connect_args={
-            'prepared_statement_name_func': lambda:  f'__asyncpg_{uuid4()}__',
+            'statement_cache_size': 0,
         },
     )
 
 .. seealso::
 
-   https://github.com/MagicStack/asyncpg/issues/837
+   https://github.com/MagicStack/asyncpg/issues/1058
 
    https://github.com/sqlalchemy/sqlalchemy/issues/6467
 
