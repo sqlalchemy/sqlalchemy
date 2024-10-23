@@ -130,6 +130,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Teradata Vantage                               | teradatasqlalchemy_                   |
 +------------------------------------------------+---------------------------------------+
+| TiDB                                           | sqlalchemy-tidb_                      |
++------------------------------------------------+---------------------------------------+
 | YugabyteDB                                     | sqlalchemy-yugabytedb_                |
 +------------------------------------------------+---------------------------------------+
 
@@ -170,3 +172,4 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _databricks: https://docs.databricks.com/en/dev-tools/sqlalchemy.html
 .. _clickhouse-sqlalchemy: https://pypi.org/project/clickhouse-sqlalchemy/
 .. _sqlalchemy-kinetica: https://github.com/kineticadb/sqlalchemy-kinetica/
+.. _sqlalchemy-tidb: https://github.com/pingcap/sqlalchemy-tidb
