@@ -500,6 +500,15 @@ in conjunction with the :class:`_schema.Table` construct:
    The ``oracle_compress`` parameter accepts either an integer compression
    level, or ``True`` to use the default compression level.
 
+* ``TABLESPACE``::
+
+    Table('mytable', metadata, ...,
+        oracle_tablespace="EXAMPLE_TABLESPACE")
+
+    The ``oracle_tablespace`` parameter specifies the tablespace in which the
+    table is to be created. This is useful when you want to create a table in a
+    tablespace other than the default tablespace of the user.
+
 .. _oracle_index_options:
 
 Oracle Specific Index Options
