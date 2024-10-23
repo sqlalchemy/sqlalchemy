@@ -3755,7 +3755,7 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
 
             d = relationship(
                 "D",
-                secondary="join(B, C)",
+                secondary=join(B, C),
                 primaryjoin="A.b_id == B.id",
                 secondaryjoin="C.d_id == D.id",
                 uselist=False,

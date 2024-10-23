@@ -1098,11 +1098,11 @@ def relationship(
       collection associated with the
       parent-mapped :class:`_schema.Table`.
 
-      .. warning:: When passed as a Python-evaluable string, the
-         argument is interpreted using Python's ``eval()`` function.
-         **DO NOT PASS UNTRUSTED INPUT TO THIS STRING**.
-         See :ref:`declarative_relationship_eval` for details on
-         declarative evaluation of :func:`_orm.relationship` arguments.
+      .. versionchanged:: 2.1  When passed as a string, the argument is
+         interpreted as a string name that should exist directly in the
+         registry of tables.  The Python ``eval()`` function is no longer
+         used for the :paramref:`_orm.relationship.secondary` argument when
+         passed as a string.
 
       The :paramref:`_orm.relationship.secondary` keyword argument is
       typically applied in the case where the intermediary

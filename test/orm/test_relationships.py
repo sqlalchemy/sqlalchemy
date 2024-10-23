@@ -4644,6 +4644,68 @@ class SecondaryArgTest(fixtures.TestBase):
     def teardown_test(self):
         clear_mappers()
 
+    @testing.variation("arg_style", ["string", "table", "lambda_"])
+    def test_secondary_arg_styles(self, arg_style):
+        Base = declarative_base()
+
+        c = Table(
+            "c",
+            Base.metadata,
+            Column("a_id", ForeignKey("a.id")),
+            Column("b_id", ForeignKey("b.id")),
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            data = Column(String)
+
+            if arg_style.string:
+                bs = relationship("B", secondary="c")
+            elif arg_style.table:
+                bs = relationship("B", secondary=c)
+            elif arg_style.lambda_:
+                bs = relationship("B", secondary=lambda: c)
+            else:
+                arg_style.fail()
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+
+        is_(inspect(A).relationships.bs.secondary, c)
+
+    def test_no_eval_in_secondary(self):
+        """test #10564"""
+        Base = declarative_base()
+
+        Table(
+            "c",
+            Base.metadata,
+            Column("a_id", ForeignKey("a.id")),
+            Column("b_id", ForeignKey("b.id")),
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            data = Column(String)
+
+            bs = relationship("B", secondary="c.c.a_id.table")
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            r"When initializing mapper Mapper\[A\(a\)\], expression "
+            r"'c.c.a_id.table' failed to locate a name \('c.c.a_id.table'\). ",
+        ):
+            Base.registry.configure()
+
     @testing.combinations((True,), (False,))
     def test_informative_message_on_cls_as_secondary(self, string):
         Base = declarative_base()
