@@ -1659,42 +1659,24 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             cast(column("foo"), d1), "CAST(foo AS DOUBLE PRECISION)"
         )
 
-    def test_table_tablespace(self):
+    @testing.combinations(
+        ("TEST_TABLESPACE", 'TABLESPACE "TEST_TABLESPACE"'),
+        ("test_tablespace", "TABLESPACE test_tablespace"),
+        ("TestTableSpace", 'TABLESPACE "TestTableSpace"'),
+        argnames="tablespace, expected_sql",
+    )
+    def test_table_tablespace(self, tablespace, expected_sql):
         m = MetaData()
 
         t = Table(
             "table1",
             m,
             Column("x", Integer),
-            oracle_tablespace="TEST_TABLESPACE",
-        )
-        t2 = Table(
-            "table2",
-            m,
-            Column("x", Integer),
-            oracle_tablespace="test_tablespace",
-        )
-        t3 = Table(
-            "table3",
-            m,
-            Column("x", Integer),
-            oracle_tablespace="TestTableSpace",
+            oracle_tablespace=tablespace,
         )
         self.assert_compile(
             schema.CreateTable(t),
-            "CREATE TABLE "
-            "table1 (x INTEGER) "
-            'TABLESPACE "TEST_TABLESPACE"',
-        )
-        self.assert_compile(
-            schema.CreateTable(t2),
-            "CREATE TABLE " "table2 (x INTEGER) " "TABLESPACE test_tablespace",
-        )
-        self.assert_compile(
-            schema.CreateTable(t3),
-            "CREATE TABLE "
-            "table3 (x INTEGER) "
-            'TABLESPACE "TestTableSpace"',
+            f"CREATE TABLE table1 (x INTEGER) {expected_sql}",
         )
 
 
