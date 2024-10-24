@@ -21,7 +21,7 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import types as sqltypes
 from sqlalchemy import UnicodeText
 from sqlalchemy.dialects.mysql import base as mysql
-from sqlalchemy.dialects.mysql.mariadb import MariaDBDialect
+from sqlalchemy.dialects.mysql.mariadb import MariaDBDialect, INET6 as MariadbINET6
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -506,6 +506,13 @@ class MariaDBUUIDTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect = MariaDBDialect()
         dialect.server_version_info = version
         dialect.supports_native_uuid = version >= (10, 7)
+        self.assert_compile(type_, res, dialect=dialect)
+
+    @testing.combinations(
+        (MariadbINET6, "INET6"),
+    )
+    def test_mariadb_inet6(self, type_, res):
+        dialect = MariaDBDialect()
         self.assert_compile(type_, res, dialect=dialect)
 
     @testing.combinations(

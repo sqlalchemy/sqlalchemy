@@ -118,6 +118,7 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
     supports_native_decimal = True
     default_paramstyle = "qmark"
     execution_ctx_cls = MySQLExecutionContext_mariadbconnector
+    type_compiler_cls = MariaDBTypeCompiler
     statement_compiler = MySQLCompiler_mariadbconnector
 
     supports_server_side_cursors = True

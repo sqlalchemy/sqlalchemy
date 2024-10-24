@@ -7,9 +7,18 @@
 # mypy: ignore-errors
 from .base import MariaDBIdentifierPreparer
 from .base import MySQLDialect
+from .base import MySQLTypeCompiler
 from ... import util
+from ...sql import sqltypes
 from ...sql.sqltypes import UUID
 from ...sql.sqltypes import Uuid
+
+
+class INET6(sqltypes.TypeEngine[str]):
+    """
+    INET6 column type for MariaDB
+    """
+    __visit_name__ = "INET6"
 
 
 class _MariaDBUUID(UUID):
@@ -36,6 +45,11 @@ class _MariaDBUUID(UUID):
             return super().bind_processor(dialect)
         else:
             return None
+
+
+class MariaDBTypeCompiler(MySQLTypeCompiler):
+    def visit_INET6(self, type_, **kwargs) -> str:
+        return "INET6"
 
 
 class MariaDBDialect(MySQLDialect):
