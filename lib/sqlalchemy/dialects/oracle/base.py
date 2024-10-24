@@ -1482,7 +1482,12 @@ class OracleDialect(default.DefaultDialect):
     construct_arguments = [
         (
             sa_schema.Table,
-            {"resolve_synonyms": False, "on_commit": None, "compress": False, "tablespace": None},
+            {
+                "resolve_synonyms": False,
+                "on_commit": None,
+                "compress": False,
+                "tablespace": None
+            },
         ),
         (sa_schema.Index, {"bitmap": False, "compress": False}),
         (sa_schema.Sequence, {"order": None}),
