@@ -509,6 +509,8 @@ in conjunction with the :class:`_schema.Table` construct:
     table is to be created. This is useful when you want to create a table in a
     tablespace other than the default tablespace of the user.
 
+    .. versionadded:: 2.0.37
+
 .. _oracle_index_options:
 
 Oracle Specific Index Options
