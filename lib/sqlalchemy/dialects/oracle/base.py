@@ -500,6 +500,17 @@ in conjunction with the :class:`_schema.Table` construct:
    The ``oracle_compress`` parameter accepts either an integer compression
    level, or ``True`` to use the default compression level.
 
+* ``TABLESPACE``::
+
+    Table('mytable', metadata, ...,
+        oracle_tablespace="EXAMPLE_TABLESPACE")
+
+    The ``oracle_tablespace`` parameter specifies the tablespace in which the
+    table is to be created. This is useful when you want to create a table in a
+    tablespace other than the default tablespace of the user.
+
+    .. versionadded:: 2.0.37
+
 .. _oracle_index_options:
 
 Oracle Specific Index Options
@@ -1345,7 +1356,10 @@ class OracleDDLCompiler(compiler.DDLCompiler):
                 table_opts.append("\n COMPRESS")
             else:
                 table_opts.append("\n COMPRESS FOR %s" % (opts["compress"]))
-
+        if opts["tablespace"]:
+            table_opts.append(
+                "\n TABLESPACE %s" % self.preparer.quote(opts["tablespace"])
+            )
         return "".join(table_opts)
 
     def get_identity_options(self, identity_options):
@@ -1470,7 +1484,12 @@ class OracleDialect(default.DefaultDialect):
     construct_arguments = [
         (
             sa_schema.Table,
-            {"resolve_synonyms": False, "on_commit": None, "compress": False},
+            {
+                "resolve_synonyms": False,
+                "on_commit": None,
+                "compress": False,
+                "tablespace": None,
+            },
         ),
         (sa_schema.Index, {"bitmap": False, "compress": False}),
         (sa_schema.Sequence, {"order": None}),

@@ -1,0 +1,7 @@
+.. change::
+    :tags: feature, oracle
+    :ticket: 12016
+
+    Added new table option `oracle_tablespace` to specify the `TABLESPACE` option
+    when creating a table in Oracle. This allows users to define the tablespace in 
+    which the table should be created. Pull request courtesy of Miguel Grillo.
