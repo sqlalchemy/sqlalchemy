@@ -1666,19 +1666,19 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "table1",
             m,
             Column("x", Integer),
-            oracle_tablespace='TEST_TABLESPACE',
+            oracle_tablespace="TEST_TABLESPACE",
         )
         t2 = Table(
             "table2",
             m,
             Column("x", Integer),
-            oracle_tablespace='test_tablespace',
+            oracle_tablespace="test_tablespace",
         )
         t3 = Table(
             "table3",
             m,
             Column("x", Integer),
-            oracle_tablespace='TestTableSpace',
+            oracle_tablespace="TestTableSpace",
         )
         self.assert_compile(
             schema.CreateTable(t),
@@ -1688,9 +1688,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             schema.CreateTable(t2),
-            "CREATE TABLE "
-            "table2 (x INTEGER) "
-            'TABLESPACE test_tablespace',
+            "CREATE TABLE " "table2 (x INTEGER) " "TABLESPACE test_tablespace",
         )
         self.assert_compile(
             schema.CreateTable(t3),
