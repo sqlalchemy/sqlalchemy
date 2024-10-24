@@ -500,6 +500,17 @@ in conjunction with the :class:`_schema.Table` construct:
    The ``oracle_compress`` parameter accepts either an integer compression
    level, or ``True`` to use the default compression level.
 
+* ``TABLESPACE``::
+
+    Table('mytable', metadata, ...,
+        oracle_tablespace="EXAMPLE_TABLESPACE")
+
+    The ``oracle_tablespace`` parameter specifies the tablespace in which the
+    table is to be created. This is useful when you want to create a table in a
+    tablespace other than the default tablespace of the user.
+
+    .. versionadded:: 2.0.37
+
 .. _oracle_index_options:
 
 Oracle Specific Index Options
@@ -1345,7 +1356,10 @@ class OracleDDLCompiler(compiler.DDLCompiler):
                 table_opts.append("\n COMPRESS")
             else:
                 table_opts.append("\n COMPRESS FOR %s" % (opts["compress"]))
-
+        if opts["tablespace"]:
+            table_opts.append(
+                "\n TABLESPACE %s" % self.preparer.quote(opts["tablespace"])
+            )
         return "".join(table_opts)
 
     def get_identity_options(self, identity_options):
@@ -1470,7 +1484,12 @@ class OracleDialect(default.DefaultDialect):
     construct_arguments = [
         (
             sa_schema.Table,
-            {"resolve_synonyms": False, "on_commit": None, "compress": False},
+            {
+                "resolve_synonyms": False,
+                "on_commit": None,
+                "compress": False,
+                "tablespace": None,
+            },
         ),
         (sa_schema.Index, {"bitmap": False, "compress": False}),
         (sa_schema.Sequence, {"order": None}),
@@ -2084,6 +2103,7 @@ class OracleDialect(default.DefaultDialect):
                 if self._supports_table_compress_for
                 else sql.null().label("compress_for")
             ),
+            dictionary.all_tables.c.tablespace_name,
         ).where(dictionary.all_tables.c.owner == owner)
         if has_filter_names:
             query = query.where(
@@ -2175,11 +2195,12 @@ class OracleDialect(default.DefaultDialect):
                 connection, query, dblink, returns_long=False, params=params
             )
 
-            for table, compression, compress_for in result:
+            for table, compression, compress_for, tablespace in result:
+                data = default()
                 if compression == "ENABLED":
-                    data = {"oracle_compress": compress_for}
-                else:
-                    data = default()
+                    data["oracle_compress"] = compress_for
+                if tablespace:
+                    data["oracle_tablespace"] = tablespace
                 options[(schema, self.normalize_name(table))] = data
         if ObjectKind.VIEW in kind and ObjectScope.DEFAULT in scope:
             # add the views (no temporary views)
