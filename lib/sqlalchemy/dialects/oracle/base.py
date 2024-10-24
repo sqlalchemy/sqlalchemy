@@ -1486,7 +1486,7 @@ class OracleDialect(default.DefaultDialect):
                 "resolve_synonyms": False,
                 "on_commit": None,
                 "compress": False,
-                "tablespace": None
+                "tablespace": None,
             },
         ),
         (sa_schema.Index, {"bitmap": False, "compress": False}),
