@@ -35,7 +35,6 @@ py313 = sys.version_info >= (3, 13)
 py312 = sys.version_info >= (3, 12)
 py311 = sys.version_info >= (3, 11)
 py310 = sys.version_info >= (3, 10)
-py39 = sys.version_info >= (3, 9)
 pypy = platform.python_implementation() == "PyPy"
 cpython = platform.python_implementation() == "CPython"
 
@@ -97,27 +96,10 @@ def inspect_getfullargspec(func: Callable[..., Any]) -> FullArgSpec:
     )
 
 
-if py39:
-    # python stubs don't have a public type for this. not worth
-    # making a protocol
-    def md5_not_for_security() -> Any:
-        return hashlib.md5(usedforsecurity=False)
-
-else:
-
-    def md5_not_for_security() -> Any:
-        return hashlib.md5()
-
-
-if typing.TYPE_CHECKING or py39:
-    # pep 584 dict union
-    dict_union = operator.or_  # noqa
-else:
-
-    def dict_union(a: dict, b: dict) -> dict:
-        a = a.copy()
-        a.update(b)
-        return a
+# python stubs don't have a public type for this. not worth
+# making a protocol
+def md5_not_for_security() -> Any:
+    return hashlib.md5(usedforsecurity=False)
 
 
 if py310:

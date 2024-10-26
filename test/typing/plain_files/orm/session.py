@@ -55,13 +55,13 @@ with Session(e) as sess:
 
     rows1 = q.all()
 
-    # EXPECTED_RE_TYPE: builtins.[Ll]ist\[.*User\*?\]
+    # EXPECTED_RE_TYPE: builtins.list\[.*User\*?\]
     reveal_type(rows1)
 
     q2 = sess.query(User.id).filter_by(id=7)
     rows2 = q2.all()
 
-    # EXPECTED_TYPE: List[.*Row[.*int].*]
+    # EXPECTED_TYPE: list[.*Row[.*int].*]
     reveal_type(rows2)
 
     # test #8280

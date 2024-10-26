@@ -47,7 +47,7 @@ below where ``list`` is used::
         parent_id: Mapped[int] = mapped_column(primary_key=True)
 
         # use a list
-        children: Mapped[List["Child"]] = relationship()
+        children: Mapped[list["Child"]] = relationship()
 
 
     class Child(Base):
@@ -59,7 +59,6 @@ below where ``list`` is used::
 Or for a ``set``, illustrated in the same
 ``Parent.children`` collection::
 
-    from typing import Set
     from sqlalchemy import ForeignKey
 
     from sqlalchemy.orm import DeclarativeBase
@@ -78,7 +77,7 @@ Or for a ``set``, illustrated in the same
         parent_id: Mapped[int] = mapped_column(primary_key=True)
 
         # use a set
-        children: Mapped[Set["Child"]] = relationship()
+        children: Mapped[set["Child"]] = relationship()
 
 
     class Child(Base):
@@ -86,22 +85,6 @@ Or for a ``set``, illustrated in the same
 
         child_id: Mapped[int] = mapped_column(primary_key=True)
         parent_id: Mapped[int] = mapped_column(ForeignKey("parent.id"))
-
-.. note::  If using Python 3.8, annotations for collections need
-   to use ``typing.List`` or ``typing.Set``, e.g. ``Mapped[List["Child"]]`` or
-   ``Mapped[Set["Child"]]``; the ``list`` and ``set`` Python built-ins
-   don't yet support generic annotation in these Python versions, such as::
-
-       from typing import List
-
-
-       class Parent(Base):
-           __tablename__ = "parent"
-
-           parent_id: Mapped[int] = mapped_column(primary_key=True)
-
-           # use a List, Python 3.8 and earlier
-           children: Mapped[List["Child"]] = relationship()
 
 When using mappings without the :class:`_orm.Mapped` annotation, such as when
 using :ref:`imperative mappings <orm_imperative_mapping>` or untyped

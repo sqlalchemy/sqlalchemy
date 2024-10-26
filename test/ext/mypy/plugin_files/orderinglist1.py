@@ -21,5 +21,5 @@ class A:
 
 a1 = A(id=5, ordering=10)
 
-# EXPECTED_MYPY: Argument "parents" to "A" has incompatible type "List[A]"; expected "Mapped[Any]"  # noqa
+# EXPECTED_MYPY: Argument "parents" to "A" has incompatible type "list[A]"; expected "Mapped[Any]"  # noqa
 a2 = A(parents=[a1])

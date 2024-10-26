@@ -368,8 +368,7 @@ def is_literal(type_: _AnnotationScanType) -> bool:
 
 def is_newtype(type_: Optional[_AnnotationScanType]) -> TypeGuard[NewType]:
     return hasattr(type_, "__supertype__")
-
-    # doesn't work in 3.8, 3.7 as it passes a closure, not an
+    # doesn't work in 3.9, 3.8, 3.7 as it passes a closure, not an
     # object instance
     # return isinstance(type_, NewType)
 

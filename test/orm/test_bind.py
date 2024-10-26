@@ -463,16 +463,22 @@ class BindIntegrationTest(_fixtures.FixtureTest):
 
         engine = {"e1": e1, "e2": e2, "e3": e3}[expected_engine_name]
 
-        with mock.patch(
-            "sqlalchemy.orm.context.ORMCompileState.orm_setup_cursor_result"
-        ), mock.patch(
-            "sqlalchemy.orm.context.ORMCompileState.orm_execute_statement"
-        ), mock.patch(
-            "sqlalchemy.orm.bulk_persistence."
-            "BulkORMInsert.orm_execute_statement"
-        ), mock.patch(
-            "sqlalchemy.orm.bulk_persistence."
-            "BulkUDCompileState.orm_setup_cursor_result"
+        with (
+            mock.patch(
+                "sqlalchemy.orm.context.ORMCompileState."
+                "orm_setup_cursor_result"
+            ),
+            mock.patch(
+                "sqlalchemy.orm.context.ORMCompileState.orm_execute_statement"
+            ),
+            mock.patch(
+                "sqlalchemy.orm.bulk_persistence."
+                "BulkORMInsert.orm_execute_statement"
+            ),
+            mock.patch(
+                "sqlalchemy.orm.bulk_persistence."
+                "BulkUDCompileState.orm_setup_cursor_result"
+            ),
         ):
             sess.execute(statement)
 

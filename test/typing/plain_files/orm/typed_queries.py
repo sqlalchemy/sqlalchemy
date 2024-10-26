@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Tuple
-
 from sqlalchemy import Column
 from sqlalchemy import column
 from sqlalchemy import create_engine
@@ -133,14 +131,14 @@ def t_legacy_query_single_entity() -> None:
     # EXPECTED_TYPE: User
     reveal_type(q1.one())
 
-    # EXPECTED_TYPE: List[User]
+    # EXPECTED_TYPE: list[User]
     reveal_type(q1.all())
 
     # mypy switches to builtins.list for some reason here
-    # EXPECTED_RE_TYPE: .*\.[Ll]ist\[.*Row\*?\[.*User\].*\]
+    # EXPECTED_RE_TYPE: .*\.list\[.*Row\*?\[.*User\].*\]
     reveal_type(q1.only_return_tuples(True).all())
 
-    # EXPECTED_TYPE: List[Tuple[User]]
+    # EXPECTED_TYPE: list[tuple[User]]
     reveal_type(q1.tuples().all())
 
 
@@ -172,7 +170,7 @@ def t_legacy_query_cols_tupleq_1() -> None:
 
     q2 = q1.tuples()
 
-    # EXPECTED_TYPE: Tuple[int, str]
+    # EXPECTED_TYPE: tuple[int, str]
     reveal_type(q2.one())
 
     r1 = q2.one()
@@ -383,7 +381,7 @@ def t_select_w_core_selectables() -> None:
 
     # this one unfortunately is not working in mypy.
     # pylance gets the correct type
-    #   EXPECTED_TYPE: Select[Tuple[int, Any]]
+    #   EXPECTED_TYPE: Select[tuple[int, Any]]
     # when experimenting with having a separate TypedSelect class for typing,
     # mypy would downgrade to Any rather than picking the basemost type.
     # with typing integrated into Select etc. we can at least get a Select
@@ -392,9 +390,9 @@ def t_select_w_core_selectables() -> None:
     reveal_type(s2)
 
     # so a fully explicit type may be given
-    s2_typed: Select[Tuple[int, str]] = select(User.id, s1.c.name)
+    s2_typed: Select[tuple[int, str]] = select(User.id, s1.c.name)
 
-    # EXPECTED_TYPE: Select[Tuple[int, str]]
+    # EXPECTED_TYPE: Select[tuple[int, str]]
     reveal_type(s2_typed)
 
     # plain FromClause etc we at least get Select
