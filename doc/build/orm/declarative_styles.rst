@@ -51,7 +51,7 @@ With the declarative base class, new mapped classes are declared as subclasses
 of the base::
 
     from datetime import datetime
-    from typing import Optional
+    from typing import Optional, List
 
     from sqlalchemy import ForeignKey
     from sqlalchemy import func
