@@ -1638,7 +1638,7 @@ class sum(ReturnTypeFromArgs[_T]):  # noqa: A001
     inherit_cache = True
 
 class vector_distance(ReturnTypeFromArgs[_T]):
-     r"""The SQL L1_DISTANCE() function
+    r"""The SQL L1_DISTANCE() function
     This function is used as part of the GROUP BY of a statement::
     
         query_vector = array.array("b",[2,3,4])
