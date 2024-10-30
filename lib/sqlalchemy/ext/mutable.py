@@ -392,6 +392,7 @@ from ..orm.context import QueryContext
 from ..orm.decl_api import DeclarativeAttributeIntercept
 from ..orm.state import InstanceState
 from ..orm.unitofwork import UOWTransaction
+from ..sql._typing import _TypeEngineArgument
 from ..sql.base import SchemaEventTarget
 from ..sql.schema import Column
 from ..sql.type_api import TypeEngine
@@ -638,7 +639,7 @@ class Mutable(MutableBase):
         event.listen(Mapper, "mapper_configured", listen_for_type)
 
     @classmethod
-    def as_mutable(cls, sqltype: TypeEngine[_T]) -> TypeEngine[_T]:
+    def as_mutable(cls, sqltype: _TypeEngineArgument[_T]) -> TypeEngine[_T]:
         """Associate a SQL type with this mutable Python type.
 
         This establishes listeners that will detect ORM mappings against

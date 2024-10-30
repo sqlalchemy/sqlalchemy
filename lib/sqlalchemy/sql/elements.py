@@ -2441,7 +2441,9 @@ class TextClause(
 
     @util.preload_module("sqlalchemy.sql.selectable")
     def columns(
-        self, *cols: _ColumnExpressionArgument[Any], **types: TypeEngine[Any]
+        self,
+        *cols: _ColumnExpressionArgument[Any],
+        **types: _TypeEngineArgument[Any],
     ) -> TextualSelect:
         r"""Turn this :class:`_expression.TextClause` object into a
         :class:`_expression.TextualSelect`
