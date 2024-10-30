@@ -2315,11 +2315,10 @@ def to_instance(
 
 
 def adapt_type(
-    typeobj: TypeEngine[Any],
+    typeobj: _TypeEngineArgument[Any],
     colspecs: Mapping[Type[Any], Type[TypeEngine[Any]]],
 ) -> TypeEngine[Any]:
-    if isinstance(typeobj, type):
-        typeobj = typeobj()
+    typeobj = to_instance(typeobj)
     for t in typeobj.__class__.__mro__[0:-1]:
         try:
             impltype = colspecs[t]
