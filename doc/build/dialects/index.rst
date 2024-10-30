@@ -94,7 +94,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Firebolt                                       | firebolt-sqlalchemy_                  |
 +------------------------------------------------+---------------------------------------+
-| Google BigQuery                                | pybigquery_                           |
+| Google BigQuery                                | sqlalchemy-bigquery_                  |
 +------------------------------------------------+---------------------------------------+
 | Google Sheets                                  | gsheets_                              |
 +------------------------------------------------+---------------------------------------+
@@ -144,7 +144,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _ibm-db-sa: https://pypi.org/project/ibm-db-sa/
 .. _PyHive: https://github.com/dropbox/PyHive#sqlalchemy
 .. _teradatasqlalchemy: https://pypi.org/project/teradatasqlalchemy/
-.. _pybigquery: https://github.com/mxmzdlv/pybigquery/
+.. _sqlalchemy-bigquery: https://pypi.org/project/sqlalchemy-bigquery/
 .. _sqlalchemy-redshift: https://pypi.org/project/sqlalchemy-redshift
 .. _sqlalchemy-drill: https://github.com/JohnOmernik/sqlalchemy-drill
 .. _sqlalchemy-hana: https://github.com/SAP/sqlalchemy-hana
