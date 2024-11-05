@@ -1639,7 +1639,7 @@ class sum(ReturnTypeFromArgs[_T]):  # noqa: A001
 
 class vector_distance(ReturnTypeFromArgs[_T]):
     r"""The SQL vector_distance() function
-    This function is used as part of the GROUP BY of a statement::
+    This function is used as part of the ORDER BY of a statement::
     
         query_vector = array.array("b",[2,3,4])
         stmt = session.query(
@@ -1652,7 +1652,7 @@ class vector_distance(ReturnTypeFromArgs[_T]):
 
 class L1_DISTANCE(ReturnTypeFromArgs[_T]):
     r"""The SQL L1_DISTANCE() function
-    This function is used as part of the GROUP BY of a statement::
+    This function is used as part of the ORDER BY of a statement::
     
         query_vector = array.array("b",[2,3,4])
         stmt = session.query(
@@ -1664,7 +1664,7 @@ class L1_DISTANCE(ReturnTypeFromArgs[_T]):
 
 class L2_DISTANCE(ReturnTypeFromArgs[_T]):
     r"""The SQL L2_DISTANCE() function
-    This function is used as part of the GROUP BY of a statement::
+    This function is used as part of the ORDER BY of a statement::
 
         query_vector = array.array("b",[2,3,4])
         stmt = session.query(
@@ -1676,7 +1676,7 @@ class L2_DISTANCE(ReturnTypeFromArgs[_T]):
 
 class INNER_PRODUCT(ReturnTypeFromArgs[_T]):
     r"""The SQL INNER_PRODUCT() function
-    This function is used as part of the GROUP BY of a statement::
+    This function is used as part of the ORDER BY of a statement::
 
         query_vector = array.array("b",[2,3,4])
         stmt = session.query(
@@ -1688,7 +1688,7 @@ class INNER_PRODUCT(ReturnTypeFromArgs[_T]):
 
 class COSINE_DISTANCE(ReturnTypeFromArgs[_T]):
     r"""The SQL COSINE_DISTANCE() function
-    This function is used as part of the GROUP BY of a statement::
+    This function is used as part of the ORDER BY of a statement::
 
         query_vector = array.array("b",[2,3,4])
         stmt = session.query(
