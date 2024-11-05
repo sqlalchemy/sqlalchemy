@@ -2,6 +2,7 @@ import datetime
 import decimal
 import os
 import random
+import array
 
 from sqlalchemy import bindparam
 from sqlalchemy import cast
@@ -34,11 +35,13 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy import Unicode
 from sqlalchemy import UnicodeText
 from sqlalchemy import VARCHAR
+from sqlalchemy import Index
 from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.dialects.oracle import cx_oracle
 from sqlalchemy.dialects.oracle import oracledb
 from sqlalchemy.dialects.oracle import VECTOR
 from sqlalchemy.sql import column
+from sqlalchemy.sql import func
 from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
@@ -973,42 +976,57 @@ class TypesTest(fixtures.TestBase):
         t1 = Table(
             "t1",
             metadata,
-            Column("c1", VECTOR(3,'float32'))
+            Column("id", Integer),
+            Column("embedding", VECTOR(3,'float32'))
         )
+        t1.create(connection)
         
         hnsw_index = Index(
             'hnsw_vector_index',
-            t1.c1,
-            oracle_vector = True,
-            oracle_accuracy = 95,
-            oracle_distance = "COSINE",
-            oracle_parameters = {'type':'HNSW','neighbors':20,'efconstruction':300}
+            t1.c.embedding,
+            oracle_vector = True
         )
+        hnsw_index.create(connection)
+
+        connection.execute(t1.insert(), dict(id=1, embedding=array.array("f",[6,7,8])))
+        eq_(connection.execute(t1.select()).first(), (1,array.array("f",[6,7,8])))
 
     def test_vector_ivf_index(self, metadata, connection):
         t1 = Table(
             "t1",
             metadata,
-            Column("c1", VECTOR(3,'float32'))
+            Column("id", Integer),
+            Column("embedding", VECTOR(3,'float32'))
         )
-
+        t1.create(connection)
         ivf_index = Index(
             'ivf_vector_index',
-            t1.c1,
-            oracle_vector = True,
-            oracle_accuracy = 90,
-            oracle_distance = "DOT",
-            oracle_parameters = {'type':'IVF','neighbor partitions':10}
+            t1.c.embedding,
+            oracle_vector = {'oracle_accuracy':90, 'oracle_distance': "DOT",
+                'oracle_parameters':{'type':'IVF','neighbor partitions':10}}
         )
+        ivf_index.create(connection)
 
-    def test_vector(self, metadata, connection):
+        connection.execute(t1.insert(), dict(id=1, embedding=array.array("f",[6,7,8])))
+        eq_(connection.execute(t1.select()).first(), (1,array.array("f",[6,7,8])))
+
+
+    def test_vector_l2_distance(self, metadata, connection):
         t1 = Table(
             "t1",
             metadata,
-            Column("c1", VECTOR(3,'float32'))
+            Column("id", Integer),
+            Column("embedding", VECTOR(3,'int8'))
         )
+        t1.create(connection)
 
+        connection.execute(t1.insert(), dict(id=1, embedding=array.array("b",[8,9,10])))
+        connection.execute(t1.insert(), dict(id=1, embedding=array.array("b",[1,2,3])))
+        connection.execute(t1.insert(), dict(id=1, embedding=array.array("b",[15,16,17])))
 
+        query_vector = array.array("b",[2,3,4])
+        res = connection.execute(t1.select().order_by(func.L2_distance(t1.c.embedding,query_vector))).first()
+        eq_(res.embedding,array.array("b",[1,2,3]))
 
 
 class LOBFetchTest(fixtures.TablesTest):

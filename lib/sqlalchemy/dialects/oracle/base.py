@@ -1380,30 +1380,32 @@ class OracleDDLCompiler(compiler.DDLCompiler):
             vector_options = index.dialect_options["oracle"]["vector"]
             if vector_options is True:
                 parts.append("ORGANIZATION INMEMORY NEIGHBOR GRAPH ")
+                parts.append("DISTANCE COSINE ")
+                parts.append("WITH TARGET ACCURACY 95 ")
             else:
                 using = vector_options["oracle_parameters"].get("type", None)
                 if using is None or using.upper() == "HNSW":
                     parts.append("ORGANIZATION INMEMORY NEIGHBOR GRAPH ")
                 elif using.upper() == "IVF":
                     parts.append("ORGANIZATION NEIGHBOR PARTITIONS ")
-            vector_distance = vector_options.get("oracle_distance", None)
-            if vector_distance is None:
-                parts.append("DISTANCE COSINE ")
-            else:
-                parts.append("DISTANCE " + vector_distance.upper() + " ")
-            target_accuracy = vector_options.get("oracle_accuracy", None)
-            if target_accuracy is not None:
-                parts.append("WITH TARGET ACCURACY " + str(target_accuracy) + " ")
-            parameter = vector_options.get("oracle_parameters", None)
-            if parameter:
-                parts.append("PARAMETERS (%s) " % (
-                    ",".join(
-                        ["%s %s" % (key, value) for key, value in parameter.items()]                        )
-                ))
-            parallel = vector_options.get("oracle_parallel",None)
-            if parallel is not None:
-                parts.append(" PARALLEL " + parallel + " ")
-        text += " ".join(parts)
+                vector_distance = vector_options.get("oracle_distance", None)
+                if vector_distance is None:
+                    parts.append("DISTANCE COSINE ")
+                else:
+                    parts.append("DISTANCE " + vector_distance.upper() + " ")
+                target_accuracy = vector_options.get("oracle_accuracy", None)
+                if target_accuracy is not None:
+                    parts.append("WITH TARGET ACCURACY " + str(target_accuracy) + " ")
+                parameter = vector_options.get("oracle_parameters", None)
+                if parameter:
+                    parts.append("PARAMETERS (%s) " % (
+                        ",".join(
+                            ["%s %s" % (key, value) for key, value in parameter.items()]                        )
+                    ))
+                parallel = vector_options.get("oracle_parallel",None)
+                if parallel is not None:
+                    parts.append(" PARALLEL " + parallel + " ")
+            text += " ".join(parts)
         return text
 
     def post_create_table(self, table):
