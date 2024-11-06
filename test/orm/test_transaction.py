@@ -671,13 +671,16 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         def fail(*arg, **kw):
             raise BaseException("some base exception")
 
-        with mock.patch.object(
-            testing.db.dialect, "do_rollback", side_effect=fail
-        ) as fail_mock, mock.patch.object(
-            testing.db.dialect,
-            "do_commit",
-            side_effect=testing.db.dialect.do_commit,
-        ) as succeed_mock:
+        with (
+            mock.patch.object(
+                testing.db.dialect, "do_rollback", side_effect=fail
+            ) as fail_mock,
+            mock.patch.object(
+                testing.db.dialect,
+                "do_commit",
+                side_effect=testing.db.dialect.do_commit,
+            ) as succeed_mock,
+        ):
             # sess.begin() -> commit().  why would do_rollback() be called?
             # because of connection pool finalize_fairy *after* the commit.
             # this will cause the conn.close() in session.commit() to fail,

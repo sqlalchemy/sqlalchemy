@@ -3582,9 +3582,10 @@ class AlternateCursorResultTest(fixtures.TablesTest):
                 r = conn.execute(select(self.table).limit(1))
 
                 r.fetchone()
-                with mock.patch.object(
-                    r, "_soft_close", raise_
-                ), testing.expect_raises_message(IOError, "random non-DBAPI"):
+                with (
+                    mock.patch.object(r, "_soft_close", raise_),
+                    testing.expect_raises_message(IOError, "random non-DBAPI"),
+                ):
                     r.first()
                 r.close()
 

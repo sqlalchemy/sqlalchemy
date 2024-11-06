@@ -28,5 +28,5 @@ class A(Base):
 # EXPECTED_MYPY: List item 1 has incompatible type "A"; expected "B"
 a1 = A(bs=[B(data="b"), A()])
 
-# EXPECTED_MYPY: Incompatible types in assignment (expression has type "List[B]", variable has type "Set[B]") # noqa
+# EXPECTED_MYPY: Incompatible types in assignment (expression has type "list[B]", variable has type "set[B]") # noqa
 x: Set[B] = a1.bs

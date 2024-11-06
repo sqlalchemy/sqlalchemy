@@ -226,9 +226,12 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
             foo: Mapped[str]
             bar: Mapped[str] = mapped_column()
 
-        with _dataclass_mixin_warning(
-            "_BaseMixin", "'create_user', 'update_user'"
-        ), _dataclass_mixin_warning("SubMixin", "'foo', 'bar'"):
+        with (
+            _dataclass_mixin_warning(
+                "_BaseMixin", "'create_user', 'update_user'"
+            ),
+            _dataclass_mixin_warning("SubMixin", "'foo', 'bar'"),
+        ):
 
             class User(SubMixin, Base):
                 __tablename__ = "sys_user"

@@ -68,7 +68,7 @@ print(stmt)
 
 t1 = Test()
 
-# EXPECTED_RE_TYPE: .*[dD]ict\[.*str, Any\]
+# EXPECTED_RE_TYPE: .*dict\[.*str, Any\]
 reveal_type(t1.data)
 
 # EXPECTED_TYPE: UUID
