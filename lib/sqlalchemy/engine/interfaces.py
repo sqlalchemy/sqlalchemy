@@ -1118,7 +1118,7 @@ class Dialect(EventTarget):
     supports_constraint_comments: bool
     """Indicates if the dialect supports comment DDL on constraints.
 
-    .. versionadded: 2.0
+    .. versionadded:: 2.0
     """
 
     _has_events = False
@@ -2499,7 +2499,7 @@ class Dialect(EventTarget):
           ``REPEATABLE READ``.  isolation level names will have underscores
           converted to spaces before being passed along to the dialect.
         * The names for the four standard isolation names to the extent that
-          they are supported by the backend should be ``READ UNCOMMITTED``
+          they are supported by the backend should be ``READ UNCOMMITTED``,
           ``READ COMMITTED``, ``REPEATABLE READ``, ``SERIALIZABLE``
         * if the dialect supports an autocommit option it should be provided
           using the isolation level name ``AUTOCOMMIT``.
