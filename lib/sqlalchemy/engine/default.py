@@ -257,7 +257,7 @@ class DefaultDialect(Dialect):
     default_schema_name: Optional[str] = None
 
     # indicates symbol names are
-    # UPPERCASEd if they are case insensitive
+    # UPPERCASED if they are case insensitive
     # within the database.
     # if this is True, the methods normalize_name()
     # and denormalize_name() must be provided.
