@@ -9,7 +9,7 @@
 
 r"""
 .. dialect:: oracle
-    :name: Oracle
+    :name: Oracle Database
     :normal_support: 11+
     :best_effort: 9+
 
@@ -125,7 +125,7 @@ Valid values for ``isolation_level`` include:
 
    Additionally, the :meth:`_engine.Connection.get_isolation_level` method will
    raise an exception if the ``v$transaction`` view is not available due to
-   permissions or other reasons, which is a common occurrence in Oracle
+   permissions or other reasons, which is a common occurrence in Oracle Database
    installations.
 
    The python-oracledb and cx_Oracle dialects attempt to call the
@@ -962,10 +962,10 @@ class OracleCompiler(compiler.SQLCompiler):
                 and not self.dialect._supports_update_returning_computed_cols
             ):
                 util.warn(
-                    "Computed columns don't work with Oracle UPDATE "
+                    "Computed columns don't work with Oracle Database UPDATE "
                     "statements that use RETURNING; the value of the column "
                     "*before* the UPDATE takes place is returned.   It is "
-                    "advised to not use RETURNING with an Oracle computed "
+                    "advised to not use RETURNING with an Oracle Database computed "
                     "column.  Consider setting implicit_returning to False on "
                     "the Table object in order to avoid implicit RETURNING "
                     "clauses from being generated for this Table."
@@ -992,7 +992,7 @@ class OracleCompiler(compiler.SQLCompiler):
                 raise exc.InvalidRequestError(
                     "Using explicit outparam() objects with "
                     "UpdateBase.returning() in the same Core DML statement "
-                    "is not supported in the Oracle dialect."
+                    "is not supported in the Oracle Database dialects."
                 )
 
             self._oracle_returning = True
@@ -1013,7 +1013,7 @@ class OracleCompiler(compiler.SQLCompiler):
         return "RETURNING " + ", ".join(columns) + " INTO " + ", ".join(binds)
 
     def _row_limit_clause(self, select, **kw):
-        """ORacle 12c supports OFFSET/FETCH operators
+        """Oracle Database 12c supports OFFSET/FETCH operators
         Use it instead subquery with row_number
 
         """
@@ -1297,7 +1297,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
         # https://web.archive.org/web/20090317041251/https://asktom.oracle.com/tkyte/update_cascade/index.html
         if constraint.onupdate is not None:
             util.warn(
-                "Oracle does not contain native UPDATE CASCADE "
+                "Oracle Database does not contain native UPDATE CASCADE "
                 "functionality - onupdates will not be rendered for foreign "
                 "keys.  Consider using deferrable=True, initially='deferred' "
                 "or triggers."
@@ -1373,8 +1373,8 @@ class OracleDDLCompiler(compiler.DDLCompiler):
         )
         if generated.persisted is True:
             raise exc.CompileError(
-                "Oracle computed columns do not support 'stored' persistence; "
-                "set the 'persisted' flag to None or False for Oracle support."
+                "Oracle Database computed columns do not support 'stored' persistence; "
+                "set the 'persisted' flag to None or False for Oracle Database support."
             )
         elif generated.persisted is False:
             text += " VIRTUAL"

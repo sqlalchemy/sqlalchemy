@@ -1387,8 +1387,8 @@ At the same time, a relatively small set of extremely common SQL functions such
 as :class:`_functions.count`, :class:`_functions.now`, :class:`_functions.max`,
 :class:`_functions.concat` include pre-packaged versions of themselves which
 provide for proper typing information as well as backend-specific SQL
-generation in some cases.  The example below contrasts the SQL generation
-that occurs for the PostgreSQL dialect compared to the Oracle dialect for
+generation in some cases.  The example below contrasts the SQL generation that
+occurs for the PostgreSQL dialect compared to the Oracle Database dialect for
 the :class:`_functions.now` function::
 
     >>> from sqlalchemy.dialects import postgresql
@@ -1683,10 +1683,10 @@ Table-Valued Functions
 Table-valued SQL functions support a scalar representation that contains named
 sub-elements. Often used for JSON and ARRAY-oriented functions as well as
 functions like ``generate_series()``, the table-valued function is specified in
-the FROM clause, and is then referenced as a table, or sometimes even as
-a column. Functions of this form are prominent within the PostgreSQL database,
+the FROM clause, and is then referenced as a table, or sometimes even as a
+column. Functions of this form are prominent within the PostgreSQL database,
 however some forms of table valued functions are also supported by SQLite,
-Oracle, and SQL Server.
+Oracle Database, and SQL Server.
 
 .. seealso::
 
@@ -1735,9 +1735,9 @@ towards as ``value``, and then selected two of its three rows.
 Column Valued Functions - Table Valued Function as a Scalar Column
 ##################################################################
 
-A special syntax supported by PostgreSQL and Oracle is that of referring
-towards a function in the FROM clause, which then delivers itself as a
-single column in the columns clause of a SELECT statement or other column
+A special syntax supported by PostgreSQL and Oracle Database is that of
+referring towards a function in the FROM clause, which then delivers itself as
+a single column in the columns clause of a SELECT statement or other column
 expression context.  PostgreSQL makes great use of this syntax for such
 functions as ``json_array_elements()``, ``json_object_keys()``,
 ``json_each_text()``, ``json_each()``, etc.
@@ -1752,8 +1752,8 @@ to a :class:`_functions.Function` construct::
     {printsql}SELECT x
     FROM json_array_elements(:json_array_elements_1) AS x
 
-The "column valued" form is also supported by the Oracle dialect, where
-it is usable for custom SQL functions::
+The "column valued" form is also supported by the Oracle Database dialects,
+where it is usable for custom SQL functions::
 
     >>> from sqlalchemy.dialects import oracle
     >>> stmt = select(func.scalar_strings(5).column_valued("s"))

@@ -1579,8 +1579,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         )
         statement._label_style = self.label_style
 
-        # Oracle however does not allow FOR UPDATE on the subquery,
-        # and the Oracle dialect ignores it, plus for PostgreSQL, MySQL
+        # Oracle Database however does not allow FOR UPDATE on the subquery,
+        # and the Oracle Database dialects ignore it, plus for PostgreSQL, MySQL
         # we expect that all elements of the row are locked, so also put it
         # on the outside (except in the case of PG when OF is used)
         if (
