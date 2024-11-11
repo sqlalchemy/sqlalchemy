@@ -221,6 +221,12 @@ class OracleDialect_oracledb(_cx_oracle.OracleDialect_cx_oracle):
             for fi, gti, bq in connection.connection.tpc_recover()
         ]
 
+    def _check_max_identifier_length(self, connection):
+        if self.oracledb_ver >= (2, 5):
+            return connection.connection.max_identifier_length
+        else:
+            super()._check_max_identifier_length(connection)
+
 
 class AsyncAdapt_oracledb_cursor(AsyncAdapt_dbapi_cursor):
     _cursor: AsyncCursor
@@ -251,7 +257,7 @@ class AsyncAdapt_oracledb_cursor(AsyncAdapt_dbapi_cursor):
             self._adapt_connection._handle_exception(error)
 
     async def _execute_async(self, operation, parameters):
-        # override to not use mutex, oracledb already has mutex
+        # override to not use mutex, oracledb already has a mutex
 
         if parameters is None:
             result = await self._cursor.execute(operation)
@@ -267,7 +273,7 @@ class AsyncAdapt_oracledb_cursor(AsyncAdapt_dbapi_cursor):
         operation,
         seq_of_parameters,
     ):
-        # override to not use mutex, oracledb already has mutex
+        # override to not use mutex, oracledb already has a mutex
         return await self._cursor.executemany(operation, seq_of_parameters)
 
     def __enter__(self):
@@ -324,6 +330,10 @@ class AsyncAdapt_oracledb_connection(AsyncAdapt_dbapi_connection):
     @stmtcachesize.setter
     def stmtcachesize(self, value):
         self._connection.stmtcachesize = value
+
+    @property
+    def max_identifier_length(self):
+        return self._connection.max_identifier_length
 
     def cursor(self):
         return AsyncAdapt_oracledb_cursor(self)
