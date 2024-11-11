@@ -180,17 +180,17 @@ names as well as the generation of constraint names, particularly in the case
 where the constraint naming convention feature described at
 :ref:`constraint_naming_conventions` is being used.
 
-To assist with this change and others, Oracle Database includes the concept of
-a "compatibility" version, which is a version number that is independent of the
-actual server version in order to assist with migration of databases, and may
-be configured within the Oracle Database server itself. This compatibility
-version is retrieved using the query ``SELECT value FROM v$parameter WHERE name
-= 'compatible';``.  The SQLAlchemy Oracle dialects, when tasked with
-determining the default max identifier length, will attempt to use this query
-upon first connect in order to determine the effective compatibility version of
-the server, which determines what the maximum allowed identifier length is for
-the server.  If the table is not available, the server version information is
-used instead.
+The SQLAlchemy oracledb dialect will use the ``max_identifier_length``
+attribute available on driver connections since python-oracledb version 2.5.
+When using an older version, or using the cx_Oracle dialect, SQLAlchemy will
+instead attempt to use the query ``SELECT value FROM v$parameter WHERE name =
+'compatible'`` upon first connect in order to determine the effective
+compatibility version of the server. The "compatibility" version is a version
+number that is independent of the actual database version. It is used to assist
+database migration. It is configured by an Oracle Database initialization
+parameter. The compatibility version then determines the maximum allowed
+identifier length for the server. If the V$ view is not available, the database
+version information is used instead.
 
 As of SQLAlchemy 1.4, the default max identifier length for the Oracle dialects
 is 128 characters.  Upon first connection, the compatibility version is
