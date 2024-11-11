@@ -106,9 +106,9 @@ To set using per-connection execution options::
         isolation_level="AUTOCOMMIT"
     )
 
-For ``READ COMMITTED`` and ``SERIALIZABLE``, the Oracle dialects sets the level
-at the session level using ``ALTER SESSION``, which is reverted back to its
-default setting when the connection is returned to the connection pool.
+For ``READ COMMITTED`` and ``SERIALIZABLE``, the Oracle Database dialects sets
+the level at the session level using ``ALTER SESSION``, which is reverted back
+to its default setting when the connection is returned to the connection pool.
 
 Valid values for ``isolation_level`` include:
 
@@ -118,9 +118,9 @@ Valid values for ``isolation_level`` include:
 
 .. note:: The implementation for the
    :meth:`_engine.Connection.get_isolation_level` method as implemented by the
-   Oracle dialects necessarily force the start of a transaction using the
-   Oracle Database DBMS_TRANSACTION.LOCAL_TRANSACTION_ID function; otherwise no
-   level is normally readable.
+   Oracle Database dialects necessarily force the start of a transaction using
+   the Oracle Database DBMS_TRANSACTION.LOCAL_TRANSACTION_ID function;
+   otherwise no level is normally readable.
 
    Additionally, the :meth:`_engine.Connection.get_isolation_level` method will
    raise an exception if the ``v$transaction`` view is not available due to
@@ -159,14 +159,14 @@ Identifier Casing
 
 In Oracle Database, the data dictionary represents all case insensitive
 identifier names using UPPERCASE text.  SQLAlchemy on the other hand considers
-an all-lower case identifier name to be case insensitive.  The Oracle dialects
-convert all case insensitive identifiers to and from those two formats during
-schema level communication, such as reflection of tables and indexes.  Using an
-UPPERCASE name on the SQLAlchemy side indicates a case sensitive identifier,
-and SQLAlchemy will quote the name - this will cause mismatches against data
-dictionary data received from Oracle, so unless identifier names have been
-truly created as case sensitive (i.e. using quoted names), all lowercase names
-should be used on the SQLAlchemy side.
+an all-lower case identifier name to be case insensitive.  The Oracle Database
+dialects convert all case insensitive identifiers to and from those two formats
+during schema level communication, such as reflection of tables and indexes.
+Using an UPPERCASE name on the SQLAlchemy side indicates a case sensitive
+identifier, and SQLAlchemy will quote the name - this will cause mismatches
+against data dictionary data received from Oracle Database, so unless
+identifier names have been truly created as case sensitive (i.e. using quoted
+names), all lowercase names should be used on the SQLAlchemy side.
 
 .. _oracle_max_identifier_lengths:
 
@@ -273,12 +273,12 @@ above, and assuming the SELECT statement is not embedded within a compound
 statement like UNION.  This syntax is also available directly by using the
 :meth:`_sql.Select.fetch` method.
 
-.. versionchanged:: 2.0  the Oracle dialect now uses
-   ``FETCH FIRST N ROW / OFFSET N ROWS`` for all
-   :meth:`_sql.Select.limit` and :meth:`_sql.Select.offset` usage including
-   within the ORM and legacy :class:`_orm.Query`.  To force the legacy
-   behavior using window functions, specify the ``enable_offset_fetch=False``
-   dialect parameter to :func:`_sa.create_engine`.
+.. versionchanged:: 2.0 the Oracle Database dialects now use ``FETCH FIRST N
+   ROW / OFFSET N ROWS`` for all :meth:`_sql.Select.limit` and
+   :meth:`_sql.Select.offset` usage including within the ORM and legacy
+   :class:`_orm.Query`.  To force the legacy behavior using window functions,
+   specify the ``enable_offset_fetch=False`` dialect parameter to
+   :func:`_sa.create_engine`.
 
 The use of ``FETCH FIRST / OFFSET`` may be disabled on any Oracle Database
 version by passing ``enable_offset_fetch=False`` to :func:`_sa.create_engine`,
@@ -286,12 +286,12 @@ which will force the use of "legacy" mode that makes use of window functions.
 This mode is also selected automatically when using a version of Oracle
 Database prior to 12c.
 
-When using legacy mode, or when a :class:`.Select` statement
-with limit/offset is embedded in a compound statement, an emulated approach for
-LIMIT / OFFSET based on window functions is used, which involves creation of a
-subquery using ``ROW_NUMBER`` that is prone to performance issues as well as
-SQL construction issues for complex statements. However, this approach is
-supported by all Oracle versions. See notes below.
+When using legacy mode, or when a :class:`.Select` statement with limit/offset
+is embedded in a compound statement, an emulated approach for LIMIT / OFFSET
+based on window functions is used, which involves creation of a subquery using
+``ROW_NUMBER`` that is prone to performance issues as well as SQL construction
+issues for complex statements. However, this approach is supported by all
+Oracle Database versions. See notes below.
 
 Notes on LIMIT / OFFSET emulation (when fetch() method cannot be used)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -309,10 +309,11 @@ Oracle Database version prior to 12c, the following notes apply:
   to :func:`_sa.create_engine`.
 
   .. versionchanged:: 1.4
-      The Oracle dialect renders limit/offset integer values using a "post
-      compile" scheme which renders the integer directly before passing the
-      statement to the cursor for execution.   The ``use_binds_for_limits`` flag
-      no longer has an effect.
+
+      The Oracle Database dialect renders limit/offset integer values using a
+      "post compile" scheme which renders the integer directly before passing
+      the statement to the cursor for execution.  The ``use_binds_for_limits``
+      flag no longer has an effect.
 
       .. seealso::
 
@@ -380,8 +381,8 @@ a keyword argument to the :class:`_schema.Table` construct::
 When this flag is set, the given name (such as ``some_table`` above) will be
 searched not just in the ``ALL_TABLES`` view, but also within the
 ``ALL_SYNONYMS`` view to see if this name is actually a synonym to another
-name.  If the synonym is located and refers to a DBLINK, the Oracle dialects
-know how to locate the table's information using DBLINK syntax(e.g.
+name.  If the synonym is located and refers to a DBLINK, the Oracle Database
+dialects know how to locate the table's information using DBLINK syntax(e.g.
 ``@dblink``).
 
 ``oracle_resolve_synonyms`` is accepted wherever reflection arguments are
@@ -395,8 +396,8 @@ If synonyms are not in use, this flag should be left disabled.
 Constraint Reflection
 ---------------------
 
-The Oracle dialects can return information about foreign key, unique, and CHECK
-constraints, as well as indexes on tables.
+The Oracle Database dialects can return information about foreign key, unique,
+and CHECK constraints, as well as indexes on tables.
 
 Raw information regarding these constraints can be acquired using
 :meth:`_reflection.Inspector.get_foreign_keys`,
@@ -404,7 +405,7 @@ Raw information regarding these constraints can be acquired using
 :meth:`_reflection.Inspector.get_check_constraints`, and
 :meth:`_reflection.Inspector.get_indexes`.
 
-.. versionchanged:: 1.2  The Oracle dialect can now reflect UNIQUE and
+.. versionchanged:: 1.2 The Oracle Database dialect can now reflect UNIQUE and
    CHECK constraints.
 
 When using reflection at the :class:`_schema.Table` level, the
@@ -414,25 +415,23 @@ will also include these constraints.
 Note the following caveats:
 
 * When using the :meth:`_reflection.Inspector.get_check_constraints` method,
-  Oracle dialects build a special "IS NOT NULL" constraint for columns that
-  specify "NOT NULL".  This constraint is **not** returned by default; to
+  Oracle Database dialects build a special "IS NOT NULL" constraint for columns
+  that specify "NOT NULL".  This constraint is **not** returned by default; to
   include the "IS NOT NULL" constraints, pass the flag ``include_all=True``::
 
       from sqlalchemy import create_engine, inspect
 
-      engine = create_engine("oracle+cx_oracle://s:t@dsn")
+      engine = create_engine("oracle+oracledb://scott:tiger@localhost:1521?service_name=freepdb1")
       inspector = inspect(engine)
       all_check_constraints = inspector.get_check_constraints(
           "some_table", include_all=True)
 
-* in most cases, when reflecting a :class:`_schema.Table`,
-  a UNIQUE constraint will
-  **not** be available as a :class:`.UniqueConstraint` object, as Oracle
-  mirrors unique constraints with a UNIQUE index in most cases (the exception
-  seems to be when two or more unique constraints represent the same columns);
-  the :class:`_schema.Table` will instead represent these using
-  :class:`.Index`
-  with the ``unique=True`` flag set.
+* in most cases, when reflecting a :class:`_schema.Table`, a UNIQUE constraint
+  will **not** be available as a :class:`.UniqueConstraint` object, as Oracle
+  Database mirrors unique constraints with a UNIQUE index in most cases (the
+  exception seems to be when two or more unique constraints represent the same
+  columns); the :class:`_schema.Table` will instead represent these using
+  :class:`.Index` with the ``unique=True`` flag set.
 
 * Oracle Database creates an implicit index for the primary key of a table;
   this index is **excluded** from all index results.
@@ -463,19 +462,19 @@ DateTime Compatibility
 
 Oracle Database has no datatype known as ``DATETIME``, it instead has only
 ``DATE``, which can actually store a date and time value.  For this reason, the
-Oracle dialects provide a type :class:`_oracle.DATE` which is a subclass of
-:class:`.DateTime`.  This type has no special behavior, and is only present as
-a "marker" for this type; additionally, when a database column is reflected and
-the type is reported as ``DATE``, the time-supporting :class:`_oracle.DATE`
-type is used.
+Oracle Database dialects provide a type :class:`_oracle.DATE` which is a
+subclass of :class:`.DateTime`.  This type has no special behavior, and is only
+present as a "marker" for this type; additionally, when a database column is
+reflected and the type is reported as ``DATE``, the time-supporting
+:class:`_oracle.DATE` type is used.
 
 .. _oracle_table_options:
 
 Oracle Database Table Options
 -----------------------------
 
-The CREATE TABLE phrase supports the following options with Oracle dialects in
-conjunction with the :class:`_schema.Table` construct:
+The CREATE TABLE phrase supports the following options with Oracle Database
+dialects in conjunction with the :class:`_schema.Table` construct:
 
 
 * ``ON COMMIT``::

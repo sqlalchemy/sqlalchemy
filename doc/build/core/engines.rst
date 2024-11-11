@@ -200,7 +200,8 @@ More notes on connecting to MySQL at :ref:`mysql_toplevel`.
 Oracle
 ^^^^^^^^^^
 
-The preferred Oracle dialect uses the python-oracledb driver as the DBAPI::
+The preferred Oracle Database dialect uses the python-oracledb driver as the
+DBAPI::
 
       engine = create_engine(
           "oracle+oracledb://scott:tiger@127.0.0.1:1521/?service_name=freepdb1"
@@ -214,7 +215,7 @@ The Oracle dialect uses the obsolete cx_Oracle driver as the default DBAPI::
 
       engine = create_engine("oracle+cx_oracle://scott:tiger@tnsalias")
 
-More notes on connecting to Oracle at :ref:`oracle_toplevel`.
+More notes on connecting to Oracle Database at :ref:`oracle_toplevel`.
 
 Microsoft SQL Server
 ^^^^^^^^^^^^^^^^^^^^
