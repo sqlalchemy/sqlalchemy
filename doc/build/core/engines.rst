@@ -202,7 +202,9 @@ Oracle
 
 The preferred Oracle dialect uses the python-oracledb driver as the DBAPI::
 
-      engine = create_engine("oracle+oracledb://scott:tiger@127.0.0.1:1521/?service_name=freepdb1")
+      engine = create_engine(
+          "oracle+oracledb://scott:tiger@127.0.0.1:1521/?service_name=freepdb1"
+      )
 
       engine = create_engine("oracle+oracledb://scott:tiger@tnsalias")
 
