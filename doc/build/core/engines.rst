@@ -209,7 +209,8 @@ DBAPI::
 
       engine = create_engine("oracle+oracledb://scott:tiger@tnsalias")
 
-The Oracle dialect uses the obsolete cx_Oracle driver as the default DBAPI::
+For historical reasons, the Oracle dialect uses the obsolete cx_Oracle driver
+as the default DBAPI::
 
       engine = create_engine("oracle://scott:tiger@127.0.0.1:1521/?service_name=freepdb1")
 

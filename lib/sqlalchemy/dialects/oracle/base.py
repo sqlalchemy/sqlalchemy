@@ -7,7 +7,8 @@
 # mypy: ignore-errors
 
 
-r""".. dialect:: oracle
+r"""
+.. dialect:: oracle
     :name: Oracle
     :normal_support: 11+
     :best_effort: 9+
@@ -54,7 +55,7 @@ Database also supports two custom options specified using dialect kwargs:
   with a 'BY DEFAULT' identity column.
 * ``oracle_order``: when ``True``, renders the ORDER keyword, indicating the
   identity is definitively ordered. May be necessary to provide deterministic
-  ordering using Oracle RAC.
+  ordering using Oracle Real Application Clusters (RAC).
 
 Using a SEQUENCE (all Oracle Database versions)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -84,7 +85,7 @@ custom option specified using dialect kwargs:
 
 * ``oracle_order``: when ``True``, renders the ORDER keyword, indicating the
   sequence is definitively ordered. May be necessary to provide deterministic
-  ordering using Oracle Real Application Clusters (RAC).
+  ordering using Oracle RAC.
 
 .. versionchanged::  1.4   Added :class:`_schema.Identity` construct
    in a :class:`_schema.Column` to specify the option of an autoincrementing
@@ -118,9 +119,9 @@ Valid values for ``isolation_level`` include:
 
 .. note:: The implementation for the
    :meth:`_engine.Connection.get_isolation_level` method as implemented by the
-   Oracle Database dialects necessarily force the start of a transaction using
-   the Oracle Database DBMS_TRANSACTION.LOCAL_TRANSACTION_ID function;
-   otherwise no level is normally readable.
+   Oracle Database dialects necessarily force the start of a transaction using the
+   Oracle Database DBMS_TRANSACTION.LOCAL_TRANSACTION_ID function; otherwise no
+   level is normally readable.
 
    Additionally, the :meth:`_engine.Connection.get_isolation_level` method will
    raise an exception if the ``v$transaction`` view is not available due to
@@ -415,8 +416,8 @@ will also include these constraints.
 Note the following caveats:
 
 * When using the :meth:`_reflection.Inspector.get_check_constraints` method,
-  Oracle Database dialects build a special "IS NOT NULL" constraint for columns
-  that specify "NOT NULL".  This constraint is **not** returned by default; to
+  Oracle Database builds a special "IS NOT NULL" constraint for columns that
+  specify "NOT NULL".  This constraint is **not** returned by default; to
   include the "IS NOT NULL" constraints, pass the flag ``include_all=True``::
 
       from sqlalchemy import create_engine, inspect

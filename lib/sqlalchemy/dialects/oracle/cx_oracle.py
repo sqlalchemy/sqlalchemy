@@ -381,14 +381,6 @@ series.   This setting can be modified as follows::
             if dbapitype is CLOB:
                 del inputsizes[bindparam]
 
-.. _cx_oracle_returning:
-
-RETURNING Support
------------------
-
-The cx_Oracle dialect implements RETURNING using OUT parameters.
-The dialect supports RETURNING fully.
-
 .. _cx_oracle_lob:
 
 LOB Datatypes
@@ -403,6 +395,14 @@ To disable the use of newer type handlers and deliver LOB objects as classic
 buffered objects with a ``read()`` method, the parameter
 ``auto_convert_lobs=False`` may be passed to :func:`_sa.create_engine`,
 which takes place only engine-wide.
+
+.. _cx_oracle_returning:
+
+RETURNING Support
+-----------------
+
+The cx_Oracle dialect implements RETURNING using OUT parameters.
+The dialect supports RETURNING fully.
 
 Two Phase Transactions Not Supported
 ------------------------------------

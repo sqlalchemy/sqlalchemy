@@ -111,14 +111,23 @@ terminated by a firewall::
         }
     )
 
+The Easy Connect syntax has been enhanced during the life of Oracle Database.
+Review the documentation for your database version.  The current documentation
+is at `Understanding the Easy Connect Naming Method
+<https://www.oracle.com/pls/topic/lookup?ctx=dblatest&id=GUID-B0437826-43C1-49EC-A94D-B650B6A4A6EE>`_.
+
+The general syntax is similar to::
+
+    [[protocol:]//]host[:port][/[service_name]][?parameter_name=value{&parameter_name=value}]
+
 Note that although the SQLAlchemy URL syntax ``hostname:port/dbname`` looks
-like Oracle's Easy Connect syntax, it is different. It requires a system
-identifier (SID) for the ``dbname`` component of the URL::
+like Oracle's Easy Connect syntax, it is different. SQLAlchemy's URL requires a
+system identifier (SID) for the ``dbname`` component::
 
     engine = create_engine("oracle+oracledb://scott:tiger@hostname:port/sid")
 
-Easy Connect syntax does not support SIDs.  It uses services names, which are
-the preferred choice for connecting to Oracle Database
+Easy Connect syntax does not support SIDs. It uses services names, which are
+the preferred choice for connecting to Oracle Database.
 
 Passing python-oracledb connect arguments
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -248,6 +257,10 @@ connection pooling::
 
     with engine.connect() as conn:
         print(conn.scalar(text("select 1 from dual")))
+
+Refer to the python-oracledb documentation for `oracledb.create_pool()
+<https://python-oracledb.readthedocs.io/en/latest/api_manual/module.html#oracledb.create_pool>`_
+for the arguments that can be used when creating a connection pool.
 
 .. _drcp:
 
@@ -449,14 +462,6 @@ follows::
             if dbapitype is CLOB:
                 del inputsizes[bindparam]
 
-.. _oracledb_returning:
-
-RETURNING Support
------------------
-
-The oracledb dialect implements RETURNING using OUT parameters.  The dialect
-supports RETURNING fully.
-
 .. _oracledb_lob:
 
 LOB Datatypes
@@ -470,6 +475,14 @@ To disable the use of the type handlers and deliver LOB objects as classic
 buffered objects with a ``read()`` method, the parameter
 ``auto_convert_lobs=False`` may be passed to :func:`_sa.create_engine`.
 
+.. _oracledb_returning:
+
+RETURNING Support
+-----------------
+
+The oracledb dialect implements RETURNING using OUT parameters.  The dialect
+supports RETURNING fully.
+
 Two Phase Transaction Support
 -----------------------------
 
@@ -479,8 +492,6 @@ the Core level via :meth:`_engine.Connection.begin_twophase` and
 :paramref:`_orm.Session.twophase` for transparent ORM use.
 
 .. versionchanged:: 2.0.32 added support for two phase transactions
-
-.. versionadded:: 2.0.0 added support for the python-oracledb driver.
 
 .. _oracledb_numeric:
 
@@ -522,6 +533,8 @@ SQLAlchemy type (or a subclass of such).
 .. versionchanged:: 1.2 The numeric handling system for the oracle dialects has
    been reworked to take advantage of newer driver features as well as better
    integration of outputtypehandlers.
+
+.. versionadded:: 2.0.0 added support for the python-oracledb driver.
 
 """  # noqa
 from __future__ import annotations
