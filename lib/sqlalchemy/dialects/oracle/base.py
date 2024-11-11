@@ -170,43 +170,43 @@ should be used on the SQLAlchemy side.
 
 .. _oracle_max_identifier_lengths:
 
-Max Identifier Lengths
-----------------------
+Maximum Identifier Lengths
+--------------------------
 
-Oracle Database changed the default max identifier length as of Oracle Database
-12.2.  Prior to this version, the length was 30, and for 12.2 and greater it is
-now 128.  This change impacts SQLAlchemy in the area of generated SQL label
-names as well as the generation of constraint names, particularly in the case
-where the constraint naming convention feature described at
-:ref:`constraint_naming_conventions` is being used.
+SQLAlchemy is sensitive to the maximum identifier length supported by Oracle
+Database. This affects generated SQL label names as well as the generation of
+constraint names, particularly in the case where the constraint naming
+convention feature described at :ref:`constraint_naming_conventions` is being
+used.
 
-The SQLAlchemy oracledb dialect will use the ``max_identifier_length``
-attribute available on driver connections since python-oracledb version 2.5.
-When using an older version, or using the cx_Oracle dialect, SQLAlchemy will
-instead attempt to use the query ``SELECT value FROM v$parameter WHERE name =
-'compatible'`` upon first connect in order to determine the effective
-compatibility version of the server. The "compatibility" version is a version
-number that is independent of the actual database version. It is used to assist
-database migration. It is configured by an Oracle Database initialization
-parameter. The compatibility version then determines the maximum allowed
-identifier length for the server. If the V$ view is not available, the database
-version information is used instead.
-
-As of SQLAlchemy 1.4, the default max identifier length for the Oracle dialects
-is 128 characters.  Upon first connection, the compatibility version is
-detected and if it is less than Oracle Database version 12.2, the max
-identifier length is changed to be 30 characters.  In all cases, setting the
+Oracle Database 12.2 increased the default maximum identifier length from 30 to
+128. As of SQLAlchemy 1.4, the default maximum identifier length for the Oracle
+dialects is 128 characters.  Upon first connection, the maximum length actually
+supported by the database is obtained. In all cases, setting the
 :paramref:`_sa.create_engine.max_identifier_length` parameter will bypass this
 change and the value given will be used as is::
 
     engine = create_engine(
-        "oracle+oracledb://scott:tiger@oracle122",
+        "oracle+oracledb://scott:tiger@localhost:1521?service_name=freepdb1",
         max_identifier_length=30)
+
+If :paramref:`_sa.create_engine.max_identifier_length` is not set, the oracledb
+dialect internally uses the ``max_identifier_length`` attribute available on
+driver connections since python-oracledb version 2.5. When using an older
+driver version, or using the cx_Oracle dialect, SQLAlchemy will instead attempt
+to use the query ``SELECT value FROM v$parameter WHERE name = 'compatible'``
+upon first connect in order to determine the effective compatibility version of
+the database. The "compatibility" version is a version number that is
+independent of the actual database version. It is used to assist database
+migration. It is configured by an Oracle Database initialization parameter. The
+compatibility version then determines the maximum allowed identifier length for
+the database. If the V$ view is not available, the database version information
+is used instead.
 
 The maximum identifier length comes into play both when generating anonymized
 SQL labels in SELECT statements, but more crucially when generating constraint
 names from a naming convention.  It is this area that has created the need for
-SQLAlchemy to change this default conservatively.   For example, the following
+SQLAlchemy to change this default conservatively.  For example, the following
 naming convention produces two very different constraint names based on the
 identifier length::
 
@@ -243,7 +243,7 @@ With an identifier length of 30, the above CREATE INDEX looks like::
     CREATE INDEX ix_some_column_name_1s_70cd ON t
     (some_column_name_1, some_column_name_2, some_column_name_3)
 
-However with length=128, it becomes::
+However with length of 128, it becomes::
 
     CREATE INDEX ix_some_column_name_1some_column_name_2some_column_name_3 ON t
     (some_column_name_1, some_column_name_2, some_column_name_3)
@@ -259,9 +259,9 @@ control of the generation of truncated names, and to fully review and test all
 database migrations in a staging environment when changing this value to ensure
 that the impact of this change has been mitigated.
 
-.. versionchanged:: 1.4 the default max_identifier_length for Oracle Datab ase
-   is 128 characters, which is adjusted down to 30 upon first connect if an
-   older version of Oracle Database (compatibility version < 12.2) is detected.
+.. versionchanged:: 1.4 the default max_identifier_length for Oracle Database
+   is 128 characters, which is adjusted down to 30 upon first connect if the
+   Oracle Database, or its compatibility setting, are lower than version 12.2.
 
 
 LIMIT/OFFSET/FETCH Support
