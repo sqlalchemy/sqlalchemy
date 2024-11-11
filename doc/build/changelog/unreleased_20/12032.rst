@@ -1,0 +1,7 @@
+.. change::
+    :tags: oracle, usecase
+    :tickets: 12032 
+
+    Use the connection attribute ``max_identifier_length`` available
+    in oracledb since version 2.5 when determining the identifier length
+    in the Oracle dialect.

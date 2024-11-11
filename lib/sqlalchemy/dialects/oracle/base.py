@@ -188,12 +188,15 @@ To assist with this change and others, Oracle includes the concept of a
 actual server version in order to assist with migration of Oracle databases,
 and may be configured within the Oracle server itself. This compatibility
 version is retrieved using the query  ``SELECT value FROM v$parameter WHERE
-name = 'compatible';``.   The SQLAlchemy Oracle dialect, when tasked with
-determining the default max identifier length, will attempt to use this query
-upon first connect in order to determine the effective compatibility version of
-the server, which determines what the maximum allowed identifier length is for
-the server.  If the table is not available, the  server version information is
-used instead.
+name = 'compatible';``. 
+The SQLAlchemy Oracle dialect, when tasked with determining the default max
+identifier length, will use the ``max_identifier_length`` attribute available
+in the connection of the oracledb driver since version 2.5. When using an older
+version or cx_oracle SQLAlchemy will instead attempted to use the query
+mentioned above upon first connect in order to determine the effective
+compatibility version of the server, which determines what the maximum allowed
+identifier length is for the server. If the table is not available, the server
+version information is used instead.
 
 As of SQLAlchemy 1.4, the default max identifier length for the Oracle dialect
 is 128 characters.  Upon first connect, the compatibility version is detected
