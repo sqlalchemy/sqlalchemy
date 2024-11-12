@@ -3871,7 +3871,7 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
 
         :param order: optional boolean value; if ``True``, renders the
          ORDER keyword, understood by Oracle Database, indicating the sequence
-	 is definitively ordered.   May be necessary to provide deterministic
+         is definitively ordered.   May be necessary to provide deterministic
          ordering using Oracle RAC.
 
         :param data_type: The type to be returned by the sequence, for

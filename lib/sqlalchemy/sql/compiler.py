@@ -2349,7 +2349,7 @@ class SQLCompiler(Compiled):
         to be appended.
 
         Gives Oracle Database a chance to tack on a ``FROM DUAL`` to the string
-	output.
+        output.
 
         """
         return ""

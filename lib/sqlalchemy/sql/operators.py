@@ -1606,8 +1606,8 @@ class ColumnOperators(Operators):
           SQLite and MySQL, for example.
 
         Regular expression support is currently implemented for Oracle
-	Database, PostgreSQL, MySQL and MariaDB.  Partial support is available
-	for SQLite.  Support among third-party dialects may vary.
+        Database, PostgreSQL, MySQL and MariaDB.  Partial support is available
+        for SQLite.  Support among third-party dialects may vary.
 
         :param pattern: The regular expression pattern string or column
           clause.
