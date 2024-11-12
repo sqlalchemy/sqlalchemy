@@ -1829,7 +1829,7 @@ as follows:
 * MariaDB - supported for MariaDB versions 10.5 and above
 * MySQL - no support, no RETURNING feature is present
 * Oracle Database - supports RETURNING with executemany using native python-oracledb / cx_Oracle
-  APIs, for all supported Oracle Databae versions 9 and above, using multi-row OUT
+  APIs, for all supported Oracle Database versions 9 and above, using multi-row OUT
   parameters. This is not the same implementation as "executemanyvalues", however has
   the same usage patterns and equivalent performance benefits.
 

@@ -3871,7 +3871,7 @@ class GenerativeSelect(SelectBase, Generative):
          table or as a column depending on backend.
 
         :param skip_locked: boolean, will render ``FOR UPDATE SKIP LOCKED`` on
-         Oracle Databae and PostgreSQL dialects or ``FOR SHARE SKIP LOCKED`` if
+         Oracle Database and PostgreSQL dialects or ``FOR SHARE SKIP LOCKED`` if
          ``read=True`` is also specified.
 
         :param key_share: boolean, will render ``FOR NO KEY UPDATE``,
