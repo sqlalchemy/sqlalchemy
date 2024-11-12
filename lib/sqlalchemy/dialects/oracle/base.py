@@ -965,10 +965,10 @@ class OracleCompiler(compiler.SQLCompiler):
                     "Computed columns don't work with Oracle Database UPDATE "
                     "statements that use RETURNING; the value of the column "
                     "*before* the UPDATE takes place is returned.   It is "
-                    "advised to not use RETURNING with an Oracle Database computed "
-                    "column.  Consider setting implicit_returning to False on "
-                    "the Table object in order to avoid implicit RETURNING "
-                    "clauses from being generated for this Table."
+                    "advised to not use RETURNING with an Oracle Database "
+                    "computed "column.  Consider setting implicit_returning "
+                    "to False on "the Table object in order to avoid implicit "
+                    "RETURNING clauses from being generated for this Table."
                 )
             if column.type._has_column_expression:
                 col_expr = column.type.column_expression(column)
@@ -1373,8 +1373,9 @@ class OracleDDLCompiler(compiler.DDLCompiler):
         )
         if generated.persisted is True:
             raise exc.CompileError(
-                "Oracle Database computed columns do not support 'stored' persistence; "
-                "set the 'persisted' flag to None or False for Oracle Database support."
+                "Oracle Database computed columns do not support 'stored' "
+                "persistence; set the 'persisted' flag to None or False for "
+                "Oracle Database support."
             )
         elif generated.persisted is False:
             text += " VIRTUAL"

@@ -92,10 +92,11 @@ class FLOAT(sqltypes.FLOAT):
         r"""
         Construct a FLOAT
 
-        :param binary_precision: Oracle Database binary precision value to be rendered
-         in DDL. This may be approximated to the number of decimal characters
-         using the formula "decimal precision = 0.30103 * binary precision".
-         The default value used by Oracle Database for FLOAT / DOUBLE PRECISION is 126.
+        :param binary_precision: Oracle Database binary precision value to be
+         rendered in DDL. This may be approximated to the number of decimal
+         characters using the formula "decimal precision = 0.30103 * binary
+         precision".  The default value used by Oracle Database for FLOAT /
+         DOUBLE PRECISION is 126.
 
         :param asdecimal: See :paramref:`_sqltypes.Float.asdecimal`
 
@@ -261,7 +262,8 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
          use Oracle Database's ``TIMESTAMP WITH TIME ZONE`` datatype.
 
         :param local_timezone: boolean.  Indicates that the TIMESTAMP type
-         should use Oracle Database's ``TIMESTAMP WITH LOCAL TIME ZONE`` datatype.
+         should use Oracle Database's ``TIMESTAMP WITH LOCAL TIME ZONE``
+         datatype.
 
 
         """

@@ -530,9 +530,9 @@ class HasHints:
             **specific to a single table** to a statement, in a location that
             is **dialect-specific**.  To add generic optimizer hints to the
             **beginning** of a statement ahead of the SELECT keyword such as
-            for MySQL or Oracle Database, use the :meth:`_expression.Select.prefix_with`
-            method.  To add optimizer hints to the **end** of a statement such
-            as for PostgreSQL, use the
+            for MySQL or Oracle Database, use the
+            :meth:`_expression.Select.prefix_with` method.  To add optimizer
+            hints to the **end** of a statement such as for PostgreSQL, use the
             :meth:`_expression.Select.with_statement_hint` method.
 
         The text of the hint is rendered in the appropriate
