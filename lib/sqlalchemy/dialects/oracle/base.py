@@ -1495,8 +1495,8 @@ class OracleDialect(default.DefaultDialect):
     @util.deprecated_params(
         use_binds_for_limits=(
             "1.4",
-            "The ``use_binds_for_limits`` Oracle Database dialect parameter is "
-            "deprecated. The dialect now renders LIMIT / OFFSET integers "
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated. The dialect now renders LIMIT / OFFSET integers "
             "inline in all cases using a post-compilation hook, so that the "
             "value is still represented by a 'bound parameter' on the Core "
             "Expression side.",
