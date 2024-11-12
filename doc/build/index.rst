@@ -160,7 +160,7 @@ SQLAlchemy Documentation
       :doc:`PostgreSQL <dialects/postgresql>` |
       :doc:`MySQL and MariaDB <dialects/mysql>` |
       :doc:`SQLite <dialects/sqlite>` |
-      :doc:`Oracle <dialects/oracle>` |
+      :doc:`Oracle Database <dialects/oracle>` |
       :doc:`Microsoft SQL Server <dialects/mssql>`
 
       :doc:`More Dialects ... <dialects/index>`
@@ -180,4 +180,3 @@ SQLAlchemy Documentation
     * :doc:`Error Message Guide <errors>` - Explanations of many SQLAlchemy Errors
     * :doc:`Complete table of of contents <contents>`
     * :ref:`Index <genindex>`
-

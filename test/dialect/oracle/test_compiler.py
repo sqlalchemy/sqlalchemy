@@ -811,8 +811,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_binds_for_limits_disabled_one_legacy(self):
         t = table("sometable", column("col1"), column("col2"))
         with testing.expect_deprecated(
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated."
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated."
         ):
             dialect = oracle.OracleDialect(
                 use_binds_for_limits=False, enable_offset_fetch=False
@@ -830,8 +830,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_binds_for_limits_disabled_two_legacy(self):
         t = table("sometable", column("col1"), column("col2"))
         with testing.expect_deprecated(
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated."
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated."
         ):
             dialect = oracle.OracleDialect(
                 use_binds_for_limits=False, enable_offset_fetch=False
@@ -850,8 +850,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_binds_for_limits_disabled_three_legacy(self):
         t = table("sometable", column("col1"), column("col2"))
         with testing.expect_deprecated(
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated."
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated."
         ):
             dialect = oracle.OracleDialect(
                 use_binds_for_limits=False, enable_offset_fetch=False
@@ -872,8 +872,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_binds_for_limits_enabled_one_legacy(self):
         t = table("sometable", column("col1"), column("col2"))
         with testing.expect_deprecated(
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated."
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated."
         ):
             dialect = oracle.OracleDialect(
                 use_binds_for_limits=True, enable_offset_fetch=False
@@ -891,8 +891,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_binds_for_limits_enabled_two_legacy(self):
         t = table("sometable", column("col1"), column("col2"))
         with testing.expect_deprecated(
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated."
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated."
         ):
             dialect = oracle.OracleDialect(
                 use_binds_for_limits=True, enable_offset_fetch=False
@@ -912,8 +912,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_binds_for_limits_enabled_three_legacy(self):
         t = table("sometable", column("col1"), column("col2"))
         with testing.expect_deprecated(
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated."
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated."
         ):
             dialect = oracle.OracleDialect(
                 use_binds_for_limits=True, enable_offset_fetch=False
@@ -1417,7 +1417,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         with testing.expect_warnings(
-            "Computed columns don't work with Oracle UPDATE"
+            "Computed columns don't work with Oracle Database UPDATE"
         ):
             self.assert_compile(
                 t1.update().values(id=1, foo=5).returning(t1.c.bar),
@@ -1553,7 +1553,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         assert_raises_message(
             exc.CompileError,
-            r".*Oracle computed columns do not support 'stored' ",
+            r".*Oracle Database computed columns do not support 'stored' ",
             schema.CreateTable(t).compile,
             dialect=oracle.dialect(),
         )

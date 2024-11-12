@@ -1546,7 +1546,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
           unless they are a reserved word.  Names with any number of upper
           case characters will be quoted and sent exactly.  Note that this
           behavior applies even for databases which standardize upper
-          case names as case insensitive such as Oracle.
+          case names as case insensitive such as Oracle Database.
 
           The name field may be omitted at construction time and applied
           later, at any time before the Column is associated with a
@@ -1618,8 +1618,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             will imply that database-specific keywords such as PostgreSQL
             ``SERIAL``, MySQL ``AUTO_INCREMENT``, or ``IDENTITY`` on SQL Server
             should also be rendered.  Not every database backend has an
-            "implied" default generator available; for example the Oracle
-            backend always needs an explicit construct such as
+            "implied" default generator available; for example the Oracle Database
+            backends alway needs an explicit construct such as
             :class:`.Identity` to be included with a :class:`.Column` in order
             for the DDL rendered to include auto-generating constructs to also
             be produced in the database.
@@ -1693,7 +1693,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
               is not included as this is unnecessary and not recommended
               by the database vendor.  See the section
               :ref:`sqlite_autoincrement` for more background.
-            * Oracle - The Oracle dialect has no default "autoincrement"
+            * Oracle Database - The Oracle Database dialects have no default "autoincrement"
               feature available at this time, instead the :class:`.Identity`
               construct is recommended to achieve this (the :class:`.Sequence`
               construct may also be used).
@@ -1710,10 +1710,10 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
               (see
               `https://www.python.org/dev/peps/pep-0249/#lastrowid
               <https://www.python.org/dev/peps/pep-0249/#lastrowid>`_)
-            * PostgreSQL, SQL Server, Oracle - use RETURNING or an equivalent
+            * PostgreSQL, SQL Server, Oracle Database - use RETURNING or an equivalent
               construct when rendering an INSERT statement, and then retrieving
               the newly generated primary key values after execution
-            * PostgreSQL, Oracle for :class:`_schema.Table` objects that
+            * PostgreSQL, Oracle Database for :class:`_schema.Table` objects that
               set :paramref:`_schema.Table.implicit_returning` to False -
               for a :class:`.Sequence` only, the :class:`.Sequence` is invoked
               explicitly before the INSERT statement takes place so that the
@@ -3776,7 +3776,7 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
     @util.deprecated_params(
         order=(
             "2.1",
-            "This parameter is supported only by Oracle, "
+            "This parameter is supported only by Oracle Database, "
             "use ``oracle_order`` instead.",
         )
     )
@@ -3867,11 +3867,11 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
 
         :param cache: optional integer value; number of future values in the
          sequence which are calculated in advance.  Renders the CACHE keyword
-         understood by Oracle and PostgreSQL.
+         understood by Oracle Database and PostgreSQL.
 
         :param order: optional boolean value; if ``True``, renders the
-         ORDER keyword, understood by Oracle, indicating the sequence is
-         definitively ordered.   May be necessary to provide deterministic
+         ORDER keyword, understood by Oracle Database, indicating the sequence
+         is definitively ordered.   May be necessary to provide deterministic
          ordering using Oracle RAC.
 
         :param data_type: The type to be returned by the sequence, for
@@ -6115,12 +6115,12 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
     @util.deprecated_params(
         order=(
             "2.1",
-            "This parameter is supported only by Oracle, "
+            "This parameter is supported only by Oracle Database, "
             "use ``oracle_order`` instead.",
         ),
         on_null=(
             "2.1",
-            "This parameter is supported only by Oracle, "
+            "This parameter is supported only by Oracle Database, "
             "use ``oracle_on_null`` instead.",
         ),
     )
@@ -6168,7 +6168,7 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
         :param on_null:
           Set to ``True`` to specify ON NULL in conjunction with a
           ``always=False`` identity column. This option is only supported on
-          some backends, like Oracle.
+          some backends, like Oracle Database.
 
         :param start: the starting index of the sequence.
         :param increment: the increment value of the sequence.

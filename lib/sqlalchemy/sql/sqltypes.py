@@ -275,8 +275,8 @@ class Unicode(String):
     The :class:`.Unicode` type is a :class:`.String` subclass that assumes
     input and output strings that may contain non-ASCII characters, and for
     some backends implies an underlying column type that is explicitly
-    supporting of non-ASCII data, such as ``NVARCHAR`` on Oracle and SQL
-    Server.  This will impact the output of ``CREATE TABLE`` statements and
+    supporting of non-ASCII data, such as ``NVARCHAR`` on Oracle Database and
+    SQL Server.  This will impact the output of ``CREATE TABLE`` statements and
     ``CAST`` functions at the dialect level.
 
     The character encoding used by the :class:`.Unicode` type that is used to
@@ -306,7 +306,6 @@ class Unicode(String):
         to :class:`.Unicode`.
 
         :meth:`.DialectEvents.do_setinputsizes`
-
 
     """
 
@@ -635,16 +634,16 @@ class Float(Numeric[_N]):
            indicates a number of digits for the generic
            :class:`_sqltypes.Float` datatype.
 
-           .. note:: For the Oracle backend, the
+           .. note:: For the Oracle Database backend, the
               :paramref:`_sqltypes.Float.precision` parameter is not accepted
-              when rendering DDL, as Oracle does not support float precision
+              when rendering DDL, as Oracle Database does not support float precision
               specified as a number of decimal places. Instead, use the
-              Oracle-specific :class:`_oracle.FLOAT` datatype and specify the
+              Oracle Database-specific :class:`_oracle.FLOAT` datatype and specify the
               :paramref:`_oracle.FLOAT.binary_precision` parameter. This is new
               in version 2.0 of SQLAlchemy.
 
               To create a database agnostic :class:`_types.Float` that
-              separately specifies binary precision for Oracle, use
+              separately specifies binary precision for Oracle Database, use
               :meth:`_types.TypeEngine.with_variant` as follows::
 
                     from sqlalchemy import Column
@@ -755,7 +754,7 @@ class DateTime(
          to make use of the :class:`_types.TIMESTAMP` datatype directly when
          using this flag, as some databases include separate generic
          date/time-holding types distinct from the timezone-capable
-         TIMESTAMP datatype, such as Oracle.
+         TIMESTAMP datatype, such as Oracle Database.
 
 
         """
@@ -2031,10 +2030,9 @@ class _AbstractInterval(HasExpressionLookup, TypeEngine[dt.timedelta]):
 class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
     """A type for ``datetime.timedelta()`` objects.
 
-    The Interval type deals with ``datetime.timedelta`` objects.  In
-    PostgreSQL and Oracle, the native ``INTERVAL`` type is used; for others,
-    the value is stored as a date which is relative to the "epoch"
-    (Jan. 1, 1970).
+    The Interval type deals with ``datetime.timedelta`` objects.  In PostgreSQL
+    and Oracle Database, the native ``INTERVAL`` type is used; for others, the
+    value is stored as a date which is relative to the "epoch" (Jan. 1, 1970).
 
     Note that the ``Interval`` type does not currently provide date arithmetic
     operations on platforms which do not support interval types natively. Such
@@ -2059,16 +2057,16 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
 
         :param native: when True, use the actual
           INTERVAL type provided by the database, if
-          supported (currently PostgreSQL, Oracle).
+          supported (currently PostgreSQL, Oracle Database).
           Otherwise, represent the interval data as
           an epoch value regardless.
 
         :param second_precision: For native interval types
           which support a "fractional seconds precision" parameter,
-          i.e. Oracle and PostgreSQL
+          i.e. Oracle Database and PostgreSQL
 
         :param day_precision: for native interval types which
-          support a "day precision" parameter, i.e. Oracle.
+          support a "day precision" parameter, i.e. Oracle Database.
 
         """
         super().__init__()
@@ -3324,8 +3322,8 @@ class BIGINT(BigInteger):
 class TIMESTAMP(DateTime):
     """The SQL TIMESTAMP type.
 
-    :class:`_types.TIMESTAMP` datatypes have support for timezone
-    storage on some backends, such as PostgreSQL and Oracle.  Use the
+    :class:`_types.TIMESTAMP` datatypes have support for timezone storage on
+    some backends, such as PostgreSQL and Oracle Database.  Use the
     :paramref:`~types.TIMESTAMP.timezone` argument in order to enable
     "TIMESTAMP WITH TIMEZONE" for these backends.
 
@@ -3377,7 +3375,7 @@ class TEXT(Text):
 class CLOB(Text):
     """The CLOB type.
 
-    This type is found in Oracle and Informix.
+    This type is found in Oracle Database and Informix.
     """
 
     __visit_name__ = "CLOB"

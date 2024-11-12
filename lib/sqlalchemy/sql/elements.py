@@ -4326,7 +4326,7 @@ class WithinGroup(ColumnElement[_T]):
     ``rank()``, ``dense_rank()``, etc.
 
     It's supported only by certain database backends, such as PostgreSQL,
-    Oracle and MS SQL Server.
+    Oracle Database and MS SQL Server.
 
     The :class:`.WithinGroup` construct extracts its type from the
     method :meth:`.FunctionElement.within_group_type`.  If this returns
@@ -5204,7 +5204,7 @@ class quoted_name(util.MemoizedSlots, str):
     A :class:`.quoted_name` object with ``quote=True`` is also
     prevented from being modified in the case of a so-called
     "name normalize" option.  Certain database backends, such as
-    Oracle, Firebird, and DB2 "normalize" case-insensitive names
+    Oracle Database, Firebird, and DB2 "normalize" case-insensitive names
     as uppercase.  The SQLAlchemy dialects for these backends
     convert from SQLAlchemy's lower-case-means-insensitive convention
     to the upper-case-means-insensitive conventions of those backends.
@@ -5225,11 +5225,11 @@ class quoted_name(util.MemoizedSlots, str):
         from sqlalchemy import inspect
         from sqlalchemy.sql import quoted_name
 
-        engine = create_engine("oracle+cx_oracle://some_dsn")
+        engine = create_engine("oracle+oracledb://some_dsn")
         print(inspect(engine).has_table(quoted_name("some_table", True)))
 
-    The above logic will run the "has table" logic against the Oracle backend,
-    passing the name exactly as ``"some_table"`` without converting to
+    The above logic will run the "has table" logic against the Oracle Database
+    backend, passing the name exactly as ``"some_table"`` without converting to
     upper case.
 
     .. versionchanged:: 1.2 The :class:`.quoted_name` construct is now
