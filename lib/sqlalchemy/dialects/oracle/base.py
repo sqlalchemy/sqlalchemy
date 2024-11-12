@@ -724,16 +724,16 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
                 # https://www.oracletutorial.com/oracle-basics/oracle-float/
                 estimated_binary_precision = int(precision / 0.30103)
                 raise exc.ArgumentError(
-                    "Oracle FLOAT types use 'binary precision', which does "
-                    "not convert cleanly from decimal 'precision'.  Please "
-                    "specify "
-                    f"this type with a separate Oracle variant, such as "
-                    f"{type_.__class__.__name__}(precision={precision})."
+                    "Oracle Database FLOAT types use 'binary precision', "
+                    "which does not convert cleanly from decimal "
+                    "'precision'.  Please specify "
+                    "this type with a separate Oracle Database variant, such "
+                    f"as {type_.__class__.__name__}(precision={precision})."
                     f"with_variant(oracle.FLOAT"
                     f"(binary_precision="
                     f"{estimated_binary_precision}), 'oracle'), so that the "
-                    "Oracle specific 'binary_precision' may be specified "
-                    "accurately."
+                    "Oracle Database specific 'binary_precision' may be "
+                    "specified accurately."
                 )
             else:
                 precision = binary_precision
@@ -1495,8 +1495,8 @@ class OracleDialect(default.DefaultDialect):
     @util.deprecated_params(
         use_binds_for_limits=(
             "1.4",
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated. The dialect now renders LIMIT /OFFSET integers "
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter is "
+            "deprecated. The dialect now renders LIMIT / OFFSET integers "
             "inline in all cases using a post-compilation hook, so that the "
             "value is still represented by a 'bound parameter' on the Core "
             "Expression side.",

@@ -811,8 +811,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_binds_for_limits_disabled_one_legacy(self):
         t = table("sometable", column("col1"), column("col2"))
         with testing.expect_deprecated(
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated."
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated."
         ):
             dialect = oracle.OracleDialect(
                 use_binds_for_limits=False, enable_offset_fetch=False
@@ -830,8 +830,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_binds_for_limits_disabled_two_legacy(self):
         t = table("sometable", column("col1"), column("col2"))
         with testing.expect_deprecated(
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated."
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated."
         ):
             dialect = oracle.OracleDialect(
                 use_binds_for_limits=False, enable_offset_fetch=False
@@ -850,8 +850,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_binds_for_limits_disabled_three_legacy(self):
         t = table("sometable", column("col1"), column("col2"))
         with testing.expect_deprecated(
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated."
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated."
         ):
             dialect = oracle.OracleDialect(
                 use_binds_for_limits=False, enable_offset_fetch=False
@@ -872,8 +872,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_binds_for_limits_enabled_one_legacy(self):
         t = table("sometable", column("col1"), column("col2"))
         with testing.expect_deprecated(
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated."
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated."
         ):
             dialect = oracle.OracleDialect(
                 use_binds_for_limits=True, enable_offset_fetch=False
@@ -891,8 +891,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_binds_for_limits_enabled_two_legacy(self):
         t = table("sometable", column("col1"), column("col2"))
         with testing.expect_deprecated(
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated."
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated."
         ):
             dialect = oracle.OracleDialect(
                 use_binds_for_limits=True, enable_offset_fetch=False
@@ -912,8 +912,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_binds_for_limits_enabled_three_legacy(self):
         t = table("sometable", column("col1"), column("col2"))
         with testing.expect_deprecated(
-            "The ``use_binds_for_limits`` Oracle dialect parameter is "
-            "deprecated."
+            "The ``use_binds_for_limits`` Oracle Database dialect parameter "
+            "is deprecated."
         ):
             dialect = oracle.OracleDialect(
                 use_binds_for_limits=True, enable_offset_fetch=False
