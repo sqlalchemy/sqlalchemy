@@ -278,7 +278,7 @@ class LambdaElement(elements.ClauseElement):
                         rec = AnalyzedFunction(
                             tracker, self, apply_propagate_attrs, fn
                         )
-                        rec.closure_bindparams = bindparams
+                        rec.closure_bindparams = list(bindparams)
                         lambda_cache[key] = rec
                     else:
                         rec = lambda_cache[key]
