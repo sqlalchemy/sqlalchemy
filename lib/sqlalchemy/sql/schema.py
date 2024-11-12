@@ -5089,12 +5089,20 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     @util.ro_memoized_property
     def _autoincrement_column(self) -> Optional[Column[int]]:
         def _validate_autoinc(col: Column[Any], autoinc_true: bool) -> bool:
-            if col.type._type_affinity is None or not issubclass(
-                col.type._type_affinity,
-                (
-                    type_api.INTEGERTYPE._type_affinity,
-                    type_api.NUMERICTYPE._type_affinity,
-                ),
+            if col.type._type_affinity is not None and issubclass(
+                col.type._type_affinity, type_api.NUMERICTYPE._type_affinity
+            ):
+                scale = col.type.scale  # type: ignore[attr-defined]
+                if scale != 0 and autoinc_true:
+                    raise exc.ArgumentError(
+                        f"Column type {col.type} with non-zero scale "
+                        f"{scale} on column '{col}' is not "
+                        f"compatible with autoincrement=True"
+                    )
+                elif not autoinc_true:
+                    return False
+            elif col.type._type_affinity is None or not issubclass(
+                col.type._type_affinity, type_api.INTEGERTYPE._type_affinity
             ):
                 if autoinc_true:
                     raise exc.ArgumentError(
@@ -5104,7 +5112,8 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
                 else:
                     return False
             elif (
-                not isinstance(col.default, (type(None), Sequence))
+                col.default is not None
+                and not isinstance(col.default, Sequence)
                 and not autoinc_true
             ):
                 return False
