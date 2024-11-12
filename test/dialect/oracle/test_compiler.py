@@ -1417,7 +1417,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         with testing.expect_warnings(
-            "Computed columns don't work with Oracle UPDATE"
+            "Computed columns don't work with Oracle Database UPDATE"
         ):
             self.assert_compile(
                 t1.update().values(id=1, foo=5).returning(t1.c.bar),
