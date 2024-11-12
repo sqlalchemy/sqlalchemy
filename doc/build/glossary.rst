@@ -1161,14 +1161,14 @@ Glossary
         The backends that currently support RETURNING or a similar construct
         are PostgreSQL, SQL Server, Oracle Database, and Firebird.  The
         PostgreSQL and Firebird implementations are generally full featured,
-        whereas the implementations of SQL Server and Oracle have caveats. On
-        SQL Server, the clause is known as "OUTPUT INSERTED" for INSERT and
-        UPDATE statements and "OUTPUT DELETED" for DELETE statements; the key
-        caveat is that triggers are not supported in conjunction with this
-        keyword.  In Oracle Database, it is known as "RETURNING...INTO", and
-        requires that the value be placed into an OUT parameter, meaning not
-        only is the syntax awkward, but it can also only be used for one row at
-        a time.
+        whereas the implementations of SQL Server and Oracle Database have
+        caveats. On SQL Server, the clause is known as "OUTPUT INSERTED" for
+        INSERT and UPDATE statements and "OUTPUT DELETED" for DELETE
+        statements; the key caveat is that triggers are not supported in
+        conjunction with this keyword.  In Oracle Database, it is known as
+        "RETURNING...INTO", and requires that the value be placed into an OUT
+        parameter, meaning not only is the syntax awkward, but it can also only
+        be used for one row at a time.
 
         SQLAlchemy's :meth:`.UpdateBase.returning` system provides a layer of abstraction
         on top of the RETURNING systems of these backends to provide a consistent
