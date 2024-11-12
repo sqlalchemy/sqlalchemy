@@ -1569,7 +1569,7 @@ class ColumnOperators(Operators):
                 :class:`_mysql.match` - MySQL specific construct with
                 additional features.
 
-        * Oracle - renders ``CONTAINS(x, y)``
+        * Oracle Database - renders ``CONTAINS(x, y)``
         * other backends may provide special implementations.
         * Backends without any special implementation will emit
           the operator as "MATCH".  This is compatible with SQLite, for
@@ -1597,7 +1597,7 @@ class ColumnOperators(Operators):
         Examples include:
 
         * PostgreSQL - renders ``x ~ y`` or ``x !~ y`` when negated.
-        * Oracle - renders ``REGEXP_LIKE(x, y)``
+        * Oracle Database - renders ``REGEXP_LIKE(x, y)``
         * SQLite - uses SQLite's ``REGEXP`` placeholder operator and calls into
           the Python ``re.match()`` builtin.
         * other backends may provide special implementations.
@@ -1605,9 +1605,9 @@ class ColumnOperators(Operators):
           the operator as "REGEXP" or "NOT REGEXP".  This is compatible with
           SQLite and MySQL, for example.
 
-        Regular expression support is currently implemented for Oracle,
-        PostgreSQL, MySQL and MariaDB.  Partial support is available for
-        SQLite.  Support among third-party dialects may vary.
+        Regular expression support is currently implemented for Oracle
+        Database, PostgreSQL, MySQL and MariaDB.  Partial support is available
+        for SQLite.  Support among third-party dialects may vary.
 
         :param pattern: The regular expression pattern string or column
           clause.
@@ -1658,8 +1658,8 @@ class ColumnOperators(Operators):
         **not backend agnostic**.
 
         Regular expression replacement support is currently implemented for
-        Oracle, PostgreSQL, MySQL 8 or greater and MariaDB.  Support among
-        third-party dialects may vary.
+        Oracle Database, PostgreSQL, MySQL 8 or greater and MariaDB.  Support
+        among third-party dialects may vary.
 
         :param pattern: The regular expression pattern string or column
           clause.

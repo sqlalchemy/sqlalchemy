@@ -647,12 +647,12 @@ def bindparam(
     :param quote:
       True if this parameter name requires quoting and is not
       currently known as a SQLAlchemy reserved word; this currently
-      only applies to the Oracle backend, where bound names must
+      only applies to the Oracle Database backends, where bound names must
       sometimes be quoted.
 
     :param isoutparam:
       if True, the parameter should be treated like a stored procedure
-      "OUT" parameter.  This applies to backends such as Oracle which
+      "OUT" parameter.  This applies to backends such as Oracle Database which
       support OUT parameters.
 
     :param expanding:
