@@ -556,7 +556,7 @@ end;
             exc.InvalidRequestError,
             r"Using explicit outparam\(\) objects with "
             r"UpdateBase.returning\(\) in the same Core DML statement "
-            "is not supported in the Oracle dialect.",
+            "is not supported in the Oracle Database dialects.",
         ):
             connection.execute(stmt)
 
