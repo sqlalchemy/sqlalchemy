@@ -966,8 +966,8 @@ class OracleCompiler(compiler.SQLCompiler):
                     "statements that use RETURNING; the value of the column "
                     "*before* the UPDATE takes place is returned.   It is "
                     "advised to not use RETURNING with an Oracle Database "
-                    "computed "column.  Consider setting implicit_returning "
-                    "to False on "the Table object in order to avoid implicit "
+                    "computed column.  Consider setting implicit_returning "
+                    "to False on the Table object in order to avoid implicit "
                     "RETURNING clauses from being generated for this Table."
                 )
             if column.type._has_column_expression:
