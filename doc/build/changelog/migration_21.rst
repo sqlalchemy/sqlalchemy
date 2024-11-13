@@ -134,6 +134,55 @@ lambdas which do the same::
 
 :ticket:`10050`
 
+.. _change_11234:
+
+URL stringify and parse now supports URL escaping for the "database" portion
+----------------------------------------------------------------------------
+
+A URL that includes URL-escaped characters in the database portion will
+now parse with conversion of those escaped characters::
+
+    >>> from sqlalchemy import make_url
+    >>> u = make_url("driver://user:pass@host/database%3Fname")
+    >>> u.database
+    'database?name'
+
+Previously, such characters would not be unescaped::
+
+    >>> # pre-2.1 behavior
+    >>> from sqlalchemy import make_url
+    >>> u = make_url("driver://user:pass@host/database%3Fname")
+    >>> u.database
+    'database%3Fname'
+
+This change also applies to the stringify side; most special characters in
+the database name will be URL escaped, omitting a few such as plus signs and
+slashes::
+
+    >>> from sqlalchemy import URL
+    >>> u = URL.create("driver", database="a?b=c")
+    >>> str(u)
+    'driver:///a%3Fb%3Dc'
+
+Where the above URL correctly round-trips to itself::
+
+    >>> make_url(str(u))
+    driver:///a%3Fb%3Dc
+    >>> make_url(str(u)).database == u.database
+    True
+
+
+Whereas previously, special characters applied programmatically would not
+be escaped in the result, leading to a URL that does not represent the
+original database portion.  Below, `b=c` is part of the query string and
+not the database portion::
+
+    >>> from sqlalchemy import URL
+    >>> u = URL.create("driver", database="a?b=c")
+    >>> str(u)
+    'driver:///a?b=c'
+
+:ticket:`11234`
 
 .. _change_11250:
 
