@@ -132,6 +132,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | TiDB                                           | sqlalchemy-tidb_                      |
 +------------------------------------------------+---------------------------------------+
+| YDB                                            | ydb-sqlalchemy_                       |
++------------------------------------------------+---------------------------------------+
 | YugabyteDB                                     | sqlalchemy-yugabytedb_                |
 +------------------------------------------------+---------------------------------------+
 
@@ -173,3 +175,4 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _clickhouse-sqlalchemy: https://pypi.org/project/clickhouse-sqlalchemy/
 .. _sqlalchemy-kinetica: https://github.com/kineticadb/sqlalchemy-kinetica/
 .. _sqlalchemy-tidb: https://github.com/pingcap/sqlalchemy-tidb
+.. _ydb-sqlalchemy: https://github.com/ydb-platform/ydb-sqlalchemy/
