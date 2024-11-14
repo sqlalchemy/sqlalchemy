@@ -219,9 +219,10 @@ class OracleDialect_oracledb(_cx_oracle.OracleDialect_cx_oracle):
 
     def _check_max_identifier_length(self, connection):
         if self.oracledb_ver >= (2, 5):
-            return connection.connection.max_identifier_length
-        else:
-            super()._check_max_identifier_length(connection)
+            max_len = connection.connection.max_identifier_length
+            if max_len is not None:
+                return max_len
+        return super()._check_max_identifier_length(connection)
 
 
 class AsyncAdapt_oracledb_cursor(AsyncAdapt_dbapi_cursor):
