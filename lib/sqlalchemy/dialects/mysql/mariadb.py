@@ -7,6 +7,34 @@
 # mypy: ignore-errors
 from .base import MariaDBIdentifierPreparer
 from .base import MySQLDialect
+from .base import MySQLTypeCompiler
+from ...sql import sqltypes
+
+
+class INET4(sqltypes.TypeEngine[str]):
+    """INET4 column type for MariaDB
+
+    .. versionadded:: 2.0.37
+    """
+
+    __visit_name__ = "INET4"
+
+
+class INET6(sqltypes.TypeEngine[str]):
+    """INET6 column type for MariaDB
+
+    .. versionadded:: 2.0.37
+    """
+
+    __visit_name__ = "INET6"
+
+
+class MariaDBTypeCompiler(MySQLTypeCompiler):
+    def visit_INET4(self, type_, **kwargs) -> str:
+        return "INET4"
+
+    def visit_INET6(self, type_, **kwargs) -> str:
+        return "INET6"
 
 
 class MariaDBDialect(MySQLDialect):
@@ -14,6 +42,7 @@ class MariaDBDialect(MySQLDialect):
     supports_statement_cache = True
     name = "mariadb"
     preparer = MariaDBIdentifierPreparer
+    type_compiler_cls = MariaDBTypeCompiler
 
 
 def loader(driver):

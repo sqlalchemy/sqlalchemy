@@ -21,6 +21,7 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import types as sqltypes
 from sqlalchemy import UnicodeText
 from sqlalchemy.dialects.mysql import base as mysql
+from sqlalchemy.dialects.mysql import mariadb
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -472,6 +473,17 @@ class TypeCompileTest(fixtures.TestBase, AssertsCompiledSQL):
     )
     def test_float_type_compile(self, type_, sql_text):
         self.assert_compile(type_, sql_text)
+
+
+class INETMariadbTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = mariadb.MariaDBDialect()
+
+    @testing.combinations(
+        (mariadb.INET4(), "INET4"),
+        (mariadb.INET6(), "INET6"),
+    )
+    def test_mariadb_inet6(self, type_, res):
+        self.assert_compile(type_, res)
 
 
 class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
