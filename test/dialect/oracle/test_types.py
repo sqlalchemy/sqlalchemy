@@ -572,7 +572,7 @@ class TypesTest(fixtures.TestBase):
         )
 
     def test_numerics_broken_inspection(self, metadata, connection):
-        """Numeric scenarios where Oracle Databasee type info is 'broken',
+        """Numeric scenarios where Oracle Database type info is 'broken',
         returning us precision, scale of the form (0, 0) or (0, -127).
         We convert to Decimal and let int()/float() processors take over.
 
