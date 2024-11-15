@@ -53,7 +53,8 @@ from .base import YEAR
 from .dml import Insert
 from .dml import insert
 from .expression import match
-from ...util import compat
+from .mariadb import INET4
+from .mariadb import INET6
 
 # default dialect
 base.dialect = dialect = mysqldb.dialect
@@ -71,6 +72,8 @@ __all__ = (
     "DOUBLE",
     "ENUM",
     "FLOAT",
+    "INET4",
+    "INET6",
     "INTEGER",
     "INTEGER",
     "JSON",

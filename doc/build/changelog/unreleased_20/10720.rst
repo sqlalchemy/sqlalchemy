@@ -1,0 +1,5 @@
+.. change::
+    :tags: usecase, mariadb
+    :ticket: 10720
+
+    Added sql types ``INET4`` and ``INET6`` in the MariaDB dialect.

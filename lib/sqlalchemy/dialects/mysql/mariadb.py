@@ -7,9 +7,29 @@
 # mypy: ignore-errors
 from .base import MariaDBIdentifierPreparer
 from .base import MySQLDialect
+from .base import MySQLTypeCompiler
 from ... import util
+from ...sql import sqltypes
 from ...sql.sqltypes import UUID
 from ...sql.sqltypes import Uuid
+
+
+class INET4(sqltypes.TypeEngine[str]):
+    """INET4 column type for MariaDB
+
+    .. versionadded:: 2.0.37
+    """
+
+    __visit_name__ = "INET4"
+
+
+class INET6(sqltypes.TypeEngine[str]):
+    """INET6 column type for MariaDB
+
+    .. versionadded:: 2.0.37
+    """
+
+    __visit_name__ = "INET6"
 
 
 class _MariaDBUUID(UUID):
@@ -38,6 +58,14 @@ class _MariaDBUUID(UUID):
             return None
 
 
+class MariaDBTypeCompiler(MySQLTypeCompiler):
+    def visit_INET4(self, type_, **kwargs) -> str:
+        return "INET4"
+
+    def visit_INET6(self, type_, **kwargs) -> str:
+        return "INET6"
+
+
 class MariaDBDialect(MySQLDialect):
     is_mariadb = True
     supports_statement_cache = True
@@ -47,6 +75,7 @@ class MariaDBDialect(MySQLDialect):
 
     name = "mariadb"
     preparer = MariaDBIdentifierPreparer
+    type_compiler_cls = MariaDBTypeCompiler
 
     colspecs = util.update_copy(MySQLDialect.colspecs, {Uuid: _MariaDBUUID})
 

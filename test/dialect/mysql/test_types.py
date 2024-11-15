@@ -21,7 +21,7 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import types as sqltypes
 from sqlalchemy import UnicodeText
 from sqlalchemy.dialects.mysql import base as mysql
-from sqlalchemy.dialects.mysql.mariadb import MariaDBDialect
+from sqlalchemy.dialects.mysql import mariadb
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -494,6 +494,8 @@ class MariaDBUUIDTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_compile_upper(self):
         self.assert_compile(sqltypes.UUID(), "UUID")
 
+
+class UUIDTest(fixtures.TestBase, AssertsCompiledSQL):
     @testing.combinations(
         (sqltypes.Uuid(), (10, 6, 5), "CHAR(32)"),
         (sqltypes.Uuid(native_uuid=False), (10, 6, 5), "CHAR(32)"),
@@ -503,7 +505,7 @@ class MariaDBUUIDTest(fixtures.TestBase, AssertsCompiledSQL):
         (sqltypes.UUID(), (10, 7, 0), "UUID"),
     )
     def test_mariadb_uuid_combinations(self, type_, version, res):
-        dialect = MariaDBDialect()
+        dialect = mariadb.MariaDBDialect()
         dialect.server_version_info = version
         dialect.supports_native_uuid = version >= (10, 7)
         self.assert_compile(type_, res, dialect=dialect)
@@ -515,6 +517,17 @@ class MariaDBUUIDTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_mysql_uuid_combinations(self, type_):
         dialect = mysql.MySQLDialect()
         self.assert_compile(type_, "CHAR(32)", dialect=dialect)
+
+
+class INETMariadbTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = mariadb.MariaDBDialect()
+
+    @testing.combinations(
+        (mariadb.INET4(), "INET4"),
+        (mariadb.INET6(), "INET6"),
+    )
+    def test_mariadb_inet6(self, type_, res):
+        self.assert_compile(type_, res)
 
 
 class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
