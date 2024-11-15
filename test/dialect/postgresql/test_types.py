@@ -4377,12 +4377,14 @@ class _RangeComparisonFixtures(_RangeTests):
         )
 
         is_true(range_.contains(values["il"]))
+        is_true(values["il"] in range_)
 
         is_false(
             range_.contains(Range(lower=values["ll"], upper=values["ih"]))
         )
 
         is_false(range_.contains(values["rh"]))
+        is_false(values["rh"] in range_)
 
         is_true(range_ == range_)
         is_false(range_ != range_)
@@ -4430,6 +4432,7 @@ class _RangeComparisonFixtures(_RangeTests):
         )
         r, expected = connection.execute(q).first()
         eq_(r.contains(v), expected)
+        eq_(v in r, expected)
 
     _common_ranges_to_test = (
         lambda r, e: Range(empty=True),
@@ -4490,6 +4493,12 @@ class _RangeComparisonFixtures(_RangeTests):
             f"{r1}.contains({r2}): got {py_contains},"
             f" expected {pg_contains}",
         )
+        r2_in_r1 = r2 in r1
+        eq_(
+            r2_in_r1,
+            pg_contains,
+            f"{r2} in {r1}: got {r2_in_r1}, expected {pg_contains}",
+        )
         py_contained = r1.contained_by(r2)
         eq_(
             py_contained,
@@ -4502,6 +4511,12 @@ class _RangeComparisonFixtures(_RangeTests):
             pg_contained,
             f"{r2}.contains({r1}: got {r2.contains(r1)},"
             f" expected {pg_contained})",
+        )
+        r1_in_r2 = r1 in r2
+        eq_(
+            r1_in_r2,
+            pg_contained,
+            f"{r1} in {r2}: got {r1_in_r2}, expected {pg_contained}",
         )
 
     @testing.combinations(
