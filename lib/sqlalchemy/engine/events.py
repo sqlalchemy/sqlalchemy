@@ -930,7 +930,8 @@ class DialectEvents(event.Events[Dialect]):
 
         The setinputsizes hook overall is only used for dialects which include
         the flag ``use_setinputsizes=True``.  Dialects which use this
-        include cx_Oracle, pg8000, asyncpg, and pyodbc dialects.
+        include python-oracledb, cx_Oracle, pg8000, asyncpg, and pyodbc
+        dialects.
 
         .. note::
 

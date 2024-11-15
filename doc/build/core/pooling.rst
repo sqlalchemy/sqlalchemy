@@ -509,30 +509,32 @@ particular error should be considered a "disconnect" situation or not, as well
 as if this disconnect should cause the entire connection pool to be invalidated
 or not.
 
-For example, to add support to consider the Oracle error codes
-``DPY-1001`` and ``DPY-4011`` to be handled as disconnect codes, apply an
-event handler to the engine after creation::
+For example, to add support to consider the Oracle Database driver error codes
+``DPY-1001`` and ``DPY-4011`` to be handled as disconnect codes, apply an event
+handler to the engine after creation::
 
     import re
 
     from sqlalchemy import create_engine
 
-    engine = create_engine("oracle://scott:tiger@dnsname")
+    engine = create_engine(
+        "oracle+oracledb://scott:tiger@localhost:1521?service_name=freepdb1"
+    )
 
 
     @event.listens_for(engine, "handle_error")
     def handle_exception(context: ExceptionContext) -> None:
         if not context.is_disconnect and re.match(
-            r"^(?:DPI-1001|DPI-4011)", str(context.original_exception)
+            r"^(?:DPY-1001|DPY-4011)", str(context.original_exception)
         ):
             context.is_disconnect = True
 
         return None
 
-The above error processing function will be invoked for all Oracle errors
-raised, including those caught when using the
-:ref:`pool pre ping <pool_disconnects_pessimistic>` feature for those backends
-that rely upon disconnect error handling (new in 2.0).
+The above error processing function will be invoked for all Oracle Database
+errors raised, including those caught when using the :ref:`pool pre ping
+<pool_disconnects_pessimistic>` feature for those backends that rely upon
+disconnect error handling (new in 2.0).
 
 .. seealso::
 
@@ -760,4 +762,3 @@ API Documentation - Available Pool Implementations
 .. autoclass:: _ConnectionFairy
 
 .. autoclass:: _ConnectionRecord
-

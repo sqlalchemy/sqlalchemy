@@ -581,8 +581,8 @@ class BindTyping(Enum):
     """Use the pep-249 setinputsizes method.
 
     This is only implemented for DBAPIs that support this method and for which
-    the SQLAlchemy dialect has the appropriate infrastructure for that
-    dialect set up.   Current dialects include cx_Oracle as well as
+    the SQLAlchemy dialect has the appropriate infrastructure for that dialect
+    set up.  Current dialects include python-oracledb, cx_Oracle as well as
     optional support for SQL Server using pyodbc.
 
     When using setinputsizes, dialects also have a means of only using the
@@ -872,12 +872,12 @@ class Dialect(EventTarget):
     the statement multiple times for a series of batches when large numbers
     of rows are given.
 
-    The parameter is False for the default dialect, and is set to
-    True for SQLAlchemy internal dialects SQLite, MySQL/MariaDB, PostgreSQL,
-    SQL Server.   It remains at False for Oracle, which provides native
-    "executemany with RETURNING" support and also does not support
-    ``supports_multivalues_insert``.    For MySQL/MariaDB, those MySQL
-    dialects that don't support RETURNING will not report
+    The parameter is False for the default dialect, and is set to True for
+    SQLAlchemy internal dialects SQLite, MySQL/MariaDB, PostgreSQL, SQL Server.
+    It remains at False for Oracle Database, which provides native "executemany
+    with RETURNING" support and also does not support
+    ``supports_multivalues_insert``.  For MySQL/MariaDB, those MySQL dialects
+    that don't support RETURNING will not report
     ``insert_executemany_returning`` as True.
 
     .. versionadded:: 2.0
@@ -1094,7 +1094,8 @@ class Dialect(EventTarget):
     established on a :class:`.Table` object which will be passed as
     "reflection options" when using :paramref:`.Table.autoload_with`.
 
-    Current example is "oracle_resolve_synonyms" in the Oracle dialect.
+    Current example is "oracle_resolve_synonyms" in the Oracle Database
+    dialects.
 
     """
 

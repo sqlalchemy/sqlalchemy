@@ -485,7 +485,7 @@ class ComputedReturningTest(fixtures.TablesTest):
             eq_(result.returned_defaults, (52,))
         else:
             with testing.expect_warnings(
-                "Computed columns don't work with Oracle UPDATE"
+                "Computed columns don't work with Oracle Database UPDATE"
             ):
                 result = conn.execute(
                     test.update().values(foo=10).return_defaults()
@@ -556,7 +556,7 @@ end;
             exc.InvalidRequestError,
             r"Using explicit outparam\(\) objects with "
             r"UpdateBase.returning\(\) in the same Core DML statement "
-            "is not supported in the Oracle dialect.",
+            "is not supported in the Oracle Database dialects.",
         ):
             connection.execute(stmt)
 

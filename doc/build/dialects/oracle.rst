@@ -5,12 +5,12 @@ Oracle
 
 .. automodule:: sqlalchemy.dialects.oracle.base
 
-Oracle Data Types
------------------
+Oracle Database Data Types
+--------------------------
 
-As with all SQLAlchemy dialects, all UPPERCASE types that are known to be
-valid with Oracle are importable from the top level dialect, whether
-they originate from :mod:`sqlalchemy.types` or from the local dialect::
+As with all SQLAlchemy dialects, all UPPERCASE types that are known to be valid
+with Oracle Database are importable from the top level dialect, whether they
+originate from :mod:`sqlalchemy.types` or from the local dialect::
 
     from sqlalchemy.dialects.oracle import (
         BFILE,
@@ -36,7 +36,7 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
 .. versionadded:: 1.2.19 Added :class:`_types.NCHAR` to the list of datatypes
    exported by the Oracle dialect.
 
-Types which are specific to Oracle, or have Oracle-specific
+Types which are specific to Oracle Database, or have Oracle-specific
 construction arguments, are as follows:
 
 .. currentmodule:: sqlalchemy.dialects.oracle
@@ -80,13 +80,6 @@ construction arguments, are as follows:
 .. autoclass:: TIMESTAMP
   :members: __init__
 
-.. _cx_oracle:
-
-cx_Oracle
----------
-
-.. automodule:: sqlalchemy.dialects.oracle.cx_oracle
-
 .. _oracledb:
 
 python-oracledb
@@ -94,3 +87,9 @@ python-oracledb
 
 .. automodule:: sqlalchemy.dialects.oracle.oracledb
 
+.. _cx_oracle:
+
+cx_Oracle
+---------
+
+.. automodule:: sqlalchemy.dialects.oracle.cx_oracle

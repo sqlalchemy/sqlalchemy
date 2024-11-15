@@ -383,12 +383,11 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         :param stream_results: Available on: :class:`_engine.Connection`,
           :class:`_sql.Executable`.
 
-          Indicate to the dialect that results should be
-          "streamed" and not pre-buffered, if possible.  For backends
-          such as PostgreSQL, MySQL and MariaDB, this indicates the use of
-          a "server side cursor" as opposed to a client side cursor.
-          Other backends such as that of Oracle may already use server
-          side cursors by default.
+          Indicate to the dialect that results should be "streamed" and not
+          pre-buffered, if possible.  For backends such as PostgreSQL, MySQL
+          and MariaDB, this indicates the use of a "server side cursor" as
+          opposed to a client side cursor.  Other backends such as that of
+          Oracle Database may already use server side cursors by default.
 
           The usage of
           :paramref:`_engine.Connection.execution_options.stream_results` is
@@ -521,10 +520,10 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
          ``cursor.description`` to set up the keys for the result set,
          including the names of columns for the :class:`_engine.Row` object as
          well as the dictionary keys when using :attr:`_engine.Row._mapping`.
-         On backends that use "name normalization" such as Oracle to correct
-         for lower case names being converted to all uppercase, this behavior
-         is turned off and the raw UPPERCASE names in cursor.description will
-         be present.
+         On backends that use "name normalization" such as Oracle Database to
+         correct for lower case names being converted to all uppercase, this
+         behavior is turned off and the raw UPPERCASE names in
+         cursor.description will be present.
 
          .. versionadded:: 2.1
 

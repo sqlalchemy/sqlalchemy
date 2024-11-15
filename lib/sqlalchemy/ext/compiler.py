@@ -226,7 +226,8 @@ A synopsis is as follows:
       @compiles(coalesce, 'oracle')
       def compile(element, compiler, **kw):
           if len(element.clauses) > 2:
-              raise TypeError("coalesce only supports two arguments on Oracle")
+              raise TypeError("coalesce only supports two arguments on "
+                              "Oracle Database")
           return "nvl(%s)" % compiler.process(element.clauses, **kw)
 
 * :class:`.ExecutableDDLElement` - The root of all DDL expressions,
