@@ -215,12 +215,7 @@ class FromClauseRole(ColumnsClauseRole, JoinTargetRole):
     named_with_column: bool
 
 
-class StrictFromClauseRole(FromClauseRole):
-    __slots__ = ()
-    # does not allow text() or select() objects
-
-
-class AnonymizedFromClauseRole(StrictFromClauseRole):
+class AnonymizedFromClauseRole(FromClauseRole):
     __slots__ = ()
 
     if TYPE_CHECKING:

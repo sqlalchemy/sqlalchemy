@@ -134,7 +134,7 @@ class ORMEntityColumnsClauseRole(ORMColumnsClauseRole[_T]):
     _role_name = "ORM mapped or aliased entity"
 
 
-class ORMFromClauseRole(roles.StrictFromClauseRole):
+class ORMFromClauseRole(roles.FromClauseRole):
     __slots__ = ()
     _role_name = "ORM mapped entity, aliased entity, or FROM expression"
 

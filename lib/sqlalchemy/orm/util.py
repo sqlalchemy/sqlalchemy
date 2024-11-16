@@ -366,9 +366,7 @@ def polymorphic_union(
     for key in table_map:
         table = table_map[key]
 
-        table = coercions.expect(
-            roles.StrictFromClauseRole, table, allow_select=True
-        )
+        table = coercions.expect(roles.FromClauseRole, table)
         table_map[key] = table
 
         m = {}

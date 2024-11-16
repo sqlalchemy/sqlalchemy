@@ -767,7 +767,7 @@ class Mapper(
 
         if local_table is not None:
             self.local_table = coercions.expect(
-                roles.StrictFromClauseRole,
+                roles.FromClauseRole,
                 local_table,
                 disable_inspection=True,
                 argname="local_table",
@@ -1416,9 +1416,8 @@ class Mapper(
             self.with_polymorphic = (
                 self.with_polymorphic[0],
                 coercions.expect(
-                    roles.StrictFromClauseRole,
+                    roles.FromClauseRole,
                     self.with_polymorphic[1],
-                    allow_select=True,
                 ),
             )
 
@@ -2918,7 +2917,8 @@ class Mapper(
     ) -> Tuple[Sequence[Mapper[Any]], FromClause]:
         if selectable not in (None, False):
             selectable = coercions.expect(
-                roles.StrictFromClauseRole, selectable, allow_select=True
+                roles.FromClauseRole,
+                selectable,
             )
 
         if self.with_polymorphic:
