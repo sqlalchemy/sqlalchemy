@@ -842,7 +842,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
     ) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
         """A :class:`_expression.ColumnCollection`
         that represents the "exported"
-        columns of this :class:`_expression.Selectable`.
+        columns of this :class:`_expression.FromClause`.
 
         The "exported" columns for a :class:`_expression.FromClause`
         object are synonymous
@@ -1751,9 +1751,9 @@ class Alias(roles.DMLTableRole, FromClauseAlias):
         name: Optional[str] = None,
         flat: bool = False,
     ) -> NamedFromClause:
-        return coercions.expect(
-            roles.FromClauseRole, selectable, allow_select=True
-        ).alias(name=name, flat=flat)
+        return coercions.expect(roles.FromClauseRole, selectable).alias(
+            name=name, flat=flat
+        )
 
 
 class TableValuedAlias(LateralFromClause, Alias):
@@ -3485,29 +3485,6 @@ class SelectBase(
         """
         return self.selected_columns.as_readonly()
 
-    @property
-    @util.deprecated(
-        "1.4",
-        "The :attr:`_expression.SelectBase.c` and "
-        ":attr:`_expression.SelectBase.columns` attributes "
-        "are deprecated and will be removed in a future release; these "
-        "attributes implicitly create a subquery that should be explicit.  "
-        "Please call :meth:`_expression.SelectBase.subquery` "
-        "first in order to create "
-        "a subquery, which then contains this attribute.  To access the "
-        "columns that this SELECT object SELECTs "
-        "from, use the :attr:`_expression.SelectBase.selected_columns` "
-        "attribute.",
-    )
-    def c(self) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
-        return self._implicit_subquery.columns
-
-    @property
-    def columns(
-        self,
-    ) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
-        return self.c
-
     def get_label_style(self) -> SelectLabelStyle:
         """
         Retrieve the current label style.
@@ -3525,22 +3502,6 @@ class SelectBase(
         """
 
         raise NotImplementedError()
-
-    @util.deprecated(
-        "1.4",
-        "The :meth:`_expression.SelectBase.select` method is deprecated "
-        "and will be removed in a future release; this method implicitly "
-        "creates a subquery that should be explicit.  "
-        "Please call :meth:`_expression.SelectBase.subquery` "
-        "first in order to create "
-        "a subquery, which then can be selected.",
-    )
-    def select(self, *arg: Any, **kw: Any) -> Select[Unpack[TupleAny]]:
-        return self._implicit_subquery.select(*arg, **kw)
-
-    @HasMemoized.memoized_attribute
-    def _implicit_subquery(self) -> Subquery:
-        return self.subquery()
 
     def _scalar_type(self) -> TypeEngine[Any]:
         raise NotImplementedError()

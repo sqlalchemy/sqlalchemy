@@ -32,6 +32,7 @@ from sqlalchemy.sql.selectable import SelectStatementGrouping
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_instance_of
@@ -262,16 +263,11 @@ class RoleTest(fixtures.TestBase):
         )
 
     def test_select_is_coerced_into_fromclause_w_deprecation(self):
-        with testing.expect_deprecated(
-            "Implicit coercion of SELECT and textual SELECT "
-            "constructs into FROM clauses is deprecated;"
+        with testing.expect_raises_message(
+            exc.ArgumentError,
+            r"FROM expression, such as a Table or alias\(\) object expected",
         ):
-            element = expect(
-                roles.FromClauseRole, SelectStatementGrouping(select(t))
-            )
-            is_true(
-                element.compare(SelectStatementGrouping(select(t)).subquery())
-            )
+            expect(roles.FromClauseRole, SelectStatementGrouping(select(t)))
 
     def test_offset_or_limit_role_only_ints_or_clauseelement(self):
         assert_raises(ValueError, select(t).limit, "some limit")
@@ -310,22 +306,20 @@ class RoleTest(fixtures.TestBase):
         d1 = DDL("hi")
         is_(expect(roles.StatementRole, d1), d1)
 
-    def test_strict_from_clause_role(self):
+    def test_from_clause_role(self):
         stmt = select(t).subquery()
         is_true(
-            expect(roles.StrictFromClauseRole, stmt).compare(
-                select(t).subquery()
-            )
+            expect(roles.FromClauseRole, stmt).compare(select(t).subquery())
         )
 
-    def test_strict_from_clause_role_disallow_select(self):
+    def test_from_clause_role_disallow_select(self):
         stmt = select(t)
         assert_raises_message(
             exc.ArgumentError,
             r"FROM expression, such as a Table or alias\(\) "
             "object expected, got .*Select",
             expect,
-            roles.StrictFromClauseRole,
+            roles.FromClauseRole,
             stmt,
         )
 
@@ -401,6 +395,24 @@ class SubqueryCoercionsTest(fixtures.TestBase, AssertsCompiledSQL):
             ):
                 coerced = coercions.expect(role, stmt.alias())
                 is_true(coerced.compare(stmt.scalar_subquery()))
+
+    def test_fromclause_subquery(self):
+        stmt = select(self.table1.c.myid)
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"FROM expression, such as a Table or alias\(\) object expected",
+        ):
+            coercions.expect(roles.FromClauseRole, stmt)
+
+    def test_plain_fromclause_select_to_subquery(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"FROM expression, such as a Table or alias\(\) object expected",
+        ):
+            coercions.expect(
+                roles.FromClauseRole,
+                SelectStatementGrouping(select(self.table1)),
+            )
 
     def test_labeled_role(self):
         stmt = select(self.table1.c.myid)

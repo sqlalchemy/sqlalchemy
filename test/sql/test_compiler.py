@@ -264,11 +264,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         assert not hasattr(table1.select().subquery().c.myid, "columns")
         assert not hasattr(table1.alias().c.myid, "columns")
         assert not hasattr(table1.alias().c.myid, "c")
-        with testing.expect_deprecated(
-            "The SelectBase.c and SelectBase.columns attributes are "
-            "deprecated"
-        ):
-            assert hasattr(table1.select(), "c")
 
         assert_raises_message(
             exc.InvalidRequestError,
