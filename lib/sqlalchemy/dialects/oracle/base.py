@@ -855,7 +855,7 @@ class OracleCompiler(compiler.SQLCompiler):
 
     def visit_function(self, func, **kw):
         text = super().visit_function(func, **kw)
-        if kw.get("asfrom", False):
+        if kw.get("asfrom", False) and func.name.lower() != "table":
             text = "TABLE (%s)" % text
         return text
 

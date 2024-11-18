@@ -1903,3 +1903,15 @@ class TableValuedFunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "SELECT anon_1.string1, anon_1.string2 "
             "FROM TABLE (three_pairs()) anon_1",
         )
+
+    @testing.combinations(func.TABLE, func.table, func.Table)
+    def test_table_function(self, fn):
+        """Issue #12100 Use case is:
+        https://python-oracledb.readthedocs.io/en/latest/user_guide/bind.html#binding-a-large-number-of-items-in-an-in-list
+        """
+        fn_call = fn("simulate_name_array")
+        stmt = select(1).select_from(fn_call)
+        self.assert_compile(
+            stmt,
+            f"SELECT 1 FROM {fn_call.name}(:{fn_call.name}_1)",
+        )
