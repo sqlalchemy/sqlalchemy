@@ -79,30 +79,23 @@ def _register_attribute(
     impl_class=None,
     **kw,
 ):
-    listen_hooks = []
+    pre_validate_hooks = []
+    post_validate_hooks = []
 
     uselist = useobject and prop.uselist
 
     if useobject and prop.single_parent:
-        listen_hooks.append(single_parent_validator)
-
-    if prop.key in prop.parent.validators:
-        fn, opts = prop.parent.validators[prop.key]
-        listen_hooks.append(
-            lambda desc, prop: orm_util._validator_events(
-                desc, prop.key, fn, **opts
-            )
-        )
+        pre_validate_hooks.append(single_parent_validator)
 
     if useobject:
-        listen_hooks.append(unitofwork.track_cascade_events)
+        post_validate_hooks.append(unitofwork.track_cascade_events)
 
     # need to assemble backref listeners
     # after the singleparentvalidator, mapper validator
     if useobject:
         backref = prop.back_populates
         if backref and prop._effective_sync_backref:
-            listen_hooks.append(
+            post_validate_hooks.append(
                 lambda desc, prop: attributes.backref_listeners(
                     desc, backref, uselist
                 )
@@ -118,7 +111,6 @@ def _register_attribute(
     # mapper here might not be prop.parent; also, a subclass mapper may
     # be called here before a superclass mapper.  That is, can't depend
     # on mappers not already being set up so we have to check each one.
-
     for m in mapper.self_and_descendants:
         if prop is m._props.get(
             prop.key
@@ -144,7 +136,16 @@ def _register_attribute(
                 **kw,
             )
 
-            for hook in listen_hooks:
+            for hook in pre_validate_hooks:
+                hook(desc, prop)
+
+            for super_m in m.iterate_to_root():
+                if prop.key in super_m.validators:
+                    fn, opts = super_m.validators[prop.key]
+                    orm_util._validator_events(desc, prop.key, fn, **opts)
+                    break
+
+            for hook in post_validate_hooks:
                 hook(desc, prop)
 
 
