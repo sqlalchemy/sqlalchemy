@@ -49,8 +49,8 @@ from .base import _assertions
 from .context import _column_descriptions
 from .context import _determine_last_joined_entity
 from .context import _legacy_filter_by_entity_zero
+from .context import _ORMCompileState
 from .context import FromStatement
-from .context import ORMCompileState
 from .context import QueryContext
 from .interfaces import ORMColumnDescription
 from .interfaces import ORMColumnsClauseRole
@@ -209,7 +209,7 @@ class Query(
     _memoized_select_entities = ()
 
     _compile_options: Union[Type[CacheableOptions], CacheableOptions] = (
-        ORMCompileState.default_compile_options
+        _ORMCompileState.default_compile_options
     )
 
     _with_options: Tuple[ExecutableOption, ...]
@@ -1137,7 +1137,7 @@ class Query(
 
         # we still implement _get_impl() so that baked query can override
         # it
-        return self._get_impl(ident, loading.load_on_pk_identity)
+        return self._get_impl(ident, loading._load_on_pk_identity)
 
     def _get_impl(
         self,
@@ -3284,7 +3284,7 @@ class Query(
 
     def _compile_state(
         self, for_statement: bool = False, **kw: Any
-    ) -> ORMCompileState:
+    ) -> _ORMCompileState:
         """Create an out-of-compiler ORMCompileState object.
 
         The ORMCompileState object is normally created directly as a result
@@ -3309,8 +3309,8 @@ class Query(
         # query._statement is not None as we have the ORM Query here
         # however this is the more general path.
         compile_state_cls = cast(
-            ORMCompileState,
-            ORMCompileState._get_plugin_class_for_plugin(stmt, "orm"),
+            _ORMCompileState,
+            _ORMCompileState._get_plugin_class_for_plugin(stmt, "orm"),
         )
 
         return compile_state_cls.create_for_statement(stmt, None)
@@ -3345,7 +3345,7 @@ class AliasOption(interfaces.LoaderOption):
 
         """
 
-    def process_compile_state(self, compile_state: ORMCompileState) -> None:
+    def process_compile_state(self, compile_state: _ORMCompileState) -> None:
         pass
 
 

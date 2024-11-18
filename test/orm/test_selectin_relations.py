@@ -2386,7 +2386,7 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
 
         def go():
             with mock.patch(
-                "sqlalchemy.orm.strategies.SelectInLoader._chunksize", 47
+                "sqlalchemy.orm.strategies._SelectInLoader._chunksize", 47
             ):
                 q = session.query(A).options(selectinload(A.bs)).order_by(A.id)
 
@@ -2458,7 +2458,7 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
 
         def go():
             with mock.patch(
-                "sqlalchemy.orm.strategies.SelectInLoader._chunksize", 47
+                "sqlalchemy.orm.strategies._SelectInLoader._chunksize", 47
             ):
                 q = session.query(B).options(selectinload(B.a)).order_by(B.id)
 

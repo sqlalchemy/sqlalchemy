@@ -275,7 +275,7 @@ class InstrumentationManager:
         delattr(class_, key)
 
     def instrument_collection_class(self, class_, key, collection_class):
-        return collections.prepare_instrumentation(collection_class)
+        return collections._prepare_instrumentation(collection_class)
 
     def get_instance_dict(self, class_, instance):
         return instance.__dict__

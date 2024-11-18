@@ -465,19 +465,19 @@ class BindIntegrationTest(_fixtures.FixtureTest):
 
         with (
             mock.patch(
-                "sqlalchemy.orm.context.ORMCompileState."
+                "sqlalchemy.orm.context._ORMCompileState."
                 "orm_setup_cursor_result"
             ),
             mock.patch(
-                "sqlalchemy.orm.context.ORMCompileState.orm_execute_statement"
+                "sqlalchemy.orm.context._ORMCompileState.orm_execute_statement"
             ),
             mock.patch(
                 "sqlalchemy.orm.bulk_persistence."
-                "BulkORMInsert.orm_execute_statement"
+                "_BulkORMInsert.orm_execute_statement"
             ),
             mock.patch(
                 "sqlalchemy.orm.bulk_persistence."
-                "BulkUDCompileState.orm_setup_cursor_result"
+                "_BulkUDCompileState.orm_setup_cursor_result"
             ),
         ):
             sess.execute(statement)

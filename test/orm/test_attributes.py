@@ -42,7 +42,7 @@ def _register_attribute(class_, key, **kw):
     kw.setdefault("comparator", object())
     kw.setdefault("parententity", object())
 
-    attributes.register_attribute(class_, key, **kw)
+    attributes._register_attribute(class_, key, **kw)
 
 
 class AttributeImplAPITest(fixtures.MappedTest):
@@ -866,7 +866,7 @@ class AttributesTest(fixtures.ORMTest):
         )
         assert attributes.manager_of_class(Foo).is_instrumented("collection")
         assert isinstance(Foo().collection, set)
-        attributes.unregister_attribute(Foo, "collection")
+        attributes._unregister_attribute(Foo, "collection")
         assert not attributes.manager_of_class(Foo).is_instrumented(
             "collection"
         )
@@ -902,7 +902,7 @@ class AttributesTest(fixtures.ORMTest):
             useobject=True,
         )
         assert isinstance(Foo().collection, MyDict)
-        attributes.unregister_attribute(Foo, "collection")
+        attributes._unregister_attribute(Foo, "collection")
 
         class MyColl:
             pass

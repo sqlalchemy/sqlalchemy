@@ -1371,7 +1371,7 @@ class registry:
         self._non_primary_mappers[np_mapper] = True
 
     def _dispose_cls(self, cls: Type[_O]) -> None:
-        clsregistry.remove_class(cls.__name__, cls, self._class_registry)
+        clsregistry._remove_class(cls.__name__, cls, self._class_registry)
 
     def _add_manager(self, manager: ClassManager[Any]) -> None:
         self._managers[manager] = True

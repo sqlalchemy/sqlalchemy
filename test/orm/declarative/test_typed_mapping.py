@@ -66,12 +66,12 @@ from sqlalchemy.orm import remote
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import undefer
 from sqlalchemy.orm import WriteOnlyMapped
-from sqlalchemy.orm.attributes import CollectionAttributeImpl
+from sqlalchemy.orm.attributes import _CollectionAttributeImpl
 from sqlalchemy.orm.collections import attribute_keyed_dict
 from sqlalchemy.orm.collections import KeyFuncDict
-from sqlalchemy.orm.dynamic import DynamicAttributeImpl
+from sqlalchemy.orm.dynamic import _DynamicAttributeImpl
 from sqlalchemy.orm.properties import MappedColumn
-from sqlalchemy.orm.writeonly import WriteOnlyAttributeImpl
+from sqlalchemy.orm.writeonly import _WriteOnlyAttributeImpl
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.sql.base import _NoArg
 from sqlalchemy.sql.sqltypes import Enum
@@ -2586,10 +2586,10 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         Base.registry.dispose()
 
     @testing.combinations(
-        (Relationship, CollectionAttributeImpl),
-        (Mapped, CollectionAttributeImpl),
-        (WriteOnlyMapped, WriteOnlyAttributeImpl),
-        (DynamicMapped, DynamicAttributeImpl),
+        (Relationship, _CollectionAttributeImpl),
+        (Mapped, _CollectionAttributeImpl),
+        (WriteOnlyMapped, _WriteOnlyAttributeImpl),
+        (DynamicMapped, _DynamicAttributeImpl),
         argnames="mapped_cls,implcls",
     )
     def test_use_relationship(self, decl_base, mapped_cls, implcls):

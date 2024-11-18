@@ -53,7 +53,7 @@ if TYPE_CHECKING:
     from ._typing import _IdentityKeyType
     from ._typing import _InstanceDict
     from ._typing import _LoaderCallable
-    from .attributes import AttributeImpl
+    from .attributes import _AttributeImpl
     from .attributes import History
     from .base import PassiveFlag
     from .collections import _AdaptedCollectionProtocol
@@ -579,7 +579,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     def get_history(self, key: str, passive: PassiveFlag) -> History:
         return self.manager[key].impl.get_history(self, self.dict, passive)
 
-    def get_impl(self, key: str) -> AttributeImpl:
+    def get_impl(self, key: str) -> _AttributeImpl:
         return self.manager[key].impl
 
     def _get_pending_mutation(self, key: str) -> PendingCollection:
@@ -874,7 +874,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     def _modified_event(
         self,
         dict_: _InstanceDict,
-        attr: Optional[AttributeImpl],
+        attr: Optional[_AttributeImpl],
         previous: Any,
         collection: bool = False,
         is_userland: bool = False,
@@ -973,7 +973,9 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
                 del self.callables[key]
 
     def _commit_all(
-        self, dict_: _InstanceDict, instance_dict: Optional[IdentityMap] = None
+        self,
+        dict_: _InstanceDict,
+        instance_dict: Optional[IdentityMap] = None,
     ) -> None:
         """commit all attributes unconditionally.
 

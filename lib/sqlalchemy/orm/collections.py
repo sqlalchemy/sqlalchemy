@@ -133,8 +133,8 @@ from ..sql.base import NO_ARG
 from ..util.compat import inspect_getfullargspec
 
 if typing.TYPE_CHECKING:
+    from .attributes import _CollectionAttributeImpl
     from .attributes import AttributeEventToken
-    from .attributes import CollectionAttributeImpl
     from .mapped_collection import attribute_keyed_dict
     from .mapped_collection import column_keyed_dict
     from .mapped_collection import keyfunc_mapping
@@ -476,7 +476,7 @@ class CollectionAdapter:
         "empty",
     )
 
-    attr: CollectionAttributeImpl
+    attr: _CollectionAttributeImpl
     _key: str
 
     # this is actually a weakref; see note in constructor
@@ -489,7 +489,7 @@ class CollectionAdapter:
 
     def __init__(
         self,
-        attr: CollectionAttributeImpl,
+        attr: _CollectionAttributeImpl,
         owner_state: InstanceState[Any],
         data: _AdaptedCollectionProtocol,
     ):
@@ -812,7 +812,7 @@ def bulk_replace(values, existing_adapter, new_adapter, initiator=None):
         existing_adapter._fire_remove_event_bulk(removals, initiator=initiator)
 
 
-def prepare_instrumentation(
+def _prepare_instrumentation(
     factory: Union[Type[Collection[Any]], _CollectionFactoryType],
 ) -> _CollectionFactoryType:
     """Prepare a callable for future use as a collection class factory.

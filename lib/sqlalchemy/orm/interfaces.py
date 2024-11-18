@@ -85,13 +85,13 @@ if typing.TYPE_CHECKING:
     from .attributes import InstrumentedAttribute
     from .base import Mapped
     from .context import _MapperEntity
-    from .context import ORMCompileState
+    from .context import _ORMCompileState
     from .context import QueryContext
     from .decl_api import RegistryType
     from .decl_base import _ClassScanMapperConfig
     from .loading import _PopulatorDict
     from .mapper import Mapper
-    from .path_registry import AbstractEntityRegistry
+    from .path_registry import _AbstractEntityRegistry
     from .query import Query
     from .session import Session
     from .state import InstanceState
@@ -479,9 +479,9 @@ class MapperProperty(
 
     def setup(
         self,
-        context: ORMCompileState,
+        context: _ORMCompileState,
         query_entity: _MapperEntity,
-        path: AbstractEntityRegistry,
+        path: _AbstractEntityRegistry,
         adapter: Optional[ORMAdapter],
         **kwargs: Any,
     ) -> None:
@@ -495,9 +495,9 @@ class MapperProperty(
 
     def create_row_processor(
         self,
-        context: ORMCompileState,
+        context: _ORMCompileState,
         query_entity: _MapperEntity,
-        path: AbstractEntityRegistry,
+        path: _AbstractEntityRegistry,
         mapper: Mapper[Any],
         result: Result[Unpack[TupleAny]],
         adapter: Optional[ORMAdapter],
@@ -1005,7 +1005,7 @@ class StrategizedProperty(MapperProperty[_T]):
         )
 
     def _get_context_loader(
-        self, context: ORMCompileState, path: AbstractEntityRegistry
+        self, context: _ORMCompileState, path: _AbstractEntityRegistry
     ) -> Optional[_LoadElement]:
         load: Optional[_LoadElement] = None
 
@@ -1047,9 +1047,9 @@ class StrategizedProperty(MapperProperty[_T]):
 
     def setup(
         self,
-        context: ORMCompileState,
+        context: _ORMCompileState,
         query_entity: _MapperEntity,
-        path: AbstractEntityRegistry,
+        path: _AbstractEntityRegistry,
         adapter: Optional[ORMAdapter],
         **kwargs: Any,
     ) -> None:
@@ -1064,9 +1064,9 @@ class StrategizedProperty(MapperProperty[_T]):
 
     def create_row_processor(
         self,
-        context: ORMCompileState,
+        context: _ORMCompileState,
         query_entity: _MapperEntity,
-        path: AbstractEntityRegistry,
+        path: _AbstractEntityRegistry,
         mapper: Mapper[Any],
         result: Result[Unpack[TupleAny]],
         adapter: Optional[ORMAdapter],
@@ -1259,7 +1259,7 @@ class CompileStateOption(HasCacheKey, ORMOption):
 
     _is_compile_state = True
 
-    def process_compile_state(self, compile_state: ORMCompileState) -> None:
+    def process_compile_state(self, compile_state: _ORMCompileState) -> None:
         """Apply a modification to a given :class:`.ORMCompileState`.
 
         This method is part of the implementation of a particular
@@ -1270,7 +1270,7 @@ class CompileStateOption(HasCacheKey, ORMOption):
 
     def process_compile_state_replaced_entities(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         mapper_entities: Sequence[_MapperEntity],
     ) -> None:
         """Apply a modification to a given :class:`.ORMCompileState`,
@@ -1297,7 +1297,7 @@ class LoaderOption(CompileStateOption):
 
     def process_compile_state_replaced_entities(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         mapper_entities: Sequence[_MapperEntity],
     ) -> None:
         self.process_compile_state(compile_state)
@@ -1436,9 +1436,9 @@ class LoaderStrategy:
 
     def setup_query(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         query_entity: _MapperEntity,
-        path: AbstractEntityRegistry,
+        path: _AbstractEntityRegistry,
         loadopt: Optional[_LoadElement],
         adapter: Optional[ORMAdapter],
         **kwargs: Any,
@@ -1454,9 +1454,9 @@ class LoaderStrategy:
 
     def create_row_processor(
         self,
-        context: ORMCompileState,
+        context: _ORMCompileState,
         query_entity: _MapperEntity,
-        path: AbstractEntityRegistry,
+        path: _AbstractEntityRegistry,
         loadopt: Optional[_LoadElement],
         mapper: Mapper[Any],
         result: Result[Unpack[TupleAny]],
