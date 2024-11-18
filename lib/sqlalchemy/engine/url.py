@@ -641,7 +641,7 @@ class URL(NamedTuple):
         if self.port is not None:
             s += ":" + str(self.port)
         if self.database is not None:
-            s += "/" + self.database
+            s += "/" + quote(self.database, safe=" +/")
         if self.query:
             keys = list(self.query)
             keys.sort()
@@ -888,11 +888,9 @@ def _parse_url(name: str) -> URL:
             query = None
         components["query"] = query
 
-        if components["username"] is not None:
-            components["username"] = unquote(components["username"])
-
-        if components["password"] is not None:
-            components["password"] = unquote(components["password"])
+        for comp in "username", "password", "database":
+            if components[comp] is not None:
+                components[comp] = unquote(components[comp])
 
         ipv4host = components.pop("ipv4host")
         ipv6host = components.pop("ipv6host")
