@@ -1,0 +1,6 @@
+.. change::
+    :tags: usecase, postgresql
+    :ticket: 12093
+
+    The :class:`_postgresql.Range` type now supports ``__contains__``.
+    Pull request courtesy of Frazer McLean.
