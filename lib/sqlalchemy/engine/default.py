@@ -392,7 +392,8 @@ class DefaultDialect(Dialect):
         available if the dialect in use has opted into using the
         "use_insertmanyvalues" feature. If they haven't opted into that, then
         this attribute is False, unless the dialect in question overrides this
-        and provides some other implementation (such as the Oracle dialect).
+        and provides some other implementation (such as the Oracle Database
+        dialects).
 
         """
         return self.insert_returning and self.use_insertmanyvalues
@@ -415,7 +416,7 @@ class DefaultDialect(Dialect):
 
         If the dialect in use hasn't opted into that, then this attribute is
         False, unless the dialect in question overrides this and provides some
-        other implementation (such as the Oracle dialect).
+        other implementation (such as the Oracle Database dialects).
 
         """
         return self.insert_returning and self.use_insertmanyvalues
@@ -2050,10 +2051,11 @@ class DefaultExecutionContext(ExecutionContext):
         style of ``setinputsizes()`` on the cursor, using DB-API types
         from the bind parameter's ``TypeEngine`` objects.
 
-        This method only called by those dialects which set
-        the :attr:`.Dialect.bind_typing` attribute to
-        :attr:`.BindTyping.SETINPUTSIZES`.   cx_Oracle is the only DBAPI
-        that requires setinputsizes(), pyodbc offers it as an option.
+        This method only called by those dialects which set the
+        :attr:`.Dialect.bind_typing` attribute to
+        :attr:`.BindTyping.SETINPUTSIZES`.  Python-oracledb and cx_Oracle are
+        the only DBAPIs that requires setinputsizes(); pyodbc offers it as an
+        option.
 
         Prior to SQLAlchemy 2.0, the setinputsizes() approach was also used
         for pg8000 and asyncpg, which has been changed to inline rendering

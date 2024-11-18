@@ -630,7 +630,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         r"""Return a list of temporary table names for the current bind.
 
         This method is unsupported by most dialects; currently
-        only Oracle, PostgreSQL and SQLite implements it.
+        only Oracle Database, PostgreSQL and SQLite implements it.
 
         :param \**kw: Additional keyword argument to pass to the dialect
          specific implementation. See the documentation of the dialect
@@ -666,7 +666,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         given name was created.
 
         This currently includes some options that apply to MySQL and Oracle
-        tables.
+        Database tables.
 
         :param table_name: string name of the table.  For special quoting,
          use :class:`.quoted_name`.

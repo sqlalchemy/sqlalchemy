@@ -1,4 +1,4 @@
-"""Drop Oracle, SQL Server databases that are left over from a
+"""Drop Oracle Database, SQL Server databases that are left over from a
 multiprocessing test run.
 
 Currently the cx_Oracle driver seems to sometimes not release a

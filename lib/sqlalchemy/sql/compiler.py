@@ -2346,7 +2346,8 @@ class SQLCompiler(Compiled):
         """Called when a SELECT statement has no froms, and no FROM clause is
         to be appended.
 
-        Gives Oracle a chance to tack on a ``FROM DUAL`` to the string output.
+        Gives Oracle Database a chance to tack on a ``FROM DUAL`` to the string
+        output.
 
         """
         return ""

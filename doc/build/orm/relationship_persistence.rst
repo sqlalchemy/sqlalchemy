@@ -35,12 +35,13 @@ Or:
        1       'somewidget'          5                         5       'someentry'     1
 
 In the first case, a row points to itself. Technically, a database that uses
-sequences such as PostgreSQL or Oracle can INSERT the row at once using a
-previously generated value, but databases which rely upon autoincrement-style
-primary key identifiers cannot. The :func:`~sqlalchemy.orm.relationship`
-always assumes a "parent/child" model of row population during flush, so
-unless you are populating the primary key/foreign key columns directly,
-:func:`~sqlalchemy.orm.relationship` needs to use two statements.
+sequences such as PostgreSQL or Oracle Database can INSERT the row at once
+using a previously generated value, but databases which rely upon
+autoincrement-style primary key identifiers cannot. The
+:func:`~sqlalchemy.orm.relationship` always assumes a "parent/child" model of
+row population during flush, so unless you are populating the primary
+key/foreign key columns directly, :func:`~sqlalchemy.orm.relationship` needs to
+use two statements.
 
 In the second case, the "widget" row must be inserted before any referring
 "entry" rows, but then the "favorite_entry_id" column of that "widget" row
@@ -243,7 +244,7 @@ by emitting an UPDATE statement against foreign key columns that immediately
 reference a primary key column whose value has changed.
 The primary platforms without referential integrity features are
 MySQL when the ``MyISAM`` storage engine is used, and SQLite when the
-``PRAGMA foreign_keys=ON`` pragma is not used.  The Oracle database also
+``PRAGMA foreign_keys=ON`` pragma is not used.  Oracle Database also
 has no support for ``ON UPDATE CASCADE``, but because it still enforces
 referential integrity, needs constraints to be marked as deferrable
 so that SQLAlchemy can emit UPDATE statements.
@@ -297,7 +298,7 @@ Key limitations of ``passive_updates=False`` include:
   map for objects that may be referencing the one with a
   mutating primary key, not throughout the database.
 
-As virtually all databases other than Oracle now support ``ON UPDATE CASCADE``,
-it is highly recommended that traditional ``ON UPDATE CASCADE`` support be used
-in the case that natural and mutable primary key values are in use.
-
+As virtually all databases other than Oracle Database now support ``ON UPDATE
+CASCADE``, it is highly recommended that traditional ``ON UPDATE CASCADE``
+support be used in the case that natural and mutable primary key values are in
+use.

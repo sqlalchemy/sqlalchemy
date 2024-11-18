@@ -378,12 +378,11 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         :param stream_results: Available on: :class:`_engine.Connection`,
           :class:`_sql.Executable`.
 
-          Indicate to the dialect that results should be
-          "streamed" and not pre-buffered, if possible.  For backends
-          such as PostgreSQL, MySQL and MariaDB, this indicates the use of
-          a "server side cursor" as opposed to a client side cursor.
-          Other backends such as that of Oracle may already use server
-          side cursors by default.
+          Indicate to the dialect that results should be "streamed" and not
+          pre-buffered, if possible.  For backends such as PostgreSQL, MySQL
+          and MariaDB, this indicates the use of a "server side cursor" as
+          opposed to a client side cursor.  Other backends such as that of
+          Oracle Database may already use server side cursors by default.
 
           The usage of
           :paramref:`_engine.Connection.execution_options.stream_results` is
