@@ -540,14 +540,15 @@ There are two vector indexes supported in vector search: IVF Flat index and HNSW
 index. To utilize vector indexing, set the `oracle_vector` parameter to True to use 
 the default values provided by Oracle, with HNSW as the default indexing method. If 
 you wish to use custom parameters, you can specify all the parameters as a dictionary 
-in the `oracle_vector` option.To learn more about the parameters that can be passed 
+in the `oracle_vector` option. To learn more about the parameters that can be passed 
 please visit this link:
 https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/create-vector-index.html::
 
     Index(
-            'hnsw_vector_index',
+            'vector_index',
             my_table.c.c1,
             oracle_vector = True,
+        )
 
     Index(
             'hnsw_vector_index',
@@ -1554,10 +1555,6 @@ class OracleDialect(default.DefaultDialect):
                 "bitmap": False,
                 "compress": False, 
                 "vector": False,
-                "accuracy": None,
-                "distance": None,
-                "parameters": {},
-                "parallel": None,
             },
         ),
         (sa_schema.Sequence, {"order": None}),
