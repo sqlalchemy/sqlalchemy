@@ -843,6 +843,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "plain",
             "union",
             "union_604",
+            "null",
             "union_null",
             "union_null_604",
             "optional",
@@ -866,6 +867,8 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             tat = TypeAliasType("tat", Union[str, int])
         elif option.union_604:
             tat = TypeAliasType("tat", str | int)
+        elif option.null:
+            tat = TypeAliasType("tat", None)
         elif option.union_null:
             tat = TypeAliasType("tat", Union[str, int, None])
         elif option.union_null_604:
@@ -906,33 +909,18 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         if in_map.yes:
             col = declare()
-            length = 99
-        elif (
-            in_map.value
-            and "newtype" not in option.name
-            or option.optional
-            or option.plain
-        ):
-            with expect_deprecated(
-                "Matching the provided TypeAliasType 'tat' on its "
-                "resolved value without matching it in the "
-                "type_annotation_map is deprecated; add this type to the "
-                "type_annotation_map to allow it to match explicitly.",
-            ):
-                col = declare()
-            length = 99 if in_map.value else None
+            is_true(isinstance(col.type, String))
+            eq_(col.type.length, 99)
+            nullable = "null" in option.name or "optional" in option.name
+            eq_(col.nullable, nullable)
+
         else:
             with expect_raises_message(
                 exc.ArgumentError,
-                "Could not locate SQLAlchemy Core type for Python type",
+                "Could not locate SQLAlchemy Core type for Python type "
+                f"{tat} inside the 'data' attribute Mapped annotation",
             ):
                 declare()
-            return
-
-        is_true(isinstance(col.type, String))
-        eq_(col.type.length, length)
-        nullable = "null" in option.name or "optional" in option.name
-        eq_(col.nullable, nullable)
 
     @testing.requires.python312
     def test_pep695_typealias_as_typemap_keys(
@@ -1034,16 +1022,12 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                     _StrPep695: Enum(enum.Enum),  # noqa: F821
                 }
             )
-            if type_.recursive:
-                with expect_deprecated(
-                    "Mapping recursive TypeAliasType '.+' that resolve to "
-                    "literal to generate an Enum is deprecated. SQLAlchemy "
-                    "2.1 will not support this use case. Please avoid using "
-                    "recursing TypeAliasType",
-                ):
-                    Foo = declare()
-            elif type_.literal:
+            if type_.literal:
                 Foo = declare()
+                col = Foo.__table__.c.status
+                is_true(isinstance(col.type, Enum))
+                eq_(col.type.enums, ["to-do", "in-progress", "done"])
+                is_(col.type.native_enum, False)
             else:
                 with expect_raises_message(
                     exc.ArgumentError,
@@ -1053,22 +1037,13 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                     "'b'.` are supported when generating Enums.",
                 ):
                     declare()
-                return
         else:
-            with expect_deprecated(
-                "Matching the provided TypeAliasType '.*' on its "
-                "resolved value without matching it in the "
-                "type_annotation_map is deprecated; add this type to the "
-                "type_annotation_map to allow it to match explicitly.",
+            with expect_raises_message(
+                exc.ArgumentError,
+                "Could not locate SQLAlchemy Core type for Python type "
+                ".+ inside the 'status' attribute Mapped annotation",
             ):
-                Foo = declare()
-        col = Foo.__table__.c.status
-        if in_map and not type_.not_literal:
-            is_true(isinstance(col.type, Enum))
-            eq_(col.type.enums, ["to-do", "in-progress", "done"])
-            is_(col.type.native_enum, False)
-        else:
-            is_true(isinstance(col.type, String))
+                declare()
 
     def test_typing_literal_identity(self, decl_base):
         """See issue #11820"""
@@ -1396,11 +1371,10 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             # <function NewType.<locals>.new_type at 0x...>
             text = ".*NewType.*"
 
-        with expect_deprecated(
-            f"Matching the provided NewType '{text}' on its "
-            "resolved value without matching it in the "
-            "type_annotation_map is deprecated; add this type to the "
-            "type_annotation_map to allow it to match explicitly.",
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Could not locate SQLAlchemy Core type for Python type "
+            f"{text} inside the 'data_one' attribute Mapped annotation",
         ):
 
             class MyClass(decl_base):
@@ -1408,8 +1382,6 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
                 id: Mapped[int] = mapped_column(primary_key=True)
                 data_one: Mapped[str50]
-
-        is_true(isinstance(MyClass.data_one.type, String))
 
     def test_extract_base_type_from_pep593(
         self, decl_base: Type[DeclarativeBase]

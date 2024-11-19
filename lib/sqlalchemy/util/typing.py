@@ -358,13 +358,6 @@ def is_pep695(type_: _AnnotationScanType) -> TypeGuard[TypeAliasType]:
     return isinstance(type_, TypeAliasType)
 
 
-def flatten_newtype(type_: NewType) -> Type[Any]:
-    super_type = type_.__supertype__
-    while is_newtype(super_type):
-        super_type = super_type.__supertype__
-    return super_type  # type: ignore[return-value]
-
-
 def pep695_values(type_: _AnnotationScanType) -> Set[Any]:
     """Extracts the value from a TypeAliasType, recursively exploring unions
     and inner TypeAliasType to flatten them into a single set.

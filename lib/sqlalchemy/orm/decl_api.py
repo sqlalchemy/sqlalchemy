@@ -71,14 +71,10 @@ from ..sql.selectable import FromClause
 from ..util import hybridmethod
 from ..util import hybridproperty
 from ..util import typing as compat_typing
-from ..util import warn_deprecated
 from ..util.typing import CallableReference
 from ..util.typing import de_optionalize_union_types
-from ..util.typing import flatten_newtype
 from ..util.typing import is_generic
 from ..util.typing import is_literal
-from ..util.typing import is_newtype
-from ..util.typing import is_pep695
 from ..util.typing import Literal
 from ..util.typing import LITERAL_TYPES
 from ..util.typing import Self
@@ -1233,7 +1229,7 @@ class registry:
         )
 
     def _resolve_type(
-        self, python_type: _MatchedOnType, _do_fallbacks: bool = True
+        self, python_type: _MatchedOnType
     ) -> Optional[sqltypes.TypeEngine[Any]]:
         python_type_type: Type[Any]
         search: Iterable[Tuple[_MatchedOnType, Type[Any]]]
@@ -1277,39 +1273,6 @@ class registry:
                 )
                 if resolved_sql_type is not None:
                     return resolved_sql_type
-
-        # 2.0 fallbacks
-        if _do_fallbacks:
-            python_type_to_check: Any = None
-            kind = None
-            if is_pep695(python_type):
-                # NOTE: assume there aren't type alias types of new types.
-                python_type_to_check = python_type
-                while is_pep695(python_type_to_check):
-                    python_type_to_check = python_type_to_check.__value__
-                python_type_to_check = de_optionalize_union_types(
-                    python_type_to_check
-                )
-                kind = "TypeAliasType"
-            if is_newtype(python_type):
-                python_type_to_check = flatten_newtype(python_type)
-                kind = "NewType"
-
-            if python_type_to_check is not None:
-                res_after_fallback = self._resolve_type(
-                    python_type_to_check, False
-                )
-                if res_after_fallback is not None:
-                    assert kind is not None
-                    warn_deprecated(
-                        f"Matching the provided {kind} '{python_type}' on "
-                        "its resolved value without matching it in the "
-                        "type_annotation_map is deprecated; add this type to "
-                        "the type_annotation_map to allow it to match "
-                        "explicitly.",
-                        "2.0",
-                    )
-                    return res_after_fallback
 
         return None
 
