@@ -12,6 +12,7 @@ that it extracts from the documentation.
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 from collections.abc import Iterator
+import dataclasses
 from functools import partial
 from itertools import chain
 from pathlib import Path
@@ -32,6 +33,8 @@ ignore_paths = (
     re.compile(r"\.tox"),
     re.compile(r"build"),
 )
+
+CUSTOM_TARGET_VERSIONS = {"declarative_tables.rst": "PY312"}
 
 
 class BlockLine(NamedTuple):
@@ -66,6 +69,12 @@ def _format_block(
         code = "\n".join(l.code for l in input_block)
 
     mode = PYTHON_BLACK_MODE if is_python_file else RST_BLACK_MODE
+    custom_target = CUSTOM_TARGET_VERSIONS.get(Path(file).name)
+    if custom_target:
+        mode = dataclasses.replace(
+            mode, target_versions={TargetVersion[custom_target]}
+        )
+
     try:
         formatted = format_str(code, mode=mode)
     except Exception as e:

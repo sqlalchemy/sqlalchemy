@@ -1,8 +1,8 @@
 """This file includes annotation-sensitive tests while having
 ``from __future__ import annotations`` in effect.
 
-Only tests that don't have an equivalent in ``test_typed_mappings`` are
-specified here. All test from ``test_typed_mappings`` are copied over to
+Only tests that don't have an equivalent in ``test_typed_mapping`` are
+specified here. All test from ``test_typed_mapping`` are copied over to
 the ``test_tm_future_annotations_sync`` by the ``sync_test_file`` script.
 """
 
