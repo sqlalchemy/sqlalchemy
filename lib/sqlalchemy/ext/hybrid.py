@@ -1401,7 +1401,7 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
     def _get_comparator(
         self, comparator: Any
     ) -> Callable[[Any], _HybridClassLevelAccessor[_T]]:
-        proxy_attr = attributes.create_proxied_attribute(self)
+        proxy_attr = attributes._create_proxied_attribute(self)
 
         def expr_comparator(
             owner: Type[object],

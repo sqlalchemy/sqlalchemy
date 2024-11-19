@@ -35,13 +35,13 @@ from ._typing import insp_is_mapper_property
 from .attributes import QueryableAttribute
 from .base import InspectionAttr
 from .interfaces import LoaderOption
+from .path_registry import _AbstractEntityRegistry
 from .path_registry import _DEFAULT_TOKEN
 from .path_registry import _StrPathToken
+from .path_registry import _TokenRegistry
 from .path_registry import _WILDCARD_TOKEN
-from .path_registry import AbstractEntityRegistry
 from .path_registry import path_is_property
 from .path_registry import PathRegistry
-from .path_registry import TokenRegistry
 from .util import _orm_full_deannotate
 from .util import AliasedInsp
 from .. import exc as sa_exc
@@ -66,7 +66,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _EntityType
     from ._typing import _InternalEntityType
     from .context import _MapperEntity
-    from .context import ORMCompileState
+    from .context import _ORMCompileState
     from .context import QueryContext
     from .interfaces import _StrategyKey
     from .interfaces import MapperProperty
@@ -913,7 +913,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
     def process_compile_state_replaced_entities(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         mapper_entities: Sequence[_MapperEntity],
     ) -> None:
         if not compile_state.compile_options._enable_eagerloads:
@@ -928,7 +928,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             not bool(compile_state.current_path),
         )
 
-    def process_compile_state(self, compile_state: ORMCompileState) -> None:
+    def process_compile_state(self, compile_state: _ORMCompileState) -> None:
         if not compile_state.compile_options._enable_eagerloads:
             return
 
@@ -941,7 +941,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
     def _process(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         mapper_entities: Sequence[_MapperEntity],
         raiseerr: bool,
     ) -> None:
@@ -1042,7 +1042,7 @@ class Load(_AbstractLoad):
 
     @classmethod
     def _construct_for_existing_path(
-        cls, path: AbstractEntityRegistry
+        cls, path: _AbstractEntityRegistry
     ) -> Load:
         load = cls.__new__(cls)
         load.path = path
@@ -1139,7 +1139,7 @@ class Load(_AbstractLoad):
 
     def _process(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         mapper_entities: Sequence[_MapperEntity],
         raiseerr: bool,
     ) -> None:
@@ -1428,7 +1428,7 @@ class _WildcardLoad(_AbstractLoad):
         if attr.endswith(_DEFAULT_TOKEN):
             attr = f"{attr.split(':')[0]}:{_WILDCARD_TOKEN}"
 
-        effective_path = cast(AbstractEntityRegistry, parent.path).token(attr)
+        effective_path = cast(_AbstractEntityRegistry, parent.path).token(attr)
 
         assert effective_path.is_token
 
@@ -2233,7 +2233,7 @@ class _TokenStrategyLoad(_LoadElement):
             ("loader", natural_path)
             for natural_path in (
                 cast(
-                    TokenRegistry, effective_path
+                    _TokenRegistry, effective_path
                 )._generate_natural_for_superclasses()
             )
         ]

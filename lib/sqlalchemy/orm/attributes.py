@@ -106,7 +106,7 @@ if TYPE_CHECKING:
     from .relationships import RelationshipProperty
     from .state import InstanceState
     from .util import AliasedInsp
-    from .writeonly import WriteOnlyAttributeImpl
+    from .writeonly import _WriteOnlyAttributeImpl
     from ..event.base import _Dispatch
     from ..sql._typing import _ColumnExpressionArgument
     from ..sql._typing import _DMLColumnArgument
@@ -184,7 +184,7 @@ class QueryableAttribute(
     class_: _ExternalEntityType[Any]
     key: str
     parententity: _InternalEntityType[Any]
-    impl: AttributeImpl
+    impl: _AttributeImpl
     comparator: interfaces.PropComparator[_T_co]
     _of_type: Optional[_InternalEntityType[Any]]
     _extra_criteria: Tuple[ColumnElement[bool], ...]
@@ -200,7 +200,7 @@ class QueryableAttribute(
         key: str,
         parententity: _InternalEntityType[_O],
         comparator: interfaces.PropComparator[_T_co],
-        impl: Optional[AttributeImpl] = None,
+        impl: Optional[_AttributeImpl] = None,
         of_type: Optional[_InternalEntityType[Any]] = None,
         extra_criteria: Tuple[ColumnElement[bool], ...] = (),
     ):
@@ -567,7 +567,7 @@ class InstrumentedAttribute(QueryableAttribute[_T_co]):
 
 
 @dataclasses.dataclass(frozen=True)
-class AdHocHasEntityNamespace(HasCacheKey):
+class _AdHocHasEntityNamespace(HasCacheKey):
     _traverse_internals: ClassVar[_TraverseInternalsType] = [
         ("_entity_namespace", InternalTraversal.dp_has_cache_key),
     ]
@@ -583,7 +583,7 @@ class AdHocHasEntityNamespace(HasCacheKey):
         return self._entity_namespace.entity_namespace
 
 
-def create_proxied_attribute(
+def _create_proxied_attribute(
     descriptor: Any,
 ) -> Callable[..., QueryableAttribute[Any]]:
     """Create an QueryableAttribute / user descriptor hybrid.
@@ -655,7 +655,7 @@ def create_proxied_attribute(
             else:
                 # used by hybrid attributes which try to remain
                 # agnostic of any ORM concepts like mappers
-                return AdHocHasEntityNamespace(self._parententity)
+                return _AdHocHasEntityNamespace(self._parententity)
 
         @property
         def property(self):
@@ -791,7 +791,7 @@ class AttributeEventToken:
 
     __slots__ = "impl", "op", "parent_token"
 
-    def __init__(self, attribute_impl: AttributeImpl, op: util.symbol):
+    def __init__(self, attribute_impl: _AttributeImpl, op: util.symbol):
         self.impl = attribute_impl
         self.op = op
         self.parent_token = self.impl.parent_token
@@ -815,7 +815,7 @@ AttributeEvent = AttributeEventToken  # legacy
 Event = AttributeEventToken  # legacy
 
 
-class AttributeImpl:
+class _AttributeImpl:
     """internal implementation for instrumented attributes."""
 
     collection: bool
@@ -1202,7 +1202,7 @@ class AttributeImpl:
         return value
 
 
-class ScalarAttributeImpl(AttributeImpl):
+class _ScalarAttributeImpl(_AttributeImpl):
     """represents a scalar value-holding InstrumentedAttribute."""
 
     default_accepts_scalar_loader = True
@@ -1305,7 +1305,7 @@ class ScalarAttributeImpl(AttributeImpl):
             fn(state, value, initiator or self._remove_token)
 
 
-class ScalarObjectAttributeImpl(ScalarAttributeImpl):
+class _ScalarObjectAttributeImpl(_ScalarAttributeImpl):
     """represents a scalar-holding InstrumentedAttribute,
     where the target object is also instrumented.
 
@@ -1516,7 +1516,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         return value
 
 
-class HasCollectionAdapter:
+class _HasCollectionAdapter:
     __slots__ = ()
 
     collection: bool
@@ -1588,14 +1588,14 @@ class HasCollectionAdapter:
 if TYPE_CHECKING:
 
     def _is_collection_attribute_impl(
-        impl: AttributeImpl,
-    ) -> TypeGuard[CollectionAttributeImpl]: ...
+        impl: _AttributeImpl,
+    ) -> TypeGuard[_CollectionAttributeImpl]: ...
 
 else:
     _is_collection_attribute_impl = operator.attrgetter("collection")
 
 
-class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
+class _CollectionAttributeImpl(_HasCollectionAdapter, _AttributeImpl):
     """A collection-holding attribute that instruments changes in membership.
 
     Only handles collections of instrumented objects.
@@ -2093,7 +2093,7 @@ class CollectionAttributeImpl(HasCollectionAdapter, AttributeImpl):
         return user_data._sa_adapter
 
 
-def backref_listeners(
+def _backref_listeners(
     attribute: QueryableAttribute[Any], key: str, uselist: bool
 ) -> None:
     """Apply listeners to synchronize a two-way relationship."""
@@ -2395,7 +2395,7 @@ class History(NamedTuple):
     @classmethod
     def from_scalar_attribute(
         cls,
-        attribute: ScalarAttributeImpl,
+        attribute: _ScalarAttributeImpl,
         state: InstanceState[Any],
         current: Any,
     ) -> History:
@@ -2436,7 +2436,7 @@ class History(NamedTuple):
     @classmethod
     def from_object_attribute(
         cls,
-        attribute: ScalarObjectAttributeImpl,
+        attribute: _ScalarObjectAttributeImpl,
         state: InstanceState[Any],
         current: Any,
         original: Any = _NO_HISTORY,
@@ -2475,7 +2475,7 @@ class History(NamedTuple):
     @classmethod
     def from_collection(
         cls,
-        attribute: CollectionAttributeImpl,
+        attribute: _CollectionAttributeImpl,
         state: InstanceState[Any],
         current: Any,
     ) -> History:
@@ -2566,7 +2566,7 @@ def has_parent(
     return manager.has_parent(state, key, optimistic)
 
 
-def register_attribute(
+def _register_attribute(
     class_: Type[_O],
     key: str,
     *,
@@ -2575,20 +2575,20 @@ def register_attribute(
     doc: Optional[str] = None,
     **kw: Any,
 ) -> InstrumentedAttribute[_T]:
-    desc = register_descriptor(
+    desc = _register_descriptor(
         class_, key, comparator=comparator, parententity=parententity, doc=doc
     )
-    register_attribute_impl(class_, key, **kw)
+    _register_attribute_impl(class_, key, **kw)
     return desc
 
 
-def register_attribute_impl(
+def _register_attribute_impl(
     class_: Type[_O],
     key: str,
     uselist: bool = False,
     callable_: Optional[_LoaderCallable] = None,
     useobject: bool = False,
-    impl_class: Optional[Type[AttributeImpl]] = None,
+    impl_class: Optional[Type[_AttributeImpl]] = None,
     backref: Optional[str] = None,
     **kw: Any,
 ) -> QueryableAttribute[Any]:
@@ -2605,35 +2605,35 @@ def register_attribute_impl(
         "_Dispatch[QueryableAttribute[Any]]", manager[key].dispatch
     )  # noqa: E501
 
-    impl: AttributeImpl
+    impl: _AttributeImpl
 
     if impl_class:
         # TODO: this appears to be the WriteOnlyAttributeImpl /
         # DynamicAttributeImpl constructor which is hardcoded
-        impl = cast("Type[WriteOnlyAttributeImpl]", impl_class)(
+        impl = cast("Type[_WriteOnlyAttributeImpl]", impl_class)(
             class_, key, dispatch, **kw
         )
     elif uselist:
-        impl = CollectionAttributeImpl(
+        impl = _CollectionAttributeImpl(
             class_, key, callable_, dispatch, typecallable=typecallable, **kw
         )
     elif useobject:
-        impl = ScalarObjectAttributeImpl(
+        impl = _ScalarObjectAttributeImpl(
             class_, key, callable_, dispatch, **kw
         )
     else:
-        impl = ScalarAttributeImpl(class_, key, callable_, dispatch, **kw)
+        impl = _ScalarAttributeImpl(class_, key, callable_, dispatch, **kw)
 
     manager[key].impl = impl
 
     if backref:
-        backref_listeners(manager[key], backref, uselist)
+        _backref_listeners(manager[key], backref, uselist)
 
     manager.post_configure_attribute(key)
     return manager[key]
 
 
-def register_descriptor(
+def _register_descriptor(
     class_: Type[Any],
     key: str,
     *,
@@ -2653,7 +2653,7 @@ def register_descriptor(
     return descriptor
 
 
-def unregister_attribute(class_: Type[Any], key: str) -> None:
+def _unregister_attribute(class_: Type[Any], key: str) -> None:
     manager_of_class(class_).uninstrument_attribute(key)
 
 
@@ -2691,7 +2691,7 @@ def init_state_collection(
     attr = state.manager[key].impl
 
     if TYPE_CHECKING:
-        assert isinstance(attr, HasCollectionAdapter)
+        assert isinstance(attr, _HasCollectionAdapter)
 
     old = dict_.pop(key, None)  # discard old collection
     if old is not None:

@@ -654,11 +654,11 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             pass
 
         from sqlalchemy.testing import mock
-        from sqlalchemy.orm.attributes import register_attribute_impl
+        from sqlalchemy.orm.attributes import _register_attribute_impl
 
         with mock.patch(
-            "sqlalchemy.orm.attributes.register_attribute_impl",
-            side_effect=register_attribute_impl,
+            "sqlalchemy.orm.attributes._register_attribute_impl",
+            side_effect=_register_attribute_impl,
         ) as some_mock:
             self.mapper(A, users, properties={"bs": relationship(B)})
             self.mapper(B, addresses)

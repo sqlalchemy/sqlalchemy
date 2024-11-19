@@ -66,7 +66,7 @@ if typing.TYPE_CHECKING:
     from .attributes import History
     from .attributes import InstrumentedAttribute
     from .attributes import QueryableAttribute
-    from .context import ORMCompileState
+    from .context import _ORMCompileState
     from .decl_base import _ClassScanMapperConfig
     from .mapper import Mapper
     from .properties import ColumnProperty
@@ -112,7 +112,7 @@ class DescriptorProperty(MapperProperty[_T]):
     def instrument_class(self, mapper: Mapper[Any]) -> None:
         prop = self
 
-        class _ProxyImpl(attributes.AttributeImpl):
+        class _ProxyImpl(attributes._AttributeImpl):
             accepts_scalar_loader = False
             load_on_unexpire = True
             collection = False
@@ -150,7 +150,7 @@ class DescriptorProperty(MapperProperty[_T]):
 
             self.descriptor = property(fget=fget, fset=fset, fdel=fdel)
 
-        proxy_attr = attributes.create_proxied_attribute(self.descriptor)(
+        proxy_attr = attributes._create_proxied_attribute(self.descriptor)(
             self.parent.class_,
             self.key,
             self.descriptor,
@@ -544,13 +544,13 @@ class CompositeProperty(
         """Establish events that populate/expire the composite attribute."""
 
         def load_handler(
-            state: InstanceState[Any], context: ORMCompileState
+            state: InstanceState[Any], context: _ORMCompileState
         ) -> None:
             _load_refresh_handler(state, context, None, is_refresh=False)
 
         def refresh_handler(
             state: InstanceState[Any],
-            context: ORMCompileState,
+            context: _ORMCompileState,
             to_load: Optional[Sequence[str]],
         ) -> None:
             # note this corresponds to sqlalchemy.ext.mutable load_attrs()
@@ -562,7 +562,7 @@ class CompositeProperty(
 
         def _load_refresh_handler(
             state: InstanceState[Any],
-            context: ORMCompileState,
+            context: _ORMCompileState,
             to_load: Optional[Sequence[str]],
             is_refresh: bool,
         ) -> None:

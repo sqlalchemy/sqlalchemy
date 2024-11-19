@@ -382,7 +382,7 @@ class _ImperativeMapperConfig(_MapperConfig):
 
         with mapperlib._CONFIGURE_MUTEX:
             if not mapper_kw.get("non_primary", False):
-                clsregistry.add_class(
+                clsregistry._add_class(
                     self.classname, self.cls, registry._class_registry
                 )
 
@@ -563,7 +563,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         self._setup_dataclasses_transforms()
 
         with mapperlib._CONFIGURE_MUTEX:
-            clsregistry.add_class(
+            clsregistry._add_class(
                 self.classname, self.cls, registry._class_registry
             )
 

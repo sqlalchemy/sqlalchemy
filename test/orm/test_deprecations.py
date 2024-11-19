@@ -940,7 +940,7 @@ class InstrumentationTest(fixtures.ORMTest):
             pass
 
         instrumentation.register_class(Foo)
-        attributes.register_attribute(
+        attributes._register_attribute(
             Foo,
             "attr",
             parententity=object(),

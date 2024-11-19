@@ -58,8 +58,8 @@ from .base import object_mapper
 from .base import object_state
 from .base import PassiveFlag
 from .base import state_str
+from .context import _ORMCompileState
 from .context import FromStatement
-from .context import ORMCompileState
 from .identity import IdentityMap
 from .query import Query
 from .state import InstanceState
@@ -349,7 +349,7 @@ class ORMExecuteState(util.MemoizedSlots):
 
     """
 
-    _compile_state_cls: Optional[Type[ORMCompileState]]
+    _compile_state_cls: Optional[Type[_ORMCompileState]]
     _starting_event_idx: int
     _events_todo: List[Any]
     _update_execution_options: Optional[_ExecuteOptions]
@@ -361,7 +361,7 @@ class ORMExecuteState(util.MemoizedSlots):
         parameters: Optional[_CoreAnyExecuteParams],
         execution_options: _ExecuteOptions,
         bind_arguments: _BindArguments,
-        compile_state_cls: Optional[Type[ORMCompileState]],
+        compile_state_cls: Optional[Type[_ORMCompileState]],
         events_todo: List[_InstanceLevelDispatch[Session]],
     ):
         """Construct a new :class:`_orm.ORMExecuteState`.
@@ -655,8 +655,8 @@ class ORMExecuteState(util.MemoizedSlots):
         self,
     ) -> Optional[
         Union[
-            context.ORMCompileState.default_compile_options,
-            Type[context.ORMCompileState.default_compile_options],
+            context._ORMCompileState.default_compile_options,
+            Type[context._ORMCompileState.default_compile_options],
         ]
     ]:
         if not self.is_select:
@@ -667,7 +667,7 @@ class ORMExecuteState(util.MemoizedSlots):
             return None
 
         if opts is not None and opts.isinstance(
-            context.ORMCompileState.default_compile_options
+            context._ORMCompileState.default_compile_options
         ):
             return opts  # type: ignore
         else:
@@ -782,8 +782,8 @@ class ORMExecuteState(util.MemoizedSlots):
     def update_delete_options(
         self,
     ) -> Union[
-        bulk_persistence.BulkUDCompileState.default_update_options,
-        Type[bulk_persistence.BulkUDCompileState.default_update_options],
+        bulk_persistence._BulkUDCompileState.default_update_options,
+        Type[bulk_persistence._BulkUDCompileState.default_update_options],
     ]:
         """Return the update_delete_options that will be used for this
         execution."""
@@ -794,11 +794,11 @@ class ORMExecuteState(util.MemoizedSlots):
                 "statement so there are no update options."
             )
         uo: Union[
-            bulk_persistence.BulkUDCompileState.default_update_options,
-            Type[bulk_persistence.BulkUDCompileState.default_update_options],
+            bulk_persistence._BulkUDCompileState.default_update_options,
+            Type[bulk_persistence._BulkUDCompileState.default_update_options],
         ] = self.execution_options.get(
             "_sa_orm_update_options",
-            bulk_persistence.BulkUDCompileState.default_update_options,
+            bulk_persistence._BulkUDCompileState.default_update_options,
         )
         return uo
 
@@ -1747,7 +1747,7 @@ class Session(_SessionClassMethods, EventTarget):
             raise sa_exc.ArgumentError(
                 "autocommit=True is no longer supported"
             )
-        self.identity_map = identity.WeakInstanceDict()
+        self.identity_map = identity._WeakInstanceDict()
 
         if not future:
             raise sa_exc.ArgumentError(
@@ -2160,7 +2160,7 @@ class Session(_SessionClassMethods, EventTarget):
             )
             if TYPE_CHECKING:
                 assert isinstance(
-                    compile_state_cls, context.AbstractORMCompileState
+                    compile_state_cls, context._AbstractORMCompileState
                 )
         else:
             compile_state_cls = None
@@ -2602,7 +2602,7 @@ class Session(_SessionClassMethods, EventTarget):
 
         all_states = self.identity_map.all_states() + list(self._new)
         self.identity_map._kill()
-        self.identity_map = identity.WeakInstanceDict()
+        self.identity_map = identity._WeakInstanceDict()
         self._new = {}
         self._deleted = {}
 
@@ -3055,7 +3055,8 @@ class Session(_SessionClassMethods, EventTarget):
     @util.langhelpers.tag_method_for_warnings(
         "This warning originated from the Session 'autoflush' process, "
         "which was invoked automatically in response to a user-initiated "
-        "operation.",
+        "operation. Consider using ``no_autoflush`` context manager if this "
+        "warning happended while initializing objects.",
         sa_exc.SAWarning,
     )
     def _autoflush(self) -> None:
@@ -3175,7 +3176,7 @@ class Session(_SessionClassMethods, EventTarget):
 
         stmt: Select[Unpack[TupleAny]] = sql.select(object_mapper(instance))
         if (
-            loading.load_on_ident(
+            loading._load_on_ident(
                 self,
                 stmt,
                 state.key,
@@ -3707,7 +3708,7 @@ class Session(_SessionClassMethods, EventTarget):
         return self._get_impl(
             entity,
             ident,
-            loading.load_on_pk_identity,
+            loading._load_on_pk_identity,
             options=options,
             populate_existing=populate_existing,
             with_for_update=with_for_update,

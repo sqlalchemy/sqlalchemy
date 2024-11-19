@@ -62,7 +62,7 @@ if TYPE_CHECKING:
     from ..engine.result import Result
     from ..orm import LoaderCallableStatus
     from ..orm._typing import _O
-    from ..orm.bulk_persistence import BulkUDCompileState
+    from ..orm.bulk_persistence import _BulkUDCompileState
     from ..orm.context import QueryContext
     from ..orm.session import _EntityBindKey
     from ..orm.session import _SessionBind
@@ -433,8 +433,8 @@ def execute_and_instances(
         None,
         QueryContext.default_load_options,
         Type[QueryContext.default_load_options],
-        BulkUDCompileState.default_update_options,
-        Type[BulkUDCompileState.default_update_options],
+        _BulkUDCompileState.default_update_options,
+        Type[_BulkUDCompileState.default_update_options],
     ]
 
     if orm_context.is_select:

@@ -104,9 +104,9 @@ if typing.TYPE_CHECKING:
     from ._typing import _InternalEntityType
     from ._typing import _ORMCOLEXPR
     from .context import _MapperEntity
-    from .context import ORMCompileState
+    from .context import _ORMCompileState
     from .mapper import Mapper
-    from .path_registry import AbstractEntityRegistry
+    from .path_registry import _AbstractEntityRegistry
     from .query import Query
     from .relationships import RelationshipProperty
     from ..engine import Row
@@ -1137,7 +1137,7 @@ class AliasedInsp(
         return self.mapper.class_
 
     @property
-    def _path_registry(self) -> AbstractEntityRegistry:
+    def _path_registry(self) -> _AbstractEntityRegistry:
         if self._use_mapper_path:
             return self.mapper._path_registry
         else:
@@ -1467,7 +1467,7 @@ class LoaderCriteriaOption(CriteriaOption):
                 else:
                     stack.extend(subclass.__subclasses__())
 
-    def _should_include(self, compile_state: ORMCompileState) -> bool:
+    def _should_include(self, compile_state: _ORMCompileState) -> bool:
         if (
             compile_state.select_statement._annotations.get(
                 "for_loader_criteria", None
@@ -1497,12 +1497,12 @@ class LoaderCriteriaOption(CriteriaOption):
 
     def process_compile_state_replaced_entities(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         mapper_entities: Iterable[_MapperEntity],
     ) -> None:
         self.process_compile_state(compile_state)
 
-    def process_compile_state(self, compile_state: ORMCompileState) -> None:
+    def process_compile_state(self, compile_state: _ORMCompileState) -> None:
         """Apply a modification to a given :class:`.CompileState`."""
 
         # if options to limit the criteria to immediate query only,
