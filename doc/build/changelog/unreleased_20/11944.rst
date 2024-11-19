@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 11944
+
+    Fixed bug in how type unions were handled that made the behavior
+    of ``a | b`` different from ``Union[a, b]``.

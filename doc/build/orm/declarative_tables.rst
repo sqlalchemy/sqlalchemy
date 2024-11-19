@@ -316,9 +316,8 @@ the registry and Declarative base could be configured as::
 
     import datetime
 
-    from sqlalchemy import BIGINT, Integer, NVARCHAR, String, TIMESTAMP
-    from sqlalchemy.orm import DeclarativeBase
-    from sqlalchemy.orm import Mapped, mapped_column, registry
+    from sqlalchemy import BIGINT, NVARCHAR, String, TIMESTAMP
+    from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
     class Base(DeclarativeBase):
@@ -368,6 +367,59 @@ to build up a type map that's customized to what we need for different backends,
 while still being able to use succinct annotation-only :func:`_orm.mapped_column`
 configurations.  There are two more levels of Python-type configurability
 available beyond this, described in the next two sections.
+
+Union types inside the Type Map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+SQLAlchemy supports mapping union types inside the type map to allow
+mapping database types that can support multiple Python types,
+such as :class:`_types.JSON` or :class:`_postgresql.JSONB`::
+
+    from sqlalchemy import JSON
+    from sqlalchemy.dialects import postgresql
+    from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+    from sqlalchemy.schema import CreateTable
+
+    json_list = list[int] | list[str]
+    json_scalar = float | str | bool | None
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {
+            json_list: postgresql.JSONB,
+            json_scalar: JSON,
+        }
+
+
+    class SomeClass(Base):
+        __tablename__ = "some_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        list_col: Mapped[list[str] | list[int]]
+        scalar_col: Mapped[json_scalar]
+        scalar_col_not_null: Mapped[str | float | bool]
+
+Using the union directly inside ``Mapped`` or creating a new one with the same
+effective types has the same behavior: ``list_col`` will be matched to the
+``json_list`` union even if it does not reference it directly (the order of the
+types also does not matter).
+If the union added to the type map includes ``None``, it will be ignored
+when matching the ``Mapped`` type since ``None`` is only used to decide
+the column nullability. It follows that both ``scalar_col`` and
+``scalar_col_not_null`` will match the ``json_scalar`` union.
+
+The CREATE TABLE statement of the table created above is as follows:
+
+.. sourcecode:: pycon+sql
+
+    >>> print(CreateTable(SomeClass.__table__).compile(dialect=postgresql.dialect()))
+    {printsql}CREATE TABLE some_table (
+        id SERIAL NOT NULL,
+        list_col JSONB NOT NULL,
+        scalar_col JSON,
+        scalar_col_not_null JSON NOT NULL,
+        PRIMARY KEY (id)
+    )
 
 .. _orm_declarative_mapped_column_type_map_pep593:
 
@@ -457,6 +509,96 @@ While variety in linking ``Annotated`` types to different SQL types grants
 us a wide degree of flexibility, the next section illustrates a second
 way in which ``Annotated`` may be used with Declarative that is even
 more open ended.
+
+Support for Type Alias Types (defined by PEP 695) and NewType
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The typing module allows an user to create "new types" using ``typing.NewType``::
+
+    from typing import NewType
+
+    nstr30 = NewType("nstr30", str)
+    nstr50 = NewType("nstr50", str)
+
+These are considered as different by the type checkers and by python::
+
+    >>> print(str == nstr30, nstr50 == nstr30, nstr30 == NewType("nstr30", str))
+    False False False
+
+Another similar feature was added in Python 3.12 to create aliases,
+using a new syntax to define ``typing.TypeAliasType``::
+
+    type SmallInt = int
+    type BigInt = int
+    type JsonScalar = str | float | bool | None
+
+Like ``typing.NewType``, these are treated by python as different, meaning that they are
+not equal between each other even if they represent the same Python type.
+In the example above, ``SmallInt`` and ``BigInt`` are not considered equal even
+if they both are aliases of the python type ``int``::
+
+    >>> print(SmallInt == BigInt)
+    False
+
+SQLAlchemy supports using ``typing.NewType`` and ``typing.TypeAliasType``
+in the ``type_annotation_map``. They can be used to associate the same python type
+to different :class:`_types.TypeEngine` types, similarly
+to ``typing.Annotated``::
+
+    from sqlalchemy import SmallInteger, BigInteger, JSON, String
+    from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+    from sqlalchemy.schema import CreateTable
+
+
+    class TABase(DeclarativeBase):
+        type_annotation_map = {
+            nstr30: String(30),
+            nstr50: String(50),
+            SmallInt: SmallInteger,
+            BigInteger: BigInteger,
+            JsonScalar: JSON,
+        }
+
+
+    class SomeClass(TABase):
+        __tablename__ = "some_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        normal_str: Mapped[str]
+
+        short_str: Mapped[nstr30]
+        long_str: Mapped[nstr50]
+
+        small_int: Mapped[SmallInt]
+        big_int: Mapped[BigInteger]
+        scalar_col: Mapped[JsonScalar]
+
+a CREATE TABLE for the above mapping will illustrate the different variants
+of integer and string we've configured, and looks like:
+
+.. sourcecode:: pycon+sql
+
+    >>> print(CreateTable(SomeClass.__table__))
+    {printsql}CREATE TABLE some_table (
+        id INTEGER NOT NULL,
+        normal_str VARCHAR NOT NULL,
+        short_str VARCHAR(30) NOT NULL,
+        long_str VARCHAR(50) NOT NULL,
+        small_int SMALLINT NOT NULL,
+        big_int BIGINT NOT NULL,
+        scalar_col JSON,
+        PRIMARY KEY (id)
+    )
+
+Since the ``JsonScalar`` type includes ``None`` the columns is nullable, while
+``id`` and ``normal_str`` columns use the default mapping for their respective
+Python type.
+
+As mentioned above, since ``typing.NewType`` and ``typing.TypeAliasType`` are
+considered standalone types, they must be referenced directly inside ``Mapped``
+and must be added explicitly to the type map.
+Failing to do so will raise an error since SQLAlchemy does not know what
+SQL type to use.
 
 .. _orm_declarative_mapped_column_pep593:
 
@@ -742,6 +884,28 @@ SQL type then knows how to produce a configured version of itself with the
 appropriate settings, including default string length.   If a ``typing.Literal``
 that does not consist of only string values is passed, an informative
 error is raised.
+
+``typing.TypeAliasType`` can also be used to create enums, by assigning them
+to a ``typing.Literal`` of strings::
+
+    from typing import Literal
+
+    type Status = Literal["on", "off", "unknown"]
+
+Since this is a ``typing.TypeAliasType``, it represents a unique type object,
+so it must be placed in the ``type_annotation_map`` for it to be looked up
+successfully, keyed to the :class:`.Enum` type as follows::
+
+    import enum
+    import sqlalchemy
+
+
+    class Base(DeclarativeBase):
+        type_annotation_map = {Status: sqlalchemy.Enum(enum.Enum)}
+
+Since SQLAlchemy supports mapping different ``typing.TypeAliasType``
+objects that are otherwise structurally equivalent individually,
+these must be present in ``type_annotation_map`` to avoid ambiguity.
 
 Native Enums and Naming
 +++++++++++++++++++++++

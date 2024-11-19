@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import builtins
+from collections import deque
 import collections.abc as collections_abc
 import re
 import sys
@@ -54,6 +55,7 @@ if True:  # zimports removes the tailing comments
     from typing_extensions import Self as Self  # 3.11
     from typing_extensions import TypeAliasType as TypeAliasType  # 3.12
     from typing_extensions import Unpack as Unpack  # 3.11
+    from typing_extensions import Never as Never  # 3.11
 
 
 _T = TypeVar("_T", bound=Any)
@@ -67,7 +69,7 @@ TupleAny = Tuple[Any, ...]
 
 # typing_extensions.Literal is different from typing.Literal until
 # Python 3.10.1
-_LITERAL_TYPES = frozenset([typing.Literal, Literal])
+LITERAL_TYPES = frozenset([typing.Literal, Literal])
 
 
 if compat.py310:
@@ -79,16 +81,13 @@ else:
 
 NoneFwd = ForwardRef("None")
 
-typing_get_args = get_args
-typing_get_origin = get_origin
-
 
 _AnnotationScanType = Union[
     Type[Any], str, ForwardRef, NewType, TypeAliasType, "GenericProtocol[Any]"
 ]
 
 
-class ArgsTypeProcotol(Protocol):
+class ArgsTypeProtocol(Protocol):
     """protocol for types that have ``__args__``
 
     there's no public interface for this AFAIK
@@ -209,7 +208,7 @@ def fixup_container_fwd_refs(
 
     if (
         is_generic(type_)
-        and typing_get_origin(type_)
+        and get_origin(type_)
         in (
             dict,
             set,
@@ -229,11 +228,11 @@ def fixup_container_fwd_refs(
         )
     ):
         # compat with py3.10 and earlier
-        return typing_get_origin(type_).__class_getitem__(  # type: ignore
+        return get_origin(type_).__class_getitem__(  # type: ignore
             tuple(
                 [
                     ForwardRef(elem) if isinstance(elem, str) else elem
-                    for elem in typing_get_args(type_)
+                    for elem in get_args(type_)
                 ]
             )
         )
@@ -332,7 +331,7 @@ def resolve_name_to_real_class_name(name: str, module_name: str) -> str:
 
 def de_stringify_union_elements(
     cls: Type[Any],
-    annotation: ArgsTypeProcotol,
+    annotation: ArgsTypeProtocol,
     originating_module: str,
     locals_: Mapping[str, Any],
     *,
@@ -352,8 +351,8 @@ def de_stringify_union_elements(
     )
 
 
-def is_pep593(type_: Optional[_AnnotationScanType]) -> bool:
-    return type_ is not None and typing_get_origin(type_) is Annotated
+def is_pep593(type_: Optional[Any]) -> bool:
+    return type_ is not None and get_origin(type_) is Annotated
 
 
 def is_non_string_iterable(obj: Any) -> TypeGuard[Iterable[Any]]:
@@ -362,8 +361,8 @@ def is_non_string_iterable(obj: Any) -> TypeGuard[Iterable[Any]]:
     )
 
 
-def is_literal(type_: _AnnotationScanType) -> bool:
-    return get_origin(type_) in _LITERAL_TYPES
+def is_literal(type_: Any) -> bool:
+    return get_origin(type_) in LITERAL_TYPES
 
 
 def is_newtype(type_: Optional[_AnnotationScanType]) -> TypeGuard[NewType]:
@@ -386,6 +385,43 @@ def flatten_newtype(type_: NewType) -> Type[Any]:
     while is_newtype(super_type):
         super_type = super_type.__supertype__
     return super_type  # type: ignore[return-value]
+
+
+def pep695_values(type_: _AnnotationScanType) -> Set[Any]:
+    """Extracts the value from a TypeAliasType, recursively exploring unions
+    and inner TypeAliasType to flatten them into a single set.
+
+    Forward references are not evaluated, so no recursive exploration happens
+    into them.
+    """
+    _seen = set()
+
+    def recursive_value(type_):
+        if type_ in _seen:
+            # recursion are not supported (at least it's flagged as
+            # an error by pyright). Just avoid infinite loop
+            return type_
+        _seen.add(type_)
+        if not is_pep695(type_):
+            return type_
+        value = type_.__value__
+        if not is_union(value):
+            return value
+        return [recursive_value(t) for t in value.__args__]
+
+    res = recursive_value(type_)
+    if isinstance(res, list):
+        types = set()
+        stack = deque(res)
+        while stack:
+            t = stack.popleft()
+            if isinstance(t, list):
+                stack.extend(t)
+            else:
+                types.add(None if t in {NoneType, NoneFwd} else t)
+        return types
+    else:
+        return {res}
 
 
 def is_fwd_ref(
@@ -421,13 +457,10 @@ def de_optionalize_union_types(
 
     """
 
-    while is_pep695(type_):
-        type_ = type_.__value__
-
     if is_fwd_ref(type_):
-        return de_optionalize_fwd_ref_union_types(type_)
+        return _de_optionalize_fwd_ref_union_types(type_, False)
 
-    elif is_optional(type_):
+    elif is_union(type_) and includes_none(type_):
         typ = set(type_.__args__)
 
         typ.discard(NoneType)
@@ -439,9 +472,21 @@ def de_optionalize_union_types(
         return type_
 
 
-def de_optionalize_fwd_ref_union_types(
-    type_: ForwardRef,
-) -> _AnnotationScanType:
+@overload
+def _de_optionalize_fwd_ref_union_types(
+    type_: ForwardRef, return_has_none: Literal[True]
+) -> bool: ...
+
+
+@overload
+def _de_optionalize_fwd_ref_union_types(
+    type_: ForwardRef, return_has_none: Literal[False]
+) -> _AnnotationScanType: ...
+
+
+def _de_optionalize_fwd_ref_union_types(
+    type_: ForwardRef, return_has_none: bool
+) -> Union[_AnnotationScanType, bool]:
     """return the non-optional type for Optional[], Union[None, ...], x|None,
     etc. without de-stringifying forward refs.
 
@@ -453,47 +498,77 @@ def de_optionalize_fwd_ref_union_types(
 
     mm = re.match(r"^(.+?)\[(.+)\]$", annotation)
     if mm:
-        if mm.group(1) == "Optional":
-            return ForwardRef(mm.group(2))
-        elif mm.group(1) == "Union":
-            elements = re.split(r",\s*", mm.group(2))
-            return make_union_type(
-                *[ForwardRef(elem) for elem in elements if elem != "None"]
-            )
+        g1 = mm.group(1).split(".")[-1]
+        if g1 == "Optional":
+            return True if return_has_none else ForwardRef(mm.group(2))
+        elif g1 == "Union":
+            if "[" in mm.group(2):
+                # cases like "Union[Dict[str, int], int, None]"
+                elements: list[str] = []
+                current: list[str] = []
+                ignore_comma = 0
+                for char in mm.group(2):
+                    if char == "[":
+                        ignore_comma += 1
+                    elif char == "]":
+                        ignore_comma -= 1
+                    elif ignore_comma == 0 and char == ",":
+                        elements.append("".join(current).strip())
+                        current.clear()
+                        continue
+                    current.append(char)
+            else:
+                elements = re.split(r",\s*", mm.group(2))
+            parts = [ForwardRef(elem) for elem in elements if elem != "None"]
+            if return_has_none:
+                return len(elements) != len(parts)
+            else:
+                return make_union_type(*parts) if parts else Never  # type: ignore[return-value] # noqa: E501
         else:
-            return type_
+            return False if return_has_none else type_
 
     pipe_tokens = re.split(r"\s*\|\s*", annotation)
-    if "None" in pipe_tokens:
-        return ForwardRef("|".join(p for p in pipe_tokens if p != "None"))
+    has_none = "None" in pipe_tokens
+    if return_has_none:
+        return has_none
+    if has_none:
+        anno_str = "|".join(p for p in pipe_tokens if p != "None")
+        return ForwardRef(anno_str) if anno_str else Never  # type: ignore[return-value] # noqa: E501
 
     return type_
 
 
 def make_union_type(*types: _AnnotationScanType) -> Type[Any]:
-    """Make a Union type.
+    """Make a Union type."""
+    return Union.__getitem__(types)  # type: ignore
 
-    This is needed by :func:`.de_optionalize_union_types` which removes
-    ``NoneType`` from a ``Union``.
 
+def includes_none(type_: Any) -> bool:
+    """Returns if the type annotation ``type_`` allows ``None``.
+
+    This function supports:
+    * forward refs
+    * unions
+    * pep593 - Annotated
+    * pep695 - TypeAliasType (does not support looking into
+    fw reference of other pep695)
+    * NewType
+    * plain types like ``int``, ``None``, etc
     """
-    return cast(Any, Union).__getitem__(types)  # type: ignore
+    if is_fwd_ref(type_):
+        return _de_optionalize_fwd_ref_union_types(type_, True)
+    if is_union(type_):
+        return any(includes_none(t) for t in get_args(type_))
+    if is_pep593(type_):
+        return includes_none(get_args(type_)[0])
+    if is_pep695(type_):
+        return any(includes_none(t) for t in pep695_values(type_))
+    if is_newtype(type_):
+        return includes_none(type_.__supertype__)
+    return type_ in (NoneFwd, NoneType, None)
 
 
-def is_optional(type_: Any) -> TypeGuard[ArgsTypeProcotol]:
-    return is_origin_of(
-        type_,
-        "Optional",
-        "Union",
-        "UnionType",
-    )
-
-
-def is_optional_union(type_: Any) -> bool:
-    return is_optional(type_) and NoneType in typing_get_args(type_)
-
-
-def is_union(type_: Any) -> TypeGuard[ArgsTypeProcotol]:
+def is_union(type_: Any) -> TypeGuard[ArgsTypeProtocol]:
     return is_origin_of(type_, "Union", "UnionType")
 
 
@@ -503,7 +578,7 @@ def is_origin_of_cls(
     """return True if the given type has an __origin__ that shares a base
     with the given class"""
 
-    origin = typing_get_origin(type_)
+    origin = get_origin(type_)
     if origin is None:
         return False
 
@@ -516,7 +591,7 @@ def is_origin_of(
     """return True if the given type has an __origin__ with the given name
     and optional module."""
 
-    origin = typing_get_origin(type_)
+    origin = get_origin(type_)
     if origin is None:
         return False
 
@@ -606,6 +681,3 @@ class CallableReference(Generic[_FN]):
         def __set__(self, instance: Any, value: _FN) -> None: ...
 
         def __delete__(self, instance: Any) -> None: ...
-
-
-# $def ro_descriptor_reference(fn: Callable[])

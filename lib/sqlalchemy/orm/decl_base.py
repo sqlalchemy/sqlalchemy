@@ -67,9 +67,9 @@ from ..sql.schema import Column
 from ..sql.schema import Table
 from ..util import topological
 from ..util.typing import _AnnotationScanType
+from ..util.typing import get_args
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_literal
-from ..util.typing import typing_get_args
 
 if TYPE_CHECKING:
     from ._typing import _ClassDict
@@ -1319,7 +1319,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         extracted_mapped_annotation, mapped_container = extracted
 
         if attr_value is None and not is_literal(extracted_mapped_annotation):
-            for elem in typing_get_args(extracted_mapped_annotation):
+            for elem in get_args(extracted_mapped_annotation):
                 if isinstance(elem, str) or is_fwd_ref(
                     elem, check_generic=True
                 ):
