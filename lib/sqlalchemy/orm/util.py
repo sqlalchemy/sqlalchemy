@@ -43,6 +43,7 @@ from ._typing import prop_is_relationship
 from .base import _class_to_mapper as _class_to_mapper
 from .base import _MappedAnnotationBase
 from .base import _never_set as _never_set  # noqa: F401
+from .base import _none_only_set as _none_only_set  # noqa: F401
 from .base import _none_set as _none_set  # noqa: F401
 from .base import attribute_str as attribute_str  # noqa: F401
 from .base import class_mapper as class_mapper
@@ -365,9 +366,7 @@ def polymorphic_union(
     for key in table_map:
         table = table_map[key]
 
-        table = coercions.expect(
-            roles.StrictFromClauseRole, table, allow_select=True
-        )
+        table = coercions.expect(roles.FromClauseRole, table)
         table_map[key] = table
 
         m = {}
@@ -1946,7 +1945,7 @@ class _ORMJoin(expression.Join):
             self.onclause,
             isouter=self.isouter,
             _left_memo=self._left_memo,
-            _right_memo=None,
+            _right_memo=other._left_memo._path_registry,
         )
 
         return _ORMJoin(

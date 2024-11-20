@@ -144,6 +144,7 @@ class JSON(sqltypes.JSON):
 
     """  # noqa
 
+    render_bind_cast = True
     astext_type = sqltypes.Text()
 
     def __init__(self, none_as_null=False, astext_type=None):

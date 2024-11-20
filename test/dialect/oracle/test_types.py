@@ -379,12 +379,13 @@ class TypesTest(fixtures.TestBase):
     def test_no_decimal_float_precision(self):
         with expect_raises_message(
             exc.ArgumentError,
-            "Oracle FLOAT types use 'binary precision', which does not "
-            "convert cleanly from decimal 'precision'.  Please specify this "
-            "type with a separate Oracle variant, such as "
+            "Oracle Database FLOAT types use 'binary precision', which does "
+            "not convert cleanly from decimal 'precision'.  Please specify "
+            "this type with a separate Oracle Database variant, such as "
             r"FLOAT\(precision=5\).with_variant\(oracle.FLOAT\("
             r"binary_precision=16\), 'oracle'\), so that the Oracle "
-            "specific 'binary_precision' may be specified accurately.",
+            "Database specific 'binary_precision' may be specified "
+            "accurately.",
         ):
             FLOAT(5).compile(dialect=oracle.dialect())
 
@@ -575,7 +576,7 @@ class TypesTest(fixtures.TestBase):
         )
 
     def test_numerics_broken_inspection(self, metadata, connection):
-        """Numeric scenarios where Oracle type info is 'broken',
+        """Numeric scenarios where Oracle Database type info is 'broken',
         returning us precision, scale of the form (0, 0) or (0, -127).
         We convert to Decimal and let int()/float() processors take over.
 

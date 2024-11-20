@@ -345,7 +345,6 @@ class ClassManager(
 
     @util.memoized_property
     def _state_constructor(self) -> Type[state.InstanceState[_O]]:
-        self.dispatch.first_init(self, self.class_)
         return state.InstanceState
 
     def manage(self):

@@ -46,7 +46,6 @@ from sqlalchemy.orm import undefer
 from sqlalchemy.orm import with_parent
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.collections import collection
-from sqlalchemy.orm.util import polymorphic_union
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -56,7 +55,6 @@ from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import CacheKeyFixture
@@ -494,34 +492,6 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def setup_mappers(cls):
         cls._setup_stock_mapping()
 
-    @classmethod
-    def _expect_implicit_subquery(cls):
-        return assertions.expect_deprecated(
-            "Implicit coercion of SELECT and textual SELECT constructs into "
-            r"FROM clauses is deprecated; please call \.subquery\(\) on any "
-            "Core select or ORM Query object in order to produce a "
-            "subquery object."
-        )
-
-    def test_deprecated_select_coercion_join_target(self):
-        User = self.classes.User
-        addresses = self.tables.addresses
-
-        s = addresses.select()
-        sess = fixture_session()
-        with testing.expect_deprecated(
-            "Implicit coercion of SELECT and textual SELECT constructs",
-            "An alias is being generated automatically against joined entity",
-        ):
-            self.assert_compile(
-                sess.query(User).join(s, User.addresses),
-                "SELECT users.id AS users_id, users.name AS users_name "
-                "FROM users JOIN (SELECT addresses.id AS id, "
-                "addresses.user_id AS user_id, addresses.email_address "
-                "AS email_address FROM addresses) AS anon_1 "
-                "ON users.id = anon_1.user_id",
-            )
-
     def test_invalid_column(self):
         User = self.classes.User
 
@@ -569,20 +539,6 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "be removed in a future release."
         ):
             s.query(User).as_scalar()
-
-    def test_select_from_q_statement_no_aliasing(self):
-        User = self.classes.User
-        sess = fixture_session()
-
-        q = sess.query(User)
-        with self._expect_implicit_subquery():
-            q = sess.query(User).select_from(User, q.statement)
-        self.assert_compile(
-            q.filter(User.name == "ed"),
-            "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users, (SELECT users.id AS id, users.name AS name FROM "
-            "users) AS anon_1 WHERE users.name = :name_1",
-        )
 
     def test_apply_labels(self):
         User = self.classes.User
@@ -651,19 +607,6 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
                     b.cs
 
         self.assert_sql_count(testing.db, go, expected)
-
-
-class DeprecatedInhTest(_poly_fixtures._Polymorphic):
-    def test_with_polymorphic(self):
-        Person = _poly_fixtures.Person
-        Engineer = _poly_fixtures.Engineer
-
-        with DeprecatedQueryTest._expect_implicit_subquery():
-            p_poly = with_polymorphic(Person, [Engineer], select(Person))
-
-        is_true(
-            sa.inspect(p_poly).selectable.compare(select(Person).subquery())
-        )
 
 
 class DeprecatedMapperTest(
@@ -762,26 +705,6 @@ class DeprecatedMapperTest(
             "expired_attribute_loader"
         ):
             is_(manager.deferred_scalar_loader, myloader)
-
-    def test_polymorphic_union_w_select(self):
-        users, addresses = self.tables.users, self.tables.addresses
-
-        with DeprecatedQueryTest._expect_implicit_subquery():
-            dep = polymorphic_union(
-                {"u": users.select(), "a": addresses.select()},
-                "type",
-                "bcjoin",
-            )
-
-        subq_version = polymorphic_union(
-            {
-                "u": users.select().subquery(),
-                "a": addresses.select().subquery(),
-            },
-            "type",
-            "bcjoin",
-        )
-        is_true(dep.compare(subq_version))
 
     def test_comparable_column(self):
         users, User = self.tables.users, self.classes.User

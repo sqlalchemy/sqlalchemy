@@ -37,10 +37,10 @@ class A:
         B, collection_class=ordering_list("ordering")
     )
 
-    # EXPECTED: Left hand assignment 'cs: "List[B]"' not compatible with ORM mapped expression of type "Mapped[List[C]]"  # noqa
+    # EXPECTED: Left hand assignment 'cs: "list[B]"' not compatible with ORM mapped expression of type "Mapped[list[C]]"  # noqa
     cs: List[B] = relationship(C, uselist=True)
 
-    # EXPECTED: Left hand assignment 'cs_2: "B"' not compatible with ORM mapped expression of type "Mapped[List[C]]"  # noqa
+    # EXPECTED: Left hand assignment 'cs_2: "B"' not compatible with ORM mapped expression of type "Mapped[list[C]]"  # noqa
     cs_2: B = relationship(C, uselist=True)
 
 

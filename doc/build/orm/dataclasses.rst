@@ -278,17 +278,24 @@ parameter for ``created_at`` were passed proceeds as:
 Integration with Annotated
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The approach introduced at :ref:`orm_declarative_mapped_column_pep593` illustrates
-how to use :pep:`593` ``Annotated`` objects to package whole
-:func:`_orm.mapped_column` constructs for re-use.  This feature is supported
-with the dataclasses feature.   One aspect of the feature however requires
-a workaround when working with typing tools, which is that the
-:pep:`681`-specific arguments ``init``, ``default``, ``repr``, and ``default_factory``
-**must** be on the right hand side, packaged into an explicit :func:`_orm.mapped_column`
-construct, in order for the typing tool to interpret the attribute correctly.
-As an example, the approach below will work perfectly fine at runtime,
-however typing tools will consider the ``User()`` construction to be
-invalid, as they do not see the ``init=False`` parameter present::
+The approach introduced at :ref:`orm_declarative_mapped_column_pep593`
+illustrates how to use :pep:`593` ``Annotated`` objects to package whole
+:func:`_orm.mapped_column` constructs for re-use.  While ``Annotated`` objects
+can be combined with the use of dataclasses, **dataclass-specific keyword
+arguments unfortunately cannot be used within the Annotated construct**.  This
+includes :pep:`681`-specific arguments ``init``, ``default``, ``repr``, and
+``default_factory``, which **must** be present in a :func:`_orm.mapped_column`
+or similar construct inline with the class attribute.
+
+.. versionchanged:: 2.0.14/2.0.22  the ``Annotated`` construct when used with
+   an ORM construct like :func:`_orm.mapped_column` cannot accommodate dataclass
+   field parameters such as ``init`` and ``repr`` - this use goes against the
+   design of Python dataclasses and is not supported by :pep:`681`, and therefore
+   is also rejected by the SQLAlchemy ORM at runtime.   A deprecation warning
+   is now emitted and the attribute will be ignored.
+
+As an example, the ``init=False`` parameter below will be ignored and additionally
+emit a deprecation warning::
 
     from typing import Annotated
 
@@ -296,7 +303,7 @@ invalid, as they do not see the ``init=False`` parameter present::
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import registry
 
-    # typing tools will ignore init=False here
+    # typing tools as well as SQLAlchemy will ignore init=False here
     intpk = Annotated[int, mapped_column(init=False, primary_key=True)]
 
     reg = registry()
@@ -308,7 +315,7 @@ invalid, as they do not see the ``init=False`` parameter present::
         id: Mapped[intpk]
 
 
-    # typing error: Argument missing for parameter "id"
+    # typing error as well as runtime error: Argument missing for parameter "id"
     u1 = User()
 
 Instead, :func:`_orm.mapped_column` must be present on the right side

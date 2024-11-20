@@ -40,18 +40,22 @@ class BackendDialectTest(
         """
         engine = testing_engine()
         _server_version = [None]
-        with mock.patch.object(
-            engine.dialect,
-            "_get_server_version_info",
-            lambda conn: engine.dialect._parse_server_version(
-                _server_version[0]
+        with (
+            mock.patch.object(
+                engine.dialect,
+                "_get_server_version_info",
+                lambda conn: engine.dialect._parse_server_version(
+                    _server_version[0]
+                ),
             ),
-        ), mock.patch.object(
-            engine.dialect, "_set_mariadb", lambda *arg: None
-        ), mock.patch.object(
-            engine.dialect,
-            "get_isolation_level",
-            lambda *arg: "REPEATABLE READ",
+            mock.patch.object(
+                engine.dialect, "_set_mariadb", lambda *arg: None
+            ),
+            mock.patch.object(
+                engine.dialect,
+                "get_isolation_level",
+                lambda *arg: "REPEATABLE READ",
+            ),
         ):
 
             def go(server_version):

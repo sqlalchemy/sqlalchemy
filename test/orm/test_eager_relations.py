@@ -26,6 +26,8 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import Load
 from sqlalchemy.orm import load_only
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import undefer
@@ -7110,3 +7112,94 @@ class SingletonConstantSubqTest(_fixtures.FixtureTest):
             )
 
         self.assert_sql_count(testing.db, go, 1)
+
+
+class NestedInnerjoinTestIssue11965(
+    fixtures.DeclarativeMappedTest, testing.AssertsCompiledSQL
+):
+    """test for issue #11965, regression from #11449"""
+
+    __dialect__ = "default"
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Source(Base):
+            __tablename__ = "source"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+        class Day(Base):
+            __tablename__ = "day"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+        class Run(Base):
+            __tablename__ = "run"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            source_id: Mapped[int] = mapped_column(
+                ForeignKey(Source.id), nullable=False
+            )
+            source = relationship(Source, lazy="joined", innerjoin=True)
+
+            day = relationship(
+                Day,
+                lazy="joined",
+                innerjoin=True,
+            )
+            day_id: Mapped[int] = mapped_column(
+                ForeignKey(Day.id), nullable=False
+            )
+
+        class Event(Base):
+            __tablename__ = "event"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            run_id: Mapped[int] = mapped_column(
+                ForeignKey(Run.id), nullable=False
+            )
+            run = relationship(Run, lazy="joined", innerjoin=True)
+
+        class Room(Base):
+            __tablename__ = "room"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            event_id: Mapped[int] = mapped_column(
+                ForeignKey(Event.id), nullable=False
+            )
+            event = relationship(Event, foreign_keys=event_id, lazy="joined")
+
+    @classmethod
+    def insert_data(cls, connection):
+        Room, Run, Source, Event, Day = cls.classes(
+            "Room", "Run", "Source", "Event", "Day"
+        )
+        run = Run(source=Source(), day=Day())
+        event = Event(run=run)
+        room = Room(event=event)
+        with Session(connection) as session:
+            session.add(room)
+            session.commit()
+
+    def test_compile(self):
+        Room = self.classes.Room
+        self.assert_compile(
+            select(Room),
+            "SELECT room.id, room.event_id, source_1.id AS id_1, "
+            "day_1.id AS id_2, run_1.id AS id_3, run_1.source_id, "
+            "run_1.day_id, event_1.id AS id_4, event_1.run_id "
+            "FROM room LEFT OUTER JOIN "
+            "(event AS event_1 "
+            "JOIN run AS run_1 ON run_1.id = event_1.run_id "
+            "JOIN day AS day_1 ON day_1.id = run_1.day_id "
+            "JOIN source AS source_1 ON source_1.id = run_1.source_id) "
+            "ON event_1.id = room.event_id",
+        )
+
+    def test_roundtrip(self):
+        Room = self.classes.Room
+        session = fixture_session()
+        rooms = session.scalars(select(Room)).unique().all()
+        session.close()
+        # verify eager-loaded correctly
+        assert rooms[0].event.run.day

@@ -508,7 +508,7 @@ class HasHints:
 
             :meth:`_expression.Select.prefix_with` - generic SELECT prefixing
             which also can suit some database-specific HINT syntaxes such as
-            MySQL or Oracle optimizer hints
+            MySQL or Oracle Database optimizer hints
 
         """
         return self._with_hint(None, text, dialect_name)
@@ -530,9 +530,9 @@ class HasHints:
             **specific to a single table** to a statement, in a location that
             is **dialect-specific**.  To add generic optimizer hints to the
             **beginning** of a statement ahead of the SELECT keyword such as
-            for MySQL or Oracle, use the :meth:`_expression.Select.prefix_with`
-            method.  To add optimizer hints to the **end** of a statement such
-            as for PostgreSQL, use the
+            for MySQL or Oracle Database, use the
+            :meth:`_expression.Select.prefix_with` method.  To add optimizer
+            hints to the **end** of a statement such as for PostgreSQL, use the
             :meth:`_expression.Select.with_statement_hint` method.
 
         The text of the hint is rendered in the appropriate
@@ -542,7 +542,7 @@ class HasHints:
         ``selectable`` argument. The dialect implementation
         typically uses Python string substitution syntax
         with the token ``%(name)s`` to render the name of
-        the table or alias. E.g. when using Oracle, the
+        the table or alias. E.g. when using Oracle Database, the
         following::
 
             select(mytable).\
@@ -554,7 +554,7 @@ class HasHints:
 
         The ``dialect_name`` option will limit the rendering of a particular
         hint to a particular backend. Such as, to add hints for both Oracle
-        and Sybase simultaneously::
+        Database and Sybase simultaneously::
 
             select(mytable).\
                 with_hint(mytable, "index(%(name)s ix_mytable)", 'oracle').\
@@ -566,7 +566,7 @@ class HasHints:
 
             :meth:`_expression.Select.prefix_with` - generic SELECT prefixing
             which also can suit some database-specific HINT syntaxes such as
-            MySQL or Oracle optimizer hints
+            MySQL or Oracle Database optimizer hints
 
         """
 
@@ -842,7 +842,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
     ) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
         """A :class:`_expression.ColumnCollection`
         that represents the "exported"
-        columns of this :class:`_expression.Selectable`.
+        columns of this :class:`_expression.FromClause`.
 
         The "exported" columns for a :class:`_expression.FromClause`
         object are synonymous
@@ -1041,7 +1041,7 @@ class NamedFromClause(FromClause):
         A :class:`_sql.TableValuedColumn` is a :class:`_sql.ColumnElement` that
         represents a complete row in a table. Support for this construct is
         backend dependent, and is supported in various forms by backends
-        such as PostgreSQL, Oracle and SQL Server.
+        such as PostgreSQL, Oracle Database and SQL Server.
 
         E.g.:
 
@@ -1725,7 +1725,7 @@ class Alias(roles.DMLTableRole, FromClauseAlias):
 
     Represents an alias, as typically applied to any table or
     sub-select within a SQL statement using the ``AS`` keyword (or
-    without the keyword on certain databases such as Oracle).
+    without the keyword on certain databases such as Oracle Database).
 
     This object is constructed from the :func:`_expression.alias` module
     level function as well as the :meth:`_expression.FromClause.alias`
@@ -1751,9 +1751,9 @@ class Alias(roles.DMLTableRole, FromClauseAlias):
         name: Optional[str] = None,
         flat: bool = False,
     ) -> NamedFromClause:
-        return coercions.expect(
-            roles.FromClauseRole, selectable, allow_select=True
-        ).alias(name=name, flat=flat)
+        return coercions.expect(roles.FromClauseRole, selectable).alias(
+            name=name, flat=flat
+        )
 
 
 class TableValuedAlias(LateralFromClause, Alias):
@@ -3485,29 +3485,6 @@ class SelectBase(
         """
         return self.selected_columns.as_readonly()
 
-    @property
-    @util.deprecated(
-        "1.4",
-        "The :attr:`_expression.SelectBase.c` and "
-        ":attr:`_expression.SelectBase.columns` attributes "
-        "are deprecated and will be removed in a future release; these "
-        "attributes implicitly create a subquery that should be explicit.  "
-        "Please call :meth:`_expression.SelectBase.subquery` "
-        "first in order to create "
-        "a subquery, which then contains this attribute.  To access the "
-        "columns that this SELECT object SELECTs "
-        "from, use the :attr:`_expression.SelectBase.selected_columns` "
-        "attribute.",
-    )
-    def c(self) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
-        return self._implicit_subquery.columns
-
-    @property
-    def columns(
-        self,
-    ) -> ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]:
-        return self.c
-
     def get_label_style(self) -> SelectLabelStyle:
         """
         Retrieve the current label style.
@@ -3525,22 +3502,6 @@ class SelectBase(
         """
 
         raise NotImplementedError()
-
-    @util.deprecated(
-        "1.4",
-        "The :meth:`_expression.SelectBase.select` method is deprecated "
-        "and will be removed in a future release; this method implicitly "
-        "creates a subquery that should be explicit.  "
-        "Please call :meth:`_expression.SelectBase.subquery` "
-        "first in order to create "
-        "a subquery, which then can be selected.",
-    )
-    def select(self, *arg: Any, **kw: Any) -> Select[Unpack[TupleAny]]:
-        return self._implicit_subquery.select(*arg, **kw)
-
-    @HasMemoized.memoized_attribute
-    def _implicit_subquery(self) -> Subquery:
-        return self.subquery()
 
     def _scalar_type(self) -> TypeEngine[Any]:
         raise NotImplementedError()
@@ -3841,8 +3802,8 @@ class GenerativeSelect(SelectBase, Generative):
 
             stmt = select(table).with_for_update(nowait=True)
 
-        On a database like PostgreSQL or Oracle, the above would render a
-        statement like::
+        On a database like PostgreSQL or Oracle Database, the above would
+        render a statement like::
 
             SELECT table.a, table.b FROM table FOR UPDATE NOWAIT
 
@@ -3857,7 +3818,7 @@ class GenerativeSelect(SelectBase, Generative):
         variants.
 
         :param nowait: boolean; will render ``FOR UPDATE NOWAIT`` on Oracle
-         and PostgreSQL dialects.
+         Database and PostgreSQL dialects.
 
         :param read: boolean; will render ``LOCK IN SHARE MODE`` on MySQL,
          ``FOR SHARE`` on PostgreSQL.  On PostgreSQL, when combined with
@@ -3866,13 +3827,13 @@ class GenerativeSelect(SelectBase, Generative):
         :param of: SQL expression or list of SQL expression elements,
          (typically :class:`_schema.Column` objects or a compatible expression,
          for some backends may also be a table expression) which will render
-         into a ``FOR UPDATE OF`` clause; supported by PostgreSQL, Oracle, some
-         MySQL versions and possibly others. May render as a table or as a
-         column depending on backend.
+         into a ``FOR UPDATE OF`` clause; supported by PostgreSQL, Oracle
+         Database, some MySQL versions and possibly others. May render as a
+         table or as a column depending on backend.
 
-        :param skip_locked: boolean, will render ``FOR UPDATE SKIP LOCKED``
-         on Oracle and PostgreSQL dialects or ``FOR SHARE SKIP LOCKED`` if
-         ``read=True`` is also specified.
+        :param skip_locked: boolean, will render ``FOR UPDATE SKIP LOCKED`` on
+         Oracle Database and PostgreSQL dialects or ``FOR SHARE SKIP LOCKED``
+         if ``read=True`` is also specified.
 
         :param key_share: boolean, will render ``FOR NO KEY UPDATE``,
          or if combined with ``read=True`` will render ``FOR KEY SHARE``,
@@ -4078,10 +4039,10 @@ class GenerativeSelect(SelectBase, Generative):
         """Return a new selectable with the given FETCH FIRST criterion
         applied.
 
-        This is a numeric value which usually renders as
-        ``FETCH {FIRST | NEXT} [ count ] {ROW | ROWS} {ONLY | WITH TIES}``
-        expression in the resulting select. This functionality is
-        is currently implemented for Oracle, PostgreSQL, MSSQL.
+        This is a numeric value which usually renders as ``FETCH {FIRST | NEXT}
+        [ count ] {ROW | ROWS} {ONLY | WITH TIES}`` expression in the resulting
+        select. This functionality is is currently implemented for Oracle
+        Database, PostgreSQL, MSSQL.
 
         Use :meth:`_sql.GenerativeSelect.offset` to specify the offset.
 

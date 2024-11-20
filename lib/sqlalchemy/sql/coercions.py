@@ -29,7 +29,6 @@ from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
-from . import operators
 from . import roles
 from . import visitors
 from ._typing import is_from_clause
@@ -843,18 +842,19 @@ class InElementImpl(RoleImpl):
             % (elem.__class__.__name__)
         )
 
-    def _literal_coercion(  # type: ignore[override]
-        self, element, *, expr, operator, **kw
-    ):
+    @util.preload_module("sqlalchemy.sql.elements")
+    def _literal_coercion(self, element, *, expr, operator, **kw):
         if util.is_non_string_iterable(element):
             non_literal_expressions: Dict[
-                Optional[operators.ColumnOperators],
-                operators.ColumnOperators,
+                Optional[_ColumnExpressionArgument[Any]],
+                _ColumnExpressionArgument[Any],
             ] = {}
             element = list(element)
             for o in element:
                 if not _is_literal(o):
-                    if not isinstance(o, operators.ColumnOperators):
+                    if not isinstance(
+                        o, util.preloaded.sql_elements.ColumnElement
+                    ) and not hasattr(o, "__clause_element__"):
                         self._raise_for_expected(element, **kw)
 
                     else:
@@ -1273,25 +1273,12 @@ class FromClauseImpl(_SelectIsNotFrom, _NoTextCoercion, RoleImpl):
         argname: Optional[str] = None,
         *,
         explicit_subquery: bool = False,
-        allow_select: bool = True,
         **kw: Any,
     ) -> Any:
-        if resolved._is_select_base:
-            if explicit_subquery:
-                return resolved.subquery()
-            elif allow_select:
-                util.warn_deprecated(
-                    "Implicit coercion of SELECT and textual SELECT "
-                    "constructs into FROM clauses is deprecated; please call "
-                    ".subquery() on any Core select or ORM Query object in "
-                    "order to produce a subquery object.",
-                    version="1.4",
-                )
-                return resolved._implicit_subquery
-        elif resolved._is_text_clause:
-            return resolved
-        else:
-            self._raise_for_expected(element, argname, resolved)
+        if resolved._is_select_base and explicit_subquery:
+            return resolved.subquery()
+
+        self._raise_for_expected(element, argname, resolved)
 
     def _post_coercion(self, element, *, deannotate=False, **kw):
         if deannotate:
@@ -1300,32 +1287,7 @@ class FromClauseImpl(_SelectIsNotFrom, _NoTextCoercion, RoleImpl):
             return element
 
 
-class StrictFromClauseImpl(FromClauseImpl):
-    __slots__ = ()
-
-    def _implicit_coercions(
-        self,
-        element: Any,
-        resolved: Any,
-        argname: Optional[str] = None,
-        *,
-        allow_select: bool = False,
-        **kw: Any,
-    ) -> Any:
-        if resolved._is_select_base and allow_select:
-            util.warn_deprecated(
-                "Implicit coercion of SELECT and textual SELECT constructs "
-                "into FROM clauses is deprecated; please call .subquery() "
-                "on any Core select or ORM Query object in order to produce a "
-                "subquery object.",
-                version="1.4",
-            )
-            return resolved._implicit_subquery
-        else:
-            self._raise_for_expected(element, argname, resolved)
-
-
-class AnonymizedFromClauseImpl(StrictFromClauseImpl):
+class AnonymizedFromClauseImpl(FromClauseImpl):
     __slots__ = ()
 
     def _post_coercion(self, element, *, flat=False, name=None, **kw):

@@ -372,11 +372,14 @@ class AsyncEngineTest(EngineFixture):
             # the thing here that emits the warning is the correct path
             from sqlalchemy.pool.base import _finalize_fairy
 
-            with mock.patch.object(
-                pool._dialect,
-                "do_rollback",
-                mock.Mock(side_effect=Exception("can't run rollback")),
-            ), mock.patch("sqlalchemy.util.warn") as m:
+            with (
+                mock.patch.object(
+                    pool._dialect,
+                    "do_rollback",
+                    mock.Mock(side_effect=Exception("can't run rollback")),
+                ),
+                mock.patch("sqlalchemy.util.warn") as m,
+            ):
                 _finalize_fairy(
                     None, rec, pool, ref, echo, transaction_was_reset=False
                 )

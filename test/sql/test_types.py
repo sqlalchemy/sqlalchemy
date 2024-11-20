@@ -62,6 +62,7 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import types
 from sqlalchemy import Unicode
 from sqlalchemy import util
+from sqlalchemy import VARBINARY
 from sqlalchemy import VARCHAR
 import sqlalchemy.dialects.mysql as mysql
 import sqlalchemy.dialects.oracle as oracle
@@ -450,6 +451,11 @@ class TypeAffinityTest(fixtures.TestBase):
 class AsGenericTest(fixtures.TestBase):
     @testing.combinations(
         (String(), String()),
+        (VARBINARY(), LargeBinary()),
+        (mysql.BINARY(), LargeBinary()),
+        (mysql.MEDIUMBLOB(), LargeBinary()),
+        (oracle.RAW(), LargeBinary()),
+        (pg.BYTEA(), LargeBinary()),
         (VARCHAR(length=100), String(length=100)),
         (NVARCHAR(length=100), Unicode(length=100)),
         (DATE(), Date()),
@@ -472,6 +478,9 @@ class AsGenericTest(fixtures.TestBase):
             (t,)
             for t in _all_types(omit_special_types=True)
             if not util.method_is_overridden(t, TypeEngine.as_generic)
+            and not util.method_is_overridden(
+                t, TypeEngine._generic_type_affinity
+            )
         ]
     )
     def test_as_generic_all_types_heuristic(self, type_):
@@ -503,6 +512,11 @@ class AsGenericTest(fixtures.TestBase):
         assert isinstance(gentype, TypeEngine)
 
 
+class SomeTypeDecorator(TypeDecorator):
+    impl = String()
+    cache_ok = True
+
+
 class PickleTypesTest(fixtures.TestBase):
     @testing.combinations(
         ("Boo", Boolean()),
@@ -521,6 +535,7 @@ class PickleTypesTest(fixtures.TestBase):
         ("Lar", LargeBinary()),
         ("Pic", PickleType()),
         ("Int", Interval()),
+        ("Dec", SomeTypeDecorator()),
         argnames="name,type_",
         id_="ar",
     )
@@ -534,9 +549,36 @@ class PickleTypesTest(fixtures.TestBase):
         meta = MetaData()
         Table("foo", meta, column_type)
 
+        expr = select(1).where(column_type == bindparam("q"))
+
         for loads, dumps in picklers():
             loads(dumps(column_type))
             loads(dumps(meta))
+
+            expr_str_one = str(expr)
+            ne = loads(dumps(expr))
+
+            eq_(str(ne), expr_str_one)
+
+            re_pickle_it = loads(dumps(ne))
+            eq_(str(re_pickle_it), expr_str_one)
+
+    def test_pickle_td_comparator(self):
+        comparator = SomeTypeDecorator().comparator_factory(column("q"))
+
+        expected_mro = (
+            TypeDecorator.Comparator,
+            sqltypes.Concatenable.Comparator,
+            TypeEngine.Comparator,
+        )
+        eq_(comparator.__class__.__mro__[1:4], expected_mro)
+
+        for loads, dumps in picklers():
+            unpickled = loads(dumps(comparator))
+            eq_(unpickled.__class__.__mro__[1:4], expected_mro)
+
+            reunpickled = loads(dumps(unpickled))
+            eq_(reunpickled.__class__.__mro__[1:4], expected_mro)
 
     @testing.combinations(
         ("Str", String()),

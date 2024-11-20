@@ -10,6 +10,7 @@ from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Index
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import join
 from sqlalchemy import literal
 from sqlalchemy import select
 from sqlalchemy import String
@@ -1576,11 +1577,14 @@ class DeclarativeMultiBaseTest(
             attr_type.fail()
 
     def test_column_named_twice(self):
-        with expect_warnings(
-            "On class 'Foo', Column object 'x' named directly multiple "
-            "times, only one will be used: x, y. Consider using "
-            "orm.synonym instead"
-        ), expect_raises(exc.DuplicateColumnError):
+        with (
+            expect_warnings(
+                "On class 'Foo', Column object 'x' named directly multiple "
+                "times, only one will be used: x, y. Consider using "
+                "orm.synonym instead"
+            ),
+            expect_raises(exc.DuplicateColumnError),
+        ):
 
             class Foo(Base):
                 __tablename__ = "foo"
@@ -1591,11 +1595,14 @@ class DeclarativeMultiBaseTest(
 
     @testing.variation("style", ["old", "new"])
     def test_column_repeated_under_prop(self, style):
-        with expect_warnings(
-            "On class 'Foo', Column object 'x' named directly multiple "
-            "times, only one will be used: x, y, z. Consider using "
-            "orm.synonym instead"
-        ), expect_raises(exc.DuplicateColumnError):
+        with (
+            expect_warnings(
+                "On class 'Foo', Column object 'x' named directly multiple "
+                "times, only one will be used: x, y, z. Consider using "
+                "orm.synonym instead"
+            ),
+            expect_raises(exc.DuplicateColumnError),
+        ):
             if style.old:
 
                 class Foo(Base):
@@ -1906,8 +1913,9 @@ class DeclarativeMultiBaseTest(
 
             d = relationship(
                 "D",
-                secondary="join(B, D, B.d_id == D.id)."
-                "join(C, C.d_id == D.id)",
+                secondary=lambda: join(B, D, B.d_id == D.id).join(
+                    C, C.d_id == D.id
+                ),
                 primaryjoin="and_(A.b_id == B.id, A.id == C.a_id)",
                 secondaryjoin="D.id == B.d_id",
             )

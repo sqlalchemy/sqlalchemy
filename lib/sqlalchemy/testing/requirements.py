@@ -1517,12 +1517,6 @@ class SuiteRequirements(Requirements):
         return exclusions.skip_if(check)
 
     @property
-    def python39(self):
-        return exclusions.only_if(
-            lambda: util.py39, "Python 3.9 or above required"
-        )
-
-    @property
     def python310(self):
         return exclusions.only_if(
             lambda: util.py310, "Python 3.10 or above required"

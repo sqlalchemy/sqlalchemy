@@ -470,7 +470,6 @@ class ImmutableDictTest(fixtures.TestBase):
         i2 = util.immutabledict({"a": 42, 42: "a"})
         eq_(str(i2), "immutabledict({'a': 42, 42: 'a'})")
 
-    @testing.requires.python39
     def test_pep584(self):
         i = util.immutabledict({"a": 2})
         with expect_raises_message(TypeError, "object is immutable"):
@@ -3644,9 +3643,12 @@ class CyExtensionTest(fixtures.TestBase):
             import setuptools  # noqa: F401
         except ImportError:
             testing.skip_test("setuptools is required")
-        with mock.patch("setuptools.setup", mock.MagicMock()), mock.patch.dict(
-            "os.environ",
-            {"DISABLE_SQLALCHEMY_CEXT": "", "REQUIRE_SQLALCHEMY_CEXT": ""},
+        with (
+            mock.patch("setuptools.setup", mock.MagicMock()),
+            mock.patch.dict(
+                "os.environ",
+                {"DISABLE_SQLALCHEMY_CEXT": "", "REQUIRE_SQLALCHEMY_CEXT": ""},
+            ),
         ):
             import setup
 

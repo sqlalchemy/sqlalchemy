@@ -684,6 +684,20 @@ class TableReflectionTest(fixtures.TestBase):
             finally:
                 conn.exec_driver_sql("DROP TABLE my_table")
 
+    def test_tablespace(self, connection, metadata):
+        tbl = Table(
+            "test_tablespace",
+            metadata,
+            Column("data", Integer),
+            oracle_tablespace="temp",
+        )
+        metadata.create_all(connection)
+
+        m2 = MetaData()
+
+        tbl = Table("test_tablespace", m2, autoload_with=connection)
+        assert tbl.dialect_options["oracle"]["tablespace"] == "TEMP"
+
 
 class ViewReflectionTest(fixtures.TestBase):
     __only_on__ = "oracle"
@@ -1546,8 +1560,8 @@ drop table %(schema)sparent;
                 (schema, "parent"): [],
             }
             self.options[schema] = {
-                (schema, "my_table"): {},
-                (schema, "parent"): {},
+                (schema, "my_table"): {"oracle_tablespace": "USERS"},
+                (schema, "parent"): {"oracle_tablespace": "USERS"},
             }
 
     def test_tables(self, connection):

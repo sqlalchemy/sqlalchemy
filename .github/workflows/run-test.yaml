@@ -31,12 +31,11 @@ jobs:
           - "macos-latest"
           - "macos-13"
         python-version:
-          - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
           - "3.12"
-          - "3.13.0-alpha - 3.13"
+          - "3.13"
           - "pypy-3.10"
         build-type:
           - "cext"
@@ -68,8 +67,6 @@ jobs:
             architecture: x86
           - os: "macos-latest"
             architecture: x64
-          - os: "macos-latest"
-            python-version: "3.8"
           - os: "macos-latest"
             python-version: "3.9"
           # macos 13: uses intel macs. no arm64, x86
@@ -120,7 +117,6 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - cp38-cp38
           - cp39-cp39
           - cp310-cp310
           - cp311-cp311
@@ -162,12 +158,11 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
-          - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
           - "3.12"
-          - "3.13.0-alpha - 3.13"
+          - "3.13"
         tox-env:
           - mypy
           - pep484
@@ -179,8 +174,6 @@ jobs:
             os: "ubuntu-latest"
         exclude:
           # run pep484 only on 3.10+
-          - tox-env: pep484
-            python-version: "3.8"
           - tox-env: pep484
             python-version: "3.9"
 

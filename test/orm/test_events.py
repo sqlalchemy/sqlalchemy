@@ -2580,8 +2580,9 @@ class SessionEventsTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
         u2 = User(name="u1", id=1)
         sess.add(u2)
 
-        with expect_raises(sa.exc.IntegrityError), expect_warnings(
-            "New instance"
+        with (
+            expect_raises(sa.exc.IntegrityError),
+            expect_warnings("New instance"),
         ):
             sess.commit()
 
@@ -2636,8 +2637,9 @@ class SessionEventsTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
 
         u2 = User(name="u1", id=1)
         sess.add(u2)
-        with expect_raises(sa.exc.IntegrityError), expect_warnings(
-            "New instance"
+        with (
+            expect_raises(sa.exc.IntegrityError),
+            expect_warnings("New instance"),
         ):
             sess.commit()
 

@@ -9,8 +9,134 @@
 
 
 .. changelog::
-    :version: 2.0.36
+    :version: 2.0.37
     :include_notes_from: unreleased_20
+
+.. changelog::
+    :version: 2.0.36
+    :released: October 15, 2024
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 11317
+
+        Fixed bug where SQL functions passed to
+        :paramref:`_schema.Column.server_default` would not be rendered with the
+        particular form of parenthesization now required by newer versions of MySQL
+        and MariaDB. Pull request courtesy of huuya.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11912
+
+        Fixed bug in ORM bulk update/delete where using RETURNING with bulk
+        update/delete in combination with ``populate_existing`` would fail to
+        accommodate the ``populate_existing`` option.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11917
+
+        Continuing from :ticket:`11912`, columns marked with
+        :paramref:`.mapped_column.onupdate`,
+        :paramref:`.mapped_column.server_onupdate`, or :class:`.Computed` are now
+        refreshed in ORM instances when running an ORM enabled UPDATE with WHERE
+        criteria, even if the statement does not use RETURNING or
+        ``populate_existing``.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 11923
+
+        Added new parameter :paramref:`_orm.mapped_column.hash` to ORM constructs
+        such as :meth:`_orm.mapped_column`, :meth:`_orm.relationship`, etc.,
+        which is interpreted for ORM Native Dataclasses in the same way as other
+        dataclass-specific field parameters.
+
+    .. change::
+        :tags: bug, postgresql, reflection
+        :tickets: 11961
+
+        Fixed bug in reflection of table comments where unrelated text would be
+        returned if an entry in the ``pg_description`` table happened to share the
+        same oid (objoid) as the table being reflected.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11965
+
+        Fixed regression caused by fixes to joined eager loading in :ticket:`11449`
+        released in 2.0.31, where a particular joinedload case could not be
+        asserted correctly.   We now have an example of that case so the assertion
+        has been repaired to allow for it.
+
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 11973
+
+        Improved the error message emitted when trying to map as dataclass a class
+        while also manually providing the ``__table__`` attribute.
+        This usage is currently not supported.
+
+    .. change::
+        :tags: mysql, performance
+        :tickets: 11975
+
+        Improved a query used for the MySQL 8 backend when reflecting foreign keys
+        to be better optimized.   Previously, for a database that had millions of
+        columns across all tables, the query could be prohibitively slow; the query
+        has been reworked to take better advantage of existing indexes.
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 11978
+
+        Datatypes that are binary based such as :class:`.VARBINARY` will resolve to
+        :class:`.LargeBinary` when the :meth:`.TypeEngine.as_generic()` method is
+        called.
+
+    .. change::
+        :tags: postgresql, bug
+        :tickets: 11994
+
+        The :class:`.postgresql.JSON` and :class:`.postgresql.JSONB` datatypes will
+        now render a "bind cast" in all cases for all PostgreSQL backends,
+        including psycopg2, whereas previously it was only enabled for some
+        backends.   This allows greater accuracy in allowing the database server to
+        recognize when a string value is to be interpreted as JSON.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11995
+
+        Refined the check which the ORM lazy loader uses to detect "this would be
+        loading by primary key and the primary key is NULL, skip loading" to take
+        into account the current setting for the
+        :paramref:`.orm.Mapper.allow_partial_pks` parameter. If this parameter is
+        ``False``, then a composite PK value that has partial NULL elements should
+        also be skipped.   This can apply to some composite overlapping foreign key
+        configurations.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11997
+
+        Fixed bug in ORM "update with WHERE clause" feature where an explicit
+        ``.returning()`` would interfere with the "fetch" synchronize strategy due
+        to an assumption that the ORM mapped class featured the primary key columns
+        in a specific position within the RETURNING.  This has been fixed to use
+        appropriate ORM column targeting.
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 12002
+
+        Fixed regression from 1.4 where some datatypes such as those derived from
+        :class:`.TypeDecorator` could not be pickled when they were part of a
+        larger SQL expression composition due to internal supporting structures
+        themselves not being pickleable.
 
 .. changelog::
     :version: 2.0.35

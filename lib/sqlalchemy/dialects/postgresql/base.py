@@ -9,7 +9,6 @@
 r"""
 .. dialect:: postgresql
     :name: PostgreSQL
-    :full_support: 12, 13, 14, 15
     :normal_support: 9.6+
     :best_effort: 9+
 
@@ -4689,6 +4688,8 @@ class PGDialect(default.DefaultDialect):
                     pg_catalog.pg_class.c.oid
                     == pg_catalog.pg_description.c.objoid,
                     pg_catalog.pg_description.c.objsubid == 0,
+                    pg_catalog.pg_description.c.classoid
+                    == sql.func.cast("pg_catalog.pg_class", REGCLASS),
                 ),
             )
             .where(self._pg_class_relkind_condition(relkinds))

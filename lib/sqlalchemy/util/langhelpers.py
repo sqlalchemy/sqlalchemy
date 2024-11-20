@@ -66,15 +66,11 @@ if compat.py310:
 else:
 
     def get_annotations(obj: Any) -> Mapping[str, Any]:
-        # it's been observed that cls.__annotations__ can be non present.
-        # it's not clear what causes this, running under tox py38 it
-        # happens, running straight pytest it doesnt
-
         # https://docs.python.org/3/howto/annotations.html#annotations-howto
         if isinstance(obj, type):
             ann = obj.__dict__.get("__annotations__", None)
         else:
-            ann = getattr(obj, "__annotations__", None)
+            ann = obj.__annotations__
 
         if ann is None:
             return _collections.EMPTY_DICT

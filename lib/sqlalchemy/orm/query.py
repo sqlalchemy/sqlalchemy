@@ -368,9 +368,8 @@ class Query(
     ) -> None:
         fa = [
             coercions.expect(
-                roles.StrictFromClauseRole,
+                roles.FromClauseRole,
                 elem,
-                allow_select=True,
                 apply_propagate_attrs=self,
             )
             for elem in obj

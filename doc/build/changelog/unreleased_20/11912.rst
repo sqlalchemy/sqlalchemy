@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 11912
-
-    Fixed bug in ORM bulk update/delete where using RETURNING with bulk
-    update/delete in combination with populate existing would fail to
-    accommodate the populate_existing option.

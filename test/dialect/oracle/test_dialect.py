@@ -485,7 +485,7 @@ class ComputedReturningTest(fixtures.TablesTest):
             eq_(result.returned_defaults, (52,))
         else:
             with testing.expect_warnings(
-                "Computed columns don't work with Oracle UPDATE"
+                "Computed columns don't work with Oracle Database UPDATE"
             ):
                 result = conn.execute(
                     test.update().values(foo=10).return_defaults()
@@ -556,7 +556,7 @@ end;
             exc.InvalidRequestError,
             r"Using explicit outparam\(\) objects with "
             r"UpdateBase.returning\(\) in the same Core DML statement "
-            "is not supported in the Oracle dialect.",
+            "is not supported in the Oracle Database dialects.",
         ):
             connection.execute(stmt)
 
@@ -879,6 +879,7 @@ class ExecuteTest(fixtures.TestBase):
     def test_limit_offset_for_update(self, metadata, connection):
         # oracle can't actually do the ROWNUM thing with FOR UPDATE
         # very well.
+        # Seems to be fixed in 23.
 
         t = Table(
             "t1",
@@ -903,7 +904,7 @@ class ExecuteTest(fixtures.TestBase):
         # as of #8221, this fails also.  limit w/o order by is useless
         # in any case.
         stmt = t.select().with_for_update().limit(2)
-        if testing.against("oracle>=12"):
+        if testing.against("oracle>=12") and testing.against("oracle<23"):
             with expect_raises_message(exc.DatabaseError, "ORA-02014"):
                 connection.execute(stmt).fetchall()
         else:

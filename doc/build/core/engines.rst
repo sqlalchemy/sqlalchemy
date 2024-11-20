@@ -200,13 +200,23 @@ More notes on connecting to MySQL at :ref:`mysql_toplevel`.
 Oracle
 ^^^^^^^^^^
 
-The Oracle dialect uses cx_oracle as the default DBAPI::
+The preferred Oracle Database dialect uses the python-oracledb driver as the
+DBAPI::
 
-    engine = create_engine("oracle://scott:tiger@127.0.0.1:1521/sidname")
+      engine = create_engine(
+          "oracle+oracledb://scott:tiger@127.0.0.1:1521/?service_name=freepdb1"
+      )
 
-    engine = create_engine("oracle+cx_oracle://scott:tiger@tnsname")
+      engine = create_engine("oracle+oracledb://scott:tiger@tnsalias")
 
-More notes on connecting to Oracle at :ref:`oracle_toplevel`.
+For historical reasons, the Oracle dialect uses the obsolete cx_Oracle driver
+as the default DBAPI::
+
+      engine = create_engine("oracle://scott:tiger@127.0.0.1:1521/?service_name=freepdb1")
+
+      engine = create_engine("oracle+cx_oracle://scott:tiger@tnsalias")
+
+More notes on connecting to Oracle Database at :ref:`oracle_toplevel`.
 
 Microsoft SQL Server
 ^^^^^^^^^^^^^^^^^^^^
@@ -693,4 +703,3 @@ these parameters from being logged for privacy purposes, enable the
     ...     conn.execute(text("select :some_private_name"), {"some_private_name": "pii"})
     2020-10-24 12:48:32,808 INFO sqlalchemy.engine.Engine select ?
     2020-10-24 12:48:32,808 INFO sqlalchemy.engine.Engine [SQL parameters hidden due to hide_parameters=True]
-

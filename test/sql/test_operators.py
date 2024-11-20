@@ -83,6 +83,14 @@ class LoopOperate(operators.ColumnOperators):
         return op
 
 
+class ColExpressionDuckTypeOnly:
+    def __init__(self, expr):
+        self.expr = expr
+
+    def __clause_element__(self):
+        return self.expr
+
+
 class DefaultColumnComparatorTest(
     testing.AssertsCompiledSQL, fixtures.TestBase
 ):
@@ -730,16 +738,6 @@ class _CustomComparatorTests:
     def test_override_builtin(self):
         c1 = Column("foo", self._add_override_factory())
         self._assert_add_override(c1)
-
-    def test_column_proxy(self):
-        t = Table("t", MetaData(), Column("foo", self._add_override_factory()))
-        with testing.expect_deprecated(
-            "The SelectBase.c and SelectBase.columns attributes "
-            "are deprecated"
-        ):
-            proxied = t.select().c.foo
-        self._assert_add_override(proxied)
-        self._assert_and_override(proxied)
 
     def test_subquery_proxy(self):
         t = Table("t", MetaData(), Column("foo", self._add_override_factory()))
@@ -2195,6 +2193,15 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_in_14(self):
         self.assert_compile(
             self.table1.c.myid.in_([self.table1.c.myid]),
+            "mytable.myid IN (mytable.myid)",
+        )
+
+    def test_in_14_5(self):
+        """test #12019"""
+        self.assert_compile(
+            self.table1.c.myid.in_(
+                [ColExpressionDuckTypeOnly(self.table1.c.myid)]
+            ),
             "mytable.myid IN (mytable.myid)",
         )
 

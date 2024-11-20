@@ -1263,12 +1263,13 @@ class IsolationLevelTest(fixtures.TestBase):
 
     def test_underscore_replacement(self, connection_no_trans):
         conn = connection_no_trans
-        with mock.patch.object(
-            conn.dialect, "set_isolation_level"
-        ) as mock_sil, mock.patch.object(
-            conn.dialect,
-            "_gen_allowed_isolation_levels",
-            mock.Mock(return_value=["READ COMMITTED", "REPEATABLE READ"]),
+        with (
+            mock.patch.object(conn.dialect, "set_isolation_level") as mock_sil,
+            mock.patch.object(
+                conn.dialect,
+                "_gen_allowed_isolation_levels",
+                mock.Mock(return_value=["READ COMMITTED", "REPEATABLE READ"]),
+            ),
         ):
             conn.execution_options(isolation_level="REPEATABLE_READ")
             dbapi_conn = conn.connection.dbapi_connection
@@ -1277,12 +1278,13 @@ class IsolationLevelTest(fixtures.TestBase):
 
     def test_casing_replacement(self, connection_no_trans):
         conn = connection_no_trans
-        with mock.patch.object(
-            conn.dialect, "set_isolation_level"
-        ) as mock_sil, mock.patch.object(
-            conn.dialect,
-            "_gen_allowed_isolation_levels",
-            mock.Mock(return_value=["READ COMMITTED", "REPEATABLE READ"]),
+        with (
+            mock.patch.object(conn.dialect, "set_isolation_level") as mock_sil,
+            mock.patch.object(
+                conn.dialect,
+                "_gen_allowed_isolation_levels",
+                mock.Mock(return_value=["READ COMMITTED", "REPEATABLE READ"]),
+            ),
         ):
             conn.execution_options(isolation_level="repeatable_read")
             dbapi_conn = conn.connection.dbapi_connection
@@ -1645,9 +1647,12 @@ class ResetFixture:
         event.listen(engine, "rollback_twophase", harness.rollback_twophase)
         event.listen(engine, "commit_twophase", harness.commit_twophase)
 
-        with mock.patch.object(
-            engine.dialect, "do_rollback", harness.do_rollback
-        ), mock.patch.object(engine.dialect, "do_commit", harness.do_commit):
+        with (
+            mock.patch.object(
+                engine.dialect, "do_rollback", harness.do_rollback
+            ),
+            mock.patch.object(engine.dialect, "do_commit", harness.do_commit),
+        ):
             yield harness
 
         event.remove(engine, "rollback", harness.rollback)

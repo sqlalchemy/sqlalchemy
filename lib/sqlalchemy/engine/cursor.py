@@ -49,7 +49,6 @@ from ..sql.compiler import RM_OBJECTS
 from ..sql.compiler import RM_RENDERED_NAME
 from ..sql.compiler import RM_TYPE
 from ..sql.type_api import TypeEngine
-from ..util import compat
 from ..util.typing import Literal
 from ..util.typing import Self
 from ..util.typing import TupleAny
@@ -325,16 +324,14 @@ class CursorResultMetaData(ResultMetaData):
 
         assert not self._tuplefilter
         return self._make_new_metadata(
-            keymap=compat.dict_union(
-                self._keymap,
-                {
-                    new: keymap_by_position[idx]
-                    for idx, new in enumerate(
-                        invoked_statement._all_selected_columns
-                    )
-                    if idx in keymap_by_position
-                },
-            ),
+            keymap=self._keymap
+            | {
+                new: keymap_by_position[idx]
+                for idx, new in enumerate(
+                    invoked_statement._all_selected_columns
+                )
+                if idx in keymap_by_position
+            },
             unpickled=self._unpickled,
             processors=self._processors,
             tuplefilter=None,

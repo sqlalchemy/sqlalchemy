@@ -47,7 +47,7 @@ from .interfaces import StrategizedProperty
 from .session import _state_session
 from .state import InstanceState
 from .strategy_options import Load
-from .util import _none_set
+from .util import _none_only_set
 from .util import AliasedClass
 from .. import event
 from .. import exc as sa_exc
@@ -936,8 +936,15 @@ class LazyLoader(
             elif LoaderCallableStatus.NEVER_SET in primary_key_identity:
                 return LoaderCallableStatus.NEVER_SET
 
-            if _none_set.issuperset(primary_key_identity):
-                return None
+            # test for None alone in primary_key_identity based on
+            # allow_partial_pks preference.   PASSIVE_NO_RESULT and NEVER_SET
+            # have already been tested above
+            if not self.mapper.allow_partial_pks:
+                if _none_only_set.intersection(primary_key_identity):
+                    return None
+            else:
+                if _none_only_set.issuperset(primary_key_identity):
+                    return None
 
             if (
                 self.key in state.dict
@@ -2694,7 +2701,8 @@ class JoinedLoader(AbstractRelationshipLoader):
         # lets look at our path we are satisfying and see if we're in the
         # wrong place.  This is specifically for when our entity may
         # appear more than once in the path, issue #11449
-        if detected_existing_path:
+        # updated in issue #11965.
+        if detected_existing_path and len(detected_existing_path) > 2:
             # this assertion is currently based on how this call is made,
             # where given a join_obj, the call will have these parameters as
             # entity_inside_join_structure=join_obj._left_memo

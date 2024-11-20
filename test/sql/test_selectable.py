@@ -1575,24 +1575,6 @@ class SelectableTest(
             "SELECT table1.col1 AS a FROM table1) AS b) AS c) AS anon_1",
         )
 
-    def test_self_referential_select_raises(self):
-        t = table("t", column("x"))
-
-        # this issue is much less likely as subquery() applies a labeling
-        # style to the select, eliminating the self-referential call unless
-        # the select already had labeling applied
-
-        s = select(t).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
-
-        with testing.expect_deprecated("The SelectBase.c"):
-            s.where.non_generative(s, s.c.t_x > 5)
-
-        assert_raises_message(
-            exc.InvalidRequestError,
-            r"select\(\) construct refers to itself as a FROM",
-            s.compile,
-        )
-
     def test_unusual_column_elements_text(self):
         """test that .c excludes text()."""
 

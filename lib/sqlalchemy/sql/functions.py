@@ -1639,6 +1639,10 @@ class sum(ReturnTypeFromArgs[_T]):  # noqa: A001
 
 class vector_distance(ReturnTypeFromArgs[_T]):
     r"""The SQL vector_distance() function
+    VECTOR_DISTANCE takes two vectors as parameters. You can optionally
+    specify a distance metric to calculate the distance. If you do not
+    specify a distance metric, then the default distance metric is cosine.
+    If the input vectors are BINARY vectors, the default metric is hamming.
     This function is used as part of the ORDER BY of a statement::
     
         query_vector = array.array("b",[2,3,4])
@@ -1652,6 +1656,8 @@ class vector_distance(ReturnTypeFromArgs[_T]):
 
 class L1_DISTANCE(ReturnTypeFromArgs[_T]):
     r"""The SQL L1_DISTANCE() function
+    MANHATTAN metric, also known as L1 distance or taxicab distance,
+    calculates the Manhattan distance between two vectors.
     This function is used as part of the ORDER BY of a statement::
     
         query_vector = array.array("b",[2,3,4])
@@ -1664,6 +1670,8 @@ class L1_DISTANCE(ReturnTypeFromArgs[_T]):
 
 class L2_DISTANCE(ReturnTypeFromArgs[_T]):
     r"""The SQL L2_DISTANCE() function
+    EUCLIDEAN metric, also known as L2 distance, calculates the Euclidean
+    distance between two vectors.
     This function is used as part of the ORDER BY of a statement::
 
         query_vector = array.array("b",[2,3,4])
@@ -1676,6 +1684,8 @@ class L2_DISTANCE(ReturnTypeFromArgs[_T]):
 
 class INNER_PRODUCT(ReturnTypeFromArgs[_T]):
     r"""The SQL INNER_PRODUCT() function
+    INNER_PRODUCT also called DOT metric calculates the negated dot 
+    product of two vectors.
     This function is used as part of the ORDER BY of a statement::
 
         query_vector = array.array("b",[2,3,4])
@@ -1688,6 +1698,8 @@ class INNER_PRODUCT(ReturnTypeFromArgs[_T]):
 
 class COSINE_DISTANCE(ReturnTypeFromArgs[_T]):
     r"""The SQL COSINE_DISTANCE() function
+    COSINE metric is the default metric. It calculates the cosine distance between
+    two vectors.
     This function is used as part of the ORDER BY of a statement::
 
         query_vector = array.array("b",[2,3,4])
