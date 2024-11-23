@@ -1,0 +1,6 @@
+.. change::
+    :tags: usecase, sqlite
+    :ticket: 7398
+
+    New SQLite DDL feature for tables: STRICT.
+    Pull request courtesy of Guilherme Crocetti.
