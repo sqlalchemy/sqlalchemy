@@ -1638,7 +1638,7 @@ class OracleDialect(default.DefaultDialect):
     @property
     def _supports_except_all(self):
         return self.server_version_info and self.server_version_info >= (21,)
-
+    
     def do_release_savepoint(self, connection, name):
         # Oracle does not support RELEASE SAVEPOINT
         pass

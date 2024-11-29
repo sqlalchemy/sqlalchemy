@@ -2627,6 +2627,17 @@ class Query(
         """
         self._offset_clause = sql_util._offset_or_limit_clause(offset)
         return self
+    
+    @_generative
+    @_assertions(_no_statement_condition)
+    def fetch_type(self, fetch_type: str) -> Self:
+        """Apply an ``FETCH_TYPE`` to the query and return the newly resulting
+        ``Query``.
+        """
+        print("inside query")
+        print(fetch_type)
+        self._fetch_type = fetch_type
+        return self
 
     @_generative
     @_assertions(_no_statement_condition)

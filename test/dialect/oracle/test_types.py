@@ -248,6 +248,7 @@ class TypesTest(fixtures.TestBase):
     __only_on__ = "oracle"
     __dialect__ = oracle.OracleDialect()
     __backend__ = True
+    engine = testing_engine(options=dict(coerce_to_decimal=False))
 
     @testing.combinations((CHAR,), (NCHAR,), argnames="char_type")
     def test_fixed_char(self, metadata, connection, char_type):
@@ -961,8 +962,13 @@ class TypesTest(fixtures.TestBase):
             metadata,
             Column("c1", VECTOR(3,'float32'))
             )
-        t1.create(connection)
-        eq_(t1.c.c1.type.dim, 3)
+
+        if testing.against("oracle>23.5"):
+            t1.create(connection)
+            eq_(t1.c.c1.type.dim, 3)
+        else:
+            with expect_raises_message(exc.DatabaseError, "ORA-03060"):
+                t1.create(connection)
 
     def test_vector_format(self, metadata, connection):
         t1 = Table(
@@ -970,9 +976,14 @@ class TypesTest(fixtures.TestBase):
             metadata,
             Column("c1", VECTOR(3,'float32'))
             )
-        t1.create(connection)
-        eq_(t1.c.c1.type.storage_format, 'float32')
-        
+
+        if testing.against("oracle>23.5"):
+            t1.create(connection)
+            eq_(t1.c.c1.type.storage_format, 'float32')
+        else:
+            with expect_raises_message(exc.DatabaseError, "ORA-03060"):
+                t1.create(connection)
+                
     def test_vector_hnsw_index(self, metadata, connection):
         t1 = Table(
             "t1",
@@ -980,18 +991,23 @@ class TypesTest(fixtures.TestBase):
             Column("id", Integer),
             Column("embedding", VECTOR(3,'float32'))
         )
-        t1.create(connection)
+
+        if testing.against("oracle>23.5"):
+            t1.create(connection)
         
-        hnsw_index = Index(
-            'hnsw_vector_index',
-            t1.c.embedding,
-            oracle_vector = True
-        )
-        hnsw_index.create(connection)
+            hnsw_index = Index(
+                'hnsw_vector_index',
+                t1.c.embedding,
+                oracle_vector = True
+            )
+            hnsw_index.create(connection)
 
-        connection.execute(t1.insert(), dict(id=1, embedding=array.array("f",[6,7,8])))
-        eq_(connection.execute(t1.select()).first(), (1,array.array("f",[6,7,8])))
-
+            connection.execute(t1.insert(), dict(id=1, embedding=array.array("f",[6,7,8])))
+            eq_(connection.execute(t1.select()).first(), (1,array.array("f",[6,7,8])))
+        else:
+            with expect_raises_message(exc.DatabaseError, "ORA-03060"):
+                t1.create(connection)
+    
     def test_vector_ivf_index(self, metadata, connection):
         t1 = Table(
             "t1",
@@ -999,18 +1015,22 @@ class TypesTest(fixtures.TestBase):
             Column("id", Integer),
             Column("embedding", VECTOR(3,'float32'))
         )
-        t1.create(connection)
-        ivf_index = Index(
+
+        if testing.against("oracle>23.5"):
+            t1.create(connection)
+            ivf_index = Index(
             'ivf_vector_index',
             t1.c.embedding,
             oracle_vector = {'oracle_accuracy':90, 'oracle_distance': "DOT",
                 'oracle_parameters':{'type':'IVF','neighbor partitions':10}}
-        )
-        ivf_index.create(connection)
+            )
+            ivf_index.create(connection)
 
-        connection.execute(t1.insert(), dict(id=1, embedding=array.array("f",[6,7,8])))
-        eq_(connection.execute(t1.select()).first(), (1,array.array("f",[6,7,8])))
-
+            connection.execute(t1.insert(), dict(id=1, embedding=array.array("f",[6,7,8])))
+            eq_(connection.execute(t1.select()).first(), (1,array.array("f",[6,7,8])))
+        else:
+            with expect_raises_message(exc.DatabaseError, "ORA-03060"):
+                t1.create(connection)
 
     def test_vector_l2_distance(self, metadata, connection):
         t1 = Table(
@@ -1019,16 +1039,21 @@ class TypesTest(fixtures.TestBase):
             Column("id", Integer),
             Column("embedding", VECTOR(3,'int8'))
         )
-        t1.create(connection)
 
-        connection.execute(t1.insert(), dict(id=1, embedding=array.array("b",[8,9,10])))
-        connection.execute(t1.insert(), dict(id=1, embedding=array.array("b",[1,2,3])))
-        connection.execute(t1.insert(), dict(id=1, embedding=array.array("b",[15,16,17])))
+        if testing.against("oracle>23.5"):
+            t1.create(connection)
 
-        query_vector = array.array("b",[2,3,4])
-        res = connection.execute(t1.select().order_by(func.L2_distance(t1.c.embedding,query_vector))).first()
-        eq_(res.embedding,array.array("b",[1,2,3]))
+            connection.execute(t1.insert(), dict(id=1, embedding=array.array("b",[8,9,10])))
+            connection.execute(t1.insert(), dict(id=1, embedding=array.array("b",[1,2,3])))
+            connection.execute(t1.insert(), dict(id=1, embedding=array.array("b",[15,16,17])))
 
+            query_vector = array.array("b",[2,3,4])
+            res = connection.execute(t1.select().order_by(func.L2_distance(t1.c.embedding,query_vector))).first()
+            eq_(res.embedding,array.array("b",[1,2,3]))
+        else:
+            with expect_raises_message(exc.DatabaseError, "ORA-03060"):
+                t1.create(connection)
+               
 
 class LOBFetchTest(fixtures.TablesTest):
     __only_on__ = "oracle"
