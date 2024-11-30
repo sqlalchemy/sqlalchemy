@@ -246,9 +246,8 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
         .. sourcecode:: pycon+sql
 
-            >>> fn = (
-            ...     func.generate_series(1, 5).
-            ...     table_valued("value", "start", "stop", "step")
+            >>> fn = func.generate_series(1, 5).table_valued(
+            ...     "value", "start", "stop", "step"
             ... )
 
             >>> print(select(fn))
@@ -265,7 +264,9 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
         .. sourcecode:: pycon+sql
 
-            >>> fn = func.generate_series(4, 1, -1).table_valued("gen", with_ordinality="ordinality")
+            >>> fn = func.generate_series(4, 1, -1).table_valued(
+            ...     "gen", with_ordinality="ordinality"
+            ... )
             >>> print(select(fn))
             {printsql}SELECT anon_1.gen, anon_1.ordinality
             FROM generate_series(:generate_series_1, :generate_series_2, :generate_series_3) WITH ORDINALITY AS anon_1
@@ -377,7 +378,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         .. sourcecode:: pycon+sql
 
             >>> from sqlalchemy import column, select, func
-            >>> stmt = select(column('x'), column('y')).select_from(func.myfunction())
+            >>> stmt = select(column("x"), column("y")).select_from(func.myfunction())
             >>> print(stmt)
             {printsql}SELECT x, y FROM myfunction()
 
@@ -442,12 +443,13 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
         The expression::
 
-            func.row_number().over(order_by='x')
+            func.row_number().over(order_by="x")
 
         is shorthand for::
 
             from sqlalchemy import over
-            over(func.row_number(), order_by='x')
+
+            over(func.row_number(), order_by="x")
 
         See :func:`_expression.over` for a full description.
 
@@ -511,6 +513,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         is shorthand for::
 
             from sqlalchemy import funcfilter
+
             funcfilter(func.count(1), True)
 
         .. seealso::
@@ -567,7 +570,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         An ORM example is as follows::
 
             class Venue(Base):
-                __tablename__ = 'venue'
+                __tablename__ = "venue"
                 id = Column(Integer, primary_key=True)
                 name = Column(String)
 
@@ -575,9 +578,10 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
                     "Venue",
                     primaryjoin=func.instr(
                         remote(foreign(name)), name + "/"
-                    ).as_comparison(1, 2) == 1,
+                    ).as_comparison(1, 2)
+                    == 1,
                     viewonly=True,
-                    order_by=name
+                    order_by=name,
                 )
 
         Above, the "Venue" class can load descendant "Venue" objects by
@@ -881,8 +885,11 @@ class _FunctionGenerator:
 
     .. sourcecode:: pycon+sql
 
-        >>> print(func.my_string(u'hi', type_=Unicode) + ' ' +
-        ...       func.my_string(u'there', type_=Unicode))
+        >>> print(
+        ...     func.my_string("hi", type_=Unicode)
+        ...     + " "
+        ...     + func.my_string("there", type_=Unicode)
+        ... )
         {printsql}my_string(:my_string_1) || :my_string_2 || my_string(:my_string_3)
 
     The object returned by a :data:`.func` call is usually an instance of
@@ -1367,9 +1374,11 @@ class GenericFunction(Function[_T]):
         from sqlalchemy.sql.functions import GenericFunction
         from sqlalchemy.types import DateTime
 
+
         class as_utc(GenericFunction):
             type = DateTime()
             inherit_cache = True
+
 
         print(select(func.as_utc()))
 
@@ -1417,6 +1426,7 @@ class GenericFunction(Function[_T]):
     construct::
 
         from sqlalchemy.sql import quoted_name
+
 
         class GeoBuffer(GenericFunction):
             type = Geometry()
@@ -1657,7 +1667,7 @@ class concat(GenericFunction[str]):
 
     .. sourcecode:: pycon+sql
 
-        >>> print(select(func.concat('a', 'b')))
+        >>> print(select(func.concat("a", "b")))
         {printsql}SELECT concat(:concat_2, :concat_3) AS concat_1
 
     String concatenation in SQLAlchemy is more commonly available using the
@@ -1705,11 +1715,13 @@ class count(GenericFunction[int]):
         from sqlalchemy import select
         from sqlalchemy import table, column
 
-        my_table = table('some_table', column('id'))
+        my_table = table("some_table", column("id"))
 
         stmt = select(func.count()).select_from(my_table)
 
-    Executing ``stmt`` would emit::
+    Executing ``stmt`` would emit:
+
+    .. sourcecode:: sql
 
         SELECT count(*) AS count_1
         FROM some_table
@@ -2009,9 +2021,7 @@ class grouping_sets(GenericFunction[_T]):
         from sqlalchemy import tuple_
 
         stmt = select(
-            func.sum(table.c.value),
-            table.c.col_1, table.c.col_2,
-            table.c.col_3
+            func.sum(table.c.value), table.c.col_1, table.c.col_2, table.c.col_3
         ).group_by(
             func.grouping_sets(
                 tuple_(table.c.col_1, table.c.col_2),
@@ -2019,10 +2029,9 @@ class grouping_sets(GenericFunction[_T]):
             )
         )
 
-
     .. versionadded:: 1.2
 
-    """
+    """  # noqa: E501
 
     _has_args = True
     inherit_cache = True

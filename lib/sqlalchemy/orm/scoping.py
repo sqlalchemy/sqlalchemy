@@ -285,11 +285,13 @@ class scoped_session(Generic[_S]):
 
             Session = scoped_session(sessionmaker())
 
+
             class MyClass:
                 query: QueryPropertyDescriptor = Session.query_property()
 
+
             # after mappers are defined
-            result = MyClass.query.filter(MyClass.name=='foo').all()
+            result = MyClass.query.filter(MyClass.name == "foo").all()
 
         Produces instances of the session's configured query class by
         default.  To override and use a custom implementation, provide
@@ -735,9 +737,8 @@ class scoped_session(Generic[_S]):
         E.g.::
 
             from sqlalchemy import select
-            result = session.execute(
-                select(User).where(User.id == 5)
-            )
+
+            result = session.execute(select(User).where(User.id == 5))
 
         The API contract of :meth:`_orm.Session.execute` is similar to that
         of :meth:`_engine.Connection.execute`, the :term:`2.0 style` version
@@ -967,10 +968,7 @@ class scoped_session(Generic[_S]):
 
             some_object = session.get(VersionedFoo, (5, 10))
 
-            some_object = session.get(
-                VersionedFoo,
-                {"id": 5, "version_id": 10}
-            )
+            some_object = session.get(VersionedFoo, {"id": 5, "version_id": 10})
 
         .. versionadded:: 1.4 Added :meth:`_orm.Session.get`, which is moved
            from the now legacy :meth:`_orm.Query.get` method.

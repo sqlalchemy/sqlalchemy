@@ -656,7 +656,9 @@ def format_argspec_init(method, grouped=True):
     """format_argspec_plus with considerations for typical __init__ methods
 
     Wraps format_argspec_plus with error handling strategies for typical
-    __init__ cases::
+    __init__ cases:
+
+    .. sourcecode:: text
 
       object.__init__ -> (self)
       other unreflectable (usually C) -> (self, *args, **kwargs)
@@ -711,7 +713,9 @@ def create_proxy_methods(
 def getargspec_init(method):
     """inspect.getargspec with considerations for typical __init__ methods
 
-    Wraps inspect.getargspec with error handling for typical __init__ cases::
+    Wraps inspect.getargspec with error handling for typical __init__ cases:
+
+    .. sourcecode:: text
 
       object.__init__ -> (self)
       other unreflectable (usually C) -> (self, *args, **kwargs)
@@ -1585,9 +1589,9 @@ class hybridmethod(Generic[_T]):
 class symbol(int):
     """A constant symbol.
 
-    >>> symbol('foo') is symbol('foo')
+    >>> symbol("foo") is symbol("foo")
     True
-    >>> symbol('foo')
+    >>> symbol("foo")
     <symbol 'foo>
 
     A slight refinement of the MAGICCOOKIE=object() pattern.  The primary

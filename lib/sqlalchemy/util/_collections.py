@@ -62,8 +62,8 @@ def merge_lists_w_ordering(a: List[Any], b: List[Any]) -> List[Any]:
 
     Example::
 
-        >>> a = ['__tablename__', 'id', 'x', 'created_at']
-        >>> b = ['id', 'name', 'data', 'y', 'created_at']
+        >>> a = ["__tablename__", "id", "x", "created_at"]
+        >>> b = ["id", "name", "data", "y", "created_at"]
         >>> merge_lists_w_ordering(a, b)
         ['__tablename__', 'id', 'name', 'data', 'y', 'x', 'created_at']
 

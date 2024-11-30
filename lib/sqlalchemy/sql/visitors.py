@@ -924,10 +924,12 @@ def traverse(
 
         from sqlalchemy.sql import visitors
 
-        stmt = select(some_table).where(some_table.c.foo == 'bar')
+        stmt = select(some_table).where(some_table.c.foo == "bar")
+
 
         def visit_bindparam(bind_param):
             print("found bound value: %s" % bind_param.value)
+
 
         visitors.traverse(stmt, {}, {"bindparam": visit_bindparam})
 

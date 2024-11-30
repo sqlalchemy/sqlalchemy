@@ -201,6 +201,7 @@ class AsyncConnection(
     method of :class:`_asyncio.AsyncEngine`::
 
         from sqlalchemy.ext.asyncio import create_async_engine
+
         engine = create_async_engine("postgresql+asyncpg://user:pass@host/dbname")
 
         async with engine.connect() as conn:
@@ -548,7 +549,7 @@ class AsyncConnection(
 
         E.g.::
 
-            result = await conn.stream(stmt):
+            result = await conn.stream(stmt)
             async for row in result:
                 print(f"{row}")
 
@@ -825,7 +826,7 @@ class AsyncConnection(
         *arg: _P.args,
         **kw: _P.kwargs,
     ) -> _T:
-        """Invoke the given synchronous (i.e. not async) callable,
+        '''Invoke the given synchronous (i.e. not async) callable,
         passing a synchronous-style :class:`_engine.Connection` as the first
         argument.
 
@@ -835,26 +836,26 @@ class AsyncConnection(
         E.g.::
 
             def do_something_with_core(conn: Connection, arg1: int, arg2: str) -> str:
-                '''A synchronous function that does not require awaiting
+                """A synchronous function that does not require awaiting
 
                 :param conn: a Core SQLAlchemy Connection, used synchronously
 
                 :return: an optional return value is supported
 
-                '''
-                conn.execute(
-                    some_table.insert().values(int_col=arg1, str_col=arg2)
-                )
+                """
+                conn.execute(some_table.insert().values(int_col=arg1, str_col=arg2))
                 return "success"
 
 
             async def do_something_async(async_engine: AsyncEngine) -> None:
-                '''an async function that uses awaiting'''
+                """an async function that uses awaiting"""
 
                 async with async_engine.begin() as async_conn:
                     # run do_something_with_core() with a sync-style
                     # Connection, proxied into an awaitable
-                    return_code = await async_conn.run_sync(do_something_with_core, 5, "strval")
+                    return_code = await async_conn.run_sync(
+                        do_something_with_core, 5, "strval"
+                    )
                     print(return_code)
 
         This method maintains the asyncio event loop all the way through
@@ -885,7 +886,7 @@ class AsyncConnection(
 
             :ref:`session_run_sync`
 
-        """  # noqa: E501
+        '''  # noqa: E501
 
         return await greenlet_spawn(
             fn, self._proxied, *arg, _require_await=False, **kw
@@ -1004,6 +1005,7 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):
     :func:`_asyncio.create_async_engine` function::
 
         from sqlalchemy.ext.asyncio import create_async_engine
+
         engine = create_async_engine("postgresql+asyncpg://user:pass@host/dbname")
 
     .. versionadded:: 1.4
@@ -1059,7 +1061,6 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):
                     text("insert into table (x, y, z) values (1, 2, 3)")
                 )
                 await conn.execute(text("my_special_procedure(5)"))
-
 
         """
         conn = self.connect()

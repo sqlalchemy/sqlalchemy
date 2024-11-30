@@ -39,9 +39,12 @@ considered to be the identity column - unless it is associated with a
     from sqlalchemy import Table, MetaData, Column, Integer
 
     m = MetaData()
-    t = Table('t', m,
-            Column('id', Integer, primary_key=True),
-            Column('x', Integer))
+    t = Table(
+        "t",
+        m,
+        Column("id", Integer, primary_key=True),
+        Column("x", Integer),
+    )
     m.create_all(engine)
 
 The above example will generate DDL as:
@@ -59,9 +62,12 @@ specify ``False`` for the :paramref:`_schema.Column.autoincrement` flag,
 on the first integer primary key column::
 
     m = MetaData()
-    t = Table('t', m,
-            Column('id', Integer, primary_key=True, autoincrement=False),
-            Column('x', Integer))
+    t = Table(
+        "t",
+        m,
+        Column("id", Integer, primary_key=True, autoincrement=False),
+        Column("x", Integer),
+    )
     m.create_all(engine)
 
 To add the ``IDENTITY`` keyword to a non-primary key column, specify
@@ -71,9 +77,12 @@ To add the ``IDENTITY`` keyword to a non-primary key column, specify
 is set to ``False`` on any integer primary key column::
 
     m = MetaData()
-    t = Table('t', m,
-            Column('id', Integer, primary_key=True, autoincrement=False),
-            Column('x', Integer, autoincrement=True))
+    t = Table(
+        "t",
+        m,
+        Column("id", Integer, primary_key=True, autoincrement=False),
+        Column("x", Integer, autoincrement=True),
+    )
     m.create_all(engine)
 
 .. versionchanged::  1.4   Added :class:`_schema.Identity` construct
@@ -136,14 +145,12 @@ parameters passed to the :class:`_schema.Identity` object::
     from sqlalchemy import Table, Integer, Column, Identity
 
     test = Table(
-        'test', metadata,
+        "test",
+        metadata,
         Column(
-            'id',
-            Integer,
-            primary_key=True,
-            Identity(start=100, increment=10)
+            "id", Integer, primary_key=True, Identity(start=100, increment=10)
         ),
-        Column('name', String(20))
+        Column("name", String(20)),
     )
 
 The CREATE TABLE for the above :class:`_schema.Table` object would be:
@@ -153,7 +160,7 @@ The CREATE TABLE for the above :class:`_schema.Table` object would be:
    CREATE TABLE test (
      id INTEGER NOT NULL IDENTITY(100,10) PRIMARY KEY,
      name VARCHAR(20) NULL,
-     )
+   )
 
 .. note::
 
@@ -186,6 +193,7 @@ type deployed to the SQL Server database can be specified as ``Numeric`` using
 
     Base = declarative_base()
 
+
     class TestTable(Base):
         __tablename__ = "test"
         id = Column(
@@ -211,8 +219,9 @@ integer values in Python 3), use :class:`_types.TypeDecorator` as follows::
 
     from sqlalchemy import TypeDecorator
 
+
     class NumericAsInteger(TypeDecorator):
-        '''normalize floating point return values into ints'''
+        "normalize floating point return values into ints"
 
         impl = Numeric(10, 0, asdecimal=False)
         cache_ok = True
@@ -221,6 +230,7 @@ integer values in Python 3), use :class:`_types.TypeDecorator` as follows::
             if value is not None:
                 value = int(value)
             return value
+
 
     class TestTable(Base):
         __tablename__ = "test"
@@ -270,11 +280,11 @@ The process for fetching this value has several variants:
     fetched in order to receive the value.  Given a table as::
 
         t = Table(
-            't',
+            "t",
             metadata,
-            Column('id', Integer, primary_key=True),
-            Column('x', Integer),
-            implicit_returning=False
+            Column("id", Integer, primary_key=True),
+            Column("x", Integer),
+            implicit_returning=False,
         )
 
     an INSERT will look like:
@@ -300,12 +310,13 @@ statement proceeding, and ``SET IDENTITY_INSERT OFF`` subsequent to the
 execution.  Given this example::
 
     m = MetaData()
-    t = Table('t', m, Column('id', Integer, primary_key=True),
-                    Column('x', Integer))
+    t = Table(
+        "t", m, Column("id", Integer, primary_key=True), Column("x", Integer)
+    )
     m.create_all(engine)
 
     with engine.begin() as conn:
-        conn.execute(t.insert(), {'id': 1, 'x':1}, {'id':2, 'x':2})
+        conn.execute(t.insert(), {"id": 1, "x": 1}, {"id": 2, "x": 2})
 
 The above column will be created with IDENTITY, however the INSERT statement
 we emit is specifying explicit values.  In the echo output we can see
@@ -341,7 +352,11 @@ The :class:`.Sequence` object creates "real" sequences, i.e.,
     >>> from sqlalchemy import Sequence
     >>> from sqlalchemy.schema import CreateSequence
     >>> from sqlalchemy.dialects import mssql
-    >>> print(CreateSequence(Sequence("my_seq", start=1)).compile(dialect=mssql.dialect()))
+    >>> print(
+    ...     CreateSequence(Sequence("my_seq", start=1)).compile(
+    ...         dialect=mssql.dialect()
+    ...     )
+    ... )
     {printsql}CREATE SEQUENCE my_seq START WITH 1
 
 For integer primary key generation, SQL Server's ``IDENTITY`` construct should
@@ -375,11 +390,11 @@ more than one backend without using dialect-specific types.
 To build a SQL Server VARCHAR or NVARCHAR with MAX length, use None::
 
     my_table = Table(
-        'my_table', metadata,
-        Column('my_data', VARCHAR(None)),
-        Column('my_n_data', NVARCHAR(None))
+        "my_table",
+        metadata,
+        Column("my_data", VARCHAR(None)),
+        Column("my_n_data", NVARCHAR(None)),
     )
-
 
 Collation Support
 -----------------
@@ -388,10 +403,13 @@ Character collations are supported by the base string types,
 specified by the string argument "collation"::
 
     from sqlalchemy import VARCHAR
-    Column('login', VARCHAR(32, collation='Latin1_General_CI_AS'))
+
+    Column("login", VARCHAR(32, collation="Latin1_General_CI_AS"))
 
 When such a column is associated with a :class:`_schema.Table`, the
-CREATE TABLE statement for this column will yield::
+CREATE TABLE statement for this column will yield:
+
+.. sourcecode:: sql
 
     login VARCHAR(32) COLLATE Latin1_General_CI_AS NULL
 
@@ -411,7 +429,9 @@ versions when no OFFSET clause is present.  A statement such as::
 
     select(some_table).limit(5)
 
-will render similarly to::
+will render similarly to:
+
+.. sourcecode:: sql
 
     SELECT TOP 5 col1, col2.. FROM table
 
@@ -421,7 +441,9 @@ LIMIT and OFFSET, or just OFFSET alone, will be rendered using the
 
     select(some_table).order_by(some_table.c.col3).limit(5).offset(10)
 
-will render similarly to::
+will render similarly to:
+
+.. sourcecode:: sql
 
     SELECT anon_1.col1, anon_1.col2 FROM (SELECT col1, col2,
     ROW_NUMBER() OVER (ORDER BY col3) AS
@@ -474,16 +496,13 @@ each new connection.
 To set isolation level using :func:`_sa.create_engine`::
 
     engine = create_engine(
-        "mssql+pyodbc://scott:tiger@ms_2008",
-        isolation_level="REPEATABLE READ"
+        "mssql+pyodbc://scott:tiger@ms_2008", isolation_level="REPEATABLE READ"
     )
 
 To set using per-connection execution options::
 
     connection = engine.connect()
-    connection = connection.execution_options(
-        isolation_level="READ COMMITTED"
-    )
+    connection = connection.execution_options(isolation_level="READ COMMITTED")
 
 Valid values for ``isolation_level`` include:
 
@@ -533,7 +552,6 @@ will remain consistent with the state of the transaction::
 
     mssql_engine = create_engine(
         "mssql+pyodbc://scott:tiger^5HHH@mssql2017:1433/test?driver=ODBC+Driver+17+for+SQL+Server",
-
         # disable default reset-on-return scheme
         pool_reset_on_return=None,
     )
@@ -562,13 +580,17 @@ Nullability
 -----------
 MSSQL has support for three levels of column nullability. The default
 nullability allows nulls and is explicit in the CREATE TABLE
-construct::
+construct:
+
+.. sourcecode:: sql
 
     name VARCHAR(20) NULL
 
 If ``nullable=None`` is specified then no specification is made. In
 other words the database's configured default is used. This will
-render::
+render:
+
+.. sourcecode:: sql
 
     name VARCHAR(20)
 
@@ -624,8 +646,9 @@ behavior of this flag is as follows:
 * The flag can be set to either ``True`` or ``False`` when the dialect
   is created, typically via :func:`_sa.create_engine`::
 
-        eng = create_engine("mssql+pymssql://user:pass@host/db",
-                        deprecate_large_types=True)
+        eng = create_engine(
+            "mssql+pymssql://user:pass@host/db", deprecate_large_types=True
+        )
 
 * Complete control over whether the "old" or "new" types are rendered is
   available in all SQLAlchemy versions by using the UPPERCASE type objects
@@ -647,9 +670,10 @@ at once using the :paramref:`_schema.Table.schema` argument of
 :class:`_schema.Table`::
 
     Table(
-        "some_table", metadata,
+        "some_table",
+        metadata,
         Column("q", String(50)),
-        schema="mydatabase.dbo"
+        schema="mydatabase.dbo",
     )
 
 When performing operations such as table or component reflection, a schema
@@ -661,9 +685,10 @@ components will be quoted separately for case sensitive names and other
 special characters.   Given an argument as below::
 
     Table(
-        "some_table", metadata,
+        "some_table",
+        metadata,
         Column("q", String(50)),
-        schema="MyDataBase.dbo"
+        schema="MyDataBase.dbo",
     )
 
 The above schema would be rendered as ``[MyDataBase].dbo``, and also in
@@ -676,20 +701,21 @@ Below, the "owner" will be considered as ``MyDataBase.dbo`` and the
 "database" will be None::
 
     Table(
-        "some_table", metadata,
+        "some_table",
+        metadata,
         Column("q", String(50)),
-        schema="[MyDataBase.dbo]"
+        schema="[MyDataBase.dbo]",
     )
 
 To individually specify both database and owner name with special characters
 or embedded dots, use two sets of brackets::
 
     Table(
-        "some_table", metadata,
+        "some_table",
+        metadata,
         Column("q", String(50)),
-        schema="[MyDataBase.Period].[MyOwner.Dot]"
+        schema="[MyDataBase.Period].[MyOwner.Dot]",
     )
-
 
 .. versionchanged:: 1.2 the SQL Server dialect now treats brackets as
    identifier delimiters splitting the schema into separate database
@@ -705,10 +731,11 @@ schema-qualified table would be auto-aliased when used in a
 SELECT statement; given a table::
 
     account_table = Table(
-        'account', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('info', String(100)),
-        schema="customer_schema"
+        "account",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("info", String(100)),
+        schema="customer_schema",
     )
 
 this legacy mode of rendering would assume that "customer_schema.account"
@@ -751,37 +778,55 @@ which renders the index as ``CREATE CLUSTERED INDEX my_index ON table (x)``.
 
 To generate a clustered primary key use::
 
-    Table('my_table', metadata,
-          Column('x', ...),
-          Column('y', ...),
-          PrimaryKeyConstraint("x", "y", mssql_clustered=True))
+    Table(
+        "my_table",
+        metadata,
+        Column("x", ...),
+        Column("y", ...),
+        PrimaryKeyConstraint("x", "y", mssql_clustered=True),
+    )
 
-which will render the table, for example, as::
+which will render the table, for example, as:
 
-  CREATE TABLE my_table (x INTEGER NOT NULL, y INTEGER NOT NULL,
-                         PRIMARY KEY CLUSTERED (x, y))
+.. sourcecode:: sql
+
+  CREATE TABLE my_table (
+    x INTEGER NOT NULL,
+    y INTEGER NOT NULL,
+    PRIMARY KEY CLUSTERED (x, y)
+  )
 
 Similarly, we can generate a clustered unique constraint using::
 
-    Table('my_table', metadata,
-          Column('x', ...),
-          Column('y', ...),
-          PrimaryKeyConstraint("x"),
-          UniqueConstraint("y", mssql_clustered=True),
-          )
+    Table(
+        "my_table",
+        metadata,
+        Column("x", ...),
+        Column("y", ...),
+        PrimaryKeyConstraint("x"),
+        UniqueConstraint("y", mssql_clustered=True),
+    )
 
 To explicitly request a non-clustered primary key (for example, when
 a separate clustered index is desired), use::
 
-    Table('my_table', metadata,
-          Column('x', ...),
-          Column('y', ...),
-          PrimaryKeyConstraint("x", "y", mssql_clustered=False))
+    Table(
+        "my_table",
+        metadata,
+        Column("x", ...),
+        Column("y", ...),
+        PrimaryKeyConstraint("x", "y", mssql_clustered=False),
+    )
 
-which will render the table, for example, as::
+which will render the table, for example, as:
 
-  CREATE TABLE my_table (x INTEGER NOT NULL, y INTEGER NOT NULL,
-                         PRIMARY KEY NONCLUSTERED (x, y))
+.. sourcecode:: sql
+
+  CREATE TABLE my_table (
+    x INTEGER NOT NULL,
+    y INTEGER NOT NULL,
+    PRIMARY KEY NONCLUSTERED (x, y)
+  )
 
 Columnstore Index Support
 -------------------------
@@ -819,7 +864,7 @@ INCLUDE
 The ``mssql_include`` option renders INCLUDE(colname) for the given string
 names::
 
-    Index("my_index", table.c.x, mssql_include=['y'])
+    Index("my_index", table.c.x, mssql_include=["y"])
 
 would render the index as ``CREATE INDEX my_index ON table (x) INCLUDE (y)``
 
@@ -874,18 +919,19 @@ To disable the usage of OUTPUT INSERTED on a per-table basis,
 specify ``implicit_returning=False`` for each :class:`_schema.Table`
 which has triggers::
 
-    Table('mytable', metadata,
-        Column('id', Integer, primary_key=True),
+    Table(
+        "mytable",
+        metadata,
+        Column("id", Integer, primary_key=True),
         # ...,
-        implicit_returning=False
+        implicit_returning=False,
     )
 
 Declarative form::
 
     class MyClass(Base):
         # ...
-        __table_args__ = {'implicit_returning':False}
-
+        __table_args__ = {"implicit_returning": False}
 
 .. _mssql_rowcount_versioning:
 
@@ -919,7 +965,9 @@ isolation mode that locks entire tables, and causes even mildly concurrent
 applications to have long held locks and frequent deadlocks.
 Enabling snapshot isolation for the database as a whole is recommended
 for modern levels of concurrency support.  This is accomplished via the
-following ALTER DATABASE commands executed at the SQL prompt::
+following ALTER DATABASE commands executed at the SQL prompt:
+
+.. sourcecode:: sql
 
     ALTER DATABASE MyDatabase SET ALLOW_SNAPSHOT_ISOLATION ON
 

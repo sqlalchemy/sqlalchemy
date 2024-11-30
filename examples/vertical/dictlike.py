@@ -6,24 +6,30 @@ that store free-form object properties as rows instead of columns.  For
 example, instead of::
 
   # A regular ("horizontal") table has columns for 'species' and 'size'
-  Table('animal', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('species', Unicode),
-        Column('size', Unicode))
+  Table(
+      "animal",
+      metadata,
+      Column("id", Integer, primary_key=True),
+      Column("species", Unicode),
+      Column("size", Unicode),
+  )
 
 A vertical table models this as two tables: one table for the base or parent
 entity, and another related table holding key/value pairs::
 
-  Table('animal', metadata,
-        Column('id', Integer, primary_key=True))
+  Table("animal", metadata, Column("id", Integer, primary_key=True))
 
   # The properties table will have one row for a 'species' value, and
   # another row for the 'size' value.
-  Table('properties', metadata
-        Column('animal_id', Integer, ForeignKey('animal.id'),
-               primary_key=True),
-        Column('key', UnicodeText),
-        Column('value', UnicodeText))
+  Table(
+      "properties",
+      metadata,
+      Column(
+          "animal_id", Integer, ForeignKey("animal.id"), primary_key=True
+      ),
+      Column("key", UnicodeText),
+      Column("value", UnicodeText),
+  )
 
 Because the key/value pairs in a vertical scheme are not fixed in advance,
 accessing them like a Python dict can be very convenient.  The example below

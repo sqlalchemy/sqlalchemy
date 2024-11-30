@@ -28,13 +28,17 @@ when it is deserialized.
 Usage is nearly the same as that of the standard Python pickle module::
 
     from sqlalchemy.ext.serializer import loads, dumps
+
     metadata = MetaData(bind=some_engine)
     Session = scoped_session(sessionmaker())
 
     # ... define mappers
 
-    query = Session.query(MyClass).
-        filter(MyClass.somedata=='foo').order_by(MyClass.sortkey)
+    query = (
+        Session.query(MyClass)
+        .filter(MyClass.somedata == "foo")
+        .order_by(MyClass.sortkey)
+    )
 
     # pickle the query
     serialized = dumps(query)
@@ -42,7 +46,7 @@ Usage is nearly the same as that of the standard Python pickle module::
     # unpickle.  Pass in metadata + scoped_session
     query2 = loads(serialized, metadata, Session)
 
-    print query2.all()
+    print(query2.all())
 
 Similar restrictions as when using raw pickle apply; mapped classes must be
 themselves be pickleable, meaning they are importable from a module-level

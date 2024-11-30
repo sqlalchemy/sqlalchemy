@@ -11,11 +11,11 @@ Runs in a textual console using ASCII art.
 
 To run::
 
-    python -m examples.space_invaders.space_invaders
+    $ python -m examples.space_invaders.space_invaders
 
 While it runs, watch the SQL output in the log::
 
-    tail -f space_invaders.log
+    $ tail -f space_invaders.log
 
 enjoy!
 

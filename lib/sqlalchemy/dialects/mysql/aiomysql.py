@@ -23,8 +23,10 @@ This dialect should normally be used only with the
 :func:`_asyncio.create_async_engine` engine creation function::
 
     from sqlalchemy.ext.asyncio import create_async_engine
-    engine = create_async_engine("mysql+aiomysql://user:pass@hostname/dbname?charset=utf8mb4")
 
+    engine = create_async_engine(
+        "mysql+aiomysql://user:pass@hostname/dbname?charset=utf8mb4"
+    )
 
 """  # noqa
 from .pymysql import MySQLDialect_pymysql

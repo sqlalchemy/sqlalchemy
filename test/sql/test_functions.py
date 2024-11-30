@@ -1626,8 +1626,7 @@ class TableValuedCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_alias_column(self):
         """
-
-        ::
+        .. sourcecode:: sql
 
             SELECT x, y
             FROM
@@ -1658,8 +1657,7 @@ class TableValuedCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_column_valued_two(self):
         """
-
-        ::
+        .. sourcecode:: sql
 
             SELECT x, y
             FROM
@@ -1774,7 +1772,7 @@ class TableValuedCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_function_alias(self):
         """
-        ::
+        .. sourcecode:: sql
 
             SELECT result_elem -> 'Field' as field
             FROM "check" AS check_, json_array_elements(

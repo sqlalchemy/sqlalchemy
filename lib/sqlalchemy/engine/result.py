@@ -1103,17 +1103,15 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
             statement = select(table.c.x, table.c.y, table.c.z)
             result = connection.execute(statement)
 
-            for z, y in result.columns('z', 'y'):
-                # ...
-
+            for z, y in result.columns("z", "y"):
+                ...
 
         Example of using the column objects from the statement itself::
 
             for z, y in result.columns(
-                    statement.selected_columns.c.z,
-                    statement.selected_columns.c.y
+                statement.selected_columns.c.z, statement.selected_columns.c.y
             ):
-                # ...
+                ...
 
         .. versionadded:: 1.4
 

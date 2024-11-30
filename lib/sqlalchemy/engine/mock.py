@@ -90,10 +90,12 @@ def create_mock_engine(
 
         from sqlalchemy import create_mock_engine
 
+
         def dump(sql, *multiparams, **params):
             print(sql.compile(dialect=engine.dialect))
 
-        engine = create_mock_engine('postgresql+psycopg2://', dump)
+
+        engine = create_mock_engine("postgresql+psycopg2://", dump)
         metadata.create_all(engine, checkfirst=False)
 
     :param url: A string URL which typically needs to contain only the

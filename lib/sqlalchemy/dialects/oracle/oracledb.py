@@ -31,19 +31,28 @@ selected depending on how the engine is created:
   automatically select the sync version::
 
     from sqlalchemy import create_engine
-    sync_engine = create_engine("oracle+oracledb://scott:tiger@localhost?service_name=FREEPDB1")
+
+    sync_engine = create_engine(
+        "oracle+oracledb://scott:tiger@localhost?service_name=FREEPDB1"
+    )
 
 * calling :func:`_asyncio.create_async_engine` with ``oracle+oracledb://...``
   will automatically select the async version::
 
     from sqlalchemy.ext.asyncio import create_async_engine
-    asyncio_engine = create_async_engine("oracle+oracledb://scott:tiger@localhost?service_name=FREEPDB1")
+
+    asyncio_engine = create_async_engine(
+        "oracle+oracledb://scott:tiger@localhost?service_name=FREEPDB1"
+    )
 
   The asyncio version of the dialect may also be specified explicitly using the
   ``oracledb_async`` suffix::
 
       from sqlalchemy.ext.asyncio import create_async_engine
-      asyncio_engine = create_async_engine("oracle+oracledb_async://scott:tiger@localhost?service_name=FREEPDB1")
+
+      asyncio_engine = create_async_engine(
+          "oracle+oracledb_async://scott:tiger@localhost?service_name=FREEPDB1"
+      )
 
 .. versionadded:: 2.0.25 added support for the async version of oracledb.
 
@@ -62,11 +71,14 @@ explicitly, or pass the parameter ``thick_mode=True`` to
 ``init_oracle_client()``, like the ``lib_dir`` path, a dict may be passed, for
 example::
 
-    engine = sa.create_engine("oracle+oracledb://...", thick_mode={
-        "lib_dir": "/path/to/oracle/client/lib",
-        "config_dir": "/path/to/network_config_file_directory",
-        "driver_name": "my-app : 1.0.0"
-    })
+    engine = sa.create_engine(
+        "oracle+oracledb://...",
+        thick_mode={
+            "lib_dir": "/path/to/oracle/client/lib",
+            "config_dir": "/path/to/network_config_file_directory",
+            "driver_name": "my-app : 1.0.0",
+        },
+    )
 
 Note that passing a ``lib_dir`` path should only be done on macOS or
 Windows. On Linux it does not behave as you might expect.
@@ -85,7 +97,9 @@ The dialect translates from a series of different URL forms.
 Given the hostname, port and service name of the target database, you can
 connect in SQLAlchemy using the ``service_name`` query string parameter::
 
-    engine = create_engine("oracle+oracledb://scott:tiger@hostname:port?service_name=myservice")
+    engine = create_engine(
+        "oracle+oracledb://scott:tiger@hostname:port?service_name=myservice"
+    )
 
 Connecting with Easy Connect strings
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -107,8 +121,8 @@ terminated by a firewall::
         connect_args={
             "user": "scott",
             "password": "tiger",
-            "dsn": "hostname:port/myservice?transport_connect_timeout=30&expire_time=60"
-        }
+            "dsn": "hostname:port/myservice?transport_connect_timeout=30&expire_time=60",
+        },
     )
 
 The Easy Connect syntax has been enhanced during the life of Oracle Database.
@@ -116,7 +130,9 @@ Review the documentation for your database version.  The current documentation
 is at `Understanding the Easy Connect Naming Method
 <https://www.oracle.com/pls/topic/lookup?ctx=dblatest&id=GUID-B0437826-43C1-49EC-A94D-B650B6A4A6EE>`_.
 
-The general syntax is similar to::
+The general syntax is similar to:
+
+.. sourcecode:: text
 
     [[protocol:]//]host[:port][/[service_name]][?parameter_name=value{&parameter_name=value}]
 
@@ -143,8 +159,8 @@ can be passed in ``connect_args``.  For example::
             "password": "tiger",
             "dsn": "hostname:port/myservice",
             "events": True,
-            "mode": oracledb.AUTH_MODE_SYSDBA
-        }
+            "mode": oracledb.AUTH_MODE_SYSDBA,
+        },
     )
 
 Connecting with tnsnames.ora TNS aliases
@@ -155,7 +171,9 @@ Oracle Database DSN "connection string".  This takes the "hostname" portion of
 the URL as the data source name.  For example, if the ``tnsnames.ora`` file
 contains a `TNS Alias
 <https://python-oracledb.readthedocs.io/en/latest/user_guide/connection_handling.html#tns-aliases-for-connection-strings>`_
-of ``myalias`` as below::
+of ``myalias`` as below:
+
+.. sourcecode:: text
 
     myalias =
       (DESCRIPTION =
@@ -187,32 +205,32 @@ summary, Thick mode users should configure file locations and set the wallet
 path in ``sqlnet.ora`` appropriately::
 
     e = create_engine(
-            "oracle+oracledb://@",
-            thick_mode={
-                 # directory containing tnsnames.ora and cwallet.so
-                 "config_dir": "/opt/oracle/wallet_dir",
-            },
-            connect_args={
-                "user": "scott",
-                "password": "tiger",
-                "dsn": "mydb_high"
-            }
-        )
+        "oracle+oracledb://@",
+        thick_mode={
+            # directory containing tnsnames.ora and cwallet.so
+            "config_dir": "/opt/oracle/wallet_dir",
+        },
+        connect_args={
+            "user": "scott",
+            "password": "tiger",
+            "dsn": "mydb_high",
+        },
+    )
 
 Thin mode users of mTLS should pass the appropriate directories and PEM wallet
 password when creating the engine, similar to::
 
     e = create_engine(
-            "oracle+oracledb://@",
-            connect_args={
-                "user": "scott",
-                "password": "tiger",
-                "dsn": "mydb_high",
-                "config_dir": "/opt/oracle/wallet_dir",       # directory containing tnsnames.ora
-                "wallet_location": "/opt/oracle/wallet_dir",  # directory containing ewallet.pem
-                "wallet_password": "top secret"               # password for the PEM file
-            }
-        )
+        "oracle+oracledb://@",
+        connect_args={
+            "user": "scott",
+            "password": "tiger",
+            "dsn": "mydb_high",
+            "config_dir": "/opt/oracle/wallet_dir",  # directory containing tnsnames.ora
+            "wallet_location": "/opt/oracle/wallet_dir",  # directory containing ewallet.pem
+            "wallet_password": "top secret",  # password for the PEM file
+        },
+    )
 
 Typically ``config_dir`` and ``wallet_location`` are the same directory, which
 is where the Oracle Autonomous Database wallet zip file was extracted.  Note
@@ -246,11 +264,19 @@ SQLAlchemy's pooling::
 
     # Uncomment to use the optional python-oracledb Thick mode.
     # Review the python-oracledb doc for the appropriate parameters
-    #oracledb.init_oracle_client(<your parameters>)
+    # oracledb.init_oracle_client(<your parameters>)
 
-    pool = oracledb.create_pool(user="scott", password="tiger", dsn="localhost:1521/freepdb1",
-                                min=1, max=4, increment=1)
-    engine = create_engine("oracle+oracledb://", creator=pool.acquire, poolclass=NullPool)
+    pool = oracledb.create_pool(
+        user="scott",
+        password="tiger",
+        dsn="localhost:1521/freepdb1",
+        min=1,
+        max=4,
+        increment=1,
+    )
+    engine = create_engine(
+        "oracle+oracledb://", creator=pool.acquire, poolclass=NullPool
+    )
 
 The above engine may then be used normally. Internally, python-oracledb handles
 connection pooling::
@@ -280,12 +306,21 @@ For example::
 
     # Uncomment to use the optional python-oracledb Thick mode.
     # Review the python-oracledb doc for the appropriate parameters
-    #oracledb.init_oracle_client(<your parameters>)
+    # oracledb.init_oracle_client(<your parameters>)
 
-    pool = oracledb.create_pool(user="scott", password="tiger", dsn="localhost:1521/freepdb1",
-                                min=1, max=4, increment=1,
-                                cclass="MYCLASS", purity=oracledb.PURITY_SELF)
-    engine = create_engine("oracle+oracledb://", creator=pool.acquire, poolclass=NullPool)
+    pool = oracledb.create_pool(
+        user="scott",
+        password="tiger",
+        dsn="localhost:1521/freepdb1",
+        min=1,
+        max=4,
+        increment=1,
+        cclass="MYCLASS",
+        purity=oracledb.PURITY_SELF,
+    )
+    engine = create_engine(
+        "oracle+oracledb://", creator=pool.acquire, poolclass=NullPool
+    )
 
 The above engine may then be used normally where python-oracledb handles
 application connection pooling and Oracle Database additionally uses DRCP::
@@ -303,16 +338,27 @@ connections, then wrap ``pool.acquire()``::
 
     # Uncomment to use python-oracledb Thick mode.
     # Review the python-oracledb doc for the appropriate parameters
-    #oracledb.init_oracle_client(<your parameters>)
+    # oracledb.init_oracle_client(<your parameters>)
 
-    pool = oracledb.create_pool(user="scott", password="tiger", dsn="localhost:1521/freepdb1",
-                                min=1, max=4, increment=1,
-                                cclass="MYCLASS", purity=oracledb.PURITY_SELF)
+    pool = oracledb.create_pool(
+        user="scott",
+        password="tiger",
+        dsn="localhost:1521/freepdb1",
+        min=1,
+        max=4,
+        increment=1,
+        cclass="MYCLASS",
+        purity=oracledb.PURITY_SELF,
+    )
+
 
     def creator():
         return pool.acquire(cclass="MYOTHERCLASS", purity=oracledb.PURITY_NEW)
 
-    engine = create_engine("oracle+oracledb://", creator=creator, poolclass=NullPool)
+
+    engine = create_engine(
+        "oracle+oracledb://", creator=creator, poolclass=NullPool
+    )
 
 Engine Options consumed by the SQLAlchemy oracledb dialect outside of the driver
 --------------------------------------------------------------------------------
@@ -321,8 +367,7 @@ There are also options that are consumed by the SQLAlchemy oracledb dialect
 itself.  These options are always passed directly to :func:`_sa.create_engine`,
 such as::
 
-    e = create_engine(
-        "oracle+oracledb://user:pass@tnsalias", arraysize=500)
+    e = create_engine("oracle+oracledb://user:pass@tnsalias", arraysize=500)
 
 The parameters accepted by the oracledb dialect are as follows:
 
@@ -433,15 +478,20 @@ objects which have a ``.key`` and a ``.type`` attribute::
 
     from sqlalchemy import create_engine, event
 
-    engine = create_engine("oracle+oracledb://scott:tiger@localhost:1521?service_name=freepdb1")
+    engine = create_engine(
+        "oracle+oracledb://scott:tiger@localhost:1521?service_name=freepdb1"
+    )
+
 
     @event.listens_for(engine, "do_setinputsizes")
     def _log_setinputsizes(inputsizes, cursor, statement, parameters, context):
         for bindparam, dbapitype in inputsizes.items():
-                log.info(
-                    "Bound parameter name: %s  SQLAlchemy type: %r  "
-                    "DBAPI object: %s",
-                    bindparam.key, bindparam.type, dbapitype)
+            log.info(
+                "Bound parameter name: %s  SQLAlchemy type: %r DBAPI object: %s",
+                bindparam.key,
+                bindparam.type,
+                dbapitype,
+            )
 
 Example 2 - remove all bindings to CLOB
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -454,7 +504,10 @@ follows::
     from sqlalchemy import create_engine, event
     from oracledb import CLOB
 
-    engine = create_engine("oracle+oracledb://scott:tiger@localhost:1521?service_name=freepdb1")
+    engine = create_engine(
+        "oracle+oracledb://scott:tiger@localhost:1521?service_name=freepdb1"
+    )
+
 
     @event.listens_for(engine, "do_setinputsizes")
     def _remove_clob(inputsizes, cursor, statement, parameters, context):
@@ -524,7 +577,9 @@ values which specify precision and scale as Python ``Decimal`` objects.  To
 disable this coercion to decimal for performance reasons, pass the flag
 ``coerce_to_decimal=False`` to :func:`_sa.create_engine`::
 
-    engine = create_engine("oracle+oracledb://scott:tiger@tnsalias", coerce_to_decimal=False)
+    engine = create_engine(
+        "oracle+oracledb://scott:tiger@tnsalias", coerce_to_decimal=False
+    )
 
 The ``coerce_to_decimal`` flag only impacts the results of plain string
 SQL statements that are not otherwise associated with a :class:`.Numeric`

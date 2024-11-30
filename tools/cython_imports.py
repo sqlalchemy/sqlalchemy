@@ -60,7 +60,7 @@ def run_file(cmd: code_writer_cmd, file: Path):
 
 def run(cmd: code_writer_cmd):
     i = 0
-    for file in sa_path.glob(f"**/*_cy.py"):
+    for file in sa_path.glob("**/*_cy.py"):
         run_file(cmd, file)
         i += 1
     cmd.write_status(f"\nDone. Processed {i} files.")

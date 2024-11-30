@@ -1061,11 +1061,7 @@ class Dialect(EventTarget):
     To implement, establish as a series of tuples, as in::
 
         construct_arguments = [
-            (schema.Index, {
-                "using": False,
-                "where": None,
-                "ops": None
-            })
+            (schema.Index, {"using": False, "where": None, "ops": None}),
         ]
 
     If the above construct is established on the PostgreSQL dialect,
@@ -2686,11 +2682,14 @@ class CreateEnginePlugin:
         from sqlalchemy.engine import CreateEnginePlugin
         from sqlalchemy import event
 
+
         class LogCursorEventsPlugin(CreateEnginePlugin):
             def __init__(self, url, kwargs):
                 # consume the parameter "log_cursor_logging_name" from the
                 # URL query
-                logging_name = url.query.get("log_cursor_logging_name", "log_cursor")
+                logging_name = url.query.get(
+                    "log_cursor_logging_name", "log_cursor"
+                )
 
                 self.log = logging.getLogger(logging_name)
 
@@ -2702,7 +2701,6 @@ class CreateEnginePlugin:
                 "attach an event listener after the new Engine is constructed"
                 event.listen(engine, "before_cursor_execute", self._log_event)
 
-
             def _log_event(
                 self,
                 conn,
@@ -2710,19 +2708,19 @@ class CreateEnginePlugin:
                 statement,
                 parameters,
                 context,
-                executemany):
+                executemany,
+            ):
 
                 self.log.info("Plugin logged cursor event: %s", statement)
-
-
 
     Plugins are registered using entry points in a similar way as that
     of dialects::
 
-        entry_points={
-            'sqlalchemy.plugins': [
-                'log_cursor_plugin = myapp.plugins:LogCursorEventsPlugin'
+        entry_points = {
+            "sqlalchemy.plugins": [
+                "log_cursor_plugin = myapp.plugins:LogCursorEventsPlugin"
             ]
+        }
 
     A plugin that uses the above names would be invoked from a database
     URL as in::
@@ -2739,15 +2737,16 @@ class CreateEnginePlugin:
     in the URL::
 
         engine = create_engine(
-          "mysql+pymysql://scott:tiger@localhost/test?"
-          "plugin=plugin_one&plugin=plugin_twp&plugin=plugin_three")
+            "mysql+pymysql://scott:tiger@localhost/test?"
+            "plugin=plugin_one&plugin=plugin_twp&plugin=plugin_three"
+        )
 
     The plugin names may also be passed directly to :func:`_sa.create_engine`
     using the :paramref:`_sa.create_engine.plugins` argument::
 
         engine = create_engine(
-          "mysql+pymysql://scott:tiger@localhost/test",
-          plugins=["myplugin"])
+            "mysql+pymysql://scott:tiger@localhost/test", plugins=["myplugin"]
+        )
 
     .. versionadded:: 1.2.3  plugin names can also be specified
        to :func:`_sa.create_engine` as a list
@@ -2769,9 +2768,9 @@ class CreateEnginePlugin:
 
         class MyPlugin(CreateEnginePlugin):
             def __init__(self, url, kwargs):
-                self.my_argument_one = url.query['my_argument_one']
-                self.my_argument_two = url.query['my_argument_two']
-                self.my_argument_three = kwargs.pop('my_argument_three', None)
+                self.my_argument_one = url.query["my_argument_one"]
+                self.my_argument_two = url.query["my_argument_two"]
+                self.my_argument_three = kwargs.pop("my_argument_three", None)
 
             def update_url(self, url):
                 return url.difference_update_query(
@@ -2784,9 +2783,9 @@ class CreateEnginePlugin:
         from sqlalchemy import create_engine
 
         engine = create_engine(
-          "mysql+pymysql://scott:tiger@localhost/test?"
-          "plugin=myplugin&my_argument_one=foo&my_argument_two=bar",
-          my_argument_three='bat'
+            "mysql+pymysql://scott:tiger@localhost/test?"
+            "plugin=myplugin&my_argument_one=foo&my_argument_two=bar",
+            my_argument_three="bat",
         )
 
     .. versionchanged:: 1.4
@@ -2805,15 +2804,15 @@ class CreateEnginePlugin:
                 def __init__(self, url, kwargs):
                     if hasattr(CreateEnginePlugin, "update_url"):
                         # detect the 1.4 API
-                        self.my_argument_one = url.query['my_argument_one']
-                        self.my_argument_two = url.query['my_argument_two']
+                        self.my_argument_one = url.query["my_argument_one"]
+                        self.my_argument_two = url.query["my_argument_two"]
                     else:
                         # detect the 1.3 and earlier API - mutate the
                         # URL directly
-                        self.my_argument_one = url.query.pop('my_argument_one')
-                        self.my_argument_two = url.query.pop('my_argument_two')
+                        self.my_argument_one = url.query.pop("my_argument_one")
+                        self.my_argument_two = url.query.pop("my_argument_two")
 
-                    self.my_argument_three = kwargs.pop('my_argument_three', None)
+                    self.my_argument_three = kwargs.pop("my_argument_three", None)
 
                 def update_url(self, url):
                     # this method is only called in the 1.4 version
@@ -3384,11 +3383,14 @@ class AdaptedConnection:
 
             engine = create_async_engine(...)
 
+
             @event.listens_for(engine.sync_engine, "connect")
-            def register_custom_types(dbapi_connection, ...):
+            def register_custom_types(
+                dbapi_connection,  # ...
+            ):
                 dbapi_connection.run_async(
                     lambda connection: connection.set_type_codec(
-                        'MyCustomType', encoder, decoder, ...
+                        "MyCustomType", encoder, decoder, ...
                     )
                 )
 

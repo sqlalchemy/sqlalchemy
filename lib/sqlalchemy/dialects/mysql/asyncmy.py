@@ -21,8 +21,10 @@ This dialect should normally be used only with the
 :func:`_asyncio.create_async_engine` engine creation function::
 
     from sqlalchemy.ext.asyncio import create_async_engine
-    engine = create_async_engine("mysql+asyncmy://user:pass@hostname/dbname?charset=utf8mb4")
 
+    engine = create_async_engine(
+        "mysql+asyncmy://user:pass@hostname/dbname?charset=utf8mb4"
+    )
 
 """  # noqa
 from __future__ import annotations
