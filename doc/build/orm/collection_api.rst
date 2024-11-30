@@ -648,5 +648,3 @@ Collection Internals
 .. autoclass:: InstrumentedList
 
 .. autoclass:: InstrumentedSet
-
-.. autofunction:: prepare_instrumentation
