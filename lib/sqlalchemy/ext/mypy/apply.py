@@ -199,10 +199,14 @@ def apply_type_to_mapped_statement(
 
     To one that describes the final Python behavior to Mypy::
 
+    ... format: off
+
         class User(Base):
             # ...
 
             attrname : Mapped[Optional[int]] = <meaningless temp node>
+
+    ... format: on
 
     """
     left_node = lvalue.node

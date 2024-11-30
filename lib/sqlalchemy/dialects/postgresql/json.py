@@ -90,14 +90,14 @@ class JSON(sqltypes.JSON):
 
     * Index operations (the ``->`` operator)::
 
-        data_table.c.data['some key']
+        data_table.c.data["some key"]
 
         data_table.c.data[5]
 
+    * Index operations returning text
+      (the ``->>`` operator)::
 
-    * Index operations returning text (the ``->>`` operator)::
-
-        data_table.c.data['some key'].astext == 'some value'
+        data_table.c.data["some key"].astext == "some value"
 
       Note that equivalent functionality is available via the
       :attr:`.JSON.Comparator.as_string` accessor.
@@ -105,18 +105,20 @@ class JSON(sqltypes.JSON):
     * Index operations with CAST
       (equivalent to ``CAST(col ->> ['some key'] AS <type>)``)::
 
-        data_table.c.data['some key'].astext.cast(Integer) == 5
+        data_table.c.data["some key"].astext.cast(Integer) == 5
 
       Note that equivalent functionality is available via the
       :attr:`.JSON.Comparator.as_integer` and similar accessors.
 
     * Path index operations (the ``#>`` operator)::
 
-        data_table.c.data[('key_1', 'key_2', 5, ..., 'key_n')]
+        data_table.c.data[("key_1", "key_2", 5, ..., "key_n")]
 
     * Path index operations returning text (the ``#>>`` operator)::
 
-        data_table.c.data[('key_1', 'key_2', 5, ..., 'key_n')].astext == 'some value'
+        data_table.c.data[
+            ("key_1", "key_2", 5, ..., "key_n")
+        ].astext == "some value"
 
     Index operations return an expression object whose type defaults to
     :class:`_types.JSON` by default,
@@ -128,10 +130,11 @@ class JSON(sqltypes.JSON):
     using psycopg2, the DBAPI only allows serializers at the per-cursor
     or per-connection level.   E.g.::
 
-        engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test",
-                                json_serializer=my_serialize_fn,
-                                json_deserializer=my_deserialize_fn
-                        )
+        engine = create_engine(
+            "postgresql+psycopg2://scott:tiger@localhost/test",
+            json_serializer=my_serialize_fn,
+            json_deserializer=my_deserialize_fn,
+        )
 
     When using the psycopg2 dialect, the json_deserializer is registered
     against the database using ``psycopg2.extras.register_default_json``.
@@ -156,6 +159,7 @@ class JSON(sqltypes.JSON):
          be used to persist a NULL value::
 
              from sqlalchemy import null
+
              conn.execute(table.insert(), {"data": null()})
 
          .. seealso::
@@ -181,7 +185,7 @@ class JSON(sqltypes.JSON):
 
             E.g.::
 
-                select(data_table.c.data['some key'].astext)
+                select(data_table.c.data["some key"].astext)
 
             .. seealso::
 
@@ -208,15 +212,16 @@ class JSONB(JSON):
     The :class:`_postgresql.JSONB` type stores arbitrary JSONB format data,
     e.g.::
 
-        data_table = Table('data_table', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', JSONB)
+        data_table = Table(
+            "data_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", JSONB),
         )
 
         with engine.connect() as conn:
             conn.execute(
-                data_table.insert(),
-                data = {"key1": "value1", "key2": "value2"}
+                data_table.insert(), data={"key1": "value1", "key2": "value2"}
             )
 
     The :class:`_postgresql.JSONB` type includes all operations provided by

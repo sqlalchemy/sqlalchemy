@@ -48,9 +48,9 @@ key "ssl", which may be specified using the
             "ssl": {
                 "ca": "/home/gord/client-ssl/ca.pem",
                 "cert": "/home/gord/client-ssl/client-cert.pem",
-                "key": "/home/gord/client-ssl/client-key.pem"
+                "key": "/home/gord/client-ssl/client-key.pem",
             }
-        }
+        },
     )
 
 For convenience, the following keys may also be specified inline within the URL
@@ -74,7 +74,9 @@ Using MySQLdb with Google Cloud SQL
 -----------------------------------
 
 Google Cloud SQL now recommends use of the MySQLdb dialect.  Connect
-using a URL like the following::
+using a URL like the following:
+
+.. sourcecode:: text
 
     mysql+mysqldb://root@/<dbname>?unix_socket=/cloudsql/<projectid>:<instancename>
 

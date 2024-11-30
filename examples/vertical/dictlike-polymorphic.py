@@ -3,15 +3,17 @@
 Builds upon the dictlike.py example to also add differently typed
 columns to the "fact" table, e.g.::
 
-  Table('properties', metadata
-        Column('owner_id', Integer, ForeignKey('owner.id'),
-               primary_key=True),
-        Column('key', UnicodeText),
-        Column('type', Unicode(16)),
-        Column('int_value', Integer),
-        Column('char_value', UnicodeText),
-        Column('bool_value', Boolean),
-        Column('decimal_value', Numeric(10,2)))
+  Table(
+      "properties",
+      metadata,
+      Column("owner_id", Integer, ForeignKey("owner.id"), primary_key=True),
+      Column("key", UnicodeText),
+      Column("type", Unicode(16)),
+      Column("int_value", Integer),
+      Column("char_value", UnicodeText),
+      Column("bool_value", Boolean),
+      Column("decimal_value", Numeric(10, 2)),
+  )
 
 For any given properties row, the value of the 'type' column will point to the
 '_value' column active for that row.

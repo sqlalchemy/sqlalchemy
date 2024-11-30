@@ -34,7 +34,9 @@ syntactical and behavioral differences that SQLAlchemy accommodates automaticall
 To connect to a MariaDB database, no changes to the database URL are required::
 
 
-    engine = create_engine("mysql+pymysql://user:pass@some_mariadb/dbname?charset=utf8mb4")
+    engine = create_engine(
+        "mysql+pymysql://user:pass@some_mariadb/dbname?charset=utf8mb4"
+    )
 
 Upon first connect, the SQLAlchemy dialect employs a
 server version detection scheme that determines if the
@@ -52,7 +54,9 @@ useful for the case where an application makes use of MariaDB-specific features
 and is not compatible with a MySQL database.    To use this mode of operation,
 replace the "mysql" token in the above URL with "mariadb"::
 
-    engine = create_engine("mariadb+pymysql://user:pass@some_mariadb/dbname?charset=utf8mb4")
+    engine = create_engine(
+        "mariadb+pymysql://user:pass@some_mariadb/dbname?charset=utf8mb4"
+    )
 
 The above engine, upon first connect, will raise an error if the server version
 detection detects that the backing database is not MariaDB.
@@ -98,7 +102,7 @@ the :paramref:`_sa.create_engine.pool_recycle` option which ensures that
 a connection will be discarded and replaced with a new one if it has been
 present in the pool for a fixed number of seconds::
 
-    engine = create_engine('mysql+mysqldb://...', pool_recycle=3600)
+    engine = create_engine("mysql+mysqldb://...", pool_recycle=3600)
 
 For more comprehensive disconnect detection of pooled connections, including
 accommodation of  server restarts and network issues, a pre-ping approach may
@@ -122,12 +126,14 @@ To accommodate the rendering of these arguments, specify the form
 ``ENGINE`` of ``InnoDB``, ``CHARSET`` of ``utf8mb4``, and ``KEY_BLOCK_SIZE``
 of ``1024``::
 
-  Table('mytable', metadata,
-        Column('data', String(32)),
-        mysql_engine='InnoDB',
-        mysql_charset='utf8mb4',
-        mysql_key_block_size="1024"
-       )
+  Table(
+      "mytable",
+      metadata,
+      Column("data", String(32)),
+      mysql_engine="InnoDB",
+      mysql_charset="utf8mb4",
+      mysql_key_block_size="1024",
+  )
 
 When supporting :ref:`mysql_mariadb_only_mode` mode, similar keys against
 the "mariadb" prefix must be included as well.  The values can of course
@@ -136,19 +142,17 @@ be maintained::
 
   # support both "mysql" and "mariadb-only" engine URLs
 
-  Table('mytable', metadata,
-        Column('data', String(32)),
-
-        mysql_engine='InnoDB',
-        mariadb_engine='InnoDB',
-
-        mysql_charset='utf8mb4',
-        mariadb_charset='utf8',
-
-        mysql_key_block_size="1024"
-        mariadb_key_block_size="1024"
-
-       )
+  Table(
+      "mytable",
+      metadata,
+      Column("data", String(32)),
+      mysql_engine="InnoDB",
+      mariadb_engine="InnoDB",
+      mysql_charset="utf8mb4",
+      mariadb_charset="utf8",
+      mysql_key_block_size="1024",
+      mariadb_key_block_size="1024",
+  )
 
 The MySQL / MariaDB dialects will normally transfer any keyword specified as
 ``mysql_keyword_name`` to be rendered as ``KEYWORD_NAME`` in the
@@ -214,16 +218,14 @@ techniques are used.
 To set isolation level using :func:`_sa.create_engine`::
 
     engine = create_engine(
-                    "mysql+mysqldb://scott:tiger@localhost/test",
-                    isolation_level="READ UNCOMMITTED"
-                )
+        "mysql+mysqldb://scott:tiger@localhost/test",
+        isolation_level="READ UNCOMMITTED",
+    )
 
 To set using per-connection execution options::
 
     connection = engine.connect()
-    connection = connection.execution_options(
-        isolation_level="READ COMMITTED"
-    )
+    connection = connection.execution_options(isolation_level="READ COMMITTED")
 
 Valid values for ``isolation_level`` include:
 
@@ -255,8 +257,8 @@ When creating tables, SQLAlchemy will automatically set ``AUTO_INCREMENT`` on
 the first :class:`.Integer` primary key column which is not marked as a
 foreign key::
 
-  >>> t = Table('mytable', metadata,
-  ...   Column('mytable_id', Integer, primary_key=True)
+  >>> t = Table(
+  ...     "mytable", metadata, Column("mytable_id", Integer, primary_key=True)
   ... )
   >>> t.create()
   CREATE TABLE mytable (
@@ -270,10 +272,12 @@ This flag
 can also be used to enable auto-increment on a secondary column in a
 multi-column key for some storage engines::
 
-  Table('mytable', metadata,
-        Column('gid', Integer, primary_key=True, autoincrement=False),
-        Column('id', Integer, primary_key=True)
-       )
+  Table(
+      "mytable",
+      metadata,
+      Column("gid", Integer, primary_key=True, autoincrement=False),
+      Column("id", Integer, primary_key=True),
+  )
 
 .. _mysql_ss_cursors:
 
@@ -291,7 +295,9 @@ Server side cursors are enabled on a per-statement basis by using the
 option::
 
     with engine.connect() as conn:
-        result = conn.execution_options(stream_results=True).execute(text("select * from table"))
+        result = conn.execution_options(stream_results=True).execute(
+            text("select * from table")
+        )
 
 Note that some kinds of SQL statements may not be supported with
 server side cursors; generally, only SQL statements that return rows should be
@@ -319,7 +325,8 @@ a connection.   This is typically delivered using the ``charset`` parameter
 in the URL, such as::
 
     e = create_engine(
-        "mysql+pymysql://scott:tiger@localhost/test?charset=utf8mb4")
+        "mysql+pymysql://scott:tiger@localhost/test?charset=utf8mb4"
+    )
 
 This charset is the **client character set** for the connection.  Some
 MySQL DBAPIs will default this to a value such as ``latin1``, and some
@@ -339,7 +346,8 @@ charset is preferred, if supported by both the database as well as the client
 DBAPI, as in::
 
     e = create_engine(
-        "mysql+pymysql://scott:tiger@localhost/test?charset=utf8mb4")
+        "mysql+pymysql://scott:tiger@localhost/test?charset=utf8mb4"
+    )
 
 All modern DBAPIs should support the ``utf8mb4`` charset.
 
@@ -361,7 +369,9 @@ Dealing with Binary Data Warnings and Unicode
 MySQL versions 5.6, 5.7 and later (not MariaDB at the time of this writing) now
 emit a warning when attempting to pass binary data to the database, while a
 character set encoding is also in place, when the binary data itself is not
-valid for that encoding::
+valid for that encoding:
+
+.. sourcecode:: text
 
     default.py:509: Warning: (1300, "Invalid utf8mb4 character string:
     'F9876A'")
@@ -371,7 +381,9 @@ This warning is due to the fact that the MySQL client library is attempting to
 interpret the binary string as a unicode object even if a datatype such
 as :class:`.LargeBinary` is in use.   To resolve this, the SQL statement requires
 a binary "character set introducer" be present before any non-NULL value
-that renders like this::
+that renders like this:
+
+.. sourcecode:: sql
 
     INSERT INTO table (data) VALUES (_binary %s)
 
@@ -381,12 +393,13 @@ string parameter ``binary_prefix=true`` to the URL to repair this warning::
 
     # mysqlclient
     engine = create_engine(
-        "mysql+mysqldb://scott:tiger@localhost/test?charset=utf8mb4&binary_prefix=true")
+        "mysql+mysqldb://scott:tiger@localhost/test?charset=utf8mb4&binary_prefix=true"
+    )
 
     # PyMySQL
     engine = create_engine(
-        "mysql+pymysql://scott:tiger@localhost/test?charset=utf8mb4&binary_prefix=true")
-
+        "mysql+pymysql://scott:tiger@localhost/test?charset=utf8mb4&binary_prefix=true"
+    )
 
 The ``binary_prefix`` flag may or may not be supported by other MySQL drivers.
 
@@ -429,13 +442,17 @@ the ``first_connect`` and ``connect`` events::
 
     from sqlalchemy import create_engine, event
 
-    eng = create_engine("mysql+mysqldb://scott:tiger@localhost/test", echo='debug')
+    eng = create_engine(
+        "mysql+mysqldb://scott:tiger@localhost/test", echo="debug"
+    )
+
 
     # `insert=True` will ensure this is the very first listener to run
     @event.listens_for(eng, "connect", insert=True)
     def connect(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()
         cursor.execute("SET sql_mode = 'STRICT_ALL_TABLES'")
+
 
     conn = eng.connect()
 
@@ -453,8 +470,8 @@ MySQL / MariaDB SQL Extensions
 Many of the MySQL / MariaDB SQL extensions are handled through SQLAlchemy's generic
 function and operator support::
 
-  table.select(table.c.password==func.md5('plaintext'))
-  table.select(table.c.username.op('regexp')('^[a-d]'))
+  table.select(table.c.password == func.md5("plaintext"))
+  table.select(table.c.username.op("regexp")("^[a-d]"))
 
 And of course any valid SQL statement can be executed as a string as well.
 
@@ -467,7 +484,7 @@ available.
 * SELECT pragma, use :meth:`_expression.Select.prefix_with` and
   :meth:`_query.Query.prefix_with`::
 
-    select(...).prefix_with(['HIGH_PRIORITY', 'SQL_SMALL_RESULT'])
+    select(...).prefix_with(["HIGH_PRIORITY", "SQL_SMALL_RESULT"])
 
 * UPDATE with LIMIT::
 
@@ -483,14 +500,16 @@ available.
 
     select(...).with_hint(some_table, "USE INDEX xyz")
 
-* MATCH operator support::
+* MATCH
+  operator support::
 
-    from sqlalchemy.dialects.mysql import match
-    select(...).where(match(col1, col2, against="some expr").in_boolean_mode())
+        from sqlalchemy.dialects.mysql import match
 
-    .. seealso::
+        select(...).where(match(col1, col2, against="some expr").in_boolean_mode())
 
-        :class:`_mysql.match`
+  .. seealso::
+
+    :class:`_mysql.match`
 
 INSERT/DELETE...RETURNING
 -------------------------
@@ -507,17 +526,15 @@ To specify an explicit ``RETURNING`` clause, use the
 
     # INSERT..RETURNING
     result = connection.execute(
-        table.insert().
-        values(name='foo').
-        returning(table.c.col1, table.c.col2)
+        table.insert().values(name="foo").returning(table.c.col1, table.c.col2)
     )
     print(result.all())
 
     # DELETE..RETURNING
     result = connection.execute(
-        table.delete().
-        where(table.c.name=='foo').
-        returning(table.c.col1, table.c.col2)
+        table.delete()
+        .where(table.c.name == "foo")
+        .returning(table.c.col1, table.c.col2)
     )
     print(result.all())
 
@@ -544,12 +561,11 @@ the generative method :meth:`~.mysql.Insert.on_duplicate_key_update`:
     >>> from sqlalchemy.dialects.mysql import insert
 
     >>> insert_stmt = insert(my_table).values(
-    ...     id='some_existing_id',
-    ...     data='inserted value')
+    ...     id="some_existing_id", data="inserted value"
+    ... )
 
     >>> on_duplicate_key_stmt = insert_stmt.on_duplicate_key_update(
-    ...     data=insert_stmt.inserted.data,
-    ...     status='U'
+    ...     data=insert_stmt.inserted.data, status="U"
     ... )
     >>> print(on_duplicate_key_stmt)
     {printsql}INSERT INTO my_table (id, data) VALUES (%s, %s)
@@ -574,8 +590,8 @@ as values:
 .. sourcecode:: pycon+sql
 
     >>> insert_stmt = insert(my_table).values(
-    ...          id='some_existing_id',
-    ...          data='inserted value')
+    ...     id="some_existing_id", data="inserted value"
+    ... )
 
     >>> on_duplicate_key_stmt = insert_stmt.on_duplicate_key_update(
     ...     data="some data",
@@ -638,13 +654,11 @@ table:
 .. sourcecode:: pycon+sql
 
     >>> stmt = insert(my_table).values(
-    ...     id='some_id',
-    ...     data='inserted value',
-    ...     author='jlh')
+    ...     id="some_id", data="inserted value", author="jlh"
+    ... )
 
     >>> do_update_stmt = stmt.on_duplicate_key_update(
-    ...     data="updated value",
-    ...     author=stmt.inserted.author
+    ...     data="updated value", author=stmt.inserted.author
     ... )
 
     >>> print(do_update_stmt)
@@ -689,13 +703,13 @@ MySQL and MariaDB both provide an option to create index entries with a certain 
 become part of the index. SQLAlchemy provides this feature via the
 ``mysql_length`` and/or ``mariadb_length`` parameters::
 
-    Index('my_index', my_table.c.data, mysql_length=10, mariadb_length=10)
+    Index("my_index", my_table.c.data, mysql_length=10, mariadb_length=10)
 
-    Index('a_b_idx', my_table.c.a, my_table.c.b, mysql_length={'a': 4,
-                                                               'b': 9})
+    Index("a_b_idx", my_table.c.a, my_table.c.b, mysql_length={"a": 4, "b": 9})
 
-    Index('a_b_idx', my_table.c.a, my_table.c.b, mariadb_length={'a': 4,
-                                                               'b': 9})
+    Index(
+        "a_b_idx", my_table.c.a, my_table.c.b, mariadb_length={"a": 4, "b": 9}
+    )
 
 Prefix lengths are given in characters for nonbinary string types and in bytes
 for binary string types. The value passed to the keyword argument *must* be
@@ -712,7 +726,7 @@ MySQL storage engines permit you to specify an index prefix when creating
 an index. SQLAlchemy provides this feature via the
 ``mysql_prefix`` parameter on :class:`.Index`::
 
-    Index('my_index', my_table.c.data, mysql_prefix='FULLTEXT')
+    Index("my_index", my_table.c.data, mysql_prefix="FULLTEXT")
 
 The value passed to the keyword argument will be simply passed through to the
 underlying CREATE INDEX, so it *must* be a valid index prefix for your MySQL
@@ -729,11 +743,13 @@ Some MySQL storage engines permit you to specify an index type when creating
 an index or primary key constraint. SQLAlchemy provides this feature via the
 ``mysql_using`` parameter on :class:`.Index`::
 
-    Index('my_index', my_table.c.data, mysql_using='hash', mariadb_using='hash')
+    Index(
+        "my_index", my_table.c.data, mysql_using="hash", mariadb_using="hash"
+    )
 
 As well as the ``mysql_using`` parameter on :class:`.PrimaryKeyConstraint`::
 
-    PrimaryKeyConstraint("data", mysql_using='hash', mariadb_using='hash')
+    PrimaryKeyConstraint("data", mysql_using="hash", mariadb_using="hash")
 
 The value passed to the keyword argument will be simply passed through to the
 underlying CREATE INDEX or PRIMARY KEY clause, so it *must* be a valid index
@@ -752,9 +768,12 @@ CREATE FULLTEXT INDEX in MySQL also supports a "WITH PARSER" option.  This
 is available using the keyword argument ``mysql_with_parser``::
 
     Index(
-        'my_index', my_table.c.data,
-        mysql_prefix='FULLTEXT', mysql_with_parser="ngram",
-        mariadb_prefix='FULLTEXT', mariadb_with_parser="ngram",
+        "my_index",
+        my_table.c.data,
+        mysql_prefix="FULLTEXT",
+        mysql_with_parser="ngram",
+        mariadb_prefix="FULLTEXT",
+        mariadb_with_parser="ngram",
     )
 
 .. versionadded:: 1.3
@@ -781,6 +800,7 @@ them ignored on a MySQL / MariaDB backend, use a custom compile rule::
     from sqlalchemy.ext.compiler import compiles
     from sqlalchemy.schema import ForeignKeyConstraint
 
+
     @compiles(ForeignKeyConstraint, "mysql", "mariadb")
     def process(element, compiler, **kw):
         element.deferrable = element.initially = None
@@ -802,10 +822,12 @@ very common ``MyISAM`` MySQL storage engine, the information loaded by table
 reflection will not include foreign keys.  For these tables, you may supply a
 :class:`~sqlalchemy.ForeignKeyConstraint` at reflection time::
 
-  Table('mytable', metadata,
-        ForeignKeyConstraint(['other_id'], ['othertable.other_id']),
-        autoload_with=engine
-       )
+  Table(
+      "mytable",
+      metadata,
+      ForeignKeyConstraint(["other_id"], ["othertable.other_id"]),
+      autoload_with=engine,
+  )
 
 .. seealso::
 
@@ -877,13 +899,15 @@ parameter and pass a textual clause that also includes the ON UPDATE clause::
     mytable = Table(
         "mytable",
         metadata,
-        Column('id', Integer, primary_key=True),
-        Column('data', String(50)),
+        Column("id", Integer, primary_key=True),
+        Column("data", String(50)),
         Column(
-            'last_updated',
+            "last_updated",
             TIMESTAMP,
-            server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-        )
+            server_default=text(
+                "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+            ),
+        ),
     )
 
 The same instructions apply to use of the :class:`_types.DateTime` and
@@ -894,15 +918,16 @@ The same instructions apply to use of the :class:`_types.DateTime` and
     mytable = Table(
         "mytable",
         metadata,
-        Column('id', Integer, primary_key=True),
-        Column('data', String(50)),
+        Column("id", Integer, primary_key=True),
+        Column("data", String(50)),
         Column(
-            'last_updated',
+            "last_updated",
             DateTime,
-            server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-        )
+            server_default=text(
+                "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+            ),
+        ),
     )
-
 
 Even though the :paramref:`_schema.Column.server_onupdate` feature does not
 generate this DDL, it still may be desirable to signal to the ORM that this
@@ -910,17 +935,19 @@ updated value should be fetched.  This syntax looks like the following::
 
     from sqlalchemy.schema import FetchedValue
 
+
     class MyClass(Base):
-        __tablename__ = 'mytable'
+        __tablename__ = "mytable"
 
         id = Column(Integer, primary_key=True)
         data = Column(String(50))
         last_updated = Column(
             TIMESTAMP,
-            server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
-            server_onupdate=FetchedValue()
+            server_default=text(
+                "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+            ),
+            server_onupdate=FetchedValue(),
         )
-
 
 .. _mysql_timestamp_null:
 
@@ -931,7 +958,9 @@ MySQL historically enforces that a column which specifies the
 TIMESTAMP datatype implicitly includes a default value of
 CURRENT_TIMESTAMP, even though this is not stated, and additionally
 sets the column as NOT NULL, the opposite behavior vs. that of all
-other datatypes::
+other datatypes:
+
+.. sourcecode:: text
 
     mysql> CREATE TABLE ts_test (
         -> a INTEGER,
@@ -976,19 +1005,24 @@ SQLAlchemy also emits NOT NULL for TIMESTAMP columns that do specify
     from sqlalchemy.dialects.mysql import TIMESTAMP
 
     m = MetaData()
-    t = Table('ts_test', m,
-            Column('a', Integer),
-            Column('b', Integer, nullable=False),
-            Column('c', TIMESTAMP),
-            Column('d', TIMESTAMP, nullable=False)
-        )
+    t = Table(
+        "ts_test",
+        m,
+        Column("a", Integer),
+        Column("b", Integer, nullable=False),
+        Column("c", TIMESTAMP),
+        Column("d", TIMESTAMP, nullable=False),
+    )
 
 
     from sqlalchemy import create_engine
+
     e = create_engine("mysql+mysqldb://scott:tiger@localhost/test", echo=True)
     m.create_all(e)
 
-output::
+output:
+
+.. sourcecode:: sql
 
     CREATE TABLE ts_test (
         a INTEGER,

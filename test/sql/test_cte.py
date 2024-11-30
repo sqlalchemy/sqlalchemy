@@ -296,7 +296,9 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
     def test_recursive_union_no_alias_two(self):
         """
 
-        pg's example::
+        pg's example:
+
+        .. sourcecode:: sql
 
             WITH RECURSIVE t(n) AS (
                 VALUES (1)

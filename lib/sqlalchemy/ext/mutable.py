@@ -21,6 +21,7 @@ JSON strings before being persisted::
     from sqlalchemy.types import TypeDecorator, VARCHAR
     import json
 
+
     class JSONEncodedDict(TypeDecorator):
         "Represents an immutable structure as a json-encoded string."
 
@@ -47,6 +48,7 @@ version of the :class:`.MutableDict` dictionary object, which applies
 the :class:`.Mutable` mixin to a plain Python dictionary::
 
     from sqlalchemy.ext.mutable import Mutable
+
 
     class MutableDict(Mutable, dict):
         @classmethod
@@ -101,9 +103,11 @@ attribute. Such as, with classical table metadata::
 
     from sqlalchemy import Table, Column, Integer
 
-    my_data = Table('my_data', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('data', MutableDict.as_mutable(JSONEncodedDict))
+    my_data = Table(
+        "my_data",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("data", MutableDict.as_mutable(JSONEncodedDict)),
     )
 
 Above, :meth:`~.Mutable.as_mutable` returns an instance of ``JSONEncodedDict``
@@ -115,13 +119,17 @@ mapping against the ``my_data`` table::
     from sqlalchemy.orm import Mapped
     from sqlalchemy.orm import mapped_column
 
+
     class Base(DeclarativeBase):
         pass
 
+
     class MyDataClass(Base):
-        __tablename__ = 'my_data'
+        __tablename__ = "my_data"
         id: Mapped[int] = mapped_column(primary_key=True)
-        data: Mapped[dict[str, str]] = mapped_column(MutableDict.as_mutable(JSONEncodedDict))
+        data: Mapped[dict[str, str]] = mapped_column(
+            MutableDict.as_mutable(JSONEncodedDict)
+        )
 
 The ``MyDataClass.data`` member will now be notified of in place changes
 to its value.
@@ -132,11 +140,11 @@ will flag the attribute as "dirty" on the parent object::
     >>> from sqlalchemy.orm import Session
 
     >>> sess = Session(some_engine)
-    >>> m1 = MyDataClass(data={'value1':'foo'})
+    >>> m1 = MyDataClass(data={"value1": "foo"})
     >>> sess.add(m1)
     >>> sess.commit()
 
-    >>> m1.data['value1'] = 'bar'
+    >>> m1.data["value1"] = "bar"
     >>> assert m1 in sess.dirty
     True
 
@@ -153,14 +161,15 @@ the need to declare it individually::
 
     MutableDict.associate_with(JSONEncodedDict)
 
+
     class Base(DeclarativeBase):
         pass
 
+
     class MyDataClass(Base):
-        __tablename__ = 'my_data'
+        __tablename__ = "my_data"
         id: Mapped[int] = mapped_column(primary_key=True)
         data: Mapped[dict[str, str]] = mapped_column(JSONEncodedDict)
-
 
 Supporting Pickling
 --------------------
@@ -180,7 +189,7 @@ stream::
     class MyMutableType(Mutable):
         def __getstate__(self):
             d = self.__dict__.copy()
-            d.pop('_parents', None)
+            d.pop("_parents", None)
             return d
 
 With our dictionary example, we need to return the contents of the dict itself
@@ -213,13 +222,18 @@ from within the mutable extension::
     from sqlalchemy.orm import mapped_column
     from sqlalchemy import event
 
+
     class Base(DeclarativeBase):
         pass
 
+
     class MyDataClass(Base):
-        __tablename__ = 'my_data'
+        __tablename__ = "my_data"
         id: Mapped[int] = mapped_column(primary_key=True)
-        data: Mapped[dict[str, str]] = mapped_column(MutableDict.as_mutable(JSONEncodedDict))
+        data: Mapped[dict[str, str]] = mapped_column(
+            MutableDict.as_mutable(JSONEncodedDict)
+        )
+
 
     @event.listens_for(MyDataClass.data, "modified")
     def modified_json(instance, initiator):
@@ -247,6 +261,7 @@ class introduced in :ref:`mapper_composite` to include
     import dataclasses
     from sqlalchemy.ext.mutable import MutableComposite
 
+
     @dataclasses.dataclass
     class Point(MutableComposite):
         x: int
@@ -261,7 +276,6 @@ class introduced in :ref:`mapper_composite` to include
             # alert all parents to the change
             self.changed()
 
-
 The :class:`.MutableComposite` class makes use of class mapping events to
 automatically establish listeners for any usage of :func:`_orm.composite` that
 specifies our ``Point`` type. Below, when ``Point`` is mapped to the ``Vertex``
@@ -270,6 +284,7 @@ objects to each of the ``Vertex.start`` and ``Vertex.end`` attributes::
 
     from sqlalchemy.orm import DeclarativeBase, Mapped
     from sqlalchemy.orm import composite, mapped_column
+
 
     class Base(DeclarativeBase):
         pass
@@ -280,8 +295,12 @@ objects to each of the ``Vertex.start`` and ``Vertex.end`` attributes::
 
         id: Mapped[int] = mapped_column(primary_key=True)
 
-        start: Mapped[Point] = composite(mapped_column("x1"), mapped_column("y1"))
-        end: Mapped[Point] = composite(mapped_column("x2"), mapped_column("y2"))
+        start: Mapped[Point] = composite(
+            mapped_column("x1"), mapped_column("y1")
+        )
+        end: Mapped[Point] = composite(
+            mapped_column("x2"), mapped_column("y2")
+        )
 
         def __repr__(self):
             return f"Vertex(start={self.start}, end={self.end})"
@@ -648,9 +667,11 @@ class Mutable(MutableBase):
         The type is returned, unconditionally as an instance, so that
         :meth:`.as_mutable` can be used inline::
 
-            Table('mytable', metadata,
-                Column('id', Integer, primary_key=True),
-                Column('data', MyMutableType.as_mutable(PickleType))
+            Table(
+                "mytable",
+                metadata,
+                Column("id", Integer, primary_key=True),
+                Column("data", MyMutableType.as_mutable(PickleType)),
             )
 
         Note that the returned type is always an instance, even if a class

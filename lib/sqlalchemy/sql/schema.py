@@ -320,9 +320,10 @@ class Table(
     e.g.::
 
         mytable = Table(
-            "mytable", metadata,
-            Column('mytable_id', Integer, primary_key=True),
-            Column('value', String(50))
+            "mytable",
+            metadata,
+            Column("mytable_id", Integer, primary_key=True),
+            Column("value", String(50)),
         )
 
     The :class:`_schema.Table`
@@ -632,11 +633,13 @@ class Table(
             :class:`_schema.Column`
             named "y"::
 
-                Table("mytable", metadata,
-                            Column('y', Integer),
-                            extend_existing=True,
-                            autoload_with=engine
-                        )
+                Table(
+                    "mytable",
+                    metadata,
+                    Column("y", Integer),
+                    extend_existing=True,
+                    autoload_with=engine,
+                )
 
             .. seealso::
 
@@ -733,12 +736,12 @@ class Table(
                     "handle the column reflection event"
                     # ...
 
+
                 t = Table(
-                    'sometable',
+                    "sometable",
                     autoload_with=engine,
-                    listeners=[
-                        ('column_reflect', listen_for_reflect)
-                    ])
+                    listeners=[("column_reflect", listen_for_reflect)],
+                )
 
             .. seealso::
 
@@ -1345,7 +1348,7 @@ class Table(
 
             m1 = MetaData()
 
-            user = Table('user', m1, Column('id', Integer, primary_key=True))
+            user = Table("user", m1, Column("id", Integer, primary_key=True))
 
             m2 = MetaData()
             user_copy = user.to_metadata(m2)
@@ -1369,7 +1372,7 @@ class Table(
          unless
          set explicitly::
 
-            m2 = MetaData(schema='newschema')
+            m2 = MetaData(schema="newschema")
 
             # user_copy_one will have "newschema" as the schema name
             user_copy_one = user.to_metadata(m2, schema=None)
@@ -1396,15 +1399,16 @@ class Table(
 
          E.g.::
 
-                def referred_schema_fn(table, to_schema,
-                                                constraint, referred_schema):
-                    if referred_schema == 'base_tables':
+                def referred_schema_fn(table, to_schema, constraint, referred_schema):
+                    if referred_schema == "base_tables":
                         return referred_schema
                     else:
                         return to_schema
 
-                new_table = table.to_metadata(m2, schema="alt_schema",
-                                        referred_schema_fn=referred_schema_fn)
+
+                new_table = table.to_metadata(
+                    m2, schema="alt_schema", referred_schema_fn=referred_schema_fn
+                )
 
         :param name: optional string name indicating the target table name.
          If not specified or None, the table name is retained.  This allows
@@ -1412,7 +1416,7 @@ class Table(
          :class:`_schema.MetaData` target
          with a new name.
 
-        """
+        """  # noqa: E501
         if name is None:
             name = self.name
 
@@ -1557,10 +1561,10 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
           as well, e.g.::
 
             # use a type with arguments
-            Column('data', String(50))
+            Column("data", String(50))
 
             # use no arguments
-            Column('level', Integer)
+            Column("level", Integer)
 
           The ``type`` argument may be the second positional argument
           or specified by keyword.
@@ -1662,8 +1666,12 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
 
                 # turn on autoincrement for this column despite
                 # the ForeignKey()
-                Column('id', ForeignKey('other.id'),
-                            primary_key=True, autoincrement='ignore_fk')
+                Column(
+                    "id",
+                    ForeignKey("other.id"),
+                    primary_key=True,
+                    autoincrement="ignore_fk",
+                )
 
           It is typically not desirable to have "autoincrement" enabled on a
           column that refers to another via foreign key, as such a column is
@@ -1780,7 +1788,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                     "some_table",
                     metadata,
                     Column("x", Integer),
-                    Index("ix_some_table_x", "x")
+                    Index("ix_some_table_x", "x"),
                 )
 
             To add the :paramref:`_schema.Index.unique` flag to the
@@ -1862,14 +1870,22 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
 
             String types will be emitted as-is, surrounded by single quotes::
 
-                Column('x', Text, server_default="val")
+                Column("x", Text, server_default="val")
+
+            will render:
+
+            .. sourcecode:: sql
 
                 x TEXT DEFAULT 'val'
 
             A :func:`~sqlalchemy.sql.expression.text` expression will be
             rendered as-is, without quotes::
 
-                Column('y', DateTime, server_default=text('NOW()'))
+                Column("y", DateTime, server_default=text("NOW()"))
+
+            will render:
+
+            .. sourcecode:: sql
 
                 y DATETIME DEFAULT NOW()
 
@@ -1884,20 +1900,21 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                 from sqlalchemy.dialects.postgresql import array
 
                 engine = create_engine(
-                    'postgresql+psycopg2://scott:tiger@localhost/mydatabase'
+                    "postgresql+psycopg2://scott:tiger@localhost/mydatabase"
                 )
                 metadata_obj = MetaData()
                 tbl = Table(
-                        "foo",
-                        metadata_obj,
-                        Column("bar",
-                               ARRAY(Text),
-                               server_default=array(["biz", "bang", "bash"])
-                               )
+                    "foo",
+                    metadata_obj,
+                    Column(
+                        "bar", ARRAY(Text), server_default=array(["biz", "bang", "bash"])
+                    ),
                 )
                 metadata_obj.create_all(engine)
 
-            The above results in a table created with the following SQL::
+            The above results in a table created with the following SQL:
+
+            .. sourcecode:: sql
 
                 CREATE TABLE foo (
                     bar TEXT[] DEFAULT ARRAY['biz', 'bang', 'bash']
@@ -1962,12 +1979,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             :class:`_schema.UniqueConstraint` construct explicitly at the
             level of the :class:`_schema.Table` construct itself::
 
-                Table(
-                    "some_table",
-                    metadata,
-                    Column("x", Integer),
-                    UniqueConstraint("x")
-                )
+                Table("some_table", metadata, Column("x", Integer), UniqueConstraint("x"))
 
             The :paramref:`_schema.UniqueConstraint.name` parameter
             of the unique constraint object is left at its default value
@@ -2738,8 +2750,10 @@ class ForeignKey(DialectKWArgs, SchemaItem):
     object,
     e.g.::
 
-        t = Table("remote_table", metadata,
-            Column("remote_id", ForeignKey("main_table.id"))
+        t = Table(
+            "remote_table",
+            metadata,
+            Column("remote_id", ForeignKey("main_table.id")),
         )
 
     Note that ``ForeignKey`` is only a marker object that defines
@@ -3388,12 +3402,11 @@ class ColumnDefault(DefaultGenerator, ABC):
 
     For example, the following::
 
-        Column('foo', Integer, default=50)
+        Column("foo", Integer, default=50)
 
     Is equivalent to::
 
-        Column('foo', Integer, ColumnDefault(50))
-
+        Column("foo", Integer, ColumnDefault(50))
 
     """
 
@@ -3680,9 +3693,14 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
     The :class:`.Sequence` is typically associated with a primary key column::
 
         some_table = Table(
-            'some_table', metadata,
-            Column('id', Integer, Sequence('some_table_seq', start=1),
-            primary_key=True)
+            "some_table",
+            metadata,
+            Column(
+                "id",
+                Integer,
+                Sequence("some_table_seq", start=1),
+                primary_key=True,
+            ),
         )
 
     When CREATE TABLE is emitted for the above :class:`_schema.Table`, if the
@@ -3958,7 +3976,7 @@ class FetchedValue(SchemaEventTarget):
 
     E.g.::
 
-        Column('foo', Integer, FetchedValue())
+        Column("foo", Integer, FetchedValue())
 
     Would indicate that some trigger or default generator
     will create a new value for the ``foo`` column during an
@@ -4024,11 +4042,11 @@ class DefaultClause(FetchedValue):
 
     For example, the following::
 
-        Column('foo', Integer, server_default="50")
+        Column("foo", Integer, server_default="50")
 
     Is equivalent to::
 
-        Column('foo', Integer, DefaultClause("50"))
+        Column("foo", Integer, DefaultClause("50"))
 
     """
 
@@ -4857,11 +4875,13 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     :class:`_schema.Column` objects corresponding to those marked with
     the :paramref:`_schema.Column.primary_key` flag::
 
-        >>> my_table = Table('mytable', metadata,
-        ...                 Column('id', Integer, primary_key=True),
-        ...                 Column('version_id', Integer, primary_key=True),
-        ...                 Column('data', String(50))
-        ...     )
+        >>> my_table = Table(
+        ...     "mytable",
+        ...     metadata,
+        ...     Column("id", Integer, primary_key=True),
+        ...     Column("version_id", Integer, primary_key=True),
+        ...     Column("data", String(50)),
+        ... )
         >>> my_table.primary_key
         PrimaryKeyConstraint(
             Column('id', Integer(), table=<mytable>,
@@ -4875,13 +4895,14 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     the "name" of the constraint can also be specified, as well as other
     options which may be recognized by dialects::
 
-        my_table = Table('mytable', metadata,
-                    Column('id', Integer),
-                    Column('version_id', Integer),
-                    Column('data', String(50)),
-                    PrimaryKeyConstraint('id', 'version_id',
-                                         name='mytable_pk')
-                )
+        my_table = Table(
+            "mytable",
+            metadata,
+            Column("id", Integer),
+            Column("version_id", Integer),
+            Column("data", String(50)),
+            PrimaryKeyConstraint("id", "version_id", name="mytable_pk"),
+        )
 
     The two styles of column-specification should generally not be mixed.
     An warning is emitted if the columns present in the
@@ -4899,13 +4920,14 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     primary key column collection from the :class:`_schema.Table` based on the
     flags::
 
-        my_table = Table('mytable', metadata,
-                    Column('id', Integer, primary_key=True),
-                    Column('version_id', Integer, primary_key=True),
-                    Column('data', String(50)),
-                    PrimaryKeyConstraint(name='mytable_pk',
-                                         mssql_clustered=True)
-                )
+        my_table = Table(
+            "mytable",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("version_id", Integer, primary_key=True),
+            Column("data", String(50)),
+            PrimaryKeyConstraint(name="mytable_pk", mssql_clustered=True),
+        )
 
     """
 
@@ -5102,19 +5124,21 @@ class Index(
 
     E.g.::
 
-        sometable = Table("sometable", metadata,
-                        Column("name", String(50)),
-                        Column("address", String(100))
-                    )
+        sometable = Table(
+            "sometable",
+            metadata,
+            Column("name", String(50)),
+            Column("address", String(100)),
+        )
 
         Index("some_index", sometable.c.name)
 
     For a no-frills, single column index, adding
     :class:`_schema.Column` also supports ``index=True``::
 
-        sometable = Table("sometable", metadata,
-                        Column("name", String(50), index=True)
-                    )
+        sometable = Table(
+            "sometable", metadata, Column("name", String(50), index=True)
+        )
 
     For a composite index, multiple columns can be specified::
 
@@ -5133,22 +5157,26 @@ class Index(
     the names
     of the indexed columns can be specified as strings::
 
-        Table("sometable", metadata,
-                        Column("name", String(50)),
-                        Column("address", String(100)),
-                        Index("some_index", "name", "address")
-                )
+        Table(
+            "sometable",
+            metadata,
+            Column("name", String(50)),
+            Column("address", String(100)),
+            Index("some_index", "name", "address"),
+        )
 
     To support functional or expression-based indexes in this form, the
     :func:`_expression.text` construct may be used::
 
         from sqlalchemy import text
 
-        Table("sometable", metadata,
-                        Column("name", String(50)),
-                        Column("address", String(100)),
-                        Index("some_index", text("lower(name)"))
-                )
+        Table(
+            "sometable",
+            metadata,
+            Column("name", String(50)),
+            Column("address", String(100)),
+            Index("some_index", text("lower(name)")),
+        )
 
     .. seealso::
 
@@ -5906,9 +5934,11 @@ class Computed(FetchedValue, SchemaItem):
 
         from sqlalchemy import Computed
 
-        Table('square', metadata_obj,
-            Column('side', Float, nullable=False),
-            Column('area', Float, Computed('side * side'))
+        Table(
+            "square",
+            metadata_obj,
+            Column("side", Float, nullable=False),
+            Column("area", Float, Computed("side * side")),
         )
 
     See the linked documentation below for complete details.
@@ -6013,9 +6043,11 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
 
         from sqlalchemy import Identity
 
-        Table('foo', metadata_obj,
-            Column('id', Integer, Identity())
-            Column('description', Text),
+        Table(
+            "foo",
+            metadata_obj,
+            Column("id", Integer, Identity()),
+            Column("description", Text),
         )
 
     See the linked documentation below for complete details.

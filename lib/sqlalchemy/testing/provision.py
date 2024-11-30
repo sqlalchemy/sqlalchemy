@@ -108,7 +108,9 @@ def generate_db_urls(db_urls, extra_drivers):
     """Generate a set of URLs to test given configured URLs plus additional
     driver names.
 
-    Given::
+    Given:
+
+    .. sourcecode:: text
 
         --dburi postgresql://db1  \
         --dburi postgresql://db2  \
@@ -116,7 +118,9 @@ def generate_db_urls(db_urls, extra_drivers):
         --dbdriver=psycopg2 --dbdriver=asyncpg?async_fallback=true
 
     Noting that the default postgresql driver is psycopg2,  the output
-    would be::
+    would be:
+
+    .. sourcecode:: text
 
         postgresql+psycopg2://db1
         postgresql+asyncpg://db1
@@ -132,6 +136,8 @@ def generate_db_urls(db_urls, extra_drivers):
     Driver specific query options can be specified by added them to the
     driver name. For example, to enable the async fallback option for
     asyncpg::
+
+    .. sourcecode:: text
 
         --dburi postgresql://db1  \
         --dbdriver=asyncpg?async_fallback=true

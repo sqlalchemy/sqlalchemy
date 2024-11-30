@@ -2844,8 +2844,7 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         """in python 3.9 and above you can actually do::
 
             @(testing.requires.python38 + testing.only_on("sqlite > 3.9"))
-            def test_determinsitic_parameter(self):
-                ...
+            def test_determinsitic_parameter(self): ...
 
         that'll be cool.  until then...
 

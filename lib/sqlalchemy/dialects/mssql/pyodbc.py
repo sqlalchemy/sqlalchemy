@@ -30,7 +30,9 @@ is configured on the client, a basic DSN-based connection looks like::
 
     engine = create_engine("mssql+pyodbc://scott:tiger@some_dsn")
 
-Which above, will pass the following connection string to PyODBC::
+Which above, will pass the following connection string to PyODBC:
+
+.. sourcecode:: text
 
     DSN=some_dsn;UID=scott;PWD=tiger
 
@@ -49,7 +51,9 @@ When using a hostname connection, the driver name must also be specified in the
 query parameters of the URL.  As these names usually have spaces in them, the
 name must be URL encoded which means using plus signs for spaces::
 
-    engine = create_engine("mssql+pyodbc://scott:tiger@myhost:port/databasename?driver=ODBC+Driver+17+for+SQL+Server")
+    engine = create_engine(
+        "mssql+pyodbc://scott:tiger@myhost:port/databasename?driver=ODBC+Driver+17+for+SQL+Server"
+    )
 
 The ``driver`` keyword is significant to the pyodbc dialect and must be
 specified in lowercase.
@@ -69,6 +73,7 @@ internally::
 The equivalent URL can be constructed using :class:`_sa.engine.URL`::
 
     from sqlalchemy.engine import URL
+
     connection_url = URL.create(
         "mssql+pyodbc",
         username="scott",
@@ -83,7 +88,6 @@ The equivalent URL can be constructed using :class:`_sa.engine.URL`::
         },
     )
 
-
 Pass through exact Pyodbc string
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -94,8 +98,11 @@ using the parameter ``odbc_connect``.  A :class:`_sa.engine.URL` object
 can help make this easier::
 
     from sqlalchemy.engine import URL
+
     connection_string = "DRIVER={SQL Server Native Client 10.0};SERVER=dagger;DATABASE=test;UID=user;PWD=password"
-    connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
+    connection_url = URL.create(
+        "mssql+pyodbc", query={"odbc_connect": connection_string}
+    )
 
     engine = create_engine(connection_url)
 
@@ -127,7 +134,8 @@ database using Azure credentials::
     from sqlalchemy.engine.url import URL
     from azure import identity
 
-    SQL_COPT_SS_ACCESS_TOKEN = 1256  # Connection option for access tokens, as defined in msodbcsql.h
+    # Connection option for access tokens, as defined in msodbcsql.h
+    SQL_COPT_SS_ACCESS_TOKEN = 1256
     TOKEN_URL = "https://database.windows.net/"  # The token URL for any Azure SQL database
 
     connection_string = "mssql+pyodbc://@my-server.database.windows.net/myDb?driver=ODBC+Driver+17+for+SQL+Server"
@@ -136,14 +144,19 @@ database using Azure credentials::
 
     azure_credentials = identity.DefaultAzureCredential()
 
+
     @event.listens_for(engine, "do_connect")
     def provide_token(dialect, conn_rec, cargs, cparams):
         # remove the "Trusted_Connection" parameter that SQLAlchemy adds
         cargs[0] = cargs[0].replace(";Trusted_Connection=Yes", "")
 
         # create token credential
-        raw_token = azure_credentials.get_token(TOKEN_URL).token.encode("utf-16-le")
-        token_struct = struct.pack(f"<I{len(raw_token)}s", len(raw_token), raw_token)
+        raw_token = azure_credentials.get_token(TOKEN_URL).token.encode(
+            "utf-16-le"
+        )
+        token_struct = struct.pack(
+            f"<I{len(raw_token)}s", len(raw_token), raw_token
+        )
 
         # apply it to keyword arguments
         cparams["attrs_before"] = {SQL_COPT_SS_ACCESS_TOKEN: token_struct}
@@ -176,7 +189,9 @@ emit a ``.rollback()`` after an operation had a failure of some kind.
 This specific case can be handled by passing ``ignore_no_transaction_on_rollback=True`` to
 the SQL Server dialect via the :func:`_sa.create_engine` function as follows::
 
-    engine = create_engine(connection_url, ignore_no_transaction_on_rollback=True)
+    engine = create_engine(
+        connection_url, ignore_no_transaction_on_rollback=True
+    )
 
 Using the above parameter, the dialect will catch ``ProgrammingError``
 exceptions raised during ``connection.rollback()`` and emit a warning
@@ -235,7 +250,6 @@ behavior and pass long strings as varchar(max)/nvarchar(max) using the
             "LongAsMax": "Yes",
         },
     )
-
 
 Pyodbc Pooling / connection close behavior
 ------------------------------------------
@@ -301,7 +315,8 @@ Server dialect supports this parameter by passing the
 
     engine = create_engine(
         "mssql+pyodbc://scott:tiger@mssql2017:1433/test?driver=ODBC+Driver+17+for+SQL+Server",
-        fast_executemany=True)
+        fast_executemany=True,
+    )
 
 .. versionchanged:: 2.0.9 - the ``fast_executemany`` parameter now has its
    intended effect of this PyODBC feature taking effect for all INSERT

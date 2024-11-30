@@ -28,7 +28,7 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum, _StringType):
 
         E.g.::
 
-          Column('myenum', ENUM("foo", "bar", "baz"))
+          Column("myenum", ENUM("foo", "bar", "baz"))
 
         :param enums: The range of valid values for this ENUM.  Values in
           enums are not quoted, they will be escaped and surrounded by single
@@ -102,8 +102,7 @@ class SET(_StringType):
 
         E.g.::
 
-          Column('myset', SET("foo", "bar", "baz"))
-
+          Column("myset", SET("foo", "bar", "baz"))
 
         The list of potential values is required in the case that this
         set will be used to generate DDL for a table, or if the

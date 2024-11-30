@@ -192,8 +192,12 @@ the schema name ``default`` is used if no schema is present::
     Base = automap_base()
 
     Base.prepare(e, modulename_for_table=module_name_for_table)
-    Base.prepare(e, schema="test_schema", modulename_for_table=module_name_for_table)
-    Base.prepare(e, schema="test_schema_2", modulename_for_table=module_name_for_table)
+    Base.prepare(
+        e, schema="test_schema", modulename_for_table=module_name_for_table
+    )
+    Base.prepare(
+        e, schema="test_schema_2", modulename_for_table=module_name_for_table
+    )
 
 The same named-classes are organized into a hierarchical collection available
 at :attr:`.AutomapBase.by_module`.  This collection is traversed using the
@@ -550,7 +554,9 @@ SQLAlchemy can guess::
         id = Column(Integer, ForeignKey("employee.id"), primary_key=True)
         favorite_employee_id = Column(Integer, ForeignKey("employee.id"))
 
-        favorite_employee = relationship(Employee, foreign_keys=favorite_employee_id)
+        favorite_employee = relationship(
+            Employee, foreign_keys=favorite_employee_id
+        )
 
         __mapper_args__ = {
             "polymorphic_identity": "engineer",
@@ -587,12 +593,16 @@ and will emit an error on mapping.
 
 We can resolve this conflict by using an underscore as follows::
 
-    def name_for_scalar_relationship(base, local_cls, referred_cls, constraint):
+    def name_for_scalar_relationship(
+        base, local_cls, referred_cls, constraint
+    ):
         name = referred_cls.__name__.lower()
         local_table = local_cls.__table__
         if name in local_table.columns:
             newname = name + "_"
-            warnings.warn("Already detected name %s present.  using %s" % (name, newname))
+            warnings.warn(
+                "Already detected name %s present.  using %s" % (name, newname)
+            )
             return newname
         return name
 

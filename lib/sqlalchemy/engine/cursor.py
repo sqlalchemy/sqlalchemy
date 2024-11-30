@@ -1162,7 +1162,7 @@ class BufferedRowCursorFetchStrategy(CursorFetchStrategy):
 
             result = conn.execution_options(
                 stream_results=True, max_row_buffer=50
-                ).execute(text("select * from table"))
+            ).execute(text("select * from table"))
 
     .. versionadded:: 1.4 ``max_row_buffer`` may now exceed 1000 rows.
 
@@ -1756,11 +1756,9 @@ class CursorResult(Result[_T]):
 
             r1 = connection.execute(
                 users.insert().returning(
-                    users.c.user_name,
-                    users.c.user_id,
-                    sort_by_parameter_order=True
+                    users.c.user_name, users.c.user_id, sort_by_parameter_order=True
                 ),
-                user_values
+                user_values,
             )
 
             r2 = connection.execute(
@@ -1768,19 +1766,16 @@ class CursorResult(Result[_T]):
                     addresses.c.address_id,
                     addresses.c.address,
                     addresses.c.user_id,
-                    sort_by_parameter_order=True
+                    sort_by_parameter_order=True,
                 ),
-                address_values
+                address_values,
             )
 
             rows = r1.splice_horizontally(r2).all()
-            assert (
-                rows ==
-                [
-                    ("john", 1, 1, "foo@bar.com", 1),
-                    ("jack", 2, 2, "bar@bat.com", 2),
-                ]
-            )
+            assert rows == [
+                ("john", 1, 1, "foo@bar.com", 1),
+                ("jack", 2, 2, "bar@bat.com", 2),
+            ]
 
         .. versionadded:: 2.0
 
@@ -1789,7 +1784,7 @@ class CursorResult(Result[_T]):
             :meth:`.CursorResult.splice_vertically`
 
 
-        """
+        """  # noqa: E501
 
         clone = self._generate()
         total_rows = [

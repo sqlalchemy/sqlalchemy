@@ -49,7 +49,7 @@ database options and test selection.
 
 A generic pytest run looks like::
 
-    pytest -n4
+    pytest - n4
 
 Above, the full test suite will run against SQLite, using four processes.
 If the "-n" flag is not used, the pytest-xdist is skipped and the tests will

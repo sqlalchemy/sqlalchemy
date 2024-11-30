@@ -31,6 +31,7 @@ This dialect should normally be used only with the
 :func:`_asyncio.create_async_engine` engine creation function::
 
     from sqlalchemy.ext.asyncio import create_async_engine
+
     engine = create_async_engine("sqlite+aiosqlite:///filename")
 
 The URL passes through all arguments to the ``pysqlite`` driver, so all
@@ -58,11 +59,13 @@ The solution is similar to :ref:`pysqlite_serializable`. This is achieved by the
 
     engine = create_async_engine("sqlite+aiosqlite:///myfile.db")
 
+
     @event.listens_for(engine.sync_engine, "connect")
     def do_connect(dbapi_connection, connection_record):
         # disable aiosqlite's emitting of the BEGIN statement entirely.
         # also stops it from emitting COMMIT before any DDL.
         dbapi_connection.isolation_level = None
+
 
     @event.listens_for(engine.sync_engine, "begin")
     def do_begin(conn):

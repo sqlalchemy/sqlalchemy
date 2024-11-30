@@ -155,8 +155,8 @@ class ExecutableDDLElement(roles.DDLRole, Executable, BaseDDLElement):
 
         event.listen(
             users,
-            'after_create',
-            AddConstraint(constraint).execute_if(dialect='postgresql')
+            "after_create",
+            AddConstraint(constraint).execute_if(dialect="postgresql"),
         )
 
     .. seealso::
@@ -231,20 +231,20 @@ class ExecutableDDLElement(roles.DDLRole, Executable, BaseDDLElement):
         Used to provide a wrapper for event listening::
 
             event.listen(
-                        metadata,
-                        'before_create',
-                        DDL("my_ddl").execute_if(dialect='postgresql')
-                    )
+                metadata,
+                "before_create",
+                DDL("my_ddl").execute_if(dialect="postgresql"),
+            )
 
         :param dialect: May be a string or tuple of strings.
           If a string, it will be compared to the name of the
           executing database dialect::
 
-            DDL('something').execute_if(dialect='postgresql')
+            DDL("something").execute_if(dialect="postgresql")
 
           If a tuple, specifies multiple dialect names::
 
-            DDL('something').execute_if(dialect=('postgresql', 'mysql'))
+            DDL("something").execute_if(dialect=("postgresql", "mysql"))
 
         :param callable\_: A callable, which will be invoked with
           three positional arguments as well as optional keyword
@@ -342,17 +342,19 @@ class DDL(ExecutableDDLElement):
 
       from sqlalchemy import event, DDL
 
-      tbl = Table('users', metadata, Column('uid', Integer))
-      event.listen(tbl, 'before_create', DDL('DROP TRIGGER users_trigger'))
+      tbl = Table("users", metadata, Column("uid", Integer))
+      event.listen(tbl, "before_create", DDL("DROP TRIGGER users_trigger"))
 
-      spow = DDL('ALTER TABLE %(table)s SET secretpowers TRUE')
-      event.listen(tbl, 'after_create', spow.execute_if(dialect='somedb'))
+      spow = DDL("ALTER TABLE %(table)s SET secretpowers TRUE")
+      event.listen(tbl, "after_create", spow.execute_if(dialect="somedb"))
 
-      drop_spow = DDL('ALTER TABLE users SET secretpowers FALSE')
+      drop_spow = DDL("ALTER TABLE users SET secretpowers FALSE")
       connection.execute(drop_spow)
 
     When operating on Table events, the following ``statement``
-    string substitutions are available::
+    string substitutions are available:
+
+    .. sourcecode:: text
 
       %(table)s  - the Table name, with any required quoting applied
       %(schema)s - the schema name, with any required quoting applied
@@ -568,6 +570,7 @@ class CreateColumn(BaseDDLElement):
         from sqlalchemy import schema
         from sqlalchemy.ext.compiler import compiles
 
+
         @compiles(schema.CreateColumn)
         def compile(element, compiler, **kw):
             column = element.element
@@ -576,9 +579,9 @@ class CreateColumn(BaseDDLElement):
                 return compiler.visit_create_column(element, **kw)
 
             text = "%s SPECIAL DIRECTIVE %s" % (
-                    column.name,
-                    compiler.type_compiler.process(column.type)
-                )
+                column.name,
+                compiler.type_compiler.process(column.type),
+            )
             default = compiler.get_column_default_string(column)
             if default is not None:
                 text += " DEFAULT " + default
@@ -588,8 +591,8 @@ class CreateColumn(BaseDDLElement):
 
             if column.constraints:
                 text += " ".join(
-                            compiler.process(const)
-                            for const in column.constraints)
+                    compiler.process(const) for const in column.constraints
+                )
             return text
 
     The above construct can be applied to a :class:`_schema.Table`
@@ -600,17 +603,21 @@ class CreateColumn(BaseDDLElement):
 
         metadata = MetaData()
 
-        table = Table('mytable', MetaData(),
-                Column('x', Integer, info={"special":True}, primary_key=True),
-                Column('y', String(50)),
-                Column('z', String(20), info={"special":True})
-            )
+        table = Table(
+            "mytable",
+            MetaData(),
+            Column("x", Integer, info={"special": True}, primary_key=True),
+            Column("y", String(50)),
+            Column("z", String(20), info={"special": True}),
+        )
 
         metadata.create_all(conn)
 
     Above, the directives we've added to the :attr:`_schema.Column.info`
     collection
-    will be detected by our custom compilation scheme::
+    will be detected by our custom compilation scheme:
+
+    .. sourcecode:: sql
 
         CREATE TABLE mytable (
                 x SPECIAL DIRECTIVE INTEGER NOT NULL,
@@ -635,18 +642,21 @@ class CreateColumn(BaseDDLElement):
 
         from sqlalchemy.schema import CreateColumn
 
+
         @compiles(CreateColumn, "postgresql")
         def skip_xmin(element, compiler, **kw):
-            if element.element.name == 'xmin':
+            if element.element.name == "xmin":
                 return None
             else:
                 return compiler.visit_create_column(element, **kw)
 
 
-        my_table = Table('mytable', metadata,
-                    Column('id', Integer, primary_key=True),
-                    Column('xmin', Integer)
-                )
+        my_table = Table(
+            "mytable",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("xmin", Integer),
+        )
 
     Above, a :class:`.CreateTable` construct will generate a ``CREATE TABLE``
     which only includes the ``id`` column in the string; the ``xmin`` column

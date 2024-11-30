@@ -32,7 +32,9 @@ Given a hostname, port and service name of the target database, for example
 from Oracle Database's Easy Connect syntax then connect in SQLAlchemy using the
 ``service_name`` query string parameter::
 
-    engine = create_engine("oracle+cx_oracle://scott:tiger@hostname:port?service_name=myservice&encoding=UTF-8&nencoding=UTF-8")
+    engine = create_engine(
+        "oracle+cx_oracle://scott:tiger@hostname:port?service_name=myservice&encoding=UTF-8&nencoding=UTF-8"
+    )
 
 Note that the default driver value for encoding and nencoding was changed to
 “UTF-8” in cx_Oracle 8.0 so these parameters can be omitted when using that
@@ -42,13 +44,14 @@ To use a full Easy Connect string, pass it as the ``dsn`` key value in a
 :paramref:`_sa.create_engine.connect_args` dictionary::
 
     import cx_Oracle
+
     e = create_engine(
         "oracle+cx_oracle://@",
         connect_args={
             "user": "scott",
             "password": "tiger",
-            "dsn": "hostname:port/myservice?transport_connect_timeout=30&expire_time=60"
-        }
+            "dsn": "hostname:port/myservice?transport_connect_timeout=30&expire_time=60",
+        },
     )
 
 Connections with tnsnames.ora or to Oracle Autonomous Database
@@ -57,7 +60,9 @@ Connections with tnsnames.ora or to Oracle Autonomous Database
 Alternatively, if no port, database name, or service name is provided, the
 dialect will use an Oracle Database DSN "connection string".  This takes the
 "hostname" portion of the URL as the data source name.  For example, if the
-``tnsnames.ora`` file contains a TNS Alias of ``myalias`` as below::
+``tnsnames.ora`` file contains a TNS Alias of ``myalias`` as below:
+
+.. sourcecode:: text
 
     myalias =
       (DESCRIPTION =
@@ -85,7 +90,9 @@ SID Connections
 To use Oracle Database's obsolete System Identifier connection syntax, the SID
 can be passed in a "database name" portion of the URL::
 
-    engine = create_engine("oracle+cx_oracle://scott:tiger@hostname:port/dbname")
+    engine = create_engine(
+        "oracle+cx_oracle://scott:tiger@hostname:port/dbname"
+    )
 
 Above, the DSN passed to cx_Oracle is created by ``cx_Oracle.makedsn()`` as
 follows::
@@ -107,7 +114,8 @@ particular symbols like ``SYSDBA`` are intercepted and converted to the correct
 symbol::
 
     e = create_engine(
-        "oracle+cx_oracle://user:pass@dsn?encoding=UTF-8&nencoding=UTF-8&mode=SYSDBA&events=true")
+        "oracle+cx_oracle://user:pass@dsn?encoding=UTF-8&nencoding=UTF-8&mode=SYSDBA&events=true"
+    )
 
 .. versionchanged:: 1.3 the cx_Oracle dialect now accepts all argument names
    within the URL string itself, to be passed to the cx_Oracle DBAPI.   As
@@ -120,14 +128,15 @@ string, use the :paramref:`_sa.create_engine.connect_args` dictionary.
 Any cx_Oracle parameter value and/or constant may be passed, such as::
 
     import cx_Oracle
+
     e = create_engine(
         "oracle+cx_oracle://user:pass@dsn",
         connect_args={
             "encoding": "UTF-8",
             "nencoding": "UTF-8",
             "mode": cx_Oracle.SYSDBA,
-            "events": True
-        }
+            "events": True,
+        },
     )
 
 Note that the default driver value for ``encoding`` and ``nencoding`` was
@@ -142,7 +151,8 @@ itself.  These options are always passed directly to :func:`_sa.create_engine`
 , such as::
 
     e = create_engine(
-        "oracle+cx_oracle://user:pass@dsn", coerce_to_decimal=False)
+        "oracle+cx_oracle://user:pass@dsn", coerce_to_decimal=False
+    )
 
 The parameters accepted by the cx_oracle dialect are as follows:
 
@@ -184,12 +194,20 @@ SQLAlchemy's pooling::
     from sqlalchemy.pool import NullPool
 
     pool = cx_Oracle.SessionPool(
-        user="scott", password="tiger", dsn="orclpdb",
-        min=1, max=4, increment=1, threaded=True,
-        encoding="UTF-8", nencoding="UTF-8"
+        user="scott",
+        password="tiger",
+        dsn="orclpdb",
+        min=1,
+        max=4,
+        increment=1,
+        threaded=True,
+        encoding="UTF-8",
+        nencoding="UTF-8",
     )
 
-    engine = create_engine("oracle+cx_oracle://", creator=pool.acquire, poolclass=NullPool)
+    engine = create_engine(
+        "oracle+cx_oracle://", creator=pool.acquire, poolclass=NullPool
+    )
 
 The above engine may then be used normally where cx_Oracle's pool handles
 connection pooling::
@@ -220,15 +238,27 @@ This can be achieved by wrapping ``pool.acquire()``::
     from sqlalchemy.pool import NullPool
 
     pool = cx_Oracle.SessionPool(
-        user="scott", password="tiger", dsn="orclpdb",
-        min=2, max=5, increment=1, threaded=True,
-        encoding="UTF-8", nencoding="UTF-8"
+        user="scott",
+        password="tiger",
+        dsn="orclpdb",
+        min=2,
+        max=5,
+        increment=1,
+        threaded=True,
+        encoding="UTF-8",
+        nencoding="UTF-8",
     )
 
-    def creator():
-        return pool.acquire(cclass="MYCLASS", purity=cx_Oracle.ATTR_PURITY_SELF)
 
-    engine = create_engine("oracle+cx_oracle://", creator=creator, poolclass=NullPool)
+    def creator():
+        return pool.acquire(
+            cclass="MYCLASS", purity=cx_Oracle.ATTR_PURITY_SELF
+        )
+
+
+    engine = create_engine(
+        "oracle+cx_oracle://", creator=creator, poolclass=NullPool
+    )
 
 The above engine may then be used normally where cx_Oracle handles session
 pooling and Oracle Database additionally uses DRCP::
@@ -261,7 +291,9 @@ The cx_Oracle driver also supported a programmatic alternative which is to pass
 the ``encoding`` and ``nencoding`` parameters directly to its ``.connect()``
 function.  These can be present in the URL as follows::
 
-    engine = create_engine("oracle+cx_oracle://scott:tiger@tnsalias?encoding=UTF-8&nencoding=UTF-8")
+    engine = create_engine(
+        "oracle+cx_oracle://scott:tiger@tnsalias?encoding=UTF-8&nencoding=UTF-8"
+    )
 
 For the meaning of the ``encoding`` and ``nencoding`` parameters, please
 consult
@@ -355,13 +387,16 @@ objects which have a ``.key`` and a ``.type`` attribute::
 
     engine = create_engine("oracle+cx_oracle://scott:tiger@host/xe")
 
+
     @event.listens_for(engine, "do_setinputsizes")
     def _log_setinputsizes(inputsizes, cursor, statement, parameters, context):
         for bindparam, dbapitype in inputsizes.items():
-                log.info(
-                    "Bound parameter name: %s  SQLAlchemy type: %r  "
-                    "DBAPI object: %s",
-                    bindparam.key, bindparam.type, dbapitype)
+            log.info(
+                "Bound parameter name: %s  SQLAlchemy type: %r DBAPI object: %s",
+                bindparam.key,
+                bindparam.type,
+                dbapitype,
+            )
 
 Example 2 - remove all bindings to CLOB
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -374,6 +409,7 @@ series.   This setting can be modified as follows::
     from cx_Oracle import CLOB
 
     engine = create_engine("oracle+cx_oracle://scott:tiger@host/xe")
+
 
     @event.listens_for(engine, "do_setinputsizes")
     def _remove_clob(inputsizes, cursor, statement, parameters, context):
