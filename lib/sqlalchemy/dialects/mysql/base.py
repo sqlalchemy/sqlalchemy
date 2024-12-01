@@ -473,6 +473,10 @@ available.
 
     update(..., mysql_limit=10, mariadb_limit=10)
 
+* DELETE with LIMIT::
+
+    delete(..., mysql_limit=10, mariadb_limit=10)
+
 * optimizer hints, use :meth:`_expression.Select.prefix_with` and
   :meth:`_query.Query.prefix_with`::
 
@@ -1677,6 +1681,13 @@ class MySQLCompiler(compiler.SQLCompiler):
 
     def update_limit_clause(self, update_stmt):
         limit = update_stmt.kwargs.get("%s_limit" % self.dialect.name, None)
+        if limit:
+            return "LIMIT %s" % limit
+        else:
+            return None
+
+    def delete_limit_clause(self, delete_stmt):
+        limit = delete_stmt.kwargs.get("%s_limit" % self.dialect.name, None)
         if limit:
             return "LIMIT %s" % limit
         else:

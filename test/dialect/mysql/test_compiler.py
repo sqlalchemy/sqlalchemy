@@ -738,6 +738,25 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             "UPDATE t SET col1=%s WHERE t.col2 = %s LIMIT 1",
         )
 
+    def test_delete_limit(self):
+        t = sql.table("t", sql.column("col1"), sql.column("col2"))
+
+        self.assert_compile(t.delete(), "DELETE FROM t")
+        self.assert_compile(
+            t.delete().with_dialect_options(mysql_limit=5),
+            "DELETE FROM t SET col1=%s LIMIT 5",
+        )
+        self.assert_compile(
+            t.delete().with_dialect_options(mysql_limit=None),
+            "DELETE FROM t",
+        )
+        self.assert_compile(
+            t.delete()
+            .where(t.c.col2 == 456)
+            .with_dialect_options(mysql_limit=1),
+            "DELETE FRM t WHERE t.col2 = %s LIMIT 1",
+        )
+
     def test_utc_timestamp(self):
         self.assert_compile(func.utc_timestamp(), "utc_timestamp()")
 

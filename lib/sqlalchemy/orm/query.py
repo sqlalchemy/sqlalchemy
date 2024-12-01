@@ -3135,7 +3135,9 @@ class Query(
         )
 
     def delete(
-        self, synchronize_session: SynchronizeSessionArgument = "auto"
+        self,
+        synchronize_session: SynchronizeSessionArgument = "auto",
+        delete_args: Optional[Dict[Any, Any]] = None,
     ) -> int:
         r"""Perform a DELETE with an arbitrary WHERE clause.
 
@@ -3160,6 +3162,12 @@ class Query(
          :ref:`orm_expression_update_delete` for a discussion of these
          strategies.
 
+        :param delete_args: Optional dictionary, if present will be passed
+         to the underlying :func:`_expression.delete`
+         construct as the ``**kw`` for
+         the object.  May be used to pass dialect-specific arguments such
+         as ``mysql_limit``.
+
         :return: the count of rows matched as returned by the database's
           "row count" feature.
 
@@ -3169,7 +3177,9 @@ class Query(
 
         """
 
-        bulk_del = BulkDelete(self)
+        delete_args = delete_args or {}
+
+        bulk_del = BulkDelete(self, delete_args)
         if self.dispatch.before_compile_delete:
             for fn in self.dispatch.before_compile_delete:
                 new_query = fn(bulk_del.query, bulk_del)
@@ -3179,6 +3189,10 @@ class Query(
                 self = bulk_del.query
 
         delete_ = sql.delete(*self._raw_columns)  # type: ignore
+
+        if delete_args:
+            delete_ = delete_.with_dialect_options(**delete_args)
+
         delete_._where_criteria = self._where_criteria
         result: CursorResult[Any] = self.session.execute(
             delete_,
@@ -3408,6 +3422,14 @@ class BulkUpdate(BulkUD):
 
 class BulkDelete(BulkUD):
     """BulkUD which handles DELETEs."""
+
+    def __init__(
+        self,
+        query: Query[Any],
+        delete_kwargs: Optional[Dict[Any, Any]],
+    ):
+        super().__init__(query)
+        self.delete_kwargs = delete_kwargs
 
 
 class RowReturningQuery(Query[Row[Unpack[_Ts]]]):
