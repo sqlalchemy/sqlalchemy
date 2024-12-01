@@ -27,11 +27,14 @@ def _fns_in_deterministic_order():
 
 
 def process_functions(filename: str, cmd: code_writer_cmd) -> str:
-    with NamedTemporaryFile(
-        mode="w",
-        delete=False,
-        suffix=".py",
-    ) as buf, open(filename) as orig_py:
+    with (
+        NamedTemporaryFile(
+            mode="w",
+            delete=False,
+            suffix=".py",
+        ) as buf,
+        open(filename) as orig_py,
+    ):
         indent = ""
         in_block = False
 

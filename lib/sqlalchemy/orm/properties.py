@@ -280,8 +280,8 @@ class ColumnProperty(
 
                 name = Column(String(64))
                 extension = Column(String(8))
-                filename = column_property(name + '.' + extension)
-                path = column_property('C:/' + filename.expression)
+                filename = column_property(name + "." + extension)
+                path = column_property("C:/" + filename.expression)
 
         .. seealso::
 

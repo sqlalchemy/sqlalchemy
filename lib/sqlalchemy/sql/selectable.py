@@ -397,8 +397,7 @@ class HasPrefixes:
             stmt = table.insert().prefix_with("LOW_PRIORITY", dialect="mysql")
 
             # MySQL 5.7 optimizer hints
-            stmt = select(table).prefix_with(
-                "/*+ BKA(t1) */", dialect="mysql")
+            stmt = select(table).prefix_with("/*+ BKA(t1) */", dialect="mysql")
 
         Multiple prefixes can be specified by multiple calls
         to :meth:`_expression.HasPrefixes.prefix_with`.
@@ -445,8 +444,13 @@ class HasSuffixes:
 
         E.g.::
 
-            stmt = select(col1, col2).cte().suffix_with(
-                "cycle empno set y_cycle to 1 default 0", dialect="oracle")
+            stmt = (
+                select(col1, col2)
+                .cte()
+                .suffix_with(
+                    "cycle empno set y_cycle to 1 default 0", dialect="oracle"
+                )
+            )
 
         Multiple suffixes can be specified by multiple calls
         to :meth:`_expression.HasSuffixes.suffix_with`.
@@ -545,20 +549,21 @@ class HasHints:
         the table or alias. E.g. when using Oracle Database, the
         following::
 
-            select(mytable).\
-                with_hint(mytable, "index(%(name)s ix_mytable)")
+            select(mytable).with_hint(mytable, "index(%(name)s ix_mytable)")
 
-        Would render SQL as::
+        Would render SQL as:
+
+        .. sourcecode:: sql
 
             select /*+ index(mytable ix_mytable) */ ... from mytable
 
         The ``dialect_name`` option will limit the rendering of a particular
         hint to a particular backend. Such as, to add hints for both Oracle
-        Database and Sybase simultaneously::
+        Database and MSSql simultaneously::
 
-            select(mytable).\
-                with_hint(mytable, "index(%(name)s ix_mytable)", 'oracle').\
-                with_hint(mytable, "WITH INDEX ix_mytable", 'mssql')
+            select(mytable).with_hint(
+                mytable, "index(%(name)s ix_mytable)", "oracle"
+            ).with_hint(mytable, "WITH INDEX ix_mytable", "mssql")
 
         .. seealso::
 
@@ -670,11 +675,14 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
             from sqlalchemy import join
 
-            j = user_table.join(address_table,
-                            user_table.c.id == address_table.c.user_id)
+            j = user_table.join(
+                address_table, user_table.c.id == address_table.c.user_id
+            )
             stmt = select(user_table).select_from(j)
 
-        would emit SQL along the lines of::
+        would emit SQL along the lines of:
+
+        .. sourcecode:: sql
 
             SELECT user.id, user.name FROM user
             JOIN address ON user.id = address.user_id
@@ -720,15 +728,15 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
             from sqlalchemy import outerjoin
 
-            j = user_table.outerjoin(address_table,
-                            user_table.c.id == address_table.c.user_id)
+            j = user_table.outerjoin(
+                address_table, user_table.c.id == address_table.c.user_id
+            )
 
         The above is equivalent to::
 
             j = user_table.join(
-                address_table,
-                user_table.c.id == address_table.c.user_id,
-                isouter=True)
+                address_table, user_table.c.id == address_table.c.user_id, isouter=True
+            )
 
         :param right: the right side of the join; this is any
          :class:`_expression.FromClause` object such as a
@@ -750,7 +758,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
             :class:`_expression.Join`
 
-        """
+        """  # noqa: E501
 
         return Join(self, right, onclause, True, full)
 
@@ -761,7 +769,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
         E.g.::
 
-            a2 = some_table.alias('a2')
+            a2 = some_table.alias("a2")
 
         The above code creates an :class:`_expression.Alias`
         object which can be used
@@ -898,7 +906,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         This is the namespace that is used to resolve "filter_by()" type
         expressions, such as::
 
-            stmt.filter_by(address='some address')
+            stmt.filter_by(address="some address")
 
         It defaults to the ``.c`` collection, however internally it can
         be overridden using the "entity_namespace" annotation to deliver
@@ -1081,7 +1089,11 @@ class SelectLabelStyle(Enum):
         >>> from sqlalchemy import table, column, select, true, LABEL_STYLE_NONE
         >>> table1 = table("table1", column("columna"), column("columnb"))
         >>> table2 = table("table2", column("columna"), column("columnc"))
-        >>> print(select(table1, table2).join(table2, true()).set_label_style(LABEL_STYLE_NONE))
+        >>> print(
+        ...     select(table1, table2)
+        ...     .join(table2, true())
+        ...     .set_label_style(LABEL_STYLE_NONE)
+        ... )
         {printsql}SELECT table1.columna, table1.columnb, table2.columna, table2.columnc
         FROM table1 JOIN table2 ON true
 
@@ -1103,10 +1115,20 @@ class SelectLabelStyle(Enum):
 
     .. sourcecode:: pycon+sql
 
-        >>> from sqlalchemy import table, column, select, true, LABEL_STYLE_TABLENAME_PLUS_COL
+        >>> from sqlalchemy import (
+        ...     table,
+        ...     column,
+        ...     select,
+        ...     true,
+        ...     LABEL_STYLE_TABLENAME_PLUS_COL,
+        ... )
         >>> table1 = table("table1", column("columna"), column("columnb"))
         >>> table2 = table("table2", column("columna"), column("columnc"))
-        >>> print(select(table1, table2).join(table2, true()).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL))
+        >>> print(
+        ...     select(table1, table2)
+        ...     .join(table2, true())
+        ...     .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+        ... )
         {printsql}SELECT table1.columna AS table1_columna, table1.columnb AS table1_columnb, table2.columna AS table2_columna, table2.columnc AS table2_columnc
         FROM table1 JOIN table2 ON true
 
@@ -1132,10 +1154,20 @@ class SelectLabelStyle(Enum):
 
     .. sourcecode:: pycon+sql
 
-        >>> from sqlalchemy import table, column, select, true, LABEL_STYLE_DISAMBIGUATE_ONLY
+        >>> from sqlalchemy import (
+        ...     table,
+        ...     column,
+        ...     select,
+        ...     true,
+        ...     LABEL_STYLE_DISAMBIGUATE_ONLY,
+        ... )
         >>> table1 = table("table1", column("columna"), column("columnb"))
         >>> table2 = table("table2", column("columna"), column("columnc"))
-        >>> print(select(table1, table2).join(table2, true()).set_label_style(LABEL_STYLE_DISAMBIGUATE_ONLY))
+        >>> print(
+        ...     select(table1, table2)
+        ...     .join(table2, true())
+        ...     .set_label_style(LABEL_STYLE_DISAMBIGUATE_ONLY)
+        ... )
         {printsql}SELECT table1.columna, table1.columnb, table2.columna AS columna_1, table2.columnc
         FROM table1 JOIN table2 ON true
 
@@ -1533,7 +1565,9 @@ class Join(roles.DMLTableRole, FromClause):
 
             stmt = stmt.select()
 
-        The above will produce a SQL string resembling::
+        The above will produce a SQL string resembling:
+
+        .. sourcecode:: sql
 
             SELECT table_a.id, table_a.col, table_b.id, table_b.a_id
             FROM table_a JOIN table_b ON table_a.id = table_b.a_id
@@ -1767,7 +1801,9 @@ class TableValuedAlias(LateralFromClause, Alias):
     .. sourcecode:: pycon+sql
 
         >>> from sqlalchemy import select, func
-        >>> fn = func.json_array_elements_text('["one", "two", "three"]').table_valued("value")
+        >>> fn = func.json_array_elements_text('["one", "two", "three"]').table_valued(
+        ...     "value"
+        ... )
         >>> print(select(fn.c.value))
         {printsql}SELECT anon_1.value
         FROM json_array_elements_text(:json_array_elements_text_1) AS anon_1
@@ -1886,8 +1922,9 @@ class TableValuedAlias(LateralFromClause, Alias):
 
             >>> print(
             ...     select(
-            ...         func.unnest(array(["one", "two", "three"])).
-                        table_valued("x", with_ordinality="o").render_derived()
+            ...         func.unnest(array(["one", "two", "three"]))
+            ...         .table_valued("x", with_ordinality="o")
+            ...         .render_derived()
             ...     )
             ... )
             {printsql}SELECT anon_1.x, anon_1.o
@@ -1901,9 +1938,7 @@ class TableValuedAlias(LateralFromClause, Alias):
 
             >>> print(
             ...     select(
-            ...         func.json_to_recordset(
-            ...             '[{"a":1,"b":"foo"},{"a":"2","c":"bar"}]'
-            ...         )
+            ...         func.json_to_recordset('[{"a":1,"b":"foo"},{"a":"2","c":"bar"}]')
             ...         .table_valued(column("a", Integer), column("b", String))
             ...         .render_derived(with_types=True)
             ...     )
@@ -2460,16 +2495,20 @@ class HasCTE(roles.HasCTERole, SelectsRows):
         E.g.::
 
             from sqlalchemy import table, column, select
-            t = table('t', column('c1'), column('c2'))
+
+            t = table("t", column("c1"), column("c2"))
 
             ins = t.insert().values({"c1": "x", "c2": "y"}).cte()
 
             stmt = select(t).add_cte(ins)
 
-        Would render::
+        Would render:
 
-            WITH anon_1 AS
-            (INSERT INTO t (c1, c2) VALUES (:param_1, :param_2))
+        .. sourcecode:: sql
+
+            WITH anon_1 AS (
+                INSERT INTO t (c1, c2) VALUES (:param_1, :param_2)
+            )
             SELECT t.c1, t.c2
             FROM t
 
@@ -2485,9 +2524,7 @@ class HasCTE(roles.HasCTERole, SelectsRows):
 
             t = table("t", column("c1"), column("c2"))
 
-            delete_statement_cte = (
-                t.delete().where(t.c.c1 < 1).cte("deletions")
-            )
+            delete_statement_cte = t.delete().where(t.c.c1 < 1).cte("deletions")
 
             insert_stmt = insert(t).values({"c1": 1, "c2": 2})
             update_statement = insert_stmt.on_conflict_do_update(
@@ -2500,10 +2537,13 @@ class HasCTE(roles.HasCTERole, SelectsRows):
 
             print(update_statement)
 
-        The above statement renders as::
+        The above statement renders as:
 
-            WITH deletions AS
-            (DELETE FROM t WHERE t.c1 < %(c1_1)s)
+        .. sourcecode:: sql
+
+            WITH deletions AS (
+                DELETE FROM t WHERE t.c1 < %(c1_1)s
+            )
             INSERT INTO t (c1, c2) VALUES (%(c1)s, %(c2)s)
             ON CONFLICT (c1) DO UPDATE SET c1 = excluded.c1, c2 = excluded.c2
 
@@ -2527,10 +2567,8 @@ class HasCTE(roles.HasCTERole, SelectsRows):
             :paramref:`.HasCTE.cte.nesting`
 
 
-        """
-        opt = _CTEOpts(
-            nest_here,
-        )
+        """  # noqa: E501
+        opt = _CTEOpts(nest_here)
         for cte in ctes:
             cte = coercions.expect(roles.IsCTERole, cte)
             self._independent_ctes += (cte,)
@@ -2598,95 +2636,123 @@ class HasCTE(roles.HasCTERole, SelectsRows):
 
         Example 1, non recursive::
 
-            from sqlalchemy import (Table, Column, String, Integer,
-                                    MetaData, select, func)
+            from sqlalchemy import (
+                Table,
+                Column,
+                String,
+                Integer,
+                MetaData,
+                select,
+                func,
+            )
 
             metadata = MetaData()
 
-            orders = Table('orders', metadata,
-                Column('region', String),
-                Column('amount', Integer),
-                Column('product', String),
-                Column('quantity', Integer)
+            orders = Table(
+                "orders",
+                metadata,
+                Column("region", String),
+                Column("amount", Integer),
+                Column("product", String),
+                Column("quantity", Integer),
             )
 
-            regional_sales = select(
-                                orders.c.region,
-                                func.sum(orders.c.amount).label('total_sales')
-                            ).group_by(orders.c.region).cte("regional_sales")
+            regional_sales = (
+                select(orders.c.region, func.sum(orders.c.amount).label("total_sales"))
+                .group_by(orders.c.region)
+                .cte("regional_sales")
+            )
 
 
-            top_regions = select(regional_sales.c.region).\
-                    where(
-                        regional_sales.c.total_sales >
-                        select(
-                            func.sum(regional_sales.c.total_sales) / 10
-                        )
-                    ).cte("top_regions")
+            top_regions = (
+                select(regional_sales.c.region)
+                .where(
+                    regional_sales.c.total_sales
+                    > select(func.sum(regional_sales.c.total_sales) / 10)
+                )
+                .cte("top_regions")
+            )
 
-            statement = select(
-                        orders.c.region,
-                        orders.c.product,
-                        func.sum(orders.c.quantity).label("product_units"),
-                        func.sum(orders.c.amount).label("product_sales")
-                ).where(orders.c.region.in_(
-                    select(top_regions.c.region)
-                )).group_by(orders.c.region, orders.c.product)
+            statement = (
+                select(
+                    orders.c.region,
+                    orders.c.product,
+                    func.sum(orders.c.quantity).label("product_units"),
+                    func.sum(orders.c.amount).label("product_sales"),
+                )
+                .where(orders.c.region.in_(select(top_regions.c.region)))
+                .group_by(orders.c.region, orders.c.product)
+            )
 
             result = conn.execute(statement).fetchall()
 
         Example 2, WITH RECURSIVE::
 
-            from sqlalchemy import (Table, Column, String, Integer,
-                                    MetaData, select, func)
+            from sqlalchemy import (
+                Table,
+                Column,
+                String,
+                Integer,
+                MetaData,
+                select,
+                func,
+            )
 
             metadata = MetaData()
 
-            parts = Table('parts', metadata,
-                Column('part', String),
-                Column('sub_part', String),
-                Column('quantity', Integer),
+            parts = Table(
+                "parts",
+                metadata,
+                Column("part", String),
+                Column("sub_part", String),
+                Column("quantity", Integer),
             )
 
-            included_parts = select(\
-                parts.c.sub_part, parts.c.part, parts.c.quantity\
-                ).\
-                where(parts.c.part=='our part').\
-                cte(recursive=True)
+            included_parts = (
+                select(parts.c.sub_part, parts.c.part, parts.c.quantity)
+                .where(parts.c.part == "our part")
+                .cte(recursive=True)
+            )
 
 
             incl_alias = included_parts.alias()
             parts_alias = parts.alias()
             included_parts = included_parts.union_all(
                 select(
-                    parts_alias.c.sub_part,
-                    parts_alias.c.part,
-                    parts_alias.c.quantity
-                ).\
-                where(parts_alias.c.part==incl_alias.c.sub_part)
+                    parts_alias.c.sub_part, parts_alias.c.part, parts_alias.c.quantity
+                ).where(parts_alias.c.part == incl_alias.c.sub_part)
             )
 
             statement = select(
-                        included_parts.c.sub_part,
-                        func.sum(included_parts.c.quantity).
-                          label('total_quantity')
-                    ).\
-                    group_by(included_parts.c.sub_part)
+                included_parts.c.sub_part,
+                func.sum(included_parts.c.quantity).label("total_quantity"),
+            ).group_by(included_parts.c.sub_part)
 
             result = conn.execute(statement).fetchall()
 
         Example 3, an upsert using UPDATE and INSERT with CTEs::
 
             from datetime import date
-            from sqlalchemy import (MetaData, Table, Column, Integer,
-                                    Date, select, literal, and_, exists)
+            from sqlalchemy import (
+                MetaData,
+                Table,
+                Column,
+                Integer,
+                Date,
+                select,
+                literal,
+                and_,
+                exists,
+            )
 
             metadata = MetaData()
 
-            visitors = Table('visitors', metadata,
-                Column('product_id', Integer, primary_key=True),
-                Column('date', Date, primary_key=True),
-                Column('count', Integer),
+            visitors = Table(
+                "visitors",
+                metadata,
+                Column("product_id", Integer, primary_key=True),
+                Column("date", Date, primary_key=True),
+                Column("count", Integer),
             )
 
             # add 5 visitors for the product_id == 1
@@ -2696,31 +2762,31 @@ class HasCTE(roles.HasCTERole, SelectsRows):
 
             update_cte = (
                 visitors.update()
-                .where(and_(visitors.c.product_id == product_id,
-                            visitors.c.date == day))
+                .where(
+                    and_(visitors.c.product_id == product_id, visitors.c.date == day)
+                )
                 .values(count=visitors.c.count + count)
                 .returning(literal(1))
-                .cte('update_cte')
+                .cte("update_cte")
             )
 
             upsert = visitors.insert().from_select(
                 [visitors.c.product_id, visitors.c.date, visitors.c.count],
-                select(literal(product_id), literal(day), literal(count))
-                    .where(~exists(update_cte.select()))
+                select(literal(product_id), literal(day), literal(count)).where(
+                    ~exists(update_cte.select())
+                ),
             )
 
             connection.execute(upsert)
 
         Example 4, Nesting CTE (SQLAlchemy 1.4.24 and above)::
 
-            value_a = select(
-                literal("root").label("n")
-            ).cte("value_a")
+            value_a = select(literal("root").label("n")).cte("value_a")
 
             # A nested CTE with the same name as the root one
-            value_a_nested = select(
-                literal("nesting").label("n")
-            ).cte("value_a", nesting=True)
+            value_a_nested = select(literal("nesting").label("n")).cte(
+                "value_a", nesting=True
+            )
 
             # Nesting CTEs takes ascendency locally
             # over the CTEs at a higher level
@@ -2729,7 +2795,9 @@ class HasCTE(roles.HasCTERole, SelectsRows):
             value_ab = select(value_a.c.n.label("a"), value_b.c.n.label("b"))
 
         The above query will render the second CTE nested inside the first,
-        shown with inline parameters below as::
+        shown with inline parameters below as:
+
+        .. sourcecode:: sql
 
             WITH
                 value_a AS
@@ -2744,21 +2812,17 @@ class HasCTE(roles.HasCTERole, SelectsRows):
         The same CTE can be set up using the :meth:`.HasCTE.add_cte` method
         as follows (SQLAlchemy 2.0 and above)::
 
-            value_a = select(
-                literal("root").label("n")
-            ).cte("value_a")
+            value_a = select(literal("root").label("n")).cte("value_a")
 
             # A nested CTE with the same name as the root one
-            value_a_nested = select(
-                literal("nesting").label("n")
-            ).cte("value_a")
+            value_a_nested = select(literal("nesting").label("n")).cte("value_a")
 
             # Nesting CTEs takes ascendency locally
             # over the CTEs at a higher level
             value_b = (
-                select(value_a_nested.c.n).
-                add_cte(value_a_nested, nest_here=True).
-                cte("value_b")
+                select(value_a_nested.c.n)
+                .add_cte(value_a_nested, nest_here=True)
+                .cte("value_b")
             )
 
             value_ab = select(value_a.c.n.label("a"), value_b.c.n.label("b"))
@@ -2773,9 +2837,7 @@ class HasCTE(roles.HasCTERole, SelectsRows):
                 Column("right", Integer),
             )
 
-            root_node = select(literal(1).label("node")).cte(
-                "nodes", recursive=True
-            )
+            root_node = select(literal(1).label("node")).cte("nodes", recursive=True)
 
             left_edge = select(edge.c.left).join(
                 root_node, edge.c.right == root_node.c.node
@@ -2788,7 +2850,9 @@ class HasCTE(roles.HasCTERole, SelectsRows):
 
             subgraph = select(subgraph_cte)
 
-        The above query will render 2 UNIONs inside the recursive CTE::
+        The above query will render 2 UNIONs inside the recursive CTE:
+
+        .. sourcecode:: sql
 
             WITH RECURSIVE nodes(node) AS (
                     SELECT 1 AS node
@@ -2806,7 +2870,7 @@ class HasCTE(roles.HasCTERole, SelectsRows):
             :meth:`_orm.Query.cte` - ORM version of
             :meth:`_expression.HasCTE.cte`.
 
-        """
+        """  # noqa: E501
         return CTE._construct(
             self, name=name, recursive=recursive, nesting=nesting
         )
@@ -2963,10 +3027,11 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
 
         from sqlalchemy import table, column
 
-        user = table("user",
-                column("id"),
-                column("name"),
-                column("description"),
+        user = table(
+            "user",
+            column("id"),
+            column("name"),
+            column("description"),
         )
 
     The :class:`_expression.TableClause` construct serves as the base for
@@ -3072,7 +3137,7 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
 
         E.g.::
 
-            table.insert().values(name='foo')
+            table.insert().values(name="foo")
 
         See :func:`_expression.insert` for argument and usage information.
 
@@ -3087,7 +3152,7 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
 
         E.g.::
 
-            table.update().where(table.c.id==7).values(name='foo')
+            table.update().where(table.c.id == 7).values(name="foo")
 
         See :func:`_expression.update` for argument and usage information.
 
@@ -3103,7 +3168,7 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
 
         E.g.::
 
-            table.delete().where(table.c.id==7)
+            table.delete().where(table.c.id == 7)
 
         See :func:`_expression.delete` for argument and usage information.
 
@@ -3291,7 +3356,7 @@ class Values(roles.InElementRole, Generative, LateralFromClause):
 
         E.g.::
 
-            my_values = my_values.data([(1, 'value 1'), (2, 'value2')])
+            my_values = my_values.data([(1, "value 1"), (2, "value2")])
 
         :param values: a sequence (i.e. list) of tuples that map to the
          column expressions given in the :class:`_expression.Values`
@@ -3597,7 +3662,9 @@ class SelectBase(
 
             stmt = select(table.c.id, table.c.name)
 
-        The above statement might look like::
+        The above statement might look like:
+
+        .. sourcecode:: sql
 
             SELECT table.id, table.name FROM table
 
@@ -3608,7 +3675,9 @@ class SelectBase(
             subq = stmt.subquery()
             new_stmt = select(subq)
 
-        The above renders as::
+        The above renders as:
+
+        .. sourcecode:: sql
 
             SELECT anon_1.id, anon_1.name
             FROM (SELECT table.id, table.name FROM table) AS anon_1
@@ -3803,12 +3872,16 @@ class GenerativeSelect(SelectBase, Generative):
             stmt = select(table).with_for_update(nowait=True)
 
         On a database like PostgreSQL or Oracle Database, the above would
-        render a statement like::
+        render a statement like:
+
+        .. sourcecode:: sql
 
             SELECT table.a, table.b FROM table FOR UPDATE NOWAIT
 
         on other backends, the ``nowait`` option is ignored and instead
-        would produce::
+        would produce:
+
+        .. sourcecode:: sql
 
             SELECT table.a, table.b FROM table FOR UPDATE
 
@@ -4227,8 +4300,7 @@ class GenerativeSelect(SelectBase, Generative):
 
         e.g.::
 
-            stmt = select(table.c.name, func.max(table.c.stat)).\
-            group_by(table.c.name)
+            stmt = select(table.c.name, func.max(table.c.stat)).group_by(table.c.name)
 
         :param \*clauses: a series of :class:`_expression.ColumnElement`
          constructs
@@ -4241,7 +4313,7 @@ class GenerativeSelect(SelectBase, Generative):
 
             :ref:`tutorial_order_by_label` - in the :ref:`unified_tutorial`
 
-        """
+        """  # noqa: E501
 
         if not clauses and __first is None:
             self._group_by_clauses = ()
@@ -5322,11 +5394,17 @@ class Select(
 
         E.g.::
 
-            stmt = select(user_table).join(address_table, user_table.c.id == address_table.c.user_id)
+            stmt = select(user_table).join(
+                address_table, user_table.c.id == address_table.c.user_id
+            )
 
-        The above statement generates SQL similar to::
+        The above statement generates SQL similar to:
 
-            SELECT user.id, user.name FROM user JOIN address ON user.id = address.user_id
+        .. sourcecode:: sql
+
+            SELECT user.id, user.name
+            FROM user
+            JOIN address ON user.id = address.user_id
 
         .. versionchanged:: 1.4 :meth:`_expression.Select.join` now creates
            a :class:`_sql.Join` object between a :class:`_sql.FromClause`
@@ -5430,7 +5508,9 @@ class Select(
                 user_table, address_table, user_table.c.id == address_table.c.user_id
             )
 
-        The above statement generates SQL similar to::
+        The above statement generates SQL similar to:
+
+        .. sourcecode:: sql
 
             SELECT user.id, user.name, address.id, address.email, address.user_id
             FROM user JOIN address ON user.id = address.user_id
@@ -6049,9 +6129,12 @@ class Select(
         E.g.::
 
             from sqlalchemy import select
+
             stmt = select(users_table.c.id, users_table.c.name).distinct()
 
-        The above would produce an statement resembling::
+        The above would produce an statement resembling:
+
+        .. sourcecode:: sql
 
             SELECT DISTINCT user.id, user.name FROM user
 
@@ -6087,12 +6170,11 @@ class Select(
 
         E.g.::
 
-            table1 = table('t1', column('a'))
-            table2 = table('t2', column('b'))
-            s = select(table1.c.a).\
-                select_from(
-                    table1.join(table2, table1.c.a==table2.c.b)
-                )
+            table1 = table("t1", column("a"))
+            table2 = table("t2", column("b"))
+            s = select(table1.c.a).select_from(
+                table1.join(table2, table1.c.a == table2.c.b)
+            )
 
         The "from" list is a unique set on the identity of each element,
         so adding an already present :class:`_schema.Table`
@@ -6111,7 +6193,7 @@ class Select(
         if desired, in the case that the FROM clause cannot be fully
         derived from the columns clause::
 
-            select(func.count('*')).select_from(table1)
+            select(func.count("*")).select_from(table1)
 
         """
 
@@ -6264,8 +6346,8 @@ class Select(
         :class:`_expression.ColumnElement` objects are directly present as they
         were given, e.g.::
 
-            col1 = column('q', Integer)
-            col2 = column('p', Integer)
+            col1 = column("q", Integer)
+            col2 = column("p", Integer)
             stmt = select(col1, col2)
 
         Above, ``stmt.selected_columns`` would be a collection that contains
@@ -6280,7 +6362,8 @@ class Select(
         criteria, e.g.::
 
             def filter_on_id(my_select, id):
-                return my_select.where(my_select.selected_columns['id'] == id)
+                return my_select.where(my_select.selected_columns["id"] == id)
+
 
             stmt = select(MyModel)
 
@@ -6736,7 +6819,9 @@ class Exists(UnaryExpression[bool]):
 
             stmt = exists(some_table.c.id).where(some_table.c.id == 5).select()
 
-        This will produce a statement resembling::
+        This will produce a statement resembling:
+
+        .. sourcecode:: sql
 
             SELECT EXISTS (SELECT id FROM some_table WHERE some_table = :param) AS anon_1
 

@@ -35,22 +35,26 @@ class aggregate_order_by(expression.ColumnElement):
     E.g.::
 
         from sqlalchemy.dialects.postgresql import aggregate_order_by
+
         expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
         stmt = select(expr)
 
-    would represent the expression::
+    would represent the expression:
+
+    .. sourcecode:: sql
 
         SELECT array_agg(a ORDER BY b DESC) FROM table;
 
     Similarly::
 
         expr = func.string_agg(
-            table.c.a,
-            aggregate_order_by(literal_column("','"), table.c.a)
+            table.c.a, aggregate_order_by(literal_column("','"), table.c.a)
         )
         stmt = select(expr)
 
-    Would represent::
+    Would represent:
+
+    .. sourcecode:: sql
 
         SELECT string_agg(a, ',' ORDER BY a) FROM table;
 
@@ -131,10 +135,10 @@ class ExcludeConstraint(ColumnCollectionConstraint):
         E.g.::
 
             const = ExcludeConstraint(
-                (Column('period'), '&&'),
-                (Column('group'), '='),
-                where=(Column('group') != 'some group'),
-                ops={'group': 'my_operator_class'}
+                (Column("period"), "&&"),
+                (Column("group"), "="),
+                where=(Column("group") != "some group"),
+                ops={"group": "my_operator_class"},
             )
 
         The constraint is normally embedded into the :class:`_schema.Table`
@@ -142,19 +146,20 @@ class ExcludeConstraint(ColumnCollectionConstraint):
         directly, or added later using :meth:`.append_constraint`::
 
             some_table = Table(
-                'some_table', metadata,
-                Column('id', Integer, primary_key=True),
-                Column('period', TSRANGE()),
-                Column('group', String)
+                "some_table",
+                metadata,
+                Column("id", Integer, primary_key=True),
+                Column("period", TSRANGE()),
+                Column("group", String),
             )
 
             some_table.append_constraint(
                 ExcludeConstraint(
-                    (some_table.c.period, '&&'),
-                    (some_table.c.group, '='),
-                    where=some_table.c.group != 'some group',
-                    name='some_table_excl_const',
-                    ops={'group': 'my_operator_class'}
+                    (some_table.c.period, "&&"),
+                    (some_table.c.group, "="),
+                    where=some_table.c.group != "some group",
+                    name="some_table_excl_const",
+                    ops={"group": "my_operator_class"},
                 )
             )
 

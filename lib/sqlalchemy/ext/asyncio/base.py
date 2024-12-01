@@ -224,7 +224,9 @@ def asyncstartablecontext(
     ``@contextlib.asynccontextmanager`` supports, and the usage pattern
     is different as well.
 
-    Typical usage::
+    Typical usage:
+
+    .. sourcecode:: text
 
         @asyncstartablecontext
         async def some_async_generator(<arguments>):

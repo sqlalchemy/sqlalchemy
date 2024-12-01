@@ -29,9 +29,12 @@ Specifying GENERATED AS IDENTITY (Oracle Database 12 and above)
 Starting from version 12, Oracle Database can make use of identity columns
 using the :class:`_sql.Identity` to specify the autoincrementing behavior::
 
-    t = Table('mytable', metadata,
-        Column('id', Integer, Identity(start=3), primary_key=True),
-        Column(...), ...
+    t = Table(
+        "mytable",
+        metadata,
+        Column("id", Integer, Identity(start=3), primary_key=True),
+        Column(...),
+        ...,
     )
 
 The CREATE TABLE for the above :class:`_schema.Table` object would be:
@@ -68,16 +71,21 @@ which assume the usage of an autoincrement-capable database.  To specify
 sequences, use the sqlalchemy.schema.Sequence object which is passed to a
 Column construct::
 
-  t = Table('mytable', metadata,
-        Column('id', Integer, Sequence('id_seq', start=1), primary_key=True),
-        Column(...), ...
+  t = Table(
+      "mytable",
+      metadata,
+      Column("id", Integer, Sequence("id_seq", start=1), primary_key=True),
+      Column(...),
+      ...,
   )
 
 This step is also required when using table reflection, i.e. autoload_with=engine::
 
-  t = Table('mytable', metadata,
-        Column('id', Integer, Sequence('id_seq', start=1), primary_key=True),
-        autoload_with=engine
+  t = Table(
+      "mytable",
+      metadata,
+      Column("id", Integer, Sequence("id_seq", start=1), primary_key=True),
+      autoload_with=engine,
   )
 
 In addition to the standard options, Oracle Database supports the following
@@ -103,9 +111,7 @@ python-oracledb and cx_Oracle dialects.
 To set using per-connection execution options::
 
     connection = engine.connect()
-    connection = connection.execution_options(
-        isolation_level="AUTOCOMMIT"
-    )
+    connection = connection.execution_options(isolation_level="AUTOCOMMIT")
 
 For ``READ COMMITTED`` and ``SERIALIZABLE``, the Oracle Database dialects sets
 the level at the session level using ``ALTER SESSION``, which is reverted back
@@ -189,7 +195,8 @@ change and the value given will be used as is::
 
     engine = create_engine(
         "oracle+oracledb://scott:tiger@localhost:1521?service_name=freepdb1",
-        max_identifier_length=30)
+        max_identifier_length=30,
+    )
 
 If :paramref:`_sa.create_engine.max_identifier_length` is not set, the oracledb
 dialect internally uses the ``max_identifier_length`` attribute available on
@@ -239,12 +246,16 @@ identifier length::
     oracle_dialect = oracle.dialect(max_identifier_length=30)
     print(CreateIndex(ix).compile(dialect=oracle_dialect))
 
-With an identifier length of 30, the above CREATE INDEX looks like::
+With an identifier length of 30, the above CREATE INDEX looks like:
+
+.. sourcecode:: sql
 
     CREATE INDEX ix_some_column_name_1s_70cd ON t
     (some_column_name_1, some_column_name_2, some_column_name_3)
 
 However with length of 128, it becomes::
+
+.. sourcecode:: sql
 
     CREATE INDEX ix_some_column_name_1some_column_name_2some_column_name_3 ON t
     (some_column_name_1, some_column_name_2, some_column_name_3)
@@ -376,8 +387,9 @@ for tables indicated by synonyms, either in local or remote schemas or
 accessed over DBLINK, by passing the flag ``oracle_resolve_synonyms=True`` as
 a keyword argument to the :class:`_schema.Table` construct::
 
-    some_table = Table('some_table', autoload_with=some_engine,
-                                oracle_resolve_synonyms=True)
+    some_table = Table(
+        "some_table", autoload_with=some_engine, oracle_resolve_synonyms=True
+    )
 
 When this flag is set, the given name (such as ``some_table`` above) will be
 searched not just in the ``ALL_TABLES`` view, but also within the
@@ -422,10 +434,13 @@ Note the following caveats:
 
       from sqlalchemy import create_engine, inspect
 
-      engine = create_engine("oracle+oracledb://scott:tiger@localhost:1521?service_name=freepdb1")
+      engine = create_engine(
+          "oracle+oracledb://scott:tiger@localhost:1521?service_name=freepdb1"
+      )
       inspector = inspect(engine)
       all_check_constraints = inspector.get_check_constraints(
-          "some_table", include_all=True)
+          "some_table", include_all=True
+      )
 
 * in most cases, when reflecting a :class:`_schema.Table`, a UNIQUE constraint
   will **not** be available as a :class:`.UniqueConstraint` object, as Oracle
@@ -455,8 +470,9 @@ the ``exclude_tablespaces`` parameter::
 
     # exclude SYSAUX and SOME_TABLESPACE, but not SYSTEM
     e = create_engine(
-      "oracle+oracledb://scott:tiger@localhost:1521/?service_name=freepdb1",
-      exclude_tablespaces=["SYSAUX", "SOME_TABLESPACE"])
+        "oracle+oracledb://scott:tiger@localhost:1521/?service_name=freepdb1",
+        exclude_tablespaces=["SYSAUX", "SOME_TABLESPACE"],
+    )
 
 DateTime Compatibility
 ----------------------
@@ -481,30 +497,35 @@ dialects in conjunction with the :class:`_schema.Table` construct:
 * ``ON COMMIT``::
 
     Table(
-        "some_table", metadata, ...,
-        prefixes=['GLOBAL TEMPORARY'], oracle_on_commit='PRESERVE ROWS')
+        "some_table",
+        metadata,
+        ...,
+        prefixes=["GLOBAL TEMPORARY"],
+        oracle_on_commit="PRESERVE ROWS",
+    )
 
-* ``COMPRESS``::
+*
+  ``COMPRESS``::
 
-    Table('mytable', metadata, Column('data', String(32)),
-        oracle_compress=True)
+     Table(
+         "mytable", metadata, Column("data", String(32)), oracle_compress=True
+     )
 
-    Table('mytable', metadata, Column('data', String(32)),
-        oracle_compress=6)
+     Table("mytable", metadata, Column("data", String(32)), oracle_compress=6)
 
-   The ``oracle_compress`` parameter accepts either an integer compression
-   level, or ``True`` to use the default compression level.
+  The ``oracle_compress`` parameter accepts either an integer compression
+  level, or ``True`` to use the default compression level.
 
-* ``TABLESPACE``::
+*
+  ``TABLESPACE``::
 
-    Table('mytable', metadata, ...,
-        oracle_tablespace="EXAMPLE_TABLESPACE")
+     Table("mytable", metadata, ..., oracle_tablespace="EXAMPLE_TABLESPACE")
 
-    The ``oracle_tablespace`` parameter specifies the tablespace in which the
-    table is to be created. This is useful when you want to create a table in a
-    tablespace other than the default tablespace of the user.
+  The ``oracle_tablespace`` parameter specifies the tablespace in which the
+  table is to be created. This is useful when you want to create a table in a
+  tablespace other than the default tablespace of the user.
 
-    .. versionadded:: 2.0.37
+  .. versionadded:: 2.0.37
 
 .. _oracle_index_options:
 
@@ -517,7 +538,7 @@ Bitmap Indexes
 You can specify the ``oracle_bitmap`` parameter to create a bitmap index
 instead of a B-tree index::
 
-    Index('my_index', my_table.c.data, oracle_bitmap=True)
+    Index("my_index", my_table.c.data, oracle_bitmap=True)
 
 Bitmap indexes cannot be unique and cannot be compressed. SQLAlchemy will not
 check for such limitations, only the database will.
@@ -529,10 +550,15 @@ Oracle Database has a more efficient storage mode for indexes containing lots
 of repeated values. Use the ``oracle_compress`` parameter to turn on key
 compression::
 
-    Index('my_index', my_table.c.data, oracle_compress=True)
+    Index("my_index", my_table.c.data, oracle_compress=True)
 
-    Index('my_index', my_table.c.data1, my_table.c.data2, unique=True,
-           oracle_compress=1)
+    Index(
+        "my_index",
+        my_table.c.data1,
+        my_table.c.data2,
+        unique=True,
+        oracle_compress=1,
+    )
 
 The ``oracle_compress`` parameter accepts either an integer specifying the
 number of prefix columns to compress, or ``True`` to use the default (all

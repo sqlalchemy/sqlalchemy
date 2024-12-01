@@ -207,7 +207,7 @@ def synonym_for(
     :paramref:`.orm.synonym.descriptor` parameter::
 
         class MyClass(Base):
-            __tablename__ = 'my_table'
+            __tablename__ = "my_table"
 
             id = Column(Integer, primary_key=True)
             _job_status = Column("job_status", String(50))
@@ -373,20 +373,21 @@ class declared_attr(interfaces._MappedAttribute[_T], _declared_attr_common):
     for subclasses::
 
         class Employee(Base):
-            __tablename__ = 'employee'
+            __tablename__ = "employee"
 
             id: Mapped[int] = mapped_column(primary_key=True)
             type: Mapped[str] = mapped_column(String(50))
 
             @declared_attr.directive
             def __mapper_args__(cls) -> Dict[str, Any]:
-                if cls.__name__ == 'Employee':
+                if cls.__name__ == "Employee":
                     return {
-                            "polymorphic_on":cls.type,
-                            "polymorphic_identity":"Employee"
+                        "polymorphic_on": cls.type,
+                        "polymorphic_identity": "Employee",
                     }
                 else:
-                    return {"polymorphic_identity":cls.__name__}
+                    return {"polymorphic_identity": cls.__name__}
+
 
         class Engineer(Employee):
             pass
@@ -485,6 +486,7 @@ def declarative_mixin(cls: Type[_T]) -> Type[_T]:
         from sqlalchemy.orm import declared_attr
         from sqlalchemy.orm import declarative_mixin
 
+
         @declarative_mixin
         class MyMixin:
 
@@ -492,10 +494,11 @@ def declarative_mixin(cls: Type[_T]) -> Type[_T]:
             def __tablename__(cls):
                 return cls.__name__.lower()
 
-            __table_args__ = {'mysql_engine': 'InnoDB'}
-            __mapper_args__= {'always_refresh': True}
+            __table_args__ = {"mysql_engine": "InnoDB"}
+            __mapper_args__ = {"always_refresh": True}
 
-            id =  Column(Integer, primary_key=True)
+            id = Column(Integer, primary_key=True)
+
 
         class MyModel(MyMixin, Base):
             name = Column(String(1000))
@@ -638,9 +641,9 @@ class DeclarativeBase(
 
         from sqlalchemy.orm import DeclarativeBase
 
+
         class Base(DeclarativeBase):
             pass
-
 
     The above ``Base`` class is now usable as the base for new declarative
     mappings.  The superclass makes use of the ``__init_subclass__()``
@@ -664,11 +667,12 @@ class DeclarativeBase(
         bigint = Annotated[int, "bigint"]
         my_metadata = MetaData()
 
+
         class Base(DeclarativeBase):
             metadata = my_metadata
             type_annotation_map = {
                 str: String().with_variant(String(255), "mysql", "mariadb"),
-                bigint: BigInteger()
+                bigint: BigInteger(),
             }
 
     Class-level attributes which may be specified include:
@@ -1480,6 +1484,7 @@ class registry:
 
             Base = mapper_registry.generate_base()
 
+
             class MyClass(Base):
                 __tablename__ = "my_table"
                 id = Column(Integer, primary_key=True)
@@ -1491,6 +1496,7 @@ class registry:
             from sqlalchemy.orm.decl_api import DeclarativeMeta
 
             mapper_registry = registry()
+
 
             class Base(metaclass=DeclarativeMeta):
                 __abstract__ = True
@@ -1659,9 +1665,10 @@ class registry:
 
             mapper_registry = registry()
 
+
             @mapper_registry.mapped
             class Foo:
-                __tablename__ = 'some_table'
+                __tablename__ = "some_table"
 
                 id = Column(Integer, primary_key=True)
                 name = Column(String)
@@ -1701,15 +1708,17 @@ class registry:
 
             mapper_registry = registry()
 
+
             @mapper_registry.as_declarative_base()
             class Base:
                 @declared_attr
                 def __tablename__(cls):
                     return cls.__name__.lower()
+
                 id = Column(Integer, primary_key=True)
 
-            class MyMappedClass(Base):
-                # ...
+
+            class MyMappedClass(Base): ...
 
         All keyword arguments passed to
         :meth:`_orm.registry.as_declarative_base` are passed
@@ -1739,11 +1748,13 @@ class registry:
 
             mapper_registry = registry()
 
+
             class Foo:
-                __tablename__ = 'some_table'
+                __tablename__ = "some_table"
 
                 id = Column(Integer, primary_key=True)
                 name = Column(String)
+
 
             mapper = mapper_registry.map_declaratively(Foo)
 
@@ -1797,11 +1808,13 @@ class registry:
             my_table = Table(
                 "my_table",
                 mapper_registry.metadata,
-                Column('id', Integer, primary_key=True)
+                Column("id", Integer, primary_key=True),
             )
+
 
             class MyClass:
                 pass
+
 
             mapper_registry.map_imperatively(MyClass, my_table)
 
@@ -1849,15 +1862,17 @@ def as_declarative(**kw: Any) -> Callable[[Type[_T]], Type[_T]]:
 
         from sqlalchemy.orm import as_declarative
 
+
         @as_declarative()
         class Base:
             @declared_attr
             def __tablename__(cls):
                 return cls.__name__.lower()
+
             id = Column(Integer, primary_key=True)
 
-        class MyMappedClass(Base):
-            # ...
+
+        class MyMappedClass(Base): ...
 
     .. seealso::
 

@@ -433,7 +433,9 @@ class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
     that points to itself, e.g. within a SQL function or similar.
     The test is against a materialized path setup.
 
-    this is an **extremely** unusual case::
+    this is an **extremely** unusual case:
+
+    .. sourcecode:: text
 
         Entity
         ------
@@ -1024,7 +1026,9 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
     the relationship(), one col points
     to itself in the same table.
 
-    this is a very unusual case::
+    this is a very unusual case:
+
+    .. sourcecode:: text
 
         company         employee
         ----------      ----------

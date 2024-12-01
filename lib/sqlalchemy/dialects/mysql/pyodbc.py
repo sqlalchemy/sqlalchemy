@@ -30,14 +30,15 @@ r"""
 Pass through exact pyodbc connection string::
 
     import urllib
+
     connection_string = (
-        'DRIVER=MySQL ODBC 8.0 ANSI Driver;'
-        'SERVER=localhost;'
-        'PORT=3307;'
-        'DATABASE=mydb;'
-        'UID=root;'
-        'PWD=(whatever);'
-        'charset=utf8mb4;'
+        "DRIVER=MySQL ODBC 8.0 ANSI Driver;"
+        "SERVER=localhost;"
+        "PORT=3307;"
+        "DATABASE=mydb;"
+        "UID=root;"
+        "PWD=(whatever);"
+        "charset=utf8mb4;"
     )
     params = urllib.parse.quote_plus(connection_string)
     connection_uri = "mysql+pyodbc:///?odbc_connect=%s" % params

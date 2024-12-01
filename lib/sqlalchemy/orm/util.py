@@ -475,9 +475,7 @@ def identity_key(
 
       E.g.::
 
-        >>> row = engine.execute(\
-            text("select * from table where a=1 and b=2")\
-            ).first()
+        >>> row = engine.execute(text("select * from table where a=1 and b=2")).first()
         >>> identity_key(MyClass, row=row)
         (<class '__main__.MyClass'>, (1, 2), None)
 
@@ -488,7 +486,7 @@ def identity_key(
 
         .. versionadded:: 1.2 added identity_token
 
-    """
+    """  # noqa: E501
     if class_ is not None:
         mapper = class_mapper(class_)
         if row is None:
@@ -666,9 +664,9 @@ class AliasedClass(
 
         # find all pairs of users with the same name
         user_alias = aliased(User)
-        session.query(User, user_alias).\
-                        join((user_alias, User.id > user_alias.id)).\
-                        filter(User.name == user_alias.name)
+        session.query(User, user_alias).join(
+            (user_alias, User.id > user_alias.id)
+        ).filter(User.name == user_alias.name)
 
     :class:`.AliasedClass` is also capable of mapping an existing mapped
     class to an entirely new selectable, provided this selectable is column-
@@ -692,6 +690,7 @@ class AliasedClass(
     using :func:`_sa.inspect`::
 
         from sqlalchemy import inspect
+
         my_alias = aliased(MyClass)
         insp = inspect(my_alias)
 
@@ -1601,8 +1600,7 @@ class Bundle(
 
             bn = Bundle("mybundle", MyClass.x, MyClass.y)
 
-            for row in session.query(bn).filter(
-                    bn.c.x == 5).filter(bn.c.y == 4):
+            for row in session.query(bn).filter(bn.c.x == 5).filter(bn.c.y == 4):
                 print(row.mybundle.x, row.mybundle.y)
 
         :param name: name of the bundle.
@@ -1611,7 +1609,7 @@ class Bundle(
          can be returned as a "single entity" outside of any enclosing tuple
          in the same manner as a mapped entity.
 
-        """
+        """  # noqa: E501
         self.name = self._label = name
         coerced_exprs = [
             coercions.expect(
@@ -1666,19 +1664,19 @@ class Bundle(
 
         Nesting of bundles is also supported::
 
-            b1 = Bundle("b1",
-                    Bundle('b2', MyClass.a, MyClass.b),
-                    Bundle('b3', MyClass.x, MyClass.y)
-                )
+            b1 = Bundle(
+                "b1",
+                Bundle("b2", MyClass.a, MyClass.b),
+                Bundle("b3", MyClass.x, MyClass.y),
+            )
 
-            q = sess.query(b1).filter(
-                b1.c.b2.c.a == 5).filter(b1.c.b3.c.y == 9)
+            q = sess.query(b1).filter(b1.c.b2.c.a == 5).filter(b1.c.b3.c.y == 9)
 
     .. seealso::
 
         :attr:`.Bundle.c`
 
-    """
+    """  # noqa: E501
 
     c: ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]
     """An alias for :attr:`.Bundle.columns`."""
@@ -1744,25 +1742,24 @@ class Bundle(
 
             from sqlalchemy.orm import Bundle
 
+
             class DictBundle(Bundle):
                 def create_row_processor(self, query, procs, labels):
-                    'Override create_row_processor to return values as
-                    dictionaries'
+                    "Override create_row_processor to return values as dictionaries"
 
                     def proc(row):
-                        return dict(
-                            zip(labels, (proc(row) for proc in procs))
-                        )
+                        return dict(zip(labels, (proc(row) for proc in procs)))
+
                     return proc
 
         A result from the above :class:`_orm.Bundle` will return dictionary
         values::
 
-            bn = DictBundle('mybundle', MyClass.data1, MyClass.data2)
-            for row in session.execute(select(bn)).where(bn.c.data1 == 'd1'):
-                print(row.mybundle['data1'], row.mybundle['data2'])
+            bn = DictBundle("mybundle", MyClass.data1, MyClass.data2)
+            for row in session.execute(select(bn)).where(bn.c.data1 == "d1"):
+                print(row.mybundle["data1"], row.mybundle["data2"])
 
-        """
+        """  # noqa: E501
         keyed_tuple = result_tuple(labels, [() for l in labels])
 
         def proc(row: Row[Unpack[TupleAny]]) -> Any:
@@ -1988,7 +1985,6 @@ def with_parent(
 
         stmt = select(Address).where(with_parent(some_user, User.addresses))
 
-
     The SQL rendered is the same as that rendered when a lazy loader
     would fire off from the given parent on that attribute, meaning
     that the appropriate state is taken from the parent object in
@@ -2001,9 +1997,7 @@ def with_parent(
 
         a1 = aliased(Address)
         a2 = aliased(Address)
-        stmt = select(a1, a2).where(
-            with_parent(u1, User.addresses.of_type(a2))
-        )
+        stmt = select(a1, a2).where(with_parent(u1, User.addresses.of_type(a2)))
 
     The above use is equivalent to using the
     :func:`_orm.with_parent.from_entity` argument::
@@ -2028,7 +2022,7 @@ def with_parent(
 
       .. versionadded:: 1.2
 
-    """
+    """  # noqa: E501
     prop_t: RelationshipProperty[Any]
 
     if isinstance(prop, str):
@@ -2122,13 +2116,12 @@ def _entity_corresponds_to_use_path_impl(
         someoption(A).someoption(C.d)  # -> fn(A, C) -> False
 
         a1 = aliased(A)
-        someoption(a1).someoption(A.b) # -> fn(a1, A) -> False
-        someoption(a1).someoption(a1.b) # -> fn(a1, a1) -> True
+        someoption(a1).someoption(A.b)  # -> fn(a1, A) -> False
+        someoption(a1).someoption(a1.b)  # -> fn(a1, a1) -> True
 
         wp = with_polymorphic(A, [A1, A2])
         someoption(wp).someoption(A1.foo)  # -> fn(wp, A1) -> False
         someoption(wp).someoption(wp.A1.foo)  # -> fn(wp, wp.A1) -> True
-
 
     """
     if insp_is_aliased_class(given):

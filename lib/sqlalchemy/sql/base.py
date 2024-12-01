@@ -479,7 +479,7 @@ class DialectKWArgs:
 
             Index.argument_for("mydialect", "length", None)
 
-            some_index = Index('a', 'b', mydialect_length=5)
+            some_index = Index("a", "b", mydialect_length=5)
 
         The :meth:`.DialectKWArgs.argument_for` method is a per-argument
         way adding extra arguments to the
@@ -568,7 +568,7 @@ class DialectKWArgs:
         and ``<argument_name>``.  For example, the ``postgresql_where``
         argument would be locatable as::
 
-            arg = my_object.dialect_options['postgresql']['where']
+            arg = my_object.dialect_options["postgresql"]["where"]
 
         .. versionadded:: 0.9.2
 
@@ -916,11 +916,7 @@ class Options(metaclass=_MetaOptions):
                 execution_options,
             ) = QueryContext.default_load_options.from_execution_options(
                 "_sa_orm_load_options",
-                {
-                    "populate_existing",
-                    "autoflush",
-                    "yield_per"
-                },
+                {"populate_existing", "autoflush", "yield_per"},
                 execution_options,
                 statement._execution_options,
             )
@@ -1224,6 +1220,7 @@ class Executable(roles.StatementRole):
 
              from sqlalchemy import event
 
+
              @event.listens_for(some_engine, "before_execute")
              def _process_opt(conn, statement, multiparams, params, execution_options):
                  "run a SQL function before invoking a statement"
@@ -1475,14 +1472,14 @@ class ColumnCollection(Generic[_COLKEY, _COL_co]):
     mean either two columns with the same key, in which case the column
     returned by key  access is **arbitrary**::
 
-        >>> x1, x2 = Column('x', Integer), Column('x', Integer)
+        >>> x1, x2 = Column("x", Integer), Column("x", Integer)
         >>> cc = ColumnCollection(columns=[(x1.name, x1), (x2.name, x2)])
         >>> list(cc)
         [Column('x', Integer(), table=None),
          Column('x', Integer(), table=None)]
-        >>> cc['x'] is x1
+        >>> cc["x"] is x1
         False
-        >>> cc['x'] is x2
+        >>> cc["x"] is x2
         True
 
     Or it can also mean the same column multiple times.   These cases are
@@ -2033,8 +2030,8 @@ class DedupeColumnCollection(ColumnCollection[str, _NAMEDCOL]):
 
         e.g.::
 
-            t = Table('sometable', metadata, Column('col1', Integer))
-            t.columns.replace(Column('col1', Integer, key='columnone'))
+            t = Table("sometable", metadata, Column("col1", Integer))
+            t.columns.replace(Column("col1", Integer, key="columnone"))
 
         will remove the original 'col1' from the collection, and add
         the new column under the name 'columnname'.

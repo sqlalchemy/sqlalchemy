@@ -96,10 +96,10 @@ class MappedColumnTest(_MappedColumnTest):
 
             ll = list
 
+
             def make_class() -> None:
 
                 x: ll[int] = [1, 2, 3]
-
 
         """  # noqa: E501
 

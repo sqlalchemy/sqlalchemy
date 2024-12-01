@@ -91,7 +91,9 @@ class SuiteRequirements(Requirements):
 
     @property
     def table_value_constructor(self):
-        """Database / dialect supports a query like::
+        """Database / dialect supports a query like:
+
+        .. sourcecode:: sql
 
              SELECT * FROM VALUES ( (c1, c2), (c1, c2), ...)
              AS some_table(col1, col2)
@@ -992,7 +994,9 @@ class SuiteRequirements(Requirements):
     @property
     def binary_literals(self):
         """target backend supports simple binary literals, e.g. an
-        expression like::
+        expression like:
+
+        .. sourcecode:: sql
 
             SELECT CAST('foo' AS BINARY)
 
@@ -1173,9 +1177,7 @@ class SuiteRequirements(Requirements):
 
             expr = decimal.Decimal("15.7563")
 
-            value = e.scalar(
-                select(literal(expr))
-            )
+            value = e.scalar(select(literal(expr)))
 
             assert value == expr
 
@@ -1343,7 +1345,9 @@ class SuiteRequirements(Requirements):
         present in a subquery in the WHERE clause.
 
         This is an ANSI-standard syntax that apparently MySQL can't handle,
-        such as::
+        such as:
+
+        .. sourcecode:: sql
 
             UPDATE documents SET flag=1 WHERE documents.title IN
                 (SELECT max(documents.title) AS title
@@ -1376,7 +1380,11 @@ class SuiteRequirements(Requirements):
         """target database supports ordering by a column from a SELECT
         inside of a UNION
 
-        E.g.  (SELECT id, ...) UNION (SELECT id, ...) ORDER BY id
+        E.g.:
+
+        .. sourcecode:: sql
+
+            (SELECT id, ...) UNION (SELECT id, ...) ORDER BY id
 
         """
         return exclusions.open()
@@ -1386,7 +1394,9 @@ class SuiteRequirements(Requirements):
         """target backend supports ORDER BY a column label within an
         expression.
 
-        Basically this::
+        Basically this:
+
+        .. sourcecode:: sql
 
             select data as foo from test order by foo || 'bar'
 

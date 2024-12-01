@@ -41,7 +41,6 @@ necessary to indicate ``ssl_check_hostname=false`` in PyMySQL::
         "&ssl_check_hostname=false"
     )
 
-
 MySQL-Python Compatibility
 --------------------------
 

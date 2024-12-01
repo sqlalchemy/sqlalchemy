@@ -94,12 +94,11 @@ class MONEY(sqltypes.TypeEngine[str]):
         from sqlalchemy import Dialect
         from sqlalchemy import TypeDecorator
 
+
         class NumericMoney(TypeDecorator):
             impl = MONEY
 
-            def process_result_value(
-                self, value: Any, dialect: Dialect
-            ) -> None:
+            def process_result_value(self, value: Any, dialect: Dialect) -> None:
                 if value is not None:
                     # adjust this for the currency and numeric
                     m = re.match(r"\$([\d.]+)", value)
@@ -114,6 +113,7 @@ class MONEY(sqltypes.TypeEngine[str]):
         from sqlalchemy import cast
         from sqlalchemy import TypeDecorator
 
+
         class NumericMoney(TypeDecorator):
             impl = MONEY
 
@@ -122,7 +122,7 @@ class MONEY(sqltypes.TypeEngine[str]):
 
     .. versionadded:: 1.2
 
-    """
+    """  # noqa: E501
 
     __visit_name__ = "MONEY"
 

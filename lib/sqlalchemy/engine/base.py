@@ -817,7 +817,6 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 with conn.begin() as trans:
                     conn.execute(table.insert(), {"username": "sandy"})
 
-
         The returned object is an instance of :class:`_engine.RootTransaction`.
         This object represents the "scope" of the transaction,
         which completes when either the :meth:`_engine.Transaction.rollback`
@@ -923,7 +922,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                     trans.rollback()  # rollback to savepoint
 
                 # outer transaction continues
-                connection.execute( ... )
+                connection.execute(...)
 
         If :meth:`_engine.Connection.begin_nested` is called without first
         calling :meth:`_engine.Connection.begin` or
@@ -933,11 +932,11 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
             with engine.connect() as connection:  # begin() wasn't called
 
-                with connection.begin_nested(): will auto-"begin()" first
-                    connection.execute( ... )
+                with connection.begin_nested():  # will auto-"begin()" first
+                    connection.execute(...)
                 # savepoint is released
 
-                connection.execute( ... )
+                connection.execute(...)
 
                 # explicitly commit outer transaction
                 connection.commit()
@@ -1750,21 +1749,20 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
              conn.exec_driver_sql(
                  "INSERT INTO table (id, value) VALUES (%(id)s, %(value)s)",
-                 [{"id":1, "value":"v1"}, {"id":2, "value":"v2"}]
+                 [{"id": 1, "value": "v1"}, {"id": 2, "value": "v2"}],
              )
 
          Single dictionary::
 
              conn.exec_driver_sql(
                  "INSERT INTO table (id, value) VALUES (%(id)s, %(value)s)",
-                 dict(id=1, value="v1")
+                 dict(id=1, value="v1"),
              )
 
          Single tuple::
 
              conn.exec_driver_sql(
-                 "INSERT INTO table (id, value) VALUES (?, ?)",
-                 (1, 'v1')
+                 "INSERT INTO table (id, value) VALUES (?, ?)", (1, "v1")
              )
 
          .. note:: The :meth:`_engine.Connection.exec_driver_sql` method does
@@ -2524,6 +2522,7 @@ class Transaction(TransactionalContext):
     :class:`_engine.Connection`::
 
         from sqlalchemy import create_engine
+
         engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
         connection = engine.connect()
         trans = connection.begin()
@@ -3101,10 +3100,10 @@ class Engine(
 
             shards = {"default": "base", "shard_1": "db1", "shard_2": "db2"}
 
+
             @event.listens_for(Engine, "before_cursor_execute")
-            def _switch_shard(conn, cursor, stmt,
-                    params, context, executemany):
-                shard_id = conn.get_execution_options().get('shard_id', "default")
+            def _switch_shard(conn, cursor, stmt, params, context, executemany):
+                shard_id = conn.get_execution_options().get("shard_id", "default")
                 current_shard = conn.info.get("current_shard", None)
 
                 if current_shard != shard_id:
@@ -3230,9 +3229,7 @@ class Engine(
         E.g.::
 
             with engine.begin() as conn:
-                conn.execute(
-                    text("insert into table (x, y, z) values (1, 2, 3)")
-                )
+                conn.execute(text("insert into table (x, y, z) values (1, 2, 3)"))
                 conn.execute(text("my_special_procedure(5)"))
 
         Upon successful operation, the :class:`.Transaction`
@@ -3248,7 +3245,7 @@ class Engine(
             :meth:`_engine.Connection.begin` - start a :class:`.Transaction`
             for a particular :class:`_engine.Connection`.
 
-        """
+        """  # noqa: E501
         with self.connect() as conn:
             with conn.begin():
                 yield conn

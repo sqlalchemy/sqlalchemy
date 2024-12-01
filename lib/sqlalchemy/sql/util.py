@@ -107,7 +107,7 @@ def join_condition(
 
     would produce an expression along the lines of::
 
-        tablea.c.id==tableb.c.tablea_id
+        tablea.c.id == tableb.c.tablea_id
 
     The join is determined based on the foreign key relationships
     between the two selectables.   If there are multiple ways
@@ -269,7 +269,7 @@ def visit_binary_product(
 
     The function is of the form::
 
-        def my_fn(binary, left, right)
+        def my_fn(binary, left, right): ...
 
     For each binary expression located which has a
     comparison operator, the product of "left" and
@@ -278,12 +278,11 @@ def visit_binary_product(
 
     Hence an expression like::
 
-        and_(
-            (a + b) == q + func.sum(e + f),
-            j == r
-        )
+        and_((a + b) == q + func.sum(e + f), j == r)
 
-    would have the traversal::
+    would have the traversal:
+
+    .. sourcecode:: text
 
         a <eq> q
         a <eq> e
@@ -529,9 +528,7 @@ def bind_values(clause):
 
     E.g.::
 
-        >>> expr = and_(
-        ...    table.c.foo==5, table.c.foo==7
-        ... )
+        >>> expr = and_(table.c.foo == 5, table.c.foo == 7)
         >>> bind_values(expr)
         [5, 7]
     """
@@ -1044,20 +1041,24 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
 
     E.g.::
 
-      table1 = Table('sometable', metadata,
-          Column('col1', Integer),
-          Column('col2', Integer)
-          )
-      table2 = Table('someothertable', metadata,
-          Column('col1', Integer),
-          Column('col2', Integer)
-          )
+      table1 = Table(
+          "sometable",
+          metadata,
+          Column("col1", Integer),
+          Column("col2", Integer),
+      )
+      table2 = Table(
+          "someothertable",
+          metadata,
+          Column("col1", Integer),
+          Column("col2", Integer),
+      )
 
       condition = table1.c.col1 == table2.c.col1
 
     make an alias of table1::
 
-      s = table1.alias('foo')
+      s = table1.alias("foo")
 
     calling ``ClauseAdapter(s).traverse(condition)`` converts
     condition to read::

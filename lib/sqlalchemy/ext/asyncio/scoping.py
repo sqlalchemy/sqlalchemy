@@ -368,7 +368,7 @@ class async_scoped_session(Generic[_AS]):
         object is entered::
 
             async with async_session.begin():
-                # .. ORM transaction is begun
+                ...  # ORM transaction is begun
 
         Note that database IO will not normally occur when the session-level
         transaction is begun, as database transactions begin on an
@@ -812,28 +812,28 @@ class async_scoped_session(Generic[_AS]):
 
             # construct async engines w/ async drivers
             engines = {
-                'leader':create_async_engine("sqlite+aiosqlite:///leader.db"),
-                'other':create_async_engine("sqlite+aiosqlite:///other.db"),
-                'follower1':create_async_engine("sqlite+aiosqlite:///follower1.db"),
-                'follower2':create_async_engine("sqlite+aiosqlite:///follower2.db"),
+                "leader": create_async_engine("sqlite+aiosqlite:///leader.db"),
+                "other": create_async_engine("sqlite+aiosqlite:///other.db"),
+                "follower1": create_async_engine("sqlite+aiosqlite:///follower1.db"),
+                "follower2": create_async_engine("sqlite+aiosqlite:///follower2.db"),
             }
+
 
             class RoutingSession(Session):
                 def get_bind(self, mapper=None, clause=None, **kw):
                     # within get_bind(), return sync engines
                     if mapper and issubclass(mapper.class_, MyOtherClass):
-                        return engines['other'].sync_engine
+                        return engines["other"].sync_engine
                     elif self._flushing or isinstance(clause, (Update, Delete)):
-                        return engines['leader'].sync_engine
+                        return engines["leader"].sync_engine
                     else:
                         return engines[
-                            random.choice(['follower1','follower2'])
+                            random.choice(["follower1", "follower2"])
                         ].sync_engine
 
+
             # apply to AsyncSession using sync_session_class
-            AsyncSessionMaker = async_sessionmaker(
-                sync_session_class=RoutingSession
-            )
+            AsyncSessionMaker = async_sessionmaker(sync_session_class=RoutingSession)
 
         The :meth:`_orm.Session.get_bind` method is called in a non-asyncio,
         implicitly non-blocking context in the same manner as ORM event hooks
