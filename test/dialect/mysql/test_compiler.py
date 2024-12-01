@@ -754,7 +754,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             t.delete()
             .where(t.c.col2 == 456)
             .with_dialect_options(mysql_limit=1),
-            "DELETE FRM t WHERE t.col2 = %s LIMIT 1",
+            "DELETE FROM t WHERE t.col2 = %s LIMIT 1",
         )
 
     def test_utc_timestamp(self):
