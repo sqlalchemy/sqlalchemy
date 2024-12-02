@@ -647,10 +647,22 @@ You can optionally use the following shorthand vector distance functions:
   
     session = Session(bind=engine)
     query_vector = array.array("b",[2,3,4])
-    vector = session.scalars(select(user_orm_vector).order_by(func.L2_distance(user_orm_vector.vector_col,query_vector)).limit(3))
+    result_vector = session.scalars(select(user_orm_vector).order_by(func.L2_distance(user_orm_vector.vector_col,query_vector)).limit(3))
  
     for user in vector:
         print(user.id,user.embedding)
+
+EXACT/APPROX Seaching
+^^^^^^^^^^^^^^^^^^^^^
+
+Similarity searches tend to get data from one or more clusters depending on the value of the query vector and the fetch 
+size. Approximate searches using vector indexes can limit the searches to specific clusters, whereas exact searches visit 
+vectors across all clusters.
+You can use the fetch_type clause to set the searching to be either exact or approx::
+
+    result_vector = session.scalars(select(user_orm_vector).order_by(func.L2_distance(user_orm_vector.vector_col,query_vector)).limit(3)).fetch_type("EXACT")
+    result_vector = session.scalars(select(user_orm_vector).order_by(func.L2_distance(user_orm_vector.vector_col,query_vector)).limit(3)).fetch_type("APPROX")
+
 
 .. versionadded:: 2.1.0 added support for VECTOR using a newly added Oracle Database specific 
 :class:`_oracle.VECTOR` datatype.
