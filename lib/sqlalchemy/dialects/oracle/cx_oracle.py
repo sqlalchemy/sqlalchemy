@@ -1353,8 +1353,13 @@ class OracleDialect_cx_oracle(OracleDialect):
                 cx_Oracle.CLOB,
                 cx_Oracle.NCLOB,
             ):
+                typ = (
+                    cx_Oracle.DB_TYPE_VARCHAR
+                    if default_type is cx_Oracle.CLOB
+                    else cx_Oracle.DB_TYPE_NVARCHAR
+                )
                 return cursor.var(
-                    cx_Oracle.DB_TYPE_NVARCHAR,
+                    typ,
                     _CX_ORACLE_MAGIC_LOB_SIZE,
                     cursor.arraysize,
                     **dialect._cursor_var_unicode_kwargs,
