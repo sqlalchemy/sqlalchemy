@@ -2627,7 +2627,7 @@ class Query(
         """
         self._offset_clause = sql_util._offset_or_limit_clause(offset)
         return self
-    
+
     @_generative
     @_assertions(_no_statement_condition)
     def fetch_type(self, fetch_type: str) -> Self:
