@@ -3043,9 +3043,6 @@ class SQLCompiler(Compiled):
 
     def _row_limit_clause(self, cs, **kwargs):
         if cs._fetch_clause is not None:
-            print("inside row limit clause")
-            print(cs)
-            print(kwargs)
             return self.fetch_clause(cs, **kwargs)
         else:
             return self.limit_clause(cs, **kwargs)
@@ -5166,21 +5163,7 @@ class SQLCompiler(Compiled):
         require_offset=False,
         use_literal_execute_for_simple_int=False,
         **kw,
-    ):
-        print("suraj fetch")
-        print(fetch_clause)
-        print(require_offset)
-        print(select)
-        print(dir(select))
-        print(select.limit)
-        print(select._limit)
-        print("suraj")
-        print(select._limit_clause)
-        print("suraj")
-        print(kw)
-        #for key, value in kw.items():
-        #    print(f"{key}: {value}")
-       
+    ):        
         if fetch_clause is None:
             fetch_clause = select._fetch_clause
             fetch_clause_options = select._fetch_clause_options
@@ -5188,8 +5171,6 @@ class SQLCompiler(Compiled):
             fetch_clause_options = {"percent": False, "with_ties": False}
 
         text = ""
-        print(fetch_clause)
-        print(select._offset_clause)
         if select._offset_clause is not None:
             offset_clause = select._offset_clause
             if (
@@ -5197,10 +5178,7 @@ class SQLCompiler(Compiled):
                 and select._simple_int_clause(offset_clause)
             ):
                 offset_clause = offset_clause.render_literal_execute()
-                print(offset_clause)
             offset_str = self.process(offset_clause, **kw)
-            print("suraj")
-            print(offset_str)
             text += "\n OFFSET %s ROWS" % offset_str
         elif require_offset:
             text += "\n OFFSET 0 ROWS"
@@ -5210,9 +5188,11 @@ class SQLCompiler(Compiled):
                 use_literal_execute_for_simple_int
                 and select._simple_int_clause(fetch_clause)
             ):
-                print(dir(select.fetch_type))
                 fetch_clause = fetch_clause.render_literal_execute()
-            text += "\n FETCH FIRST %s%s ROWS %s" % (
+
+            fetch_type = getattr(select, "_fetch_type", None)
+            text += "\n FETCH %s FIRST %s%s ROWS %s" % (
+                "" if fetch_type is None else fetch_type,
                 self.process(fetch_clause, **kw),
                 " PERCENT" if fetch_clause_options["percent"] else "",
                 "WITH TIES" if fetch_clause_options["with_ties"] else "ONLY",

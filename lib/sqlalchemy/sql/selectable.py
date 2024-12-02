@@ -3779,6 +3779,7 @@ class GenerativeSelect(SelectBase, Generative):
     _limit_clause: Optional[ColumnElement[Any]] = None
     _offset_clause: Optional[ColumnElement[Any]] = None
     _fetch_clause: Optional[ColumnElement[Any]] = None
+    _fetch_type: Optional[ColumnElement[Any]] = None
     _fetch_clause_options: Optional[Dict[str, bool]] = None
     _for_update_arg: Optional[ForUpdateArg] = None
 

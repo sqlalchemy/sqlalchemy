@@ -1647,6 +1647,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         limit_clause,
         offset_clause,
         fetch_clause,
+        fetch_type,
         fetch_clause_options,
         distinct,
         distinct_on,
@@ -1681,6 +1682,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         statement._limit_clause = limit_clause
         statement._offset_clause = offset_clause
         statement._fetch_clause = fetch_clause
+        statement._fetch_type = fetch_type
         statement._fetch_clause_options = fetch_clause_options
         statement._independent_ctes = independent_ctes
         statement._independent_ctes_opts = independent_ctes_opts
@@ -2346,6 +2348,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             "suffixes": self.select_statement._suffixes,
             "group_by": self.group_by or None,
             "fetch_clause": self.select_statement._fetch_clause,
+            "fetch_type": self.select_statement._fetch_type,
             "fetch_clause_options": (
                 self.select_statement._fetch_clause_options
             ),
@@ -2361,6 +2364,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         return (
             kwargs.get("limit_clause") is not None
             or kwargs.get("offset_clause") is not None
+            or kwargs.get("fetch_type") is not None
             or kwargs.get("distinct", False)
             or kwargs.get("distinct_on", ())
             or kwargs.get("group_by", False)
