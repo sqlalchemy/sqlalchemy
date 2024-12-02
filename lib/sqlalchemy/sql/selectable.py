@@ -3998,6 +3998,7 @@ class GenerativeSelect(SelectBase, Generative):
             self._limit_clause is not None
             or self._offset_clause is not None
             or self._fetch_clause is not None
+            or self._fetch_type is not None
         )
 
     @_generative
@@ -4112,10 +4113,12 @@ class GenerativeSelect(SelectBase, Generative):
         return self
     
     @_generative
-    def fetch_type(self, fetch_type: "") -> Self:
+    def fetch_type(self, fetch_type) -> Self:
         """Return a new selectable with the given FETCH_TYPE
         criterion applied"""
-        pass
+
+        self._fetch_type = fetch_type
+        return self
 
     @_generative
     @util.preload_module("sqlalchemy.sql.util")

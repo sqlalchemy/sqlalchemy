@@ -963,7 +963,7 @@ class TypesTest(fixtures.TestBase):
             Column("c1", VECTOR(3,'float32'))
             )
 
-        if testing.against("oracle>23.5"):
+        if testing.against("oracle>23.4"):
             t1.create(connection)
             eq_(t1.c.c1.type.dim, 3)
         else:
@@ -977,7 +977,7 @@ class TypesTest(fixtures.TestBase):
             Column("c1", VECTOR(3,'float32'))
             )
 
-        if testing.against("oracle>23.5"):
+        if testing.against("oracle>23.4"):
             t1.create(connection)
             eq_(t1.c.c1.type.storage_format, 'float32')
         else:
@@ -992,7 +992,7 @@ class TypesTest(fixtures.TestBase):
             Column("embedding", VECTOR(3,'float32'))
         )
 
-        if testing.against("oracle>23.5"):
+        if testing.against("oracle>23.4"):
             t1.create(connection)
         
             hnsw_index = Index(
@@ -1016,7 +1016,7 @@ class TypesTest(fixtures.TestBase):
             Column("embedding", VECTOR(3,'float32'))
         )
 
-        if testing.against("oracle>23.5"):
+        if testing.against("oracle>23.4"):
             t1.create(connection)
             ivf_index = Index(
             'ivf_vector_index',
@@ -1040,7 +1040,7 @@ class TypesTest(fixtures.TestBase):
             Column("embedding", VECTOR(3,'int8'))
         )
 
-        if testing.against("oracle>23.5"):
+        if testing.against("oracle>23.4"):
             t1.create(connection)
 
             connection.execute(t1.insert(), dict(id=1, embedding=array.array("b",[8,9,10])))

@@ -5163,7 +5163,7 @@ class SQLCompiler(Compiled):
         require_offset=False,
         use_literal_execute_for_simple_int=False,
         **kw,
-    ):        
+    ):
         if fetch_clause is None:
             fetch_clause = select._fetch_clause
             fetch_clause_options = select._fetch_clause_options
@@ -5171,6 +5171,7 @@ class SQLCompiler(Compiled):
             fetch_clause_options = {"percent": False, "with_ties": False}
 
         text = ""
+
         if select._offset_clause is not None:
             offset_clause = select._offset_clause
             if (

@@ -572,7 +572,7 @@ double (64-bit), or int8_t (8-bit signed integer) are used as bind values when i
     statement  = insert(t1)
     with engine.connect() as conn:
         conn.execute(statement,[
-            {"id":1,'embedding':vector_data_8},
+            {"id":1,"embedding":vector_data_8},
             ])
     
 VECTOR INDEX

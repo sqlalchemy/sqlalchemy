@@ -2634,7 +2634,7 @@ class Query(
         """Apply an ``FETCH_TYPE`` to the query and return the newly resulting
         ``Query``.
         """
-        if fetch_type not in ["exact", "approx", "approximate"]:
+        if fetch_type not in ["exact", "approximate"]:
             raise ValueError("Invalid fetch_type. Choose 'exact' or 'approximate'.")
         
         self._fetch_type = fetch_type

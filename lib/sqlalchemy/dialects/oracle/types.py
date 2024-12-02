@@ -297,9 +297,9 @@ class VECTOR(types.TypeEngine):
 
         def __init__(self, dim=None, storage_format=None):
             """
-            :param dim: the dimenstion of vector type. this should be a
+            :param dim: The dimenstion of vector type. This should be a
             integer value.
-            :param storage_format: the vector storage type format.  this 
+            :param storage_format: The vector storage type format. This 
             can be int8,binary,float32,float64.
             """
             self.dim = dim
