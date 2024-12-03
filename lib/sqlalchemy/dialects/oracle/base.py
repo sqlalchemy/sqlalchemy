@@ -1352,29 +1352,31 @@ class OracleDDLCompiler(compiler.DDLCompiler):
                 )
         vector_options = index.dialect_options["oracle"]["vector"]
         if vector_options is not False:
+            if vector_options is True:
+                vector_options = {}
             parts = []
-            using = vector_options["oracle_parameters"].get("type", None)
-            if using is None or using.upper() == "HNSW":
-                parts.append("ORGANIZATION INMEMORY NEIGHBOR GRAPH ")
-            elif using.upper() == "IVF":
-                parts.append("ORGANIZATION NEIGHBOR PARTITIONS ")
-            vector_distance = vector_options.get("oracle_distance", None)
-            if vector_distance is None:
-                parts.append("DISTANCE COSINE ")
-            else:
-                parts.append("DISTANCE " + vector_distance.upper() + " ")
-            target_accuracy = vector_options.get("oracle_accuracy", None)
+            parameters = vector_options.get("parameters", {})
+            using = parameters.get("type", "HNSW").upper()
+            if using == "HNSW":
+                parts.append("ORGANIZATION INMEMORY NEIGHBOR GRAPH")
+            elif using == "IVF":
+                parts.append("ORGANIZATION NEIGHBOR PARTITIONS")
+            vector_distance = vector_options.get("distance")
+            if vector_distance is not None:
+                vector_distance = vector_distance.upper()
+                parts.append(f"DISTANCE {vector_distance}")
+            target_accuracy = vector_options.get("accuracy")
             if target_accuracy is not None:
-                parts.append("WITH TARGET ACCURACY " + str(target_accuracy) + " ")
-            parameter = vector_options.get("oracle_parameters", None)
+                parts.append(f"WITH TARGET ACCURACY {target_accuracy}")
+            parameter = vector_options.get("parameters",{})
             if parameter:
-                parts.append("PARAMETERS (%s) " % (
+                parts.append("PARAMETERS (%s)" % (
                     ",".join(
                         ["%s %s" % (key, value) for key, value in parameter.items()]                        )
                     ))
-            parallel = vector_options.get("oracle_parallel",None)
+            parallel = vector_options.get("parallel")
             if parallel is not None:
-                parts.append(" PARALLEL " + parallel + " ")
+                parts.append(f"PARALLEL {parallel}")
             text += " ".join(parts)
         return text
 

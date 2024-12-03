@@ -597,8 +597,8 @@ https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/create-vecto
 
 The valid range for HNSW vector index parameters are::
 
-    * ``oracle_accuracy``: > 0 and <= 100
-    * ``oracle_distance``: EUCLIDEAN, COSINE, DOT, MANHATTAN
+    * ``accuracy``: > 0 and <= 100
+    * ``distance``: EUCLIDEAN, COSINE, DOT, MANHATTAN
     * ``type``: HNSW
     * ``neighbours``: > 0 and <= 2048
     * ``efconstruction``: > 0 and <= 65535
@@ -606,14 +606,14 @@ The valid range for HNSW vector index parameters are::
     Index(
             'hnsw_vector_index',
             my_table.c.c1,
-            oracle_vector = {'oracle_accuracy':95, 'oracle_distance':"COSINE", 'oracle_parameters':
-            {'type':'HNSW','neighbors':20,'efconstruction':300}}
+            oracle_vector = {'accuracy':95, 'distance':"COSINE", 'parameters':{'type':'HNSW','neighbors':20',
+            efconstruction':300}}
         )
 
 The valid range for IVF vector index parameters are::
 
-    * ``oracle_accuracy``: > 0 and <= 100
-    * ``oracle_distance``: EUCLIDEAN, COSINE, DOT, MANHATTAN
+    * ``accuracy``: > 0 and <= 100
+    * ``distance``: EUCLIDEAN, COSINE, DOT, MANHATTAN
     * ``type``: IVF
     * ``neighbor partitions``: >0 and <= 10000000
     * ``sample_per_partition``: from 1 to (num_vectors/neighbor_partitions)
@@ -623,8 +623,7 @@ The valid range for IVF vector index parameters are::
     Index(
             'ivf_vector_index',
             my_table.c.c1,
-            oracle_vector = {'oracle_accuracy':90, 'oracle_distance':"DOT", 'oracle_parameters':
-            {'type':'IVF','neighbor partitions':10}}
+            oracle_vector = {'accuracy':90, 'distance':"DOT", 'parameters':{'type':'IVF','neighbor partitions':10}}
         )
 
 Similarity Searching

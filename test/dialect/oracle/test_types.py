@@ -1112,7 +1112,7 @@ class TypesTest(fixtures.TestBase):
             with expect_raises_message(exc.DatabaseError, "ORA-03060"):
                 t1.create(connection)
 
-               
+
 
 class LOBFetchTest(fixtures.TablesTest):
     __only_on__ = "oracle"
