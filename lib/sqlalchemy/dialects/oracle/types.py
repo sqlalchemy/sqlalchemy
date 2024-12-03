@@ -289,18 +289,19 @@ class ROWID(sqltypes.TypeEngine):
 class _OracleBoolean(sqltypes.Boolean):
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
-    
+
+
 class VECTOR(types.TypeEngine):
-        """Oracle VECTOR type."""
+    """Oracle VECTOR type."""
 
-        __visit_name__ = "VECTOR"
+    __visit_name__ = "VECTOR"
 
-        def __init__(self, dim=None, storage_format=None):
-            """
-            :param dim: The dimenstion of vector type. This should be a
-            integer value.
-            :param storage_format: The vector storage type format. This 
-            can be int8,binary,float32,float64.
-            """
-            self.dim = dim
-            self.storage_format = storage_format
+    def __init__(self, dim=None, storage_format=None):
+        """
+        :param dim: The dimenstion of vector type. This should be a
+        integer value.
+        :param storage_format: The vector storage type format. This
+        can be int8,binary,float32,float64.
+        """
+        self.dim = dim
+        self.storage_format = storage_format

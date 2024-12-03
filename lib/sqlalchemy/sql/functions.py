@@ -1637,6 +1637,7 @@ class sum(ReturnTypeFromArgs[_T]):  # noqa: A001
 
     inherit_cache = True
 
+
 class vector_distance(ReturnTypeFromArgs[_T]):
     r"""The SQL vector_distance() function
     VECTOR_DISTANCE takes two vectors as parameters. You can optionally
@@ -1644,29 +1645,31 @@ class vector_distance(ReturnTypeFromArgs[_T]):
     specify a distance metric, then the default distance metric is cosine.
     If the input vectors are BINARY vectors, the default metric is hamming.
     This function is used as part of the ORDER BY of a statement::
-    
+
         query_vector = array.array("b",[2,3,4])
         stmt = session.query(
             table).order_by(func.vector_distance(table.c.col_1,
         query_vector,'EUCLIDEAN'))
-    
+
     """
 
-    inherit_cache = True 
+    inherit_cache = True
+
 
 class L1_DISTANCE(ReturnTypeFromArgs[_T]):
     r"""The SQL L1_DISTANCE() function
     MANHATTAN metric, also known as L1 distance or taxicab distance,
     calculates the Manhattan distance between two vectors.
     This function is used as part of the ORDER BY of a statement::
-    
+
         query_vector = array.array("b",[2,3,4])
         stmt = session.query(
             table).order_by(func.L1_distance(table.c.col_1,query_vector))
-    
+
     """
 
     inherit_cache = True
+
 
 class L2_DISTANCE(ReturnTypeFromArgs[_T]):
     r"""The SQL L2_DISTANCE() function
@@ -1682,19 +1685,21 @@ class L2_DISTANCE(ReturnTypeFromArgs[_T]):
 
     inherit_cache = True
 
+
 class INNER_PRODUCT(ReturnTypeFromArgs[_T]):
     r"""The SQL INNER_PRODUCT() function
-    INNER_PRODUCT also called DOT metric calculates the negated dot 
+    INNER_PRODUCT also called DOT metric calculates the negated dot
     product of two vectors.
     This function is used as part of the ORDER BY of a statement::
 
         query_vector = array.array("b",[2,3,4])
         stmt = session.query(
             table).order_by(func.INNER_PRODUCT(table.c.col_1,query_vector))
-    
+
     """
 
     inherit_cache = True
+
 
 class COSINE_DISTANCE(ReturnTypeFromArgs[_T]):
     r"""The SQL COSINE_DISTANCE() function
@@ -1705,7 +1710,7 @@ class COSINE_DISTANCE(ReturnTypeFromArgs[_T]):
         query_vector = array.array("b",[2,3,4])
         stmt = session.query(
             table).order_by(func.COSINE_DISTANCE(table.c.col_1,query_vector))
-    
+
     """
 
     inherit_cache = True

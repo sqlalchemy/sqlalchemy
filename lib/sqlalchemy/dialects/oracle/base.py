@@ -802,7 +802,7 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_ROWID(self, type_, **kw):
         return "ROWID"
-    
+
     def visit_VECTOR(self, type_, **kw):
         if type_.dim is None and type_.storage_format is None:
             return f"VECTOR"
@@ -1368,12 +1368,19 @@ class OracleDDLCompiler(compiler.DDLCompiler):
             target_accuracy = vector_options.get("accuracy")
             if target_accuracy is not None:
                 parts.append(f"WITH TARGET ACCURACY {target_accuracy}")
-            parameter = vector_options.get("parameters",{})
+            parameter = vector_options.get("parameters", {})
             if parameter:
-                parts.append("PARAMETERS (%s)" % (
-                    ",".join(
-                        ["%s %s" % (key, value) for key, value in parameter.items()]                        )
-                    ))
+                parts.append(
+                    "PARAMETERS (%s)"
+                    % (
+                        ",".join(
+                            [
+                                "%s %s" % (key, value)
+                                for key, value in parameter.items()
+                            ]
+                        )
+                    )
+                )
             parallel = vector_options.get("parallel")
             if parallel is not None:
                 parts.append(f"PARALLEL {parallel}")
@@ -1530,10 +1537,10 @@ class OracleDialect(default.DefaultDialect):
             },
         ),
         (
-            sa_schema.Index, 
+            sa_schema.Index,
             {
                 "bitmap": False,
-                "compress": False, 
+                "compress": False,
                 "vector": False,
             },
         ),

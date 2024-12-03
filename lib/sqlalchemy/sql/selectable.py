@@ -4111,7 +4111,7 @@ class GenerativeSelect(SelectBase, Generative):
 
         self._offset_clause = self._offset_or_limit_clause(offset)
         return self
-    
+
     @_generative
     def fetch_type(self, fetch_type) -> Self:
         """Return a new selectable with the given FETCH_TYPE

@@ -2635,11 +2635,13 @@ class Query(
         ``Query``.
         """
         if fetch_type not in ["exact", "approximate"]:
-            raise ValueError("Invalid fetch_type. Choose 'exact' or 'approximate'.")
-        
+            raise ValueError(
+                "Invalid fetch_type. Choose 'exact' or 'approximate'."
+            )
+
         self._fetch_type = fetch_type
         return self
-    
+
     @_generative
     @_assertions(_no_statement_condition)
     def distinct(self, *expr: _ColumnExpressionArgument[Any]) -> Self:
