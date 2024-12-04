@@ -678,14 +678,28 @@ IVF Parameters
     Index(
             'hnsw_vector_index',
             my_table.c.c1,
-            oracle_vector = {'accuracy':95, 'distance':"COSINE", 'parameters':{'type':'HNSW','neighbors':20',
-            efconstruction':300}}
+            oracle_vector = {
+                'accuracy':95,
+                'distance':"COSINE",
+                'parameters':{
+                    'type':'HNSW',
+                    'neighbors':20',
+                    efconstruction':300
+                }
+            }
         )
 
     Index(
             'ivf_vector_index',
             my_table.c.c1,
-            oracle_vector = {'accuracy':90, 'distance':"DOT", 'parameters':{'type':'IVF','neighbor partitions':10}}
+            oracle_vector = {
+                'accuracy':90,
+                'distance':"DOT",
+                'parameters':{
+                    'type':'IVF','
+                    neighbor partitions':10
+                }
+            }
         )
 
 Similarity Searching
