@@ -536,19 +536,19 @@ SQLAlchemy type (or a subclass of such).
 
 .. versionadded:: 2.0.0 added support for the python-oracledb driver.
 
-Vector Datatype
+VECTOR Datatypes
 ---------------
 
-Oracle Database 23ai introduced a new data type VECTOR for artificial intelligence and machine 
-learning search operations. The VECTOR data type is a homogeneous array of 8-bit signed integers, 
+Oracle Database 23ai introduced a new VECTOR datatypes for artificial intelligence and machine 
+learning search operations. The VECTOR datatypes is a homogeneous array of 8-bit signed integers, 
 8-bit unsigned integers, 32-bit floating-point numbers, or 64-bit floating-point numbers.
-For more information on vector datatype please visit this link:
+For more information on VECTOR datatypes please visit this link:
 https://python-oracledb.readthedocs.io/en/latest/user_guide/vector_data_type.html 
 
-CREATE TABLE(Vector Datatype)
+CREATE TABLE(VECTOR Datatypes)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-With the VECTOR data type, you can define the number of dimensions for the data and the storage 
+With the VECTOR datatypes, you can define the number of dimensions for the data and the storage 
 format for each dimension value in the vector. To create a table with three columns for vector data::
 
     from sqlalchemy.dialects.oracle import VECTOR
@@ -575,8 +575,8 @@ double (64-bit), or int8_t (8-bit signed integer) are used as bind values when i
             {"id":1,"embedding":vector_data_8},
             ])
     
-VECTOR INDEX
-^^^^^^^^^^^^
+VECTOR INDEXES
+^^^^^^^^^^^^^^
 
 There are two vector indexes supported in vector search: IVF Flat index and HNSW
 index.
@@ -595,13 +595,85 @@ in the `oracle_vector` option. To learn more about the parameters that can be pa
 visit this link.
 https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/create-vector-index.html
 
-The valid range for HNSW vector index parameters are::
+Configuring Oracle Vector Indexes
+=================================
 
-    * ``accuracy``: > 0 and <= 100
-    * ``distance``: EUCLIDEAN, COSINE, DOT, MANHATTAN
-    * ``type``: HNSW
-    * ``neighbours``: > 0 and <= 2048
-    * ``efconstruction``: > 0 and <= 65535
+When using Oracle vector indexes, the configuration parameters are divided into two levels:
+**top-level keys** and **nested keys** (under the ``parameters`` dictionary). This structure applies to 
+both HNSW and IVF vector indexes.
+
+**Top-Level Keys**
+------------------
+
+These keys are specified directly under the ``oracle_vector`` dictionary.
+
+* ``accuracy``:
+    - Specifies the accuracy of the nearest neighbor search during query execution.
+    - **Valid Range**: Greater than 0 and less than or equal to 100.
+    - **Placement**: Top level.
+    - **Example**: ``'accuracy': 95``
+
+* ``distance``:
+    - Specifies the metric for calculating distance between vectors.
+    - **Valid Values**: ``"EUCLIDEAN"``, ``"COSINE"``, ``"DOT"``, ``"MANHATTAN"``.
+    - **Placement**: Top level.
+    - **Example**: ``'distance': "COSINE"``
+
+* ``parameters``:
+    - A nested dictionary where method-specific options are defined (e.g., HNSW or IVF-specific settings).
+    - **Placement**: Top level.
+    - **Example**: ``'parameters': {...}``
+
+**Nested Keys in ``parameters``**
+---------------------------------
+
+These keys are specific to the indexing method and are included under the ``parameters`` dictionary.
+
+HNSW Parameters
+^^^^^^^^^^^^^^^
+
+* ``type``:
+    - Specifies the indexing method. For HNSW, this must be ``"HNSW"``.
+    - **Placement**: Nested under ``parameters``.
+    - **Example**: ``'type': 'HNSW'``
+
+* ``neighbors``:
+    - The number of nearest neighbors considered during the search.
+    - **Valid Range**: Greater than 0 and less than or equal to 2048.
+    - **Placement**: Nested under ``parameters``.
+    - **Example**: ``'neighbors': 20``
+
+* ``efconstruction``:
+    - Controls the trade-off between indexing speed and recall quality during index construction.
+    - **Valid Range**: Greater than 0 and less than or equal to 65535.
+    - **Placement**: Nested under ``parameters``.
+    - **Example**: ``'efconstruction': 300``
+
+IVF Parameters
+^^^^^^^^^^^^^^
+
+* ``type``:
+    - Specifies the indexing method. For IVF, this must be ``"IVF"``.
+    - **Placement**: Nested under ``parameters``.
+    - **Example**: ``'type': 'IVF'``
+   
+* ``neighbor partitions``:
+    - The number of partitions used to divide the dataset.
+    - **Valid Range**: Greater than 0 and less than or equal to 10,000,000.
+    - **Placement**: Nested under ``parameters``.
+    - **Example**: ``'neighbor partitions': 10``
+
+* ``sample_per_partition``:
+    - The number of samples used per partition.
+    - **Valid Range**: Between 1 and ``num_vectors / neighbor_partitions``.
+    - **Placement**: Nested under ``parameters``.
+    - **Example**: ``'sample_per_partition': 5``
+
+* ``min_vectors_per_partition``:
+    - The minimum number of vectors per partition.
+    - **Valid Range**: From 0 (no trimming) to the total number of vectors (results in 1 partition).
+    - **Placement**: Nested under ``parameters``.
+    - **Example**: ``'min_vectors_per_partition': 100``
 
     Index(
             'hnsw_vector_index',
@@ -609,16 +681,6 @@ The valid range for HNSW vector index parameters are::
             oracle_vector = {'accuracy':95, 'distance':"COSINE", 'parameters':{'type':'HNSW','neighbors':20',
             efconstruction':300}}
         )
-
-The valid range for IVF vector index parameters are::
-
-    * ``accuracy``: > 0 and <= 100
-    * ``distance``: EUCLIDEAN, COSINE, DOT, MANHATTAN
-    * ``type``: IVF
-    * ``neighbor partitions``: >0 and <= 10000000
-    * ``sample_per_partition``: from 1 to (num_vectors/neighbor_partitions)
-    * ``min_vectors_per_partition``: from 0 (no trimming of centroid partitions) to total number of
-        vectors (would result in 1 centroid partition)  
 
     Index(
             'ivf_vector_index',
@@ -657,7 +719,7 @@ EXACT/APPROX Seaching
 Similarity searches tend to get data from one or more clusters depending on the value of the query vector and the fetch 
 size. Approximate searches using vector indexes can limit the searches to specific clusters, whereas exact searches visit 
 vectors across all clusters.
-You can use the fetch_type clause to set the searching to be either exact or approx::
+You can use the fetch_type clause to set the searching to be either EXACT, APRROX or APPROXIMATE::
 
     result_vector = session.scalars(select(user_orm_vector).order_by(func.L2_distance(user_orm_vector.vector_col,query_vector)).limit(3)).fetch_type("EXACT")
     result_vector = session.scalars(select(user_orm_vector).order_by(func.L2_distance(user_orm_vector.vector_col,query_vector)).limit(3)).fetch_type("APPROX")

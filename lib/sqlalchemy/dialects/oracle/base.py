@@ -1351,7 +1351,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
                     index.dialect_options["oracle"]["compress"]
                 )
         vector_options = index.dialect_options["oracle"]["vector"]
-        if vector_options is not False:
+        if vector_options:
             if vector_options is True:
                 vector_options = {}
             parts = []
@@ -1368,15 +1368,14 @@ class OracleDDLCompiler(compiler.DDLCompiler):
             target_accuracy = vector_options.get("accuracy")
             if target_accuracy is not None:
                 parts.append(f"WITH TARGET ACCURACY {target_accuracy}")
-            parameter = vector_options.get("parameters", {})
-            if parameter:
+            if parameters:
                 parts.append(
                     "PARAMETERS (%s)"
                     % (
                         ",".join(
                             [
                                 "%s %s" % (key, value)
-                                for key, value in parameter.items()
+                                for key, value in parameters.items()
                             ]
                         )
                     )
