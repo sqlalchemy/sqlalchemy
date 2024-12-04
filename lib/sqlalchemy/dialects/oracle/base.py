@@ -153,15 +153,140 @@ Identifier Casing
 -----------------
 
 In Oracle Database, the data dictionary represents all case insensitive
-identifier names using UPPERCASE text.  SQLAlchemy on the other hand considers
-an all-lower case identifier name to be case insensitive.  The Oracle Database
-dialects convert all case insensitive identifiers to and from those two formats
-during schema level communication, such as reflection of tables and indexes.
-Using an UPPERCASE name on the SQLAlchemy side indicates a case sensitive
-identifier, and SQLAlchemy will quote the name - this will cause mismatches
-against data dictionary data received from Oracle Database, so unless
-identifier names have been truly created as case sensitive (i.e. using quoted
-names), all lowercase names should be used on the SQLAlchemy side.
+identifier names using UPPERCASE text.  This is in contradiction to the
+expectations of SQLAlchemy, which assume a case insensitive name is represented
+as lowercase text.
+
+As an example of case insensitive identifier names, consider the following table:
+
+.. sourcecode:: sql
+
+    CREATE TABLE MyTable (Identifier INTEGER PRIMARY KEY)
+
+If you were to ask Oracle Database for information about this table, the
+table name would be reported as ``MYTABLE`` and the column name would
+be reported as ``IDENTIFIER``.    Compare to most other databases such as
+PostgreSQL and MySQL which would report these names as ``mytable`` and
+``identifier``.   The names are **not quoted, therefore are case insensitive**.
+The special casing of ``MyTable`` and ``Identifier`` would only be maintained
+if they were quoted in the table definition:
+
+.. sourcecode:: sql
+
+    CREATE TABLE "MyTable" ("Identifier" INTEGER PRIMARY KEY)
+
+When constructing a SQLAlchemy :class:`.Table` object, **an all lowercase name
+is considered to be case insensitive**.   So the following table assumes
+case insensitive names::
+
+    Table("mytable", metadata, Column("identifier", Integer, primary_key=True))
+
+Whereas when mixed case or UPPERCASE names are used, case sensitivity is
+assumed::
+
+    Table("MyTable", metadata, Column("Identifier", Integer, primary_key=True))
+
+A similar situation occurs at the database driver level when emitting a
+textual SQL SELECT statement and looking at column names in the DBAPI
+``cursor.description`` attribute.  A database like PostgreSQL will normalize
+case insensitive names to be lowercase::
+
+    >>> pg_engine = create_engine("postgresql://scott:tiger@localhost/test")
+    >>> pg_connection = pg_engine.connect()
+    >>> result = pg_connection.exec_driver_sql("SELECT 1 AS SomeName")
+    >>> result.cursor.description
+    (Column(name='somename', type_code=23),)
+
+Whereas Oracle normalizes them to UPPERCASE::
+
+    >>> oracle_engine = create_engine("oracle+oracledb://scott:tiger@oracle18c/xe")
+    >>> oracle_connection = oracle_engine.connect()
+    >>> result = oracle_connection.exec_driver_sql(
+    ...     "SELECT 1 AS SomeName FROM DUAL"
+    ... )
+    >>> result.cursor.description
+    [('SOMENAME', <DbType DB_TYPE_NUMBER>, 127, None, 0, -127, True)]
+
+In order to achieve cross-database parity for the two cases of a. table
+reflection and b. textual-only SQL statement round trips, SQLAlchemy performs a step
+called **name normalization** when using the Oracle dialect.  This process may
+also apply to other third party dialects that have similar UPPERCASE handling
+of case insensitive names.
+
+When using name normalization, SQLAlchemy attempts to detect if a name is
+case insensitive by checking if all characters are UPPERCASE letters only;
+if so, then it assumes this is a case insensitive name and is delivered as
+a lowercase name.
+
+For table reflection, a tablename that is seen represented as all UPPERCASE
+in Oracle Database's catalog tables will be assumed to have a case insensitive
+name.  This is what allows the ``Table`` definition to use lower case names
+and be equally compatible from a reflection point of view on Oracle Database
+and all other databases such as PostgreSQL and MySQL::
+
+    # matches a table created with CREATE TABLE mytable
+    Table("mytable", metadata, autoload_with=some_engine)
+
+Above, the all lowercase name ``"mytable"`` is case insensitive; it will match
+a table reported by PostgreSQL as ``"mytable"`` and a table reported by
+Oracle as ``"MYTABLE"``.  If name normalization were not present, it would
+not be possible for the above :class:`.Table` definition to be introspectable
+in a cross-database way, since we are dealing with a case insensitive name
+that is not reported by each database in the same way.
+
+Case sensitivity can be forced on in this case, such as if we wanted to represent
+the quoted tablename ``"MYTABLE"`` with that exact casing, most simply by using
+that casing directly, which will be seen as a case sensitive name::
+
+    # matches a table created with CREATE TABLE "MYTABLE"
+    Table("MYTABLE", metadata, autoload_with=some_engine)
+
+For the unusual case of a quoted all-lowercase name, the :class:`.quoted_name`
+construct may be used::
+
+    from sqlalchemy import quoted_name
+
+    # matches a table created with CREATE TABLE "mytable"
+    Table(
+        quoted_name("mytable", quote=True), metadata, autoload_with=some_engine
+    )
+
+Name normalization also takes place when handling result sets from **purely
+textual SQL strings**, that have no other :class:`.Table` or :class:`.Column`
+metadata associated with them. This includes SQL strings executed using
+:meth:`.Connection.exec_driver_sql` and SQL strings executed using the
+:func:`.text` construct which do not include :class:`.Column` metadata.
+
+Returning to the Oracle Database SELECT statement, we see that even though
+``cursor.description`` reports the column name as ``SOMENAME``, SQLAlchemy
+name normalizes this to ``somename``::
+
+    >>> oracle_engine = create_engine("oracle+oracledb://scott:tiger@oracle18c/xe")
+    >>> oracle_connection = oracle_engine.connect()
+    >>> result = oracle_connection.exec_driver_sql(
+    ...     "SELECT 1 AS SomeName FROM DUAL"
+    ... )
+    >>> result.cursor.description
+    [('SOMENAME', <DbType DB_TYPE_NUMBER>, 127, None, 0, -127, True)]
+    >>> result.keys()
+    RMKeyView(['somename'])
+
+The single scenario where the above behavior produces inaccurate results
+is when using an all-uppercase, quoted name.  SQLAlchemy has no way to determine
+that a particular name in ``cursor.description`` was quoted, and is therefore
+case sensitive, or was not quoted, and should be name normalized::
+
+    >>> result = oracle_connection.exec_driver_sql(
+    ...     'SELECT 1 AS "SOMENAME" FROM DUAL'
+    ... )
+    >>> result.cursor.description
+    [('SOMENAME', <DbType DB_TYPE_NUMBER>, 127, None, 0, -127, True)]
+    >>> result.keys()
+    RMKeyView(['somename'])
+
+For this case, a new feature will be available in SQLAlchemy 2.1 to disable
+the name normalization behavior in specific cases.
+
 
 .. _oracle_max_identifier_lengths:
 
