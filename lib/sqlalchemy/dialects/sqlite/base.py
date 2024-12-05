@@ -875,6 +875,13 @@ dialect in conjunction with the :class:`_schema.Table` construct:
     `SQLite CREATE TABLE options
     <https://www.sqlite.org/lang_createtable.html>`_
 
+* ``STRICT``::
+
+    Table("some_table", metadata, ..., sqlite_strict=True)
+
+   The ``sqlite_strict`` parameter is a boolean set to ``False`` by default.
+
+..versionadded:: 2.0.37
 
 .. _sqlite_include_internal:
 
@@ -1754,9 +1761,12 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         return text
 
     def post_create_table(self, table):
+        text = ""
         if table.dialect_options["sqlite"]["with_rowid"] is False:
-            return "\n WITHOUT ROWID"
-        return ""
+            text += "\n WITHOUT ROWID"
+        if table.dialect_options["sqlite"]["strict"] is True:
+            text += "\n STRICT"
+        return text
 
 
 class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
@@ -1991,6 +2001,7 @@ class SQLiteDialect(default.DefaultDialect):
             {
                 "autoincrement": False,
                 "with_rowid": True,
+                "strict": False,
             },
         ),
         (sa_schema.Index, {"where": None}),
