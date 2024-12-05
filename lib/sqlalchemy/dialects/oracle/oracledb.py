@@ -537,18 +537,18 @@ SQLAlchemy type (or a subclass of such).
 .. versionadded:: 2.0.0 added support for the python-oracledb driver.
 
 VECTOR Datatypes
----------------
+----------------
 
-Oracle Database 23ai introduced a new VECTOR datatypes for artificial intelligence and machine 
-learning search operations. The VECTOR datatypes is a homogeneous array of 8-bit signed integers, 
+Oracle Database 23ai introduced a new VECTOR datatypes for artificial intelligence and machine
+learning search operations. The VECTOR datatypes is a homogeneous array of 8-bit signed integers,
 8-bit unsigned integers, 32-bit floating-point numbers, or 64-bit floating-point numbers.
-For more information on VECTOR datatypes please visit this link:
-https://python-oracledb.readthedocs.io/en/latest/user_guide/vector_data_type.html 
+For more information on VECTOR datatypes please visit this `link.
+<https://python-oracledb.readthedocs.io/en/latest/user_guide/vector_data_type.html>`_
 
 CREATE TABLE(VECTOR Datatypes)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-With the VECTOR datatypes, you can define the number of dimensions for the data and the storage 
+With the VECTOR datatypes, you can define the number of dimensions for the data and the storage
 format for each dimension value in the vector. To create a table with three columns for vector data::
 
     from sqlalchemy.dialects.oracle import VECTOR
@@ -592,18 +592,17 @@ the default values provided by Oracle, with HNSW as the default indexing method:
 
 If you wish to use custom parameters, you can specify all the parameters as a dictionary
 in the `oracle_vector` option. To learn more about the parameters that can be passed please
-visit this link.
-https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/create-vector-index.html
+visit this `link. <https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/create-vector-index.html>`_
 
 Configuring Oracle Vector Indexes
 =================================
 
 When using Oracle vector indexes, the configuration parameters are divided into two levels:
-**top-level keys** and **nested keys** (under the ``parameters`` dictionary). This structure applies to 
+**top-level keys** and **nested keys** (under the ``parameters`` dictionary). This structure applies to
 both HNSW and IVF vector indexes.
 
-**Top-Level Keys**
-------------------
+Top-Level Keys
+==============
 
 These keys are specified directly under the ``oracle_vector`` dictionary.
 
@@ -624,13 +623,13 @@ These keys are specified directly under the ``oracle_vector`` dictionary.
     - **Placement**: Top level.
     - **Example**: ``'parameters': {...}``
 
-**Nested Keys in ``parameters``**
----------------------------------
+Nested Keys in parameters
+=========================
 
 These keys are specific to the indexing method and are included under the ``parameters`` dictionary.
 
 HNSW Parameters
-^^^^^^^^^^^^^^^
+===============
 
 * ``type``:
     - Specifies the indexing method. For HNSW, this must be ``"HNSW"``.
@@ -650,7 +649,7 @@ HNSW Parameters
     - **Example**: ``'efconstruction': 300``
 
 IVF Parameters
-^^^^^^^^^^^^^^
+==============
 
 * ``type``:
     - Specifies the indexing method. For IVF, this must be ``"IVF"``.
@@ -674,6 +673,11 @@ IVF Parameters
     - **Valid Range**: From 0 (no trimming) to the total number of vectors (results in 1 partition).
     - **Placement**: Nested under ``parameters``.
     - **Example**: ``'min_vectors_per_partition': 100``
+
+Example Configurations
+======================
+
+For custom configurations, the parameters can be specified as shown in the following examples::
 
     Index(
             'hnsw_vector_index',
@@ -706,7 +710,7 @@ Similarity Searching
 ^^^^^^^^^^^^^^^^^^^^
 
 VECTOR_DISTANCE is the main function that you can use to calculate the distance between two vectors.
-VECTOR_DISTANCE takes two vectors as parameters. You can optionally specify a distance metric to 
+VECTOR_DISTANCE takes two vectors as parameters. You can optionally specify a distance metric to
 calculate the distance. If you do not specify a distance metric, then the default distance metric is cosine.
 
 You can optionally use the following shorthand vector distance functions:
@@ -715,6 +719,8 @@ You can optionally use the following shorthand vector distance functions:
 * ``L2_DISTANCE``
 * ``COSINE_DISTANCE``
 * ``INNER_PRODUCT``
+
+Example Usage::
 
     from sqlalchemy.orm import Session
     from sqlalchemy.sql import func
@@ -730,16 +736,16 @@ You can optionally use the following shorthand vector distance functions:
 EXACT/APPROX Seaching
 ^^^^^^^^^^^^^^^^^^^^^
 
-Similarity searches tend to get data from one or more clusters depending on the value of the query vector and the fetch 
-size. Approximate searches using vector indexes can limit the searches to specific clusters, whereas exact searches visit 
+Similarity searches tend to get data from one or more clusters depending on the value of the query vector and the fetch
+size. Approximate searches using vector indexes can limit the searches to specific clusters, whereas exact searches visit
 vectors across all clusters.
-You can use the fetch_type clause to set the searching to be either EXACT, APRROX or APPROXIMATE::
+You can use the fetch_type clause to set the searching to be either EXACT, APPROX or APPROXIMATE::
 
     result_vector = session.scalars(select(user_orm_vector).order_by(func.L2_distance(user_orm_vector.vector_col,query_vector)).limit(3)).fetch_type("EXACT")
     result_vector = session.scalars(select(user_orm_vector).order_by(func.L2_distance(user_orm_vector.vector_col,query_vector)).limit(3)).fetch_type("APPROX")
 
 
-.. versionadded:: 2.1.0 added support for VECTOR using a newly added Oracle Database specific 
+.. versionadded:: 2.1.0 added support for VECTOR using a newly added Oracle Database specific
 :class:`_oracle.VECTOR` datatype.
 
 """  # noqa

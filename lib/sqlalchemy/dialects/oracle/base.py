@@ -1331,7 +1331,8 @@ class OracleDDLCompiler(compiler.DDLCompiler):
             text += "UNIQUE "
         if index.dialect_options["oracle"]["bitmap"]:
             text += "BITMAP "
-        if index.dialect_options["oracle"]["vector"]:
+        vector_options = index.dialect_options["oracle"]["vector"]
+        if vector_options:
             text += "VECTOR "
         text += "INDEX %s ON %s (%s) " % (
             self._prepared_index_name(index, include_schema=True),
@@ -1350,7 +1351,6 @@ class OracleDDLCompiler(compiler.DDLCompiler):
                 text += " COMPRESS %d" % (
                     index.dialect_options["oracle"]["compress"]
                 )
-        vector_options = index.dialect_options["oracle"]["vector"]
         if vector_options:
             if vector_options is True:
                 vector_options = {}
