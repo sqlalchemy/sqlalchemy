@@ -73,6 +73,7 @@ from ..util import hybridmethod
 from ..util import hybridproperty
 from ..util import typing as compat_typing
 from ..util.typing import CallableReference
+from ..util.typing import de_optionalize_union_types
 from ..util.typing import flatten_newtype
 from ..util.typing import is_generic
 from ..util.typing import is_literal
@@ -1225,11 +1226,8 @@ class registry:
 
         self.type_annotation_map.update(
             {
-                sub_type: sqltype
+                de_optionalize_union_types(typ): sqltype
                 for typ, sqltype in type_annotation_map.items()
-                for sub_type in compat_typing.expand_unions(
-                    typ, include_union=True, discard_none=True
-                )
             }
         )
 

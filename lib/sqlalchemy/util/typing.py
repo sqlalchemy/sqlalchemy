@@ -421,6 +421,9 @@ def de_optionalize_union_types(
 
     """
 
+    while is_pep695(type_):
+        type_ = type_.__value__
+
     if is_fwd_ref(type_):
         return de_optionalize_fwd_ref_union_types(type_)
 
@@ -477,26 +480,6 @@ def make_union_type(*types: _AnnotationScanType) -> Type[Any]:
     return cast(Any, Union).__getitem__(types)  # type: ignore
 
 
-def expand_unions(
-    type_: Type[Any], include_union: bool = False, discard_none: bool = False
-) -> Tuple[Type[Any], ...]:
-    """Return a type as a tuple of individual types, expanding for
-    ``Union`` types."""
-
-    if is_union(type_):
-        typ = set(type_.__args__)
-
-        if discard_none:
-            typ.discard(NoneType)
-
-        if include_union:
-            return (type_,) + tuple(typ)  # type: ignore
-        else:
-            return tuple(typ)  # type: ignore
-    else:
-        return (type_,)
-
-
 def is_optional(type_: Any) -> TypeGuard[ArgsTypeProcotol]:
     return is_origin_of(
         type_,
@@ -511,7 +494,7 @@ def is_optional_union(type_: Any) -> bool:
 
 
 def is_union(type_: Any) -> TypeGuard[ArgsTypeProcotol]:
-    return is_origin_of(type_, "Union")
+    return is_origin_of(type_, "Union", "UnionType")
 
 
 def is_origin_of_cls(
