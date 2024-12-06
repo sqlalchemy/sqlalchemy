@@ -4603,7 +4603,10 @@ class PGDialect(default.DefaultDialect):
                     dialect_options = {}
                     if row["reloptions"]:
                         dialect_options["postgresql_with"] = dict(
-                            [option.split("=") for option in row["reloptions"]]
+                            [
+                                option.split("=", 1)
+                                for option in row["reloptions"]
+                            ]
                         )
                     # it *might* be nice to include that this is 'btree' in the
                     # reflection info.  But we don't want an Index object
