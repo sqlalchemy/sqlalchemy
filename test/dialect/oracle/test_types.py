@@ -1057,8 +1057,8 @@ class TypesTest(fixtures.TestBase):
             ivf_index = Index(
             'ivf_vector_index',
             t1.c.embedding,
-            oracle_vector = {'oracle_accuracy':90, 'oracle_distance': "DOT",
-                'oracle_parameters':{'type':'IVF','neighbor partitions':10}}
+            oracle_vector = {'accuracy':90, 'distance': "DOT",
+                'parameters':{'type':'IVF','neighbor partitions':10}}
             )
             ivf_index.create(connection)
 
