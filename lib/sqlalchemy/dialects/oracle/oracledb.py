@@ -545,11 +545,11 @@ learning search operations. The VECTOR datatypes is a homogeneous array of 8-bit
 For more information on VECTOR datatypes please visit this `link.
 <https://python-oracledb.readthedocs.io/en/latest/user_guide/vector_data_type.html>`_
 
-CREATE TABLE(VECTOR Datatypes)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+CREATE TABLE (VECTOR Datatypes)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 With the VECTOR datatypes, you can define the number of dimensions for the data and the storage
-format for each dimension value in the vector. To create a table with three columns for vector data::
+format for each dimension value in the VECTOR. To create a table with VECTOR column::
 
     from sqlalchemy.dialects.oracle import VECTOR
 
@@ -562,8 +562,8 @@ format for each dimension value in the vector. To create a table with three colu
 INSERT VECTOR DATA
 ^^^^^^^^^^^^^^^^^^
 
-Vector data can be inserted using Python array.array() objects. Python arrays of type float (32-bit),
-double (64-bit), or int8_t (8-bit signed integer) are used as bind values when inserting vector columns::
+VECTOR data can be inserted using Python array.array() objects. Python arrays of type float (32-bit),
+double (64-bit), or int8_t (8-bit signed integer) are used as bind values when inserting VECTOR columns::
 
     from sqlalchemy import insert, select
     import array
@@ -578,15 +578,15 @@ double (64-bit), or int8_t (8-bit signed integer) are used as bind values when i
 VECTOR INDEXES
 ^^^^^^^^^^^^^^
 
-There are two vector indexes supported in vector search: IVF Flat index and HNSW
+There are two VECTOR indexes supported in VECTOR search: IVF Flat index and HNSW
 index.
 
-To utilize vector indexing, set the `oracle_vector` parameter to True to use
+To utilize VECTOR indexing, set the `oracle_vector` parameter to True to use
 the default values provided by Oracle, with HNSW as the default indexing method::
 
     Index(
             'vector_index',
-            t1.c.c1,
+            t1.c.embedding,
             oracle_vector = True,
         )
 
@@ -594,12 +594,12 @@ If you wish to use custom parameters, you can specify all the parameters as a di
 in the `oracle_vector` option. To learn more about the parameters that can be passed please
 visit this `link. <https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/create-vector-index.html>`_
 
-Configuring Oracle Vector Indexes
+Configuring Oracle VECTOR Indexes
 =================================
 
-When using Oracle vector indexes, the configuration parameters are divided into two levels:
+When using Oracle VECTOR indexes, the configuration parameters are divided into two levels:
 **top-level keys** and **nested keys** (under the ``parameters`` dictionary). This structure applies to
-both HNSW and IVF vector indexes.
+both HNSW and IVF VECTOR indexes.
 
 Top-Level Keys
 ==============
@@ -613,7 +613,7 @@ These keys are specified directly under the ``oracle_vector`` dictionary.
     - **Example**: ``'accuracy': 95``
 
 * ``distance``:
-    - Specifies the metric for calculating distance between vectors.
+    - Specifies the metric for calculating distance between VECTORS.
     - **Valid Values**: ``"EUCLIDEAN"``, ``"COSINE"``, ``"DOT"``, ``"MANHATTAN"``.
     - **Placement**: Top level.
     - **Example**: ``'distance': "COSINE"``
@@ -681,7 +681,7 @@ For custom configurations, the parameters can be specified as shown in the follo
 
     Index(
             'hnsw_vector_index',
-            my_table.c.c1,
+            t1.c.embedding,
             oracle_vector = {
                 'accuracy':95,
                 'distance':"COSINE",
@@ -695,7 +695,7 @@ For custom configurations, the parameters can be specified as shown in the follo
 
     Index(
             'ivf_vector_index',
-            my_table.c.c1,
+            t1.c.embedding,
             oracle_vector = {
                 'accuracy':90,
                 'distance':"DOT",
@@ -709,11 +709,21 @@ For custom configurations, the parameters can be specified as shown in the follo
 Similarity Searching
 ^^^^^^^^^^^^^^^^^^^^
 
-VECTOR_DISTANCE is the main function that you can use to calculate the distance between two vectors.
+VECTOR_DISTANCE is the main function that you can use to calculate the distance between two VECTORS.
 VECTOR_DISTANCE takes two vectors as parameters. You can optionally specify a distance metric to
-calculate the distance. If you do not specify a distance metric, then the default distance metric is cosine.
+calculate the distance. If you do not specify a distance metric, then the default distance metric is cosine::
 
-You can optionally use the following shorthand vector distance functions:
+    from sqlalchemy.orm import Session
+    from sqlalchemy.sql import func
+    import array
+
+    session = Session(bind=engine)
+    query_vector = array.array("b",[2,3,4])
+    result_vector = session.scalars(select(t1).order_by(func.VECTOR_DISTANCE(t1.embedding, query_vector, 'EUCLIDEAN'))
+    for user in vector:
+        print(user.id,user.embedding)
+
+You can optionally use the following shorthand VECTOR distance functions:
 
 * ``L1_DISTANCE``
 * ``L2_DISTANCE``
@@ -724,25 +734,25 @@ Example Usage::
 
     from sqlalchemy.orm import Session
     from sqlalchemy.sql import func
-        import array
+    import array
   
     session = Session(bind=engine)
     query_vector = array.array("b",[2,3,4])
-    result_vector = session.scalars(select(user_orm_vector).order_by(func.L2_distance(user_orm_vector.vector_col,query_vector)).limit(3))
+    result_vector = session.scalars(select(t1).order_by(func.L2_distance(t1.embedding, query_vector)).limit(3))
  
     for user in vector:
         print(user.id,user.embedding)
 
-EXACT/APPROX Seaching
-^^^^^^^^^^^^^^^^^^^^^
+Exact and Approximate Searching
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Similarity searches tend to get data from one or more clusters depending on the value of the query vector and the fetch
-size. Approximate searches using vector indexes can limit the searches to specific clusters, whereas exact searches visit
-vectors across all clusters.
+Similarity searches tend to get data from one or more clusters depending on the value of the query VECTOR and the fetch
+size. Approximate searches using VECTOR indexes can limit the searches to specific clusters, whereas exact searches visit
+VECTORS across all clusters.
 You can use the fetch_type clause to set the searching to be either EXACT, APPROX or APPROXIMATE::
 
-    result_vector = session.scalars(select(user_orm_vector).order_by(func.L2_distance(user_orm_vector.vector_col,query_vector)).limit(3)).fetch_type("EXACT")
-    result_vector = session.scalars(select(user_orm_vector).order_by(func.L2_distance(user_orm_vector.vector_col,query_vector)).limit(3)).fetch_type("APPROX")
+    result_vector = session.scalars(select(t1).order_by(func.L2_distance(t1.embedding, query_vector)).limit(3)).fetch_type("EXACT")
+    result_vector = session.scalars(select(t1).order_by(func.L2_distance(t1.embedding, query_vector)).limit(3)).fetch_type("APPROX")
 
 
 .. versionadded:: 2.1.0 added support for VECTOR using a newly added Oracle Database specific

@@ -1369,17 +1369,10 @@ class OracleDDLCompiler(compiler.DDLCompiler):
             if target_accuracy is not None:
                 parts.append(f"WITH TARGET ACCURACY {target_accuracy}")
             if parameters:
-                parts.append(
-                    "PARAMETERS (%s)"
-                    % (
-                        ",".join(
-                            [
-                                "%s %s" % (key, value)
-                                for key, value in parameters.items()
-                            ]
-                        )
-                    )
+                parameters_str = ", ".join(
+                    f"{k} {v}" for k, v in parameters.items()
                 )
+                parts.append(f"PARAMETERS {(parameters_str)}")
             parallel = vector_options.get("parallel")
             if parallel is not None:
                 parts.append(f"PARALLEL {parallel}")

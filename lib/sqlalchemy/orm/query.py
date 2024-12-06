@@ -2631,7 +2631,7 @@ class Query(
     @_generative
     @_assertions(_no_statement_condition)
     def fetch_type(self, fetch_type: str) -> Self:
-        """Apply an ``FETCH_TYPE`` to the query and return the newly resulting
+        """Apply a ``FETCH_TYPE`` to the query and return the newly resulting
         ``Query``.
         """
         if fetch_type not in ["exact", "approximate"]:

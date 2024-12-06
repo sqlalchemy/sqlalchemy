@@ -1648,7 +1648,7 @@ class vector_distance(ReturnTypeFromArgs[_T]):
 
         query_vector = array.array("b",[2,3,4])
         stmt = session.query(
-            table).order_by(func.vector_distance(table.c.col_1,
+            table_name).order_by(func.vector_distance(table_name.c.col_1,
         query_vector,'EUCLIDEAN'))
 
     """
@@ -1664,7 +1664,7 @@ class L1_DISTANCE(ReturnTypeFromArgs[_T]):
 
         query_vector = array.array("b",[2,3,4])
         stmt = session.query(
-            table).order_by(func.L1_distance(table.c.col_1,query_vector))
+            table_name).order_by(func.L1_distance(table_name.c.col_1,query_vector))
 
     """
 
@@ -1679,7 +1679,7 @@ class L2_DISTANCE(ReturnTypeFromArgs[_T]):
 
         query_vector = array.array("b",[2,3,4])
         stmt = session.query(
-            table).order_by(func.L2_distance(table.c.col_1,query_vector))
+            table_name).order_by(func.L2_distance(table_name.c.col_1,query_vector))
 
     """
 
@@ -1694,7 +1694,7 @@ class INNER_PRODUCT(ReturnTypeFromArgs[_T]):
 
         query_vector = array.array("b",[2,3,4])
         stmt = session.query(
-            table).order_by(func.INNER_PRODUCT(table.c.col_1,query_vector))
+            table_name).order_by(func.INNER_PRODUCT(table_name.c.col_1,query_vector))
 
     """
 
@@ -1709,7 +1709,7 @@ class COSINE_DISTANCE(ReturnTypeFromArgs[_T]):
 
         query_vector = array.array("b",[2,3,4])
         stmt = session.query(
-            table).order_by(func.COSINE_DISTANCE(table.c.col_1,query_vector))
+            table_name).order_by(func.COSINE_DISTANCE(table_name.c.col_1,query_vector))
 
     """
 

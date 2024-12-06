@@ -5191,9 +5191,9 @@ class SQLCompiler(Compiled):
             ):
                 fetch_clause = fetch_clause.render_literal_execute()
 
-            fetch_type = getattr(select, "_fetch_type", None)
+            fetch_type = getattr(select, "_fetch_type", "")
             text += "\n FETCH %s FIRST %s%s ROWS %s" % (
-                "" if fetch_type is None else fetch_type,
+                fetch_type,
                 self.process(fetch_clause, **kw),
                 " PERCENT" if fetch_clause_options["percent"] else "",
                 "WITH TIES" if fetch_clause_options["with_ties"] else "ONLY",
