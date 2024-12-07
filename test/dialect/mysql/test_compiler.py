@@ -744,7 +744,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(t.delete(), "DELETE FROM t")
         self.assert_compile(
             t.delete().with_dialect_options(mysql_limit=5),
-            "DELETE FROM t SET col1=%s LIMIT 5",
+            "DELETE FROM t LIMIT 5",
         )
         self.assert_compile(
             t.delete().with_dialect_options(mysql_limit=None),
