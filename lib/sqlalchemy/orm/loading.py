@@ -36,8 +36,8 @@ from .base import _DEFER_FOR_STATE
 from .base import _RAISE_FOR_STATE
 from .base import _SET_DEFERRED_EXPIRED
 from .base import PassiveFlag
+from .context import _ORMCompileState
 from .context import FromStatement
-from .context import ORMCompileState
 from .context import QueryContext
 from .util import _none_set
 from .util import state_str
@@ -323,7 +323,7 @@ def merge_frozen_result(session, statement, frozen_result, load=True):
         # flush current contents if we expect to load data
         session._autoflush()
 
-    ctx = querycontext.ORMSelectCompileState._create_entities_collection(
+    ctx = querycontext._ORMSelectCompileState._create_entities_collection(
         statement, legacy=False
     )
 
@@ -393,7 +393,7 @@ def merge_result(
     else:
         frozen_result = None
 
-    ctx = querycontext.ORMSelectCompileState._create_entities_collection(
+    ctx = querycontext._ORMSelectCompileState._create_entities_collection(
         query, legacy=True
     )
 
@@ -488,7 +488,7 @@ def get_from_identity(
         return None
 
 
-def load_on_ident(
+def _load_on_ident(
     session: Session,
     statement: Union[Select, FromStatement],
     key: Optional[_IdentityKeyType],
@@ -510,7 +510,7 @@ def load_on_ident(
     else:
         ident = identity_token = None
 
-    return load_on_pk_identity(
+    return _load_on_pk_identity(
         session,
         statement,
         ident,
@@ -527,7 +527,7 @@ def load_on_ident(
     )
 
 
-def load_on_pk_identity(
+def _load_on_pk_identity(
     session: Session,
     statement: Union[Select, FromStatement],
     primary_key_identity: Optional[Tuple[Any, ...]],
@@ -557,7 +557,7 @@ def load_on_pk_identity(
         statement._compile_options
         is SelectState.default_select_compile_options
     ):
-        compile_options = ORMCompileState.default_compile_options
+        compile_options = _ORMCompileState.default_compile_options
     else:
         compile_options = statement._compile_options
 
@@ -1027,7 +1027,7 @@ def _instance_processor(
                 _load_supers = [selectin_load_via]
 
             for _selectinload_entity in _load_supers:
-                if PostLoad.path_exists(
+                if _PostLoad.path_exists(
                     context, load_path, _selectinload_entity
                 ):
                     continue
@@ -1038,7 +1038,7 @@ def _instance_processor(
                     _polymorphic_from,
                     option_entities,
                 )
-                PostLoad.callable_for_path(
+                _PostLoad.callable_for_path(
                     context,
                     load_path,
                     _selectinload_entity.mapper,
@@ -1047,7 +1047,7 @@ def _instance_processor(
                     _selectinload_entity,
                 )
 
-    post_load = PostLoad.for_context(context, load_path, only_load_props)
+    post_load = _PostLoad.for_context(context, load_path, only_load_props)
 
     if refresh_state:
         refresh_identity_key = refresh_state.key
@@ -1526,7 +1526,7 @@ def _decorate_polymorphic_switch(
     return polymorphic_instance
 
 
-class PostLoad:
+class _PostLoad:
     """Track loaders and states for "post load" operations."""
 
     __slots__ = "loaders", "states", "load_keys"
@@ -1587,7 +1587,7 @@ class PostLoad:
         if path.path in context.post_load_paths:
             pl = context.post_load_paths[path.path]
         else:
-            pl = context.post_load_paths[path.path] = PostLoad()
+            pl = context.post_load_paths[path.path] = _PostLoad()
         pl.loaders[token] = (
             context,
             token,
@@ -1598,7 +1598,7 @@ class PostLoad:
         )
 
 
-def load_scalar_attributes(mapper, state, attribute_names, passive):
+def _load_scalar_attributes(mapper, state, attribute_names, passive):
     """initiate a column-based attribute refresh operation."""
 
     # assert mapper is _state_mapper(state)
@@ -1630,7 +1630,7 @@ def load_scalar_attributes(mapper, state, attribute_names, passive):
             # columns needed already, this implicitly undefers that column
             stmt = FromStatement(mapper, statement)
 
-            return load_on_ident(
+            return _load_on_ident(
                 session,
                 stmt,
                 None,
@@ -1671,7 +1671,7 @@ def load_scalar_attributes(mapper, state, attribute_names, passive):
         )
         return
 
-    result = load_on_ident(
+    result = _load_on_ident(
         session,
         select(mapper).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
         identity_key,

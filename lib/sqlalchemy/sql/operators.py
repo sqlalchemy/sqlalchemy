@@ -148,6 +148,7 @@ class Operators:
         is equivalent to::
 
             from sqlalchemy import and_
+
             and_(a, b)
 
         Care should be taken when using ``&`` regarding
@@ -172,6 +173,7 @@ class Operators:
         is equivalent to::
 
             from sqlalchemy import or_
+
             or_(a, b)
 
         Care should be taken when using ``|`` regarding
@@ -196,6 +198,7 @@ class Operators:
         is equivalent to::
 
             from sqlalchemy import not_
+
             not_(a)
 
         """
@@ -224,7 +227,7 @@ class Operators:
         This function can also be used to make bitwise operators explicit. For
         example::
 
-          somecolumn.op('&')(0xff)
+          somecolumn.op("&")(0xFF)
 
         is a bitwise AND of the value in ``somecolumn``.
 
@@ -275,7 +278,7 @@ class Operators:
 
          e.g.::
 
-            >>> expr = column('x').op('+', python_impl=lambda a, b: a + b)('y')
+            >>> expr = column("x").op("+", python_impl=lambda a, b: a + b)("y")
 
          The operator for the above expression will also work for non-SQL
          left and right objects::
@@ -389,10 +392,9 @@ class custom_op(OperatorType, Generic[_T]):
         from sqlalchemy.sql import operators
         from sqlalchemy import Numeric
 
-        unary = UnaryExpression(table.c.somecolumn,
-                modifier=operators.custom_op("!"),
-                type_=Numeric)
-
+        unary = UnaryExpression(
+            table.c.somecolumn, modifier=operators.custom_op("!"), type_=Numeric
+        )
 
     .. seealso::
 
@@ -400,7 +402,7 @@ class custom_op(OperatorType, Generic[_T]):
 
         :meth:`.Operators.bool_op`
 
-    """
+    """  # noqa: E501
 
     __name__ = "custom_op"
 
@@ -698,14 +700,15 @@ class ColumnOperators(Operators):
     ) -> ColumnOperators:
         r"""Implement the ``like`` operator.
 
-        In a column context, produces the expression::
+        In a column context, produces the expression:
+
+        .. sourcecode:: sql
 
             a LIKE other
 
         E.g.::
 
-            stmt = select(sometable).\
-                where(sometable.c.column.like("%foobar%"))
+            stmt = select(sometable).where(sometable.c.column.like("%foobar%"))
 
         :param other: expression to be compared
         :param escape: optional escape character, renders the ``ESCAPE``
@@ -725,18 +728,21 @@ class ColumnOperators(Operators):
     ) -> ColumnOperators:
         r"""Implement the ``ilike`` operator, e.g. case insensitive LIKE.
 
-        In a column context, produces an expression either of the form::
+        In a column context, produces an expression either of the form:
+
+        .. sourcecode:: sql
 
             lower(a) LIKE lower(other)
 
-        Or on backends that support the ILIKE operator::
+        Or on backends that support the ILIKE operator:
+
+        .. sourcecode:: sql
 
             a ILIKE other
 
         E.g.::
 
-            stmt = select(sometable).\
-                where(sometable.c.column.ilike("%foobar%"))
+            stmt = select(sometable).where(sometable.c.column.ilike("%foobar%"))
 
         :param other: expression to be compared
         :param escape: optional escape character, renders the ``ESCAPE``
@@ -748,7 +754,7 @@ class ColumnOperators(Operators):
 
             :meth:`.ColumnOperators.like`
 
-        """
+        """  # noqa: E501
         return self.operate(ilike_op, other, escape=escape)
 
     def bitwise_xor(self, other: Any) -> ColumnOperators:
@@ -842,12 +848,15 @@ class ColumnOperators(Operators):
 
         The given parameter ``other`` may be:
 
-        * A list of literal values, e.g.::
+        * A list of literal values,
+          e.g.::
 
             stmt.where(column.in_([1, 2, 3]))
 
           In this calling form, the list of items is converted to a set of
-          bound parameters the same length as the list given::
+          bound parameters the same length as the list given:
+
+          .. sourcecode:: sql
 
             WHERE COL IN (?, ?, ?)
 
@@ -855,16 +864,20 @@ class ColumnOperators(Operators):
           :func:`.tuple_` containing multiple expressions::
 
             from sqlalchemy import tuple_
+
             stmt.where(tuple_(col1, col2).in_([(1, 10), (2, 20), (3, 30)]))
 
-        * An empty list, e.g.::
+        * An empty list,
+          e.g.::
 
             stmt.where(column.in_([]))
 
           In this calling form, the expression renders an "empty set"
           expression.  These expressions are tailored to individual backends
           and are generally trying to get an empty SELECT statement as a
-          subquery.  Such as on SQLite, the expression is::
+          subquery.  Such as on SQLite, the expression is:
+
+          .. sourcecode:: sql
 
             WHERE col IN (SELECT 1 FROM (SELECT 1) WHERE 1!=1)
 
@@ -874,10 +887,12 @@ class ColumnOperators(Operators):
         * A bound parameter, e.g. :func:`.bindparam`, may be used if it
           includes the :paramref:`.bindparam.expanding` flag::
 
-            stmt.where(column.in_(bindparam('value', expanding=True)))
+            stmt.where(column.in_(bindparam("value", expanding=True)))
 
           In this calling form, the expression renders a special non-SQL
-          placeholder expression that looks like::
+          placeholder expression that looks like:
+
+          .. sourcecode:: sql
 
             WHERE COL IN ([EXPANDING_value])
 
@@ -887,7 +902,9 @@ class ColumnOperators(Operators):
 
             connection.execute(stmt, {"value": [1, 2, 3]})
 
-          The database would be passed a bound parameter for each value::
+          The database would be passed a bound parameter for each value:
+
+          .. sourcecode:: sql
 
             WHERE COL IN (?, ?, ?)
 
@@ -895,7 +912,9 @@ class ColumnOperators(Operators):
 
           If an empty list is passed, a special "empty list" expression,
           which is specific to the database in use, is rendered.  On
-          SQLite this would be::
+          SQLite this would be:
+
+          .. sourcecode:: sql
 
             WHERE COL IN (SELECT 1 FROM (SELECT 1) WHERE 1!=1)
 
@@ -906,13 +925,12 @@ class ColumnOperators(Operators):
           correlated scalar select::
 
             stmt.where(
-                column.in_(
-                    select(othertable.c.y).
-                    where(table.c.x == othertable.c.x)
-                )
+                column.in_(select(othertable.c.y).where(table.c.x == othertable.c.x))
             )
 
-          In this calling form, :meth:`.ColumnOperators.in_` renders as given::
+          In this calling form, :meth:`.ColumnOperators.in_` renders as given:
+
+          .. sourcecode:: sql
 
             WHERE COL IN (SELECT othertable.y
             FROM othertable WHERE othertable.x = table.x)
@@ -921,7 +939,7 @@ class ColumnOperators(Operators):
          construct, or a :func:`.bindparam` construct that includes the
          :paramref:`.bindparam.expanding` flag set to True.
 
-        """
+        """  # noqa: E501
         return self.operate(in_op, other)
 
     def not_in(self, other: Any) -> ColumnOperators:
@@ -1065,14 +1083,15 @@ class ColumnOperators(Operators):
         r"""Implement the ``startswith`` operator.
 
         Produces a LIKE expression that tests against a match for the start
-        of a string value::
+        of a string value:
+
+        .. sourcecode:: sql
 
             column LIKE <other> || '%'
 
         E.g.::
 
-            stmt = select(sometable).\
-                where(sometable.c.column.startswith("foobar"))
+            stmt = select(sometable).where(sometable.c.column.startswith("foobar"))
 
         Since the operator uses ``LIKE``, wildcard characters
         ``"%"`` and ``"_"`` that are present inside the <other> expression
@@ -1101,7 +1120,9 @@ class ColumnOperators(Operators):
 
             somecolumn.startswith("foo%bar", autoescape=True)
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             somecolumn LIKE :param || '%' ESCAPE '/'
 
@@ -1117,7 +1138,9 @@ class ColumnOperators(Operators):
 
             somecolumn.startswith("foo/%bar", escape="^")
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             somecolumn LIKE :param || '%' ESCAPE '^'
 
@@ -1137,7 +1160,7 @@ class ColumnOperators(Operators):
 
             :meth:`.ColumnOperators.like`
 
-        """
+        """  # noqa: E501
         return self.operate(
             startswith_op, other, escape=escape, autoescape=autoescape
         )
@@ -1152,14 +1175,15 @@ class ColumnOperators(Operators):
         version of :meth:`.ColumnOperators.startswith`.
 
         Produces a LIKE expression that tests against an insensitive
-        match for the start of a string value::
+        match for the start of a string value:
+
+        .. sourcecode:: sql
 
             lower(column) LIKE lower(<other>) || '%'
 
         E.g.::
 
-            stmt = select(sometable).\
-                where(sometable.c.column.istartswith("foobar"))
+            stmt = select(sometable).where(sometable.c.column.istartswith("foobar"))
 
         Since the operator uses ``LIKE``, wildcard characters
         ``"%"`` and ``"_"`` that are present inside the <other> expression
@@ -1188,7 +1212,9 @@ class ColumnOperators(Operators):
 
             somecolumn.istartswith("foo%bar", autoescape=True)
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             lower(somecolumn) LIKE lower(:param) || '%' ESCAPE '/'
 
@@ -1204,7 +1230,9 @@ class ColumnOperators(Operators):
 
             somecolumn.istartswith("foo/%bar", escape="^")
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             lower(somecolumn) LIKE lower(:param) || '%' ESCAPE '^'
 
@@ -1219,7 +1247,7 @@ class ColumnOperators(Operators):
         .. seealso::
 
             :meth:`.ColumnOperators.startswith`
-        """
+        """  # noqa: E501
         return self.operate(
             istartswith_op, other, escape=escape, autoescape=autoescape
         )
@@ -1233,14 +1261,15 @@ class ColumnOperators(Operators):
         r"""Implement the 'endswith' operator.
 
         Produces a LIKE expression that tests against a match for the end
-        of a string value::
+        of a string value:
+
+        .. sourcecode:: sql
 
             column LIKE '%' || <other>
 
         E.g.::
 
-            stmt = select(sometable).\
-                where(sometable.c.column.endswith("foobar"))
+            stmt = select(sometable).where(sometable.c.column.endswith("foobar"))
 
         Since the operator uses ``LIKE``, wildcard characters
         ``"%"`` and ``"_"`` that are present inside the <other> expression
@@ -1269,7 +1298,9 @@ class ColumnOperators(Operators):
 
             somecolumn.endswith("foo%bar", autoescape=True)
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             somecolumn LIKE '%' || :param ESCAPE '/'
 
@@ -1285,7 +1316,9 @@ class ColumnOperators(Operators):
 
             somecolumn.endswith("foo/%bar", escape="^")
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             somecolumn LIKE '%' || :param ESCAPE '^'
 
@@ -1305,7 +1338,7 @@ class ColumnOperators(Operators):
 
             :meth:`.ColumnOperators.like`
 
-        """
+        """  # noqa: E501
         return self.operate(
             endswith_op, other, escape=escape, autoescape=autoescape
         )
@@ -1320,14 +1353,15 @@ class ColumnOperators(Operators):
         version of :meth:`.ColumnOperators.endswith`.
 
         Produces a LIKE expression that tests against an insensitive match
-        for the end of a string value::
+        for the end of a string value:
+
+        .. sourcecode:: sql
 
             lower(column) LIKE '%' || lower(<other>)
 
         E.g.::
 
-            stmt = select(sometable).\
-                where(sometable.c.column.iendswith("foobar"))
+            stmt = select(sometable).where(sometable.c.column.iendswith("foobar"))
 
         Since the operator uses ``LIKE``, wildcard characters
         ``"%"`` and ``"_"`` that are present inside the <other> expression
@@ -1356,7 +1390,9 @@ class ColumnOperators(Operators):
 
             somecolumn.iendswith("foo%bar", autoescape=True)
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             lower(somecolumn) LIKE '%' || lower(:param) ESCAPE '/'
 
@@ -1372,7 +1408,9 @@ class ColumnOperators(Operators):
 
             somecolumn.iendswith("foo/%bar", escape="^")
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             lower(somecolumn) LIKE '%' || lower(:param) ESCAPE '^'
 
@@ -1387,7 +1425,7 @@ class ColumnOperators(Operators):
         .. seealso::
 
             :meth:`.ColumnOperators.endswith`
-        """
+        """  # noqa: E501
         return self.operate(
             iendswith_op, other, escape=escape, autoescape=autoescape
         )
@@ -1396,14 +1434,15 @@ class ColumnOperators(Operators):
         r"""Implement the 'contains' operator.
 
         Produces a LIKE expression that tests against a match for the middle
-        of a string value::
+        of a string value:
+
+        .. sourcecode:: sql
 
             column LIKE '%' || <other> || '%'
 
         E.g.::
 
-            stmt = select(sometable).\
-                where(sometable.c.column.contains("foobar"))
+            stmt = select(sometable).where(sometable.c.column.contains("foobar"))
 
         Since the operator uses ``LIKE``, wildcard characters
         ``"%"`` and ``"_"`` that are present inside the <other> expression
@@ -1432,7 +1471,9 @@ class ColumnOperators(Operators):
 
             somecolumn.contains("foo%bar", autoescape=True)
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             somecolumn LIKE '%' || :param || '%' ESCAPE '/'
 
@@ -1448,7 +1489,9 @@ class ColumnOperators(Operators):
 
             somecolumn.contains("foo/%bar", escape="^")
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             somecolumn LIKE '%' || :param || '%' ESCAPE '^'
 
@@ -1469,7 +1512,7 @@ class ColumnOperators(Operators):
             :meth:`.ColumnOperators.like`
 
 
-        """
+        """  # noqa: E501
         return self.operate(contains_op, other, **kw)
 
     def icontains(self, other: Any, **kw: Any) -> ColumnOperators:
@@ -1477,14 +1520,15 @@ class ColumnOperators(Operators):
         version of :meth:`.ColumnOperators.contains`.
 
         Produces a LIKE expression that tests against an insensitive match
-        for the middle of a string value::
+        for the middle of a string value:
+
+        .. sourcecode:: sql
 
             lower(column) LIKE '%' || lower(<other>) || '%'
 
         E.g.::
 
-            stmt = select(sometable).\
-                where(sometable.c.column.icontains("foobar"))
+            stmt = select(sometable).where(sometable.c.column.icontains("foobar"))
 
         Since the operator uses ``LIKE``, wildcard characters
         ``"%"`` and ``"_"`` that are present inside the <other> expression
@@ -1513,7 +1557,9 @@ class ColumnOperators(Operators):
 
             somecolumn.icontains("foo%bar", autoescape=True)
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             lower(somecolumn) LIKE '%' || lower(:param) || '%' ESCAPE '/'
 
@@ -1529,7 +1575,9 @@ class ColumnOperators(Operators):
 
             somecolumn.icontains("foo/%bar", escape="^")
 
-          Will render as::
+          Will render as:
+
+          .. sourcecode:: sql
 
             lower(somecolumn) LIKE '%' || lower(:param) || '%' ESCAPE '^'
 
@@ -1545,7 +1593,7 @@ class ColumnOperators(Operators):
 
             :meth:`.ColumnOperators.contains`
 
-        """
+        """  # noqa: E501
         return self.operate(icontains_op, other, **kw)
 
     def match(self, other: Any, **kwargs: Any) -> ColumnOperators:
@@ -1586,7 +1634,7 @@ class ColumnOperators(Operators):
         E.g.::
 
             stmt = select(table.c.some_column).where(
-                table.c.some_column.regexp_match('^(b|c)')
+                table.c.some_column.regexp_match("^(b|c)")
             )
 
         :meth:`_sql.ColumnOperators.regexp_match` attempts to resolve to
@@ -1644,11 +1692,7 @@ class ColumnOperators(Operators):
         E.g.::
 
             stmt = select(
-                table.c.some_column.regexp_replace(
-                    'b(..)',
-                    'X\1Y',
-                    flags='g'
-                )
+                table.c.some_column.regexp_replace("b(..)", "X\1Y", flags="g")
             )
 
         :meth:`_sql.ColumnOperators.regexp_replace` attempts to resolve to

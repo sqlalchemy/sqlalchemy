@@ -31,9 +31,9 @@ from . import exc as orm_exc
 from . import loading
 from . import persistence
 from .base import NO_VALUE
-from .context import AbstractORMCompileState
+from .context import _AbstractORMCompileState
+from .context import _ORMFromStatementCompileState
 from .context import FromStatement
-from .context import ORMFromStatementCompileState
 from .context import QueryContext
 from .. import exc as sa_exc
 from .. import util
@@ -386,9 +386,9 @@ def _expand_composites(mapper, mappings):
             populators[key](mapping)
 
 
-class ORMDMLState(AbstractORMCompileState):
+class _ORMDMLState(_AbstractORMCompileState):
     is_dml_returning = True
-    from_statement_ctx: Optional[ORMFromStatementCompileState] = None
+    from_statement_ctx: Optional[_ORMFromStatementCompileState] = None
 
     @classmethod
     def _get_orm_crud_kv_pairs(
@@ -560,7 +560,9 @@ class ORMDMLState(AbstractORMCompileState):
             fs = fs.options(*orm_level_statement._with_options)
             self.select_statement = fs
             self.from_statement_ctx = fsc = (
-                ORMFromStatementCompileState.create_for_statement(fs, compiler)
+                _ORMFromStatementCompileState.create_for_statement(
+                    fs, compiler
+                )
             )
             fsc.setup_dml_returning_compile_state(dml_mapper)
 
@@ -633,7 +635,7 @@ class ORMDMLState(AbstractORMCompileState):
             return result
 
 
-class BulkUDCompileState(ORMDMLState):
+class _BulkUDCompileState(_ORMDMLState):
     class default_update_options(Options):
         _dml_strategy: DMLStrategyArgument = "auto"
         _synchronize_session: SynchronizeSessionArgument = "auto"
@@ -674,7 +676,7 @@ class BulkUDCompileState(ORMDMLState):
         (
             update_options,
             execution_options,
-        ) = BulkUDCompileState.default_update_options.from_execution_options(
+        ) = _BulkUDCompileState.default_update_options.from_execution_options(
             "_sa_orm_update_options",
             {
                 "synchronize_session",
@@ -1152,7 +1154,7 @@ class BulkUDCompileState(ORMDMLState):
 
 
 @CompileState.plugin_for("orm", "insert")
-class BulkORMInsert(ORMDMLState, InsertDMLState):
+class _BulkORMInsert(_ORMDMLState, InsertDMLState):
     class default_insert_options(Options):
         _dml_strategy: DMLStrategyArgument = "auto"
         _render_nulls: bool = False
@@ -1176,7 +1178,7 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
         (
             insert_options,
             execution_options,
-        ) = BulkORMInsert.default_insert_options.from_execution_options(
+        ) = _BulkORMInsert.default_insert_options.from_execution_options(
             "_sa_orm_insert_options",
             {"dml_strategy", "autoflush", "populate_existing", "render_nulls"},
             execution_options,
@@ -1321,9 +1323,9 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
         )
 
     @classmethod
-    def create_for_statement(cls, statement, compiler, **kw) -> BulkORMInsert:
+    def create_for_statement(cls, statement, compiler, **kw) -> _BulkORMInsert:
         self = cast(
-            BulkORMInsert,
+            _BulkORMInsert,
             super().create_for_statement(statement, compiler, **kw),
         )
 
@@ -1412,7 +1414,7 @@ class BulkORMInsert(ORMDMLState, InsertDMLState):
 
 
 @CompileState.plugin_for("orm", "update")
-class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
+class _BulkORMUpdate(_BulkUDCompileState, UpdateDMLState):
     @classmethod
     def create_for_statement(cls, statement, compiler, **kw):
         self = cls.__new__(cls)
@@ -1899,7 +1901,7 @@ class BulkORMUpdate(BulkUDCompileState, UpdateDMLState):
 
 
 @CompileState.plugin_for("orm", "delete")
-class BulkORMDelete(BulkUDCompileState, DeleteDMLState):
+class _BulkORMDelete(_BulkUDCompileState, DeleteDMLState):
     @classmethod
     def create_for_statement(cls, statement, compiler, **kw):
         self = cls.__new__(cls)

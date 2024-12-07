@@ -107,12 +107,12 @@ if typing.TYPE_CHECKING:
     from .clsregistry import _class_resolver
     from .clsregistry import _ModNS
     from .decl_base import _ClassScanMapperConfig
-    from .dependency import DependencyProcessor
+    from .dependency import _DependencyProcessor
     from .mapper import Mapper
     from .query import Query
     from .session import Session
     from .state import InstanceState
-    from .strategies import LazyLoader
+    from .strategies import _LazyLoader
     from .util import AliasedClass
     from .util import AliasedInsp
     from ..sql._typing import _CoreAdapterProto
@@ -362,7 +362,7 @@ class RelationshipProperty(
 
     _overlaps: Sequence[str]
 
-    _lazy_strategy: LazyLoader
+    _lazy_strategy: _LazyLoader
 
     _persistence_only = dict(
         passive_deletes=False,
@@ -372,12 +372,12 @@ class RelationshipProperty(
         cascade_backrefs=False,
     )
 
-    _dependency_processor: Optional[DependencyProcessor] = None
+    _dependency_processor: Optional[_DependencyProcessor] = None
 
     primaryjoin: ColumnElement[bool]
     secondaryjoin: Optional[ColumnElement[bool]]
     secondary: Optional[FromClause]
-    _join_condition: JoinCondition
+    _join_condition: _JoinCondition
     order_by: _RelationshipOrderByArg
 
     _user_defined_foreign_keys: Set[ColumnElement[Any]]
@@ -559,7 +559,7 @@ class RelationshipProperty(
                 )
 
     def instrument_class(self, mapper: Mapper[Any]) -> None:
-        attributes.register_descriptor(
+        attributes._register_descriptor(
             mapper.class_,
             self.key,
             comparator=self.comparator_factory(self, mapper),
@@ -748,12 +748,16 @@ class RelationshipProperty(
         def __eq__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
             """Implement the ``==`` operator.
 
-            In a many-to-one context, such as::
+            In a many-to-one context, such as:
+
+            .. sourcecode:: text
 
               MyClass.some_prop == <some object>
 
             this will typically produce a
-            clause such as::
+            clause such as:
+
+            .. sourcecode:: text
 
               mytable.related_id == <some id>
 
@@ -916,11 +920,12 @@ class RelationshipProperty(
             An expression like::
 
                 session.query(MyClass).filter(
-                    MyClass.somereference.any(SomeRelated.x==2)
+                    MyClass.somereference.any(SomeRelated.x == 2)
                 )
 
+            Will produce a query like:
 
-            Will produce a query like::
+            .. sourcecode:: sql
 
                 SELECT * FROM my_table WHERE
                 EXISTS (SELECT 1 FROM related WHERE related.my_id=my_table.id
@@ -934,11 +939,11 @@ class RelationshipProperty(
             :meth:`~.Relationship.Comparator.any` is particularly
             useful for testing for empty collections::
 
-                session.query(MyClass).filter(
-                    ~MyClass.somereference.any()
-                )
+                session.query(MyClass).filter(~MyClass.somereference.any())
 
-            will produce::
+            will produce:
+
+            .. sourcecode:: sql
 
                 SELECT * FROM my_table WHERE
                 NOT (EXISTS (SELECT 1 FROM related WHERE
@@ -969,11 +974,12 @@ class RelationshipProperty(
             An expression like::
 
                 session.query(MyClass).filter(
-                    MyClass.somereference.has(SomeRelated.x==2)
+                    MyClass.somereference.has(SomeRelated.x == 2)
                 )
 
+            Will produce a query like:
 
-            Will produce a query like::
+            .. sourcecode:: sql
 
                 SELECT * FROM my_table WHERE
                 EXISTS (SELECT 1 FROM related WHERE
@@ -1012,7 +1018,9 @@ class RelationshipProperty(
 
                 MyClass.contains(other)
 
-            Produces a clause like::
+            Produces a clause like:
+
+            .. sourcecode:: sql
 
                 mytable.id == <some id>
 
@@ -1032,7 +1040,9 @@ class RelationshipProperty(
 
                 query(MyClass).filter(MyClass.contains(other))
 
-            Produces a query like::
+            Produces a query like:
+
+            .. sourcecode:: sql
 
                 SELECT * FROM my_table, my_association_table AS
                 my_association_table_1 WHERE
@@ -1128,11 +1138,15 @@ class RelationshipProperty(
         def __ne__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
             """Implement the ``!=`` operator.
 
-            In a many-to-one context, such as::
+            In a many-to-one context, such as:
+
+            .. sourcecode:: text
 
               MyClass.some_prop != <some object>
 
-            This will typically produce a clause such as::
+            This will typically produce a clause such as:
+
+            .. sourcecode:: sql
 
               mytable.related_id != <some id>
 
@@ -1687,7 +1701,7 @@ class RelationshipProperty(
         self._join_condition._warn_for_conflicting_sync_targets()
         super().do_init()
         self._lazy_strategy = cast(
-            "LazyLoader", self._get_strategy((("lazy", "select"),))
+            "_LazyLoader", self._get_strategy((("lazy", "select"),))
         )
 
     def _setup_registry_dependencies(self) -> None:
@@ -1921,7 +1935,7 @@ class RelationshipProperty(
         self.target = self.entity.persist_selectable
 
     def _setup_join_conditions(self) -> None:
-        self._join_condition = jc = JoinCondition(
+        self._join_condition = jc = _JoinCondition(
             parent_persist_selectable=self.parent.persist_selectable,
             child_persist_selectable=self.entity.persist_selectable,
             parent_local_selectable=self.parent.local_table,
@@ -2193,7 +2207,7 @@ class RelationshipProperty(
             self.uselist = self.direction is not MANYTOONE
         if not self.viewonly:
             self._dependency_processor = (  # type: ignore
-                dependency.DependencyProcessor.from_relationship
+                dependency._DependencyProcessor.from_relationship
             )(self)
 
     @util.memoized_property
@@ -2305,7 +2319,7 @@ def _annotate_columns(element: _CE, annotations: _AnnotationDict) -> _CE:
     return element
 
 
-class JoinCondition:
+class _JoinCondition:
     primaryjoin_initial: Optional[ColumnElement[bool]]
     primaryjoin: ColumnElement[bool]
     secondaryjoin: Optional[ColumnElement[bool]]

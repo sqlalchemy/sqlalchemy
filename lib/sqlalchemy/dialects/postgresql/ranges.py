@@ -360,6 +360,8 @@ class Range(Generic[_T]):
         else:
             return self._contains_value(value)
 
+    __contains__ = contains
+
     def overlaps(self, other: Range[_T]) -> bool:
         "Determine whether this range overlaps with `other`."
 

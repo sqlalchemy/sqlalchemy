@@ -35,13 +35,13 @@ from ._typing import insp_is_mapper_property
 from .attributes import QueryableAttribute
 from .base import InspectionAttr
 from .interfaces import LoaderOption
+from .path_registry import _AbstractEntityRegistry
 from .path_registry import _DEFAULT_TOKEN
 from .path_registry import _StrPathToken
+from .path_registry import _TokenRegistry
 from .path_registry import _WILDCARD_TOKEN
-from .path_registry import AbstractEntityRegistry
 from .path_registry import path_is_property
 from .path_registry import PathRegistry
-from .path_registry import TokenRegistry
 from .util import _orm_full_deannotate
 from .util import AliasedInsp
 from .. import exc as sa_exc
@@ -66,7 +66,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _EntityType
     from ._typing import _InternalEntityType
     from .context import _MapperEntity
-    from .context import ORMCompileState
+    from .context import _ORMCompileState
     from .context import QueryContext
     from .interfaces import _StrategyKey
     from .interfaces import MapperProperty
@@ -109,9 +109,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         The option is used in conjunction with an explicit join that loads
         the desired rows, i.e.::
 
-            sess.query(Order).join(Order.user).options(
-                contains_eager(Order.user)
-            )
+            sess.query(Order).join(Order.user).options(contains_eager(Order.user))
 
         The above query would join from the ``Order`` entity to its related
         ``User`` entity, and the returned ``Order`` objects would have the
@@ -257,15 +255,11 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             select(User).options(joinedload(User.orders))
 
             # joined-load Order.items and then Item.keywords
-            select(Order).options(
-                joinedload(Order.items).joinedload(Item.keywords)
-            )
+            select(Order).options(joinedload(Order.items).joinedload(Item.keywords))
 
             # lazily load Order.items, but when Items are loaded,
             # joined-load the keywords collection
-            select(Order).options(
-                lazyload(Order.items).joinedload(Item.keywords)
-            )
+            select(Order).options(lazyload(Order.items).joinedload(Item.keywords))
 
         :param innerjoin: if ``True``, indicates that the joined eager load
          should use an inner join instead of the default of left outer join::
@@ -276,9 +270,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         OUTER and others INNER, right-nested joins are used to link them::
 
             select(A).options(
-                joinedload(A.bs, innerjoin=False).joinedload(
-                    B.cs, innerjoin=True
-                )
+                joinedload(A.bs, innerjoin=False).joinedload(B.cs, innerjoin=True)
             )
 
         The above query, linking A.bs via "outer" join and B.cs via "inner"
@@ -293,10 +285,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         will render as LEFT OUTER JOIN.  For example, supposing ``A.bs``
         is an outerjoin::
 
-            select(A).options(
-                joinedload(A.bs).joinedload(B.cs, innerjoin="unnested")
-            )
-
+            select(A).options(joinedload(A.bs).joinedload(B.cs, innerjoin="unnested"))
 
         The above join will render as "a LEFT OUTER JOIN b LEFT OUTER JOIN c",
         rather than as "a LEFT OUTER JOIN (b JOIN c)".
@@ -326,7 +315,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
             :ref:`joined_eager_loading`
 
-        """
+        """  # noqa: E501
         loader = self._set_relationship_strategy(
             attr,
             {"lazy": "joined"},
@@ -357,10 +346,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
             # lazily load Order.items, but when Items are loaded,
             # subquery-load the keywords collection
-            select(Order).options(
-                lazyload(Order.items).subqueryload(Item.keywords)
-            )
-
+            select(Order).options(lazyload(Order.items).subqueryload(Item.keywords))
 
         .. seealso::
 
@@ -394,9 +380,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
             # lazily load Order.items, but when Items are loaded,
             # selectin-load the keywords collection
-            select(Order).options(
-                lazyload(Order.items).selectinload(Item.keywords)
-            )
+            select(Order).options(lazyload(Order.items).selectinload(Item.keywords))
 
         :param recursion_depth: optional int; when set to a positive integer
          in conjunction with a self-referential relationship,
@@ -609,8 +593,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             from sqlalchemy.orm import defer
 
             session.query(MyClass).options(
-                defer(MyClass.attribute_one),
-                defer(MyClass.attribute_two)
+                defer(MyClass.attribute_one), defer(MyClass.attribute_two)
             )
 
         To specify a deferred load of an attribute on a related class,
@@ -630,7 +613,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
                 defaultload(MyClass.someattr).options(
                     defer(RelatedClass.some_column),
                     defer(RelatedClass.some_other_column),
-                    defer(RelatedClass.another_column)
+                    defer(RelatedClass.another_column),
                 )
             )
 
@@ -676,14 +659,10 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             )
 
             # undefer all columns specific to a single class using Load + *
-            session.query(MyClass, MyOtherClass).options(
-                Load(MyClass).undefer("*")
-            )
+            session.query(MyClass, MyOtherClass).options(Load(MyClass).undefer("*"))
 
             # undefer a column on a related object
-            select(MyClass).options(
-                defaultload(MyClass.items).undefer(MyClass.text)
-            )
+            select(MyClass).options(defaultload(MyClass.items).undefer(MyClass.text))
 
         :param key: Attribute to be undeferred.
 
@@ -696,7 +675,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
             :func:`_orm.undefer_group`
 
-        """
+        """  # noqa: E501
         return self._set_column_strategy(
             (key,), {"deferred": False, "instrument": True}
         )
@@ -913,7 +892,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
     def process_compile_state_replaced_entities(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         mapper_entities: Sequence[_MapperEntity],
     ) -> None:
         if not compile_state.compile_options._enable_eagerloads:
@@ -928,7 +907,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
             not bool(compile_state.current_path),
         )
 
-    def process_compile_state(self, compile_state: ORMCompileState) -> None:
+    def process_compile_state(self, compile_state: _ORMCompileState) -> None:
         if not compile_state.compile_options._enable_eagerloads:
             return
 
@@ -941,7 +920,7 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
 
     def _process(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         mapper_entities: Sequence[_MapperEntity],
         raiseerr: bool,
     ) -> None:
@@ -1042,7 +1021,7 @@ class Load(_AbstractLoad):
 
     @classmethod
     def _construct_for_existing_path(
-        cls, path: AbstractEntityRegistry
+        cls, path: _AbstractEntityRegistry
     ) -> Load:
         load = cls.__new__(cls)
         load.path = path
@@ -1139,7 +1118,7 @@ class Load(_AbstractLoad):
 
     def _process(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         mapper_entities: Sequence[_MapperEntity],
         raiseerr: bool,
     ) -> None:
@@ -1218,13 +1197,11 @@ class Load(_AbstractLoad):
 
             query = session.query(Author)
             query = query.options(
-                        joinedload(Author.book).options(
-                            load_only(Book.summary, Book.excerpt),
-                            joinedload(Book.citations).options(
-                                joinedload(Citation.author)
-                            )
-                        )
-                    )
+                joinedload(Author.book).options(
+                    load_only(Book.summary, Book.excerpt),
+                    joinedload(Book.citations).options(joinedload(Citation.author)),
+                )
+            )
 
         :param \*opts: A series of loader option objects (ultimately
          :class:`_orm.Load` objects) which should be applied to the path
@@ -1428,7 +1405,7 @@ class _WildcardLoad(_AbstractLoad):
         if attr.endswith(_DEFAULT_TOKEN):
             attr = f"{attr.split(':')[0]}:{_WILDCARD_TOKEN}"
 
-        effective_path = cast(AbstractEntityRegistry, parent.path).token(attr)
+        effective_path = cast(_AbstractEntityRegistry, parent.path).token(attr)
 
         assert effective_path.is_token
 
@@ -1668,13 +1645,17 @@ class _LoadElement(
         loads, and adjusts the given path to be relative to the
         current_path.
 
-        E.g. given a loader path and current path::
+        E.g. given a loader path and current path:
+
+        .. sourcecode:: text
 
             lp: User -> orders -> Order -> items -> Item -> keywords -> Keyword
 
             cp: User -> orders -> Order -> items
 
-        The adjusted path would be::
+        The adjusted path would be:
+
+        .. sourcecode:: text
 
             Item -> keywords -> Keyword
 
@@ -2155,11 +2136,11 @@ class _TokenStrategyLoad(_LoadElement):
 
     e.g.::
 
-        raiseload('*')
-        Load(User).lazyload('*')
-        defer('*')
+        raiseload("*")
+        Load(User).lazyload("*")
+        defer("*")
         load_only(User.name, User.email)  # will create a defer('*')
-        joinedload(User.addresses).raiseload('*')
+        joinedload(User.addresses).raiseload("*")
 
     """
 
@@ -2233,7 +2214,7 @@ class _TokenStrategyLoad(_LoadElement):
             ("loader", natural_path)
             for natural_path in (
                 cast(
-                    TokenRegistry, effective_path
+                    _TokenRegistry, effective_path
                 )._generate_natural_for_superclasses()
             )
         ]

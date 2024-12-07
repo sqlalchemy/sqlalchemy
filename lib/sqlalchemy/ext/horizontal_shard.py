@@ -62,7 +62,7 @@ if TYPE_CHECKING:
     from ..engine.result import Result
     from ..orm import LoaderCallableStatus
     from ..orm._typing import _O
-    from ..orm.bulk_persistence import BulkUDCompileState
+    from ..orm.bulk_persistence import _BulkUDCompileState
     from ..orm.context import QueryContext
     from ..orm.session import _EntityBindKey
     from ..orm.session import _SessionBind
@@ -128,12 +128,9 @@ class ShardedQuery(Query[_T]):
         The shard_id can be passed for a 2.0 style execution to the
         bind_arguments dictionary of :meth:`.Session.execute`::
 
-            results = session.execute(
-                stmt,
-                bind_arguments={"shard_id": "my_shard"}
-            )
+            results = session.execute(stmt, bind_arguments={"shard_id": "my_shard"})
 
-        """
+        """  # noqa: E501
         return self.execution_options(_sa_shard_id=shard_id)
 
 
@@ -385,9 +382,9 @@ class set_shard_id(ORMOption):
     the :meth:`_sql.Executable.options` method of any executable statement::
 
         stmt = (
-            select(MyObject).
-            where(MyObject.name == 'some name').
-            options(set_shard_id("shard1"))
+            select(MyObject)
+            .where(MyObject.name == "some name")
+            .options(set_shard_id("shard1"))
         )
 
     Above, the statement when invoked will limit to the "shard1" shard
@@ -433,8 +430,8 @@ def execute_and_instances(
         None,
         QueryContext.default_load_options,
         Type[QueryContext.default_load_options],
-        BulkUDCompileState.default_update_options,
-        Type[BulkUDCompileState.default_update_options],
+        _BulkUDCompileState.default_update_options,
+        Type[_BulkUDCompileState.default_update_options],
     ]
 
     if orm_context.is_select:

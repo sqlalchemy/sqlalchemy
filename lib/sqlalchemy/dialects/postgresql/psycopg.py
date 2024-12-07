@@ -29,20 +29,29 @@ selected depending on how the engine is created:
   automatically select the sync version, e.g.::
 
     from sqlalchemy import create_engine
-    sync_engine = create_engine("postgresql+psycopg://scott:tiger@localhost/test")
+
+    sync_engine = create_engine(
+        "postgresql+psycopg://scott:tiger@localhost/test"
+    )
 
 * calling :func:`_asyncio.create_async_engine` with
   ``postgresql+psycopg://...`` will automatically select the async version,
   e.g.::
 
     from sqlalchemy.ext.asyncio import create_async_engine
-    asyncio_engine = create_async_engine("postgresql+psycopg://scott:tiger@localhost/test")
+
+    asyncio_engine = create_async_engine(
+        "postgresql+psycopg://scott:tiger@localhost/test"
+    )
 
 The asyncio version of the dialect may also be specified explicitly using the
 ``psycopg_async`` suffix, as::
 
     from sqlalchemy.ext.asyncio import create_async_engine
-    asyncio_engine = create_async_engine("postgresql+psycopg_async://scott:tiger@localhost/test")
+
+    asyncio_engine = create_async_engine(
+        "postgresql+psycopg_async://scott:tiger@localhost/test"
+    )
 
 .. seealso::
 

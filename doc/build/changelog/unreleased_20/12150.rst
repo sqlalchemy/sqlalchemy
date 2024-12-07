@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 12150
+
+    Fixed issue in oracledb / cx_oracle dialects where output type handlers for
+    ``CLOB`` were being routed to ``NVARCHAR`` rather than ``VARCHAR``, causing
+    a double conversion to take place.
+

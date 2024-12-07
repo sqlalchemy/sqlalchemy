@@ -385,9 +385,9 @@ def _infer_type_from_decl_column(
         class MyClass:
             # ...
 
-            a : Mapped[int]
+            a: Mapped[int]
 
-            b : Mapped[str]
+            b: Mapped[str]
 
             c: Mapped[int]
 

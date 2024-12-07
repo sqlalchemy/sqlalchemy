@@ -157,16 +157,16 @@ def exists(
     :meth:`_sql.SelectBase.exists` method::
 
         exists_criteria = (
-            select(table2.c.col2).
-            where(table1.c.col1 == table2.c.col2).
-            exists()
+            select(table2.c.col2).where(table1.c.col1 == table2.c.col2).exists()
         )
 
     The EXISTS criteria is then used inside of an enclosing SELECT::
 
         stmt = select(table1.c.col1).where(exists_criteria)
 
-    The above statement will then be of the form::
+    The above statement will then be of the form:
+
+    .. sourcecode:: sql
 
         SELECT col1 FROM table1 WHERE EXISTS
         (SELECT table2.col2 FROM table2 WHERE table2.col2 = table1.col1)
@@ -227,11 +227,14 @@ def join(
 
     E.g.::
 
-        j = join(user_table, address_table,
-                 user_table.c.id == address_table.c.user_id)
+        j = join(
+            user_table, address_table, user_table.c.id == address_table.c.user_id
+        )
         stmt = select(user_table).select_from(j)
 
-    would emit SQL along the lines of::
+    would emit SQL along the lines of:
+
+    .. sourcecode:: sql
 
         SELECT user.id, user.name FROM user
         JOIN address ON user.id = address.user_id
@@ -265,7 +268,7 @@ def join(
 
         :class:`_expression.Join` - the type of object produced.
 
-    """
+    """  # noqa: E501
 
     return Join(left, right, onclause, isouter, full)
 
@@ -541,13 +544,14 @@ def tablesample(
         from sqlalchemy import func
 
         selectable = people.tablesample(
-                    func.bernoulli(1),
-                    name='alias',
-                    seed=func.random())
+            func.bernoulli(1), name="alias", seed=func.random()
+        )
         stmt = select(selectable.c.people_id)
 
     Assuming ``people`` with a column ``people_id``, the above
-    statement would render as::
+    statement would render as:
+
+    .. sourcecode:: sql
 
         SELECT alias.people_id FROM
         people AS alias TABLESAMPLE bernoulli(:bernoulli_1)
@@ -625,12 +629,10 @@ def values(
         from sqlalchemy import values
 
         value_expr = values(
-            column('id', Integer),
-            column('name', String),
-            name="my_values"
-        ).data(
-            [(1, 'name1'), (2, 'name2'), (3, 'name3')]
-        )
+            column("id", Integer),
+            column("name", String),
+            name="my_values",
+        ).data([(1, "name1"), (2, "name2"), (3, "name3")])
 
     :param \*columns: column expressions, typically composed using
      :func:`_expression.column` objects.

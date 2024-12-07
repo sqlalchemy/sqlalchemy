@@ -21,6 +21,8 @@ provided.  One is a bundle of generic decorators that map function arguments
 and return values to events::
 
   from sqlalchemy.orm.collections import collection
+
+
   class MyClass:
       # ...
 
@@ -31,7 +33,6 @@ and return values to events::
       @collection.removes_return()
       def pop(self):
           return self.data.pop()
-
 
 The second approach is a bundle of targeted decorators that wrap appropriate
 append and remove notifiers around the mutation methods present in the
@@ -73,10 +74,11 @@ generally not needed.  Odds are, the extension method will delegate to a
 method that's already instrumented.  For example::
 
   class QueueIsh(list):
-     def push(self, item):
-         self.append(item)
-     def shift(self):
-         return self.pop(0)
+      def push(self, item):
+          self.append(item)
+
+      def shift(self):
+          return self.pop(0)
 
 There's no need to decorate these methods.  ``append`` and ``pop`` are already
 instrumented as part of the ``list`` interface.  Decorating them would fire
@@ -133,8 +135,8 @@ from ..sql.base import NO_ARG
 from ..util.compat import inspect_getfullargspec
 
 if typing.TYPE_CHECKING:
+    from .attributes import _CollectionAttributeImpl
     from .attributes import AttributeEventToken
-    from .attributes import CollectionAttributeImpl
     from .mapped_collection import attribute_keyed_dict
     from .mapped_collection import column_keyed_dict
     from .mapped_collection import keyfunc_mapping
@@ -195,8 +197,9 @@ class collection:
     The recipe decorators all require parens, even those that take no
     arguments::
 
-        @collection.adds('entity')
+        @collection.adds("entity")
         def insert(self, position, entity): ...
+
 
         @collection.removes_return()
         def popitem(self): ...
@@ -217,10 +220,12 @@ class collection:
             @collection.appender
             def add(self, append): ...
 
+
             # or, equivalently
             @collection.appender
             @collection.adds(1)
             def add(self, append): ...
+
 
             # for mapping type, an 'append' may kick out a previous value
             # that occupies that slot.  consider d['a'] = 'foo'- any previous
@@ -261,10 +266,11 @@ class collection:
             @collection.remover
             def zap(self, entity): ...
 
+
             # or, equivalently
             @collection.remover
             @collection.removes_return()
-            def zap(self, ): ...
+            def zap(self): ...
 
         If the value to remove is not present in the collection, you may
         raise an exception or return None to ignore the error.
@@ -364,7 +370,8 @@ class collection:
             @collection.adds(1)
             def push(self, item): ...
 
-            @collection.adds('entity')
+
+            @collection.adds("entity")
             def do_stuff(self, thing, entity=None): ...
 
         """
@@ -476,7 +483,7 @@ class CollectionAdapter:
         "empty",
     )
 
-    attr: CollectionAttributeImpl
+    attr: _CollectionAttributeImpl
     _key: str
 
     # this is actually a weakref; see note in constructor
@@ -489,7 +496,7 @@ class CollectionAdapter:
 
     def __init__(
         self,
-        attr: CollectionAttributeImpl,
+        attr: _CollectionAttributeImpl,
         owner_state: InstanceState[Any],
         data: _AdaptedCollectionProtocol,
     ):
@@ -812,7 +819,7 @@ def bulk_replace(values, existing_adapter, new_adapter, initiator=None):
         existing_adapter._fire_remove_event_bulk(removals, initiator=initiator)
 
 
-def prepare_instrumentation(
+def _prepare_instrumentation(
     factory: Union[Type[Collection[Any]], _CollectionFactoryType],
 ) -> _CollectionFactoryType:
     """Prepare a callable for future use as a collection class factory.

@@ -432,14 +432,16 @@ class DontWrapMixin:
 
         from sqlalchemy.exc import DontWrapMixin
 
+
         class MyCustomException(Exception, DontWrapMixin):
             pass
+
 
         class MySpecialType(TypeDecorator):
             impl = String
 
             def process_bind_param(self, value, dialect):
-                if value == 'invalid':
+                if value == "invalid":
                     raise MyCustomException("invalid!")
 
     """

@@ -59,7 +59,9 @@ class URLTest(fixtures.TestBase):
         "/database?foo=bar",
         "dbtype://username:password@[2001:da8:2004:1000:202:116:160:90]:80"
         "/database?foo=bar",
-        "dbtype://username:password@hostspec/test database with@atsign",
+        "dbtype://username:password@hostspec/test+database with%40atsign",
+        "dbtype://username:password@hostspec/db%3Fwith%3Dqmark",
+        "dbtype://username:password@hostspec/test database with spaces",
         "dbtype://username:password@hostspec?query=but_no_db",
         "dbtype://username:password@hostspec:450?query=but_no_db",
         "dbtype://username:password with spaces@hostspec:450?query=but_no_db",
@@ -98,17 +100,28 @@ class URLTest(fixtures.TestBase):
         ), u.host
         assert u.database in (
             "database",
-            "test database with@atsign",
+            "test+database with@atsign",
+            "test database with spaces",
             "/usr/local/_xtest@example.com/members.db",
             "/usr/db_file.db",
             ":memory:",
             "",
             "foo/bar/im/a/file",
             "E:/work/src/LEM/db/hello.db",
+            "db?with=qmark",
             None,
         ), u.database
 
         eq_(url.make_url(u.render_as_string(hide_password=False)), u)
+
+    def test_dont_urlescape_slashes(self):
+        """supplemental test for #11234 where we want to not escape slashes
+        as this causes problems for alembic tests that deliver paths into
+        configparser format"""
+
+        u = url.make_url("dbtype:///path/with/slashes")
+        eq_(str(u), "dbtype:///path/with/slashes")
+        eq_(u.database, "path/with/slashes")
 
     def test_rfc1738_password(self):
         u = url.make_url("dbtype://user:pass word + other%3Awords@host/dbname")

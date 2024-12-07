@@ -10,6 +10,7 @@ running a kill of all detected sessions does not seem to release the
 database in process.
 
 """
+
 import logging
 import sys
 

@@ -529,11 +529,11 @@ class UpdateBase(
 
         E.g.::
 
-            stmt = table.insert().values(data='newdata').return_defaults()
+            stmt = table.insert().values(data="newdata").return_defaults()
 
             result = connection.execute(stmt)
 
-            server_created_at = result.returned_defaults['created_at']
+            server_created_at = result.returned_defaults["created_at"]
 
         When used against an UPDATE statement
         :meth:`.UpdateBase.return_defaults` instead looks for columns that
@@ -1036,7 +1036,7 @@ class ValuesBase(UpdateBase):
 
                 users.insert().values(name="some name")
 
-                users.update().where(users.c.id==5).values(name="some name")
+                users.update().where(users.c.id == 5).values(name="some name")
 
         :param \*args: As an alternative to passing key/value parameters,
          a dictionary, tuple, or list of dictionaries or tuples can be passed
@@ -1066,13 +1066,17 @@ class ValuesBase(UpdateBase):
          this syntax is supported on backends such as SQLite, PostgreSQL,
          MySQL, but not necessarily others::
 
-            users.insert().values([
-                                {"name": "some name"},
-                                {"name": "some other name"},
-                                {"name": "yet another name"},
-                            ])
+            users.insert().values(
+                [
+                    {"name": "some name"},
+                    {"name": "some other name"},
+                    {"name": "yet another name"},
+                ]
+            )
 
-         The above form would render a multiple VALUES statement similar to::
+         The above form would render a multiple VALUES statement similar to:
+
+         .. sourcecode:: sql
 
                 INSERT INTO users (name) VALUES
                                 (:name_1),
@@ -1250,7 +1254,7 @@ class Insert(ValuesBase):
         e.g.::
 
             sel = select(table1.c.a, table1.c.b).where(table1.c.c > 5)
-            ins = table2.insert().from_select(['a', 'b'], sel)
+            ins = table2.insert().from_select(["a", "b"], sel)
 
         :param names: a sequence of string column names or
          :class:`_schema.Column`
@@ -1550,9 +1554,7 @@ class Update(DMLWhereBase, ValuesBase):
 
         E.g.::
 
-            stmt = table.update().ordered_values(
-                ("name", "ed"), ("ident", "foo")
-            )
+            stmt = table.update().ordered_values(("name", "ed"), ("ident", "foo"))
 
         .. seealso::
 
@@ -1565,7 +1567,7 @@ class Update(DMLWhereBase, ValuesBase):
            :paramref:`_expression.update.preserve_parameter_order`
            parameter, which will be removed in SQLAlchemy 2.0.
 
-        """
+        """  # noqa: E501
         if self._values:
             raise exc.ArgumentError(
                 "This statement already has values present"

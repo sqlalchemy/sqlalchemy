@@ -98,12 +98,12 @@ if TYPE_CHECKING:
     from ._typing import _ORMColumnExprArgument
     from ._typing import _RegistryType
     from .decl_api import registry
-    from .dependency import DependencyProcessor
+    from .dependency import _DependencyProcessor
     from .descriptor_props import CompositeProperty
     from .descriptor_props import SynonymProperty
     from .events import MapperEvents
     from .instrumentation import ClassManager
-    from .path_registry import CachingEntityRegistry
+    from .path_registry import _CachingEntityRegistry
     from .properties import ColumnProperty
     from .relationships import RelationshipProperty
     from .state import InstanceState
@@ -331,7 +331,7 @@ class Mapper(
 
                 class User(Base):
                     __table__ = user_table
-                    __mapper_args__ = {'column_prefix':'_'}
+                    __mapper_args__ = {"column_prefix": "_"}
 
            The above mapping will assign the ``user_id``, ``user_name``, and
            ``password`` columns to attributes named ``_user_id``,
@@ -547,14 +547,14 @@ class Mapper(
           base-most mapped :class:`.Table`::
 
             class Employee(Base):
-                __tablename__ = 'employee'
+                __tablename__ = "employee"
 
                 id: Mapped[int] = mapped_column(primary_key=True)
                 discriminator: Mapped[str] = mapped_column(String(50))
 
                 __mapper_args__ = {
-                    "polymorphic_on":discriminator,
-                    "polymorphic_identity":"employee"
+                    "polymorphic_on": discriminator,
+                    "polymorphic_identity": "employee",
                 }
 
           It may also be specified
@@ -563,17 +563,18 @@ class Mapper(
           approach::
 
             class Employee(Base):
-                __tablename__ = 'employee'
+                __tablename__ = "employee"
 
                 id: Mapped[int] = mapped_column(primary_key=True)
                 discriminator: Mapped[str] = mapped_column(String(50))
 
                 __mapper_args__ = {
-                    "polymorphic_on":case(
+                    "polymorphic_on": case(
                         (discriminator == "EN", "engineer"),
                         (discriminator == "MA", "manager"),
-                        else_="employee"),
-                    "polymorphic_identity":"employee"
+                        else_="employee",
+                    ),
+                    "polymorphic_identity": "employee",
                 }
 
           It may also refer to any attribute using its string name,
@@ -581,14 +582,14 @@ class Mapper(
           configurations::
 
                 class Employee(Base):
-                    __tablename__ = 'employee'
+                    __tablename__ = "employee"
 
                     id: Mapped[int] = mapped_column(primary_key=True)
                     discriminator: Mapped[str]
 
                     __mapper_args__ = {
                         "polymorphic_on": "discriminator",
-                        "polymorphic_identity": "employee"
+                        "polymorphic_identity": "employee",
                     }
 
           When setting ``polymorphic_on`` to reference an
@@ -604,6 +605,7 @@ class Mapper(
 
                 from sqlalchemy import event
                 from sqlalchemy.orm import object_mapper
+
 
                 @event.listens_for(Employee, "init", propagate=True)
                 def set_identity(instance, *arg, **kw):
@@ -919,7 +921,7 @@ class Mapper(
     _identity_class: Type[_O]
 
     _delete_orphans: List[Tuple[str, Type[Any]]]
-    _dependency_processors: List[DependencyProcessor]
+    _dependency_processors: List[_DependencyProcessor]
     _memoized_values: Dict[Any, Callable[[], Any]]
     _inheriting_mappers: util.WeakSequence[Mapper[Any]]
     _all_tables: Set[TableClause]
@@ -1192,7 +1194,7 @@ class Mapper(
         return self.persist_selectable
 
     @util.memoized_property
-    def _path_registry(self) -> CachingEntityRegistry:
+    def _path_registry(self) -> _CachingEntityRegistry:
         return PathRegistry.per_mapper(self)
 
     def _configure_inheritance(self):
@@ -1517,7 +1519,7 @@ class Mapper(
             self.class_,
             mapper=self,
             expired_attribute_loader=util.partial(
-                loading.load_scalar_attributes, self
+                loading._load_scalar_attributes, self
             ),
             # finalize flag means instrument the __init__ method
             # and call the class_instrument event
@@ -3261,14 +3263,9 @@ class Mapper(
         The resulting structure is a dictionary of columns mapped
         to lists of equivalent columns, e.g.::
 
-            {
-                tablea.col1:
-                    {tableb.col1, tablec.col1},
-                tablea.col2:
-                    {tabled.col2}
-            }
+            {tablea.col1: {tableb.col1, tablec.col1}, tablea.col2: {tabled.col2}}
 
-        """
+        """  # noqa: E501
         result: _EquivalentColumnMap = {}
 
         def visit_binary(binary):
@@ -3741,14 +3738,15 @@ class Mapper(
 
         given::
 
-            class A:
-                ...
+            class A: ...
+
 
             class B(A):
                 __mapper_args__ = {"polymorphic_load": "selectin"}
 
-            class C(B):
-                ...
+
+            class C(B): ...
+
 
             class D(B):
                 __mapper_args__ = {"polymorphic_load": "selectin"}

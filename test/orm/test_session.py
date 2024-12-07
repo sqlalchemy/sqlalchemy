@@ -2245,7 +2245,7 @@ class SessionInterface(fixtures.MappedTest):
             )
 
             with mock.patch(
-                "sqlalchemy.orm.session.loading.load_on_ident"
+                "sqlalchemy.orm.session.loading._load_on_ident"
             ) as load_on_ident:
                 s.refresh(m1, with_for_update={"read": True})
                 s.refresh(m1, with_for_update=True)

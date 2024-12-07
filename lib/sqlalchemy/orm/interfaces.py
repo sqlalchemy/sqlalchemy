@@ -85,13 +85,13 @@ if typing.TYPE_CHECKING:
     from .attributes import InstrumentedAttribute
     from .base import Mapped
     from .context import _MapperEntity
-    from .context import ORMCompileState
+    from .context import _ORMCompileState
     from .context import QueryContext
     from .decl_api import RegistryType
     from .decl_base import _ClassScanMapperConfig
     from .loading import _PopulatorDict
     from .mapper import Mapper
-    from .path_registry import AbstractEntityRegistry
+    from .path_registry import _AbstractEntityRegistry
     from .query import Query
     from .session import Session
     from .state import InstanceState
@@ -479,9 +479,9 @@ class MapperProperty(
 
     def setup(
         self,
-        context: ORMCompileState,
+        context: _ORMCompileState,
         query_entity: _MapperEntity,
-        path: AbstractEntityRegistry,
+        path: _AbstractEntityRegistry,
         adapter: Optional[ORMAdapter],
         **kwargs: Any,
     ) -> None:
@@ -495,9 +495,9 @@ class MapperProperty(
 
     def create_row_processor(
         self,
-        context: ORMCompileState,
+        context: _ORMCompileState,
         query_entity: _MapperEntity,
-        path: AbstractEntityRegistry,
+        path: _AbstractEntityRegistry,
         mapper: Mapper[Any],
         result: Result[Unpack[TupleAny]],
         adapter: Optional[ORMAdapter],
@@ -688,27 +688,37 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
         # definition of custom PropComparator subclasses
 
-        from sqlalchemy.orm.properties import \
-                                ColumnProperty,\
-                                Composite,\
-                                Relationship
+        from sqlalchemy.orm.properties import (
+            ColumnProperty,
+            Composite,
+            Relationship,
+        )
+
 
         class MyColumnComparator(ColumnProperty.Comparator):
             def __eq__(self, other):
                 return self.__clause_element__() == other
+
 
         class MyRelationshipComparator(Relationship.Comparator):
             def any(self, expression):
                 "define the 'any' operation"
                 # ...
 
+
         class MyCompositeComparator(Composite.Comparator):
             def __gt__(self, other):
                 "redefine the 'greater than' operation"
 
-                return sql.and_(*[a>b for a, b in
-                                  zip(self.__clause_element__().clauses,
-                                      other.__composite_values__())])
+                return sql.and_(
+                    *[
+                        a > b
+                        for a, b in zip(
+                            self.__clause_element__().clauses,
+                            other.__composite_values__(),
+                        )
+                    ]
+                )
 
 
         # application of custom PropComparator subclasses
@@ -716,17 +726,22 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
         from sqlalchemy.orm import column_property, relationship, composite
         from sqlalchemy import Column, String
 
-        class SomeMappedClass(Base):
-            some_column = column_property(Column("some_column", String),
-                                comparator_factory=MyColumnComparator)
 
-            some_relationship = relationship(SomeOtherClass,
-                                comparator_factory=MyRelationshipComparator)
+        class SomeMappedClass(Base):
+            some_column = column_property(
+                Column("some_column", String),
+                comparator_factory=MyColumnComparator,
+            )
+
+            some_relationship = relationship(
+                SomeOtherClass, comparator_factory=MyRelationshipComparator
+            )
 
             some_composite = composite(
-                    Column("a", String), Column("b", String),
-                    comparator_factory=MyCompositeComparator
-                )
+                Column("a", String),
+                Column("b", String),
+                comparator_factory=MyCompositeComparator,
+            )
 
     Note that for column-level operator redefinition, it's usually
     simpler to define the operators at the Core level, using the
@@ -868,8 +883,9 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
         e.g.::
 
-            query.join(Company.employees.of_type(Engineer)).\
-               filter(Engineer.name=='foo')
+            query.join(Company.employees.of_type(Engineer)).filter(
+                Engineer.name == "foo"
+            )
 
         :param \class_: a class or mapper indicating that criterion will be
             against this specific subclass.
@@ -895,11 +911,11 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
 
             stmt = select(User).join(
-                User.addresses.and_(Address.email_address != 'foo')
+                User.addresses.and_(Address.email_address != "foo")
             )
 
             stmt = select(User).options(
-                joinedload(User.addresses.and_(Address.email_address != 'foo'))
+                joinedload(User.addresses.and_(Address.email_address != "foo"))
             )
 
         .. versionadded:: 1.4
@@ -1005,7 +1021,7 @@ class StrategizedProperty(MapperProperty[_T]):
         )
 
     def _get_context_loader(
-        self, context: ORMCompileState, path: AbstractEntityRegistry
+        self, context: _ORMCompileState, path: _AbstractEntityRegistry
     ) -> Optional[_LoadElement]:
         load: Optional[_LoadElement] = None
 
@@ -1047,9 +1063,9 @@ class StrategizedProperty(MapperProperty[_T]):
 
     def setup(
         self,
-        context: ORMCompileState,
+        context: _ORMCompileState,
         query_entity: _MapperEntity,
-        path: AbstractEntityRegistry,
+        path: _AbstractEntityRegistry,
         adapter: Optional[ORMAdapter],
         **kwargs: Any,
     ) -> None:
@@ -1064,9 +1080,9 @@ class StrategizedProperty(MapperProperty[_T]):
 
     def create_row_processor(
         self,
-        context: ORMCompileState,
+        context: _ORMCompileState,
         query_entity: _MapperEntity,
-        path: AbstractEntityRegistry,
+        path: _AbstractEntityRegistry,
         mapper: Mapper[Any],
         result: Result[Unpack[TupleAny]],
         adapter: Optional[ORMAdapter],
@@ -1259,7 +1275,7 @@ class CompileStateOption(HasCacheKey, ORMOption):
 
     _is_compile_state = True
 
-    def process_compile_state(self, compile_state: ORMCompileState) -> None:
+    def process_compile_state(self, compile_state: _ORMCompileState) -> None:
         """Apply a modification to a given :class:`.ORMCompileState`.
 
         This method is part of the implementation of a particular
@@ -1270,7 +1286,7 @@ class CompileStateOption(HasCacheKey, ORMOption):
 
     def process_compile_state_replaced_entities(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         mapper_entities: Sequence[_MapperEntity],
     ) -> None:
         """Apply a modification to a given :class:`.ORMCompileState`,
@@ -1297,7 +1313,7 @@ class LoaderOption(CompileStateOption):
 
     def process_compile_state_replaced_entities(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         mapper_entities: Sequence[_MapperEntity],
     ) -> None:
         self.process_compile_state(compile_state)
@@ -1436,9 +1452,9 @@ class LoaderStrategy:
 
     def setup_query(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         query_entity: _MapperEntity,
-        path: AbstractEntityRegistry,
+        path: _AbstractEntityRegistry,
         loadopt: Optional[_LoadElement],
         adapter: Optional[ORMAdapter],
         **kwargs: Any,
@@ -1454,9 +1470,9 @@ class LoaderStrategy:
 
     def create_row_processor(
         self,
-        context: ORMCompileState,
+        context: _ORMCompileState,
         query_entity: _MapperEntity,
-        path: AbstractEntityRegistry,
+        path: _AbstractEntityRegistry,
         loadopt: Optional[_LoadElement],
         mapper: Mapper[Any],
         result: Result[Unpack[TupleAny]],

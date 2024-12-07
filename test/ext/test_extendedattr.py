@@ -30,7 +30,7 @@ def _register_attribute(class_, key, **kw):
     kw.setdefault("comparator", object())
     kw.setdefault("parententity", object())
 
-    attributes.register_attribute(class_, key, **kw)
+    attributes._register_attribute(class_, key, **kw)
 
 
 @decorator

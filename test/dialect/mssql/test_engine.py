@@ -296,7 +296,7 @@ class ParseConnectTest(fixtures.TestBase):
             ),
             (
                 "DRIVER={foob};Server=somehost%3BPORT%3D50001;"
-                "Database=somedb%3BPORT%3D50001;UID={someuser;PORT=50001};"
+                "Database={somedb;PORT=50001};UID={someuser;PORT=50001};"
                 "PWD={some{strange}}pw;PORT=50001}",
             ),
         ),

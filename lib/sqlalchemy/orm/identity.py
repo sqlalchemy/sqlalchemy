@@ -123,7 +123,7 @@ class IdentityMap:
         return len(self._dict)
 
 
-class WeakInstanceDict(IdentityMap):
+class _WeakInstanceDict(IdentityMap):
     _dict: Dict[_IdentityKeyType[Any], InstanceState[Any]]
 
     def __getitem__(self, key: _IdentityKeyType[_O]) -> _O:

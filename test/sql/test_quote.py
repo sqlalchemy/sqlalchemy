@@ -195,7 +195,9 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         """test the quoting of labels.
 
         If labels aren't quoted, a query in postgresql in particular will
-        fail since it produces::
+        fail since it produces:
+
+        .. sourcecode:: sql
 
             SELECT
                 LaLa.lowercase, LaLa."UPPERCASE", LaLa."MixedCase", LaLa."ASC"

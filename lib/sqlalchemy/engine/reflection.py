@@ -193,7 +193,8 @@ class Inspector(inspection.Inspectable["Inspector"]):
     or a :class:`_engine.Connection`::
 
         from sqlalchemy import inspect, create_engine
-        engine = create_engine('...')
+
+        engine = create_engine("...")
         insp = inspect(engine)
 
     Where above, the :class:`~sqlalchemy.engine.interfaces.Dialect` associated
@@ -1492,9 +1493,9 @@ class Inspector(inspection.Inspectable["Inspector"]):
             from sqlalchemy import create_engine, MetaData, Table
             from sqlalchemy import inspect
 
-            engine = create_engine('...')
+            engine = create_engine("...")
             meta = MetaData()
-            user_table = Table('user', meta)
+            user_table = Table("user", meta)
             insp = inspect(engine)
             insp.reflect_table(user_table, None)
 

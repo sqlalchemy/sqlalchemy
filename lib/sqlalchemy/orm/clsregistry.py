@@ -52,16 +52,16 @@ if TYPE_CHECKING:
 
 _T = TypeVar("_T", bound=Any)
 
-_ClsRegistryType = MutableMapping[str, Union[type, "ClsRegistryToken"]]
+_ClsRegistryType = MutableMapping[str, Union[type, "_ClsRegistryToken"]]
 
 # strong references to registries which we place in
 # the _decl_class_registry, which is usually weak referencing.
 # the internal registries here link to classes with weakrefs and remove
 # themselves when all references to contained classes are removed.
-_registries: Set[ClsRegistryToken] = set()
+_registries: Set[_ClsRegistryToken] = set()
 
 
-def add_class(
+def _add_class(
     classname: str, cls: Type[_T], decl_class_registry: _ClsRegistryType
 ) -> None:
     """Add a class to the _decl_class_registry associated with the
@@ -115,7 +115,7 @@ def add_class(
                 raise
 
 
-def remove_class(
+def _remove_class(
     classname: str, cls: Type[Any], decl_class_registry: _ClsRegistryType
 ) -> None:
     if classname in decl_class_registry:
@@ -180,13 +180,13 @@ def _key_is_empty(
         return not test(thing)
 
 
-class ClsRegistryToken:
+class _ClsRegistryToken:
     """an object that can be in the registry._class_registry as a value."""
 
     __slots__ = ()
 
 
-class _MultipleClassMarker(ClsRegistryToken):
+class _MultipleClassMarker(_ClsRegistryToken):
     """refers to multiple classes of the same name
     within _decl_class_registry.
 
@@ -255,7 +255,7 @@ class _MultipleClassMarker(ClsRegistryToken):
         self.contents.add(weakref.ref(item, self._remove_item))
 
 
-class _ModuleMarker(ClsRegistryToken):
+class _ModuleMarker(_ClsRegistryToken):
     """Refers to a module name within
     _decl_class_registry.
 
@@ -282,7 +282,7 @@ class _ModuleMarker(ClsRegistryToken):
     def __contains__(self, name: str) -> bool:
         return name in self.contents
 
-    def __getitem__(self, name: str) -> ClsRegistryToken:
+    def __getitem__(self, name: str) -> _ClsRegistryToken:
         return self.contents[name]
 
     def _remove_item(self, name: str) -> None:

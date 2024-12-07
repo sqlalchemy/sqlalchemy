@@ -122,7 +122,9 @@ class URL(NamedTuple):
        for keys and either strings or tuples of strings for values, e.g.::
 
             >>> from sqlalchemy.engine import make_url
-            >>> url = make_url("postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt")
+            >>> url = make_url(
+            ...     "postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt"
+            ... )
             >>> url.query
             immutabledict({'alt_host': ('host1', 'host2'), 'ssl_cipher': '/path/to/crt'})
 
@@ -371,7 +373,9 @@ class URL(NamedTuple):
 
             >>> from sqlalchemy.engine import make_url
             >>> url = make_url("postgresql+psycopg2://user:pass@host/dbname")
-            >>> url = url.update_query_string("alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt")
+            >>> url = url.update_query_string(
+            ...     "alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt"
+            ... )
             >>> str(url)
             'postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt'
 
@@ -407,7 +411,13 @@ class URL(NamedTuple):
 
             >>> from sqlalchemy.engine import make_url
             >>> url = make_url("postgresql+psycopg2://user:pass@host/dbname")
-            >>> url = url.update_query_pairs([("alt_host", "host1"), ("alt_host", "host2"), ("ssl_cipher", "/path/to/crt")])
+            >>> url = url.update_query_pairs(
+            ...     [
+            ...         ("alt_host", "host1"),
+            ...         ("alt_host", "host2"),
+            ...         ("ssl_cipher", "/path/to/crt"),
+            ...     ]
+            ... )
             >>> str(url)
             'postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt'
 
@@ -489,7 +499,9 @@ class URL(NamedTuple):
 
             >>> from sqlalchemy.engine import make_url
             >>> url = make_url("postgresql+psycopg2://user:pass@host/dbname")
-            >>> url = url.update_query_dict({"alt_host": ["host1", "host2"], "ssl_cipher": "/path/to/crt"})
+            >>> url = url.update_query_dict(
+            ...     {"alt_host": ["host1", "host2"], "ssl_cipher": "/path/to/crt"}
+            ... )
             >>> str(url)
             'postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt'
 
@@ -527,14 +539,14 @@ class URL(NamedTuple):
 
         E.g.::
 
-            url = url.difference_update_query(['foo', 'bar'])
+            url = url.difference_update_query(["foo", "bar"])
 
         Equivalent to using :meth:`_engine.URL.set` as follows::
 
             url = url.set(
                 query={
                     key: url.query[key]
-                    for key in set(url.query).difference(['foo', 'bar'])
+                    for key in set(url.query).difference(["foo", "bar"])
                 }
             )
 
@@ -583,7 +595,9 @@ class URL(NamedTuple):
 
 
             >>> from sqlalchemy.engine import make_url
-            >>> url = make_url("postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt")
+            >>> url = make_url(
+            ...     "postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt"
+            ... )
             >>> url.query
             immutabledict({'alt_host': ('host1', 'host2'), 'ssl_cipher': '/path/to/crt'})
             >>> url.normalized_query
@@ -641,7 +655,7 @@ class URL(NamedTuple):
         if self.port is not None:
             s += ":" + str(self.port)
         if self.database is not None:
-            s += "/" + self.database
+            s += "/" + quote(self.database, safe=" +/")
         if self.query:
             keys = list(self.query)
             keys.sort()
@@ -888,11 +902,9 @@ def _parse_url(name: str) -> URL:
             query = None
         components["query"] = query
 
-        if components["username"] is not None:
-            components["username"] = unquote(components["username"])
-
-        if components["password"] is not None:
-            components["password"] = unquote(components["password"])
+        for comp in "username", "password", "database":
+            if components[comp] is not None:
+                components[comp] = unquote(components[comp])
 
         ipv4host = components.pop("ipv4host")
         ipv6host = components.pop("ipv6host")

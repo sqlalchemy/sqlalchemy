@@ -97,7 +97,7 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
     @testing.combinations(("lateral",), ("cartesian",), ("join",))
     def test_lateral_subqueries(self, control):
         """
-        ::
+        .. sourcecode:: sql
 
             test=> create table a (id integer);
             CREATE TABLE

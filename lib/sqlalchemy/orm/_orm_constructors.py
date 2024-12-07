@@ -829,7 +829,7 @@ def with_loader_criteria(
 
         stmt = select(User).options(
             selectinload(User.addresses),
-            with_loader_criteria(Address, Address.email_address != 'foo'))
+            with_loader_criteria(Address, Address.email_address != "foo"),
         )
 
     Above, the "selectinload" for ``User.addresses`` will apply the
@@ -839,8 +839,10 @@ def with_loader_criteria(
     ON clause of the join, in this example using :term:`1.x style`
     queries::
 
-        q = session.query(User).outerjoin(User.addresses).options(
-            with_loader_criteria(Address, Address.email_address != 'foo'))
+        q = (
+            session.query(User)
+            .outerjoin(User.addresses)
+            .options(with_loader_criteria(Address, Address.email_address != "foo"))
         )
 
     The primary purpose of :func:`_orm.with_loader_criteria` is to use
@@ -853,6 +855,7 @@ def with_loader_criteria(
 
         session = Session(bind=engine)
 
+
         @event.listens_for("do_orm_execute", session)
         def _add_filtering_criteria(execute_state):
 
@@ -864,8 +867,8 @@ def with_loader_criteria(
                 execute_state.statement = execute_state.statement.options(
                     with_loader_criteria(
                         SecurityRole,
-                        lambda cls: cls.role.in_(['some_role']),
-                        include_aliases=True
+                        lambda cls: cls.role.in_(["some_role"]),
+                        include_aliases=True,
                     )
                 )
 
@@ -902,16 +905,19 @@ def with_loader_criteria(
        ``A -> A.bs -> B``, the given :func:`_orm.with_loader_criteria`
        option will affect the way in which the JOIN is rendered::
 
-            stmt = select(A).join(A.bs).options(
-                contains_eager(A.bs),
-                with_loader_criteria(B, B.flag == 1)
+            stmt = (
+                select(A)
+                .join(A.bs)
+                .options(contains_eager(A.bs), with_loader_criteria(B, B.flag == 1))
             )
 
        Above, the given :func:`_orm.with_loader_criteria` option will
        affect the ON clause of the JOIN that is specified by
        ``.join(A.bs)``, so is applied as expected. The
        :func:`_orm.contains_eager` option has the effect that columns from
-       ``B`` are added to the columns clause::
+       ``B`` are added to the columns clause:
+
+       .. sourcecode:: sql
 
             SELECT
                 b.id, b.a_id, b.data, b.flag,
@@ -977,7 +983,7 @@ def with_loader_criteria(
 
      .. versionadded:: 1.4.0b2
 
-    """
+    """  # noqa: E501
     return LoaderCriteriaOption(
         entity_or_base,
         where_criteria,
@@ -1904,13 +1910,12 @@ def synonym(
     e.g.::
 
         class MyClass(Base):
-            __tablename__ = 'my_table'
+            __tablename__ = "my_table"
 
             id = Column(Integer, primary_key=True)
             job_status = Column(String(50))
 
             status = synonym("job_status")
-
 
     :param name: the name of the existing mapped property.  This
       can refer to the string name ORM-mapped attribute
@@ -1939,10 +1944,12 @@ def synonym(
       :paramref:`.synonym.descriptor` parameter::
 
         my_table = Table(
-            "my_table", metadata,
-            Column('id', Integer, primary_key=True),
-            Column('job_status', String(50))
+            "my_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("job_status", String(50)),
         )
+
 
         class MyClass:
             @property
@@ -1951,11 +1958,15 @@ def synonym(
 
 
         mapper(
-            MyClass, my_table, properties={
+            MyClass,
+            my_table,
+            properties={
                 "job_status": synonym(
-                    "_job_status", map_column=True,
-                    descriptor=MyClass._job_status_descriptor)
-            }
+                    "_job_status",
+                    map_column=True,
+                    descriptor=MyClass._job_status_descriptor,
+                )
+            },
         )
 
       Above, the attribute named ``_job_status`` is automatically
@@ -2105,8 +2116,7 @@ def backref(name: str, **kwargs: Any) -> ORMBackrefArgument:
 
     E.g.::
 
-        'items':relationship(
-            SomeItem, backref=backref('parent', lazy='subquery'))
+        "items": relationship(SomeItem, backref=backref("parent", lazy="subquery"))
 
     The :paramref:`_orm.relationship.backref` parameter is generally
     considered to be legacy; for modern applications, using
@@ -2118,7 +2128,7 @@ def backref(name: str, **kwargs: Any) -> ORMBackrefArgument:
 
         :ref:`relationships_backref` - background on backrefs
 
-    """
+    """  # noqa: E501
 
     return (name, kwargs)
 
@@ -2379,17 +2389,21 @@ def aliased(
      aggregate functions::
 
         class UnitPrice(Base):
-            __tablename__ = 'unit_price'
+            __tablename__ = "unit_price"
             ...
             unit_id = Column(Integer)
             price = Column(Numeric)
 
-        aggregated_unit_price = Session.query(
-                                    func.sum(UnitPrice.price).label('price')
-                                ).group_by(UnitPrice.unit_id).subquery()
 
-        aggregated_unit_price = aliased(UnitPrice,
-                    alias=aggregated_unit_price, adapt_on_names=True)
+        aggregated_unit_price = (
+            Session.query(func.sum(UnitPrice.price).label("price"))
+            .group_by(UnitPrice.unit_id)
+            .subquery()
+        )
+
+        aggregated_unit_price = aliased(
+            UnitPrice, alias=aggregated_unit_price, adapt_on_names=True
+        )
 
      Above, functions on ``aggregated_unit_price`` which refer to
      ``.price`` will return the
@@ -2535,16 +2549,21 @@ def join(
     :meth:`_sql.Select.select_from` method, as in::
 
         from sqlalchemy.orm import join
-        stmt = select(User).\
-            select_from(join(User, Address, User.addresses)).\
-            filter(Address.email_address=='foo@bar.com')
+
+        stmt = (
+            select(User)
+            .select_from(join(User, Address, User.addresses))
+            .filter(Address.email_address == "foo@bar.com")
+        )
 
     In modern SQLAlchemy the above join can be written more
     succinctly as::
 
-        stmt = select(User).\
-                join(User.addresses).\
-                filter(Address.email_address=='foo@bar.com')
+        stmt = (
+            select(User)
+            .join(User.addresses)
+            .filter(Address.email_address == "foo@bar.com")
+        )
 
     .. warning:: using :func:`_orm.join` directly may not work properly
        with modern ORM options such as :func:`_orm.with_loader_criteria`.

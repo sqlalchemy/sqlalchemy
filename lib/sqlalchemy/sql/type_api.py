@@ -311,11 +311,13 @@ class TypeEngine(Visitable, Generic[_T]):
         E.g.::
 
                 Table(
-                    'some_table', metadata,
+                    "some_table",
+                    metadata,
                     Column(
                         String(50).evaluates_none(),
                         nullable=True,
-                        server_default='no value')
+                        server_default="no value",
+                    ),
                 )
 
         The ORM uses this flag to indicate that a positive value of ``None``
@@ -641,7 +643,7 @@ class TypeEngine(Visitable, Generic[_T]):
             string_type = String()
 
             string_type = string_type.with_variant(
-                mysql.VARCHAR(collation='foo'), 'mysql', 'mariadb'
+                mysql.VARCHAR(collation="foo"), "mysql", "mariadb"
             )
 
         The variant mapping indicates that when this type is
@@ -1128,7 +1130,7 @@ class ExternalType(TypeEngineMixin):
     """
 
     cache_ok: Optional[bool] = None
-    """Indicate if statements using this :class:`.ExternalType` are "safe to
+    '''Indicate if statements using this :class:`.ExternalType` are "safe to
     cache".
 
     The default value ``None`` will emit a warning and then not allow caching
@@ -1169,12 +1171,12 @@ class ExternalType(TypeEngineMixin):
     series of tuples.   Given a previously un-cacheable type as::
 
         class LookupType(UserDefinedType):
-            '''a custom type that accepts a dictionary as a parameter.
+            """a custom type that accepts a dictionary as a parameter.
 
             this is the non-cacheable version, as "self.lookup" is not
             hashable.
 
-            '''
+            """
 
             def __init__(self, lookup):
                 self.lookup = lookup
@@ -1182,8 +1184,7 @@ class ExternalType(TypeEngineMixin):
             def get_col_spec(self, **kw):
                 return "VARCHAR(255)"
 
-            def bind_processor(self, dialect):
-                # ...  works with "self.lookup" ...
+            def bind_processor(self, dialect): ...  # works with "self.lookup" ...
 
     Where "lookup" is a dictionary.  The type will not be able to generate
     a cache key::
@@ -1219,7 +1220,7 @@ class ExternalType(TypeEngineMixin):
     to the ".lookup" attribute::
 
         class LookupType(UserDefinedType):
-            '''a custom type that accepts a dictionary as a parameter.
+            """a custom type that accepts a dictionary as a parameter.
 
             The dictionary is stored both as itself in a private variable,
             and published in a public variable as a sorted tuple of tuples,
@@ -1227,7 +1228,7 @@ class ExternalType(TypeEngineMixin):
             two equivalent dictionaries.  Note it assumes the keys and
             values of the dictionary are themselves hashable.
 
-            '''
+            """
 
             cache_ok = True
 
@@ -1236,15 +1237,12 @@ class ExternalType(TypeEngineMixin):
 
                 # assume keys/values of "lookup" are hashable; otherwise
                 # they would also need to be converted in some way here
-                self.lookup = tuple(
-                    (key, lookup[key]) for key in sorted(lookup)
-                )
+                self.lookup = tuple((key, lookup[key]) for key in sorted(lookup))
 
             def get_col_spec(self, **kw):
                 return "VARCHAR(255)"
 
-            def bind_processor(self, dialect):
-                # ...  works with "self._lookup" ...
+            def bind_processor(self, dialect): ...  # works with "self._lookup" ...
 
     Where above, the cache key for ``LookupType({"a": 10, "b": 20})`` will be::
 
@@ -1262,7 +1260,7 @@ class ExternalType(TypeEngineMixin):
 
         :ref:`sql_caching`
 
-    """  # noqa: E501
+    '''  # noqa: E501
 
     @util.non_memoized_property
     def _static_cache_key(
@@ -1304,10 +1302,11 @@ class UserDefinedType(
 
       import sqlalchemy.types as types
 
+
       class MyType(types.UserDefinedType):
           cache_ok = True
 
-          def __init__(self, precision = 8):
+          def __init__(self, precision=8):
               self.precision = precision
 
           def get_col_spec(self, **kw):
@@ -1316,19 +1315,23 @@ class UserDefinedType(
           def bind_processor(self, dialect):
               def process(value):
                   return value
+
               return process
 
           def result_processor(self, dialect, coltype):
               def process(value):
                   return value
+
               return process
 
     Once the type is made, it's immediately usable::
 
-      table = Table('foo', metadata_obj,
-          Column('id', Integer, primary_key=True),
-          Column('data', MyType(16))
-          )
+      table = Table(
+          "foo",
+          metadata_obj,
+          Column("id", Integer, primary_key=True),
+          Column("data", MyType(16)),
+      )
 
     The ``get_col_spec()`` method will in most cases receive a keyword
     argument ``type_expression`` which refers to the owning expression
@@ -1493,7 +1496,7 @@ class NativeForEmulated(TypeEngineMixin):
 
 
 class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
-    """Allows the creation of types which add additional functionality
+    '''Allows the creation of types which add additional functionality
     to an existing type.
 
     This method is preferred to direct subclassing of SQLAlchemy's
@@ -1504,10 +1507,11 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
 
       import sqlalchemy.types as types
 
+
       class MyType(types.TypeDecorator):
-          '''Prefixes Unicode values with "PREFIX:" on the way in and
+          """Prefixes Unicode values with "PREFIX:" on the way in and
           strips it off on the way out.
-          '''
+          """
 
           impl = types.Unicode
 
@@ -1599,6 +1603,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
             from sqlalchemy import JSON
             from sqlalchemy import TypeDecorator
 
+
             class MyJsonType(TypeDecorator):
                 impl = JSON
 
@@ -1619,6 +1624,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
             from sqlalchemy import ARRAY
             from sqlalchemy import TypeDecorator
 
+
             class MyArrayType(TypeDecorator):
                 impl = ARRAY
 
@@ -1627,8 +1633,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
                 def coerce_compared_value(self, op, value):
                     return self.impl.coerce_compared_value(op, value)
 
-
-    """
+    '''
 
     __visit_name__ = "type_decorator"
 

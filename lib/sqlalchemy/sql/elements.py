@@ -283,7 +283,7 @@ class CompilerElement(Visitable):
 
                 from sqlalchemy.sql import table, column, select
 
-                t = table('t', column('x'))
+                t = table("t", column("x"))
 
                 s = select(t).where(t.c.x == 5)
 
@@ -588,10 +588,10 @@ class ClauseElement(
         :func:`_expression.bindparam`
         elements replaced with values taken from the given dictionary::
 
-          >>> clause = column('x') + bindparam('foo')
+          >>> clause = column("x") + bindparam("foo")
           >>> print(clause.compile().params)
           {'foo':None}
-          >>> print(clause.params({'foo':7}).compile().params)
+          >>> print(clause.params({"foo": 7}).compile().params)
           {'foo':7}
 
         """
@@ -1290,9 +1290,9 @@ class ColumnElement(
     .. sourcecode:: pycon+sql
 
         >>> from sqlalchemy.sql import column
-        >>> column('a') + column('b')
+        >>> column("a") + column("b")
         <sqlalchemy.sql.expression.BinaryExpression object at 0x101029dd0>
-        >>> print(column('a') + column('b'))
+        >>> print(column("a") + column("b"))
         {printsql}a + b
 
     .. seealso::
@@ -1381,7 +1381,9 @@ class ColumnElement(
         SQL.
 
         Concretely, this is the "name" of a column or a label in a
-        SELECT statement; ``<columnname>`` and ``<labelname>`` below::
+        SELECT statement; ``<columnname>`` and ``<labelname>`` below:
+
+        .. sourcecode:: sql
 
             SELECT <columnmame> FROM table
 
@@ -2242,7 +2244,6 @@ class TextClause(
         t = text("SELECT * FROM users")
         result = connection.execute(t)
 
-
     The :class:`_expression.TextClause` construct is produced using the
     :func:`_expression.text`
     function; see that function for full documentation.
@@ -2319,16 +2320,19 @@ class TextClause(
         Given a text construct such as::
 
             from sqlalchemy import text
-            stmt = text("SELECT id, name FROM user WHERE name=:name "
-                        "AND timestamp=:timestamp")
+
+            stmt = text(
+                "SELECT id, name FROM user WHERE name=:name AND timestamp=:timestamp"
+            )
 
         the :meth:`_expression.TextClause.bindparams`
         method can be used to establish
         the initial value of ``:name`` and ``:timestamp``,
         using simple keyword arguments::
 
-            stmt = stmt.bindparams(name='jack',
-                        timestamp=datetime.datetime(2012, 10, 8, 15, 12, 5))
+            stmt = stmt.bindparams(
+                name="jack", timestamp=datetime.datetime(2012, 10, 8, 15, 12, 5)
+            )
 
         Where above, new :class:`.BindParameter` objects
         will be generated with the names ``name`` and ``timestamp``, and
@@ -2343,10 +2347,11 @@ class TextClause(
         argument, then an optional value and type::
 
             from sqlalchemy import bindparam
+
             stmt = stmt.bindparams(
-                            bindparam('name', value='jack', type_=String),
-                            bindparam('timestamp', type_=DateTime)
-                        )
+                bindparam("name", value="jack", type_=String),
+                bindparam("timestamp", type_=DateTime),
+            )
 
         Above, we specified the type of :class:`.DateTime` for the
         ``timestamp`` bind, and the type of :class:`.String` for the ``name``
@@ -2356,8 +2361,9 @@ class TextClause(
         Additional bound parameters can be supplied at statement execution
         time, e.g.::
 
-            result = connection.execute(stmt,
-                        timestamp=datetime.datetime(2012, 10, 8, 15, 12, 5))
+            result = connection.execute(
+                stmt, timestamp=datetime.datetime(2012, 10, 8, 15, 12, 5)
+            )
 
         The :meth:`_expression.TextClause.bindparams`
         method can be called repeatedly,
@@ -2367,15 +2373,15 @@ class TextClause(
         first with typing information, and a
         second time with value information, and it will be combined::
 
-            stmt = text("SELECT id, name FROM user WHERE name=:name "
-                        "AND timestamp=:timestamp")
-            stmt = stmt.bindparams(
-                bindparam('name', type_=String),
-                bindparam('timestamp', type_=DateTime)
+            stmt = text(
+                "SELECT id, name FROM user WHERE name=:name "
+                "AND timestamp=:timestamp"
             )
             stmt = stmt.bindparams(
-                name='jack',
-                timestamp=datetime.datetime(2012, 10, 8, 15, 12, 5)
+                bindparam("name", type_=String), bindparam("timestamp", type_=DateTime)
+            )
+            stmt = stmt.bindparams(
+                name="jack", timestamp=datetime.datetime(2012, 10, 8, 15, 12, 5)
             )
 
         The :meth:`_expression.TextClause.bindparams`
@@ -2389,18 +2395,17 @@ class TextClause(
         object::
 
             stmt1 = text("select id from table where name=:name").bindparams(
-                bindparam("name", value='name1', unique=True)
+                bindparam("name", value="name1", unique=True)
             )
             stmt2 = text("select id from table where name=:name").bindparams(
-                bindparam("name", value='name2', unique=True)
+                bindparam("name", value="name2", unique=True)
             )
 
-            union = union_all(
-                stmt1.columns(column("id")),
-                stmt2.columns(column("id"))
-            )
+            union = union_all(stmt1.columns(column("id")), stmt2.columns(column("id")))
 
-        The above statement will render as::
+        The above statement will render as:
+
+        .. sourcecode:: sql
 
             select id from table where name=:name_1
             UNION ALL select id from table where name=:name_2
@@ -2410,7 +2415,7 @@ class TextClause(
            :func:`_expression.text`
            constructs.
 
-        """
+        """  # noqa: E501
         self._bindparams = new_params = self._bindparams.copy()
 
         for bind in binds:
@@ -2464,12 +2469,13 @@ class TextClause(
             from sqlalchemy.sql import column, text
 
             stmt = text("SELECT id, name FROM some_table")
-            stmt = stmt.columns(column('id'), column('name')).subquery('st')
+            stmt = stmt.columns(column("id"), column("name")).subquery("st")
 
-            stmt = select(mytable).\
-                    select_from(
-                        mytable.join(stmt, mytable.c.name == stmt.c.name)
-                    ).where(stmt.c.id > 5)
+            stmt = (
+                select(mytable)
+                .select_from(mytable.join(stmt, mytable.c.name == stmt.c.name))
+                .where(stmt.c.id > 5)
+            )
 
         Above, we pass a series of :func:`_expression.column` elements to the
         :meth:`_expression.TextClause.columns` method positionally.  These
@@ -2490,10 +2496,10 @@ class TextClause(
 
             stmt = text("SELECT id, name, timestamp FROM some_table")
             stmt = stmt.columns(
-                        column('id', Integer),
-                        column('name', Unicode),
-                        column('timestamp', DateTime)
-                    )
+                column("id", Integer),
+                column("name", Unicode),
+                column("timestamp", DateTime),
+            )
 
             for id, name, timestamp in connection.execute(stmt):
                 print(id, name, timestamp)
@@ -2502,11 +2508,7 @@ class TextClause(
         types alone may be used, if only type conversion is needed::
 
             stmt = text("SELECT id, name, timestamp FROM some_table")
-            stmt = stmt.columns(
-                        id=Integer,
-                        name=Unicode,
-                        timestamp=DateTime
-                    )
+            stmt = stmt.columns(id=Integer, name=Unicode, timestamp=DateTime)
 
             for id, name, timestamp in connection.execute(stmt):
                 print(id, name, timestamp)
@@ -2520,26 +2522,31 @@ class TextClause(
         the result set will match to those columns positionally, meaning the
         name or origin of the column in the textual SQL doesn't matter::
 
-            stmt = text("SELECT users.id, addresses.id, users.id, "
-                 "users.name, addresses.email_address AS email "
-                 "FROM users JOIN addresses ON users.id=addresses.user_id "
-                 "WHERE users.id = 1").columns(
-                    User.id,
-                    Address.id,
-                    Address.user_id,
-                    User.name,
-                    Address.email_address
-                 )
+            stmt = text(
+                "SELECT users.id, addresses.id, users.id, "
+                "users.name, addresses.email_address AS email "
+                "FROM users JOIN addresses ON users.id=addresses.user_id "
+                "WHERE users.id = 1"
+            ).columns(
+                User.id,
+                Address.id,
+                Address.user_id,
+                User.name,
+                Address.email_address,
+            )
 
-            query = session.query(User).from_statement(stmt).options(
-                contains_eager(User.addresses))
+            query = (
+                session.query(User)
+                .from_statement(stmt)
+                .options(contains_eager(User.addresses))
+            )
 
         The :meth:`_expression.TextClause.columns` method provides a direct
         route to calling :meth:`_expression.FromClause.subquery` as well as
         :meth:`_expression.SelectBase.cte`
         against a textual SELECT statement::
 
-            stmt = stmt.columns(id=Integer, name=String).cte('st')
+            stmt = stmt.columns(id=Integer, name=String).cte("st")
 
             stmt = select(sometable).where(sometable.c.id == stmt.c.id)
 
@@ -3284,14 +3291,13 @@ class Case(ColumnElement[_T]):
 
         from sqlalchemy import case
 
-        stmt = select(users_table).\
-                    where(
-                        case(
-                            (users_table.c.name == 'wendy', 'W'),
-                            (users_table.c.name == 'jack', 'J'),
-                            else_='E'
-                        )
-                    )
+        stmt = select(users_table).where(
+            case(
+                (users_table.c.name == "wendy", "W"),
+                (users_table.c.name == "jack", "J"),
+                else_="E",
+            )
+        )
 
     Details on :class:`.Case` usage is at :func:`.case`.
 
@@ -3829,9 +3835,9 @@ class BinaryExpression(OperatorExpression[_T]):
     .. sourcecode:: pycon+sql
 
         >>> from sqlalchemy.sql import column
-        >>> column('a') + column('b')
+        >>> column("a") + column("b")
         <sqlalchemy.sql.expression.BinaryExpression object at 0x101029dd0>
-        >>> print(column('a') + column('b'))
+        >>> print(column("a") + column("b"))
         {printsql}a + b
 
     """
@@ -3920,7 +3926,7 @@ class BinaryExpression(OperatorExpression[_T]):
         The rationale here is so that ColumnElement objects can be hashable.
         What?  Well, suppose you do this::
 
-            c1, c2 = column('x'), column('y')
+            c1, c2 = column("x"), column("y")
             s1 = set([c1, c2])
 
         We do that **a lot**, columns inside of sets is an extremely basic
@@ -4505,12 +4511,13 @@ class FunctionFilter(Generative, ColumnElement[_T]):
 
         The expression::
 
-            func.rank().filter(MyClass.y > 5).over(order_by='x')
+            func.rank().filter(MyClass.y > 5).over(order_by="x")
 
         is shorthand for::
 
             from sqlalchemy import over, funcfilter
-            over(funcfilter(func.rank(), MyClass.y > 5), order_by='x')
+
+            over(funcfilter(func.rank(), MyClass.y > 5), order_by="x")
 
         See :func:`_expression.over` for a full description.
 
@@ -4872,7 +4879,9 @@ class ColumnClause(
         id, name = column("id"), column("name")
         stmt = select(id, name).select_from("user")
 
-    The above statement would produce SQL like::
+    The above statement would produce SQL like:
+
+    .. sourcecode:: sql
 
         SELECT id, name FROM user
 
@@ -5427,11 +5436,12 @@ class conv(_truncated_label):
     E.g. when we create a :class:`.Constraint` using a naming convention
     as follows::
 
-        m = MetaData(naming_convention={
-            "ck": "ck_%(table_name)s_%(constraint_name)s"
-        })
-        t = Table('t', m, Column('x', Integer),
-                        CheckConstraint('x > 5', name='x5'))
+        m = MetaData(
+            naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s"}
+        )
+        t = Table(
+            "t", m, Column("x", Integer), CheckConstraint("x > 5", name="x5")
+        )
 
     The name of the above constraint will be rendered as ``"ck_t_x5"``.
     That is, the existing name ``x5`` is used in the naming convention as the
@@ -5444,11 +5454,15 @@ class conv(_truncated_label):
     use this explicitly as follows::
 
 
-        m = MetaData(naming_convention={
-            "ck": "ck_%(table_name)s_%(constraint_name)s"
-        })
-        t = Table('t', m, Column('x', Integer),
-                        CheckConstraint('x > 5', name=conv('ck_t_x5')))
+        m = MetaData(
+            naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s"}
+        )
+        t = Table(
+            "t",
+            m,
+            Column("x", Integer),
+            CheckConstraint("x > 5", name=conv("ck_t_x5")),
+        )
 
     Where above, the :func:`_schema.conv` marker indicates that the constraint
     name here is final, and the name will render as ``"ck_t_x5"`` and not

@@ -214,7 +214,7 @@ class _JoinFixtures:
             else:
                 return True
 
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.three_tab_a,
             self.three_tab_b,
             self.three_tab_a,
@@ -230,7 +230,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_m2m(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.m2mleft,
             self.m2mright,
             self.m2mleft,
@@ -248,7 +248,7 @@ class _JoinFixtures:
         j1 = self._join_fixture_m2m()
         return (
             j1,
-            relationships.JoinCondition(
+            relationships._JoinCondition(
                 self.m2mright,
                 self.m2mleft,
                 self.m2mright,
@@ -261,7 +261,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_o2m(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.left,
             self.right,
             self.left,
@@ -271,7 +271,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_m2o(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.right,
             self.left,
             self.right,
@@ -281,7 +281,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_o2m_selfref(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.selfref,
             self.selfref,
             self.selfref,
@@ -291,7 +291,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_m2o_selfref(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.selfref,
             self.selfref,
             self.selfref,
@@ -302,7 +302,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_o2m_composite_selfref(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.composite_selfref,
             self.composite_selfref,
             self.composite_selfref,
@@ -312,7 +312,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_m2o_composite_selfref(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.composite_selfref,
             self.composite_selfref,
             self.composite_selfref,
@@ -326,7 +326,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_o2m_composite_selfref_func(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.composite_selfref,
             self.composite_selfref,
             self.composite_selfref,
@@ -342,7 +342,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_o2m_composite_selfref_func_remote_side(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.composite_selfref,
             self.composite_selfref,
             self.composite_selfref,
@@ -359,7 +359,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_o2m_composite_selfref_func_annotated(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.composite_selfref,
             self.composite_selfref,
             self.composite_selfref,
@@ -375,7 +375,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_compound_expression_1(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.left,
             self.right,
             self.left,
@@ -389,7 +389,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_compound_expression_2(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.left,
             self.right,
             self.left,
@@ -401,7 +401,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_compound_expression_1_non_annotated(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.left,
             self.right,
             self.left,
@@ -418,7 +418,7 @@ class _JoinFixtures:
         right = self.base_w_sub_rel.join(
             self.rel_sub, self.base_w_sub_rel.c.id == self.rel_sub.c.id
         )
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.base_w_sub_rel,
             right,
             self.base_w_sub_rel,
@@ -432,7 +432,7 @@ class _JoinFixtures:
         left = self.base.join(
             self.sub_w_base_rel, self.base.c.id == self.sub_w_base_rel.c.id
         )
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             left,
             self.base,
             self.sub_w_base_rel,
@@ -449,7 +449,7 @@ class _JoinFixtures:
         right = self.base.join(
             self.sub_w_base_rel, self.base.c.id == self.sub_w_base_rel.c.id
         )
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             left,
             right,
             self.sub,
@@ -463,7 +463,7 @@ class _JoinFixtures:
         right = self.base.join(
             self.sub_w_sub_rel, self.base.c.id == self.sub_w_sub_rel.c.id
         )
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             left,
             right,
             self.sub,
@@ -477,7 +477,7 @@ class _JoinFixtures:
         right = self.base.join(
             self.right_w_base_rel, self.base.c.id == self.right_w_base_rel.c.id
         )
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.right_w_base_rel,
             right,
             self.right_w_base_rel,
@@ -490,7 +490,7 @@ class _JoinFixtures:
         right = self.base.join(
             self.right_w_base_rel, self.base.c.id == self.right_w_base_rel.c.id
         )
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.right_w_base_rel,
             right,
             self.right_w_base_rel,
@@ -504,7 +504,7 @@ class _JoinFixtures:
         left = self.base.join(self.sub, self.base.c.id == self.sub.c.id)
 
         # see test_relationships->AmbiguousJoinInterpretedAsSelfRef
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             left,
             self.sub,
             left,
@@ -513,7 +513,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_o2m_to_annotated_func(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.left,
             self.right,
             self.left,
@@ -524,7 +524,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_o2m_to_oldstyle_func(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.left,
             self.right,
             self.left,
@@ -536,7 +536,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_overlapping_composite_fks(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.composite_target,
             self.composite_multi_ref,
             self.composite_target,
@@ -550,7 +550,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_o2m_o_side_none(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.left,
             self.right,
             self.left,
@@ -563,7 +563,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_purely_single_o2m(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.purely_single_col,
             self.purely_single_col,
             self.purely_single_col,
@@ -576,7 +576,7 @@ class _JoinFixtures:
         )
 
     def _join_fixture_purely_single_m2o(self, **kw):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.purely_single_col,
             self.purely_single_col,
             self.purely_single_col,
@@ -592,7 +592,7 @@ class _JoinFixtures:
         def fn(a, b):
             return (a == b) | (b == a)
 
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.selfref,
             self.selfref,
             self.selfref,
@@ -626,7 +626,7 @@ class _JoinFixtures:
         sub_w_sub_rel__flag = self.base.c.flag._annotate(
             {"parentmapper": prop.mapper}
         )
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             local_selectable,
             remote_selectable,
             local_selectable,
@@ -1116,7 +1116,7 @@ class DetermineJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
             "providing a list of those columns which "
             "should be counted as containing a foreign "
             "key reference to the parent table.",
-            relationships.JoinCondition,
+            relationships._JoinCondition,
             self.left,
             self.right_multi_fk,
             self.left,
@@ -1126,7 +1126,7 @@ class DetermineJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
 
     def test_determine_join_no_fks_o2m(self):
         self._assert_raises_no_join(
-            relationships.JoinCondition,
+            relationships._JoinCondition,
             "Whatever.foo",
             None,
             self.left,
@@ -1138,7 +1138,7 @@ class DetermineJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
 
     def test_determine_join_ambiguous_fks_m2m(self):
         self._assert_raises_ambig_join(
-            relationships.JoinCondition,
+            relationships._JoinCondition,
             "Whatever.foo",
             self.m2msecondary_ambig_fks,
             self.m2mleft,
@@ -1151,7 +1151,7 @@ class DetermineJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
 
     def test_determine_join_no_fks_m2m(self):
         self._assert_raises_no_join(
-            relationships.JoinCondition,
+            relationships._JoinCondition,
             "Whatever.foo",
             self.m2msecondary_no_fks,
             self.m2mleft,
@@ -1163,7 +1163,7 @@ class DetermineJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def _join_fixture_fks_ambig_m2m(self):
-        return relationships.JoinCondition(
+        return relationships._JoinCondition(
             self.m2mleft,
             self.m2mright,
             self.m2mleft,

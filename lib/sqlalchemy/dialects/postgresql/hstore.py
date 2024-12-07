@@ -28,28 +28,29 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
 
     The :class:`.HSTORE` type stores dictionaries containing strings, e.g.::
 
-        data_table = Table('data_table', metadata,
-            Column('id', Integer, primary_key=True),
-            Column('data', HSTORE)
+        data_table = Table(
+            "data_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", HSTORE),
         )
 
         with engine.connect() as conn:
             conn.execute(
-                data_table.insert(),
-                data = {"key1": "value1", "key2": "value2"}
+                data_table.insert(), data={"key1": "value1", "key2": "value2"}
             )
 
     :class:`.HSTORE` provides for a wide range of operations, including:
 
     * Index operations::
 
-        data_table.c.data['some key'] == 'some value'
+        data_table.c.data["some key"] == "some value"
 
     * Containment operations::
 
-        data_table.c.data.has_key('some key')
+        data_table.c.data.has_key("some key")
 
-        data_table.c.data.has_all(['one', 'two', 'three'])
+        data_table.c.data.has_all(["one", "two", "three"])
 
     * Concatenation::
 
@@ -72,17 +73,19 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
 
             from sqlalchemy.ext.mutable import MutableDict
 
+
             class MyClass(Base):
-                __tablename__ = 'data_table'
+                __tablename__ = "data_table"
 
                 id = Column(Integer, primary_key=True)
                 data = Column(MutableDict.as_mutable(HSTORE))
+
 
             my_object = session.query(MyClass).one()
 
             # in-place mutation, requires Mutable extension
             # in order for the ORM to detect
-            my_object.data['some_key'] = 'some value'
+            my_object.data["some_key"] = "some value"
 
             session.commit()
 
@@ -96,7 +99,7 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
         :class:`.hstore` - render the PostgreSQL ``hstore()`` function.
 
 
-    """
+    """  # noqa: E501
 
     __visit_name__ = "HSTORE"
     hashable = False
@@ -221,12 +224,12 @@ class hstore(sqlfunc.GenericFunction):
 
         from sqlalchemy.dialects.postgresql import array, hstore
 
-        select(hstore('key1', 'value1'))
+        select(hstore("key1", "value1"))
 
         select(
             hstore(
-                array(['key1', 'key2', 'key3']),
-                array(['value1', 'value2', 'value3'])
+                array(["key1", "key2", "key3"]),
+                array(["value1", "value2", "value3"]),
             )
         )
 

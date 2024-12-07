@@ -370,11 +370,14 @@ def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
     # use tempfile in same path as the module, or at least in the
     # current working directory, so that black / zimports use
     # local pyproject.toml
-    with NamedTemporaryFile(
-        mode="w",
-        delete=False,
-        suffix=".py",
-    ) as buf, open(filename) as orig_py:
+    with (
+        NamedTemporaryFile(
+            mode="w",
+            delete=False,
+            suffix=".py",
+        ) as buf,
+        open(filename) as orig_py,
+    ):
         in_block = False
         current_clsname = None
         for line in orig_py:

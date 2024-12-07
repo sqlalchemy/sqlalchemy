@@ -185,8 +185,10 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
     :meth:`_schema.Table.drop`
     methods are called::
 
-        table = Table('sometable', metadata,
-            Column('some_enum', ENUM('a', 'b', 'c', name='myenum'))
+        table = Table(
+            "sometable",
+            metadata,
+            Column("some_enum", ENUM("a", "b", "c", name="myenum")),
         )
 
         table.create(engine)  # will emit CREATE ENUM and CREATE TABLE
@@ -197,21 +199,17 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
     :class:`_postgresql.ENUM` independently, and associate it with the
     :class:`_schema.MetaData` object itself::
 
-        my_enum = ENUM('a', 'b', 'c', name='myenum', metadata=metadata)
+        my_enum = ENUM("a", "b", "c", name="myenum", metadata=metadata)
 
-        t1 = Table('sometable_one', metadata,
-            Column('some_enum', myenum)
-        )
+        t1 = Table("sometable_one", metadata, Column("some_enum", myenum))
 
-        t2 = Table('sometable_two', metadata,
-            Column('some_enum', myenum)
-        )
+        t2 = Table("sometable_two", metadata, Column("some_enum", myenum))
 
     When this pattern is used, care must still be taken at the level
     of individual table creates.  Emitting CREATE TABLE without also
     specifying ``checkfirst=True`` will still cause issues::
 
-        t1.create(engine) # will fail: no such type 'myenum'
+        t1.create(engine)  # will fail: no such type 'myenum'
 
     If we specify ``checkfirst=True``, the individual table-level create
     operation will check for the ``ENUM`` and create if not exists::
@@ -387,14 +385,12 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
     A domain is essentially a data type with optional constraints
     that restrict the allowed set of values. E.g.::
 
-        PositiveInt = DOMAIN(
-            "pos_int", Integer, check="VALUE > 0", not_null=True
-        )
+        PositiveInt = DOMAIN("pos_int", Integer, check="VALUE > 0", not_null=True)
 
         UsPostalCode = DOMAIN(
             "us_postal_code",
             Text,
-            check="VALUE ~ '^\d{5}$' OR VALUE ~ '^\d{5}-\d{4}$'"
+            check="VALUE ~ '^\d{5}$' OR VALUE ~ '^\d{5}-\d{4}$'",
         )
 
     See the `PostgreSQL documentation`__ for additional details
@@ -403,7 +399,7 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
 
     .. versionadded:: 2.0
 
-    """
+    """  # noqa: E501
 
     DDLGenerator = DomainGenerator
     DDLDropper = DomainDropper

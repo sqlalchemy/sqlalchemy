@@ -458,7 +458,7 @@ class AssociationProxy(
             class User(Base):
                 # ...
 
-                keywords = association_proxy('kws', 'keyword')
+                keywords = association_proxy("kws", "keyword")
 
         If we access this :class:`.AssociationProxy` from
         :attr:`_orm.Mapper.all_orm_descriptors`, and we want to view the
@@ -778,9 +778,9 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
         :attr:`.AssociationProxyInstance.remote_attr` attributes separately::
 
             stmt = (
-                select(Parent).
-                join(Parent.proxied.local_attr).
-                join(Parent.proxied.remote_attr)
+                select(Parent)
+                .join(Parent.proxied.local_attr)
+                .join(Parent.proxied.remote_attr)
             )
 
         A future release may seek to provide a more succinct join pattern

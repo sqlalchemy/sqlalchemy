@@ -245,7 +245,7 @@ class ColumnProperty(
         strategies = util.preloaded.orm_strategies
         return state.InstanceState._instance_level_callable_processor(
             self.parent.class_manager,
-            strategies.LoadDeferredColumns(self.key),
+            strategies._LoadDeferredColumns(self.key),
             self.key,
         )
 
@@ -257,7 +257,7 @@ class ColumnProperty(
         strategies = util.preloaded.orm_strategies
         return state.InstanceState._instance_level_callable_processor(
             self.parent.class_manager,
-            strategies.LoadDeferredColumns(self.key, True),
+            strategies._LoadDeferredColumns(self.key, True),
             self.key,
         )
 
@@ -280,8 +280,8 @@ class ColumnProperty(
 
                 name = Column(String(64))
                 extension = Column(String(8))
-                filename = column_property(name + '.' + extension)
-                path = column_property('C:/' + filename.expression)
+                filename = column_property(name + "." + extension)
+                path = column_property("C:/" + filename.expression)
 
         .. seealso::
 
@@ -294,7 +294,7 @@ class ColumnProperty(
         if not self.instrument:
             return
 
-        attributes.register_descriptor(
+        attributes._register_descriptor(
             mapper.class_,
             self.key,
             comparator=self.comparator_factory(self, mapper),

@@ -65,7 +65,7 @@ from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from ._typing import _RegistryType
-    from .attributes import AttributeImpl
+    from .attributes import _AttributeImpl
     from .attributes import QueryableAttribute
     from .collections import _AdaptedCollectionProtocol
     from .collections import _CollectionFactoryType
@@ -469,7 +469,7 @@ class ClassManager(
     def instrument_collection_class(
         self, key: str, collection_class: Type[Collection[Any]]
     ) -> _CollectionFactoryType:
-        return collections.prepare_instrumentation(collection_class)
+        return collections._prepare_instrumentation(collection_class)
 
     def initialize_collection(
         self,
@@ -489,7 +489,7 @@ class ClassManager(
         else:
             return key in self.local_attrs
 
-    def get_impl(self, key: str) -> AttributeImpl:
+    def get_impl(self, key: str) -> _AttributeImpl:
         return self[key].impl
 
     @property

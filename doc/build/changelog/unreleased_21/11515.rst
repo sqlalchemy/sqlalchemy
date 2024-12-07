@@ -2,8 +2,9 @@
     :tags: bug, sql
     :tickets: 11515
 
-    Enhanced the caching structure of the :paramref:`.over.rows` and
-    :paramref:`.over.range` so that different numerical values for the rows /
+    Enhanced the caching structure of the :paramref:`_expression.over.rows`
+    and :paramref:`_expression.over.range` so that different numerical
+    values for the rows /
     range fields are cached on the same cache key, to the extent that the
     underlying SQL does not actually change (i.e. "unbounded", "current row",
     negative/positive status will still change the cache key).  This prevents

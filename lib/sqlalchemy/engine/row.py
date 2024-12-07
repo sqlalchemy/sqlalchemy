@@ -354,11 +354,10 @@ class RowMapping(BaseRow, typing.Mapping["_KeyType", Any]):
     as iteration of keys, values, and items::
 
         for row in result:
-            if 'a' in row._mapping:
-                print("Column 'a': %s" % row._mapping['a'])
+            if "a" in row._mapping:
+                print("Column 'a': %s" % row._mapping["a"])
 
             print("Column b: %s" % row._mapping[table.c.b])
-
 
     .. versionadded:: 1.4 The :class:`.RowMapping` object replaces the
        mapping-like access previously provided by a database result row,

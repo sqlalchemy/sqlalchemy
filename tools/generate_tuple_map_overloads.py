@@ -44,11 +44,14 @@ def process_module(
     # current working directory, so that black / zimports use
     # local pyproject.toml
     found = 0
-    with NamedTemporaryFile(
-        mode="w",
-        delete=False,
-        suffix=".py",
-    ) as buf, open(filename) as orig_py:
+    with (
+        NamedTemporaryFile(
+            mode="w",
+            delete=False,
+            suffix=".py",
+        ) as buf,
+        open(filename) as orig_py,
+    ):
         indent = ""
         in_block = False
         current_fnname = given_fnname = None

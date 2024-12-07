@@ -35,10 +35,12 @@ class PoolEvents(event.Events[Pool]):
 
         from sqlalchemy import event
 
+
         def my_on_checkout(dbapi_conn, connection_rec, connection_proxy):
             "handle an on checkout event"
 
-        event.listen(Pool, 'checkout', my_on_checkout)
+
+        event.listen(Pool, "checkout", my_on_checkout)
 
     In addition to accepting the :class:`_pool.Pool` class and
     :class:`_pool.Pool` instances, :class:`_events.PoolEvents` also accepts
@@ -49,7 +51,7 @@ class PoolEvents(event.Events[Pool]):
         engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
 
         # will associate with engine.pool
-        event.listen(engine, 'checkout', my_on_checkout)
+        event.listen(engine, "checkout", my_on_checkout)
 
     """  # noqa: E501
 

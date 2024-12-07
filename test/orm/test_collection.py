@@ -44,7 +44,7 @@ def _register_attribute(class_, key, **kw):
     kw.setdefault("comparator", object())
     kw.setdefault("parententity", object())
 
-    return attributes.register_attribute(class_, key, **kw)
+    return attributes._register_attribute(class_, key, **kw)
 
 
 class Canary:
