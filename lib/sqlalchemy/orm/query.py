@@ -3177,8 +3177,6 @@ class Query(
 
         """
 
-        delete_args = delete_args or {}
-
         bulk_del = BulkDelete(self, delete_args)
         if self.dispatch.before_compile_delete:
             for fn in self.dispatch.before_compile_delete:

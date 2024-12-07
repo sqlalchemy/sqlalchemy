@@ -473,11 +473,11 @@ available.
 
     update(..., mysql_limit=10, mariadb_limit=10)
 
-.. versionadded:: 2.1 Added delete with limit
-
 * DELETE with LIMIT::
 
     delete(..., mysql_limit=10, mariadb_limit=10)
+
+.. versionadded:: 2.1 Added delete with limit
 
 * optimizer hints, use :meth:`_expression.Select.prefix_with` and
   :meth:`_query.Query.prefix_with`::
