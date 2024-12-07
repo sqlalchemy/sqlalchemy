@@ -536,19 +536,19 @@ SQLAlchemy type (or a subclass of such).
 
 .. versionadded:: 2.0.0 added support for the python-oracledb driver.
 
-VECTOR Datatypes
-----------------
+VECTOR Datatype
+---------------
 
-Oracle Database 23ai introduced a new VECTOR datatypes for artificial intelligence and machine
-learning search operations. The VECTOR datatypes is a homogeneous array of 8-bit signed integers,
+Oracle Database 23ai introduced a new VECTOR datatype for artificial intelligence and machine
+learning search operations. The VECTOR datatype is a homogeneous array of 8-bit signed integers,
 8-bit unsigned integers, 32-bit floating-point numbers, or 64-bit floating-point numbers.
-For more information on VECTOR datatypes please visit this `link.
+For more information on VECTOR datatype please visit this `link.
 <https://python-oracledb.readthedocs.io/en/latest/user_guide/vector_data_type.html>`_
 
-CREATE TABLE (VECTOR Datatypes)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+CREATE TABLE (VECTOR Datatype)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-With the VECTOR datatypes, you can define the number of dimensions for the data and the storage
+With the VECTOR datatype, you can define the number of dimensions for the data and the storage
 format for each dimension value in the VECTOR. To create a table with VECTOR column::
 
     from sqlalchemy.dialects.oracle import VECTOR
