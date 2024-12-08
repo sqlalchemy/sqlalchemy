@@ -119,6 +119,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
     execution_ctx_cls = MySQLExecutionContext_mysqldb
     statement_compiler = MySQLCompiler_mysqldb
     preparer = MySQLIdentifierPreparer
+    server_version_info: tuple[int, ...]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
