@@ -2488,7 +2488,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
             )
-        elif binary.type._type_affinity is sqltypes.Numeric:
+        elif binary.type._type_affinity in (sqltypes.Numeric, sqltypes.Float):
             type_expression = "ELSE CAST(JSON_VALUE(%s, %s) AS %s)" % (
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
@@ -3758,7 +3758,7 @@ where
                 )
                 coltype = sqltypes.NULLTYPE
             else:
-                if issubclass(coltype, sqltypes.Numeric):
+                if issubclass(coltype, sqltypes.NumericCommon):
                     kwargs["precision"] = numericprec
 
                     if not issubclass(coltype, sqltypes.Float):

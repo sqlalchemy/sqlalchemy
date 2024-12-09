@@ -1491,10 +1491,6 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(("mssql+pyodbc", None, None, "crashes due to bug #351"))
 
     @property
-    def float_is_numeric(self):
-        return exclusions.fails_if(["oracle"])
-
-    @property
     def duplicate_key_raises_integrity_error(self):
         return exclusions.open()
 

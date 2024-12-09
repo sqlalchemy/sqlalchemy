@@ -6,10 +6,10 @@ from sqlalchemy import DateTime
 from sqlalchemy import delete
 from sqlalchemy import event
 from sqlalchemy import exc
-from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import Numeric
 from sqlalchemy import select
 from sqlalchemy import sql
 from sqlalchemy import String
@@ -81,7 +81,7 @@ class ShardTest:
             metadata,
             Column("id", Integer, primary_key=True),
             Column("location_id", Integer, ForeignKey(weather_locations.c.id)),
-            Column("temperature", Float),
+            Column("temperature", Numeric(asdecimal=False)),
             Column("report_time", DateTime, default=datetime.datetime.now),
             schema=cls.schema,
         )

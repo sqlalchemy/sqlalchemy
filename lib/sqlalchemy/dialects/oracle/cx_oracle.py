@@ -535,7 +535,7 @@ class _OracleInteger(sqltypes.Integer):
         return handler
 
 
-class _OracleNumeric(sqltypes.Numeric):
+class _OracleNumericCommon(sqltypes.NumericCommon, sqltypes.TypeEngine):
     is_number = False
 
     def bind_processor(self, dialect):
@@ -611,12 +611,20 @@ class _OracleNumeric(sqltypes.Numeric):
         return handler
 
 
+class _OracleNumeric(_OracleNumericCommon, sqltypes.Numeric):
+    pass
+
+
+class _OracleFloat(_OracleNumericCommon, sqltypes.Float):
+    pass
+
+
 class _OracleUUID(sqltypes.Uuid):
     def get_dbapi_type(self, dbapi):
         return dbapi.STRING
 
 
-class _OracleBinaryFloat(_OracleNumeric):
+class _OracleBinaryFloat(_OracleNumericCommon):
     def get_dbapi_type(self, dbapi):
         return dbapi.NATIVE_FLOAT
 
@@ -629,7 +637,7 @@ class _OracleBINARY_DOUBLE(_OracleBinaryFloat, oracle.BINARY_DOUBLE):
     pass
 
 
-class _OracleNUMBER(_OracleNumeric):
+class _OracleNUMBER(_OracleNumericCommon, sqltypes.Numeric):
     is_number = True
 
 
@@ -888,7 +896,7 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                                 arraysize=len_params,
                             )
                         elif (
-                            isinstance(type_impl, _OracleNumeric)
+                            isinstance(type_impl, _OracleNumericCommon)
                             and type_impl.asdecimal
                         ):
                             out_parameters[name] = self.cursor.var(
@@ -1053,7 +1061,7 @@ class OracleDialect_cx_oracle(OracleDialect):
         {
             sqltypes.TIMESTAMP: _CXOracleTIMESTAMP,
             sqltypes.Numeric: _OracleNumeric,
-            sqltypes.Float: _OracleNumeric,
+            sqltypes.Float: _OracleFloat,
             oracle.BINARY_FLOAT: _OracleBINARY_FLOAT,
             oracle.BINARY_DOUBLE: _OracleBINARY_DOUBLE,
             sqltypes.Integer: _OracleInteger,

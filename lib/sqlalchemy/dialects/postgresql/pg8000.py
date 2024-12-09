@@ -126,7 +126,7 @@ class _PGString(sqltypes.String):
     render_bind_cast = True
 
 
-class _PGNumeric(sqltypes.Numeric):
+class _PGNumericCommon(sqltypes.NumericCommon):
     render_bind_cast = True
 
     def result_processor(self, dialect, coltype):
@@ -154,9 +154,12 @@ class _PGNumeric(sqltypes.Numeric):
                 )
 
 
-class _PGFloat(_PGNumeric, sqltypes.Float):
-    __visit_name__ = "float"
-    render_bind_cast = True
+class _PGNumeric(_PGNumericCommon, sqltypes.Numeric):
+    pass
+
+
+class _PGFloat(_PGNumericCommon, sqltypes.Float):
+    pass
 
 
 class _PGNumericNoBind(_PGNumeric):

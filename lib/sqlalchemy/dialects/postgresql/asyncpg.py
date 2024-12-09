@@ -321,7 +321,7 @@ class AsyncpgJSONPathType(json.JSONPathType):
         return process
 
 
-class AsyncpgNumeric(sqltypes.Numeric):
+class _AsyncpgNumericCommon(sqltypes.NumericCommon):
     render_bind_cast = True
 
     def bind_processor(self, dialect):
@@ -352,9 +352,12 @@ class AsyncpgNumeric(sqltypes.Numeric):
                 )
 
 
-class AsyncpgFloat(AsyncpgNumeric, sqltypes.Float):
-    __visit_name__ = "float"
-    render_bind_cast = True
+class AsyncpgNumeric(_AsyncpgNumericCommon, sqltypes.Numeric):
+    pass
+
+
+class AsyncpgFloat(_AsyncpgNumericCommon, sqltypes.Float):
+    pass
 
 
 class AsyncpgREGCLASS(REGCLASS):
