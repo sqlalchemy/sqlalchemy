@@ -6114,6 +6114,10 @@ class SQLCompiler(Compiled):
         """Provide a hook for MySQL to add LIMIT to the UPDATE"""
         return None
 
+    def delete_limit_clause(self, delete_stmt):
+        """Provide a hook for MySQL to add LIMIT to the DELETE"""
+        return None
+
     def update_tables_clause(self, update_stmt, from_table, extra_froms, **kw):
         """Provide a hook to override the initial table clause
         in an UPDATE statement.
@@ -6405,6 +6409,10 @@ class SQLCompiler(Compiled):
             )
             if t:
                 text += " WHERE " + t
+
+        limit_clause = self.delete_limit_clause(delete_stmt)
+        if limit_clause:
+            text += " " + limit_clause
 
         if (
             self.implicit_returning or delete_stmt._returning

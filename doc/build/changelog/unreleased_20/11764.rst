@@ -1,0 +1,20 @@
+.. change::
+    :tags:  usecase, mysql, mariadb
+    :tickets: 11764
+
+    Added support for the ``LIMIT`` clause with ``DELETE`` for the MySQL and
+    MariaDB dialects, to complement the already present option for
+    ``UPDATE``. The :meth:`.delete.with_dialect_options` method of the
+    `:func:`.delete` construct accepts parameters for ``mysql_limit`` and
+    ``mariadb_limit``, allowing users to specify a limit on the number of rows
+    deleted. Pull request courtesy of Pablo Nicolás Estevez.
+
+
+.. change::
+    :tags:  bug, mysql, mariadb
+
+    Added logic to ensure that the ``mysql_limit`` and ``mariadb_limit``
+    parameters of :meth:`.update.with_dialect_options` and
+    :meth:`.delete.with_dialect_options` when compiled to string will only
+    compile if the parameter is passed as an integer; a ``ValueError`` is
+    raised otherwise.
