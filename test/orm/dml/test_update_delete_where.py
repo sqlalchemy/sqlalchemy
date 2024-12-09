@@ -2586,7 +2586,7 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
         )
 
 
-class ExpressionUpdateTest(fixtures.MappedTest):
+class ExpressionUpdateDeleteTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -2651,6 +2651,27 @@ class ExpressionUpdateTest(fixtures.MappedTest):
         update_stmt = m1.mock_calls[0][1][0]
 
         eq_(update_stmt.dialect_kwargs, update_args)
+
+    def test_delete_args(self):
+        Data = self.classes.Data
+        session = fixture_session()
+        delete_args = {"mysql_limit": 1}
+
+        m1 = testing.mock.Mock()
+
+        @event.listens_for(session, "after_bulk_delete")
+        def do_orm_execute(bulk_ud):
+            delete_stmt = (
+                bulk_ud.result.context.compiled.compile_state.statement
+            )
+            m1(delete_stmt)
+
+        q = session.query(Data)
+        q.delete(delete_args=delete_args)
+
+        delete_stmt = m1.mock_calls[0][1][0]
+
+        eq_(delete_stmt.dialect_kwargs, delete_args)
 
 
 class InheritTest(fixtures.DeclarativeMappedTest):
