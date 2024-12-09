@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 r"""
 .. dialect:: mysql+aiomysql
@@ -29,17 +28,33 @@ This dialect should normally be used only with the
     )
 
 """  # noqa
+
+from typing import Any
+from typing import TYPE_CHECKING
+
 from .pymysql import MySQLDialect_pymysql
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
+from ...connectors.asyncio import AsyncIODBAPICursor
 from ...util.concurrency import await_
+
+if TYPE_CHECKING:
+    from aiomysql.connection import Connection as AiomysqlConnection
+    from aiomysql.cursors import Cursor as AiomysqlCursor
+    from aiomysql.cursors import SSCursor as AiomysqlSSCursor
+    from aiomysql.pool import Pool as AiomysqlPool
+
+    from sqlalchemy import URL
+    from ...connectors.asyncio import AsyncIODBAPIConnection
 
 
 class AsyncAdapt_aiomysql_cursor(AsyncAdapt_dbapi_cursor):
     __slots__ = ()
 
-    def _make_new_cursor(self, connection):
+    def _make_new_cursor(
+        self, connection: "AsyncIODBAPIConnection"
+    ) -> AsyncIODBAPICursor:
         return connection.cursor(self._adapt_connection.dbapi.Cursor)
 
 
@@ -48,7 +63,9 @@ class AsyncAdapt_aiomysql_ss_cursor(
 ):
     __slots__ = ()
 
-    def _make_new_cursor(self, connection):
+    def _make_new_cursor(
+        self, connection: "AsyncIODBAPIConnection"
+    ) -> AsyncIODBAPICursor:
         return connection.cursor(
             self._adapt_connection.dbapi.aiomysql.cursors.SSCursor
         )
@@ -59,18 +76,19 @@ class AsyncAdapt_aiomysql_connection(AsyncAdapt_dbapi_connection):
 
     _cursor_cls = AsyncAdapt_aiomysql_cursor
     _ss_cursor_cls = AsyncAdapt_aiomysql_ss_cursor
+    _connection: "AiomysqlConnection"
 
-    def ping(self, reconnect):
+    def ping(self, reconnect) -> None:
         assert not reconnect
         return await_(self._connection.ping(reconnect))
 
-    def character_set_name(self):
+    def character_set_name(self) -> str | None:
         return self._connection.character_set_name()
 
-    def autocommit(self, value):
+    def autocommit(self, value: Any) -> None:
         await_(self._connection.autocommit(value))
 
-    def terminate(self):
+    def terminate(self) -> None:
         # it's not awaitable.
         self._connection.close()
 
@@ -86,7 +104,7 @@ class AsyncAdapt_aiomysql_dbapi:
         self._init_dbapi_attributes()
         self.Cursor, self.SSCursor = self._init_cursors_subclasses()
 
-    def _init_dbapi_attributes(self):
+    def _init_dbapi_attributes(self) -> None:
         for name in (
             "Warning",
             "Error",
@@ -112,7 +130,7 @@ class AsyncAdapt_aiomysql_dbapi:
         ):
             setattr(self, name, getattr(self.pymysql, name))
 
-    def connect(self, *arg, **kw):
+    def connect(self, *arg, **kw) -> AsyncAdapt_aiomysql_connection:
         creator_fn = kw.pop("async_creator_fn", self.aiomysql.connect)
 
         return AsyncAdapt_aiomysql_connection(
@@ -120,7 +138,9 @@ class AsyncAdapt_aiomysql_dbapi:
             await_(creator_fn(*arg, **kw)),
         )
 
-    def _init_cursors_subclasses(self):
+    def _init_cursors_subclasses(
+        self,
+    ) -> tuple["AiomysqlCursor", "AiomysqlSSCursor"]:
         # suppress unconditional warning emitted by aiomysql
         class Cursor(self.aiomysql.Cursor):
             async def _show_warnings(self, conn):
@@ -144,32 +164,36 @@ class MySQLDialect_aiomysql(MySQLDialect_pymysql):
     has_terminate = True
 
     @classmethod
-    def import_dbapi(cls):
+    def import_dbapi(cls) -> AsyncAdapt_aiomysql_dbapi:
         return AsyncAdapt_aiomysql_dbapi(
             __import__("aiomysql"), __import__("pymysql")
         )
 
-    def do_terminate(self, dbapi_connection) -> None:
+    def do_terminate(self, dbapi_connection: "AiomysqlPool") -> None:
         dbapi_connection.terminate()
 
-    def create_connect_args(self, url):
+    def create_connect_args(self, url: "URL") -> list[list | dict[str, Any]]:
         return super().create_connect_args(
             url, _translate_args=dict(username="user", database="db")
         )
 
-    def is_disconnect(self, e, connection, cursor):
+    def is_disconnect(
+        self, e: Exception, connection: Any, cursor: Any
+    ) -> bool:
         if super().is_disconnect(e, connection, cursor):
             return True
         else:
             str_e = str(e).lower()
             return "not connected" in str_e
 
-    def _found_rows_client_flag(self):
+    def _found_rows_client_flag(self) -> int:
         from pymysql.constants import CLIENT
 
         return CLIENT.FOUND_ROWS
 
-    def get_driver_connection(self, connection):
+    def get_driver_connection(
+        self, connection: AsyncAdapt_aiomysql_connection
+    ) -> "AiomysqlConnection":
         return connection._connection
 
 
