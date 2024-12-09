@@ -55,13 +55,16 @@ from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.dialects.mysql import match
 from sqlalchemy.sql import column
+from sqlalchemy.sql import delete
 from sqlalchemy.sql import table
+from sqlalchemy.sql import update
 from sqlalchemy.sql.expression import bindparam
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_ignore_whitespace
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
@@ -724,6 +727,14 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             .with_dialect_options(mysql_limit=5),
             "UPDATE t SET col1=%s LIMIT 5",
         )
+
+        # does not make sense but we want this to compile
+        self.assert_compile(
+            t.update()
+            .values({"col1": 123})
+            .with_dialect_options(mysql_limit=0),
+            "UPDATE t SET col1=%s LIMIT 0",
+        )
         self.assert_compile(
             t.update()
             .values({"col1": 123})
@@ -737,6 +748,39 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             .with_dialect_options(mysql_limit=1),
             "UPDATE t SET col1=%s WHERE t.col2 = %s LIMIT 1",
         )
+
+    def test_delete_limit(self):
+        t = sql.table("t", sql.column("col1"), sql.column("col2"))
+
+        self.assert_compile(t.delete(), "DELETE FROM t")
+        self.assert_compile(
+            t.delete().with_dialect_options(mysql_limit=5),
+            "DELETE FROM t LIMIT 5",
+        )
+        # does not make sense but we want this to compile
+        self.assert_compile(
+            t.delete().with_dialect_options(mysql_limit=0),
+            "DELETE FROM t LIMIT 0",
+        )
+        self.assert_compile(
+            t.delete().with_dialect_options(mysql_limit=None),
+            "DELETE FROM t",
+        )
+        self.assert_compile(
+            t.delete()
+            .where(t.c.col2 == 456)
+            .with_dialect_options(mysql_limit=1),
+            "DELETE FROM t WHERE t.col2 = %s LIMIT 1",
+        )
+
+    @testing.combinations((update,), (delete,))
+    def test_update_delete_limit_int_only(self, crud_fn):
+        t = sql.table("t", sql.column("col1"), sql.column("col2"))
+
+        with expect_raises(ValueError):
+            crud_fn(t).with_dialect_options(mysql_limit="not an int").compile(
+                dialect=mysql.dialect()
+            )
 
     def test_utc_timestamp(self):
         self.assert_compile(func.utc_timestamp(), "utc_timestamp()")
