@@ -4799,11 +4799,13 @@ class ColumnDefaultsTest(fixtures.TestBase):
         c = self._fixture(insert_default="y")
         assert c.default.arg == "y"
 
-    def test_column_insert_default_predecende_on_default(self):
-        c = self._fixture(insert_default="x", default="y")
-        assert c.default.arg == "x"
-        c = self._fixture(default="y", insert_default="x")
-        assert c.default.arg == "x"
+    def test_column_insert_default_mututally_exclusive(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            "The 'default' and 'insert_default' parameters of "
+            "Column are mutually exclusive",
+        ):
+            self._fixture(insert_default="x", default="y")
 
 
 class ColumnOptionsTest(fixtures.TestBase):

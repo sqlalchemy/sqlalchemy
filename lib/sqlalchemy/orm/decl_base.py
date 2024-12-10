@@ -27,7 +27,6 @@ from typing import Sequence
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
-from typing import TypedDict
 from typing import TypeVar
 from typing import Union
 import weakref
@@ -46,6 +45,7 @@ from .base import InspectionAttr
 from .descriptor_props import CompositeProperty
 from .descriptor_props import SynonymProperty
 from .interfaces import _AttributeOptions
+from .interfaces import _DataclassArguments
 from .interfaces import _DCAttributeOptions
 from .interfaces import _IntrospectsAnnotations
 from .interfaces import _MappedAttribute
@@ -113,17 +113,6 @@ class _DeclMappedClassProtocol(MappedClassProtocol[_O], Protocol):
     def __declare_first__(self) -> None: ...
 
     def __declare_last__(self) -> None: ...
-
-
-class _DataclassArguments(TypedDict):
-    init: Union[_NoArg, bool]
-    repr: Union[_NoArg, bool]
-    eq: Union[_NoArg, bool]
-    order: Union[_NoArg, bool]
-    unsafe_hash: Union[_NoArg, bool]
-    match_args: Union[_NoArg, bool]
-    kw_only: Union[_NoArg, bool]
-    dataclass_callable: Union[_NoArg, Callable[..., Type[Any]]]
 
 
 def _declared_mapping_info(
@@ -1085,10 +1074,12 @@ class _ClassScanMapperConfig(_MapperConfig):
 
         field_list = [
             _AttributeOptions._get_arguments_for_make_dataclass(
+                self,
                 key,
                 anno,
                 mapped_container,
                 self.collected_attributes.get(key, _NoArg.NO_ARG),
+                dataclass_setup_arguments,
             )
             for key, anno, mapped_container in (
                 (
@@ -1121,7 +1112,6 @@ class _ClassScanMapperConfig(_MapperConfig):
                 )
             )
         ]
-
         if warn_for_non_dc_attrs:
             for (
                 originating_class,
@@ -1218,7 +1208,8 @@ class _ClassScanMapperConfig(_MapperConfig):
                 **{
                     k: v
                     for k, v in dataclass_setup_arguments.items()
-                    if v is not _NoArg.NO_ARG and k != "dataclass_callable"
+                    if v is not _NoArg.NO_ARG
+                    and k not in ("dataclass_callable",)
                 },
             )
         except (TypeError, ValueError) as ex:

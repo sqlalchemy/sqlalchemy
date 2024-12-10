@@ -1,0 +1,21 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 12168
+
+    A significant behavioral change has been made to the behavior of the
+    :paramref:`_orm.mapped_column.default` and
+    :paramref:`_orm.relationship.default` parameters, when used with
+    SQLAlchemy's :ref:`orm_declarative_native_dataclasses` feature introduced
+    in 2.0, where the given value (assumed to be an immutable scalar value) is
+    no longer passed to the ``@dataclass`` API as a real default, instead a
+    token that leaves the value un-set in the object's ``__dict__`` is used, in
+    conjunction with a descriptor-level default.  This prevents an un-set
+    default value from overriding a default that was actually set elsewhere,
+    such as in relationship / foreign key assignment patterns as well as in
+    :meth:`_orm.Session.merge` scenarios.   See the full writeup in the
+    :ref:`whatsnew_21_toplevel` document which includes guidance on how to
+    re-enable the 2.0 version of the behavior if needed.
+
+    .. seealso::
+
+        :ref:`change_12168`

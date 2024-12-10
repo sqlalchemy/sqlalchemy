@@ -44,6 +44,7 @@ from typing import Union
 from . import exc as orm_exc
 from . import path_registry
 from .base import _MappedAttribute as _MappedAttribute
+from .base import DONT_SET as DONT_SET  # noqa: F401
 from .base import EXT_CONTINUE as EXT_CONTINUE  # noqa: F401
 from .base import EXT_SKIP as EXT_SKIP  # noqa: F401
 from .base import EXT_STOP as EXT_STOP  # noqa: F401
@@ -193,6 +194,22 @@ class _IntrospectsAnnotations:
         )
 
 
+class _DataclassArguments(TypedDict):
+    """define arguments that can be passed to ORM Annotated Dataclass
+    class definitions.
+
+    """
+
+    init: Union[_NoArg, bool]
+    repr: Union[_NoArg, bool]
+    eq: Union[_NoArg, bool]
+    order: Union[_NoArg, bool]
+    unsafe_hash: Union[_NoArg, bool]
+    match_args: Union[_NoArg, bool]
+    kw_only: Union[_NoArg, bool]
+    dataclass_callable: Union[_NoArg, Callable[..., Type[Any]]]
+
+
 class _AttributeOptions(NamedTuple):
     """define Python-local attribute behavior options common to all
     :class:`.MapperProperty` objects.
@@ -211,7 +228,9 @@ class _AttributeOptions(NamedTuple):
     dataclasses_kw_only: Union[_NoArg, bool]
     dataclasses_hash: Union[_NoArg, bool, None]
 
-    def _as_dataclass_field(self, key: str) -> Any:
+    def _as_dataclass_field(
+        self, key: str, dataclass_setup_arguments: _DataclassArguments
+    ) -> Any:
         """Return a ``dataclasses.Field`` object given these arguments."""
 
         kw: Dict[str, Any] = {}
@@ -263,10 +282,12 @@ class _AttributeOptions(NamedTuple):
     @classmethod
     def _get_arguments_for_make_dataclass(
         cls,
+        decl_scan: _ClassScanMapperConfig,
         key: str,
         annotation: _AnnotationScanType,
         mapped_container: Optional[Any],
         elem: _T,
+        dataclass_setup_arguments: _DataclassArguments,
     ) -> Union[
         Tuple[str, _AnnotationScanType],
         Tuple[str, _AnnotationScanType, dataclasses.Field[Any]],
@@ -277,7 +298,12 @@ class _AttributeOptions(NamedTuple):
 
         """
         if isinstance(elem, _DCAttributeOptions):
-            dc_field = elem._attribute_options._as_dataclass_field(key)
+            attribute_options = elem._get_dataclass_setup_options(
+                decl_scan, key, dataclass_setup_arguments
+            )
+            dc_field = attribute_options._as_dataclass_field(
+                key, dataclass_setup_arguments
+            )
 
             return (key, annotation, dc_field)
         elif elem is not _NoArg.NO_ARG:
@@ -343,6 +369,44 @@ class _DCAttributeOptions:
     """
 
     _has_dataclass_arguments: bool
+
+    def _get_dataclass_setup_options(
+        self,
+        decl_scan: _ClassScanMapperConfig,
+        key: str,
+        dataclass_setup_arguments: _DataclassArguments,
+    ) -> _AttributeOptions:
+        return self._attribute_options
+
+
+class _DataclassDefaultsDontSet(_DCAttributeOptions):
+    __slots__ = ()
+
+    _default_scalar_value: Any
+
+    def _get_dataclass_setup_options(
+        self,
+        decl_scan: _ClassScanMapperConfig,
+        key: str,
+        dataclass_setup_arguments: _DataclassArguments,
+    ) -> _AttributeOptions:
+
+        dataclasses_default = self._attribute_options.dataclasses_default
+        if (
+            dataclasses_default is not _NoArg.NO_ARG
+            and not callable(dataclasses_default)
+            and not getattr(
+                decl_scan.cls, "_sa_disable_descriptor_defaults", False
+            )
+        ):
+            self._default_scalar_value = (
+                self._attribute_options.dataclasses_default
+            )
+            return self._attribute_options._replace(
+                dataclasses_default=DONT_SET
+            )
+
+        return self._attribute_options
 
 
 class _MapsColumns(_DCAttributeOptions, _MappedAttribute[_T]):

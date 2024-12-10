@@ -2113,6 +2113,11 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             self._set_type(self.type)
 
         if insert_default is not _NoArg.NO_ARG:
+            if default is not _NoArg.NO_ARG:
+                raise exc.ArgumentError(
+                    "The 'default' and 'insert_default' parameters "
+                    "of Column are mutually exclusive"
+                )
             resolved_default = insert_default
         elif default is not _NoArg.NO_ARG:
             resolved_default = default
@@ -2523,8 +2528,10 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
 
         return self._schema_item_copy(c)
 
-    def _merge(self, other: Column[Any]) -> None:
-        """merge the elements of another column into this one.
+    def _merge(
+        self, other: Column[Any], *, omit_defaults: bool = False
+    ) -> None:
+        """merge the elements of this column onto "other"
 
         this is used by ORM pep-593 merge and will likely need a lot
         of fixes.
@@ -2565,7 +2572,11 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             other.nullable = self.nullable
             other._user_defined_nullable = self._user_defined_nullable
 
-        if self.default is not None and other.default is None:
+        if (
+            not omit_defaults
+            and self.default is not None
+            and other.default is None
+        ):
             new_default = self.default._copy()
             new_default._set_parent(other)
 

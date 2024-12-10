@@ -77,6 +77,7 @@ def _register_attribute(
     proxy_property=None,
     active_history=False,
     impl_class=None,
+    default_scalar_value=None,
     **kw,
 ):
     listen_hooks = []
@@ -138,6 +139,7 @@ def _register_attribute(
                 typecallable=typecallable,
                 callable_=callable_,
                 active_history=active_history,
+                default_scalar_value=default_scalar_value,
                 impl_class=impl_class,
                 send_modified_events=not useobject or not prop.viewonly,
                 doc=prop.doc,
@@ -257,6 +259,7 @@ class _ColumnLoader(LoaderStrategy):
             useobject=False,
             compare_function=coltype.compare_values,
             active_history=active_history,
+            default_scalar_value=self.parent_property._default_scalar_value,
         )
 
     def create_row_processor(
@@ -370,6 +373,7 @@ class _ExpressionColumnLoader(_ColumnLoader):
             useobject=False,
             compare_function=self.columns[0].type.compare_values,
             accepts_scalar_loader=False,
+            default_scalar_value=self.parent_property._default_scalar_value,
         )
 
 
@@ -455,6 +459,7 @@ class _DeferredColumnLoader(LoaderStrategy):
             compare_function=self.columns[0].type.compare_values,
             callable_=self._load_for_state,
             load_on_unexpire=False,
+            default_scalar_value=self.parent_property._default_scalar_value,
         )
 
     def setup_query(

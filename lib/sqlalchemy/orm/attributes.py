@@ -45,6 +45,7 @@ from .base import ATTR_EMPTY
 from .base import ATTR_WAS_SET
 from .base import CALLABLES_OK
 from .base import DEFERRED_HISTORY_LOAD
+from .base import DONT_SET
 from .base import INCLUDE_PENDING_MUTATIONS  # noqa
 from .base import INIT_OK
 from .base import instance_dict as instance_dict
@@ -1045,20 +1046,9 @@ class _AttributeImpl:
     def _default_value(
         self, state: InstanceState[Any], dict_: _InstanceDict
     ) -> Any:
-        """Produce an empty value for an uninitialized scalar attribute."""
+        """Produce an empty value for an uninitialized attribute."""
 
-        assert self.key not in dict_, (
-            "_default_value should only be invoked for an "
-            "uninitialized or expired attribute"
-        )
-
-        value = None
-        for fn in self.dispatch.init_scalar:
-            ret = fn(state, value, dict_)
-            if ret is not ATTR_EMPTY:
-                value = ret
-
-        return value
+        raise NotImplementedError()
 
     def get(
         self,
@@ -1211,14 +1201,37 @@ class _ScalarAttributeImpl(_AttributeImpl):
     collection = False
     dynamic = False
 
-    __slots__ = "_replace_token", "_append_token", "_remove_token"
+    __slots__ = (
+        "_default_scalar_value",
+        "_replace_token",
+        "_append_token",
+        "_remove_token",
+    )
 
-    def __init__(self, *arg, **kw):
+    def __init__(self, *arg, default_scalar_value=None, **kw):
         super().__init__(*arg, **kw)
+        self._default_scalar_value = default_scalar_value
         self._replace_token = self._append_token = AttributeEventToken(
             self, OP_REPLACE
         )
         self._remove_token = AttributeEventToken(self, OP_REMOVE)
+
+    def _default_value(
+        self, state: InstanceState[Any], dict_: _InstanceDict
+    ) -> Any:
+        """Produce an empty value for an uninitialized scalar attribute."""
+
+        assert self.key not in dict_, (
+            "_default_value should only be invoked for an "
+            "uninitialized or expired attribute"
+        )
+        value = self._default_scalar_value
+        for fn in self.dispatch.init_scalar:
+            ret = fn(state, value, dict_)
+            if ret is not ATTR_EMPTY:
+                value = ret
+
+        return value
 
     def delete(self, state: InstanceState[Any], dict_: _InstanceDict) -> None:
         if self.dispatch._active_history:
@@ -1268,6 +1281,9 @@ class _ScalarAttributeImpl(_AttributeImpl):
         check_old: Optional[object] = None,
         pop: bool = False,
     ) -> None:
+        if value is DONT_SET:
+            return
+
         if self.dispatch._active_history:
             old = self.get(state, dict_, PASSIVE_RETURN_NO_VALUE)
         else:
@@ -1433,6 +1449,9 @@ class _ScalarObjectAttributeImpl(_ScalarAttributeImpl):
         pop: bool = False,
     ) -> None:
         """Set a value on the given InstanceState."""
+
+        if value is DONT_SET:
+            return
 
         if self.dispatch._active_history:
             old = self.get(

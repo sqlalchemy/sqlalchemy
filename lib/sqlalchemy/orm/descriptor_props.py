@@ -34,6 +34,7 @@ import weakref
 from . import attributes
 from . import util as orm_util
 from .base import _DeclarativeMapped
+from .base import DONT_SET
 from .base import LoaderCallableStatus
 from .base import Mapped
 from .base import PassiveFlag
@@ -52,6 +53,7 @@ from .. import sql
 from .. import util
 from ..sql import expression
 from ..sql import operators
+from ..sql.base import _NoArg
 from ..sql.elements import BindParameter
 from ..util.typing import get_args
 from ..util.typing import is_fwd_ref
@@ -68,6 +70,7 @@ if typing.TYPE_CHECKING:
     from .attributes import QueryableAttribute
     from .context import _ORMCompileState
     from .decl_base import _ClassScanMapperConfig
+    from .interfaces import _DataclassArguments
     from .mapper import Mapper
     from .properties import ColumnProperty
     from .properties import MappedColumn
@@ -158,6 +161,7 @@ class DescriptorProperty(MapperProperty[_T]):
             doc=self.doc,
             original_property=self,
         )
+
         proxy_attr.impl = _ProxyImpl(self.key)
         mapper.class_manager.instrument_attribute(self.key, proxy_attr)
 
@@ -305,6 +309,9 @@ class CompositeProperty(
             return dict_.get(self.key, None)
 
         def fset(instance: Any, value: Any) -> None:
+            if value is LoaderCallableStatus.DONT_SET:
+                return
+
             dict_ = attributes.instance_dict(instance)
             state = attributes.instance_state(instance)
             attr = state.manager[self.key]
@@ -1021,6 +1028,39 @@ class SynonymProperty(DescriptorProperty[_T]):
     ) -> History:
         attr: QueryableAttribute[Any] = getattr(self.parent.class_, self.name)
         return attr.impl.get_history(state, dict_, passive=passive)
+
+    def _get_dataclass_setup_options(
+        self,
+        decl_scan: _ClassScanMapperConfig,
+        key: str,
+        dataclass_setup_arguments: _DataclassArguments,
+    ) -> _AttributeOptions:
+        dataclasses_default = self._attribute_options.dataclasses_default
+        if (
+            dataclasses_default is not _NoArg.NO_ARG
+            and not callable(dataclasses_default)
+            and not getattr(
+                decl_scan.cls, "_sa_disable_descriptor_defaults", False
+            )
+        ):
+            proxied = decl_scan.collected_attributes[self.name]
+            proxied_default = proxied._attribute_options.dataclasses_default
+            if proxied_default != dataclasses_default:
+                raise sa_exc.ArgumentError(
+                    f"Synonym {key!r} default argument "
+                    f"{dataclasses_default!r} must match the dataclasses "
+                    f"default value of proxied object {self.name!r}, "
+                    f"""currently {
+                        repr(proxied_default)
+                        if proxied_default is not _NoArg.NO_ARG
+                        else 'not set'}"""
+                )
+            self._default_scalar_value = dataclasses_default
+            return self._attribute_options._replace(
+                dataclasses_default=DONT_SET
+            )
+
+        return self._attribute_options
 
     @util.preload_module("sqlalchemy.orm.properties")
     def set_parent(self, parent: Mapper[Any], init: bool) -> None:
