@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 
 """
@@ -88,6 +87,7 @@ The mysqldb dialect supports server-side cursors. See :ref:`mysql_ss_cursors`.
 """
 
 import re
+from typing import TYPE_CHECKING
 
 from .base import MySQLCompiler
 from .base import MySQLDialect
@@ -96,6 +96,10 @@ from .base import MySQLIdentifierPreparer
 from .base import TEXT
 from ... import sql
 from ... import util
+
+if TYPE_CHECKING:
+    from sqlalchemy import URL
+    from ...engine.interfaces import ConnectArgsType
 
 
 class MySQLExecutionContext_mysqldb(MySQLExecutionContext):
@@ -119,6 +123,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
     execution_ctx_cls = MySQLExecutionContext_mysqldb
     statement_compiler = MySQLCompiler_mysqldb
     preparer = MySQLIdentifierPreparer
+    server_version_info: tuple[int, ...]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -200,7 +205,9 @@ class MySQLDialect_mysqldb(MySQLDialect):
             additional_tests = []
         return super()._check_unicode_returns(connection, additional_tests)
 
-    def create_connect_args(self, url, _translate_args=None):
+    def create_connect_args(
+        self, url: "URL", _translate_args=None
+    ) -> "ConnectArgsType":
         if _translate_args is None:
             _translate_args = dict(
                 database="db", username="user", password="passwd"

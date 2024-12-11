@@ -2344,7 +2344,7 @@ class SQLCompiler(Compiled):
 
         return get
 
-    def default_from(self):
+    def default_from(self) -> str:
         """Called when a SELECT statement has no froms, and no FROM clause is
         to be appended.
 
@@ -5072,7 +5072,7 @@ class SQLCompiler(Compiled):
         else:
             return "WITH"
 
-    def get_select_precolumns(self, select, **kw):
+    def get_select_precolumns(self, select, **kw) -> str:
         """Called when building a ``SELECT`` statement, position is just
         before column list.
 
@@ -7083,16 +7083,16 @@ class GenericTypeCompiler(TypeCompiler):
     def visit_FLOAT(self, type_, **kw):
         return "FLOAT"
 
-    def visit_DOUBLE(self, type_, **kw):
+    def visit_DOUBLE(self, type_, **kw) -> str:
         return "DOUBLE"
 
-    def visit_DOUBLE_PRECISION(self, type_, **kw):
+    def visit_DOUBLE_PRECISION(self, type_, **kw) -> str:
         return "DOUBLE PRECISION"
 
-    def visit_REAL(self, type_, **kw):
+    def visit_REAL(self, type_, **kw) -> str:
         return "REAL"
 
-    def visit_NUMERIC(self, type_, **kw):
+    def visit_NUMERIC(self, type_, **kw) -> str:
         if type_.precision is None:
             return "NUMERIC"
         elif type_.scale is None:
@@ -7103,7 +7103,7 @@ class GenericTypeCompiler(TypeCompiler):
                 "scale": type_.scale,
             }
 
-    def visit_DECIMAL(self, type_, **kw):
+    def visit_DECIMAL(self, type_, **kw) -> str:
         if type_.precision is None:
             return "DECIMAL"
         elif type_.scale is None:
@@ -7114,34 +7114,36 @@ class GenericTypeCompiler(TypeCompiler):
                 "scale": type_.scale,
             }
 
-    def visit_INTEGER(self, type_, **kw):
+    def visit_INTEGER(self, type_, **kw) -> str:
         return "INTEGER"
 
-    def visit_SMALLINT(self, type_, **kw):
+    def visit_SMALLINT(self, type_, **kw) -> str:
         return "SMALLINT"
 
-    def visit_BIGINT(self, type_, **kw):
+    def visit_BIGINT(self, type_, **kw) -> str:
         return "BIGINT"
 
-    def visit_TIMESTAMP(self, type_, **kw):
+    def visit_TIMESTAMP(self, type_, **kw) -> str:
         return "TIMESTAMP"
 
-    def visit_DATETIME(self, type_, **kw):
+    def visit_DATETIME(self, type_, **kw) -> str:
         return "DATETIME"
 
-    def visit_DATE(self, type_, **kw):
+    def visit_DATE(self, type_, **kw) -> str:
         return "DATE"
 
-    def visit_TIME(self, type_, **kw):
+    def visit_TIME(self, type_, **kw) -> str:
         return "TIME"
 
-    def visit_CLOB(self, type_, **kw):
+    def visit_CLOB(self, type_, **kw) -> str:
         return "CLOB"
 
-    def visit_NCLOB(self, type_, **kw):
+    def visit_NCLOB(self, type_, **kw) -> str:
         return "NCLOB"
 
-    def _render_string_type(self, type_, name, length_override=None):
+    def _render_string_type(
+        self, type_, name: str, length_override=None
+    ) -> str:
         text = name
         if length_override:
             text += "(%d)" % length_override
@@ -7151,37 +7153,37 @@ class GenericTypeCompiler(TypeCompiler):
             text += ' COLLATE "%s"' % type_.collation
         return text
 
-    def visit_CHAR(self, type_, **kw):
+    def visit_CHAR(self, type_, **kw) -> str:
         return self._render_string_type(type_, "CHAR")
 
-    def visit_NCHAR(self, type_, **kw):
+    def visit_NCHAR(self, type_, **kw) -> str:
         return self._render_string_type(type_, "NCHAR")
 
-    def visit_VARCHAR(self, type_, **kw):
+    def visit_VARCHAR(self, type_, **kw) -> str:
         return self._render_string_type(type_, "VARCHAR")
 
-    def visit_NVARCHAR(self, type_, **kw):
+    def visit_NVARCHAR(self, type_, **kw) -> str:
         return self._render_string_type(type_, "NVARCHAR")
 
-    def visit_TEXT(self, type_, **kw):
+    def visit_TEXT(self, type_, **kw) -> str:
         return self._render_string_type(type_, "TEXT")
 
-    def visit_UUID(self, type_, **kw):
+    def visit_UUID(self, type_, **kw) -> str:
         return "UUID"
 
-    def visit_BLOB(self, type_, **kw):
+    def visit_BLOB(self, type_, **kw) -> str:
         return "BLOB"
 
-    def visit_BINARY(self, type_, **kw):
+    def visit_BINARY(self, type_, **kw) -> str:
         return "BINARY" + (type_.length and "(%d)" % type_.length or "")
 
-    def visit_VARBINARY(self, type_, **kw):
+    def visit_VARBINARY(self, type_, **kw) -> str:
         return "VARBINARY" + (type_.length and "(%d)" % type_.length or "")
 
-    def visit_BOOLEAN(self, type_, **kw):
+    def visit_BOOLEAN(self, type_, **kw) -> str:
         return "BOOLEAN"
 
-    def visit_uuid(self, type_, **kw):
+    def visit_uuid(self, type_, **kw) -> str:
         if not type_.native_uuid or not self.dialect.supports_native_uuid:
             return self._render_string_type(type_, "CHAR", length_override=32)
         else:
@@ -7190,52 +7192,52 @@ class GenericTypeCompiler(TypeCompiler):
     def visit_large_binary(self, type_, **kw):
         return self.visit_BLOB(type_, **kw)
 
-    def visit_boolean(self, type_, **kw):
+    def visit_boolean(self, type_, **kw) -> str:
         return self.visit_BOOLEAN(type_, **kw)
 
-    def visit_time(self, type_, **kw):
+    def visit_time(self, type_, **kw) -> str:
         return self.visit_TIME(type_, **kw)
 
-    def visit_datetime(self, type_, **kw):
+    def visit_datetime(self, type_, **kw) -> str:
         return self.visit_DATETIME(type_, **kw)
 
-    def visit_date(self, type_, **kw):
+    def visit_date(self, type_, **kw) -> str:
         return self.visit_DATE(type_, **kw)
 
-    def visit_big_integer(self, type_, **kw):
+    def visit_big_integer(self, type_, **kw) -> str:
         return self.visit_BIGINT(type_, **kw)
 
-    def visit_small_integer(self, type_, **kw):
+    def visit_small_integer(self, type_, **kw) -> str:
         return self.visit_SMALLINT(type_, **kw)
 
-    def visit_integer(self, type_, **kw):
+    def visit_integer(self, type_, **kw) -> str:
         return self.visit_INTEGER(type_, **kw)
 
-    def visit_real(self, type_, **kw):
+    def visit_real(self, type_, **kw) -> str:
         return self.visit_REAL(type_, **kw)
 
-    def visit_float(self, type_, **kw):
+    def visit_float(self, type_, **kw) -> str:
         return self.visit_FLOAT(type_, **kw)
 
-    def visit_double(self, type_, **kw):
+    def visit_double(self, type_, **kw) -> str:
         return self.visit_DOUBLE(type_, **kw)
 
-    def visit_numeric(self, type_, **kw):
+    def visit_numeric(self, type_, **kw) -> str:
         return self.visit_NUMERIC(type_, **kw)
 
-    def visit_string(self, type_, **kw):
+    def visit_string(self, type_, **kw) -> str:
         return self.visit_VARCHAR(type_, **kw)
 
-    def visit_unicode(self, type_, **kw):
+    def visit_unicode(self, type_, **kw) -> str:
         return self.visit_VARCHAR(type_, **kw)
 
-    def visit_text(self, type_, **kw):
+    def visit_text(self, type_, **kw) -> str:
         return self.visit_TEXT(type_, **kw)
 
-    def visit_unicode_text(self, type_, **kw):
+    def visit_unicode_text(self, type_, **kw) -> str:
         return self.visit_TEXT(type_, **kw)
 
-    def visit_enum(self, type_, **kw):
+    def visit_enum(self, type_, **kw) -> str:
         return self.visit_VARCHAR(type_, **kw)
 
     def visit_null(self, type_, **kw):
@@ -7245,10 +7247,10 @@ class GenericTypeCompiler(TypeCompiler):
             "type on this Column?" % type_
         )
 
-    def visit_type_decorator(self, type_, **kw):
+    def visit_type_decorator(self, type_, **kw) -> str:
         return self.process(type_.type_engine(self.dialect), **kw)
 
-    def visit_user_defined(self, type_, **kw):
+    def visit_user_defined(self, type_, **kw) -> str:
         return type_.get_col_spec(**kw)
 
 

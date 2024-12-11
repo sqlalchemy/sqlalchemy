@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 
 import datetime
@@ -39,7 +38,13 @@ class _NumericType(_NumericCommonType, sqltypes.Numeric):
 
 class _FloatType(_NumericCommonType, sqltypes.Float):
 
-    def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
+    def __init__(
+        self,
+        precision: int | None = None,
+        scale: int | None = None,
+        asdecimal=True,
+        **kw,
+    ):
         if isinstance(self, (REAL, DOUBLE)) and (
             (precision is None and scale is not None)
             or (precision is not None and scale is None)
@@ -58,7 +63,7 @@ class _FloatType(_NumericCommonType, sqltypes.Float):
 
 
 class _IntegerType(_NumericCommonType, sqltypes.Integer):
-    def __init__(self, display_width=None, **kw):
+    def __init__(self, display_width: int | None = None, **kw):
         self.display_width = display_width
         super().__init__(**kw)
 
@@ -111,7 +116,13 @@ class NUMERIC(_NumericType, sqltypes.NUMERIC):
 
     __visit_name__ = "NUMERIC"
 
-    def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
+    def __init__(
+        self,
+        precision: int | None = None,
+        scale: int | None = None,
+        asdecimal=True,
+        **kw,
+    ):
         """Construct a NUMERIC.
 
         :param precision: Total digits in this number.  If scale and precision
@@ -137,7 +148,13 @@ class DECIMAL(_NumericType, sqltypes.DECIMAL):
 
     __visit_name__ = "DECIMAL"
 
-    def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
+    def __init__(
+        self,
+        precision: int | None = None,
+        scale: int | None = None,
+        asdecimal=True,
+        **kw,
+    ):
         """Construct a DECIMAL.
 
         :param precision: Total digits in this number.  If scale and precision
@@ -163,7 +180,13 @@ class DOUBLE(_FloatType, sqltypes.DOUBLE):
 
     __visit_name__ = "DOUBLE"
 
-    def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
+    def __init__(
+        self,
+        precision: int | None = None,
+        scale: int | None = None,
+        asdecimal=True,
+        **kw,
+    ):
         """Construct a DOUBLE.
 
         .. note::
@@ -197,7 +220,13 @@ class REAL(_FloatType, sqltypes.REAL):
 
     __visit_name__ = "REAL"
 
-    def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
+    def __init__(
+        self,
+        precision: int | None = None,
+        scale: int | None = None,
+        asdecimal=True,
+        **kw,
+    ):
         """Construct a REAL.
 
         .. note::
@@ -231,7 +260,13 @@ class FLOAT(_FloatType, sqltypes.FLOAT):
 
     __visit_name__ = "FLOAT"
 
-    def __init__(self, precision=None, scale=None, asdecimal=False, **kw):
+    def __init__(
+        self,
+        precision: int | None = None,
+        scale: int | None = None,
+        asdecimal=False,
+        **kw,
+    ):
         """Construct a FLOAT.
 
         :param precision: Total digits in this number.  If scale and precision
@@ -260,7 +295,7 @@ class INTEGER(_IntegerType, sqltypes.INTEGER):
 
     __visit_name__ = "INTEGER"
 
-    def __init__(self, display_width=None, **kw):
+    def __init__(self, display_width: int | None = None, **kw):
         """Construct an INTEGER.
 
         :param display_width: Optional, maximum display width for this number.
@@ -281,7 +316,7 @@ class BIGINT(_IntegerType, sqltypes.BIGINT):
 
     __visit_name__ = "BIGINT"
 
-    def __init__(self, display_width=None, **kw):
+    def __init__(self, display_width: int | None = None, **kw):
         """Construct a BIGINTEGER.
 
         :param display_width: Optional, maximum display width for this number.
@@ -302,7 +337,7 @@ class MEDIUMINT(_IntegerType):
 
     __visit_name__ = "MEDIUMINT"
 
-    def __init__(self, display_width=None, **kw):
+    def __init__(self, display_width: int | None = None, **kw):
         """Construct a MEDIUMINTEGER
 
         :param display_width: Optional, maximum display width for this number.
@@ -323,7 +358,7 @@ class TINYINT(_IntegerType):
 
     __visit_name__ = "TINYINT"
 
-    def __init__(self, display_width=None, **kw):
+    def __init__(self, display_width: int | None = None, **kw):
         """Construct a TINYINT.
 
         :param display_width: Optional, maximum display width for this number.
@@ -344,7 +379,7 @@ class SMALLINT(_IntegerType, sqltypes.SMALLINT):
 
     __visit_name__ = "SMALLINT"
 
-    def __init__(self, display_width=None, **kw):
+    def __init__(self, display_width: int | None = None, **kw):
         """Construct a SMALLINTEGER.
 
         :param display_width: Optional, maximum display width for this number.
@@ -500,7 +535,7 @@ class YEAR(sqltypes.TypeEngine):
 
     __visit_name__ = "YEAR"
 
-    def __init__(self, display_width=None):
+    def __init__(self, display_width: int | None = None):
         self.display_width = display_width
 
 
