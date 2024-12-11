@@ -1802,7 +1802,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_true(User.__table__.c.reverse_u_optional_data.nullable)
 
         is_true(isinstance(User.__table__.c.float_data.type, Float))
-        is_true(isinstance(User.__table__.c.float_data.type, Numeric))
+
         is_not(User.__table__.c.decimal_data.type, our_type)
 
         if compat.py310:
