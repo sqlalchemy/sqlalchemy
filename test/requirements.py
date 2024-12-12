@@ -1577,6 +1577,16 @@ class DefaultRequirements(SuiteRequirements):
         return only_on("postgresql >= 9.4")
 
     @property
+    def postgresql_working_nullable_domains(self):
+        # see https://www.postgresql.org/message-id/flat/a90f53c4-56f3-4b07-aefc-49afdc67dba6%40app.fastmail.com  # noqa: E501
+        return skip_if(
+            lambda config: (17, 0)
+            < config.db.dialect.server_version_info
+            < (17, 3),
+            "reflection of nullable domains broken on PG 17.0-17.2",
+        )
+
+    @property
     def native_hstore(self):
         return self.any_psycopg_compatibility
 
