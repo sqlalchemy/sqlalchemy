@@ -100,6 +100,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Greenplum                                      | sqlalchemy-greenplum_                 |
 +------------------------------------------------+---------------------------------------+
+| HyperSQL (hsqldb)                              | sqlalchemy-hsqldb_                    |
++------------------------------------------------+---------------------------------------+
 | IBM DB2 and Informix                           | ibm-db-sa_                            |
 +------------------------------------------------+---------------------------------------+
 | IBM Netezza Performance Server [1]_            | nzalchemy_                            |
@@ -171,6 +173,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _impyla: https://pypi.org/project/impyla/
 .. _databend-sqlalchemy: https://github.com/datafuselabs/databend-sqlalchemy
 .. _sqlalchemy-greenplum: https://github.com/PlaidCloud/sqlalchemy-greenplum
+.. _sqlalchemy-hsqldb: https://pypi.org/project/sqlalchemy-hsqldb/
 .. _databricks: https://docs.databricks.com/en/dev-tools/sqlalchemy.html
 .. _clickhouse-sqlalchemy: https://pypi.org/project/clickhouse-sqlalchemy/
 .. _sqlalchemy-kinetica: https://github.com/kineticadb/sqlalchemy-kinetica/
