@@ -1237,6 +1237,7 @@ class DomainTest(
     __backend__ = True
     __only_on__ = "postgresql > 8.3"
 
+    @testing.requires.postgresql_working_nullable_domains
     def test_domain_type_reflection(self, metadata, connection):
         positive_int = DOMAIN(
             "positive_int", Integer(), check="value > 0", not_null=True
