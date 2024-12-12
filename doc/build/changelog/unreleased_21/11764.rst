@@ -1,0 +1,9 @@
+.. change::
+    :tags:  usecase, mysql, mariadb
+    :tickets: 11764
+
+    Added support for the `LIMIT` clause in the `DELETE` method for MySQL
+    and MariaDB backends.
+    The `delete()` construct now accepts the `mysql_limit` and
+    `mariadb_limit` parameters, allowing users to specify a limit on the
+    number of rows deleted.
