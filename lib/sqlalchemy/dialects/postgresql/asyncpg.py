@@ -281,8 +281,10 @@ class AsyncPgEnum(ENUM):
 class AsyncpgInteger(sqltypes.Integer):
     render_bind_cast = True
 
+
 class AsyncpgSmallInteger(sqltypes.SmallInteger):
     render_bind_cast = True
+
 
 class AsyncpgBigInteger(sqltypes.BigInteger):
     render_bind_cast = True
