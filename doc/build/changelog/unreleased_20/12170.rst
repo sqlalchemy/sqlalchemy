@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 12170
+
+    Fixed issue where creating a table with a primary column of
+    :class:`_sql.SmallInteger` and using the asyncpg driver would result in
+    the type being compiled to ``SERIAL`` rather than ``SMALLSERIAL``.
