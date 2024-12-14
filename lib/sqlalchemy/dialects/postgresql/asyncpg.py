@@ -265,6 +265,10 @@ class AsyncpgInteger(sqltypes.Integer):
     render_bind_cast = True
 
 
+class AsyncpgSmallInteger(sqltypes.SmallInteger):
+    render_bind_cast = True
+
+
 class AsyncpgBigInteger(sqltypes.BigInteger):
     render_bind_cast = True
 
@@ -1051,6 +1055,7 @@ class PGDialect_asyncpg(PGDialect):
             INTERVAL: AsyncPgInterval,
             sqltypes.Boolean: AsyncpgBoolean,
             sqltypes.Integer: AsyncpgInteger,
+            sqltypes.SmallInteger: AsyncpgSmallInteger,
             sqltypes.BigInteger: AsyncpgBigInteger,
             sqltypes.Numeric: AsyncpgNumeric,
             sqltypes.Float: AsyncpgFloat,
