@@ -1,5 +1,5 @@
 # testing/requirements.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -91,7 +91,9 @@ class SuiteRequirements(Requirements):
 
     @property
     def table_value_constructor(self):
-        """Database / dialect supports a query like::
+        """Database / dialect supports a query like:
+
+        .. sourcecode:: sql
 
              SELECT * FROM VALUES ( (c1, c2), (c1, c2), ...)
              AS some_table(col1, col2)
@@ -797,6 +799,11 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def inline_check_constraint_reflection(self):
+        """target dialect supports reflection of inline check constraints"""
+        return exclusions.closed()
+
+    @property
     def check_constraint_reflection(self):
         """target dialect supports reflection of check constraints"""
         return exclusions.closed()
@@ -987,7 +994,9 @@ class SuiteRequirements(Requirements):
     @property
     def binary_literals(self):
         """target backend supports simple binary literals, e.g. an
-        expression like::
+        expression like:
+
+        .. sourcecode:: sql
 
             SELECT CAST('foo' AS BINARY)
 
@@ -1094,6 +1103,11 @@ class SuiteRequirements(Requirements):
         return exclusions.only_if(go)
 
     @property
+    def array_type(self):
+        """Target platform implements a native ARRAY type"""
+        return exclusions.closed()
+
+    @property
     def json_type(self):
         """target platform implements a native JSON type."""
 
@@ -1163,9 +1177,7 @@ class SuiteRequirements(Requirements):
 
             expr = decimal.Decimal("15.7563")
 
-            value = e.scalar(
-                select(literal(expr))
-            )
+            value = e.scalar(select(literal(expr)))
 
             assert value == expr
 
@@ -1333,7 +1345,9 @@ class SuiteRequirements(Requirements):
         present in a subquery in the WHERE clause.
 
         This is an ANSI-standard syntax that apparently MySQL can't handle,
-        such as::
+        such as:
+
+        .. sourcecode:: sql
 
             UPDATE documents SET flag=1 WHERE documents.title IN
                 (SELECT max(documents.title) AS title
@@ -1366,7 +1380,11 @@ class SuiteRequirements(Requirements):
         """target database supports ordering by a column from a SELECT
         inside of a UNION
 
-        E.g.  (SELECT id, ...) UNION (SELECT id, ...) ORDER BY id
+        E.g.:
+
+        .. sourcecode:: sql
+
+            (SELECT id, ...) UNION (SELECT id, ...) ORDER BY id
 
         """
         return exclusions.open()
@@ -1376,7 +1394,9 @@ class SuiteRequirements(Requirements):
         """target backend supports ORDER BY a column label within an
         expression.
 
-        Basically this::
+        Basically this:
+
+        .. sourcecode:: sql
 
             select data as foo from test order by foo || 'bar'
 
@@ -1507,12 +1527,6 @@ class SuiteRequirements(Requirements):
         return exclusions.skip_if(check)
 
     @property
-    def python39(self):
-        return exclusions.only_if(
-            lambda: util.py39, "Python 3.9 or above required"
-        )
-
-    @property
     def python310(self):
         return exclusions.only_if(
             lambda: util.py310, "Python 3.10 or above required"
@@ -1522,6 +1536,12 @@ class SuiteRequirements(Requirements):
     def python311(self):
         return exclusions.only_if(
             lambda: util.py311, "Python 3.11 or above required"
+        )
+
+    @property
+    def python312(self):
+        return exclusions.only_if(
+            lambda: util.py312, "Python 3.12 or above required"
         )
 
     @property
@@ -1595,13 +1615,26 @@ class SuiteRequirements(Requirements):
 
     @property
     def async_dialect(self):
-        """dialect makes use of await_() to invoke operations on the DBAPI."""
+        """dialect makes use of await_() to invoke operations on the
+        DBAPI."""
 
         return exclusions.closed()
 
     @property
     def asyncio(self):
         return self.greenlet
+
+    @property
+    def no_greenlet(self):
+        def go(config):
+            try:
+                import greenlet  # noqa: F401
+            except ImportError:
+                return True
+            else:
+                return False
+
+        return exclusions.only_if(go)
 
     @property
     def greenlet(self):
@@ -1756,4 +1789,29 @@ class SuiteRequirements(Requirements):
     @property
     def materialized_views_reflect_pk(self):
         """Target database reflect MATERIALIZED VIEWs pks."""
+        return exclusions.closed()
+
+    @property
+    def supports_bitwise_or(self):
+        """Target database supports bitwise or"""
+        return exclusions.closed()
+
+    @property
+    def supports_bitwise_and(self):
+        """Target database supports bitwise and"""
+        return exclusions.closed()
+
+    @property
+    def supports_bitwise_not(self):
+        """Target database supports bitwise not"""
+        return exclusions.closed()
+
+    @property
+    def supports_bitwise_xor(self):
+        """Target database supports bitwise xor"""
+        return exclusions.closed()
+
+    @property
+    def supports_bitwise_shift(self):
+        """Target database supports bitwise left or right shift"""
         return exclusions.closed()

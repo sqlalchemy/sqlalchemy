@@ -1,5 +1,5 @@
 # ext/mypy/decl_class.py
-# Copyright (C) 2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2021-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -58,9 +58,9 @@ def scan_declarative_assignments_and_apply_types(
     elif cls.fullname.startswith("builtins"):
         return None
 
-    mapped_attributes: Optional[
-        List[util.SQLAlchemyAttribute]
-    ] = util.get_mapped_attributes(info, api)
+    mapped_attributes: Optional[List[util.SQLAlchemyAttribute]] = (
+        util.get_mapped_attributes(info, api)
+    )
 
     # used by assign.add_additional_orm_attributes among others
     util.establish_as_sqlalchemy(info)

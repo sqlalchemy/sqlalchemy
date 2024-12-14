@@ -96,11 +96,11 @@ Supported Platforms
 
 SQLAlchemy 2.1 supports the following platforms:
 
-* cPython 3.8 and higher
+* cPython 3.9 and higher
 * Python-3 compatible versions of `PyPy <http://pypy.org/>`_
 
 .. versionchanged:: 2.1
-   SQLAlchemy now targets Python 3.8 and above.
+   SQLAlchemy now targets Python 3.9 and above.
 
 
 Supported Installation Methods
@@ -142,7 +142,7 @@ Installing with AsyncIO Support
 
 SQLAlchemy's ``asyncio`` support depends upon the
 `greenlet <https://pypi.org/project/greenlet/>`_ project.    This dependency
-is not inclued by default.   To install with asyncio support, run this command:
+is not included by default.   To install with asyncio support, run this command:
 
 .. sourcecode:: text
 

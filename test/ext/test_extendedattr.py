@@ -30,7 +30,7 @@ def _register_attribute(class_, key, **kw):
     kw.setdefault("comparator", object())
     kw.setdefault("parententity", object())
 
-    attributes.register_attribute(class_, key, **kw)
+    attributes._register_attribute(class_, key, **kw)
 
 
 @decorator
@@ -169,7 +169,8 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
             )
 
             # This proves SA can handle a class with non-string dict keys
-            if util.cpython:
+            # Since python 3.13 non-string key raise a runtime warning.
+            if util.cpython and not util.py313:
                 locals()[42] = 99  # Don't remove this line!
 
             def __init__(self, **kwargs):
@@ -760,7 +761,6 @@ class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
 
 
 class ExtendedEventsTest(_ExtBase, fixtures.ORMTest):
-
     """Allow custom Events implementations."""
 
     @modifies_instrumentation_finders

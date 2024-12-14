@@ -1,3 +1,9 @@
+# testing/suite/test_types.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: ignore-errors
 
 
@@ -26,6 +32,7 @@ from ... import case
 from ... import cast
 from ... import Date
 from ... import DateTime
+from ... import Enum
 from ... import Float
 from ... import Integer
 from ... import Interval
@@ -1912,6 +1919,74 @@ class JSONLegacyStringCastIndexTest(
         )
 
 
+class EnumTest(_LiteralRoundTripFixture, fixtures.TablesTest):
+    __backend__ = True
+
+    enum_values = "a", "b", "a%", "b%percent", "réveillé"
+
+    datatype = Enum(*enum_values, name="myenum")
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "enum_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("enum_data", cls.datatype),
+        )
+
+    @testing.combinations(*enum_values, argnames="data")
+    def test_round_trip(self, data, connection):
+        connection.execute(
+            self.tables.enum_table.insert(), {"id": 1, "enum_data": data}
+        )
+
+        eq_(
+            connection.scalar(
+                select(self.tables.enum_table.c.enum_data).where(
+                    self.tables.enum_table.c.id == 1
+                )
+            ),
+            data,
+        )
+
+    def test_round_trip_executemany(self, connection):
+        connection.execute(
+            self.tables.enum_table.insert(),
+            [
+                {"id": 1, "enum_data": "b%percent"},
+                {"id": 2, "enum_data": "réveillé"},
+                {"id": 3, "enum_data": "b"},
+                {"id": 4, "enum_data": "a%"},
+            ],
+        )
+
+        eq_(
+            connection.scalars(
+                select(self.tables.enum_table.c.enum_data).order_by(
+                    self.tables.enum_table.c.id
+                )
+            ).all(),
+            ["b%percent", "réveillé", "b", "a%"],
+        )
+
+    @testing.requires.insert_executemany_returning
+    def test_round_trip_executemany_returning(self, connection):
+        result = connection.execute(
+            self.tables.enum_table.insert().returning(
+                self.tables.enum_table.c.enum_data
+            ),
+            [
+                {"id": 1, "enum_data": "b%percent"},
+                {"id": 2, "enum_data": "réveillé"},
+                {"id": 3, "enum_data": "b"},
+                {"id": 4, "enum_data": "a%"},
+            ],
+        )
+
+        eq_(result.scalars().all(), ["b%percent", "réveillé", "b", "a%"])
+
+
 class UuidTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     __backend__ = True
 
@@ -2060,6 +2135,7 @@ __all__ = (
     "DateHistoricTest",
     "StringTest",
     "BooleanTest",
+    "EnumTest",
     "UuidTest",
     "NativeUUIDTest",
 )

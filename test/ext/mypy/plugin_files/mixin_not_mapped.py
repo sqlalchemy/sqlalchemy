@@ -33,9 +33,9 @@ class Bar(HasUpdatedAt, Base):
 
 Bar.__mapper__
 
-# EXPECTED_MYPY: "Type[HasUpdatedAt]" has no attribute "__mapper__"
+# EXPECTED_MYPY: "type[HasUpdatedAt]" has no attribute "__mapper__"
 HasUpdatedAt.__mapper__
 
 
-# EXPECTED_MYPY: "Type[SomeAbstract]" has no attribute "__mapper__"
+# EXPECTED_MYPY: "type[SomeAbstract]" has no attribute "__mapper__"
 SomeAbstract.__mapper__

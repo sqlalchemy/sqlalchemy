@@ -1,4 +1,5 @@
 """Test various algorithmic properties of selectables."""
+
 from itertools import zip_longest
 
 from sqlalchemy import and_
@@ -1574,24 +1575,6 @@ class SelectableTest(
             "SELECT table1.col1 AS a FROM table1) AS b) AS c) AS anon_1",
         )
 
-    def test_self_referential_select_raises(self):
-        t = table("t", column("x"))
-
-        # this issue is much less likely as subquery() applies a labeling
-        # style to the select, eliminating the self-referential call unless
-        # the select already had labeling applied
-
-        s = select(t).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
-
-        with testing.expect_deprecated("The SelectBase.c"):
-            s.where.non_generative(s, s.c.t_x > 5)
-
-        assert_raises_message(
-            exc.InvalidRequestError,
-            r"select\(\) construct refers to itself as a FROM",
-            s.compile,
-        )
-
     def test_unusual_column_elements_text(self):
         """test that .c excludes text()."""
 
@@ -1962,7 +1945,6 @@ class RefreshForNewColTest(fixtures.TestBase):
 
 
 class AnonLabelTest(fixtures.TestBase):
-
     """Test behaviors fixed by [ticket:2168]."""
 
     def test_anon_labels_named_column(self):
@@ -2045,6 +2027,16 @@ class JoinAnonymizingTest(fixtures.TestBase, AssertsCompiledSQL):
             "a AS a_1 JOIN b AS b_1 ON a_1.a = b_1.b",
         )
 
+    def test_join_alias_name_flat(self):
+        a = table("a", column("a"))
+        b = table("b", column("b"))
+        self.assert_compile(
+            a.join(b, a.c.a == b.c.b)._anonymous_fromclause(
+                name="foo", flat=True
+            ),
+            "a AS foo_a JOIN b AS foo_b ON foo_a.a = foo_b.b",
+        )
+
     def test_composed_join_alias_flat(self):
         a = table("a", column("a"))
         b = table("b", column("b"))
@@ -2061,6 +2053,24 @@ class JoinAnonymizingTest(fixtures.TestBase, AssertsCompiledSQL):
             "a AS a_1 JOIN b AS b_1 ON a_1.a = b_1.b JOIN "
             "(c AS c_1 JOIN d AS d_1 ON c_1.c = d_1.d) "
             "ON b_1.b = c_1.c",
+        )
+
+    def test_composed_join_alias_name_flat(self):
+        a = table("a", column("a"))
+        b = table("b", column("b"))
+        c = table("c", column("c"))
+        d = table("d", column("d"))
+
+        j1 = a.join(b, a.c.a == b.c.b)
+        j2 = c.join(d, c.c.c == d.c.d)
+
+        self.assert_compile(
+            j1.join(j2, b.c.b == c.c.c)._anonymous_fromclause(
+                name="foo", flat=True
+            ),
+            "a AS foo_a JOIN b AS foo_b ON foo_a.a = foo_b.b JOIN "
+            "(c AS foo_c JOIN d AS foo_d ON foo_c.c = foo_d.d) "
+            "ON foo_b.b = foo_c.c",
         )
 
     def test_composed_join_alias(self):

@@ -54,7 +54,6 @@ A = B = t1 = t2 = t3 = table1 = table2 = table3 = table4 = None
 class TraversalTest(
     fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
 ):
-
     """test ClauseVisitor's traversal, particularly its
     ability to copy and modify a ClauseElement in place."""
 
@@ -362,7 +361,6 @@ class TraversalTest(
 
 
 class BinaryEndpointTraversalTest(fixtures.TestBase):
-
     """test the special binary product visit"""
 
     def _assert_traversal(self, expr, expected):
@@ -443,7 +441,6 @@ class BinaryEndpointTraversalTest(fixtures.TestBase):
 
 
 class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
-
     """test copy-in-place behavior of various ClauseElements."""
 
     __dialect__ = "default"
@@ -2188,7 +2185,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_table_to_alias_9(self):
         s = select(literal_column("*")).select_from(t1).alias("foo")
         self.assert_compile(
-            s.select(), "SELECT foo.* FROM (SELECT * FROM table1) " "AS foo"
+            s.select(), "SELECT foo.* FROM (SELECT * FROM table1) AS foo"
         )
 
     def test_table_to_alias_10(self):
@@ -2197,13 +2194,13 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         vis = sql_util.ClauseAdapter(t1alias)
         self.assert_compile(
             vis.traverse(s.select()),
-            "SELECT foo.* FROM (SELECT * FROM table1 " "AS t1alias) AS foo",
+            "SELECT foo.* FROM (SELECT * FROM table1 AS t1alias) AS foo",
         )
 
     def test_table_to_alias_11(self):
         s = select(literal_column("*")).select_from(t1).alias("foo")
         self.assert_compile(
-            s.select(), "SELECT foo.* FROM (SELECT * FROM table1) " "AS foo"
+            s.select(), "SELECT foo.* FROM (SELECT * FROM table1) AS foo"
         )
 
     def test_table_to_alias_12(self):
@@ -2212,7 +2209,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         ff = vis.traverse(func.count(t1.c.col1).label("foo"))
         self.assert_compile(
             select(ff),
-            "SELECT count(t1alias.col1) AS foo FROM " "table1 AS t1alias",
+            "SELECT count(t1alias.col1) AS foo FROM table1 AS t1alias",
         )
         assert list(_from_objects(ff)) == [t1alias]
 
@@ -2703,7 +2700,7 @@ class SpliceJoinsTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             sql_util.splice_joins(table1, j2),
-            "table1 JOIN table4 AS table4_1 ON " "table1.col3 = table4_1.col3",
+            "table1 JOIN table4 AS table4_1 ON table1.col3 = table4_1.col3",
         )
         self.assert_compile(
             sql_util.splice_joins(sql_util.splice_joins(table1, j1), j2),
@@ -2716,7 +2713,6 @@ class SpliceJoinsTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
-
     """tests the generative capability of Select"""
 
     __dialect__ = "default"
@@ -2730,23 +2726,23 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_columns(self):
         s = t1.select()
         self.assert_compile(
-            s, "SELECT table1.col1, table1.col2, " "table1.col3 FROM table1"
+            s, "SELECT table1.col1, table1.col2, table1.col3 FROM table1"
         )
         select_copy = s.add_columns(column("yyy"))
         self.assert_compile(
             select_copy,
-            "SELECT table1.col1, table1.col2, " "table1.col3, yyy FROM table1",
+            "SELECT table1.col1, table1.col2, table1.col3, yyy FROM table1",
         )
         is_not(s.selected_columns, select_copy.selected_columns)
         is_not(s._raw_columns, select_copy._raw_columns)
         self.assert_compile(
-            s, "SELECT table1.col1, table1.col2, " "table1.col3 FROM table1"
+            s, "SELECT table1.col1, table1.col2, table1.col3 FROM table1"
         )
 
     def test_froms(self):
         s = t1.select()
         self.assert_compile(
-            s, "SELECT table1.col1, table1.col2, " "table1.col3 FROM table1"
+            s, "SELECT table1.col1, table1.col2, table1.col3 FROM table1"
         )
         select_copy = s.select_from(t2)
         self.assert_compile(
@@ -2756,13 +2752,13 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            s, "SELECT table1.col1, table1.col2, " "table1.col3 FROM table1"
+            s, "SELECT table1.col1, table1.col2, table1.col3 FROM table1"
         )
 
     def test_prefixes(self):
         s = t1.select()
         self.assert_compile(
-            s, "SELECT table1.col1, table1.col2, " "table1.col3 FROM table1"
+            s, "SELECT table1.col1, table1.col2, table1.col3 FROM table1"
         )
         select_copy = s.prefix_with("FOOBER")
         self.assert_compile(
@@ -2771,7 +2767,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "table1.col3 FROM table1",
         )
         self.assert_compile(
-            s, "SELECT table1.col1, table1.col2, " "table1.col3 FROM table1"
+            s, "SELECT table1.col1, table1.col2, table1.col3 FROM table1"
         )
 
     def test_execution_options(self):
@@ -2811,7 +2807,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
-
     """Tests the generative capability of Insert, Update"""
 
     __dialect__ = "default"

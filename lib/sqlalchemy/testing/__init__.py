@@ -1,5 +1,5 @@
 # testing/__init__.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -83,6 +83,7 @@ from .util import provide_metadata
 from .util import resolve_lambda
 from .util import rowset
 from .util import run_as_contextmanager
+from .util import skip_if_timeout
 from .util import teardown_events
 from .warnings import assert_warnings
 from .warnings import warn_test_suite

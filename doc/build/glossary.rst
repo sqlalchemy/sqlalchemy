@@ -298,7 +298,7 @@ Glossary
         A key limitation of the ``cursor.executemany()`` method as used with
         all known DBAPIs is that the ``cursor`` is not configured to return
         rows when this method is used.  For **most** backends (a notable
-        exception being the cx_Oracle, / OracleDB DBAPIs), this means that
+        exception being the python-oracledb / cx_Oracle DBAPIs), this means that
         statements like ``INSERT..RETURNING`` typically cannot be used with
         ``cursor.executemany()`` directly, since DBAPIs typically do not
         aggregate the single row from each INSERT execution together.
@@ -811,6 +811,19 @@ Glossary
 
             :ref:`session_basics`
 
+    flush
+    flushing
+    flushed
+
+        This refers to the actual process used by the :term:`unit of work`
+        to emit changes to a database.  In SQLAlchemy this process occurs
+        via the :class:`_orm.Session` object and is usually automatic, but
+        can also be controlled manually.
+
+        .. seealso::
+
+            :ref:`session_flushing`
+
     expire
     expired
     expires
@@ -1038,7 +1051,6 @@ Glossary
 
     isolation
     isolated
-    Isolation
     isolation level
         The isolation property of the :term:`ACID` model
         ensures that the concurrent execution
@@ -1146,16 +1158,17 @@ Glossary
         values as they are not included otherwise (but note any series of columns
         or SQL expressions can be placed into RETURNING, not just default-value columns).
 
-        The backends that currently support
-        RETURNING or a similar construct are PostgreSQL, SQL Server, Oracle,
-        and Firebird.    The PostgreSQL and Firebird implementations are generally
-        full featured, whereas the implementations of SQL Server and Oracle
-        have caveats. On SQL Server, the clause is known as "OUTPUT INSERTED"
-        for INSERT and UPDATE statements and "OUTPUT DELETED" for DELETE statements;
-        the key caveat is that triggers are not supported in conjunction with this
-        keyword.  On Oracle, it is known as "RETURNING...INTO", and requires that the
-        value be placed into an OUT parameter, meaning not only is the syntax awkward,
-        but it can also only be used for one row at a time.
+        The backends that currently support RETURNING or a similar construct
+        are PostgreSQL, SQL Server, Oracle Database, and Firebird.  The
+        PostgreSQL and Firebird implementations are generally full featured,
+        whereas the implementations of SQL Server and Oracle Database have
+        caveats. On SQL Server, the clause is known as "OUTPUT INSERTED" for
+        INSERT and UPDATE statements and "OUTPUT DELETED" for DELETE
+        statements; the key caveat is that triggers are not supported in
+        conjunction with this keyword.  In Oracle Database, it is known as
+        "RETURNING...INTO", and requires that the value be placed into an OUT
+        parameter, meaning not only is the syntax awkward, but it can also only
+        be used for one row at a time.
 
         SQLAlchemy's :meth:`.UpdateBase.returning` system provides a layer of abstraction
         on top of the RETURNING systems of these backends to provide a consistent
@@ -1690,4 +1703,3 @@ Glossary
         .. seealso::
 
             :ref:`session_object_states`
-

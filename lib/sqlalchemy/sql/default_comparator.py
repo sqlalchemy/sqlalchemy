@@ -1,5 +1,5 @@
 # sql/default_comparator.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -56,7 +56,6 @@ def _boolean_compare(
     negate_op: Optional[OperatorType] = None,
     reverse: bool = False,
     _python_is_types: Tuple[Type[Any], ...] = (type(None), bool),
-    _any_all_expr: bool = False,
     result_type: Optional[TypeEngine[bool]] = None,
     **kwargs: Any,
 ) -> OperatorExpression[bool]:
@@ -90,7 +89,7 @@ def _boolean_compare(
                 negate=negate_op,
                 modifiers=kwargs,
             )
-        elif _any_all_expr:
+        elif expr._is_collection_aggregate:
             obj = coercions.expect(
                 roles.ConstExprRole, element=obj, operator=op, expr=expr
             )
@@ -248,7 +247,7 @@ def _unsupported_impl(
     expr: ColumnElement[Any], op: OperatorType, *arg: Any, **kw: Any
 ) -> NoReturn:
     raise NotImplementedError(
-        "Operator '%s' is not supported on " "this expression" % op.__name__
+        "Operator '%s' is not supported on this expression" % op.__name__
     )
 
 
@@ -297,9 +296,11 @@ def _match_impl(
             operator=operators.match_op,
         ),
         result_type=type_api.MATCHTYPE,
-        negate_op=operators.not_match_op
-        if op is operators.match_op
-        else operators.match_op,
+        negate_op=(
+            operators.not_match_op
+            if op is operators.match_op
+            else operators.match_op
+        ),
         **kw,
     )
 
@@ -341,9 +342,11 @@ def _between_impl(
             group=False,
         ),
         op,
-        negate=operators.not_between_op
-        if op is operators.between_op
-        else operators.between_op,
+        negate=(
+            operators.not_between_op
+            if op is operators.between_op
+            else operators.between_op
+        ),
         modifiers=kw,
     )
 

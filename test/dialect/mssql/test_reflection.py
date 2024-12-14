@@ -389,7 +389,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
     ):
         """test #8035"""
 
-        tname = f"##foo{random.randint(1,1000000)}"
+        tname = f"##foo{random.randint(1, 1000000)}"
 
         with temp_db_alt_collation_fixture.connect() as conn:
             conn.exec_driver_sql(f"CREATE TABLE {tname} (id int primary key)")
@@ -1028,10 +1028,13 @@ class ReflectHugeViewTest(fixtures.TablesTest):
                 for i in range(col_num)
             ],
         )
-        cls.view_str = (
-            view_str
-        ) = "CREATE VIEW huge_named_view AS SELECT %s FROM base_table" % (
-            ",".join("long_named_column_number_%d" % i for i in range(col_num))
+        cls.view_str = view_str = (
+            "CREATE VIEW huge_named_view AS SELECT %s FROM base_table"
+            % (
+                ",".join(
+                    "long_named_column_number_%d" % i for i in range(col_num)
+                )
+            )
         )
         assert len(view_str) > 4000
 

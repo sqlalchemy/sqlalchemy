@@ -296,7 +296,7 @@ as a bonus our program is much clearer::
         # select() now accepts column / table expressions positionally
         result = connection.execute(select(foo.c.id))
 
-    print(result.fetchall())
+        print(result.fetchall())
 
 The goal of "2.0 deprecations mode" is that a program which runs with no
 :class:`_exc.RemovedIn20Warning` warnings with "2.0 deprecations mode" turned

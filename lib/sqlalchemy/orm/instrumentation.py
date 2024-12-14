@@ -1,5 +1,5 @@
 # orm/instrumentation.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -42,6 +42,7 @@ from typing import Generic
 from typing import Iterable
 from typing import List
 from typing import Optional
+from typing import Protocol
 from typing import Set
 from typing import Tuple
 from typing import Type
@@ -61,11 +62,10 @@ from .. import util
 from ..event import EventTarget
 from ..util import HasMemoized
 from ..util.typing import Literal
-from ..util.typing import Protocol
 
 if TYPE_CHECKING:
     from ._typing import _RegistryType
-    from .attributes import AttributeImpl
+    from .attributes import _AttributeImpl
     from .attributes import QueryableAttribute
     from .collections import _AdaptedCollectionProtocol
     from .collections import _CollectionFactoryType
@@ -85,13 +85,11 @@ class _ExpiredAttributeLoaderProto(Protocol):
         state: state.InstanceState[Any],
         toload: Set[str],
         passive: base.PassiveFlag,
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 class _ManagerFactory(Protocol):
-    def __call__(self, class_: Type[_O]) -> ClassManager[_O]:
-        ...
+    def __call__(self, class_: Type[_O]) -> ClassManager[_O]: ...
 
 
 class ClassManager(
@@ -347,7 +345,6 @@ class ClassManager(
 
     @util.memoized_property
     def _state_constructor(self) -> Type[state.InstanceState[_O]]:
-        self.dispatch.first_init(self, self.class_)
         return state.InstanceState
 
     def manage(self):
@@ -472,7 +469,7 @@ class ClassManager(
     def instrument_collection_class(
         self, key: str, collection_class: Type[Collection[Any]]
     ) -> _CollectionFactoryType:
-        return collections.prepare_instrumentation(collection_class)
+        return collections._prepare_instrumentation(collection_class)
 
     def initialize_collection(
         self,
@@ -492,7 +489,7 @@ class ClassManager(
         else:
             return key in self.local_attrs
 
-    def get_impl(self, key: str) -> AttributeImpl:
+    def get_impl(self, key: str) -> _AttributeImpl:
         return self[key].impl
 
     @property

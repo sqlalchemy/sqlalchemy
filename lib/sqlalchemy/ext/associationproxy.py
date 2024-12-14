@@ -1,5 +1,5 @@
 # ext/associationproxy.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -36,7 +36,9 @@ from typing import MutableSet
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Set
+from typing import SupportsIndex
 from typing import Tuple
 from typing import Type
 from typing import TypeVar
@@ -60,9 +62,7 @@ from ..sql import operators
 from ..sql import or_
 from ..sql.base import _NoArg
 from ..util.typing import Literal
-from ..util.typing import Protocol
 from ..util.typing import Self
-from ..util.typing import SupportsIndex
 from ..util.typing import SupportsKeysAndGetItem
 
 if typing.TYPE_CHECKING:
@@ -98,6 +98,7 @@ def association_proxy(
     default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
     compare: Union[_NoArg, bool] = _NoArg.NO_ARG,
     kw_only: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    hash: Union[_NoArg, bool, None] = _NoArg.NO_ARG,  # noqa: A002
 ) -> AssociationProxy[Any]:
     r"""Return a Python property implementing a view of a target
     attribute which references an attribute on members of the
@@ -198,6 +199,13 @@ def association_proxy(
 
      .. versionadded:: 2.0.0b4
 
+    :param hash: Specific to
+     :ref:`orm_declarative_native_dataclasses`, controls if this field
+     is included when generating the ``__hash__()`` method for the mapped
+     class.
+
+     .. versionadded:: 2.0.36
+
     :param info: optional, will be assigned to
      :attr:`.AssociationProxy.info` if present.
 
@@ -237,7 +245,7 @@ def association_proxy(
         cascade_scalar_deletes=cascade_scalar_deletes,
         create_on_none_assignment=create_on_none_assignment,
         attribute_options=_AttributeOptions(
-            init, repr, default, default_factory, compare, kw_only
+            init, repr, default, default_factory, compare, kw_only, hash
         ),
     )
 
@@ -254,45 +262,39 @@ class AssociationProxyExtensionType(InspectionAttrExtensionType):
 
 
 class _GetterProtocol(Protocol[_T_co]):
-    def __call__(self, instance: Any) -> _T_co:
-        ...
+    def __call__(self, instance: Any) -> _T_co: ...
 
 
 # mypy 0.990 we are no longer allowed to make this Protocol[_T_con]
-class _SetterProtocol(Protocol):
-    ...
+class _SetterProtocol(Protocol): ...
 
 
 class _PlainSetterProtocol(_SetterProtocol, Protocol[_T_con]):
-    def __call__(self, instance: Any, value: _T_con) -> None:
-        ...
+    def __call__(self, instance: Any, value: _T_con) -> None: ...
 
 
 class _DictSetterProtocol(_SetterProtocol, Protocol[_T_con]):
-    def __call__(self, instance: Any, key: Any, value: _T_con) -> None:
-        ...
+    def __call__(self, instance: Any, key: Any, value: _T_con) -> None: ...
 
 
 # mypy 0.990 we are no longer allowed to make this Protocol[_T_con]
-class _CreatorProtocol(Protocol):
-    ...
+class _CreatorProtocol(Protocol): ...
 
 
 class _PlainCreatorProtocol(_CreatorProtocol, Protocol[_T_con]):
-    def __call__(self, value: _T_con) -> Any:
-        ...
+    def __call__(self, value: _T_con) -> Any: ...
 
 
 class _KeyCreatorProtocol(_CreatorProtocol, Protocol[_T_con]):
-    def __call__(self, key: Any, value: Optional[_T_con]) -> Any:
-        ...
+    def __call__(self, key: Any, value: Optional[_T_con]) -> Any: ...
 
 
 class _LazyCollectionProtocol(Protocol[_T]):
     def __call__(
         self,
-    ) -> Union[MutableSet[_T], MutableMapping[Any, _T], MutableSequence[_T]]:
-        ...
+    ) -> Union[
+        MutableSet[_T], MutableMapping[Any, _T], MutableSequence[_T]
+    ]: ...
 
 
 class _GetSetFactoryProtocol(Protocol):
@@ -300,8 +302,7 @@ class _GetSetFactoryProtocol(Protocol):
         self,
         collection_class: Optional[Type[Any]],
         assoc_instance: AssociationProxyInstance[Any],
-    ) -> Tuple[_GetterProtocol[Any], _SetterProtocol]:
-        ...
+    ) -> Tuple[_GetterProtocol[Any], _SetterProtocol]: ...
 
 
 class _ProxyFactoryProtocol(Protocol):
@@ -311,15 +312,13 @@ class _ProxyFactoryProtocol(Protocol):
         creator: _CreatorProtocol,
         value_attr: str,
         parent: AssociationProxyInstance[Any],
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
 
 class _ProxyBulkSetProtocol(Protocol):
     def __call__(
         self, proxy: _AssociationCollection[Any], collection: Iterable[Any]
-    ) -> None:
-        ...
+    ) -> None: ...
 
 
 class _AssociationProxyProtocol(Protocol[_T]):
@@ -337,18 +336,15 @@ class _AssociationProxyProtocol(Protocol[_T]):
     proxy_bulk_set: Optional[_ProxyBulkSetProtocol]
 
     @util.ro_memoized_property
-    def info(self) -> _InfoType:
-        ...
+    def info(self) -> _InfoType: ...
 
     def for_class(
         self, class_: Type[Any], obj: Optional[object] = None
-    ) -> AssociationProxyInstance[_T]:
-        ...
+    ) -> AssociationProxyInstance[_T]: ...
 
     def _default_getset(
         self, collection_class: Any
-    ) -> Tuple[_GetterProtocol[Any], _SetterProtocol]:
-        ...
+    ) -> Tuple[_GetterProtocol[Any], _SetterProtocol]: ...
 
 
 class AssociationProxy(
@@ -419,18 +415,17 @@ class AssociationProxy(
             self._attribute_options = _DEFAULT_ATTRIBUTE_OPTIONS
 
     @overload
-    def __get__(self, instance: Literal[None], owner: Literal[None]) -> Self:
-        ...
+    def __get__(
+        self, instance: Literal[None], owner: Literal[None]
+    ) -> Self: ...
 
     @overload
     def __get__(
         self, instance: Literal[None], owner: Any
-    ) -> AssociationProxyInstance[_T]:
-        ...
+    ) -> AssociationProxyInstance[_T]: ...
 
     @overload
-    def __get__(self, instance: object, owner: Any) -> _T:
-        ...
+    def __get__(self, instance: object, owner: Any) -> _T: ...
 
     def __get__(
         self, instance: object, owner: Any
@@ -463,7 +458,7 @@ class AssociationProxy(
             class User(Base):
                 # ...
 
-                keywords = association_proxy('kws', 'keyword')
+                keywords = association_proxy("kws", "keyword")
 
         If we access this :class:`.AssociationProxy` from
         :attr:`_orm.Mapper.all_orm_descriptors`, and we want to view the
@@ -783,9 +778,9 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
         :attr:`.AssociationProxyInstance.remote_attr` attributes separately::
 
             stmt = (
-                select(Parent).
-                join(Parent.proxied.local_attr).
-                join(Parent.proxied.remote_attr)
+                select(Parent)
+                .join(Parent.proxied.local_attr)
+                .join(Parent.proxied.remote_attr)
             )
 
         A future release may seek to provide a more succinct join pattern
@@ -861,12 +856,10 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
         return self.parent.info
 
     @overload
-    def get(self: _Self, obj: Literal[None]) -> _Self:
-        ...
+    def get(self: _Self, obj: Literal[None]) -> _Self: ...
 
     @overload
-    def get(self, obj: Any) -> _T:
-        ...
+    def get(self, obj: Any) -> _T: ...
 
     def get(
         self, obj: Any
@@ -1089,7 +1082,7 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
             and (not self._target_is_object or self._value_is_scalar)
         ):
             raise exc.InvalidRequestError(
-                "'any()' not implemented for scalar " "attributes. Use has()."
+                "'any()' not implemented for scalar attributes. Use has()."
             )
         return self._criterion_exists(
             criterion=criterion, is_has=False, **kwargs
@@ -1113,7 +1106,7 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
             or (self._target_is_object and not self._value_is_scalar)
         ):
             raise exc.InvalidRequestError(
-                "'has()' not implemented for collections.  " "Use any()."
+                "'has()' not implemented for collections. Use any()."
             )
         return self._criterion_exists(
             criterion=criterion, is_has=True, **kwargs
@@ -1432,12 +1425,10 @@ class _AssociationList(_AssociationSingleItem[_T], MutableSequence[_T]):
         self.setter(object_, value)
 
     @overload
-    def __getitem__(self, index: int) -> _T:
-        ...
+    def __getitem__(self, index: int) -> _T: ...
 
     @overload
-    def __getitem__(self, index: slice) -> MutableSequence[_T]:
-        ...
+    def __getitem__(self, index: slice) -> MutableSequence[_T]: ...
 
     def __getitem__(
         self, index: Union[int, slice]
@@ -1448,12 +1439,10 @@ class _AssociationList(_AssociationSingleItem[_T], MutableSequence[_T]):
             return [self._get(member) for member in self.col[index]]
 
     @overload
-    def __setitem__(self, index: int, value: _T) -> None:
-        ...
+    def __setitem__(self, index: int, value: _T) -> None: ...
 
     @overload
-    def __setitem__(self, index: slice, value: Iterable[_T]) -> None:
-        ...
+    def __setitem__(self, index: slice, value: Iterable[_T]) -> None: ...
 
     def __setitem__(
         self, index: Union[int, slice], value: Union[_T, Iterable[_T]]
@@ -1492,12 +1481,10 @@ class _AssociationList(_AssociationSingleItem[_T], MutableSequence[_T]):
                     self._set(self.col[i], item)
 
     @overload
-    def __delitem__(self, index: int) -> None:
-        ...
+    def __delitem__(self, index: int) -> None: ...
 
     @overload
-    def __delitem__(self, index: slice) -> None:
-        ...
+    def __delitem__(self, index: slice) -> None: ...
 
     def __delitem__(self, index: Union[slice, int]) -> None:
         del self.col[index]
@@ -1624,8 +1611,9 @@ class _AssociationList(_AssociationSingleItem[_T], MutableSequence[_T]):
 
     if typing.TYPE_CHECKING:
         # TODO: no idea how to do this without separate "stub"
-        def index(self, value: Any, start: int = ..., stop: int = ...) -> int:
-            ...
+        def index(
+            self, value: Any, start: int = ..., stop: int = ...
+        ) -> int: ...
 
     else:
 
@@ -1701,12 +1689,12 @@ class _AssociationDict(_AssociationCollection[_VT], MutableMapping[_KT, _VT]):
         return repr(dict(self))
 
     @overload
-    def get(self, __key: _KT, /) -> Optional[_VT]:
-        ...
+    def get(self, __key: _KT, /) -> Optional[_VT]: ...
 
     @overload
-    def get(self, __key: _KT, /, default: Union[_VT, _T]) -> Union[_VT, _T]:
-        ...
+    def get(
+        self, __key: _KT, /, default: Union[_VT, _T]
+    ) -> Union[_VT, _T]: ...
 
     def get(
         self, __key: _KT, /, default: Optional[Union[_VT, _T]] = None
@@ -1738,14 +1726,12 @@ class _AssociationDict(_AssociationCollection[_VT], MutableMapping[_KT, _VT]):
         return ValuesView(self)
 
     @overload
-    def pop(self, __key: _KT, /) -> _VT:
-        ...
+    def pop(self, __key: _KT, /) -> _VT: ...
 
     @overload
     def pop(
         self, __key: _KT, /, default: Union[_VT, _T] = ...
-    ) -> Union[_VT, _T]:
-        ...
+    ) -> Union[_VT, _T]: ...
 
     def pop(self, __key: _KT, /, *arg: Any, **kw: Any) -> Union[_VT, _T]:
         member = self.col.pop(__key, *arg, **kw)
@@ -1758,16 +1744,15 @@ class _AssociationDict(_AssociationCollection[_VT], MutableMapping[_KT, _VT]):
     @overload
     def update(
         self, __m: SupportsKeysAndGetItem[_KT, _VT], **kwargs: _VT
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @overload
-    def update(self, __m: Iterable[tuple[_KT, _VT]], **kwargs: _VT) -> None:
-        ...
+    def update(
+        self, __m: Iterable[tuple[_KT, _VT]], **kwargs: _VT
+    ) -> None: ...
 
     @overload
-    def update(self, **kwargs: _VT) -> None:
-        ...
+    def update(self, **kwargs: _VT) -> None: ...
 
     def update(self, *a: Any, **kw: Any) -> None:
         up: Dict[_KT, _VT] = {}
@@ -1896,7 +1881,7 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
         self, other: AbstractSet[_S]
     ) -> MutableSet[Union[_T, _S]]:
         if not collections._set_binops_check_strict(self, other):
-            raise NotImplementedError()
+            return NotImplemented
         for value in other:
             self.add(value)
         return self
@@ -1908,12 +1893,16 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
         return set(self).union(*s)
 
     def __or__(self, __s: AbstractSet[_S]) -> MutableSet[Union[_T, _S]]:
+        if not collections._set_binops_check_strict(self, __s):
+            return NotImplemented
         return self.union(__s)
 
     def difference(self, *s: Iterable[Any]) -> MutableSet[_T]:
         return set(self).difference(*s)
 
     def __sub__(self, s: AbstractSet[Any]) -> MutableSet[_T]:
+        if not collections._set_binops_check_strict(self, s):
+            return NotImplemented
         return self.difference(s)
 
     def difference_update(self, *s: Iterable[Any]) -> None:
@@ -1923,7 +1912,7 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
 
     def __isub__(self, s: AbstractSet[Any]) -> Self:
         if not collections._set_binops_check_strict(self, s):
-            raise NotImplementedError()
+            return NotImplemented
         for value in s:
             self.discard(value)
         return self
@@ -1932,6 +1921,8 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
         return set(self).intersection(*s)
 
     def __and__(self, s: AbstractSet[Any]) -> MutableSet[_T]:
+        if not collections._set_binops_check_strict(self, s):
+            return NotImplemented
         return self.intersection(s)
 
     def intersection_update(self, *s: Iterable[Any]) -> None:
@@ -1947,7 +1938,7 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
 
     def __iand__(self, s: AbstractSet[Any]) -> Self:
         if not collections._set_binops_check_strict(self, s):
-            raise NotImplementedError()
+            return NotImplemented
         want = self.intersection(s)
         have: Set[_T] = set(self)
 
@@ -1963,6 +1954,8 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
         return set(self).symmetric_difference(__s)
 
     def __xor__(self, s: AbstractSet[_S]) -> MutableSet[Union[_T, _S]]:
+        if not collections._set_binops_check_strict(self, s):
+            return NotImplemented
         return self.symmetric_difference(s)
 
     def symmetric_difference_update(self, other: Iterable[Any]) -> None:
@@ -1977,7 +1970,7 @@ class _AssociationSet(_AssociationSingleItem[_T], MutableSet[_T]):
 
     def __ixor__(self, other: AbstractSet[_S]) -> MutableSet[Union[_T, _S]]:  # type: ignore  # noqa: E501
         if not collections._set_binops_check_strict(self, other):
-            raise NotImplementedError()
+            return NotImplemented
 
         self.symmetric_difference_update(other)
         return self

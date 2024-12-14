@@ -2,6 +2,7 @@
 for asynchronous ORM use.
 
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -51,6 +52,10 @@ def work_with_a_session_two(sess: Session, param: Optional[str] = None) -> Any:
     pass
 
 
+def work_with_wrong_parameter(session: Session, foo: int) -> Any:
+    pass
+
+
 async def async_main() -> None:
     """Main program function."""
 
@@ -69,6 +74,9 @@ async def async_main() -> None:
     async with async_session.begin() as session:
         await session.run_sync(work_with_a_session_one)
         await session.run_sync(work_with_a_session_two, param="foo")
+
+        # EXPECTED_MYPY: Missing positional argument "foo" in call to "run_sync" of "AsyncSession"
+        await session.run_sync(work_with_wrong_parameter)
 
         session.add_all(
             [

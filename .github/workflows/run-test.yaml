@@ -29,12 +29,13 @@ jobs:
           - "ubuntu-latest"
           - "windows-latest"
           - "macos-latest"
+          - "macos-13"
         python-version:
-          - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
           - "3.12"
+          - "3.13"
           - "pypy-3.10"
         build-type:
           - "cext"
@@ -42,6 +43,7 @@ jobs:
         architecture:
           - x64
           - x86
+          - arm64
 
         include:
           # autocommit tests fail on the ci for some reason
@@ -50,11 +52,27 @@ jobs:
           - os: "ubuntu-latest"
             pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
 
+
         exclude:
-          # linux and osx do not have x86 python
+          # linux do not have x86 / arm64 python
           - os: "ubuntu-latest"
             architecture: x86
+          - os: "ubuntu-latest"
+            architecture: arm64
+          # windows des not have arm64 python
+          - os: "windows-latest"
+            architecture: arm64
+          # macos: latests uses arm macs. only 3.10+; no x86/x64
           - os: "macos-latest"
+            architecture: x86
+          - os: "macos-latest"
+            architecture: x64
+          - os: "macos-latest"
+            python-version: "3.9"
+          # macos 13: uses intel macs. no arm64, x86
+          - os: "macos-13"
+            architecture: arm64
+          - os: "macos-13"
             architecture: x86
           # pypy does not have cext or x86
           - python-version: "pypy-3.10"
@@ -71,7 +89,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}
@@ -93,16 +111,17 @@ jobs:
         continue-on-error: ${{ matrix.python-version == 'pypy-3.10' }}
 
   run-test-arm64:
+    # Hopefully something native can be used at some point https://github.blog/changelog/2023-10-30-accelerate-your-ci-cd-with-arm-based-hosted-runners-in-github-actions/
     name: test-arm64-${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.os }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version:
-          - cp38-cp38
           - cp39-cp39
           - cp310-cp310
           - cp311-cp311
           - cp312-cp312
+          - cp313-cp313
         build-type:
           - "cext"
           - "nocext"
@@ -139,26 +158,22 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
-          - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
+          - "3.12"
+          - "3.13"
         tox-env:
           - mypy
-          - lint
           - pep484
 
+        include:
+          # run lint only on 3.12
+          - tox-env: lint
+            python-version: "3.12"
+            os: "ubuntu-latest"
         exclude:
-          # run lint only on 3.11
-          - tox-env: lint
-            python-version: "3.8"
-          - tox-env: lint
-            python-version: "3.9"
-          - tox-env: lint
-            python-version: "3.10"
           # run pep484 only on 3.10+
-          - tox-env: pep484
-            python-version: "3.8"
           - tox-env: pep484
             python-version: "3.9"
 
@@ -170,7 +185,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}

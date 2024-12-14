@@ -2386,7 +2386,7 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
 
         def go():
             with mock.patch(
-                "sqlalchemy.orm.strategies.SelectInLoader._chunksize", 47
+                "sqlalchemy.orm.strategies._SelectInLoader._chunksize", 47
             ):
                 q = session.query(A).options(selectinload(A.bs)).order_by(A.id)
 
@@ -2458,7 +2458,7 @@ class ChunkingTest(fixtures.DeclarativeMappedTest):
 
         def go():
             with mock.patch(
-                "sqlalchemy.orm.strategies.SelectInLoader._chunksize", 47
+                "sqlalchemy.orm.strategies._SelectInLoader._chunksize", 47
             ):
                 q = session.query(B).options(selectinload(B.a)).order_by(B.id)
 
@@ -3340,7 +3340,7 @@ class M2OWDegradeTest(
                 "FROM a WHERE a.id IN (__[POSTCOMPILE_id_1]) ORDER BY a.id",
                 [{"id_1": [1, 3]}],
             ),
-            # in the very unlikely case that the the FK col on parent is
+            # in the very unlikely case that the FK col on parent is
             # deferred, we degrade to the JOIN version so that we don't need to
             # emit either for each parent object individually, or as a second
             # query for them.
@@ -3429,9 +3429,9 @@ class M2OWDegradeTest(
             testing.db,
             q.all,
             CompiledSQL(
-                "SELECT a.id AS a_id, a.q AS a_q " "FROM a ORDER BY a.id", [{}]
+                "SELECT a.id AS a_id, a.q AS a_q FROM a ORDER BY a.id", [{}]
             ),
-            # in the very unlikely case that the the FK col on parent is
+            # in the very unlikely case that the FK col on parent is
             # deferred, we degrade to the JOIN version so that we don't need to
             # emit either for each parent object individually, or as a second
             # query for them.

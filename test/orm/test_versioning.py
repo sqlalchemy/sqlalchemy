@@ -429,9 +429,12 @@ class VersioningTest(fixtures.MappedTest):
             else:
                 return self.context.rowcount
 
-        with patch.object(
-            config.db.dialect, "supports_sane_multi_rowcount", False
-        ), patch("sqlalchemy.engine.cursor.CursorResult.rowcount", rowcount):
+        with (
+            patch.object(
+                config.db.dialect, "supports_sane_multi_rowcount", False
+            ),
+            patch("sqlalchemy.engine.cursor.CursorResult.rowcount", rowcount),
+        ):
             Foo = self.classes.Foo
             s1 = self._fixture()
             f1s1 = Foo(value="f1 value")
@@ -444,10 +447,11 @@ class VersioningTest(fixtures.MappedTest):
             eq_(f1s1.version_id, 2)
 
     def test_update_delete_no_plain_rowcount(self):
-        with patch.object(
-            config.db.dialect, "supports_sane_rowcount", False
-        ), patch.object(
-            config.db.dialect, "supports_sane_multi_rowcount", False
+        with (
+            patch.object(config.db.dialect, "supports_sane_rowcount", False),
+            patch.object(
+                config.db.dialect, "supports_sane_multi_rowcount", False
+            ),
         ):
             Foo = self.classes.Foo
             s1 = self._fixture()
@@ -714,10 +718,11 @@ class VersionOnPostUpdateTest(fixtures.MappedTest):
 
         n1.related.append(n2)
 
-        with patch.object(
-            config.db.dialect, "supports_sane_rowcount", False
-        ), patch.object(
-            config.db.dialect, "supports_sane_multi_rowcount", False
+        with (
+            patch.object(config.db.dialect, "supports_sane_rowcount", False),
+            patch.object(
+                config.db.dialect, "supports_sane_multi_rowcount", False
+            ),
         ):
             s2 = Session(bind=s.connection(bind_arguments=dict(mapper=Node)))
             s2.query(Node).filter(Node.id == n2.id).update({"version_id": 3})
@@ -2029,3 +2034,127 @@ class QuotedBindVersioningTest(fixtures.MappedTest):
             fixture_session.commit()
 
         eq_(f1.version, 2)
+
+
+class PostUpdateVersioningTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class User(Base):
+            __tablename__ = "user"
+
+            id = Column(Integer, primary_key=True)
+
+        class Parent(Base):
+            __tablename__ = "parent"
+
+            id = Column(Integer, primary_key=True)
+            version_id = Column(Integer)
+            updated_by_id = Column(
+                Integer,
+                ForeignKey("user.id"),
+            )
+
+            updated_by = relationship(
+                "User",
+                foreign_keys=[updated_by_id],
+                post_update=True,
+            )
+
+            __mapper_args__ = {
+                "version_id_col": version_id,
+            }
+
+    def test_bumped_version_id_on_update(self):
+        """test for #10800"""
+        User, Parent = self.classes("User", "Parent")
+
+        session = fixture_session()
+        u1 = User(id=1)
+        u2 = User(id=2)
+        p1 = Parent(id=1, updated_by=u1)
+        session.add(u1)
+        session.add(u2)
+        session.add(p1)
+
+        u2id = u2.id
+        session.commit()
+        session.close()
+
+        p1 = session.get(Parent, 1)
+        p1.updated_by
+        p1.version_id = p1.version_id
+        p1.updated_by_id = u2id
+        assert "version_id" in inspect(p1).committed_state
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+            session.commit()
+
+        asserter.assert_(
+            CompiledSQL(
+                "UPDATE parent SET version_id=:version_id, "
+                "updated_by_id=:updated_by_id WHERE parent.id = :parent_id "
+                "AND parent.version_id = :parent_version_id",
+                [
+                    {
+                        "version_id": 2,
+                        "updated_by_id": 2,
+                        "parent_id": 1,
+                        "parent_version_id": 1,
+                    }
+                ],
+            ),
+            CompiledSQL(
+                "UPDATE parent SET version_id=:version_id, "
+                "updated_by_id=:updated_by_id WHERE parent.id = :parent_id "
+                "AND parent.version_id = :parent_version_id",
+                [
+                    {
+                        "version_id": 3,
+                        "updated_by_id": 2,
+                        "parent_id": 1,
+                        "parent_version_id": 2,
+                    }
+                ],
+            ),
+        )
+
+    def test_bumped_version_id_on_delete(self):
+        """test for #10967"""
+
+        User, Parent = self.classes("User", "Parent")
+
+        session = fixture_session()
+        u1 = User(id=1)
+        p1 = Parent(id=1, updated_by=u1)
+        session.add(u1)
+        session.add(p1)
+
+        session.flush()
+
+        session.delete(p1)
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+            session.commit()
+
+        asserter.assert_(
+            CompiledSQL(
+                "UPDATE parent SET version_id=:version_id, "
+                "updated_by_id=:updated_by_id WHERE parent.id = :parent_id "
+                "AND parent.version_id = :parent_version_id",
+                [
+                    {
+                        "version_id": 2,
+                        "updated_by_id": None,
+                        "parent_id": 1,
+                        "parent_version_id": 1,
+                    }
+                ],
+            ),
+            CompiledSQL(
+                "DELETE FROM parent WHERE parent.id = :id AND "
+                "parent.version_id = :version_id",
+                [{"id": 1, "version_id": 2}],
+            ),
+        )

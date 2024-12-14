@@ -1,5 +1,5 @@
-# mysql/reflection.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mysql/reflection.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -290,6 +290,9 @@ class MySQLTableDefinitionParser:
         # this can be "NULL" in the case of TIMESTAMP
         if spec.get("notnull", False) == "NOT NULL":
             col_kw["nullable"] = False
+        # For generated columns, the nullability is marked in a different place
+        if spec.get("notnull_generated", False) == "NOT NULL":
+            col_kw["nullable"] = False
 
         # AUTO_INCREMENT
         if spec.get("autoincr", False):
@@ -452,7 +455,9 @@ class MySQLTableDefinitionParser:
             r"(?: +ON UPDATE [\-\w\.\(\)]+)?)"
             r"))?"
             r"(?: +(?:GENERATED ALWAYS)? ?AS +(?P<generated>\("
-            r".*\))? ?(?P<persistence>VIRTUAL|STORED)?)?"
+            r".*\))? ?(?P<persistence>VIRTUAL|STORED)?"
+            r"(?: +(?P<notnull_generated>(?:NOT )?NULL))?"
+            r")?"
             r"(?: +(?P<autoincr>AUTO_INCREMENT))?"
             r"(?: +COMMENT +'(?P<comment>(?:''|[^'])*)')?"
             r"(?: +COLUMN_FORMAT +(?P<colfmt>\w+))?"
@@ -500,7 +505,7 @@ class MySQLTableDefinitionParser:
         #
         # unique constraints come back as KEYs
         kw = quotes.copy()
-        kw["on"] = "RESTRICT|CASCADE|SET NULL|NO ACTION"
+        kw["on"] = "RESTRICT|CASCADE|SET NULL|NO ACTION|SET DEFAULT"
         self._re_fk_constraint = _re_compile(
             r"  "
             r"CONSTRAINT +"

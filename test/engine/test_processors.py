@@ -5,9 +5,12 @@ from types import MappingProxyType
 from sqlalchemy import exc
 from sqlalchemy.engine import processors
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import combinations
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_none
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.util import immutabledict
 
 
@@ -33,9 +36,9 @@ class CyBooleanProcessorTest(_BooleanProcessorTest):
 
     @classmethod
     def setup_test_class(cls):
-        from sqlalchemy.cyextension import processors
+        from sqlalchemy.engine import _processors_cy
 
-        cls.module = processors
+        cls.module = _processors_cy
 
 
 class _DateProcessorTest(fixtures.TestBase):
@@ -72,13 +75,13 @@ class _DateProcessorTest(fixtures.TestBase):
 
         eq_(self.module.str_to_date("2022-04-03"), datetime.date(2022, 4, 3))
 
-    def test_date_no_string(self):
-        assert_raises_message(
-            TypeError,
-            "fromisoformat: argument must be str",
-            self.module.str_to_date,
-            2012,
-        )
+    @combinations("str_to_datetime", "str_to_time", "str_to_date")
+    def test_no_string(self, meth):
+        with expect_raises_message(
+            TypeError, "fromisoformat: argument must be str"
+        ):
+            fn = getattr(self.module, meth)
+            fn(2012)
 
     def test_datetime_no_string_custom_reg(self):
         assert_raises_message(
@@ -101,37 +104,29 @@ class _DateProcessorTest(fixtures.TestBase):
             2012,
         )
 
-    def test_date_invalid_string(self):
-        assert_raises_message(
-            ValueError,
-            "Invalid isoformat string: '5:a'",
-            self.module.str_to_date,
-            "5:a",
-        )
+    @combinations("str_to_datetime", "str_to_time", "str_to_date")
+    def test_invalid_string(self, meth):
+        with expect_raises_message(
+            ValueError, "Invalid isoformat string: '5:a'"
+        ):
+            fn = getattr(self.module, meth)
+            fn("5:a")
 
-    def test_datetime_invalid_string(self):
-        assert_raises_message(
-            ValueError,
-            "Invalid isoformat string: '5:a'",
-            self.module.str_to_datetime,
-            "5:a",
-        )
-
-    def test_time_invalid_string(self):
-        assert_raises_message(
-            ValueError,
-            "Invalid isoformat string: '5:a'",
-            self.module.str_to_time,
-            "5:a",
-        )
+    @combinations("str_to_datetime", "str_to_time", "str_to_date")
+    def test_none(self, meth):
+        fn = getattr(self.module, meth)
+        is_none(fn(None))
 
 
 class PyDateProcessorTest(_DateProcessorTest):
     @classmethod
     def setup_test_class(cls):
-        from sqlalchemy.engine import _py_processors
+        from sqlalchemy.engine import _processors_cy
+        from sqlalchemy.util.langhelpers import load_uncompiled_module
 
-        cls.module = _py_processors
+        py_mod = load_uncompiled_module(_processors_cy)
+
+        cls.module = py_mod
 
 
 class CyDateProcessorTest(_DateProcessorTest):
@@ -139,9 +134,10 @@ class CyDateProcessorTest(_DateProcessorTest):
 
     @classmethod
     def setup_test_class(cls):
-        from sqlalchemy.cyextension import processors
+        from sqlalchemy.engine import _processors_cy
 
-        cls.module = processors
+        assert _processors_cy._is_compiled()
+        cls.module = _processors_cy
 
 
 class _DistillArgsTest(fixtures.TestBase):
@@ -149,8 +145,13 @@ class _DistillArgsTest(fixtures.TestBase):
         eq_(self.module._distill_params_20(None), ())
 
     def test_distill_20_empty_sequence(self):
-        eq_(self.module._distill_params_20(()), ())
-        eq_(self.module._distill_params_20([]), [])
+        with expect_deprecated(
+            r"Empty parameter sequence passed to execute\(\). "
+            "This use is deprecated and will raise an exception in a "
+            "future SQLAlchemy release"
+        ):
+            eq_(self.module._distill_params_20(()), ())
+            eq_(self.module._distill_params_20([]), [])
 
     def test_distill_20_sequence_sequence(self):
         eq_(self.module._distill_params_20(((1, 2, 3),)), ((1, 2, 3),))
@@ -281,8 +282,10 @@ class _DistillArgsTest(fixtures.TestBase):
 class PyDistillArgsTest(_DistillArgsTest):
     @classmethod
     def setup_test_class(cls):
-        from sqlalchemy.engine import _py_util
+        from sqlalchemy.engine import _util_cy
+        from sqlalchemy.util.langhelpers import load_uncompiled_module
 
+        _py_util = load_uncompiled_module(_util_cy)
         cls.module = _py_util
 
 
@@ -291,6 +294,7 @@ class CyDistillArgsTest(_DistillArgsTest):
 
     @classmethod
     def setup_test_class(cls):
-        from sqlalchemy.cyextension import util
+        from sqlalchemy.engine import _util_cy
 
-        cls.module = util
+        assert _util_cy._is_compiled()
+        cls.module = _util_cy

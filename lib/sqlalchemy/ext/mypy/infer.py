@@ -1,5 +1,5 @@
 # ext/mypy/infer.py
-# Copyright (C) 2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2021-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -385,9 +385,9 @@ def _infer_type_from_decl_column(
         class MyClass:
             # ...
 
-            a : Mapped[int]
+            a: Mapped[int]
 
-            b : Mapped[str]
+            b: Mapped[str]
 
             c: Mapped[int]
 

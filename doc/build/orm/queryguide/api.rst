@@ -111,6 +111,8 @@ a per-query basis.   Options for which this apply include:
 
 * The :func:`_orm.with_loader_criteria` option
 
+* The :func:`_orm.load_only` option to select what attributes to refresh
+
 The ``populate_existing`` execution option is equvialent to the
 :meth:`_orm.Query.populate_existing` method in :term:`1.x style` ORM queries.
 

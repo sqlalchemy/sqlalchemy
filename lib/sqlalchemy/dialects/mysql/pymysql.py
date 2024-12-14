@@ -1,5 +1,5 @@
-# mysql/pymysql.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mysql/pymysql.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -40,7 +40,6 @@ necessary to indicate ``ssl_check_hostname=false`` in PyMySQL::
         "&ssl_key=/home/gord/client-ssl/client-key.pem"
         "&ssl_check_hostname=false"
     )
-
 
 MySQL-Python Compatibility
 --------------------------
@@ -86,7 +85,9 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
         """  # noqa: E501
 
         try:
-            Connection = __import__("pymysql.connections").Connection
+            Connection = __import__(
+                "pymysql.connections"
+            ).connections.Connection
         except (ImportError, AttributeError):
             return True
         else:

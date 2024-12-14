@@ -1,5 +1,5 @@
-# sqlite/base.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/sqlite/base.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -7,10 +7,9 @@
 # mypy: ignore-errors
 
 
-r"""
+r'''
 .. dialect:: sqlite
     :name: SQLite
-    :full_support: 3.36.0
     :normal_support: 3.12+
     :best_effort: 3.7.16+
 
@@ -70,9 +69,12 @@ To specifically render the AUTOINCREMENT keyword on the primary key column
 when rendering DDL, add the flag ``sqlite_autoincrement=True`` to the Table
 construct::
 
-    Table('sometable', metadata,
-            Column('id', Integer, primary_key=True),
-            sqlite_autoincrement=True)
+    Table(
+        "sometable",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        sqlite_autoincrement=True,
+    )
 
 Allowing autoincrement behavior SQLAlchemy types other than Integer/INTEGER
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -92,8 +94,13 @@ One approach to achieve this is to use :class:`.Integer` on SQLite
 only using :meth:`.TypeEngine.with_variant`::
 
     table = Table(
-        "my_table", metadata,
-        Column("id", BigInteger().with_variant(Integer, "sqlite"), primary_key=True)
+        "my_table",
+        metadata,
+        Column(
+            "id",
+            BigInteger().with_variant(Integer, "sqlite"),
+            primary_key=True,
+        ),
     )
 
 Another is to use a subclass of :class:`.BigInteger` that overrides its DDL
@@ -102,12 +109,15 @@ name to be ``INTEGER`` when compiled against SQLite::
     from sqlalchemy import BigInteger
     from sqlalchemy.ext.compiler import compiles
 
+
     class SLBigInteger(BigInteger):
         pass
 
-    @compiles(SLBigInteger, 'sqlite')
+
+    @compiles(SLBigInteger, "sqlite")
     def bi_c(element, compiler, **kw):
         return "INTEGER"
+
 
     @compiles(SLBigInteger)
     def bi_c(element, compiler, **kw):
@@ -115,8 +125,7 @@ name to be ``INTEGER`` when compiled against SQLite::
 
 
     table = Table(
-        "my_table", metadata,
-        Column("id", SLBigInteger(), primary_key=True)
+        "my_table", metadata, Column("id", SLBigInteger(), primary_key=True)
     )
 
 .. seealso::
@@ -236,26 +245,24 @@ To specify an explicit ``RETURNING`` clause, use the
 
     # INSERT..RETURNING
     result = connection.execute(
-        table.insert().
-        values(name='foo').
-        returning(table.c.col1, table.c.col2)
+        table.insert().values(name="foo").returning(table.c.col1, table.c.col2)
     )
     print(result.all())
 
     # UPDATE..RETURNING
     result = connection.execute(
-        table.update().
-        where(table.c.name=='foo').
-        values(name='bar').
-        returning(table.c.col1, table.c.col2)
+        table.update()
+        .where(table.c.name == "foo")
+        .values(name="bar")
+        .returning(table.c.col1, table.c.col2)
     )
     print(result.all())
 
     # DELETE..RETURNING
     result = connection.execute(
-        table.delete().
-        where(table.c.name=='foo').
-        returning(table.c.col1, table.c.col2)
+        table.delete()
+        .where(table.c.name == "foo")
+        .returning(table.c.col1, table.c.col2)
     )
     print(result.all())
 
@@ -317,6 +324,7 @@ new connections through the usage of events::
 
     from sqlalchemy.engine import Engine
     from sqlalchemy import event
+
 
     @event.listens_for(Engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
@@ -380,13 +388,16 @@ ABORT, FAIL, IGNORE, and REPLACE.   For example, to add a UNIQUE constraint
 that specifies the IGNORE algorithm::
 
     some_table = Table(
-        'some_table', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('data', Integer),
-        UniqueConstraint('id', 'data', sqlite_on_conflict='IGNORE')
+        "some_table",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("data", Integer),
+        UniqueConstraint("id", "data", sqlite_on_conflict="IGNORE"),
     )
 
-The above renders CREATE TABLE DDL as::
+The above renders CREATE TABLE DDL as:
+
+.. sourcecode:: sql
 
     CREATE TABLE some_table (
         id INTEGER NOT NULL,
@@ -403,13 +414,17 @@ be added to the :class:`_schema.Column` as well, which will be added to the
 UNIQUE constraint in the DDL::
 
     some_table = Table(
-        'some_table', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('data', Integer, unique=True,
-               sqlite_on_conflict_unique='IGNORE')
+        "some_table",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column(
+            "data", Integer, unique=True, sqlite_on_conflict_unique="IGNORE"
+        ),
     )
 
-rendering::
+rendering:
+
+.. sourcecode:: sql
 
     CREATE TABLE some_table (
         id INTEGER NOT NULL,
@@ -422,13 +437,17 @@ To apply the FAIL algorithm for a NOT NULL constraint,
 ``sqlite_on_conflict_not_null`` is used::
 
     some_table = Table(
-        'some_table', metadata,
-        Column('id', Integer, primary_key=True),
-        Column('data', Integer, nullable=False,
-               sqlite_on_conflict_not_null='FAIL')
+        "some_table",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column(
+            "data", Integer, nullable=False, sqlite_on_conflict_not_null="FAIL"
+        ),
     )
 
-this renders the column inline ON CONFLICT phrase::
+this renders the column inline ON CONFLICT phrase:
+
+.. sourcecode:: sql
 
     CREATE TABLE some_table (
         id INTEGER NOT NULL,
@@ -440,13 +459,20 @@ this renders the column inline ON CONFLICT phrase::
 Similarly, for an inline primary key, use ``sqlite_on_conflict_primary_key``::
 
     some_table = Table(
-        'some_table', metadata,
-        Column('id', Integer, primary_key=True,
-               sqlite_on_conflict_primary_key='FAIL')
+        "some_table",
+        metadata,
+        Column(
+            "id",
+            Integer,
+            primary_key=True,
+            sqlite_on_conflict_primary_key="FAIL",
+        ),
     )
 
 SQLAlchemy renders the PRIMARY KEY constraint separately, so the conflict
-resolution algorithm is applied to the constraint itself::
+resolution algorithm is applied to the constraint itself:
+
+.. sourcecode:: sql
 
     CREATE TABLE some_table (
         id INTEGER NOT NULL,
@@ -456,7 +482,7 @@ resolution algorithm is applied to the constraint itself::
 .. _sqlite_on_conflict_insert:
 
 INSERT...ON CONFLICT (Upsert)
------------------------------------
+-----------------------------
 
 .. seealso:: This section describes the :term:`DML` version of "ON CONFLICT" for
    SQLite, which occurs within an INSERT statement.  For "ON CONFLICT" as
@@ -484,21 +510,18 @@ and :meth:`_sqlite.Insert.on_conflict_do_nothing`:
     >>> from sqlalchemy.dialects.sqlite import insert
 
     >>> insert_stmt = insert(my_table).values(
-    ...     id='some_existing_id',
-    ...     data='inserted value')
+    ...     id="some_existing_id", data="inserted value"
+    ... )
 
     >>> do_update_stmt = insert_stmt.on_conflict_do_update(
-    ...     index_elements=['id'],
-    ...     set_=dict(data='updated value')
+    ...     index_elements=["id"], set_=dict(data="updated value")
     ... )
 
     >>> print(do_update_stmt)
     {printsql}INSERT INTO my_table (id, data) VALUES (?, ?)
     ON CONFLICT (id) DO UPDATE SET data = ?{stop}
 
-    >>> do_nothing_stmt = insert_stmt.on_conflict_do_nothing(
-    ...     index_elements=['id']
-    ... )
+    >>> do_nothing_stmt = insert_stmt.on_conflict_do_nothing(index_elements=["id"])
 
     >>> print(do_nothing_stmt)
     {printsql}INSERT INTO my_table (id, data) VALUES (?, ?)
@@ -529,13 +552,13 @@ Both methods supply the "target" of the conflict using column inference:
 
   .. sourcecode:: pycon+sql
 
-        >>> stmt = insert(my_table).values(user_email='a@b.com', data='inserted data')
+        >>> stmt = insert(my_table).values(user_email="a@b.com", data="inserted data")
 
         >>> do_update_stmt = stmt.on_conflict_do_update(
         ...     index_elements=[my_table.c.user_email],
-        ...     index_where=my_table.c.user_email.like('%@gmail.com'),
-        ...     set_=dict(data=stmt.excluded.data)
-        ...     )
+        ...     index_where=my_table.c.user_email.like("%@gmail.com"),
+        ...     set_=dict(data=stmt.excluded.data),
+        ... )
 
         >>> print(do_update_stmt)
         {printsql}INSERT INTO my_table (data, user_email) VALUES (?, ?)
@@ -555,11 +578,10 @@ for UPDATE:
 
 .. sourcecode:: pycon+sql
 
-    >>> stmt = insert(my_table).values(id='some_id', data='inserted value')
+    >>> stmt = insert(my_table).values(id="some_id", data="inserted value")
 
     >>> do_update_stmt = stmt.on_conflict_do_update(
-    ...     index_elements=['id'],
-    ...     set_=dict(data='updated value')
+    ...     index_elements=["id"], set_=dict(data="updated value")
     ... )
 
     >>> print(do_update_stmt)
@@ -587,14 +609,12 @@ would have been inserted had the constraint not failed:
 .. sourcecode:: pycon+sql
 
     >>> stmt = insert(my_table).values(
-    ...     id='some_id',
-    ...     data='inserted value',
-    ...     author='jlh'
+    ...     id="some_id", data="inserted value", author="jlh"
     ... )
 
     >>> do_update_stmt = stmt.on_conflict_do_update(
-    ...     index_elements=['id'],
-    ...     set_=dict(data='updated value', author=stmt.excluded.author)
+    ...     index_elements=["id"],
+    ...     set_=dict(data="updated value", author=stmt.excluded.author),
     ... )
 
     >>> print(do_update_stmt)
@@ -611,15 +631,13 @@ parameter, which will limit those rows which receive an UPDATE:
 .. sourcecode:: pycon+sql
 
     >>> stmt = insert(my_table).values(
-    ...     id='some_id',
-    ...     data='inserted value',
-    ...     author='jlh'
+    ...     id="some_id", data="inserted value", author="jlh"
     ... )
 
     >>> on_update_stmt = stmt.on_conflict_do_update(
-    ...     index_elements=['id'],
-    ...     set_=dict(data='updated value', author=stmt.excluded.author),
-    ...     where=(my_table.c.status == 2)
+    ...     index_elements=["id"],
+    ...     set_=dict(data="updated value", author=stmt.excluded.author),
+    ...     where=(my_table.c.status == 2),
     ... )
     >>> print(on_update_stmt)
     {printsql}INSERT INTO my_table (id, data, author) VALUES (?, ?, ?)
@@ -636,8 +654,8 @@ using the :meth:`_sqlite.Insert.on_conflict_do_nothing` method:
 
 .. sourcecode:: pycon+sql
 
-    >>> stmt = insert(my_table).values(id='some_id', data='inserted value')
-    >>> stmt = stmt.on_conflict_do_nothing(index_elements=['id'])
+    >>> stmt = insert(my_table).values(id="some_id", data="inserted value")
+    >>> stmt = stmt.on_conflict_do_nothing(index_elements=["id"])
     >>> print(stmt)
     {printsql}INSERT INTO my_table (id, data) VALUES (?, ?) ON CONFLICT (id) DO NOTHING
 
@@ -648,7 +666,7 @@ occurs:
 
 .. sourcecode:: pycon+sql
 
-    >>> stmt = insert(my_table).values(id='some_id', data='inserted value')
+    >>> stmt = insert(my_table).values(id="some_id", data="inserted value")
     >>> stmt = stmt.on_conflict_do_nothing()
     >>> print(stmt)
     {printsql}INSERT INTO my_table (id, data) VALUES (?, ?) ON CONFLICT DO NOTHING
@@ -708,11 +726,16 @@ Partial Indexes
 A partial index, e.g. one which uses a WHERE clause, can be specified
 with the DDL system using the argument ``sqlite_where``::
 
-    tbl = Table('testtbl', m, Column('data', Integer))
-    idx = Index('test_idx1', tbl.c.data,
-                sqlite_where=and_(tbl.c.data > 5, tbl.c.data < 10))
+    tbl = Table("testtbl", m, Column("data", Integer))
+    idx = Index(
+        "test_idx1",
+        tbl.c.data,
+        sqlite_where=and_(tbl.c.data > 5, tbl.c.data < 10),
+    )
 
-The index will be rendered at create time as::
+The index will be rendered at create time as:
+
+.. sourcecode:: sql
 
     CREATE INDEX test_idx1 ON testtbl (data)
     WHERE data > 5 AND data < 10
@@ -732,7 +755,11 @@ The bug, entirely outside of SQLAlchemy, can be illustrated thusly::
 
     import sqlite3
 
-    assert sqlite3.sqlite_version_info < (3, 10, 0), "bug is fixed in this version"
+    assert sqlite3.sqlite_version_info < (
+        3,
+        10,
+        0,
+    ), "bug is fixed in this version"
 
     conn = sqlite3.connect(":memory:")
     cursor = conn.cursor()
@@ -742,17 +769,22 @@ The bug, entirely outside of SQLAlchemy, can be illustrated thusly::
     cursor.execute("insert into x (a, b) values (2, 2)")
 
     cursor.execute("select x.a, x.b from x")
-    assert [c[0] for c in cursor.description] == ['a', 'b']
+    assert [c[0] for c in cursor.description] == ["a", "b"]
 
-    cursor.execute('''
+    cursor.execute(
+        """
         select x.a, x.b from x where a=1
         union
         select x.a, x.b from x where a=2
-    ''')
-    assert [c[0] for c in cursor.description] == ['a', 'b'], \
-        [c[0] for c in cursor.description]
+        """
+    )
+    assert [c[0] for c in cursor.description] == ["a", "b"], [
+        c[0] for c in cursor.description
+    ]
 
-The second assertion fails::
+The second assertion fails:
+
+.. sourcecode:: text
 
     Traceback (most recent call last):
       File "test.py", line 19, in <module>
@@ -780,11 +812,13 @@ to filter these out::
     result = conn.exec_driver_sql("select x.a, x.b from x")
     assert result.keys() == ["a", "b"]
 
-    result = conn.exec_driver_sql('''
+    result = conn.exec_driver_sql(
+        """
         select x.a, x.b from x where a=1
         union
         select x.a, x.b from x where a=2
-    ''')
+        """
+    )
     assert result.keys() == ["a", "b"]
 
 Note that above, even though SQLAlchemy filters out the dots, *both
@@ -808,16 +842,20 @@ contain dots, and the functionality of :meth:`_engine.CursorResult.keys` and
 the ``sqlite_raw_colnames`` execution option may be provided, either on a
 per-:class:`_engine.Connection` basis::
 
-    result = conn.execution_options(sqlite_raw_colnames=True).exec_driver_sql('''
+    result = conn.execution_options(sqlite_raw_colnames=True).exec_driver_sql(
+        """
         select x.a, x.b from x where a=1
         union
         select x.a, x.b from x where a=2
-    ''')
+        """
+    )
     assert result.keys() == ["x.a", "x.b"]
 
 or on a per-:class:`_engine.Engine` basis::
 
-    engine = create_engine("sqlite://", execution_options={"sqlite_raw_colnames": True})
+    engine = create_engine(
+        "sqlite://", execution_options={"sqlite_raw_colnames": True}
+    )
 
 When using the per-:class:`_engine.Engine` execution option, note that
 **Core and ORM queries that use UNION may not function properly**.
@@ -866,7 +904,7 @@ passed to methods such as :meth:`_schema.MetaData.reflect` or
     `SQLite Internal Schema Objects <https://www.sqlite.org/fileformat2.html#intschema>`_ - in the SQLite
     documentation.
 
-"""  # noqa
+'''  # noqa
 from __future__ import annotations
 
 import datetime
@@ -980,7 +1018,9 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
 
         "%(year)04d-%(month)02d-%(day)02d %(hour)02d:%(minute)02d:%(second)02d.%(microsecond)06d"
 
-    e.g.::
+    e.g.:
+
+    .. sourcecode:: text
 
         2021-03-15 12:05:57.105542
 
@@ -996,9 +1036,11 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
         import re
         from sqlalchemy.dialects.sqlite import DATETIME
 
-        dt = DATETIME(storage_format="%(year)04d/%(month)02d/%(day)02d "
-                                     "%(hour)02d:%(minute)02d:%(second)02d",
-                      regexp=r"(\d+)/(\d+)/(\d+) (\d+)-(\d+)-(\d+)"
+        dt = DATETIME(
+            storage_format=(
+                "%(year)04d/%(month)02d/%(day)02d %(hour)02d:%(minute)02d:%(second)02d"
+            ),
+            regexp=r"(\d+)/(\d+)/(\d+) (\d+)-(\d+)-(\d+)",
         )
 
     :param storage_format: format string which will be applied to the dict
@@ -1088,7 +1130,9 @@ class DATE(_DateTimeMixin, sqltypes.Date):
 
         "%(year)04d-%(month)02d-%(day)02d"
 
-    e.g.::
+    e.g.:
+
+    .. sourcecode:: text
 
         2011-03-15
 
@@ -1106,9 +1150,9 @@ class DATE(_DateTimeMixin, sqltypes.Date):
         from sqlalchemy.dialects.sqlite import DATE
 
         d = DATE(
-                storage_format="%(month)02d/%(day)02d/%(year)04d",
-                regexp=re.compile("(?P<month>\d+)/(?P<day>\d+)/(?P<year>\d+)")
-            )
+            storage_format="%(month)02d/%(day)02d/%(year)04d",
+            regexp=re.compile("(?P<month>\d+)/(?P<day>\d+)/(?P<year>\d+)"),
+        )
 
     :param storage_format: format string which will be applied to the
      dict with keys year, month, and day.
@@ -1162,7 +1206,9 @@ class TIME(_DateTimeMixin, sqltypes.Time):
 
         "%(hour)02d:%(minute)02d:%(second)02d.%(microsecond)06d"
 
-    e.g.::
+    e.g.:
+
+    .. sourcecode:: text
 
         12:05:57.10558
 
@@ -1178,9 +1224,9 @@ class TIME(_DateTimeMixin, sqltypes.Time):
         import re
         from sqlalchemy.dialects.sqlite import TIME
 
-        t = TIME(storage_format="%(hour)02d-%(minute)02d-"
-                                "%(second)02d-%(microsecond)06d",
-                 regexp=re.compile("(\d+)-(\d+)-(\d+)-(?:-(\d+))?")
+        t = TIME(
+            storage_format="%(hour)02d-%(minute)02d-%(second)02d-%(microsecond)06d",
+            regexp=re.compile("(\d+)-(\d+)-(\d+)-(?:-(\d+))?"),
         )
 
     :param storage_format: format string which will be applied to the dict
@@ -1527,6 +1573,13 @@ class SQLiteCompiler(compiler.SQLCompiler):
             )
 
         return "ON CONFLICT %s DO UPDATE SET %s" % (target_text, action_text)
+
+    def visit_bitwise_xor_op_binary(self, binary, operator, **kw):
+        # sqlite has no xor. Use "a XOR b" = "(a | b) - (a & b)".
+        kw["eager_grouping"] = True
+        or_ = self._generate_generic_binary(binary, " | ", **kw)
+        and_ = self._generate_generic_binary(binary, " & ", **kw)
+        return f"({or_} - {and_})"
 
 
 class SQLiteDDLCompiler(compiler.DDLCompiler):
@@ -2030,9 +2083,9 @@ class SQLiteDialect(default.DefaultDialect):
             )
 
             if self.dbapi.sqlite_version_info < (3, 35) or util.pypy:
-                self.update_returning = (
-                    self.delete_returning
-                ) = self.insert_returning = False
+                self.update_returning = self.delete_returning = (
+                    self.insert_returning
+                ) = False
 
             if self.dbapi.sqlite_version_info < (3, 32, 0):
                 # https://www.sqlite.org/limits.html
@@ -2231,6 +2284,14 @@ class SQLiteDialect(default.DefaultDialect):
                 tablesql = self._get_table_sql(
                     connection, table_name, schema, **kw
                 )
+                # remove create table
+                match = re.match(
+                    r"create table .*?\((.*)\)$",
+                    tablesql.strip(),
+                    re.DOTALL | re.IGNORECASE,
+                )
+                assert match, f"create table not found in {tablesql}"
+                tablesql = match.group(1).strip()
 
             columns.append(
                 self._get_column_info(
@@ -2285,7 +2346,10 @@ class SQLiteDialect(default.DefaultDialect):
         if generated:
             sqltext = ""
             if tablesql:
-                pattern = r"[^,]*\s+AS\s+\(([^,]*)\)\s*(?:virtual|stored)?"
+                pattern = (
+                    r"[^,]*\s+GENERATED\s+ALWAYS\s+AS"
+                    r"\s+\((.*)\)\s*(?:virtual|stored)?"
+                )
                 match = re.search(
                     re.escape(name) + pattern, tablesql, re.IGNORECASE
                 )
@@ -2570,8 +2634,8 @@ class SQLiteDialect(default.DefaultDialect):
                 return
             UNIQUE_PATTERN = r'(?:CONSTRAINT "?(.+?)"? +)?UNIQUE *\((.+?)\)'
             INLINE_UNIQUE_PATTERN = (
-                r'(?:(".+?")|(?:[\[`])?([a-z0-9_]+)(?:[\]`])?) '
-                r"+[a-z0-9_ ]+? +UNIQUE"
+                r'(?:(".+?")|(?:[\[`])?([a-z0-9_]+)(?:[\]`])?)[\t ]'
+                r"+[a-z0-9_ ]+?[\t ]+UNIQUE"
             )
 
             for match in re.finditer(UNIQUE_PATTERN, table_data, re.I):
@@ -2606,15 +2670,21 @@ class SQLiteDialect(default.DefaultDialect):
             connection, table_name, schema=schema, **kw
         )
 
-        CHECK_PATTERN = r"(?:CONSTRAINT (.+) +)?" r"CHECK *\( *(.+) *\),? *"
-        cks = []
-        # NOTE: we aren't using re.S here because we actually are
-        # taking advantage of each CHECK constraint being all on one
-        # line in the table definition in order to delineate.  This
+        # NOTE NOTE NOTE
+        # DO NOT CHANGE THIS REGULAR EXPRESSION.   There is no known way
+        # to parse CHECK constraints that contain newlines themselves using
+        # regular expressions, and the approach here relies upon each
+        # individual
+        # CHECK constraint being on a single line by itself.   This
         # necessarily makes assumptions as to how the CREATE TABLE
-        # was emitted.
+        # was emitted.   A more comprehensive DDL parsing solution would be
+        # needed to improve upon the current situation. See #11840 for
+        # background
+        CHECK_PATTERN = r"(?:CONSTRAINT (.+) +)?CHECK *\( *(.+) *\),? *"
+        cks = []
 
         for match in re.finditer(CHECK_PATTERN, table_data or "", re.I):
+
             name = match.group(1)
 
             if name:

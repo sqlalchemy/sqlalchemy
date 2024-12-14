@@ -1,5 +1,5 @@
 # orm/relationships.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -19,6 +19,7 @@ import collections
 from collections import abc
 import dataclasses
 import inspect as _py_inspect
+import itertools
 import re
 import typing
 from typing import Any
@@ -26,6 +27,7 @@ from typing import Callable
 from typing import cast
 from typing import Collection
 from typing import Dict
+from typing import FrozenSet
 from typing import Generic
 from typing import Iterable
 from typing import Iterator
@@ -105,12 +107,12 @@ if typing.TYPE_CHECKING:
     from .clsregistry import _class_resolver
     from .clsregistry import _ModNS
     from .decl_base import _ClassScanMapperConfig
-    from .dependency import DependencyProcessor
+    from .dependency import _DependencyProcessor
     from .mapper import Mapper
     from .query import Query
     from .session import Session
     from .state import InstanceState
-    from .strategies import LazyLoader
+    from .strategies import _LazyLoader
     from .util import AliasedClass
     from .util import AliasedInsp
     from ..sql._typing import _CoreAdapterProto
@@ -176,10 +178,20 @@ _ORMOrderByArgument = Union[
     Callable[[], Iterable[_ColumnExpressionArgument[Any]]],
     Iterable[Union[str, _ColumnExpressionArgument[Any]]],
 ]
+_RelationshipBackPopulatesArgument = Union[
+    str,
+    PropComparator[Any],
+    Callable[[], Union[str, PropComparator[Any]]],
+]
+
+
 ORMBackrefArgument = Union[str, Tuple[str, Dict[str, Any]]]
 
 _ORMColCollectionElement = Union[
-    ColumnClause[Any], _HasClauseElement, roles.DMLColumnRole, "Mapped[Any]"
+    ColumnClause[Any],
+    _HasClauseElement[Any],
+    roles.DMLColumnRole,
+    "Mapped[Any]",
 ]
 _ORMColCollectionArgument = Union[
     str,
@@ -270,8 +282,30 @@ class _RelationshipArg(Generic[_T1, _T2]):
         else:
             self.resolved = attr_value
 
+    def effective_value(self) -> Any:
+        if self.resolved is not None:
+            return self.resolved
+        else:
+            return self.argument
+
 
 _RelationshipOrderByArg = Union[Literal[False], Tuple[ColumnElement[Any], ...]]
+
+
+@dataclasses.dataclass
+class _StringRelationshipArg(_RelationshipArg[_T1, _T2]):
+    def _resolve_against_registry(
+        self, clsregistry_resolver: Callable[[str, bool], _class_resolver]
+    ) -> None:
+        attr_value = self.argument
+
+        if callable(attr_value):
+            attr_value = attr_value()
+
+        if isinstance(attr_value, attributes.QueryableAttribute):
+            attr_value = attr_value.key  # type: ignore
+
+        self.resolved = attr_value
 
 
 class _RelationshipArgs(NamedTuple):
@@ -299,6 +333,9 @@ class _RelationshipArgs(NamedTuple):
     remote_side: _RelationshipArg[
         Optional[_ORMColCollectionArgument], Set[ColumnElement[Any]]
     ]
+    back_populates: _StringRelationshipArg[
+        Optional[_RelationshipBackPopulatesArgument], str
+    ]
 
 
 @log.class_logger
@@ -325,7 +362,7 @@ class RelationshipProperty(
 
     _overlaps: Sequence[str]
 
-    _lazy_strategy: LazyLoader
+    _lazy_strategy: _LazyLoader
 
     _persistence_only = dict(
         passive_deletes=False,
@@ -335,12 +372,12 @@ class RelationshipProperty(
         cascade_backrefs=False,
     )
 
-    _dependency_processor: Optional[DependencyProcessor] = None
+    _dependency_processor: Optional[_DependencyProcessor] = None
 
     primaryjoin: ColumnElement[bool]
     secondaryjoin: Optional[ColumnElement[bool]]
     secondary: Optional[FromClause]
-    _join_condition: JoinCondition
+    _join_condition: _JoinCondition
     order_by: _RelationshipOrderByArg
 
     _user_defined_foreign_keys: Set[ColumnElement[Any]]
@@ -369,7 +406,7 @@ class RelationshipProperty(
         ] = None,
         primaryjoin: Optional[_RelationshipJoinConditionArgument] = None,
         secondaryjoin: Optional[_RelationshipJoinConditionArgument] = None,
-        back_populates: Optional[str] = None,
+        back_populates: Optional[_RelationshipBackPopulatesArgument] = None,
         order_by: _ORMOrderByArgument = False,
         backref: Optional[ORMBackrefArgument] = None,
         overlaps: Optional[str] = None,
@@ -414,6 +451,7 @@ class RelationshipProperty(
             _RelationshipArg("order_by", order_by, None),
             _RelationshipArg("foreign_keys", foreign_keys, None),
             _RelationshipArg("remote_side", remote_side, None),
+            _StringRelationshipArg("back_populates", back_populates, None),
         )
 
         self.post_update = post_update
@@ -484,9 +522,7 @@ class RelationshipProperty(
         # mypy ignoring the @property setter
         self.cascade = cascade  # type: ignore
 
-        self.back_populates = back_populates
-
-        if self.back_populates:
+        if back_populates:
             if backref:
                 raise sa_exc.ArgumentError(
                     "backref and back_populates keyword arguments "
@@ -495,6 +531,14 @@ class RelationshipProperty(
             self.backref = None
         else:
             self.backref = backref
+
+    @property
+    def back_populates(self) -> str:
+        return self._init_args.back_populates.effective_value()  # type: ignore
+
+    @back_populates.setter
+    def back_populates(self, value: str) -> None:
+        self._init_args.back_populates.argument = value
 
     def _warn_for_persistence_only_flags(self, **kw: Any) -> None:
         for k, v in kw.items():
@@ -515,7 +559,7 @@ class RelationshipProperty(
                 )
 
     def instrument_class(self, mapper: Mapper[Any]) -> None:
-        attributes.register_descriptor(
+        attributes._register_descriptor(
             mapper.class_,
             self.key,
             comparator=self.comparator_factory(self, mapper),
@@ -704,12 +748,16 @@ class RelationshipProperty(
         def __eq__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
             """Implement the ``==`` operator.
 
-            In a many-to-one context, such as::
+            In a many-to-one context, such as:
+
+            .. sourcecode:: text
 
               MyClass.some_prop == <some object>
 
             this will typically produce a
-            clause such as::
+            clause such as:
+
+            .. sourcecode:: text
 
               mytable.related_id == <some id>
 
@@ -872,11 +920,12 @@ class RelationshipProperty(
             An expression like::
 
                 session.query(MyClass).filter(
-                    MyClass.somereference.any(SomeRelated.x==2)
+                    MyClass.somereference.any(SomeRelated.x == 2)
                 )
 
+            Will produce a query like:
 
-            Will produce a query like::
+            .. sourcecode:: sql
 
                 SELECT * FROM my_table WHERE
                 EXISTS (SELECT 1 FROM related WHERE related.my_id=my_table.id
@@ -890,11 +939,11 @@ class RelationshipProperty(
             :meth:`~.Relationship.Comparator.any` is particularly
             useful for testing for empty collections::
 
-                session.query(MyClass).filter(
-                    ~MyClass.somereference.any()
-                )
+                session.query(MyClass).filter(~MyClass.somereference.any())
 
-            will produce::
+            will produce:
+
+            .. sourcecode:: sql
 
                 SELECT * FROM my_table WHERE
                 NOT (EXISTS (SELECT 1 FROM related WHERE
@@ -925,11 +974,12 @@ class RelationshipProperty(
             An expression like::
 
                 session.query(MyClass).filter(
-                    MyClass.somereference.has(SomeRelated.x==2)
+                    MyClass.somereference.has(SomeRelated.x == 2)
                 )
 
+            Will produce a query like:
 
-            Will produce a query like::
+            .. sourcecode:: sql
 
                 SELECT * FROM my_table WHERE
                 EXISTS (SELECT 1 FROM related WHERE
@@ -948,7 +998,7 @@ class RelationshipProperty(
             """
             if self.property.uselist:
                 raise sa_exc.InvalidRequestError(
-                    "'has()' not implemented for collections.  " "Use any()."
+                    "'has()' not implemented for collections. Use any()."
                 )
             return self._criterion_exists(criterion, **kwargs)
 
@@ -968,7 +1018,9 @@ class RelationshipProperty(
 
                 MyClass.contains(other)
 
-            Produces a clause like::
+            Produces a clause like:
+
+            .. sourcecode:: sql
 
                 mytable.id == <some id>
 
@@ -988,7 +1040,9 @@ class RelationshipProperty(
 
                 query(MyClass).filter(MyClass.contains(other))
 
-            Produces a query like::
+            Produces a query like:
+
+            .. sourcecode:: sql
 
                 SELECT * FROM my_table, my_association_table AS
                 my_association_table_1 WHERE
@@ -1084,11 +1138,15 @@ class RelationshipProperty(
         def __ne__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
             """Implement the ``!=`` operator.
 
-            In a many-to-one context, such as::
+            In a many-to-one context, such as:
+
+            .. sourcecode:: text
 
               MyClass.some_prop != <some object>
 
-            This will typically produce a clause such as::
+            This will typically produce a clause such as:
+
+            .. sourcecode:: sql
 
               mytable.related_id != <some id>
 
@@ -1304,9 +1362,11 @@ class RelationshipProperty(
                 state,
                 dict_,
                 column,
-                passive=PassiveFlag.PASSIVE_OFF
-                if state.persistent
-                else PassiveFlag.PASSIVE_NO_FETCH ^ PassiveFlag.INIT_OK,
+                passive=(
+                    PassiveFlag.PASSIVE_OFF
+                    if state.persistent
+                    else PassiveFlag.PASSIVE_NO_FETCH ^ PassiveFlag.INIT_OK
+                ),
             )
 
             if current_value is LoaderCallableStatus.NEVER_SET:
@@ -1641,7 +1701,7 @@ class RelationshipProperty(
         self._join_condition._warn_for_conflicting_sync_targets()
         super().do_init()
         self._lazy_strategy = cast(
-            "LazyLoader", self._get_strategy((("lazy", "select"),))
+            "_LazyLoader", self._get_strategy((("lazy", "select"),))
         )
 
     def _setup_registry_dependencies(self) -> None:
@@ -1669,6 +1729,7 @@ class RelationshipProperty(
             "secondary",
             "foreign_keys",
             "remote_side",
+            "back_populates",
         ):
             rel_arg = getattr(init_args, attr)
 
@@ -1748,19 +1809,17 @@ class RelationshipProperty(
         argument = extracted_mapped_annotation
         assert originating_module is not None
 
-        is_write_only = mapped_container is not None and issubclass(
-            mapped_container, WriteOnlyMapped
-        )
-        if is_write_only:
-            self.lazy = "write_only"
-            self.strategy_key = (("lazy", self.lazy),)
-
-        is_dynamic = mapped_container is not None and issubclass(
-            mapped_container, DynamicMapped
-        )
-        if is_dynamic:
-            self.lazy = "dynamic"
-            self.strategy_key = (("lazy", self.lazy),)
+        if mapped_container is not None:
+            is_write_only = issubclass(mapped_container, WriteOnlyMapped)
+            is_dynamic = issubclass(mapped_container, DynamicMapped)
+            if is_write_only:
+                self.lazy = "write_only"
+                self.strategy_key = (("lazy", self.lazy),)
+            elif is_dynamic:
+                self.lazy = "dynamic"
+                self.strategy_key = (("lazy", self.lazy),)
+        else:
+            is_write_only = is_dynamic = False
 
         argument = de_optionalize_union_types(argument)
 
@@ -1811,15 +1870,12 @@ class RelationshipProperty(
                 argument, originating_module
             )
 
-            # we don't allow the collection class to be a
-            # __forward_arg__ right now, so if we see a forward arg here,
-            # we know there was no collection class either
-            if (
-                self.collection_class is None
-                and not is_write_only
-                and not is_dynamic
-            ):
-                self.uselist = False
+        if (
+            self.collection_class is None
+            and not is_write_only
+            and not is_dynamic
+        ):
+            self.uselist = False
 
         # ticket #8759
         # if a lead argument was given to relationship(), like
@@ -1879,7 +1935,7 @@ class RelationshipProperty(
         self.target = self.entity.persist_selectable
 
     def _setup_join_conditions(self) -> None:
-        self._join_condition = jc = JoinCondition(
+        self._join_condition = jc = _JoinCondition(
             parent_persist_selectable=self.parent.persist_selectable,
             child_persist_selectable=self.entity.persist_selectable,
             parent_local_selectable=self.parent.local_table,
@@ -1999,9 +2055,11 @@ class RelationshipProperty(
                 "the single_parent=True flag."
                 % {
                     "rel": self,
-                    "direction": "many-to-one"
-                    if self.direction is MANYTOONE
-                    else "many-to-many",
+                    "direction": (
+                        "many-to-one"
+                        if self.direction is MANYTOONE
+                        else "many-to-many"
+                    ),
                     "clsname": self.parent.class_.__name__,
                     "relatedcls": self.mapper.class_.__name__,
                 },
@@ -2054,7 +2112,10 @@ class RelationshipProperty(
 
         if self.parent.non_primary:
             return
-        if self.backref is not None and not self.back_populates:
+
+        resolve_back_populates = self._init_args.back_populates.resolved
+
+        if self.backref is not None and not resolve_back_populates:
             kwargs: Dict[str, Any]
             if isinstance(self.backref, str):
                 backref_key, kwargs = self.backref, {}
@@ -2125,8 +2186,18 @@ class RelationshipProperty(
                 backref_key, relationship, warn_for_existing=True
             )
 
-        if self.back_populates:
-            self._add_reverse_property(self.back_populates)
+        if resolve_back_populates:
+            if isinstance(resolve_back_populates, PropComparator):
+                back_populates = resolve_back_populates.prop.key
+            elif isinstance(resolve_back_populates, str):
+                back_populates = resolve_back_populates
+            else:
+                # need test coverage for this case as well
+                raise sa_exc.ArgumentError(
+                    f"Invalid back_populates value: {resolve_back_populates!r}"
+                )
+
+            self._add_reverse_property(back_populates)
 
     @util.preload_module("sqlalchemy.orm.dependency")
     def _post_init(self) -> None:
@@ -2136,7 +2207,7 @@ class RelationshipProperty(
             self.uselist = self.direction is not MANYTOONE
         if not self.viewonly:
             self._dependency_processor = (  # type: ignore
-                dependency.DependencyProcessor.from_relationship
+                dependency._DependencyProcessor.from_relationship
             )(self)
 
     @util.memoized_property
@@ -2248,7 +2319,7 @@ def _annotate_columns(element: _CE, annotations: _AnnotationDict) -> _CE:
     return element
 
 
-class JoinCondition:
+class _JoinCondition:
     primaryjoin_initial: Optional[ColumnElement[bool]]
     primaryjoin: ColumnElement[bool]
     secondaryjoin: Optional[ColumnElement[bool]]
@@ -3052,9 +3123,9 @@ class JoinCondition:
 
     def _setup_pairs(self) -> None:
         sync_pairs: _MutableColumnPairs = []
-        lrp: util.OrderedSet[
-            Tuple[ColumnElement[Any], ColumnElement[Any]]
-        ] = util.OrderedSet([])
+        lrp: util.OrderedSet[Tuple[ColumnElement[Any], ColumnElement[Any]]] = (
+            util.OrderedSet([])
+        )
         secondary_sync_pairs: _MutableColumnPairs = []
 
         def go(
@@ -3131,9 +3202,9 @@ class JoinCondition:
             # level configuration that benefits from this warning.
 
             if to_ not in self._track_overlapping_sync_targets:
-                self._track_overlapping_sync_targets[
-                    to_
-                ] = weakref.WeakKeyDictionary({self.prop: from_})
+                self._track_overlapping_sync_targets[to_] = (
+                    weakref.WeakKeyDictionary({self.prop: from_})
+                )
             else:
                 other_props = []
                 prop_to_from = self._track_overlapping_sync_targets[to_]
@@ -3231,6 +3302,15 @@ class JoinCondition:
             if annotation_set.issubset(col._annotations)
         }
 
+    @util.memoized_property
+    def _secondary_lineage_set(self) -> FrozenSet[ColumnElement[Any]]:
+        if self.secondary is not None:
+            return frozenset(
+                itertools.chain(*[c.proxy_set for c in self.secondary.c])
+            )
+        else:
+            return util.EMPTY_SET
+
     def join_targets(
         self,
         source_selectable: Optional[FromClause],
@@ -3281,23 +3361,25 @@ class JoinCondition:
 
         if extra_criteria:
 
-            def mark_unrelated_columns_as_ok_to_adapt(
+            def mark_exclude_cols(
                 elem: SupportsAnnotations, annotations: _AnnotationDict
             ) -> SupportsAnnotations:
-                """note unrelated columns in the "extra criteria" as OK
-                to adapt, even though they are not part of our "local"
-                or "remote" side.
+                """note unrelated columns in the "extra criteria" as either
+                should be adapted or not adapted, even though they are not
+                part of our "local" or "remote" side.
 
-                see #9779 for this case
+                see #9779 for this case, as well as #11010 for a follow up
 
                 """
 
                 parentmapper_for_element = elem._annotations.get(
                     "parentmapper", None
                 )
+
                 if (
                     parentmapper_for_element is not self.prop.parent
                     and parentmapper_for_element is not self.prop.mapper
+                    and elem not in self._secondary_lineage_set
                 ):
                     return _safe_annotate(elem, annotations)
                 else:
@@ -3306,8 +3388,8 @@ class JoinCondition:
             extra_criteria = tuple(
                 _deep_annotate(
                     elem,
-                    {"ok_to_adapt_in_join_condition": True},
-                    annotate_callable=mark_unrelated_columns_as_ok_to_adapt,
+                    {"should_not_adapt": True},
+                    annotate_callable=mark_exclude_cols,
                 )
                 for elem in extra_criteria
             )
@@ -3321,14 +3403,16 @@ class JoinCondition:
             if secondary is not None:
                 secondary = secondary._anonymous_fromclause(flat=True)
                 primary_aliasizer = ClauseAdapter(
-                    secondary, exclude_fn=_ColInAnnotations("local")
+                    secondary,
+                    exclude_fn=_local_col_exclude,
                 )
                 secondary_aliasizer = ClauseAdapter(
                     dest_selectable, equivalents=self.child_equivalents
                 ).chain(primary_aliasizer)
                 if source_selectable is not None:
                     primary_aliasizer = ClauseAdapter(
-                        secondary, exclude_fn=_ColInAnnotations("local")
+                        secondary,
+                        exclude_fn=_local_col_exclude,
                     ).chain(
                         ClauseAdapter(
                             source_selectable,
@@ -3340,14 +3424,14 @@ class JoinCondition:
             else:
                 primary_aliasizer = ClauseAdapter(
                     dest_selectable,
-                    exclude_fn=_ColInAnnotations("local"),
+                    exclude_fn=_local_col_exclude,
                     equivalents=self.child_equivalents,
                 )
                 if source_selectable is not None:
                     primary_aliasizer.chain(
                         ClauseAdapter(
                             source_selectable,
-                            exclude_fn=_ColInAnnotations("remote"),
+                            exclude_fn=_remote_col_exclude,
                             equivalents=self.parent_equivalents,
                         )
                     )
@@ -3366,9 +3450,7 @@ class JoinCondition:
             dest_selectable,
         )
 
-    def create_lazy_clause(
-        self, reverse_direction: bool = False
-    ) -> Tuple[
+    def create_lazy_clause(self, reverse_direction: bool = False) -> Tuple[
         ColumnElement[bool],
         Dict[str, ColumnElement[Any]],
         Dict[ColumnElement[Any], ColumnElement[Any]],
@@ -3428,25 +3510,29 @@ class JoinCondition:
 
 
 class _ColInAnnotations:
-    """Serializable object that tests for a name in c._annotations."""
+    """Serializable object that tests for names in c._annotations.
 
-    __slots__ = ("name",)
+    TODO: does this need to be serializable anymore?  can we find what the
+    use case was for that?
 
-    def __init__(self, name: str):
-        self.name = name
+    """
+
+    __slots__ = ("names",)
+
+    def __init__(self, *names: str):
+        self.names = frozenset(names)
 
     def __call__(self, c: ClauseElement) -> bool:
-        return (
-            self.name in c._annotations
-            or "ok_to_adapt_in_join_condition" in c._annotations
-        )
+        return bool(self.names.intersection(c._annotations))
 
 
-class Relationship(  # type: ignore
+_local_col_exclude = _ColInAnnotations("local", "should_not_adapt")
+_remote_col_exclude = _ColInAnnotations("remote", "should_not_adapt")
+
+
+class Relationship(
     RelationshipProperty[_T],
     _DeclarativeMapped[_T],
-    WriteOnlyMapped[_T],  # not compatible with Mapped[_T]
-    DynamicMapped[_T],  # not compatible with Mapped[_T]
 ):
     """Describes an object property that holds a single item or list
     of items that correspond to a related database table.
@@ -3464,3 +3550,18 @@ class Relationship(  # type: ignore
 
     inherit_cache = True
     """:meta private:"""
+
+
+class _RelationshipDeclared(  # type: ignore[misc]
+    Relationship[_T],
+    WriteOnlyMapped[_T],  # not compatible with Mapped[_T]
+    DynamicMapped[_T],  # not compatible with Mapped[_T]
+):
+    """Relationship subclass used implicitly for declarative mapping."""
+
+    inherit_cache = True
+    """:meta private:"""
+
+    @classmethod
+    def _mapper_property_name(cls) -> str:
+        return "Relationship"

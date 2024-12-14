@@ -8,11 +8,15 @@ from sqlalchemy import Boolean
 from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
+from sqlalchemy import Index
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import join
 from sqlalchemy import select
 from sqlalchemy import String
+from sqlalchemy import testing
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import declarative_base
@@ -30,7 +34,6 @@ from sqlalchemy.testing import ne_
 from sqlalchemy.testing.entities import ComparableEntity
 from .history_meta import Versioned
 from .history_meta import versioned_session
-
 
 warnings.simplefilter("error")
 
@@ -126,6 +129,98 @@ class TestVersioning(AssertsCompiledSQL):
                 SomeClassHistory(version=3, name="sc1modified2"),
             ],
         )
+
+    @testing.variation(
+        "constraint_type",
+        [
+            "index_single_col",
+            "composite_index",
+            "explicit_name_index",
+            "unique_constraint",
+            "unique_constraint_naming_conv",
+            "unique_constraint_explicit_name",
+            "fk_constraint",
+            "fk_constraint_naming_conv",
+            "fk_constraint_explicit_name",
+        ],
+    )
+    def test_index_naming(self, constraint_type):
+        """test #10920"""
+
+        if (
+            constraint_type.unique_constraint_naming_conv
+            or constraint_type.fk_constraint_naming_conv
+        ):
+            self.Base.metadata.naming_convention = {
+                "ix": "ix_%(column_0_label)s",
+                "uq": "uq_%(table_name)s_%(column_0_name)s",
+                "fk": (
+                    "fk_%(table_name)s_%(column_0_name)s"
+                    "_%(referred_table_name)s"
+                ),
+            }
+
+        if (
+            constraint_type.fk_constraint
+            or constraint_type.fk_constraint_naming_conv
+            or constraint_type.fk_constraint_explicit_name
+        ):
+
+            class Related(self.Base):
+                __tablename__ = "related"
+
+                id = Column(Integer, primary_key=True)
+
+        class SomeClass(Versioned, self.Base):
+            __tablename__ = "sometable"
+
+            id = Column(Integer, primary_key=True)
+            x = Column(Integer)
+            y = Column(Integer)
+
+            # Index objects are copied and these have to have a new name
+            if constraint_type.index_single_col:
+                __table_args__ = (
+                    Index(
+                        None,
+                        x,
+                    ),
+                )
+            elif constraint_type.composite_index:
+                __table_args__ = (Index(None, x, y),)
+            elif constraint_type.explicit_name_index:
+                __table_args__ = (Index("my_index", x, y),)
+            # unique constraint objects are discarded.
+            elif (
+                constraint_type.unique_constraint
+                or constraint_type.unique_constraint_naming_conv
+            ):
+                __table_args__ = (UniqueConstraint(x, y),)
+            elif constraint_type.unique_constraint_explicit_name:
+                __table_args__ = (UniqueConstraint(x, y, name="my_uq"),)
+            # foreign key constraint objects are copied and have the same
+            # name, but no database in Core has any problem with this as the
+            # names are local to the parent table.
+            elif (
+                constraint_type.fk_constraint
+                or constraint_type.fk_constraint_naming_conv
+            ):
+                __table_args__ = (ForeignKeyConstraint([x], [Related.id]),)
+            elif constraint_type.fk_constraint_explicit_name:
+                __table_args__ = (
+                    ForeignKeyConstraint([x], [Related.id], name="my_fk"),
+                )
+            else:
+                constraint_type.fail()
+
+        eq_(
+            set(idx.name + "_history" for idx in SomeClass.__table__.indexes),
+            set(
+                idx.name
+                for idx in SomeClass.__history_mapper__.local_table.indexes
+            ),
+        )
+        self.create_tables()
 
     def test_discussion_9546(self):
         class ThingExternal(Versioned, self.Base):
@@ -785,6 +880,79 @@ class TestVersioning(AssertsCompiledSQL):
         # If previous assertion fails, this will also fail:
         sc2.name = "sc2 modified"
         sess.commit()
+
+    def test_external_id(self):
+        class ObjectExternal(Versioned, self.Base, ComparableEntity):
+            __tablename__ = "externalobjects"
+
+            id1 = Column(String(3), primary_key=True)
+            id2 = Column(String(3), primary_key=True)
+            name = Column(String(50))
+
+        self.create_tables()
+        sess = self.session
+        sc = ObjectExternal(id1="aaa", id2="bbb", name="sc1")
+        sess.add(sc)
+        sess.commit()
+
+        sc.name = "sc1modified"
+        sess.commit()
+
+        assert sc.version == 2
+
+        ObjectExternalHistory = ObjectExternal.__history_mapper__.class_
+
+        eq_(
+            sess.query(ObjectExternalHistory).all(),
+            [
+                ObjectExternalHistory(
+                    version=1, id1="aaa", id2="bbb", name="sc1"
+                ),
+            ],
+        )
+
+        sess.delete(sc)
+        sess.commit()
+
+        assert sess.query(ObjectExternal).count() == 0
+
+        eq_(
+            sess.query(ObjectExternalHistory).all(),
+            [
+                ObjectExternalHistory(
+                    version=1, id1="aaa", id2="bbb", name="sc1"
+                ),
+                ObjectExternalHistory(
+                    version=2, id1="aaa", id2="bbb", name="sc1modified"
+                ),
+            ],
+        )
+
+        sc = ObjectExternal(id1="aaa", id2="bbb", name="sc1reappeared")
+        sess.add(sc)
+        sess.commit()
+
+        assert sc.version == 3
+
+        sc.name = "sc1reappearedmodified"
+        sess.commit()
+
+        assert sc.version == 4
+
+        eq_(
+            sess.query(ObjectExternalHistory).all(),
+            [
+                ObjectExternalHistory(
+                    version=1, id1="aaa", id2="bbb", name="sc1"
+                ),
+                ObjectExternalHistory(
+                    version=2, id1="aaa", id2="bbb", name="sc1modified"
+                ),
+                ObjectExternalHistory(
+                    version=3, id1="aaa", id2="bbb", name="sc1reappeared"
+                ),
+            ],
+        )
 
 
 class TestVersioningNewBase(TestVersioning):

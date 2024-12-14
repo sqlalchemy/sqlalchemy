@@ -4,7 +4,6 @@ import contextlib
 from typing import List
 from typing import Optional
 
-from sqlalchemy import Column
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
@@ -47,6 +46,7 @@ from sqlalchemy.testing.assertions import is_false
 from sqlalchemy.testing.assertions import not_in
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.provision import normalize_sequence
+from sqlalchemy.testing.schema import Column
 from .test_engine_py3k import AsyncFixture as _AsyncFixture
 from ...orm import _fixtures
 
@@ -314,6 +314,7 @@ class AsyncSessionQueryTest(AsyncFixture):
 
     @testing.combinations("statement", "execute", argnames="location")
     @async_test
+    @testing.requires.server_side_cursors
     async def test_no_ss_cursor_w_execute(self, async_session, location):
         User = self.classes.User
 
@@ -767,7 +768,9 @@ class AsyncORMBehaviorsTest(AsyncFixture):
             class A:
                 __tablename__ = "a"
 
-                id = Column(Integer, primary_key=True)
+                id = Column(
+                    Integer, primary_key=True, test_needs_autoincrement=True
+                )
                 b = relationship(
                     "B",
                     uselist=False,
@@ -779,7 +782,9 @@ class AsyncORMBehaviorsTest(AsyncFixture):
             @registry.mapped
             class B:
                 __tablename__ = "b"
-                id = Column(Integer, primary_key=True)
+                id = Column(
+                    Integer, primary_key=True, test_needs_autoincrement=True
+                )
                 a_id = Column(ForeignKey("a.id"))
 
             async with async_engine.begin() as conn:
@@ -790,14 +795,8 @@ class AsyncORMBehaviorsTest(AsyncFixture):
         return go
 
     @testing.combinations(
-        (
-            "legacy_style",
-            True,
-        ),
-        (
-            "new_style",
-            False,
-        ),
+        ("legacy_style", True),
+        ("new_style", False),
         argnames="_legacy_inactive_history_style",
         id_="ia",
     )

@@ -4,9 +4,9 @@ an adjacency list model.
 
 E.g.::
 
-    node = TreeNode('rootnode')
-    node.append('node1')
-    node.append('node3')
+    node = TreeNode("rootnode")
+    node.append("node1")
+    node.append("node3")
     session.add(node)
     session.commit()
 

@@ -52,6 +52,7 @@ from sqlalchemy.dialects.postgresql import TSQUERY
 from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
+from sqlalchemy.dialects.postgresql.ranges import MultiRange
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import Session
@@ -262,7 +263,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             postgresql.CreateEnumType(e2),
-            "CREATE TYPE someschema.somename AS ENUM " "('x', 'y', 'z')",
+            "CREATE TYPE someschema.somename AS ENUM ('x', 'y', 'z')",
         )
         self.assert_compile(postgresql.DropEnumType(e1), "DROP TYPE somename")
         self.assert_compile(
@@ -271,7 +272,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = Table("sometable", MetaData(), Column("somecolumn", e1))
         self.assert_compile(
             schema.CreateTable(t1),
-            "CREATE TABLE sometable (somecolumn " "somename)",
+            "CREATE TABLE sometable (somecolumn somename)",
         )
         t1 = Table(
             "sometable",
@@ -582,6 +583,19 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TABLE atable (id INTEGER) ON COMMIT DROP",
         )
 
+    def test_create_table_with_using_option(self):
+        m = MetaData()
+        tbl = Table(
+            "atable",
+            m,
+            Column("id", Integer),
+            postgresql_using="heap",
+        )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE atable (id INTEGER) USING heap",
+        )
+
     def test_create_table_with_multiple_options(self):
         m = MetaData()
         tbl = Table(
@@ -591,10 +605,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             postgresql_tablespace="sometablespace",
             postgresql_with_oids=False,
             postgresql_on_commit="preserve_rows",
+            postgresql_using="heap",
         )
         self.assert_compile(
             schema.CreateTable(tbl),
-            "CREATE TABLE atable (id INTEGER) WITHOUT OIDS "
+            "CREATE TABLE atable (id INTEGER) USING heap WITHOUT OIDS "
             "ON COMMIT PRESERVE ROWS TABLESPACE sometablespace",
         )
 
@@ -668,7 +683,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(idx),
-            "CREATE INDEX test_idx1 ON testtbl " "(data text_pattern_ops)",
+            "CREATE INDEX test_idx1 ON testtbl (data text_pattern_ops)",
             dialect=postgresql.dialect(),
         )
         self.assert_compile(
@@ -711,7 +726,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                     unique=True,
                 )
             ),
-            "CREATE UNIQUE INDEX test_idx3 ON test_tbl " "(data3)",
+            "CREATE UNIQUE INDEX test_idx3 ON test_tbl (data3)",
         ),
         (
             lambda tbl: schema.CreateIndex(
@@ -878,17 +893,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(idx1),
-            "CREATE INDEX test_idx1 ON testtbl " "(data)",
+            "CREATE INDEX test_idx1 ON testtbl (data)",
             dialect=postgresql.dialect(),
         )
         self.assert_compile(
             schema.CreateIndex(idx2),
-            "CREATE INDEX test_idx2 ON testtbl " "USING btree (data)",
+            "CREATE INDEX test_idx2 ON testtbl USING btree (data)",
             dialect=postgresql.dialect(),
         )
         self.assert_compile(
             schema.CreateIndex(idx3),
-            "CREATE INDEX test_idx3 ON testtbl " "USING hash (data)",
+            "CREATE INDEX test_idx3 ON testtbl USING hash (data)",
             dialect=postgresql.dialect(),
         )
 
@@ -909,7 +924,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(idx1),
-            "CREATE INDEX test_idx1 ON testtbl " "(data)",
+            "CREATE INDEX test_idx1 ON testtbl (data)",
         )
         self.assert_compile(
             schema.CreateIndex(idx2),
@@ -932,7 +947,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateIndex(
                 Index("test_idx1", tbl.c.data, postgresql_using="GIST")
             ),
-            "CREATE INDEX test_idx1 ON testtbl " "USING gist (data)",
+            "CREATE INDEX test_idx1 ON testtbl USING gist (data)",
         )
 
         self.assert_compile(
@@ -974,7 +989,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(idx1),
-            "CREATE INDEX test_idx1 ON testtbl " "(data)",
+            "CREATE INDEX test_idx1 ON testtbl (data)",
             dialect=postgresql.dialect(),
         )
         self.assert_compile(
@@ -2069,7 +2084,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         # default dialect does not, as DBAPIs may be doing this for us
         self.assert_compile(
             t.update().values({t.c.data[2:5]: [2, 3, 4]}),
-            "UPDATE t SET data[%s:%s]=" "%s",
+            "UPDATE t SET data[%s:%s]=%s",
             checkparams={"param_1": [2, 3, 4], "data_2": 5, "data_1": 2},
             dialect=PGDialect(paramstyle="format"),
         )
@@ -2125,7 +2140,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         tbl3 = Table("testtbl3", m, Column("id", Integer), schema="testschema")
         stmt = tbl3.select().with_hint(tbl3, "ONLY", "postgresql")
         expected = (
-            "SELECT testschema.testtbl3.id FROM " "ONLY testschema.testtbl3"
+            "SELECT testschema.testtbl3.id FROM ONLY testschema.testtbl3"
         )
         self.assert_compile(stmt, expected)
 
@@ -2574,7 +2589,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(expr, expected)
 
-    def test_custom_object_hook(self):
+    def test_range_custom_object_hook(self):
         # See issue #8884
         from datetime import date
 
@@ -2592,6 +2607,30 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             stmt,
             "SELECT sum(usages.amount) AS sum_1 FROM usages "
             "WHERE usages.date <@ %(date_1)s::DATERANGE",
+        )
+
+    def test_multirange_custom_object_hook(self):
+        from datetime import date
+
+        usages = table(
+            "usages",
+            column("id", Integer),
+            column("date", Date),
+            column("amount", Integer),
+        )
+        period = MultiRange(
+            [
+                Range(date(2022, 1, 1), (2023, 1, 1)),
+                Range(date(2024, 1, 1), (2025, 1, 1)),
+            ]
+        )
+        stmt = select(func.sum(usages.c.amount)).where(
+            usages.c.date.op("<@")(period)
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT sum(usages.amount) AS sum_1 FROM usages "
+            "WHERE usages.date <@ %(date_1)s::DATEMULTIRANGE",
         )
 
     def test_bitwise_xor(self):
@@ -3214,7 +3253,6 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
 
 
 class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
-
     """Test 'DISTINCT' with SQL expression language and orm.Query with
     an emphasis on PG's 'DISTINCT ON' syntax.
 
@@ -3283,7 +3321,7 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
         sess = Session()
         self.assert_compile(
             sess.query(self.table).distinct(),
-            "SELECT DISTINCT t.id AS t_id, t.a AS t_a, " "t.b AS t_b FROM t",
+            "SELECT DISTINCT t.id AS t_id, t.a AS t_a, t.b AS t_b FROM t",
         )
 
     def test_query_on_columns(self):
@@ -3368,7 +3406,6 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
 
 
 class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
-
     """Tests for full text searching"""
 
     __dialect__ = postgresql.dialect()

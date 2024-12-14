@@ -1,5 +1,5 @@
 # orm/interfaces.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -37,6 +37,7 @@ from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+from typing import TypedDict
 from typing import TypeVar
 from typing import Union
 
@@ -71,7 +72,9 @@ from ..sql.schema import Column
 from ..sql.type_api import TypeEngine
 from ..util import warn_deprecated
 from ..util.typing import RODescriptorReference
-from ..util.typing import TypedDict
+from ..util.typing import TupleAny
+from ..util.typing import Unpack
+
 
 if typing.TYPE_CHECKING:
     from ._typing import _EntityType
@@ -82,13 +85,13 @@ if typing.TYPE_CHECKING:
     from .attributes import InstrumentedAttribute
     from .base import Mapped
     from .context import _MapperEntity
-    from .context import ORMCompileState
+    from .context import _ORMCompileState
     from .context import QueryContext
     from .decl_api import RegistryType
     from .decl_base import _ClassScanMapperConfig
     from .loading import _PopulatorDict
     from .mapper import Mapper
-    from .path_registry import AbstractEntityRegistry
+    from .path_registry import _AbstractEntityRegistry
     from .query import Query
     from .session import Session
     from .state import InstanceState
@@ -115,7 +118,7 @@ _TLS = TypeVar("_TLS", bound="Type[LoaderStrategy]")
 class ORMStatementRole(roles.StatementRole):
     __slots__ = ()
     _role_name = (
-        "Executable SQL or text() construct, including ORM " "aware objects"
+        "Executable SQL or text() construct, including ORM aware objects"
     )
 
 
@@ -131,7 +134,7 @@ class ORMEntityColumnsClauseRole(ORMColumnsClauseRole[_T]):
     _role_name = "ORM mapped or aliased entity"
 
 
-class ORMFromClauseRole(roles.StrictFromClauseRole):
+class ORMFromClauseRole(roles.FromClauseRole):
     __slots__ = ()
     _role_name = "ORM mapped entity, aliased entity, or FROM expression"
 
@@ -149,13 +152,17 @@ class ORMColumnDescription(TypedDict):
 class _IntrospectsAnnotations:
     __slots__ = ()
 
+    @classmethod
+    def _mapper_property_name(cls) -> str:
+        return cls.__name__
+
     def found_in_pep593_annotated(self) -> Any:
         """return a copy of this object to use in declarative when the
         object is found inside of an Annotated object."""
 
         raise NotImplementedError(
-            f"Use of the {self.__class__} construct inside of an "
-            f"Annotated object is not yet supported."
+            f"Use of the {self._mapper_property_name()!r} "
+            "construct inside of an Annotated object is not yet supported."
         )
 
     def declarative_scan(
@@ -181,7 +188,8 @@ class _IntrospectsAnnotations:
         raise sa_exc.ArgumentError(
             f"Python typing annotation is required for attribute "
             f'"{cls.__name__}.{key}" when primary argument(s) for '
-            f'"{self.__class__.__name__}" construct are None or not present'
+            f'"{self._mapper_property_name()}" '
+            "construct are None or not present"
         )
 
 
@@ -201,6 +209,7 @@ class _AttributeOptions(NamedTuple):
     dataclasses_default_factory: Union[_NoArg, Callable[[], Any]]
     dataclasses_compare: Union[_NoArg, bool]
     dataclasses_kw_only: Union[_NoArg, bool]
+    dataclasses_hash: Union[_NoArg, bool, None]
 
     def _as_dataclass_field(self, key: str) -> Any:
         """Return a ``dataclasses.Field`` object given these arguments."""
@@ -218,6 +227,8 @@ class _AttributeOptions(NamedTuple):
             kw["compare"] = self.dataclasses_compare
         if self.dataclasses_kw_only is not _NoArg.NO_ARG:
             kw["kw_only"] = self.dataclasses_kw_only
+        if self.dataclasses_hash is not _NoArg.NO_ARG:
+            kw["hash"] = self.dataclasses_hash
 
         if "default" in kw and callable(kw["default"]):
             # callable defaults are ambiguous. deprecate them in favour of
@@ -297,10 +308,12 @@ _DEFAULT_ATTRIBUTE_OPTIONS = _AttributeOptions(
     _NoArg.NO_ARG,
     _NoArg.NO_ARG,
     _NoArg.NO_ARG,
+    _NoArg.NO_ARG,
 )
 
 _DEFAULT_READONLY_ATTRIBUTE_OPTIONS = _AttributeOptions(
     False,
+    _NoArg.NO_ARG,
     _NoArg.NO_ARG,
     _NoArg.NO_ARG,
     _NoArg.NO_ARG,
@@ -466,9 +479,9 @@ class MapperProperty(
 
     def setup(
         self,
-        context: ORMCompileState,
+        context: _ORMCompileState,
         query_entity: _MapperEntity,
-        path: AbstractEntityRegistry,
+        path: _AbstractEntityRegistry,
         adapter: Optional[ORMAdapter],
         **kwargs: Any,
     ) -> None:
@@ -482,11 +495,11 @@ class MapperProperty(
 
     def create_row_processor(
         self,
-        context: ORMCompileState,
+        context: _ORMCompileState,
         query_entity: _MapperEntity,
-        path: AbstractEntityRegistry,
+        path: _AbstractEntityRegistry,
         mapper: Mapper[Any],
-        result: Result[Any],
+        result: Result[Unpack[TupleAny]],
         adapter: Optional[ORMAdapter],
         populators: _PopulatorDict,
     ) -> None:
@@ -675,27 +688,37 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
         # definition of custom PropComparator subclasses
 
-        from sqlalchemy.orm.properties import \
-                                ColumnProperty,\
-                                Composite,\
-                                Relationship
+        from sqlalchemy.orm.properties import (
+            ColumnProperty,
+            Composite,
+            Relationship,
+        )
+
 
         class MyColumnComparator(ColumnProperty.Comparator):
             def __eq__(self, other):
                 return self.__clause_element__() == other
+
 
         class MyRelationshipComparator(Relationship.Comparator):
             def any(self, expression):
                 "define the 'any' operation"
                 # ...
 
+
         class MyCompositeComparator(Composite.Comparator):
             def __gt__(self, other):
                 "redefine the 'greater than' operation"
 
-                return sql.and_(*[a>b for a, b in
-                                  zip(self.__clause_element__().clauses,
-                                      other.__composite_values__())])
+                return sql.and_(
+                    *[
+                        a > b
+                        for a, b in zip(
+                            self.__clause_element__().clauses,
+                            other.__composite_values__(),
+                        )
+                    ]
+                )
 
 
         # application of custom PropComparator subclasses
@@ -703,17 +726,22 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
         from sqlalchemy.orm import column_property, relationship, composite
         from sqlalchemy import Column, String
 
-        class SomeMappedClass(Base):
-            some_column = column_property(Column("some_column", String),
-                                comparator_factory=MyColumnComparator)
 
-            some_relationship = relationship(SomeOtherClass,
-                                comparator_factory=MyRelationshipComparator)
+        class SomeMappedClass(Base):
+            some_column = column_property(
+                Column("some_column", String),
+                comparator_factory=MyColumnComparator,
+            )
+
+            some_relationship = relationship(
+                SomeOtherClass, comparator_factory=MyRelationshipComparator
+            )
 
             some_composite = composite(
-                    Column("a", String), Column("b", String),
-                    comparator_factory=MyCompositeComparator
-                )
+                Column("a", String),
+                Column("b", String),
+                comparator_factory=MyCompositeComparator,
+            )
 
     Note that for column-level operator redefinition, it's usually
     simpler to define the operators at the Core level, using the
@@ -735,6 +763,7 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
         :attr:`.TypeEngine.comparator_factory`
 
     """
+
     __slots__ = "prop", "_parententity", "_adapt_to_entity"
 
     __visit_name__ = "orm_prop_comparator"
@@ -838,13 +867,11 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
         def operate(
             self, op: OperatorType, *other: Any, **kwargs: Any
-        ) -> ColumnElement[Any]:
-            ...
+        ) -> ColumnElement[Any]: ...
 
         def reverse_operate(
             self, op: OperatorType, other: Any, **kwargs: Any
-        ) -> ColumnElement[Any]:
-            ...
+        ) -> ColumnElement[Any]: ...
 
     def of_type(self, class_: _EntityType[Any]) -> PropComparator[_T_co]:
         r"""Redefine this object in terms of a polymorphic subclass,
@@ -856,8 +883,9 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
         e.g.::
 
-            query.join(Company.employees.of_type(Engineer)).\
-               filter(Engineer.name=='foo')
+            query.join(Company.employees.of_type(Engineer)).filter(
+                Engineer.name == "foo"
+            )
 
         :param \class_: a class or mapper indicating that criterion will be
             against this specific subclass.
@@ -883,11 +911,11 @@ class PropComparator(SQLORMOperations[_T_co], Generic[_T_co], ColumnOperators):
 
 
             stmt = select(User).join(
-                User.addresses.and_(Address.email_address != 'foo')
+                User.addresses.and_(Address.email_address != "foo")
             )
 
             stmt = select(User).options(
-                joinedload(User.addresses.and_(Address.email_address != 'foo'))
+                joinedload(User.addresses.and_(Address.email_address != "foo"))
             )
 
         .. versionadded:: 1.4
@@ -993,7 +1021,7 @@ class StrategizedProperty(MapperProperty[_T]):
         )
 
     def _get_context_loader(
-        self, context: ORMCompileState, path: AbstractEntityRegistry
+        self, context: _ORMCompileState, path: _AbstractEntityRegistry
     ) -> Optional[_LoadElement]:
         load: Optional[_LoadElement] = None
 
@@ -1035,9 +1063,9 @@ class StrategizedProperty(MapperProperty[_T]):
 
     def setup(
         self,
-        context: ORMCompileState,
+        context: _ORMCompileState,
         query_entity: _MapperEntity,
-        path: AbstractEntityRegistry,
+        path: _AbstractEntityRegistry,
         adapter: Optional[ORMAdapter],
         **kwargs: Any,
     ) -> None:
@@ -1052,11 +1080,11 @@ class StrategizedProperty(MapperProperty[_T]):
 
     def create_row_processor(
         self,
-        context: ORMCompileState,
+        context: _ORMCompileState,
         query_entity: _MapperEntity,
-        path: AbstractEntityRegistry,
+        path: _AbstractEntityRegistry,
         mapper: Mapper[Any],
-        result: Result[Any],
+        result: Result[Unpack[TupleAny]],
         adapter: Optional[ORMAdapter],
         populators: _PopulatorDict,
     ) -> None:
@@ -1247,7 +1275,7 @@ class CompileStateOption(HasCacheKey, ORMOption):
 
     _is_compile_state = True
 
-    def process_compile_state(self, compile_state: ORMCompileState) -> None:
+    def process_compile_state(self, compile_state: _ORMCompileState) -> None:
         """Apply a modification to a given :class:`.ORMCompileState`.
 
         This method is part of the implementation of a particular
@@ -1258,7 +1286,7 @@ class CompileStateOption(HasCacheKey, ORMOption):
 
     def process_compile_state_replaced_entities(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         mapper_entities: Sequence[_MapperEntity],
     ) -> None:
         """Apply a modification to a given :class:`.ORMCompileState`,
@@ -1285,7 +1313,7 @@ class LoaderOption(CompileStateOption):
 
     def process_compile_state_replaced_entities(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         mapper_entities: Sequence[_MapperEntity],
     ) -> None:
         self.process_compile_state(compile_state)
@@ -1424,9 +1452,9 @@ class LoaderStrategy:
 
     def setup_query(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         query_entity: _MapperEntity,
-        path: AbstractEntityRegistry,
+        path: _AbstractEntityRegistry,
         loadopt: Optional[_LoadElement],
         adapter: Optional[ORMAdapter],
         **kwargs: Any,
@@ -1442,12 +1470,12 @@ class LoaderStrategy:
 
     def create_row_processor(
         self,
-        context: ORMCompileState,
+        context: _ORMCompileState,
         query_entity: _MapperEntity,
-        path: AbstractEntityRegistry,
+        path: _AbstractEntityRegistry,
         loadopt: Optional[_LoadElement],
         mapper: Mapper[Any],
-        result: Result[Any],
+        result: Result[Unpack[TupleAny]],
         adapter: Optional[ORMAdapter],
         populators: _PopulatorDict,
     ) -> None:

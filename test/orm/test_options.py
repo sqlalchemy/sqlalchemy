@@ -419,7 +419,10 @@ class OptionsTest(PathTest, QueryTest):
         # loader option works this way right now; the rest all use
         # defaultload() for the "chain" elements
         return strategy_options._generate_from_keys(
-            strategy_options.Load.contains_eager, arg, True, {}
+            strategy_options.Load.contains_eager,
+            arg,
+            True,
+            dict(_propagate_to_loaders=True),
         )
 
     @testing.combinations(
@@ -976,10 +979,12 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Keyword = self.classes.Keyword
         self._assert_eager_with_entity_exception(
             [Item],
-            lambda: (joinedload(Keyword),)
-            if first_element
-            else (Load(Item).joinedload(Keyword),),
-            "expected ORM mapped attribute for loader " "strategy argument",
+            lambda: (
+                (joinedload(Keyword),)
+                if first_element
+                else (Load(Item).joinedload(Keyword),)
+            ),
+            "expected ORM mapped attribute for loader strategy argument",
         )
 
     @testing.combinations(
@@ -990,9 +995,11 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Item = self.classes.Item
         self._assert_eager_with_entity_exception(
             [Item],
-            lambda: (joinedload(rando),)
-            if first_element
-            else (Load(Item).joinedload(rando)),
+            lambda: (
+                (joinedload(rando),)
+                if first_element
+                else (Load(Item).joinedload(rando))
+            ),
             "expected ORM mapped attribute for loader strategy argument",
         )
 
@@ -1002,9 +1009,11 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
 
         self._assert_eager_with_entity_exception(
             [OrderWProp],
-            lambda: (joinedload(OrderWProp.some_attr),)
-            if first_element
-            else (Load(OrderWProp).joinedload(OrderWProp.some_attr),),
+            lambda: (
+                (joinedload(OrderWProp.some_attr),)
+                if first_element
+                else (Load(OrderWProp).joinedload(OrderWProp.some_attr),)
+            ),
             "expected ORM mapped attribute for loader strategy argument",
         )
 

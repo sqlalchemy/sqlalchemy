@@ -55,13 +55,13 @@ with Session(e) as sess:
 
     rows1 = q.all()
 
-    # EXPECTED_RE_TYPE: builtins.[Ll]ist\[.*User\*?\]
+    # EXPECTED_RE_TYPE: builtins.list\[.*User\*?\]
     reveal_type(rows1)
 
     q2 = sess.query(User.id).filter_by(id=7)
     rows2 = q2.all()
 
-    # EXPECTED_TYPE: List[Row[Tuple[int]]]
+    # EXPECTED_TYPE: list[.*Row[.*int].*]
     reveal_type(rows2)
 
     # test #8280
@@ -86,7 +86,7 @@ with Session(e) as sess:
     # test #9125
 
     for row in sess.query(User.id, User.name):
-        # EXPECTED_TYPE: Row[Tuple[int, str]]
+        # EXPECTED_TYPE: .*Row[int, str].*
         reveal_type(row)
 
     for uobj1 in sess.query(User):
@@ -96,6 +96,12 @@ with Session(e) as sess:
     sess.query(User).limit(None).offset(None).limit(10).offset(10).limit(
         User.id
     ).offset(User.id)
+
+    # test #11083
+
+    with sess.begin() as tx:
+        # EXPECTED_TYPE: SessionTransaction
+        reveal_type(tx)
 
 # more result tests in typed_results.py
 

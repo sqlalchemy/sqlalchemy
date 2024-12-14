@@ -1,5 +1,5 @@
 # util/typing.py
-# Copyright (C) 2022 the SQLAlchemy authors and contributors
+# Copyright (C) 2022-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import builtins
+import collections.abc as collections_abc
 import re
 import sys
 import typing
@@ -24,6 +25,7 @@ from typing import NewType
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Set
 from typing import Tuple
 from typing import Type
@@ -34,24 +36,24 @@ from typing import Union
 from . import compat
 
 if True:  # zimports removes the tailing comments
-    from typing_extensions import Annotated as Annotated  # 3.8
+    from typing_extensions import Annotated as Annotated  # 3.9
     from typing_extensions import Concatenate as Concatenate  # 3.10
     from typing_extensions import (
         dataclass_transform as dataclass_transform,  # 3.11,
     )
-    from typing_extensions import Final as Final  # 3.8
-    from typing_extensions import final as final  # 3.8
     from typing_extensions import get_args as get_args  # 3.10
     from typing_extensions import get_origin as get_origin  # 3.10
-    from typing_extensions import Literal as Literal  # 3.8
+    from typing_extensions import (
+        Literal as Literal,
+    )  # 3.8 but has bugs before 3.10
     from typing_extensions import NotRequired as NotRequired  # 3.11
     from typing_extensions import ParamSpec as ParamSpec  # 3.10
-    from typing_extensions import Protocol as Protocol  # 3.8
-    from typing_extensions import SupportsIndex as SupportsIndex  # 3.8
     from typing_extensions import TypeAlias as TypeAlias  # 3.10
-    from typing_extensions import TypedDict as TypedDict  # 3.8
     from typing_extensions import TypeGuard as TypeGuard  # 3.10
+    from typing_extensions import TypeVarTuple as TypeVarTuple  # 3.11
     from typing_extensions import Self as Self  # 3.11
+    from typing_extensions import TypeAliasType as TypeAliasType  # 3.12
+    from typing_extensions import Unpack as Unpack  # 3.11
 
 
 _T = TypeVar("_T", bound=Any)
@@ -60,6 +62,12 @@ _KT_co = TypeVar("_KT_co", covariant=True)
 _KT_contra = TypeVar("_KT_contra", contravariant=True)
 _VT = TypeVar("_VT")
 _VT_co = TypeVar("_VT_co", covariant=True)
+
+TupleAny = Tuple[Any, ...]
+
+# typing_extensions.Literal is different from typing.Literal until
+# Python 3.10.1
+_LITERAL_TYPES = frozenset([typing.Literal, Literal])
 
 
 if compat.py310:
@@ -76,7 +84,7 @@ typing_get_origin = get_origin
 
 
 _AnnotationScanType = Union[
-    Type[Any], str, ForwardRef, NewType, "GenericProtocol[Any]"
+    Type[Any], str, ForwardRef, NewType, TypeAliasType, "GenericProtocol[Any]"
 ]
 
 
@@ -111,11 +119,9 @@ class GenericProtocol(Protocol[_T]):
 # copied from TypeShed, required in order to implement
 # MutableMapping.update()
 class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
-    def keys(self) -> Iterable[_KT]:
-        ...
+    def keys(self) -> Iterable[_KT]: ...
 
-    def __getitem__(self, __k: _KT) -> _VT_co:
-        ...
+    def __getitem__(self, __k: _KT) -> _VT_co: ...
 
 
 # work around https://github.com/microsoft/pyright/issues/3025
@@ -155,7 +161,7 @@ def de_stringify_annotation(
             annotation = str_cleanup_fn(annotation, originating_module)
 
         annotation = eval_expression(
-            annotation, originating_module, locals_=locals_
+            annotation, originating_module, locals_=locals_, in_class=cls
         )
 
     if (
@@ -189,7 +195,49 @@ def de_stringify_annotation(
         )
 
         return _copy_generic_annotation_with(annotation, elements)
+
     return annotation  # type: ignore
+
+
+def fixup_container_fwd_refs(
+    type_: _AnnotationScanType,
+) -> _AnnotationScanType:
+    """Correct dict['x', 'y'] into dict[ForwardRef('x'), ForwardRef('y')]
+    and similar for list, set
+
+    """
+
+    if (
+        is_generic(type_)
+        and typing_get_origin(type_)
+        in (
+            dict,
+            set,
+            list,
+            collections_abc.MutableSet,
+            collections_abc.MutableMapping,
+            collections_abc.MutableSequence,
+            collections_abc.Mapping,
+            collections_abc.Sequence,
+        )
+        # fight, kick and scream to struggle to tell the difference between
+        # dict[] and typing.Dict[] which DO NOT compare the same and DO NOT
+        # behave the same yet there is NO WAY to distinguish between which type
+        # it is using public attributes
+        and not re.match(
+            "typing.(?:Dict|List|Set|.*Mapping|.*Sequence|.*Set)", repr(type_)
+        )
+    ):
+        # compat with py3.10 and earlier
+        return typing_get_origin(type_).__class_getitem__(  # type: ignore
+            tuple(
+                [
+                    ForwardRef(elem) if isinstance(elem, str) else elem
+                    for elem in typing_get_args(type_)
+                ]
+            )
+        )
+    return type_
 
 
 def _copy_generic_annotation_with(
@@ -208,6 +256,7 @@ def eval_expression(
     module_name: str,
     *,
     locals_: Optional[Mapping[str, Any]] = None,
+    in_class: Optional[Type[Any]] = None,
 ) -> Any:
     try:
         base_globals: Dict[str, Any] = sys.modules[module_name].__dict__
@@ -218,7 +267,18 @@ def eval_expression(
         ) from ke
 
     try:
-        annotation = eval(expression, base_globals, locals_)
+        if in_class is not None:
+            cls_namespace = dict(in_class.__dict__)
+            cls_namespace.setdefault(in_class.__name__, in_class)
+
+            # see #10899.  We want the locals/globals to take precedence
+            # over the class namespace in this context, even though this
+            # is not the usual way variables would resolve.
+            cls_namespace.update(base_globals)
+
+            annotation = eval(expression, cls_namespace, locals_)
+        else:
+            annotation = eval(expression, base_globals, locals_)
     except Exception as err:
         raise NameError(
             f"Could not de-stringify annotation {expression!r}"
@@ -296,14 +356,19 @@ def is_pep593(type_: Optional[_AnnotationScanType]) -> bool:
     return type_ is not None and typing_get_origin(type_) is Annotated
 
 
+def is_non_string_iterable(obj: Any) -> TypeGuard[Iterable[Any]]:
+    return isinstance(obj, collections_abc.Iterable) and not isinstance(
+        obj, (str, bytes)
+    )
+
+
 def is_literal(type_: _AnnotationScanType) -> bool:
-    return get_origin(type_) is Literal
+    return get_origin(type_) in _LITERAL_TYPES
 
 
 def is_newtype(type_: Optional[_AnnotationScanType]) -> TypeGuard[NewType]:
     return hasattr(type_, "__supertype__")
-
-    # doesn't work in 3.8, 3.7 as it passes a closure, not an
+    # doesn't work in 3.9, 3.8, 3.7 as it passes a closure, not an
     # object instance
     # return isinstance(type_, NewType)
 
@@ -312,11 +377,15 @@ def is_generic(type_: _AnnotationScanType) -> TypeGuard[GenericProtocol[Any]]:
     return hasattr(type_, "__args__") and hasattr(type_, "__origin__")
 
 
+def is_pep695(type_: _AnnotationScanType) -> TypeGuard[TypeAliasType]:
+    return isinstance(type_, TypeAliasType)
+
+
 def flatten_newtype(type_: NewType) -> Type[Any]:
     super_type = type_.__supertype__
     while is_newtype(super_type):
         super_type = super_type.__supertype__
-    return super_type
+    return super_type  # type: ignore[return-value]
 
 
 def is_fwd_ref(
@@ -331,20 +400,17 @@ def is_fwd_ref(
 
 
 @overload
-def de_optionalize_union_types(type_: str) -> str:
-    ...
+def de_optionalize_union_types(type_: str) -> str: ...
 
 
 @overload
-def de_optionalize_union_types(type_: Type[Any]) -> Type[Any]:
-    ...
+def de_optionalize_union_types(type_: Type[Any]) -> Type[Any]: ...
 
 
 @overload
 def de_optionalize_union_types(
     type_: _AnnotationScanType,
-) -> _AnnotationScanType:
-    ...
+) -> _AnnotationScanType: ...
 
 
 def de_optionalize_union_types(
@@ -354,6 +420,9 @@ def de_optionalize_union_types(
     to not include the ``NoneType``.
 
     """
+
+    while is_pep695(type_):
+        type_ = type_.__value__
 
     if is_fwd_ref(type_):
         return de_optionalize_fwd_ref_union_types(type_)
@@ -411,26 +480,6 @@ def make_union_type(*types: _AnnotationScanType) -> Type[Any]:
     return cast(Any, Union).__getitem__(types)  # type: ignore
 
 
-def expand_unions(
-    type_: Type[Any], include_union: bool = False, discard_none: bool = False
-) -> Tuple[Type[Any], ...]:
-    """Return a type as a tuple of individual types, expanding for
-    ``Union`` types."""
-
-    if is_union(type_):
-        typ = set(type_.__args__)
-
-        if discard_none:
-            typ.discard(NoneType)
-
-        if include_union:
-            return (type_,) + tuple(typ)  # type: ignore
-        else:
-            return tuple(typ)  # type: ignore
-    else:
-        return (type_,)
-
-
 def is_optional(type_: Any) -> TypeGuard[ArgsTypeProcotol]:
     return is_origin_of(
         type_,
@@ -445,7 +494,7 @@ def is_optional_union(type_: Any) -> bool:
 
 
 def is_union(type_: Any) -> TypeGuard[ArgsTypeProcotol]:
-    return is_origin_of(type_, "Union")
+    return is_origin_of(type_, "Union", "UnionType")
 
 
 def is_origin_of_cls(
@@ -488,14 +537,11 @@ def _get_type_name(type_: Type[Any]) -> str:
 
 
 class DescriptorProto(Protocol):
-    def __get__(self, instance: object, owner: Any) -> Any:
-        ...
+    def __get__(self, instance: object, owner: Any) -> Any: ...
 
-    def __set__(self, instance: Any, value: Any) -> None:
-        ...
+    def __set__(self, instance: Any, value: Any) -> None: ...
 
-    def __delete__(self, instance: Any) -> None:
-        ...
+    def __delete__(self, instance: Any) -> None: ...
 
 
 _DESC = TypeVar("_DESC", bound=DescriptorProto)
@@ -514,14 +560,11 @@ class DescriptorReference(Generic[_DESC]):
 
     if TYPE_CHECKING:
 
-        def __get__(self, instance: object, owner: Any) -> _DESC:
-            ...
+        def __get__(self, instance: object, owner: Any) -> _DESC: ...
 
-        def __set__(self, instance: Any, value: _DESC) -> None:
-            ...
+        def __set__(self, instance: Any, value: _DESC) -> None: ...
 
-        def __delete__(self, instance: Any) -> None:
-            ...
+        def __delete__(self, instance: Any) -> None: ...
 
 
 _DESC_co = TypeVar("_DESC_co", bound=DescriptorProto, covariant=True)
@@ -537,14 +580,11 @@ class RODescriptorReference(Generic[_DESC_co]):
 
     if TYPE_CHECKING:
 
-        def __get__(self, instance: object, owner: Any) -> _DESC_co:
-            ...
+        def __get__(self, instance: object, owner: Any) -> _DESC_co: ...
 
-        def __set__(self, instance: Any, value: Any) -> NoReturn:
-            ...
+        def __set__(self, instance: Any, value: Any) -> NoReturn: ...
 
-        def __delete__(self, instance: Any) -> NoReturn:
-            ...
+        def __delete__(self, instance: Any) -> NoReturn: ...
 
 
 _FN = TypeVar("_FN", bound=Optional[Callable[..., Any]])
@@ -561,14 +601,11 @@ class CallableReference(Generic[_FN]):
 
     if TYPE_CHECKING:
 
-        def __get__(self, instance: object, owner: Any) -> _FN:
-            ...
+        def __get__(self, instance: object, owner: Any) -> _FN: ...
 
-        def __set__(self, instance: Any, value: _FN) -> None:
-            ...
+        def __set__(self, instance: Any, value: _FN) -> None: ...
 
-        def __delete__(self, instance: Any) -> None:
-            ...
+        def __delete__(self, instance: Any) -> None: ...
 
 
 # $def ro_descriptor_reference(fn: Callable[])

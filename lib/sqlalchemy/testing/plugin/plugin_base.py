@@ -1,5 +1,5 @@
-# plugin/plugin_base.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# testing/plugin/plugin_base.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -90,7 +90,7 @@ def setup_options(make_option):
         action="append",
         type=str,
         dest="dburi",
-        help="Database uri.  Multiple OK, " "first one is run by default.",
+        help="Database uri.  Multiple OK, first one is run by default.",
     )
     make_option(
         "--dbdriver",

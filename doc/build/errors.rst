@@ -188,6 +188,28 @@ sooner.
 
  :ref:`connections_toplevel`
 
+.. _error_pcls:
+
+Pool class cannot be used with asyncio engine (or vice versa)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :class:`_pool.QueuePool` pool class uses a ``thread.Lock`` object internally
+and is not compatible with asyncio.  If using the :func:`_asyncio.create_async_engine`
+function to create an :class:`.AsyncEngine`, the appropriate queue pool class
+is :class:`_pool.AsyncAdaptedQueuePool`, which is used automatically and does
+not need to be specified.
+
+In addition to :class:`_pool.AsyncAdaptedQueuePool`, the :class:`_pool.NullPool`
+and :class:`_pool.StaticPool` pool classes do not use locks and are also
+suitable for use with async engines.
+
+This error is also raised in reverse in the unlikely case that the
+:class:`_pool.AsyncAdaptedQueuePool` pool class is indicated explicitly with
+the :func:`_sa.create_engine` function.
+
+.. seealso::
+
+    :ref:`pooling_toplevel`
 
 .. _error_8s2b:
 
@@ -453,7 +475,7 @@ when a construct is stringified without any dialect-specific information.
 However, there are many constructs that are specific to some particular kind
 of database dialect, for which the :class:`.StrSQLCompiler` doesn't know how
 to turn into a string, such as the PostgreSQL
-`"insert on conflict" <postgresql_insert_on_conflict>`_ construct::
+:ref:`postgresql_insert_on_conflict` construct::
 
   >>> from sqlalchemy.dialects.postgresql import insert
   >>> from sqlalchemy import table, column
@@ -550,7 +572,7 @@ is executed::
 Above, no value has been provided for the parameter "my_param".  The correct
 approach is to provide a value::
 
-    result = conn.execute(stmt, my_param=12)
+    result = conn.execute(stmt, {"my_param": 12})
 
 When the message takes the form "a value is required for bind parameter <x>
 in parameter group <y>", the message is referring to the "executemany" style
@@ -1777,8 +1799,7 @@ and associating the :class:`_engine.Engine` with the
     Base = declarative_base(metadata=metadata_obj)
 
 
-    class MyClass(Base):
-        ...
+    class MyClass(Base): ...
 
 
     session = Session()
@@ -1796,8 +1817,7 @@ engine::
     Base = declarative_base()
 
 
-    class MyClass(Base):
-        ...
+    class MyClass(Base): ...
 
 
     session = Session()

@@ -1,11 +1,18 @@
 import sqlalchemy as sa
+from sqlalchemy import Column
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy import util
+from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
@@ -738,3 +745,122 @@ class NoLoadTest(_fixtures.FixtureTest):
             eq_(a1.user, None)
 
         self.sql_count_(0, go)
+
+
+class Issue11292Test(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Parent(Base):
+            __tablename__ = "parent"
+
+            id = Column(Integer, primary_key=True)
+
+            extension = relationship(
+                "Extension", back_populates="parent", uselist=False
+            )
+
+        class Child(Base):
+            __tablename__ = "child"
+
+            id = Column(Integer, primary_key=True)
+
+            extensions = relationship("Extension", back_populates="child")
+
+        class Extension(Base):
+            __tablename__ = "extension"
+
+            id = Column(Integer, primary_key=True)
+            parent_id = Column(Integer, ForeignKey(Parent.id))
+            child_id = Column(Integer, ForeignKey(Child.id))
+
+            parent = relationship("Parent", back_populates="extension")
+            child = relationship("Child", back_populates="extensions")
+
+    @classmethod
+    def insert_data(cls, connection):
+        Parent, Child, Extension = cls.classes("Parent", "Child", "Extension")
+        with Session(connection) as session:
+            for id_ in (1, 2, 3):
+                session.add(Parent(id=id_))
+                session.add(Child(id=id_))
+                session.add(Extension(id=id_, parent_id=id_, child_id=id_))
+            session.commit()
+
+    @testing.variation("load_as_option", [True, False])
+    def test_defaultload_dont_propagate(self, load_as_option):
+        Parent, Child, Extension = self.classes("Parent", "Child", "Extension")
+
+        session = fixture_session()
+
+        # here, we want the defaultload() to go away on subsequent loads,
+        # becuase Parent.extension is propagate_to_loaders=False
+        query = (
+            select(Parent)
+            .join(Extension)
+            .join(Child)
+            .options(
+                contains_eager(Parent.extension),
+                (
+                    defaultload(Parent.extension).options(
+                        contains_eager(Extension.child)
+                    )
+                    if load_as_option
+                    else defaultload(Parent.extension).contains_eager(
+                        Extension.child
+                    )
+                ),
+            )
+        )
+
+        parents = session.scalars(query).all()
+
+        eq_(
+            [(p.id, p.extension.id, p.extension.child.id) for p in parents],
+            [(1, 1, 1), (2, 2, 2), (3, 3, 3)],
+        )
+
+        session.expire_all()
+
+        eq_(
+            [(p.id, p.extension.id, p.extension.child.id) for p in parents],
+            [(1, 1, 1), (2, 2, 2), (3, 3, 3)],
+        )
+
+    @testing.variation("load_as_option", [True, False])
+    def test_defaultload_yes_propagate(self, load_as_option):
+        Parent, Child, Extension = self.classes("Parent", "Child", "Extension")
+
+        session = fixture_session()
+
+        # here, we want the defaultload() to go away on subsequent loads,
+        # becuase Parent.extension is propagate_to_loaders=False
+        query = select(Parent).options(
+            (
+                defaultload(Parent.extension).options(
+                    joinedload(Extension.child)
+                )
+                if load_as_option
+                else defaultload(Parent.extension).joinedload(Extension.child)
+            ),
+        )
+
+        parents = session.scalars(query).all()
+
+        eq_(
+            [(p.id, p.extension.id, p.extension.child.id) for p in parents],
+            [(1, 1, 1), (2, 2, 2), (3, 3, 3)],
+        )
+
+        session.expire_all()
+
+        # this would be 9 without the joinedload
+        with self.assert_statement_count(testing.db, 6):
+            eq_(
+                [
+                    (p.id, p.extension.id, p.extension.child.id)
+                    for p in parents
+                ],
+                [(1, 1, 1), (2, 2, 2), (3, 3, 3)],
+            )

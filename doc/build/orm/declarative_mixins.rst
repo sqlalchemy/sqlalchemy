@@ -152,7 +152,7 @@ Augmenting the Base
 In addition to using a pure mixin, most of the techniques in this
 section can also be applied to the base class directly, for patterns that
 should apply to all classes derived from a particular base.  The example
-below illustrates some of the the previous section's example in terms of the
+below illustrates some of the previous section's example in terms of the
 ``Base`` class::
 
     from sqlalchemy import ForeignKey

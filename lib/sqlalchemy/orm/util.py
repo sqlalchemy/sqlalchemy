@@ -1,5 +1,5 @@
 # orm/util.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -25,6 +25,7 @@ from typing import Iterator
 from typing import List
 from typing import Match
 from typing import Optional
+from typing import Protocol
 from typing import Sequence
 from typing import Tuple
 from typing import Type
@@ -42,6 +43,7 @@ from ._typing import prop_is_relationship
 from .base import _class_to_mapper as _class_to_mapper
 from .base import _MappedAnnotationBase
 from .base import _never_set as _never_set  # noqa: F401
+from .base import _none_only_set as _none_only_set  # noqa: F401
 from .base import _none_set as _none_set  # noqa: F401
 from .base import attribute_str as attribute_str  # noqa: F401
 from .base import class_mapper as class_mapper
@@ -89,10 +91,12 @@ from ..util.typing import (
     de_stringify_union_elements as _de_stringify_union_elements,
 )
 from ..util.typing import eval_name_only as _eval_name_only
+from ..util.typing import fixup_container_fwd_refs
 from ..util.typing import is_origin_of_cls
 from ..util.typing import Literal
-from ..util.typing import Protocol
+from ..util.typing import TupleAny
 from ..util.typing import typing_get_origin
+from ..util.typing import Unpack
 
 if typing.TYPE_CHECKING:
     from ._typing import _EntityType
@@ -100,9 +104,9 @@ if typing.TYPE_CHECKING:
     from ._typing import _InternalEntityType
     from ._typing import _ORMCOLEXPR
     from .context import _MapperEntity
-    from .context import ORMCompileState
+    from .context import _ORMCompileState
     from .mapper import Mapper
-    from .path_registry import AbstractEntityRegistry
+    from .path_registry import _AbstractEntityRegistry
     from .query import Query
     from .relationships import RelationshipProperty
     from ..engine import Row
@@ -163,8 +167,7 @@ class _DeStringifyAnnotation(Protocol):
         *,
         str_cleanup_fn: Optional[Callable[[str, str], str]] = None,
         include_generic: bool = False,
-    ) -> Type[Any]:
-        ...
+    ) -> Type[Any]: ...
 
 
 de_stringify_annotation = cast(
@@ -180,8 +183,7 @@ class _DeStringifyUnionElements(Protocol):
         originating_module: str,
         *,
         str_cleanup_fn: Optional[Callable[[str, str], str]] = None,
-    ) -> Type[Any]:
-        ...
+    ) -> Type[Any]: ...
 
 
 de_stringify_union_elements = cast(
@@ -191,8 +193,7 @@ de_stringify_union_elements = cast(
 
 
 class _EvalNameOnly(Protocol):
-    def __call__(self, name: str, module_name: str) -> Any:
-        ...
+    def __call__(self, name: str, module_name: str) -> Any: ...
 
 
 eval_name_only = cast(_EvalNameOnly, _de_stringify_partial(_eval_name_only))
@@ -250,7 +251,7 @@ class CascadeOptions(FrozenSet[str]):
             values.clear()
         values.discard("all")
 
-        self = super().__new__(cls, values)  # type: ignore
+        self = super().__new__(cls, values)
         self.save_update = "save-update" in values
         self.delete = "delete" in values
         self.refresh_expire = "refresh-expire" in values
@@ -259,9 +260,7 @@ class CascadeOptions(FrozenSet[str]):
         self.delete_orphan = "delete-orphan" in values
 
         if self.delete_orphan and not self.delete:
-            util.warn(
-                "The 'delete-orphan' cascade " "option requires 'delete'."
-            )
+            util.warn("The 'delete-orphan' cascade option requires 'delete'.")
         return self
 
     def __repr__(self):
@@ -367,9 +366,7 @@ def polymorphic_union(
     for key in table_map:
         table = table_map[key]
 
-        table = coercions.expect(
-            roles.StrictFromClauseRole, table, allow_select=True
-        )
+        table = coercions.expect(roles.FromClauseRole, table)
         table_map[key] = table
 
         m = {}
@@ -426,7 +423,7 @@ def identity_key(
     ident: Union[Any, Tuple[Any, ...]] = None,
     *,
     instance: Optional[_T] = None,
-    row: Optional[Union[Row[Any], RowMapping]] = None,
+    row: Optional[Union[Row[Unpack[TupleAny]], RowMapping]] = None,
     identity_token: Optional[Any] = None,
 ) -> _IdentityKeyType[_T]:
     r"""Generate "identity key" tuples, as are used as keys in the
@@ -478,9 +475,7 @@ def identity_key(
 
       E.g.::
 
-        >>> row = engine.execute(\
-            text("select * from table where a=1 and b=2")\
-            ).first()
+        >>> row = engine.execute(text("select * from table where a=1 and b=2")).first()
         >>> identity_key(MyClass, row=row)
         (<class '__main__.MyClass'>, (1, 2), None)
 
@@ -491,7 +486,7 @@ def identity_key(
 
         .. versionadded:: 1.2 added identity_token
 
-    """
+    """  # noqa: E501
     if class_ is not None:
         mapper = class_mapper(class_)
         if row is None:
@@ -669,9 +664,9 @@ class AliasedClass(
 
         # find all pairs of users with the same name
         user_alias = aliased(User)
-        session.query(User, user_alias).\
-                        join((user_alias, User.id > user_alias.id)).\
-                        filter(User.name == user_alias.name)
+        session.query(User, user_alias).join(
+            (user_alias, User.id > user_alias.id)
+        ).filter(User.name == user_alias.name)
 
     :class:`.AliasedClass` is also capable of mapping an existing mapped
     class to an entirely new selectable, provided this selectable is column-
@@ -695,6 +690,7 @@ class AliasedClass(
     using :func:`_sa.inspect`::
 
         from sqlalchemy import inspect
+
         my_alias = aliased(MyClass)
         insp = inspect(my_alias)
 
@@ -755,12 +751,16 @@ class AliasedClass(
             insp,
             alias,
             name,
-            with_polymorphic_mappers
-            if with_polymorphic_mappers
-            else mapper.with_polymorphic_mappers,
-            with_polymorphic_discriminator
-            if with_polymorphic_discriminator is not None
-            else mapper.polymorphic_on,
+            (
+                with_polymorphic_mappers
+                if with_polymorphic_mappers
+                else mapper.with_polymorphic_mappers
+            ),
+            (
+                with_polymorphic_discriminator
+                if with_polymorphic_discriminator is not None
+                else mapper.polymorphic_on
+            ),
             base_alias,
             use_mapper_path,
             adapt_on_names,
@@ -971,9 +971,9 @@ class AliasedInsp(
 
         self._weak_entity = weakref.ref(entity)
         self.mapper = mapper
-        self.selectable = (
-            self.persist_selectable
-        ) = self.local_table = selectable
+        self.selectable = self.persist_selectable = self.local_table = (
+            selectable
+        )
         self.name = name
         self.polymorphic_on = polymorphic_on
         self._base_alias = weakref.ref(_base_alias or self)
@@ -1068,6 +1068,7 @@ class AliasedInsp(
         aliased: bool = False,
         innerjoin: bool = False,
         adapt_on_names: bool = False,
+        name: Optional[str] = None,
         _use_mapper_path: bool = False,
     ) -> AliasedClass[_O]:
         primary_mapper = _class_to_mapper(base)
@@ -1088,6 +1089,7 @@ class AliasedInsp(
         return AliasedClass(
             base,
             selectable,
+            name=name,
             with_polymorphic_mappers=mappers,
             adapt_on_names=adapt_on_names,
             with_polymorphic_discriminator=polymorphic_on,
@@ -1134,7 +1136,7 @@ class AliasedInsp(
         return self.mapper.class_
 
     @property
-    def _path_registry(self) -> AbstractEntityRegistry:
+    def _path_registry(self) -> _AbstractEntityRegistry:
         if self._use_mapper_path:
             return self.mapper._path_registry
         else:
@@ -1229,8 +1231,7 @@ class AliasedInsp(
             self,
             obj: _CE,
             key: Optional[str] = None,
-        ) -> _CE:
-            ...
+        ) -> _CE: ...
 
     else:
         _orm_adapt_element = _adapt_element
@@ -1380,7 +1381,10 @@ class LoaderCriteriaOption(CriteriaOption):
     def __init__(
         self,
         entity_or_base: _EntityType[Any],
-        where_criteria: _ColumnExpressionArgument[bool],
+        where_criteria: Union[
+            _ColumnExpressionArgument[bool],
+            Callable[[Any], _ColumnExpressionArgument[bool]],
+        ],
         loader_only: bool = False,
         include_aliases: bool = False,
         propagate_to_loaders: bool = True,
@@ -1462,7 +1466,7 @@ class LoaderCriteriaOption(CriteriaOption):
                 else:
                     stack.extend(subclass.__subclasses__())
 
-    def _should_include(self, compile_state: ORMCompileState) -> bool:
+    def _should_include(self, compile_state: _ORMCompileState) -> bool:
         if (
             compile_state.select_statement._annotations.get(
                 "for_loader_criteria", None
@@ -1492,12 +1496,12 @@ class LoaderCriteriaOption(CriteriaOption):
 
     def process_compile_state_replaced_entities(
         self,
-        compile_state: ORMCompileState,
+        compile_state: _ORMCompileState,
         mapper_entities: Iterable[_MapperEntity],
     ) -> None:
         self.process_compile_state(compile_state)
 
-    def process_compile_state(self, compile_state: ORMCompileState) -> None:
+    def process_compile_state(self, compile_state: _ORMCompileState) -> None:
         """Apply a modification to a given :class:`.CompileState`."""
 
         # if options to limit the criteria to immediate query only,
@@ -1596,8 +1600,7 @@ class Bundle(
 
             bn = Bundle("mybundle", MyClass.x, MyClass.y)
 
-            for row in session.query(bn).filter(
-                    bn.c.x == 5).filter(bn.c.y == 4):
+            for row in session.query(bn).filter(bn.c.x == 5).filter(bn.c.y == 4):
                 print(row.mybundle.x, row.mybundle.y)
 
         :param name: name of the bundle.
@@ -1606,7 +1609,7 @@ class Bundle(
          can be returned as a "single entity" outside of any enclosing tuple
          in the same manner as a mapped entity.
 
-        """
+        """  # noqa: E501
         self.name = self._label = name
         coerced_exprs = [
             coercions.expect(
@@ -1661,24 +1664,24 @@ class Bundle(
 
         Nesting of bundles is also supported::
 
-            b1 = Bundle("b1",
-                    Bundle('b2', MyClass.a, MyClass.b),
-                    Bundle('b3', MyClass.x, MyClass.y)
-                )
+            b1 = Bundle(
+                "b1",
+                Bundle("b2", MyClass.a, MyClass.b),
+                Bundle("b3", MyClass.x, MyClass.y),
+            )
 
-            q = sess.query(b1).filter(
-                b1.c.b2.c.a == 5).filter(b1.c.b3.c.y == 9)
+            q = sess.query(b1).filter(b1.c.b2.c.a == 5).filter(b1.c.b3.c.y == 9)
 
     .. seealso::
 
         :attr:`.Bundle.c`
 
-    """
+    """  # noqa: E501
 
     c: ReadOnlyColumnCollection[str, KeyedColumnElement[Any]]
     """An alias for :attr:`.Bundle.columns`."""
 
-    def _clone(self):
+    def _clone(self, **kw):
         cloned = self.__class__.__new__(self.__class__)
         cloned.__dict__.update(self.__dict__)
         return cloned
@@ -1721,10 +1724,10 @@ class Bundle(
 
     def create_row_processor(
         self,
-        query: Select[Any],
-        procs: Sequence[Callable[[Row[Any]], Any]],
+        query: Select[Unpack[TupleAny]],
+        procs: Sequence[Callable[[Row[Unpack[TupleAny]]], Any]],
         labels: Sequence[str],
-    ) -> Callable[[Row[Any]], Any]:
+    ) -> Callable[[Row[Unpack[TupleAny]]], Any]:
         """Produce the "row processing" function for this :class:`.Bundle`.
 
         May be overridden by subclasses to provide custom behaviors when
@@ -1739,28 +1742,27 @@ class Bundle(
 
             from sqlalchemy.orm import Bundle
 
+
             class DictBundle(Bundle):
                 def create_row_processor(self, query, procs, labels):
-                    'Override create_row_processor to return values as
-                    dictionaries'
+                    "Override create_row_processor to return values as dictionaries"
 
                     def proc(row):
-                        return dict(
-                            zip(labels, (proc(row) for proc in procs))
-                        )
+                        return dict(zip(labels, (proc(row) for proc in procs)))
+
                     return proc
 
         A result from the above :class:`_orm.Bundle` will return dictionary
         values::
 
-            bn = DictBundle('mybundle', MyClass.data1, MyClass.data2)
-            for row in session.execute(select(bn)).where(bn.c.data1 == 'd1'):
-                print(row.mybundle['data1'], row.mybundle['data2'])
+            bn = DictBundle("mybundle", MyClass.data1, MyClass.data2)
+            for row in session.execute(select(bn)).where(bn.c.data1 == "d1"):
+                print(row.mybundle["data1"], row.mybundle["data2"])
 
-        """
+        """  # noqa: E501
         keyed_tuple = result_tuple(labels, [() for l in labels])
 
-        def proc(row: Row[Any]) -> Any:
+        def proc(row: Row[Unpack[TupleAny]]) -> Any:
             return keyed_tuple([proc(row) for proc in procs])
 
         return proc
@@ -1940,7 +1942,7 @@ class _ORMJoin(expression.Join):
             self.onclause,
             isouter=self.isouter,
             _left_memo=self._left_memo,
-            _right_memo=other._left_memo,
+            _right_memo=other._left_memo._path_registry,
         )
 
         return _ORMJoin(
@@ -1983,7 +1985,6 @@ def with_parent(
 
         stmt = select(Address).where(with_parent(some_user, User.addresses))
 
-
     The SQL rendered is the same as that rendered when a lazy loader
     would fire off from the given parent on that attribute, meaning
     that the appropriate state is taken from the parent object in
@@ -1996,9 +1997,7 @@ def with_parent(
 
         a1 = aliased(Address)
         a2 = aliased(Address)
-        stmt = select(a1, a2).where(
-            with_parent(u1, User.addresses.of_type(a2))
-        )
+        stmt = select(a1, a2).where(with_parent(u1, User.addresses.of_type(a2)))
 
     The above use is equivalent to using the
     :func:`_orm.with_parent.from_entity` argument::
@@ -2023,7 +2022,7 @@ def with_parent(
 
       .. versionadded:: 1.2
 
-    """
+    """  # noqa: E501
     prop_t: RelationshipProperty[Any]
 
     if isinstance(prop, str):
@@ -2117,13 +2116,12 @@ def _entity_corresponds_to_use_path_impl(
         someoption(A).someoption(C.d)  # -> fn(A, C) -> False
 
         a1 = aliased(A)
-        someoption(a1).someoption(A.b) # -> fn(a1, A) -> False
-        someoption(a1).someoption(a1.b) # -> fn(a1, a1) -> True
+        someoption(a1).someoption(A.b)  # -> fn(a1, A) -> False
+        someoption(a1).someoption(a1.b)  # -> fn(a1, a1) -> True
 
         wp = with_polymorphic(A, [A1, A2])
         someoption(wp).someoption(A1.foo)  # -> fn(wp, A1) -> False
         someoption(wp).someoption(wp.A1.foo)  # -> fn(wp, wp.A1) -> True
-
 
     """
     if insp_is_aliased_class(given):
@@ -2151,7 +2149,7 @@ def _entity_isa(given: _InternalEntityType[Any], mapper: Mapper[Any]) -> bool:
             mapper
         )
     elif given.with_polymorphic_mappers:
-        return mapper in given.with_polymorphic_mappers
+        return mapper in given.with_polymorphic_mappers or given.isa(mapper)
     else:
         return given.isa(mapper)
 
@@ -2318,7 +2316,7 @@ def _extract_mapped_subtype(
     is_dataclass_field: bool,
     expect_mapped: bool = True,
     raiseerr: bool = True,
-) -> Optional[Tuple[Union[type, str], Optional[type]]]:
+) -> Optional[Tuple[Union[_AnnotationScanType, str], Optional[type]]]:
     """given an annotation, figure out if it's ``Mapped[something]`` and if
     so, return the ``something`` part.
 
@@ -2404,4 +2402,16 @@ def _extract_mapped_subtype(
                 "Expected sub-type for Mapped[] annotation"
             )
 
-        return annotated.__args__[0], annotated.__origin__
+        return (
+            # fix dict/list/set args to be ForwardRef, see #11814
+            fixup_container_fwd_refs(annotated.__args__[0]),
+            annotated.__origin__,
+        )
+
+
+def _mapper_property_as_plain_name(prop: Type[Any]) -> str:
+    if hasattr(prop, "_mapper_property_name"):
+        name = prop._mapper_property_name()
+    else:
+        name = None
+    return util.clsname_as_plain_name(prop, name)

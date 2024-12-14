@@ -2712,8 +2712,9 @@ class MultipleAdaptUsesEntityOverTableTest(
     def test_two_joins_adaption(self):
         a, c, d = self.tables.a, self.tables.c, self.tables.d
 
-        with _aliased_join_warning(r"C\(c\)"), _aliased_join_warning(
-            r"D\(d\)"
+        with (
+            _aliased_join_warning(r"C\(c\)"),
+            _aliased_join_warning(r"D\(d\)"),
         ):
             q = self._two_join_fixture()._compile_state()
 
@@ -2745,8 +2746,9 @@ class MultipleAdaptUsesEntityOverTableTest(
     def test_two_joins_sql(self):
         q = self._two_join_fixture()
 
-        with _aliased_join_warning(r"C\(c\)"), _aliased_join_warning(
-            r"D\(d\)"
+        with (
+            _aliased_join_warning(r"C\(c\)"),
+            _aliased_join_warning(r"D\(d\)"),
         ):
             self.assert_compile(
                 q,
@@ -2896,9 +2898,11 @@ class BetweenSubclassJoinWExtraJoinedLoad(
             m1 = aliased(Manager, flat=True)
             q = sess.query(Engineer, m1).join(Engineer.manager.of_type(m1))
 
-        with _aliased_join_warning(
-            r"Manager\(managers\)"
-        ) if autoalias else nullcontext():
+        with (
+            _aliased_join_warning(r"Manager\(managers\)")
+            if autoalias
+            else nullcontext()
+        ):
             self.assert_compile(
                 q,
                 "SELECT engineers.id AS "

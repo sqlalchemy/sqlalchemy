@@ -75,6 +75,7 @@ from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import assert_warns_message
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import expect_raises
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertions import is_not_none
@@ -188,6 +189,7 @@ class OnlyReturnTuplesTest(QueryTest):
         assert isinstance(row, collections_abc.Sequence)
         assert isinstance(row._mapping, collections_abc.Mapping)
 
+    @expect_deprecated(".*is deprecated, Row now behaves like a tuple.*")
     def test_single_entity_tuples(self):
         User = self.classes.User
         query = fixture_session().query(User).tuples()
@@ -214,6 +216,7 @@ class OnlyReturnTuplesTest(QueryTest):
         assert isinstance(row, collections_abc.Sequence)
         assert isinstance(row._mapping, collections_abc.Mapping)
 
+    @expect_deprecated(".*is deprecated, Row now behaves like a tuple.*")
     def test_multiple_entity_true_tuples(self):
         User = self.classes.User
         query = fixture_session().query(User.id, User).tuples()
@@ -697,8 +700,10 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
                     sa_exc.InvalidRequestError,
                     r"Can't apply uniqueness to row tuple "
                     r"containing value of type MyType\(\); "
-                    rf"""{'the values returned appear to be'
-                        if uncertain else 'this datatype produces'} """
+                    rf"""{
+                        'the values returned appear to be'
+                        if uncertain else 'this datatype produces'
+                    } """
                     r"non-hashable values",
                 ):
                     result = s.execute(q).unique().all()
@@ -1973,6 +1978,15 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         assert_raises(NotImplementedError, Address.user.in_, [User(id=5)])
+
+    def test_in_instrumented_attribute(self):
+        """test #12019"""
+        User = self.classes.User
+
+        self._test(
+            User.id.in_([User.id, User.name]),
+            "users.id IN (users.id, users.name)",
+        )
 
     def test_neg(self):
         User = self.classes.User
@@ -3561,7 +3575,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             q1,
-            "SELECT users.id AS foo FROM users " "WHERE users.name = :name_1",
+            "SELECT users.id AS foo FROM users WHERE users.name = :name_1",
         )
 
     def test_empty_filters(self):
@@ -3741,7 +3755,7 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
 
             d = relationship(
                 "D",
-                secondary="join(B, C)",
+                secondary=join(B, C),
                 primaryjoin="A.b_id == B.id",
                 secondaryjoin="C.d_id == D.id",
                 uselist=False,
@@ -4346,7 +4360,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
         q1 = sess.query(User)
         self.assert_compile(
             sess.query(q1.exists()),
-            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+            "SELECT EXISTS (SELECT 1 FROM users) AS anon_1",
         )
 
         q2 = sess.query(User).filter(User.name == "fred")
@@ -4364,7 +4378,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
         q1 = sess.query(User.id)
         self.assert_compile(
             sess.query(q1.exists()),
-            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+            "SELECT EXISTS (SELECT 1 FROM users) AS anon_1",
         )
 
     def test_exists_labeled_col_expression(self):
@@ -4374,7 +4388,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
         q1 = sess.query(User.id.label("foo"))
         self.assert_compile(
             sess.query(q1.exists()),
-            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+            "SELECT EXISTS (SELECT 1 FROM users) AS anon_1",
         )
 
     def test_exists_arbitrary_col_expression(self):
@@ -4384,7 +4398,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
         q1 = sess.query(func.foo(User.id))
         self.assert_compile(
             sess.query(q1.exists()),
-            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+            "SELECT EXISTS (SELECT 1 FROM users) AS anon_1",
         )
 
     def test_exists_col_warning(self):
@@ -5176,7 +5190,7 @@ class PrefixSuffixWithTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         sess = fixture_session()
         query = sess.query(User.name).prefix_with("PREFIX_1")
-        expected = "SELECT PREFIX_1 " "users.name AS users_name FROM users"
+        expected = "SELECT PREFIX_1 users.name AS users_name FROM users"
         self.assert_compile(query, expected, dialect=default.DefaultDialect())
 
     def test_one_suffix(self):
@@ -5192,7 +5206,7 @@ class PrefixSuffixWithTest(QueryTest, AssertsCompiledSQL):
         sess = fixture_session()
         query = sess.query(User.name).prefix_with("PREFIX_1", "PREFIX_2")
         expected = (
-            "SELECT PREFIX_1 PREFIX_2 " "users.name AS users_name FROM users"
+            "SELECT PREFIX_1 PREFIX_2 users.name AS users_name FROM users"
         )
         self.assert_compile(query, expected, dialect=default.DefaultDialect())
 
@@ -5534,6 +5548,25 @@ class YieldTest(_fixtures.FixtureTest):
             .yield_per(1)
         )
         eq_(len(q.all()), 4)
+
+    @testing.combinations(
+        "joined",
+        "subquery",
+        "selectin",
+        "select",
+        "immediate",
+        argnames="lazy",
+    )
+    def test_eagerload_config_disable(self, lazy):
+        self._eagerload_mappings(addresses_lazy=lazy)
+
+        User = self.classes.User
+        sess = fixture_session()
+        q = sess.query(User).enable_eagerloads(False).yield_per(1)
+        objs = q.all()
+        eq_(len(objs), 4)
+        for obj in objs:
+            assert "addresses" not in obj.__dict__
 
     def test_m2o_joinedload_not_others(self):
         self._eagerload_mappings(addresses_lazy="joined")

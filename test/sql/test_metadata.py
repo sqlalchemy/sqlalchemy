@@ -16,6 +16,7 @@ from sqlalchemy import desc
 from sqlalchemy import Enum
 from sqlalchemy import event
 from sqlalchemy import exc
+from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import func
@@ -751,13 +752,25 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                     comment="foo",
                 ),
                 "Column('foo', Integer(), table=None, primary_key=True, "
-                "nullable=False, onupdate=%s, default=%s, server_default=%s, "
-                "comment='foo')"
-                % (
-                    ColumnDefault(1),
-                    ColumnDefault(42),
-                    DefaultClause("42"),
+                f"nullable=False, onupdate={ColumnDefault(1)}, default="
+                f"{ColumnDefault(42)}, server_default={DefaultClause('42')}, "
+                "comment='foo')",
+            ),
+            (
+                Column(
+                    "foo",
+                    Integer,
+                    primary_key=True,
+                    nullable=False,
+                    onupdate=1,
+                    insert_default=42,
+                    server_default="42",
+                    comment="foo",
                 ),
+                "Column('foo', Integer(), table=None, primary_key=True, "
+                f"nullable=False, onupdate={ColumnDefault(1)}, default="
+                f"{ColumnDefault(42)}, server_default={DefaultClause('42')}, "
+                "comment='foo')",
             ),
             (
                 Table("bar", MetaData(), Column("x", String)),
@@ -2122,6 +2135,64 @@ class PKAutoIncrementTest(fixtures.TestBase):
             lambda: pk._autoincrement_column,
         )
 
+    def test_float_illegal_autoinc(self):
+        """test that Float is not acceptable if autoincrement=True
+
+        note this changed in 2.1 with #5252 where Numeric/Float were split out
+
+        """
+        t = Table("t", MetaData(), Column("a", Float, autoincrement=True))
+        pk = PrimaryKeyConstraint(t.c.a)
+        t.append_constraint(pk)
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Column type FLOAT on column 't.a' is not compatible "
+            "with autoincrement=True",
+        ):
+            pk._autoincrement_column,
+
+    def test_numeric_nonzero_scale_illegal_autoinc(self):
+        """test that Numeric() with non-zero scale is not acceptable if
+        autoincrement=True"""
+        t = Table(
+            "t", MetaData(), Column("a", Numeric(10, 5), autoincrement=True)
+        )
+        pk = PrimaryKeyConstraint(t.c.a)
+        t.append_constraint(pk)
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"Column type NUMERIC\(10, 5\) with non-zero scale 5",
+        ):
+            pk._autoincrement_column,
+
+    def test_numeric_zero_scale_autoinc_not_auto(self):
+        """test that Numeric() is not automatically assigned to
+        autoincrement"""
+        t = Table(
+            "t", MetaData(), Column("a", Numeric(10, 0), primary_key=True)
+        )
+
+        is_(t.autoincrement_column, None)
+
+    def test_integer_autoinc_is_auto(self):
+        """test that Integer() is automatically assigned to autoincrement"""
+        t = Table("t", MetaData(), Column("a", Integer, primary_key=True))
+
+        is_(t.autoincrement_column, t.c.a)
+
+    def test_numeric_zero_scale_autoinc_explicit_ok(self):
+        """test that Numeric() with zero scale is acceptable if
+        autoincrement=True"""
+        t = Table(
+            "t",
+            MetaData(),
+            Column("a", Numeric(10, 0), autoincrement=True, primary_key=True),
+        )
+
+        is_(t.autoincrement_column, t.c.a)
+
     def test_single_integer_default(self):
         t = Table(
             "t",
@@ -2383,17 +2454,27 @@ class SchemaTypeTest(fixtures.TestBase):
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, "z")
 
-    def test_to_metadata_copy_type(self):
+    @testing.variation("assign_metadata", [True, False])
+    def test_to_metadata_copy_type(self, assign_metadata):
         m1 = MetaData()
 
-        type_ = self.MyType()
+        if assign_metadata:
+            type_ = self.MyType(metadata=m1)
+        else:
+            type_ = self.MyType()
+
         t1 = Table("x", m1, Column("y", type_))
 
         m2 = MetaData()
         t2 = t1.to_metadata(m2)
 
-        # metadata isn't set
-        is_(t2.c.y.type.metadata, None)
+        if assign_metadata:
+            # metadata was transferred
+            # issue #11802
+            is_(t2.c.y.type.metadata, m2)
+        else:
+            # metadata isn't set
+            is_(t2.c.y.type.metadata, None)
 
         # our test type sets table, though
         is_(t2.c.y.type.table, t2)
@@ -2423,11 +2504,34 @@ class SchemaTypeTest(fixtures.TestBase):
 
         eq_(t2.c.y.type.schema, None)
 
-    def test_to_metadata_inherit_schema(self):
+    @testing.combinations(
+        ("name", "foobar", "name"),
+        ("schema", "someschema", "schema"),
+        ("inherit_schema", True, "inherit_schema"),
+        ("metadata", MetaData(), "metadata"),
+    )
+    def test_copy_args(self, argname, value, attrname):
+        kw = {argname: value}
+        e1 = self.MyType(**kw)
+
+        e1_copy = e1.copy()
+
+        eq_(getattr(e1_copy, attrname), value)
+
+    @testing.variation("already_has_a_schema", [True, False])
+    def test_to_metadata_inherit_schema(self, already_has_a_schema):
         m1 = MetaData()
 
-        type_ = self.MyType(inherit_schema=True)
+        if already_has_a_schema:
+            type_ = self.MyType(schema="foo", inherit_schema=True)
+            eq_(type_.schema, "foo")
+        else:
+            type_ = self.MyType(inherit_schema=True)
+
         t1 = Table("x", m1, Column("y", type_))
+        # note that inherit_schema means the schema mutates to be that
+        # of the table
+        is_(type_.schema, None)
 
         m2 = MetaData()
         t2 = t1.to_metadata(m2, schema="bar")
@@ -2882,7 +2986,7 @@ class UseExistingTest(testing.AssertsCompiledSQL, fixtures.TablesTest):
 
         assert_raises_message(
             exc.InvalidRequestError,
-            "Table 'users' is already defined for this " "MetaData instance.",
+            "Table 'users' is already defined for this MetaData instance.",
             go,
         )
 
@@ -4146,7 +4250,6 @@ class ConstraintTest(fixtures.TestBase):
 
 
 class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
-
     """Test Column() construction."""
 
     __dialect__ = "default"
@@ -4377,6 +4480,28 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
 
         deregister(schema.CreateColumn)
 
+    @testing.combinations(("index",), ("unique",), argnames="paramname")
+    @testing.combinations((True,), (False,), (None,), argnames="orig")
+    @testing.combinations((True,), (False,), (None,), argnames="merging")
+    def test_merge_index_unique(self, paramname, orig, merging):
+        """test #11091"""
+        source = Column(**{paramname: merging})
+
+        target = Column(**{paramname: orig})
+
+        source._merge(target)
+
+        target_copy = target._copy()
+        for col in (
+            target,
+            target_copy,
+        ):
+            result = getattr(col, paramname)
+            if orig is None:
+                is_(result, merging)
+            else:
+                is_(result, orig)
+
     @testing.combinations(
         ("default", lambda ctx: 10),
         ("default", func.foo()),
@@ -4562,7 +4687,6 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
 
 
 class ColumnDefaultsTest(fixtures.TestBase):
-
     """test assignment of default fixures to columns"""
 
     def _fixture(self, *arg, **kw):
@@ -4670,6 +4794,16 @@ class ColumnDefaultsTest(fixtures.TestBase):
         c = self._fixture(onupdate=target)
         assert c.onupdate.arg == target
         assert c.onupdate.column is c
+
+    def test_column_insert_default(self):
+        c = self._fixture(insert_default="y")
+        assert c.default.arg == "y"
+
+    def test_column_insert_default_predecende_on_default(self):
+        c = self._fixture(insert_default="x", default="y")
+        assert c.default.arg == "x"
+        c = self._fixture(default="y", insert_default="x")
+        assert c.default.arg == "x"
 
 
 class ColumnOptionsTest(fixtures.TestBase):
@@ -5667,7 +5801,7 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect.max_identifier_length = 15
         self.assert_compile(
             schema.CreateIndex(ix),
-            "CREATE INDEX ix_user_2de9 ON " '"user" (data, "Data2", "Data3")',
+            'CREATE INDEX ix_user_2de9 ON "user" (data, "Data2", "Data3")',
             dialect=dialect,
         )
 
@@ -5792,9 +5926,11 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             "b",
             metadata,
             Column("id", Integer, primary_key=True),
-            Column("aid", ForeignKey("a.id"))
-            if not col_has_type
-            else Column("aid", Integer, ForeignKey("a.id")),
+            (
+                Column("aid", ForeignKey("a.id"))
+                if not col_has_type
+                else Column("aid", Integer, ForeignKey("a.id"))
+            ),
         )
         fks = list(
             c for c in b.constraints if isinstance(c, ForeignKeyConstraint)
@@ -5949,7 +6085,7 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         # no issue with native boolean
         self.assert_compile(
             schema.CreateTable(u1),
-            'CREATE TABLE "user" (' "x BOOLEAN" ")",
+            """CREATE TABLE "user" (x BOOLEAN)""",
             dialect="postgresql",
         )
 

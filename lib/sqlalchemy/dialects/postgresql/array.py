@@ -1,5 +1,5 @@
-# postgresql/array.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/postgresql/array.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -46,7 +46,6 @@ def All(other, arrexpr, operator=operators.eq):
 
 
 class array(expression.ExpressionClauseList[_T]):
-
     """A PostgreSQL ARRAY literal.
 
     This is used to produce ARRAY literals in SQL expressions, e.g.::
@@ -55,11 +54,13 @@ class array(expression.ExpressionClauseList[_T]):
         from sqlalchemy.dialects import postgresql
         from sqlalchemy import select, func
 
-        stmt = select(array([1,2]) + array([3,4,5]))
+        stmt = select(array([1, 2]) + array([3, 4, 5]))
 
         print(stmt.compile(dialect=postgresql.dialect()))
 
-    Produces the SQL::
+    Produces the SQL:
+
+    .. sourcecode:: sql
 
         SELECT ARRAY[%(param_1)s, %(param_2)s] ||
             ARRAY[%(param_3)s, %(param_4)s, %(param_5)s]) AS anon_1
@@ -68,7 +69,7 @@ class array(expression.ExpressionClauseList[_T]):
     :class:`_types.ARRAY`.  The "inner" type of the array is inferred from
     the values present, unless the ``type_`` keyword argument is passed::
 
-        array(['foo', 'bar'], type_=CHAR)
+        array(["foo", "bar"], type_=CHAR)
 
     Multidimensional arrays are produced by nesting :class:`.array` constructs.
     The dimensionality of the final :class:`_types.ARRAY`
@@ -77,16 +78,21 @@ class array(expression.ExpressionClauseList[_T]):
     type::
 
         stmt = select(
-            array([
-                array([1, 2]), array([3, 4]), array([column('q'), column('x')])
-            ])
+            array(
+                [array([1, 2]), array([3, 4]), array([column("q"), column("x")])]
+            )
         )
         print(stmt.compile(dialect=postgresql.dialect()))
 
-    Produces::
+    Produces:
 
-        SELECT ARRAY[ARRAY[%(param_1)s, %(param_2)s],
-        ARRAY[%(param_3)s, %(param_4)s], ARRAY[q, x]] AS anon_1
+    .. sourcecode:: sql
+
+        SELECT ARRAY[
+            ARRAY[%(param_1)s, %(param_2)s],
+            ARRAY[%(param_3)s, %(param_4)s],
+            ARRAY[q, x]
+        ] AS anon_1
 
     .. versionadded:: 1.3.6 added support for multidimensional array literals
 
@@ -94,7 +100,7 @@ class array(expression.ExpressionClauseList[_T]):
 
         :class:`_postgresql.ARRAY`
 
-    """
+    """  # noqa: E501
 
     __visit_name__ = "array"
 
@@ -110,17 +116,17 @@ class array(expression.ExpressionClauseList[_T]):
         main_type = (
             type_arg
             if type_arg is not None
-            else self._type_tuple[0]
-            if self._type_tuple
-            else sqltypes.NULLTYPE
+            else self._type_tuple[0] if self._type_tuple else sqltypes.NULLTYPE
         )
 
         if isinstance(main_type, ARRAY):
             self.type = ARRAY(
                 main_type.item_type,
-                dimensions=main_type.dimensions + 1
-                if main_type.dimensions is not None
-                else 2,
+                dimensions=(
+                    main_type.dimensions + 1
+                    if main_type.dimensions is not None
+                    else 2
+                ),
             )
         else:
             self.type = ARRAY(main_type)
@@ -167,9 +173,11 @@ class ARRAY(sqltypes.ARRAY):
 
         from sqlalchemy.dialects import postgresql
 
-        mytable = Table("mytable", metadata,
-                Column("data", postgresql.ARRAY(Integer, dimensions=2))
-            )
+        mytable = Table(
+            "mytable",
+            metadata,
+            Column("data", postgresql.ARRAY(Integer, dimensions=2)),
+        )
 
     The :class:`_postgresql.ARRAY` type provides all operations defined on the
     core :class:`_types.ARRAY` type, including support for "dimensions",
@@ -184,8 +192,9 @@ class ARRAY(sqltypes.ARRAY):
 
         mytable.c.data.contains([1, 2])
 
-    The :class:`_postgresql.ARRAY` type may not be supported on all
-    PostgreSQL DBAPIs; it is currently known to work on psycopg2 only.
+    Indexed access is one-based by default, to match that of PostgreSQL;
+    for zero-based indexed access, set
+    :paramref:`_postgresql.ARRAY.zero_indexes`.
 
     Additionally, the :class:`_postgresql.ARRAY`
     type does not work directly in
@@ -203,6 +212,7 @@ class ARRAY(sqltypes.ARRAY):
 
             from sqlalchemy.dialects.postgresql import ARRAY
             from sqlalchemy.ext.mutable import MutableList
+
 
             class SomeOrmClass(Base):
                 # ...
@@ -225,42 +235,6 @@ class ARRAY(sqltypes.ARRAY):
 
     """
 
-    class Comparator(sqltypes.ARRAY.Comparator):
-
-        """Define comparison operations for :class:`_types.ARRAY`.
-
-        Note that these operations are in addition to those provided
-        by the base :class:`.types.ARRAY.Comparator` class, including
-        :meth:`.types.ARRAY.Comparator.any` and
-        :meth:`.types.ARRAY.Comparator.all`.
-
-        """
-
-        def contains(self, other, **kwargs):
-            """Boolean expression.  Test if elements are a superset of the
-            elements of the argument array expression.
-
-            kwargs may be ignored by this operator but are required for API
-            conformance.
-            """
-            return self.operate(CONTAINS, other, result_type=sqltypes.Boolean)
-
-        def contained_by(self, other):
-            """Boolean expression.  Test if elements are a proper subset of the
-            elements of the argument array expression.
-            """
-            return self.operate(
-                CONTAINED_BY, other, result_type=sqltypes.Boolean
-            )
-
-        def overlap(self, other):
-            """Boolean expression.  Test if array has elements in common with
-            an argument array expression.
-            """
-            return self.operate(OVERLAP, other, result_type=sqltypes.Boolean)
-
-    comparator_factory = Comparator
-
     def __init__(
         self,
         item_type: _TypeEngineArgument[Any],
@@ -272,7 +246,7 @@ class ARRAY(sqltypes.ARRAY):
 
         E.g.::
 
-          Column('myarray', ARRAY(Integer))
+          Column("myarray", ARRAY(Integer))
 
         Arguments are:
 
@@ -311,6 +285,41 @@ class ARRAY(sqltypes.ARRAY):
         self.as_tuple = as_tuple
         self.dimensions = dimensions
         self.zero_indexes = zero_indexes
+
+    class Comparator(sqltypes.ARRAY.Comparator):
+        """Define comparison operations for :class:`_types.ARRAY`.
+
+        Note that these operations are in addition to those provided
+        by the base :class:`.types.ARRAY.Comparator` class, including
+        :meth:`.types.ARRAY.Comparator.any` and
+        :meth:`.types.ARRAY.Comparator.all`.
+
+        """
+
+        def contains(self, other, **kwargs):
+            """Boolean expression.  Test if elements are a superset of the
+            elements of the argument array expression.
+
+            kwargs may be ignored by this operator but are required for API
+            conformance.
+            """
+            return self.operate(CONTAINS, other, result_type=sqltypes.Boolean)
+
+        def contained_by(self, other):
+            """Boolean expression.  Test if elements are a proper subset of the
+            elements of the argument array expression.
+            """
+            return self.operate(
+                CONTAINED_BY, other, result_type=sqltypes.Boolean
+            )
+
+        def overlap(self, other):
+            """Boolean expression.  Test if array has elements in common with
+            an argument array expression.
+            """
+            return self.operate(OVERLAP, other, result_type=sqltypes.Boolean)
+
+    comparator_factory = Comparator
 
     @property
     def hashable(self):

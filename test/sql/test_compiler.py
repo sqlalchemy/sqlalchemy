@@ -44,6 +44,10 @@ from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import not_
 from sqlalchemy import null
+from sqlalchemy import nulls_first
+from sqlalchemy import nulls_last
+from sqlalchemy import nullsfirst
+from sqlalchemy import nullslast
 from sqlalchemy import Numeric
 from sqlalchemy import or_
 from sqlalchemy import outerjoin
@@ -260,11 +264,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         assert not hasattr(table1.select().subquery().c.myid, "columns")
         assert not hasattr(table1.alias().c.myid, "columns")
         assert not hasattr(table1.alias().c.myid, "c")
-        with testing.expect_deprecated(
-            "The SelectBase.c and SelectBase.columns attributes are "
-            "deprecated"
-        ):
-            assert hasattr(table1.select(), "c")
 
         assert_raises_message(
             exc.InvalidRequestError,
@@ -1544,7 +1543,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             select(select(table1.c.name).label("foo")),
-            "SELECT (SELECT mytable.name FROM mytable) " "AS foo",
+            "SELECT (SELECT mytable.name FROM mytable) AS foo",
         )
 
         # scalar selects should not have any attributes on their 'c' or
@@ -1668,27 +1667,13 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "foo || :param_1",
         )
 
-    def test_order_by_labels_enabled(self):
+    def test_order_by_labels_enabled_negative_cases(self):
+        """test order_by_labels enabled but the cases where we expect
+        ORDER BY the expression without the label name"""
+
         lab1 = (table1.c.myid + 12).label("foo")
         lab2 = func.somefunc(table1.c.name).label("bar")
         dialect = default.DefaultDialect()
-
-        self.assert_compile(
-            select(lab1, lab2).order_by(lab1, desc(lab2)),
-            "SELECT mytable.myid + :myid_1 AS foo, "
-            "somefunc(mytable.name) AS bar FROM mytable "
-            "ORDER BY foo, bar DESC",
-            dialect=dialect,
-        )
-
-        # the function embedded label renders as the function
-        self.assert_compile(
-            select(lab1, lab2).order_by(func.hoho(lab1), desc(lab2)),
-            "SELECT mytable.myid + :myid_1 AS foo, "
-            "somefunc(mytable.name) AS bar FROM mytable "
-            "ORDER BY hoho(mytable.myid + :myid_1), bar DESC",
-            dialect=dialect,
-        )
 
         # binary expressions render as the expression without labels
         self.assert_compile(
@@ -1709,49 +1694,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=dialect,
         )
 
-        lx = (table1.c.myid + table1.c.myid).label("lx")
-        ly = (func.lower(table1.c.name) + table1.c.description).label("ly")
-
-        self.assert_compile(
-            select(lx, ly).order_by(lx, ly.desc()),
-            "SELECT mytable.myid + mytable.myid AS lx, "
-            "lower(mytable.name) || mytable.description AS ly "
-            "FROM mytable ORDER BY lx, ly DESC",
-            dialect=dialect,
-        )
-
-        # expression isn't actually the same thing (even though label is)
-        self.assert_compile(
-            select(lab1, lab2).order_by(
-                table1.c.myid.label("foo"), desc(table1.c.name.label("bar"))
-            ),
-            "SELECT mytable.myid + :myid_1 AS foo, "
-            "somefunc(mytable.name) AS bar FROM mytable "
-            "ORDER BY mytable.myid, mytable.name DESC",
-            dialect=dialect,
-        )
-
-        # it's also an exact match, not aliased etc.
-        self.assert_compile(
-            select(lab1, lab2).order_by(
-                desc(table1.alias().c.name.label("bar"))
-            ),
-            "SELECT mytable.myid + :myid_1 AS foo, "
-            "somefunc(mytable.name) AS bar FROM mytable "
-            "ORDER BY mytable_1.name DESC",
-            dialect=dialect,
-        )
-
-        # but! it's based on lineage
-        lab2_lineage = lab2.element._clone()
-        self.assert_compile(
-            select(lab1, lab2).order_by(desc(lab2_lineage.label("bar"))),
-            "SELECT mytable.myid + :myid_1 AS foo, "
-            "somefunc(mytable.name) AS bar FROM mytable "
-            "ORDER BY bar DESC",
-            dialect=dialect,
-        )
-
         # here, 'name' is implicitly available, but w/ #3882 we don't
         # want to render a name that isn't specifically a Label elsewhere
         # in the query
@@ -1768,7 +1710,92 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.myid FROM mytable ORDER BY lower(mytable.name)",
         )
 
+    @testing.combinations(
+        (desc, "DESC"),
+        (asc, "ASC"),
+        (nulls_first, "NULLS FIRST"),
+        (nulls_last, "NULLS LAST"),
+        (nullsfirst, "NULLS FIRST"),
+        (nullslast, "NULLS LAST"),
+        (lambda c: c.desc().nulls_last(), "DESC NULLS LAST"),
+        (lambda c: c.desc().nullslast(), "DESC NULLS LAST"),
+        (lambda c: c.nulls_first().asc(), "NULLS FIRST ASC"),
+    )
+    def test_order_by_labels_enabled(self, operator, expected):
+        """test positive cases with order_by_labels enabled.  this is
+        multipled out to all the ORDER BY modifier operators
+        (see #11592)
+
+
+        """
+        lab1 = (table1.c.myid + 12).label("foo")
+        lab2 = func.somefunc(table1.c.name).label("bar")
+        dialect = default.DefaultDialect()
+
+        self.assert_compile(
+            select(lab1, lab2).order_by(lab1, operator(lab2)),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "somefunc(mytable.name) AS bar FROM mytable "
+            f"ORDER BY foo, bar {expected}",
+            dialect=dialect,
+        )
+
+        # the function embedded label renders as the function
+        self.assert_compile(
+            select(lab1, lab2).order_by(func.hoho(lab1), operator(lab2)),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "somefunc(mytable.name) AS bar FROM mytable "
+            f"ORDER BY hoho(mytable.myid + :myid_1), bar {expected}",
+            dialect=dialect,
+        )
+
+        lx = (table1.c.myid + table1.c.myid).label("lx")
+        ly = (func.lower(table1.c.name) + table1.c.description).label("ly")
+
+        self.assert_compile(
+            select(lx, ly).order_by(lx, operator(ly)),
+            "SELECT mytable.myid + mytable.myid AS lx, "
+            "lower(mytable.name) || mytable.description AS ly "
+            f"FROM mytable ORDER BY lx, ly {expected}",
+            dialect=dialect,
+        )
+
+        # expression isn't actually the same thing (even though label is)
+        self.assert_compile(
+            select(lab1, lab2).order_by(
+                table1.c.myid.label("foo"),
+                operator(table1.c.name.label("bar")),
+            ),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "somefunc(mytable.name) AS bar FROM mytable "
+            f"ORDER BY mytable.myid, mytable.name {expected}",
+            dialect=dialect,
+        )
+
+        # it's also an exact match, not aliased etc.
+        self.assert_compile(
+            select(lab1, lab2).order_by(
+                operator(table1.alias().c.name.label("bar"))
+            ),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "somefunc(mytable.name) AS bar FROM mytable "
+            f"ORDER BY mytable_1.name {expected}",
+            dialect=dialect,
+        )
+
+        # but! it's based on lineage
+        lab2_lineage = lab2.element._clone()
+        self.assert_compile(
+            select(lab1, lab2).order_by(operator(lab2_lineage.label("bar"))),
+            "SELECT mytable.myid + :myid_1 AS foo, "
+            "somefunc(mytable.name) AS bar FROM mytable "
+            f"ORDER BY bar {expected}",
+            dialect=dialect,
+        )
+
     def test_order_by_labels_disabled(self):
+        """test when the order_by_labels feature is disabled entirely"""
+
         lab1 = (table1.c.myid + 12).label("foo")
         lab2 = func.somefunc(table1.c.name).label("bar")
         dialect = default.DefaultDialect()
@@ -2694,7 +2721,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             s3,
-            "SELECT NULL AS anon_1, NULL AS anon__1 " "UNION "
+            "SELECT NULL AS anon_1, NULL AS anon__1 UNION "
             # without the feature tested in test_deduping_hash_algo we'd get
             # "SELECT true AS anon_2, true AS anon__1",
             "SELECT true AS anon_2, true AS anon__2",
@@ -3775,7 +3802,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         )
         assert_raises_message(
             exc.CompileError,
-            "conflicts with unique bind parameter " "of the same name",
+            "conflicts with unique bind parameter of the same name",
             str,
             s,
         )
@@ -3789,7 +3816,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         )
         assert_raises_message(
             exc.CompileError,
-            "conflicts with unique bind parameter " "of the same name",
+            "conflicts with unique bind parameter of the same name",
             str,
             s,
         )
@@ -4434,7 +4461,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         )
         self.assert_compile(
             expr,
-            "(mytable.myid, mytable.name) IN " "(__[POSTCOMPILE_param_1])",
+            "(mytable.myid, mytable.name) IN (__[POSTCOMPILE_param_1])",
             checkparams={"param_1": [(1, "foo"), (5, "bar")]},
             check_post_param={"param_1": [(1, "foo"), (5, "bar")]},
             check_literal_execute={},
@@ -4469,7 +4496,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         dialect.tuple_in_values = True
         self.assert_compile(
             tuple_(table1.c.myid, table1.c.name).in_([(1, "foo"), (5, "bar")]),
-            "(mytable.myid, mytable.name) IN " "(__[POSTCOMPILE_param_1])",
+            "(mytable.myid, mytable.name) IN (__[POSTCOMPILE_param_1])",
             dialect=dialect,
             checkparams={"param_1": [(1, "foo"), (5, "bar")]},
             check_post_param={"param_1": [(1, "foo"), (5, "bar")]},
@@ -4816,7 +4843,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             select(table1.c.myid).where(
                 table1.c.myid == bindparam("foo", 5, literal_execute=True)
             ),
-            "SELECT mytable.myid FROM mytable " "WHERE mytable.myid = 5",
+            "SELECT mytable.myid FROM mytable WHERE mytable.myid = 5",
             literal_binds=True,
         )
 
@@ -4843,7 +4870,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             select(table1.c.myid).where(
                 table1.c.myid == bindparam("foo", 5, literal_execute=True)
             ),
-            "SELECT mytable.myid FROM mytable " "WHERE mytable.myid = 5",
+            "SELECT mytable.myid FROM mytable WHERE mytable.myid = 5",
             render_postcompile=True,
         )
 
@@ -5974,6 +6001,53 @@ class StringifySpecialTest(fixtures.TestBase):
         ):
             eq_(str(Grouping(Widget())), "(widget)")
 
+    def test_dialect_sub_compile_has_stack(self):
+        """test #10753"""
+
+        class Widget(ColumnElement):
+            __visit_name__ = "widget"
+            stringify_dialect = "sqlite"
+
+        def visit_widget(self, element, **kw):
+            assert self.stack
+            return "widget"
+
+        with mock.patch(
+            "sqlalchemy.dialects.sqlite.base.SQLiteCompiler.visit_widget",
+            visit_widget,
+            create=True,
+        ):
+            eq_(str(select(Widget())), "SELECT widget AS anon_1")
+
+    def test_dialect_sub_compile_has_stack_pg_specific(self):
+        """test #10753"""
+        my_table = table(
+            "my_table", column("id"), column("data"), column("user_email")
+        )
+
+        from sqlalchemy.dialects.postgresql import insert
+
+        insert_stmt = insert(my_table).values(
+            id="some_existing_id", data="inserted value"
+        )
+
+        do_update_stmt = insert_stmt.on_conflict_do_update(
+            index_elements=["id"], set_=dict(data="updated value")
+        )
+
+        # note!  two different bound parameter formats.   It's weird yes,
+        # but this is what I want.  They are stringifying without using the
+        # correct dialect.   We could use the PG compiler at the point of
+        # the insert() but that still would not accommodate params in other
+        # parts of the statement.
+        eq_ignore_whitespace(
+            str(select(do_update_stmt.cte())),
+            "WITH anon_1 AS (INSERT INTO my_table (id, data) "
+            "VALUES (:param_1, :param_2) "
+            "ON CONFLICT (id) "
+            "DO UPDATE SET data = %(param_3)s) SELECT FROM anon_1",
+        )
+
     def test_dialect_sub_compile_w_binds(self):
         """test sub-compile into a new compiler where
         state != CompilerState.COMPILING, but we have to render a bindparam
@@ -6089,7 +6163,7 @@ class StringifySpecialTest(fixtures.TestBase):
 
         eq_ignore_whitespace(
             str(schema.AddConstraint(cons)),
-            "ALTER TABLE testtbl ADD EXCLUDE USING gist " "(room WITH =)",
+            "ALTER TABLE testtbl ADD EXCLUDE USING gist (room WITH =)",
         )
 
     def test_try_cast(self):
@@ -7290,7 +7364,7 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
         s = select(t1.c.a)
         s2 = select(t1).where(t1.c.a == s.scalar_subquery())
         self.assert_compile(
-            s2, "SELECT t1.a FROM t1 WHERE t1.a = " "(SELECT t1.a FROM t1)"
+            s2, "SELECT t1.a FROM t1 WHERE t1.a = (SELECT t1.a FROM t1)"
         )
 
     def test_correlate_semiauto_where_singlefrom(self):
@@ -7478,7 +7552,6 @@ class CoercionTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class ResultMapTest(fixtures.TestBase):
-
     """test the behavior of the 'entry stack' and the determination
     when the result_map needs to be populated.
 
@@ -7693,9 +7766,9 @@ class ResultMapTest(fixtures.TestBase):
         with mock.patch.object(
             dialect.statement_compiler,
             "translate_select_structure",
-            lambda self, to_translate, **kw: wrapped_again
-            if to_translate is stmt
-            else to_translate,
+            lambda self, to_translate, **kw: (
+                wrapped_again if to_translate is stmt else to_translate
+            ),
         ):
             compiled = stmt.compile(dialect=dialect)
 
@@ -7752,9 +7825,9 @@ class ResultMapTest(fixtures.TestBase):
         with mock.patch.object(
             dialect.statement_compiler,
             "translate_select_structure",
-            lambda self, to_translate, **kw: wrapped_again
-            if to_translate is stmt
-            else to_translate,
+            lambda self, to_translate, **kw: (
+                wrapped_again if to_translate is stmt else to_translate
+            ),
         ):
             compiled = stmt.compile(dialect=dialect)
 

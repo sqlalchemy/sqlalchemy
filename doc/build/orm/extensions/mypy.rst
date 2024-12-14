@@ -13,7 +13,8 @@ the :func:`_orm.mapped_column` construct introduced in SQLAlchemy 2.0.
 
     **The SQLAlchemy Mypy Plugin is DEPRECATED, and will be removed possibly
     as early as the SQLAlchemy 2.1 release.  We would urge users to please
-    migrate away from it ASAP.**
+    migrate away from it ASAP.   The mypy plugin also works only up until
+    mypy version 1.10.1.    version 1.11.0 and greater may not work properly.**
 
     This plugin cannot be maintained across constantly changing releases
     of mypy and its stability going forward CANNOT be guaranteed.
@@ -24,7 +25,11 @@ the :func:`_orm.mapped_column` construct introduced in SQLAlchemy 2.0.
 
 .. topic:: SQLAlchemy Mypy Plugin Status Update
 
-   **Updated July 2023**
+   **Updated July 2024**
+
+   The mypy plugin is supported **only up until mypy 1.10.1, and it will have
+   issues running with 1.11.0 or greater**.   Use with mypy 1.11.0 or greater
+   may have error conditions which currently cannot be resolved.
 
    For SQLAlchemy 2.0, the Mypy plugin continues to work at the level at which
    it reached in the SQLAlchemy 1.4 release.  SQLAlchemy 2.0 however features
@@ -179,8 +184,7 @@ following::
         )
         name: Mapped[Optional[str]] = Mapped._special_method(Column(String))
 
-        def __init__(self, id: Optional[int] = ..., name: Optional[str] = ...) -> None:
-            ...
+        def __init__(self, id: Optional[int] = ..., name: Optional[str] = ...) -> None: ...
 
 
     some_user = User(id=5, name="user")
@@ -498,7 +502,7 @@ plugin that a particular class intends to serve as a declarative mixin::
     class HasCompany:
         @declared_attr
         def company_id(cls) -> Mapped[int]:  # uses Mapped
-            return Column(ForeignKey("company.id"))
+            return mapped_column(ForeignKey("company.id"))
 
         @declared_attr
         def company(cls) -> Mapped["Company"]:

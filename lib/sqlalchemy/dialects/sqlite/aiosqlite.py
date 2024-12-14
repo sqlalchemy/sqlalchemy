@@ -1,5 +1,5 @@
-# sqlite/aiosqlite.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/sqlite/aiosqlite.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -31,6 +31,7 @@ This dialect should normally be used only with the
 :func:`_asyncio.create_async_engine` engine creation function::
 
     from sqlalchemy.ext.asyncio import create_async_engine
+
     engine = create_async_engine("sqlite+aiosqlite:///filename")
 
 The URL passes through all arguments to the ``pysqlite`` driver, so all
@@ -58,11 +59,13 @@ The solution is similar to :ref:`pysqlite_serializable`. This is achieved by the
 
     engine = create_async_engine("sqlite+aiosqlite:///myfile.db")
 
+
     @event.listens_for(engine.sync_engine, "connect")
     def do_connect(dbapi_connection, connection_record):
         # disable aiosqlite's emitting of the BEGIN statement entirely.
         # also stops it from emitting COMMIT before any DDL.
         dbapi_connection.isolation_level = None
+
 
     @event.listens_for(engine.sync_engine, "begin")
     def do_begin(conn):
@@ -83,13 +86,10 @@ from functools import partial
 from .base import SQLiteExecutionContext
 from .pysqlite import SQLiteDialect_pysqlite
 from ... import pool
-from ... import util
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
-from ...connectors.asyncio import AsyncAdaptFallback_dbapi_connection
-from ...util.concurrency import await_fallback
-from ...util.concurrency import await_only
+from ...util.concurrency import await_
 
 
 class AsyncAdapt_aiosqlite_cursor(AsyncAdapt_dbapi_cursor):
@@ -126,13 +126,13 @@ class AsyncAdapt_aiosqlite_connection(AsyncAdapt_dbapi_connection):
         self._connection._tx.put_nowait((future, function))
 
         try:
-            return self.await_(future)
+            return await_(future)
         except Exception as error:
             self._handle_exception(error)
 
     def create_function(self, *args, **kw):
         try:
-            self.await_(self._connection.create_function(*args, **kw))
+            await_(self._connection.create_function(*args, **kw))
         except Exception as error:
             self._handle_exception(error)
 
@@ -146,7 +146,7 @@ class AsyncAdapt_aiosqlite_connection(AsyncAdapt_dbapi_connection):
 
     def close(self):
         try:
-            self.await_(self._connection.close())
+            await_(self._connection.close())
         except ValueError:
             # this is undocumented for aiosqlite, that ValueError
             # was raised if .close() was called more than once, which is
@@ -168,12 +168,6 @@ class AsyncAdapt_aiosqlite_connection(AsyncAdapt_dbapi_connection):
             raise self.dbapi.sqlite.OperationalError(error.args[0]) from error
         else:
             super()._handle_exception(error)
-
-
-class AsyncAdaptFallback_aiosqlite_connection(
-    AsyncAdaptFallback_dbapi_connection, AsyncAdapt_aiosqlite_connection
-):
-    __slots__ = ()
 
 
 class AsyncAdapt_aiosqlite_dbapi:
@@ -203,8 +197,6 @@ class AsyncAdapt_aiosqlite_dbapi:
             setattr(self, name, getattr(self.sqlite, name))
 
     def connect(self, *arg, **kw):
-        async_fallback = kw.pop("async_fallback", False)
-
         creator_fn = kw.pop("async_creator_fn", None)
         if creator_fn:
             connection = creator_fn(*arg, **kw)
@@ -213,16 +205,10 @@ class AsyncAdapt_aiosqlite_dbapi:
             # it's a Thread.   you'll thank us later
             connection.daemon = True
 
-        if util.asbool(async_fallback):
-            return AsyncAdaptFallback_aiosqlite_connection(
-                self,
-                await_fallback(connection),
-            )
-        else:
-            return AsyncAdapt_aiosqlite_connection(
-                self,
-                await_only(connection),
-            )
+        return AsyncAdapt_aiosqlite_connection(
+            self,
+            await_(connection),
+        )
 
 
 class SQLiteExecutionContext_aiosqlite(SQLiteExecutionContext):

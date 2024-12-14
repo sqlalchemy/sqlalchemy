@@ -237,7 +237,7 @@ The two qualities that :func:`_orm.mapped_column` derives from the
   In the absence of **both** of these parameters, the presence of
   ``typing.Optional[]`` within the :class:`_orm.Mapped` type annotation will be
   used to determine nullability, where ``typing.Optional[]`` means ``NULL``,
-  and the absense of ``typing.Optional[]`` means ``NOT NULL``. If there is no
+  and the absence of ``typing.Optional[]`` means ``NOT NULL``. If there is no
   ``Mapped[]`` annotation present at all, and there is no
   :paramref:`_orm.mapped_column.nullable` or
   :paramref:`_orm.mapped_column.primary_key` parameter, then SQLAlchemy's usual
@@ -539,7 +539,7 @@ specific to each attribute::
 
 When using ``Annotated`` types in this way, the configuration of the type
 may also be affected on a per-attribute basis.  For the types in the above
-example that feature explcit use of :paramref:`_orm.mapped_column.nullable`,
+example that feature explicit use of :paramref:`_orm.mapped_column.nullable`,
 we can apply the ``Optional[]`` generic modifier to any of our types so that
 the field is optional or not at the Python level, which will be independent
 of the ``NULL`` / ``NOT NULL`` setting that takes place in the database::
@@ -1157,6 +1157,10 @@ in the specific circumstance of using single table inheritance, where
 additional columns are present on mapped subclasses that have
 no :class:`.Table` of their own.  This is illustrated in the section
 :ref:`single_inheritance`.
+
+.. seealso::
+
+   :ref:`orm_declarative_table_adding_relationship` - similar examples for :func:`_orm.relationship`
 
 .. note:: Assignment of mapped
     properties to an already mapped class will only

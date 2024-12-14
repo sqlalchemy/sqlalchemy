@@ -1,5 +1,5 @@
 # event/registry.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -66,9 +66,9 @@ _RefCollectionToListenerType = Dict[
     "weakref.ref[_ListenerFnType]",
 ]
 
-_key_to_collection: Dict[
-    _EventKeyTupleType, _RefCollectionToListenerType
-] = collections.defaultdict(dict)
+_key_to_collection: Dict[_EventKeyTupleType, _RefCollectionToListenerType] = (
+    collections.defaultdict(dict)
+)
 """
 Given an original listen() argument, can locate all
 listener collections and the listener fn contained

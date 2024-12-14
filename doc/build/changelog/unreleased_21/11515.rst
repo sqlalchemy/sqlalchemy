@@ -1,0 +1,19 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 11515
+
+    Enhanced the caching structure of the :paramref:`_expression.over.rows`
+    and :paramref:`_expression.over.range` so that different numerical
+    values for the rows /
+    range fields are cached on the same cache key, to the extent that the
+    underlying SQL does not actually change (i.e. "unbounded", "current row",
+    negative/positive status will still change the cache key).  This prevents
+    the use of many different numerical range/rows value for a query that is
+    otherwise identical from filling up the SQL cache.
+
+    Note that the semi-private compiler method ``_format_frame_clause()``
+    is removed by this fix, replaced with a new method
+    ``visit_frame_clause()``.  Third party dialects which may have referred
+    to this method will need to change the name and revise the approach to
+    rendering the correct SQL for that dialect.
+

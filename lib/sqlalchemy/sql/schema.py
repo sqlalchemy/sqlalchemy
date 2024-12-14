@@ -1,5 +1,5 @@
 # sql/schema.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -40,6 +40,7 @@ from typing import Callable
 from typing import cast
 from typing import Collection
 from typing import Dict
+from typing import Final
 from typing import Iterable
 from typing import Iterator
 from typing import List
@@ -47,10 +48,12 @@ from typing import Mapping
 from typing import NoReturn
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Sequence as _typing_Sequence
 from typing import Set
 from typing import Tuple
 from typing import TYPE_CHECKING
+from typing import TypedDict
 from typing import TypeVar
 from typing import Union
 
@@ -60,6 +63,7 @@ from . import roles
 from . import type_api
 from . import visitors
 from .base import _DefaultDescriptionTuple
+from .base import _NoArg
 from .base import _NoneName
 from .base import _SentinelColumnCharacterization
 from .base import _SentinelDefaultCharacterization
@@ -76,22 +80,19 @@ from .elements import TextClause
 from .selectable import TableClause
 from .type_api import to_instance
 from .visitors import ExternallyTraversible
-from .visitors import InternalTraversal
 from .. import event
 from .. import exc
 from .. import inspection
 from .. import util
 from ..util import HasMemoized
-from ..util.typing import Final
 from ..util.typing import Literal
-from ..util.typing import Protocol
 from ..util.typing import Self
-from ..util.typing import TypedDict
 from ..util.typing import TypeGuard
 
 if typing.TYPE_CHECKING:
     from ._typing import _AutoIncrementType
     from ._typing import _DDLColumnArgument
+    from ._typing import _DDLColumnReferenceArgument
     from ._typing import _InfoType
     from ._typing import _TextCoercedExpressionArgument
     from ._typing import _TypeEngineArgument
@@ -100,7 +101,6 @@ if typing.TYPE_CHECKING:
     from .elements import BindParameter
     from .functions import Function
     from .type_api import TypeEngine
-    from .visitors import _TraverseInternalsType
     from .visitors import anon_map
     from ..engine import Connection
     from ..engine import Engine
@@ -123,6 +123,8 @@ _ConstraintNameArgument = Optional[Union[str, _NoneName]]
 _ServerDefaultArgument = Union[
     "FetchedValue", str, TextClause, ColumnElement[Any]
 ]
+
+_ServerOnUpdateArgument = _ServerDefaultArgument
 
 
 class SchemaConst(Enum):
@@ -159,15 +161,15 @@ class SchemaConst(Enum):
     """
 
 
-RETAIN_SCHEMA: Final[
-    Literal[SchemaConst.RETAIN_SCHEMA]
-] = SchemaConst.RETAIN_SCHEMA
-BLANK_SCHEMA: Final[
-    Literal[SchemaConst.BLANK_SCHEMA]
-] = SchemaConst.BLANK_SCHEMA
-NULL_UNSPECIFIED: Final[
-    Literal[SchemaConst.NULL_UNSPECIFIED]
-] = SchemaConst.NULL_UNSPECIFIED
+RETAIN_SCHEMA: Final[Literal[SchemaConst.RETAIN_SCHEMA]] = (
+    SchemaConst.RETAIN_SCHEMA
+)
+BLANK_SCHEMA: Final[Literal[SchemaConst.BLANK_SCHEMA]] = (
+    SchemaConst.BLANK_SCHEMA
+)
+NULL_UNSPECIFIED: Final[Literal[SchemaConst.NULL_UNSPECIFIED]] = (
+    SchemaConst.NULL_UNSPECIFIED
+)
 
 
 def _get_table_key(name: str, schema: Optional[str]) -> str:
@@ -319,9 +321,10 @@ class Table(
     e.g.::
 
         mytable = Table(
-            "mytable", metadata,
-            Column('mytable_id', Integer, primary_key=True),
-            Column('value', String(50))
+            "mytable",
+            metadata,
+            Column("mytable_id", Integer, primary_key=True),
+            Column("value", String(50)),
         )
 
     The :class:`_schema.Table`
@@ -344,12 +347,10 @@ class Table(
     if TYPE_CHECKING:
 
         @util.ro_non_memoized_property
-        def primary_key(self) -> PrimaryKeyConstraint:
-            ...
+        def primary_key(self) -> PrimaryKeyConstraint: ...
 
         @util.ro_non_memoized_property
-        def foreign_keys(self) -> Set[ForeignKey]:
-            ...
+        def foreign_keys(self) -> Set[ForeignKey]: ...
 
     _columns: DedupeColumnCollection[Column[Any]]
 
@@ -393,26 +394,18 @@ class Table(
 
     """
 
-    _traverse_internals: _TraverseInternalsType = (
-        TableClause._traverse_internals
-        + [("schema", InternalTraversal.dp_string)]
-    )
-
     if TYPE_CHECKING:
 
         @util.ro_non_memoized_property
-        def columns(self) -> ReadOnlyColumnCollection[str, Column[Any]]:
-            ...
+        def columns(self) -> ReadOnlyColumnCollection[str, Column[Any]]: ...
 
         @util.ro_non_memoized_property
         def exported_columns(
             self,
-        ) -> ReadOnlyColumnCollection[str, Column[Any]]:
-            ...
+        ) -> ReadOnlyColumnCollection[str, Column[Any]]: ...
 
         @util.ro_non_memoized_property
-        def c(self) -> ReadOnlyColumnCollection[str, Column[Any]]:
-            ...
+        def c(self) -> ReadOnlyColumnCollection[str, Column[Any]]: ...
 
     def _gen_cache_key(
         self, anon_map: anon_map, bindparams: List[BindParameter[Any]]
@@ -641,11 +634,13 @@ class Table(
             :class:`_schema.Column`
             named "y"::
 
-                Table("mytable", metadata,
-                            Column('y', Integer),
-                            extend_existing=True,
-                            autoload_with=engine
-                        )
+                Table(
+                    "mytable",
+                    metadata,
+                    Column("y", Integer),
+                    extend_existing=True,
+                    autoload_with=engine,
+                )
 
             .. seealso::
 
@@ -742,12 +737,12 @@ class Table(
                     "handle the column reflection event"
                     # ...
 
+
                 t = Table(
-                    'sometable',
+                    "sometable",
                     autoload_with=engine,
-                    listeners=[
-                        ('column_reflect', listen_for_reflect)
-                    ])
+                    listeners=[("column_reflect", listen_for_reflect)],
+                )
 
             .. seealso::
 
@@ -1354,7 +1349,7 @@ class Table(
 
             m1 = MetaData()
 
-            user = Table('user', m1, Column('id', Integer, primary_key=True))
+            user = Table("user", m1, Column("id", Integer, primary_key=True))
 
             m2 = MetaData()
             user_copy = user.to_metadata(m2)
@@ -1378,7 +1373,7 @@ class Table(
          unless
          set explicitly::
 
-            m2 = MetaData(schema='newschema')
+            m2 = MetaData(schema="newschema")
 
             # user_copy_one will have "newschema" as the schema name
             user_copy_one = user.to_metadata(m2, schema=None)
@@ -1405,15 +1400,16 @@ class Table(
 
          E.g.::
 
-                def referred_schema_fn(table, to_schema,
-                                                constraint, referred_schema):
-                    if referred_schema == 'base_tables':
+                def referred_schema_fn(table, to_schema, constraint, referred_schema):
+                    if referred_schema == "base_tables":
                         return referred_schema
                     else:
                         return to_schema
 
-                new_table = table.to_metadata(m2, schema="alt_schema",
-                                        referred_schema_fn=referred_schema_fn)
+
+                new_table = table.to_metadata(
+                    m2, schema="alt_schema", referred_schema_fn=referred_schema_fn
+                )
 
         :param name: optional string name indicating the target table name.
          If not specified or None, the table name is retained.  This allows
@@ -1421,7 +1417,7 @@ class Table(
          :class:`_schema.MetaData` target
          with a new name.
 
-        """
+        """  # noqa: E501
         if name is None:
             name = self.name
 
@@ -1443,7 +1439,7 @@ class Table(
 
         args = []
         for col in self.columns:
-            args.append(col._copy(schema=actual_schema))
+            args.append(col._copy(schema=actual_schema, _to_metadata=metadata))
         table = Table(
             name,
             metadata,
@@ -1520,7 +1516,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         name: Optional[str] = None,
         type_: Optional[_TypeEngineArgument[_T]] = None,
         autoincrement: _AutoIncrementType = "auto",
-        default: Optional[Any] = None,
+        default: Optional[Any] = _NoArg.NO_ARG,
+        insert_default: Optional[Any] = _NoArg.NO_ARG,
         doc: Optional[str] = None,
         key: Optional[str] = None,
         index: Optional[bool] = None,
@@ -1532,7 +1529,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         onupdate: Optional[Any] = None,
         primary_key: bool = False,
         server_default: Optional[_ServerDefaultArgument] = None,
-        server_onupdate: Optional[FetchedValue] = None,
+        server_onupdate: Optional[_ServerOnUpdateArgument] = None,
         quote: Optional[bool] = None,
         system: bool = False,
         comment: Optional[str] = None,
@@ -1553,7 +1550,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
           unless they are a reserved word.  Names with any number of upper
           case characters will be quoted and sent exactly.  Note that this
           behavior applies even for databases which standardize upper
-          case names as case insensitive such as Oracle.
+          case names as case insensitive such as Oracle Database.
 
           The name field may be omitted at construction time and applied
           later, at any time before the Column is associated with a
@@ -1566,10 +1563,10 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
           as well, e.g.::
 
             # use a type with arguments
-            Column('data', String(50))
+            Column("data", String(50))
 
             # use no arguments
-            Column('level', Integer)
+            Column("level", Integer)
 
           The ``type`` argument may be the second positional argument
           or specified by keyword.
@@ -1625,8 +1622,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             will imply that database-specific keywords such as PostgreSQL
             ``SERIAL``, MySQL ``AUTO_INCREMENT``, or ``IDENTITY`` on SQL Server
             should also be rendered.  Not every database backend has an
-            "implied" default generator available; for example the Oracle
-            backend always needs an explicit construct such as
+            "implied" default generator available; for example the Oracle Database
+            backends alway needs an explicit construct such as
             :class:`.Identity` to be included with a :class:`.Column` in order
             for the DDL rendered to include auto-generating constructs to also
             be produced in the database.
@@ -1671,8 +1668,12 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
 
                 # turn on autoincrement for this column despite
                 # the ForeignKey()
-                Column('id', ForeignKey('other.id'),
-                            primary_key=True, autoincrement='ignore_fk')
+                Column(
+                    "id",
+                    ForeignKey("other.id"),
+                    primary_key=True,
+                    autoincrement="ignore_fk",
+                )
 
           It is typically not desirable to have "autoincrement" enabled on a
           column that refers to another via foreign key, as such a column is
@@ -1700,7 +1701,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
               is not included as this is unnecessary and not recommended
               by the database vendor.  See the section
               :ref:`sqlite_autoincrement` for more background.
-            * Oracle - The Oracle dialect has no default "autoincrement"
+            * Oracle Database - The Oracle Database dialects have no default "autoincrement"
               feature available at this time, instead the :class:`.Identity`
               construct is recommended to achieve this (the :class:`.Sequence`
               construct may also be used).
@@ -1717,10 +1718,10 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
               (see
               `https://www.python.org/dev/peps/pep-0249/#lastrowid
               <https://www.python.org/dev/peps/pep-0249/#lastrowid>`_)
-            * PostgreSQL, SQL Server, Oracle - use RETURNING or an equivalent
+            * PostgreSQL, SQL Server, Oracle Database - use RETURNING or an equivalent
               construct when rendering an INSERT statement, and then retrieving
               the newly generated primary key values after execution
-            * PostgreSQL, Oracle for :class:`_schema.Table` objects that
+            * PostgreSQL, Oracle Database for :class:`_schema.Table` objects that
               set :paramref:`_schema.Table.implicit_returning` to False -
               for a :class:`.Sequence` only, the :class:`.Sequence` is invoked
               explicitly before the INSERT statement takes place so that the
@@ -1757,6 +1758,11 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
 
                 :ref:`metadata_defaults_toplevel`
 
+        :param insert_default: An alias of :paramref:`.Column.default`
+            for compatibility with :func:`_orm.mapped_column`.
+
+            .. versionadded: 2.0.31
+
         :param doc: optional String that can be used by the ORM or similar
             to document attributes on the Python side.   This attribute does
             **not** render SQL comments; use the
@@ -1784,7 +1790,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                     "some_table",
                     metadata,
                     Column("x", Integer),
-                    Index("ix_some_table_x", "x")
+                    Index("ix_some_table_x", "x"),
                 )
 
             To add the :paramref:`_schema.Index.unique` flag to the
@@ -1866,14 +1872,22 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
 
             String types will be emitted as-is, surrounded by single quotes::
 
-                Column('x', Text, server_default="val")
+                Column("x", Text, server_default="val")
+
+            will render:
+
+            .. sourcecode:: sql
 
                 x TEXT DEFAULT 'val'
 
             A :func:`~sqlalchemy.sql.expression.text` expression will be
             rendered as-is, without quotes::
 
-                Column('y', DateTime, server_default=text('NOW()'))
+                Column("y", DateTime, server_default=text("NOW()"))
+
+            will render:
+
+            .. sourcecode:: sql
 
                 y DATETIME DEFAULT NOW()
 
@@ -1888,20 +1902,21 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                 from sqlalchemy.dialects.postgresql import array
 
                 engine = create_engine(
-                    'postgresql+psycopg2://scott:tiger@localhost/mydatabase'
+                    "postgresql+psycopg2://scott:tiger@localhost/mydatabase"
                 )
                 metadata_obj = MetaData()
                 tbl = Table(
-                        "foo",
-                        metadata_obj,
-                        Column("bar",
-                               ARRAY(Text),
-                               server_default=array(["biz", "bang", "bash"])
-                               )
+                    "foo",
+                    metadata_obj,
+                    Column(
+                        "bar", ARRAY(Text), server_default=array(["biz", "bang", "bash"])
+                    ),
                 )
                 metadata_obj.create_all(engine)
 
-            The above results in a table created with the following SQL::
+            The above results in a table created with the following SQL:
+
+            .. sourcecode:: sql
 
                 CREATE TABLE foo (
                     bar TEXT[] DEFAULT ARRAY['biz', 'bang', 'bash']
@@ -1966,12 +1981,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             :class:`_schema.UniqueConstraint` construct explicitly at the
             level of the :class:`_schema.Table` construct itself::
 
-                Table(
-                    "some_table",
-                    metadata,
-                    Column("x", Integer),
-                    UniqueConstraint("x")
-                )
+                Table("some_table", metadata, Column("x", Integer), UniqueConstraint("x"))
 
             The :paramref:`_schema.UniqueConstraint.name` parameter
             of the unique constraint object is left at its default value
@@ -2069,7 +2079,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             name = quoted_name(name, quote)
         elif quote is not None:
             raise exc.ArgumentError(
-                "Explicit 'name' is required when " "sending 'quote' argument"
+                "Explicit 'name' is required when sending 'quote' argument"
             )
 
         # name = None is expected to be an interim state
@@ -2110,12 +2120,19 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             # otherwise, add DDL-related events
             self._set_type(self.type)
 
-        if default is not None:
-            if not isinstance(default, (ColumnDefault, Sequence)):
-                default = ColumnDefault(default)
+        if insert_default is not _NoArg.NO_ARG:
+            resolved_default = insert_default
+        elif default is not _NoArg.NO_ARG:
+            resolved_default = default
+        else:
+            resolved_default = None
 
-            self.default = default
-            l_args.append(default)
+        if resolved_default is not None:
+            if not isinstance(resolved_default, (ColumnDefault, Sequence)):
+                resolved_default = ColumnDefault(resolved_default)
+
+            self.default = resolved_default
+            l_args.append(resolved_default)
         else:
             self.default = None
 
@@ -2464,14 +2481,16 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                 dialect_option_key,
                 dialect_option_value,
             ) in dialect_options.items():
-                column_kwargs[
-                    dialect_name + "_" + dialect_option_key
-                ] = dialect_option_value
+                column_kwargs[dialect_name + "_" + dialect_option_key] = (
+                    dialect_option_value
+                )
 
         server_default = self.server_default
         server_onupdate = self.server_onupdate
         if isinstance(server_default, (Computed, Identity)):
             # TODO: likely should be copied in all cases
+            # TODO: if a Sequence, we would need to transfer the Sequence
+            # .metadata as well
             args.append(server_default._copy(**kw))
             server_default = server_onupdate = None
 
@@ -2575,17 +2594,17 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             new_onupdate = self.onupdate._copy()
             new_onupdate._set_parent(other)
 
-        if self.index and not other.index:
-            other.index = True
+        if self.index in (True, False) and other.index is None:
+            other.index = self.index
+
+        if self.unique in (True, False) and other.unique is None:
+            other.unique = self.unique
 
         if self.doc and other.doc is None:
             other.doc = self.doc
 
         if self.comment and other.comment is None:
             other.comment = self.comment
-
-        if self.unique and not other.unique:
-            other.unique = True
 
         for const in self.constraints:
             if not const._type_bound:
@@ -2637,19 +2656,23 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             )
         try:
             c = self._constructor(
-                coercions.expect(
-                    roles.TruncatedLabelRole, name if name else self.name
-                )
-                if name_is_truncatable
-                else (name or self.name),
+                (
+                    coercions.expect(
+                        roles.TruncatedLabelRole, name if name else self.name
+                    )
+                    if name_is_truncatable
+                    else (name or self.name)
+                ),
                 self.type,
                 # this may actually be ._proxy_key when the key is incoming
                 key=key if key else name if name else self.key,
                 primary_key=self.primary_key,
                 nullable=self.nullable,
-                _proxies=list(compound_select_cols)
-                if compound_select_cols
-                else [self],
+                _proxies=(
+                    list(compound_select_cols)
+                    if compound_select_cols
+                    else [self]
+                ),
                 *fk,
             )
         except TypeError as err:
@@ -2714,9 +2737,9 @@ def insert_sentinel(
     return Column(
         name=name,
         type_=type_api.INTEGERTYPE if type_ is None else type_,
-        default=default
-        if default is not None
-        else _InsertSentinelColumnDefault(),
+        default=(
+            default if default is not None else _InsertSentinelColumnDefault()
+        ),
         _omit_from_statements=omit_from_statements,
         insert_sentinel=True,
     )
@@ -2729,8 +2752,10 @@ class ForeignKey(DialectKWArgs, SchemaItem):
     object,
     e.g.::
 
-        t = Table("remote_table", metadata,
-            Column("remote_id", ForeignKey("main_table.id"))
+        t = Table(
+            "remote_table",
+            metadata,
+            Column("remote_id", ForeignKey("main_table.id")),
         )
 
     Note that ``ForeignKey`` is only a marker object that defines
@@ -2768,9 +2793,11 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
     _table_column: Optional[Column[Any]]
 
+    _colspec: Union[str, Column[Any]]
+
     def __init__(
         self,
-        column: _DDLColumnArgument,
+        column: _DDLColumnReferenceArgument,
         _constraint: Optional[ForeignKeyConstraint] = None,
         use_alter: bool = False,
         name: _ConstraintNameArgument = None,
@@ -2856,21 +2883,11 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
         """
 
-        self._colspec = coercions.expect(roles.DDLReferredColumnRole, column)
         self._unresolvable = _unresolvable
 
-        if isinstance(self._colspec, str):
-            self._table_column = None
-        else:
-            self._table_column = self._colspec
-
-            if not isinstance(
-                self._table_column.table, (type(None), TableClause)
-            ):
-                raise exc.ArgumentError(
-                    "ForeignKey received Column not bound "
-                    "to a Table, got: %r" % self._table_column.table
-                )
+        self._colspec, self._table_column = self._parse_colspec_argument(
+            column
+        )
 
         # the linked ForeignKeyConstraint.
         # ForeignKey will create this when parent Column
@@ -2894,6 +2911,39 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         if info:
             self.info = info
         self._unvalidated_dialect_kw = dialect_kw
+
+    def _resolve_colspec_argument(
+        self,
+    ) -> Tuple[
+        Union[str, Column[Any]],
+        Optional[Column[Any]],
+    ]:
+        argument = self._colspec
+
+        return self._parse_colspec_argument(argument)
+
+    def _parse_colspec_argument(
+        self,
+        argument: _DDLColumnArgument,
+    ) -> Tuple[
+        Union[str, Column[Any]],
+        Optional[Column[Any]],
+    ]:
+        _colspec = coercions.expect(roles.DDLReferredColumnRole, argument)
+
+        if isinstance(_colspec, str):
+            _table_column = None
+        else:
+            assert isinstance(_colspec, ColumnClause)
+            _table_column = _colspec
+
+            if not isinstance(_table_column.table, (type(None), TableClause)):
+                raise exc.ArgumentError(
+                    "ForeignKey received Column not bound "
+                    "to a Table, got: %r" % _table_column.table
+                )
+
+        return _colspec, _table_column
 
     def __repr__(self) -> str:
         return "ForeignKey(%r)" % self._get_colspec()
@@ -2954,6 +3004,9 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         argument first passed to the object's constructor.
 
         """
+
+        _colspec, effective_table_column = self._resolve_colspec_argument()
+
         if schema not in (None, RETAIN_SCHEMA):
             _schema, tname, colname = self._column_tokens
             if table_name is not None:
@@ -2968,28 +3021,30 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                 return "%s.%s.%s" % (schema, table_name, colname)
             else:
                 return "%s.%s" % (table_name, colname)
-        elif self._table_column is not None:
-            if self._table_column.table is None:
+        elif effective_table_column is not None:
+            if effective_table_column.table is None:
                 if _is_copy:
                     raise exc.InvalidRequestError(
                         f"Can't copy ForeignKey object which refers to "
-                        f"non-table bound Column {self._table_column!r}"
+                        f"non-table bound Column {effective_table_column!r}"
                     )
                 else:
-                    return self._table_column.key
+                    return effective_table_column.key
             return "%s.%s" % (
-                self._table_column.table.fullname,
-                self._table_column.key,
+                effective_table_column.table.fullname,
+                effective_table_column.key,
             )
         else:
-            assert isinstance(self._colspec, str)
-            return self._colspec
+            assert isinstance(_colspec, str)
+            return _colspec
 
     @property
     def _referred_schema(self) -> Optional[str]:
         return self._column_tokens[0]
 
-    def _table_key(self) -> Any:
+    def _table_key_within_construction(self) -> Any:
+        """get the table key but only safely"""
+
         if self._table_column is not None:
             if self._table_column.table is None:
                 return None
@@ -3028,10 +3083,6 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         """parse a string-based _colspec into its component parts."""
 
         m = self._get_colspec().split(".")
-        if m is None:
-            raise exc.ArgumentError(
-                f"Invalid foreign key column specification: {self._colspec}"
-            )
         if len(m) == 1:
             tname = m.pop()
             colname = None
@@ -3121,7 +3172,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         if _column is None:
             raise exc.NoReferencedColumnError(
                 "Could not initialize target column "
-                f"for ForeignKey '{self._colspec}' "
+                f"for ForeignKey '{self._get_colspec()}' "
                 f"on table '{parenttable.name}': "
                 f"table '{table.name}' has no column named '{key}'",
                 table.name,
@@ -3157,25 +3208,26 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         is raised.
 
         """
-
         return self._resolve_column()
 
     @overload
-    def _resolve_column(self, *, raiseerr: Literal[True] = ...) -> Column[Any]:
-        ...
+    def _resolve_column(
+        self, *, raiseerr: Literal[True] = ...
+    ) -> Column[Any]: ...
 
     @overload
     def _resolve_column(
         self, *, raiseerr: bool = ...
-    ) -> Optional[Column[Any]]:
-        ...
+    ) -> Optional[Column[Any]]: ...
 
     def _resolve_column(
         self, *, raiseerr: bool = True
     ) -> Optional[Column[Any]]:
         _column: Column[Any]
 
-        if isinstance(self._colspec, str):
+        _colspec, effective_table_column = self._resolve_colspec_argument()
+
+        if isinstance(_colspec, str):
             parenttable, tablekey, colname = self._resolve_col_tokens()
 
             if self._unresolvable or tablekey not in parenttable.metadata:
@@ -3201,11 +3253,12 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                     parenttable, table, colname
                 )
 
-        elif hasattr(self._colspec, "__clause_element__"):
-            _column = self._colspec.__clause_element__()
+        elif hasattr(_colspec, "__clause_element__"):
+            _column = _colspec.__clause_element__()
             return _column
         else:
-            _column = self._colspec
+            assert isinstance(_colspec, Column)
+            _column = _colspec
             return _column
 
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
@@ -3257,7 +3310,9 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         table.foreign_keys.add(self)
         # set up remote ".column" attribute, or a note to pick it
         # up when the other Table/Column shows up
-        if isinstance(self._colspec, str):
+
+        _colspec, _ = self._resolve_colspec_argument()
+        if isinstance(_colspec, str):
             parenttable, table_key, colname = self._resolve_col_tokens()
             fk_key = (table_key, colname)
             if table_key in parenttable.metadata.tables:
@@ -3273,30 +3328,26 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                     self._set_target_column(_column)
 
             parenttable.metadata._fk_memos[fk_key].append(self)
-        elif hasattr(self._colspec, "__clause_element__"):
-            _column = self._colspec.__clause_element__()
+        elif hasattr(_colspec, "__clause_element__"):
+            _column = _colspec.__clause_element__()
             self._set_target_column(_column)
         else:
-            _column = self._colspec
-            self._set_target_column(_column)
+            self._set_target_column(_colspec)
 
 
 if TYPE_CHECKING:
 
     def default_is_sequence(
         obj: Optional[DefaultGenerator],
-    ) -> TypeGuard[Sequence]:
-        ...
+    ) -> TypeGuard[Sequence]: ...
 
     def default_is_clause_element(
         obj: Optional[DefaultGenerator],
-    ) -> TypeGuard[ColumnElementColumnDefault]:
-        ...
+    ) -> TypeGuard[ColumnElementColumnDefault]: ...
 
     def default_is_scalar(
         obj: Optional[DefaultGenerator],
-    ) -> TypeGuard[ScalarElementColumnDefault]:
-        ...
+    ) -> TypeGuard[ScalarElementColumnDefault]: ...
 
 else:
     default_is_sequence = operator.attrgetter("is_sequence")
@@ -3382,12 +3433,11 @@ class ColumnDefault(DefaultGenerator, ABC):
 
     For example, the following::
 
-        Column('foo', Integer, default=50)
+        Column("foo", Integer, default=50)
 
     Is equivalent to::
 
-        Column('foo', Integer, ColumnDefault(50))
-
+        Column("foo", Integer, ColumnDefault(50))
 
     """
 
@@ -3396,21 +3446,18 @@ class ColumnDefault(DefaultGenerator, ABC):
     @overload
     def __new__(
         cls, arg: Callable[..., Any], for_update: bool = ...
-    ) -> CallableColumnDefault:
-        ...
+    ) -> CallableColumnDefault: ...
 
     @overload
     def __new__(
         cls, arg: ColumnElement[Any], for_update: bool = ...
-    ) -> ColumnElementColumnDefault:
-        ...
+    ) -> ColumnElementColumnDefault: ...
 
     # if I return ScalarElementColumnDefault here, which is what's actually
     # returned, mypy complains that
     # overloads overlap w/ incompatible return types.
     @overload
-    def __new__(cls, arg: object, for_update: bool = ...) -> ColumnDefault:
-        ...
+    def __new__(cls, arg: object, for_update: bool = ...) -> ColumnDefault: ...
 
     def __new__(
         cls, arg: Any = None, for_update: bool = False
@@ -3552,8 +3599,7 @@ class ColumnElementColumnDefault(ColumnDefault):
 
 
 class _CallableColumnDefaultProtocol(Protocol):
-    def __call__(self, context: ExecutionContext) -> Any:
-        ...
+    def __call__(self, context: ExecutionContext) -> Any: ...
 
 
 class CallableColumnDefault(ColumnDefault):
@@ -3608,7 +3654,7 @@ class CallableColumnDefault(ColumnDefault):
             )
 
 
-class IdentityOptions:
+class IdentityOptions(DialectKWArgs):
     """Defines options for a named database sequence or an identity column.
 
     .. versionadded:: 1.3.18
@@ -3630,6 +3676,7 @@ class IdentityOptions:
         cycle: Optional[bool] = None,
         cache: Optional[int] = None,
         order: Optional[bool] = None,
+        **dialect_kw: Any,
     ) -> None:
         """Construct a :class:`.IdentityOptions` object.
 
@@ -3649,6 +3696,8 @@ class IdentityOptions:
         :param order: optional boolean value; if ``True``, renders the
          ORDER keyword.
 
+         .. deprecated:: 2.1 Use ``oracle_order`` instead.
+
         """
         self.start = start
         self.increment = increment
@@ -3658,11 +3707,43 @@ class IdentityOptions:
         self.nomaxvalue = nomaxvalue
         self.cycle = cycle
         self.cache = cache
-        self.order = order
+        if order is not None:
+            if "oracle_order" in dialect_kw:
+                raise exc.ArgumentError(
+                    "Cannot specify both 'order' and 'oracle_order'. "
+                    "Plese use only 'oracle_order'."
+                )
+            dialect_kw["oracle_order"] = order
+        self._validate_dialect_kwargs(dialect_kw)
 
     @property
     def _increment_is_negative(self) -> bool:
         return self.increment is not None and self.increment < 0
+
+    @property
+    def order(self) -> Optional[bool]:
+        """Alias of the ``dialect_kwargs`` ``'oracle_order'``.
+
+        .. deprecated:: 2.1 The 'order' attribute is deprecated.
+        """
+        value: Optional[bool] = self.dialect_kwargs.get("oracle_order")
+        return value
+
+    def _as_dict(self) -> Dict[str, Any]:
+        return {
+            k: v
+            for k, v in {
+                "start": self.start,
+                "increment": self.increment,
+                "minvalue": self.minvalue,
+                "maxvalue": self.maxvalue,
+                "nominvalue": self.nominvalue,
+                "nomaxvalue": self.nomaxvalue,
+                "cycle": self.cycle,
+                "cache": self.cache,
+            }.items()
+            if v != None
+        }
 
 
 class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
@@ -3678,9 +3759,14 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
     The :class:`.Sequence` is typically associated with a primary key column::
 
         some_table = Table(
-            'some_table', metadata,
-            Column('id', Integer, Sequence('some_table_seq', start=1),
-            primary_key=True)
+            "some_table",
+            metadata,
+            Column(
+                "id",
+                Integer,
+                Sequence("some_table_seq", start=1),
+                primary_key=True,
+            ),
         )
 
     When CREATE TABLE is emitted for the above :class:`_schema.Table`, if the
@@ -3705,6 +3791,13 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
     column: Optional[Column[Any]]
     data_type: Optional[TypeEngine[int]]
 
+    @util.deprecated_params(
+        order=(
+            "2.1",
+            "This parameter is supported only by Oracle Database, "
+            "use ``oracle_order`` instead.",
+        )
+    )
     def __init__(
         self,
         name: str,
@@ -3724,6 +3817,7 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
         metadata: Optional[MetaData] = None,
         quote_schema: Optional[bool] = None,
         for_update: bool = False,
+        **dialect_kw: Any,
     ) -> None:
         """Construct a :class:`.Sequence` object.
 
@@ -3791,11 +3885,11 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
 
         :param cache: optional integer value; number of future values in the
          sequence which are calculated in advance.  Renders the CACHE keyword
-         understood by Oracle and PostgreSQL.
+         understood by Oracle Database and PostgreSQL.
 
         :param order: optional boolean value; if ``True``, renders the
-         ORDER keyword, understood by Oracle, indicating the sequence is
-         definitively ordered.   May be necessary to provide deterministic
+         ORDER keyword, understood by Oracle Database, indicating the sequence
+         is definitively ordered.   May be necessary to provide deterministic
          ordering using Oracle RAC.
 
         :param data_type: The type to be returned by the sequence, for
@@ -3868,6 +3962,7 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
             cycle=cycle,
             cache=cache,
             order=order,
+            **dialect_kw,
         )
         self.column = None
         self.name = quoted_name(name, quote)
@@ -3905,20 +4000,13 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
     def _copy(self) -> Sequence:
         return Sequence(
             name=self.name,
-            start=self.start,
-            increment=self.increment,
-            minvalue=self.minvalue,
-            maxvalue=self.maxvalue,
-            nominvalue=self.nominvalue,
-            nomaxvalue=self.nomaxvalue,
-            cycle=self.cycle,
             schema=self.schema,
-            cache=self.cache,
-            order=self.order,
             data_type=self.data_type,
             optional=self.optional,
             metadata=self.metadata,
             for_update=self.for_update,
+            **self._as_dict(),
+            **self.dialect_kwargs,
         )
 
     def _set_table(self, column: Column[Any], table: Table) -> None:
@@ -3956,7 +4044,7 @@ class FetchedValue(SchemaEventTarget):
 
     E.g.::
 
-        Column('foo', Integer, FetchedValue())
+        Column("foo", Integer, FetchedValue())
 
     Would indicate that some trigger or default generator
     will create a new value for the ``foo`` column during an
@@ -4022,11 +4110,11 @@ class DefaultClause(FetchedValue):
 
     For example, the following::
 
-        Column('foo', Integer, server_default="50")
+        Column("foo", Integer, server_default="50")
 
     Is equivalent to::
 
-        Column('foo', Integer, DefaultClause("50"))
+        Column("foo", Integer, DefaultClause("50"))
 
     """
 
@@ -4186,8 +4274,7 @@ class ColumnCollectionMixin:
 
         def _set_parent_with_dispatch(
             self, parent: SchemaEventTarget, **kw: Any
-        ) -> None:
-            ...
+        ) -> None: ...
 
     def __init__(
         self,
@@ -4400,9 +4487,9 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
                 dialect_option_key,
                 dialect_option_value,
             ) in dialect_options.items():
-                constraint_kwargs[
-                    dialect_name + "_" + dialect_option_key
-                ] = dialect_option_value
+                constraint_kwargs[dialect_name + "_" + dialect_option_key] = (
+                    dialect_option_value
+                )
 
         assert isinstance(self.parent, Table)
         c = self.__class__(
@@ -4566,7 +4653,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
     def __init__(
         self,
         columns: _typing_Sequence[_DDLColumnArgument],
-        refcolumns: _typing_Sequence[_DDLColumnArgument],
+        refcolumns: _typing_Sequence[_DDLColumnReferenceArgument],
         name: _ConstraintNameArgument = None,
         onupdate: Optional[str] = None,
         ondelete: Optional[str] = None,
@@ -4752,7 +4839,9 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         return self.elements[0].column.table
 
     def _validate_dest_table(self, table: Table) -> None:
-        table_keys = {elem._table_key() for elem in self.elements}
+        table_keys = {
+            elem._table_key_within_construction() for elem in self.elements
+        }
         if None not in table_keys and len(table_keys) > 1:
             elem0, elem1 = sorted(table_keys)[0:2]
             raise exc.ArgumentError(
@@ -4823,10 +4912,13 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
             [
                 x._get_colspec(
                     schema=schema,
-                    table_name=target_table.name
-                    if target_table is not None
-                    and x._table_key() == x.parent.table.key
-                    else None,
+                    table_name=(
+                        target_table.name
+                        if target_table is not None
+                        and x._table_key_within_construction()
+                        == x.parent.table.key
+                        else None
+                    ),
                     _is_copy=True,
                 )
                 for x in self.elements
@@ -4854,11 +4946,13 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     :class:`_schema.Column` objects corresponding to those marked with
     the :paramref:`_schema.Column.primary_key` flag::
 
-        >>> my_table = Table('mytable', metadata,
-        ...                 Column('id', Integer, primary_key=True),
-        ...                 Column('version_id', Integer, primary_key=True),
-        ...                 Column('data', String(50))
-        ...     )
+        >>> my_table = Table(
+        ...     "mytable",
+        ...     metadata,
+        ...     Column("id", Integer, primary_key=True),
+        ...     Column("version_id", Integer, primary_key=True),
+        ...     Column("data", String(50)),
+        ... )
         >>> my_table.primary_key
         PrimaryKeyConstraint(
             Column('id', Integer(), table=<mytable>,
@@ -4872,13 +4966,14 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     the "name" of the constraint can also be specified, as well as other
     options which may be recognized by dialects::
 
-        my_table = Table('mytable', metadata,
-                    Column('id', Integer),
-                    Column('version_id', Integer),
-                    Column('data', String(50)),
-                    PrimaryKeyConstraint('id', 'version_id',
-                                         name='mytable_pk')
-                )
+        my_table = Table(
+            "mytable",
+            metadata,
+            Column("id", Integer),
+            Column("version_id", Integer),
+            Column("data", String(50)),
+            PrimaryKeyConstraint("id", "version_id", name="mytable_pk"),
+        )
 
     The two styles of column-specification should generally not be mixed.
     An warning is emitted if the columns present in the
@@ -4896,13 +4991,14 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     primary key column collection from the :class:`_schema.Table` based on the
     flags::
 
-        my_table = Table('mytable', metadata,
-                    Column('id', Integer, primary_key=True),
-                    Column('version_id', Integer, primary_key=True),
-                    Column('data', String(50)),
-                    PrimaryKeyConstraint(name='mytable_pk',
-                                         mssql_clustered=True)
-                )
+        my_table = Table(
+            "mytable",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("version_id", Integer, primary_key=True),
+            Column("data", String(50)),
+            PrimaryKeyConstraint(name="mytable_pk", mssql_clustered=True),
+        )
 
     """
 
@@ -5015,12 +5111,20 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     @util.ro_memoized_property
     def _autoincrement_column(self) -> Optional[Column[int]]:
         def _validate_autoinc(col: Column[Any], autoinc_true: bool) -> bool:
-            if col.type._type_affinity is None or not issubclass(
-                col.type._type_affinity,
-                (
-                    type_api.INTEGERTYPE._type_affinity,
-                    type_api.NUMERICTYPE._type_affinity,
-                ),
+            if col.type._type_affinity is not None and issubclass(
+                col.type._type_affinity, type_api.NUMERICTYPE._type_affinity
+            ):
+                scale = col.type.scale  # type: ignore[attr-defined]
+                if scale != 0 and autoinc_true:
+                    raise exc.ArgumentError(
+                        f"Column type {col.type} with non-zero scale "
+                        f"{scale} on column '{col}' is not "
+                        f"compatible with autoincrement=True"
+                    )
+                elif not autoinc_true:
+                    return False
+            elif col.type._type_affinity is None or not issubclass(
+                col.type._type_affinity, type_api.INTEGERTYPE._type_affinity
             ):
                 if autoinc_true:
                     raise exc.ArgumentError(
@@ -5030,7 +5134,8 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
                 else:
                     return False
             elif (
-                not isinstance(col.default, (type(None), Sequence))
+                col.default is not None
+                and not isinstance(col.default, Sequence)
                 and not autoinc_true
             ):
                 return False
@@ -5099,19 +5204,21 @@ class Index(
 
     E.g.::
 
-        sometable = Table("sometable", metadata,
-                        Column("name", String(50)),
-                        Column("address", String(100))
-                    )
+        sometable = Table(
+            "sometable",
+            metadata,
+            Column("name", String(50)),
+            Column("address", String(100)),
+        )
 
         Index("some_index", sometable.c.name)
 
     For a no-frills, single column index, adding
     :class:`_schema.Column` also supports ``index=True``::
 
-        sometable = Table("sometable", metadata,
-                        Column("name", String(50), index=True)
-                    )
+        sometable = Table(
+            "sometable", metadata, Column("name", String(50), index=True)
+        )
 
     For a composite index, multiple columns can be specified::
 
@@ -5130,22 +5237,26 @@ class Index(
     the names
     of the indexed columns can be specified as strings::
 
-        Table("sometable", metadata,
-                        Column("name", String(50)),
-                        Column("address", String(100)),
-                        Index("some_index", "name", "address")
-                )
+        Table(
+            "sometable",
+            metadata,
+            Column("name", String(50)),
+            Column("address", String(100)),
+            Index("some_index", "name", "address"),
+        )
 
     To support functional or expression-based indexes in this form, the
     :func:`_expression.text` construct may be used::
 
         from sqlalchemy import text
 
-        Table("sometable", metadata,
-                        Column("name", String(50)),
-                        Column("address", String(100)),
-                        Index("some_index", text("lower(name)"))
-                )
+        Table(
+            "sometable",
+            metadata,
+            Column("name", String(50)),
+            Column("address", String(100)),
+            Index("some_index", text("lower(name)")),
+        )
 
     .. seealso::
 
@@ -5490,9 +5601,9 @@ class MetaData(HasSchemaAttr):
             self.info = info
         self._schemas: Set[str] = set()
         self._sequences: Dict[str, Sequence] = {}
-        self._fk_memos: Dict[
-            Tuple[str, Optional[str]], List[ForeignKey]
-        ] = collections.defaultdict(list)
+        self._fk_memos: Dict[Tuple[str, Optional[str]], List[ForeignKey]] = (
+            collections.defaultdict(list)
+        )
 
     tables: util.FacadeDict[str, Table]
     """A dictionary of :class:`_schema.Table`
@@ -5623,6 +5734,38 @@ class MetaData(HasSchemaAttr):
         return ddl.sort_tables(
             sorted(self.tables.values(), key=lambda t: t.key)  # type: ignore
         )
+
+    # overload needed to work around mypy this mypy
+    # https://github.com/python/mypy/issues/17093
+    @overload
+    def reflect(
+        self,
+        bind: Engine,
+        schema: Optional[str] = ...,
+        views: bool = ...,
+        only: Union[
+            _typing_Sequence[str], Callable[[str, MetaData], bool], None
+        ] = ...,
+        extend_existing: bool = ...,
+        autoload_replace: bool = ...,
+        resolve_fks: bool = ...,
+        **dialect_kwargs: Any,
+    ) -> None: ...
+
+    @overload
+    def reflect(
+        self,
+        bind: Connection,
+        schema: Optional[str] = ...,
+        views: bool = ...,
+        only: Union[
+            _typing_Sequence[str], Callable[[str, MetaData], bool], None
+        ] = ...,
+        extend_existing: bool = ...,
+        autoload_replace: bool = ...,
+        resolve_fks: bool = ...,
+        **dialect_kwargs: Any,
+    ) -> None: ...
 
     @util.preload_module("sqlalchemy.engine.reflection")
     def reflect(
@@ -5871,9 +6014,11 @@ class Computed(FetchedValue, SchemaItem):
 
         from sqlalchemy import Computed
 
-        Table('square', metadata_obj,
-            Column('side', Float, nullable=False),
-            Column('area', Float, Computed('side * side'))
+        Table(
+            "square",
+            metadata_obj,
+            Column("side", Float, nullable=False),
+            Column("area", Float, Computed("side * side")),
         )
 
     See the linked documentation below for complete details.
@@ -5978,9 +6123,11 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
 
         from sqlalchemy import Identity
 
-        Table('foo', metadata_obj,
-            Column('id', Integer, Identity())
-            Column('description', Text),
+        Table(
+            "foo",
+            metadata_obj,
+            Column("id", Integer, Identity()),
+            Column("description", Text),
         )
 
     See the linked documentation below for complete details.
@@ -5997,9 +6144,21 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
 
     is_identity = True
 
+    @util.deprecated_params(
+        order=(
+            "2.1",
+            "This parameter is supported only by Oracle Database, "
+            "use ``oracle_order`` instead.",
+        ),
+        on_null=(
+            "2.1",
+            "This parameter is supported only by Oracle Database, "
+            "use ``oracle_on_null`` instead.",
+        ),
+    )
     def __init__(
         self,
-        always: bool = False,
+        always: Optional[bool] = False,
         on_null: Optional[bool] = None,
         start: Optional[int] = None,
         increment: Optional[int] = None,
@@ -6010,6 +6169,7 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
         cycle: Optional[bool] = None,
         cache: Optional[int] = None,
         order: Optional[bool] = None,
+        **dialect_kw: Any,
     ) -> None:
         """Construct a GENERATED { ALWAYS | BY DEFAULT } AS IDENTITY DDL
         construct to accompany a :class:`_schema.Column`.
@@ -6040,7 +6200,7 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
         :param on_null:
           Set to ``True`` to specify ON NULL in conjunction with a
           ``always=False`` identity column. This option is only supported on
-          some backends, like Oracle.
+          some backends, like Oracle Database.
 
         :param start: the starting index of the sequence.
         :param increment: the increment value of the sequence.
@@ -6056,6 +6216,15 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
          ORDER keyword.
 
         """
+        self.dialect_options
+        if on_null is not None:
+            if "oracle_on_null" in dialect_kw:
+                raise exc.ArgumentError(
+                    "Cannot specify both 'on_null' and 'oracle_on_null'. "
+                    "Plese use only 'oracle_on_null'."
+                )
+            dialect_kw["oracle_on_null"] = on_null
+
         IdentityOptions.__init__(
             self,
             start=start,
@@ -6067,10 +6236,19 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
             cycle=cycle,
             cache=cache,
             order=order,
+            **dialect_kw,
         )
         self.always = always
-        self.on_null = on_null
         self.column = None
+
+    @property
+    def on_null(self) -> Optional[bool]:
+        """Alias of the ``dialect_kwargs`` ``'oracle_on_null'``.
+
+        .. deprecated:: 2.1 The 'on_null' attribute is deprecated.
+        """
+        value: Optional[bool] = self.dialect_kwargs.get("oracle_on_null")
+        return value
 
     def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         assert isinstance(parent, Column)
@@ -6106,18 +6284,13 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
         return self._copy(**kw)
 
     def _copy(self, **kw: Any) -> Identity:
-        i = Identity(
-            always=self.always,
-            on_null=self.on_null,
-            start=self.start,
-            increment=self.increment,
-            minvalue=self.minvalue,
-            maxvalue=self.maxvalue,
-            nominvalue=self.nominvalue,
-            nomaxvalue=self.nomaxvalue,
-            cycle=self.cycle,
-            cache=self.cache,
-            order=self.order,
-        )
+        i = Identity(**self._as_dict(), **self.dialect_kwargs)
 
         return self._schema_item_copy(i)
+
+    def _as_dict(self) -> Dict[str, Any]:
+        return {
+            # always=None means something different than always=False
+            "always": self.always,
+            **super()._as_dict(),
+        }

@@ -1,5 +1,5 @@
-# sqlalchemy/log.py
-# Copyright (C) 2006-2023 the SQLAlchemy authors and contributors
+# log.py
+# Copyright (C) 2006-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 # Includes alterations by Vinay Sajip vinay_sajip@yahoo.co.uk
 #
@@ -264,14 +264,12 @@ class echo_property:
     @overload
     def __get__(
         self, instance: Literal[None], owner: Type[Identified]
-    ) -> echo_property:
-        ...
+    ) -> echo_property: ...
 
     @overload
     def __get__(
         self, instance: Identified, owner: Type[Identified]
-    ) -> _EchoFlagType:
-        ...
+    ) -> _EchoFlagType: ...
 
     def __get__(
         self, instance: Optional[Identified], owner: Type[Identified]

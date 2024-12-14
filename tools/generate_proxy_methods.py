@@ -40,6 +40,7 @@ typed by hand.
 .. versionadded:: 2.0
 
 """
+
 # mypy: ignore-errors
 
 from __future__ import annotations
@@ -85,9 +86,9 @@ class _repr_sym:
         return self.sym
 
 
-classes: collections.defaultdict[
-    str, Dict[str, Tuple[Any, ...]]
-] = collections.defaultdict(dict)
+classes: collections.defaultdict[str, Dict[str, Tuple[Any, ...]]] = (
+    collections.defaultdict(dict)
+)
 
 _T = TypeVar("_T", bound="Any")
 
@@ -214,18 +215,22 @@ def process_class(
 
             if spec.defaults:
                 new_defaults = tuple(
-                    _repr_sym("util.EMPTY_DICT")
-                    if df is util.EMPTY_DICT
-                    else df
+                    (
+                        _repr_sym("util.EMPTY_DICT")
+                        if df is util.EMPTY_DICT
+                        else df
+                    )
                     for df in spec.defaults
                 )
                 elem[3] = new_defaults
 
             if spec.kwonlydefaults:
                 new_kwonlydefaults = {
-                    name: _repr_sym("util.EMPTY_DICT")
-                    if df is util.EMPTY_DICT
-                    else df
+                    name: (
+                        _repr_sym("util.EMPTY_DICT")
+                        if df is util.EMPTY_DICT
+                        else df
+                    )
                     for name, df in spec.kwonlydefaults.items()
                 }
                 elem[5] = new_kwonlydefaults
@@ -365,11 +370,14 @@ def process_module(modname: str, filename: str, cmd: code_writer_cmd) -> str:
     # use tempfile in same path as the module, or at least in the
     # current working directory, so that black / zimports use
     # local pyproject.toml
-    with NamedTemporaryFile(
-        mode="w",
-        delete=False,
-        suffix=".py",
-    ) as buf, open(filename) as orig_py:
+    with (
+        NamedTemporaryFile(
+            mode="w",
+            delete=False,
+            suffix=".py",
+        ) as buf,
+        open(filename) as orig_py,
+    ):
         in_block = False
         current_clsname = None
         for line in orig_py:
@@ -415,9 +423,9 @@ def main(cmd: code_writer_cmd) -> None:
     from sqlalchemy import util
     from sqlalchemy.util import langhelpers
 
-    util.create_proxy_methods = (
-        langhelpers.create_proxy_methods
-    ) = create_proxy_methods
+    util.create_proxy_methods = langhelpers.create_proxy_methods = (
+        create_proxy_methods
+    )
 
     for entry in entries:
         if cmd.args.module in {"all", entry}:

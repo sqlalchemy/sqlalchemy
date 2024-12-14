@@ -36,6 +36,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing.assertions import expect_raises_message
+from sqlalchemy.testing.assertions import is_
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.testing.schema import Table
@@ -69,6 +70,8 @@ class CxOracleDialectTest(fixtures.TestBase):
 
 
 class OracleDbDialectTest(fixtures.TestBase):
+    __only_on__ = "oracle+oracledb"
+
     def test_oracledb_version_parse(self):
         dialect = oracledb.OracleDialect_oracledb()
 
@@ -84,12 +87,27 @@ class OracleDbDialectTest(fixtures.TestBase):
     def test_minimum_version(self):
         with expect_raises_message(
             exc.InvalidRequestError,
-            "oracledb version 1 and above are supported",
+            r"oracledb version \(1,\) and above are supported",
         ):
             oracledb.OracleDialect_oracledb(dbapi=Mock(version="0.1.5"))
 
         dialect = oracledb.OracleDialect_oracledb(dbapi=Mock(version="7.1.0"))
         eq_(dialect.oracledb_ver, (7, 1, 0))
+
+    def test_get_dialect(self):
+        u = url.URL.create("oracle://")
+        d = oracledb.OracleDialect_oracledb.get_dialect_cls(u)
+        is_(d, oracledb.OracleDialect_oracledb)
+        d = oracledb.OracleDialect_oracledb.get_async_dialect_cls(u)
+        is_(d, oracledb.OracleDialectAsync_oracledb)
+        d = oracledb.OracleDialectAsync_oracledb.get_dialect_cls(u)
+        is_(d, oracledb.OracleDialectAsync_oracledb)
+        d = oracledb.OracleDialectAsync_oracledb.get_dialect_cls(u)
+        is_(d, oracledb.OracleDialectAsync_oracledb)
+
+    def test_async_version(self):
+        e = create_engine("oracle+oracledb_async://")
+        is_true(isinstance(e.dialect, oracledb.OracleDialectAsync_oracledb))
 
 
 class OracledbMode(fixtures.TestBase):
@@ -97,6 +115,8 @@ class OracledbMode(fixtures.TestBase):
     __only_on__ = "oracle+oracledb"
 
     def _run_in_process(self, fn, fn_kw=None):
+        if config.db.dialect.is_async:
+            config.skip_test("thick mode unsupported in async mode")
         ctx = get_context("spawn")
         queue = ctx.Queue()
         process = ctx.Process(
@@ -202,6 +222,7 @@ class DialectWBackendTest(fixtures.TestBase):
                 testing.db.dialect.get_isolation_level(dbapi_conn),
                 "READ COMMITTED",
             )
+            conn.close()
 
     def test_graceful_failure_isolation_level_not_available(self):
         engine = engines.testing_engine()
@@ -464,7 +485,7 @@ class ComputedReturningTest(fixtures.TablesTest):
             eq_(result.returned_defaults, (52,))
         else:
             with testing.expect_warnings(
-                "Computed columns don't work with Oracle UPDATE"
+                "Computed columns don't work with Oracle Database UPDATE"
             ):
                 result = conn.execute(
                     test.update().values(foo=10).return_defaults()
@@ -511,9 +532,7 @@ end;
 
     def test_out_params(self, connection):
         result = connection.execute(
-            text(
-                "begin foo(:x_in, :x_out, :y_out, " ":z_out); end;"
-            ).bindparams(
+            text("begin foo(:x_in, :x_out, :y_out, :z_out); end;").bindparams(
                 bindparam("x_in", Float),
                 outparam("x_out", Integer),
                 outparam("y_out", Float),
@@ -537,7 +556,7 @@ end;
             exc.InvalidRequestError,
             r"Using explicit outparam\(\) objects with "
             r"UpdateBase.returning\(\) in the same Core DML statement "
-            "is not supported in the Oracle dialect.",
+            "is not supported in the Oracle Database dialects.",
         ):
             connection.execute(stmt)
 
@@ -842,7 +861,7 @@ class ExecuteTest(fixtures.TestBase):
         with testing.db.connect() as conn:
             eq_(
                 conn.exec_driver_sql(
-                    "/*+ this is a comment */ SELECT 1 FROM " "DUAL"
+                    "/*+ this is a comment */ SELECT 1 FROM DUAL"
                 ).fetchall(),
                 [(1,)],
             )
@@ -860,6 +879,7 @@ class ExecuteTest(fixtures.TestBase):
     def test_limit_offset_for_update(self, metadata, connection):
         # oracle can't actually do the ROWNUM thing with FOR UPDATE
         # very well.
+        # Seems to be fixed in 23.
 
         t = Table(
             "t1",
@@ -884,7 +904,7 @@ class ExecuteTest(fixtures.TestBase):
         # as of #8221, this fails also.  limit w/o order by is useless
         # in any case.
         stmt = t.select().with_for_update().limit(2)
-        if testing.against("oracle>=12"):
+        if testing.against("oracle>=12") and testing.against("oracle<23"):
             with expect_raises_message(exc.DatabaseError, "ORA-02014"):
                 connection.execute(stmt).fetchall()
         else:

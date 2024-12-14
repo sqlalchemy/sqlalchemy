@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 12084
+
+    Fixed issue in "lambda SQL" feature where the tracking of bound parameters
+    could be corrupted if the same lambda were evaluated across multiple
+    compile phases, including when using the same lambda across multiple engine
+    instances or with statement caching disabled.
+

@@ -1,5 +1,5 @@
 # sql/lambdas.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -278,7 +278,7 @@ class LambdaElement(elements.ClauseElement):
                         rec = AnalyzedFunction(
                             tracker, self, apply_propagate_attrs, fn
                         )
-                        rec.closure_bindparams = bindparams
+                        rec.closure_bindparams = list(bindparams)
                         lambda_cache[key] = rec
                     else:
                         rec = lambda_cache[key]
@@ -407,9 +407,9 @@ class LambdaElement(elements.ClauseElement):
 
         while parent is not None:
             assert parent.closure_cache_key is not CacheConst.NO_CACHE
-            parent_closure_cache_key: Tuple[
-                Any, ...
-            ] = parent.closure_cache_key
+            parent_closure_cache_key: Tuple[Any, ...] = (
+                parent.closure_cache_key
+            )
 
             cache_key = (
                 (parent.fn.__code__,) + parent_closure_cache_key + cache_key
@@ -437,7 +437,7 @@ class DeferredLambdaElement(LambdaElement):
 
     def __init__(
         self,
-        fn: _LambdaType,
+        fn: _AnyLambdaType,
         role: Type[roles.SQLRole],
         opts: Union[Type[LambdaOptions], LambdaOptions] = LambdaOptions,
         lambda_args: Tuple[Any, ...] = (),
@@ -518,7 +518,6 @@ class StatementLambdaElement(
 
         stmt += lambda s: s.where(table.c.col == parameter)
 
-
     .. versionadded:: 1.4
 
     .. seealso::
@@ -535,8 +534,7 @@ class StatementLambdaElement(
             role: Type[SQLRole],
             opts: Union[Type[LambdaOptions], LambdaOptions] = LambdaOptions,
             apply_propagate_attrs: Optional[ClauseElement] = None,
-        ):
-            ...
+        ): ...
 
     def __add__(
         self, other: _StmtLambdaElementType[Any]
@@ -559,9 +557,7 @@ class StatementLambdaElement(
             ...     stmt = lambda_stmt(
             ...         lambda: select(table.c.x, table.c.y),
             ...     )
-            ...     stmt = stmt.add_criteria(
-            ...         lambda: table.c.x > parameter
-            ...     )
+            ...     stmt = stmt.add_criteria(lambda: table.c.x > parameter)
             ...     return stmt
 
         The :meth:`_sql.StatementLambdaElement.add_criteria` method is
@@ -572,18 +568,15 @@ class StatementLambdaElement(
             >>> def my_stmt(self, foo):
             ...     stmt = lambda_stmt(
             ...         lambda: select(func.max(foo.x, foo.y)),
-            ...         track_closure_variables=False
+            ...         track_closure_variables=False,
             ...     )
-            ...     stmt = stmt.add_criteria(
-            ...         lambda: self.where_criteria,
-            ...         track_on=[self]
-            ...     )
+            ...     stmt = stmt.add_criteria(lambda: self.where_criteria, track_on=[self])
             ...     return stmt
 
         See :func:`_sql.lambda_stmt` for a description of the parameters
         accepted.
 
-        """
+        """  # noqa: E501
 
         opts = self.opts + dict(
             enable_tracking=enable_tracking,
@@ -737,9 +730,9 @@ class AnalyzedCode:
         "closure_trackers",
         "build_py_wrappers",
     )
-    _fns: weakref.WeakKeyDictionary[
-        CodeType, AnalyzedCode
-    ] = weakref.WeakKeyDictionary()
+    _fns: weakref.WeakKeyDictionary[CodeType, AnalyzedCode] = (
+        weakref.WeakKeyDictionary()
+    )
 
     _generation_mutex = threading.RLock()
 
@@ -1184,12 +1177,12 @@ class AnalyzedFunction:
 
             # rewrite the original fn.   things that look like they will
             # become bound parameters are wrapped in a PyWrapper.
-            self.tracker_instrumented_fn = (
-                tracker_instrumented_fn
-            ) = self._rewrite_code_obj(
-                fn,
-                [new_closure[name] for name in fn.__code__.co_freevars],
-                new_globals,
+            self.tracker_instrumented_fn = tracker_instrumented_fn = (
+                self._rewrite_code_obj(
+                    fn,
+                    [new_closure[name] for name in fn.__code__.co_freevars],
+                    new_globals,
+                )
             )
 
             # now invoke the function.  This will give us a new SQL

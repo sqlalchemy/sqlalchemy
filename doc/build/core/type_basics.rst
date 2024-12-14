@@ -63,9 +63,9 @@ not every backend has a real "boolean" datatype; some make use of integers
 or BIT values 0 and 1, some have boolean literal constants ``true`` and
 ``false`` while others dont.   For this datatype, :class:`_types.Boolean`
 may render ``BOOLEAN`` on a backend such as PostgreSQL, ``BIT`` on the
-MySQL backend and ``SMALLINT`` on Oracle.  As data is sent and received
-from the database using this type, based on the dialect in use it may be
-interpreting Python numeric or boolean values.
+MySQL backend and ``SMALLINT`` on Oracle Database.  As data is sent and
+received from the database using this type, based on the dialect in use it
+may be interpreting Python numeric or boolean values.
 
 The typical SQLAlchemy application will likely wish to use primarily
 "CamelCase" types in the general case, as they will generally provide the best
@@ -217,6 +217,9 @@ type is emitted in ``CREATE TABLE``, such as ``VARCHAR`` see
 .. autoclass:: Numeric
   :members:
 
+.. autoclass:: NumericCommon
+  :members:
+
 .. autoclass:: PickleType
   :members:
 
@@ -259,7 +262,9 @@ its exact name in DDL with ``CREATE TABLE`` is issued.
 
 
 .. autoclass:: ARRAY
-   :members:
+    :members: __init__, Comparator
+    :member-order: bysource
+
 
 .. autoclass:: BIGINT
 
@@ -334,5 +339,3 @@ its exact name in DDL with ``CREATE TABLE`` is issued.
 
 
 .. autoclass:: VARCHAR
-
-

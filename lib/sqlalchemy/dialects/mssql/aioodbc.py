@@ -1,5 +1,5 @@
-# mssql/aioodbc.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mssql/aioodbc.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -32,12 +32,11 @@ This dialect should normally be used only with the
 styles are otherwise equivalent to those documented in the pyodbc section::
 
     from sqlalchemy.ext.asyncio import create_async_engine
+
     engine = create_async_engine(
         "mssql+aioodbc://scott:tiger@mssql2017:1433/test?"
         "driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes"
     )
-
-
 
 """
 

@@ -1,5 +1,5 @@
 # sql/ddl.py
-# Copyright (C) 2009-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2009-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -20,6 +20,7 @@ from typing import Callable
 from typing import Iterable
 from typing import List
 from typing import Optional
+from typing import Protocol
 from typing import Sequence as typing_Sequence
 from typing import Tuple
 
@@ -31,7 +32,6 @@ from .elements import ClauseElement
 from .. import exc
 from .. import util
 from ..util import topological
-from ..util.typing import Protocol
 from ..util.typing import Self
 
 if typing.TYPE_CHECKING:
@@ -95,8 +95,7 @@ class DDLIfCallable(Protocol):
         dialect: Dialect,
         compiler: Optional[DDLCompiler] = ...,
         checkfirst: bool,
-    ) -> bool:
-        ...
+    ) -> bool: ...
 
 
 class DDLIf(typing.NamedTuple):
@@ -156,8 +155,8 @@ class ExecutableDDLElement(roles.DDLRole, Executable, BaseDDLElement):
 
         event.listen(
             users,
-            'after_create',
-            AddConstraint(constraint).execute_if(dialect='postgresql')
+            "after_create",
+            AddConstraint(constraint).execute_if(dialect="postgresql"),
         )
 
     .. seealso::
@@ -232,20 +231,20 @@ class ExecutableDDLElement(roles.DDLRole, Executable, BaseDDLElement):
         Used to provide a wrapper for event listening::
 
             event.listen(
-                        metadata,
-                        'before_create',
-                        DDL("my_ddl").execute_if(dialect='postgresql')
-                    )
+                metadata,
+                "before_create",
+                DDL("my_ddl").execute_if(dialect="postgresql"),
+            )
 
         :param dialect: May be a string or tuple of strings.
           If a string, it will be compared to the name of the
           executing database dialect::
 
-            DDL('something').execute_if(dialect='postgresql')
+            DDL("something").execute_if(dialect="postgresql")
 
           If a tuple, specifies multiple dialect names::
 
-            DDL('something').execute_if(dialect=('postgresql', 'mysql'))
+            DDL("something").execute_if(dialect=("postgresql", "mysql"))
 
         :param callable\_: A callable, which will be invoked with
           three positional arguments as well as optional keyword
@@ -343,17 +342,19 @@ class DDL(ExecutableDDLElement):
 
       from sqlalchemy import event, DDL
 
-      tbl = Table('users', metadata, Column('uid', Integer))
-      event.listen(tbl, 'before_create', DDL('DROP TRIGGER users_trigger'))
+      tbl = Table("users", metadata, Column("uid", Integer))
+      event.listen(tbl, "before_create", DDL("DROP TRIGGER users_trigger"))
 
-      spow = DDL('ALTER TABLE %(table)s SET secretpowers TRUE')
-      event.listen(tbl, 'after_create', spow.execute_if(dialect='somedb'))
+      spow = DDL("ALTER TABLE %(table)s SET secretpowers TRUE")
+      event.listen(tbl, "after_create", spow.execute_if(dialect="somedb"))
 
-      drop_spow = DDL('ALTER TABLE users SET secretpowers FALSE')
+      drop_spow = DDL("ALTER TABLE users SET secretpowers FALSE")
       connection.execute(drop_spow)
 
     When operating on Table events, the following ``statement``
-    string substitutions are available::
+    string substitutions are available:
+
+    .. sourcecode:: text
 
       %(table)s  - the Table name, with any required quoting applied
       %(schema)s - the schema name, with any required quoting applied
@@ -471,8 +472,8 @@ class CreateSchema(_CreateBase):
 
     def __init__(
         self,
-        name,
-        if_not_exists=False,
+        name: str,
+        if_not_exists: bool = False,
     ):
         """Create a new :class:`.CreateSchema` construct."""
 
@@ -492,9 +493,9 @@ class DropSchema(_DropBase):
 
     def __init__(
         self,
-        name,
-        cascade=False,
-        if_exists=False,
+        name: str,
+        cascade: bool = False,
+        if_exists: bool = False,
     ):
         """Create a new :class:`.DropSchema` construct."""
 
@@ -569,6 +570,7 @@ class CreateColumn(BaseDDLElement):
         from sqlalchemy import schema
         from sqlalchemy.ext.compiler import compiles
 
+
         @compiles(schema.CreateColumn)
         def compile(element, compiler, **kw):
             column = element.element
@@ -577,9 +579,9 @@ class CreateColumn(BaseDDLElement):
                 return compiler.visit_create_column(element, **kw)
 
             text = "%s SPECIAL DIRECTIVE %s" % (
-                    column.name,
-                    compiler.type_compiler.process(column.type)
-                )
+                column.name,
+                compiler.type_compiler.process(column.type),
+            )
             default = compiler.get_column_default_string(column)
             if default is not None:
                 text += " DEFAULT " + default
@@ -589,8 +591,8 @@ class CreateColumn(BaseDDLElement):
 
             if column.constraints:
                 text += " ".join(
-                            compiler.process(const)
-                            for const in column.constraints)
+                    compiler.process(const) for const in column.constraints
+                )
             return text
 
     The above construct can be applied to a :class:`_schema.Table`
@@ -601,17 +603,21 @@ class CreateColumn(BaseDDLElement):
 
         metadata = MetaData()
 
-        table = Table('mytable', MetaData(),
-                Column('x', Integer, info={"special":True}, primary_key=True),
-                Column('y', String(50)),
-                Column('z', String(20), info={"special":True})
-            )
+        table = Table(
+            "mytable",
+            MetaData(),
+            Column("x", Integer, info={"special": True}, primary_key=True),
+            Column("y", String(50)),
+            Column("z", String(20), info={"special": True}),
+        )
 
         metadata.create_all(conn)
 
     Above, the directives we've added to the :attr:`_schema.Column.info`
     collection
-    will be detected by our custom compilation scheme::
+    will be detected by our custom compilation scheme:
+
+    .. sourcecode:: sql
 
         CREATE TABLE mytable (
                 x SPECIAL DIRECTIVE INTEGER NOT NULL,
@@ -636,18 +642,21 @@ class CreateColumn(BaseDDLElement):
 
         from sqlalchemy.schema import CreateColumn
 
+
         @compiles(CreateColumn, "postgresql")
         def skip_xmin(element, compiler, **kw):
-            if element.element.name == 'xmin':
+            if element.element.name == "xmin":
                 return None
             else:
                 return compiler.visit_create_column(element, **kw)
 
 
-        my_table = Table('mytable', metadata,
-                    Column('id', Integer, primary_key=True),
-                    Column('xmin', Integer)
-                )
+        my_table = Table(
+            "mytable",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("xmin", Integer),
+        )
 
     Above, a :class:`.CreateTable` construct will generate a ``CREATE TABLE``
     which only includes the ``id`` column in the string; the ``xmin`` column
@@ -1021,10 +1030,12 @@ class SchemaDropper(InvokeDropDDLBase):
                 reversed(
                     sort_tables_and_constraints(
                         unsorted_tables,
-                        filter_fn=lambda constraint: False
-                        if not self.dialect.supports_alter
-                        or constraint.name is None
-                        else None,
+                        filter_fn=lambda constraint: (
+                            False
+                            if not self.dialect.supports_alter
+                            or constraint.name is None
+                            else None
+                        ),
                     )
                 )
             )

@@ -1,5 +1,5 @@
 # orm/descriptor_props.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -55,7 +55,10 @@ from ..sql import operators
 from ..sql.elements import BindParameter
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_pep593
+from ..util.typing import TupleAny
 from ..util.typing import typing_get_args
+from ..util.typing import Unpack
+
 
 if typing.TYPE_CHECKING:
     from ._typing import _InstanceDict
@@ -63,7 +66,7 @@ if typing.TYPE_CHECKING:
     from .attributes import History
     from .attributes import InstrumentedAttribute
     from .attributes import QueryableAttribute
-    from .context import ORMCompileState
+    from .context import _ORMCompileState
     from .decl_base import _ClassScanMapperConfig
     from .mapper import Mapper
     from .properties import ColumnProperty
@@ -109,7 +112,7 @@ class DescriptorProperty(MapperProperty[_T]):
     def instrument_class(self, mapper: Mapper[Any]) -> None:
         prop = self
 
-        class _ProxyImpl(attributes.AttributeImpl):
+        class _ProxyImpl(attributes._AttributeImpl):
             accepts_scalar_loader = False
             load_on_unexpire = True
             collection = False
@@ -147,7 +150,7 @@ class DescriptorProperty(MapperProperty[_T]):
 
             self.descriptor = property(fget=fget, fset=fset, fdel=fdel)
 
-        proxy_attr = attributes.create_proxied_attribute(self.descriptor)(
+        proxy_attr = attributes._create_proxied_attribute(self.descriptor)(
             self.parent.class_,
             self.key,
             self.descriptor,
@@ -419,13 +422,13 @@ class CompositeProperty(
             and self.composite_class not in _composite_getters
         ):
             if self._generated_composite_accessor is not None:
-                _composite_getters[
-                    self.composite_class
-                ] = self._generated_composite_accessor
+                _composite_getters[self.composite_class] = (
+                    self._generated_composite_accessor
+                )
             elif hasattr(self.composite_class, "__composite_values__"):
-                _composite_getters[
-                    self.composite_class
-                ] = lambda obj: obj.__composite_values__()
+                _composite_getters[self.composite_class] = (
+                    lambda obj: obj.__composite_values__()
+                )
 
     @util.preload_module("sqlalchemy.orm.properties")
     @util.preload_module("sqlalchemy.orm.decl_base")
@@ -541,13 +544,13 @@ class CompositeProperty(
         """Establish events that populate/expire the composite attribute."""
 
         def load_handler(
-            state: InstanceState[Any], context: ORMCompileState
+            state: InstanceState[Any], context: _ORMCompileState
         ) -> None:
             _load_refresh_handler(state, context, None, is_refresh=False)
 
         def refresh_handler(
             state: InstanceState[Any],
-            context: ORMCompileState,
+            context: _ORMCompileState,
             to_load: Optional[Sequence[str]],
         ) -> None:
             # note this corresponds to sqlalchemy.ext.mutable load_attrs()
@@ -559,7 +562,7 @@ class CompositeProperty(
 
         def _load_refresh_handler(
             state: InstanceState[Any],
-            context: ORMCompileState,
+            context: _ORMCompileState,
             to_load: Optional[Sequence[str]],
             is_refresh: bool,
         ) -> None:
@@ -713,11 +716,11 @@ class CompositeProperty(
 
         def create_row_processor(
             self,
-            query: Select[Any],
-            procs: Sequence[Callable[[Row[Any]], Any]],
+            query: Select[Unpack[TupleAny]],
+            procs: Sequence[Callable[[Row[Unpack[TupleAny]]], Any]],
             labels: Sequence[str],
-        ) -> Callable[[Row[Any]], Any]:
-            def proc(row: Row[Any]) -> Any:
+        ) -> Callable[[Row[Unpack[TupleAny]]], Any]:
+            def proc(row: Row[Unpack[TupleAny]]) -> Any:
                 return self.property.composite_class(
                     *[proc(row) for proc in procs]
                 )
@@ -781,7 +784,9 @@ class CompositeProperty(
             elif isinstance(self.prop.composite_class, type) and isinstance(
                 value, self.prop.composite_class
             ):
-                values = self.prop._composite_values_from_instance(value)
+                values = self.prop._composite_values_from_instance(
+                    value  # type: ignore[arg-type]
+                )
             else:
                 raise sa_exc.ArgumentError(
                     "Can't UPDATE composite attribute %s to %r"

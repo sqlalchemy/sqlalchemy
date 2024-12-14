@@ -25,6 +25,7 @@ from sqlalchemy import Index
 from sqlalchemy import INT
 from sqlalchemy import Integer
 from sqlalchemy import Interval
+from sqlalchemy import JSON
 from sqlalchemy import LargeBinary
 from sqlalchemy import literal
 from sqlalchemy import MetaData
@@ -182,7 +183,7 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(idx),
-            "CREATE FULLTEXT INDEX test_idx1 " "ON testtbl (data(10))",
+            "CREATE FULLTEXT INDEX test_idx1 ON testtbl (data(10))",
         )
 
     def test_create_index_with_text(self):
@@ -406,6 +407,56 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
             "PRIMARY KEY (data) USING btree)",
         )
 
+    @testing.combinations(
+        (True, True, (10, 2, 2)),
+        (True, True, (10, 2, 1)),
+        (False, True, (10, 2, 0)),
+        (True, False, (8, 0, 14)),
+        (True, False, (8, 0, 13)),
+        (False, False, (8, 0, 12)),
+        argnames="has_brackets,is_mariadb,version",
+    )
+    def test_create_server_default_with_function_using(
+        self, has_brackets, is_mariadb, version
+    ):
+        dialect = mysql.dialect(is_mariadb=is_mariadb)
+        dialect.server_version_info = version
+
+        m = MetaData()
+        tbl = Table(
+            "testtbl",
+            m,
+            Column("time", DateTime, server_default=func.current_timestamp()),
+            Column("name", String(255), server_default="some str"),
+            Column(
+                "description", String(255), server_default=func.lower("hi")
+            ),
+            Column("data", JSON, server_default=func.json_object()),
+        )
+
+        eq_(dialect._support_default_function, has_brackets)
+
+        if has_brackets:
+            self.assert_compile(
+                schema.CreateTable(tbl),
+                "CREATE TABLE testtbl ("
+                "time DATETIME DEFAULT (CURRENT_TIMESTAMP), "
+                "name VARCHAR(255) DEFAULT 'some str', "
+                "description VARCHAR(255) DEFAULT (lower('hi')), "
+                "data JSON DEFAULT (json_object()))",
+                dialect=dialect,
+            )
+        else:
+            self.assert_compile(
+                schema.CreateTable(tbl),
+                "CREATE TABLE testtbl ("
+                "time DATETIME DEFAULT CURRENT_TIMESTAMP, "
+                "name VARCHAR(255) DEFAULT 'some str', "
+                "description VARCHAR(255) DEFAULT lower('hi'), "
+                "data JSON DEFAULT json_object())",
+                dialect=dialect,
+            )
+
     def test_create_index_expr(self):
         m = MetaData()
         t1 = Table("foo", m, Column("x", Integer))
@@ -567,7 +618,6 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
 
 
 class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
-
     """Tests MySQL-dialect specific compilation."""
 
     __dialect__ = mysql.dialect()
@@ -877,7 +927,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateIndex(ix1),
-            "CREATE INDEX %s " "ON %s (%s)" % (exp, tname, cname),
+            "CREATE INDEX %s ON %s (%s)" % (exp, tname, cname),
         )
 
     def test_innodb_autoincrement(self):
@@ -1121,6 +1171,31 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
                 "bar = new.bar, "
                 "baz = new.baz"
             )
+            dialect = mysql.dialect()
+            dialect._requires_alias_for_on_duplicate_key = True
+        else:
+            version.fail()
+
+        self.assert_compile(stmt, expected_sql, dialect=dialect)
+
+    @testing.variation("version", ["mysql8", "all_others"])
+    def test_from_select(self, version: Variation):
+        stmt = insert(self.table).from_select(
+            ["id", "bar"],
+            select(self.table.c.id, literal("bar2")),
+        )
+        stmt = stmt.on_duplicate_key_update(
+            bar=stmt.inserted.bar, baz=stmt.inserted.baz
+        )
+
+        expected_sql = (
+            "INSERT INTO foos (id, bar) SELECT foos.id, %s AS anon_1 "
+            "FROM foos "
+            "ON DUPLICATE KEY UPDATE bar = VALUES(bar), baz = VALUES(baz)"
+        )
+        if version.all_others:
+            dialect = None
+        elif version.mysql8:
             dialect = mysql.dialect()
             dialect._requires_alias_for_on_duplicate_key = True
         else:

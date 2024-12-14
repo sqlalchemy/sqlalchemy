@@ -735,6 +735,66 @@ class TestGeometries(GeometryFixtureBase):
         with self.assert_statement_count(testing.db, 0):
             eq_(result, [d(d_data="d1"), e(e_data="e1")])
 
+    @testing.variation("include_intermediary_row", [True, False])
+    def test_threelevel_load_only_3lev(self, include_intermediary_row):
+        """test issue #11327"""
+
+        self._fixture_from_geometry(
+            {
+                "a": {
+                    "subclasses": {
+                        "b": {"subclasses": {"c": {}}},
+                    }
+                }
+            }
+        )
+
+        a, b, c = self.classes("a", "b", "c")
+        sess = fixture_session()
+        sess.add(c(a_data="a1", b_data="b1", c_data="c1"))
+        if include_intermediary_row:
+            sess.add(b(a_data="a1", b_data="b1"))
+        sess.commit()
+
+        sess = fixture_session()
+
+        pks = []
+        c_pks = []
+        with self.sql_execution_asserter(testing.db) as asserter:
+
+            for obj in sess.scalars(
+                select(a)
+                .options(selectin_polymorphic(a, classes=[b, c]))
+                .order_by(a.id)
+            ):
+                assert "b_data" in obj.__dict__
+                if isinstance(obj, c):
+                    assert "c_data" in obj.__dict__
+                    c_pks.append(obj.id)
+                pks.append(obj.id)
+
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT a.id, a.type, a.a_data FROM a ORDER BY a.id", {}
+            ),
+            AllOf(
+                CompiledSQL(
+                    "SELECT c.id AS c_id, b.id AS b_id, a.id AS a_id, "
+                    "a.type AS a_type, c.c_data AS c_c_data FROM a JOIN b "
+                    "ON a.id = b.id JOIN c ON b.id = c.id WHERE a.id IN "
+                    "(__[POSTCOMPILE_primary_keys]) ORDER BY a.id",
+                    [{"primary_keys": c_pks}],
+                ),
+                CompiledSQL(
+                    "SELECT b.id AS b_id, a.id AS a_id, a.type AS a_type, "
+                    "b.b_data AS b_b_data FROM a JOIN b ON a.id = b.id "
+                    "WHERE a.id IN (__[POSTCOMPILE_primary_keys]) "
+                    "ORDER BY a.id",
+                    [{"primary_keys": pks}],
+                ),
+            ),
+        )
+
     @testing.combinations((True,), (False,))
     def test_threelevel_selectin_to_inline_awkward_alias_options(
         self, use_aliased_class
@@ -752,7 +812,9 @@ class TestGeometries(GeometryFixtureBase):
 
         a, b, c, d, e = self.classes("a", "b", "c", "d", "e")
         sess = fixture_session()
-        sess.add_all([d(d_data="d1"), e(e_data="e1")])
+        sess.add_all(
+            [d(c_data="c1", d_data="d1"), e(c_data="c2", e_data="e1")]
+        )
         sess.commit()
 
         from sqlalchemy import select
@@ -840,6 +902,15 @@ class TestGeometries(GeometryFixtureBase):
                     {},
                 ),
                 AllOf(
+                    # note this query is added due to the fix made in
+                    # #11327
+                    CompiledSQL(
+                        "SELECT c.id AS c_id, a.id AS a_id, a.type AS a_type, "
+                        "c.c_data AS c_c_data FROM a JOIN c ON a.id = c.id "
+                        "WHERE a.id IN (__[POSTCOMPILE_primary_keys]) "
+                        "ORDER BY a.id",
+                        [{"primary_keys": [1, 2]}],
+                    ),
                     CompiledSQL(
                         "SELECT d.id AS d_id, c.id AS c_id, a.id AS a_id, "
                         "a.type AS a_type, d.d_data AS d_d_data FROM a "
@@ -860,7 +931,10 @@ class TestGeometries(GeometryFixtureBase):
             )
 
         with self.assert_statement_count(testing.db, 0):
-            eq_(result, [d(d_data="d1"), e(e_data="e1")])
+            eq_(
+                result,
+                [d(c_data="c1", d_data="d1"), e(c_data="c2", e_data="e1")],
+            )
 
     def test_partial_load_no_invoke_eagers(self):
         # test issue #4199
@@ -1396,18 +1470,10 @@ class NoBaseWPPlusAliasedTest(
 
 
 class CompositeAttributesTest(fixtures.TestBase):
-    @testing.fixture
-    def mapping_fixture(self, registry, connection):
+
+    @testing.fixture(params=("base", "sub"))
+    def mapping_fixture(self, request, registry, connection):
         Base = registry.generate_base()
-
-        class BaseCls(Base):
-            __tablename__ = "base"
-            id = Column(
-                Integer, primary_key=True, test_needs_autoincrement=True
-            )
-            type = Column(String(50))
-
-            __mapper_args__ = {"polymorphic_on": type}
 
         class XYThing:
             def __init__(self, x, y):
@@ -1427,13 +1493,28 @@ class CompositeAttributesTest(fixtures.TestBase):
             def __ne__(self, other):
                 return not self.__eq__(other)
 
+        class BaseCls(Base):
+            __tablename__ = "base"
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            type = Column(String(50))
+
+            if request.param == "base":
+                comp1 = composite(
+                    XYThing, Column("x1", Integer), Column("y1", Integer)
+                )
+
+            __mapper_args__ = {"polymorphic_on": type}
+
         class A(ComparableEntity, BaseCls):
             __tablename__ = "a"
             id = Column(ForeignKey(BaseCls.id), primary_key=True)
             thing1 = Column(String(50))
-            comp1 = composite(
-                XYThing, Column("x1", Integer), Column("y1", Integer)
-            )
+            if request.param == "sub":
+                comp1 = composite(
+                    XYThing, Column("x1", Integer), Column("y1", Integer)
+                )
 
             __mapper_args__ = {
                 "polymorphic_identity": "a",

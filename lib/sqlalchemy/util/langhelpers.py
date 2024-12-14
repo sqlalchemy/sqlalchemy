@@ -1,5 +1,5 @@
 # util/langhelpers.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -15,6 +15,7 @@ from __future__ import annotations
 import collections
 import enum
 from functools import update_wrapper
+import importlib.util
 import inspect
 import itertools
 import operator
@@ -24,6 +25,7 @@ import textwrap
 import threading
 import types
 from types import CodeType
+from types import ModuleType
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -47,18 +49,14 @@ import warnings
 
 from . import _collections
 from . import compat
-from ._has_cy import HAS_CYEXTENSION
 from .typing import Literal
 from .. import exc
 
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
 _F = TypeVar("_F", bound=Callable[..., Any])
-_MP = TypeVar("_MP", bound="memoized_property[Any]")
 _MA = TypeVar("_MA", bound="HasMemoized.memoized_attribute[Any]")
-_HP = TypeVar("_HP", bound="hybridproperty[Any]")
-_HM = TypeVar("_HM", bound="hybridmethod[Any]")
-
+_M = TypeVar("_M", bound=ModuleType)
 
 if compat.py310:
 
@@ -68,15 +66,11 @@ if compat.py310:
 else:
 
     def get_annotations(obj: Any) -> Mapping[str, Any]:
-        # it's been observed that cls.__annotations__ can be non present.
-        # it's not clear what causes this, running under tox py38 it
-        # happens, running straight pytest it doesnt
-
         # https://docs.python.org/3/howto/annotations.html#annotations-howto
         if isinstance(obj, type):
             ann = obj.__dict__.get("__annotations__", None)
         else:
-            ann = getattr(obj, "__annotations__", None)
+            ann = obj.__annotations__
 
         if ann is None:
             return _collections.EMPTY_DICT
@@ -174,10 +168,11 @@ def string_or_unprintable(element: Any) -> str:
             return "unprintable element %r" % element
 
 
-def clsname_as_plain_name(cls: Type[Any]) -> str:
-    return " ".join(
-        n.lower() for n in re.findall(r"([A-Z][a-z]+|SQL)", cls.__name__)
-    )
+def clsname_as_plain_name(
+    cls: Type[Any], use_name: Optional[str] = None
+) -> str:
+    name = use_name or cls.__name__
+    return " ".join(n.lower() for n in re.findall(r"([A-Z][a-z]+|SQL)", name))
 
 
 def method_is_overridden(
@@ -307,10 +302,10 @@ def decorator(target: Callable[..., Any]) -> Callable[[_Fn], _Fn]:
         )
         decorated.__defaults__ = getattr(fn, "__func__", fn).__defaults__
 
-        decorated.__wrapped__ = fn  # type: ignore
-        return cast(_Fn, update_wrapper(decorated, fn))
+        decorated.__wrapped__ = fn  # type: ignore[attr-defined]
+        return update_wrapper(decorated, fn)  # type: ignore[return-value]
 
-    return update_wrapper(decorate, target)
+    return update_wrapper(decorate, target)  # type: ignore[return-value]
 
 
 def _update_argspec_defaults_into_env(spec, env):
@@ -411,15 +406,13 @@ def get_cls_kwargs(
     *,
     _set: Optional[Set[str]] = None,
     raiseerr: Literal[True] = ...,
-) -> Set[str]:
-    ...
+) -> Set[str]: ...
 
 
 @overload
 def get_cls_kwargs(
     cls: type, *, _set: Optional[Set[str]] = None, raiseerr: bool = False
-) -> Optional[Set[str]]:
-    ...
+) -> Optional[Set[str]]: ...
 
 
 def get_cls_kwargs(
@@ -663,7 +656,9 @@ def format_argspec_init(method, grouped=True):
     """format_argspec_plus with considerations for typical __init__ methods
 
     Wraps format_argspec_plus with error handling strategies for typical
-    __init__ cases::
+    __init__ cases:
+
+    .. sourcecode:: text
 
       object.__init__ -> (self)
       other unreflectable (usually C) -> (self, *args, **kwargs)
@@ -718,7 +713,9 @@ def create_proxy_methods(
 def getargspec_init(method):
     """inspect.getargspec with considerations for typical __init__ methods
 
-    Wraps inspect.getargspec with error handling for typical __init__ cases::
+    Wraps inspect.getargspec with error handling for typical __init__ cases:
+
+    .. sourcecode:: text
 
       object.__init__ -> (self)
       other unreflectable (usually C) -> (self, *args, **kwargs)
@@ -1092,23 +1089,19 @@ class generic_fn_descriptor(Generic[_T_co]):
         self.__name__ = fget.__name__
 
     @overload
-    def __get__(self: _GFD, obj: None, cls: Any) -> _GFD:
-        ...
+    def __get__(self: _GFD, obj: None, cls: Any) -> _GFD: ...
 
     @overload
-    def __get__(self, obj: object, cls: Any) -> _T_co:
-        ...
+    def __get__(self, obj: object, cls: Any) -> _T_co: ...
 
     def __get__(self: _GFD, obj: Any, cls: Any) -> Union[_GFD, _T_co]:
         raise NotImplementedError()
 
     if TYPE_CHECKING:
 
-        def __set__(self, instance: Any, value: Any) -> None:
-            ...
+        def __set__(self, instance: Any, value: Any) -> None: ...
 
-        def __delete__(self, instance: Any) -> None:
-            ...
+        def __delete__(self, instance: Any) -> None: ...
 
     def _reset(self, obj: Any) -> None:
         raise NotImplementedError()
@@ -1247,12 +1240,10 @@ class HasMemoized:
             self.__name__ = fget.__name__
 
         @overload
-        def __get__(self: _MA, obj: None, cls: Any) -> _MA:
-            ...
+        def __get__(self: _MA, obj: None, cls: Any) -> _MA: ...
 
         @overload
-        def __get__(self, obj: Any, cls: Any) -> _T:
-            ...
+        def __get__(self, obj: Any, cls: Any) -> _T: ...
 
         def __get__(self, obj, cls):
             if obj is None:
@@ -1598,9 +1589,9 @@ class hybridmethod(Generic[_T]):
 class symbol(int):
     """A constant symbol.
 
-    >>> symbol('foo') is symbol('foo')
+    >>> symbol("foo") is symbol("foo")
     True
-    >>> symbol('foo')
+    >>> symbol("foo")
     <symbol 'foo>
 
     A slight refinement of the MAGICCOOKIE=object() pattern.  The primary
@@ -1666,6 +1657,8 @@ class _IntFlagMeta(type):
         items: List[symbol]
         cls._items = items = []
         for k, v in dict_.items():
+            if re.match(r"^__.*__$", k):
+                continue
             if isinstance(v, int):
                 sym = symbol(k, canonical=v)
             elif not k.startswith("_"):
@@ -1959,10 +1952,13 @@ NoneType = type(None)
 
 
 def attrsetter(attrname):
-    code = "def set(obj, value):" "    obj.%s = value" % attrname
+    code = "def set(obj, value):    obj.%s = value" % attrname
     env = locals().copy()
     exec(code, env)
     return env["set"]
+
+
+_dunders = re.compile("^__.+__$")
 
 
 class TypingOnly:
@@ -1975,15 +1971,9 @@ class TypingOnly:
 
     def __init_subclass__(cls) -> None:
         if TypingOnly in cls.__bases__:
-            remaining = set(cls.__dict__).difference(
-                {
-                    "__module__",
-                    "__doc__",
-                    "__slots__",
-                    "__orig_bases__",
-                    "__annotations__",
-                }
-            )
+            remaining = {
+                name for name in cls.__dict__ if not _dunders.match(name)
+            }
             if remaining:
                 raise AssertionError(
                     f"Class {cls} directly inherits TypingOnly but has "
@@ -2207,6 +2197,8 @@ def repr_tuple_names(names: List[str]) -> Optional[str]:
 
 
 def has_compiled_ext(raise_=False):
+    from ._has_cython import HAS_CYEXTENSION
+
     if HAS_CYEXTENSION:
         return True
     elif raise_:
@@ -2216,3 +2208,35 @@ def has_compiled_ext(raise_=False):
         )
     else:
         return False
+
+
+def load_uncompiled_module(module: _M) -> _M:
+    """Load the non-compied version of a module that is also
+    compiled with cython.
+    """
+    full_name = module.__name__
+    assert module.__spec__
+    parent_name = module.__spec__.parent
+    assert parent_name
+    parent_module = sys.modules[parent_name]
+    assert parent_module.__spec__
+    package_path = parent_module.__spec__.origin
+    assert package_path and package_path.endswith("__init__.py")
+
+    name = full_name.split(".")[-1]
+    module_path = package_path.replace("__init__.py", f"{name}.py")
+
+    py_spec = importlib.util.spec_from_file_location(full_name, module_path)
+    assert py_spec
+    py_module = importlib.util.module_from_spec(py_spec)
+    assert py_spec.loader
+    py_spec.loader.exec_module(py_module)
+    return cast(_M, py_module)
+
+
+class _Missing(enum.Enum):
+    Missing = enum.auto()
+
+
+Missing = _Missing.Missing
+MissingOr = Union[_T, Literal[_Missing.Missing]]

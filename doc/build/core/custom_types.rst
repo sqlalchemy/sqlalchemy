@@ -156,7 +156,7 @@ denormalize::
 
         def process_bind_param(self, value, dialect):
             if value is not None:
-                if not value.tzinfo:
+                if not value.tzinfo or value.tzinfo.utcoffset(value) is None:
                     raise TypeError("tzinfo is required")
                 value = value.astimezone(datetime.timezone.utc).replace(tzinfo=None)
             return value
@@ -173,7 +173,7 @@ Backend-agnostic GUID Type
 
 .. note:: Since version 2.0 the built-in :class:`_types.Uuid` type that
     behaves similarly should be preferred. This example is presented
-    just as an example of a type decorator that recieves and returns
+    just as an example of a type decorator that receives and returns
     python objects.
 
 Receives and returns Python uuid() objects.  
@@ -212,10 +212,8 @@ string, using a CHAR(36) type::
                 return dialect.type_descriptor(self._default_type)
 
         def process_bind_param(self, value, dialect):
-            if value is None:
+            if value is None or dialect.name in ("postgresql", "mssql"):
                 return value
-            elif dialect.name in ("postgresql", "mssql"):
-                return str(value)
             else:
                 if not isinstance(value, uuid.UUID):
                     value = uuid.UUID(value)
@@ -527,7 +525,10 @@ transparently::
     with engine.begin() as conn:
         metadata_obj.create_all(conn)
 
-        conn.execute(message.insert(), username="some user", message="this is my message")
+        conn.execute(
+            message.insert(),
+            {"username": "some user", "message": "this is my message"},
+        )
 
         print(
             conn.scalar(select(message.c.message).where(message.c.username == "some user"))

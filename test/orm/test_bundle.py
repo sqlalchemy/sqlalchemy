@@ -3,6 +3,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import select
+from sqlalchemy import SelectLabelStyle
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import tuple_
@@ -157,6 +158,151 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         self.assert_compile(
             select(b1.c.d1, b1.c.d2), "SELECT data.d1, data.d2 FROM data"
+        )
+
+    @testing.variation(
+        "stmt_type", ["legacy", "newstyle", "newstyle_w_label_conv"]
+    )
+    @testing.variation("col_type", ["orm", "core"])
+    def test_dupe_col_name(self, stmt_type, col_type):
+        """test #11347"""
+        Data = self.classes.Data
+        sess = fixture_session()
+
+        if col_type.orm:
+            b1 = Bundle("b1", Data.d1, Data.d3)
+            cols = Data.d1, Data.d2
+        elif col_type.core:
+            data_table = self.tables.data
+            b1 = Bundle("b1", data_table.c.d1, data_table.c.d3)
+            cols = data_table.c.d1, data_table.c.d2
+        else:
+            col_type.fail()
+
+        if stmt_type.legacy:
+            row = (
+                sess.query(cols[0], cols[1], b1)
+                .filter(Data.d1 == "d0d1")
+                .one()
+            )
+        elif stmt_type.newstyle:
+            row = sess.execute(
+                select(cols[0], cols[1], b1).filter(Data.d1 == "d0d1")
+            ).one()
+        elif stmt_type.newstyle_w_label_conv:
+            row = sess.execute(
+                select(cols[0], cols[1], b1)
+                .filter(Data.d1 == "d0d1")
+                .set_label_style(
+                    SelectLabelStyle.LABEL_STYLE_TABLENAME_PLUS_COL
+                )
+            ).one()
+        else:
+            stmt_type.fail()
+
+        if stmt_type.newstyle_w_label_conv:
+            # decision is made here that even if a SELECT with the
+            # "tablename_plus_colname" label style, within a Bundle we still
+            # use straight column name, even though the overall row
+            # uses tablename_colname
+            eq_(
+                row._mapping,
+                {"data_d1": "d0d1", "data_d2": "d0d2", "b1": ("d0d1", "d0d3")},
+            )
+        else:
+            eq_(
+                row._mapping,
+                {"d1": "d0d1", "d2": "d0d2", "b1": ("d0d1", "d0d3")},
+            )
+
+        eq_(row[2]._mapping, {"d1": "d0d1", "d3": "d0d3"})
+
+    @testing.variation(
+        "stmt_type", ["legacy", "newstyle", "newstyle_w_label_conv"]
+    )
+    @testing.variation("col_type", ["orm", "core"])
+    def test_dupe_col_name_nested(self, stmt_type, col_type):
+        """test #11347"""
+        Data = self.classes.Data
+        sess = fixture_session()
+
+        class DictBundle(Bundle):
+            def create_row_processor(self, query, procs, labels):
+                def proc(row):
+                    return dict(zip(labels, (proc(row) for proc in procs)))
+
+                return proc
+
+        if col_type.core:
+            data_table = self.tables.data
+
+            b1 = DictBundle("b1", data_table.c.d1, data_table.c.d3)
+            b2 = DictBundle("b2", data_table.c.d2, data_table.c.d3)
+            b3 = DictBundle("b3", data_table.c.d2, data_table.c.d3, b1, b2)
+        elif col_type.orm:
+            b1 = DictBundle("b1", Data.d1, Data.d3)
+            b2 = DictBundle("b2", Data.d2, Data.d3)
+            b3 = DictBundle("b3", Data.d2, Data.d3, b1, b2)
+        else:
+            col_type.fail()
+
+        if stmt_type.legacy:
+            row = (
+                sess.query(Data.d1, Data.d2, b3)
+                .filter(Data.d1 == "d0d1")
+                .one()
+            )
+        elif stmt_type.newstyle:
+            row = sess.execute(
+                select(Data.d1, Data.d2, b3).filter(Data.d1 == "d0d1")
+            ).one()
+        elif stmt_type.newstyle_w_label_conv:
+            row = sess.execute(
+                select(Data.d1, Data.d2, b3)
+                .filter(Data.d1 == "d0d1")
+                .set_label_style(
+                    SelectLabelStyle.LABEL_STYLE_TABLENAME_PLUS_COL
+                )
+            ).one()
+        else:
+            stmt_type.fail()
+
+        if stmt_type.newstyle_w_label_conv:
+            eq_(
+                row._mapping,
+                {
+                    "data_d1": "d0d1",
+                    "data_d2": "d0d2",
+                    "b3": {
+                        "d2": "d0d2",
+                        "d3": "d0d3",
+                        "b1": {"d1": "d0d1", "d3": "d0d3"},
+                        "b2": {"d2": "d0d2", "d3": "d0d3"},
+                    },
+                },
+            )
+        else:
+            eq_(
+                row._mapping,
+                {
+                    "d1": "d0d1",
+                    "d2": "d0d2",
+                    "b3": {
+                        "d2": "d0d2",
+                        "d3": "d0d3",
+                        "b1": {"d1": "d0d1", "d3": "d0d3"},
+                        "b2": {"d2": "d0d2", "d3": "d0d3"},
+                    },
+                },
+            )
+        eq_(
+            row[2],
+            {
+                "d2": "d0d2",
+                "d3": "d0d3",
+                "b1": {"d1": "d0d1", "d3": "d0d3"},
+                "b2": {"d2": "d0d2", "d3": "d0d3"},
+            },
         )
 
     def test_result(self):

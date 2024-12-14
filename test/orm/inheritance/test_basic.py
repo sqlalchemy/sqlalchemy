@@ -1684,7 +1684,7 @@ class PassiveDeletesTest(fixtures.MappedTest):
             s.flush()
         asserter.assert_(
             RegexSQL(
-                "SELECT .* " "FROM c WHERE :param_1 = c.bid", [{"param_1": 3}]
+                "SELECT .* FROM c WHERE :param_1 = c.bid", [{"param_1": 3}]
             ),
             CompiledSQL("DELETE FROM c WHERE c.cid = :cid", [{"cid": 1}]),
             CompiledSQL("DELETE FROM b WHERE b.id = :id", [{"id": 3}]),
@@ -1933,7 +1933,7 @@ class OptimizedGetOnDeferredTest(fixtures.MappedTest):
                 # a.id is not included in the SELECT list
                 "SELECT b.data FROM a JOIN b ON a.id = b.id "
                 "WHERE a.id = :pk_1",
-                [{"pk_1": pk}]
+                [{"pk_1": pk}],
                 # if we used load_scalar_attributes(), it would look like
                 # this
                 # "SELECT b.data AS b_data FROM b WHERE :param_1 = b.id",
@@ -3012,7 +3012,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
         )
 
     def test_optimized_passes(self):
-        """ "test that the 'optimized load' routine doesn't crash when
+        """test that the 'optimized load' routine doesn't crash when
         a column in the join condition is not available."""
 
         base, sub = self.tables.base, self.tables.sub
@@ -3744,7 +3744,7 @@ class NoPolyIdentInMiddleTest(fixtures.MappedTest):
             __mapper_args__ = {"polymorphic_identity": "b"}
 
         with expect_warnings(
-            r"Mapper\[C\(a\)\] does not indicate a " "'polymorphic_identity',"
+            r"Mapper\[C\(a\)\] does not indicate a 'polymorphic_identity',"
         ):
 
             class C(A):

@@ -301,9 +301,9 @@ The feature by default works completely independently of database-configured
 In order to integrate more efficiently with this configuration, additional
 directives described at :ref:`passive_deletes` should be used.
 
-.. warning::  Note that the ORM's "delete" and "delete-cascade" behavior applies
+.. warning::  Note that the ORM's "delete" and "delete-orphan" behavior applies
    **only** to the use of the :meth:`_orm.Session.delete` method to mark
-   individual ORM instances for deletion within the :term:`unit-of-work` process.
+   individual ORM instances for deletion within the :term:`unit of work` process.
    It does **not** apply to "bulk" deletes, which would be emitted using
    the :func:`_sql.delete` construct as illustrated at
    :ref:`orm_queryguide_update_delete_where`.   See

@@ -12,6 +12,8 @@ from sqlalchemy.engine import base
 from sqlalchemy.engine import characteristics
 from sqlalchemy.engine import default
 from sqlalchemy.engine import url
+from sqlalchemy.pool import AsyncAdaptedQueuePool
+from sqlalchemy.pool import QueuePool
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
@@ -345,9 +347,7 @@ class TransactionTest(fixtures.TablesTest):
         assert not trans.is_active
 
         eq_(
-            connection.exec_driver_sql(
-                "select count(*) from " "users"
-            ).scalar(),
+            connection.exec_driver_sql("select count(*) from users").scalar(),
             2,
         )
         connection.rollback()
@@ -473,7 +473,8 @@ class TransactionTest(fixtures.TablesTest):
 
     @testing.requires.two_phase_transactions
     @testing.requires.two_phase_recovery
-    def test_two_phase_recover(self):
+    @testing.variation("commit", [True, False])
+    def test_two_phase_recover(self, commit):
         users = self.tables.users
 
         # 2020, still can't get this to work w/ modern MySQL or MariaDB.
@@ -501,17 +502,29 @@ class TransactionTest(fixtures.TablesTest):
                 [],
             )
         # recover_twophase needs to be run in a new transaction
-        with testing.db.connect() as connection2:
-            recoverables = connection2.recover_twophase()
-            assert transaction.xid in recoverables
-            connection2.commit_prepared(transaction.xid, recover=True)
+        with testing.db.connect() as connection3:
+            # oracle transactions can't be recovered for commit after...
+            # about 1 second?  OK
+            with testing.skip_if_timeout(
+                0.50,
+                cleanup=(
+                    lambda: connection3.rollback_prepared(
+                        transaction.xid, recover=True
+                    )
+                ),
+            ):
+                recoverables = connection3.recover_twophase()
+                assert transaction.xid in recoverables
 
-            eq_(
-                connection2.execute(
-                    select(users.c.user_id).order_by(users.c.user_id)
-                ).fetchall(),
-                [(1,)],
-            )
+            if commit:
+                connection3.commit_prepared(transaction.xid, recover=True)
+                res = [(1,)]
+            else:
+                connection3.rollback_prepared(transaction.xid, recover=True)
+                res = []
+
+            stmt = select(users.c.user_id).order_by(users.c.user_id)
+            eq_(connection3.execute(stmt).fetchall(), res)
 
     @testing.requires.two_phase_transactions
     def test_multiple_two_phase(self, local_connection):
@@ -1250,12 +1263,13 @@ class IsolationLevelTest(fixtures.TestBase):
 
     def test_underscore_replacement(self, connection_no_trans):
         conn = connection_no_trans
-        with mock.patch.object(
-            conn.dialect, "set_isolation_level"
-        ) as mock_sil, mock.patch.object(
-            conn.dialect,
-            "_gen_allowed_isolation_levels",
-            mock.Mock(return_value=["READ COMMITTED", "REPEATABLE READ"]),
+        with (
+            mock.patch.object(conn.dialect, "set_isolation_level") as mock_sil,
+            mock.patch.object(
+                conn.dialect,
+                "_gen_allowed_isolation_levels",
+                mock.Mock(return_value=["READ COMMITTED", "REPEATABLE READ"]),
+            ),
         ):
             conn.execution_options(isolation_level="REPEATABLE_READ")
             dbapi_conn = conn.connection.dbapi_connection
@@ -1264,12 +1278,13 @@ class IsolationLevelTest(fixtures.TestBase):
 
     def test_casing_replacement(self, connection_no_trans):
         conn = connection_no_trans
-        with mock.patch.object(
-            conn.dialect, "set_isolation_level"
-        ) as mock_sil, mock.patch.object(
-            conn.dialect,
-            "_gen_allowed_isolation_levels",
-            mock.Mock(return_value=["READ COMMITTED", "REPEATABLE READ"]),
+        with (
+            mock.patch.object(conn.dialect, "set_isolation_level") as mock_sil,
+            mock.patch.object(
+                conn.dialect,
+                "_gen_allowed_isolation_levels",
+                mock.Mock(return_value=["READ COMMITTED", "REPEATABLE READ"]),
+            ),
         ):
             conn.execution_options(isolation_level="repeatable_read")
             dbapi_conn = conn.connection.dbapi_connection
@@ -1347,10 +1362,17 @@ class IsolationLevelTest(fixtures.TestBase):
             eq_(c2.get_isolation_level(), self._default_isolation_level())
 
     def test_per_connection(self):
-        from sqlalchemy.pool import QueuePool
 
         eng = testing_engine(
-            options=dict(poolclass=QueuePool, pool_size=2, max_overflow=0)
+            options=dict(
+                poolclass=(
+                    QueuePool
+                    if not testing.db.dialect.is_async
+                    else AsyncAdaptedQueuePool
+                ),
+                pool_size=2,
+                max_overflow=0,
+            )
         )
 
         c1 = eng.connect()
@@ -1625,9 +1647,12 @@ class ResetFixture:
         event.listen(engine, "rollback_twophase", harness.rollback_twophase)
         event.listen(engine, "commit_twophase", harness.commit_twophase)
 
-        with mock.patch.object(
-            engine.dialect, "do_rollback", harness.do_rollback
-        ), mock.patch.object(engine.dialect, "do_commit", harness.do_commit):
+        with (
+            mock.patch.object(
+                engine.dialect, "do_rollback", harness.do_rollback
+            ),
+            mock.patch.object(engine.dialect, "do_commit", harness.do_commit),
+        ):
             yield harness
 
         event.remove(engine, "rollback", harness.rollback)

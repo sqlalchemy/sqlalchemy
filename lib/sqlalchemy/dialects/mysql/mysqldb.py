@@ -1,5 +1,5 @@
-# mysql/mysqldb.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mysql/mysqldb.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -48,9 +48,9 @@ key "ssl", which may be specified using the
             "ssl": {
                 "ca": "/home/gord/client-ssl/ca.pem",
                 "cert": "/home/gord/client-ssl/client-cert.pem",
-                "key": "/home/gord/client-ssl/client-key.pem"
+                "key": "/home/gord/client-ssl/client-key.pem",
             }
-        }
+        },
     )
 
 For convenience, the following keys may also be specified inline within the URL
@@ -74,7 +74,9 @@ Using MySQLdb with Google Cloud SQL
 -----------------------------------
 
 Google Cloud SQL now recommends use of the MySQLdb dialect.  Connect
-using a URL like the following::
+using a URL like the following:
+
+.. sourcecode:: text
 
     mysql+mysqldb://root@/<dbname>?unix_socket=/cloudsql/<projectid>:<instancename>
 
@@ -97,12 +99,7 @@ from ... import util
 
 
 class MySQLExecutionContext_mysqldb(MySQLExecutionContext):
-    @property
-    def rowcount(self):
-        if hasattr(self, "_rowcount"):
-            return self._rowcount
-        else:
-            return self.cursor.rowcount
+    pass
 
 
 class MySQLCompiler_mysqldb(MySQLCompiler):
@@ -217,7 +214,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
         util.coerce_kw_type(opts, "read_timeout", int)
         util.coerce_kw_type(opts, "write_timeout", int)
         util.coerce_kw_type(opts, "client_flag", int)
-        util.coerce_kw_type(opts, "local_infile", int)
+        util.coerce_kw_type(opts, "local_infile", bool)
         # Note: using either of the below will cause all strings to be
         # returned as Unicode, both in raw SQL operations and with column
         # types like String and MSString.

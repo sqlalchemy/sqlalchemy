@@ -1,7 +1,9 @@
 from sqlalchemy import and_
 from sqlalchemy import ForeignKey
+from sqlalchemy import Identity
 from sqlalchemy import Integer
 from sqlalchemy import join
+from sqlalchemy import literal_column
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -13,10 +15,12 @@ from sqlalchemy.orm import defer
 from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Load
+from sqlalchemy.orm import query_expression
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import with_expression
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import profiling
 from sqlalchemy.testing.fixtures import fixture_session
@@ -142,7 +146,6 @@ class MergeTest(NoCache, fixtures.MappedTest):
 
 
 class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
-
     """test overhead associated with many-to-one fetches.
 
     Prior to the refactor of LoadLazyAttribute and
@@ -1313,5 +1316,114 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
                 # test counts assume objects remain in the session
                 # from previous run
                 r = q.all()  # noqa: F841
+
+        go()
+
+
+class WithExpresionLoaderOptTest(fixtures.DeclarativeMappedTest):
+    # keep caching on with this test.
+    __requires__ = ("python_profiling_backend",)
+
+    """test #11085"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, Identity(), primary_key=True)
+            data = Column(String(30))
+            bs = relationship("B")
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, Identity(), primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+            boolean = query_expression()
+            d1 = Column(String(30))
+            d2 = Column(String(30))
+            d3 = Column(String(30))
+            d4 = Column(String(30))
+            d5 = Column(String(30))
+            d6 = Column(String(30))
+            d7 = Column(String(30))
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, B = cls.classes("A", "B")
+
+        with Session(connection) as s:
+            s.add(
+                A(
+                    bs=[
+                        B(
+                            d1="x",
+                            d2="x",
+                            d3="x",
+                            d4="x",
+                            d5="x",
+                            d6="x",
+                            d7="x",
+                        )
+                    ]
+                )
+            )
+            s.commit()
+
+    def test_from_opt_no_cache(self):
+        A, B = self.classes("A", "B")
+
+        @profiling.function_call_count(warmup=2)
+        def go():
+            with Session(
+                testing.db.execution_options(compiled_cache=None)
+            ) as sess:
+                _ = sess.execute(
+                    select(A).options(
+                        selectinload(A.bs).options(
+                            with_expression(
+                                B.boolean,
+                                and_(
+                                    B.d1 == "x",
+                                    B.d2 == "x",
+                                    B.d3 == "x",
+                                    B.d4 == "x",
+                                    B.d5 == "x",
+                                    B.d6 == "x",
+                                    B.d7 == "x",
+                                ),
+                            )
+                        )
+                    )
+                ).scalars()
+
+        go()
+
+    def test_from_opt_after_cache(self):
+        A, B = self.classes("A", "B")
+
+        @profiling.function_call_count(warmup=2)
+        def go():
+            with Session(testing.db) as sess:
+                _ = sess.execute(
+                    select(A).options(
+                        selectinload(A.bs).options(
+                            with_expression(
+                                B.boolean,
+                                and_(
+                                    B.d1 == literal_column("'x'"),
+                                    B.d2 == "x",
+                                    B.d3 == literal_column("'x'"),
+                                    B.d4 == "x",
+                                    B.d5 == literal_column("'x'"),
+                                    B.d6 == "x",
+                                    B.d7 == literal_column("'x'"),
+                                ),
+                            )
+                        )
+                    )
+                ).scalars()
 
         go()

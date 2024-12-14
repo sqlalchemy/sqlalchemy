@@ -11,32 +11,32 @@ Working with Transactions and the DBAPI
 
 
 
-With the :class:`_engine.Engine` object ready to go, we may now proceed
-to dive into the basic operation of an :class:`_engine.Engine` and
-its primary interactive endpoints, the :class:`_engine.Connection` and
-:class:`_engine.Result`.   We will additionally introduce the ORM's
-:term:`facade` for these objects, known as the :class:`_orm.Session`.
+With the :class:`_engine.Engine` object ready to go, we can
+dive into the basic operation of an :class:`_engine.Engine` and
+its primary endpoints, the :class:`_engine.Connection` and
+:class:`_engine.Result`. We'll also introduce the ORM's :term:`facade`
+for these objects, known as the :class:`_orm.Session`.
 
 .. container:: orm-header
 
     **Note to ORM readers**
 
-    When using the ORM, the :class:`_engine.Engine` is managed by another
-    object called the :class:`_orm.Session`.  The :class:`_orm.Session` in
-    modern SQLAlchemy emphasizes a transactional and SQL execution pattern that
-    is largely identical to that of the :class:`_engine.Connection` discussed
-    below, so while this subsection is Core-centric, all of the concepts here
-    are essentially relevant to ORM use as well and is recommended for all ORM
+    When using the ORM, the :class:`_engine.Engine` is managed by the
+    :class:`_orm.Session`.  The :class:`_orm.Session` in modern SQLAlchemy
+    emphasizes a transactional and SQL execution pattern that is largely
+    identical to that of the :class:`_engine.Connection` discussed below,
+    so while this subsection is Core-centric, all of the concepts here
+    are relevant to ORM use as well and is recommended for all ORM
     learners.   The execution pattern used by the :class:`_engine.Connection`
-    will be contrasted with that of the :class:`_orm.Session` at the end
+    will be compared to the :class:`_orm.Session` at the end
     of this section.
 
 As we have yet to introduce the SQLAlchemy Expression Language that is the
-primary feature of SQLAlchemy, we will make use of one simple construct within
-this package called the :func:`_sql.text` construct, which allows us to write
-SQL statements as **textual SQL**.   Rest assured that textual SQL in
-day-to-day SQLAlchemy use is by far the exception rather than the rule for most
-tasks, even though it always remains fully available.
+primary feature of SQLAlchemy, we'll use a simple construct within
+this package called the :func:`_sql.text` construct, to write
+SQL statements as **textual SQL**.   Rest assured that textual SQL is the 
+exception rather than the rule in day-to-day SQLAlchemy use, but it's
+always available.
 
 .. rst-class:: core-header
 
@@ -45,17 +45,15 @@ tasks, even though it always remains fully available.
 Getting a Connection
 ---------------------
 
-The sole purpose of the :class:`_engine.Engine` object from a user-facing
-perspective is to provide a unit of
-connectivity to the database called the :class:`_engine.Connection`.   When
-working with the Core directly, the :class:`_engine.Connection` object
-is how all interaction with the database is done.   As the :class:`_engine.Connection`
-represents an open resource against the database, we want to always limit
-the scope of our use of this object to a specific context, and the best
-way to do that is by using Python context manager form, also known as
-`the with statement <https://docs.python.org/3/reference/compound_stmts.html#with>`_.
-Below we illustrate "Hello World", using a textual SQL statement.  Textual
-SQL is emitted using a construct called :func:`_sql.text` that will be discussed
+The purpose of the :class:`_engine.Engine` is to connect to the database by
+providing a :class:`_engine.Connection` object.   When working with the Core
+directly, the :class:`_engine.Connection` object is how all interaction with the
+database is done.   Because the :class:`_engine.Connection` creates an open
+resource against the database, we want to limit our use of this object to a
+specific context. The best way to do that is with a Python context manager, also
+known as `the with statement <https://docs.python.org/3/reference/compound_stmts.html#with>`_.
+Below we use a textual SQL statement to show "Hello World".  Textual SQL is
+created with a construct called :func:`_sql.text` which we'll discuss
 in more detail later:
 
 .. sourcecode:: pycon+sql
@@ -71,21 +69,21 @@ in more detail later:
     {stop}[('hello world',)]
     {execsql}ROLLBACK{stop}
 
-In the above example, the context manager provided for a database connection
-and also framed the operation inside of a transaction. The default behavior of
-the Python DBAPI includes that a transaction is always in progress; when the
-scope of the connection is :term:`released`, a ROLLBACK is emitted to end the
-transaction.   The transaction is **not committed automatically**; when we want
-to commit data we normally need to call :meth:`_engine.Connection.commit`
+In the example above, the context manager creates a database connection
+and executes the operation in a transaction. The default behavior of
+the Python DBAPI is that a transaction is always in progress; when the
+connection is :term:`released`, a ROLLBACK is emitted to end the
+transaction.   The transaction is **not committed automatically**; if we want
+to commit data we need to call :meth:`_engine.Connection.commit`
 as we'll see in the next section.
 
 .. tip::  "autocommit" mode is available for special cases.  The section
    :ref:`dbapi_autocommit` discusses this.
 
-The result of our SELECT was also returned in an object called
-:class:`_engine.Result` that will be discussed later, however for the moment
-we'll add that it's best to ensure this object is consumed within the
-"connect" block, and is not passed along outside of the scope of our connection.
+The result of our SELECT was returned in an object called
+:class:`_engine.Result` that will be discussed later. For the moment
+we'll add that it's best to use this object within the "connect" block,
+and to not use it outside of the scope of our connection.
 
 .. rst-class:: core-header
 
@@ -94,11 +92,11 @@ we'll add that it's best to ensure this object is consumed within the
 Committing Changes
 ------------------
 
-We just learned that the DBAPI connection is non-autocommitting.  What if
-we want to commit some data?   We can alter our above example to create a
-table and insert some data, and the transaction is then committed using
-the :meth:`_engine.Connection.commit` method, invoked **inside** the block
-where we acquired the :class:`_engine.Connection` object:
+We just learned that the DBAPI connection doesn't commit automatically.
+What if we want to commit some data?   We can change our example above to create a
+table, insert some data and then commit the transaction using
+the :meth:`_engine.Connection.commit` method, **inside** the block
+where we have the :class:`_engine.Connection` object:
 
 .. sourcecode:: pycon+sql
 
@@ -119,24 +117,22 @@ where we acquired the :class:`_engine.Connection` object:
     <sqlalchemy.engine.cursor.CursorResult object at 0x...>
     COMMIT
 
-Above, we emitted two SQL statements that are generally transactional, a
-"CREATE TABLE" statement [1]_ and an "INSERT" statement that's parameterized
-(the parameterization syntax above is discussed a few sections below in
-:ref:`tutorial_multiple_parameters`).  As we want the work we've done to be
-committed within our block, we invoke the
+Above, we execute two SQL statements, a "CREATE TABLE" statement [1]_
+and an "INSERT" statement that's parameterized (we discuss the parameterization syntax
+later in :ref:`tutorial_multiple_parameters`).
+To commit the work we've done in our block, we call the
 :meth:`_engine.Connection.commit` method which commits the transaction. After
-we call this method inside the block, we can continue to run more SQL
-statements and if we choose we may call :meth:`_engine.Connection.commit`
-again for subsequent statements.  SQLAlchemy refers to this style as **commit as
+this, we can continue to run more SQL statements and call :meth:`_engine.Connection.commit`
+again for those statements.  SQLAlchemy refers to this style as **commit as
 you go**.
 
-There is also another style of committing data, which is that we can declare
-our "connect" block to be a transaction block up front.   For this mode of
-operation, we use the :meth:`_engine.Engine.begin` method to acquire the
-connection, rather than the :meth:`_engine.Engine.connect` method.  This method
-will both manage the scope of the :class:`_engine.Connection` and also
-enclose everything inside of a transaction with COMMIT at the end, assuming
-a successful block, or ROLLBACK in case of exception raise.  This style
+There's also another style to commit data. We can declare
+our "connect" block to be a transaction block up front.   To do this, we use the
+:meth:`_engine.Engine.begin` method to get the connection, rather than the
+:meth:`_engine.Engine.connect` method.  This method
+will manage the scope of the :class:`_engine.Connection` and also
+enclose everything inside of a transaction with either a COMMIT at the end 
+if the block was successful, or a ROLLBACK if an exception was raised.  This style
 is known as **begin once**:
 
 .. sourcecode:: pycon+sql
@@ -153,9 +149,9 @@ is known as **begin once**:
     <sqlalchemy.engine.cursor.CursorResult object at 0x...>
     COMMIT
 
-"Begin once" style is often preferred as it is more succinct and indicates the
-intention of the entire block up front.   However, within this tutorial we will
-normally use "commit as you go" style as it is more flexible for demonstration
+You should mostly prefer the "begin once" style because it's shorter and shows the
+intention of the entire block up front.   However, in this tutorial we'll
+use "commit as you go" style as it's more flexible for demonstration
 purposes.
 
 .. topic::  What's "BEGIN (implicit)"?
@@ -169,8 +165,8 @@ purposes.
 
 .. [1] :term:`DDL` refers to the subset of SQL that instructs the database
    to create, modify, or remove schema-level constructs such as tables. DDL
-   such as "CREATE TABLE" is recommended to be within a transaction block that
-   ends with COMMIT, as many databases uses transactional DDL such that the
+   such as "CREATE TABLE" should be in a transaction block that
+   ends with COMMIT, as many databases use transactional DDL such that the
    schema changes don't take place until the transaction is committed. However,
    as we'll see later, we usually let SQLAlchemy run DDL sequences for us as
    part of a higher level operation where we don't generally need to worry

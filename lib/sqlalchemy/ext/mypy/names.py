@@ -1,5 +1,5 @@
 # ext/mypy/names.py
-# Copyright (C) 2021 the SQLAlchemy authors and contributors
+# Copyright (C) 2021-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -58,6 +58,14 @@ NAMED_TYPE_BUILTINS_STR = "builtins.str"
 NAMED_TYPE_BUILTINS_LIST = "builtins.list"
 NAMED_TYPE_SQLA_MAPPED = "sqlalchemy.orm.base.Mapped"
 
+_RelFullNames = {
+    "sqlalchemy.orm.relationships.Relationship",
+    "sqlalchemy.orm.relationships.RelationshipProperty",
+    "sqlalchemy.orm.relationships._RelationshipDeclared",
+    "sqlalchemy.orm.Relationship",
+    "sqlalchemy.orm.RelationshipProperty",
+}
+
 _lookup: Dict[str, Tuple[int, Set[str]]] = {
     "Column": (
         COLUMN,
@@ -66,24 +74,9 @@ _lookup: Dict[str, Tuple[int, Set[str]]] = {
             "sqlalchemy.sql.Column",
         },
     ),
-    "Relationship": (
-        RELATIONSHIP,
-        {
-            "sqlalchemy.orm.relationships.Relationship",
-            "sqlalchemy.orm.relationships.RelationshipProperty",
-            "sqlalchemy.orm.Relationship",
-            "sqlalchemy.orm.RelationshipProperty",
-        },
-    ),
-    "RelationshipProperty": (
-        RELATIONSHIP,
-        {
-            "sqlalchemy.orm.relationships.Relationship",
-            "sqlalchemy.orm.relationships.RelationshipProperty",
-            "sqlalchemy.orm.Relationship",
-            "sqlalchemy.orm.RelationshipProperty",
-        },
-    ),
+    "Relationship": (RELATIONSHIP, _RelFullNames),
+    "RelationshipProperty": (RELATIONSHIP, _RelFullNames),
+    "_RelationshipDeclared": (RELATIONSHIP, _RelFullNames),
     "registry": (
         REGISTRY,
         {

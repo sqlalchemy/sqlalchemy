@@ -1,5 +1,5 @@
-# mysql/aiomysql.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors <see AUTHORS
+# dialects/mysql/aiomysql.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors <see AUTHORS
 # file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -23,19 +23,17 @@ This dialect should normally be used only with the
 :func:`_asyncio.create_async_engine` engine creation function::
 
     from sqlalchemy.ext.asyncio import create_async_engine
-    engine = create_async_engine("mysql+aiomysql://user:pass@hostname/dbname?charset=utf8mb4")
 
+    engine = create_async_engine(
+        "mysql+aiomysql://user:pass@hostname/dbname?charset=utf8mb4"
+    )
 
 """  # noqa
 from .pymysql import MySQLDialect_pymysql
-from ... import pool
-from ... import util
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
-from ...connectors.asyncio import AsyncAdaptFallback_dbapi_connection
-from ...util.concurrency import await_fallback
-from ...util.concurrency import await_only
+from ...util.concurrency import await_
 
 
 class AsyncAdapt_aiomysql_cursor(AsyncAdapt_dbapi_cursor):
@@ -64,23 +62,20 @@ class AsyncAdapt_aiomysql_connection(AsyncAdapt_dbapi_connection):
 
     def ping(self, reconnect):
         assert not reconnect
-        return self.await_(self._connection.ping(reconnect))
+        return await_(self._connection.ping(reconnect))
 
     def character_set_name(self):
         return self._connection.character_set_name()
 
     def autocommit(self, value):
-        self.await_(self._connection.autocommit(value))
+        await_(self._connection.autocommit(value))
 
-    def close(self):
+    def terminate(self):
         # it's not awaitable.
         self._connection.close()
 
-
-class AsyncAdaptFallback_aiomysql_connection(
-    AsyncAdaptFallback_dbapi_connection, AsyncAdapt_aiomysql_connection
-):
-    __slots__ = ()
+    def close(self) -> None:
+        await_(self._connection.ensure_closed())
 
 
 class AsyncAdapt_aiomysql_dbapi:
@@ -118,19 +113,12 @@ class AsyncAdapt_aiomysql_dbapi:
             setattr(self, name, getattr(self.pymysql, name))
 
     def connect(self, *arg, **kw):
-        async_fallback = kw.pop("async_fallback", False)
         creator_fn = kw.pop("async_creator_fn", self.aiomysql.connect)
 
-        if util.asbool(async_fallback):
-            return AsyncAdaptFallback_aiomysql_connection(
-                self,
-                await_fallback(creator_fn(*arg, **kw)),
-            )
-        else:
-            return AsyncAdapt_aiomysql_connection(
-                self,
-                await_only(creator_fn(*arg, **kw)),
-            )
+        return AsyncAdapt_aiomysql_connection(
+            self,
+            await_(creator_fn(*arg, **kw)),
+        )
 
     def _init_cursors_subclasses(self):
         # suppress unconditional warning emitted by aiomysql
@@ -153,6 +141,7 @@ class MySQLDialect_aiomysql(MySQLDialect_pymysql):
     _sscursor = AsyncAdapt_aiomysql_ss_cursor
 
     is_async = True
+    has_terminate = True
 
     @classmethod
     def import_dbapi(cls):
@@ -160,14 +149,8 @@ class MySQLDialect_aiomysql(MySQLDialect_pymysql):
             __import__("aiomysql"), __import__("pymysql")
         )
 
-    @classmethod
-    def get_pool_class(cls, url):
-        async_fallback = url.query.get("async_fallback", False)
-
-        if util.asbool(async_fallback):
-            return pool.FallbackAsyncAdaptedQueuePool
-        else:
-            return pool.AsyncAdaptedQueuePool
+    def do_terminate(self, dbapi_connection) -> None:
+        dbapi_connection.terminate()
 
     def create_connect_args(self, url):
         return super().create_connect_args(

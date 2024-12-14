@@ -1,5 +1,5 @@
 # orm/exc.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -16,6 +16,7 @@ from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
 
+from .util import _mapper_property_as_plain_name
 from .. import exc as sa_exc
 from .. import util
 from ..exc import MultipleResultsFound  # noqa
@@ -191,8 +192,8 @@ class LoaderStrategyException(sa_exc.InvalidRequestError):
                 % (
                     util.clsname_as_plain_name(actual_strategy_type),
                     requesting_property,
-                    util.clsname_as_plain_name(applied_to_property_type),
-                    util.clsname_as_plain_name(applies_to),
+                    _mapper_property_as_plain_name(applied_to_property_type),
+                    _mapper_property_as_plain_name(applies_to),
                 ),
             )
 

@@ -2171,7 +2171,6 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
 
 
 class LoadersUsingCommittedTest(UOWTest):
-
     """Test that events which occur within a flush()
     get the same attribute loading behavior as on the outside
     of the flush, and that the unit of work itself uses the
@@ -2260,7 +2259,6 @@ class LoadersUsingCommittedTest(UOWTest):
         Address, User = self.classes.Address, self.classes.User
 
         class AvoidReferencialError(Exception):
-
             """the test here would require ON UPDATE CASCADE on FKs
             for the flush to fully succeed; this exception is used
             to cancel the flush before we get that far.
@@ -3047,7 +3045,7 @@ class EagerDefaultsTest(fixtures.MappedTest):
             testing.db,
             s.flush,
             CompiledSQL(
-                "INSERT INTO test2 (id, foo, bar) " "VALUES (:id, :foo, :bar)",
+                "INSERT INTO test2 (id, foo, bar) VALUES (:id, :foo, :bar)",
                 [{"id": 1, "foo": None, "bar": 2}],
             ),
         )

@@ -1,5 +1,5 @@
 # ext/mypy/util.py
-# Copyright (C) 2021-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2021-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -80,7 +80,7 @@ class SQLAlchemyAttribute:
             "name": self.name,
             "line": self.line,
             "column": self.column,
-            "type": self.type.serialize(),
+            "type": serialize_type(self.type),
         }
 
     def expand_typevar_from_subtype(self, sub_type: TypeInfo) -> None:
@@ -212,8 +212,7 @@ def add_global(
 @overload
 def get_callexpr_kwarg(
     callexpr: CallExpr, name: str, *, expr_types: None = ...
-) -> Optional[Union[CallExpr, NameExpr]]:
-    ...
+) -> Optional[Union[CallExpr, NameExpr]]: ...
 
 
 @overload
@@ -222,8 +221,7 @@ def get_callexpr_kwarg(
     name: str,
     *,
     expr_types: Tuple[TypingType[_TArgType], ...],
-) -> Optional[_TArgType]:
-    ...
+) -> Optional[_TArgType]: ...
 
 
 def get_callexpr_kwarg(
@@ -315,9 +313,11 @@ def unbound_to_instance(
         return Instance(
             bound_type,
             [
-                unbound_to_instance(api, arg)
-                if isinstance(arg, UnboundType)
-                else arg
+                (
+                    unbound_to_instance(api, arg)
+                    if isinstance(arg, UnboundType)
+                    else arg
+                )
                 for arg in typ.args
             ],
         )
@@ -336,3 +336,22 @@ def info_for_cls(
         return sym.node
 
     return cls.info
+
+
+def serialize_type(typ: Type) -> Union[str, JsonDict]:
+    try:
+        return typ.serialize()
+    except Exception:
+        pass
+    if hasattr(typ, "args"):
+        typ.args = tuple(
+            (
+                a.resolve_string_annotation()
+                if hasattr(a, "resolve_string_annotation")
+                else a
+            )
+            for a in typ.args
+        )
+    elif hasattr(typ, "resolve_string_annotation"):
+        typ = typ.resolve_string_annotation()
+    return typ.serialize()

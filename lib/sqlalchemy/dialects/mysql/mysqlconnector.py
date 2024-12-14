@@ -1,5 +1,5 @@
-# mysql/mysqlconnector.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mysql/mysqlconnector.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -29,6 +29,7 @@ from .base import BIT
 from .base import MySQLCompiler
 from .base import MySQLDialect
 from .base import MySQLIdentifierPreparer
+from .mariadb import MariaDBDialect
 from ... import util
 
 
@@ -96,6 +97,7 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
         util.coerce_kw_type(opts, "allow_local_infile", bool)
         util.coerce_kw_type(opts, "autocommit", bool)
         util.coerce_kw_type(opts, "buffered", bool)
+        util.coerce_kw_type(opts, "client_flag", int)
         util.coerce_kw_type(opts, "compress", bool)
         util.coerce_kw_type(opts, "connection_timeout", int)
         util.coerce_kw_type(opts, "connect_timeout", int)
@@ -176,4 +178,12 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
             super()._set_isolation_level(connection, level)
 
 
+class MariaDBDialect_mysqlconnector(
+    MariaDBDialect, MySQLDialect_mysqlconnector
+):
+    supports_statement_cache = True
+    _allows_uuid_binds = False
+
+
 dialect = MySQLDialect_mysqlconnector
+mariadb_dialect = MariaDBDialect_mysqlconnector

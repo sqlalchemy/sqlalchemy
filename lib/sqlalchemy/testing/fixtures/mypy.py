@@ -1,5 +1,5 @@
 # testing/fixtures/mypy.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -86,9 +86,11 @@ class MypyTest(TestBase):
                 "--config-file",
                 os.path.join(
                     use_cachedir,
-                    "sqla_mypy_config.cfg"
-                    if use_plugin
-                    else "plain_mypy_config.cfg",
+                    (
+                        "sqla_mypy_config.cfg"
+                        if use_plugin
+                        else "plain_mypy_config.cfg"
+                    ),
                 ),
             ]
 
@@ -200,20 +202,6 @@ class MypyTest(TestBase):
 
                         is_mypy = is_re = True
                         expected_msg = f'Revealed type is "{expected_msg}"'
-
-                    if mypy_14 and util.py39:
-                        # use_lowercase_names, py39 and above
-                        # https://github.com/python/mypy/blob/304997bfb85200fb521ac727ee0ce3e6085e5278/mypy/options.py#L363  # noqa: E501
-
-                        # skip first character which could be capitalized
-                        # "List item x not found" type of message
-                        expected_msg = expected_msg[0] + re.sub(
-                            r"\b(List|Tuple|Dict|Set)\b"
-                            if is_type
-                            else r"\b(List|Tuple|Dict|Set|Type)\b",
-                            lambda m: m.group(1).lower(),
-                            expected_msg[1:],
-                        )
 
                     if mypy_14 and util.py310:
                         # use_or_syntax, py310 and above

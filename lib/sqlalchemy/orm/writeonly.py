@@ -1,5 +1,5 @@
 # orm/writeonly.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -84,7 +84,7 @@ class WriteOnlyHistory(Generic[_T]):
 
     def __init__(
         self,
-        attr: WriteOnlyAttributeImpl,
+        attr: _WriteOnlyAttributeImpl,
         state: InstanceState[_T],
         passive: PassiveFlag,
         apply_to: Optional[WriteOnlyHistory[_T]] = None,
@@ -147,8 +147,8 @@ class WriteOnlyHistory(Generic[_T]):
             self.deleted_items.add(value)
 
 
-class WriteOnlyAttributeImpl(
-    attributes.HasCollectionAdapter, attributes.AttributeImpl
+class _WriteOnlyAttributeImpl(
+    attributes._HasCollectionAdapter, attributes._AttributeImpl
 ):
     uses_objects: bool = True
     default_accepts_scalar_loader: bool = False
@@ -196,8 +196,7 @@ class WriteOnlyAttributeImpl(
         dict_: _InstanceDict,
         user_data: Literal[None] = ...,
         passive: Literal[PassiveFlag.PASSIVE_OFF] = ...,
-    ) -> CollectionAdapter:
-        ...
+    ) -> CollectionAdapter: ...
 
     @overload
     def get_collection(
@@ -206,8 +205,7 @@ class WriteOnlyAttributeImpl(
         dict_: _InstanceDict,
         user_data: _AdaptedCollectionProtocol = ...,
         passive: PassiveFlag = ...,
-    ) -> CollectionAdapter:
-        ...
+    ) -> CollectionAdapter: ...
 
     @overload
     def get_collection(
@@ -218,8 +216,7 @@ class WriteOnlyAttributeImpl(
         passive: PassiveFlag = ...,
     ) -> Union[
         Literal[LoaderCallableStatus.PASSIVE_NO_RESULT], CollectionAdapter
-    ]:
-        ...
+    ]: ...
 
     def get_collection(
         self,
@@ -236,7 +233,7 @@ class WriteOnlyAttributeImpl(
         else:
             history = self._get_collection_history(state, passive)
             data = history.added_plus_unchanged
-        return DynamicCollectionAdapter(data)  # type: ignore[return-value]
+        return _DynamicCollectionAdapter(data)  # type: ignore[return-value]
 
     @util.memoized_property
     def _append_token(  # type:ignore[override]
@@ -445,8 +442,8 @@ class WriteOnlyAttributeImpl(
 
 @log.class_logger
 @relationships.RelationshipProperty.strategy_for(lazy="write_only")
-class WriteOnlyLoader(strategies.AbstractRelationshipLoader, log.Identified):
-    impl_class = WriteOnlyAttributeImpl
+class _WriteOnlyLoader(strategies._AbstractRelationshipLoader, log.Identified):
+    impl_class = _WriteOnlyAttributeImpl
 
     def init_class_attribute(self, mapper: Mapper[Any]) -> None:
         self.is_class_level = True
@@ -471,7 +468,7 @@ class WriteOnlyLoader(strategies.AbstractRelationshipLoader, log.Identified):
         )
 
 
-class DynamicCollectionAdapter:
+class _DynamicCollectionAdapter:
     """simplified CollectionAdapter for internal API consistency"""
 
     data: Collection[Any]
@@ -492,7 +489,7 @@ class DynamicCollectionAdapter:
         return True
 
 
-class AbstractCollectionWriter(Generic[_T]):
+class _AbstractCollectionWriter(Generic[_T]):
     """Virtual collection which includes append/remove methods that synchronize
     into the attribute event system.
 
@@ -504,7 +501,9 @@ class AbstractCollectionWriter(Generic[_T]):
     instance: _T
     _from_obj: Tuple[FromClause, ...]
 
-    def __init__(self, attr: WriteOnlyAttributeImpl, state: InstanceState[_T]):
+    def __init__(
+        self, attr: _WriteOnlyAttributeImpl, state: InstanceState[_T]
+    ):
         instance = state.obj()
         if TYPE_CHECKING:
             assert instance
@@ -555,7 +554,7 @@ class AbstractCollectionWriter(Generic[_T]):
         )
 
 
-class WriteOnlyCollection(AbstractCollectionWriter[_T]):
+class WriteOnlyCollection(_AbstractCollectionWriter[_T]):
     """Write-only collection which can synchronize changes into the
     attribute event system.
 
@@ -587,7 +586,7 @@ class WriteOnlyCollection(AbstractCollectionWriter[_T]):
             "produce a SQL statement and execute it with session.scalars()."
         )
 
-    def select(self) -> Select[Tuple[_T]]:
+    def select(self) -> Select[_T]:
         """Produce a :class:`_sql.Select` construct that represents the
         rows within this instance-local :class:`_orm.WriteOnlyCollection`.
 

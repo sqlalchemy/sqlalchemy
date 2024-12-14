@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+from functools import partial
 import random
 from typing import List
 
@@ -1661,7 +1662,9 @@ class TemporalFixtureTest(testing.fixtures.DeclarativeMappedTest):
             """Mixin that identifies a class as having a timestamp column"""
 
             timestamp = Column(
-                DateTime, default=datetime.datetime.utcnow, nullable=False
+                DateTime,
+                default=partial(datetime.datetime.now, datetime.timezone.utc),
+                nullable=False,
             )
 
         cls.HasTemporal = HasTemporal
@@ -1908,9 +1911,11 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
 
                 eq_(
                     result.scalars().unique().all(),
-                    self._user_minus_edwood(*user_address_fixture)
-                    if value == "ed@wood.com"
-                    else self._user_minus_edlala(*user_address_fixture),
+                    (
+                        self._user_minus_edwood(*user_address_fixture)
+                        if value == "ed@wood.com"
+                        else self._user_minus_edlala(*user_address_fixture)
+                    ),
                 )
 
             asserter.assert_(
@@ -1976,9 +1981,11 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
 
                 eq_(
                     result.scalars().unique().all(),
-                    self._user_minus_edwood(*user_address_fixture)
-                    if value == "ed@wood.com"
-                    else self._user_minus_edlala(*user_address_fixture),
+                    (
+                        self._user_minus_edwood(*user_address_fixture)
+                        if value == "ed@wood.com"
+                        else self._user_minus_edlala(*user_address_fixture)
+                    ),
                 )
 
             asserter.assert_(
@@ -2033,9 +2040,11 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
 
                 eq_(
                     result.scalars().unique().all(),
-                    self._user_minus_edwood(*user_address_fixture)
-                    if value == "ed@wood.com"
-                    else self._user_minus_edlala(*user_address_fixture),
+                    (
+                        self._user_minus_edwood(*user_address_fixture)
+                        if value == "ed@wood.com"
+                        else self._user_minus_edlala(*user_address_fixture)
+                    ),
                 )
 
             asserter.assert_(
@@ -2059,6 +2068,55 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                             "email_address_1": value,
                         }
                     ],
+                ),
+            )
+
+    @testing.combinations(
+        (selectinload,),
+        (subqueryload,),
+        (lazyload,),
+        (joinedload,),
+        argnames="opt",
+    )
+    @testing.variation("use_in", [True, False])
+    def test_opts_local_criteria_cachekey(
+        self, opt, user_address_fixture, use_in
+    ):
+        """test #11173"""
+        User, Address = user_address_fixture
+
+        s = Session(testing.db, future=True)
+
+        def go(value):
+            if use_in:
+                expr = ~Address.email_address.in_([value, "some_email"])
+            else:
+                expr = Address.email_address != value
+            stmt = (
+                select(User)
+                .options(
+                    opt(User.addresses.and_(expr)),
+                )
+                .order_by(User.id)
+            )
+            result = s.execute(stmt)
+            return result
+
+        for value in (
+            "ed@wood.com",
+            "ed@lala.com",
+            "ed@wood.com",
+            "ed@lala.com",
+        ):
+            s.close()
+            result = go(value)
+
+            eq_(
+                result.scalars().unique().all(),
+                (
+                    self._user_minus_edwood(*user_address_fixture)
+                    if value == "ed@wood.com"
+                    else self._user_minus_edlala(*user_address_fixture)
                 ),
             )
 
@@ -2129,9 +2187,11 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
 
                 eq_(
                     result,
-                    self._user_minus_edwood(*user_address_fixture)
-                    if value == "ed@wood.com"
-                    else self._user_minus_edlala(*user_address_fixture),
+                    (
+                        self._user_minus_edwood(*user_address_fixture)
+                        if value == "ed@wood.com"
+                        else self._user_minus_edlala(*user_address_fixture)
+                    ),
                 )
 
     @testing.combinations((True,), (False,), argnames="use_compiled_cache")
@@ -2237,9 +2297,11 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
 
                 eq_(
                     result.scalars().unique().all(),
-                    self._user_minus_edwood(*user_address_fixture)
-                    if value == "ed@wood.com"
-                    else self._user_minus_edlala(*user_address_fixture),
+                    (
+                        self._user_minus_edwood(*user_address_fixture)
+                        if value == "ed@wood.com"
+                        else self._user_minus_edlala(*user_address_fixture)
+                    ),
                 )
 
             asserter.assert_(
@@ -2309,9 +2371,11 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
 
                 eq_(
                     result.scalars().unique().all(),
-                    self._user_minus_edwood(*user_address_fixture)
-                    if value == "ed@wood.com"
-                    else self._user_minus_edlala(*user_address_fixture),
+                    (
+                        self._user_minus_edwood(*user_address_fixture)
+                        if value == "ed@wood.com"
+                        else self._user_minus_edlala(*user_address_fixture)
+                    ),
                 )
 
             asserter.assert_(
@@ -2395,6 +2459,28 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             "ON orders.id = order_items_1.order_id "
             "JOIN items AS items_1 ON items_1.id = order_items_1.item_id "
             "AND items_1.description != :description_1",
+        )
+
+    def test_use_secondary_table_in_criteria(self, order_item_fixture):
+        """test #11010 , regression caused by #9779"""
+
+        Order, Item = order_item_fixture
+        order_items = self.tables.order_items
+
+        stmt = select(Order).join(
+            Order.items.and_(
+                order_items.c.item_id > 1, Item.description != "description"
+            )
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT orders.id, orders.user_id, orders.address_id, "
+            "orders.description, orders.isopen FROM orders JOIN order_items "
+            "AS order_items_1 ON orders.id = order_items_1.order_id "
+            "JOIN items ON items.id = order_items_1.item_id "
+            "AND order_items_1.item_id > :item_id_1 "
+            "AND items.description != :description_1",
         )
 
 

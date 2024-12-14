@@ -158,9 +158,9 @@ SQLAlchemy Documentation
       This section describes notes, options, and usage patterns regarding individual dialects.
 
       :doc:`PostgreSQL <dialects/postgresql>` |
-      :doc:`MySQL <dialects/mysql>` |
+      :doc:`MySQL and MariaDB <dialects/mysql>` |
       :doc:`SQLite <dialects/sqlite>` |
-      :doc:`Oracle <dialects/oracle>` |
+      :doc:`Oracle Database <dialects/oracle>` |
       :doc:`Microsoft SQL Server <dialects/mssql>`
 
       :doc:`More Dialects ... <dialects/index>`
@@ -177,7 +177,6 @@ SQLAlchemy Documentation
 
     * :doc:`Frequently Asked Questions <faq/index>` - A collection of common problems and solutions
     * :doc:`Glossary <glossary>` - Terms used in SQLAlchemy's documentation
-    * :doc:`Error Message Guide <errors>` - Explainations of many SQLAlchemy Errors
+    * :doc:`Error Message Guide <errors>` - Explanations of many SQLAlchemy Errors
     * :doc:`Complete table of of contents <contents>`
     * :ref:`Index <genindex>`
-

@@ -1,5 +1,5 @@
 # testing/fixtures/sql.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -459,6 +459,10 @@ def insertmanyvalues_fixture(
         # by not having the other methods we assert that those aren't being
         # used
 
+        @property
+        def description(self):
+            return self.cursor.description
+
         def fetchall(self):
             rows = self.cursor.fetchall()
             rows = list(rows)
@@ -466,22 +470,29 @@ def insertmanyvalues_fixture(
             return rows
 
     def _deliver_insertmanyvalues_batches(
-        cursor, statement, parameters, generic_setinputsizes, context
+        connection,
+        cursor,
+        statement,
+        parameters,
+        generic_setinputsizes,
+        context,
     ):
         if randomize_rows:
             cursor = RandomCursor(cursor)
         for batch in orig_dialect(
-            cursor, statement, parameters, generic_setinputsizes, context
+            connection,
+            cursor,
+            statement,
+            parameters,
+            generic_setinputsizes,
+            context,
         ):
             if warn_on_downgraded and batch.is_downgraded:
                 util.warn("Batches were downgraded for sorted INSERT")
 
             yield batch
 
-    def _exec_insertmany_context(
-        dialect,
-        context,
-    ):
+    def _exec_insertmany_context(dialect, context):
         with mock.patch.object(
             dialect,
             "_deliver_insertmanyvalues_batches",

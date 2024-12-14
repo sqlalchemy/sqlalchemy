@@ -1,5 +1,5 @@
 # engine/cursor.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -28,7 +28,6 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import TYPE_CHECKING
-from typing import TypeVar
 from typing import Union
 
 from .result import IteratorResult
@@ -50,9 +49,11 @@ from ..sql.compiler import RM_OBJECTS
 from ..sql.compiler import RM_RENDERED_NAME
 from ..sql.compiler import RM_TYPE
 from ..sql.type_api import TypeEngine
-from ..util import compat
 from ..util.typing import Literal
 from ..util.typing import Self
+from ..util.typing import TupleAny
+from ..util.typing import TypeVarTuple
+from ..util.typing import Unpack
 
 
 if typing.TYPE_CHECKING:
@@ -71,7 +72,7 @@ if typing.TYPE_CHECKING:
     from ..sql.type_api import _ResultProcessorType
 
 
-_T = TypeVar("_T", bound=Any)
+_Ts = TypeVarTuple("_Ts")
 
 
 # metadata entry tuple indexes.
@@ -151,7 +152,7 @@ class CursorResultMetaData(ResultMetaData):
         "_translated_indexes",
         "_safe_for_cache",
         "_unpickled",
-        "_key_to_index"
+        "_key_to_index",
         # don't need _unique_filters support here for now.  Can be added
         # if a need arises.
     )
@@ -185,7 +186,7 @@ class CursorResultMetaData(ResultMetaData):
         translated_indexes: Optional[List[int]],
         safe_for_cache: bool,
         keymap_by_result_column_idx: Any,
-    ) -> CursorResultMetaData:
+    ) -> Self:
         new_obj = self.__class__.__new__(self.__class__)
         new_obj._unpickled = unpickled
         new_obj._processors = processors
@@ -198,7 +199,7 @@ class CursorResultMetaData(ResultMetaData):
         new_obj._key_to_index = self._make_key_to_index(keymap, MD_INDEX)
         return new_obj
 
-    def _remove_processors(self) -> CursorResultMetaData:
+    def _remove_processors(self) -> Self:
         assert not self._tuplefilter
         return self._make_new_metadata(
             unpickled=self._unpickled,
@@ -214,9 +215,7 @@ class CursorResultMetaData(ResultMetaData):
             keymap_by_result_column_idx=self._keymap_by_result_column_idx,
         )
 
-    def _splice_horizontally(
-        self, other: CursorResultMetaData
-    ) -> CursorResultMetaData:
+    def _splice_horizontally(self, other: CursorResultMetaData) -> Self:
         assert not self._tuplefilter
 
         keymap = dict(self._keymap)
@@ -225,9 +224,11 @@ class CursorResultMetaData(ResultMetaData):
             {
                 key: (
                     # int index should be None for ambiguous key
-                    value[0] + offset
-                    if value[0] is not None and key not in keymap
-                    else None,
+                    (
+                        value[0] + offset
+                        if value[0] is not None and key not in keymap
+                        else None
+                    ),
                     value[1] + offset,
                     *value[2:],
                 )
@@ -248,7 +249,7 @@ class CursorResultMetaData(ResultMetaData):
             },
         )
 
-    def _reduce(self, keys: Sequence[_KeyIndexType]) -> ResultMetaData:
+    def _reduce(self, keys: Sequence[_KeyIndexType]) -> Self:
         recs = list(self._metadata_for_keys(keys))
 
         indexes = [rec[MD_INDEX] for rec in recs]
@@ -280,7 +281,7 @@ class CursorResultMetaData(ResultMetaData):
             keymap_by_result_column_idx=self._keymap_by_result_column_idx,
         )
 
-    def _adapt_to_context(self, context: ExecutionContext) -> ResultMetaData:
+    def _adapt_to_context(self, context: ExecutionContext) -> Self:
         """When using a cached Compiled construct that has a _result_map,
         for a new statement that used the cached Compiled, we need to ensure
         the keymap has the Column objects from our new statement as keys.
@@ -323,16 +324,14 @@ class CursorResultMetaData(ResultMetaData):
 
         assert not self._tuplefilter
         return self._make_new_metadata(
-            keymap=compat.dict_union(
-                self._keymap,
-                {
-                    new: keymap_by_position[idx]
-                    for idx, new in enumerate(
-                        invoked_statement._all_selected_columns
-                    )
-                    if idx in keymap_by_position
-                },
-            ),
+            keymap=self._keymap
+            | {
+                new: keymap_by_position[idx]
+                for idx, new in enumerate(
+                    invoked_statement._all_selected_columns
+                )
+                if idx in keymap_by_position
+            },
             unpickled=self._unpickled,
             processors=self._processors,
             tuplefilter=None,
@@ -344,8 +343,10 @@ class CursorResultMetaData(ResultMetaData):
 
     def __init__(
         self,
-        parent: CursorResult[Any],
+        parent: CursorResult[Unpack[TupleAny]],
         cursor_description: _DBAPICursorDescription,
+        *,
+        driver_column_names: bool = False,
     ):
         context = parent.context
         self._tuplefilter = None
@@ -362,13 +363,11 @@ class CursorResultMetaData(ResultMetaData):
             ) = context.result_column_struct
             num_ctx_cols = len(result_columns)
         else:
-            result_columns = (  # type: ignore
-                cols_are_ordered
-            ) = (
+            result_columns = cols_are_ordered = (  # type: ignore
                 num_ctx_cols
-            ) = (
-                ad_hoc_textual
-            ) = loose_column_name_matching = textual_ordered = False
+            ) = ad_hoc_textual = loose_column_name_matching = (
+                textual_ordered
+            ) = False
 
         # merge cursor.description with the column info
         # present in the compiled structure, if any
@@ -381,6 +380,7 @@ class CursorResultMetaData(ResultMetaData):
             textual_ordered,
             ad_hoc_textual,
             loose_column_name_matching,
+            driver_column_names,
         )
 
         # processors in key order which are used when building up
@@ -472,15 +472,20 @@ class CursorResultMetaData(ResultMetaData):
                 for metadata_entry in raw
             }
 
-        # update keymap with "translated" names.  In SQLAlchemy this is a
-        # sqlite only thing, and in fact impacting only extremely old SQLite
-        # versions unlikely to be present in modern Python versions.
-        # however, the pyhive third party dialect is
-        # also using this hook, which means others still might use it as well.
-        # I dislike having this awkward hook here but as long as we need
-        # to use names in cursor.description in some cases we need to have
-        # some hook to accomplish this.
-        if not num_ctx_cols and context._translate_colname:
+        # update keymap with "translated" names.
+        # the "translated" name thing has a long history:
+        # 1. originally, it was used to fix an issue in very old SQLite
+        #    versions prior to 3.10.0.   This code is still there in the
+        #    sqlite dialect.
+        # 2. Next, the pyhive third party dialect started using this hook
+        #    for some driver related issue on their end.
+        # 3. Most recently, the "driver_column_names" execution option has
+        #    taken advantage of this hook to get raw DBAPI col names in the
+        #    result keys without disrupting the usual merge process.
+
+        if driver_column_names or (
+            not num_ctx_cols and context._translate_colname
+        ):
             self._keymap.update(
                 {
                     metadata_entry[MD_UNTRANSLATED]: self._keymap[
@@ -503,6 +508,7 @@ class CursorResultMetaData(ResultMetaData):
         textual_ordered,
         ad_hoc_textual,
         loose_column_name_matching,
+        driver_column_names,
     ):
         """Merge a cursor.description with compiled result column information.
 
@@ -564,6 +570,7 @@ class CursorResultMetaData(ResultMetaData):
             and cols_are_ordered
             and not textual_ordered
             and num_ctx_cols == len(cursor_description)
+            and not driver_column_names
         ):
             self._keys = [elem[0] for elem in result_columns]
             # pure positional 1-1 case; doesn't need to read
@@ -571,9 +578,11 @@ class CursorResultMetaData(ResultMetaData):
 
             # most common case for Core and ORM
 
-            # this metadata is safe to cache because we are guaranteed
+            # this metadata is safe to
+            # cache because we are guaranteed
             # to have the columns in the same order for new executions
             self._safe_for_cache = True
+
             return [
                 (
                     idx,
@@ -597,10 +606,13 @@ class CursorResultMetaData(ResultMetaData):
             if textual_ordered or (
                 ad_hoc_textual and len(cursor_description) == num_ctx_cols
             ):
-                self._safe_for_cache = True
+                self._safe_for_cache = not driver_column_names
                 # textual positional case
                 raw_iterator = self._merge_textual_cols_by_position(
-                    context, cursor_description, result_columns
+                    context,
+                    cursor_description,
+                    result_columns,
+                    driver_column_names,
                 )
             elif num_ctx_cols:
                 # compiled SQL with a mismatch of description cols
@@ -613,13 +625,14 @@ class CursorResultMetaData(ResultMetaData):
                     cursor_description,
                     result_columns,
                     loose_column_name_matching,
+                    driver_column_names,
                 )
             else:
                 # no compiled SQL, just a raw string, order of columns
                 # can change for "select *"
                 self._safe_for_cache = False
                 raw_iterator = self._merge_cols_by_none(
-                    context, cursor_description
+                    context, cursor_description, driver_column_names
                 )
 
             return [
@@ -645,39 +658,47 @@ class CursorResultMetaData(ResultMetaData):
                 ) in raw_iterator
             ]
 
-    def _colnames_from_description(self, context, cursor_description):
+    def _colnames_from_description(
+        self, context, cursor_description, driver_column_names
+    ):
         """Extract column names and data types from a cursor.description.
 
         Applies unicode decoding, column translation, "normalization",
         and case sensitivity rules to the names based on the dialect.
 
         """
-
         dialect = context.dialect
         translate_colname = context._translate_colname
         normalize_name = (
             dialect.normalize_name if dialect.requires_name_normalize else None
         )
+
         untranslated = None
 
-        self._keys = []
-
         for idx, rec in enumerate(cursor_description):
-            colname = rec[0]
+            colname = unnormalized = rec[0]
             coltype = rec[1]
 
             if translate_colname:
+                # a None here for "untranslated" means "the dialect did not
+                # change the column name and the untranslated case can be
+                # ignored".  otherwise "untranslated" is expected to be the
+                # original, unchanged colname (e.g. is == to "unnormalized")
                 colname, untranslated = translate_colname(colname)
+
+                assert untranslated is None or untranslated == unnormalized
 
             if normalize_name:
                 colname = normalize_name(colname)
 
-            self._keys.append(colname)
+            if driver_column_names:
+                yield idx, colname, unnormalized, unnormalized, coltype
 
-            yield idx, colname, untranslated, coltype
+            else:
+                yield idx, colname, unnormalized, untranslated, coltype
 
     def _merge_textual_cols_by_position(
-        self, context, cursor_description, result_columns
+        self, context, cursor_description, result_columns, driver_column_names
     ):
         num_ctx_cols = len(result_columns)
 
@@ -688,12 +709,19 @@ class CursorResultMetaData(ResultMetaData):
                 % (num_ctx_cols, len(cursor_description))
             )
         seen = set()
+
+        self._keys = []
+
+        uses_denormalize = context.dialect.requires_name_normalize
         for (
             idx,
             colname,
+            unnormalized,
             untranslated,
             coltype,
-        ) in self._colnames_from_description(context, cursor_description):
+        ) in self._colnames_from_description(
+            context, cursor_description, driver_column_names
+        ):
             if idx < num_ctx_cols:
                 ctx_rec = result_columns[idx]
                 obj = ctx_rec[RM_OBJECTS]
@@ -705,11 +733,43 @@ class CursorResultMetaData(ResultMetaData):
                         "in textual SQL: %r" % obj[0]
                     )
                 seen.add(obj[0])
+
+                # special check for all uppercase unnormalized name;
+                # use the unnormalized name as the key.
+                # see #10788
+                # if these names don't match, then we still honor the
+                # cursor.description name as the key and not what the
+                # Column has, see
+                # test_resultset.py::PositionalTextTest::test_via_column
+                if (
+                    uses_denormalize
+                    and unnormalized == ctx_rec[RM_RENDERED_NAME]
+                ):
+                    result_name = unnormalized
+                else:
+                    result_name = colname
             else:
                 mapped_type = sqltypes.NULLTYPE
                 obj = None
                 ridx = None
-            yield idx, ridx, colname, mapped_type, coltype, obj, untranslated
+
+                result_name = colname
+
+            if driver_column_names:
+                assert untranslated is not None
+                self._keys.append(untranslated)
+            else:
+                self._keys.append(result_name)
+
+            yield (
+                idx,
+                ridx,
+                result_name,
+                mapped_type,
+                coltype,
+                obj,
+                untranslated,
+            )
 
     def _merge_cols_by_name(
         self,
@@ -717,18 +777,24 @@ class CursorResultMetaData(ResultMetaData):
         cursor_description,
         result_columns,
         loose_column_name_matching,
+        driver_column_names,
     ):
         match_map = self._create_description_match_map(
             result_columns, loose_column_name_matching
         )
         mapped_type: TypeEngine[Any]
 
+        self._keys = []
+
         for (
             idx,
             colname,
+            unnormalized,
             untranslated,
             coltype,
-        ) in self._colnames_from_description(context, cursor_description):
+        ) in self._colnames_from_description(
+            context, cursor_description, driver_column_names
+        ):
             try:
                 ctx_rec = match_map[colname]
             except KeyError:
@@ -739,6 +805,12 @@ class CursorResultMetaData(ResultMetaData):
                 obj = ctx_rec[1]
                 mapped_type = ctx_rec[2]
                 result_columns_idx = ctx_rec[3]
+
+            if driver_column_names:
+                assert untranslated is not None
+                self._keys.append(untranslated)
+            else:
+                self._keys.append(colname)
             yield (
                 idx,
                 result_columns_idx,
@@ -768,6 +840,7 @@ class CursorResultMetaData(ResultMetaData):
         ] = {}
         for ridx, elem in enumerate(result_columns):
             key = elem[RM_RENDERED_NAME]
+
             if key in d:
                 # conflicting keyname - just add the column-linked objects
                 # to the existing record.  if there is a duplicate column
@@ -791,13 +864,27 @@ class CursorResultMetaData(ResultMetaData):
                     )
         return d
 
-    def _merge_cols_by_none(self, context, cursor_description):
+    def _merge_cols_by_none(
+        self, context, cursor_description, driver_column_names
+    ):
+        self._keys = []
+
         for (
             idx,
             colname,
+            unnormalized,
             untranslated,
             coltype,
-        ) in self._colnames_from_description(context, cursor_description):
+        ) in self._colnames_from_description(
+            context, cursor_description, driver_column_names
+        ):
+
+            if driver_column_names:
+                assert untranslated is not None
+                self._keys.append(untranslated)
+            else:
+                self._keys.append(colname)
+
             yield (
                 idx,
                 None,
@@ -928,18 +1015,22 @@ class ResultFetchStrategy:
     alternate_cursor_description: Optional[_DBAPICursorDescription] = None
 
     def soft_close(
-        self, result: CursorResult[Any], dbapi_cursor: Optional[DBAPICursor]
+        self,
+        result: CursorResult[Unpack[TupleAny]],
+        dbapi_cursor: Optional[DBAPICursor],
     ) -> None:
         raise NotImplementedError()
 
     def hard_close(
-        self, result: CursorResult[Any], dbapi_cursor: Optional[DBAPICursor]
+        self,
+        result: CursorResult[Unpack[TupleAny]],
+        dbapi_cursor: Optional[DBAPICursor],
     ) -> None:
         raise NotImplementedError()
 
     def yield_per(
         self,
-        result: CursorResult[Any],
+        result: CursorResult[Unpack[TupleAny]],
         dbapi_cursor: Optional[DBAPICursor],
         num: int,
     ) -> None:
@@ -947,7 +1038,7 @@ class ResultFetchStrategy:
 
     def fetchone(
         self,
-        result: CursorResult[Any],
+        result: CursorResult[Unpack[TupleAny]],
         dbapi_cursor: DBAPICursor,
         hard_close: bool = False,
     ) -> Any:
@@ -955,7 +1046,7 @@ class ResultFetchStrategy:
 
     def fetchmany(
         self,
-        result: CursorResult[Any],
+        result: CursorResult[Unpack[TupleAny]],
         dbapi_cursor: DBAPICursor,
         size: Optional[int] = None,
     ) -> Any:
@@ -963,14 +1054,14 @@ class ResultFetchStrategy:
 
     def fetchall(
         self,
-        result: CursorResult[Any],
+        result: CursorResult[Unpack[TupleAny]],
         dbapi_cursor: DBAPICursor,
     ) -> Any:
         raise NotImplementedError()
 
     def handle_exception(
         self,
-        result: CursorResult[Any],
+        result: CursorResult[Unpack[TupleAny]],
         dbapi_cursor: Optional[DBAPICursor],
         err: BaseException,
     ) -> NoReturn:
@@ -1161,7 +1252,7 @@ class BufferedRowCursorFetchStrategy(CursorFetchStrategy):
 
             result = conn.execution_options(
                 stream_results=True, max_row_buffer=50
-                ).execute(text("select * from table"))
+            ).execute(text("select * from table"))
 
     .. versionadded:: 1.4 ``max_row_buffer`` may now exceed 1000 rows.
 
@@ -1246,8 +1337,9 @@ class BufferedRowCursorFetchStrategy(CursorFetchStrategy):
         if size is None:
             return self.fetchall(result, dbapi_cursor)
 
-        buf = list(self._rowbuffer)
-        lb = len(buf)
+        rb = self._rowbuffer
+        lb = len(rb)
+        close = False
         if size > lb:
             try:
                 new = dbapi_cursor.fetchmany(size - lb)
@@ -1255,13 +1347,15 @@ class BufferedRowCursorFetchStrategy(CursorFetchStrategy):
                 self.handle_exception(result, dbapi_cursor, e)
             else:
                 if not new:
-                    result._soft_close()
+                    # defer closing since it may clear the row buffer
+                    close = True
                 else:
-                    buf.extend(new)
+                    rb.extend(new)
 
-        result = buf[0:size]
-        self._rowbuffer = collections.deque(buf[size:])
-        return result
+        res = [rb.popleft() for _ in range(min(size, len(rb)))]
+        if close:
+            result._soft_close()
+        return res
 
     def fetchall(self, result, dbapi_cursor):
         try:
@@ -1315,9 +1409,8 @@ class FullyBufferedCursorFetchStrategy(CursorFetchStrategy):
         if size is None:
             return self.fetchall(result, dbapi_cursor)
 
-        buf = list(self._rowbuffer)
-        rows = buf[0:size]
-        self._rowbuffer = collections.deque(buf[size:])
+        rb = self._rowbuffer
+        rows = [rb.popleft() for _ in range(min(size, len(rb)))]
         if not rows:
             result._soft_close()
         return rows
@@ -1375,7 +1468,7 @@ def null_dml_result() -> IteratorResult[Any]:
     return it
 
 
-class CursorResult(Result[_T]):
+class CursorResult(Result[Unpack[_Ts]]):
     """A Result that is representing state from a DBAPI cursor.
 
     .. versionchanged:: 1.4  The :class:`.CursorResult``
@@ -1480,10 +1573,20 @@ class CursorResult(Result[_T]):
             self._metadata = self._no_result_metadata
 
     def _init_metadata(self, context, cursor_description):
+        driver_column_names = context.execution_options.get(
+            "driver_column_names", False
+        )
         if context.compiled:
             compiled = context.compiled
 
-            if compiled._cached_metadata:
+            metadata: CursorResultMetaData
+
+            if driver_column_names:
+                metadata = CursorResultMetaData(
+                    self, cursor_description, driver_column_names=True
+                )
+                assert not metadata._safe_for_cache
+            elif compiled._cached_metadata:
                 metadata = compiled._cached_metadata
             else:
                 metadata = CursorResultMetaData(self, cursor_description)
@@ -1518,7 +1621,9 @@ class CursorResult(Result[_T]):
 
         else:
             self._metadata = metadata = CursorResultMetaData(
-                self, cursor_description
+                self,
+                cursor_description,
+                driver_column_names=driver_column_names,
             )
         if self._echo:
             context.connection._log_debug(
@@ -1611,11 +1716,11 @@ class CursorResult(Result[_T]):
         """
         if not self.context.compiled:
             raise exc.InvalidRequestError(
-                "Statement is not a compiled " "expression construct."
+                "Statement is not a compiled expression construct."
             )
         elif not self.context.isinsert:
             raise exc.InvalidRequestError(
-                "Statement is not an insert() " "expression construct."
+                "Statement is not an insert() expression construct."
             )
         elif self.context._is_explicit_returning:
             raise exc.InvalidRequestError(
@@ -1682,11 +1787,11 @@ class CursorResult(Result[_T]):
         """
         if not self.context.compiled:
             raise exc.InvalidRequestError(
-                "Statement is not a compiled " "expression construct."
+                "Statement is not a compiled expression construct."
             )
         elif not self.context.isupdate:
             raise exc.InvalidRequestError(
-                "Statement is not an update() " "expression construct."
+                "Statement is not an update() expression construct."
             )
         elif self.context.executemany:
             return self.context.compiled_parameters
@@ -1704,11 +1809,11 @@ class CursorResult(Result[_T]):
         """
         if not self.context.compiled:
             raise exc.InvalidRequestError(
-                "Statement is not a compiled " "expression construct."
+                "Statement is not a compiled expression construct."
             )
         elif not self.context.isinsert:
             raise exc.InvalidRequestError(
-                "Statement is not an insert() " "expression construct."
+                "Statement is not an insert() expression construct."
             )
         elif self.context.executemany:
             return self.context.compiled_parameters
@@ -1753,11 +1858,9 @@ class CursorResult(Result[_T]):
 
             r1 = connection.execute(
                 users.insert().returning(
-                    users.c.user_name,
-                    users.c.user_id,
-                    sort_by_parameter_order=True
+                    users.c.user_name, users.c.user_id, sort_by_parameter_order=True
                 ),
-                user_values
+                user_values,
             )
 
             r2 = connection.execute(
@@ -1765,19 +1868,16 @@ class CursorResult(Result[_T]):
                     addresses.c.address_id,
                     addresses.c.address,
                     addresses.c.user_id,
-                    sort_by_parameter_order=True
+                    sort_by_parameter_order=True,
                 ),
-                address_values
+                address_values,
             )
 
             rows = r1.splice_horizontally(r2).all()
-            assert (
-                rows ==
-                [
-                    ("john", 1, 1, "foo@bar.com", 1),
-                    ("jack", 2, 2, "bar@bat.com", 2),
-                ]
-            )
+            assert rows == [
+                ("john", 1, 1, "foo@bar.com", 1),
+                ("jack", 2, 2, "bar@bat.com", 2),
+            ]
 
         .. versionadded:: 2.0
 
@@ -1786,7 +1886,7 @@ class CursorResult(Result[_T]):
             :meth:`.CursorResult.splice_vertically`
 
 
-        """
+        """  # noqa: E501
 
         clone = self._generate()
         total_rows = [
@@ -1921,7 +2021,7 @@ class CursorResult(Result[_T]):
 
         if not self.context.compiled:
             raise exc.InvalidRequestError(
-                "Statement is not a compiled " "expression construct."
+                "Statement is not a compiled expression construct."
             )
         elif not self.context.isinsert and not self.context.isupdate:
             raise exc.InvalidRequestError(
@@ -1944,7 +2044,7 @@ class CursorResult(Result[_T]):
 
         if not self.context.compiled:
             raise exc.InvalidRequestError(
-                "Statement is not a compiled " "expression construct."
+                "Statement is not a compiled expression construct."
             )
         elif not self.context.isinsert and not self.context.isupdate:
             raise exc.InvalidRequestError(
@@ -1975,8 +2075,28 @@ class CursorResult(Result[_T]):
     def rowcount(self) -> int:
         """Return the 'rowcount' for this result.
 
-        The 'rowcount' reports the number of rows *matched*
-        by the WHERE criterion of an UPDATE or DELETE statement.
+        The primary purpose of 'rowcount' is to report the number of rows
+        matched by the WHERE criterion of an UPDATE or DELETE statement
+        executed once (i.e. for a single parameter set), which may then be
+        compared to the number of rows expected to be updated or deleted as a
+        means of asserting data integrity.
+
+        This attribute is transferred from the ``cursor.rowcount`` attribute
+        of the DBAPI before the cursor is closed, to support DBAPIs that
+        don't make this value available after cursor close.   Some DBAPIs may
+        offer meaningful values for other kinds of statements, such as INSERT
+        and SELECT statements as well.  In order to retrieve ``cursor.rowcount``
+        for these statements, set the
+        :paramref:`.Connection.execution_options.preserve_rowcount`
+        execution option to True, which will cause the ``cursor.rowcount``
+        value to be unconditionally memoized before any results are returned
+        or the cursor is closed, regardless of statement type.
+
+        For cases where the DBAPI does not support rowcount for a particular
+        kind of statement and/or execution, the returned value will be ``-1``,
+        which is delivered directly from the DBAPI and is part of :pep:`249`.
+        All DBAPIs should support rowcount for single-parameter-set
+        UPDATE and DELETE statements, however.
 
         .. note::
 
@@ -1985,37 +2105,46 @@ class CursorResult(Result[_T]):
 
            * This attribute returns the number of rows *matched*,
              which is not necessarily the same as the number of rows
-             that were actually *modified* - an UPDATE statement, for example,
+             that were actually *modified*. For example, an UPDATE statement
              may have no net change on a given row if the SET values
              given are the same as those present in the row already.
              Such a row would be matched but not modified.
              On backends that feature both styles, such as MySQL,
-             rowcount is configured by default to return the match
+             rowcount is configured to return the match
              count in all cases.
 
-           * :attr:`_engine.CursorResult.rowcount`
-             is *only* useful in conjunction
-             with an UPDATE or DELETE statement.  Contrary to what the Python
-             DBAPI says, it does *not* reliably return the
-             number of rows available from the results of a SELECT statement
-             as DBAPIs cannot support this functionality when rows are
-             unbuffered.
+           * :attr:`_engine.CursorResult.rowcount` in the default case is
+             *only* useful in conjunction with an UPDATE or DELETE statement,
+             and only with a single set of parameters. For other kinds of
+             statements, SQLAlchemy will not attempt to pre-memoize the value
+             unless the
+             :paramref:`.Connection.execution_options.preserve_rowcount`
+             execution option is used.  Note that contrary to :pep:`249`, many
+             DBAPIs do not support rowcount values for statements that are not
+             UPDATE or DELETE, particularly when rows are being returned which
+             are not fully pre-buffered.   DBAPIs that dont support rowcount
+             for a particular kind of statement should return the value ``-1``
+             for such statements.
 
-           * :attr:`_engine.CursorResult.rowcount`
-             may not be fully implemented by
-             all dialects.  In particular, most DBAPIs do not support an
-             aggregate rowcount result from an executemany call.
-             The :meth:`_engine.CursorResult.supports_sane_rowcount` and
-             :meth:`_engine.CursorResult.supports_sane_multi_rowcount` methods
-             will report from the dialect if each usage is known to be
-             supported.
+           * :attr:`_engine.CursorResult.rowcount` may not be meaningful
+             when executing a single statement with multiple parameter sets
+             (i.e. an :term:`executemany`). Most DBAPIs do not sum "rowcount"
+             values across multiple parameter sets and will return ``-1``
+             when accessed.
 
-           * Statements that use RETURNING may not return a correct
-             rowcount.
+           * SQLAlchemy's :ref:`engine_insertmanyvalues` feature does support
+             a correct population of :attr:`_engine.CursorResult.rowcount`
+             when the :paramref:`.Connection.execution_options.preserve_rowcount`
+             execution option is set to True.
+
+           * Statements that use RETURNING may not support rowcount, returning
+             a ``-1`` value instead.
 
         .. seealso::
 
             :ref:`tutorial_update_delete_rowcount` - in the :ref:`unified_tutorial`
+
+            :paramref:`.Connection.execution_options.preserve_rowcount`
 
         """  # noqa: E501
         try:
@@ -2108,10 +2237,11 @@ class CursorResult(Result[_T]):
     def _raw_row_iterator(self):
         return self._fetchiter_impl()
 
-    def merge(self, *others: Result[Any]) -> MergedResult[Any]:
+    def merge(
+        self, *others: Result[Unpack[TupleAny]]
+    ) -> MergedResult[Unpack[TupleAny]]:
         merged_result = super().merge(*others)
-        setup_rowcounts = self.context._has_rowcount
-        if setup_rowcounts:
+        if self.context._has_rowcount:
             merged_result.rowcount = sum(
                 cast("CursorResult[Any]", result).rowcount
                 for result in (self,) + others

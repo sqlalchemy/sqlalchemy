@@ -1,5 +1,5 @@
 # sql/crud.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -394,8 +394,7 @@ def _create_bind_param(
     required: bool = False,
     name: Optional[str] = None,
     **kw: Any,
-) -> str:
-    ...
+) -> str: ...
 
 
 @overload
@@ -404,8 +403,7 @@ def _create_bind_param(
     col: ColumnElement[Any],
     value: Any,
     **kw: Any,
-) -> str:
-    ...
+) -> str: ...
 
 
 def _create_bind_param(
@@ -859,10 +857,12 @@ def _append_param_parameter(
             c,
             value,
             required=value is REQUIRED,
-            name=_col_bind_name(c)
-            if not _compile_state_isinsert(compile_state)
-            or not compile_state._has_multi_parameters
-            else "%s_m0" % _col_bind_name(c),
+            name=(
+                _col_bind_name(c)
+                if not _compile_state_isinsert(compile_state)
+                or not compile_state._has_multi_parameters
+                else "%s_m0" % _col_bind_name(c)
+            ),
             accumulate_bind_names=accumulated_bind_names,
             **kw,
         )
@@ -884,10 +884,12 @@ def _append_param_parameter(
             compiler,
             c,
             value,
-            name=_col_bind_name(c)
-            if not _compile_state_isinsert(compile_state)
-            or not compile_state._has_multi_parameters
-            else "%s_m0" % _col_bind_name(c),
+            name=(
+                _col_bind_name(c)
+                if not _compile_state_isinsert(compile_state)
+                or not compile_state._has_multi_parameters
+                else "%s_m0" % _col_bind_name(c)
+            ),
             accumulate_bind_names=accumulated_bind_names,
             **kw,
         )
@@ -1213,8 +1215,7 @@ def _create_insert_prefetch_bind_param(
     c: ColumnElement[Any],
     process: Literal[True] = ...,
     **kw: Any,
-) -> str:
-    ...
+) -> str: ...
 
 
 @overload
@@ -1223,8 +1224,7 @@ def _create_insert_prefetch_bind_param(
     c: ColumnElement[Any],
     process: Literal[False],
     **kw: Any,
-) -> elements.BindParameter[Any]:
-    ...
+) -> elements.BindParameter[Any]: ...
 
 
 def _create_insert_prefetch_bind_param(
@@ -1247,8 +1247,7 @@ def _create_update_prefetch_bind_param(
     c: ColumnElement[Any],
     process: Literal[True] = ...,
     **kw: Any,
-) -> str:
-    ...
+) -> str: ...
 
 
 @overload
@@ -1257,8 +1256,7 @@ def _create_update_prefetch_bind_param(
     c: ColumnElement[Any],
     process: Literal[False],
     **kw: Any,
-) -> elements.BindParameter[Any]:
-    ...
+) -> elements.BindParameter[Any]: ...
 
 
 def _create_update_prefetch_bind_param(
@@ -1288,7 +1286,7 @@ class _multiparam_column(elements.ColumnElement[Any]):
     def compare(self, other, **kw):
         raise NotImplementedError()
 
-    def _copy_internals(self, other, **kw):
+    def _copy_internals(self, **kw):
         raise NotImplementedError()
 
     def __eq__(self, other):

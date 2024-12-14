@@ -175,7 +175,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         t = table("sometable", column("somecolumn"))
         self.assert_compile(
             t.insert(),
-            "INSERT INTO sometable (somecolumn) VALUES " "(:somecolumn)",
+            "INSERT INTO sometable (somecolumn) VALUES (:somecolumn)",
         )
 
     def test_update(self):
@@ -702,9 +702,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             select(tbl),
             "SELECT %(name)s.test.id FROM %(name)s.test"
             % {"name": rendered_schema},
-            schema_translate_map={None: schemaname}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: schemaname} if use_schema_translate else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -777,16 +777,20 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "test",
             metadata,
             Column("id", Integer, primary_key=True),
-            schema=quoted_name("Foo.dbo", True)
-            if not use_schema_translate
-            else None,
+            schema=(
+                quoted_name("Foo.dbo", True)
+                if not use_schema_translate
+                else None
+            ),
         )
         self.assert_compile(
             select(tbl),
             "SELECT [Foo.dbo].test.id FROM [Foo.dbo].test",
-            schema_translate_map={None: quoted_name("Foo.dbo", True)}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: quoted_name("Foo.dbo", True)}
+                if use_schema_translate
+                else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -804,9 +808,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(tbl),
             "SELECT [Foo.dbo].test.id FROM [Foo.dbo].test",
-            schema_translate_map={None: "[Foo.dbo]"}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: "[Foo.dbo]"} if use_schema_translate else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -824,9 +828,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(tbl),
             "SELECT foo.dbo.test.id FROM foo.dbo.test",
-            schema_translate_map={None: "foo.dbo"}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: "foo.dbo"} if use_schema_translate else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -842,9 +846,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(tbl),
             "SELECT [Foo].dbo.test.id FROM [Foo].dbo.test",
-            schema_translate_map={None: "Foo.dbo"}
-            if use_schema_translate
-            else None,
+            schema_translate_map=(
+                {None: "Foo.dbo"} if use_schema_translate else None
+            ),
             render_schema_translate=True if use_schema_translate else False,
         )
 
@@ -858,7 +862,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             tbl.delete().where(tbl.c.id == 1),
-            "DELETE FROM paj.test WHERE paj.test.id = " ":id_1",
+            "DELETE FROM paj.test WHERE paj.test.id = :id_1",
         )
         s = select(tbl.c.id).where(tbl.c.id == 1)
         self.assert_compile(
@@ -878,7 +882,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             tbl.delete().where(tbl.c.id == 1),
-            "DELETE FROM banana.paj.test WHERE " "banana.paj.test.id = :id_1",
+            "DELETE FROM banana.paj.test WHERE banana.paj.test.id = :id_1",
         )
         s = select(tbl.c.id).where(tbl.c.id == 1)
         self.assert_compile(
@@ -995,7 +999,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             select(func.max(t.c.col1)),
-            "SELECT max(sometable.col1) AS max_1 FROM " "sometable",
+            "SELECT max(sometable.col1) AS max_1 FROM sometable",
         )
 
     def test_function_overrides(self):
@@ -1068,7 +1072,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         d = delete(table1).returning(table1.c.myid, table1.c.name)
         self.assert_compile(
-            d, "DELETE FROM mytable OUTPUT deleted.myid, " "deleted.name"
+            d, "DELETE FROM mytable OUTPUT deleted.myid, deleted.name"
         )
         d = (
             delete(table1)
@@ -1941,7 +1945,7 @@ class CompileIdentityTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             schema.CreateTable(tbl),
-            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(3,1)" ")",
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(3,1))",
         )
 
     def test_identity_separate_from_primary_key(self):

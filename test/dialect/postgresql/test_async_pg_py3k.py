@@ -13,6 +13,7 @@ from sqlalchemy import testing
 from sqlalchemy.dialects.postgresql import ENUM
 from sqlalchemy.testing import async_test
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 
@@ -164,6 +165,54 @@ class AsyncPgTest(fixtures.TestBase):
                     for i in range(10)
                 ],
             )
+
+    @testing.variation("trans", ["commit", "rollback"])
+    @async_test
+    async def test_dont_reset_open_transaction(
+        self, trans, async_testing_engine
+    ):
+        """test for #11819"""
+
+        engine = async_testing_engine()
+
+        control_conn = await engine.connect()
+        await control_conn.execution_options(isolation_level="AUTOCOMMIT")
+
+        conn = await engine.connect()
+        txid_current = (
+            await conn.exec_driver_sql("select txid_current()")
+        ).scalar()
+
+        with expect_raises(exc.MissingGreenlet):
+            if trans.commit:
+                conn.sync_connection.connection.dbapi_connection.commit()
+            elif trans.rollback:
+                conn.sync_connection.connection.dbapi_connection.rollback()
+            else:
+                trans.fail()
+
+        trans_exists = (
+            await control_conn.exec_driver_sql(
+                f"SELECT count(*) FROM pg_stat_activity "
+                f"where backend_xid={txid_current}"
+            )
+        ).scalar()
+        eq_(trans_exists, 1)
+
+        if trans.commit:
+            await conn.commit()
+        elif trans.rollback:
+            await conn.rollback()
+        else:
+            trans.fail()
+
+        trans_exists = (
+            await control_conn.exec_driver_sql(
+                f"SELECT count(*) FROM pg_stat_activity "
+                f"where backend_xid={txid_current}"
+            )
+        ).scalar()
+        eq_(trans_exists, 0)
 
     @async_test
     async def test_failed_commit_recover(self, metadata, async_testing_engine):

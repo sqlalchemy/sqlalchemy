@@ -1,5 +1,5 @@
-# mysql/types.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mysql/types.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -14,7 +14,7 @@ from ... import util
 from ...sql import sqltypes
 
 
-class _NumericType:
+class _NumericCommonType:
     """Base for MySQL numeric types.
 
     This is the base both for NUMERIC as well as INTEGER, hence
@@ -27,13 +27,18 @@ class _NumericType:
         self.zerofill = zerofill
         super().__init__(**kw)
 
+
+class _NumericType(_NumericCommonType, sqltypes.Numeric):
+
     def __repr__(self):
         return util.generic_repr(
-            self, to_inspect=[_NumericType, sqltypes.Numeric]
+            self,
+            to_inspect=[_NumericType, _NumericCommonType, sqltypes.Numeric],
         )
 
 
-class _FloatType(_NumericType, sqltypes.Float):
+class _FloatType(_NumericCommonType, sqltypes.Float):
+
     def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
         if isinstance(self, (REAL, DOUBLE)) and (
             (precision is None and scale is not None)
@@ -48,18 +53,19 @@ class _FloatType(_NumericType, sqltypes.Float):
 
     def __repr__(self):
         return util.generic_repr(
-            self, to_inspect=[_FloatType, _NumericType, sqltypes.Float]
+            self, to_inspect=[_FloatType, _NumericCommonType, sqltypes.Float]
         )
 
 
-class _IntegerType(_NumericType, sqltypes.Integer):
+class _IntegerType(_NumericCommonType, sqltypes.Integer):
     def __init__(self, display_width=None, **kw):
         self.display_width = display_width
         super().__init__(**kw)
 
     def __repr__(self):
         return util.generic_repr(
-            self, to_inspect=[_IntegerType, _NumericType, sqltypes.Integer]
+            self,
+            to_inspect=[_IntegerType, _NumericCommonType, sqltypes.Integer],
         )
 
 
@@ -499,7 +505,7 @@ class YEAR(sqltypes.TypeEngine):
 
 
 class TEXT(_StringType, sqltypes.TEXT):
-    """MySQL TEXT type, for text up to 2^16 characters."""
+    """MySQL TEXT type, for character storage encoded up to 2^16 bytes."""
 
     __visit_name__ = "TEXT"
 
@@ -508,7 +514,7 @@ class TEXT(_StringType, sqltypes.TEXT):
 
         :param length: Optional, if provided the server may optimize storage
           by substituting the smallest TEXT type sufficient to store
-          ``length`` characters.
+          ``length`` bytes of characters.
 
         :param charset: Optional, a column-level character set for this string
           value.  Takes precedence to 'ascii' or 'unicode' short-hand.
@@ -535,7 +541,7 @@ class TEXT(_StringType, sqltypes.TEXT):
 
 
 class TINYTEXT(_StringType):
-    """MySQL TINYTEXT type, for text up to 2^8 characters."""
+    """MySQL TINYTEXT type, for character storage encoded up to 2^8 bytes."""
 
     __visit_name__ = "TINYTEXT"
 
@@ -567,7 +573,8 @@ class TINYTEXT(_StringType):
 
 
 class MEDIUMTEXT(_StringType):
-    """MySQL MEDIUMTEXT type, for text up to 2^24 characters."""
+    """MySQL MEDIUMTEXT type, for character storage encoded up
+    to 2^24 bytes."""
 
     __visit_name__ = "MEDIUMTEXT"
 
@@ -599,7 +606,7 @@ class MEDIUMTEXT(_StringType):
 
 
 class LONGTEXT(_StringType):
-    """MySQL LONGTEXT type, for text up to 2^32 characters."""
+    """MySQL LONGTEXT type, for character storage encoded up to 2^32 bytes."""
 
     __visit_name__ = "LONGTEXT"
 
@@ -683,7 +690,7 @@ class CHAR(_StringType, sqltypes.CHAR):
         super().__init__(length=length, **kwargs)
 
     @classmethod
-    def _adapt_string_for_cast(self, type_):
+    def _adapt_string_for_cast(cls, type_):
         # copy the given string type into a CHAR
         # for the purposes of rendering a CAST expression
         type_ = sqltypes.to_instance(type_)

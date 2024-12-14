@@ -178,6 +178,28 @@ class DialectTest(fixtures.TestBase):
         with expect_raises(dataclasses.FrozenInstanceError):
             r1.lower = 8  # type: ignore
 
+    @testing.only_on("postgresql+asyncpg")
+    def test_asyncpg_terminate_catch(self):
+        """test for #11005"""
+
+        with testing.db.connect() as connection:
+            emulated_dbapi_connection = connection.connection.dbapi_connection
+
+            async def boom():
+                raise OSError("boom")
+
+            with mock.patch.object(
+                emulated_dbapi_connection,
+                "_connection",
+                mock.Mock(close=mock.Mock(return_value=boom())),
+            ) as mock_asyncpg_connection:
+                emulated_dbapi_connection.terminate()
+
+            eq_(
+                mock_asyncpg_connection.mock_calls,
+                [mock.call.close(timeout=2), mock.call.terminate()],
+            )
+
     def test_version_parsing(self):
         def mock_conn(res):
             return mock.Mock(
@@ -343,6 +365,7 @@ $$ LANGUAGE plpgsql;"""
             "SSL SYSCALL error: EOF detected",
             "SSL SYSCALL error: Operation timed out",
             "SSL SYSCALL error: Bad address",
+            "SSL SYSCALL error: Success",
         ]:
             eq_(dialect.is_disconnect(Error(error), None, None), True)
 
@@ -721,7 +744,7 @@ class MultiHostConnectTest(fixtures.TestBase):
             "postgresql+psycopg2://USER:PASS@/DB"
             "?host=hostA,hostC&port=111,222,333",
         ),
-        ("postgresql+psycopg2://USER:PASS@/DB" "?host=hostA&port=111,222",),
+        ("postgresql+psycopg2://USER:PASS@/DB?host=hostA&port=111,222",),
         (
             "postgresql+asyncpg://USER:PASS@/DB"
             "?host=hostA,hostB,hostC&port=111,333",
@@ -1219,9 +1242,9 @@ class MiscBackendTest(
     def test_autocommit_pre_ping(self, testing_engine, autocommit):
         engine = testing_engine(
             options={
-                "isolation_level": "AUTOCOMMIT"
-                if autocommit
-                else "SERIALIZABLE",
+                "isolation_level": (
+                    "AUTOCOMMIT" if autocommit else "SERIALIZABLE"
+                ),
                 "pool_pre_ping": True,
             }
         )
@@ -1239,9 +1262,9 @@ class MiscBackendTest(
 
         engine = testing_engine(
             options={
-                "isolation_level": "AUTOCOMMIT"
-                if autocommit
-                else "SERIALIZABLE",
+                "isolation_level": (
+                    "AUTOCOMMIT" if autocommit else "SERIALIZABLE"
+                ),
                 "pool_pre_ping": True,
             }
         )
@@ -1354,6 +1377,7 @@ $$ LANGUAGE plpgsql;
                 conn.exec_driver_sql("SELECT note('another note')")
             finally:
                 trans.rollback()
+                conn.close()
         finally:
             log.removeHandler(buf)
             log.setLevel(lev)
@@ -1697,3 +1721,37 @@ class Psycopg3Test(fixtures.TestBase):
     def test_async_version(self):
         e = create_engine("postgresql+psycopg_async://")
         is_true(isinstance(e.dialect, psycopg_dialect.PGDialectAsync_psycopg))
+
+    @testing.skip_if(lambda c: c.db.dialect.is_async)
+    def test_client_side_cursor(self, testing_engine):
+        from psycopg import ClientCursor
+
+        engine = testing_engine(
+            options={"connect_args": {"cursor_factory": ClientCursor}}
+        )
+
+        with engine.connect() as c:
+            res = c.execute(select(1, 2, 3)).one()
+            eq_(res, (1, 2, 3))
+            with c.connection.driver_connection.cursor() as cursor:
+                is_true(isinstance(cursor, ClientCursor))
+
+    @config.async_test
+    @testing.skip_if(lambda c: not c.db.dialect.is_async)
+    async def test_async_client_side_cursor(self, testing_engine):
+        from psycopg import AsyncClientCursor
+
+        engine = testing_engine(
+            options={"connect_args": {"cursor_factory": AsyncClientCursor}},
+            asyncio=True,
+        )
+
+        async with engine.connect() as c:
+            res = (await c.execute(select(1, 2, 3))).one()
+            eq_(res, (1, 2, 3))
+            async with (
+                await c.get_raw_connection()
+            ).driver_connection.cursor() as cursor:
+                is_true(isinstance(cursor, AsyncClientCursor))
+
+        await engine.dispose()

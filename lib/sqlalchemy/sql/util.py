@@ -1,5 +1,5 @@
 # sql/util.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -26,6 +26,7 @@ from typing import Iterator
 from typing import List
 from typing import Optional
 from typing import overload
+from typing import Protocol
 from typing import Sequence
 from typing import Tuple
 from typing import TYPE_CHECKING
@@ -69,7 +70,7 @@ from .visitors import _ET
 from .. import exc
 from .. import util
 from ..util.typing import Literal
-from ..util.typing import Protocol
+from ..util.typing import Unpack
 
 if typing.TYPE_CHECKING:
     from ._typing import _EquivalentColumnMap
@@ -106,7 +107,7 @@ def join_condition(
 
     would produce an expression along the lines of::
 
-        tablea.c.id==tableb.c.tablea_id
+        tablea.c.id == tableb.c.tablea_id
 
     The join is determined based on the foreign key relationships
     between the two selectables.   If there are multiple ways
@@ -268,7 +269,7 @@ def visit_binary_product(
 
     The function is of the form::
 
-        def my_fn(binary, left, right)
+        def my_fn(binary, left, right): ...
 
     For each binary expression located which has a
     comparison operator, the product of "left" and
@@ -277,12 +278,11 @@ def visit_binary_product(
 
     Hence an expression like::
 
-        and_(
-            (a + b) == q + func.sum(e + f),
-            j == r
-        )
+        and_((a + b) == q + func.sum(e + f), j == r)
 
-    would have the traversal::
+    would have the traversal:
+
+    .. sourcecode:: text
 
         a <eq> q
         a <eq> e
@@ -350,9 +350,9 @@ def find_tables(
         ] = _visitors["lateral"] = tables.append
 
     if include_crud:
-        _visitors["insert"] = _visitors["update"] = _visitors[
-            "delete"
-        ] = lambda ent: tables.append(ent.table)
+        _visitors["insert"] = _visitors["update"] = _visitors["delete"] = (
+            lambda ent: tables.append(ent.table)
+        )
 
     if check_columns:
 
@@ -367,7 +367,7 @@ def find_tables(
     return tables
 
 
-def unwrap_order_by(clause):
+def unwrap_order_by(clause: Any) -> Any:
     """Break up an 'order by' expression into individual column-expressions,
     without DESC/ASC/NULLS FIRST/NULLS LAST"""
 
@@ -528,9 +528,7 @@ def bind_values(clause):
 
     E.g.::
 
-        >>> expr = and_(
-        ...    table.c.foo==5, table.c.foo==7
-        ... )
+        >>> expr = and_(table.c.foo == 5, table.c.foo == 7)
         >>> bind_values(expr)
         [5, 7]
     """
@@ -588,7 +586,9 @@ class _repr_row(_repr_base):
 
     __slots__ = ("row",)
 
-    def __init__(self, row: Row[Any], max_chars: int = 300):
+    def __init__(
+        self, row: Row[Unpack[Tuple[Any, ...]]], max_chars: int = 300
+    ):
         self.row = row
         self.max_chars = max_chars
 
@@ -878,8 +878,7 @@ def reduce_columns(
     columns: Iterable[ColumnElement[Any]],
     *clauses: Optional[ClauseElement],
     **kw: bool,
-) -> Sequence[ColumnElement[Any]]:
-    ...
+) -> Sequence[ColumnElement[Any]]: ...
 
 
 @overload
@@ -887,8 +886,7 @@ def reduce_columns(
     columns: _SelectIterable,
     *clauses: Optional[ClauseElement],
     **kw: bool,
-) -> Sequence[Union[ColumnElement[Any], TextClause]]:
-    ...
+) -> Sequence[Union[ColumnElement[Any], TextClause]]: ...
 
 
 def reduce_columns(
@@ -1043,20 +1041,24 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
 
     E.g.::
 
-      table1 = Table('sometable', metadata,
-          Column('col1', Integer),
-          Column('col2', Integer)
-          )
-      table2 = Table('someothertable', metadata,
-          Column('col1', Integer),
-          Column('col2', Integer)
-          )
+      table1 = Table(
+          "sometable",
+          metadata,
+          Column("col1", Integer),
+          Column("col2", Integer),
+      )
+      table2 = Table(
+          "someothertable",
+          metadata,
+          Column("col1", Integer),
+          Column("col2", Integer),
+      )
 
       condition = table1.c.col1 == table2.c.col1
 
     make an alias of table1::
 
-      s = table1.alias('foo')
+      s = table1.alias("foo")
 
     calling ``ClauseAdapter(s).traverse(condition)`` converts
     condition to read::
@@ -1099,8 +1101,7 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
     if TYPE_CHECKING:
 
         @overload
-        def traverse(self, obj: Literal[None]) -> None:
-            ...
+        def traverse(self, obj: Literal[None]) -> None: ...
 
         # note this specializes the ReplacingExternalTraversal.traverse()
         # method to state
@@ -1111,13 +1112,11 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
         # FromClause but Mypy is not accepting those as compatible with
         # the base ReplacingExternalTraversal
         @overload
-        def traverse(self, obj: _ET) -> _ET:
-            ...
+        def traverse(self, obj: _ET) -> _ET: ...
 
         def traverse(
             self, obj: Optional[ExternallyTraversible]
-        ) -> Optional[ExternallyTraversible]:
-            ...
+        ) -> Optional[ExternallyTraversible]: ...
 
     def _corresponding_column(
         self, col, require_embedded, _seen=util.EMPTY_SET
@@ -1219,23 +1218,18 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
 
 class _ColumnLookup(Protocol):
     @overload
-    def __getitem__(self, key: None) -> None:
-        ...
+    def __getitem__(self, key: None) -> None: ...
 
     @overload
-    def __getitem__(self, key: ColumnClause[Any]) -> ColumnClause[Any]:
-        ...
+    def __getitem__(self, key: ColumnClause[Any]) -> ColumnClause[Any]: ...
 
     @overload
-    def __getitem__(self, key: ColumnElement[Any]) -> ColumnElement[Any]:
-        ...
+    def __getitem__(self, key: ColumnElement[Any]) -> ColumnElement[Any]: ...
 
     @overload
-    def __getitem__(self, key: _ET) -> _ET:
-        ...
+    def __getitem__(self, key: _ET) -> _ET: ...
 
-    def __getitem__(self, key: Any) -> Any:
-        ...
+    def __getitem__(self, key: Any) -> Any: ...
 
 
 class ColumnAdapter(ClauseAdapter):
@@ -1333,12 +1327,10 @@ class ColumnAdapter(ClauseAdapter):
         return ac
 
     @overload
-    def traverse(self, obj: Literal[None]) -> None:
-        ...
+    def traverse(self, obj: Literal[None]) -> None: ...
 
     @overload
-    def traverse(self, obj: _ET) -> _ET:
-        ...
+    def traverse(self, obj: _ET) -> _ET: ...
 
     def traverse(
         self, obj: Optional[ExternallyTraversible]
@@ -1353,8 +1345,7 @@ class ColumnAdapter(ClauseAdapter):
     if TYPE_CHECKING:
 
         @property
-        def visitor_iterator(self) -> Iterator[ColumnAdapter]:
-            ...
+        def visitor_iterator(self) -> Iterator[ColumnAdapter]: ...
 
     adapt_clause = traverse
     adapt_list = ClauseAdapter.copy_and_process

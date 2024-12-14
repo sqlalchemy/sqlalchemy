@@ -690,7 +690,6 @@ class SequenceReturningTest(fixtures.TablesTest):
 
 
 class KeyReturningTest(fixtures.TablesTest, AssertsExecutionResults):
-
     """test returning() works with columns that define 'key'."""
 
     __requires__ = ("insert_returning",)
@@ -1561,9 +1560,11 @@ class InsertManyReturningTest(fixtures.TablesTest):
             config,
             t1,
             (t1.c.id, t1.c.insdef, t1.c.data),
-            set_lambda=(lambda excluded: {"data": excluded.data + " excluded"})
-            if update_cols
-            else None,
+            set_lambda=(
+                (lambda excluded: {"data": excluded.data + " excluded"})
+                if update_cols
+                else None
+            ),
         )
 
         upserted_rows = connection.execute(

@@ -1,5 +1,5 @@
 # sql/_selectable_constructors.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -10,7 +10,6 @@ from __future__ import annotations
 from typing import Any
 from typing import Optional
 from typing import overload
-from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
@@ -32,6 +31,8 @@ from .selectable import Select
 from .selectable import TableClause
 from .selectable import TableSample
 from .selectable import Values
+from ..util.typing import TupleAny
+from ..util.typing import Unpack
 
 if TYPE_CHECKING:
     from ._typing import _FromClauseArgument
@@ -156,16 +157,16 @@ def exists(
     :meth:`_sql.SelectBase.exists` method::
 
         exists_criteria = (
-            select(table2.c.col2).
-            where(table1.c.col1 == table2.c.col2).
-            exists()
+            select(table2.c.col2).where(table1.c.col1 == table2.c.col2).exists()
         )
 
     The EXISTS criteria is then used inside of an enclosing SELECT::
 
         stmt = select(table1.c.col1).where(exists_criteria)
 
-    The above statement will then be of the form::
+    The above statement will then be of the form:
+
+    .. sourcecode:: sql
 
         SELECT col1 FROM table1 WHERE EXISTS
         (SELECT table2.col2 FROM table2 WHERE table2.col2 = table1.col1)
@@ -226,11 +227,14 @@ def join(
 
     E.g.::
 
-        j = join(user_table, address_table,
-                 user_table.c.id == address_table.c.user_id)
+        j = join(
+            user_table, address_table, user_table.c.id == address_table.c.user_id
+        )
         stmt = select(user_table).select_from(j)
 
-    would emit SQL along the lines of::
+    would emit SQL along the lines of:
+
+    .. sourcecode:: sql
 
         SELECT user.id, user.name FROM user
         JOIN address ON user.id = address.user_id
@@ -264,7 +268,7 @@ def join(
 
         :class:`_expression.Join` - the type of object produced.
 
-    """
+    """  # noqa: E501
 
     return Join(left, right, onclause, isouter, full)
 
@@ -331,22 +335,17 @@ def outerjoin(
 
 
 @overload
-def select(__ent0: _TCCA[_T0], /) -> Select[Tuple[_T0]]:
-    ...
+def select(__ent0: _TCCA[_T0], /) -> Select[_T0]: ...
 
 
 @overload
-def select(
-    __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], /
-) -> Select[Tuple[_T0, _T1]]:
-    ...
+def select(__ent0: _TCCA[_T0], __ent1: _TCCA[_T1], /) -> Select[_T0, _T1]: ...
 
 
 @overload
 def select(
     __ent0: _TCCA[_T0], __ent1: _TCCA[_T1], __ent2: _TCCA[_T2], /
-) -> Select[Tuple[_T0, _T1, _T2]]:
-    ...
+) -> Select[_T0, _T1, _T2]: ...
 
 
 @overload
@@ -356,8 +355,7 @@ def select(
     __ent2: _TCCA[_T2],
     __ent3: _TCCA[_T3],
     /,
-) -> Select[Tuple[_T0, _T1, _T2, _T3]]:
-    ...
+) -> Select[_T0, _T1, _T2, _T3]: ...
 
 
 @overload
@@ -368,8 +366,7 @@ def select(
     __ent3: _TCCA[_T3],
     __ent4: _TCCA[_T4],
     /,
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4]]:
-    ...
+) -> Select[_T0, _T1, _T2, _T3, _T4]: ...
 
 
 @overload
@@ -381,8 +378,7 @@ def select(
     __ent4: _TCCA[_T4],
     __ent5: _TCCA[_T5],
     /,
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5]]:
-    ...
+) -> Select[_T0, _T1, _T2, _T3, _T4, _T5]: ...
 
 
 @overload
@@ -395,8 +391,7 @@ def select(
     __ent5: _TCCA[_T5],
     __ent6: _TCCA[_T6],
     /,
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6]]:
-    ...
+) -> Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6]: ...
 
 
 @overload
@@ -410,8 +405,7 @@ def select(
     __ent6: _TCCA[_T6],
     __ent7: _TCCA[_T7],
     /,
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]]:
-    ...
+) -> Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]: ...
 
 
 @overload
@@ -426,8 +420,7 @@ def select(
     __ent7: _TCCA[_T7],
     __ent8: _TCCA[_T8],
     /,
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]]:
-    ...
+) -> Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]: ...
 
 
 @overload
@@ -443,19 +436,24 @@ def select(
     __ent8: _TCCA[_T8],
     __ent9: _TCCA[_T9],
     /,
-) -> Select[Tuple[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9]]:
-    ...
+    *entities: _ColumnsClauseArgument[Any],
+) -> Select[
+    _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9, Unpack[TupleAny]
+]: ...
 
 
 # END OVERLOADED FUNCTIONS select
 
 
 @overload
-def select(*entities: _ColumnsClauseArgument[Any], **__kw: Any) -> Select[Any]:
-    ...
+def select(
+    *entities: _ColumnsClauseArgument[Any], **__kw: Any
+) -> Select[Unpack[TupleAny]]: ...
 
 
-def select(*entities: _ColumnsClauseArgument[Any], **__kw: Any) -> Select[Any]:
+def select(
+    *entities: _ColumnsClauseArgument[Any], **__kw: Any
+) -> Select[Unpack[TupleAny]]:
     r"""Construct a new :class:`_expression.Select`.
 
 
@@ -546,13 +544,14 @@ def tablesample(
         from sqlalchemy import func
 
         selectable = people.tablesample(
-                    func.bernoulli(1),
-                    name='alias',
-                    seed=func.random())
+            func.bernoulli(1), name="alias", seed=func.random()
+        )
         stmt = select(selectable.c.people_id)
 
     Assuming ``people`` with a column ``people_id``, the above
-    statement would render as::
+    statement would render as:
+
+    .. sourcecode:: sql
 
         SELECT alias.people_id FROM
         people AS alias TABLESAMPLE bernoulli(:bernoulli_1)
@@ -630,12 +629,10 @@ def values(
         from sqlalchemy import values
 
         value_expr = values(
-            column('id', Integer),
-            column('name', String),
-            name="my_values"
-        ).data(
-            [(1, 'name1'), (2, 'name2'), (3, 'name3')]
-        )
+            column("id", Integer),
+            column("name", String),
+            name="my_values",
+        ).data([(1, "name1"), (2, "name2"), (3, "name3")])
 
     :param \*columns: column expressions, typically composed using
      :func:`_expression.column` objects.

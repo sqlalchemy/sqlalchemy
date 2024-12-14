@@ -140,15 +140,15 @@ each time the transaction is ended, and a new statement is
 emitted, a new transaction begins implicitly::
 
     with engine.connect() as connection:
-        connection.execute("<some statement>")
+        connection.execute(text("<some statement>"))
         connection.commit()  # commits "some statement"
 
         # new transaction starts
-        connection.execute("<some other statement>")
+        connection.execute(text("<some other statement>"))
         connection.rollback()  # rolls back "some other statement"
 
         # new transaction starts
-        connection.execute("<a third statement>")
+        connection.execute(text("<a third statement>"))
         connection.commit()  # commits "a third statement"
 
 .. versionadded:: 2.0 "commit as you go" style is a new feature of
@@ -321,7 +321,7 @@ begin a transaction::
         isolation_level="REPEATABLE READ"
     ) as connection:
         with connection.begin():
-            connection.execute("<statement>")
+            connection.execute(text("<statement>"))
 
 .. tip::  The return value of
    the :meth:`_engine.Connection.execution_options` method is the same
@@ -419,7 +419,7 @@ reverted when a connection is returned to the connection pool.
 
       :ref:`SQL Server Transaction Isolation <mssql_isolation_level>`
 
-      :ref:`Oracle Transaction Isolation <oracle_isolation_level>`
+      :ref:`Oracle Database Transaction Isolation <oracle_isolation_level>`
 
       :ref:`session_transaction_isolation` - for the ORM
 
@@ -443,8 +443,8 @@ If we wanted to check out a :class:`_engine.Connection` object and use it
 
     with engine.connect() as connection:
         connection.execution_options(isolation_level="AUTOCOMMIT")
-        connection.execute("<statement>")
-        connection.execute("<statement>")
+        connection.execute(text("<statement>"))
+        connection.execute(text("<statement>"))
 
 Above illustrates normal usage of "DBAPI autocommit" mode.   There is no
 need to make use of methods such as :meth:`_engine.Connection.begin`
@@ -472,8 +472,8 @@ In the example below, statements remain
 
         # this begin() does not affect the DBAPI connection, isolation stays at AUTOCOMMIT
         with connection.begin() as trans:
-            connection.execute("<statement>")
-            connection.execute("<statement>")
+            connection.execute(text("<statement>"))
+            connection.execute(text("<statement>"))
 
 When we run a block like the above with logging turned on, the logging
 will attempt to indicate that while a DBAPI level ``.commit()`` is called,
@@ -496,11 +496,11 @@ called after autobegin has already occurred::
         connection = connection.execution_options(isolation_level="AUTOCOMMIT")
 
         # "transaction" is autobegin (but has no effect due to autocommit)
-        connection.execute("<statement>")
+        connection.execute(text("<statement>"))
 
         # this will raise; "transaction" is already begun
         with connection.begin() as trans:
-            connection.execute("<statement>")
+            connection.execute(text("<statement>"))
 
 The above example also demonstrates the same theme that the "autocommit"
 isolation level is a configurational detail of the underlying database
@@ -545,7 +545,7 @@ before we call upon :meth:`_engine.Connection.begin`::
         connection.execution_options(isolation_level="AUTOCOMMIT")
 
         # run statement(s) in autocommit mode
-        connection.execute("<statement>")
+        connection.execute(text("<statement>"))
 
         # "commit" the autobegun "transaction"
         connection.commit()
@@ -555,7 +555,7 @@ before we call upon :meth:`_engine.Connection.begin`::
 
         # use a begin block
         with connection.begin() as trans:
-            connection.execute("<statement>")
+            connection.execute(text("<statement>"))
 
 Above, to manually revert the isolation level we made use of
 :attr:`_engine.Connection.default_isolation_level` to restore the default
@@ -568,11 +568,11 @@ use two blocks ::
     # use an autocommit block
     with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
         # run statement in autocommit mode
-        connection.execute("<statement>")
+        connection.execute(text("<statement>"))
 
     # use a regular block
     with engine.begin() as connection:
-        connection.execute("<statement>")
+        connection.execute(text("<statement>"))
 
 To sum up:
 
@@ -588,17 +588,17 @@ To sum up:
 Using Server Side Cursors (a.k.a. stream results)
 -------------------------------------------------
 
-Some backends feature explicit support for the concept of "server
-side cursors" versus "client side cursors".  A client side cursor here
-means that the database driver fully fetches all rows from a result set
-into memory before returning from a statement execution.  Drivers such as
-those of PostgreSQL and MySQL/MariaDB generally use client side cursors
-by default.   A server side cursor, by contrast, indicates that result rows
-remain pending within the database server's state as result rows are consumed
-by the client.  The drivers for Oracle generally use a "server side" model,
-for example, and the SQLite dialect, while not using a real "client / server"
-architecture, still uses an unbuffered result fetching approach that will
-leave result rows outside of process memory before they are consumed.
+Some backends feature explicit support for the concept of "server side cursors"
+versus "client side cursors".  A client side cursor here means that the
+database driver fully fetches all rows from a result set into memory before
+returning from a statement execution.  Drivers such as those of PostgreSQL and
+MySQL/MariaDB generally use client side cursors by default.  A server side
+cursor, by contrast, indicates that result rows remain pending within the
+database server's state as result rows are consumed by the client.  The drivers
+for Oracle Database generally use a "server side" model, for example, and the
+SQLite dialect, while not using a real "client / server" architecture, still
+uses an unbuffered result fetching approach that will leave result rows outside
+of process memory before they are consumed.
 
 .. topic:: What we really mean is "buffered" vs. "unbuffered" results
 
@@ -1490,10 +1490,8 @@ Basic guidelines include:
 
         def my_stmt(parameter, thing=False):
             stmt = lambda_stmt(lambda: select(table))
-            stmt += (
-                lambda s: s.where(table.c.x > parameter)
-                if thing
-                else s.where(table.c.y == parameter)
+            stmt += lambda s: (
+                s.where(table.c.x > parameter) if thing else s.where(table.c.y == parameter)
             )
             return stmt
 
@@ -1809,17 +1807,18 @@ Current Support
 ~~~~~~~~~~~~~~~
 
 The feature is enabled for all backend included in SQLAlchemy that support
-RETURNING, with the exception of Oracle for which both the cx_Oracle and
-OracleDB drivers offer their own equivalent feature. The feature normally takes
-place when making use of the :meth:`_dml.Insert.returning` method of an
-:class:`_dml.Insert` construct in conjunction with :term:`executemany`
-execution, which occurs when passing a list of dictionaries to the
-:paramref:`_engine.Connection.execute.parameters` parameter of the
-:meth:`_engine.Connection.execute` or :meth:`_orm.Session.execute` methods (as
-well as equivalent methods under :ref:`asyncio <asyncio_toplevel>` and
-shorthand methods like :meth:`_orm.Session.scalars`). It also takes place
-within the ORM :term:`unit of work` process when using methods such as
-:meth:`_orm.Session.add` and :meth:`_orm.Session.add_all` to add rows.
+RETURNING, with the exception of Oracle Database for which both the
+python-oracledb and cx_Oracle drivers offer their own equivalent feature. The
+feature normally takes place when making use of the
+:meth:`_dml.Insert.returning` method of an :class:`_dml.Insert` construct in
+conjunction with :term:`executemany` execution, which occurs when passing a
+list of dictionaries to the :paramref:`_engine.Connection.execute.parameters`
+parameter of the :meth:`_engine.Connection.execute` or
+:meth:`_orm.Session.execute` methods (as well as equivalent methods under
+:ref:`asyncio <asyncio_toplevel>` and shorthand methods like
+:meth:`_orm.Session.scalars`). It also takes place within the ORM :term:`unit
+of work` process when using methods such as :meth:`_orm.Session.add` and
+:meth:`_orm.Session.add_all` to add rows.
 
 For SQLAlchemy's included dialects, support or equivalent support is currently
 as follows:
@@ -1829,8 +1828,8 @@ as follows:
 * SQL Server - all supported SQL Server versions [#]_
 * MariaDB - supported for MariaDB versions 10.5 and above
 * MySQL - no support, no RETURNING feature is present
-* Oracle - supports RETURNING with executemany using native cx_Oracle / OracleDB
-  APIs, for all supported Oracle versions 9 and above, using multi-row OUT
+* Oracle Database - supports RETURNING with executemany using native python-oracledb / cx_Oracle
+  APIs, for all supported Oracle Database versions 9 and above, using multi-row OUT
   parameters. This is not the same implementation as "executemanyvalues", however has
   the same usage patterns and equivalent performance benefits.
 

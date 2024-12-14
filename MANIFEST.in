@@ -8,12 +8,12 @@ recursive-include tools *.py
 
 # for some reason in some environments stale Cython .c files
 # are being pulled in, these should never be in a dist
-exclude lib/sqlalchemy/cyextension/*.c
-exclude lib/sqlalchemy/cyextension/*.so
+exclude lib/sqlalchemy/**/*.c
+exclude lib/sqlalchemy/**/*.so
 
-# include the pyx and pxd extensions, which otherwise
+# include the pxd extensions, which otherwise
 # don't come in if --with-cextensions isn't specified.
-recursive-include lib *.pyx *.pxd *.txt *.typed
+recursive-include lib *.pxd *.txt *.typed
 
 include README* AUTHORS LICENSE CHANGES* tox.ini
 prune doc/build/output

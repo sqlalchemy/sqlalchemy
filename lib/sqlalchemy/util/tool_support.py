@@ -1,5 +1,5 @@
 # util/tool_support.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -27,6 +27,7 @@ from typing import Any
 from typing import Dict
 from typing import Iterator
 from typing import Optional
+from typing import Union
 
 from . import compat
 
@@ -121,7 +122,7 @@ class code_writer_cmd:
             sys.stderr.write(" ".join(text))
 
     def write_output_file_from_text(
-        self, text: str, destination_path: str
+        self, text: str, destination_path: Union[str, Path]
     ) -> None:
         if self.args.check:
             self._run_diff(destination_path, source=text)
@@ -129,7 +130,9 @@ class code_writer_cmd:
             print(text)
         else:
             self.write_status(f"Writing {destination_path}...")
-            Path(destination_path).write_text(text)
+            Path(destination_path).write_text(
+                text, encoding="utf-8", newline="\n"
+            )
             self.write_status("done\n")
 
     def write_output_file_from_tempfile(
@@ -149,24 +152,24 @@ class code_writer_cmd:
 
     def _run_diff(
         self,
-        destination_path: str,
+        destination_path: Union[str, Path],
         *,
         source: Optional[str] = None,
         source_file: Optional[str] = None,
     ) -> None:
         if source_file:
-            with open(source_file) as tf:
+            with open(source_file, encoding="utf-8") as tf:
                 source_lines = list(tf)
         elif source is not None:
             source_lines = source.splitlines(keepends=True)
         else:
             assert False, "source or source_file is required"
 
-        with open(destination_path) as dp:
+        with open(destination_path, encoding="utf-8") as dp:
             d = difflib.unified_diff(
                 list(dp),
                 source_lines,
-                fromfile=destination_path,
+                fromfile=Path(destination_path).as_posix(),
                 tofile="<proposed changes>",
                 n=3,
                 lineterm="\n",

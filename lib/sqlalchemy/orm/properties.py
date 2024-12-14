@@ -1,5 +1,5 @@
 # orm/properties.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -58,6 +58,7 @@ from ..util.typing import de_optionalize_union_types
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_optional_union
 from ..util.typing import is_pep593
+from ..util.typing import is_pep695
 from ..util.typing import is_union
 from ..util.typing import Self
 from ..util.typing import typing_get_args
@@ -244,7 +245,7 @@ class ColumnProperty(
         strategies = util.preloaded.orm_strategies
         return state.InstanceState._instance_level_callable_processor(
             self.parent.class_manager,
-            strategies.LoadDeferredColumns(self.key),
+            strategies._LoadDeferredColumns(self.key),
             self.key,
         )
 
@@ -256,7 +257,7 @@ class ColumnProperty(
         strategies = util.preloaded.orm_strategies
         return state.InstanceState._instance_level_callable_processor(
             self.parent.class_manager,
-            strategies.LoadDeferredColumns(self.key, True),
+            strategies._LoadDeferredColumns(self.key, True),
             self.key,
         )
 
@@ -279,8 +280,8 @@ class ColumnProperty(
 
                 name = Column(String(64))
                 extension = Column(String(8))
-                filename = column_property(name + '.' + extension)
-                path = column_property('C:/' + filename.expression)
+                filename = column_property(name + "." + extension)
+                path = column_property("C:/" + filename.expression)
 
         .. seealso::
 
@@ -293,7 +294,7 @@ class ColumnProperty(
         if not self.instrument:
             return
 
-        attributes.register_descriptor(
+        attributes._register_descriptor(
             mapper.class_,
             self.key,
             comparator=self.comparator_factory(self, mapper),
@@ -429,8 +430,7 @@ class ColumnProperty(
 
         if TYPE_CHECKING:
 
-            def __clause_element__(self) -> NamedColumn[_PT]:
-                ...
+            def __clause_element__(self) -> NamedColumn[_PT]: ...
 
         def _memoized_method___clause_element__(
             self,
@@ -636,9 +636,11 @@ class MappedColumn(
         return [
             (
                 self.column,
-                self._sort_order
-                if self._sort_order is not _NoArg.NO_ARG
-                else 0,
+                (
+                    self._sort_order
+                    if self._sort_order is not _NoArg.NO_ARG
+                    else 0
+                ),
             )
         ]
 
@@ -687,7 +689,7 @@ class MappedColumn(
             supercls_mapper = class_mapper(decl_scan.inherits, False)
 
             colname = column.name if column.name is not None else key
-            column = self.column = supercls_mapper.local_table.c.get(  # type: ignore # noqa: E501
+            column = self.column = supercls_mapper.local_table.c.get(  # type: ignore[assignment] # noqa: E501
                 colname, column
             )
 
@@ -758,6 +760,11 @@ class MappedColumn(
         our_type = de_optionalize_union_types(argument)
 
         use_args_from = None
+
+        our_original_type = our_type
+
+        if is_pep695(our_type):
+            our_type = our_type.__value__
 
         if is_pep593(our_type):
             our_type_is_pep593 = True
@@ -851,9 +858,9 @@ class MappedColumn(
             new_sqltype = None
 
             if our_type_is_pep593:
-                checks = [our_type, raw_pep_593_type]
+                checks = [our_original_type, raw_pep_593_type]
             else:
-                checks = [our_type]
+                checks = [our_original_type]
 
             for check_type in checks:
                 new_sqltype = registry._resolve_type(check_type)

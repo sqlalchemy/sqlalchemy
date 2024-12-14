@@ -13,7 +13,7 @@ def greenlet_not_imported():
     import sqlalchemy
     import sqlalchemy.util.concurrency  # noqa: F401
     from sqlalchemy.util import greenlet_spawn  # noqa: F401
-    from sqlalchemy.util.concurrency import await_only  # noqa: F401
+    from sqlalchemy.util.concurrency import await_  # noqa: F401
 
     assert "greenlet" not in sys.modules
 

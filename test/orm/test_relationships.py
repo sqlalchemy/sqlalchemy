@@ -183,7 +183,6 @@ class _RelationshipErrors:
 
 
 class DependencyTwoParentTest(fixtures.MappedTest):
-
     """Test flush() when a mapper is dependent on multiple relationships"""
 
     run_setup_mappers = "once"
@@ -430,12 +429,13 @@ class M2ODontOverwriteFKTest(fixtures.MappedTest):
 
 
 class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
-
     """Tests the ultimate join condition, a single column
     that points to itself, e.g. within a SQL function or similar.
     The test is against a materialized path setup.
 
-    this is an **extremely** unusual case::
+    this is an **extremely** unusual case:
+
+    .. sourcecode:: text
 
         Entity
         ------
@@ -1022,12 +1022,13 @@ class OverlappingFksSiblingTest(fixtures.MappedTest):
 
 
 class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
-
     """Tests a composite FK where, in
     the relationship(), one col points
     to itself in the same table.
 
-    this is a very unusual case::
+    this is a very unusual case:
+
+    .. sourcecode:: text
 
         company         employee
         ----------      ----------
@@ -1506,7 +1507,6 @@ class CompositeJoinPartialFK(fixtures.MappedTest, AssertsCompiledSQL):
 
 
 class SynonymsAsFKsTest(fixtures.MappedTest):
-
     """Syncrules on foreign keys that are also primary"""
 
     @classmethod
@@ -1578,7 +1578,6 @@ class SynonymsAsFKsTest(fixtures.MappedTest):
 
 
 class FKsAsPksTest(fixtures.MappedTest):
-
     """Syncrules on foreign keys that are also primary"""
 
     @classmethod
@@ -1863,7 +1862,6 @@ class FKsAsPksTest(fixtures.MappedTest):
 
 
 class UniqueColReferenceSwitchTest(fixtures.MappedTest):
-
     """test a relationship based on a primary
     join against a unique non-pk column"""
 
@@ -1928,7 +1926,6 @@ class UniqueColReferenceSwitchTest(fixtures.MappedTest):
 
 
 class RelationshipToSelectableTest(fixtures.MappedTest):
-
     """Test a map to a select that relates to a map to the table."""
 
     @classmethod
@@ -2022,7 +2019,6 @@ class RelationshipToSelectableTest(fixtures.MappedTest):
 
 
 class FKEquatedToConstantTest(fixtures.MappedTest):
-
     """test a relationship with a non-column entity in the primary join,
     is not viewonly, and also has the non-column's clause mentioned in the
     foreign keys list.
@@ -2159,7 +2155,6 @@ class BackrefPropagatesForwardsArgs(fixtures.MappedTest):
 
 
 class AmbiguousJoinInterpretedAsSelfRef(fixtures.MappedTest):
-
     """test ambiguous joins due to FKs on both sides treated as
     self-referential.
 
@@ -2254,7 +2249,6 @@ class AmbiguousJoinInterpretedAsSelfRef(fixtures.MappedTest):
 
 
 class ManualBackrefTest(_fixtures.FixtureTest):
-
     """Test explicit relationships that are backrefs to each other."""
 
     run_inserts = None
@@ -2296,6 +2290,98 @@ class ManualBackrefTest(_fixtures.FixtureTest):
         assert sess.query(Address).one() is a1
         assert a1.user is u1
         assert a1 in u1.addresses
+
+    @testing.variation(
+        "argtype", ["str", "callable_str", "prop", "callable_prop"]
+    )
+    def test_o2m_with_callable(self, argtype):
+        """test #10050"""
+
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        if argtype.str:
+            abp, ubp = "user", "addresses"
+        elif argtype.callable_str:
+            abp, ubp = lambda: "user", lambda: "addresses"
+        elif argtype.prop:
+            abp, ubp = lambda: "user", lambda: "addresses"
+        elif argtype.callable_prop:
+            abp, ubp = lambda: Address.user, lambda: User.addresses
+        else:
+            argtype.fail()
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(Address, back_populates=abp)
+            },
+        )
+
+        if argtype.prop:
+            ubp = User.addresses
+
+        self.mapper_registry.map_imperatively(
+            Address,
+            addresses,
+            properties={"user": relationship(User, back_populates=ubp)},
+        )
+
+        sess = fixture_session()
+
+        u1 = User(name="u1")
+        a1 = Address(email_address="foo")
+        u1.addresses.append(a1)
+        assert a1.user is u1
+
+        sess.add(u1)
+        sess.flush()
+        sess.expire_all()
+        assert sess.query(Address).one() is a1
+        assert a1.user is u1
+        assert a1 in u1.addresses
+
+    @testing.variation("argtype", ["plain", "callable"])
+    def test_invalid_backref_type(self, argtype):
+        """test #10050"""
+
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        if argtype.plain:
+            abp, ubp = object(), "addresses"
+        elif argtype.callable:
+            abp, ubp = lambda: object(), lambda: "addresses"
+        else:
+            argtype.fail()
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(Address, back_populates=abp)
+            },
+        )
+
+        self.mapper_registry.map_imperatively(
+            Address,
+            addresses,
+            properties={"user": relationship(User, back_populates=ubp)},
+        )
+
+        with expect_raises_message(
+            exc.ArgumentError, r"Invalid back_populates value: <object"
+        ):
+            self.mapper_registry.configure()
 
     def test_invalid_key(self):
         users, Address, addresses, User = (
@@ -2393,7 +2479,6 @@ class ManualBackrefTest(_fixtures.FixtureTest):
 
 
 class NoLoadBackPopulates(_fixtures.FixtureTest):
-
     """test the noload stratgegy which unlike others doesn't use
     lazyloader to set up instrumentation"""
 
@@ -2640,7 +2725,6 @@ class JoinConditionErrorTest(fixtures.TestBase):
 
 
 class TypeMatchTest(fixtures.MappedTest):
-
     """test errors raised when trying to add items
     whose type is not handled by a relationship"""
 
@@ -2908,7 +2992,6 @@ class TypedAssociationTable(fixtures.MappedTest):
 
 
 class CustomOperatorTest(fixtures.MappedTest, AssertsCompiledSQL):
-
     """test op() in conjunction with join conditions"""
 
     run_create_tables = run_deletes = None
@@ -3186,7 +3269,6 @@ class ViewOnlyM2MBackrefTest(fixtures.MappedTest):
 
 
 class ViewOnlyOverlappingNames(fixtures.MappedTest):
-
     """'viewonly' mappings with overlapping PK column names."""
 
     @classmethod
@@ -3442,7 +3524,6 @@ class ViewOnlySyncBackref(fixtures.MappedTest):
 
 
 class ViewOnlyUniqueNames(fixtures.MappedTest):
-
     """'viewonly' mappings with unique PK column names."""
 
     @classmethod
@@ -3544,7 +3625,6 @@ class ViewOnlyUniqueNames(fixtures.MappedTest):
 
 
 class ViewOnlyLocalRemoteM2M(fixtures.TestBase):
-
     """test that local-remote is correctly determined for m2m"""
 
     def test_local_remote(self, registry):
@@ -3583,7 +3663,6 @@ class ViewOnlyLocalRemoteM2M(fixtures.TestBase):
 
 
 class ViewOnlyNonEquijoin(fixtures.MappedTest):
-
     """'viewonly' mappings based on non-equijoins."""
 
     @classmethod
@@ -3645,7 +3724,6 @@ class ViewOnlyNonEquijoin(fixtures.MappedTest):
 
 
 class ViewOnlyRepeatedRemoteColumn(fixtures.MappedTest):
-
     """'viewonly' mappings that contain the same 'remote' column twice"""
 
     @classmethod
@@ -3719,7 +3797,6 @@ class ViewOnlyRepeatedRemoteColumn(fixtures.MappedTest):
 
 
 class ViewOnlyRepeatedLocalColumn(fixtures.MappedTest):
-
     """'viewonly' mappings that contain the same 'local' column twice"""
 
     @classmethod
@@ -3794,7 +3871,6 @@ class ViewOnlyRepeatedLocalColumn(fixtures.MappedTest):
 
 
 class ViewOnlyComplexJoin(_RelationshipErrors, fixtures.MappedTest):
-
     """'viewonly' mappings with a complex join condition."""
 
     @classmethod
@@ -3996,7 +4072,6 @@ class FunctionAsPrimaryJoinTest(fixtures.DeclarativeMappedTest):
 
 
 class RemoteForeignBetweenColsTest(fixtures.DeclarativeMappedTest):
-
     """test a complex annotation using between().
 
     Using declarative here as an integration test for the local()
@@ -4573,6 +4648,68 @@ class SecondaryArgTest(fixtures.TestBase):
     def teardown_test(self):
         clear_mappers()
 
+    @testing.variation("arg_style", ["string", "table", "lambda_"])
+    def test_secondary_arg_styles(self, arg_style):
+        Base = declarative_base()
+
+        c = Table(
+            "c",
+            Base.metadata,
+            Column("a_id", ForeignKey("a.id")),
+            Column("b_id", ForeignKey("b.id")),
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            data = Column(String)
+
+            if arg_style.string:
+                bs = relationship("B", secondary="c")
+            elif arg_style.table:
+                bs = relationship("B", secondary=c)
+            elif arg_style.lambda_:
+                bs = relationship("B", secondary=lambda: c)
+            else:
+                arg_style.fail()
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+
+        is_(inspect(A).relationships.bs.secondary, c)
+
+    def test_no_eval_in_secondary(self):
+        """test #10564"""
+        Base = declarative_base()
+
+        Table(
+            "c",
+            Base.metadata,
+            Column("a_id", ForeignKey("a.id")),
+            Column("b_id", ForeignKey("b.id")),
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            data = Column(String)
+
+            bs = relationship("B", secondary="c.c.a_id.table")
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            r"When initializing mapper Mapper\[A\(a\)\], expression "
+            r"'c.c.a_id.table' failed to locate a name \('c.c.a_id.table'\). ",
+        ):
+            Base.registry.configure()
+
     @testing.combinations((True,), (False,))
     def test_informative_message_on_cls_as_secondary(self, string):
         Base = declarative_base()
@@ -4613,7 +4750,6 @@ class SecondaryArgTest(fixtures.TestBase):
 class SecondaryNestedJoinTest(
     fixtures.MappedTest, AssertsCompiledSQL, testing.AssertsExecutionResults
 ):
-
     """test support for a relationship where the 'secondary' table is a
     compound join().
 
@@ -6381,7 +6517,6 @@ class RaiseLoadTest(_fixtures.FixtureTest):
 
 
 class RelationDeprecationTest(fixtures.MappedTest):
-
     """test usage of the old 'relation' function."""
 
     run_inserts = "once"

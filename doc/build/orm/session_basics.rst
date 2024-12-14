@@ -154,7 +154,7 @@ The purpose of :class:`_orm.sessionmaker` is to provide a factory for
 :class:`_orm.Session` objects with a fixed configuration.   As it is typical
 that an application will have an :class:`_engine.Engine` object in module
 scope, the :class:`_orm.sessionmaker` can provide a factory for
-:class:`_orm.Session` objects that are against this engine::
+:class:`_orm.Session` objects that are constructed against this engine::
 
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker

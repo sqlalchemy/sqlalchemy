@@ -1,5 +1,5 @@
-# mysql/pyodbc.py
-# Copyright (C) 2005-2023 the SQLAlchemy authors and contributors
+# dialects/mysql/pyodbc.py
+# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -30,14 +30,15 @@ r"""
 Pass through exact pyodbc connection string::
 
     import urllib
+
     connection_string = (
-        'DRIVER=MySQL ODBC 8.0 ANSI Driver;'
-        'SERVER=localhost;'
-        'PORT=3307;'
-        'DATABASE=mydb;'
-        'UID=root;'
-        'PWD=(whatever);'
-        'charset=utf8mb4;'
+        "DRIVER=MySQL ODBC 8.0 ANSI Driver;"
+        "SERVER=localhost;"
+        "PORT=3307;"
+        "DATABASE=mydb;"
+        "UID=root;"
+        "PWD=(whatever);"
+        "charset=utf8mb4;"
     )
     params = urllib.parse.quote_plus(connection_string)
     connection_uri = "mysql+pyodbc:///?odbc_connect=%s" % params

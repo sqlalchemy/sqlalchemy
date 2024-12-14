@@ -18,7 +18,7 @@ attrs_ third party integration library.
 .. _orm_declarative_native_dataclasses:
 
 Declarative Dataclass Mapping
--------------------------------
+-----------------------------
 
 SQLAlchemy :ref:`Annotated Declarative Table <orm_declarative_mapped_column>`
 mappings may be augmented with an additional
@@ -41,7 +41,7 @@ decorator.
    limited and is currently known to be supported by Pyright_ as well
    as Mypy_ as of **version 1.2**.  Note that Mypy 1.1.1 introduced
    :pep:`681` support but did not correctly accommodate Python descriptors
-   which will lead to errors when using SQLAlhcemy's ORM mapping scheme.
+   which will lead to errors when using SQLAlchemy's ORM mapping scheme.
 
    .. seealso::
 
@@ -278,17 +278,24 @@ parameter for ``created_at`` were passed proceeds as:
 Integration with Annotated
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The approach introduced at :ref:`orm_declarative_mapped_column_pep593` illustrates
-how to use :pep:`593` ``Annotated`` objects to package whole
-:func:`_orm.mapped_column` constructs for re-use.  This feature is supported
-with the dataclasses feature.   One aspect of the feature however requires
-a workaround when working with typing tools, which is that the
-:pep:`681`-specific arguments ``init``, ``default``, ``repr``, and ``default_factory``
-**must** be on the right hand side, packaged into an explicit :func:`_orm.mapped_column`
-construct, in order for the typing tool to interpret the attribute correctly.
-As an example, the approach below will work perfectly fine at runtime,
-however typing tools will consider the ``User()`` construction to be
-invalid, as they do not see the ``init=False`` parameter present::
+The approach introduced at :ref:`orm_declarative_mapped_column_pep593`
+illustrates how to use :pep:`593` ``Annotated`` objects to package whole
+:func:`_orm.mapped_column` constructs for re-use.  While ``Annotated`` objects
+can be combined with the use of dataclasses, **dataclass-specific keyword
+arguments unfortunately cannot be used within the Annotated construct**.  This
+includes :pep:`681`-specific arguments ``init``, ``default``, ``repr``, and
+``default_factory``, which **must** be present in a :func:`_orm.mapped_column`
+or similar construct inline with the class attribute.
+
+.. versionchanged:: 2.0.14/2.0.22  the ``Annotated`` construct when used with
+   an ORM construct like :func:`_orm.mapped_column` cannot accommodate dataclass
+   field parameters such as ``init`` and ``repr`` - this use goes against the
+   design of Python dataclasses and is not supported by :pep:`681`, and therefore
+   is also rejected by the SQLAlchemy ORM at runtime.   A deprecation warning
+   is now emitted and the attribute will be ignored.
+
+As an example, the ``init=False`` parameter below will be ignored and additionally
+emit a deprecation warning::
 
     from typing import Annotated
 
@@ -296,7 +303,7 @@ invalid, as they do not see the ``init=False`` parameter present::
     from sqlalchemy.orm import mapped_column
     from sqlalchemy.orm import registry
 
-    # typing tools will ignore init=False here
+    # typing tools as well as SQLAlchemy will ignore init=False here
     intpk = Annotated[int, mapped_column(init=False, primary_key=True)]
 
     reg = registry()
@@ -308,7 +315,7 @@ invalid, as they do not see the ``init=False`` parameter present::
         id: Mapped[intpk]
 
 
-    # typing error: Argument missing for parameter "id"
+    # typing error as well as runtime error: Argument missing for parameter "id"
     u1 = User()
 
 Instead, :func:`_orm.mapped_column` must be present on the right side
@@ -424,7 +431,7 @@ scalar object references may make use of
 The above mapping will generate an empty list for ``Parent.children`` when a
 new ``Parent()`` object is constructed without passing ``children``, and
 similarly a ``None`` value for ``Child.parent`` when a new ``Child()`` object
-is constructed without passsing ``parent``.
+is constructed without passing ``parent``.
 
 While the :paramref:`_orm.relationship.default_factory` can be automatically
 derived from the given collection class of the :func:`_orm.relationship`
@@ -705,6 +712,15 @@ which itself is specified within the ``__mapper_args__`` dictionary, so that it
 is passed to the constructor for :class:`_orm.Mapper`. An alternative to this
 approach is in the next example.
 
+
+.. warning::
+    Declaring a dataclass ``field()`` setting a ``default`` together with ``init=False``
+    will not work as would be expected with a totally plain dataclass,
+    since the SQLAlchemy class instrumentation will replace
+    the default value set on the class by the dataclass creation process.
+    Use ``default_factory`` instead. This adaptation is done automatically when
+    making use of :ref:`orm_declarative_native_dataclasses`.
+
 .. _orm_declarative_dataclasses_declarative_table:
 
 Mapping pre-existing dataclasses using Declarative-style fields
@@ -778,8 +794,8 @@ example at :ref:`orm_declarative_mixins_relationships`::
 
     class RefTargetMixin:
         @declared_attr
-        def target_id(cls):
-            return Column("target_id", ForeignKey("target.id"))
+        def target_id(cls) -> Mapped[int]:
+            return mapped_column("target_id", ForeignKey("target.id"))
 
         @declared_attr
         def target(cls):
@@ -908,6 +924,9 @@ variables::
     )
 
     mapper_registry.map_imperatively(Address, address)
+
+The same warning mentioned in :ref:`orm_declarative_dataclasses_imperative_table`
+applies when using this mapping style.
 
 .. _orm_declarative_attrs_imperative_table:
 

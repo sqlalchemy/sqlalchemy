@@ -379,6 +379,58 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
 
     @testing.combinations(
         (
+            lambda Engineer, Report: select(Report.report_id)
+            .select_from(Engineer)
+            .join(Engineer.reports),
+        ),
+        (
+            lambda Engineer, Report: select(Report.report_id).select_from(
+                orm_join(Engineer, Report, Engineer.reports)
+            ),
+        ),
+        (
+            lambda Engineer, Report: select(Report.report_id).join_from(
+                Engineer, Report, Engineer.reports
+            ),
+        ),
+        (
+            lambda Engineer, Report: select(Report.report_id)
+            .select_from(Engineer)
+            .join(Report),
+        ),
+        argnames="stmt_fn",
+    )
+    @testing.combinations(True, False, argnames="alias_engineer")
+    def test_select_col_only_from_w_join(self, stmt_fn, alias_engineer):
+        """test #11412 which seems to have been fixed by #10365"""
+
+        Engineer = self.classes.Engineer
+        Report = self.classes.Report
+
+        if alias_engineer:
+            Engineer = aliased(Engineer)
+        stmt = testing.resolve_lambda(
+            stmt_fn, Engineer=Engineer, Report=Report
+        )
+
+        if alias_engineer:
+            self.assert_compile(
+                stmt,
+                "SELECT reports.report_id FROM employees AS employees_1 "
+                "JOIN reports ON employees_1.employee_id = "
+                "reports.employee_id WHERE employees_1.type "
+                "IN (__[POSTCOMPILE_type_1])",
+            )
+        else:
+            self.assert_compile(
+                stmt,
+                "SELECT reports.report_id FROM employees JOIN reports "
+                "ON employees.employee_id = reports.employee_id "
+                "WHERE employees.type IN (__[POSTCOMPILE_type_1])",
+            )
+
+    @testing.combinations(
+        (
             lambda Engineer, Report: select(Report)
             .select_from(Engineer)
             .join(Engineer.reports),
@@ -1909,9 +1961,11 @@ class SingleFromPolySelectableTest(
             e1 = aliased(Engineer, flat=True)
             q = s.query(Boss).join(e1, e1.manager_id == Boss.id)
 
-        with _aliased_join_warning(
-            r"Mapper\[Engineer\(engineer\)\]"
-        ) if autoalias else nullcontext():
+        with (
+            _aliased_join_warning(r"Mapper\[Engineer\(engineer\)\]")
+            if autoalias
+            else nullcontext()
+        ):
             self.assert_compile(
                 q,
                 "SELECT manager.id AS manager_id, employee.id AS employee_id, "
@@ -1974,9 +2028,11 @@ class SingleFromPolySelectableTest(
             b1 = aliased(Boss, flat=True)
             q = s.query(Engineer).join(b1, Engineer.manager_id == b1.id)
 
-        with _aliased_join_warning(
-            r"Mapper\[Boss\(manager\)\]"
-        ) if autoalias else nullcontext():
+        with (
+            _aliased_join_warning(r"Mapper\[Boss\(manager\)\]")
+            if autoalias
+            else nullcontext()
+        ):
             self.assert_compile(
                 q,
                 "SELECT engineer.id AS engineer_id, "

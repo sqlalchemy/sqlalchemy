@@ -296,7 +296,9 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
     def test_recursive_union_no_alias_two(self):
         """
 
-        pg's example::
+        pg's example:
+
+        .. sourcecode:: sql
 
             WITH RECURSIVE t(n) AS (
                 VALUES (1)
@@ -518,7 +520,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         else:
             assert_raises_message(
                 CompileError,
-                "Multiple, unrelated CTEs found " "with the same name: 'cte1'",
+                "Multiple, unrelated CTEs found with the same name: 'cte1'",
                 s.compile,
             )
 
@@ -613,7 +615,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
                 stmt,
                 "WITH anon_1 AS (SELECT test.a AS b FROM test %s b) "
                 "SELECT (SELECT anon_1.b FROM anon_1) AS c"
-                % ("ORDER BY" if order_by == "order_by" else "GROUP BY")
+                % ("ORDER BY" if order_by == "order_by" else "GROUP BY"),
                 # prior to the fix, the use_object version came out as:
                 # "WITH anon_1 AS (SELECT test.a AS b FROM test "
                 # "ORDER BY test.a) "
@@ -1382,6 +1384,36 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             )
         else:
             assert False
+
+    @testing.variation("operation", ["insert", "update", "delete"])
+    def test_stringify_standalone_dml_cte(self, operation):
+        """test issue discovered as part of #10753"""
+
+        t1 = table("table_1", column("id"), column("val"))
+
+        if operation.insert:
+            stmt = t1.insert()
+            expected = (
+                "INSERT INTO table_1 (id, val) VALUES (:id, :val) "
+                "RETURNING table_1.id, table_1.val"
+            )
+        elif operation.update:
+            stmt = t1.update()
+            expected = (
+                "UPDATE table_1 SET id=:id, val=:val "
+                "RETURNING table_1.id, table_1.val"
+            )
+        elif operation.delete:
+            stmt = t1.delete()
+            expected = "DELETE FROM table_1 RETURNING table_1.id, table_1.val"
+        else:
+            operation.fail()
+
+        stmt = stmt.returning(t1.c.id, t1.c.val)
+
+        cte = stmt.cte()
+
+        self.assert_compile(cte, expected)
 
     @testing.combinations(
         ("default_enhanced",),
