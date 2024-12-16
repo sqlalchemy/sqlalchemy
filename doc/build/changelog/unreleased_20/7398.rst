@@ -1,0 +1,6 @@
+.. change::
+    :tags: usecase, sqlite
+    :ticket: 7398
+
+    Added SQLite table option to enable ``STRICT`` tables.
+    Pull request courtesy of Guilherme Crocetti.
