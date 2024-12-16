@@ -195,6 +195,9 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
     comparator_factory = Comparator
 
     def bind_processor(self, dialect):
+        # note that dialect-specific types like that of psycopg and
+        # psycopg2 will override this method to allow driver-level conversion
+        # instead, see _PsycopgHStore
         def process(value):
             if isinstance(value, dict):
                 return _serialize_hstore(value)
@@ -204,6 +207,9 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
         return process
 
     def result_processor(self, dialect, coltype):
+        # note that dialect-specific types like that of psycopg and
+        # psycopg2 will override this method to allow driver-level conversion
+        # instead, see _PsycopgHStore
         def process(value):
             if value is not None:
                 return _parse_hstore(value)
