@@ -668,6 +668,19 @@ class TraversalComparatorStrategy(HasTraversalDispatch, util.MemoizedSlots):
             for l, r in zip_longest(ltup, rtup, fillvalue=None):
                 self.stack.append((l, r))
 
+    def visit_multi_list(
+        self, attrname, left_parent, left, right_parent, right, **kw
+    ):
+        for l, r in zip_longest(left, right, fillvalue=None):
+            if isinstance(l, str):
+                if not isinstance(r, str) or l != r:
+                    return COMPARE_FAILED
+            elif isinstance(r, str):
+                if not isinstance(l, str) or l != r:
+                    return COMPARE_FAILED
+            else:
+                self.stack.append((l, r))
+
     def visit_clauseelement_list(
         self, attrname, left_parent, left, right_parent, right, **kw
     ):
@@ -796,7 +809,7 @@ class TraversalComparatorStrategy(HasTraversalDispatch, util.MemoizedSlots):
         else:
             return left == right
 
-    def visit_with_context_options(
+    def visit_compile_state_funcs(
         self, attrname, left_parent, left, right_parent, right, **kw
     ):
         return tuple((fn.__code__, c_key) for fn, c_key in left) == tuple(

@@ -19,6 +19,7 @@ from .orm import (
     stop_test_class_inside_fixtures as stop_test_class_inside_fixtures,
 )
 from .sql import CacheKeyFixture as CacheKeyFixture
+from .sql import CacheKeySuite as CacheKeySuite
 from .sql import (
     ComputedReflectionFixtureTest as ComputedReflectionFixtureTest,
 )

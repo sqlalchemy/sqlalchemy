@@ -18,6 +18,7 @@ from typing import cast
 from typing import Dict
 from typing import Iterable
 from typing import List
+from typing import Literal
 from typing import MutableMapping
 from typing import NoReturn
 from typing import Optional
@@ -48,6 +49,8 @@ from .base import DialectKWArgs
 from .base import Executable
 from .base import Generative
 from .base import HasCompileState
+from .base import HasSyntaxExtensions
+from .base import SyntaxExtension
 from .elements import BooleanClauseList
 from .elements import ClauseElement
 from .elements import ColumnClause
@@ -988,7 +991,7 @@ class ValuesBase(UpdateBase):
     """SELECT statement for INSERT .. FROM SELECT"""
 
     _post_values_clause: Optional[ClauseElement] = None
-    """used by extensions to Insert etc. to add additional syntacitcal
+    """used by extensions to Insert etc. to add additional syntactical
     constructs, e.g. ON CONFLICT etc."""
 
     _values: Optional[util.immutabledict[_DMLColumnElement, Any]] = None
@@ -1190,11 +1193,15 @@ class ValuesBase(UpdateBase):
         return self
 
 
-class Insert(ValuesBase):
+class Insert(ValuesBase, HasSyntaxExtensions[Literal["post_values"]]):
     """Represent an INSERT construct.
 
     The :class:`_expression.Insert` object is created using the
     :func:`_expression.insert()` function.
+
+    Available extension points:
+
+    * ``post_values``: applies additional logic after the ``VALUES`` clause.
 
     """
 
@@ -1235,8 +1242,25 @@ class Insert(ValuesBase):
         + HasCTE._has_ctes_traverse_internals
     )
 
+    _position_map = util.immutabledict(
+        {
+            "post_values": "_post_values_clause",
+        }
+    )
+
+    _post_values_clause: Optional[ClauseElement] = None
+    """extension point for a ClauseElement that will be compiled directly
+    after the VALUES portion of the :class:`.Insert` statement
+
+    """
+
     def __init__(self, table: _DMLTableArgument):
         super().__init__(table)
+
+    def _apply_syntax_extension_to_self(
+        self, extension: SyntaxExtension
+    ) -> None:
+        extension.apply_to_insert(self)
 
     @_generative
     def inline(self) -> Self:
@@ -1452,9 +1476,24 @@ class ReturningInsert(Insert, TypedReturnsRows[Unpack[_Ts]]):
     """
 
 
+# note: if not for MRO issues, this class should extend
+# from HasSyntaxExtensions[Literal["post_criteria"]]
 class DMLWhereBase:
     table: _DMLTableElement
     _where_criteria: Tuple[ColumnElement[Any], ...] = ()
+
+    _post_criteria_clause: Optional[ClauseElement] = None
+    """used by extensions to Update/Delete etc. to add additional syntacitcal
+    constructs, e.g. LIMIT etc.
+
+    .. versionadded:: 2.1
+
+    """
+
+    # can't put position_map here either without HasSyntaxExtensions
+    # _position_map = util.immutabledict(
+    #     {"post_criteria": "_post_criteria_clause"}
+    # )
 
     @_generative
     def where(self, *whereclause: _ColumnExpressionArgument[bool]) -> Self:
@@ -1528,11 +1567,17 @@ class DMLWhereBase:
         )
 
 
-class Update(DMLWhereBase, ValuesBase):
+class Update(
+    DMLWhereBase, ValuesBase, HasSyntaxExtensions[Literal["post_criteria"]]
+):
     """Represent an Update construct.
 
     The :class:`_expression.Update` object is created using the
     :func:`_expression.update()` function.
+
+    Available extension points:
+
+    * ``post_criteria``: applies additional logic after the ``WHERE`` clause.
 
     """
 
@@ -1550,6 +1595,7 @@ class Update(DMLWhereBase, ValuesBase):
             ("_returning", InternalTraversal.dp_clauseelement_tuple),
             ("_hints", InternalTraversal.dp_table_hint_list),
             ("_return_defaults", InternalTraversal.dp_boolean),
+            ("_post_criteria_clause", InternalTraversal.dp_clauseelement),
             (
                 "_return_defaults_columns",
                 InternalTraversal.dp_clauseelement_tuple,
@@ -1559,6 +1605,10 @@ class Update(DMLWhereBase, ValuesBase):
         + DialectKWArgs._dialect_kwargs_traverse_internals
         + Executable._executable_traverse_internals
         + HasCTE._has_ctes_traverse_internals
+    )
+
+    _position_map = util.immutabledict(
+        {"post_criteria": "_post_criteria_clause"}
     )
 
     def __init__(self, table: _DMLTableArgument):
@@ -1617,6 +1667,11 @@ class Update(DMLWhereBase, ValuesBase):
         """
         self._inline = True
         return self
+
+    def _apply_syntax_extension_to_self(
+        self, extension: SyntaxExtension
+    ) -> None:
+        extension.apply_to_update(self)
 
     if TYPE_CHECKING:
         # START OVERLOADED FUNCTIONS self.returning ReturningUpdate 1-8
@@ -1724,11 +1779,17 @@ class ReturningUpdate(Update, TypedReturnsRows[Unpack[_Ts]]):
     """
 
 
-class Delete(DMLWhereBase, UpdateBase):
+class Delete(
+    DMLWhereBase, UpdateBase, HasSyntaxExtensions[Literal["post_criteria"]]
+):
     """Represent a DELETE construct.
 
     The :class:`_expression.Delete` object is created using the
     :func:`_expression.delete()` function.
+
+    Available extension points:
+
+    * ``post_criteria``: applies additional logic after the ``WHERE`` clause.
 
     """
 
@@ -1742,6 +1803,7 @@ class Delete(DMLWhereBase, UpdateBase):
             ("_where_criteria", InternalTraversal.dp_clauseelement_tuple),
             ("_returning", InternalTraversal.dp_clauseelement_tuple),
             ("_hints", InternalTraversal.dp_table_hint_list),
+            ("_post_criteria_clause", InternalTraversal.dp_clauseelement),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
@@ -1749,10 +1811,19 @@ class Delete(DMLWhereBase, UpdateBase):
         + HasCTE._has_ctes_traverse_internals
     )
 
+    _position_map = util.immutabledict(
+        {"post_criteria": "_post_criteria_clause"}
+    )
+
     def __init__(self, table: _DMLTableArgument):
         self.table = coercions.expect(
             roles.DMLTableRole, table, apply_propagate_attrs=self
         )
+
+    def _apply_syntax_extension_to_self(
+        self, extension: SyntaxExtension
+    ) -> None:
+        extension.apply_to_delete(self)
 
     if TYPE_CHECKING:
         # START OVERLOADED FUNCTIONS self.returning ReturningDelete 1-8

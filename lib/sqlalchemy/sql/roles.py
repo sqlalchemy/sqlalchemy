@@ -42,6 +42,11 @@ class SQLRole:
     uses_inspection = False
 
 
+class SyntaxExtensionRole(SQLRole):
+    __slots__ = ()
+    _role_name = "Syntax extension construct"
+
+
 class UsesInspection:
     __slots__ = ()
     _post_inspect: Literal[None] = None

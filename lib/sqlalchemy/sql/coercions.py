@@ -52,6 +52,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _DDLColumnArgument
     from ._typing import _DMLTableArgument
     from ._typing import _FromClauseArgument
+    from .base import SyntaxExtension
     from .dml import _DMLTableElement
     from .elements import BindParameter
     from .elements import ClauseElement
@@ -207,6 +208,14 @@ def expect(
     element: Any,
     **kw: Any,
 ) -> Union[ColumnElement[Any], TextClause]: ...
+
+
+@overload
+def expect(
+    role: Type[roles.SyntaxExtensionRole],
+    element: Any,
+    **kw: Any,
+) -> SyntaxExtension: ...
 
 
 @overload
@@ -924,6 +933,10 @@ class WhereHavingImpl(_CoerceLiterals, _ColumnCoercions, RoleImpl):
 
     def _text_coercion(self, element, argname=None):
         return _no_text_coercion(element, argname)
+
+
+class SyntaxExtensionImpl(RoleImpl):
+    __slots__ = ()
 
 
 class StatementOptionImpl(_CoerceLiterals, RoleImpl):

@@ -1109,8 +1109,8 @@ class _LazyLoader(
                         ]
                     ).lazyload(rev).process_compile_state(compile_context)
 
-        stmt._with_context_options += (
-            (_lazyload_reverse, self.parent_property),
+        stmt = stmt._add_compile_state_func(
+            _lazyload_reverse, self.parent_property
         )
 
         lazy_clause, params = self._generate_lazy_clause(state, passive)
@@ -1774,7 +1774,7 @@ class _SubqueryLoader(_PostLoader):
                     util.to_list(self.parent_property.order_by)
                 )
 
-            q = q._add_context_option(
+            q = q._add_compile_state_func(
                 _setup_outermost_orderby, self.parent_property
             )
 
@@ -3331,7 +3331,7 @@ class _SelectInLoader(_PostLoader, util.MemoizedSlots):
                         util.to_list(self.parent_property.order_by)
                     )
 
-                q = q._add_context_option(
+                q = q._add_compile_state_func(
                     _setup_outermost_orderby, self.parent_property
                 )
 

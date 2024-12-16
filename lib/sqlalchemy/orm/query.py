@@ -137,6 +137,7 @@ if TYPE_CHECKING:
     from ..sql._typing import _TypedColumnClauseArgument as _TCCA
     from ..sql.base import CacheableOptions
     from ..sql.base import ExecutableOption
+    from ..sql.base import SyntaxExtension
     from ..sql.dml import UpdateBase
     from ..sql.elements import ColumnElement
     from ..sql.elements import Label
@@ -208,6 +209,8 @@ class Query(
     _label_style: SelectLabelStyle = SelectLabelStyle.LABEL_STYLE_LEGACY_ORM
 
     _memoized_select_entities = ()
+
+    _syntax_extensions: Tuple[SyntaxExtension, ...] = ()
 
     _compile_options: Union[Type[CacheableOptions], CacheableOptions] = (
         _ORMCompileState.default_compile_options
@@ -592,7 +595,7 @@ class Query(
             stmt = FromStatement(self._raw_columns, self._statement)
             stmt.__dict__.update(
                 _with_options=self._with_options,
-                _with_context_options=self._with_context_options,
+                _with_context_options=self._compile_state_funcs,
                 _compile_options=compile_options,
                 _execution_options=self._execution_options,
                 _propagate_attrs=self._propagate_attrs,
@@ -600,11 +603,14 @@ class Query(
         else:
             # Query / select() internal attributes are 99% cross-compatible
             stmt = Select._create_raw_select(**self.__dict__)
+
             stmt.__dict__.update(
                 _label_style=self._label_style,
                 _compile_options=compile_options,
                 _propagate_attrs=self._propagate_attrs,
             )
+            for ext in self._syntax_extensions:
+                stmt._apply_syntax_extension_to_self(ext)
             stmt.__dict__.pop("session", None)
 
         # ensure the ORM context is used to compile the statement, even
@@ -1425,6 +1431,7 @@ class Query(
             "_having_criteria",
             "_prefixes",
             "_suffixes",
+            "_syntax_extensions",
         ):
             self.__dict__.pop(attr, None)
         self._set_select_from([fromclause], set_entity_from)
@@ -2703,6 +2710,22 @@ class Query(
             self._distinct = True
         return self
 
+    @_generative
+    def ext(self, extension: SyntaxExtension) -> Self:
+        """Applies a SQL syntax extension to this statement.
+
+        .. seealso::
+
+            :ref:`examples_syntax_extensions`
+
+        .. versionadded:: 2.1
+
+        """
+
+        extension = coercions.expect(roles.SyntaxExtensionRole, extension)
+        self._syntax_extensions += (extension,)
+        return self
+
     def all(self) -> List[_T]:
         """Return the results represented by this :class:`_query.Query`
         as a list.
@@ -3227,6 +3250,10 @@ class Query(
             delete_ = delete_.with_dialect_options(**delete_args)
 
         delete_._where_criteria = self._where_criteria
+
+        for ext in self._syntax_extensions:
+            delete_._apply_syntax_extension_to_self(ext)
+
         result: CursorResult[Any] = self.session.execute(
             delete_,
             self._params,
@@ -3318,6 +3345,10 @@ class Query(
             upd = upd.with_dialect_options(**update_args)
 
         upd._where_criteria = self._where_criteria
+
+        for ext in self._syntax_extensions:
+            upd._apply_syntax_extension_to_self(ext)
+
         result: CursorResult[Any] = self.session.execute(
             upd,
             self._params,

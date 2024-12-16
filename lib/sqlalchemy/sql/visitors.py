@@ -218,7 +218,7 @@ class InternalTraversal(Enum):
 
     dp_executable_options = "EO"
 
-    dp_with_context_options = "WC"
+    dp_compile_state_funcs = "WC"
 
     dp_fromclause_ordered_set = "CO"
     """Visit an ordered set of :class:`_expression.FromClause` objects. """
