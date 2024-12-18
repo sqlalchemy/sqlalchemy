@@ -584,7 +584,7 @@ class MappedColumn(
         self._sort_order = kw.pop("sort_order", _NoArg.NO_ARG)
         self.column = cast("Column[_T]", Column(*arg, **kw))
         self.foreign_keys = self.column.foreign_keys
-        self._has_nullable = "nullable" in kw and kw.get("nullable") not in (
+        self._has_nullable = kw.get("nullable") not in (
             None,
             SchemaConst.NULL_UNSPECIFIED,
         )
