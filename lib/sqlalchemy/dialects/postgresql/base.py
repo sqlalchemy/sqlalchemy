@@ -2085,6 +2085,8 @@ class PGCompiler(compiler.SQLCompiler):
             else:
                 continue
 
+            # TODO: this coercion should be up front.  we can't cache
+            # SQL constructs with non-bound literals buried in them
             if coercions._is_literal(value):
                 value = elements.BindParameter(None, value, type_=c.type)
 

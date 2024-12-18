@@ -4293,6 +4293,10 @@ class ColumnCollectionMixin:
         ] = _gather_expressions
 
         if processed_expressions is not None:
+
+            # this is expected to be an empty list
+            assert not processed_expressions
+
             self._pending_colargs = []
             for (
                 expr,
