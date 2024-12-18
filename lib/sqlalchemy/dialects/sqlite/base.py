@@ -1481,9 +1481,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
         return self._generate_generic_binary(binary, " NOT REGEXP ", **kw)
 
     def _on_conflict_target(self, clause, **kw):
-        if clause.constraint_target is not None:
-            target_text = "(%s)" % clause.constraint_target
-        elif clause.inferred_target_elements is not None:
+        if clause.inferred_target_elements is not None:
             target_text = "(%s)" % ", ".join(
                 (
                     self.preparer.quote(c)
@@ -1497,7 +1495,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
                     clause.inferred_target_whereclause,
                     include_table=False,
                     use_schema=False,
-                    literal_binds=True,
+                    literal_execute=True,
                 )
 
         else:

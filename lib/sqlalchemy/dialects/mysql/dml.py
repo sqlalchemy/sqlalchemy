@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import Optional
@@ -185,6 +186,7 @@ class OnDuplicateClause(ClauseElement):
 
     _parameter_ordering: Optional[List[str]] = None
 
+    update: Dict[str, Any]
     stringify_dialect = "mysql"
 
     def __init__(
