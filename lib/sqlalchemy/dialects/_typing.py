@@ -13,6 +13,7 @@ from typing import Optional
 from typing import Union
 
 from ..sql import roles
+from ..sql.base import ColumnCollection
 from ..sql.schema import Column
 from ..sql.schema import ColumnCollectionConstraint
 from ..sql.schema import Index
@@ -23,5 +24,7 @@ _OnConflictIndexElementsT = Optional[
     Iterable[Union[Column[Any], str, roles.DDLConstraintColumnRole]]
 ]
 _OnConflictIndexWhereT = Optional[roles.WhereHavingRole]
-_OnConflictSetT = Optional[Mapping[Any, Any]]
+_OnConflictSetT = Optional[
+    Union[Mapping[Any, Any], ColumnCollection[Any, Any]]
+]
 _OnConflictWhereT = Optional[roles.WhereHavingRole]
