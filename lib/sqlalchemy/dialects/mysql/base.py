@@ -1403,6 +1403,8 @@ class MySQLCompiler(compiler.SQLCompiler):
         for column in (col for col in cols if col.key in on_duplicate.update):
             val = on_duplicate.update[column.key]
 
+            # TODO: this coercion should be up front.  we can't cache
+            # SQL constructs with non-bound literals buried in them
             if coercions._is_literal(val):
                 val = elements.BindParameter(None, val, type_=column.type)
                 value_text = self.process(val.self_group(), use_schema=False)

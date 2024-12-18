@@ -57,9 +57,9 @@ if typing.TYPE_CHECKING:
     from .elements import ClauseElement
     from .elements import ColumnClause
     from .elements import ColumnElement
-    from .elements import DQLDMLClauseElement
     from .elements import NamedColumn
     from .elements import SQLCoreOperations
+    from .elements import TextClause
     from .schema import Column
     from .selectable import _ColumnsClauseElement
     from .selectable import _JoinTargetProtocol
@@ -190,7 +190,7 @@ def expect(
     role: Type[roles.DDLReferredColumnRole],
     element: Any,
     **kw: Any,
-) -> Column[Any]: ...
+) -> Union[Column[Any], str]: ...
 
 
 @overload
@@ -206,7 +206,7 @@ def expect(
     role: Type[roles.StatementOptionRole],
     element: Any,
     **kw: Any,
-) -> DQLDMLClauseElement: ...
+) -> Union[ColumnElement[Any], TextClause]: ...
 
 
 @overload
