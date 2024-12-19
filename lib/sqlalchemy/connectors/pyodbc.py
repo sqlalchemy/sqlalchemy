@@ -14,6 +14,7 @@ from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Sequence
 from typing import Tuple
 from typing import Union
 
@@ -228,7 +229,7 @@ class PyODBCConnector(Connector):
 
     def get_isolation_level_values(
         self, dbapi_connection: interfaces.DBAPIConnection
-    ) -> List[IsolationLevel]:
+    ) -> Sequence[IsolationLevel]:
         return super().get_isolation_level_values(dbapi_connection) + [
             "AUTOCOMMIT"
         ]

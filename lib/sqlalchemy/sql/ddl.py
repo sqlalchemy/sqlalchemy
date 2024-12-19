@@ -38,8 +38,10 @@ if typing.TYPE_CHECKING:
     from .compiler import Compiled
     from .compiler import DDLCompiler
     from .elements import BindParameter
+    from .schema import Column
     from .schema import Constraint
     from .schema import ForeignKeyConstraint
+    from .schema import Index
     from .schema import SchemaItem
     from .schema import Sequence
     from .schema import Table
@@ -712,8 +714,9 @@ class CreateIndex(_CreateBase):
     """Represent a CREATE INDEX statement."""
 
     __visit_name__ = "create_index"
+    element: "Index"
 
-    def __init__(self, element, if_not_exists=False):
+    def __init__(self, element: "Index", if_not_exists=False):
         """Create a :class:`.Createindex` construct.
 
         :param element: a :class:`_schema.Index` that's the subject
@@ -732,7 +735,9 @@ class DropIndex(_DropBase):
 
     __visit_name__ = "drop_index"
 
-    def __init__(self, element, if_exists=False):
+    element: "Index"
+
+    def __init__(self, element: "Index", if_exists=False):
         """Create a :class:`.DropIndex` construct.
 
         :param element: a :class:`_schema.Index` that's the subject
@@ -791,6 +796,7 @@ class SetColumnComment(_CreateDropBase):
     """Represent a COMMENT ON COLUMN IS statement."""
 
     __visit_name__ = "set_column_comment"
+    element: "Column"
 
 
 class DropColumnComment(_CreateDropBase):
