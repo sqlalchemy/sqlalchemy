@@ -2938,7 +2938,7 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
 
-class OnConflictCompileTest(AssertsCompiledSQL):
+class OnConflictCompileTest(AssertsCompiledSQL, fixtures.TestBase):
     __dialect__ = "sqlite"
 
     @testing.combinations(
@@ -2998,8 +2998,8 @@ class OnConflictCompileTest(AssertsCompiledSQL):
                 f"INSERT INTO users (id, name) VALUES (?, ?) {expected}",
             )
 
-    @testing.combinations("control", "excluded", "dict")
-    def test_set_excluded(self, scenario, users):
+    @testing.combinations("control", "excluded", "dict", argnames="scenario")
+    def test_set_excluded(self, scenario, users, users_w_key):
         """test #8014, sending all of .excluded to set"""
 
         if scenario == "control":
@@ -3011,7 +3011,6 @@ class OnConflictCompileTest(AssertsCompiledSQL):
                 "DO UPDATE SET id = excluded.id, name = excluded.name",
             )
         else:
-            users_w_key = self.tables.users_w_key
 
             stmt = insert(users_w_key)
 
@@ -3035,9 +3034,7 @@ class OnConflictCompileTest(AssertsCompiledSQL):
                     "DO UPDATE SET id = excluded.id, name = excluded.name",
                 )
 
-    def test_on_conflict_do_update_exotic_targets_six(
-        self, connection, users_xtra
-    ):
+    def test_on_conflict_do_update_exotic_targets_six(self, users_xtra):
         users = users_xtra
 
         unique_partial_index = schema.Index(
@@ -3048,16 +3045,6 @@ class OnConflictCompileTest(AssertsCompiledSQL):
             sqlite_where=users_xtra.c.lets_index_this == "unique_name",
         )
 
-        conn = connection
-        conn.execute(
-            insert(users),
-            dict(
-                id=1,
-                name="name1",
-                login_email="mail1@gmail.com",
-                lets_index_this="unique_name",
-            ),
-        )
         i = insert(users)
         i = i.on_conflict_do_update(
             index_elements=unique_partial_index.columns,
@@ -3092,6 +3079,16 @@ class OnConflictCompileTest(AssertsCompiledSQL):
             metadata,
             Column("id", Integer, primary_key=True),
             Column("name", String(50)),
+        )
+
+    @testing.fixture
+    def users_w_key(self):
+        metadata = MetaData()
+        return Table(
+            "users_w_key",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50), key="name_keyed"),
         )
 
     @testing.fixture
