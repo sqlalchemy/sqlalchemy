@@ -2216,8 +2216,8 @@ class TypeClause(DQLDMLClauseElement):
         ("type", InternalTraversal.dp_type)
     ]
 
-    def __init__(self, type_):
-        self.type = type_
+    def __init__(self, type_: TypeEngine):
+        self.type: TypeEngine = type_
 
 
 class TextClause(

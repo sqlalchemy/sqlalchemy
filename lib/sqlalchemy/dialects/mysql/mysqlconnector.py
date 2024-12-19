@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 
 r"""
@@ -24,17 +23,40 @@ r"""
 """  # noqa
 
 import re
+from types import ModuleType
+from typing import Any
+from typing import Sequence
+from typing import TYPE_CHECKING
+from typing import Unpack
 
-from .base import BIT
 from .base import MySQLCompiler
 from .base import MySQLDialect
 from .base import MySQLIdentifierPreparer
 from .mariadb import MariaDBDialect
+from .types import BIT
 from ... import util
+
+if TYPE_CHECKING:
+    from mysql import connector
+    from mysql.connector.abstracts import MySQLConnectionAbstract
+
+    from ...engine.base import Connection
+    from ...engine.cursor import CursorResult
+    from ...engine.interfaces import ConnectArgsType
+    from ...engine.row import Row
+    from ...engine.url import URL
+    from ...sql.elements import BinaryExpression
+    from ...util.typing import TupleAny
+
+    dbapi_connection = (
+        connector.pooling.PooledMySQLConnection | MySQLConnectionAbstract
+    )
 
 
 class MySQLCompiler_mysqlconnector(MySQLCompiler):
-    def visit_mod_binary(self, binary, operator, **kw):
+    def visit_mod_binary(
+        self, binary: "BinaryExpression[Any]", operator: Any, **kw: Any
+    ) -> str:
         return (
             self.process(binary.left, **kw)
             + " % "
@@ -44,20 +66,20 @@ class MySQLCompiler_mysqlconnector(MySQLCompiler):
 
 class MySQLIdentifierPreparer_mysqlconnector(MySQLIdentifierPreparer):
     @property
-    def _double_percents(self):
+    def _double_percents(self) -> bool:
         return False
 
     @_double_percents.setter
-    def _double_percents(self, value):
+    def _double_percents(self, value: Any) -> None:
         pass
 
-    def _escape_identifier(self, value):
+    def _escape_identifier(self, value: str) -> str:
         value = value.replace(self.escape_quote, self.escape_to_quote)
         return value
 
 
 class _myconnpyBIT(BIT):
-    def result_processor(self, dialect, coltype):
+    def result_processor(self, dialect: Any, coltype: Any) -> None:
         """MySQL-connector already converts mysql bits, so."""
 
         return None
@@ -75,21 +97,26 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
     default_paramstyle = "format"
     statement_compiler = MySQLCompiler_mysqlconnector
 
-    preparer = MySQLIdentifierPreparer_mysqlconnector
+    preparer: type[MySQLIdentifierPreparer] = (
+        MySQLIdentifierPreparer_mysqlconnector
+    )
 
     colspecs = util.update_copy(MySQLDialect.colspecs, {BIT: _myconnpyBIT})
+    dbapi: "connector"  # type: ignore[valid-type]
 
     @classmethod
-    def import_dbapi(cls):
+    def import_dbapi(cls) -> ModuleType:
         from mysql import connector
 
         return connector
 
-    def do_ping(self, dbapi_connection):
+    def do_ping(
+        self, dbapi_connection: "dbapi_connection"  # type:ignore[override]
+    ) -> bool:
         dbapi_connection.ping(False)
         return True
 
-    def create_connect_args(self, url):
+    def create_connect_args(self, url: "URL") -> "ConnectArgsType":
         opts = url.translate_connect_args(username="user")
 
         opts.update(url.query)
@@ -129,24 +156,27 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
                 opts["client_flags"] = client_flags
             except Exception:
                 pass
-        return [[], opts]
+        return [], opts
 
     @util.memoized_property
-    def _mysqlconnector_version_info(self):
+    def _mysqlconnector_version_info(self) -> None | tuple[int, ...]:
         if self.dbapi and hasattr(self.dbapi, "__version__"):
-            m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", self.dbapi.__version__)
+            m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", self.dbapi.__version__)  # type: ignore[attr-defined] # noqa: E501
             if m:
                 return tuple(int(x) for x in m.group(1, 2, 3) if x is not None)
+        return None
 
-    def _detect_charset(self, connection):
-        return connection.connection.charset
+    def _detect_charset(self, connection: "Connection") -> str:
+        return connection.connection.charset  # type: ignore
 
-    def _extract_error_code(self, exception):
-        return exception.errno
+    def _extract_error_code(self, exception: BaseException) -> int:
+        return exception.errno  # type: ignore
 
-    def is_disconnect(self, e, connection, cursor):
+    def is_disconnect(
+        self, e: Exception, connection: Any, cursor: Any
+    ) -> bool:
         errnos = (2006, 2013, 2014, 2045, 2055, 2048)
-        exceptions = (self.dbapi.OperationalError, self.dbapi.InterfaceError)
+        exceptions = (self.dbapi.OperationalError, self.dbapi.InterfaceError)  # type: ignore[attr-defined] # noqa: E501
         if isinstance(e, exceptions):
             return (
                 e.errno in errnos
@@ -156,10 +186,14 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
         else:
             return False
 
-    def _compat_fetchall(self, rp, charset=None):
+    def _compat_fetchall(
+        self, rp: "CursorResult[Unpack[TupleAny]]", charset: str | None = None
+    ) -> "Sequence[Row[*tuple[Any, ...]]]":
         return rp.fetchall()
 
-    def _compat_fetchone(self, rp, charset=None):
+    def _compat_fetchone(
+        self, rp: "CursorResult[Unpack[TupleAny]]", charset: str | None = None
+    ) -> "Row[*tuple[Any, ...]] | None":
         return rp.fetchone()
 
     _isolation_lookup = {
@@ -169,13 +203,6 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
         "REPEATABLE READ",
         "AUTOCOMMIT",
     }
-
-    def _set_isolation_level(self, connection, level):
-        if level == "AUTOCOMMIT":
-            connection.autocommit = True
-        else:
-            connection.autocommit = False
-            super()._set_isolation_level(connection, level)
 
 
 class MariaDBDialect_mysqlconnector(

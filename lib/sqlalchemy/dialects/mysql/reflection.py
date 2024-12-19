@@ -4,10 +4,12 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 
 import re
+from typing import Any
+from typing import Callable
+from typing import TYPE_CHECKING
 
 from .enumerated import ENUM
 from .enumerated import SET
@@ -18,11 +20,14 @@ from ... import log
 from ... import types as sqltypes
 from ... import util
 
+if TYPE_CHECKING:
+    from .base import MySQLIdentifierPreparer
+
 
 class ReflectedState:
     """Stores raw information about a SHOW CREATE TABLE statement."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.columns = []
         self.table_options = {}
         self.table_name = None
@@ -32,15 +37,15 @@ class ReflectedState:
 
 
 @log.class_logger
-class MySQLTableDefinitionParser:
+class MySQLTableDefinitionParser(log.Identified):
     """Parses the results of a SHOW CREATE TABLE statement."""
 
-    def __init__(self, dialect, preparer):
+    def __init__(self, dialect, preparer: "MySQLIdentifierPreparer"):
         self.dialect = dialect
         self.preparer = preparer
         self._prep_regexes()
 
-    def parse(self, show_create, charset):
+    def parse(self, show_create: str, charset: str | None) -> ReflectedState:
         state = ReflectedState()
         state.charset = charset
         for line in re.split(r"\r?\n", show_create):
@@ -326,7 +331,7 @@ class MySQLTableDefinitionParser:
         col_d.update(col_kw)
         state.columns.append(col_d)
 
-    def _describe_to_create(self, table_name, columns):
+    def _describe_to_create(self, table_name: str, columns):
         """Re-format DESCRIBE output as a SHOW CREATE TABLE string.
 
         DESCRIBE is a much simpler reflection and is sufficient for
@@ -629,13 +634,15 @@ _options_of_type_string = (
 )
 
 
-def _pr_compile(regex, cleanup=None):
+def _pr_compile(
+    regex: str, cleanup: Callable[[str], str] | None = None
+) -> tuple[re.Pattern[Any], Callable[[str], str] | None]:
     """Prepare a 2-tuple of compiled regex and callable."""
 
     return (_re_compile(regex), cleanup)
 
 
-def _re_compile(regex):
+def _re_compile(regex: str) -> re.Pattern[Any]:
     """Compile a string to regex, I and UNICODE."""
 
     return re.compile(regex, re.I | re.UNICODE)
