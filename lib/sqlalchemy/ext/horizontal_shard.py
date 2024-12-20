@@ -321,7 +321,7 @@ class ShardedSession(Session):
             state.identity_token = shard_id
         return shard_id
 
-    def connection_callable(  # type: ignore [override]
+    def connection_callable(
         self,
         mapper: Optional[Mapper[_T]] = None,
         instance: Optional[Any] = None,

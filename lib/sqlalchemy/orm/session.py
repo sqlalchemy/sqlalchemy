@@ -1775,7 +1775,7 @@ class Session(_SessionClassMethods, EventTarget):
 
         # the idea is that at some point NO_ARG will warn that in the future
         # the default will switch to close_resets_only=False.
-        if close_resets_only or close_resets_only is _NoArg.NO_ARG:
+        if close_resets_only in (True, _NoArg.NO_ARG):
             self._close_state = _SessionCloseState.CLOSE_IS_RESET
         else:
             self._close_state = _SessionCloseState.ACTIVE
