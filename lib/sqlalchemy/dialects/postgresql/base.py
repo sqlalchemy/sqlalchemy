@@ -3833,8 +3833,7 @@ class PGDialect(default.DefaultDialect):
                 args = tuple(enum["labels"])
                 kwargs["name"] = enum["name"]
 
-                if not enum["visible"]:
-                    kwargs["schema"] = enum["schema"]
+                kwargs["schema"] = enum["schema"]
                 args = tuple(enum["labels"])
             elif enum_or_domain_key in domains:
                 schema_type = DOMAIN
