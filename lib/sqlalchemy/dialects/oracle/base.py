@@ -474,6 +474,49 @@ the ``exclude_tablespaces`` parameter::
         exclude_tablespaces=["SYSAUX", "SOME_TABLESPACE"],
     )
 
+.. _oracle_float_support:
+
+FLOAT / DOUBLE Support and Behaviors
+------------------------------------
+
+The SQLAlchemy :class:`.Float` and :class:`.Double` datatypes are generic
+datatypes that resolve to the "least surprising" datatype for a given backend.
+For Oracle Database, this means they resolve to the ``FLOAT`` and ``DOUBLE``
+types::
+
+    >>> from sqlalchemy import cast, literal, Float
+    >>> from sqlalchemy.dialects import oracle
+    >>> float_datatype = Float()
+    >>> print(cast(literal(5.0), float_datatype).compile(dialect=oracle.dialect()))
+    CAST(:param_1 AS FLOAT)
+
+Oracle's ``FLOAT`` / ``DOUBLE`` datatypes are aliases for ``NUMBER``.   Oracle
+Database stores ``NUMBER`` values with full precision, not floating point
+precision, which means that ``FLOAT`` / ``DOUBLE`` do not actually behave like
+native FP values. Oracle Database instead offers special datatypes
+``BINARY_FLOAT`` and ``BINARY_DOUBLE`` to deliver real 4- and 8- byte FP
+values.
+
+SQLAlchemy supports these datatypes directly using :class:`.BINARY_FLOAT` and
+:class:`.BINARY_DOUBLE`.   To use the :class:`.Float` or :class:`.Double`
+datatypes in a database agnostic way, while allowing Oracle backends to utilize
+one of these types, use the :meth:`.TypeEngine.with_variant` method to set up a
+variant::
+
+    >>> from sqlalchemy import cast, literal, Float
+    >>> from sqlalchemy.dialects import oracle
+    >>> float_datatype = Float().with_variant(oracle.BINARY_FLOAT(), "oracle")
+    >>> print(cast(literal(5.0), float_datatype).compile(dialect=oracle.dialect()))
+    CAST(:param_1 AS BINARY_FLOAT)
+
+E.g. to use this datatype in a :class:`.Table` definition::
+
+    my_table = Table(
+        "my_table", metadata,
+        Column("fp_data", Float().with_variant(oracle.BINARY_FLOAT(), "oracle"))
+    )
+
+
 DateTime Compatibility
 ----------------------
 
