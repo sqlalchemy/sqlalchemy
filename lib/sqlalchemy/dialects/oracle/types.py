@@ -114,7 +114,7 @@ class BINARY_DOUBLE(sqltypes.Double):
     """Implement the Oracle ``BINARY_DOUBLE`` datatype.
 
     This datatype differs from the Oracle ``DOUBLE`` datatype in that it
-    delivers a true 4-byte FP value.   The datatype may be combined with a
+    delivers a true 8-byte FP value.   The datatype may be combined with a
     generic :class:`.Double` datatype using :meth:`.TypeEngine.with_variant`.
 
     .. seealso::
