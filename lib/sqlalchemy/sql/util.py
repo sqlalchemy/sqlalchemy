@@ -21,6 +21,7 @@ from typing import Callable
 from typing import cast
 from typing import Collection
 from typing import Dict
+from typing import Generator
 from typing import Iterable
 from typing import Iterator
 from typing import List
@@ -481,7 +482,9 @@ def surface_selectables(clause):
             stack.append(elem.element)
 
 
-def surface_selectables_only(clause):
+def surface_selectables_only(
+    clause: ClauseElement,
+) -> Generator[ClauseElement]:
     stack = [clause]
     while stack:
         elem = stack.pop()

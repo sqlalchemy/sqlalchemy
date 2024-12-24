@@ -4,10 +4,14 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 
 import re
+from typing import Any
+from typing import Callable
+from typing import overload
+from typing import Sequence
+from typing import TYPE_CHECKING
 
 from .enumerated import ENUM
 from .enumerated import SET
@@ -18,11 +22,14 @@ from ... import log
 from ... import types as sqltypes
 from ... import util
 
+if TYPE_CHECKING:
+    from .base import MySQLIdentifierPreparer
+
 
 class ReflectedState:
     """Stores raw information about a SHOW CREATE TABLE statement."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.columns = []
         self.table_options = {}
         self.table_name = None
@@ -32,15 +39,15 @@ class ReflectedState:
 
 
 @log.class_logger
-class MySQLTableDefinitionParser:
+class MySQLTableDefinitionParser(log.Identified):
     """Parses the results of a SHOW CREATE TABLE statement."""
 
-    def __init__(self, dialect, preparer):
+    def __init__(self, dialect, preparer: "MySQLIdentifierPreparer"):
         self.dialect = dialect
         self.preparer = preparer
         self._prep_regexes()
 
-    def parse(self, show_create, charset):
+    def parse(self, show_create: str, charset: str | None) -> ReflectedState:
         state = ReflectedState()
         state.charset = charset
         for line in re.split(r"\r?\n", show_create):
@@ -138,7 +145,7 @@ class MySQLTableDefinitionParser:
         if m:
             state.table_name = cleanup(m.group("name"))
 
-    def _parse_table_options(self, line, state):
+    def _parse_table_options(self, line: str, state: ReflectedState) -> None:
         """Build a dictionary of all reflected table-level options.
 
         :param line: The final line of SHOW CREATE TABLE output.
@@ -164,7 +171,9 @@ class MySQLTableDefinitionParser:
         for opt, val in options.items():
             state.table_options["%s_%s" % (self.dialect.name, opt)] = val
 
-    def _parse_partition_options(self, line, state):
+    def _parse_partition_options(
+        self, line: str, state: ReflectedState
+    ) -> None:
         options = {}
         new_line = line[:]
 
@@ -220,7 +229,7 @@ class MySQLTableDefinitionParser:
             else:
                 state.table_options["%s_%s" % (self.dialect.name, opt)] = val
 
-    def _parse_column(self, line, state):
+    def _parse_column(self, line: str, state: ReflectedState) -> None:
         """Extract column details.
 
         Falls back to a 'minimal support' variant if full parse fails.
@@ -283,7 +292,7 @@ class MySQLTableDefinitionParser:
 
         type_instance = col_type(*type_args, **type_kw)
 
-        col_kw = {}
+        col_kw: dict[str, Any] = {}
 
         # NOT NULL
         col_kw["nullable"] = True
@@ -326,7 +335,11 @@ class MySQLTableDefinitionParser:
         col_d.update(col_kw)
         state.columns.append(col_d)
 
-    def _describe_to_create(self, table_name, columns):
+    def _describe_to_create(
+        self,
+        table_name: str,
+        columns: "Sequence[tuple[str,str,str,str,str,str]]",
+    ) -> str:
         """Re-format DESCRIBE output as a SHOW CREATE TABLE string.
 
         DESCRIBE is a much simpler reflection and is sufficient for
@@ -379,7 +392,9 @@ class MySQLTableDefinitionParser:
             ]
         )
 
-    def _parse_keyexprs(self, identifiers):
+    def _parse_keyexprs(
+        self, identifiers: str
+    ) -> list[tuple[Any, int | None, Any]]:
         """Unpack '"col"(2),"col" ASC'-ish strings into components."""
 
         return [
@@ -389,11 +404,12 @@ class MySQLTableDefinitionParser:
             )
         ]
 
-    def _prep_regexes(self):
+    def _prep_regexes(self) -> None:
         """Pre-compile regular expressions."""
 
-        self._re_columns = []
-        self._pr_options = []
+        self._pr_options: list[
+            tuple[re.Pattern[Any], Callable[[str], str] | None]
+        ] = []
 
         _final = self.preparer.final_quote
 
@@ -582,21 +598,21 @@ class MySQLTableDefinitionParser:
 
     _optional_equals = r"(?:\s*(?:=\s*)|\s+)"
 
-    def _add_option_string(self, directive):
+    def _add_option_string(self, directive: str) -> None:
         regex = r"(?P<directive>%s)%s" r"'(?P<val>(?:[^']|'')*?)'(?!')" % (
             re.escape(directive),
             self._optional_equals,
         )
         self._pr_options.append(_pr_compile(regex, cleanup_text))
 
-    def _add_option_word(self, directive):
+    def _add_option_word(self, directive: str) -> None:
         regex = r"(?P<directive>%s)%s" r"(?P<val>\w+)" % (
             re.escape(directive),
             self._optional_equals,
         )
         self._pr_options.append(_pr_compile(regex))
 
-    def _add_partition_option_word(self, directive):
+    def _add_partition_option_word(self, directive: str) -> None:
         if directive == "PARTITION BY" or directive == "SUBPARTITION BY":
             regex = r"(?<!\S)(?P<directive>%s)%s" r"(?P<val>\w+.*)" % (
                 re.escape(directive),
@@ -611,7 +627,7 @@ class MySQLTableDefinitionParser:
             regex = r"(?<!\S)(?P<directive>%s)(?!\S)" % (re.escape(directive),)
         self._pr_options.append(_pr_compile(regex))
 
-    def _add_option_regex(self, directive, regex):
+    def _add_option_regex(self, directive: str, regex: str) -> None:
         regex = r"(?P<directive>%s)%s" r"(?P<val>%s)" % (
             re.escape(directive),
             self._optional_equals,
@@ -629,21 +645,35 @@ _options_of_type_string = (
 )
 
 
-def _pr_compile(regex, cleanup=None):
+@overload
+def _pr_compile(
+    regex: str, cleanup: Callable[[str], str]
+) -> tuple[re.Pattern[Any], Callable[[str], str]]: ...
+
+
+@overload
+def _pr_compile(
+    regex: str, cleanup: None = None
+) -> tuple[re.Pattern[Any], None]: ...
+
+
+def _pr_compile(
+    regex: str, cleanup: Callable[[str], str] | None = None
+) -> tuple[re.Pattern[Any], Callable[[str], str] | None]:
     """Prepare a 2-tuple of compiled regex and callable."""
 
     return (_re_compile(regex), cleanup)
 
 
-def _re_compile(regex):
+def _re_compile(regex: str) -> re.Pattern[Any]:
     """Compile a string to regex, I and UNICODE."""
 
     return re.compile(regex, re.I | re.UNICODE)
 
 
-def _strip_values(values):
+def _strip_values(values: Sequence[str]) -> list[str]:
     "Strip reflected values quotes"
-    strip_values = []
+    strip_values: list[str] = []
     for a in values:
         if a[0:1] == '"' or a[0:1] == "'":
             # strip enclosing quotes and unquote interior
@@ -655,7 +685,9 @@ def _strip_values(values):
 def cleanup_text(raw_text: str) -> str:
     if "\\" in raw_text:
         raw_text = re.sub(
-            _control_char_regexp, lambda s: _control_char_map[s[0]], raw_text
+            _control_char_regexp,
+            lambda s: _control_char_map[s[0]],  # type: ignore[index]
+            raw_text,
         )
     return raw_text.replace("''", "'")
 

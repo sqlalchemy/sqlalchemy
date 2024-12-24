@@ -2216,8 +2216,8 @@ class TypeClause(DQLDMLClauseElement):
         ("type", InternalTraversal.dp_type)
     ]
 
-    def __init__(self, type_):
-        self.type = type_
+    def __init__(self, type_: TypeEngine):
+        self.type: TypeEngine = type_
 
 
 class TextClause(
@@ -3875,7 +3875,7 @@ class BinaryExpression(OperatorExpression[_T]):
 
     """
 
-    modifiers: Optional[Mapping[str, Any]]
+    modifiers: Mapping[str, Any]
 
     left: ColumnElement[Any]
     right: ColumnElement[Any]

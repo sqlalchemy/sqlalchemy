@@ -430,7 +430,7 @@ def to_column_set(x: Any) -> Set[Any]:
         return x
 
 
-def update_copy(d, _new=None, **kw):
+def update_copy(d: dict, _new: dict | None = None, **kw: dict):
     """Copy the given dict and update with the given values."""
 
     d = d.copy()
