@@ -512,10 +512,12 @@ variant::
 E.g. to use this datatype in a :class:`.Table` definition::
 
     my_table = Table(
-        "my_table", metadata,
-        Column("fp_data", Float().with_variant(oracle.BINARY_FLOAT(), "oracle"))
+        "my_table",
+        metadata,
+        Column(
+            "fp_data", Float().with_variant(oracle.BINARY_FLOAT(), "oracle")
+        ),
     )
-
 
 DateTime Compatibility
 ----------------------
