@@ -985,7 +985,7 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         :meth:`.MapperEvents.before_configured`,
         :meth:`.MapperEvents.after_configured`, and
         :meth:`.MapperEvents.mapper_configured`, the
-        :meth;`.MapperEvents.before_mapper_configured` event provides for a
+        :meth:`.MapperEvents.before_mapper_configured` event provides for a
         meaningful return value when it is registered with the ``retval=True``
         parameter.
 
