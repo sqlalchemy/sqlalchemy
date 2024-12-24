@@ -13,7 +13,7 @@ on:
 
 env:
   # global env to all steps
-  TOX_WORKERS: -n2
+  TOX_WORKERS: -n4
 
 permissions:
   contents: read
@@ -26,7 +26,7 @@ jobs:
       # run this job using this matrix, excluding some combinations below.
       matrix:
         os:
-          - "ubuntu-latest"
+          - "ubuntu-22.04"
           - "windows-latest"
           - "macos-latest"
           - "macos-13"
@@ -49,15 +49,15 @@ jobs:
           # autocommit tests fail on the ci for some reason
           - python-version: "pypy-3.10"
             pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
-          - os: "ubuntu-latest"
+          - os: "ubuntu-22.04"
             pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
 
 
         exclude:
           # linux do not have x86 / arm64 python
-          - os: "ubuntu-latest"
+          - os: "ubuntu-22.04"
             architecture: x86
-          - os: "ubuntu-latest"
+          - os: "ubuntu-22.04"
             architecture: arm64
           # windows des not have arm64 python
           - os: "windows-latest"
@@ -113,7 +113,7 @@ jobs:
   run-test-arm64:
     # Hopefully something native can be used at some point https://github.blog/changelog/2023-10-30-accelerate-your-ci-cd-with-arm-based-hosted-runners-in-github-actions/
     name: test-arm64-${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.os }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         python-version:
@@ -156,7 +156,7 @@ jobs:
       # run this job using this matrix, excluding some combinations below.
       matrix:
         os:
-          - "ubuntu-latest"
+          - "ubuntu-22.04"
         python-version:
           - "3.9"
           - "3.10"
@@ -171,7 +171,7 @@ jobs:
           # run lint only on 3.12
           - tox-env: lint
             python-version: "3.12"
-            os: "ubuntu-latest"
+            os: "ubuntu-22.04"
         exclude:
           # run pep484 only on 3.10+
           - tox-env: pep484
