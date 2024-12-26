@@ -976,7 +976,7 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         symbol which indicates to the :func:`.configure_mappers` call that this
         particular mapper (or hierarchy of mappers, if ``propagate=True`` is
         used) should be skipped in the current configuration run. When one or
-        more mappers are skipped, the he "new mappers" flag will remain set,
+        more mappers are skipped, the "new mappers" flag will remain set,
         meaning the :func:`.configure_mappers` function will continue to be
         called when mappers are used, to continue to try to configure all
         available mappers.
@@ -985,7 +985,7 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         :meth:`.MapperEvents.before_configured`,
         :meth:`.MapperEvents.after_configured`, and
         :meth:`.MapperEvents.mapper_configured`, the
-        :meth;`.MapperEvents.before_mapper_configured` event provides for a
+        :meth:`.MapperEvents.before_mapper_configured` event provides for a
         meaningful return value when it is registered with the ``retval=True``
         parameter.
 
