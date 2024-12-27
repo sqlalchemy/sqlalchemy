@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 11955
+
+    Consistently handle ``TypeAliasType`` (defined in PEP 695) obtained with the
+    ``type X = int`` syntax introduced in python 3.12.
+    Now in all cases one such alias must be explicitly added to the type map for
+    it to be usable inside ``Mapped[]``.
+    This change also revises the approach added in :ticket:`11305`, now requiring
+    the ``TypeAliasType`` to be added to the type map.
+    Documentation on how unions and type alias types are handled by SQLAlchemy
+    has been added in the :ref:`orm_declarative_mapped_column_type_map` section
+    of the documentation.

@@ -59,9 +59,11 @@ from .. import util
 from ..engine import processors
 from ..util import langhelpers
 from ..util import OrderedDict
+from ..util import warn_deprecated
+from ..util.typing import get_args
 from ..util.typing import is_literal
+from ..util.typing import is_pep695
 from ..util.typing import Literal
-from ..util.typing import typing_get_args
 
 if TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
@@ -1511,16 +1513,9 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
 
         native_enum = None
 
-        if not we_are_generic_form and python_type is matched_on:
-            # if we have enumerated values, and the incoming python
-            # type is exactly the one that matched in the type map,
-            # then we use these enumerated values and dont try to parse
-            # what's incoming
-            enum_args = self._enums_argument
-
-        elif is_literal(python_type):
+        def process_literal(pt):
             # for a literal, where we need to get its contents, parse it out.
-            enum_args = typing_get_args(python_type)
+            enum_args = get_args(pt)
             bad_args = [arg for arg in enum_args if not isinstance(arg, str)]
             if bad_args:
                 raise exc.ArgumentError(
@@ -1529,6 +1524,42 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
                     f"provide an explicit Enum datatype for this Python type"
                 )
             native_enum = False
+            return enum_args, native_enum
+
+        if not we_are_generic_form and python_type is matched_on:
+            # if we have enumerated values, and the incoming python
+            # type is exactly the one that matched in the type map,
+            # then we use these enumerated values and dont try to parse
+            # what's incoming
+            enum_args = self._enums_argument
+
+        elif is_literal(python_type):
+            enum_args, native_enum = process_literal(python_type)
+        elif is_pep695(python_type):
+            value = python_type.__value__
+            if is_pep695(value):
+                new_value = value
+                while is_pep695(new_value):
+                    new_value = new_value.__value__
+                if is_literal(new_value):
+                    value = new_value
+                    warn_deprecated(
+                        f"Mapping recursive TypeAliasType '{python_type}' "
+                        "that resolve to literal to generate an Enum is "
+                        "deprecated. SQLAlchemy 2.1 will not support this "
+                        "use case. Please avoid using recursing "
+                        "TypeAliasType.",
+                        "2.0",
+                    )
+            if not is_literal(value):
+                raise exc.ArgumentError(
+                    f"Can't associate TypeAliasType '{python_type}' to an "
+                    "Enum since it's not a direct alias of a Literal. Only "
+                    "aliases in this form `type my_alias = Literal['a', "
+                    "'b']` are supported when generating Enums."
+                )
+            enum_args, native_enum = process_literal(value)
+
         elif isinstance(python_type, type) and issubclass(
             python_type, enum.Enum
         ):
