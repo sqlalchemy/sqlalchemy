@@ -368,20 +368,33 @@ while still being able to use succinct annotation-only :func:`_orm.mapped_column
 configurations.  There are two more levels of Python-type configurability
 available beyond this, described in the next two sections.
 
+.. _orm_declarative_type_map_union_types:
+
 Union types inside the Type Map
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-SQLAlchemy supports mapping union types inside the type map to allow
-mapping database types that can support multiple Python types,
-such as :class:`_types.JSON` or :class:`_postgresql.JSONB`::
+.. versionchanged:: 2.0.37 The features described in this section have been
+   repaired and enhanced to work consistently.  Prior to this change, union
+   types were supported in ``type_annotation_map``, however the feature
+   exhibited inconsistent behaviors between union syntaxes as well as in how
+   ``None`` was handled.   Please ensure SQLAlchemy is up to date before
+   attempting to use the features described in this section.
 
+SQLAlchemy supports mapping union types inside the ``type_annotation_map`` to
+allow mapping database types that can support multiple Python types, such as
+:class:`_types.JSON` or :class:`_postgresql.JSONB`::
+
+    from typing import Union
     from sqlalchemy import JSON
     from sqlalchemy.dialects import postgresql
     from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
     from sqlalchemy.schema import CreateTable
 
+    # new style Union using a pipe operator
     json_list = list[int] | list[str]
-    json_scalar = float | str | bool | None
+
+    # old style Union using Union explicitly
+    json_scalar = Union[float, str, bool]
 
 
     class Base(DeclarativeBase):
@@ -396,19 +409,42 @@ such as :class:`_types.JSON` or :class:`_postgresql.JSONB`::
 
         id: Mapped[int] = mapped_column(primary_key=True)
         list_col: Mapped[list[str] | list[int]]
+
+        # uses JSON
         scalar_col: Mapped[json_scalar]
-        scalar_col_not_null: Mapped[str | float | bool]
 
-Using the union directly inside ``Mapped`` or creating a new one with the same
-effective types has the same behavior: ``list_col`` will be matched to the
-``json_list`` union even if it does not reference it directly (the order of the
-types also does not matter).
-If the union added to the type map includes ``None``, it will be ignored
-when matching the ``Mapped`` type since ``None`` is only used to decide
-the column nullability. It follows that both ``scalar_col`` and
-``scalar_col_not_null`` will match the ``json_scalar`` union.
+        # uses JSON and is also nullable=True
+        scalar_col_nullable: Mapped[json_scalar | None]
 
-The CREATE TABLE statement of the table created above is as follows:
+        # these forms all use JSON as well due to the json_scalar entry
+        scalar_col_newstyle: Mapped[float | str | bool]
+        scalar_col_oldstyle: Mapped[Union[float, str, bool]]
+        scalar_col_mixedstyle: Mapped[Optional[float | str | bool]]
+
+The above example maps the union of ``list[int]`` and ``list[str]`` to the Postgresql
+:class:`_postgresql.JSONB` datatype, while naming a union of ``float,
+str, bool`` will match to the :class:`.JSON` datatype.   An equivalent
+union, stated in the :class:`_orm.Mapped` construct, will match into the
+corresponding entry in the type map.
+
+The matching of a union type is based on the contents of the union regardless
+of how the individual types are named, and additionally excluding the use of
+the ``None`` type.  That is, ``json_scalar`` will also match to ``str | bool |
+float | None``.   It will **not** match to a union that is a subset or superset
+of this union; that is, ``str | bool`` would not match, nor would ``str | bool
+| float | int``.  The individual contents of the union excluding ``None`` must
+be an exact match.
+
+The ``None`` value is never significant as far as matching
+from ``type_annotation_map`` to :class:`_orm.Mapped`, however is significant
+as an indicator for nullability of the :class:`_schema.Column`. When ``None`` is present in the
+union either as it is placed in the :class:`_orm.Mapped` construct.  When
+present in :class:`_orm.Mapped`, it indicates the :class:`_schema.Column`
+would be nullable, in the absense of more specific indicators.  This logic works
+in the same way as indicating an ``Optional`` type as described at
+:ref:`orm_declarative_mapped_column_nullability`.
+
+The CREATE TABLE statement for the above mapping will look as below:
 
 .. sourcecode:: pycon+sql
 
@@ -420,6 +456,145 @@ The CREATE TABLE statement of the table created above is as follows:
         scalar_col_not_null JSON NOT NULL,
         PRIMARY KEY (id)
     )
+
+While union types use a "loose" matching approach that matches on any equivalent
+set of subtypes, Python typing also features a way to create "type aliases"
+that are treated as distinct types that are non-equivalent to another type that
+includes the same composition.   Integration of these types with ``type_annotation_map``
+is described in the next section, :ref:`orm_declarative_type_map_pep695_types`.
+
+.. _orm_declarative_type_map_pep695_types:
+
+Support for Type Alias Types (defined by PEP 695) and NewType
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In contrast to the typing lookup described in
+:ref:`orm_declarative_type_map_union_types`, Python typing also includes two
+ways to create a composed type in a more formal way, using ``typing.NewType`` as
+well as the ``type`` keyword introduced in :pep:`695`.  These types behave
+differently from ordinary type aliases (i.e. assigning a type to a variable
+name), and this difference is honored in how SQLAlchemy resolves these
+types from the type map.
+
+.. versionchanged:: 2.0.37  The behaviors described in this section for ``typing.NewType``
+   as well as :pep:`695` ``type`` have been formalized and corrected.
+   Deprecation warnings are now emitted for "loose matching" patterns that have
+   worked in some 2.0 releases, but are to be removed in SQLAlchemy 2.1.
+   Please ensure SQLAlchemy is up to date before attempting to use the features
+   described in this section.
+
+The typing module allows the creation of "new types" using ``typing.NewType``::
+
+    from typing import NewType
+
+    nstr30 = NewType("nstr30", str)
+    nstr50 = NewType("nstr50", str)
+
+Additionally, in Python 3.12, a new feature defined by :pep:`695` was introduced which
+provides the ``type`` keyword to accomplish a similar task; using
+``type`` produces an object that is similar in many ways to ``typing.NewType``
+which is internally referred to as ``typing.TypeAliasType``::
+
+    type SmallInt = int
+    type BigInt = int
+    type JsonScalar = str | float | bool | None
+
+For the purposes of how SQLAlchemy treats these type objects when used
+for SQL type lookup inside of :class:`_orm.Mapped`, it's important to note
+that Python does not consider two equivalent ``typing.TypeAliasType``
+or ``typing.NewType`` objects to be equal::
+
+    # two typing.NewType objects are not equal even if they are both str
+    >>> nstr50 == nstr30
+    False
+
+    # two TypeAliasType objects are not equal even if they are both int
+    >>> SmallInt == BigInt
+    False
+
+    # an equivalent union is not equal to JsonScalar
+    >>> JsonScalar == str | float | bool | None
+    False
+
+This is the opposite behavior from how ordinary unions are compared, and
+informs the correct behavior for SQLAlchemy's ``type_annotation_map``. When
+using ``typing.NewType`` or :pep:`695` ``type`` objects, the type object is
+expected to be explicit within the ``type_annotation_map`` for it to be matched
+from a :class:`_orm.Mapped` type, where the same object must be stated in order
+for a match to be made (excluding whether or not the type inside of
+:class:`_orm.Mapped` also unions on ``None``). This is distinct from the
+behavior described at :ref:`orm_declarative_type_map_union_types`, where a
+plain ``Union`` that is referenced directly will match to other ``Unions``
+based on the composition, rather than the object identity, of a particular type
+in ``type_annotation_map``.
+
+In the example below, the composed types for ``nstr30``, ``nstr50``,
+``SmallInt``, ``BigInt``, and ``JsonScalar`` have no overlap with each other
+and can be named distinctly within each :class:`_orm.Mapped` construct, and
+are also all explicit in ``type_annotation_map``.   Any of these types may
+also be unioned with ``None`` or declared as ``Optional[]`` without affecting
+the lookup, only deriving column nullability::
+
+    from typing import NewType
+
+    from sqlalchemy import SmallInteger, BigInteger, JSON, String
+    from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+    from sqlalchemy.schema import CreateTable
+
+    nstr30 = NewType("nstr30", str)
+    nstr50 = NewType("nstr50", str)
+    type SmallInt = int
+    type BigInt = int
+    type JsonScalar = str | float | bool | None
+
+
+    class TABase(DeclarativeBase):
+        type_annotation_map = {
+            nstr30: String(30),
+            nstr50: String(50),
+            SmallInt: SmallInteger,
+            BigInteger: BigInteger,
+            JsonScalar: JSON,
+        }
+
+
+    class SomeClass(TABase):
+        __tablename__ = "some_table"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        normal_str: Mapped[str]
+
+        short_str: Mapped[nstr30]
+        long_str_nullable: Mapped[nstr50 | None]
+
+        small_int: Mapped[SmallInt]
+        big_int: Mapped[BigInteger]
+        scalar_col: Mapped[JsonScalar]
+
+a CREATE TABLE for the above mapping will illustrate the different variants
+of integer and string we've configured, and looks like:
+
+.. sourcecode:: pycon+sql
+
+    >>> print(CreateTable(SomeClass.__table__))
+    {printsql}CREATE TABLE some_table (
+        id INTEGER NOT NULL,
+        normal_str VARCHAR NOT NULL,
+        short_str VARCHAR(30) NOT NULL,
+        long_str_nullable VARCHAR(50),
+        small_int SMALLINT NOT NULL,
+        big_int BIGINT NOT NULL,
+        scalar_col JSON,
+        PRIMARY KEY (id)
+    )
+
+Regarding nullability, the ``JsonScalar`` type includes ``None`` in its
+definition, which indicates a nullable column.   Similarly the
+``long_str_nullable`` column applies a union of ``None`` to ``nstr50``,
+which matches to the ``nstr50`` type in the ``type_annotation_map`` while
+also applying nullability to the mapped column.  The other columns all remain
+NOT NULL as they are not indicated as optional.
+
 
 .. _orm_declarative_mapped_column_type_map_pep593:
 
@@ -510,95 +685,6 @@ us a wide degree of flexibility, the next section illustrates a second
 way in which ``Annotated`` may be used with Declarative that is even
 more open ended.
 
-Support for Type Alias Types (defined by PEP 695) and NewType
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The typing module allows an user to create "new types" using ``typing.NewType``::
-
-    from typing import NewType
-
-    nstr30 = NewType("nstr30", str)
-    nstr50 = NewType("nstr50", str)
-
-These are considered as different by the type checkers and by python::
-
-    >>> print(str == nstr30, nstr50 == nstr30, nstr30 == NewType("nstr30", str))
-    False False False
-
-Another similar feature was added in Python 3.12 to create aliases,
-using a new syntax to define ``typing.TypeAliasType``::
-
-    type SmallInt = int
-    type BigInt = int
-    type JsonScalar = str | float | bool | None
-
-Like ``typing.NewType``, these are treated by python as different, meaning that they are
-not equal between each other even if they represent the same Python type.
-In the example above, ``SmallInt`` and ``BigInt`` are not considered equal even
-if they both are aliases of the python type ``int``::
-
-    >>> print(SmallInt == BigInt)
-    False
-
-SQLAlchemy supports using ``typing.NewType`` and ``typing.TypeAliasType``
-in the ``type_annotation_map``. They can be used to associate the same python type
-to different :class:`_types.TypeEngine` types, similarly
-to ``typing.Annotated``::
-
-    from sqlalchemy import SmallInteger, BigInteger, JSON, String
-    from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-    from sqlalchemy.schema import CreateTable
-
-
-    class TABase(DeclarativeBase):
-        type_annotation_map = {
-            nstr30: String(30),
-            nstr50: String(50),
-            SmallInt: SmallInteger,
-            BigInteger: BigInteger,
-            JsonScalar: JSON,
-        }
-
-
-    class SomeClass(TABase):
-        __tablename__ = "some_table"
-
-        id: Mapped[int] = mapped_column(primary_key=True)
-        normal_str: Mapped[str]
-
-        short_str: Mapped[nstr30]
-        long_str: Mapped[nstr50]
-
-        small_int: Mapped[SmallInt]
-        big_int: Mapped[BigInteger]
-        scalar_col: Mapped[JsonScalar]
-
-a CREATE TABLE for the above mapping will illustrate the different variants
-of integer and string we've configured, and looks like:
-
-.. sourcecode:: pycon+sql
-
-    >>> print(CreateTable(SomeClass.__table__))
-    {printsql}CREATE TABLE some_table (
-        id INTEGER NOT NULL,
-        normal_str VARCHAR NOT NULL,
-        short_str VARCHAR(30) NOT NULL,
-        long_str VARCHAR(50) NOT NULL,
-        small_int SMALLINT NOT NULL,
-        big_int BIGINT NOT NULL,
-        scalar_col JSON,
-        PRIMARY KEY (id)
-    )
-
-Since the ``JsonScalar`` type includes ``None`` the columns is nullable, while
-``id`` and ``normal_str`` columns use the default mapping for their respective
-Python type.
-
-As mentioned above, since ``typing.NewType`` and ``typing.TypeAliasType`` are
-considered standalone types, they must be referenced directly inside ``Mapped``
-and must be added explicitly to the type map.
-Failing to do so will raise an error since SQLAlchemy does not know what
-SQL type to use.
 
 .. _orm_declarative_mapped_column_pep593:
 
