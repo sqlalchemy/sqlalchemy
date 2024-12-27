@@ -92,10 +92,10 @@ from ..util.typing import (
 )
 from ..util.typing import eval_name_only as _eval_name_only
 from ..util.typing import fixup_container_fwd_refs
+from ..util.typing import get_origin
 from ..util.typing import is_origin_of_cls
 from ..util.typing import Literal
 from ..util.typing import TupleAny
-from ..util.typing import typing_get_origin
 from ..util.typing import Unpack
 
 if typing.TYPE_CHECKING:
@@ -125,7 +125,7 @@ if typing.TYPE_CHECKING:
     from ..sql.selectable import Selectable
     from ..sql.visitors import anon_map
     from ..util.typing import _AnnotationScanType
-    from ..util.typing import ArgsTypeProcotol
+    from ..util.typing import ArgsTypeProtocol
 
 _T = TypeVar("_T", bound=Any)
 
@@ -179,7 +179,7 @@ class _DeStringifyUnionElements(Protocol):
     def __call__(
         self,
         cls: Type[Any],
-        annotation: ArgsTypeProcotol,
+        annotation: ArgsTypeProtocol,
         originating_module: str,
         *,
         str_cleanup_fn: Optional[Callable[[str, str], str]] = None,
@@ -1543,7 +1543,7 @@ GenericAlias = type(List[Any])
 def _inspect_generic_alias(
     class_: Type[_O],
 ) -> Optional[Mapper[_O]]:
-    origin = cast("Type[_O]", typing_get_origin(class_))
+    origin = cast("Type[_O]", get_origin(class_))
     return _inspect_mc(origin)
 
 
