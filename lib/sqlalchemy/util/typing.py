@@ -54,6 +54,7 @@ if True:  # zimports removes the tailing comments
     from typing_extensions import Self as Self  # 3.11
     from typing_extensions import TypeAliasType as TypeAliasType  # 3.12
     from typing_extensions import Unpack as Unpack  # 3.11
+    from typing_extensions import LiteralString as LiteralString  # 3.11
 
 
 _T = TypeVar("_T", bound=Any)

@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 r"""
 
@@ -22,17 +21,31 @@ r"""
 
 """  # noqa
 
-from .base import BIT
+from types import ModuleType
+from typing import Any
+from typing import Iterable
+from typing import TYPE_CHECKING
+
 from .base import MySQLDialect
 from .mysqldb import MySQLDialect_mysqldb
+from .types import BIT
 from ... import util
+
+if TYPE_CHECKING:
+    import cymysql
+
+    from ...engine.base import Connection
+    from ...engine.interfaces import Dialect
+    from ...sql.type_api import _ResultProcessorType
 
 
 class _cymysqlBIT(BIT):
-    def result_processor(self, dialect, coltype):
+    def result_processor(
+        self, dialect: "Dialect", coltype: object
+    ) -> "None | _ResultProcessorType[Any]":
         """Convert MySQL's 64 bit, variable length binary string to a long."""
 
-        def process(value):
+        def process(value: None | Iterable[int]) -> None | int:
             if value is not None:
                 v = 0
                 for i in iter(value):
@@ -51,20 +64,23 @@ class MySQLDialect_cymysql(MySQLDialect_mysqldb):
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
     supports_unicode_statements = True
+    dbapi: "cymysql"
 
     colspecs = util.update_copy(MySQLDialect.colspecs, {BIT: _cymysqlBIT})
 
     @classmethod
-    def import_dbapi(cls):
+    def import_dbapi(cls) -> ModuleType:
         return __import__("cymysql")
 
-    def _detect_charset(self, connection):
-        return connection.connection.charset
+    def _detect_charset(self, connection: "Connection") -> str:
+        return connection.connection.charset  # type: ignore
 
-    def _extract_error_code(self, exception):
-        return exception.errno
+    def _extract_error_code(self, exception: BaseException) -> int:
+        return exception.errno  # type: ignore
 
-    def is_disconnect(self, e, connection, cursor):
+    def is_disconnect(
+        self, e: Exception, connection: Any, cursor: Any
+    ) -> bool:
         if isinstance(e, self.dbapi.OperationalError):
             return self._extract_error_code(e) in (
                 2006,

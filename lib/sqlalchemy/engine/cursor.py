@@ -1379,7 +1379,10 @@ class FullyBufferedCursorFetchStrategy(CursorFetchStrategy):
     __slots__ = ("_rowbuffer", "alternate_cursor_description")
 
     def __init__(
-        self, dbapi_cursor, alternate_description=None, initial_buffer=None
+        self,
+        dbapi_cursor: DBAPICursor,
+        alternate_description: _DBAPICursorDescription | None = None,
+        initial_buffer: Any = None,
     ):
         self.alternate_cursor_description = alternate_description
         if initial_buffer is not None:

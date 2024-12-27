@@ -4,16 +4,22 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 
+from enum import StrEnum
 import re
+from typing import Any
+from typing import TYPE_CHECKING
 
 from .types import _StringType
 from ... import exc
 from ... import sql
 from ... import util
 from ...sql import sqltypes
+
+if TYPE_CHECKING:
+    from ...engine.interfaces import Dialect
+    from ...sql.type_api import _BindProcessorType
 
 
 class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum, _StringType):
@@ -23,7 +29,7 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum, _StringType):
 
     native_enum = True
 
-    def __init__(self, *enums, **kw):
+    def __init__(self, *enums: str | type[StrEnum], **kw: Any):
         """Construct an ENUM.
 
         E.g.::
@@ -197,16 +203,18 @@ class SET(_StringType):
 
         return process
 
-    def bind_processor(self, dialect):
+    def bind_processor(
+        self, dialect: "Dialect"
+    ) -> "_BindProcessorType[str|int]":
         super_convert = super().bind_processor(dialect)
         if self.retrieve_as_bitwise:
 
-            def process(value):
+            def process(value: Any) -> str | int | None:
                 if value is None:
                     return None
                 elif isinstance(value, (int, str)):
                     if super_convert:
-                        return super_convert(value)
+                        return super_convert(value)  # type: ignore
                     else:
                         return value
                 else:
@@ -217,23 +225,22 @@ class SET(_StringType):
 
         else:
 
-            def process(value):
+            def process(value: Any) -> str | int | None:
                 # accept strings and int (actually bitflag) values directly
                 if value is not None and not isinstance(value, (int, str)):
                     value = ",".join(value)
-
                 if super_convert:
-                    return super_convert(value)
+                    return super_convert(value)  # type: ignore[no-any-return]
                 else:
-                    return value
+                    return value  # type: ignore[no-any-return]
 
         return process
 
-    def adapt(self, impltype, **kw):
+    def adapt(self, cls: type, **kw: Any) -> Any:
         kw["retrieve_as_bitwise"] = self.retrieve_as_bitwise
-        return util.constructor_copy(self, impltype, *self.values, **kw)
+        return util.constructor_copy(self, cls, *self.values, **kw)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return util.generic_repr(
             self,
             to_inspect=[SET, _StringType],

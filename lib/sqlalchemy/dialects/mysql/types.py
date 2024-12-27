@@ -4,14 +4,20 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 
 import datetime
+from typing import Any
+from typing import Iterable
+from typing import TYPE_CHECKING
 
 from ... import exc
 from ... import util
 from ...sql import sqltypes
+
+if TYPE_CHECKING:
+    from ...engine.interfaces import Dialect
+    from ...sql.type_api import _ResultProcessorType
 
 
 class _NumericCommonType:
@@ -39,7 +45,13 @@ class _NumericType(_NumericCommonType, sqltypes.Numeric):
 
 class _FloatType(_NumericCommonType, sqltypes.Float):
 
-    def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
+    def __init__(
+        self,
+        precision: int | None = None,
+        scale: int | None = None,
+        asdecimal=True,
+        **kw,
+    ):
         if isinstance(self, (REAL, DOUBLE)) and (
             (precision is None and scale is not None)
             or (precision is not None and scale is None)
@@ -58,7 +70,7 @@ class _FloatType(_NumericCommonType, sqltypes.Float):
 
 
 class _IntegerType(_NumericCommonType, sqltypes.Integer):
-    def __init__(self, display_width=None, **kw):
+    def __init__(self, display_width: int | None = None, **kw):
         self.display_width = display_width
         super().__init__(**kw)
 
@@ -111,7 +123,13 @@ class NUMERIC(_NumericType, sqltypes.NUMERIC):
 
     __visit_name__ = "NUMERIC"
 
-    def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
+    def __init__(
+        self,
+        precision: int | None = None,
+        scale: int | None = None,
+        asdecimal=True,
+        **kw,
+    ):
         """Construct a NUMERIC.
 
         :param precision: Total digits in this number.  If scale and precision
@@ -137,7 +155,13 @@ class DECIMAL(_NumericType, sqltypes.DECIMAL):
 
     __visit_name__ = "DECIMAL"
 
-    def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
+    def __init__(
+        self,
+        precision: int | None = None,
+        scale: int | None = None,
+        asdecimal=True,
+        **kw,
+    ):
         """Construct a DECIMAL.
 
         :param precision: Total digits in this number.  If scale and precision
@@ -163,7 +187,13 @@ class DOUBLE(_FloatType, sqltypes.DOUBLE):
 
     __visit_name__ = "DOUBLE"
 
-    def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
+    def __init__(
+        self,
+        precision: int | None = None,
+        scale: int | None = None,
+        asdecimal=True,
+        **kw,
+    ):
         """Construct a DOUBLE.
 
         .. note::
@@ -197,7 +227,13 @@ class REAL(_FloatType, sqltypes.REAL):
 
     __visit_name__ = "REAL"
 
-    def __init__(self, precision=None, scale=None, asdecimal=True, **kw):
+    def __init__(
+        self,
+        precision: int | None = None,
+        scale: int | None = None,
+        asdecimal=True,
+        **kw,
+    ):
         """Construct a REAL.
 
         .. note::
@@ -231,7 +267,13 @@ class FLOAT(_FloatType, sqltypes.FLOAT):
 
     __visit_name__ = "FLOAT"
 
-    def __init__(self, precision=None, scale=None, asdecimal=False, **kw):
+    def __init__(
+        self,
+        precision: int | None = None,
+        scale: int | None = None,
+        asdecimal=False,
+        **kw,
+    ):
         """Construct a FLOAT.
 
         :param precision: Total digits in this number.  If scale and precision
@@ -260,7 +302,7 @@ class INTEGER(_IntegerType, sqltypes.INTEGER):
 
     __visit_name__ = "INTEGER"
 
-    def __init__(self, display_width=None, **kw):
+    def __init__(self, display_width: int | None = None, **kw):
         """Construct an INTEGER.
 
         :param display_width: Optional, maximum display width for this number.
@@ -281,7 +323,7 @@ class BIGINT(_IntegerType, sqltypes.BIGINT):
 
     __visit_name__ = "BIGINT"
 
-    def __init__(self, display_width=None, **kw):
+    def __init__(self, display_width: int | None = None, **kw):
         """Construct a BIGINTEGER.
 
         :param display_width: Optional, maximum display width for this number.
@@ -302,7 +344,7 @@ class MEDIUMINT(_IntegerType):
 
     __visit_name__ = "MEDIUMINT"
 
-    def __init__(self, display_width=None, **kw):
+    def __init__(self, display_width: int | None = None, **kw):
         """Construct a MEDIUMINTEGER
 
         :param display_width: Optional, maximum display width for this number.
@@ -323,7 +365,7 @@ class TINYINT(_IntegerType):
 
     __visit_name__ = "TINYINT"
 
-    def __init__(self, display_width=None, **kw):
+    def __init__(self, display_width: int | None = None, **kw):
         """Construct a TINYINT.
 
         :param display_width: Optional, maximum display width for this number.
@@ -344,7 +386,7 @@ class SMALLINT(_IntegerType, sqltypes.SMALLINT):
 
     __visit_name__ = "SMALLINT"
 
-    def __init__(self, display_width=None, **kw):
+    def __init__(self, display_width: int | None = None, **kw):
         """Construct a SMALLINTEGER.
 
         :param display_width: Optional, maximum display width for this number.
@@ -379,7 +421,9 @@ class BIT(sqltypes.TypeEngine):
         """
         self.length = length
 
-    def result_processor(self, dialect, coltype):
+    def result_processor(
+        self, dialect: "Dialect", coltype: object
+    ) -> "None | _ResultProcessorType[Any]":
         """Convert a MySQL's 64 bit, variable length binary string to a long.
 
         TODO: this is MySQL-db, pyodbc specific.  OurSQL and mysqlconnector
@@ -387,12 +431,10 @@ class BIT(sqltypes.TypeEngine):
 
         """
 
-        def process(value):
+        def process(value: None | Iterable[int]) -> None | int:
             if value is not None:
                 v = 0
                 for i in value:
-                    if not isinstance(i, int):
-                        i = ord(i)  # convert byte to int on Python 2
                     v = v << 8 | i
                 return v
             return value
@@ -424,10 +466,12 @@ class TIME(sqltypes.TIME):
         super().__init__(timezone=timezone)
         self.fsp = fsp
 
-    def result_processor(self, dialect, coltype):
+    def result_processor(
+        self, dialect: "Dialect", coltype: object
+    ) -> "_ResultProcessorType[datetime.time]":
         time = datetime.time
 
-        def process(value):
+        def process(value: Any) -> datetime.time | None:
             # convert from a timedelta value
             if value is not None:
                 microseconds = value.microseconds
@@ -500,7 +544,7 @@ class YEAR(sqltypes.TypeEngine):
 
     __visit_name__ = "YEAR"
 
-    def __init__(self, display_width=None):
+    def __init__(self, display_width: int | None = None):
         self.display_width = display_width
 
 
@@ -642,7 +686,7 @@ class VARCHAR(_StringType, sqltypes.VARCHAR):
 
     __visit_name__ = "VARCHAR"
 
-    def __init__(self, length=None, **kwargs):
+    def __init__(self, length: int | None = None, **kwargs: Any) -> None:
         """Construct a VARCHAR.
 
         :param charset: Optional, a column-level character set for this string
@@ -690,7 +734,7 @@ class CHAR(_StringType, sqltypes.CHAR):
         super().__init__(length=length, **kwargs)
 
     @classmethod
-    def _adapt_string_for_cast(cls, type_):
+    def _adapt_string_for_cast(cls, type_: sqltypes.String):
         # copy the given string type into a CHAR
         # for the purposes of rendering a CAST expression
         type_ = sqltypes.to_instance(type_)

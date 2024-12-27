@@ -244,7 +244,9 @@ class String(Concatenable, TypeEngine[str]):
 
         return process
 
-    def bind_processor(self, dialect):
+    def bind_processor(
+        self, dialect: "Dialect"
+    ) -> _BindProcessorType[str] | None:
         return None
 
     def result_processor(self, dialect, coltype):
@@ -1464,7 +1466,9 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         else:
             return self.enums
 
-    def _enum_init(self, enums, kw):
+    def _enum_init(
+        self, enums: Sequence[str | enum.StrEnum], kw: dict[str, Any]
+    ):
         """internal init for :class:`.Enum` and subclasses.
 
         friendly init helper used by subclasses to remove
@@ -1523,7 +1527,9 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
             _adapted_from=kw.pop("_adapted_from", None),
         )
 
-    def _parse_into_values(self, enums, kw):
+    def _parse_into_values(
+        self, enums: Sequence[str | type[enum.StrEnum]], kw
+    ):
         if not enums and "_enums" in kw:
             enums = kw.pop("_enums")
 
@@ -1608,7 +1614,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
             self._generic_type_affinity(_enums=enum_args, **kw),  # type: ignore  # noqa: E501
         )
 
-    def _setup_for_values(self, values, objects, kw):
+    def _setup_for_values(self, values: list[str], objects, kw):
         self.enums = list(values)
 
         self._valid_lookup = dict(zip(reversed(objects), reversed(values)))
@@ -2152,7 +2158,7 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
 
     def bind_processor(
         self, dialect: Dialect
-    ) -> _BindProcessorType[dt.timedelta]:
+    ) -> "_BindProcessorType[dt.timedelta]":
         if TYPE_CHECKING:
             assert isinstance(self.impl_instance, DateTime)
         impl_processor = self.impl_instance.bind_processor(dialect)
@@ -3459,6 +3465,7 @@ class BINARY(_Binary):
 class VARBINARY(_Binary):
     """The SQL VARBINARY type."""
 
+    length: int
     __visit_name__ = "VARBINARY"
 
 
@@ -3655,7 +3662,9 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
         else:
             return super().coerce_compared_value(op, value)
 
-    def bind_processor(self, dialect):
+    def bind_processor(
+        self, dialect: Dialect
+    ) -> "_BindProcessorType[str] | None":
         character_based_uuid = (
             not dialect.supports_native_uuid or not self.native_uuid
         )
@@ -3663,7 +3672,7 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
         if character_based_uuid:
             if self.as_uuid:
 
-                def process(value):
+                def process(value: Any) -> str:
                     if value is not None:
                         value = value.hex
                     return value
@@ -3671,7 +3680,7 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
                 return process
             else:
 
-                def process(value):
+                def process(value: Any) -> str:
                     if value is not None:
                         value = value.replace("-", "")
                     return value
