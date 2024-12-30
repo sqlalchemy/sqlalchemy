@@ -329,28 +329,6 @@ def resolve_name_to_real_class_name(name: str, module_name: str) -> str:
         return getattr(obj, "__name__", name)
 
 
-def de_stringify_union_elements(
-    cls: Type[Any],
-    annotation: ArgsTypeProtocol,
-    originating_module: str,
-    locals_: Mapping[str, Any],
-    *,
-    str_cleanup_fn: Optional[Callable[[str, str], str]] = None,
-) -> Type[Any]:
-    return make_union_type(
-        *[
-            de_stringify_annotation(
-                cls,
-                anno,
-                originating_module,
-                {},
-                str_cleanup_fn=str_cleanup_fn,
-            )
-            for anno in annotation.__args__
-        ]
-    )
-
-
 def is_pep593(type_: Optional[Any]) -> bool:
     return type_ is not None and get_origin(type_) is Annotated
 
@@ -426,12 +404,21 @@ def pep695_values(type_: _AnnotationScanType) -> Set[Any]:
 
 
 def is_fwd_ref(
-    type_: _AnnotationScanType, check_generic: bool = False
+    type_: _AnnotationScanType,
+    check_generic: bool = False,
+    check_for_plain_string: bool = False,
 ) -> TypeGuard[ForwardRef]:
-    if isinstance(type_, ForwardRef):
+    if check_for_plain_string and isinstance(type_, str):
+        return True
+    elif isinstance(type_, ForwardRef):
         return True
     elif check_generic and is_generic(type_):
-        return any(is_fwd_ref(arg, True) for arg in type_.__args__)
+        return any(
+            is_fwd_ref(
+                arg, True, check_for_plain_string=check_for_plain_string
+            )
+            for arg in type_.__args__
+        )
     else:
         return False
 
@@ -456,13 +443,31 @@ def de_optionalize_union_types(
     """Given a type, filter out ``Union`` types that include ``NoneType``
     to not include the ``NoneType``.
 
+    Contains extra logic to work on non-flattened unions, unions that contain
+    ``None`` (seen in py38, 37)
+
     """
 
     if is_fwd_ref(type_):
         return _de_optionalize_fwd_ref_union_types(type_, False)
 
     elif is_union(type_) and includes_none(type_):
-        typ = set(type_.__args__)
+        if compat.py39:
+            typ = set(type_.__args__)
+        else:
+            # py38, 37 - unions are not automatically flattened, can contain
+            # None rather than NoneType
+            stack_of_unions = deque([type_])
+            typ = set()
+            while stack_of_unions:
+                u_typ = stack_of_unions.popleft()
+                for elem in u_typ.__args__:
+                    if is_union(elem):
+                        stack_of_unions.append(elem)
+                    else:
+                        typ.add(elem)
+
+            typ.discard(None)  # type: ignore
 
         typ.discard(NoneType)
         typ.discard(NoneFwd)

@@ -43,7 +43,6 @@ from .interfaces import PropComparator
 from .interfaces import StrategizedProperty
 from .relationships import RelationshipProperty
 from .util import de_stringify_annotation
-from .util import de_stringify_union_elements
 from .. import exc as sa_exc
 from .. import ForeignKey
 from .. import log
@@ -60,7 +59,6 @@ from ..util.typing import includes_none
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_pep593
 from ..util.typing import is_pep695
-from ..util.typing import is_union
 from ..util.typing import Self
 
 if TYPE_CHECKING:
@@ -738,18 +736,12 @@ class MappedColumn(
     ) -> None:
         sqltype = self.column.type
 
-        if isinstance(argument, str) or is_fwd_ref(
-            argument, check_generic=True
+        if is_fwd_ref(
+            argument, check_generic=True, check_for_plain_string=True
         ):
             assert originating_module is not None
             argument = de_stringify_annotation(
                 cls, argument, originating_module, include_generic=True
-            )
-
-        if is_union(argument):
-            assert originating_module is not None
-            argument = de_stringify_union_elements(
-                cls, argument, originating_module
             )
 
         nullable = includes_none(argument)

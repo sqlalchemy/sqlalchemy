@@ -107,8 +107,9 @@ _UnionTypeAlias: TypeAlias = Union[_SomeDict1, _SomeDict2]
 
 _StrTypeAlias: TypeAlias = str
 
-_StrPep695: TypeAlias = str
-_UnionPep695: TypeAlias = Union[_SomeDict1, _SomeDict2]
+if TYPE_CHECKING:
+    _StrPep695: TypeAlias = str
+    _UnionPep695: TypeAlias = Union[_SomeDict1, _SomeDict2]
 
 if compat.py38:
     _TypingLiteral = typing.Literal["a", "b"]
@@ -147,6 +148,17 @@ type _JsonPep695 = _JsonPep604
 """,
         globals(),
     )
+
+
+def make_pep695_type(name, definition):
+    lcls = {}
+    exec(
+        f"""
+type {name} = {definition}
+""",
+        lcls,
+    )
+    return lcls[name]
 
 
 def expect_annotation_syntax_error(name):
@@ -854,6 +866,10 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "optional",
             "optional_union",
             "optional_union_604",
+            "union_newtype",
+            "union_null_newtype",
+            "union_695",
+            "union_null_695",
         ],
     )
     @testing.variation("in_map", ["yes", "no", "value"])
@@ -878,12 +894,22 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             tat = TypeAliasType("tat", Optional[Union[str, int]])
         elif option.optional_union_604:
             tat = TypeAliasType("tat", Optional[str | int])
+        elif option.union_newtype:
+            # this seems to be illegal for typing but "works"
+            tat = NewType("tat", Union[str, int])
+        elif option.union_null_newtype:
+            # this seems to be illegal for typing but "works"
+            tat = NewType("tat", Union[str, int, None])
+        elif option.union_695:
+            tat = make_pep695_type("tat", str | int)
+        elif option.union_null_695:
+            tat = make_pep695_type("tat", str | int | None)
         else:
             option.fail()
 
         if in_map.yes:
             decl_base.registry.update_type_annotation_map({tat: String(99)})
-        elif in_map.value:
+        elif in_map.value and "newtype" not in option.name:
             decl_base.registry.update_type_annotation_map(
                 {tat.__value__: String(99)}
             )
@@ -899,7 +925,12 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         if in_map.yes:
             col = declare()
             length = 99
-        elif in_map.value or option.optional or option.plain:
+        elif (
+            in_map.value
+            and "newtype" not in option.name
+            or option.optional
+            or option.plain
+        ):
             with expect_deprecated(
                 "Matching the provided TypeAliasType 'tat' on its "
                 "resolved value without matching it in the "
@@ -1943,6 +1974,13 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             refer_union: Mapped[UnionType]
             refer_union_optional: Mapped[Optional[UnionType]]
 
+            # py38, 37 does not automatically flatten unions, add extra tests
+            # for this.  maintain these in order to catch future regressions
+            # in the behavior of ``Union``
+            unflat_union_optional_data: Mapped[
+                Union[Union[Decimal, float, None], None]
+            ] = mapped_column()
+
             float_data: Mapped[float] = mapped_column()
             decimal_data: Mapped[Decimal] = mapped_column()
 
@@ -1966,6 +2004,7 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             ("reverse_u_optional_data", True),
             ("refer_union", "null" in union.name),
             ("refer_union_optional", True),
+            ("unflat_union_optional_data", True),
         ]
         if compat.py310:
             info += [
@@ -2032,36 +2071,47 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_true(A.__table__.c.json1.nullable)
         is_false(A.__table__.c.json2.nullable)
 
-    @testing.combinations(
-        ("not_optional",),
-        ("optional",),
-        ("optional_fwd_ref",),
-        ("union_none",),
-        ("pep604", testing.requires.python310),
-        ("pep604_fwd_ref", testing.requires.python310),
-        argnames="optional_on_json",
+    @testing.variation(
+        "option",
+        [
+            "not_optional",
+            "optional",
+            "optional_fwd_ref",
+            "union_none",
+            ("pep604", testing.requires.python310),
+            ("pep604_fwd_ref", testing.requires.python310),
+        ],
     )
+    @testing.variation("brackets", ["oneset", "twosets"])
     @testing.combinations(
         "include_mc_type", "derive_from_anno", argnames="include_mc_type"
     )
     def test_optional_styles_nested_brackets(
-        self, optional_on_json, include_mc_type
+        self, option, brackets, include_mc_type
     ):
+        """composed types test, includes tests that were added later for
+        #12207"""
+
         class Base(DeclarativeBase):
             if testing.requires.python310.enabled:
                 type_annotation_map = {
-                    Dict[str, str]: JSON,
-                    dict[str, str]: JSON,
+                    Dict[str, Decimal]: JSON,
+                    dict[str, Decimal]: JSON,
+                    Union[List[int], List[str]]: JSON,
+                    list[int] | list[str]: JSON,
                 }
             else:
                 type_annotation_map = {
-                    Dict[str, str]: JSON,
+                    Dict[str, Decimal]: JSON,
+                    Union[List[int], List[str]]: JSON,
                 }
 
         if include_mc_type == "include_mc_type":
             mc = mapped_column(JSON)
+            mc2 = mapped_column(JSON)
         else:
             mc = mapped_column()
+            mc2 = mapped_column()
 
         class A(Base):
             __tablename__ = "a"
@@ -2069,21 +2119,67 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
 
-            if optional_on_json == "not_optional":
-                json: Mapped[Dict[str, str]] = mapped_column()  # type: ignore
-            elif optional_on_json == "optional":
-                json: Mapped[Optional[Dict[str, str]]] = mc
-            elif optional_on_json == "optional_fwd_ref":
-                json: Mapped["Optional[Dict[str, str]]"] = mc
-            elif optional_on_json == "union_none":
-                json: Mapped[Union[Dict[str, str], None]] = mc
-            elif optional_on_json == "pep604":
-                json: Mapped[dict[str, str] | None] = mc
-            elif optional_on_json == "pep604_fwd_ref":
-                json: Mapped["dict[str, str] | None"] = mc
+            if brackets.oneset:
+                if option.not_optional:
+                    json: Mapped[Dict[str, Decimal]] = mapped_column()  # type: ignore  # noqa: E501
+                    if testing.requires.python310.enabled:
+                        json2: Mapped[dict[str, Decimal]] = mapped_column()  # type: ignore  # noqa: E501
+                elif option.optional:
+                    json: Mapped[Optional[Dict[str, Decimal]]] = mc
+                    if testing.requires.python310.enabled:
+                        json2: Mapped[Optional[dict[str, Decimal]]] = mc2
+                elif option.optional_fwd_ref:
+                    json: Mapped["Optional[Dict[str, Decimal]]"] = mc
+                    if testing.requires.python310.enabled:
+                        json2: Mapped["Optional[dict[str, Decimal]]"] = mc2
+                elif option.union_none:
+                    json: Mapped[Union[Dict[str, Decimal], None]] = mc
+                    json2: Mapped[Union[None, Dict[str, Decimal]]] = mc2
+                elif option.pep604:
+                    json: Mapped[dict[str, Decimal] | None] = mc
+                    if testing.requires.python310.enabled:
+                        json2: Mapped[None | dict[str, Decimal]] = mc2
+                elif option.pep604_fwd_ref:
+                    json: Mapped["dict[str, Decimal] | None"] = mc
+                    if testing.requires.python310.enabled:
+                        json2: Mapped["None | dict[str, Decimal]"] = mc2
+            elif brackets.twosets:
+                if option.not_optional:
+                    json: Mapped[Union[List[int], List[str]]] = mapped_column()  # type: ignore  # noqa: E501
+                elif option.optional:
+                    json: Mapped[Optional[Union[List[int], List[str]]]] = mc
+                    if testing.requires.python310.enabled:
+                        json2: Mapped[
+                            Optional[Union[list[int], list[str]]]
+                        ] = mc2
+                elif option.optional_fwd_ref:
+                    json: Mapped["Optional[Union[List[int], List[str]]]"] = mc
+                    if testing.requires.python310.enabled:
+                        json2: Mapped[
+                            "Optional[Union[list[int], list[str]]]"
+                        ] = mc2
+                elif option.union_none:
+                    json: Mapped[Union[List[int], List[str], None]] = mc
+                    if testing.requires.python310.enabled:
+                        json2: Mapped[Union[None, list[int], list[str]]] = mc2
+                elif option.pep604:
+                    json: Mapped[list[int] | list[str] | None] = mc
+                    json2: Mapped[None | list[int] | list[str]] = mc2
+                elif option.pep604_fwd_ref:
+                    json: Mapped["list[int] | list[str] | None"] = mc
+                    json2: Mapped["None | list[int] | list[str]"] = mc2
+            else:
+                brackets.fail()
 
         is_(A.__table__.c.json.type._type_affinity, JSON)
-        if optional_on_json == "not_optional":
+        if hasattr(A, "json2"):
+            is_(A.__table__.c.json2.type._type_affinity, JSON)
+            if option.not_optional:
+                is_false(A.__table__.c.json2.nullable)
+            else:
+                is_true(A.__table__.c.json2.nullable)
+
+        if option.not_optional:
             is_false(A.__table__.c.json.nullable)
         else:
             is_true(A.__table__.c.json.nullable)
@@ -3140,7 +3236,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                     back_populates="bs", primaryjoin=a_id == A.id
                 )
             elif optional_on_m2o == "union_none":
-                a: Mapped["Union[A, None]"] = relationship(
+                a: Mapped[Union[A, None]] = relationship(
                     back_populates="bs", primaryjoin=a_id == A.id
                 )
             elif optional_on_m2o == "pep604":
