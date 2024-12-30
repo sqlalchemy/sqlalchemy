@@ -1308,10 +1308,8 @@ class _ClassScanMapperConfig(_MapperConfig):
             type(attr_value),
             required=False,
             is_dataclass_field=is_dataclass_field,
-            expect_mapped=expect_mapped
-            and not is_dataclass,  # self.allow_dataclass_fields,
+            expect_mapped=expect_mapped and not is_dataclass,
         )
-
         if extracted is None:
             # ClassVar can come out here
             return None
@@ -1320,8 +1318,8 @@ class _ClassScanMapperConfig(_MapperConfig):
 
         if attr_value is None and not is_literal(extracted_mapped_annotation):
             for elem in get_args(extracted_mapped_annotation):
-                if isinstance(elem, str) or is_fwd_ref(
-                    elem, check_generic=True
+                if is_fwd_ref(
+                    elem, check_generic=True, check_for_plain_string=True
                 ):
                     elem = de_stringify_annotation(
                         self.cls,

@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 12207
+
+    Fixed issues in type handling within the ``type_annotation_map`` feature
+    which prevented the use of unions, using either pep-604 or ``Union``
+    syntaxes under future annotations mode, which contained multiple generic
+    types as elements from being correctly resolvable.
