@@ -1,5 +1,5 @@
 # engine/processors.py
-# Copyright (C) 2010-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2010-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 # Copyright (C) 2010 Gaetan de Menten gdementen@gmail.com
 #
