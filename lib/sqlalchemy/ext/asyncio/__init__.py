@@ -1,5 +1,5 @@
 # ext/asyncio/__init__.py
-# Copyright (C) 2020-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2020-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
