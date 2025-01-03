@@ -23,7 +23,7 @@ jobs:
       # run this job using this matrix, excluding some combinations below.
       matrix:
         os:
-          - "ubuntu-latest"
+          - "ubuntu-22.04"
         python-version:
           - "3.11"
         build-type:
@@ -62,7 +62,7 @@ jobs:
       # run this job using this matrix, excluding some combinations below.
       matrix:
         os:
-          - "ubuntu-latest"
+          - "ubuntu-22.04"
         python-version:
           - "3.11"
 
@@ -95,7 +95,7 @@ jobs:
       # run this job using this matrix, excluding some combinations below.
       matrix:
         os:
-          - "ubuntu-latest"
+          - "ubuntu-22.04"
         python-version:
           - "3.11"
 
@@ -123,8 +123,8 @@ jobs:
 
   # Arm emulation is quite slow (~20min) so for now just run it when merging to main
   # run-test-arm64:
-  #   name: ${{ matrix.python-version }}-${{ matrix.build-type }}-arm64-ubuntu-latest
-  #   runs-on: ubuntu-latest
+  #   name: ${{ matrix.python-version }}-${{ matrix.build-type }}-arm64-ubuntu-22.04
+  #   runs-on: ubuntu-22.04
   #   strategy:
   #     matrix:
   #       python-version:

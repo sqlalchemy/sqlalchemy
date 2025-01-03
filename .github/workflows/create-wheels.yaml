@@ -121,7 +121,7 @@ jobs:
     strategy:
       matrix:
         os:
-          - "ubuntu-latest"
+          - "ubuntu-22.04"
           - "ubuntu-20.04"
         python-version:
           # the versions are <python tag>-<abi tag> as specified in PEP 425.
@@ -144,14 +144,14 @@ jobs:
             extra-requires: "mock"
 
         exclude:
-          # ubuntu-latest does not have: py27, py36
-          - os: "ubuntu-latest"
+          # ubuntu-22.04 does not have: py27, py36
+          - os: "ubuntu-22.04"
             python-version: cp27-cp27m
-          - os: "ubuntu-latest"
+          - os: "ubuntu-22.04"
             python-version: cp27-cp27mu
-          - os: "ubuntu-latest"
+          - os: "ubuntu-22.04"
             python-version: cp36-cp36m
-          # ubuntu-20.04 does not need to test what ubuntu-latest supports
+          # ubuntu-20.04 does not need to test what ubuntu-22.04 supports
           - os: "ubuntu-20.04"
             python-version: cp37-cp37m
           - os: "ubuntu-20.04"
@@ -312,7 +312,7 @@ jobs:
     strategy:
       matrix:
         os:
-          - "ubuntu-latest"
+          - "ubuntu-22.04"
           - "ubuntu-20.04"
         python-version:
           # the versions are <python tag>-<abi tag> as specified in PEP 425.
@@ -324,10 +324,10 @@ jobs:
           - cp311-cp311
           - cp312-cp312
         exclude:
-          # ubuntu-latest does not have: py27, py36
-          - os: "ubuntu-latest"
+          # ubuntu-22.04 does not have: py27, py36
+          - os: "ubuntu-22.04"
             python-version: cp36-cp36m
-          # ubuntu-20.04 does not need to test what ubuntu-latest supports
+          # ubuntu-20.04 does not need to test what ubuntu-22.04 supports
           - os: "ubuntu-20.04"
             python-version: cp37-cp37m
           - os: "ubuntu-20.04"
