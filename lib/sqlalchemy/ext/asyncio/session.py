@@ -775,6 +775,16 @@ class AsyncSession(ReversibleProxy[Session]):
         """
         await greenlet_spawn(self.sync_session.delete, instance)
 
+    async def delete_all(self, instances: Iterable[object]) -> None:
+        """Calls :meth:`.AsyncSession.delete` on multiple instances.
+
+        .. seealso::
+
+            :meth:`_orm.Session.delete_all` - main documentation for delete_all
+
+        """
+        await greenlet_spawn(self.sync_session.delete_all, instances)
+
     async def merge(
         self,
         instance: _O,
@@ -792,6 +802,24 @@ class AsyncSession(ReversibleProxy[Session]):
         """
         return await greenlet_spawn(
             self.sync_session.merge, instance, load=load, options=options
+        )
+
+    async def merge_all(
+        self,
+        instances: Iterable[_O],
+        *,
+        load: bool = True,
+        options: Optional[Sequence[ORMOption]] = None,
+    ) -> Sequence[_O]:
+        """Calls :meth:`.AsyncSession.merge` on multiple instances.
+
+        .. seealso::
+
+            :meth:`_orm.Session.merge_all` - main documentation for merge_all
+
+        """
+        return await greenlet_spawn(
+            self.sync_session.merge_all, instances, load=load, options=options
         )
 
     async def flush(self, objects: Optional[Sequence[Any]] = None) -> None:
@@ -1122,7 +1150,7 @@ class AsyncSession(ReversibleProxy[Session]):
 
         return self._proxied.__iter__()
 
-    def add(self, instance: object, _warn: bool = True) -> None:
+    def add(self, instance: object, *, _warn: bool = True) -> None:
         r"""Place an object into this :class:`_orm.Session`.
 
         .. container:: class_bases

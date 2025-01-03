@@ -116,6 +116,7 @@ __all__ = ["scoped_session"]
         "commit",
         "connection",
         "delete",
+        "delete_all",
         "execute",
         "expire",
         "expire_all",
@@ -130,6 +131,7 @@ __all__ = ["scoped_session"]
         "bulk_insert_mappings",
         "bulk_update_mappings",
         "merge",
+        "merge_all",
         "query",
         "refresh",
         "rollback",
@@ -350,7 +352,7 @@ class scoped_session(Generic[_S]):
 
         return self._proxied.__iter__()
 
-    def add(self, instance: object, _warn: bool = True) -> None:
+    def add(self, instance: object, *, _warn: bool = True) -> None:
         r"""Place an object into this :class:`_orm.Session`.
 
         .. container:: class_bases
@@ -673,10 +675,31 @@ class scoped_session(Generic[_S]):
 
             :ref:`session_deleting` - at :ref:`session_basics`
 
+            :meth:`.Session.delete_all` - multiple instance version
+
 
         """  # noqa: E501
 
         return self._proxied.delete(instance)
+
+    def delete_all(self, instances: Iterable[object]) -> None:
+        r"""Calls :meth:`.Session.delete` on multiple instances.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_orm.scoping.scoped_session` class.
+
+        .. seealso::
+
+            :meth:`.Session.delete` - main documentation on delete
+
+        .. versionadded: 2.1
+
+
+        """  # noqa: E501
+
+        return self._proxied.delete_all(instances)
 
     @overload
     def execute(
@@ -1567,10 +1590,37 @@ class scoped_session(Generic[_S]):
             :func:`.make_transient_to_detached` - provides for an alternative
             means of "merging" a single object into the :class:`.Session`
 
+            :meth:`.Session.merge_all` - multiple instance version
+
 
         """  # noqa: E501
 
         return self._proxied.merge(instance, load=load, options=options)
+
+    def merge_all(
+        self,
+        instances: Iterable[_O],
+        *,
+        load: bool = True,
+        options: Optional[Sequence[ORMOption]] = None,
+    ) -> Sequence[_O]:
+        r"""Calls :meth:`.Session.merge` on multiple instances.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_orm.scoping.scoped_session` class.
+
+        .. seealso::
+
+            :meth:`.Session.merge` - main documentation on merge
+
+        .. versionadded: 2.1
+
+
+        """  # noqa: E501
+
+        return self._proxied.merge_all(instances, load=load, options=options)
 
     @overload
     def query(self, _entity: _EntityType[_O]) -> Query[_O]: ...

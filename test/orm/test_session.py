@@ -681,6 +681,23 @@ class SessionUtilTest(_fixtures.FixtureTest):
         ):
             sess.get_one(User, 2)
 
+    def test_delete_all(self):
+        users, User = self.tables.users, self.classes.User
+        self.mapper_registry.map_imperatively(User, users)
+
+        sess = fixture_session()
+
+        sess.add_all([User(id=1, name="u1"), User(id=2, name="u2")])
+        sess.commit()
+        sess.close()
+
+        ua, ub = sess.scalars(select(User)).all()
+        eq_([ua in sess, ub in sess], [True, True])
+        sess.delete_all([ua, ub])
+        sess.flush()
+        eq_([ua in sess, ub in sess], [False, False])
+        eq_(sess.scalars(select(User)).all(), [])
+
 
 class SessionStateTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -2109,7 +2126,8 @@ class SessionInterface(fixtures.MappedTest):
         ]:
             raises_(name, user_arg)
 
-        raises_("add_all", (user_arg,))
+        for name in ["add_all", "merge_all", "delete_all"]:
+            raises_(name, (user_arg,))
 
         # flush will no-op without something in the unit of work
         def _():
