@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 12216
+
+    Fixed issue in event system which prevented an event listener from being
+    attached and detached from multiple class-like objects, namely the
+    :class:`.sessionmaker` or :class:`.scoped_session` targets that assign to
+    :class:`.Session` subclasses.
+
