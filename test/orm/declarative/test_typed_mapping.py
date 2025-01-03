@@ -107,9 +107,6 @@ _UnionTypeAlias: TypeAlias = Union[_SomeDict1, _SomeDict2]
 
 _StrTypeAlias: TypeAlias = str
 
-if TYPE_CHECKING:
-    _StrPep695: TypeAlias = str
-    _UnionPep695: TypeAlias = Union[_SomeDict1, _SomeDict2]
 
 _TypingLiteral = typing.Literal["a", "b"]
 _TypingExtensionsLiteral = typing_extensions.Literal["a", "b"]
@@ -126,38 +123,24 @@ if compat.py310:
     _JsonPep604: TypeAlias = (
         _JsonObjectPep604 | _JsonArrayPep604 | _JsonPrimitivePep604
     )
+    _JsonPep695 = TypeAliasType("_JsonPep695", _JsonPep604)
 
-if compat.py312:
-    exec(
-        """
-type _UnionPep695 = _SomeDict1 | _SomeDict2
-type _StrPep695 = str
-
-type strtypalias_keyword = Annotated[str, mapped_column(info={"hi": "there"})]
-type strtypalias_keyword_nested = int | Annotated[
-    str, mapped_column(info={"hi": "there"})]
-strtypalias_ta: typing.TypeAlias = Annotated[
-    str, mapped_column(info={"hi": "there"})]
+_StrPep695 = TypeAliasType("_StrPep695", str)
+_UnionPep695 = TypeAliasType("_UnionPep695", Union[_SomeDict1, _SomeDict2])
+strtypalias_keyword = TypeAliasType(
+    "strtypalias_keyword", Annotated[str, mapped_column(info={"hi": "there"})]
+)
+if compat.py310:
+    strtypalias_keyword_nested = TypeAliasType(
+        "strtypalias_keyword_nested",
+        int | Annotated[str, mapped_column(info={"hi": "there"})],
+    )
+strtypalias_ta: TypeAlias = Annotated[str, mapped_column(info={"hi": "there"})]
 strtypalias_plain = Annotated[str, mapped_column(info={"hi": "there"})]
-
-type _Literal695 = Literal["to-do", "in-progress", "done"]
-type _RecursiveLiteral695 = _Literal695
-
-type _JsonPep695 = _JsonPep604
-""",
-        globals(),
-    )
-
-
-def make_pep695_type(name, definition):
-    lcls = {}
-    exec(
-        f"""
-type {name} = {definition}
-""",
-        lcls,
-    )
-    return lcls[name]
+_Literal695 = TypeAliasType(
+    "_Literal695", Literal["to-do", "in-progress", "done"]
+)
+_RecursiveLiteral695 = TypeAliasType("_RecursiveLiteral695", _Literal695)
 
 
 def expect_annotation_syntax_error(name):
@@ -900,9 +883,9 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             # this seems to be illegal for typing but "works"
             tat = NewType("tat", Union[str, int, None])
         elif option.union_695:
-            tat = make_pep695_type("tat", str | int)
+            tat = TypeAliasType("tat", str | int)
         elif option.union_null_695:
-            tat = make_pep695_type("tat", str | int | None)
+            tat = TypeAliasType("tat", str | int | None)
         else:
             option.fail()
 
