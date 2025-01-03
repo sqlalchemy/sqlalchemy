@@ -782,7 +782,8 @@ class ORMExecuteTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
         if from_stmt:
             stmt = select(User).from_statement(stmt.returning(User))
 
-        sess.execute(stmt)
+        result = sess.execute(stmt)
+        result.close()
 
         eq_(
             canary.mock_calls,
