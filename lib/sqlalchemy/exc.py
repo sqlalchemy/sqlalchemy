@@ -139,7 +139,7 @@ class ObjectNotExecutableError(ArgumentError):
     """
 
     def __init__(self, target: Any):
-        super().__init__("Not an executable object: %r" % target)
+        super().__init__(f"Not an executable object: {target!r}")
         self.target = target
 
     def __reduce__(self) -> Union[str, Tuple[Any, ...]]:

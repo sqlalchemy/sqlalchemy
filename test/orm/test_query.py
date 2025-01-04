@@ -160,17 +160,10 @@ class MiscTest(QueryTest):
 
         q = Session().query(literal_column("1"))
 
-        if executor == "session":
-            with testing.expect_deprecated(
-                r"Object .*Query.* should not be used directly in a "
-                r"SQL statement context"
-            ):
-                meth(q)
-        else:
-            with testing.expect_raises_message(
-                sa_exc.ObjectNotExecutableError, "Not an executable object"
-            ):
-                meth(q)
+        with testing.expect_raises_message(
+            sa_exc.ObjectNotExecutableError, "Not an executable object: .*"
+        ):
+            meth(q)
 
 
 class OnlyReturnTuplesTest(QueryTest):

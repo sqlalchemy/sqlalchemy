@@ -1,0 +1,7 @@
+.. change::
+    :tags: sql
+    :tickets: 12218
+
+    Removed the automatic coercion of executable objects, such as
+    :class:`_orm.Query`, when passed into :meth:`_orm.Session.execute`.
+    This usage raised a deprecation warning since the 1.4 series.
