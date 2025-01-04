@@ -210,16 +210,13 @@ jobs:
         os:
           - "ubuntu-22.04"
         python-version:
+          # ubuntu-22.04 does not have: py27, py36. Mypy no longer supports it
           - "3.7"
           - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
           - "3.12"
-        include:
-          # ubuntu-22.04 does not have: py27, py36
-          - os: "ubuntu-20.04"
-            python-version: "3.6"
       fail-fast: false
 
     # steps to run in each job. Some are github actions, others run shell commands

@@ -3546,6 +3546,7 @@ class OnConflictTest(AssertsCompiledSQL, fixtures.TablesTest):
 
 class ComputedReflectionTest(fixtures.TestBase):
     __only_on__ = "sqlite"
+    __requires__ = ("computed_columns",)
     __backend__ = True
 
     @classmethod
