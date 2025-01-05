@@ -584,6 +584,8 @@ class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
                 else:
                     self._rows = deque(await prepared_stmt.fetch(*parameters))
                     status = prepared_stmt.get_statusmsg()
+                    if status is None:
+                        status = ""
 
                     reg = re.match(
                         r"(?:SELECT|UPDATE|DELETE|INSERT \d+) (\d+)", status
