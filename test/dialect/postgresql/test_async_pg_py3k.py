@@ -7,6 +7,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import select
+from sqlalchemy import text
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
@@ -335,8 +336,6 @@ class AsyncPgTest(fixtures.TestBase):
     @async_test
     async def test_name_connection_func(self, metadata, async_testing_engine):
 
-        engine = async_testing_engine(
-            options={"connect_args": {"prepared_statement_name_func": name_f}},
-        )
+        engine = async_testing_engine()
         async with engine.begin() as conn:
-            await conn.execute("")
+            await conn.execute(text(""))
