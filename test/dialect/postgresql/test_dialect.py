@@ -788,6 +788,37 @@ class MultiHostConnectTest(fixtures.TestBase):
         ):
             dialect.create_connect_args(u)
 
+class NullQueryTest(fixtures.TestBase):
+    __backend__ = True
+
+    @testing.only_on(["+psycopg", "+psycopg2", "+asyncpg"])
+    @testing.combinations(
+        ("postgresql+D://U:PS@/DB?host=H:P&host=H:P&host=H:P"),
+        argnames="pattern",
+    )
+    def test_multiple_host_real_connect(
+        self, testing_engine, pattern
+    ):
+        tdb_url = testing.db.url
+
+        host = tdb_url.host
+        if host == "127.0.0.1":
+            host = "localhost"
+        port = str(tdb_url.port) if tdb_url.port else "5432"
+
+        url_string = (
+            pattern.replace("DB", tdb_url.database)
+            .replace("postgresql+D", tdb_url.drivername)
+            .replace("U", tdb_url.username)
+            .replace("PS", tdb_url.password)
+            .replace("H", host)
+            .replace("P", port)
+        )
+
+        e = testing_engine(url_string)
+        with e.connect() as conn:
+            conn.exec_driver_sql("")
+
 
 class BackendDialectTest(fixtures.TestBase):
     __backend__ = True

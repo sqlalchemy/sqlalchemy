@@ -332,10 +332,3 @@ class AsyncPgTest(fixtures.TestBase):
         async with engine.begin() as conn:
             await conn.execute(select(1))
             assert len(cache) > 0
-
-    @async_test
-    async def test_name_connection_func(self, metadata, async_testing_engine):
-
-        engine = async_testing_engine()
-        async with engine.begin() as conn:
-            await conn.execute(text(""))
