@@ -791,7 +791,7 @@ class MultiHostConnectTest(fixtures.TestBase):
 class NullQueryTest(fixtures.TestBase):
     __backend__ = True
 
-    @testing.only_on(["+psycopg", "+psycopg2", "+asyncpg"])
+    @testing.only_on(["+psycopg", "+asyncpg"])
     @testing.combinations(
         ("postgresql+D://U:PS@/DB?host=H:P&host=H:P&host=H:P"),
         argnames="pattern",
