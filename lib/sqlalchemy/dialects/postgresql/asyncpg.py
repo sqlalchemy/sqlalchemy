@@ -586,7 +586,8 @@ class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
                     status = prepared_stmt.get_statusmsg()
 
                     reg = re.match(
-                        r"(?:SELECT|UPDATE|DELETE|INSERT \d+) (\d+)", status
+                        r"(?:SELECT|UPDATE|DELETE|INSERT \d+) (\d+)",
+                        status or "",
                     )
                     if reg:
                         self._rowcount = int(reg.group(1))

@@ -1040,6 +1040,12 @@ class MiscBackendTest(
     __only_on__ = "postgresql"
     __backend__ = True
 
+    @testing.fails_on(["+psycopg2"])
+    def test_empty_sql_string(self, connection):
+
+        result = connection.exec_driver_sql("")
+        assert result._soft_closed
+
     @testing.provide_metadata
     def test_date_reflection(self):
         metadata = self.metadata
