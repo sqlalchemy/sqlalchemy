@@ -656,7 +656,9 @@ class CompileState:
     _ambiguous_table_name_map: Optional[_AmbiguousTableNameMap]
 
     @classmethod
-    def create_for_statement(cls, statement, compiler, **kw):
+    def create_for_statement(
+        cls, statement: Executable, compiler: Compiled, **kw: Any
+    ) -> "CompileState":
         # factory construction.
 
         if statement._propagate_attrs:

@@ -1376,6 +1376,9 @@ class UserDefinedType(
 
         return self
 
+    def get_col_spec(self, **kw: Any) -> str:
+        raise NotImplementedError()
+
 
 class Emulated(TypeEngineMixin):
     """Mixin for base types that emulate the behavior of a DB-native type.

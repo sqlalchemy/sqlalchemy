@@ -681,7 +681,6 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
 
         dialect._get_server_version_info = server_version_info
         dialect.get_isolation_level = Mock()
-        dialect._check_unicode_returns = Mock()
         dialect._check_unicode_description = Mock()
         dialect._get_default_schema_name = Mock()
         dialect._detect_decimal_char = Mock()

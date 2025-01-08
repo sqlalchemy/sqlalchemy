@@ -80,9 +80,11 @@ if typing.TYPE_CHECKING:
     from .interfaces import _CoreSingleExecuteParams
     from .interfaces import _DBAPICursorDescription
     from .interfaces import _DBAPIMultiExecuteParams
+    from .interfaces import _DBAPISingleExecuteParams
     from .interfaces import _ExecuteOptions
     from .interfaces import _MutableCoreSingleExecuteParams
     from .interfaces import _ParamStyle
+    from .interfaces import ConnectArgsType
     from .interfaces import DBAPIConnection
     from .interfaces import IsolationLevel
     from .row import Row
@@ -101,6 +103,8 @@ if typing.TYPE_CHECKING:
     from ..sql.type_api import _BindProcessorType
     from ..sql.type_api import _ResultProcessorType
     from ..sql.type_api import TypeEngine
+    from ..util.langhelpers import generic_fn_descriptor
+
 
 # When we're handed literal SQL, ensure it's a SELECT query
 SERVER_SIDE_CURSOR_RE = re.compile(r"\s*SELECT", re.I | re.UNICODE)
@@ -245,7 +249,7 @@ class DefaultDialect(Dialect):
 
     supports_is_distinct_from = True
 
-    supports_server_side_cursors = False
+    supports_server_side_cursors: "generic_fn_descriptor[bool] | bool" = False
 
     server_side_cursors = False
 
@@ -440,7 +444,7 @@ class DefaultDialect(Dialect):
     def _bind_typing_render_casts(self):
         return self.bind_typing is interfaces.BindTyping.RENDER_CASTS
 
-    def _ensure_has_table_connection(self, arg):
+    def _ensure_has_table_connection(self, arg: Connection) -> None:
         if not isinstance(arg, Connection):
             raise exc.ArgumentError(
                 "The argument passed to Dialect.has_table() should be a "
@@ -524,7 +528,7 @@ class DefaultDialect(Dialect):
         else:
             return None
 
-    def initialize(self, connection):
+    def initialize(self, connection: Connection) -> None:
         try:
             self.server_version_info = self._get_server_version_info(
                 connection
@@ -560,7 +564,7 @@ class DefaultDialect(Dialect):
                 % (self.label_length, self.max_identifier_length)
             )
 
-    def on_connect(self):
+    def on_connect(self) -> Callable[[Any], None] | None:
         # inherits the docstring from interfaces.Dialect.on_connect
         return None
 
@@ -626,11 +630,11 @@ class DefaultDialect(Dialect):
                 % (ident, self.max_identifier_length)
             )
 
-    def connect(self, *cargs, **cparams):
+    def connect(self, *cargs: Any, **cparams: Any):  # type: ignore[no-untyped-def]  # NOQA: E501
         # inherits the docstring from interfaces.Dialect.connect
         return self.loaded_dbapi.connect(*cargs, **cparams)
 
-    def create_connect_args(self, url):
+    def create_connect_args(self, url: URL) -> "ConnectArgsType":
         # inherits the docstring from interfaces.Dialect.create_connect_args
         opts = url.translate_connect_args()
         opts.update(url.query)
@@ -953,7 +957,14 @@ class DefaultDialect(Dialect):
     def do_execute_no_params(self, cursor, statement, context=None):
         cursor.execute(statement)
 
-    def is_disconnect(self, e, connection, cursor):
+    def is_disconnect(
+        self,
+        e: Exception,
+        connection: (
+            pool.PoolProxiedConnection | interfaces.DBAPIConnection | None
+        ),
+        cursor: interfaces.DBAPICursor | None,
+    ) -> bool:
         return False
 
     @util.memoized_instancemethod
@@ -1669,7 +1680,12 @@ class DefaultExecutionContext(ExecutionContext):
     def no_parameters(self):
         return self.execution_options.get("no_parameters", False)
 
-    def _execute_scalar(self, stmt, type_, parameters=None):
+    def _execute_scalar(
+        self,
+        stmt: str,
+        type_: TypeEngine[Any] | None,
+        parameters: _DBAPISingleExecuteParams | None = None,
+    ) -> Any:
         """Execute a string statement on the current cursor, returning a
         scalar result.
 
@@ -1743,7 +1759,7 @@ class DefaultExecutionContext(ExecutionContext):
 
         return use_server_side
 
-    def create_cursor(self):
+    def create_cursor(self) -> DBAPICursor:
         if (
             # inlining initial preference checks for SS cursors
             self.dialect.supports_server_side_cursors
@@ -1764,10 +1780,10 @@ class DefaultExecutionContext(ExecutionContext):
     def fetchall_for_returning(self, cursor):
         return cursor.fetchall()
 
-    def create_default_cursor(self):
+    def create_default_cursor(self) -> DBAPICursor:
         return self._dbapi_connection.cursor()
 
-    def create_server_side_cursor(self):
+    def create_server_side_cursor(self) -> DBAPICursor:
         raise NotImplementedError()
 
     def pre_exec(self):

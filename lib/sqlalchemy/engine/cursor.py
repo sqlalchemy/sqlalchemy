@@ -1379,7 +1379,10 @@ class FullyBufferedCursorFetchStrategy(CursorFetchStrategy):
     __slots__ = ("_rowbuffer", "alternate_cursor_description")
 
     def __init__(
-        self, dbapi_cursor, alternate_description=None, initial_buffer=None
+        self,
+        dbapi_cursor: DBAPICursor,
+        alternate_description: _DBAPICursorDescription | None = None,
+        initial_buffer: Any = None,
     ):
         self.alternate_cursor_description = alternate_description
         if initial_buffer is not None:
@@ -1900,7 +1903,7 @@ class CursorResult(Result[Unpack[_Ts]]):
         clone._metadata = clone._metadata._splice_horizontally(other._metadata)
 
         clone.cursor_strategy = FullyBufferedCursorFetchStrategy(
-            None,
+            None,  # type: ignore[arg-type]
             initial_buffer=total_rows,
         )
         clone._reset_memoizations()
@@ -1932,7 +1935,7 @@ class CursorResult(Result[Unpack[_Ts]]):
         )
 
         clone.cursor_strategy = FullyBufferedCursorFetchStrategy(
-            None,
+            None,  # type: ignore[arg-type]
             initial_buffer=total_rows,
         )
         clone._reset_memoizations()
@@ -1961,7 +1964,7 @@ class CursorResult(Result[Unpack[_Ts]]):
         )._remove_processors()
 
         self.cursor_strategy = FullyBufferedCursorFetchStrategy(
-            None,
+            None,  # type: ignore[arg-type]
             # TODO: if these are Row objects, can we save on not having to
             # re-make new Row objects out of them a second time?  is that
             # what's actually happening right now?  maybe look into this
