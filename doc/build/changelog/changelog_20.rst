@@ -10,7 +10,187 @@
 
 .. changelog::
     :version: 2.0.37
-    :include_notes_from: unreleased_20
+    :released: January 9, 2025
+
+    .. change::
+        :tags: usecase, mariadb
+        :tickets: 10720
+
+        Added sql types ``INET4`` and ``INET6`` in the MariaDB dialect.  Pull
+        request courtesy Adam Žurek.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11370
+
+        Fixed issue regarding ``Union`` types that would be present in the
+        :paramref:`_orm.registry.type_annotation_map` of a :class:`_orm.registry`
+        or declarative base class, where a :class:`.Mapped` element that included
+        one of the subtypes present in that ``Union`` would be matched to that
+        entry, potentially ignoring other entries that matched exactly.   The
+        correct behavior now takes place such that an entry should only match in
+        :paramref:`_orm.registry.type_annotation_map` exactly, as a ``Union`` type
+        is a self-contained type. For example, an attribute with ``Mapped[float]``
+        would previously match to a :paramref:`_orm.registry.type_annotation_map`
+        entry ``Union[float, Decimal]``; this will no longer match and will now
+        only match to an entry that states ``float``. Pull request courtesy Frazer
+        McLean.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 11724
+
+        Fixes issue in :meth:`.Dialect.get_multi_indexes` in the PostgreSQL
+        dialect, where an error would be thrown when attempting to use alembic with
+        a vector index from the pgvecto.rs extension.
+
+    .. change::
+        :tags:  usecase, mysql, mariadb
+        :tickets: 11764
+
+        Added support for the ``LIMIT`` clause with ``DELETE`` for the MySQL and
+        MariaDB dialects, to complement the already present option for
+        ``UPDATE``. The :meth:`.Delete.with_dialect_options` method of the
+        :func:`.delete` construct accepts parameters for ``mysql_limit`` and
+        ``mariadb_limit``, allowing users to specify a limit on the number of rows
+        deleted. Pull request courtesy of Pablo Nicolás Estevez.
+
+
+    .. change::
+        :tags:  bug, mysql, mariadb
+
+        Added logic to ensure that the ``mysql_limit`` and ``mariadb_limit``
+        parameters of :meth:`.Update.with_dialect_options` and
+        :meth:`.Delete.with_dialect_options` when compiled to string will only
+        compile if the parameter is passed as an integer; a ``ValueError`` is
+        raised otherwise.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11944
+
+        Fixed bug in how type unions were handled within
+        :paramref:`_orm.registry.type_annotation_map` as well as
+        :class:`._orm.Mapped` that made the lookup behavior of ``a | b`` different
+        from that of ``Union[a, b]``.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 11955
+
+        Consistently handle ``TypeAliasType`` (defined in PEP 695) obtained with
+        the ``type X = int`` syntax introduced in python 3.12. Now in all cases one
+        such alias must be explicitly added to the type map for it to be usable
+        inside :class:`.Mapped`. This change also revises the approach added in
+        :ticket:`11305`, now requiring the ``TypeAliasType`` to be added to the
+        type map. Documentation on how unions and type alias types are handled by
+        SQLAlchemy has been added in the
+        :ref:`orm_declarative_mapped_column_type_map` section of the documentation.
+
+    .. change::
+        :tags: feature, oracle
+        :tickets: 12016
+
+        Added new table option ``oracle_tablespace`` to specify the ``TABLESPACE``
+        option when creating a table in Oracle. This allows users to define the
+        tablespace in which the table should be created. Pull request courtesy of
+        Miguel Grillo.
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 12019
+
+        Fixed regression caused by an internal code change in response to recent
+        Mypy releases that caused the very unusual case of a list of ORM-mapped
+        attribute expressions passed to :meth:`.ColumnOperators.in_` to no longer
+        be accepted.
+
+    .. change::
+        :tags: oracle, usecase
+        :tickets: 12032
+
+        Use the connection attribute ``max_identifier_length`` available
+        in oracledb since version 2.5 when determining the identifier length
+        in the Oracle dialect.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 12084
+
+        Fixed issue in "lambda SQL" feature where the tracking of bound parameters
+        could be corrupted if the same lambda were evaluated across multiple
+        compile phases, including when using the same lambda across multiple engine
+        instances or with statement caching disabled.
+
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 12093
+
+        The :class:`_postgresql.Range` type now supports
+        :meth:`_postgresql.Range.__contains__`. Pull request courtesy of Frazer
+        McLean.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 12100
+
+        Fixed compilation of ``TABLE`` function when used in a ``FROM`` clause in
+        Oracle Database dialect.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 12150
+
+        Fixed issue in oracledb / cx_oracle dialects where output type handlers for
+        ``CLOB`` were being routed to ``NVARCHAR`` rather than ``VARCHAR``, causing
+        a double conversion to take place.
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 12170
+
+        Fixed issue where creating a table with a primary column of
+        :class:`_sql.SmallInteger` and using the asyncpg driver would result in
+        the type being compiled to ``SERIAL`` rather than ``SMALLSERIAL``.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 12207
+
+        Fixed issues in type handling within the
+        :paramref:`_orm.registry.type_annotation_map` feature which prevented the
+        use of unions, using either pep-604 or ``Union`` syntaxes under future
+        annotations mode, which contained multiple generic types as elements from
+        being correctly resolvable.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 12216
+
+        Fixed issue in event system which prevented an event listener from being
+        attached and detached from multiple class-like objects, namely the
+        :class:`.sessionmaker` or :class:`.scoped_session` targets that assign to
+        :class:`.Session` subclasses.
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 12220
+
+        Adjusted the asyncpg dialect so that an empty SQL string, which is valid
+        for PostgreSQL server, may be successfully processed at the dialect level,
+        such as when using :meth:`.Connection.exec_driver_sql`. Pull request
+        courtesy Andrew Jackson.
+
+
+    .. change::
+        :tags: usecase, sqlite
+        :tickets: 7398
+
+        Added SQLite table option to enable ``STRICT`` tables. Pull request
+        courtesy of Guilherme Crocetti.
 
 .. changelog::
     :version: 2.0.36
