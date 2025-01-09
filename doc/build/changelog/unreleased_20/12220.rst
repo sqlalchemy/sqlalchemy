@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 12220
-
-    Adjusted the asyncpg dialect so that an empty SQL string, which is valid
-    for PostgreSQL server, may be successfully processed at the dialect level,
-    such as when using :meth:`.Connection.exec_driver_sql`. Pull request
-    courtesy Andrew Jackson.
-

@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 11724
-
-    Fixes issue in :meth:`.Dialect.get_multi_indexes` in the PostgreSQL
-    dialect, where an error would be thrown when attempting to use alembic with
-    a vector index from the pgvecto.rs extension.

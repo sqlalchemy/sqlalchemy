@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 11944
-
-    Fixed bug in how type unions were handled within
-    :paramref:`_orm.registry.type_annotation_map` as well as
-    :class:`._orm.Mapped` that made the lookup behavior of ``a | b`` different
-    from that of ``Union[a, b]``.
