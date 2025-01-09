@@ -2,5 +2,5 @@
     :tags: bug, oracle
     :tickets: 12100
 
-    Fixed compilation of ``TABLE`` function when used in a from clause
-    in Oracle Database dialect.
+    Fixed compilation of ``TABLE`` function when used in a ``FROM`` clause in
+    Oracle Database dialect.
