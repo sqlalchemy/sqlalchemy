@@ -813,7 +813,7 @@ class LegacyAPIWarning(Base20DeprecationWarning):
 
 
 class MovedIn20Warning(Base20DeprecationWarning):
-    """Subtype of RemovedIn20Warning to indicate an API that moved only."""
+    """Subtype of Base20DeprecationWarning to indicate an API that moved only."""
 
 
 class SAPendingDeprecationWarning(PendingDeprecationWarning):
