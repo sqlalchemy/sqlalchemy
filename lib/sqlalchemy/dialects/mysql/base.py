@@ -3556,16 +3556,14 @@ class MySQLDialect(default.DefaultDialect):
             if flavor == "UNIQUE":
                 unique = True
             elif flavor in ("FULLTEXT", "SPATIAL"):
-                dialect_options["%s_prefix" % self.name] = flavor
+                dialect_options[f"{self.name}_prefix"] = flavor
             elif flavor is not None:
                 util.warn(
-                    "Converting unknown KEY type %s to a plain KEY", flavor
+                    f"Converting unknown KEY type {flavor} to a plain KEY"
                 )
 
             if spec["parser"]:
-                dialect_options["%s_with_parser" % (self.name)] = spec[
-                    "parser"
-                ]
+                dialect_options[f"{self.name}_with_parser"] = spec["parser"]
 
             index_d: ReflectedIndex = {
                 "name": spec["name"],
@@ -3577,10 +3575,7 @@ class MySQLDialect(default.DefaultDialect):
                 s[0]: s[1] for s in spec["columns"] if s[1] is not None
             }
             if mysql_length:
-                dialect_options["%s_length" % self.name] = mysql_length
-
-            if flavor:
-                index_d["type"] = flavor  # type: ignore[typeddict-unknown-key]
+                dialect_options[f"{self.name}_length"] = mysql_length
 
             if dialect_options:
                 index_d["dialect_options"] = dialect_options
