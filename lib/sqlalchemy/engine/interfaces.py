@@ -242,7 +242,7 @@ _AnyMultiExecuteParams = _DBAPIMultiExecuteParams
 _AnyExecuteParams = _DBAPIAnyExecuteParams
 
 CompiledCacheType = MutableMapping[Any, "Compiled"]
-SchemaTranslateMapType = MutableMapping[Optional[str], Optional[str]]
+SchemaTranslateMapType = Mapping[Optional[str], Optional[str]]
 
 _ImmutableExecuteOptions = immutabledict[str, Any]
 
@@ -548,8 +548,6 @@ class ReflectedIndex(TypedDict):
     dialect_options: NotRequired[Dict[str, Any]]
     """Additional dialect-specific options detected for this index"""
 
-    type: NotRequired[str]
-
 
 class ReflectedTableComment(TypedDict):
     """Dictionary representing the reflected comment corresponding to
@@ -784,7 +782,7 @@ class Dialect(EventTarget):
     max_identifier_length: int
     """The maximum length of identifier names."""
 
-    supports_server_side_cursors: "generic_fn_descriptor[bool] | bool"
+    supports_server_side_cursors: generic_fn_descriptor[bool] | bool
     """indicates if the dialect supports server side cursors"""
 
     server_side_cursors: bool

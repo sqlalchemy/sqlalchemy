@@ -17,18 +17,21 @@ import contextlib
 import typing
 from typing import Any
 from typing import Callable
+from typing import Generic
 from typing import Iterable
 from typing import List
 from typing import Optional
 from typing import Protocol
 from typing import Sequence as typing_Sequence
 from typing import Tuple
+from typing import TypeVar
 
 from . import roles
 from .base import _generative
 from .base import Executable
 from .base import SchemaVisitor
 from .elements import ClauseElement
+from .schema import Column
 from .. import exc
 from .. import util
 from ..util import topological
@@ -38,7 +41,6 @@ if typing.TYPE_CHECKING:
     from .compiler import Compiled
     from .compiler import DDLCompiler
     from .elements import BindParameter
-    from .schema import Column
     from .schema import Constraint
     from .schema import ForeignKeyConstraint
     from .schema import Index
@@ -51,6 +53,8 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import CompiledCacheType
     from ..engine.interfaces import Dialect
     from ..engine.interfaces import SchemaTranslateMapType
+
+T = TypeVar("T", bound="SchemaItem")
 
 
 class BaseDDLElement(ClauseElement):
@@ -417,7 +421,7 @@ class DDL(ExecutableDDLElement):
         )
 
 
-class _CreateDropBase(ExecutableDDLElement):
+class _CreateDropBase(ExecutableDDLElement, Generic[T]):
     """Base class for DDL constructs that represent CREATE and DROP or
     equivalents.
 
@@ -429,7 +433,7 @@ class _CreateDropBase(ExecutableDDLElement):
 
     def __init__(
         self,
-        element,
+        element: T,
     ):
         self.element = self.target = element
         self._ddl_if = getattr(element, "_ddl_if", None)
@@ -449,13 +453,13 @@ class _CreateDropBase(ExecutableDDLElement):
         return False
 
 
-class _CreateBase(_CreateDropBase):
+class _CreateBase(_CreateDropBase[Any]):
     def __init__(self, element, if_not_exists=False):
         super().__init__(element)
         self.if_not_exists = if_not_exists
 
 
-class _DropBase(_CreateDropBase):
+class _DropBase(_CreateDropBase[Any]):
     def __init__(self, element, if_exists=False):
         super().__init__(element)
         self.if_exists = if_exists
@@ -714,9 +718,9 @@ class CreateIndex(_CreateBase):
     """Represent a CREATE INDEX statement."""
 
     __visit_name__ = "create_index"
-    element: "Index"
+    element: Index
 
-    def __init__(self, element: "Index", if_not_exists: bool = False):
+    def __init__(self, element: Index, if_not_exists: bool = False):
         """Create a :class:`.Createindex` construct.
 
         :param element: a :class:`_schema.Index` that's the subject
@@ -735,9 +739,9 @@ class DropIndex(_DropBase):
 
     __visit_name__ = "drop_index"
 
-    element: "Index"
+    element: Index
 
-    def __init__(self, element: "Index", if_exists: bool = False):
+    def __init__(self, element: Index, if_exists: bool = False):
         """Create a :class:`.DropIndex` construct.
 
         :param element: a :class:`_schema.Index` that's the subject
@@ -776,13 +780,13 @@ class DropConstraint(_DropBase):
         )
 
 
-class SetTableComment(_CreateDropBase):
+class SetTableComment(_CreateDropBase["Table"]):
     """Represent a COMMENT ON TABLE IS statement."""
 
     __visit_name__ = "set_table_comment"
 
 
-class DropTableComment(_CreateDropBase):
+class DropTableComment(_CreateDropBase["Table"]):
     """Represent a COMMENT ON TABLE '' statement.
 
     Note this varies a lot across database backends.
@@ -792,26 +796,25 @@ class DropTableComment(_CreateDropBase):
     __visit_name__ = "drop_table_comment"
 
 
-class SetColumnComment(_CreateDropBase):
+class SetColumnComment(_CreateDropBase[Column[Any]]):
     """Represent a COMMENT ON COLUMN IS statement."""
 
     __visit_name__ = "set_column_comment"
-    element: "Column[Any]"
 
 
-class DropColumnComment(_CreateDropBase):
+class DropColumnComment(_CreateDropBase[Column[Any]]):
     """Represent a COMMENT ON COLUMN IS NULL statement."""
 
     __visit_name__ = "drop_column_comment"
 
 
-class SetConstraintComment(_CreateDropBase):
+class SetConstraintComment(_CreateDropBase["Constraint"]):
     """Represent a COMMENT ON CONSTRAINT IS statement."""
 
     __visit_name__ = "set_constraint_comment"
 
 
-class DropConstraintComment(_CreateDropBase):
+class DropConstraintComment(_CreateDropBase["Constraint"]):
     """Represent a COMMENT ON CONSTRAINT IS NULL statement."""
 
     __visit_name__ = "drop_constraint_comment"

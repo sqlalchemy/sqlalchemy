@@ -1376,8 +1376,10 @@ class UserDefinedType(
 
         return self
 
-    def get_col_spec(self, **kw: Any) -> str:
-        raise NotImplementedError()
+    if TYPE_CHECKING:
+
+        def get_col_spec(self, **kw: Any) -> str:
+            raise NotImplementedError()
 
 
 class Emulated(TypeEngineMixin):

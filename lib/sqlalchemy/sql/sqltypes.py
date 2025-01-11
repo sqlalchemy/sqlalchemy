@@ -247,7 +247,7 @@ class String(Concatenable, TypeEngine[str]):
         return process
 
     def bind_processor(
-        self, dialect: "Dialect"
+        self, dialect: Dialect
     ) -> _BindProcessorType[str] | None:
         return None
 
@@ -1333,9 +1333,9 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
 
     __visit_name__ = "enum"
 
-    enum_class: None | str | type[enum.StrEnum]
+    enum_class: None | str | type[enum.Enum]
 
-    def __init__(self, *enums: object, **kw: Any):
+    def __init__(self, *enums: Union[str, type[enum.Enum]], **kw: Any):
         r"""Construct an enum.
 
         Keyword arguments which don't apply to a specific backend are ignored
@@ -1467,7 +1467,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
            .. versionchanged:: 2.0 This parameter now defaults to True.
 
         """
-        self._enum_init(enums, kw)  # type: ignore[arg-type]
+        self._enum_init(enums, kw)
 
     @property
     def _enums_argument(self):
@@ -1477,7 +1477,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
             return self.enums
 
     def _enum_init(
-        self, enums: Sequence[str | type[enum.StrEnum]], kw: dict[str, Any]
+        self, enums: Sequence[Union[str, type[enum.Enum]]], kw: dict[str, Any]
     ) -> None:
         """internal init for :class:`.Enum` and subclasses.
 
@@ -1489,7 +1489,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         self.native_enum = kw.pop("native_enum", True)
         self.create_constraint = kw.pop("create_constraint", False)
         self.values_callable: (
-            Callable[[type[enum.StrEnum]], Sequence[str]] | None
+            Callable[[type[enum.Enum]], Sequence[str]] | None
         ) = kw.pop("values_callable", None)
         self._sort_key_function = kw.pop("sort_key_function", NO_ARG)
         length_arg = kw.pop("length", NO_ARG)
@@ -1518,7 +1518,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
                 )
             length = length_arg
 
-        self._valid_lookup[None] = self._object_lookup[None] = None  # type: ignore # noqa: E501
+        self._valid_lookup[None] = self._object_lookup[None] = None
 
         super().__init__(length=length)
 
@@ -1540,8 +1540,8 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         )
 
     def _parse_into_values(
-        self, enums: Sequence[str | type[enum.StrEnum]], kw: Any
-    ) -> tuple[Sequence[str], Sequence[enum.StrEnum] | Sequence[str]]:
+        self, enums: Sequence[str | type[enum.Enum]], kw: Any
+    ) -> tuple[Sequence[str], Sequence[enum.Enum] | Sequence[str]]:
         if not enums and "_enums" in kw:
             enums = kw.pop("_enums")
 
@@ -1658,16 +1658,18 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
     def _setup_for_values(
         self,
         values: Sequence[str],
-        objects: Sequence[enum.StrEnum] | Sequence[str],
+        objects: Sequence[enum.Enum] | Sequence[str],
         kw: Any,
     ) -> None:
         self.enums = list(values)
 
-        self._valid_lookup: dict[str, str] = dict(
+        self._valid_lookup: dict[enum.Enum | str | None, str | None] = dict(
             zip(reversed(objects), reversed(values))
         )
 
-        self._object_lookup: dict[str, str] = dict(zip(values, objects))
+        self._object_lookup: dict[str | None, enum.Enum | str | None] = dict(
+            zip(values, objects)
+        )
 
         self._valid_lookup.update(
             [
@@ -1729,9 +1731,10 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
 
     comparator_factory = Comparator
 
-    def _object_value_for_elem(self, elem: str) -> str:
+    def _object_value_for_elem(self, elem: str) -> Union[str, enum.Enum]:
         try:
-            return self._object_lookup[elem]
+            # Value will not be None beacuse key is not None
+            return self._object_lookup[elem]  # type: ignore[return-value]
         except KeyError as err:
             raise LookupError(
                 "'%s' is not among the defined enum values. "
@@ -3513,7 +3516,7 @@ class BINARY(_Binary):
 class VARBINARY(_Binary):
     """The SQL VARBINARY type."""
 
-    length: int
+    length: Optional[int]
     __visit_name__ = "VARBINARY"
 
 
@@ -3720,18 +3723,18 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
         if character_based_uuid:
             if self.as_uuid:
 
-                def process(value: Any) -> str:
+                def process(value):
                     if value is not None:
                         value = value.hex
-                    return value  # type: ignore[no-any-return]
+                    return value
 
                 return process
             else:
 
-                def process(value: Any) -> str:
+                def process(value):
                     if value is not None:
                         value = value.replace("-", "")
-                    return value  # type: ignore[no-any-return]
+                    return value
 
                 return process
         else:

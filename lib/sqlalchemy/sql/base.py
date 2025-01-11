@@ -658,7 +658,7 @@ class CompileState:
     @classmethod
     def create_for_statement(
         cls, statement: Executable, compiler: Compiled, **kw: Any
-    ) -> "CompileState":
+    ) -> CompileState:
         # factory construction.
 
         if statement._propagate_attrs:

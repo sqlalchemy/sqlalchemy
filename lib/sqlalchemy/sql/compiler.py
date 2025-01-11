@@ -133,7 +133,6 @@ if typing.TYPE_CHECKING:
     from .selectable import SelectState
     from .type_api import _BindProcessorType
     from ..engine.cursor import CursorResultMetaData
-    from ..engine.default import DefaultDialect
     from ..engine.interfaces import _CoreSingleExecuteParams
     from ..engine.interfaces import _DBAPIAnyExecuteParams
     from ..engine.interfaces import _DBAPIMultiExecuteParams
@@ -889,8 +888,9 @@ class Compiled:
             self.string = self.process(self.statement, **compile_kwargs)
 
             if render_schema_translate:
+                assert schema_translate_map is not None
                 self.string = self.preparer._render_schema_translates(
-                    self.string, schema_translate_map  # type: ignore[arg-type]
+                    self.string, schema_translate_map
                 )
 
             self.state = CompilerState.STRING_APPLIED
@@ -4618,7 +4618,9 @@ class SQLCompiler(Compiled):
     def get_select_hint_text(self, byfroms):
         return None
 
-    def get_from_hint_text(self, table: Any, text: str | None) -> str | None:
+    def get_from_hint_text(
+        self, table: FromClause, text: str | None
+    ) -> str | None:
         return None
 
     def get_crud_hint_text(self, table, text):
@@ -6164,8 +6166,8 @@ class SQLCompiler(Compiled):
     def visit_update(
         self, update_stmt: "Update", visiting_cte: CTE | None = None, **kw: Any
     ) -> str:
-        compile_state = update_stmt._compile_state_factory(  # type: ignore
-            update_stmt, self, **kw  # type: ignore
+        compile_state = update_stmt._compile_state_factory(  # type: ignore[call-arg] # NOQA: E501
+            update_stmt, self, **kw  # type: ignore[arg-type]
         )
         compile_state = cast("UpdateDMLState", compile_state)
         update_stmt = compile_state.statement  # type: ignore[assignment]
@@ -6597,7 +6599,7 @@ class DDLCompiler(Compiled):
         ): ...
 
     @util.memoized_property
-    def sql_compiler(self):
+    def sql_compiler(self) -> SQLCompiler:
         return self.dialect.statement_compiler(
             self.dialect, None, schema_translate_map=self.schema_translate_map
         )
@@ -6969,11 +6971,11 @@ class DDLCompiler(Compiled):
 
     def render_default_string(self, default: Visitable | str) -> str:
         if isinstance(default, str):
-            return self.sql_compiler.render_literal_value(  # type: ignore[no-any-return]  # NOQA: E501
+            return self.sql_compiler.render_literal_value(
                 default, sqltypes.STRINGTYPE
             )
         else:
-            return self.sql_compiler.process(default, literal_binds=True)  # type: ignore[no-any-return]  # NOQA: E501
+            return self.sql_compiler.process(default, literal_binds=True)
 
     def visit_table_or_column_check_constraint(self, constraint, **kw):
         if constraint.is_column_level:
@@ -7132,31 +7134,23 @@ class DDLCompiler(Compiled):
 
 
 class GenericTypeCompiler(TypeCompiler):
-    def visit_FLOAT(
-        self, type_: "sqltypes.Float[decimal.Decimal| float]", **kw: Any
-    ) -> str:
+    def visit_FLOAT(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return "FLOAT"
 
-    def visit_DOUBLE(
-        self, type_: "sqltypes.Double[decimal.Decimal | float]", **kw: Any
-    ) -> str:
+    def visit_DOUBLE(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return "DOUBLE"
 
     def visit_DOUBLE_PRECISION(
         self,
-        type_: "sqltypes.DOUBLE_PRECISION[decimal.Decimal| float]",
+        type_: TypeEngine[Any],
         **kw: Any,
     ) -> str:
         return "DOUBLE PRECISION"
 
-    def visit_REAL(
-        self, type_: "sqltypes.REAL[decimal.Decimal| float]", **kw: Any
-    ) -> str:
+    def visit_REAL(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return "REAL"
 
-    def visit_NUMERIC(
-        self, type_: "sqltypes.Numeric[decimal.Decimal| float]", **kw: Any
-    ) -> str:
+    def visit_NUMERIC(self, type_: "sqltypes.Numeric[Any]", **kw: Any) -> str:
         if type_.precision is None:
             return "NUMERIC"
         elif type_.scale is None:
@@ -7180,31 +7174,31 @@ class GenericTypeCompiler(TypeCompiler):
                 "scale": type_.scale,
             }
 
-    def visit_INTEGER(self, type_: "sqltypes.Integer", **kw: Any) -> str:
+    def visit_INTEGER(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return "INTEGER"
 
-    def visit_SMALLINT(self, type_: "sqltypes.SmallInteger", **kw: Any) -> str:
+    def visit_SMALLINT(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return "SMALLINT"
 
-    def visit_BIGINT(self, type_: "sqltypes.BigInteger", **kw: Any) -> str:
+    def visit_BIGINT(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return "BIGINT"
 
-    def visit_TIMESTAMP(self, type_: "sqltypes.TIMESTAMP", **kw: Any) -> str:
+    def visit_TIMESTAMP(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return "TIMESTAMP"
 
-    def visit_DATETIME(self, type_: "sqltypes.DateTime", **kw: Any) -> str:
+    def visit_DATETIME(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return "DATETIME"
 
-    def visit_DATE(self, type_: "sqltypes.Date", **kw: Any) -> str:
+    def visit_DATE(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return "DATE"
 
-    def visit_TIME(self, type_: "sqltypes.Time", **kw: Any) -> str:
+    def visit_TIME(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return "TIME"
 
-    def visit_CLOB(self, type_: "sqltypes.Text", **kw: Any) -> str:
+    def visit_CLOB(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return "CLOB"
 
-    def visit_NCLOB(self, type_: "sqltypes.Text", **kw: Any) -> str:
+    def visit_NCLOB(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return "NCLOB"
 
     def _render_string_type(
@@ -7222,36 +7216,34 @@ class GenericTypeCompiler(TypeCompiler):
             text += ' COLLATE "%s"' % type_.collation
         return text
 
-    def visit_CHAR(self, type_: "sqltypes.CHAR", **kw: Any) -> str:
+    def visit_CHAR(self, type_: sqltypes.String, **kw: Any) -> str:
         return self._render_string_type(type_, "CHAR")
 
-    def visit_NCHAR(self, type_: "sqltypes.NCHAR", **kw: Any) -> str:
+    def visit_NCHAR(self, type_: sqltypes.String, **kw: Any) -> str:
         return self._render_string_type(type_, "NCHAR")
 
-    def visit_VARCHAR(self, type_: "sqltypes.String", **kw: Any) -> str:
+    def visit_VARCHAR(self, type_: sqltypes.String, **kw: Any) -> str:
         return self._render_string_type(type_, "VARCHAR")
 
-    def visit_NVARCHAR(self, type_: "sqltypes.NVARCHAR", **kw: Any) -> str:
+    def visit_NVARCHAR(self, type_: sqltypes.String, **kw: Any) -> str:
         return self._render_string_type(type_, "NVARCHAR")
 
-    def visit_TEXT(self, type_: "sqltypes.Text", **kw: Any) -> str:
+    def visit_TEXT(self, type_: sqltypes.String, **kw: Any) -> str:
         return self._render_string_type(type_, "TEXT")
 
-    def visit_UUID(
-        self, type_: "sqltypes.Uuid[_UUID_RETURN]", **kw: Any
-    ) -> str:
+    def visit_UUID(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return "UUID"
 
-    def visit_BLOB(self, type_: "sqltypes.LargeBinary", **kw: Any) -> str:
+    def visit_BLOB(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return "BLOB"
 
-    def visit_BINARY(self, type_: "sqltypes.BINARY", **kw: Any) -> str:
+    def visit_BINARY(self, type_: "sqltypes._Binary", **kw: Any) -> str:
         return "BINARY" + (type_.length and "(%d)" % type_.length or "")
 
-    def visit_VARBINARY(self, type_: "sqltypes.VARBINARY", **kw: Any) -> str:
+    def visit_VARBINARY(self, type_: "sqltypes._Binary", **kw: Any) -> str:
         return "VARBINARY" + (type_.length and "(%d)" % type_.length or "")
 
-    def visit_BOOLEAN(self, type_: "sqltypes.Boolean", **kw: Any) -> str:
+    def visit_BOOLEAN(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return "BOOLEAN"
 
     def visit_uuid(
@@ -7262,71 +7254,55 @@ class GenericTypeCompiler(TypeCompiler):
         else:
             return self.visit_UUID(type_, **kw)
 
-    def visit_large_binary(
-        self, type_: "sqltypes.LargeBinary", **kw: Any
-    ) -> str:
+    def visit_large_binary(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return self.visit_BLOB(type_, **kw)
 
-    def visit_boolean(self, type_: "sqltypes.Boolean", **kw: Any) -> str:
+    def visit_boolean(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return self.visit_BOOLEAN(type_, **kw)
 
-    def visit_time(self, type_: "sqltypes.Time", **kw: Any) -> str:
+    def visit_time(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return self.visit_TIME(type_, **kw)
 
-    def visit_datetime(self, type_: "sqltypes.DateTime", **kw: Any) -> str:
+    def visit_datetime(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return self.visit_DATETIME(type_, **kw)
 
-    def visit_date(self, type_: "sqltypes.Date", **kw: Any) -> str:
+    def visit_date(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return self.visit_DATE(type_, **kw)
 
-    def visit_big_integer(
-        self, type_: "sqltypes.BigInteger", **kw: Any
-    ) -> str:
+    def visit_big_integer(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return self.visit_BIGINT(type_, **kw)
 
-    def visit_small_integer(
-        self, type_: "sqltypes.SmallInteger", **kw: Any
-    ) -> str:
+    def visit_small_integer(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return self.visit_SMALLINT(type_, **kw)
 
-    def visit_integer(self, type_: "sqltypes.Integer", **kw: Any) -> str:
+    def visit_integer(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return self.visit_INTEGER(type_, **kw)
 
-    def visit_real(
-        self, type_: "sqltypes.REAL[decimal.Decimal| float]", **kw: Any
-    ) -> str:
+    def visit_real(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return self.visit_REAL(type_, **kw)
 
-    def visit_float(
-        self, type_: "sqltypes.Float[decimal.Decimal| float]", **kw: Any
-    ) -> str:
+    def visit_float(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return self.visit_FLOAT(type_, **kw)
 
-    def visit_double(
-        self, type_: "sqltypes.Double[decimal.Decimal | float]", **kw: Any
-    ) -> str:
+    def visit_double(self, type_: TypeEngine[Any], **kw: Any) -> str:
         return self.visit_DOUBLE(type_, **kw)
 
-    def visit_numeric(
-        self, type_: "sqltypes.Numeric[decimal.Decimal | float]", **kw: Any
-    ) -> str:
+    def visit_numeric(self, type_: sqltypes.Numeric[Any], **kw: Any) -> str:
         return self.visit_NUMERIC(type_, **kw)
 
-    def visit_string(self, type_: "sqltypes.String", **kw: Any) -> str:
+    def visit_string(self, type_: sqltypes.String, **kw: Any) -> str:
         return self.visit_VARCHAR(type_, **kw)
 
-    def visit_unicode(self, type_: "sqltypes.Unicode", **kw: Any) -> str:
+    def visit_unicode(self, type_: sqltypes.String, **kw: Any) -> str:
         return self.visit_VARCHAR(type_, **kw)
 
-    def visit_text(self, type_: "sqltypes.Text", **kw: Any) -> str:
+    def visit_text(self, type_: sqltypes.String, **kw: Any) -> str:
         return self.visit_TEXT(type_, **kw)
 
-    def visit_unicode_text(
-        self, type_: "sqltypes.UnicodeText", **kw: Any
-    ) -> str:
+    def visit_unicode_text(self, type_: sqltypes.String, **kw: Any) -> str:
         return self.visit_TEXT(type_, **kw)
 
-    def visit_enum(self, type_: "sqltypes.Enum", **kw: Any) -> str:
+    def visit_enum(self, type_: sqltypes.String, **kw: Any) -> str:
         return self.visit_VARCHAR(type_, **kw)
 
     def visit_null(self, type_, **kw):
@@ -7418,7 +7394,7 @@ class IdentifierPreparer:
 
     def __init__(
         self,
-        dialect: DefaultDialect,
+        dialect: Dialect,
         initial_quote: str = '"',
         final_quote: str | None = None,
         escape_quote: str = '"',
@@ -7490,7 +7466,7 @@ class IdentifierPreparer:
                     "schema_translate_map dictionaries."
                 )
 
-            d["_none"] = d[None]
+            d["_none"] = d[None]  # type: ignore[index]
 
         def replace(m):
             name = m.group(2)
@@ -7753,7 +7729,7 @@ class IdentifierPreparer:
         # to dialect.max_identifier_length etc. can be reflected
         # as IdentifierPreparer is long lived
         max_ = (
-            self.dialect.max_index_name_length
+            self.dialect.max_index_name_length  # type: ignore[attr-defined]
             or self.dialect.max_identifier_length
         )
         return self._truncate_and_render_maxlen_name(
@@ -7767,7 +7743,7 @@ class IdentifierPreparer:
         # to dialect.max_identifier_length etc. can be reflected
         # as IdentifierPreparer is long lived
         max_ = (
-            self.dialect.max_constraint_name_length
+            self.dialect.max_constraint_name_length  # type: ignore[attr-defined]  # NOQA: E501
             or self.dialect.max_identifier_length
         )
         return self._truncate_and_render_maxlen_name(
@@ -7781,7 +7757,7 @@ class IdentifierPreparer:
             if len(name) > max_:
                 name = name[0 : max_ - 8] + "_" + util.md5_hex(name)[-4:]
         else:
-            self.dialect.validate_identifier(name)
+            self.dialect.validate_identifier(name)  # type: ignore[attr-defined]  # NOQA: E501
 
         if not _alembic_quote:
             return name
@@ -7794,7 +7770,7 @@ class IdentifierPreparer:
     @overload
     def format_table(
         self,
-        table: "Table | None",
+        table: "FromClause | None",
         use_schema: bool,
         name: str,
     ) -> str: ...
@@ -7802,20 +7778,21 @@ class IdentifierPreparer:
     @overload
     def format_table(
         self,
-        table: "Table",
+        table: "NamedFromClause",
         use_schema: bool = True,
         name: None = None,
     ) -> str: ...
 
     def format_table(
         self,
-        table: "Table | None",
+        table: "FromClause | None",
         use_schema: bool = True,
         name: str | None = None,
     ) -> str:
         """Prepare a quoted table and schema name."""
         if name is None:
             assert table is not None
+            table = cast("NamedFromClause", table)
             name = table.name
 
         result = self.quote(name)
@@ -7847,7 +7824,7 @@ class IdentifierPreparer:
 
     def format_column(
         self,
-        column: "Column[Any]",
+        column: ColumnElement[Any],
         use_table: bool = False,
         name: str | None = None,
         table_name: str | None = None,
@@ -7858,6 +7835,7 @@ class IdentifierPreparer:
 
         if name is None:
             name = column.name
+            name = cast(str, name)
 
         if anon_map is not None and isinstance(
             name, elements._truncated_label

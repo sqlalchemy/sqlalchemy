@@ -431,7 +431,7 @@ def to_column_set(x: Any) -> Set[Any]:
 
 
 def update_copy(
-    d: dict[Any, Any], _new: dict[Any, Any] | None = None, **kw: dict[Any, Any]
+    d: dict[Any, Any], _new: dict[Any, Any] | None = None, **kw: Any
 ) -> dict[Any, Any]:
     """Copy the given dict and update with the given values."""
 

@@ -20,6 +20,7 @@ from typing import Any
 from typing import cast
 from typing import ClassVar
 from typing import Dict
+from typing import Iterable
 from typing import Iterator
 from typing import List
 from typing import Mapping
@@ -1380,14 +1381,17 @@ class FullyBufferedCursorFetchStrategy(CursorFetchStrategy):
 
     def __init__(
         self,
-        dbapi_cursor: DBAPICursor,
+        dbapi_cursor: Optional[DBAPICursor],
         alternate_description: _DBAPICursorDescription | None = None,
-        initial_buffer: Any = None,
+        initial_buffer: Optional[Iterable[Any]] = None,
     ):
         self.alternate_cursor_description = alternate_description
         if initial_buffer is not None:
             self._rowbuffer = collections.deque(initial_buffer)
         else:
+            dbapi_cursor = cast(
+                DBAPICursor, dbapi_cursor
+            )  # Can't be both None
             self._rowbuffer = collections.deque(dbapi_cursor.fetchall())
 
     def yield_per(self, result, dbapi_cursor, num):
@@ -1903,7 +1907,7 @@ class CursorResult(Result[Unpack[_Ts]]):
         clone._metadata = clone._metadata._splice_horizontally(other._metadata)
 
         clone.cursor_strategy = FullyBufferedCursorFetchStrategy(
-            None,  # type: ignore[arg-type]
+            None,
             initial_buffer=total_rows,
         )
         clone._reset_memoizations()
@@ -1935,7 +1939,7 @@ class CursorResult(Result[Unpack[_Ts]]):
         )
 
         clone.cursor_strategy = FullyBufferedCursorFetchStrategy(
-            None,  # type: ignore[arg-type]
+            None,
             initial_buffer=total_rows,
         )
         clone._reset_memoizations()
@@ -1964,7 +1968,7 @@ class CursorResult(Result[Unpack[_Ts]]):
         )._remove_processors()
 
         self.cursor_strategy = FullyBufferedCursorFetchStrategy(
-            None,  # type: ignore[arg-type]
+            None,
             # TODO: if these are Row objects, can we save on not having to
             # re-make new Row objects out of them a second time?  is that
             # what's actually happening right now?  maybe look into this

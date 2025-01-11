@@ -76,7 +76,6 @@ from .. import inspection
 from .. import util
 from ..util import HasMemoized_ro_memoized_attribute
 from ..util import TypingOnly
-from ..util._immutabledict_cy import immutabledict
 from ..util.typing import Literal
 from ..util.typing import ParamSpec
 from ..util.typing import Self
@@ -3879,6 +3878,7 @@ class BinaryExpression(OperatorExpression[_T]):
 
     left: ColumnElement[Any]
     right: ColumnElement[Any]
+    modifiers: Mapping[str, Any]
 
     def __init__(
         self,
@@ -3907,9 +3907,9 @@ class BinaryExpression(OperatorExpression[_T]):
         self._is_implicitly_boolean = operators.is_boolean(operator)
 
         if modifiers is None:
-            self.modifiers: immutabledict[str, str] = immutabledict({})
+            self.modifiers = {}
         else:
-            self.modifiers = immutabledict(modifiers)
+            self.modifiers = modifiers
 
     @property
     def _flattened_operator_clauses(

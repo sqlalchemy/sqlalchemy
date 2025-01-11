@@ -249,7 +249,9 @@ class DefaultDialect(Dialect):
 
     supports_is_distinct_from = True
 
-    supports_server_side_cursors: "generic_fn_descriptor[bool] | bool" = False
+    supports_server_side_cursors: Union[generic_fn_descriptor[bool], bool] = (
+        False
+    )
 
     server_side_cursors = False
 
@@ -630,11 +632,11 @@ class DefaultDialect(Dialect):
                 % (ident, self.max_identifier_length)
             )
 
-    def connect(self, *cargs: Any, **cparams: Any):  # type: ignore[no-untyped-def]  # NOQA: E501
+    def connect(self, *cargs: Any, **cparams: Any) -> DBAPIConnection:
         # inherits the docstring from interfaces.Dialect.connect
-        return self.loaded_dbapi.connect(*cargs, **cparams)
+        return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
 
-    def create_connect_args(self, url: URL) -> "ConnectArgsType":
+    def create_connect_args(self, url: URL) -> ConnectArgsType:
         # inherits the docstring from interfaces.Dialect.create_connect_args
         opts = url.translate_connect_args()
         opts.update(url.query)

@@ -207,7 +207,7 @@ def _get_crud_params(
             [
                 (
                     c,
-                    compiler.preparer.format_column(c),  # type: ignore[arg-type] # noqa: E501
+                    compiler.preparer.format_column(c),
                     _create_bind_param(compiler, c, None, required=True),
                     (c.key,),
                 )
@@ -369,7 +369,7 @@ def _get_crud_params(
         values = [
             (
                 _as_dml_column(stmt.table.columns[0]),
-                compiler.preparer.format_column(stmt.table.columns[0]),  # type: ignore[arg-type] # noqa: E501
+                compiler.preparer.format_column(stmt.table.columns[0]),
                 compiler.dialect.default_metavalue_token,
                 (),
             )
@@ -1136,7 +1136,7 @@ def _append_param_insert_select_hasdefault(
             values.append(
                 (
                     c,
-                    compiler.preparer.format_column(c),  # type: ignore[arg-type] # noqa: E501
+                    compiler.preparer.format_column(c),
                     c.default.next_value(),
                     (),
                 )
@@ -1145,7 +1145,7 @@ def _append_param_insert_select_hasdefault(
         values.append(
             (
                 c,
-                compiler.preparer.format_column(c),  # type: ignore[arg-type]
+                compiler.preparer.format_column(c),
                 c.default.arg.self_group(),
                 (),
             )
@@ -1154,7 +1154,7 @@ def _append_param_insert_select_hasdefault(
         values.append(
             (
                 c,
-                compiler.preparer.format_column(c),  # type: ignore[arg-type]
+                compiler.preparer.format_column(c),
                 _create_insert_prefetch_bind_param(
                     compiler, c, process=False, **kw
                 ),
