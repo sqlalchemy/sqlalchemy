@@ -686,6 +686,23 @@ way in which ``Annotated`` may be used with Declarative that is even
 more open ended.
 
 
+.. note::  While a ``typing.TypeAliasType`` can be assigned to unions, like in the
+   case of ``JsonScalar`` defined above, it has a different behavior than normal
+   unions defined without the ``type ...`` syntax.
+   The following mapping includes unions that are compatible with ``JsonScalar``,
+   but they will not be recognized::
+
+        class SomeClass(TABase):
+            __tablename__ = "some_table"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            col_a: Mapped[str | float | bool | None]
+            col_b: Mapped[str | float | bool]
+
+    This raises an error since the union types used by ``col_a`` or ``col_b``,
+    are not found in ``TABase`` type map and ``JsonScalar`` must be referenced
+    directly.
+
 .. _orm_declarative_mapped_column_pep593:
 
 Mapping Whole Column Declarations to Python Types

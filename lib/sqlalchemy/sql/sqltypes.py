@@ -60,7 +60,6 @@ from .. import util
 from ..engine import processors
 from ..util import langhelpers
 from ..util import OrderedDict
-from ..util import warn_deprecated
 from ..util.typing import get_args
 from ..util.typing import is_literal
 from ..util.typing import is_pep695
@@ -1594,20 +1593,6 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
             enum_args, native_enum = process_literal(python_type)
         elif is_pep695(python_type):
             value = python_type.__value__
-            if is_pep695(value):
-                new_value = value
-                while is_pep695(new_value):
-                    new_value = new_value.__value__
-                if is_literal(new_value):
-                    value = new_value
-                    warn_deprecated(
-                        f"Mapping recursive TypeAliasType '{python_type}' "
-                        "that resolve to literal to generate an Enum is "
-                        "deprecated. SQLAlchemy 2.1 will not support this "
-                        "use case. Please avoid using recursing "
-                        "TypeAliasType.",
-                        "2.0",
-                    )
             if not is_literal(value):
                 raise exc.ArgumentError(
                     f"Can't associate TypeAliasType '{python_type}' to an "
