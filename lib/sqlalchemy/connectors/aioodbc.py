@@ -138,7 +138,7 @@ class aiodbcConnector(PyODBCConnector):
     is_async = True
     supports_statement_cache = True
 
-    supports_server_side_cursors = True
+    supports_server_side_cursors = True  # type: ignore[assignment]
 
     @classmethod
     def import_dbapi(cls):

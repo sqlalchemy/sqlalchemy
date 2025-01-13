@@ -4,9 +4,16 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
+
+from typing import Any
+from typing import TYPE_CHECKING
 
 from ... import types as sqltypes
+
+if TYPE_CHECKING:
+    from ...engine.interfaces import Dialect
+    from ...sql.type_api import _BindProcessorType
+    from ...sql.type_api import _LiteralProcessorType
 
 
 class JSON(sqltypes.JSON):
@@ -34,43 +41,29 @@ class JSON(sqltypes.JSON):
 
 
 class _FormatTypeMixin:
-    def _format_value(self, value):
+    def _format_value(self, value: Any) -> str:
         raise NotImplementedError()
 
-    def bind_processor(self, dialect):
-        super_proc = self.string_bind_processor(dialect)
+    def bind_processor(self, dialect: "Dialect") -> "_BindProcessorType[Any]":
+        raise NotImplementedError()
 
-        def process(value):
-            value = self._format_value(value)
-            if super_proc:
-                value = super_proc(value)
-            return value
-
-        return process
-
-    def literal_processor(self, dialect):
-        super_proc = self.string_literal_processor(dialect)
-
-        def process(value):
-            value = self._format_value(value)
-            if super_proc:
-                value = super_proc(value)
-            return value
-
-        return process
+    def literal_processor(
+        self, dialect: "Dialect"
+    ) -> "_LiteralProcessorType[Any]":
+        raise NotImplementedError()
 
 
 class JSONIndexType(_FormatTypeMixin, sqltypes.JSON.JSONIndexType):
-    def _format_value(self, value):
+    def _format_value(self, value: Any) -> str:
         if isinstance(value, int):
             value = "$[%s]" % value
         else:
             value = '$."%s"' % value
-        return value
+        return value  # type: ignore[no-any-return]
 
 
 class JSONPathType(_FormatTypeMixin, sqltypes.JSON.JSONPathType):
-    def _format_value(self, value):
+    def _format_value(self, value: Any) -> str:
         return "$%s" % (
             "".join(
                 [
