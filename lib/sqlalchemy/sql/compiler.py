@@ -3856,7 +3856,7 @@ class SQLCompiler(Compiled):
             return self.render_literal_value(value, bindparam.type)
 
     def render_literal_value(
-        self, value: str | None, type_: sqltypes.String
+        self, value: Optional[str], type_: sqltypes.String
     ) -> str:
         """Render the value of a bind parameter as a quoted literal.
 
@@ -4619,8 +4619,8 @@ class SQLCompiler(Compiled):
         return None
 
     def get_from_hint_text(
-        self, table: FromClause, text: str | None
-    ) -> str | None:
+        self, table: FromClause, text: Optional[str]
+    ) -> Optional[str]:
         return None
 
     def get_crud_hint_text(self, table, text):
@@ -6131,7 +6131,7 @@ class SQLCompiler(Compiled):
 
         return text
 
-    def update_limit_clause(self, update_stmt: "Update") -> str | None:
+    def update_limit_clause(self, update_stmt: "Update") -> Optional[str]:
         """Provide a hook for MySQL to add LIMIT to the UPDATE"""
         return None
 
@@ -6164,7 +6164,10 @@ class SQLCompiler(Compiled):
         )
 
     def visit_update(
-        self, update_stmt: "Update", visiting_cte: CTE | None = None, **kw: Any
+        self,
+        update_stmt: "Update",
+        visiting_cte: Optional[CTE] = None,
+        **kw: Any,
     ) -> str:
         compile_state = update_stmt._compile_state_factory(  # type: ignore[call-arg] # NOQA: E501
             update_stmt, self, **kw  # type: ignore[arg-type]
@@ -6963,13 +6966,13 @@ class DDLCompiler(Compiled):
     def post_create_table(self, table):
         return ""
 
-    def get_column_default_string(self, column: Column[Any]) -> str | None:
+    def get_column_default_string(self, column: Column[Any]) -> Optional[str]:
         if isinstance(column.server_default, schema.DefaultClause):
             return self.render_default_string(column.server_default.arg)
         else:
             return None
 
-    def render_default_string(self, default: Visitable | str) -> str:
+    def render_default_string(self, default: Union[Visitable, str]) -> str:
         if isinstance(default, str):
             return self.sql_compiler.render_literal_value(
                 default, sqltypes.STRINGTYPE
@@ -7162,7 +7165,7 @@ class GenericTypeCompiler(TypeCompiler):
             }
 
     def visit_DECIMAL(
-        self, type_: "sqltypes.DECIMAL[decimal.Decimal| float]", **kw: Any
+        self, type_: sqltypes.DECIMAL[Union[decimal.Decimal, float]], **kw: Any
     ) -> str:
         if type_.precision is None:
             return "DECIMAL"
@@ -7203,9 +7206,9 @@ class GenericTypeCompiler(TypeCompiler):
 
     def _render_string_type(
         self,
-        type_: "sqltypes.String | sqltypes.Uuid[_UUID_RETURN]",
+        type_: Union[sqltypes.String, sqltypes.Uuid[_UUID_RETURN]],
         name: str,
-        length_override: int | None = None,
+        length_override: Optional[int] = None,
     ) -> str:
         text = name
         if length_override:
@@ -7396,7 +7399,7 @@ class IdentifierPreparer:
         self,
         dialect: Dialect,
         initial_quote: str = '"',
-        final_quote: str | None = None,
+        final_quote: Optional[str] = None,
         escape_quote: str = '"',
         quote_case_sensitive_collations: bool = True,
         omit_schema: bool = False,
@@ -7700,7 +7703,7 @@ class IdentifierPreparer:
     @util.preload_module("sqlalchemy.sql.naming")
     def format_constraint(
         self, constraint: Constraint, _alembic_quote: bool = True
-    ) -> str | None:
+    ) -> Optional[str]:
         naming = util.preloaded.sql_naming
 
         if constraint.name is _NONE_NAME:
@@ -7724,7 +7727,7 @@ class IdentifierPreparer:
 
     def truncate_and_render_index_name(
         self, name: str, _alembic_quote: bool = True
-    ) -> str | None:
+    ) -> Optional[str]:
         # calculate these at format time so that ad-hoc changes
         # to dialect.max_identifier_length etc. can be reflected
         # as IdentifierPreparer is long lived
@@ -7738,7 +7741,7 @@ class IdentifierPreparer:
 
     def truncate_and_render_constraint_name(
         self, name: str, _alembic_quote: bool = True
-    ) -> str | None:
+    ) -> Optional[str]:
         # calculate these at format time so that ad-hoc changes
         # to dialect.max_identifier_length etc. can be reflected
         # as IdentifierPreparer is long lived
@@ -7752,7 +7755,7 @@ class IdentifierPreparer:
 
     def _truncate_and_render_maxlen_name(
         self, name: str, max_: int, _alembic_quote: bool
-    ) -> str | None:
+    ) -> Optional[str]:
         if isinstance(name, elements._truncated_label):
             if len(name) > max_:
                 name = name[0 : max_ - 8] + "_" + util.md5_hex(name)[-4:]
@@ -7770,7 +7773,7 @@ class IdentifierPreparer:
     @overload
     def format_table(
         self,
-        table: "FromClause | None",
+        table: Optional[FromClause],
         use_schema: bool,
         name: str,
     ) -> str: ...
@@ -7785,9 +7788,9 @@ class IdentifierPreparer:
 
     def format_table(
         self,
-        table: "FromClause | None",
+        table: Optional[FromClause],
         use_schema: bool = True,
-        name: str | None = None,
+        name: Optional[str] = None,
     ) -> str:
         """Prepare a quoted table and schema name."""
         if name is None:
@@ -7826,10 +7829,10 @@ class IdentifierPreparer:
         self,
         column: ColumnElement[Any],
         use_table: bool = False,
-        name: str | None = None,
-        table_name: str | None = None,
+        name: Optional[str] = None,
+        table_name: Optional[str] = None,
         use_schema: bool = False,
-        anon_map: Mapping[str, Any] | None = None,
+        anon_map: Optional[Mapping[str, Any]] = None,
     ) -> str:
         """Prepare a quoted column name."""
 

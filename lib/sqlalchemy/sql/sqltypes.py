@@ -248,7 +248,7 @@ class String(Concatenable, TypeEngine[str]):
 
     def bind_processor(
         self, dialect: Dialect
-    ) -> _BindProcessorType[str] | None:
+    ) -> Optional[_BindProcessorType[str]]:
         return None
 
     def result_processor(
@@ -433,7 +433,10 @@ class NumericCommon(HasExpressionLookup, TypeEngineMixin, Generic[_N]):
         def _type_affinity(
             self,
         ) -> Type[
-            Numeric[decimal.Decimal | float] | Float[decimal.Decimal | float]
+            Union[
+                Numeric[Union[decimal.Decimal, float]],
+                Float[Union[decimal.Decimal, float]],
+            ]
         ]: ...
 
     def __init__(
@@ -661,7 +664,7 @@ class Float(NumericCommon[_N], TypeEngine[_N]):
 
     __visit_name__ = "float"
 
-    scale: int | None = None
+    scale: Optional[int] = None
 
     @overload
     def __init__(
@@ -1333,7 +1336,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
 
     __visit_name__ = "enum"
 
-    enum_class: None | str | type[enum.Enum]
+    enum_class: Union[None, str, type[enum.Enum]]
 
     def __init__(self, *enums: Union[str, type[enum.Enum]], **kw: Any):
         r"""Construct an enum.
@@ -1488,9 +1491,9 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         """
         self.native_enum = kw.pop("native_enum", True)
         self.create_constraint = kw.pop("create_constraint", False)
-        self.values_callable: (
-            Callable[[type[enum.Enum]], Sequence[str]] | None
-        ) = kw.pop("values_callable", None)
+        self.values_callable: Optional[
+            Callable[[type[enum.Enum]], Sequence[str]]
+        ] = kw.pop("values_callable", None)
         self._sort_key_function = kw.pop("sort_key_function", NO_ARG)
         length_arg = kw.pop("length", NO_ARG)
         self._omit_aliases = kw.pop("omit_aliases", True)
@@ -1540,8 +1543,8 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         )
 
     def _parse_into_values(
-        self, enums: Sequence[str | type[enum.Enum]], kw: Any
-    ) -> tuple[Sequence[str], Sequence[enum.Enum] | Sequence[str]]:
+        self, enums: Sequence[Union[str, type[enum.Enum]]], kw: Any
+    ) -> tuple[Sequence[str], Union[Sequence[enum.Enum], Sequence[str]]]:
         if not enums and "_enums" in kw:
             enums = kw.pop("_enums")
 
@@ -1658,18 +1661,18 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
     def _setup_for_values(
         self,
         values: Sequence[str],
-        objects: Sequence[enum.Enum] | Sequence[str],
+        objects: Union[Sequence[enum.Enum], Sequence[str]],
         kw: Any,
     ) -> None:
         self.enums = list(values)
 
-        self._valid_lookup: dict[enum.Enum | str | None, str | None] = dict(
-            zip(reversed(objects), reversed(values))
-        )
+        self._valid_lookup: dict[
+            Union[enum.Enum, str, None], Optional[str]
+        ] = dict(zip(reversed(objects), reversed(values)))
 
-        self._object_lookup: dict[str | None, enum.Enum | str | None] = dict(
-            zip(values, objects)
-        )
+        self._object_lookup: dict[
+            Optional[str], Union[enum.Enum, str, None]
+        ] = dict(zip(values, objects))
 
         self._valid_lookup.update(
             [
@@ -2209,7 +2212,7 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
 
     def bind_processor(
         self, dialect: Dialect
-    ) -> "_BindProcessorType[dt.timedelta]":
+    ) -> _BindProcessorType[dt.timedelta]:
         if TYPE_CHECKING:
             assert isinstance(self.impl_instance, DateTime)
         impl_processor = self.impl_instance.bind_processor(dialect)
@@ -3715,7 +3718,7 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
 
     def bind_processor(
         self, dialect: Dialect
-    ) -> "_BindProcessorType[_UUID_RETURN] | None":
+    ) -> Optional[_BindProcessorType[_UUID_RETURN]]:
         character_based_uuid = (
             not dialect.supports_native_uuid or not self.native_uuid
         )

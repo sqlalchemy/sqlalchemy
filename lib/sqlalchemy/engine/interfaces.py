@@ -782,7 +782,7 @@ class Dialect(EventTarget):
     max_identifier_length: int
     """The maximum length of identifier names."""
 
-    supports_server_side_cursors: generic_fn_descriptor[bool] | bool
+    supports_server_side_cursors: Union[generic_fn_descriptor[bool], bool]
     """indicates if the dialect supports server side cursors"""
 
     server_side_cursors: bool

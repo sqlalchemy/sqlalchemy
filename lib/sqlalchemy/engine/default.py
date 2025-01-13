@@ -962,10 +962,10 @@ class DefaultDialect(Dialect):
     def is_disconnect(
         self,
         e: Exception,
-        connection: (
-            pool.PoolProxiedConnection | interfaces.DBAPIConnection | None
-        ),
-        cursor: interfaces.DBAPICursor | None,
+        connection: Union[
+            pool.PoolProxiedConnection, interfaces.DBAPIConnection, None
+        ],
+        cursor: Optional[interfaces.DBAPICursor],
     ) -> bool:
         return False
 
@@ -1685,8 +1685,8 @@ class DefaultExecutionContext(ExecutionContext):
     def _execute_scalar(
         self,
         stmt: str,
-        type_: TypeEngine[Any] | None,
-        parameters: _DBAPISingleExecuteParams | None = None,
+        type_: Optional[TypeEngine[Any]],
+        parameters: Optional[_DBAPISingleExecuteParams] = None,
     ) -> Any:
         """Execute a string statement on the current cursor, returning a
         scalar result.

@@ -1382,7 +1382,7 @@ class FullyBufferedCursorFetchStrategy(CursorFetchStrategy):
     def __init__(
         self,
         dbapi_cursor: Optional[DBAPICursor],
-        alternate_description: _DBAPICursorDescription | None = None,
+        alternate_description: Optional[_DBAPICursorDescription] = None,
         initial_buffer: Optional[Iterable[Any]] = None,
     ):
         self.alternate_cursor_description = alternate_description
