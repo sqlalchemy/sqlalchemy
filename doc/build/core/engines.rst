@@ -588,13 +588,16 @@ getting duplicate log lines.
 Setting the Logging Name
 -------------------------
 
-The logger name of instance such as an :class:`~sqlalchemy.engine.Engine` or
-:class:`~sqlalchemy.pool.Pool` defaults to using a truncated hex identifier
-string. To set this to a specific name, use the
+The logger name for :class:`~sqlalchemy.engine.Engine` or
+:class:`~sqlalchemy.pool.Pool` is set to be the module-qualified class name of the
+object.  This name can be further qualified with an additional name
+using the
 :paramref:`_sa.create_engine.logging_name` and
-:paramref:`_sa.create_engine.pool_logging_name`  with
-:func:`sqlalchemy.create_engine`; the name will be appended to the logging name
-``sqlalchemy.engine.Engine``::
+:paramref:`_sa.create_engine.pool_logging_name` parameters with
+:func:`sqlalchemy.create_engine`; the name will be appended to existing
+class-qualified logging name.   This use is recommended for applications that
+make use of multiple global :class:`.Engine` instances simultaenously, so
+that they may be distinguished in logging::
 
     >>> import logging
     >>> from sqlalchemy import create_engine
