@@ -12,6 +12,7 @@ from typing import Optional
 from typing import Type
 from typing import TYPE_CHECKING
 import sqlalchemy.types as types
+from sqlalchemy.types import UserDefinedType, Float
 
 from ... import exc
 from ...sql import sqltypes
@@ -331,3 +332,16 @@ class VECTOR(types.TypeEngine):
         """
         self.dim = dim
         self.storage_format = storage_format
+
+    class comparator_factory(types.TypeEngine.Comparator):
+        def L2_DISTANCE(self, other):
+            return self.op('<->', return_type=Float)(other)
+
+        def INNER_PRODUCT(self, other):
+            return self.op('<#>', return_type=Float)(other)
+
+        def COSINE_DISTANCE(self, other):
+            return self.op('<=>', return_type=Float)(other)
+
+        def L1_DISTANCE(self, other):
+            return self.op('<+>', return_type=Float)(other)

@@ -1423,6 +1423,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
                     index.dialect_options["oracle"]["compress"]
                 )
         if vector_options:
+            distance_values = ["EUCLIDEAN", "DOT", "COSINE", "MANHATTAN"]
             if vector_options is True:
                 vector_options = {}
             parts = []
@@ -1435,17 +1436,29 @@ class OracleDDLCompiler(compiler.DDLCompiler):
             vector_distance = vector_options.get("distance")
             if vector_distance is not None:
                 vector_distance = vector_distance.upper()
+                if vector_distance not in distance_values:
+                    raise ValueError(
+                        "UnIdentified vector_distance value"
+                    )
                 parts.append(f"DISTANCE {vector_distance}")
             target_accuracy = vector_options.get("accuracy")
             if target_accuracy is not None:
+                if target_accuracy < 0 or target_accuracy > 100:
+                    raise ValueError(
+                        "Accuracy value should be an integer b/w 0 to 100"
+                    )
                 parts.append(f"WITH TARGET ACCURACY {target_accuracy}")
             if parameters:
                 parameters_str = ", ".join(
                     f"{k} {v}" for k, v in parameters.items()
                 )
-                parts.append(f"PARAMETERS {(parameters_str)}")
+                parts.append(f"PARAMETERS ({parameters_str})")
             parallel = vector_options.get("parallel")
             if parallel is not None:
+                if not isinstance(parallel, int):
+                    raise ValueError(
+                        "Parallel value must be an integer"
+                    )
                 parts.append(f"PARALLEL {parallel}")
             text += " ".join(parts)
         return text
