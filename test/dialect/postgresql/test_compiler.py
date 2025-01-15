@@ -62,6 +62,7 @@ from sqlalchemy.sql import operators
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql.functions import GenericFunction
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises
@@ -2699,6 +2700,11 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
             (cls.table_with_metadata.c.description, "&&"),
             where=cls.table_with_metadata.c.description != "foo",
         )
+        cls.excl_constr_anon_str = ExcludeConstraint(
+            (cls.table_with_metadata.c.name, "="),
+            (cls.table_with_metadata.c.description, "&&"),
+            where="description != 'foo'",
+        )
         cls.goofy_index = Index(
             "goofy_index", table1.c.name, postgresql_where=table1.c.name > "m"
         )
@@ -2716,6 +2722,69 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
             Column("id", Integer, primary_key=True),
             Column("name", String(50), key="name_keyed"),
         )
+
+    @testing.combinations(
+        (
+            lambda users, stmt: stmt.on_conflict_do_nothing(
+                index_elements=["id"], index_where=text("name = 'hi'")
+            ),
+            "ON CONFLICT (id) WHERE name = 'hi' DO NOTHING",
+        ),
+        (
+            lambda users, stmt: stmt.on_conflict_do_nothing(
+                index_elements=[users.c.id], index_where=users.c.name == "hi"
+            ),
+            "ON CONFLICT (id) WHERE name = %(name_1)s DO NOTHING",
+        ),
+        (
+            lambda users, stmt: stmt.on_conflict_do_nothing(
+                index_elements=["id"], index_where="name = 'hi'"
+            ),
+            exc.ArgumentError,
+        ),
+        (
+            lambda users, stmt: stmt.on_conflict_do_update(
+                index_elements=[users.c.id],
+                set_={users.c.name: "there"},
+                where=users.c.name == "hi",
+            ),
+            "ON CONFLICT (id) DO UPDATE SET name = %(param_1)s "
+            "WHERE users.name = %(name_1)s",
+        ),
+        (
+            lambda users, stmt: stmt.on_conflict_do_update(
+                index_elements=[users.c.id],
+                set_={users.c.name: "there"},
+                where=text("name = 'hi'"),
+            ),
+            "ON CONFLICT (id) DO UPDATE SET name = %(param_1)s "
+            "WHERE name = 'hi'",
+        ),
+        (
+            lambda users, stmt: stmt.on_conflict_do_update(
+                index_elements=[users.c.id],
+                set_={users.c.name: "there"},
+                where="name = 'hi'",
+            ),
+            exc.ArgumentError,
+        ),
+    )
+    def test_assorted_arg_coercion(self, case, expected):
+        stmt = insert(self.tables.users)
+
+        if isinstance(expected, type) and issubclass(expected, Exception):
+            with expect_raises(expected):
+                testing.resolve_lambda(
+                    case, stmt=stmt, users=self.tables.users
+                ),
+        else:
+            self.assert_compile(
+                testing.resolve_lambda(
+                    case, stmt=stmt, users=self.tables.users
+                ),
+                f"INSERT INTO users (id, name) VALUES (%(id)s, %(name)s) "
+                f"{expected}",
+            )
 
     @testing.combinations("control", "excluded", "dict")
     def test_set_excluded(self, scenario):
@@ -3110,6 +3179,20 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
             "DO UPDATE SET name = excluded.name",
         )
 
+    def test_do_update_unnamed_exclude_constraint_string_target(self):
+        i = insert(self.table1).values(dict(name="foo"))
+        i = i.on_conflict_do_update(
+            constraint=self.excl_constr_anon_str,
+            set_=dict(name=i.excluded.name),
+        )
+        self.assert_compile(
+            i,
+            "INSERT INTO mytable (name) VALUES "
+            "(%(name)s) ON CONFLICT (name, description) "
+            "WHERE description != 'foo' "
+            "DO UPDATE SET name = excluded.name",
+        )
+
     def test_do_update_add_whereclause(self):
         i = insert(self.table1).values(dict(name="foo"))
         i = i.on_conflict_do_update(
@@ -3128,6 +3211,26 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
             "DO UPDATE SET name = excluded.name "
             "WHERE mytable.name != %(name_1)s "
             "AND mytable.description != %(description_2)s",
+        )
+
+    def test_do_update_str_index_where(self):
+        i = insert(self.table1).values(dict(name="foo"))
+        i = i.on_conflict_do_update(
+            constraint=self.excl_constr_anon_str,
+            set_=dict(name=i.excluded.name),
+            where=(
+                (self.table1.c.name != "brah")
+                & (self.table1.c.description != "brah")
+            ),
+        )
+        self.assert_compile(
+            i,
+            "INSERT INTO mytable (name) VALUES "
+            "(%(name)s) ON CONFLICT (name, description) "
+            "WHERE description != 'foo' "
+            "DO UPDATE SET name = excluded.name "
+            "WHERE mytable.name != %(name_1)s "
+            "AND mytable.description != %(description_1)s",
         )
 
     def test_do_update_add_whereclause_references_excluded(self):

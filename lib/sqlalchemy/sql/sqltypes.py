@@ -1,5 +1,5 @@
 # sql/sqltypes.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -21,6 +21,7 @@ from typing import Any
 from typing import Callable
 from typing import cast
 from typing import Dict
+from typing import Generic
 from typing import List
 from typing import Optional
 from typing import overload
@@ -59,10 +60,11 @@ from .. import util
 from ..engine import processors
 from ..util import langhelpers
 from ..util import OrderedDict
+from ..util.typing import get_args
 from ..util.typing import is_literal
+from ..util.typing import is_pep695
 from ..util.typing import Literal
 from ..util.typing import TupleAny
-from ..util.typing import typing_get_args
 
 if TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
@@ -363,15 +365,25 @@ class Integer(HasExpressionLookup, TypeEngine[int]):
                 Date: Date,
                 Integer: self.__class__,
                 Numeric: Numeric,
+                Float: Float,
             },
             operators.mul: {
                 Interval: Interval,
                 Integer: self.__class__,
                 Numeric: Numeric,
+                Float: Float,
             },
-            operators.truediv: {Integer: Numeric, Numeric: Numeric},
+            operators.truediv: {
+                Integer: Numeric,
+                Numeric: Numeric,
+                Float: Float,
+            },
             operators.floordiv: {Integer: self.__class__, Numeric: Numeric},
-            operators.sub: {Integer: self.__class__, Numeric: Numeric},
+            operators.sub: {
+                Integer: self.__class__,
+                Numeric: Numeric,
+                Float: Float,
+            },
         }
 
 
@@ -400,7 +412,93 @@ class BigInteger(Integer):
 _N = TypeVar("_N", bound=Union[decimal.Decimal, float])
 
 
-class Numeric(HasExpressionLookup, TypeEngine[_N]):
+class NumericCommon(HasExpressionLookup, TypeEngineMixin, Generic[_N]):
+    """common mixin for the :class:`.Numeric` and :class:`.Float` types.
+
+
+    .. versionadded:: 2.1
+
+    """
+
+    _default_decimal_return_scale = 10
+
+    if TYPE_CHECKING:
+
+        @util.ro_memoized_property
+        def _type_affinity(self) -> Type[NumericCommon[_N]]: ...
+
+    def __init__(
+        self,
+        *,
+        precision: Optional[int],
+        scale: Optional[int],
+        decimal_return_scale: Optional[int],
+        asdecimal: bool,
+    ):
+        self.precision = precision
+        self.scale = scale
+        self.decimal_return_scale = decimal_return_scale
+        self.asdecimal = asdecimal
+
+    @property
+    def _effective_decimal_return_scale(self):
+        if self.decimal_return_scale is not None:
+            return self.decimal_return_scale
+        elif getattr(self, "scale", None) is not None:
+            return self.scale
+        else:
+            return self._default_decimal_return_scale
+
+    def get_dbapi_type(self, dbapi):
+        return dbapi.NUMBER
+
+    def literal_processor(self, dialect):
+        def process(value):
+            return str(value)
+
+        return process
+
+    @property
+    def python_type(self):
+        if self.asdecimal:
+            return decimal.Decimal
+        else:
+            return float
+
+    def bind_processor(self, dialect):
+        if dialect.supports_native_decimal:
+            return None
+        else:
+            return processors.to_float
+
+    @util.memoized_property
+    def _expression_adaptations(self):
+        return {
+            operators.mul: {
+                Interval: Interval,
+                Numeric: self.__class__,
+                Float: self.__class__,
+                Integer: self.__class__,
+            },
+            operators.truediv: {
+                Numeric: self.__class__,
+                Float: self.__class__,
+                Integer: self.__class__,
+            },
+            operators.add: {
+                Numeric: self.__class__,
+                Float: self.__class__,
+                Integer: self.__class__,
+            },
+            operators.sub: {
+                Numeric: self.__class__,
+                Float: self.__class__,
+                Integer: self.__class__,
+            },
+        }
+
+
+class Numeric(NumericCommon[_N], TypeEngine[_N]):
     """Base for non-integer numeric types, such as
     ``NUMERIC``, ``FLOAT``, ``DECIMAL``, and other variants.
 
@@ -433,13 +531,6 @@ class Numeric(HasExpressionLookup, TypeEngine[_N]):
     """
 
     __visit_name__ = "numeric"
-
-    if TYPE_CHECKING:
-
-        @util.ro_memoized_property
-        def _type_affinity(self) -> Type[Numeric[_N]]: ...
-
-    _default_decimal_return_scale = 10
 
     @overload
     def __init__(
@@ -508,41 +599,16 @@ class Numeric(HasExpressionLookup, TypeEngine[_N]):
         conversion overhead.
 
         """
-        self.precision = precision
-        self.scale = scale
-        self.decimal_return_scale = decimal_return_scale
-        self.asdecimal = asdecimal
+        super().__init__(
+            precision=precision,
+            scale=scale,
+            decimal_return_scale=decimal_return_scale,
+            asdecimal=asdecimal,
+        )
 
     @property
-    def _effective_decimal_return_scale(self):
-        if self.decimal_return_scale is not None:
-            return self.decimal_return_scale
-        elif getattr(self, "scale", None) is not None:
-            return self.scale
-        else:
-            return self._default_decimal_return_scale
-
-    def get_dbapi_type(self, dbapi):
-        return dbapi.NUMBER
-
-    def literal_processor(self, dialect):
-        def process(value):
-            return str(value)
-
-        return process
-
-    @property
-    def python_type(self):
-        if self.asdecimal:
-            return decimal.Decimal
-        else:
-            return float
-
-    def bind_processor(self, dialect):
-        if dialect.supports_native_decimal:
-            return None
-        else:
-            return processors.to_float
+    def _type_affinity(self):
+        return Numeric
 
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
@@ -565,24 +631,8 @@ class Numeric(HasExpressionLookup, TypeEngine[_N]):
             else:
                 return None
 
-    @util.memoized_property
-    def _expression_adaptations(self):
-        return {
-            operators.mul: {
-                Interval: Interval,
-                Numeric: self.__class__,
-                Integer: self.__class__,
-            },
-            operators.truediv: {
-                Numeric: self.__class__,
-                Integer: self.__class__,
-            },
-            operators.add: {Numeric: self.__class__, Integer: self.__class__},
-            operators.sub: {Numeric: self.__class__, Integer: self.__class__},
-        }
 
-
-class Float(Numeric[_N]):
+class Float(NumericCommon[_N], TypeEngine[_N]):
     """Type representing floating point types, such as ``FLOAT`` or ``REAL``.
 
     This type returns Python ``float`` objects by default, unless the
@@ -669,9 +719,16 @@ class Float(Numeric[_N]):
          as the default for decimal_return_scale, if not otherwise specified.
 
         """  # noqa: E501
-        self.precision = precision
-        self.asdecimal = asdecimal
-        self.decimal_return_scale = decimal_return_scale
+        super().__init__(
+            precision=precision,
+            scale=None,
+            asdecimal=asdecimal,
+            decimal_return_scale=decimal_return_scale,
+        )
+
+    @property
+    def _type_affinity(self):
+        return Float
 
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
@@ -1512,16 +1569,9 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
 
         native_enum = None
 
-        if not we_are_generic_form and python_type is matched_on:
-            # if we have enumerated values, and the incoming python
-            # type is exactly the one that matched in the type map,
-            # then we use these enumerated values and dont try to parse
-            # what's incoming
-            enum_args = self._enums_argument
-
-        elif is_literal(python_type):
+        def process_literal(pt):
             # for a literal, where we need to get its contents, parse it out.
-            enum_args = typing_get_args(python_type)
+            enum_args = get_args(pt)
             bad_args = [arg for arg in enum_args if not isinstance(arg, str)]
             if bad_args:
                 raise exc.ArgumentError(
@@ -1530,6 +1580,28 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
                     f"provide an explicit Enum datatype for this Python type"
                 )
             native_enum = False
+            return enum_args, native_enum
+
+        if not we_are_generic_form and python_type is matched_on:
+            # if we have enumerated values, and the incoming python
+            # type is exactly the one that matched in the type map,
+            # then we use these enumerated values and dont try to parse
+            # what's incoming
+            enum_args = self._enums_argument
+
+        elif is_literal(python_type):
+            enum_args, native_enum = process_literal(python_type)
+        elif is_pep695(python_type):
+            value = python_type.__value__
+            if not is_literal(value):
+                raise exc.ArgumentError(
+                    f"Can't associate TypeAliasType '{python_type}' to an "
+                    "Enum since it's not a direct alias of a Literal. Only "
+                    "aliases in this form `type my_alias = Literal['a', "
+                    "'b']` are supported when generating Enums."
+                )
+            enum_args, native_enum = process_literal(value)
+
         elif isinstance(python_type, type) and issubclass(
             python_type, enum.Enum
         ):
@@ -2017,8 +2089,11 @@ class _AbstractInterval(HasExpressionLookup, TypeEngine[dt.timedelta]):
                 Time: Time,
             },
             operators.sub: {Interval: self.__class__},
-            operators.mul: {Numeric: self.__class__},
-            operators.truediv: {Numeric: self.__class__},
+            operators.mul: {Numeric: self.__class__, Float: self.__class__},
+            operators.truediv: {
+                Numeric: self.__class__,
+                Float: self.__class__,
+            },
         }
 
     @util.ro_non_memoized_property

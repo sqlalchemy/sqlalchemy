@@ -1,5 +1,5 @@
 # orm/decl_api.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -14,7 +14,6 @@ import re
 import typing
 from typing import Any
 from typing import Callable
-from typing import cast
 from typing import ClassVar
 from typing import Dict
 from typing import FrozenSet
@@ -73,12 +72,11 @@ from ..util import hybridmethod
 from ..util import hybridproperty
 from ..util import typing as compat_typing
 from ..util.typing import CallableReference
-from ..util.typing import flatten_newtype
+from ..util.typing import de_optionalize_union_types
 from ..util.typing import is_generic
 from ..util.typing import is_literal
-from ..util.typing import is_newtype
-from ..util.typing import is_pep695
 from ..util.typing import Literal
+from ..util.typing import LITERAL_TYPES
 from ..util.typing import Self
 
 if TYPE_CHECKING:
@@ -1225,49 +1223,33 @@ class registry:
 
         self.type_annotation_map.update(
             {
-                sub_type: sqltype
+                de_optionalize_union_types(typ): sqltype
                 for typ, sqltype in type_annotation_map.items()
-                for sub_type in compat_typing.expand_unions(
-                    typ, include_union=True, discard_none=True
-                )
             }
         )
 
     def _resolve_type(
         self, python_type: _MatchedOnType
     ) -> Optional[sqltypes.TypeEngine[Any]]:
-
-        python_type_to_check = python_type
-        while is_pep695(python_type_to_check):
-            python_type_to_check = python_type_to_check.__value__
-
-        check_is_pt = python_type is python_type_to_check
-
         python_type_type: Type[Any]
         search: Iterable[Tuple[_MatchedOnType, Type[Any]]]
 
-        if is_generic(python_type_to_check):
-            if is_literal(python_type_to_check):
-                python_type_type = cast("Type[Any]", python_type_to_check)
+        if is_generic(python_type):
+            if is_literal(python_type):
+                python_type_type = python_type  # type: ignore[assignment]
 
-                search = (  # type: ignore[assignment]
+                search = (
                     (python_type, python_type_type),
-                    (Literal, python_type_type),
+                    *((lt, python_type_type) for lt in LITERAL_TYPES),  # type: ignore[arg-type] # noqa: E501
                 )
             else:
-                python_type_type = python_type_to_check.__origin__
+                python_type_type = python_type.__origin__
                 search = ((python_type, python_type_type),)
-        elif is_newtype(python_type_to_check):
-            python_type_type = flatten_newtype(python_type_to_check)
-            search = ((python_type, python_type_type),)
-        elif isinstance(python_type_to_check, type):
-            python_type_type = python_type_to_check
-            search = (
-                (pt if check_is_pt else python_type, pt)
-                for pt in python_type_type.__mro__
-            )
+        elif isinstance(python_type, type):
+            python_type_type = python_type
+            search = ((pt, pt) for pt in python_type_type.__mro__)
         else:
-            python_type_type = python_type_to_check  # type: ignore[assignment]
+            python_type_type = python_type  # type: ignore[assignment]
             search = ((python_type, python_type_type),)
 
         for pt, flattened in search:

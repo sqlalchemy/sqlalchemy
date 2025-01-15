@@ -1,5 +1,5 @@
 # __init__.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -246,6 +246,7 @@ from .types import LargeBinary as LargeBinary
 from .types import NCHAR as NCHAR
 from .types import NUMERIC as NUMERIC
 from .types import Numeric as Numeric
+from .types import NumericCommon as NumericCommon
 from .types import NVARCHAR as NVARCHAR
 from .types import PickleType as PickleType
 from .types import REAL as REAL

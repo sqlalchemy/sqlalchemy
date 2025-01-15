@@ -1,5 +1,5 @@
 # dialects/postgresql/_psycopg_common.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -27,7 +27,7 @@ from ...engine import processors
 _server_side_id = util.counter()
 
 
-class _PsycopgNumeric(sqltypes.Numeric):
+class _PsycopgNumericCommon(sqltypes.NumericCommon):
     def bind_processor(self, dialect):
         return None
 
@@ -56,8 +56,12 @@ class _PsycopgNumeric(sqltypes.Numeric):
                 )
 
 
-class _PsycopgFloat(_PsycopgNumeric):
-    __visit_name__ = "float"
+class _PsycopgNumeric(_PsycopgNumericCommon, sqltypes.Numeric):
+    pass
+
+
+class _PsycopgFloat(_PsycopgNumericCommon, sqltypes.Float):
+    pass
 
 
 class _PsycopgHStore(HSTORE):

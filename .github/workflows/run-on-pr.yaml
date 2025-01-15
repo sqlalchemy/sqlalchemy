@@ -10,7 +10,7 @@ on:
 
 env:
   # global env to all steps
-  TOX_WORKERS: -n2
+  TOX_WORKERS: -n4
 
 permissions:
   contents: read
@@ -23,7 +23,7 @@ jobs:
       # run this job using this matrix, excluding some combinations below.
       matrix:
         os:
-          - "ubuntu-latest"
+          - "ubuntu-22.04"
         python-version:
           - "3.12"
         build-type:
@@ -60,7 +60,7 @@ jobs:
     strategy:
       matrix:
         os:
-          - "ubuntu-latest"
+          - "ubuntu-22.04"
         python-version:
           - "3.12"
         tox-env:

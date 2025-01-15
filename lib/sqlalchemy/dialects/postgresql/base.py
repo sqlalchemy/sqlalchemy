@@ -1,5 +1,5 @@
 # dialects/postgresql/base.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -2085,6 +2085,8 @@ class PGCompiler(compiler.SQLCompiler):
             else:
                 continue
 
+            # TODO: this coercion should be up front.  we can't cache
+            # SQL constructs with non-bound literals buried in them
             if coercions._is_literal(value):
                 value = elements.BindParameter(None, value, type_=c.type)
 
@@ -4603,7 +4605,10 @@ class PGDialect(default.DefaultDialect):
                     dialect_options = {}
                     if row["reloptions"]:
                         dialect_options["postgresql_with"] = dict(
-                            [option.split("=") for option in row["reloptions"]]
+                            [
+                                option.split("=", 1)
+                                for option in row["reloptions"]
+                            ]
                         )
                     # it *might* be nice to include that this is 'btree' in the
                     # reflection info.  But we don't want an Index object

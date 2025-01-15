@@ -7,6 +7,7 @@ from sqlalchemy import DDL
 from sqlalchemy import DefaultClause
 from sqlalchemy import event
 from sqlalchemy import exc
+from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Index
@@ -298,7 +299,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         col = insp.get_columns("t1")[0]
         if hasattr(expected, "match"):
             assert expected.match(col["default"])
-        elif isinstance(datatype_inst, (Integer, Numeric)):
+        elif isinstance(datatype_inst, (Integer, Numeric, Float)):
             pattern = re.compile(r"\'?%s\'?" % expected)
             assert pattern.match(col["default"])
         else:

@@ -1,5 +1,5 @@
 # exc.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -813,7 +813,9 @@ class LegacyAPIWarning(Base20DeprecationWarning):
 
 
 class MovedIn20Warning(Base20DeprecationWarning):
-    """Subtype of RemovedIn20Warning to indicate an API that moved only."""
+    """Subtype of Base20DeprecationWarning to indicate an API that moved
+    only.
+    """
 
 
 class SAPendingDeprecationWarning(PendingDeprecationWarning):

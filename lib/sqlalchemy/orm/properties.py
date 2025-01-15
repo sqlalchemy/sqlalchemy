@@ -1,5 +1,5 @@
 # orm/properties.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -43,7 +43,6 @@ from .interfaces import PropComparator
 from .interfaces import StrategizedProperty
 from .relationships import RelationshipProperty
 from .util import de_stringify_annotation
-from .util import de_stringify_union_elements
 from .. import exc as sa_exc
 from .. import ForeignKey
 from .. import log
@@ -55,13 +54,12 @@ from ..sql.schema import Column
 from ..sql.schema import SchemaConst
 from ..sql.type_api import TypeEngine
 from ..util.typing import de_optionalize_union_types
+from ..util.typing import get_args
+from ..util.typing import includes_none
 from ..util.typing import is_fwd_ref
-from ..util.typing import is_optional_union
 from ..util.typing import is_pep593
 from ..util.typing import is_pep695
-from ..util.typing import is_union
 from ..util.typing import Self
-from ..util.typing import typing_get_args
 
 if TYPE_CHECKING:
     from ._typing import _IdentityKeyType
@@ -738,52 +736,44 @@ class MappedColumn(
     ) -> None:
         sqltype = self.column.type
 
-        if isinstance(argument, str) or is_fwd_ref(
-            argument, check_generic=True
+        if is_fwd_ref(
+            argument, check_generic=True, check_for_plain_string=True
         ):
             assert originating_module is not None
             argument = de_stringify_annotation(
                 cls, argument, originating_module, include_generic=True
             )
 
-        if is_union(argument):
-            assert originating_module is not None
-            argument = de_stringify_union_elements(
-                cls, argument, originating_module
-            )
-
-        nullable = is_optional_union(argument)
+        nullable = includes_none(argument)
 
         if not self._has_nullable:
             self.column.nullable = nullable
 
         our_type = de_optionalize_union_types(argument)
 
-        use_args_from = None
-
-        our_original_type = our_type
-
-        if is_pep695(our_type):
-            our_type = our_type.__value__
+        find_mapped_in: Tuple[Any, ...] = ()
+        our_type_is_pep593 = False
+        raw_pep_593_type = None
 
         if is_pep593(our_type):
             our_type_is_pep593 = True
 
-            pep_593_components = typing_get_args(our_type)
+            pep_593_components = get_args(our_type)
             raw_pep_593_type = pep_593_components[0]
-            if is_optional_union(raw_pep_593_type):
+            if nullable:
                 raw_pep_593_type = de_optionalize_union_types(raw_pep_593_type)
+            find_mapped_in = pep_593_components[1:]
+        elif is_pep695(argument) and is_pep593(argument.__value__):
+            # do not support nested annotation inside unions ets
+            find_mapped_in = get_args(argument.__value__)[1:]
 
-                nullable = True
-                if not self._has_nullable:
-                    self.column.nullable = nullable
-            for elem in pep_593_components[1:]:
-                if isinstance(elem, MappedColumn):
-                    use_args_from = elem
-                    break
+        use_args_from: Optional[MappedColumn[Any]]
+        for elem in find_mapped_in:
+            if isinstance(elem, MappedColumn):
+                use_args_from = elem
+                break
         else:
-            our_type_is_pep593 = False
-            raw_pep_593_type = None
+            use_args_from = None
 
         if use_args_from is not None:
             if (
@@ -857,10 +847,11 @@ class MappedColumn(
         if sqltype._isnull and not self.column.foreign_keys:
             new_sqltype = None
 
+            checks: List[Any]
             if our_type_is_pep593:
-                checks = [our_original_type, raw_pep_593_type]
+                checks = [our_type, raw_pep_593_type]
             else:
-                checks = [our_original_type]
+                checks = [our_type]
 
             for check_type in checks:
                 new_sqltype = registry._resolve_type(check_type)

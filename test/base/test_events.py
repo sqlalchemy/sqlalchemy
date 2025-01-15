@@ -1271,6 +1271,107 @@ class RemovalTest(TearDownLocalEventsFixture, fixtures.TestBase):
 
         return Target
 
+    def test_two_subclasses_one_event(self):
+        """test #12216"""
+
+        Target = self._fixture()
+
+        class TargetSubclassOne(Target):
+            pass
+
+        class TargetSubclassTwo(Target):
+            pass
+
+        m1 = Mock()
+
+        def my_event_one(x, y):
+            m1.my_event_one(x, y)
+
+        event.listen(TargetSubclassOne, "event_one", my_event_one)
+        event.listen(TargetSubclassTwo, "event_one", my_event_one)
+
+        t1 = TargetSubclassOne()
+        t2 = TargetSubclassTwo()
+
+        t1.dispatch.event_one("x1a", "y1a")
+        t2.dispatch.event_one("x2a", "y2a")
+
+        eq_(
+            m1.mock_calls,
+            [call.my_event_one("x1a", "y1a"), call.my_event_one("x2a", "y2a")],
+        )
+
+        event.remove(TargetSubclassOne, "event_one", my_event_one)
+
+        t1.dispatch.event_one("x1b", "y1b")
+        t2.dispatch.event_one("x2b", "y2b")
+
+        eq_(
+            m1.mock_calls,
+            [
+                call.my_event_one("x1a", "y1a"),
+                call.my_event_one("x2a", "y2a"),
+                call.my_event_one("x2b", "y2b"),
+            ],
+        )
+
+        event.remove(TargetSubclassTwo, "event_one", my_event_one)
+
+        t1.dispatch.event_one("x1c", "y1c")
+        t2.dispatch.event_one("x2c", "y2c")
+
+        eq_(
+            m1.mock_calls,
+            [
+                call.my_event_one("x1a", "y1a"),
+                call.my_event_one("x2a", "y2a"),
+                call.my_event_one("x2b", "y2b"),
+            ],
+        )
+
+    def test_two_subclasses_one_event_reg_cleanup(self):
+        """test #12216"""
+
+        from sqlalchemy.event import registry
+
+        Target = self._fixture()
+
+        class TargetSubclassOne(Target):
+            pass
+
+        class TargetSubclassTwo(Target):
+            pass
+
+        m1 = Mock()
+
+        def my_event_one(x, y):
+            m1.my_event_one(x, y)
+
+        event.listen(TargetSubclassOne, "event_one", my_event_one)
+        event.listen(TargetSubclassTwo, "event_one", my_event_one)
+
+        key1 = (id(TargetSubclassOne), "event_one", id(my_event_one))
+        key2 = (id(TargetSubclassTwo), "event_one", id(my_event_one))
+
+        assert key1 in registry._key_to_collection
+        assert key2 in registry._key_to_collection
+
+        del TargetSubclassOne
+        gc_collect()
+
+        # the key remains because the gc routine would be based on deleting
+        # Target (I think)
+        assert key1 in registry._key_to_collection
+        assert key2 in registry._key_to_collection
+
+        del TargetSubclassTwo
+        gc_collect()
+
+        assert key1 in registry._key_to_collection
+        assert key2 in registry._key_to_collection
+
+        # event.remove(TargetSubclassTwo, "event_one", my_event_one)
+
     def test_clslevel(self):
         Target = self._fixture()
 
@@ -1502,6 +1603,38 @@ class RemovalTest(TearDownLocalEventsFixture, fixtures.TestBase):
 
         assert key not in registry._key_to_collection
         assert collection_ref not in registry._collection_to_key
+
+    @testing.requires.predictable_gc
+    def test_listener_collection_removed_cleanup_clslevel(self):
+        """test related to #12216"""
+
+        from sqlalchemy.event import registry
+
+        Target = self._fixture()
+
+        m1 = Mock()
+
+        event.listen(Target, "event_one", m1)
+
+        key = (id(Target), "event_one", id(m1))
+
+        assert key in registry._key_to_collection
+        collection_ref = list(registry._key_to_collection[key])[0]
+        assert collection_ref in registry._collection_to_key
+
+        t1 = Target()
+        t1.dispatch.event_one("t1")
+
+        del t1
+
+        del Target
+
+        gc_collect()
+
+        # gc of a target class does not currently cause these collections
+        # to be cleaned up
+        assert key in registry._key_to_collection
+        assert collection_ref in registry._collection_to_key
 
     def test_remove_not_listened(self):
         Target = self._fixture()

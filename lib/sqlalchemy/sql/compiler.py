@@ -1,5 +1,5 @@
 # sql/compiler.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -3106,7 +3106,7 @@ class SQLCompiler(Compiled):
                         (
                             binary.right.type
                             if binary.right.type._type_affinity
-                            is sqltypes.Numeric
+                            in (sqltypes.Numeric, sqltypes.Float)
                             else sqltypes.Numeric()
                         ),
                     ),
@@ -6105,6 +6105,10 @@ class SQLCompiler(Compiled):
         """Provide a hook for MySQL to add LIMIT to the UPDATE"""
         return None
 
+    def delete_limit_clause(self, delete_stmt):
+        """Provide a hook for MySQL to add LIMIT to the DELETE"""
+        return None
+
     def update_tables_clause(self, update_stmt, from_table, extra_froms, **kw):
         """Provide a hook to override the initial table clause
         in an UPDATE statement.
@@ -6396,6 +6400,10 @@ class SQLCompiler(Compiled):
             )
             if t:
                 text += " WHERE " + t
+
+        limit_clause = self.delete_limit_clause(delete_stmt)
+        if limit_clause:
+            text += " " + limit_clause
 
         if (
             self.implicit_returning or delete_stmt._returning

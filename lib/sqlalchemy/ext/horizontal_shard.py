@@ -1,5 +1,5 @@
 # ext/horizontal_shard.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -321,7 +321,7 @@ class ShardedSession(Session):
             state.identity_token = shard_id
         return shard_id
 
-    def connection_callable(  # type: ignore [override]
+    def connection_callable(
         self,
         mapper: Optional[Mapper[_T]] = None,
         instance: Optional[Any] = None,

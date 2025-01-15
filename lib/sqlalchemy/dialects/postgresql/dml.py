@@ -1,5 +1,5 @@
 # dialects/postgresql/dml.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -7,7 +7,10 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import List
 from typing import Optional
+from typing import Tuple
+from typing import Union
 
 from . import ext
 from .._typing import _OnConflictConstraintT
@@ -26,7 +29,9 @@ from ...sql.base import ColumnCollection
 from ...sql.base import ReadOnlyColumnCollection
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
+from ...sql.elements import ColumnElement
 from ...sql.elements import KeyedColumnElement
+from ...sql.elements import TextClause
 from ...sql.expression import alias
 from ...util.typing import Self
 
@@ -153,11 +158,10 @@ class Insert(StandardInsert):
             :paramref:`.Insert.on_conflict_do_update.set_` dictionary.
 
         :param where:
-         Optional argument. If present, can be a literal SQL
-         string or an acceptable expression for a ``WHERE`` clause
-         that restricts the rows affected by ``DO UPDATE SET``. Rows
-         not meeting the ``WHERE`` condition will not be updated
-         (effectively a ``DO NOTHING`` for those rows).
+         Optional argument. An expression object representing a ``WHERE``
+         clause that restricts the rows affected by ``DO UPDATE SET``. Rows not
+         meeting the ``WHERE`` condition will not be updated (effectively a
+         ``DO NOTHING`` for those rows).
 
 
         .. seealso::
@@ -212,8 +216,10 @@ class OnConflictClause(ClauseElement):
     stringify_dialect = "postgresql"
 
     constraint_target: Optional[str]
-    inferred_target_elements: _OnConflictIndexElementsT
-    inferred_target_whereclause: _OnConflictIndexWhereT
+    inferred_target_elements: Optional[List[Union[str, schema.Column[Any]]]]
+    inferred_target_whereclause: Optional[
+        Union[ColumnElement[Any], TextClause]
+    ]
 
     def __init__(
         self,
@@ -254,8 +260,24 @@ class OnConflictClause(ClauseElement):
 
         if index_elements is not None:
             self.constraint_target = None
-            self.inferred_target_elements = index_elements
-            self.inferred_target_whereclause = index_where
+            self.inferred_target_elements = [
+                coercions.expect(roles.DDLConstraintColumnRole, column)
+                for column in index_elements
+            ]
+
+            self.inferred_target_whereclause = (
+                coercions.expect(
+                    (
+                        roles.StatementOptionRole
+                        if isinstance(constraint, ext.ExcludeConstraint)
+                        else roles.WhereHavingRole
+                    ),
+                    index_where,
+                )
+                if index_where is not None
+                else None
+            )
+
         elif constraint is None:
             self.constraint_target = self.inferred_target_elements = (
                 self.inferred_target_whereclause
@@ -268,6 +290,9 @@ class OnConflictDoNothing(OnConflictClause):
 
 class OnConflictDoUpdate(OnConflictClause):
     __visit_name__ = "on_conflict_do_update"
+
+    update_values_to_set: List[Tuple[Union[schema.Column[Any], str], Any]]
+    update_whereclause: Optional[ColumnElement[Any]]
 
     def __init__(
         self,
@@ -307,4 +332,8 @@ class OnConflictDoUpdate(OnConflictClause):
             (coercions.expect(roles.DMLColumnRole, key), value)
             for key, value in set_.items()
         ]
-        self.update_whereclause = where
+        self.update_whereclause = (
+            coercions.expect(roles.WhereHavingRole, where)
+            if where is not None
+            else None
+        )

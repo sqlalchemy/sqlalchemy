@@ -2136,13 +2136,19 @@ class PKAutoIncrementTest(fixtures.TestBase):
         )
 
     def test_float_illegal_autoinc(self):
-        """test that Float is not acceptable if autoincrement=True"""
+        """test that Float is not acceptable if autoincrement=True
+
+        note this changed in 2.1 with #5252 where Numeric/Float were split out
+
+        """
         t = Table("t", MetaData(), Column("a", Float, autoincrement=True))
         pk = PrimaryKeyConstraint(t.c.a)
         t.append_constraint(pk)
 
         with expect_raises_message(
-            exc.ArgumentError, "Column type FLOAT with non-zero scale "
+            exc.ArgumentError,
+            "Column type FLOAT on column 't.a' is not compatible "
+            "with autoincrement=True",
         ):
             pk._autoincrement_column,
 

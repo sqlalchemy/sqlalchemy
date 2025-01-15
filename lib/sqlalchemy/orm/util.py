@@ -1,5 +1,5 @@
 # orm/util.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -87,15 +87,12 @@ from ..sql.elements import KeyedColumnElement
 from ..sql.selectable import FromClause
 from ..util.langhelpers import MemoizedSlots
 from ..util.typing import de_stringify_annotation as _de_stringify_annotation
-from ..util.typing import (
-    de_stringify_union_elements as _de_stringify_union_elements,
-)
 from ..util.typing import eval_name_only as _eval_name_only
 from ..util.typing import fixup_container_fwd_refs
+from ..util.typing import get_origin
 from ..util.typing import is_origin_of_cls
 from ..util.typing import Literal
 from ..util.typing import TupleAny
-from ..util.typing import typing_get_origin
 from ..util.typing import Unpack
 
 if typing.TYPE_CHECKING:
@@ -125,7 +122,6 @@ if typing.TYPE_CHECKING:
     from ..sql.selectable import Selectable
     from ..sql.visitors import anon_map
     from ..util.typing import _AnnotationScanType
-    from ..util.typing import ArgsTypeProcotol
 
 _T = TypeVar("_T", bound=Any)
 
@@ -141,7 +137,6 @@ all_cascades = frozenset(
         "none",
     )
 )
-
 
 _de_stringify_partial = functools.partial(
     functools.partial,
@@ -172,23 +167,6 @@ class _DeStringifyAnnotation(Protocol):
 
 de_stringify_annotation = cast(
     _DeStringifyAnnotation, _de_stringify_partial(_de_stringify_annotation)
-)
-
-
-class _DeStringifyUnionElements(Protocol):
-    def __call__(
-        self,
-        cls: Type[Any],
-        annotation: ArgsTypeProcotol,
-        originating_module: str,
-        *,
-        str_cleanup_fn: Optional[Callable[[str, str], str]] = None,
-    ) -> Type[Any]: ...
-
-
-de_stringify_union_elements = cast(
-    _DeStringifyUnionElements,
-    _de_stringify_partial(_de_stringify_union_elements),
 )
 
 
@@ -1543,7 +1521,7 @@ GenericAlias = type(List[Any])
 def _inspect_generic_alias(
     class_: Type[_O],
 ) -> Optional[Mapper[_O]]:
-    origin = cast("Type[_O]", typing_get_origin(class_))
+    origin = cast("Type[_O]", get_origin(class_))
     return _inspect_mc(origin)
 
 
@@ -2231,7 +2209,7 @@ def _cleanup_mapped_str_annotation(
 
     inner: Optional[Match[str]]
 
-    mm = re.match(r"^(.+?)\[(.+)\]$", annotation)
+    mm = re.match(r"^([^ \|]+?)\[(.+)\]$", annotation)
 
     if not mm:
         return annotation
@@ -2271,7 +2249,7 @@ def _cleanup_mapped_str_annotation(
     while True:
         stack.append(real_symbol if mm is inner else inner.group(1))
         g2 = inner.group(2)
-        inner = re.match(r"^(.+?)\[(.+)\]$", g2)
+        inner = re.match(r"^([^ \|]+?)\[(.+)\]$", g2)
         if inner is None:
             stack.append(g2)
             break
@@ -2293,8 +2271,10 @@ def _cleanup_mapped_str_annotation(
         # ['Mapped', "'Optional[Dict[str, str]]'"]
         not re.match(r"""^["'].*["']$""", stack[-1])
         # avoid further generics like Dict[] such as
-        # ['Mapped', 'dict[str, str] | None']
-        and not re.match(r".*\[.*\]", stack[-1])
+        # ['Mapped', 'dict[str, str] | None'],
+        # ['Mapped', 'list[int] | list[str]'],
+        # ['Mapped', 'Union[list[int], list[str]]'],
+        and not re.search(r"[\[\]]", stack[-1])
     ):
         stripchars = "\"' "
         stack[-1] = ", ".join(
@@ -2334,6 +2314,11 @@ def _extract_mapped_subtype(
         return None
 
     try:
+        # destringify the "outside" of the annotation.  note we are not
+        # adding include_generic so it will *not* dig into generic contents,
+        # which will remain as ForwardRef or plain str under future annotations
+        # mode.  The full destringify happens later when mapped_column goes
+        # to do a full lookup in the registry type_annotations_map.
         annotated = de_stringify_annotation(
             cls,
             raw_annotation,

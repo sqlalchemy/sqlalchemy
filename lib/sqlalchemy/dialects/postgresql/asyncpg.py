@@ -1,5 +1,5 @@
 # dialects/postgresql/asyncpg.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors <see AUTHORS
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors <see AUTHORS
 # file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -275,6 +275,10 @@ class AsyncpgInteger(sqltypes.Integer):
     render_bind_cast = True
 
 
+class AsyncpgSmallInteger(sqltypes.SmallInteger):
+    render_bind_cast = True
+
+
 class AsyncpgBigInteger(sqltypes.BigInteger):
     render_bind_cast = True
 
@@ -321,7 +325,7 @@ class AsyncpgJSONPathType(json.JSONPathType):
         return process
 
 
-class AsyncpgNumeric(sqltypes.Numeric):
+class _AsyncpgNumericCommon(sqltypes.NumericCommon):
     render_bind_cast = True
 
     def bind_processor(self, dialect):
@@ -352,9 +356,12 @@ class AsyncpgNumeric(sqltypes.Numeric):
                 )
 
 
-class AsyncpgFloat(AsyncpgNumeric, sqltypes.Float):
-    __visit_name__ = "float"
-    render_bind_cast = True
+class AsyncpgNumeric(_AsyncpgNumericCommon, sqltypes.Numeric):
+    pass
+
+
+class AsyncpgFloat(_AsyncpgNumericCommon, sqltypes.Float):
+    pass
 
 
 class AsyncpgREGCLASS(REGCLASS):
@@ -579,7 +586,8 @@ class AsyncAdapt_asyncpg_cursor(AsyncAdapt_dbapi_cursor):
                     status = prepared_stmt.get_statusmsg()
 
                     reg = re.match(
-                        r"(?:SELECT|UPDATE|DELETE|INSERT \d+) (\d+)", status
+                        r"(?:SELECT|UPDATE|DELETE|INSERT \d+) (\d+)",
+                        status or "",
                     )
                     if reg:
                         self._rowcount = int(reg.group(1))
@@ -1059,6 +1067,7 @@ class PGDialect_asyncpg(PGDialect):
             INTERVAL: AsyncPgInterval,
             sqltypes.Boolean: AsyncpgBoolean,
             sqltypes.Integer: AsyncpgInteger,
+            sqltypes.SmallInteger: AsyncpgSmallInteger,
             sqltypes.BigInteger: AsyncpgBigInteger,
             sqltypes.Numeric: AsyncpgNumeric,
             sqltypes.Float: AsyncpgFloat,

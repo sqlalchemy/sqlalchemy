@@ -1145,6 +1145,14 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TABLE atable (id INTEGER) WITHOUT ROWID",
         )
 
+    def test_create_table_strict(self):
+        m = MetaData()
+        table = Table("atable", m, Column("id", Integer), sqlite_strict=True)
+        self.assert_compile(
+            schema.CreateTable(table),
+            "CREATE TABLE atable (id INTEGER) STRICT",
+        )
+
 
 class OnConflictDDLTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = sqlite.dialect()
@@ -2930,7 +2938,173 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
 
-class OnConflictTest(AssertsCompiledSQL, fixtures.TablesTest):
+class OnConflictCompileTest(AssertsCompiledSQL, fixtures.TestBase):
+    __dialect__ = "sqlite"
+
+    @testing.combinations(
+        (
+            lambda users, stmt: stmt.on_conflict_do_nothing(
+                index_elements=["id"], index_where=text("name = 'hi'")
+            ),
+            "ON CONFLICT (id) WHERE name = 'hi' DO NOTHING",
+        ),
+        (
+            lambda users, stmt: stmt.on_conflict_do_nothing(
+                index_elements=["id"], index_where="name = 'hi'"
+            ),
+            exc.ArgumentError,
+        ),
+        (
+            lambda users, stmt: stmt.on_conflict_do_nothing(
+                index_elements=[users.c.id], index_where=users.c.name == "hi"
+            ),
+            "ON CONFLICT (id) WHERE name = __[POSTCOMPILE_name_1] DO NOTHING",
+        ),
+        (
+            lambda users, stmt: stmt.on_conflict_do_update(
+                index_elements=[users.c.id],
+                set_={users.c.name: "there"},
+                where=users.c.name == "hi",
+            ),
+            "ON CONFLICT (id) DO UPDATE SET name = ? " "WHERE users.name = ?",
+        ),
+        (
+            lambda users, stmt: stmt.on_conflict_do_update(
+                index_elements=[users.c.id],
+                set_={users.c.name: "there"},
+                where=text("name = 'hi'"),
+            ),
+            "ON CONFLICT (id) DO UPDATE SET name = ? " "WHERE name = 'hi'",
+        ),
+        (
+            lambda users, stmt: stmt.on_conflict_do_update(
+                index_elements=[users.c.id],
+                set_={users.c.name: "there"},
+                where="name = 'hi'",
+            ),
+            exc.ArgumentError,
+        ),
+        argnames="case,expected",
+    )
+    def test_assorted_arg_coercion(self, users, case, expected):
+        stmt = insert(users)
+
+        if isinstance(expected, type) and issubclass(expected, Exception):
+            with expect_raises(expected):
+                testing.resolve_lambda(case, stmt=stmt, users=users),
+        else:
+            self.assert_compile(
+                testing.resolve_lambda(case, stmt=stmt, users=users),
+                f"INSERT INTO users (id, name) VALUES (?, ?) {expected}",
+            )
+
+    @testing.combinations("control", "excluded", "dict", argnames="scenario")
+    def test_set_excluded(self, scenario, users, users_w_key):
+        """test #8014, sending all of .excluded to set"""
+
+        if scenario == "control":
+
+            stmt = insert(users)
+            self.assert_compile(
+                stmt.on_conflict_do_update(set_=stmt.excluded),
+                "INSERT INTO users (id, name) VALUES (?, ?) ON CONFLICT  "
+                "DO UPDATE SET id = excluded.id, name = excluded.name",
+            )
+        else:
+
+            stmt = insert(users_w_key)
+
+            if scenario == "excluded":
+                self.assert_compile(
+                    stmt.on_conflict_do_update(set_=stmt.excluded),
+                    "INSERT INTO users_w_key (id, name) VALUES (?, ?) "
+                    "ON CONFLICT  "
+                    "DO UPDATE SET id = excluded.id, name = excluded.name",
+                )
+            else:
+                self.assert_compile(
+                    stmt.on_conflict_do_update(
+                        set_={
+                            "id": stmt.excluded.id,
+                            "name_keyed": stmt.excluded.name_keyed,
+                        }
+                    ),
+                    "INSERT INTO users_w_key (id, name) VALUES (?, ?) "
+                    "ON CONFLICT  "
+                    "DO UPDATE SET id = excluded.id, name = excluded.name",
+                )
+
+    def test_on_conflict_do_update_exotic_targets_six(self, users_xtra):
+        users = users_xtra
+
+        unique_partial_index = schema.Index(
+            "idx_unique_partial_name",
+            users_xtra.c.name,
+            users_xtra.c.lets_index_this,
+            unique=True,
+            sqlite_where=users_xtra.c.lets_index_this == "unique_name",
+        )
+
+        i = insert(users)
+        i = i.on_conflict_do_update(
+            index_elements=unique_partial_index.columns,
+            index_where=unique_partial_index.dialect_options["sqlite"][
+                "where"
+            ],
+            set_=dict(
+                name=i.excluded.name, login_email=i.excluded.login_email
+            ),
+        )
+
+        # this test illustrates that the index_where clause can't use
+        # bound parameters, where we see below a literal_execute parameter is
+        # used (will be sent as literal to the DBAPI).  SQLite otherwise
+        # fails here with "(sqlite3.OperationalError) ON CONFLICT clause does
+        # not match any PRIMARY KEY or UNIQUE constraint" if sent as a real
+        # bind parameter.
+        self.assert_compile(
+            i,
+            "INSERT INTO users_xtra (id, name, login_email, lets_index_this) "
+            "VALUES (?, ?, ?, ?) ON CONFLICT (name, lets_index_this) "
+            "WHERE lets_index_this = __[POSTCOMPILE_lets_index_this_1] "
+            "DO UPDATE "
+            "SET name = excluded.name, login_email = excluded.login_email",
+        )
+
+    @testing.fixture
+    def users(self):
+        metadata = MetaData()
+        return Table(
+            "users",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+        )
+
+    @testing.fixture
+    def users_w_key(self):
+        metadata = MetaData()
+        return Table(
+            "users_w_key",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50), key="name_keyed"),
+        )
+
+    @testing.fixture
+    def users_xtra(self):
+        metadata = MetaData()
+        return Table(
+            "users_xtra",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+            Column("login_email", String(50)),
+            Column("lets_index_this", String(50)),
+        )
+
+
+class OnConflictTest(fixtures.TablesTest):
     __only_on__ = ("sqlite >= 3.24.0",)
     __backend__ = True
 
@@ -2990,49 +3164,8 @@ class OnConflictTest(AssertsCompiledSQL, fixtures.TablesTest):
         )
 
     def test_bad_args(self):
-        assert_raises(
-            ValueError, insert(self.tables.users).on_conflict_do_update
-        )
-
-    @testing.combinations("control", "excluded", "dict")
-    @testing.skip_if("+pysqlite_numeric")
-    @testing.skip_if("+pysqlite_dollar")
-    def test_set_excluded(self, scenario):
-        """test #8014, sending all of .excluded to set"""
-
-        if scenario == "control":
-            users = self.tables.users
-
-            stmt = insert(users)
-            self.assert_compile(
-                stmt.on_conflict_do_update(set_=stmt.excluded),
-                "INSERT INTO users (id, name) VALUES (?, ?) ON CONFLICT  "
-                "DO UPDATE SET id = excluded.id, name = excluded.name",
-            )
-        else:
-            users_w_key = self.tables.users_w_key
-
-            stmt = insert(users_w_key)
-
-            if scenario == "excluded":
-                self.assert_compile(
-                    stmt.on_conflict_do_update(set_=stmt.excluded),
-                    "INSERT INTO users_w_key (id, name) VALUES (?, ?) "
-                    "ON CONFLICT  "
-                    "DO UPDATE SET id = excluded.id, name = excluded.name",
-                )
-            else:
-                self.assert_compile(
-                    stmt.on_conflict_do_update(
-                        set_={
-                            "id": stmt.excluded.id,
-                            "name_keyed": stmt.excluded.name_keyed,
-                        }
-                    ),
-                    "INSERT INTO users_w_key (id, name) VALUES (?, ?) "
-                    "ON CONFLICT  "
-                    "DO UPDATE SET id = excluded.id, name = excluded.name",
-                )
+        with expect_raises(ValueError):
+            insert(self.tables.users).on_conflict_do_update()
 
     def test_on_conflict_do_no_call_twice(self):
         users = self.tables.users

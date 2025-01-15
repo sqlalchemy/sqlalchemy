@@ -1,5 +1,5 @@
 # dialects/oracle/types.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -112,10 +112,36 @@ class FLOAT(sqltypes.FLOAT):
 
 
 class BINARY_DOUBLE(sqltypes.Double):
+    """Implement the Oracle ``BINARY_DOUBLE`` datatype.
+
+    This datatype differs from the Oracle ``DOUBLE`` datatype in that it
+    delivers a true 8-byte FP value.   The datatype may be combined with a
+    generic :class:`.Double` datatype using :meth:`.TypeEngine.with_variant`.
+
+    .. seealso::
+
+        :ref:`oracle_float_support`
+
+
+    """
+
     __visit_name__ = "BINARY_DOUBLE"
 
 
 class BINARY_FLOAT(sqltypes.Float):
+    """Implement the Oracle ``BINARY_FLOAT`` datatype.
+
+    This datatype differs from the Oracle ``FLOAT`` datatype in that it
+    delivers a true 4-byte FP value.   The datatype may be combined with a
+    generic :class:`.Float` datatype using :meth:`.TypeEngine.with_variant`.
+
+    .. seealso::
+
+        :ref:`oracle_float_support`
+
+
+    """
+
     __visit_name__ = "BINARY_FLOAT"
 
 

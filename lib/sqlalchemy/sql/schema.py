@@ -1,5 +1,5 @@
 # sql/schema.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -4293,6 +4293,10 @@ class ColumnCollectionMixin:
         ] = _gather_expressions
 
         if processed_expressions is not None:
+
+            # this is expected to be an empty list
+            assert not processed_expressions
+
             self._pending_colargs = []
             for (
                 expr,

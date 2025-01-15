@@ -1,5 +1,5 @@
 # dialects/postgresql/psycopg.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -406,10 +406,12 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
 
                 # register the adapter for connections made subsequent to
                 # this one
+                assert self._psycopg_adapters_map
                 register_hstore(info, self._psycopg_adapters_map)
 
                 # register the adapter for this connection
-                register_hstore(info, connection.connection)
+                assert connection.connection
+                register_hstore(info, connection.connection.driver_connection)
 
     @classmethod
     def import_dbapi(cls):

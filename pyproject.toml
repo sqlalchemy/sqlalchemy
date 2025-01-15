@@ -197,7 +197,7 @@ ignore_missing_imports = true
 [tool.cibuildwheel]
 test-requires = "pytest pytest-xdist"
 # remove user site, otherwise the local checkout has precedence, disabling cyextensions
-test-command = "python -s -m pytest -c {project}/pyproject.toml -n2 -q --nomemory --notimingintensive --nomypy {project}/test"
+test-command = "python -s -m pytest -c {project}/pyproject.toml -n4 -q --nomemory --notimingintensive --nomypy {project}/test"
 
 build = "*"
 # python 3.6, 3.7 are no longer supported by sqlalchemy

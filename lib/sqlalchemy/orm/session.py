@@ -1,5 +1,5 @@
 # orm/session.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -1775,7 +1775,7 @@ class Session(_SessionClassMethods, EventTarget):
 
         # the idea is that at some point NO_ARG will warn that in the future
         # the default will switch to close_resets_only=False.
-        if close_resets_only or close_resets_only is _NoArg.NO_ARG:
+        if close_resets_only in (True, _NoArg.NO_ARG):
             self._close_state = _SessionCloseState.CLOSE_IS_RESET
         else:
             self._close_state = _SessionCloseState.ACTIVE

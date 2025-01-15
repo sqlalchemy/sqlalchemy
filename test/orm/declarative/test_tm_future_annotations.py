@@ -1,8 +1,8 @@
 """This file includes annotation-sensitive tests while having
 ``from __future__ import annotations`` in effect.
 
-Only tests that don't have an equivalent in ``test_typed_mappings`` are
-specified here. All test from ``test_typed_mappings`` are copied over to
+Only tests that don't have an equivalent in ``test_typed_mapping`` are
+specified here. All test from ``test_typed_mapping`` are copied over to
 the ``test_tm_future_annotations_sync`` by the ``sync_test_file`` script.
 """
 
@@ -30,9 +30,11 @@ from sqlalchemy.orm import KeyFuncDict
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm.util import _cleanup_mapped_str_annotation
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
+from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from .test_typed_mapping import expect_annotation_syntax_error
@@ -47,6 +49,89 @@ M = Mapped
 
 class M3:
     pass
+
+
+class AnnoUtilTest(fixtures.TestBase):
+    @testing.combinations(
+        ("Mapped[Address]", 'Mapped["Address"]'),
+        ('Mapped["Address"]', 'Mapped["Address"]'),
+        ("Mapped['Address']", "Mapped['Address']"),
+        ("Mapped[Address | None]", 'Mapped["Address | None"]'),
+        ("Mapped[None | Address]", 'Mapped["None | Address"]'),
+        ('Mapped["Address | None"]', 'Mapped["Address | None"]'),
+        ("Mapped['None | Address']", "Mapped['None | Address']"),
+        ('Mapped["Address" | "None"]', 'Mapped["Address" | "None"]'),
+        ('Mapped["None" | "Address"]', 'Mapped["None" | "Address"]'),
+        ("Mapped[A_]", 'Mapped["A_"]'),
+        ("Mapped[_TypingLiteral]", 'Mapped["_TypingLiteral"]'),
+        ("Mapped[datetime.datetime]", 'Mapped["datetime.datetime"]'),
+        ("Mapped[List[Edge]]", 'Mapped[List["Edge"]]'),
+        (
+            "Mapped[collections.abc.MutableSequence[B]]",
+            'Mapped[collections.abc.MutableSequence["B"]]',
+        ),
+        ("Mapped[typing.Sequence[B]]", 'Mapped[typing.Sequence["B"]]'),
+        ("Mapped[dict[str, str]]", 'Mapped[dict["str", "str"]]'),
+        ("Mapped[Dict[str, str]]", 'Mapped[Dict["str", "str"]]'),
+        ("Mapped[list[str]]", 'Mapped[list["str"]]'),
+        ("Mapped[dict[str, str] | None]", "Mapped[dict[str, str] | None]"),
+        ("Mapped[Optional[anno_str_mc]]", 'Mapped[Optional["anno_str_mc"]]'),
+        (
+            "Mapped[Optional[Dict[str, str]]]",
+            'Mapped[Optional[Dict["str", "str"]]]',
+        ),
+        (
+            "Mapped[Optional[Union[Decimal, float]]]",
+            'Mapped[Optional[Union["Decimal", "float"]]]',
+        ),
+        (
+            "Mapped[Optional[Union[list[int], list[str]]]]",
+            "Mapped[Optional[Union[list[int], list[str]]]]",
+        ),
+        ("Mapped[TestType[str]]", 'Mapped[TestType["str"]]'),
+        ("Mapped[TestType[str, str]]", 'Mapped[TestType["str", "str"]]'),
+        ("Mapped[Union[A, None]]", 'Mapped[Union["A", "None"]]'),
+        ("Mapped[Union[Decimal, float]]", 'Mapped[Union["Decimal", "float"]]'),
+        (
+            "Mapped[Union[Decimal, float, None]]",
+            'Mapped[Union["Decimal", "float", "None"]]',
+        ),
+        (
+            "Mapped[Union[Dict[str, str], None]]",
+            "Mapped[Union[Dict[str, str], None]]",
+        ),
+        ("Mapped[Union[float, Decimal]]", 'Mapped[Union["float", "Decimal"]]'),
+        (
+            "Mapped[Union[list[int], list[str]]]",
+            "Mapped[Union[list[int], list[str]]]",
+        ),
+        (
+            "Mapped[Union[list[int], list[str], None]]",
+            "Mapped[Union[list[int], list[str], None]]",
+        ),
+        (
+            "Mapped[Union[None, Dict[str, str]]]",
+            "Mapped[Union[None, Dict[str, str]]]",
+        ),
+        (
+            "Mapped[Union[None, list[int], list[str]]]",
+            "Mapped[Union[None, list[int], list[str]]]",
+        ),
+        ("Mapped[A | None]", 'Mapped["A | None"]'),
+        ("Mapped[Decimal | float]", 'Mapped["Decimal | float"]'),
+        ("Mapped[Decimal | float | None]", 'Mapped["Decimal | float | None"]'),
+        (
+            "Mapped[list[int] | list[str] | None]",
+            "Mapped[list[int] | list[str] | None]",
+        ),
+        ("Mapped[None | dict[str, str]]", "Mapped[None | dict[str, str]]"),
+        (
+            "Mapped[None | list[int] | list[str]]",
+            "Mapped[None | list[int] | list[str]]",
+        ),
+    )
+    def test_cleanup_mapped_str_annotation(self, given, expected):
+        eq_(_cleanup_mapped_str_annotation(given, __name__), expected)
 
 
 class MappedColumnTest(_MappedColumnTest):

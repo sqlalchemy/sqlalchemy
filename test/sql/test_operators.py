@@ -8,6 +8,7 @@ from sqlalchemy import and_
 from sqlalchemy import between
 from sqlalchemy import bindparam
 from sqlalchemy import exc
+from sqlalchemy import Float
 from sqlalchemy import Integer
 from sqlalchemy import join
 from sqlalchemy import LargeBinary
@@ -1105,7 +1106,7 @@ class JSONIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         return testing.combinations(
             ("integer", Integer),
             ("boolean", Boolean),
-            ("float", Numeric),
+            ("float", Float),
             ("string", String),
         )(fn)
 

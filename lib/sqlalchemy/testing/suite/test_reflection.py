@@ -1,5 +1,5 @@
 # testing/suite/test_reflection.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -1649,6 +1649,7 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
                             [
                                 sql_types.Integer,
                                 sql_types.Numeric,
+                                sql_types.Float,
                                 sql_types.DateTime,
                                 sql_types.Date,
                                 sql_types.Time,

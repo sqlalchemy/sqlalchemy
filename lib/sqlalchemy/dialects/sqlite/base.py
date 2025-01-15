@@ -1,5 +1,5 @@
 # dialects/sqlite/base.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -870,11 +870,17 @@ dialect in conjunction with the :class:`_schema.Table` construct:
 
     Table("some_table", metadata, ..., sqlite_with_rowid=False)
 
+*
+  ``STRICT``::
+
+    Table("some_table", metadata, ..., sqlite_strict=True)
+
+  .. versionadded:: 2.0.37
+
 .. seealso::
 
     `SQLite CREATE TABLE options
     <https://www.sqlite.org/lang_createtable.html>`_
-
 
 .. _sqlite_include_internal:
 
@@ -1475,9 +1481,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
         return self._generate_generic_binary(binary, " NOT REGEXP ", **kw)
 
     def _on_conflict_target(self, clause, **kw):
-        if clause.constraint_target is not None:
-            target_text = "(%s)" % clause.constraint_target
-        elif clause.inferred_target_elements is not None:
+        if clause.inferred_target_elements is not None:
             target_text = "(%s)" % ", ".join(
                 (
                     self.preparer.quote(c)
@@ -1491,7 +1495,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
                     clause.inferred_target_whereclause,
                     include_table=False,
                     use_schema=False,
-                    literal_binds=True,
+                    literal_execute=True,
                 )
 
         else:
@@ -1754,9 +1758,12 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         return text
 
     def post_create_table(self, table):
+        text = ""
         if table.dialect_options["sqlite"]["with_rowid"] is False:
-            return "\n WITHOUT ROWID"
-        return ""
+            text += "\n WITHOUT ROWID"
+        if table.dialect_options["sqlite"]["strict"] is True:
+            text += "\n STRICT"
+        return text
 
 
 class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
@@ -1991,6 +1998,7 @@ class SQLiteDialect(default.DefaultDialect):
             {
                 "autoincrement": False,
                 "with_rowid": True,
+                "strict": False,
             },
         ),
         (sa_schema.Index, {"where": None}),

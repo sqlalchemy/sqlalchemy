@@ -1,5 +1,5 @@
 # testing/engines.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -330,16 +330,18 @@ def testing_engine(
     url = url or config.db.url
 
     url = make_url(url)
-    if options is None:
-        if config.db is None or url.drivername == config.db.url.drivername:
-            options = config.db_opts
-        else:
-            options = {}
-    elif config.db is not None and url.drivername == config.db.url.drivername:
-        default_opt = config.db_opts.copy()
-        default_opt.update(options)
 
-    engine = create_engine(url, **options)
+    if (
+        config.db is None or url.drivername == config.db.url.drivername
+    ) and config.db_opts:
+        use_options = config.db_opts.copy()
+    else:
+        use_options = {}
+
+    if options is not None:
+        use_options.update(options)
+
+    engine = create_engine(url, **use_options)
 
     if sqlite_savepoint and engine.name == "sqlite":
         # apply SQLite savepoint workaround
@@ -370,9 +372,9 @@ def testing_engine(
 
     if (
         isinstance(engine.pool, pool.QueuePool)
-        and "pool" not in options
-        and "pool_timeout" not in options
-        and "max_overflow" not in options
+        and "pool" not in use_options
+        and "pool_timeout" not in use_options
+        and "max_overflow" not in use_options
     ):
         engine.pool._timeout = 0
         engine.pool._max_overflow = 0

@@ -81,6 +81,9 @@ insert(Test).on_conflict_do_nothing(
     unique, ["foo"], Test.id > 0, {"id": 42, Test.ident: 99}, Test.id == 22
 ).excluded.foo.desc()
 
+s1 = insert(Test)
+s1.on_conflict_do_update(set_=s1.excluded)
+
 
 # EXPECTED_TYPE: Column[Range[int]]
 reveal_type(Column(INT4RANGE()))

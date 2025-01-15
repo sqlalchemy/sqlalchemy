@@ -1,5 +1,5 @@
 # dialects/mysql/base.py
-# Copyright (C) 2005-2024 the SQLAlchemy authors and contributors
+# Copyright (C) 2005-2025 the SQLAlchemy authors and contributors
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
@@ -488,7 +488,14 @@ available.
 
 * UPDATE with LIMIT::
 
-    update(..., mysql_limit=10, mariadb_limit=10)
+    update(...).with_dialect_options(mysql_limit=10, mariadb_limit=10)
+
+* DELETE
+  with LIMIT::
+
+    delete(...).with_dialect_options(mysql_limit=10, mariadb_limit=10)
+
+  .. versionadded:: 2.0.37 Added delete with limit
 
 * optimizer hints, use :meth:`_expression.Select.prefix_with` and
   :meth:`_query.Query.prefix_with`::
@@ -1051,6 +1058,7 @@ from .reserved_words import RESERVED_WORDS_MYSQL
 from .types import _FloatType
 from .types import _IntegerType
 from .types import _MatchType
+from .types import _NumericCommonType
 from .types import _NumericType
 from .types import _StringType
 from .types import BIGINT
@@ -1148,6 +1156,7 @@ MSInteger = INTEGER
 
 colspecs = {
     _IntegerType: _IntegerType,
+    _NumericCommonType: _NumericCommonType,
     _NumericType: _NumericType,
     _FloatType: _FloatType,
     sqltypes.Numeric: NUMERIC,
@@ -1311,7 +1320,7 @@ class MySQLCompiler(compiler.SQLCompiler):
                     self.process(binary.right, **kw),
                 )
             )
-        elif binary.type._type_affinity is sqltypes.Numeric:
+        elif binary.type._type_affinity in (sqltypes.Numeric, sqltypes.Float):
             if (
                 binary.type.scale is not None
                 and binary.type.precision is not None
@@ -1396,6 +1405,8 @@ class MySQLCompiler(compiler.SQLCompiler):
         for column in (col for col in cols if col.key in on_duplicate.update):
             val = on_duplicate.update[column.key]
 
+            # TODO: this coercion should be up front.  we can't cache
+            # SQL constructs with non-bound literals buried in them
             if coercions._is_literal(val):
                 val = elements.BindParameter(None, val, type_=column.type)
                 value_text = self.process(val.self_group(), use_schema=False)
@@ -1711,8 +1722,15 @@ class MySQLCompiler(compiler.SQLCompiler):
 
     def update_limit_clause(self, update_stmt):
         limit = update_stmt.kwargs.get("%s_limit" % self.dialect.name, None)
-        if limit:
-            return "LIMIT %s" % limit
+        if limit is not None:
+            return f"LIMIT {int(limit)}"
+        else:
+            return None
+
+    def delete_limit_clause(self, delete_stmt):
+        limit = delete_stmt.kwargs.get("%s_limit" % self.dialect.name, None)
+        if limit is not None:
+            return f"LIMIT {int(limit)}"
         else:
             return None
 
@@ -2179,7 +2197,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         )
 
     def _mysql_type(self, type_):
-        return isinstance(type_, (_StringType, _NumericType))
+        return isinstance(type_, (_StringType, _NumericCommonType))
 
     def visit_NUMERIC(self, type_, **kw):
         if type_.precision is None:
@@ -2536,6 +2554,7 @@ class MySQLDialect(default.DefaultDialect):
     construct_arguments = [
         (sa_schema.Table, {"*": None}),
         (sql.Update, {"limit": None}),
+        (sql.Delete, {"limit": None}),
         (sa_schema.PrimaryKeyConstraint, {"using": None}),
         (
             sa_schema.Index,
