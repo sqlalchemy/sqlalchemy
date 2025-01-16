@@ -748,7 +748,7 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
         prepared_statement_name_func=None,
     ):
         super().__init__(dbapi, connection)
-        self.isolation_level = self._isolation_setting = "read_committed"
+        self.isolation_level = self._isolation_setting = None
         self.readonly = False
         self.deferrable = False
         self._transaction = None

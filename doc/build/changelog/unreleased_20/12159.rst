@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 12159
+
+    Adjusted the asyncpg connection wrapper so that the asyncpg
+    ``.transaction()`` call sends ``None`` for isolation_level if not otherwise
+    set in the SQLAlchemy dialect/wrapper, thereby allowing asyncpg to make use
+    of the server level setting for isolation_level in the absense of a
+    client-level setting. Previously, this behavior of asyncpg was blocked by a
+    hardcoded ``read_committed``.
