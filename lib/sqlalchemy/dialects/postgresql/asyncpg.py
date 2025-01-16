@@ -717,7 +717,7 @@ class AsyncAdapt_asyncpg_connection(AdaptedConnection):
     ):
         self.dbapi = dbapi
         self._connection = connection
-        self.isolation_level = self._isolation_setting = "read_committed"
+        self.isolation_level = self._isolation_setting = None
         self.readonly = False
         self.deferrable = False
         self._transaction = None
