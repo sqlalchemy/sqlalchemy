@@ -904,7 +904,7 @@ class AsyncAdapt_asyncpg_connection(AdaptedConnection):
             try:
                 # try to gracefully close; see #10717
                 # timeout added in asyncpg 0.14.0 December 2017
-                self.await_(self._connection.close(timeout=2))
+                self.await_(asyncio.shield(self._connection.close(timeout=2)))
             except (
                 asyncio.TimeoutError,
                 asyncio.CancelledError,
