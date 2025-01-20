@@ -253,7 +253,7 @@ class String(Concatenable, TypeEngine[str]):
 
     def result_processor(
         self, dialect: Dialect, coltype: object
-    ) -> _ResultProcessorType[str] | None:
+    ) -> Optional[_ResultProcessorType[str]]:
         return None
 
     @property
