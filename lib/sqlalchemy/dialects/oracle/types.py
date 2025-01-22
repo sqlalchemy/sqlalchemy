@@ -18,6 +18,7 @@ from ... import exc
 from ...sql import sqltypes
 from ...types import NVARCHAR
 from ...types import VARCHAR
+import array
 
 if TYPE_CHECKING:
     from ...engine.interfaces import Dialect
@@ -321,27 +322,71 @@ class _OracleBoolean(sqltypes.Boolean):
 class VECTOR(types.TypeEngine):
     """Oracle VECTOR type."""
 
+    cache_ok = True
     __visit_name__ = "VECTOR"
 
-    def __init__(self, dim=None, storage_format=None):
+    def __init__(self, *args):
         """
         :param dim: The dimension of the VECTOR type. This should be an
         integer value.
         :param storage_format: The VECTOR storage type format. This
         may be int8, binary, float32, float64.
         """
+        dim = storage_format = '*'
+        if len(args) == 1:
+            if isinstance(args[0], str):
+                dim = '*'
+                storage_format = args[0]
+            elif isinstance(args[0], int):
+                dim = args[0]
+                storage_format = '*'
+            
+        elif len(args) == 2:
+            dim, storage_format = args
+
+        elif len(args) > 2:
+            raise TypeError("VECTOR() accepts at most two positional argument")
+        
         self.dim = dim
         self.storage_format = storage_format
 
+    def _cached_bind_processor(self, dialect):
+        """
+        Convert a list to a array.array before binding it to the database.
+        """
+        def process(value):
+            if value is None:
+                return None
+            
+            # Convert list to a array.array
+            if isinstance(value, list):
+                format = self._array_typecode(self.storage_format)
+                value = array.array(format, value)
+            return value
+        return process
+        
+    def _array_typecode(self, format):
+        """
+        Map storage format to array typecode.
+        """
+        typecode_map = {
+            'int8': 'b',   # Signed int
+            'binary': 'B', # Unsigned int
+            'float32': 'f', # Float
+            'float64': 'd'  # Double
+        }
+        return typecode_map.get(format, 'f')
+        
+        
     class comparator_factory(types.TypeEngine.Comparator):
-        def L2_DISTANCE(self, other):
+        def l1_distance(self, other):
             return self.op('<->', return_type=Float)(other)
 
-        def INNER_PRODUCT(self, other):
+        def inner_product(self, other):
             return self.op('<#>', return_type=Float)(other)
 
-        def COSINE_DISTANCE(self, other):
+        def cosine_distance(self, other):
             return self.op('<=>', return_type=Float)(other)
 
-        def L1_DISTANCE(self, other):
+        def l2_distance(self, other):
             return self.op('<+>', return_type=Float)(other)

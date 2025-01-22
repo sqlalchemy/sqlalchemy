@@ -614,6 +614,24 @@ format for each dimension value in the VECTOR. To create a table with VECTOR col
         Column(...), ...
     )
 
+Vectors can also be defined with an arbitrary number of dimensions and formats. This allows
+you to specify vectors of different dimensions with the various storage formats mentioned above.
+
+For Example
+
+1-> In this case, the storage format is flexible, allowing any vector type data to be inserted,
+    such as int8 or binary etc.
+    
+    vector_col:Mapped[array.array] = mapped_column(VECTOR(3)) 
+
+2-> The dimension is flexible in this case, meaning that any dimension vector can be used.
+   
+    vector_col:Mapped[array.array] = mapped_column(VECTOR('int8'))
+
+3-> Both the dimensions and the storage format are flexible.
+
+    vector_col:Mapped[array.array] = mapped_column(VECTOR)
+
 INSERT VECTOR DATA
 ^^^^^^^^^^^^^^^^^^
 
@@ -623,7 +641,7 @@ double (64-bit), or int8_t (8-bit signed integer) are used as bind values when i
     from sqlalchemy import insert, select
     import array
 
-    vector_data_8 = array.array("b", [1, 2, 3])
+    vector_data_8 = [1, 2, 3]
     statement  = insert(t1)
     with engine.connect() as conn:
         conn.execute(statement,[
@@ -764,26 +782,12 @@ For custom configurations, the parameters can be specified as shown in the follo
 Similarity Searching
 ^^^^^^^^^^^^^^^^^^^^
 
-VECTOR_DISTANCE is the main function that you can use to calculate the distance between two VECTORS.
-VECTOR_DISTANCE takes two vectors as parameters. You can optionally specify a distance metric to
-calculate the distance. If you do not specify a distance metric, then the default distance metric is cosine::
+You can  use the following shorthand VECTOR distance functions:
 
-    from sqlalchemy.orm import Session
-    from sqlalchemy.sql import func
-    import array
-
-    session = Session(bind=engine)
-    query_vector = array.array("b",[2,3,4])
-    result_vector = session.scalars(select(t1).order_by(func.VECTOR_DISTANCE(t1.embedding, query_vector, 'EUCLIDEAN'))
-    for user in vector:
-        print(user.id,user.embedding)
-
-You can optionally use the following shorthand VECTOR distance functions:
-
-* ``L1_DISTANCE``
-* ``L2_DISTANCE``
-* ``COSINE_DISTANCE``
-* ``INNER_PRODUCT``
+* ``l1_distance``
+* ``l2_distance``
+* ``cosine_distance``
+* ``inner_product``
 
 Example Usage::
 
@@ -793,7 +797,7 @@ Example Usage::
   
     session = Session(bind=engine)
     query_vector = array.array("b",[2,3,4])
-    result_vector = session.scalars(select(t1).order_by(func.L2_distance(t1.embedding, query_vector)).limit(3))
+    result_vector = session.scalars(select(t1).order_by(t1.embedding.l2_distance(query_vector)).limit(3))
  
     for user in vector:
         print(user.id,user.embedding)
@@ -806,8 +810,8 @@ size. Approximate searches using VECTOR indexes can limit the searches to specif
 VECTORS across all clusters.
 You can use the fetch_type clause to set the searching to be either EXACT, APPROX or APPROXIMATE::
 
-    result_vector = session.scalars(select(t1).order_by(func.L2_distance(t1.embedding, query_vector)).limit(3)).fetch_type("EXACT")
-    result_vector = session.scalars(select(t1).order_by(func.L2_distance(t1.embedding, query_vector)).limit(3)).fetch_type("APPROX")
+    result_vector = session.scalars(select(t1).order_by(t1.embedding.l1_distance(query_vector)).limit(3)).fetch_type("EXACT")
+    result_vector = session.scalars(select(t1).order_by(t1.embedding.l1_distance(query_vector)).limit(3)).fetch_type("APPROX")
 
 
 .. versionadded:: 2.1.0 added support for VECTOR using a newly added Oracle Database specific
