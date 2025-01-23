@@ -20,6 +20,8 @@ from typing import NoReturn
 from typing import Optional
 from typing import Protocol
 from typing import Sequence
+from typing import Tuple
+from typing import Type
 from typing import TYPE_CHECKING
 
 from ..engine import AdaptedConnection
@@ -374,3 +376,43 @@ class AsyncAdapt_dbapi_connection(AdaptedConnection):
 
     def close(self) -> None:
         await_(self._connection.close())
+
+
+class AsyncAdapt_terminate:
+    """Mixin for a AsyncAdapt_dbapi_connection to add terminate support."""
+
+    __slots__ = ()
+
+    def terminate(self) -> None:
+        if in_greenlet():
+            # in a greenlet; this is the connection was invalidated case.
+            try:
+                # try to gracefully close; see #10717
+                await_(asyncio.shield(self._terminate_graceful_close()))
+            except self._terminate_handled_exceptions() as e:
+                # in the case where we are recycling an old connection
+                # that may have already been disconnected, close() will
+                # fail.  In this case, terminate
+                # the connection without any further waiting.
+                # see issue #8419
+                self._terminate_force_close()
+                if isinstance(e, asyncio.CancelledError):
+                    # re-raise CancelledError if we were cancelled
+                    raise
+        else:
+            # not in a greenlet; this is the gc cleanup case
+            self._terminate_force_close()
+
+    def _terminate_handled_exceptions(self) -> Tuple[Type[BaseException], ...]:
+        """Returns the exceptions that should be handled when
+        calling _graceful_close.
+        """
+        return (asyncio.TimeoutError, asyncio.CancelledError, OSError)
+
+    async def _terminate_graceful_close(self) -> None:
+        """Try to close connection gracefully"""
+        raise NotImplementedError
+
+    def _terminate_force_close(self) -> None:
+        """Terminate the connection"""
+        raise NotImplementedError

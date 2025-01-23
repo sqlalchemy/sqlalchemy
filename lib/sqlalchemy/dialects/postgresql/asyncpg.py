@@ -178,7 +178,6 @@ client using this setting passed to :func:`_asyncio.create_async_engine`::
 
 from __future__ import annotations
 
-import asyncio
 from collections import deque
 import decimal
 import json as _py_json
@@ -218,6 +217,7 @@ from ... import util
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
+from ...connectors.asyncio import AsyncAdapt_terminate
 from ...engine import processors
 from ...sql import sqltypes
 from ...util.concurrency import await_
@@ -751,7 +751,9 @@ class AsyncAdapt_asyncpg_ss_cursor(
         )
 
 
-class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
+class AsyncAdapt_asyncpg_connection(
+    AsyncAdapt_terminate, AsyncAdapt_dbapi_connection
+):
     _cursor_cls = AsyncAdapt_asyncpg_cursor
     _ss_cursor_cls = AsyncAdapt_asyncpg_ss_cursor
 
@@ -932,32 +934,18 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
 
         await_(self._connection.close())
 
-    def terminate(self):
-        if util.concurrency.in_greenlet():
-            # in a greenlet; this is the connection was invalidated
-            # case.
-            try:
-                # try to gracefully close; see #10717
-                # timeout added in asyncpg 0.14.0 December 2017
-                await_(asyncio.shield(self._connection.close(timeout=2)))
-            except (
-                asyncio.TimeoutError,
-                asyncio.CancelledError,
-                OSError,
-                self.dbapi.asyncpg.PostgresError,
-            ) as e:
-                # in the case where we are recycling an old connection
-                # that may have already been disconnected, close() will
-                # fail with the above timeout.  in this case, terminate
-                # the connection without any further waiting.
-                # see issue #8419
-                self._connection.terminate()
-                if isinstance(e, asyncio.CancelledError):
-                    # re-raise CancelledError if we were cancelled
-                    raise
-        else:
-            # not in a greenlet; this is the gc cleanup case
-            self._connection.terminate()
+    def _terminate_handled_exceptions(self):
+        return super()._terminate_handled_exceptions() + (
+            self.dbapi.asyncpg.PostgresError,
+        )
+
+    async def _terminate_graceful_close(self) -> None:
+        # timeout added in asyncpg 0.14.0 December 2017
+        await self._connection.close(timeout=2)
+        self._transaction = None
+
+    def _terminate_force_close(self) -> None:
+        self._connection.terminate()
         self._transaction = None
 
     @staticmethod
