@@ -1,0 +1,6 @@
+.. change::
+    :tags: usecase, asyncio
+    :tickets: 12273
+
+    Generalize the terminate logic employed by the asyncpg dialect to reuse
+    it in the aiomysql and asyncmy dialect implementation.
