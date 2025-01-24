@@ -478,6 +478,13 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         )
         return loader
 
+    @util.deprecated(
+        "2.1",
+        "The :func:`_orm.noload` option is deprecated and will be removed "
+        "in a future release.  This option "
+        "produces incorrect results by returning ``None`` for related "
+        "items.",
+    )
     def noload(self, attr: _AttrType) -> Self:
         """Indicate that the given relationship attribute should remain
         unloaded.
@@ -485,16 +492,8 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         The relationship attribute will return ``None`` when accessed without
         producing any loading effect.
 
-        This function is part of the :class:`_orm.Load` interface and supports
-        both method-chained and standalone operation.
-
         :func:`_orm.noload` applies to :func:`_orm.relationship` attributes
         only.
-
-        .. legacy:: The :func:`_orm.noload` option is **legacy**.  As it
-           forces collections to be empty, which invariably leads to
-           non-intuitive and difficult to predict results.  There are no
-           legitimate uses for this option in modern SQLAlchemy.
 
         .. seealso::
 

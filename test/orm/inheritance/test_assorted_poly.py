@@ -41,6 +41,7 @@ from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import expect_noload_deprecation
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.provision import normalize_sequence
@@ -2355,7 +2356,8 @@ class CorrelateExceptWPolyAdaptTest(
     def test_poly_query_on_correlate(self):
         Common, Superclass = self._fixture(False)
 
-        poly = with_polymorphic(Superclass, "*")
+        with expect_noload_deprecation():
+            poly = with_polymorphic(Superclass, "*")
 
         s = fixture_session()
         q = (
@@ -2384,7 +2386,8 @@ class CorrelateExceptWPolyAdaptTest(
     def test_poly_query_on_correlate_except(self):
         Common, Superclass = self._fixture(True)
 
-        poly = with_polymorphic(Superclass, "*")
+        with expect_noload_deprecation():
+            poly = with_polymorphic(Superclass, "*")
 
         s = fixture_session()
         q = (

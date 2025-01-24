@@ -638,6 +638,13 @@ class _NoLoader(_AbstractRelationshipLoader):
 
     __slots__ = ()
 
+    @util.deprecated(
+        "2.1",
+        "The ``noload`` loader strategy is deprecated and will be removed "
+        "in a future release.  This option "
+        "produces incorrect results by returning ``None`` for related "
+        "items.",
+    )
     def init_class_attribute(self, mapper):
         self.is_class_level = True
 

@@ -89,6 +89,12 @@ def expect_deprecated(*messages, **kw):
     )
 
 
+def expect_noload_deprecation():
+    return expect_deprecated(
+        r"The (?:``noload`` loader strategy|noload\(\) option) is deprecated."
+    )
+
+
 def expect_deprecated_20(*messages, **kw):
     return _expect_warnings_sqla_only(
         sa_exc.Base20DeprecationWarning, messages, **kw

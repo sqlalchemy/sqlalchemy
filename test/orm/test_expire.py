@@ -1664,64 +1664,6 @@ class ExpireTest(_fixtures.FixtureTest):
         assert "name" in attributes.instance_state(u1).expired_attributes
         assert "name" not in attributes.instance_state(u1).callables
 
-    def test_state_noload_to_lazy(self):
-        """Behavioral test to verify the current activity of
-        loader callables
-
-        """
-
-        users, Address, addresses, User = (
-            self.tables.users,
-            self.classes.Address,
-            self.tables.addresses,
-            self.classes.User,
-        )
-
-        self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties={"addresses": relationship(Address, lazy="noload")},
-        )
-        self.mapper_registry.map_imperatively(Address, addresses)
-
-        sess = fixture_session(autoflush=False)
-        u1 = sess.query(User).options(lazyload(User.addresses)).first()
-        assert isinstance(
-            attributes.instance_state(u1).callables["addresses"],
-            strategies._LoadLazyAttribute,
-        )
-        # expire, it goes away from callables as of 1.4 and is considered
-        # to be expired
-        sess.expire(u1)
-
-        assert "addresses" in attributes.instance_state(u1).expired_attributes
-        assert "addresses" not in attributes.instance_state(u1).callables
-
-        # load it
-        sess.query(User).first()
-        assert (
-            "addresses" not in attributes.instance_state(u1).expired_attributes
-        )
-        assert "addresses" not in attributes.instance_state(u1).callables
-
-        sess.expunge_all()
-        u1 = sess.query(User).options(lazyload(User.addresses)).first()
-        sess.expire(u1, ["addresses"])
-        assert (
-            "addresses" not in attributes.instance_state(u1).expired_attributes
-        )
-        assert isinstance(
-            attributes.instance_state(u1).callables["addresses"],
-            strategies._LoadLazyAttribute,
-        )
-
-        # load the attr, goes away
-        u1.addresses
-        assert (
-            "addresses" not in attributes.instance_state(u1).expired_attributes
-        )
-        assert "addresses" not in attributes.instance_state(u1).callables
-
     def test_deferred_expire_w_transient_to_detached(self):
         orders, Order = self.tables.orders, self.classes.Order
         self.mapper_registry.map_imperatively(

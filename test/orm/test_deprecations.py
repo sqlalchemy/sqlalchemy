@@ -40,12 +40,15 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import strategies
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm import undefer
 from sqlalchemy.orm import with_parent
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.collections import collection
+from sqlalchemy.orm.strategy_options import lazyload
+from sqlalchemy.orm.strategy_options import noload
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -56,6 +59,8 @@ from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import expect_noload_deprecation
+from sqlalchemy.testing.assertions import in_
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import CacheKeyFixture
 from sqlalchemy.testing.fixtures import fixture_session
@@ -65,17 +70,14 @@ from . import _fixtures
 from .inheritance import _poly_fixtures
 from .inheritance._poly_fixtures import Manager
 from .inheritance._poly_fixtures import Person
+from .test_default_strategies import DefaultStrategyOptionsTestFixtures
 from .test_deferred import InheritanceTest as _deferred_InheritanceTest
+from .test_dynamic import _DynamicFixture
+from .test_dynamic import _WriteOnlyFixture
 from .test_options import PathTest as OptionsPathTest
 from .test_options import PathTest
 from .test_options import QueryTest as OptionsQueryTest
 from .test_query import QueryTest
-
-if True:
-    # hack - zimports won't stop reformatting this to be too-long for now
-    from .test_default_strategies import (
-        DefaultStrategyOptionsTest as _DefaultStrategyOptionsTest,
-    )
 
 join_aliased_dep = (
     r"The ``aliased`` and ``from_joinpoint`` keyword arguments to "
@@ -2732,7 +2734,7 @@ class MergeResultTest(_fixtures.FixtureTest):
         )
 
 
-class DefaultStrategyOptionsTest(_DefaultStrategyOptionsTest):
+class DefaultStrategyOptionsTest(DefaultStrategyOptionsTestFixtures):
     def test_joined_path_wildcards(self):
         sess = self._upgrade_fixture()
         users = []
@@ -2787,6 +2789,69 @@ class DefaultStrategyOptionsTest(_DefaultStrategyOptionsTest):
             # verify everything loaded, with no additional sql needed
             self._assert_fully_loaded(users)
 
+    def test_noload_with_joinedload(self):
+        """Mapper load strategy defaults can be downgraded with
+        noload('*') option, while explicit joinedload() option
+        is still honored"""
+        sess = self._downgrade_fixture()
+        users = []
+
+        # test noload('*') shuts off 'orders' subquery, only 1 sql
+        def go():
+            users[:] = (
+                sess.query(self.classes.User)
+                .options(sa.orm.noload("*"))
+                .options(joinedload(self.classes.User.addresses))
+                .order_by(self.classes.User.id)
+                .all()
+            )
+
+        with expect_noload_deprecation():
+            self.assert_sql_count(testing.db, go, 1)
+
+        # verify all the addresses were joined loaded (no more sql)
+        self._assert_addresses_loaded(users)
+
+        # User.orders should have loaded "noload" (meaning [])
+        def go():
+            for u in users:
+                assert u.orders == []
+
+        self.assert_sql_count(testing.db, go, 0)
+
+    def test_noload_with_subqueryload(self):
+        """Mapper load strategy defaults can be downgraded with
+        noload('*') option, while explicit subqueryload() option
+        is still honored"""
+        sess = self._downgrade_fixture()
+        users = []
+
+        # test noload('*') option combined with subqueryload()
+        # shuts off 'addresses' load AND orders.items load: 2 sql expected
+        def go():
+            users[:] = (
+                sess.query(self.classes.User)
+                .options(sa.orm.noload("*"))
+                .options(subqueryload(self.classes.User.orders))
+                .order_by(self.classes.User.id)
+                .all()
+            )
+
+        with expect_noload_deprecation():
+            self.assert_sql_count(testing.db, go, 2)
+
+        def go():
+            # Verify orders have already been loaded: 0 sql
+            for u, static in zip(users, self.static.user_all_result):
+                assert len(u.orders) == len(static.orders)
+            # Verify noload('*') prevented orders.items load
+            # and set 'items' to []
+            for u in users:
+                for o in u.orders:
+                    assert o.items == []
+
+        self.assert_sql_count(testing.db, go, 0)
+
 
 class Deferred_InheritanceTest(_deferred_InheritanceTest):
     def test_defer_on_wildcard_subclass(self):
@@ -2812,3 +2877,326 @@ class Deferred_InheritanceTest(_deferred_InheritanceTest):
         )
         # note this doesn't apply to "bound" loaders since they don't seem
         # to have this ".*" feature.
+
+
+class NoLoadTest(_fixtures.FixtureTest):
+    run_inserts = "once"
+    run_deletes = None
+
+    def test_o2m_noload(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        m = self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    lazy="noload",
+                )
+            ),
+        )
+        q = fixture_session().query(m)
+        result = [None]
+
+        def go():
+            x = q.filter(User.id == 7).all()
+            x[0].addresses
+            result[0] = x
+
+        with expect_noload_deprecation():
+            self.assert_sql_count(testing.db, go, 1)
+
+        self.assert_result(
+            result[0], User, {"id": 7, "addresses": (Address, [])}
+        )
+
+    def test_upgrade_o2m_noload_lazyload_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        m = self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    lazy="noload",
+                )
+            ),
+        )
+        with expect_noload_deprecation():
+            q = (
+                fixture_session()
+                .query(m)
+                .options(sa.orm.lazyload(User.addresses))
+            )
+        result = [None]
+
+        def go():
+            x = q.filter(User.id == 7).all()
+            x[0].addresses
+            result[0] = x
+
+        self.sql_count_(2, go)
+
+        self.assert_result(
+            result[0], User, {"id": 7, "addresses": (Address, [{"id": 1}])}
+        )
+
+    def test_m2o_noload_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+        self.mapper_registry.map_imperatively(
+            Address, addresses, properties={"user": relationship(User)}
+        )
+        self.mapper_registry.map_imperatively(User, users)
+        s = fixture_session()
+        with expect_noload_deprecation():
+            a1 = (
+                s.query(Address)
+                .filter_by(id=1)
+                .options(sa.orm.noload(Address.user))
+                .first()
+            )
+
+        def go():
+            eq_(a1.user, None)
+
+        self.sql_count_(0, go)
+
+
+class DynamicTest(_DynamicFixture, _fixtures.FixtureTest):
+
+    @testing.combinations(("star",), ("attronly",), argnames="type_")
+    def test_noload_issue(self, type_, user_address_fixture):
+        """test #6420.   a noload that hits the dynamic loader
+        should have no effect.
+
+        """
+
+        User, Address = user_address_fixture()
+
+        s = fixture_session()
+
+        with expect_noload_deprecation():
+
+            if type_ == "star":
+                u1 = s.query(User).filter_by(id=7).options(noload("*")).first()
+                assert "name" not in u1.__dict__["name"]
+            elif type_ == "attronly":
+                u1 = (
+                    s.query(User)
+                    .filter_by(id=7)
+                    .options(noload(User.addresses))
+                    .first()
+                )
+
+                eq_(u1.__dict__["name"], "jack")
+
+        # noload doesn't affect a dynamic loader, because it has no state
+        eq_(list(u1.addresses), [Address(id=1)])
+
+
+class WriteOnlyTest(_WriteOnlyFixture, _fixtures.FixtureTest):
+
+    @testing.combinations(("star",), ("attronly",), argnames="type_")
+    def test_noload_issue(self, type_, user_address_fixture):
+        """test #6420.   a noload that hits the dynamic loader
+        should have no effect.
+
+        """
+
+        User, Address = user_address_fixture()
+
+        s = fixture_session()
+
+        with expect_noload_deprecation():
+
+            if type_ == "star":
+                u1 = s.query(User).filter_by(id=7).options(noload("*")).first()
+                assert "name" not in u1.__dict__["name"]
+            elif type_ == "attronly":
+                u1 = (
+                    s.query(User)
+                    .filter_by(id=7)
+                    .options(noload(User.addresses))
+                    .first()
+                )
+
+                eq_(u1.__dict__["name"], "jack")
+
+
+class ExpireTest(_fixtures.FixtureTest):
+    def test_state_noload_to_lazy(self):
+        """Behavioral test to verify the current activity of
+        loader callables
+
+        """
+
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={"addresses": relationship(Address, lazy="noload")},
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
+
+        sess = fixture_session(autoflush=False)
+        with expect_noload_deprecation():
+            u1 = sess.query(User).options(lazyload(User.addresses)).first()
+        assert isinstance(
+            attributes.instance_state(u1).callables["addresses"],
+            strategies._LoadLazyAttribute,
+        )
+        # expire, it goes away from callables as of 1.4 and is considered
+        # to be expired
+        sess.expire(u1)
+
+        assert "addresses" in attributes.instance_state(u1).expired_attributes
+        assert "addresses" not in attributes.instance_state(u1).callables
+
+        # load it
+        sess.query(User).first()
+        assert (
+            "addresses" not in attributes.instance_state(u1).expired_attributes
+        )
+        assert "addresses" not in attributes.instance_state(u1).callables
+
+        sess.expunge_all()
+        u1 = sess.query(User).options(lazyload(User.addresses)).first()
+        sess.expire(u1, ["addresses"])
+        assert (
+            "addresses" not in attributes.instance_state(u1).expired_attributes
+        )
+        assert isinstance(
+            attributes.instance_state(u1).callables["addresses"],
+            strategies._LoadLazyAttribute,
+        )
+
+        # load the attr, goes away
+        u1.addresses
+        assert (
+            "addresses" not in attributes.instance_state(u1).expired_attributes
+        )
+        assert "addresses" not in attributes.instance_state(u1).callables
+
+
+class NoLoadBackPopulates(_fixtures.FixtureTest):
+    """test the noload stratgegy which unlike others doesn't use
+    lazyloader to set up instrumentation"""
+
+    def test_o2m(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    Address, back_populates="user", lazy="noload"
+                )
+            },
+        )
+
+        self.mapper_registry.map_imperatively(
+            Address, addresses, properties={"user": relationship(User)}
+        )
+        with expect_noload_deprecation():
+            u1 = User()
+        a1 = Address()
+        u1.addresses.append(a1)
+        is_(a1.user, u1)
+
+    def test_m2o(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+
+        self.mapper_registry.map_imperatively(
+            Address,
+            addresses,
+            properties={
+                "user": relationship(
+                    User, back_populates="addresses", lazy="noload"
+                )
+            },
+        )
+        with expect_noload_deprecation():
+            u1 = User()
+        a1 = Address()
+        a1.user = u1
+        in_(a1, u1.addresses)
+
+
+class ManyToOneTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+    def test_bidirectional_no_load(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    Address, backref="user", lazy="noload"
+                )
+            },
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
+
+        # try it on unsaved objects
+        with expect_noload_deprecation():
+            u1 = User(name="u1")
+        a1 = Address(email_address="e1")
+        a1.user = u1
+
+        session = fixture_session()
+        session.add(u1)
+        session.flush()
+        session.expunge_all()
+
+        a1 = session.get(Address, a1.id)
+
+        a1.user = None
+        session.flush()
+        session.expunge_all()
+        assert session.get(Address, a1.id).user is None
+        assert session.get(User, u1.id).addresses == []

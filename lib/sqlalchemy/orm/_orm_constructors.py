@@ -1426,11 +1426,6 @@ def relationship(
         issues a JOIN to the immediate parent object, specifying primary
         key identifiers using an IN clause.
 
-      * ``noload`` - no loading should occur at any time.  The related
-        collection will remain empty.   The ``noload`` strategy is not
-        recommended for general use.  For a general use "never load"
-        approach, see :ref:`write_only_relationship`
-
       * ``raise`` - lazy loading is disallowed; accessing
         the attribute, if its value were not already loaded via eager
         loading, will raise an :exc:`~sqlalchemy.exc.InvalidRequestError`.
@@ -1492,6 +1487,13 @@ def relationship(
 
             :ref:`write_only_relationship` - more generally useful approach
             for large collections that should not fully load into memory
+
+      * ``noload`` - no loading should occur at any time.  The related
+        collection will remain empty.
+
+        .. deprecated:: 2.1 The ``noload`` loader strategy is deprecated and
+           will be removed in a future release.  This option produces incorrect
+           results by returning ``None`` for related items.
 
       * True - a synonym for 'select'
 
