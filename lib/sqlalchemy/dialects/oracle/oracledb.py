@@ -597,14 +597,14 @@ VECTOR Datatype
 Oracle Database 23ai introduced a new VECTOR datatype for artificial intelligence and machine
 learning search operations. The VECTOR datatype is a homogeneous array of 8-bit signed integers,
 8-bit unsigned integers, 32-bit floating-point numbers, or 64-bit floating-point numbers.
-For more information on VECTOR datatype please visit this `link.
+For more information on the VECTOR datatype please visit this `link.
 <https://python-oracledb.readthedocs.io/en/latest/user_guide/vector_data_type.html>`_
 
-CREATE TABLE (VECTOR Datatype)
+CREATE TABLE (VECTOR datatype)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-With the VECTOR datatype, you can define the number of dimensions for the data and the storage
-format for each dimension value in the VECTOR. To create a table with VECTOR column::
+With the VECTOR datatype, you can specify the number of dimensions for the data and the storage
+format for each dimension value in the VECTOR. To create a table that includes a VECTOR column::
 
     from sqlalchemy.dialects.oracle import VECTOR
 
@@ -635,8 +635,9 @@ For Example
 INSERT VECTOR DATA
 ^^^^^^^^^^^^^^^^^^
 
-VECTOR data can be inserted using Python array.array() objects. Python arrays of type float (32-bit),
-double (64-bit), or int8_t (8-bit signed integer) are used as bind values when inserting VECTOR columns::
+VECTOR data can be inserted using Python list or Python array.array() objects. Python arrays of type
+float (32-bit), double (64-bit), or int8_t (8-bit signed integer) are used as bind values when
+inserting VECTOR columns::
 
     from sqlalchemy import insert, select
     import array
@@ -671,8 +672,7 @@ Configuring Oracle VECTOR Indexes
 =================================
 
 When using Oracle VECTOR indexes, the configuration parameters are divided into two levels:
-**top-level keys** and **nested keys** (under the ``parameters`` dictionary). This structure applies to
-both HNSW and IVF VECTOR indexes.
+**top-level keys** and **nested keys**. This structure applies to both HNSW and IVF VECTOR indexes.
 
 Top-Level Keys
 ==============
@@ -682,21 +682,18 @@ These keys are specified directly under the ``oracle_vector`` dictionary.
 * ``accuracy``:
     - Specifies the accuracy of the nearest neighbor search during query execution.
     - **Valid Range**: Greater than 0 and less than or equal to 100.
-    - **Placement**: Top level.
     - **Example**: ``'accuracy': 95``
 
 * ``distance``:
     - Specifies the metric for calculating distance between VECTORS.
     - **Valid Values**: ``"EUCLIDEAN"``, ``"COSINE"``, ``"DOT"``, ``"MANHATTAN"``.
-    - **Placement**: Top level.
     - **Example**: ``'distance': "COSINE"``
 
 * ``parameters``:
     - A nested dictionary where method-specific options are defined (e.g., HNSW or IVF-specific settings).
-    - **Placement**: Top level.
     - **Example**: ``'parameters': {...}``
 
-Nested Keys in parameters
+Nested keys in parameters
 =========================
 
 These keys are specific to the indexing method and are included under the ``parameters`` dictionary.

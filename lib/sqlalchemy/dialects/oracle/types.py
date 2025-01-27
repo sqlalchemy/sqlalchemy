@@ -320,17 +320,17 @@ class _OracleBoolean(sqltypes.Boolean):
 
 
 class VECTOR(types.TypeEngine):
-    """Oracle VECTOR type."""
+    """Oracle VECTOR datatype."""
 
     cache_ok = True
     __visit_name__ = "VECTOR"
 
     def __init__(self, *args):
         """
-        :param dim: The dimension of the VECTOR type. This should be an
+        :param dim: The dimension of the VECTOR datatype. This should be an
         integer value.
         :param storage_format: The VECTOR storage type format. This
-        may be int8, binary, float32, float64.
+        may be int8, binary, float32, or float64.
         """
         dim = storage_format = '*'
         if len(args) == 1:
@@ -358,11 +358,18 @@ class VECTOR(types.TypeEngine):
             if value is None:
                 return None
             
+            if isinstance(value, array.array)
+                return value
+            
             # Convert list to a array.array
-            if isinstance(value, list):
+            elif isinstance(value, list):
                 format = self._array_typecode(self.storage_format)
                 value = array.array(format, value)
-            return value
+                return value
+            
+            else:
+                raise TypeError("")
+
         return process
         
     def _array_typecode(self, format):
