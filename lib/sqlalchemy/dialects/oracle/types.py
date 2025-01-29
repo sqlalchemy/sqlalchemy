@@ -325,7 +325,7 @@ class VECTOR(types.TypeEngine):
     cache_ok = True
     __visit_name__ = "VECTOR"
 
-    def __init__(self, dim = None, storage_format = None, *args):
+    def __init__(self, dim=None, storage_format=None, *args):
         """
         :param dim: The dimension of the VECTOR datatype. This should be an
         integer value.
@@ -339,7 +339,7 @@ class VECTOR(types.TypeEngine):
         elif dim is not None and isinstance(dim, str):
             self.dim = storage_format
             self.storage_format = dim
-        
+
         else:
             self.dim = storage_format
             self.storage_format = dim
@@ -348,43 +348,43 @@ class VECTOR(types.TypeEngine):
         """
         Convert a list to a array.array before binding it to the database.
         """
+
         def process(value):
             if value is None or isinstance(value, array.array):
                 return value
-            
+
             # Convert list to a array.array
             elif isinstance(value, list):
                 format = self._array_typecode(self.storage_format)
                 value = array.array(format, value)
                 return value
-            
+
             else:
                 raise TypeError("VECTOR accepts list or array.array()")
 
         return process
-        
+
     def _array_typecode(self, format):
         """
         Map storage format to array typecode.
         """
         typecode_map = {
-            'int8': 'b',   # Signed int
-            'binary': 'B', # Unsigned int
-            'float32': 'f', # Float
-            'float64': 'd'  # Double
+            "int8": "b",  # Signed int
+            "binary": "B",  # Unsigned int
+            "float32": "f",  # Float
+            "float64": "d",  # Double
         }
-        return typecode_map.get(format, 'f')
-        
-        
+        return typecode_map.get(format, "f")
+
     class comparator_factory(types.TypeEngine.Comparator):
         def l1_distance(self, other):
-            return self.op('<->', return_type=Float)(other)
+            return self.op("<->", return_type=Float)(other)
 
         def inner_product(self, other):
-            return self.op('<#>', return_type=Float)(other)
+            return self.op("<#>", return_type=Float)(other)
 
         def cosine_distance(self, other):
-            return self.op('<=>', return_type=Float)(other)
+            return self.op("<=>", return_type=Float)(other)
 
         def l2_distance(self, other):
-            return self.op('<+>', return_type=Float)(other)
+            return self.op("<+>", return_type=Float)(other)

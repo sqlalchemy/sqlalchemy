@@ -1437,9 +1437,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
             if vector_distance is not None:
                 vector_distance = vector_distance.upper()
                 if vector_distance not in distance_values:
-                    raise ValueError(
-                        "UnIdentified vector_distance value"
-                    )
+                    raise ValueError("UnIdentified vector_distance value")
                 parts.append(f"DISTANCE {vector_distance}")
             target_accuracy = vector_options.get("accuracy")
             if target_accuracy is not None:
@@ -1456,9 +1454,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
             parallel = vector_options.get("parallel")
             if parallel is not None:
                 if not isinstance(parallel, int):
-                    raise ValueError(
-                        "Parallel value must be an integer"
-                    )
+                    raise ValueError("Parallel value must be an integer")
                 parts.append(f"PARALLEL {parallel}")
             text += " " + " ".join(parts)
         return text
