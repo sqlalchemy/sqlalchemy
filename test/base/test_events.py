@@ -978,6 +978,9 @@ class JoinTest(TearDownLocalEventsFixture, fixtures.TestBase):
             def __init__(self, parent):
                 self.dispatch = self.dispatch._join(parent.dispatch)
 
+            def create(self):
+                return TargetElement(self)
+
             def run_event(self, arg):
                 list(self.dispatch.event_one)
                 self.dispatch.event_one(self, arg)
@@ -1042,6 +1045,38 @@ class JoinTest(TearDownLocalEventsFixture, fixtures.TestBase):
         eq_(
             l2.mock_calls,
             [call(element, 1), call(element, 2), call(element, 3)],
+        )
+
+    def test_join_twice(self):
+        """test #12289"""
+
+        l1 = Mock()
+        l2 = Mock()
+
+        first_target_element = self.TargetFactory().create()
+        second_target_element = first_target_element.create()
+
+        event.listen(second_target_element, "event_one", l2)
+        event.listen(first_target_element, "event_one", l1)
+
+        second_target_element.run_event(1)
+        eq_(
+            l1.mock_calls,
+            [call(second_target_element, 1)],
+        )
+        eq_(
+            l2.mock_calls,
+            [call(second_target_element, 1)],
+        )
+
+        first_target_element.run_event(2)
+        eq_(
+            l1.mock_calls,
+            [call(second_target_element, 1), call(first_target_element, 2)],
+        )
+        eq_(
+            l2.mock_calls,
+            [call(second_target_element, 1)],
         )
 
     def test_parent_class_child_instance_apply_after(self):
