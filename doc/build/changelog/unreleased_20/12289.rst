@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 12289
+
+    Fixed issue where creating an :class:`.Engine` using multiple calls to
+    :meth:`.Engine.execution_options` where a subsequent call involved certain
+    options such as ``isolation_level`` would lead to an internal error
+    involving event registration.
