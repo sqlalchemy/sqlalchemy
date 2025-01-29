@@ -325,40 +325,31 @@ class VECTOR(types.TypeEngine):
     cache_ok = True
     __visit_name__ = "VECTOR"
 
-    def __init__(self, *args):
+    def __init__(self, dim = None, storage_format = None, *args):
         """
         :param dim: The dimension of the VECTOR datatype. This should be an
         integer value.
         :param storage_format: The VECTOR storage type format. This
         may be int8, binary, float32, or float64.
         """
-        dim = storage_format = '*'
-        if len(args) == 1:
-            if isinstance(args[0], str):
-                dim = '*'
-                storage_format = args[0]
-            elif isinstance(args[0], int):
-                dim = args[0]
-                storage_format = '*'
-            
-        elif len(args) == 2:
-            dim, storage_format = args
+        if dim is not None and isinstance(dim, int):
+            self.dim = dim
+            self.storage_format = storage_format
 
-        elif len(args) > 2:
-            raise TypeError("VECTOR() accepts at most two positional argument")
+        elif dim is not None and isinstance(dim, str):
+            self.dim = storage_format
+            self.storage_format = dim
         
-        self.dim = dim
-        self.storage_format = storage_format
+        else:
+            self.dim = storage_format
+            self.storage_format = dim
 
     def _cached_bind_processor(self, dialect):
         """
         Convert a list to a array.array before binding it to the database.
         """
         def process(value):
-            if value is None:
-                return None
-            
-            if isinstance(value, array.array)
+            if value is None or isinstance(value, array.array):
                 return value
             
             # Convert list to a array.array
@@ -368,7 +359,7 @@ class VECTOR(types.TypeEngine):
                 return value
             
             else:
-                raise TypeError("")
+                raise TypeError("VECTOR accepts list or array.array()")
 
         return process
         

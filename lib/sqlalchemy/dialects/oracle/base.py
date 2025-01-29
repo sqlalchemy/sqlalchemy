@@ -1405,7 +1405,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
         vector_options = index.dialect_options["oracle"]["vector"]
         if vector_options:
             text += "VECTOR "
-        text += "INDEX %s ON %s (%s) " % (
+        text += "INDEX %s ON %s (%s)" % (
             self._prepared_index_name(index, include_schema=True),
             preparer.format_table(index.table, use_schema=True),
             ", ".join(
@@ -1445,7 +1445,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
             if target_accuracy is not None:
                 if target_accuracy < 0 or target_accuracy > 100:
                     raise ValueError(
-                        "Accuracy value should be an integer b/w 0 to 100"
+                        "Accuracy value should be an integer between 0 and 100"
                     )
                 parts.append(f"WITH TARGET ACCURACY {target_accuracy}")
             if parameters:
@@ -1460,7 +1460,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
                         "Parallel value must be an integer"
                     )
                 parts.append(f"PARALLEL {parallel}")
-            text += " ".join(parts)
+            text += " " + " ".join(parts)
         return text
 
     def post_create_table(self, table):
