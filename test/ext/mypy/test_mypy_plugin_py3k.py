@@ -2,6 +2,13 @@ import os
 import pathlib
 import shutil
 
+try:
+    from mypy.version import __version__ as _mypy_version_str
+except ImportError:
+    _mypy_version = None
+else:
+    _mypy_version = tuple(int(x) for x in _mypy_version_str.split("."))
+
 from sqlalchemy import testing
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -24,7 +31,15 @@ def _incremental_dirs():
     return files
 
 
+def _mypy_missing_or_incompatible():
+    return not _mypy_version or _mypy_version > (1, 10, 1)
+
+
 class MypyPluginTest(fixtures.MypyTest):
+    @testing.skip_if(
+        _mypy_missing_or_incompatible,
+        "Mypy must be present and compatible (<= 1.10.1)",
+    )
     @testing.combinations(
         *[
             (pathlib.Path(pathname).name, pathname)
@@ -75,6 +90,10 @@ class MypyPluginTest(fixtures.MypyTest):
                 % (patchfile, result[0]),
             )
 
+    @testing.skip_if(
+        _mypy_missing_or_incompatible,
+        "Mypy must be present and compatible (<= 1.10.1)",
+    )
     @testing.combinations(
         *(
             (os.path.basename(path), path, True)
