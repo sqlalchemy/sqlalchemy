@@ -966,7 +966,35 @@ class TypesTest(fixtures.TestBase):
             with expect_raises_message(exc.DatabaseError, "ORA-03060"):
                 t1.create(connection)
 
-    def test_vector_multidimention(self, metadta, connection):
+    def test_vector_insert(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("c1", VECTOR),
+        )
+
+        if testing.against("oracle>23.4"):
+            t1.create(connection)
+            connection.execute(
+                t1.insert(),
+                dict(id=1, embedding=[6, 7, 8, 5]),
+            )
+            eq_(
+                connection.execute(t1.select()).first(),
+                (1, [6, 7, 8, 5]),
+            )
+            t1.delete().where(t1.c.id == 1)
+            connection.execute(t1.insert(), dict(id=1, embedding=[6, 7]))
+            eq_(
+                connection.execute(t1.select()).first(),
+                (1, [6, 7]),
+            )
+        else:
+            with expect_raises_message(exc.DatabaseError, "ORA-03060"):
+                t1.create(connection)
+
+    def test_vector_insert_array(self, metadata, connection):
         t1 = Table(
             "t1",
             metadata,
@@ -984,7 +1012,9 @@ class TypesTest(fixtures.TestBase):
                 connection.execute(t1.select()).first(),
                 (1, array.array("b", [6, 7, 8, 5])),
             )
+
             t1.delete().where(t1.c.id == 1)
+
             connection.execute(
                 t1.insert(), dict(id=1, embedding=array.array("b", [6, 7]))
             )
@@ -996,7 +1026,7 @@ class TypesTest(fixtures.TestBase):
             with expect_raises_message(exc.DatabaseError, "ORA-03060"):
                 t1.create(connection)
 
-    def test_vector_multiformat(self, metadta, connection):
+    def test_vector_multiformat_insert(self, metadata, connection):
         t1 = Table(
             "t1",
             metadata,
@@ -1008,19 +1038,17 @@ class TypesTest(fixtures.TestBase):
             t1.create(connection)
             connection.execute(
                 t1.insert(),
-                dict(id=1, embedding=array.array("f", [6.12, 7.54, 8.33])),
+                dict(id=1, embedding=[6.12, 7.54, 8.33]),
             )
             eq_(
                 connection.execute(t1.select()).first(),
-                (1, array.array("f", [6.12, 7.54, 8.33])),
+                (1, [6.12, 7.54, 8.33]),
             )
             t1.delete().where(t1.c.id == 1)
-            connection.execute(
-                t1.insert(), dict(id=1, embedding=array.array("b", [6, 7]))
-            )
+            connection.execute(t1.insert(), dict(id=1, embedding=[6, 7]))
             eq_(
                 connection.execute(t1.select()).first(),
-                (1, array.array("b", [6, 7])),
+                (1, [6, 7]),
             )
         else:
             with expect_raises_message(exc.DatabaseError, "ORA-03060"):
@@ -1052,12 +1080,10 @@ class TypesTest(fixtures.TestBase):
             )
             hnsw_index.create(connection)
 
-            connection.execute(
-                t1.insert(), dict(id=1, embedding=array.array("f", [6, 7, 8]))
-            )
+            connection.execute(t1.insert(), dict(id=1, embedding=[6, 7, 8]))
             eq_(
                 connection.execute(t1.select()).first(),
-                (1, array.array("f", [6.0, 7.0, 8.0])),
+                (1, [6.0, 7.0, 8.0]),
             )
         else:
             with expect_raises_message(exc.DatabaseError, "ORA-03060"):
@@ -1084,12 +1110,10 @@ class TypesTest(fixtures.TestBase):
             )
             ivf_index.create(connection)
 
-            connection.execute(
-                t1.insert(), dict(id=1, embedding=array.array("f", [6, 7, 8]))
-            )
+            connection.execute(t1.insert(), dict(id=1, embedding=[6, 7, 8]))
             eq_(
                 connection.execute(t1.select()).first(),
-                (1, array.array("f", [6.0, 7.0, 8.0])),
+                (1, [6.0, 7.0, 8.0]),
             )
         else:
             with expect_raises_message(exc.DatabaseError, "ORA-03060"):
@@ -1106,24 +1130,20 @@ class TypesTest(fixtures.TestBase):
         if testing.against("oracle>23.4"):
             t1.create(connection)
 
-            connection.execute(
-                t1.insert(), dict(id=1, embedding=array.array("b", [8, 9, 10]))
-            )
-            connection.execute(
-                t1.insert(), dict(id=1, embedding=array.array("b", [1, 2, 3]))
-            )
+            connection.execute(t1.insert(), dict(id=1, embedding=[8, 9, 10]))
+            connection.execute(t1.insert(), dict(id=2, embedding=[1, 2, 3]))
             connection.execute(
                 t1.insert(),
-                dict(id=1, embedding=array.array("b", [15, 16, 17])),
+                dict(id=3, embedding=[15, 16, 17]),
             )
 
-            query_vector = array.array("b", [2, 3, 4])
+            query_vector = [2, 3, 4]
             res = connection.execute(
                 t1.select().order_by(
                     func.L2_distance(t1.c.embedding, query_vector)
                 )
             ).first()
-            eq_(res.embedding, array.array("b", [1, 2, 3]))
+            eq_(res.embedding, [1, 2, 3])
         else:
             with expect_raises_message(exc.DatabaseError, "ORA-03060"):
                 t1.create(connection)
@@ -1139,18 +1159,14 @@ class TypesTest(fixtures.TestBase):
         if testing.against("oracle>23.4"):
             t1.create(connection)
 
-            connection.execute(
-                t1.insert(), dict(id=1, embedding=array.array("b", [8, 9, 10]))
-            )
-            connection.execute(
-                t1.insert(), dict(id=1, embedding=array.array("b", [1, 2, 3]))
-            )
+            connection.execute(t1.insert(), dict(id=1, embedding=[8, 9, 10]))
+            connection.execute(t1.insert(), dict(id=2, embedding=[1, 2, 3]))
             connection.execute(
                 t1.insert(),
-                dict(id=1, embedding=array.array("b", [15, 16, 17])),
+                dict(id=3, embedding=[15, 16, 17]),
             )
 
-            query_vector = array.array("b", [2, 3, 4])
+            query_vector = [2, 3, 4]
             res = (
                 connection.execute(
                     t1.select().order_by(
@@ -1160,7 +1176,7 @@ class TypesTest(fixtures.TestBase):
                 .limit(1)
                 .fetch_type("EXACT")
             )
-            eq_(res.embedding, array.array("b", [1, 2, 3]))
+            eq_(res.embedding, [1, 2, 3])
         else:
             with expect_raises_message(exc.DatabaseError, "ORA-03060"):
                 t1.create(connection)
