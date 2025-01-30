@@ -145,7 +145,7 @@ class PassiveFlag(FastIntFlag):
     """
 
     NO_AUTOFLUSH = 64
-    """Loader callables should disable autoflush.""",
+    """Loader callables should disable autoflush."""
 
     NO_RAISE = 128
     """Loader callables should not raise any assertions"""
