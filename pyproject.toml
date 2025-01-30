@@ -126,10 +126,7 @@ black-line-length = 79
 
 [tool.slotscheck]
 exclude-modules = '''
-^sqlalchemy\.(
-  testing
-  |ext\.mypy  # see slotscheck/issues/178
-)
+^sqlalchemy\.testing
 '''
 
 

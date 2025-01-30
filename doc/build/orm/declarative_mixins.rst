@@ -141,7 +141,7 @@ attribute is used on the newly defined class.
    :func:`_orm.mapped_column`.
 
 .. versionchanged:: 2.0 For users coming from the 1.4 series of SQLAlchemy
-   who may have been using the :ref:`mypy plugin <mypy_toplevel>`, the
+   who may have been using the ``mypy plugin``, the
    :func:`_orm.declarative_mixin` class decorator is no longer needed
    to mark declarative mixins, assuming the mypy plugin is no longer in use.
 
