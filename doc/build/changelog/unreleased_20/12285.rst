@@ -1,0 +1,6 @@
+.. change::
+    :tags: change, sqlite, aiosqlite, asyncio, pool
+    :tickets: 12285
+
+    Changed default connection pool of aiosqlite from NullPool to AsyncAdaptedQueuePool for consistency with pysqlite.
+

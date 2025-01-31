@@ -93,7 +93,7 @@ based on the kind of SQLite database that's requested:
 * When a file-based database is specified, the dialect will use
   :class:`.AsyncAdaptedQueuePool` as the source of connections.
 
-  .. versionchanged:: 2.0.37
+  .. versionchanged:: 2.0.38
 
     SQLite file database engines now use :class:`.AsyncAdaptedQueuePool` by default.
     Previously, :class:`.NullPool` were used.  The :class:`.NullPool` class
