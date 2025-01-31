@@ -1097,6 +1097,7 @@ from ...engine import cursor as _cursor
 from ...engine import default
 from ...engine import reflection
 from ...engine.reflection import ReflectionDefaults
+from ...orm.attributes import InstrumentedAttribute
 from ...sql import coercions
 from ...sql import compiler
 from ...sql import elements
@@ -1401,9 +1402,14 @@ class MySQLCompiler(compiler.SQLCompiler):
             else:
                 _on_dup_alias_name = "new"
 
+        on_duplicate_update = {
+            (key.key if isinstance(key, InstrumentedAttribute) else key): value
+            for key, value in on_duplicate.update.items()
+        }
+        
         # traverses through all table columns to preserve table column order
-        for column in (col for col in cols if col.key in on_duplicate.update):
-            val = on_duplicate.update[column.key]
+        for column in (col for col in cols if col.key in on_duplicate_update):
+            val = on_duplicate_update[column.key]
 
             # TODO: this coercion should be up front.  we can't cache
             # SQL constructs with non-bound literals buried in them
@@ -1444,7 +1450,7 @@ class MySQLCompiler(compiler.SQLCompiler):
             name_text = self.preparer.quote(column.name)
             clauses.append("%s = %s" % (name_text, value_text))
 
-        non_matching = set(on_duplicate.update) - {c.key for c in cols}
+        non_matching = set(on_duplicate_update) - {c.key for c in cols}
         if non_matching:
             util.warn(
                 "Additional column names not matching "
