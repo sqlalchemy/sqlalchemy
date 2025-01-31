@@ -1405,7 +1405,7 @@ class MySQLCompiler(compiler.SQLCompiler):
             coercions.expect_as_key(roles.DMLColumnRole, key): value
             for key, value in on_duplicate.update.items()
         }
-        
+
         # traverses through all table columns to preserve table column order
         for column in (col for col in cols if col.key in on_duplicate_update):
             val = on_duplicate_update[column.key]

@@ -1346,10 +1346,11 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
             },
             dialect=dialect,
         )
-    
+
     def test_on_update_instrumented_attribute_dict(self):
         class Base(DeclarativeBase):
             pass
+
         class T(Base):
             __tablename__ = "table"
 
@@ -1357,10 +1358,14 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
 
         q = insert(T).values(foo=1).on_duplicate_key_update({T.foo: 2})
         self.assert_compile(
-            q, 
-            "INSERT INTO `table` (foo) VALUES (%s) ON DUPLICATE KEY UPDATE foo = %s",
-            {"foo": 1, "param_1": 2}
+            q,
+            (
+                "INSERT INTO `table` (foo) VALUES (%s) "
+                "ON DUPLICATE KEY UPDATE foo = %s"
+            ),
+            {"foo": 1, "param_1": 2},
         )
+
 
 class RegexpCommon(testing.AssertsCompiledSQL):
     def setup_test(self):
