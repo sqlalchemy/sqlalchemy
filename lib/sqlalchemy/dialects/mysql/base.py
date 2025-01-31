@@ -1097,7 +1097,6 @@ from ...engine import cursor as _cursor
 from ...engine import default
 from ...engine import reflection
 from ...engine.reflection import ReflectionDefaults
-from ...orm.attributes import InstrumentedAttribute
 from ...sql import coercions
 from ...sql import compiler
 from ...sql import elements
@@ -1403,7 +1402,7 @@ class MySQLCompiler(compiler.SQLCompiler):
                 _on_dup_alias_name = "new"
 
         on_duplicate_update = {
-            (key.key if isinstance(key, InstrumentedAttribute) else key): value
+            coercions.expect_as_key(roles.DMLColumnRole, key): value
             for key, value in on_duplicate.update.items()
         }
         
