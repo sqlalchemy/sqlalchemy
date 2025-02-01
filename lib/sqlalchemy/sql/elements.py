@@ -88,6 +88,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _InfoType
     from ._typing import _PropagateAttrsType
     from ._typing import _TypeEngineArgument
+    from .base import ColumnSet
     from .cache_key import _CacheKeyTraversalType
     from .cache_key import CacheKey
     from .compiler import Compiled
@@ -1639,6 +1640,8 @@ class ColumnElement(
         self,
         selectable: FromClause,
         *,
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
         name: Optional[str] = None,
         key: Optional[str] = None,
         name_is_truncatable: bool = False,
@@ -4556,7 +4559,7 @@ class NamedColumn(KeyedColumnElement[_T]):
         return self.name
 
     @HasMemoized.memoized_attribute
-    def _tq_key_label(self):
+    def _tq_key_label(self) -> Optional[str]:
         """table qualified label based on column key.
 
         for table-bound columns this is <tablename>_<column key/proxy key>;
@@ -4614,6 +4617,8 @@ class NamedColumn(KeyedColumnElement[_T]):
         self,
         selectable: FromClause,
         *,
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
         name: Optional[str] = None,
         key: Optional[str] = None,
         name_is_truncatable: bool = False,
@@ -4794,6 +4799,8 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
         self,
         selectable: FromClause,
         *,
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
         name: Optional[str] = None,
         compound_select_cols: Optional[Sequence[ColumnElement[Any]]] = None,
         **kw: Any,
@@ -4806,6 +4813,8 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
             disallow_is_literal=True,
             name_is_truncatable=isinstance(name, _truncated_label),
             compound_select_cols=compound_select_cols,
+            primary_key=primary_key,
+            foreign_keys=foreign_keys,
         )
 
         # there was a note here to remove this assertion, which was here
@@ -5040,6 +5049,8 @@ class ColumnClause(
         self,
         selectable: FromClause,
         *,
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
         name: Optional[str] = None,
         key: Optional[str] = None,
         name_is_truncatable: bool = False,

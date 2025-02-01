@@ -23,6 +23,7 @@ from typing import NoReturn
 from typing import Optional
 from typing import overload
 from typing import Sequence
+from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
@@ -42,6 +43,7 @@ from .base import _from_objects
 from .base import _generative
 from .base import _select_iterables
 from .base import ColumnCollection
+from .base import ColumnSet
 from .base import CompileState
 from .base import DialectKWArgs
 from .base import Executable
@@ -418,10 +420,16 @@ class UpdateBase(
     is_dml = True
 
     def _generate_fromclause_column_proxies(
-        self, fromclause: FromClause
+        self,
+        fromclause: FromClause,
+        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
     ) -> None:
-        fromclause._columns._populate_separate_keys(
-            col._make_proxy(fromclause)
+        columns._populate_separate_keys(
+            col._make_proxy(
+                fromclause, primary_key=primary_key, foreign_keys=foreign_keys
+            )
             for col in self._all_selected_columns
             if is_column_element(col)
         )
