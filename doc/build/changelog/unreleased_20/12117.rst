@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, dml, mariadb, mysql
+    :tickets: 12117
+
+    Fixed a bug where the :class:`MySQLCompiler` would not properly compile statements
+    where :meth:`_mysql.Insert.on_duplicate_key_update` was passed values that included
+    :class:`InstrumentedAttribute` as keys.
+    Pull request courtesy of mingyu.
