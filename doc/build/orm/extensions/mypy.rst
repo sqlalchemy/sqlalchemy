@@ -11,8 +11,8 @@ the :func:`_orm.mapped_column` construct introduced in SQLAlchemy 2.0.
 
 .. deprecated:: 2.0
 
-    **The SQLAlchemy Mypy Plugin is DEPRECATED, and will be removed possibly
-    as early as the SQLAlchemy 2.1 release.  We would urge users to please
+    **The SQLAlchemy Mypy Plugin is DEPRECATED, and will be removed in
+    the SQLAlchemy 2.1 release.  We would urge users to please
     migrate away from it ASAP.   The mypy plugin also works only up until
     mypy version 1.10.1.    version 1.11.0 and greater may not work properly.**
 
