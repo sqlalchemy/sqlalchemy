@@ -5191,16 +5191,13 @@ class SQLCompiler(Compiled):
             ):
                 fetch_clause = fetch_clause.render_literal_execute()
 
-            fetch_type = getattr(select, "_fetch_type", "")
-            if fetch_type is None:
-                fetch_type = ""
+            fetch_type = select._fetch_type or ""
             text += "\n FETCH %s FIRST %s%s ROWS %s" % (
                 fetch_type,
                 self.process(fetch_clause, **kw),
                 " PERCENT" if fetch_clause_options["percent"] else "",
                 "WITH TIES" if fetch_clause_options["with_ties"] else "ONLY",
             )
-
         return text
 
     def visit_table(

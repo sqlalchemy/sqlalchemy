@@ -600,11 +600,11 @@ learning search operations. The VECTOR datatype is a homogeneous array of 8-bit 
 For more information on the VECTOR datatype please visit this `link.
 <https://python-oracledb.readthedocs.io/en/latest/user_guide/vector_data_type.html>`_
 
-CREATE TABLE (VECTOR datatype)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+CREATE TABLE
+^^^^^^^^^^^^
 
-With the VECTOR datatype, you can specify the number of dimensions for the data and the storage
-format for each dimension value in the VECTOR. To create a table that includes a VECTOR column::
+With the VECTOR datatype, you can specify the dimension for the data and the storage
+format. To create a table that includes a VECTOR column::
 
     from sqlalchemy.dialects.oracle import VECTOR
 
@@ -619,16 +619,16 @@ you to specify vectors of different dimensions with the various storage formats 
 
 For Example
 
-1-> In this case, the storage format is flexible, allowing any vector type data to be inserted,
-    such as int8 or binary etc.
+* In this case, the storage format is flexible, allowing any vector type data to be inserted,
+  such as int8 or binary etc.
     
-    vector_col:Mapped[array.array] = mapped_column(VECTOR(3)) 
+    vector_col:Mapped[array.array] = mapped_column(VECTOR(3))
 
-2-> The dimension is flexible in this case, meaning that any dimension vector can be used.
+* The dimension is flexible in this case, meaning that any dimension vector can be used.
    
     vector_col:Mapped[array.array] = mapped_column(VECTOR('int8'))
 
-3-> Both the dimensions and the storage format are flexible.
+* Both the dimensions and the storage format are flexible.
 
     vector_col:Mapped[array.array] = mapped_column(VECTOR)
 
@@ -656,7 +656,7 @@ There are two VECTOR indexes supported in VECTOR search: IVF Flat index and HNSW
 index.
 
 To utilize VECTOR indexing, set the `oracle_vector` parameter to True to use
-the default values provided by Oracle, with HNSW as the default indexing method::
+the default values provided by Oracle. HNSW is the default indexing method::
 
     Index(
             'vector_index',
@@ -781,7 +781,6 @@ Similarity Searching
 
 You can  use the following shorthand VECTOR distance functions:
 
-* ``l1_distance``
 * ``l2_distance``
 * ``cosine_distance``
 * ``inner_product``
@@ -793,7 +792,7 @@ Example Usage::
     import array
   
     session = Session(bind=engine)
-    query_vector = array.array("b",[2,3,4])
+    query_vector = [2,3,4]
     result_vector = session.scalars(select(t1).order_by(t1.embedding.l2_distance(query_vector)).limit(3))
  
     for user in vector:
@@ -811,7 +810,7 @@ You can use the fetch_type clause to set the searching to be either EXACT, APPRO
     result_vector = session.scalars(select(t1).order_by(t1.embedding.l1_distance(query_vector)).limit(3)).fetch_type("APPROX")
 
 
-.. versionadded:: 2.1.0 added support for VECTOR using a newly added Oracle Database specific
+.. versionadded:: 2.1.0 Added support for VECTOR specific to Oracle Database.
 :class:`_oracle.VECTOR` datatype.
 
 """  # noqa

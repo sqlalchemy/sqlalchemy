@@ -374,10 +374,10 @@ class VECTOR(types.TypeEngine):
             "float32": "f",  # Float
             "float64": "d",  # Double
         }
-        return typecode_map.get(format, "f")
+        return typecode_map.get(format, "d")
 
     class comparator_factory(types.TypeEngine.Comparator):
-        def l1_distance(self, other):
+        def l2_distance(self, other):
             return self.op("<->", return_type=Float)(other)
 
         def inner_product(self, other):
@@ -385,6 +385,3 @@ class VECTOR(types.TypeEngine):
 
         def cosine_distance(self, other):
             return self.op("<=>", return_type=Float)(other)
-
-        def l2_distance(self, other):
-            return self.op("<+>", return_type=Float)(other)

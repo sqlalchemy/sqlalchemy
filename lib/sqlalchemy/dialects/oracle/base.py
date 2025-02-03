@@ -1423,7 +1423,6 @@ class OracleDDLCompiler(compiler.DDLCompiler):
                     index.dialect_options["oracle"]["compress"]
                 )
         if vector_options:
-            distance_values = ["EUCLIDEAN", "DOT", "COSINE", "MANHATTAN"]
             if vector_options is True:
                 vector_options = {}
             parts = []
@@ -1436,8 +1435,8 @@ class OracleDDLCompiler(compiler.DDLCompiler):
             vector_distance = vector_options.get("distance")
             if vector_distance is not None:
                 vector_distance = vector_distance.upper()
-                if vector_distance not in distance_values:
-                    raise ValueError("UnIdentified vector_distance value")
+                if vector_distance not in ("EUCLIDEAN", "DOT", "COSINE", "MANHATTAN"):
+                    raise ValueError("Unknown vector_distance value")
                 parts.append(f"DISTANCE {vector_distance}")
             target_accuracy = vector_options.get("accuracy")
             if target_accuracy is not None:

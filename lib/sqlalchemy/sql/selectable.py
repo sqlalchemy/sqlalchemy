@@ -4188,7 +4188,7 @@ class GenerativeSelect(SelectBase, Generative):
     @_generative
     def fetch_type(self, fetch_type) -> Self:
         """Return a new selectable with the given FETCH_TYPE
-        criterion applied"""
+        criterion applied. It can be exact or approximate"""
 
         self._fetch_type = fetch_type
         return self
