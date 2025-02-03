@@ -1502,7 +1502,7 @@ mapper configuration::
 
         __mapper_args__ = {
             "polymorphic_on": __table__.c.type,
-            "polymorhpic_identity": "person",
+            "polymorphic_identity": "person",
         }
 
 The "imperative table" form is also used when a non-:class:`_schema.Table`
