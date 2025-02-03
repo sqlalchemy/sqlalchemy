@@ -1140,7 +1140,7 @@ class TypesTest(fixtures.TestBase):
             query_vector = [2, 3, 4]
             res = connection.execute(
                 t1.select().order_by(
-                    func.L2_distance(t1.c.embedding, query_vector)
+                    (t1.c.embedding.l2_distance(query_vector))
                 )
             ).first()
             eq_(res.embedding, [1, 2, 3])
@@ -1170,11 +1170,11 @@ class TypesTest(fixtures.TestBase):
             res = (
                 connection.execute(
                     t1.select().order_by(
-                        func.L2_distance(t1.c.embedding, query_vector)
+                        (t1.c.embedding.l2_distance(query_vector))
                     )
                 )
                 .limit(1)
-                .fetch_type("EXACT")
+                .fetch_type("exact")
             )
             eq_(res.embedding, [1, 2, 3])
         else:
