@@ -1890,11 +1890,13 @@ class MSExecutionContext(default.DefaultExecutionContext):
         )
 
     def _handle_identity_insert_warning(self, tbl):
-        """Handle warnings or errors based on the warn_on_identity_insert flag."""
+        """
+        Handle warnings or errors based on the warn_on_identity_insert flag.
+        """
         if self.dialect.warn_on_identity_insert == "warn":
             warnings.warn(
-                f"Automatic identity insert is enabled for table {tbl.name}. "
-                "In future versions, this behavior may be disabled by default. "
+                f"Automatic identity insert is enabled for table {tbl.name}."
+                "In future versions, this behavior may be disabled by default."
                 "Consider explicitly managing IDENTITY_INSERT.",
                 FutureWarning,
             )
