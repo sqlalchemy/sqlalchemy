@@ -78,6 +78,28 @@ The solution is similar to :ref:`pysqlite_serializable`. This is achieved by the
    with the SQLite driver,
    as this function necessarily will also alter the ".isolation_level" setting.
 
+.. _aiosqlite_pooling:
+
+Pooling Behavior
+----------------
+
+The SQLAlchemy ``aiosqlite`` DBAPI establishes the connection pool differently
+based on the kind of SQLite database that's requested:
+
+* When a ``:memory:`` SQLite database is specified, the dialect by default
+  will use :class:`.StaticPool`. This pool maintains a single
+  connection, so that all access to the engine
+  use the same ``:memory:`` database.
+* When a file-based database is specified, the dialect will use
+  :class:`.AsyncAdaptedQueuePool` as the source of connections.
+
+  .. versionchanged:: 2.0.38
+
+    SQLite file database engines now use :class:`.AsyncAdaptedQueuePool` by default.
+    Previously, :class:`.NullPool` were used.  The :class:`.NullPool` class
+    may be used by specifying it via the
+    :paramref:`_sa.create_engine.poolclass` parameter.
+
 """  # noqa
 
 import asyncio
@@ -380,7 +402,7 @@ class SQLiteDialect_aiosqlite(SQLiteDialect_pysqlite):
     @classmethod
     def get_pool_class(cls, url):
         if cls._is_url_file_db(url):
-            return pool.NullPool
+            return pool.AsyncAdaptedQueuePool
         else:
             return pool.StaticPool
 
