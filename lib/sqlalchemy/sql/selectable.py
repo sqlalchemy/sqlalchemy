@@ -240,7 +240,11 @@ class ReturnsRows(roles.ReturnsRowsRole, DQLDMLClauseElement):
         raise NotImplementedError()
 
     def _generate_fromclause_column_proxies(
-        self, fromclause: FromClause
+        self,
+        fromclause: FromClause,
+        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
     ) -> None:
         """Populate columns into an :class:`.AliasedReturnsRows` object."""
 
@@ -833,10 +837,17 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         return getattr(self, "name", self.__class__.__name__ + " object")
 
     def _generate_fromclause_column_proxies(
-        self, fromclause: FromClause
+        self,
+        fromclause: FromClause,
+        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
     ) -> None:
-        fromclause._columns._populate_separate_keys(
-            col._make_proxy(fromclause) for col in self.c
+        columns._populate_separate_keys(
+            col._make_proxy(
+                fromclause, primary_key=primary_key, foreign_keys=foreign_keys
+            )
+            for col in self.c
         )
 
     @util.ro_non_memoized_property
@@ -890,9 +901,29 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
         """
         if "_columns" not in self.__dict__:
-            self._init_collections()
-            self._populate_column_collection()
+            self._setup_collections()
         return self._columns.as_readonly()
+
+    def _setup_collections(self) -> None:
+        assert "_columns" not in self.__dict__
+        assert "primary_key" not in self.__dict__
+        assert "foreign_keys" not in self.__dict__
+
+        _columns: ColumnCollection[Any, Any] = ColumnCollection()
+        primary_key = ColumnSet()
+        foreign_keys: Set[KeyedColumnElement[Any]] = set()
+
+        self._populate_column_collection(
+            columns=_columns,
+            primary_key=primary_key,
+            foreign_keys=foreign_keys,
+        )
+
+        # assigning these three collections separately is not itself atomic,
+        # but greatly reduces the surface for problems
+        self._columns = _columns
+        self.primary_key = primary_key  # type: ignore
+        self.foreign_keys = foreign_keys  # type: ignore
 
     @util.ro_non_memoized_property
     def entity_namespace(self) -> _EntityNamespace:
@@ -920,8 +951,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         iterable collection of :class:`_schema.Column` objects.
 
         """
-        self._init_collections()
-        self._populate_column_collection()
+        self._setup_collections()
         return self.primary_key
 
     @util.ro_memoized_property
@@ -938,8 +968,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
             :attr:`_schema.Table.foreign_key_constraints`
 
         """
-        self._init_collections()
-        self._populate_column_collection()
+        self._setup_collections()
         return self.foreign_keys
 
     def _reset_column_collection(self) -> None:
@@ -963,20 +992,16 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
     def _select_iterable(self) -> _SelectIterable:
         return (c for c in self.c if not _never_select_column(c))
 
-    def _init_collections(self) -> None:
-        assert "_columns" not in self.__dict__
-        assert "primary_key" not in self.__dict__
-        assert "foreign_keys" not in self.__dict__
-
-        self._columns = ColumnCollection()
-        self.primary_key = ColumnSet()  # type: ignore
-        self.foreign_keys = set()  # type: ignore
-
     @property
     def _cols_populated(self) -> bool:
         return "_columns" in self.__dict__
 
-    def _populate_column_collection(self) -> None:
+    def _populate_column_collection(
+        self,
+        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
+    ) -> None:
         """Called on subclasses to establish the .c collection.
 
         Each implementation has a different way of establishing
@@ -1303,22 +1328,27 @@ class Join(roles.DMLTableRole, FromClause):
         return FromGrouping(self)
 
     @util.preload_module("sqlalchemy.sql.util")
-    def _populate_column_collection(self) -> None:
+    def _populate_column_collection(
+        self,
+        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
+    ) -> None:
         sqlutil = util.preloaded.sql_util
-        columns: List[KeyedColumnElement[Any]] = [c for c in self.left.c] + [
+        _columns: List[KeyedColumnElement[Any]] = [c for c in self.left.c] + [
             c for c in self.right.c
         ]
 
-        self.primary_key.extend(  # type: ignore
+        primary_key.extend(  # type: ignore
             sqlutil.reduce_columns(
-                (c for c in columns if c.primary_key), self.onclause
+                (c for c in _columns if c.primary_key), self.onclause
             )
         )
-        self._columns._populate_separate_keys(
-            (col._tq_key_label, col) for col in columns
+        columns._populate_separate_keys(
+            (col._tq_key_label, col) for col in _columns  # type: ignore
         )
-        self.foreign_keys.update(  # type: ignore
-            itertools.chain(*[col.foreign_keys for col in columns])
+        foreign_keys.update(
+            itertools.chain(*[col.foreign_keys for col in _columns])  # type: ignore  # noqa: E501
         )
 
     def _copy_internals(
@@ -1345,7 +1375,7 @@ class Join(roles.DMLTableRole, FromClause):
         def replace(
             obj: Union[BinaryExpression[Any], ColumnClause[Any]],
             **kw: Any,
-        ) -> Optional[KeyedColumnElement[ColumnElement[Any]]]:
+        ) -> Optional[KeyedColumnElement[Any]]:
             if isinstance(obj, ColumnClause) and obj.table in new_froms:
                 newelem = new_froms[obj.table].corresponding_column(obj)
                 return newelem
@@ -1701,8 +1731,15 @@ class AliasedReturnsRows(NoInit, NamedFromClause):
         super()._refresh_for_new_column(column)
         self.element._refresh_for_new_column(column)
 
-    def _populate_column_collection(self) -> None:
-        self.element._generate_fromclause_column_proxies(self)
+    def _populate_column_collection(
+        self,
+        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
+    ) -> None:
+        self.element._generate_fromclause_column_proxies(
+            self, columns, primary_key=primary_key, foreign_keys=foreign_keys
+        )
 
     @util.ro_non_memoized_property
     def description(self) -> str:
@@ -2142,11 +2179,26 @@ class CTE(
             self._suffixes = _suffixes
         super()._init(selectable, name=name)
 
-    def _populate_column_collection(self) -> None:
+    def _populate_column_collection(
+        self,
+        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
+    ) -> None:
         if self._cte_alias is not None:
-            self._cte_alias._generate_fromclause_column_proxies(self)
+            self._cte_alias._generate_fromclause_column_proxies(
+                self,
+                columns,
+                primary_key=primary_key,
+                foreign_keys=foreign_keys,
+            )
         else:
-            self.element._generate_fromclause_column_proxies(self)
+            self.element._generate_fromclause_column_proxies(
+                self,
+                columns,
+                primary_key=primary_key,
+                foreign_keys=foreign_keys,
+            )
 
     def alias(self, name: Optional[str] = None, flat: bool = False) -> CTE:
         """Return an :class:`_expression.Alias` of this
@@ -2944,9 +2996,6 @@ class FromGrouping(GroupedElement, FromClause):
     def __init__(self, element: FromClause):
         self.element = coercions.expect(roles.FromClauseRole, element)
 
-    def _init_collections(self) -> None:
-        pass
-
     @util.ro_non_memoized_property
     def columns(
         self,
@@ -3105,9 +3154,6 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
             return self.name
 
     def _refresh_for_new_column(self, column: ColumnElement[Any]) -> None:
-        pass
-
-    def _init_collections(self) -> None:
         pass
 
     @util.ro_memoized_property
@@ -3371,16 +3417,23 @@ class Values(roles.InElementRole, Generative, LateralFromClause):
         """
         return ScalarValues(self._column_args, self._data, self.literal_binds)
 
-    def _populate_column_collection(self) -> None:
+    def _populate_column_collection(
+        self,
+        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
+    ) -> None:
         for c in self._column_args:
             if c.table is not None and c.table is not self:
-                _, c = c._make_proxy(self)
+                _, c = c._make_proxy(
+                    self, primary_key=primary_key, foreign_keys=foreign_keys
+                )
             else:
                 # if the column was used in other contexts, ensure
                 # no memoizations of other FROM clauses.
                 # see test_values.py -> test_auto_proxy_select_direct_col
                 c._reset_memoizations()
-            self._columns.add(c)
+            columns.add(c)
             c.table = self
 
     @util.ro_non_memoized_property
@@ -3496,6 +3549,9 @@ class SelectBase(
     def _generate_fromclause_column_proxies(
         self,
         subquery: FromClause,
+        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
         *,
         proxy_compound_columns: Optional[
             Iterable[Sequence[ColumnElement[Any]]]
@@ -3823,13 +3879,20 @@ class SelectStatementGrouping(GroupedElement, SelectBase, Generic[_SB]):
     def _generate_fromclause_column_proxies(
         self,
         subquery: FromClause,
+        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
         *,
         proxy_compound_columns: Optional[
             Iterable[Sequence[ColumnElement[Any]]]
         ] = None,
     ) -> None:
         self.element._generate_fromclause_column_proxies(
-            subquery, proxy_compound_columns=proxy_compound_columns
+            subquery,
+            columns,
+            proxy_compound_columns=proxy_compound_columns,
+            primary_key=primary_key,
+            foreign_keys=foreign_keys,
         )
 
     @util.ro_non_memoized_property
@@ -4513,6 +4576,9 @@ class CompoundSelect(HasCompileState, GenerativeSelect, ExecutableReturnsRows):
     def _generate_fromclause_column_proxies(
         self,
         subquery: FromClause,
+        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
         *,
         proxy_compound_columns: Optional[
             Iterable[Sequence[ColumnElement[Any]]]
@@ -4553,7 +4619,11 @@ class CompoundSelect(HasCompileState, GenerativeSelect, ExecutableReturnsRows):
         # i haven't tried to think what it means for compound nested in
         # compound
         select_0._generate_fromclause_column_proxies(
-            subquery, proxy_compound_columns=extra_col_iterator
+            subquery,
+            columns,
+            proxy_compound_columns=extra_col_iterator,
+            primary_key=primary_key,
+            foreign_keys=foreign_keys,
         )
 
     def _refresh_for_new_column(self, column: ColumnElement[Any]) -> None:
@@ -5771,7 +5841,7 @@ class Select(
         def replace(
             obj: Union[BinaryExpression[Any], ColumnClause[Any]],
             **kw: Any,
-        ) -> Optional[KeyedColumnElement[ColumnElement[Any]]]:
+        ) -> Optional[KeyedColumnElement[Any]]:
             if isinstance(obj, ColumnClause) and obj.table in new_froms:
                 newelem = new_froms[obj.table].corresponding_column(obj)
                 return newelem
@@ -6428,6 +6498,9 @@ class Select(
     def _generate_fromclause_column_proxies(
         self,
         subquery: FromClause,
+        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
         *,
         proxy_compound_columns: Optional[
             Iterable[Sequence[ColumnElement[Any]]]
@@ -6445,6 +6518,8 @@ class Select(
                     name=required_label_name,
                     name_is_truncatable=True,
                     compound_select_cols=extra_cols,
+                    primary_key=primary_key,
+                    foreign_keys=foreign_keys,
                 )
                 for (
                     (
@@ -6470,6 +6545,8 @@ class Select(
                     key=proxy_key,
                     name=required_label_name,
                     name_is_truncatable=True,
+                    primary_key=primary_key,
+                    foreign_keys=foreign_keys,
                 )
                 for (
                     required_label_name,
@@ -6481,7 +6558,7 @@ class Select(
                 if is_column_element(c)
             ]
 
-        subquery._columns._populate_separate_keys(prox)
+        columns._populate_separate_keys(prox)
 
     def _needs_parens_for_grouping(self) -> bool:
         return self._has_row_limiting_clause or bool(
@@ -7033,6 +7110,9 @@ class TextualSelect(SelectBase, ExecutableReturnsRows, Generative):
     def _generate_fromclause_column_proxies(
         self,
         fromclause: FromClause,
+        columns: ColumnCollection[str, KeyedColumnElement[Any]],
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
         *,
         proxy_compound_columns: Optional[
             Iterable[Sequence[ColumnElement[Any]]]
@@ -7042,15 +7122,25 @@ class TextualSelect(SelectBase, ExecutableReturnsRows, Generative):
             assert isinstance(fromclause, Subquery)
 
         if proxy_compound_columns:
-            fromclause._columns._populate_separate_keys(
-                c._make_proxy(fromclause, compound_select_cols=extra_cols)
+            columns._populate_separate_keys(
+                c._make_proxy(
+                    fromclause,
+                    compound_select_cols=extra_cols,
+                    primary_key=primary_key,
+                    foreign_keys=foreign_keys,
+                )
                 for c, extra_cols in zip(
                     self.column_args, proxy_compound_columns
                 )
             )
         else:
-            fromclause._columns._populate_separate_keys(
-                c._make_proxy(fromclause) for c in self.column_args
+            columns._populate_separate_keys(
+                c._make_proxy(
+                    fromclause,
+                    primary_key=primary_key,
+                    foreign_keys=foreign_keys,
+                )
+                for c in self.column_args
             )
 
     def _scalar_type(self) -> Union[TypeEngine[Any], Any]:

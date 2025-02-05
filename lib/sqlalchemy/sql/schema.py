@@ -95,9 +95,11 @@ if typing.TYPE_CHECKING:
     from ._typing import _InfoType
     from ._typing import _TextCoercedExpressionArgument
     from ._typing import _TypeEngineArgument
+    from .base import ColumnSet
     from .base import ReadOnlyColumnCollection
     from .compiler import DDLCompiler
     from .elements import BindParameter
+    from .elements import KeyedColumnElement
     from .functions import Function
     from .type_api import TypeEngine
     from .visitors import anon_map
@@ -2617,6 +2619,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
     def _make_proxy(
         self,
         selectable: FromClause,
+        primary_key: ColumnSet,
+        foreign_keys: Set[KeyedColumnElement[Any]],
         name: Optional[str] = None,
         key: Optional[str] = None,
         name_is_truncatable: bool = False,
@@ -2686,10 +2690,13 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         c._propagate_attrs = selectable._propagate_attrs
         if selectable._is_clone_of is not None:
             c._is_clone_of = selectable._is_clone_of.columns.get(c.key)
+
         if self.primary_key:
-            selectable.primary_key.add(c)  # type: ignore
+            primary_key.add(c)
+
         if fk:
-            selectable.foreign_keys.update(fk)  # type: ignore
+            foreign_keys.update(fk)  # type: ignore
+
         return c.key, c
 
 
