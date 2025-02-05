@@ -380,9 +380,11 @@ class Events(_HasEventsDispatch[_ET]):
             return all(isinstance(target.dispatch, t) for t in types)
 
         def dispatch_parent_is(t: Type[Any]) -> bool:
-            return isinstance(
-                cast("_JoinedDispatcher[_ET]", target.dispatch).parent, t
-            )
+            parent = cast("_JoinedDispatcher[_ET]", target.dispatch).parent
+            while isinstance(parent, _JoinedDispatcher):
+                parent = cast("_JoinedDispatcher[_ET]", parent).parent
+
+            return isinstance(parent, t)
 
         # Mapper, ClassManager, Session override this to
         # also accept classes, scoped_sessions, sessionmakers, etc.

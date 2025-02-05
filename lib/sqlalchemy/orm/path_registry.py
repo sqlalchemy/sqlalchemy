@@ -570,7 +570,7 @@ class _PropRegistry(PathRegistry):
             # entities are used.
             #
             # here we are trying to distinguish between a path that starts
-            # on a the with_polymorhpic entity vs. one that starts on a
+            # on a with_polymorphic entity vs. one that starts on a
             # normal entity that introduces a with_polymorphic() in the
             # middle using of_type():
             #

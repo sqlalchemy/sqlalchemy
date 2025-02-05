@@ -54,6 +54,9 @@ from sqlalchemy import VARCHAR
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.dialects.mysql import match
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.sql import column
 from sqlalchemy.sql import delete
 from sqlalchemy.sql import table
@@ -1342,6 +1345,25 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
                 "baz_1": "some literal",
             },
             dialect=dialect,
+        )
+
+    def test_on_update_instrumented_attribute_dict(self):
+        class Base(DeclarativeBase):
+            pass
+
+        class T(Base):
+            __tablename__ = "table"
+
+            foo: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+        q = insert(T).values(foo=1).on_duplicate_key_update({T.foo: 2})
+        self.assert_compile(
+            q,
+            (
+                "INSERT INTO `table` (foo) VALUES (%s) "
+                "ON DUPLICATE KEY UPDATE foo = %s"
+            ),
+            {"foo": 1, "param_1": 2},
         )
 
 

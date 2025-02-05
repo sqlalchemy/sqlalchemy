@@ -250,7 +250,7 @@ With warnings turned on, our program now has a lot to say:
 
 .. sourcecode:: text
 
-  $ SQLALCHEMY_WARN_20=1 python2 -W always::DeprecationWarning test3.py
+  $ SQLALCHEMY_WARN_20=1 python -W always::DeprecationWarning test3.py
   test3.py:9: RemovedIn20Warning: The Engine.execute() function/method is considered legacy as of the 1.x series of SQLAlchemy and will be removed in 2.0. All statement execution in SQLAlchemy 2.0 is performed by the Connection.execute() method of Connection, or in the ORM by the Session.execute() method of Session. (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
     engine.execute("CREATE TABLE foo (id integer)")
   /home/classic/dev/sqlalchemy/lib/sqlalchemy/engine/base.py:2856: RemovedIn20Warning: Passing a string to Connection.execute() is deprecated and will be removed in version 2.0.  Use the text() construct, or the Connection.exec_driver_sql() method to invoke a driver-level SQL string. (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)

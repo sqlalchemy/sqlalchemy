@@ -748,7 +748,7 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
         prepared_statement_name_func=None,
     ):
         super().__init__(dbapi, connection)
-        self.isolation_level = self._isolation_setting = "read_committed"
+        self.isolation_level = self._isolation_setting = None
         self.readonly = False
         self.deferrable = False
         self._transaction = None
@@ -930,7 +930,7 @@ class AsyncAdapt_asyncpg_connection(AsyncAdapt_dbapi_connection):
             try:
                 # try to gracefully close; see #10717
                 # timeout added in asyncpg 0.14.0 December 2017
-                await_(self._connection.close(timeout=2))
+                await_(asyncio.shield(self._connection.close(timeout=2)))
             except (
                 asyncio.TimeoutError,
                 asyncio.CancelledError,

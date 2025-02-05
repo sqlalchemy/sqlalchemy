@@ -1,0 +1,7 @@
+.. change::
+    :tags: postgresql, usecase, asyncio
+    :tickets: 12077
+
+    Added an additional ``shield()`` call within the connection terminate
+    process of the asyncpg driver, to mitigate an issue where terminate would
+    be prevented from completing under the anyio concurrency library.

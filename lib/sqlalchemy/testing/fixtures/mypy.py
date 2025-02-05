@@ -21,6 +21,17 @@ from .. import config
 from ..assertions import eq_
 from ... import util
 
+try:
+    from mypy import version
+
+    _mypy_vers_tuple = tuple(
+        int(x) for x in version.__version__.split(".") if x.isdecimal()
+    )
+except ImportError:
+    _mypy_vers_tuple = (0, 0, 0)
+
+mypy_14 = _mypy_vers_tuple >= (1, 4)
+
 
 @config.add_to_marker.mypy
 class MypyTest(TestBase):
@@ -39,22 +50,6 @@ class MypyTest(TestBase):
         mypy_path = ""
 
         with tempfile.TemporaryDirectory() as cachedir:
-            with open(
-                Path(cachedir) / "sqla_mypy_config.cfg", "w"
-            ) as config_file:
-                config_file.write(
-                    f"""
-                    [mypy]\n
-                    plugins = sqlalchemy.ext.mypy.plugin\n
-                    show_error_codes = True\n
-                    {mypy_path}
-                    disable_error_code = no-untyped-call
-
-                    [mypy-sqlalchemy.*]
-                    ignore_errors = True
-
-                    """
-                )
             with open(
                 Path(cachedir) / "plain_mypy_config.cfg", "w"
             ) as config_file:
@@ -75,7 +70,7 @@ class MypyTest(TestBase):
     def mypy_runner(self, cachedir):
         from mypy import api
 
-        def run(path, use_plugin=False, use_cachedir=None):
+        def run(path, use_cachedir=None):
             if use_cachedir is None:
                 use_cachedir = cachedir
             args = [
@@ -84,14 +79,7 @@ class MypyTest(TestBase):
                 "--cache-dir",
                 use_cachedir,
                 "--config-file",
-                os.path.join(
-                    use_cachedir,
-                    (
-                        "sqla_mypy_config.cfg"
-                        if use_plugin
-                        else "plain_mypy_config.cfg"
-                    ),
-                ),
+                os.path.join(use_cachedir, "plain_mypy_config.cfg"),
             ]
 
             # mypy as of 0.990 is more aggressively blocking messaging
@@ -116,9 +104,9 @@ class MypyTest(TestBase):
 
     @config.fixture
     def mypy_typecheck_file(self, mypy_runner):
-        def run(path, use_plugin=False):
+        def run(path):
             expected_messages = self._collect_messages(path)
-            stdout, stderr, exitcode = mypy_runner(path, use_plugin=use_plugin)
+            stdout, stderr, exitcode = mypy_runner(path)
             self._check_output(
                 path, expected_messages, stdout, stderr, exitcode
             )
@@ -140,8 +128,6 @@ class MypyTest(TestBase):
         return files
 
     def _collect_messages(self, path):
-        from sqlalchemy.ext.mypy.util import mypy_14
-
         expected_messages = []
         expected_re = re.compile(r"\s*# EXPECTED(_MYPY)?(_RE)?(_TYPE)?: (.+)")
         py_ver_re = re.compile(r"^#\s*PYTHON_VERSION\s?>=\s?(\d+\.\d+)")

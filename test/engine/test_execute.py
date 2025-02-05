@@ -1813,6 +1813,38 @@ class EngineEventsTest(fixtures.TestBase):
         eq_(canary.be2.call_count, 1)
         eq_(canary.be3.call_count, 2)
 
+    @testing.requires.ad_hoc_engines
+    def test_option_engine_registration_issue_one(self):
+        """test #12289"""
+
+        e1 = create_engine(testing.db.url)
+        e2 = e1.execution_options(foo="bar")
+        e3 = e2.execution_options(isolation_level="AUTOCOMMIT")
+
+        eq_(
+            e3._execution_options,
+            {"foo": "bar", "isolation_level": "AUTOCOMMIT"},
+        )
+
+    @testing.requires.ad_hoc_engines
+    def test_option_engine_registration_issue_two(self):
+        """test #12289"""
+
+        e1 = create_engine(testing.db.url)
+        e2 = e1.execution_options(foo="bar")
+
+        @event.listens_for(e2, "engine_connect")
+        def r1(*arg, **kw):
+            pass
+
+        e3 = e2.execution_options(bat="hoho")
+
+        @event.listens_for(e3, "engine_connect")
+        def r2(*arg, **kw):
+            pass
+
+        eq_(e3._execution_options, {"foo": "bar", "bat": "hoho"})
+
     def test_emit_sql_in_autobegin(self, testing_engine):
         e1 = testing_engine(config.db_url)
 

@@ -1797,7 +1797,7 @@ class InheritedTest(_poly_fixtures._Polymorphic):
     run_setup_mappers = "once"
 
 
-class ExplicitWithPolymorhpicTest(
+class ExplicitWithPolymorphicTest(
     _poly_fixtures._PolymorphicUnions, AssertsCompiledSQL
 ):
     __dialect__ = "default"
