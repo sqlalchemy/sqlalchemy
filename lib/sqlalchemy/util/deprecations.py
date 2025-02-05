@@ -280,7 +280,7 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_F], _F]:
                     )
             return fn(*args, **kwargs)  # type: ignore[no-any-return]
 
-        doc = fn.__doc__ is not None and fn.__doc__ or ""
+        doc = fn.__doc__ if fn.__doc__ is not None else ""
         if doc:
             doc = inject_param_text(
                 doc,

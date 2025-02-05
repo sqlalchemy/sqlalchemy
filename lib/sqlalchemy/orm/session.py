@@ -89,6 +89,7 @@ from ..sql.base import CompileState
 from ..sql.schema import Table
 from ..sql.selectable import ForUpdateArg
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
+from ..util import deprecated_params
 from ..util import IdentitySet
 from ..util.typing import Literal
 from ..util.typing import TupleAny
@@ -4355,6 +4356,8 @@ class Session(_SessionClassMethods, EventTarget):
           particular objects may need to be operated upon before the
           full flush() occurs.  It is not intended for general use.
 
+          .. deprecated:: 2.1
+
         """
 
         if self._flushing:
@@ -4383,6 +4386,14 @@ class Session(_SessionClassMethods, EventTarget):
             and not self._new
         )
 
+    # have this here since it otherwise causes issues with the proxy
+    # method generation
+    @deprecated_params(
+        objects=(
+            "2.1",
+            "The `objects` parameter of `Session.flush` is deprecated",
+        )
+    )
     def _flush(self, objects: Optional[Sequence[object]] = None) -> None:
         dirty = self._dirty_states
         if not dirty and not self._deleted and not self._new:

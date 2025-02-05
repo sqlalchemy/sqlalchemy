@@ -2120,7 +2120,10 @@ class SessionInterface(fixtures.MappedTest):
 
             s = fixture_session()
             s.add(OK())
-            x_raises_(s, "flush", objects=(user_arg,))
+            with assertions.expect_deprecated(
+                "The `objects` parameter of `Session.flush` is deprecated"
+            ):
+                x_raises_(s, "flush", objects=(user_arg,))
 
         _()
 
