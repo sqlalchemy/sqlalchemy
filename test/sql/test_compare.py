@@ -1248,6 +1248,23 @@ class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
         is_true(c1._generate_cache_key() != c3._generate_cache_key())
         is_false(c1._generate_cache_key() == c3._generate_cache_key())
 
+    def test_in_with_none(self):
+        """test #12314"""
+
+        def fixture():
+            elements = list(
+                random_choices([1, 2, None, 3, 4], k=random.randint(1, 7))
+            )
+
+            # slight issue.  if the first element is None and not an int,
+            # the type of the BindParameter goes from Integer to Nulltype.
+            # but if we set the left side to be Integer then it comes from
+            # that side, and the vast majority of in_() use cases come from
+            # a typed column expression, so this is fine
+            return (column("x", Integer).in_(elements),)
+
+        self._run_cache_key_fixture(fixture, False)
+
     def test_cache_key(self):
         for fixtures_, compare_values in [
             (self.fixtures, True),

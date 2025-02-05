@@ -393,7 +393,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 "check_post_param": {},
             },
         ),
-        (lambda t: t.c.foo.in_([None]), "sometable.foo IN (NULL)", {}),
+        (
+            lambda t: t.c.foo.in_([None]),
+            "sometable.foo IN (__[POSTCOMPILE_foo_1])",
+            {},
+        ),
     )
     def test_strict_binds(self, expr, compiled, kw):
         """test the 'strict' compiler binds."""

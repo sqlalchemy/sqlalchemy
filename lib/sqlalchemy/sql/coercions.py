@@ -859,8 +859,6 @@ class InElementImpl(RoleImpl):
 
                     else:
                         non_literal_expressions[o] = o
-                elif o is None:
-                    non_literal_expressions[o] = elements.Null()
 
             if non_literal_expressions:
                 return elements.ClauseList(
