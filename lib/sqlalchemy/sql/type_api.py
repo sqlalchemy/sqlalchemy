@@ -611,21 +611,22 @@ class TypeEngine(Visitable, Generic[_T]):
     @property
     def python_type(self) -> Type[Any]:
         """Return the Python type object expected to be returned
-        by instances of this type, if known.
+        by instances of this type.
 
         Basically, for those types which enforce a return type,
         or are known across the board to do such for all common
         DBAPIs (like ``int`` for example), will return that type.
 
-        If a return type is not defined, raises
-        ``NotImplementedError``.
+        By default the generic ``object`` type is returned.
 
         Note that any type also accommodates NULL in SQL which
         means you can also get back ``None`` from any type
         in practice.
 
+        .. versionchanged:: 2.1 - The default implementation now returns
+          ``object`` instead of raising ``NotImplementedError``.
         """
-        raise NotImplementedError()
+        return object
 
     def with_variant(
         self,
