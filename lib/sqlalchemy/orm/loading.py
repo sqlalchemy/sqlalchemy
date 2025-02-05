@@ -327,9 +327,7 @@ def merge_frozen_result(session, statement, frozen_result, load=True):
         statement, legacy=False
     )
 
-    autoflush = session.autoflush
-    try:
-        session.autoflush = False
+    with session.no_autoflush:
         mapped_entities = [
             i
             for i, e in enumerate(ctx._entities)
@@ -356,8 +354,6 @@ def merge_frozen_result(session, statement, frozen_result, load=True):
             result.append(keyed_tuple(newrow))
 
         return frozen_result.with_new_rows(result)
-    finally:
-        session.autoflush = autoflush
 
 
 @util.became_legacy_20(

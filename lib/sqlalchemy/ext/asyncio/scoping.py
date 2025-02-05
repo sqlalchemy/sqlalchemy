@@ -85,6 +85,7 @@ _Ts = TypeVarTuple("_Ts")
         "commit",
         "connection",
         "delete",
+        "delete_all",
         "execute",
         "expire",
         "expire_all",
@@ -95,6 +96,7 @@ _Ts = TypeVarTuple("_Ts")
         "is_modified",
         "invalidate",
         "merge",
+        "merge_all",
         "refresh",
         "rollback",
         "scalar",
@@ -287,7 +289,7 @@ class async_scoped_session(Generic[_AS]):
 
         return await self._proxied.aclose()
 
-    def add(self, instance: object, _warn: bool = True) -> None:
+    def add(self, instance: object, *, _warn: bool = True) -> None:
         r"""Place an object into this :class:`_orm.Session`.
 
         .. container:: class_bases
@@ -529,6 +531,23 @@ class async_scoped_session(Generic[_AS]):
         """  # noqa: E501
 
         return await self._proxied.delete(instance)
+
+    async def delete_all(self, instances: Iterable[object]) -> None:
+        r"""Calls :meth:`.AsyncSession.delete` on multiple instances.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_asyncio.AsyncSession` class on
+            behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
+
+        .. seealso::
+
+            :meth:`_orm.Session.delete_all` - main documentation for delete_all
+
+
+        """  # noqa: E501
+
+        return await self._proxied.delete_all(instances)
 
     @overload
     async def execute(
@@ -957,6 +976,31 @@ class async_scoped_session(Generic[_AS]):
         """  # noqa: E501
 
         return await self._proxied.merge(instance, load=load, options=options)
+
+    async def merge_all(
+        self,
+        instances: Iterable[_O],
+        *,
+        load: bool = True,
+        options: Optional[Sequence[ORMOption]] = None,
+    ) -> Sequence[_O]:
+        r"""Calls :meth:`.AsyncSession.merge` on multiple instances.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_asyncio.AsyncSession` class on
+            behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
+
+        .. seealso::
+
+            :meth:`_orm.Session.merge_all` - main documentation for merge_all
+
+
+        """  # noqa: E501
+
+        return await self._proxied.merge_all(
+            instances, load=load, options=options
+        )
 
     async def refresh(
         self,

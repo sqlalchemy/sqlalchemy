@@ -3459,7 +3459,7 @@ class Session(_SessionClassMethods, EventTarget):
             if persistent_to_deleted is not None:
                 persistent_to_deleted(self, state)
 
-    def add(self, instance: object, _warn: bool = True) -> None:
+    def add(self, instance: object, *, _warn: bool = True) -> None:
         """Place an object into this :class:`_orm.Session`.
 
         Objects that are in the :term:`transient` state when passed to the
@@ -3544,16 +3544,30 @@ class Session(_SessionClassMethods, EventTarget):
 
             :ref:`session_deleting` - at :ref:`session_basics`
 
+            :meth:`.Session.delete_all` - multiple instance version
+
         """
         if self._warn_on_events:
             self._flush_warning("Session.delete()")
 
-        try:
-            state = attributes.instance_state(instance)
-        except exc.NO_STATE as err:
-            raise exc.UnmappedInstanceError(instance) from err
+        self._delete_impl(object_state(instance), instance, head=True)
 
-        self._delete_impl(state, instance, head=True)
+    def delete_all(self, instances: Iterable[object]) -> None:
+        """Calls :meth:`.Session.delete` on multiple instances.
+
+        .. seealso::
+
+            :meth:`.Session.delete` - main documentation on delete
+
+        .. versionadded: 2.1
+
+        """
+
+        if self._warn_on_events:
+            self._flush_warning("Session.delete_all()")
+
+        for instance in instances:
+            self._delete_impl(object_state(instance), instance, head=True)
 
     def _delete_impl(
         self, state: InstanceState[Any], obj: object, head: bool
@@ -3955,32 +3969,62 @@ class Session(_SessionClassMethods, EventTarget):
             :func:`.make_transient_to_detached` - provides for an alternative
             means of "merging" a single object into the :class:`.Session`
 
+            :meth:`.Session.merge_all` - multiple instance version
+
         """
 
         if self._warn_on_events:
             self._flush_warning("Session.merge()")
 
-        _recursive: Dict[InstanceState[Any], object] = {}
-        _resolve_conflict_map: Dict[_IdentityKeyType[Any], object] = {}
+        if load:
+            # flush current contents if we expect to load data
+            self._autoflush()
+
+        with self.no_autoflush:
+            return self._merge(
+                object_state(instance),
+                attributes.instance_dict(instance),
+                load=load,
+                options=options,
+                _recursive={},
+                _resolve_conflict_map={},
+            )
+
+    def merge_all(
+        self,
+        instances: Iterable[_O],
+        *,
+        load: bool = True,
+        options: Optional[Sequence[ORMOption]] = None,
+    ) -> Sequence[_O]:
+        """Calls :meth:`.Session.merge` on multiple instances.
+
+        .. seealso::
+
+            :meth:`.Session.merge` - main documentation on merge
+
+        .. versionadded: 2.1
+
+        """
+
+        if self._warn_on_events:
+            self._flush_warning("Session.merge_all()")
 
         if load:
             # flush current contents if we expect to load data
             self._autoflush()
 
-        object_mapper(instance)  # verify mapped
-        autoflush = self.autoflush
-        try:
-            self.autoflush = False
-            return self._merge(
-                attributes.instance_state(instance),
+        return [
+            self._merge(
+                object_state(instance),
                 attributes.instance_dict(instance),
                 load=load,
                 options=options,
-                _recursive=_recursive,
-                _resolve_conflict_map=_resolve_conflict_map,
+                _recursive={},
+                _resolve_conflict_map={},
             )
-        finally:
-            self.autoflush = autoflush
+            for instance in instances
+        ]
 
     def _merge(
         self,
