@@ -2321,8 +2321,23 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
     def test_in_28(self):
+        """revised to test #12314"""
         self.assert_compile(
-            self.table1.c.myid.in_([None]), "mytable.myid IN (NULL)"
+            self.table1.c.myid.in_([None]),
+            "mytable.myid IN (__[POSTCOMPILE_myid_1])",
+        )
+
+    @testing.combinations(
+        [1, 2, None, 3],
+        [None, None, None],
+        [None, 2, 3, 3],
+    )
+    def test_in_null_combinations(self, expr):
+        """test #12314"""
+
+        self.assert_compile(
+            self.table1.c.myid.in_(expr),
+            "mytable.myid IN (__[POSTCOMPILE_myid_1])",
         )
 
     @testing.combinations(True, False)
