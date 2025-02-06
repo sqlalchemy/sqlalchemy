@@ -259,10 +259,10 @@ statement executions::
                 except engine.dialect.dbapi.Error as raw_dbapi_err:
                     connection = context.root_connection
                     if engine.dialect.is_disconnect(raw_dbapi_err, connection, cursor_obj):
-                        if retry == num_retries:
-                            raise
                         engine.logger.error(
-                            "disconnection error, retrying operation",
+                            "disconnection error, attempt %d/%d",
+                            retry + 1,
+                            num_retries + 1,
                             exc_info=True,
                         )
                         connection.invalidate()
@@ -274,6 +274,9 @@ statement executions::
                             trans = connection.get_transaction()
                             if trans:
                                 trans.rollback()
+
+                        if retry == num_retries:
+                            raise
 
                         time.sleep(retry_interval)
                         context.cursor = cursor_obj = connection.connection.cursor()
