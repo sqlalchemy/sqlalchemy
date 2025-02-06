@@ -2185,7 +2185,7 @@ hold onto database connections after they are released, did in fact have a
 measurable negative performance impact. As always, the pool class is
 customizable via the :paramref:`_sa.create_engine.poolclass` parameter.
 
-.. versionchanged:: 2.0.37 - an equivalent change is also made for the
+.. versionchanged:: 2.0.38 - an equivalent change is also made for the
    ``aiosqlite`` dialect, using :class:`._pool.AsyncAdaptedQueuePool` instead
    of :class:`._pool.NullPool`.  The ``aiosqlite`` dialect was not included
    in the initial change in error.
