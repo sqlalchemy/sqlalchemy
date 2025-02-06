@@ -987,7 +987,6 @@ import re
 from typing import overload
 from typing import TYPE_CHECKING
 from uuid import UUID as _python_UUID
-import warnings
 
 from . import information_schema as ischema
 from .json import JSON
@@ -1894,12 +1893,14 @@ class MSExecutionContext(default.DefaultExecutionContext):
         Handle warnings or errors based on the warn_on_identity_insert flag.
         """
         if self.dialect.warn_on_identity_insert == "warn":
-            warnings.warn(
-                f"Automatic identity insert is enabled for table {tbl.name}."
+            util.warn_limited(
+                "Automatic identity insert is enabled for table %s."
                 "In future versions, this behavior may be disabled by default."
                 "Consider explicitly managing IDENTITY_INSERT.",
-                FutureWarning,
+                tbl.name,
             )
+        elif self.dialect.warn_on_identity_insert == "silence":
+            pass
         elif not self.dialect.warn_on_identity_insert:
             raise RuntimeError(
                 f"Automatic identity insert is disabled for table {tbl.name}. "
