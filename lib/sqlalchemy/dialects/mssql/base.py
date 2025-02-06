@@ -1876,7 +1876,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
 
     def _should_enable_identity_insert(self, id_column, tbl):
         """Determine whether IDENTITY_INSERT should be enabled."""
-        if self.dialect.warn_on_identity_insert is False:
+        if self.dialect.automatic_identity_insert is False:
             return False
 
         if id_column is None or isinstance(id_column.default, Sequence):
@@ -1890,18 +1890,18 @@ class MSExecutionContext(default.DefaultExecutionContext):
 
     def _handle_identity_insert_warning(self, tbl):
         """
-        Handle warnings or errors based on the warn_on_identity_insert flag.
+        Handle warnings or errors based on the automatic_identity_insert flag.
         """
-        if self.dialect.warn_on_identity_insert == "warn":
+        if self.dialect.automatic_identity_insert == "warn":
             util.warn_limited(
                 "Automatic identity insert is enabled for table %s."
                 "In future versions, this behavior may be disabled by default."
                 "Consider explicitly managing IDENTITY_INSERT.",
                 tbl.name,
             )
-        elif self.dialect.warn_on_identity_insert == "silence":
+        elif self.dialect.automatic_identity_insert == "silence":
             pass
-        elif not self.dialect.warn_on_identity_insert:
+        elif not self.dialect.automatic_identity_insert:
             raise RuntimeError(
                 f"Automatic identity insert is disabled for table {tbl.name}. "
                 "Please manage IDENTITY_INSERT explicitly."
@@ -3155,7 +3155,7 @@ class MSDialect(default.DefaultDialect):
         json_deserializer=None,
         legacy_schema_aliasing=None,
         ignore_no_transaction_on_rollback=False,
-        warn_on_identity_insert="warn",
+        automatic_identity_insert="warn",
         **opts,
     ):
         self.query_timeout = int(query_timeout or 0)
@@ -3182,11 +3182,7 @@ class MSDialect(default.DefaultDialect):
 
         self._json_serializer = json_serializer
         self._json_deserializer = json_deserializer
-        if warn_on_identity_insert not in (True, False, "warn"):
-            raise ValueError(
-                "warn_on_identity_insert must be one of: True, False, or 'warn'"
-            )
-        self.warn_on_identity_insert = warn_on_identity_insert
+        self.automatic_identity_insert = automatic_identity_insert
 
     def do_savepoint(self, connection, name):
         # give the DBAPI a push
