@@ -10,7 +10,78 @@
 
 .. changelog::
     :version: 2.0.38
-    :include_notes_from: unreleased_20
+    :released: February 6, 2025
+
+    .. change::
+        :tags: postgresql, usecase, asyncio
+        :tickets: 12077
+
+        Added an additional ``asyncio.shield()`` call within the connection
+        terminate process of the asyncpg driver, to mitigate an issue where
+        terminate would be prevented from completing under the anyio concurrency
+        library.
+
+    .. change::
+        :tags: bug, dml, mariadb, mysql
+        :tickets: 12117
+
+        Fixed a bug where the MySQL statement compiler would not properly compile
+        statements where :meth:`_mysql.Insert.on_duplicate_key_update` was passed
+        values that included ORM-mapped attributes (e.g.
+        :class:`InstrumentedAttribute` objects) as keys. Pull request courtesy of
+        mingyu.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 12159
+
+        Adjusted the asyncpg connection wrapper so that the
+        ``connection.transaction()`` call sent to asyncpg sends ``None`` for
+        ``isolation_level`` if not otherwise set in the SQLAlchemy dialect/wrapper,
+        thereby allowing asyncpg to make use of the server level setting for
+        ``isolation_level`` in the absense of a client-level setting. Previously,
+        this behavior of asyncpg was blocked by a hardcoded ``read_committed``.
+
+    .. change::
+        :tags: bug, sqlite, aiosqlite, asyncio, pool
+        :tickets: 12285
+
+        Changed default connection pool used by the ``aiosqlite`` dialect
+        from :class:`.NullPool` to :class:`.AsyncAdaptedQueuePool`; this change
+        should have been made when 2.0 was first released as the ``pysqlite``
+        dialect was similarly changed to use :class:`.QueuePool` as detailed
+        in :ref:`change_7490`.
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 12289
+
+        Fixed event-related issue where invoking :meth:`.Engine.execution_options`
+        on a :class:`.Engine` multiple times while making use of event-registering
+        parameters such as ``isolation_level`` would lead to internal errors
+        involving event registration.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 12302
+
+        Reorganized the internals by which the ``.c`` collection on a
+        :class:`.FromClause` gets generated so that it is resilient against the
+        collection being accessed in concurrent fashion.   An example is creating a
+        :class:`.Alias` or :class:`.Subquery` and accessing it as a module level
+        variable.  This impacts the Oracle dialect which uses such module-level
+        global alias objects but is of general use as well.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 12314
+
+        Fixed SQL composition bug which impacted caching where using a ``None``
+        value inside of an ``in_()`` expression would bypass the usual "expanded
+        bind parameter" logic used by the IN construct, which allows proper caching
+        to take place.
+
 
 .. changelog::
     :version: 2.0.37

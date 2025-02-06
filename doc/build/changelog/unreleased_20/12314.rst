@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 12314
-
-    Fixed SQL composition bug which impacted caching where using a ``None``
-    value inside of an ``in_()`` expression would bypass the usual "expanded
-    bind parameter" logic used by the IN construct, which allows proper caching
-    to take place.
-
