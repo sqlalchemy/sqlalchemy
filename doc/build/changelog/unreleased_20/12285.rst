@@ -1,6 +1,10 @@
 .. change::
-    :tags: change, sqlite, aiosqlite, asyncio, pool
+    :tags: bug, sqlite, aiosqlite, asyncio, pool
     :tickets: 12285
 
-    Changed default connection pool of aiosqlite from NullPool to AsyncAdaptedQueuePool for consistency with pysqlite.
+    Changed default connection pool used by the ``aiosqlite`` dialect
+    from :class:`.NullPool` to :class:`.AsyncAdaptedQueuePool`; this change
+    should have been made when 2.0 was first released as the ``pysqlite``
+    dialect was similarly changed to use :class:`.QueuePool` as detailed
+    in :ref:`change_7490`.
 
