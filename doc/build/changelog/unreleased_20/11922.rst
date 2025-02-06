@@ -1,0 +1,7 @@
+.. change::
+    :tags: typing, use case
+    :tickets: 11922
+
+    Support generic types for :func:`union`` and :func:`union_all`.
+    :func:`union`` and :func:`union_all` follow the type of the first select.
+    :class:`CompoundSelect` now inherit :class:`TypedReturnsRows[Unpack[_Ts]]`.

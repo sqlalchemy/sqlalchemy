@@ -109,7 +109,7 @@ def cte(
 
 def except_(
     *selects: _SelectStatementForCompoundArgument,
-) -> CompoundSelect:
+) -> CompoundSelect[Unpack[TupleAny]]:
     r"""Return an ``EXCEPT`` of multiple selectables.
 
     The returned object is an instance of
@@ -124,7 +124,7 @@ def except_(
 
 def except_all(
     *selects: _SelectStatementForCompoundArgument,
-) -> CompoundSelect:
+) -> CompoundSelect[Unpack[TupleAny]]:
     r"""Return an ``EXCEPT ALL`` of multiple selectables.
 
     The returned object is an instance of
@@ -185,7 +185,7 @@ def exists(
 
 def intersect(
     *selects: _SelectStatementForCompoundArgument,
-) -> CompoundSelect:
+) -> CompoundSelect[Unpack[TupleAny]]:
     r"""Return an ``INTERSECT`` of multiple selectables.
 
     The returned object is an instance of
@@ -200,7 +200,7 @@ def intersect(
 
 def intersect_all(
     *selects: _SelectStatementForCompoundArgument,
-) -> CompoundSelect:
+) -> CompoundSelect[Unpack[TupleAny]]:
     r"""Return an ``INTERSECT ALL`` of multiple selectables.
 
     The returned object is an instance of
@@ -569,9 +569,91 @@ def tablesample(
     return TableSample._factory(selectable, sampling, name=name, seed=seed)
 
 
+@overload
+def union(
+    select1: Select[_T0],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[_T0]: ...
+
+
+@overload
+def union(
+    select1: Select[_T0, _T1],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[_T0, _T1]: ...
+
+
+@overload
+def union(
+    select1: Select[_T0, _T1, _T2],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[_T0, _T1, _T2]: ...
+
+
+@overload
+def union(
+    select1: Select[_T0, _T1, _T2, _T3],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[_T0, _T1, _T2, _T3]: ...
+
+
+@overload
+def union(
+    select1: Select[_T0, _T1, _T2, _T3, _T4],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[_T0, _T1, _T2, _T3, _T4]: ...
+
+
+@overload
+def union(
+    select1: Select[_T0, _T1, _T2, _T3, _T4, _T5],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[_T0, _T1, _T2, _T3, _T4, _T5]: ...
+
+
+@overload
+def union(
+    select1: Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[_T0, _T1, _T2, _T3, _T4, _T5, _T6]: ...
+
+
+@overload
+def union(
+    select1: Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]: ...
+
+
+@overload
+def union(
+    select1: Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]: ...
+
+
+@overload
+def union(
+    select1: Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[
+    _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9, Unpack[TupleAny]
+]: ...
+
+
 def union(
     *selects: _SelectStatementForCompoundArgument,
-) -> CompoundSelect:
+) -> CompoundSelect[Unpack[TupleAny]]:
     r"""Return a ``UNION`` of multiple selectables.
 
     The returned object is an instance of
@@ -591,9 +673,91 @@ def union(
     return CompoundSelect._create_union(*selects)
 
 
+@overload
+def union_all(
+    select1: Select[_T0],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[_T0]: ...
+
+
+@overload
+def union_all(
+    select1: Select[_T0, _T1],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[_T0, _T1]: ...
+
+
+@overload
+def union_all(
+    select1: Select[_T0, _T1, _T2],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[_T0, _T1, _T2]: ...
+
+
+@overload
+def union_all(
+    select1: Select[_T0, _T1, _T2, _T3],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[_T0, _T1, _T2, _T3]: ...
+
+
+@overload
+def union_all(
+    select1: Select[_T0, _T1, _T2, _T3, _T4],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[_T0, _T1, _T2, _T3, _T4]: ...
+
+
+@overload
+def union_all(
+    select1: Select[_T0, _T1, _T2, _T3, _T4, _T5],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[_T0, _T1, _T2, _T3, _T4, _T5]: ...
+
+
+@overload
+def union_all(
+    select1: Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[_T0, _T1, _T2, _T3, _T4, _T5, _T6]: ...
+
+
+@overload
+def union_all(
+    select1: Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7]: ...
+
+
+@overload
+def union_all(
+    select1: Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]: ...
+
+
+@overload
+def union_all(
+    select1: Select[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9],
+    /,
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect[
+    _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9, Unpack[TupleAny]
+]: ...
+
+
 def union_all(
     *selects: _SelectStatementForCompoundArgument,
-) -> CompoundSelect:
+) -> CompoundSelect[Unpack[TupleAny]]:
     r"""Return a ``UNION ALL`` of multiple selectables.
 
     The returned object is an instance of

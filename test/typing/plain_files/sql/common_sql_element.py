@@ -11,6 +11,7 @@ from __future__ import annotations
 from sqlalchemy import asc
 from sqlalchemy import Column
 from sqlalchemy import column
+from sqlalchemy import ColumnElement
 from sqlalchemy import desc
 from sqlalchemy import Integer
 from sqlalchemy import literal
@@ -19,6 +20,8 @@ from sqlalchemy import select
 from sqlalchemy import SQLColumnExpression
 from sqlalchemy import String
 from sqlalchemy import Table
+from sqlalchemy import union
+from sqlalchemy import union_all
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -176,3 +179,33 @@ mydict = {
     literal("5"): "q",
     column("q"): "q",
 }
+
+# union, union_all (issue #11922):
+
+str_col = ColumnElement[str]()
+int_col = ColumnElement[int]()
+
+first_stmt = select(str_col, int_col)
+second_stmt = select(str_col, int_col)
+
+union_query = union(first_stmt, second_stmt)
+
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(union_query)
+
+# EXPECTED_TYPE: Result[str, int]
+reveal_type(Session().execute(union_query))
+
+union_all_query = union_all(first_stmt, second_stmt)
+
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(union_all_query)
+
+# EXPECTED_TYPE: Result[str, int]
+reveal_type(Session().execute(union_all_query))
+
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(first_stmt.union(second_stmt))
+
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(first_stmt.union_all(second_stmt))

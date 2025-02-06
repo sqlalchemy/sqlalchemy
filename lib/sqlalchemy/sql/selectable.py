@@ -4416,7 +4416,9 @@ class _CompoundSelectKeyword(Enum):
     INTERSECT_ALL = "INTERSECT ALL"
 
 
-class CompoundSelect(HasCompileState, GenerativeSelect, ExecutableReturnsRows):
+class CompoundSelect(
+    HasCompileState, GenerativeSelect, TypedReturnsRows[Unpack[_Ts]]
+):
     """Forms the basis of ``UNION``, ``UNION ALL``, and other
     SELECT-based set operations.
 
@@ -4478,37 +4480,37 @@ class CompoundSelect(HasCompileState, GenerativeSelect, ExecutableReturnsRows):
     @classmethod
     def _create_union(
         cls, *selects: _SelectStatementForCompoundArgument
-    ) -> CompoundSelect:
+    ) -> CompoundSelect[Unpack[_Ts]]:
         return CompoundSelect(_CompoundSelectKeyword.UNION, *selects)
 
     @classmethod
     def _create_union_all(
         cls, *selects: _SelectStatementForCompoundArgument
-    ) -> CompoundSelect:
+    ) -> CompoundSelect[Unpack[_Ts]]:
         return CompoundSelect(_CompoundSelectKeyword.UNION_ALL, *selects)
 
     @classmethod
     def _create_except(
         cls, *selects: _SelectStatementForCompoundArgument
-    ) -> CompoundSelect:
+    ) -> CompoundSelect[Unpack[_Ts]]:
         return CompoundSelect(_CompoundSelectKeyword.EXCEPT, *selects)
 
     @classmethod
     def _create_except_all(
         cls, *selects: _SelectStatementForCompoundArgument
-    ) -> CompoundSelect:
+    ) -> CompoundSelect[Unpack[_Ts]]:
         return CompoundSelect(_CompoundSelectKeyword.EXCEPT_ALL, *selects)
 
     @classmethod
     def _create_intersect(
         cls, *selects: _SelectStatementForCompoundArgument
-    ) -> CompoundSelect:
+    ) -> CompoundSelect[Unpack[_Ts]]:
         return CompoundSelect(_CompoundSelectKeyword.INTERSECT, *selects)
 
     @classmethod
     def _create_intersect_all(
         cls, *selects: _SelectStatementForCompoundArgument
-    ) -> CompoundSelect:
+    ) -> CompoundSelect[Unpack[_Ts]]:
         return CompoundSelect(_CompoundSelectKeyword.INTERSECT_ALL, *selects)
 
     def _scalar_type(self) -> TypeEngine[Any]:
@@ -4525,7 +4527,9 @@ class CompoundSelect(HasCompileState, GenerativeSelect, ExecutableReturnsRows):
                 return True
         return False
 
-    def set_label_style(self, style: SelectLabelStyle) -> CompoundSelect:
+    def set_label_style(
+        self, style: SelectLabelStyle
+    ) -> CompoundSelect[Unpack[_Ts]]:
         if self._label_style is not style:
             self = self._generate()
             select_0 = self.selects[0].set_label_style(style)
@@ -4533,7 +4537,7 @@ class CompoundSelect(HasCompileState, GenerativeSelect, ExecutableReturnsRows):
 
         return self
 
-    def _ensure_disambiguated_names(self) -> CompoundSelect:
+    def _ensure_disambiguated_names(self) -> CompoundSelect[Unpack[_Ts]]:
         new_select = self.selects[0]._ensure_disambiguated_names()
         if new_select is not self.selects[0]:
             self = self._generate()
@@ -6573,7 +6577,7 @@ class Select(
 
     def union(
         self, *other: _SelectStatementForCompoundArgument
-    ) -> CompoundSelect:
+    ) -> CompoundSelect[Unpack[_Ts]]:
         r"""Return a SQL ``UNION`` of this select() construct against
         the given selectables provided as positional arguments.
 
@@ -6592,7 +6596,7 @@ class Select(
 
     def union_all(
         self, *other: _SelectStatementForCompoundArgument
-    ) -> CompoundSelect:
+    ) -> CompoundSelect[Unpack[_Ts]]:
         r"""Return a SQL ``UNION ALL`` of this select() construct against
         the given selectables provided as positional arguments.
 
@@ -6611,7 +6615,7 @@ class Select(
 
     def except_(
         self, *other: _SelectStatementForCompoundArgument
-    ) -> CompoundSelect:
+    ) -> CompoundSelect[Unpack[_Ts]]:
         r"""Return a SQL ``EXCEPT`` of this select() construct against
         the given selectable provided as positional arguments.
 
@@ -6627,7 +6631,7 @@ class Select(
 
     def except_all(
         self, *other: _SelectStatementForCompoundArgument
-    ) -> CompoundSelect:
+    ) -> CompoundSelect[Unpack[_Ts]]:
         r"""Return a SQL ``EXCEPT ALL`` of this select() construct against
         the given selectables provided as positional arguments.
 
@@ -6643,7 +6647,7 @@ class Select(
 
     def intersect(
         self, *other: _SelectStatementForCompoundArgument
-    ) -> CompoundSelect:
+    ) -> CompoundSelect[Unpack[_Ts]]:
         r"""Return a SQL ``INTERSECT`` of this select() construct against
         the given selectables provided as positional arguments.
 
@@ -6662,7 +6666,7 @@ class Select(
 
     def intersect_all(
         self, *other: _SelectStatementForCompoundArgument
-    ) -> CompoundSelect:
+    ) -> CompoundSelect[Unpack[_Ts]]:
         r"""Return a SQL ``INTERSECT ALL`` of this select() construct
         against the given selectables provided as positional arguments.
 
