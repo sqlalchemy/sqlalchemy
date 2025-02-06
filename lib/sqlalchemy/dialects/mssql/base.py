@@ -1888,25 +1888,6 @@ class MSExecutionContext(default.DefaultExecutionContext):
             and id_column.key in compile_state._insert_col_keys
         )
 
-    def _handle_identity_insert_warning(self, tbl):
-        """
-        Handle warnings or errors based on the automatic_identity_insert flag.
-        """
-        if self.dialect.automatic_identity_insert == "warn":
-            util.warn_limited(
-                "Automatic identity insert is enabled for table %s."
-                "In future versions, this behavior may be disabled by default."
-                "Consider explicitly managing IDENTITY_INSERT.",
-                tbl.name,
-            )
-        elif self.dialect.automatic_identity_insert == "silence":
-            pass
-        elif not self.dialect.automatic_identity_insert:
-            raise RuntimeError(
-                f"Automatic identity insert is disabled for table {tbl.name}. "
-                "Please manage IDENTITY_INSERT explicitly."
-            )
-
     def pre_exec(self):
         """Activate IDENTITY_INSERT if needed."""
         if not self.isinsert:
@@ -1927,9 +1908,29 @@ class MSExecutionContext(default.DefaultExecutionContext):
             id_column, tbl
         )
 
+         # Determine if we need to select the lastrowid
+        self._select_lastrowid = (
+            not self.compiled.inline
+            and id_column is not None
+            and not isinstance(id_column.default, Sequence)
+            and not self.compiled.effective_returning
+            and not self._enable_identity_insert
+            and not self.executemany
+        )
+
         # Handle identity insert warnings or errors
         if self._enable_identity_insert:
-            self._handle_identity_insert_warning(tbl)
+            assert self.dialect.automatic_identity_insert, "automatic_identity_insert must be set"
+
+            if self.dialect.automatic_identity_insert == "warn":
+                util.warn_limited(
+                    "Automatic identity insert is enabled for table %s."
+                    "In future versions, this behavior may be disabled by default."
+                    "Consider explicitly managing IDENTITY_INSERT.",
+                    tbl.name,
+                )
+            elif self.dialect.automatic_identity_insert == "silence":
+                pass
 
             # Enable identity insert
             self.root_connection._cursor_execute(
@@ -1941,16 +1942,6 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 (),
                 self,
             )
-
-        # Determine if we need to select the lastrowid
-        self._select_lastrowid = (
-            not self.compiled.inline
-            and id_column is not None
-            and not isinstance(id_column.default, Sequence)
-            and not self.compiled.effective_returning
-            and not self._enable_identity_insert
-            and not self.executemany
-        )
 
     def post_exec(self):
         """Disable IDENTITY_INSERT if enabled."""
