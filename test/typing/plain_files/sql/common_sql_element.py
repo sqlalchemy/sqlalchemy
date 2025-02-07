@@ -11,14 +11,21 @@ from __future__ import annotations
 from sqlalchemy import asc
 from sqlalchemy import Column
 from sqlalchemy import column
+from sqlalchemy import ColumnElement
 from sqlalchemy import desc
+from sqlalchemy import except_
+from sqlalchemy import except_all
 from sqlalchemy import Integer
+from sqlalchemy import intersect
+from sqlalchemy import intersect_all
 from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import SQLColumnExpression
 from sqlalchemy import String
 from sqlalchemy import Table
+from sqlalchemy import union
+from sqlalchemy import union_all
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -176,3 +183,75 @@ mydict = {
     literal("5"): "q",
     column("q"): "q",
 }
+
+# compound selects (issue #11922):
+
+str_col = ColumnElement[str]()
+int_col = ColumnElement[int]()
+
+first_stmt = select(str_col, int_col)
+second_stmt = select(str_col, int_col)
+third_stmt = select(int_col, str_col)
+
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(union(first_stmt, second_stmt))
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(union_all(first_stmt, second_stmt))
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(except_(first_stmt, second_stmt))
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(except_all(first_stmt, second_stmt))
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(intersect(first_stmt, second_stmt))
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(intersect_all(first_stmt, second_stmt))
+
+# EXPECTED_TYPE: Result[str, int]
+reveal_type(Session().execute(union(first_stmt, second_stmt)))
+# EXPECTED_TYPE: Result[str, int]
+reveal_type(Session().execute(union_all(first_stmt, second_stmt)))
+
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(first_stmt.union(second_stmt))
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(first_stmt.union_all(second_stmt))
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(first_stmt.except_(second_stmt))
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(first_stmt.except_all(second_stmt))
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(first_stmt.intersect(second_stmt))
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(first_stmt.intersect_all(second_stmt))
+
+# TODO: the following do not error because _SelectStatementForCompoundArgument
+# includes untyped elements so the type checker falls back on them when
+# the type does not match. Also for the standalone functions mypy
+# looses the plot and returns a random type back. See TODO in the
+# overloads
+
+# EXPECTED_TYPE: CompoundSelect[Unpack[tuple[Never, ...]]]
+reveal_type(union(first_stmt, third_stmt))
+# EXPECTED_TYPE: CompoundSelect[Unpack[tuple[Never, ...]]]
+reveal_type(union_all(first_stmt, third_stmt))
+# EXPECTED_TYPE: CompoundSelect[Unpack[tuple[Never, ...]]]
+reveal_type(except_(first_stmt, third_stmt))
+# EXPECTED_TYPE: CompoundSelect[Unpack[tuple[Never, ...]]]
+reveal_type(except_all(first_stmt, third_stmt))
+# EXPECTED_TYPE: CompoundSelect[Unpack[tuple[Never, ...]]]
+reveal_type(intersect(first_stmt, third_stmt))
+# EXPECTED_TYPE: CompoundSelect[Unpack[tuple[Never, ...]]]
+reveal_type(intersect_all(first_stmt, third_stmt))
+
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(first_stmt.union(third_stmt))
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(first_stmt.union_all(third_stmt))
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(first_stmt.except_(third_stmt))
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(first_stmt.except_all(third_stmt))
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(first_stmt.intersect(third_stmt))
+# EXPECTED_TYPE: CompoundSelect[str, int]
+reveal_type(first_stmt.intersect_all(third_stmt))
