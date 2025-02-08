@@ -23,6 +23,7 @@ from typing import cast
 from typing import Dict
 from typing import Generic
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import overload
 from typing import Sequence
@@ -246,10 +247,14 @@ class String(Concatenable, TypeEngine[str]):
 
         return process
 
-    def bind_processor(self, dialect):
+    def bind_processor(
+        self, dialect: Dialect
+    ) -> Optional[_BindProcessorType[str]]:
         return None
 
-    def result_processor(self, dialect, coltype):
+    def result_processor(
+        self, dialect: Dialect, coltype: object
+    ) -> Optional[_ResultProcessorType[str]]:
         return None
 
     @property
@@ -426,7 +431,7 @@ class NumericCommon(HasExpressionLookup, TypeEngineMixin, Generic[_N]):
     if TYPE_CHECKING:
 
         @util.ro_memoized_property
-        def _type_affinity(self) -> Type[NumericCommon[_N]]: ...
+        def _type_affinity(self) -> Type[Union[Numeric[_N], Float[_N]]]: ...
 
     def __init__(
         self,
@@ -652,8 +657,6 @@ class Float(NumericCommon[_N], TypeEngine[_N]):
     """
 
     __visit_name__ = "float"
-
-    scale = None
 
     @overload
     def __init__(
@@ -924,6 +927,8 @@ class Time(_RenderISO8601NoT, HasExpressionLookup, TypeEngine[dt.time]):
 
 class _Binary(TypeEngine[bytes]):
     """Define base behavior for binary types."""
+
+    length: Optional[int]
 
     def __init__(self, length: Optional[int] = None):
         self.length = length
@@ -1249,6 +1254,9 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
             return _we_are_the_impl(variant_mapping["_default"])
 
 
+_EnumTupleArg = Union[Sequence[enum.Enum], Sequence[str]]
+
+
 class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
     """Generic Enum Type.
 
@@ -1325,7 +1333,18 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
 
     __visit_name__ = "enum"
 
-    def __init__(self, *enums: object, **kw: Any):
+    values_callable: Optional[Callable[[Type[enum.Enum]], Sequence[str]]]
+    enum_class: Optional[Type[enum.Enum]]
+    _valid_lookup: Dict[Union[enum.Enum, str, None], Optional[str]]
+    _object_lookup: Dict[Optional[str], Union[enum.Enum, str, None]]
+
+    @overload
+    def __init__(self, enums: Type[enum.Enum], **kw: Any) -> None: ...
+
+    @overload
+    def __init__(self, *enums: str, **kw: Any) -> None: ...
+
+    def __init__(self, *enums: Union[str, Type[enum.Enum]], **kw: Any) -> None:
         r"""Construct an enum.
 
         Keyword arguments which don't apply to a specific backend are ignored
@@ -1457,7 +1476,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
            .. versionchanged:: 2.0 This parameter now defaults to True.
 
         """
-        self._enum_init(enums, kw)
+        self._enum_init(enums, kw)  # type: ignore[arg-type]
 
     @property
     def _enums_argument(self):
@@ -1466,7 +1485,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         else:
             return self.enums
 
-    def _enum_init(self, enums, kw):
+    def _enum_init(self, enums: _EnumTupleArg, kw: Dict[str, Any]) -> None:
         """internal init for :class:`.Enum` and subclasses.
 
         friendly init helper used by subclasses to remove
@@ -1525,15 +1544,19 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
             _adapted_from=kw.pop("_adapted_from", None),
         )
 
-    def _parse_into_values(self, enums, kw):
+    def _parse_into_values(
+        self, enums: _EnumTupleArg, kw: Any
+    ) -> Tuple[Sequence[str], _EnumTupleArg]:
         if not enums and "_enums" in kw:
             enums = kw.pop("_enums")
 
         if len(enums) == 1 and hasattr(enums[0], "__members__"):
-            self.enum_class = enums[0]
+            self.enum_class = enums[0]  # type: ignore[assignment]
+            assert self.enum_class is not None
 
             _members = self.enum_class.__members__
 
+            members: Mapping[str, enum.Enum]
             if self._omit_aliases is True:
                 # remove aliases
                 members = OrderedDict(
@@ -1549,7 +1572,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
             return values, objects
         else:
             self.enum_class = None
-            return enums, enums
+            return enums, enums  # type: ignore[return-value]
 
     def _resolve_for_literal(self, value: Any) -> Enum:
         tv = type(value)
@@ -1625,7 +1648,12 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
             self._generic_type_affinity(_enums=enum_args, **kw),  # type: ignore  # noqa: E501
         )
 
-    def _setup_for_values(self, values, objects, kw):
+    def _setup_for_values(
+        self,
+        values: Sequence[str],
+        objects: _EnumTupleArg,
+        kw: Any,
+    ) -> None:
         self.enums = list(values)
 
         self._valid_lookup = dict(zip(reversed(objects), reversed(values)))
@@ -1692,9 +1720,10 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
 
     comparator_factory = Comparator
 
-    def _object_value_for_elem(self, elem):
+    def _object_value_for_elem(self, elem: str) -> Union[str, enum.Enum]:
         try:
-            return self._object_lookup[elem]
+            # Value will not be None beacuse key is not None
+            return self._object_lookup[elem]  # type: ignore[return-value]
         except KeyError as err:
             raise LookupError(
                 "'%s' is not among the defined enum values. "
@@ -3625,6 +3654,7 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
 
     __visit_name__ = "uuid"
 
+    length: Optional[int] = None
     collation: Optional[str] = None
 
     @overload
@@ -3676,7 +3706,9 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
         else:
             return super().coerce_compared_value(op, value)
 
-    def bind_processor(self, dialect):
+    def bind_processor(
+        self, dialect: Dialect
+    ) -> Optional[_BindProcessorType[_UUID_RETURN]]:
         character_based_uuid = (
             not dialect.supports_native_uuid or not self.native_uuid
         )

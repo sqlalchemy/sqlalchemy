@@ -481,7 +481,7 @@ def surface_selectables(clause):
             stack.append(elem.element)
 
 
-def surface_selectables_only(clause):
+def surface_selectables_only(clause: ClauseElement) -> Iterator[ClauseElement]:
     stack = [clause]
     while stack:
         elem = stack.pop()

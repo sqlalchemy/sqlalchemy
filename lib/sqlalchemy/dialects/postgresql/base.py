@@ -1482,6 +1482,7 @@ from functools import lru_cache
 import re
 from typing import Any
 from typing import cast
+from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -3738,8 +3739,8 @@ class PGDialect(default.DefaultDialect):
     def _reflect_type(
         self,
         format_type: Optional[str],
-        domains: dict[str, ReflectedDomain],
-        enums: dict[str, ReflectedEnum],
+        domains: Dict[str, ReflectedDomain],
+        enums: Dict[str, ReflectedEnum],
         type_description: str,
     ) -> sqltypes.TypeEngine[Any]:
         """
