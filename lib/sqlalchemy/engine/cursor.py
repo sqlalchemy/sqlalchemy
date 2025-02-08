@@ -20,6 +20,7 @@ from typing import Any
 from typing import cast
 from typing import ClassVar
 from typing import Dict
+from typing import Iterable
 from typing import Iterator
 from typing import List
 from typing import Mapping
@@ -1289,12 +1290,16 @@ class FullyBufferedCursorFetchStrategy(CursorFetchStrategy):
     __slots__ = ("_rowbuffer", "alternate_cursor_description")
 
     def __init__(
-        self, dbapi_cursor, alternate_description=None, initial_buffer=None
+        self,
+        dbapi_cursor: Optional[DBAPICursor],
+        alternate_description: Optional[_DBAPICursorDescription] = None,
+        initial_buffer: Optional[Iterable[Any]] = None,
     ):
         self.alternate_cursor_description = alternate_description
         if initial_buffer is not None:
             self._rowbuffer = collections.deque(initial_buffer)
         else:
+            assert dbapi_cursor is not None
             self._rowbuffer = collections.deque(dbapi_cursor.fetchall())
 
     def yield_per(self, result, dbapi_cursor, num):
