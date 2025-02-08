@@ -960,6 +960,8 @@ class scoped_session(Generic[_S]):
           particular objects may need to be operated upon before the
           full flush() occurs.  It is not intended for general use.
 
+          .. deprecated:: 2.1
+
 
         """  # noqa: E501
 
