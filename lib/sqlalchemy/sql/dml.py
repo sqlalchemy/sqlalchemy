@@ -695,6 +695,16 @@ class UpdateBase(
 
         return self
 
+    def is_derived_from(self, fromclause: Optional[FromClause]) -> bool:
+        """Return ``True`` if this :class:`.ReturnsRows` is
+        'derived' from the given :class:`.FromClause`.
+
+        Since these are DMLs, we dont want such statements ever being adapted
+        so we return False for derives.
+
+        """
+        return False
+
     @_generative
     def returning(
         self,
