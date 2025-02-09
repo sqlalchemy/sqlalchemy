@@ -134,6 +134,7 @@ if TYPE_CHECKING:
     from ..sql._typing import _TypedColumnClauseArgument as _TCCA
     from ..sql.base import CacheableOptions
     from ..sql.base import ExecutableOption
+    from ..sql.dml import UpdateBase
     from ..sql.elements import ColumnElement
     from ..sql.elements import Label
     from ..sql.selectable import _ForUpdateOfArgument
@@ -492,7 +493,7 @@ class Query(
         return cast("Select[_T]", self.statement)
 
     @property
-    def statement(self) -> Union[Select[_T], FromStatement[_T]]:
+    def statement(self) -> Union[Select[_T], FromStatement[_T], UpdateBase]:
         """The full SELECT statement represented by this Query.
 
         The statement by default will not have disambiguating labels
@@ -520,6 +521,8 @@ class Query(
         # from there, it starts to look much like Query itself won't be
         # passed into the execute process and won't generate its own cache
         # key; this will all occur in terms of the ORM-enabled Select.
+        stmt: Union[Select[_T], FromStatement[_T], UpdateBase]
+
         if not self._compile_options._set_base_alias:
             # if we don't have legacy top level aliasing features in use
             # then convert to a future select() directly
@@ -789,7 +792,7 @@ class Query(
         )
 
     @property
-    def selectable(self) -> Union[Select[_T], FromStatement[_T]]:
+    def selectable(self) -> Union[Select[_T], FromStatement[_T], UpdateBase]:
         """Return the :class:`_expression.Select` object emitted by this
         :class:`_query.Query`.
 
@@ -800,7 +803,9 @@ class Query(
         """
         return self.__clause_element__()
 
-    def __clause_element__(self) -> Union[Select[_T], FromStatement[_T]]:
+    def __clause_element__(
+        self,
+    ) -> Union[Select[_T], FromStatement[_T], UpdateBase]:
         return (
             self._with_compile_options(
                 _enable_eagerloads=False, _render_for_subquery=True
