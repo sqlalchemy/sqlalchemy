@@ -494,6 +494,13 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def update_from_returning(self):
+        """Target must support UPDATE..FROM syntax where RETURNING can
+        return columns from the non-primary FROM clause"""
+
+        return self.update_returning + self.update_from + skip_if("sqlite")
+
+    @property
     def update_from_using_alias(self):
         """Target must support UPDATE..FROM syntax against an alias"""
 

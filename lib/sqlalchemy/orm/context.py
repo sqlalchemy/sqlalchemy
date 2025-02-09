@@ -155,10 +155,12 @@ class QueryContext:
         statement: Union[
             Select[Unpack[TupleAny]],
             FromStatement[Unpack[TupleAny]],
+            UpdateBase,
         ],
         user_passed_query: Union[
             Select[Unpack[TupleAny]],
             FromStatement[Unpack[TupleAny]],
+            UpdateBase,
         ],
         params: _CoreSingleExecuteParams,
         session: Session,
@@ -420,7 +422,9 @@ class _ORMCompileState(_AbstractORMCompileState):
     attributes: Dict[Any, Any]
     global_attributes: Dict[Any, Any]
 
-    statement: Union[Select[Unpack[TupleAny]], FromStatement[Unpack[TupleAny]]]
+    statement: Union[
+        Select[Unpack[TupleAny]], FromStatement[Unpack[TupleAny]], UpdateBase
+    ]
     select_statement: Union[
         Select[Unpack[TupleAny]], FromStatement[Unpack[TupleAny]]
     ]
@@ -663,8 +667,14 @@ class _ORMCompileState(_AbstractORMCompileState):
         )
 
 
-class _DMLReturningColFilter:
-    """an adapter used for the DML RETURNING case.
+class _DMLBulkInsertReturningColFilter:
+    """an adapter used for the DML RETURNING case specifically
+    for ORM bulk insert (or any hypothetical DML that is splitting out a class
+    hierarchy among multiple DML statements....ORM bulk insert is the only
+    example right now)
+
+    its main job is to limit the columns in a RETURNING to only a specific
+    mapped table in a hierarchy.
 
     Has a subset of the interface used by
     :class:`.ORMAdapter` and is used for :class:`._QueryEntity`
@@ -860,14 +870,20 @@ class _ORMFromStatementCompileState(_ORMCompileState):
         return None
 
     def setup_dml_returning_compile_state(self, dml_mapper):
-        """used by BulkORMInsert (and Update / Delete?) to set up a handler
+        """used by BulkORMInsert, Update, Delete to set up a handler
         for RETURNING to return ORM objects and expressions
 
         """
         target_mapper = self.statement._propagate_attrs.get(
             "plugin_subject", None
         )
-        adapter = _DMLReturningColFilter(target_mapper, dml_mapper)
+
+        if self.statement.is_insert:
+            adapter = _DMLBulkInsertReturningColFilter(
+                target_mapper, dml_mapper
+            )
+        else:
+            adapter = None
 
         if self.compile_options._is_star and (len(self._entities) != 1):
             raise sa_exc.CompileError(
@@ -2544,7 +2560,7 @@ class _QueryEntity:
     def setup_dml_returning_compile_state(
         self,
         compile_state: _ORMCompileState,
-        adapter: _DMLReturningColFilter,
+        adapter: Optional[_DMLBulkInsertReturningColFilter],
     ) -> None:
         raise NotImplementedError()
 
@@ -2746,7 +2762,7 @@ class _MapperEntity(_QueryEntity):
     def setup_dml_returning_compile_state(
         self,
         compile_state: _ORMCompileState,
-        adapter: _DMLReturningColFilter,
+        adapter: Optional[_DMLBulkInsertReturningColFilter],
     ) -> None:
         loading._setup_entity_query(
             compile_state,
@@ -2905,7 +2921,7 @@ class _BundleEntity(_QueryEntity):
     def setup_dml_returning_compile_state(
         self,
         compile_state: _ORMCompileState,
-        adapter: _DMLReturningColFilter,
+        adapter: Optional[_DMLBulkInsertReturningColFilter],
     ) -> None:
         return self.setup_compile_state(compile_state)
 
@@ -3095,7 +3111,7 @@ class _RawColumnEntity(_ColumnEntity):
     def setup_dml_returning_compile_state(
         self,
         compile_state: _ORMCompileState,
-        adapter: _DMLReturningColFilter,
+        adapter: Optional[_DMLBulkInsertReturningColFilter],
     ) -> None:
         return self.setup_compile_state(compile_state)
 
@@ -3212,10 +3228,13 @@ class _ORMColumnEntity(_ColumnEntity):
     def setup_dml_returning_compile_state(
         self,
         compile_state: _ORMCompileState,
-        adapter: _DMLReturningColFilter,
+        adapter: Optional[_DMLBulkInsertReturningColFilter],
     ) -> None:
-        self._fetch_column = self.column
-        column = adapter(self.column, False)
+
+        self._fetch_column = column = self.column
+        if adapter:
+            column = adapter(column, False)
+
         if column is not None:
             compile_state.dedupe_columns.add(column)
             compile_state.primary_columns.append(column)
