@@ -655,14 +655,8 @@ class ORMCompileState(AbstractORMCompileState):
         )
 
 
-class _DMLBulkInsertReturningColFilter:
-    """an adapter used for the DML RETURNING case specifically
-    for ORM bulk insert (or any hypothetical DML that is splitting out a class
-    hierarchy among multiple DML statements....ORM bulk insert is the only
-    example right now)
-
-    its main job is to limit the columns in a RETURNING to only a specific
-    mapped table in a hierarchy.
+class _DMLReturningColFilter:
+    """a base for an adapter used for the DML RETURNING cases
 
     Has a subset of the interface used by
     :class:`.ORMAdapter` and is used for :class:`._QueryEntity`
@@ -697,11 +691,50 @@ class _DMLBulkInsertReturningColFilter:
             return None
 
     def adapt_check_present(self, col):
+        raise NotImplementedError()
+
+
+class _DMLBulkInsertReturningColFilter(_DMLReturningColFilter):
+    """an adapter used for the DML RETURNING case specifically
+    for ORM bulk insert (or any hypothetical DML that is splitting out a class
+    hierarchy among multiple DML statements....ORM bulk insert is the only
+    example right now)
+
+    its main job is to limit the columns in a RETURNING to only a specific
+    mapped table in a hierarchy.
+
+    """
+
+    def adapt_check_present(self, col):
         mapper = self.mapper
         prop = mapper._columntoproperty.get(col, None)
         if prop is None:
             return None
         return mapper.local_table.c.corresponding_column(col)
+
+
+class _DMLUpdateDeleteReturningColFilter(_DMLReturningColFilter):
+    """an adapter used for the DML RETURNING case specifically
+    for ORM enabled UPDATE/DELETE
+
+    its main job is to limit the columns in a RETURNING to include
+    only direct persisted columns from the immediate selectable, not
+    expressions like column_property(), or to also allow columns from other
+    mappers for the UPDATE..FROM use case.
+
+    """
+
+    def adapt_check_present(self, col):
+        mapper = self.mapper
+        prop = mapper._columntoproperty.get(col, None)
+        if prop is not None:
+            # if the col is from the immediate mapper, only return a persisted
+            # column, not any kind of column_property expression
+            return mapper.persist_selectable.c.corresponding_column(col)
+
+        # if the col is from some other mapper, just return it, assume the
+        # user knows what they are doing
+        return col
 
 
 @sql.base.CompileState.plugin_for("orm", "orm_from_statement")
@@ -868,6 +901,10 @@ class ORMFromStatementCompileState(ORMCompileState):
 
         if self.statement.is_insert:
             adapter = _DMLBulkInsertReturningColFilter(
+                target_mapper, dml_mapper
+            )
+        elif self.statement.is_update or self.statement.is_delete:
+            adapter = _DMLUpdateDeleteReturningColFilter(
                 target_mapper, dml_mapper
             )
         else:
@@ -2548,7 +2585,7 @@ class _QueryEntity:
     def setup_dml_returning_compile_state(
         self,
         compile_state: ORMCompileState,
-        adapter: Optional[_DMLBulkInsertReturningColFilter],
+        adapter: Optional[_DMLReturningColFilter],
     ) -> None:
         raise NotImplementedError()
 
@@ -2750,7 +2787,7 @@ class _MapperEntity(_QueryEntity):
     def setup_dml_returning_compile_state(
         self,
         compile_state: ORMCompileState,
-        adapter: Optional[_DMLBulkInsertReturningColFilter],
+        adapter: Optional[_DMLReturningColFilter],
     ) -> None:
         loading._setup_entity_query(
             compile_state,
@@ -2909,7 +2946,7 @@ class _BundleEntity(_QueryEntity):
     def setup_dml_returning_compile_state(
         self,
         compile_state: ORMCompileState,
-        adapter: Optional[_DMLBulkInsertReturningColFilter],
+        adapter: Optional[_DMLReturningColFilter],
     ) -> None:
         return self.setup_compile_state(compile_state)
 
@@ -3099,7 +3136,7 @@ class _RawColumnEntity(_ColumnEntity):
     def setup_dml_returning_compile_state(
         self,
         compile_state: ORMCompileState,
-        adapter: Optional[_DMLBulkInsertReturningColFilter],
+        adapter: Optional[_DMLReturningColFilter],
     ) -> None:
         return self.setup_compile_state(compile_state)
 
@@ -3216,7 +3253,7 @@ class _ORMColumnEntity(_ColumnEntity):
     def setup_dml_returning_compile_state(
         self,
         compile_state: ORMCompileState,
-        adapter: Optional[_DMLBulkInsertReturningColFilter],
+        adapter: Optional[_DMLReturningColFilter],
     ) -> None:
 
         self._fetch_column = column = self.column
