@@ -278,6 +278,86 @@ class InsertStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
         )
 
     @testing.requires.insert_returning
+    @testing.variation(
+        "insert_type",
+        [("values", testing.requires.multivalues_inserts), "bulk"],
+    )
+    def test_returning_col_property(
+        self, decl_base, insert_type: testing.Variation
+    ):
+        """test #12326"""
+
+        class User(ComparableEntity, decl_base):
+            __tablename__ = "user"
+
+            id: Mapped[int] = mapped_column(
+                primary_key=True, autoincrement=False
+            )
+            name: Mapped[str]
+            age: Mapped[int]
+
+        decl_base.metadata.create_all(testing.db)
+
+        a_alias = aliased(User)
+        User.colprop = column_property(
+            select(func.max(a_alias.age))
+            .where(a_alias.id != User.id)
+            .scalar_subquery()
+        )
+
+        sess = fixture_session()
+
+        if insert_type.values:
+            stmt = insert(User).values(
+                [
+                    dict(id=1, name="john", age=25),
+                    dict(id=2, name="jack", age=47),
+                    dict(id=3, name="jill", age=29),
+                    dict(id=4, name="jane", age=37),
+                ],
+            )
+            params = None
+        elif insert_type.bulk:
+            stmt = insert(User)
+            params = [
+                dict(id=1, name="john", age=25),
+                dict(id=2, name="jack", age=47),
+                dict(id=3, name="jill", age=29),
+                dict(id=4, name="jane", age=37),
+            ]
+        else:
+            insert_type.fail()
+
+        stmt = stmt.returning(User)
+
+        result = sess.execute(stmt, params=params)
+
+        # the RETURNING doesn't have the column property in it.
+        # so to load these, they are all lazy loaded
+        with self.sql_execution_asserter() as asserter:
+            eq_(
+                result.scalars().all(),
+                [
+                    User(id=1, name="john", age=25, colprop=47),
+                    User(id=2, name="jack", age=47, colprop=37),
+                    User(id=3, name="jill", age=29, colprop=47),
+                    User(id=4, name="jane", age=37, colprop=47),
+                ],
+            )
+
+        # assert they're all lazy loaded
+        asserter.assert_(
+            *[
+                CompiledSQL(
+                    'SELECT (SELECT max(user_1.age) AS max_1 FROM "user" '
+                    'AS user_1 WHERE user_1.id != "user".id) AS anon_1 '
+                    'FROM "user" WHERE "user".id = :pk_1'
+                )
+                for i in range(4)
+            ]
+        )
+
+    @testing.requires.insert_returning
     @testing.requires.returning_star
     @testing.variation(
         "insert_type",
@@ -1079,6 +1159,47 @@ class UpdateStmtTest(testing.AssertsExecutionResults, fixtures.TestBase):
                 (4, "jane", 37),
             ],
         )
+
+    @testing.requires.update_returning
+    def test_returning_col_property(self, decl_base):
+        """test #12326"""
+
+        class User(ComparableEntity, decl_base):
+            __tablename__ = "user"
+
+            id: Mapped[int] = mapped_column(
+                primary_key=True, autoincrement=False
+            )
+            name: Mapped[str]
+            age: Mapped[int]
+
+        decl_base.metadata.create_all(testing.db)
+
+        a_alias = aliased(User)
+        User.colprop = column_property(
+            select(func.max(a_alias.age))
+            .where(a_alias.id != User.id)
+            .scalar_subquery()
+        )
+
+        sess = fixture_session()
+
+        sess.execute(
+            insert(User),
+            [
+                dict(id=1, name="john", age=25),
+                dict(id=2, name="jack", age=47),
+                dict(id=3, name="jill", age=29),
+                dict(id=4, name="jane", age=37),
+            ],
+        )
+
+        stmt = (
+            update(User).values(age=30).where(User.age == 29).returning(User)
+        )
+
+        row = sess.execute(stmt).one()
+        eq_(row[0], User(id=3, name="jill", age=30, colprop=47))
 
 
 class BulkDMLReturningInhTest:
