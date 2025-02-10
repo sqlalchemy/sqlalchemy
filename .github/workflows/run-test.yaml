@@ -59,17 +59,20 @@ jobs:
 
 
         exclude:
-          # linux do not have x86 / arm64 python
+          # linux does not have x86 / arm64 python
           - os: "ubuntu-22.04"
             architecture: x86
           - os: "ubuntu-22.04"
             architecture: arm64
-          # linux-arm do not have x86 / x64 python
+          # linux-arm does not have x86 / x64 python
           - os: "ubuntu-22.04-arm"
             architecture: x86
           - os: "ubuntu-22.04-arm"
             architecture: x64
-          # windows des not have arm64 python
+          # linux-arm does not have 3.7 python
+          - os: "ubuntu-22.04-arm"
+            python-version: "3.7"
+          # windows does not have arm64 python
           - os: "windows-latest"
             architecture: arm64
           # macos: latests uses arm macs. only 3.10+; no x86/x64
