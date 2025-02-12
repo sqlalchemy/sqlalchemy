@@ -1379,6 +1379,26 @@ class AsyncResultTest(EngineFixture):
 
             await conn.run_sync(lambda _: cursor.close())
 
+    @async_test
+    @testing.variation("case", ["scalar_one", "scalar_one_or_none", "scalar"])
+    async def test_stream_scalar(self, async_engine, case: testing.Variation):
+        users = self.tables.users
+        async with async_engine.connect() as conn:
+            result = await conn.stream(
+                select(users).limit(1).order_by(users.c.user_name)
+            )
+
+            if case.scalar_one:
+                u1 = await result.scalar_one()
+            elif case.scalar_one_or_none:
+                u1 = await result.scalar_one_or_none()
+            elif case.scalar:
+                u1 = await result.scalar()
+            else:
+                case.fail()
+
+            eq_(u1, 1)
+
 
 class TextSyncDBAPI(fixtures.TestBase):
     __requires__ = ("asyncio",)
