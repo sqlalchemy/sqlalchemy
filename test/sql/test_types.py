@@ -7,6 +7,7 @@ import pickle
 import subprocess
 import sys
 from tempfile import mkstemp
+import uuid
 
 import sqlalchemy as sa
 from sqlalchemy import and_
@@ -310,22 +311,27 @@ class AdaptTest(fixtures.TestBase):
         eq_(t1.evaluates_none().should_evaluate_none, True)
 
     def test_python_type(self):
-        eq_(types.Integer().python_type, int)
-        eq_(types.Numeric().python_type, decimal.Decimal)
-        eq_(types.Numeric(asdecimal=False).python_type, float)
-        eq_(types.LargeBinary().python_type, bytes)
-        eq_(types.Float().python_type, float)
-        eq_(types.Double().python_type, float)
-        eq_(types.Interval().python_type, datetime.timedelta)
+        eq_(types.ARRAY(types.Integer).python_type, list)
+        eq_(types.Boolean().python_type, bool)
         eq_(types.Date().python_type, datetime.date)
         eq_(types.DateTime().python_type, datetime.datetime)
-        eq_(types.String().python_type, str)
-        eq_(types.Unicode().python_type, str)
+        eq_(types.Double().python_type, float)
         eq_(types.Enum("one", "two", "three").python_type, str)
-
-        assert_raises(
-            NotImplementedError, lambda: types.TypeEngine().python_type
-        )
+        eq_(types.Float().python_type, float)
+        eq_(types.Integer().python_type, int)
+        eq_(types.Interval().python_type, datetime.timedelta)
+        eq_(types.JSON().python_type, object)
+        eq_(types.LargeBinary().python_type, bytes)
+        eq_(types.NullType().python_type, object)
+        eq_(types.Numeric().python_type, decimal.Decimal)
+        eq_(types.Numeric(asdecimal=False).python_type, float)
+        eq_(types.PickleType().python_type, object)
+        eq_(types.String().python_type, str)
+        eq_(types.Time().python_type, datetime.time)
+        eq_(types.Unicode().python_type, str)
+        eq_(types.Uuid().python_type, uuid.UUID)
+        eq_(types.Uuid(as_uuid=False).python_type, str)
+        eq_(types.TypeEngine().python_type, object)
 
     @testing.uses_deprecated()
     @testing.combinations(*[(t,) for t in _all_types(omit_special_types=True)])

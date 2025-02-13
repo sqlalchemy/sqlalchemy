@@ -2739,10 +2739,6 @@ class JSON(Indexable, TypeEngine[Any]):
 
     comparator_factory = Comparator
 
-    @property
-    def python_type(self):
-        return dict
-
     @property  # type: ignore  # mypy property bug
     def should_evaluate_none(self):
         """Alias of :attr:`_types.JSON.none_as_null`"""
