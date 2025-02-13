@@ -71,6 +71,7 @@ from .base import ColumnCollection
 from .base import ColumnSet
 from .base import CompileState
 from .base import DedupeColumnCollection
+from .base import DialectKWArgs
 from .base import Executable
 from .base import Generative
 from .base import HasCompileState
@@ -3890,7 +3891,7 @@ class SelectStatementGrouping(GroupedElement, SelectBase, Generic[_SB]):
         raise NotImplementedError
 
 
-class GenerativeSelect(SelectBase, Generative):
+class GenerativeSelect(DialectKWArgs, SelectBase, Generative):
     """Base class for SELECT statements where additional elements can be
     added.
 
@@ -4171,6 +4172,7 @@ class GenerativeSelect(SelectBase, Generative):
         count: _LimitOffsetType,
         with_ties: bool = False,
         percent: bool = False,
+        **dialect_kw: Any,
     ) -> Self:
         """Return a new selectable with the given FETCH FIRST criterion
         applied.
@@ -4209,7 +4211,7 @@ class GenerativeSelect(SelectBase, Generative):
            :meth:`_sql.GenerativeSelect.offset`
 
         """
-
+        self._validate_dialect_kwargs(dialect_kw)
         self._limit_clause = None
         if count is None:
             self._fetch_clause = self._fetch_clause_options = None
@@ -5303,7 +5305,9 @@ class Select(
         stmt.__dict__.update(kw)
         return stmt
 
-    def __init__(self, *entities: _ColumnsClauseArgument[Any]):
+    def __init__(
+        self, *entities: _ColumnsClauseArgument[Any], **dialect_kw: Any
+    ):
         r"""Construct a new :class:`_expression.Select`.
 
         The public constructor for :class:`_expression.Select` is the
@@ -5316,7 +5320,6 @@ class Select(
             )
             for ent in entities
         ]
-
         GenerativeSelect.__init__(self)
 
     def _scalar_type(self) -> TypeEngine[Any]:

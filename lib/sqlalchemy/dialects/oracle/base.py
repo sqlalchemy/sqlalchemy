@@ -744,6 +744,20 @@ The ``oracle_compress`` parameter accepts either an integer specifying the
 number of prefix columns to compress, or ``True`` to use the default (all
 columns for non-unique indexes, all but the last column for unique indexes).
 
+Oracle Database Specific Fetch Options
+--------------------------------------
+
+Approximate vector search can only be performed when all syntax and semantic
+rules are satisfied, the corresponding vector index is available, and the
+query optimizer determines to perform it. If any of these conditions are
+unmet, then an approximate search is not performed. In this case the query
+returns exact results.
+
+To enable approximate searching during similarity searches on VECTORS, use
+the `oracle_fetch_approximate` parameter::
+
+    select(users_table).fetch(5, oracle_fetch_approximate=True)
+
 """  # noqa
 
 from __future__ import annotations
@@ -789,6 +803,7 @@ from ...sql import func
 from ...sql import null
 from ...sql import or_
 from ...sql import select
+from ...sql import selectable as sa_selectable
 from ...sql import sqltypes
 from ...sql import util as sql_util
 from ...sql import visitors
@@ -1245,6 +1260,52 @@ class OracleCompiler(compiler.SQLCompiler):
         else:
             return select._fetch_clause
 
+    def fetch_clause(
+        self,
+        select,
+        fetch_clause=None,
+        require_offset=False,
+        use_literal_execute_for_simple_int=False,
+        **kw,
+    ):
+        if fetch_clause is None:
+            fetch_clause = select._fetch_clause
+            fetch_clause_options = select._fetch_clause_options
+        else:
+            fetch_clause_options = {"percent": False, "with_ties": False}
+
+        text = ""
+
+        if select._offset_clause is not None:
+            offset_clause = select._offset_clause
+            if (
+                use_literal_execute_for_simple_int
+                and select._simple_int_clause(offset_clause)
+            ):
+                offset_clause = offset_clause.render_literal_execute()
+            offset_str = self.process(offset_clause, **kw)
+            text += "\n OFFSET %s ROWS" % offset_str
+        elif require_offset:
+            text += "\n OFFSET 0 ROWS"
+
+        if fetch_clause is not None:
+            if (
+                use_literal_execute_for_simple_int
+                and select._simple_int_clause(fetch_clause)
+            ):
+                fetch_clause = fetch_clause.render_literal_execute()
+            text += "\n FETCH %sFIRST %s%s ROWS %s" % (
+                (
+                    "APPROX "
+                    if select.dialect_options["oracle"]["fetch_approximate"]
+                    else ""
+                ),
+                self.process(fetch_clause, **kw),
+                " PERCENT" if fetch_clause_options["percent"] else "",
+                "WITH TIES" if fetch_clause_options["with_ties"] else "ONLY",
+            )
+        return text
+
     def translate_select_structure(self, select_stmt, **kwargs):
         select = select_stmt
 
@@ -1696,6 +1757,7 @@ class OracleDialect(default.DefaultDialect):
         (sa_schema.Index, {"bitmap": False, "compress": False}),
         (sa_schema.Sequence, {"order": None}),
         (sa_schema.Identity, {"order": None, "on_null": None}),
+        (sa_selectable.Select, {"fetch_approximate": False}),
     ]
 
     @util.deprecated_params(
