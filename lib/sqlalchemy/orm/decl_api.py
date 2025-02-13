@@ -512,6 +512,9 @@ def declarative_mixin(cls: Type[_T]) -> Type[_T]:
 
     .. versionadded:: 1.4.6
 
+    .. legacy:: This api is considered legacy and will be deprecated in the next
+      SQLAlchemy version.
+
     .. seealso::
 
         :ref:`orm_mixins_toplevel`
