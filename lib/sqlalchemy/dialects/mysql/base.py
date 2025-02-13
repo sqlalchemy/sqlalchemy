@@ -182,6 +182,31 @@ For fully atomic transactions as well as support for foreign key
 constraints, all participating ``CREATE TABLE`` statements must specify a
 transactional engine, which in the vast majority of cases is ``InnoDB``.
 
+Partitioning can similarly be specified using similar options.
+In the example below the create table will specify ``PARTITION_BY``,
+``PARTITIONS``, ``SUBPARTITIONS`` and ``SUBPARTITION_BY``::
+
+    # can also use mariadb_* prefix
+    Table(
+        "testtable",
+        MetaData(),
+        Column("id", Integer(), primary_key=True, autoincrement=True),
+        Column("other_id", Integer(), primary_key=True, autoincrement=False),
+        mysql_partitions="2",
+        mysql_partition_by="KEY(other_id)",
+        mysql_subpartition_by="HASH(some_expr)",
+        mysql_subpartitions="2",
+    )
+
+This will render:
+
+.. sourcecode:: sql
+
+    CREATE TABLE testtable (
+            id INTEGER NOT NULL AUTO_INCREMENT,
+            other_id INTEGER NOT NULL,
+            PRIMARY KEY (id, other_id)
+    )PARTITION BY KEY(other_id) PARTITIONS 2 SUBPARTITION BY HASH(some_expr) SUBPARTITIONS 2
 
 Case Sensitivity and Table Reflection
 -------------------------------------
