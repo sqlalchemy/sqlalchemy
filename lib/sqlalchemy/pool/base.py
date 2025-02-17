@@ -468,6 +468,7 @@ class Pool(log.Identified, event.EventTarget):
         raise NotImplementedError()
 
     def status(self) -> str:
+        """Returns a brief description of the state of this pool."""
         raise NotImplementedError()
 
 
