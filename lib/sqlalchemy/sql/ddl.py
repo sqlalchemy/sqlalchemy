@@ -747,7 +747,16 @@ class DropIndex(_DropBase):
 
 
 class AddConstraint(_CreateBase):
-    """Represent an ALTER TABLE ADD CONSTRAINT statement."""
+    """Represent an ALTER TABLE ADD CONSTRAINT statement.
+
+    Note that if a constraint has been used as part of a :class:`_schema.Table`
+    definition or specified using ``__table_args__`` for a :ref:`Declarative
+    Table configuration <orm_declarative_table_configuration>`, instantiating
+    this class for that constraint will prevent the constraint from being
+    emitted as part of a CREATE TABLE statement (e.g. via
+    :meth:`_schema.MetaData.create_all()`).
+
+    """
 
     __visit_name__ = "add_constraint"
 
@@ -759,7 +768,16 @@ class AddConstraint(_CreateBase):
 
 
 class DropConstraint(_DropBase):
-    """Represent an ALTER TABLE DROP CONSTRAINT statement."""
+    """Represent an ALTER TABLE DROP CONSTRAINT statement.
+
+    Note that if a constraint has been used as part of a :class:`_schema.Table`
+    definition or specified using ``__table_args__`` for a :ref:`Declarative
+    Table configuration <orm_declarative_table_configuration>`, instantiating
+    this class for that constraint will prevent the constraint from being
+    emitted as part of a CREATE TABLE statement (e.g. via
+    :meth:`_schema.MetaData.create_all()`).
+
+    """
 
     __visit_name__ = "drop_constraint"
 
