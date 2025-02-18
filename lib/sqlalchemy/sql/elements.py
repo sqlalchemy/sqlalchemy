@@ -2977,6 +2977,10 @@ class ExpressionClauseList(OperatorExpression[_T]):
             self.clauses = clauses
         self.operator = operator
         self.type = type_
+        for c in clauses:
+            if c._propagate_attrs:
+                self._propagate_attrs = c._propagate_attrs
+                break
         return self
 
     def _negate(self) -> Any:
