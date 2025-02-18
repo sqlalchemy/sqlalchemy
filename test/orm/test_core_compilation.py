@@ -368,6 +368,14 @@ class PropagateAttrsTest(QueryTest):
     def propagate_cases():
         return testing.combinations(
             (lambda: select(1), False),
+            (lambda User: select(User.id), True),
+            (lambda User: select(User.id + User.id), True),
+            (lambda User: select(User.id + User.id + User.id), True),
+            (lambda User: select(sum([User.id] * 10, User.id)), True),  # type: ignore  # noqa: E501
+            (
+                lambda User: select(literal_column("3") + User.id + User.id),
+                True,
+            ),
             (lambda User: select(func.count(User.id)), True),
             (
                 lambda User: select(1).select_from(select(User).subquery()),
