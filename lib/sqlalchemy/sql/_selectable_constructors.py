@@ -11,7 +11,6 @@ from typing import Any
 from typing import Optional
 from typing import overload
 from typing import TYPE_CHECKING
-from typing import TypeVar
 from typing import Union
 
 from . import coercions
@@ -48,15 +47,13 @@ if TYPE_CHECKING:
     from ._typing import _T7
     from ._typing import _T8
     from ._typing import _T9
+    from ._typing import _Ts
     from ._typing import _TypedColumnClauseArgument as _TCCA
     from .functions import Function
     from .selectable import CTE
     from .selectable import HasCTE
     from .selectable import ScalarSelect
     from .selectable import SelectBase
-
-
-_T = TypeVar("_T", bound=Any)
 
 
 def alias(
@@ -107,9 +104,28 @@ def cte(
     )
 
 
+# TODO: mypy requires the _TypedSelectable overloads in all compound select
+# constructors since _SelectStatementForCompoundArgument includes
+# untyped args that make it return CompoundSelect[Unpack[tuple[Never, ...]]]
+# pyright does not have this issue
+_TypedSelectable = Union["Select[Unpack[_Ts]]", "CompoundSelect[Unpack[_Ts]]"]
+
+
+@overload
 def except_(
-    *selects: _SelectStatementForCompoundArgument,
-) -> CompoundSelect:
+    *selects: _TypedSelectable[Unpack[_Ts]],
+) -> CompoundSelect[Unpack[_Ts]]: ...
+
+
+@overload
+def except_(
+    *selects: _SelectStatementForCompoundArgument[Unpack[_Ts]],
+) -> CompoundSelect[Unpack[_Ts]]: ...
+
+
+def except_(
+    *selects: _SelectStatementForCompoundArgument[Unpack[_Ts]],
+) -> CompoundSelect[Unpack[_Ts]]:
     r"""Return an ``EXCEPT`` of multiple selectables.
 
     The returned object is an instance of
@@ -122,9 +138,21 @@ def except_(
     return CompoundSelect._create_except(*selects)
 
 
+@overload
 def except_all(
-    *selects: _SelectStatementForCompoundArgument,
-) -> CompoundSelect:
+    *selects: _TypedSelectable[Unpack[_Ts]],
+) -> CompoundSelect[Unpack[_Ts]]: ...
+
+
+@overload
+def except_all(
+    *selects: _SelectStatementForCompoundArgument[Unpack[_Ts]],
+) -> CompoundSelect[Unpack[_Ts]]: ...
+
+
+def except_all(
+    *selects: _SelectStatementForCompoundArgument[Unpack[_Ts]],
+) -> CompoundSelect[Unpack[_Ts]]:
     r"""Return an ``EXCEPT ALL`` of multiple selectables.
 
     The returned object is an instance of
@@ -183,9 +211,21 @@ def exists(
     return Exists(__argument)
 
 
+@overload
 def intersect(
-    *selects: _SelectStatementForCompoundArgument,
-) -> CompoundSelect:
+    *selects: _TypedSelectable[Unpack[_Ts]],
+) -> CompoundSelect[Unpack[_Ts]]: ...
+
+
+@overload
+def intersect(
+    *selects: _SelectStatementForCompoundArgument[Unpack[_Ts]],
+) -> CompoundSelect[Unpack[_Ts]]: ...
+
+
+def intersect(
+    *selects: _SelectStatementForCompoundArgument[Unpack[_Ts]],
+) -> CompoundSelect[Unpack[_Ts]]:
     r"""Return an ``INTERSECT`` of multiple selectables.
 
     The returned object is an instance of
@@ -198,9 +238,21 @@ def intersect(
     return CompoundSelect._create_intersect(*selects)
 
 
+@overload
 def intersect_all(
-    *selects: _SelectStatementForCompoundArgument,
-) -> CompoundSelect:
+    *selects: _TypedSelectable[Unpack[_Ts]],
+) -> CompoundSelect[Unpack[_Ts]]: ...
+
+
+@overload
+def intersect_all(
+    *selects: _SelectStatementForCompoundArgument[Unpack[_Ts]],
+) -> CompoundSelect[Unpack[_Ts]]: ...
+
+
+def intersect_all(
+    *selects: _SelectStatementForCompoundArgument[Unpack[_Ts]],
+) -> CompoundSelect[Unpack[_Ts]]:
     r"""Return an ``INTERSECT ALL`` of multiple selectables.
 
     The returned object is an instance of
@@ -569,9 +621,21 @@ def tablesample(
     return TableSample._factory(selectable, sampling, name=name, seed=seed)
 
 
+@overload
 def union(
-    *selects: _SelectStatementForCompoundArgument,
-) -> CompoundSelect:
+    *selects: _TypedSelectable[Unpack[_Ts]],
+) -> CompoundSelect[Unpack[_Ts]]: ...
+
+
+@overload
+def union(
+    *selects: _SelectStatementForCompoundArgument[Unpack[_Ts]],
+) -> CompoundSelect[Unpack[_Ts]]: ...
+
+
+def union(
+    *selects: _SelectStatementForCompoundArgument[Unpack[_Ts]],
+) -> CompoundSelect[Unpack[_Ts]]:
     r"""Return a ``UNION`` of multiple selectables.
 
     The returned object is an instance of
@@ -591,9 +655,21 @@ def union(
     return CompoundSelect._create_union(*selects)
 
 
+@overload
 def union_all(
-    *selects: _SelectStatementForCompoundArgument,
-) -> CompoundSelect:
+    *selects: _TypedSelectable[Unpack[_Ts]],
+) -> CompoundSelect[Unpack[_Ts]]: ...
+
+
+@overload
+def union_all(
+    *selects: _SelectStatementForCompoundArgument[Unpack[_Ts]],
+) -> CompoundSelect[Unpack[_Ts]]: ...
+
+
+def union_all(
+    *selects: _SelectStatementForCompoundArgument[Unpack[_Ts]],
+) -> CompoundSelect[Unpack[_Ts]]:
     r"""Return a ``UNION ALL`` of multiple selectables.
 
     The returned object is an instance of

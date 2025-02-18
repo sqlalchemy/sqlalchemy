@@ -31,6 +31,7 @@ from ..inspection import Inspectable
 from ..util.typing import Literal
 from ..util.typing import TupleAny
 from ..util.typing import TypeAlias
+from ..util.typing import TypeVarTuple
 from ..util.typing import Unpack
 
 if TYPE_CHECKING:
@@ -57,6 +58,7 @@ if TYPE_CHECKING:
     from .roles import FromClauseRole
     from .schema import Column
     from .selectable import Alias
+    from .selectable import CompoundSelect
     from .selectable import CTE
     from .selectable import FromClause
     from .selectable import Join
@@ -75,6 +77,7 @@ if TYPE_CHECKING:
 
 _T = TypeVar("_T", bound=Any)
 _T_co = TypeVar("_T_co", bound=Any, covariant=True)
+_Ts = TypeVarTuple("_Ts")
 
 
 _CE = TypeVar("_CE", bound="ColumnElement[Any]")
@@ -246,7 +249,9 @@ come from the ORM.
 """
 
 _SelectStatementForCompoundArgument = Union[
-    "SelectBase", roles.CompoundElementRole
+    "Select[Unpack[_Ts]]",
+    "CompoundSelect[Unpack[_Ts]]",
+    roles.CompoundElementRole,
 ]
 """SELECT statement acceptable by ``union()`` and other SQL set operations"""
 
