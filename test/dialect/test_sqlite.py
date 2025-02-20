@@ -1153,6 +1153,14 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TABLE atable (id INTEGER) STRICT",
         )
 
+    def test_create_table_without_rowid_strict(self):
+        m = MetaData()
+        table = Table("atable", m, Column("id", Integer), sqlite_with_rowid=False, sqlite_strict=True)
+        self.assert_compile(
+            schema.CreateTable(table),
+            "CREATE TABLE atable (id INTEGER) WITHOUT ROWID, STRICT",
+        )
+
 
 class OnConflictDDLTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = sqlite.dialect()

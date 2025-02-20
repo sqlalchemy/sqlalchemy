@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, sqlite
+    :tickets: 12368
+
+    Fixed a bug that caused incorrect DDL when setting
+    :paramref:`.Table.sqlite_with_rowid` to ``False`` in combination with
+    :paramref:`.Table.sqlite_strict` to ``True``.
