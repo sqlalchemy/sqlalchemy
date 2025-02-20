@@ -1758,12 +1758,18 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         return text
 
     def post_create_table(self, table):
-        text = ""
-        if table.dialect_options["sqlite"]["with_rowid"] is False:
-            text += "\n WITHOUT ROWID"
-        if table.dialect_options["sqlite"]["strict"] is True:
-            text += "\n STRICT"
-        return text
+        table_options = []
+
+        if not table.dialect_options["sqlite"]["with_rowid"]:
+            table_options.append("WITHOUT ROWID")
+
+        if table.dialect_options["sqlite"]["strict"]:
+            table_options.append("STRICT")
+
+        if table_options:
+            return "\n " + ",\n ".join(table_options)
+        else:
+            return ""
 
 
 class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
