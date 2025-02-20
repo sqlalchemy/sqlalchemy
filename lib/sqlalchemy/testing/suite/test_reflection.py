@@ -220,6 +220,7 @@ class HasTableTest(OneConnectionTablesTest):
 
 class HasIndexTest(fixtures.TablesTest):
     __backend__ = True
+    __requires__ = ("index_reflection",)
 
     @classmethod
     def define_tables(cls, metadata):
@@ -298,6 +299,7 @@ class BizarroCharacterFKResolutionTest(fixtures.TestBase):
     """tests for #10275"""
 
     __backend__ = True
+    __requires__ = ("foreign_key_constraint_reflection",)
 
     @testing.combinations(
         ("id",), ("(3)",), ("col%p",), ("[brack]",), argnames="columnname"
@@ -474,11 +476,13 @@ class QuotedNameArgumentTest(fixtures.TablesTest):
         assert insp.get_pk_constraint(name)
 
     @quote_fixtures
+    @testing.requires.foreign_key_constraint_reflection
     def test_get_foreign_keys(self, name):
         insp = inspect(config.db)
         assert insp.get_foreign_keys(name)
 
     @quote_fixtures
+    @testing.requires.index_reflection
     def test_get_indexes(self, name):
         insp = inspect(config.db)
         assert insp.get_indexes(name)

@@ -1815,3 +1815,19 @@ class SuiteRequirements(Requirements):
     def supports_bitwise_shift(self):
         """Target database supports bitwise left or right shift"""
         return exclusions.closed()
+    
+    @property
+    def enum_literals(self):
+        """target backend supports ENUM literals."""
+        return exclusions.open()
+    
+    @property
+    def escape_literals(self):
+        """target backend supports ESCAPE literals."""
+        return exclusions.open()
+    
+    @property
+    def supports_first_column_of_type_float(self):
+        """target backend supports FLOAT type for first column"""
+        return exclusions.open()
+    

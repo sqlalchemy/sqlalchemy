@@ -299,6 +299,7 @@ class ArrayTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
 class BinaryTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     __backend__ = True
+    __requires__ = ("binary_literals",)
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1049,6 +1050,7 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             [15.7563],
         )
 
+    @testing.requires.supports_first_column_of_type_float
     def test_render_literal_float(self, literal_round_trip):
         literal_round_trip(
             Float(),
@@ -1059,6 +1061,7 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
         )
 
     @testing.requires.precision_generic_float_type
+    @testing.requires.supports_first_column_of_type_float
     def test_float_custom_scale(self, do_numeric_test):
         do_numeric_test(
             Float(None, decimal_return_scale=7, asdecimal=True),
@@ -1102,6 +1105,7 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
         )
 
     @testing.requires.floats_to_four_decimals
+    @testing.requires.supports_first_column_of_type_float
     def test_float_as_decimal(self, do_numeric_test):
         do_numeric_test(
             Float(asdecimal=True),
@@ -1110,6 +1114,7 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             filter_=lambda n: n is not None and round(n, 4) or None,
         )
 
+    @testing.requires.supports_first_column_of_type_float
     def test_float_as_float(self, do_numeric_test):
         do_numeric_test(
             Float(),
@@ -1484,6 +1489,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         return datatype, compare_value, p_s
 
     @_index_fixtures(False)
+    @testing.requires.legacy_unconditional_json_extract
     def test_index_typed_access(self, datatype, value):
         data_table = self.tables.data_table
         data_element = {"key1": value}
@@ -1505,6 +1511,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             is_(type(roundtrip), type(compare_value))
 
     @_index_fixtures(True)
+    @testing.requires.legacy_unconditional_json_extract
     def test_index_typed_comparison(self, datatype, value):
         data_table = self.tables.data_table
         data_element = {"key1": value}
@@ -1529,6 +1536,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             eq_(row, (compare_value,))
 
     @_index_fixtures(True)
+    @testing.requires.legacy_unconditional_json_extract
     def test_path_typed_comparison(self, datatype, value):
         data_table = self.tables.data_table
         data_element = {"key1": {"subkey1": value}}
@@ -1921,6 +1929,7 @@ class JSONLegacyStringCastIndexTest(
 
 class EnumTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     __backend__ = True
+    __requires__ = ("enum_literals",)
 
     enum_values = "a", "b", "a%", "b%percent", "réveillé"
 
