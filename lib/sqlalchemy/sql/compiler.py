@@ -4074,15 +4074,28 @@ class SQLCompiler(Compiled):
 
                 del self.level_name_by_cte[existing_cte_reference_cte]
             else:
-                # if the two CTEs are deep-copy identical, consider them
-                # the same, **if** they are clones, that is, they came from
-                # the ORM or other visit method
                 if (
-                    cte._is_clone_of is not None
-                    or existing_cte._is_clone_of is not None
-                ) and cte.compare(existing_cte):
+                    # if the two CTEs have the same hash, which we expect
+                    # here means that one/both is an annotated of the other
+                    (hash(cte) == hash(existing_cte))
+                    # or...
+                    or (
+                        (
+                            # if they are clones, i.e. they came from the ORM
+                            # or some other visit method
+                            cte._is_clone_of is not None
+                            or existing_cte._is_clone_of is not None
+                        )
+                        # and are deep-copy identical
+                        and cte.compare(existing_cte)
+                    )
+                ):
+                    # then consider these two CTEs the same
                     is_new_cte = False
                 else:
+                    # otherwise these are two CTEs that either will render
+                    # differently, or were indicated separately by the user,
+                    # with the same name
                     raise exc.CompileError(
                         "Multiple, unrelated CTEs found with "
                         "the same name: %r" % cte_name
