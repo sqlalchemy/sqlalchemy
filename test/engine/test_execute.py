@@ -560,7 +560,7 @@ class ExecuteTest(fixtures.TablesTest):
         "Older versions don't support cursor pickling, newer ones do",
     )
     @testing.fails_on(
-        "mysql+mysqlconnector",
+        "+mysqlconnector",
         "Exception doesn't come back exactly the same from pickle",
     )
     @testing.fails_on(
