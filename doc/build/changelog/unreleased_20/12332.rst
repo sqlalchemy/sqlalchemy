@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 12332
+
+    Support has been re-added for the MySQL-Connector/Python DBAPI using the
+    ``mysql+mysqlconnector://`` URL scheme.   The DBAPI now works against
+    modern MySQL versions as well as MariaDB versions (in the latter case it's
+    required to pass charset/collation explicitly).   Note however that
+    server side cursor support is disabled due to unresolved issues with this
+    driver.

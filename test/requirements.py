@@ -1012,7 +1012,12 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def arraysize(self):
-        return skip_if("+pymssql", "DBAPI is missing this attribute")
+        return skip_if(
+            [
+                no_support("+pymssql", "DBAPI is missing this attribute"),
+                no_support("+mysqlconnector", "DBAPI ignores this attribute"),
+            ]
+        )
 
     @property
     def emulated_lastrowid(self):
