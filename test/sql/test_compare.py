@@ -31,8 +31,6 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import union
 from sqlalchemy import union_all
 from sqlalchemy import values
-from sqlalchemy.dialects import mysql
-from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import Sequence
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import ColumnElement
@@ -1226,17 +1224,7 @@ class CoreFixtures:
 
 
 class CacheKeyTest(fixtures.CacheKeyFixture, CoreFixtures, fixtures.TestBase):
-    # we are slightly breaking the policy of not having external dialect
-    # stuff in here, but use pg/mysql as test cases to ensure that these
-    # objects don't report an inaccurate cache key, which is dependent
-    # on the base insert sending out _post_values_clause and the caching
-    # system properly recognizing these constructs as not cacheable
-
     @testing.combinations(
-        postgresql.insert(table_a).on_conflict_do_update(
-            index_elements=[table_a.c.a], set_={"name": "foo"}
-        ),
-        mysql.insert(table_a).on_duplicate_key_update(updated_once=None),
         table_a.insert().values(  # multivalues doesn't cache
             [
                 {"name": "some name"},

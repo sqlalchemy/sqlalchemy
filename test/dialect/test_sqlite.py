@@ -3,6 +3,7 @@
 import datetime
 import json
 import os
+import random
 
 from sqlalchemy import and_
 from sqlalchemy import bindparam
@@ -2952,7 +2953,9 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
 
-class OnConflictCompileTest(AssertsCompiledSQL, fixtures.TestBase):
+class OnConflictCompileTest(
+    AssertsCompiledSQL, fixtures.CacheKeySuite, fixtures.TestBase
+):
     __dialect__ = "sqlite"
 
     @testing.combinations(
@@ -3012,6 +3015,83 @@ class OnConflictCompileTest(AssertsCompiledSQL, fixtures.TestBase):
                 f"INSERT INTO users (id, name) VALUES (?, ?) {expected}",
             )
 
+    @fixtures.CacheKeySuite.run_suite_tests
+    def test_insert_on_conflict_cache_key(self):
+        table = Table(
+            "foos",
+            MetaData(),
+            Column("id", Integer, primary_key=True),
+            Column("bar", String(10)),
+            Column("baz", String(10)),
+        )
+        Index("foo_idx", table.c.id)
+
+        def stmt0():
+            # note a multivalues INSERT is not cacheable; use just one
+            # set of values
+            return insert(table).values(
+                {"id": 1, "bar": "ab"},
+            )
+
+        def stmt1():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing()
+
+        def stmt2():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing(index_elements=["id"])
+
+        def stmt21():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing(index_elements=[table.c.id])
+
+        def stmt22():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing(
+                index_elements=["id", table.c.bar]
+            )
+
+        def stmt23():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing(index_elements=["id", "bar"])
+
+        def stmt24():
+            stmt = insert(table).values(
+                {"id": 1, "bar": "ab", "baz": "xy"},
+            )
+            return stmt.on_conflict_do_nothing(index_elements=["id", "bar"])
+
+        def stmt3():
+            stmt = stmt0()
+            return stmt.on_conflict_do_update(
+                index_elements=["id"],
+                set_={
+                    "bar": random.choice(["a", "b", "c"]),
+                    "baz": random.choice(["d", "e", "f"]),
+                },
+            )
+
+        def stmt31():
+            stmt = stmt0()
+            return stmt.on_conflict_do_update(
+                index_elements=["id"],
+                set_={
+                    "baz": random.choice(["d", "e", "f"]),
+                },
+            )
+
+        return lambda: [
+            stmt0(),
+            stmt1(),
+            stmt2(),
+            stmt21(),
+            stmt22(),
+            stmt23(),
+            stmt24(),
+            stmt3(),
+            stmt31(),
+        ]
+
     @testing.combinations("control", "excluded", "dict", argnames="scenario")
     def test_set_excluded(self, scenario, users, users_w_key):
         """test #8014, sending all of .excluded to set"""
@@ -3047,6 +3127,33 @@ class OnConflictCompileTest(AssertsCompiledSQL, fixtures.TestBase):
                     "ON CONFLICT  "
                     "DO UPDATE SET id = excluded.id, name = excluded.name",
                 )
+
+    def test_dont_consume_set_collection(self, users):
+        stmt = insert(users).values(
+            [
+                {
+                    "name": "spongebob",
+                },
+                {
+                    "name": "sandy",
+                },
+            ]
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[users.c.name], set_=dict(name=stmt.excluded.name)
+        )
+        self.assert_compile(
+            stmt,
+            "INSERT INTO users (name) VALUES (?), (?) "
+            "ON CONFLICT (name) DO UPDATE SET name = excluded.name",
+        )
+        stmt = stmt.returning(users)
+        self.assert_compile(
+            stmt,
+            "INSERT INTO users (name) VALUES (?), (?) "
+            "ON CONFLICT (name) DO UPDATE SET name = excluded.name "
+            "RETURNING id, name",
+        )
 
     def test_on_conflict_do_update_exotic_targets_six(self, users_xtra):
         users = users_xtra

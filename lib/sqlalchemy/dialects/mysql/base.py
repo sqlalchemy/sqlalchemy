@@ -1444,41 +1444,32 @@ class MySQLCompiler(compiler.SQLCompiler):
         for column in (col for col in cols if col.key in on_duplicate_update):
             val = on_duplicate_update[column.key]
 
-            # TODO: this coercion should be up front.  we can't cache
-            # SQL constructs with non-bound literals buried in them
-            if coercions._is_literal(val):
-                val = elements.BindParameter(None, val, type_=column.type)
-                value_text = self.process(val.self_group(), use_schema=False)
-            else:
-
-                def replace(obj):
-                    if (
-                        isinstance(obj, elements.BindParameter)
-                        and obj.type._isnull
-                    ):
-                        obj = obj._clone()
-                        obj.type = column.type
-                        return obj
-                    elif (
-                        isinstance(obj, elements.ColumnClause)
-                        and obj.table is on_duplicate.inserted_alias
-                    ):
-                        if requires_mysql8_alias:
-                            column_literal_clause = (
-                                f"{_on_dup_alias_name}."
-                                f"{self.preparer.quote(obj.name)}"
-                            )
-                        else:
-                            column_literal_clause = (
-                                f"VALUES({self.preparer.quote(obj.name)})"
-                            )
-                        return literal_column(column_literal_clause)
+            def replace(obj):
+                if (
+                    isinstance(obj, elements.BindParameter)
+                    and obj.type._isnull
+                ):
+                    return obj._with_binary_element_type(column.type)
+                elif (
+                    isinstance(obj, elements.ColumnClause)
+                    and obj.table is on_duplicate.inserted_alias
+                ):
+                    if requires_mysql8_alias:
+                        column_literal_clause = (
+                            f"{_on_dup_alias_name}."
+                            f"{self.preparer.quote(obj.name)}"
+                        )
                     else:
-                        # element is not replaced
-                        return None
+                        column_literal_clause = (
+                            f"VALUES({self.preparer.quote(obj.name)})"
+                        )
+                    return literal_column(column_literal_clause)
+                else:
+                    # element is not replaced
+                    return None
 
-                val = visitors.replacement_traverse(val, {}, replace)
-                value_text = self.process(val.self_group(), use_schema=False)
+            val = visitors.replacement_traverse(val, {}, replace)
+            value_text = self.process(val.self_group(), use_schema=False)
 
             name_text = self.preparer.quote(column.name)
             clauses.append("%s = %s" % (name_text, value_text))

@@ -1533,16 +1533,11 @@ class SQLiteCompiler(compiler.SQLCompiler):
             else:
                 continue
 
-            if coercions._is_literal(value):
-                value = elements.BindParameter(None, value, type_=c.type)
-
-            else:
-                if (
-                    isinstance(value, elements.BindParameter)
-                    and value.type._isnull
-                ):
-                    value = value._clone()
-                    value.type = c.type
+            if (
+                isinstance(value, elements.BindParameter)
+                and value.type._isnull
+            ):
+                value = value._with_binary_element_type(c.type)
             value_text = self.process(value.self_group(), use_schema=False)
 
             key_text = self.preparer.quote(c.name)
