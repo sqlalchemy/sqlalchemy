@@ -170,7 +170,7 @@ This document details individual issue-level changes made throughout
 
         .. seealso::
 
-            :ref:`mypy_toplevel`
+            mypy_toplevel -- section was removed
 
 .. changelog::
     :version: 1.4.52
@@ -5683,7 +5683,7 @@ This document details individual issue-level changes made throughout
 
         .. seealso::
 
-            :ref:`mypy_declarative_mixins`
+            mypy_declarative_mixins -- section was removed
 
 
     .. change::
@@ -6337,7 +6337,7 @@ This document details individual issue-level changes made throughout
 
         .. seealso::
 
-            :ref:`mypy_toplevel`
+            mypy_toplevel -- section was removed
 
     .. change::
         :tags: bug, sql
