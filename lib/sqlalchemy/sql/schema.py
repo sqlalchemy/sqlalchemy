@@ -2843,7 +2843,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
         :param ondelete: Optional string. If set, emit ON DELETE <value> when
             issuing DDL for this constraint. Typical values include CASCADE,
-            DELETE and RESTRICT.
+            SET NULL and RESTRICT.
 
         :param deferrable: Optional bool. If set, emit DEFERRABLE or NOT
             DEFERRABLE when issuing DDL for this constraint.
@@ -4696,7 +4696,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
 
         :param ondelete: Optional string. If set, emit ON DELETE <value> when
           issuing DDL for this constraint. Typical values include CASCADE,
-          DELETE and RESTRICT.
+          SET NULL and RESTRICT.
 
         :param deferrable: Optional bool. If set, emit DEFERRABLE or NOT
           DEFERRABLE when issuing DDL for this constraint.
