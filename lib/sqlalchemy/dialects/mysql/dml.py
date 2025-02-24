@@ -12,24 +12,74 @@ from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import Tuple
+from typing import TYPE_CHECKING
 from typing import Union
 
 from ... import exc
 from ... import util
+from ...sql import coercions
+from ...sql import roles
 from ...sql._typing import _DMLTableArgument
 from ...sql.base import _exclusive_against
 from ...sql.base import _generative
 from ...sql.base import ColumnCollection
 from ...sql.base import ReadOnlyColumnCollection
+from ...sql.base import SyntaxExtension
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
 from ...sql.elements import KeyedColumnElement
 from ...sql.expression import alias
 from ...sql.selectable import NamedFromClause
+from ...sql.visitors import InternalTraversal
 from ...util.typing import Self
 
+if TYPE_CHECKING:
+    from ...sql._typing import _LimitOffsetType
+    from ...sql.dml import Delete
+    from ...sql.dml import Update
+    from ...sql.visitors import _TraverseInternalsType
 
 __all__ = ("Insert", "insert")
+
+
+def limit(limit: _LimitOffsetType) -> DMLLimitClause:
+    """apply a LIMIT to an UPDATE or DELETE statement
+
+    e.g.::
+
+        stmt = t.update().values(q="hi").ext(limit(5))
+
+    this supersedes the previous approach of using ``mysql_limit`` for
+    update/delete statements.
+
+    .. versionadded:: 2.1
+
+    """
+    return DMLLimitClause(limit)
+
+
+class DMLLimitClause(SyntaxExtension, ClauseElement):
+    stringify_dialect = "mysql"
+    __visit_name__ = "mysql_dml_limit_clause"
+
+    _traverse_internals: _TraverseInternalsType = [
+        ("_limit_clause", InternalTraversal.dp_clauseelement),
+    ]
+
+    def __init__(self, limit: _LimitOffsetType):
+        self._limit_clause = coercions.expect(
+            roles.LimitOffsetRole, limit, name=None, type_=None
+        )
+
+    def apply_to_update(self, update_stmt: Update) -> None:
+        update_stmt.apply_syntax_extension_point(
+            self.append_replacing_same_type, "post_criteria"
+        )
+
+    def apply_to_delete(self, delete_stmt: Delete) -> None:
+        delete_stmt.apply_syntax_extension_point(
+            self.append_replacing_same_type, "post_criteria"
+        )
 
 
 def insert(table: _DMLTableArgument) -> Insert:

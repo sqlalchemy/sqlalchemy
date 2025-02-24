@@ -6135,14 +6135,6 @@ class SQLCompiler(Compiled):
 
         return text
 
-    def update_limit_clause(self, update_stmt):
-        """Provide a hook for MySQL to add LIMIT to the UPDATE"""
-        return None
-
-    def delete_limit_clause(self, delete_stmt):
-        """Provide a hook for MySQL to add LIMIT to the DELETE"""
-        return None
-
     def update_tables_clause(self, update_stmt, from_table, extra_froms, **kw):
         """Provide a hook to override the initial table clause
         in an UPDATE statement.
@@ -6164,6 +6156,36 @@ class SQLCompiler(Compiled):
             "This backend does not support multiple-table "
             "criteria within UPDATE"
         )
+
+    def update_post_criteria_clause(self, update_stmt, **kw):
+        """provide a hook to override generation after the WHERE criteria
+        in an UPDATE statement
+
+        .. versionadded:: 2.1
+
+        """
+        if update_stmt._post_criteria_clause is not None:
+            return self.process(
+                update_stmt._post_criteria_clause,
+                **kw,
+            )
+        else:
+            return None
+
+    def delete_post_criteria_clause(self, delete_stmt, **kw):
+        """provide a hook to override generation after the WHERE criteria
+        in a DELETE statement
+
+        .. versionadded:: 2.1
+
+        """
+        if delete_stmt._post_criteria_clause is not None:
+            return self.process(
+                delete_stmt._post_criteria_clause,
+                **kw,
+            )
+        else:
+            return None
 
     def visit_update(self, update_stmt, visiting_cte=None, **kw):
         compile_state = update_stmt._compile_state_factory(
@@ -6281,19 +6303,11 @@ class SQLCompiler(Compiled):
             if t:
                 text += " WHERE " + t
 
-        limit_clause = self.update_limit_clause(update_stmt)
-        if limit_clause:
-            text += " " + limit_clause
-
-        if update_stmt._post_criteria_clause is not None:
-            ulc = self.process(
-                update_stmt._post_criteria_clause,
-                from_linter=from_linter,
-                **kw,
-            )
-
-            if ulc:
-                text += " " + ulc
+        ulc = self.update_post_criteria_clause(
+            update_stmt, from_linter=from_linter, **kw
+        )
+        if ulc:
+            text += " " + ulc
 
         if (
             self.implicit_returning or update_stmt._returning
@@ -6443,18 +6457,11 @@ class SQLCompiler(Compiled):
             if t:
                 text += " WHERE " + t
 
-        limit_clause = self.delete_limit_clause(delete_stmt)
-        if limit_clause:
-            text += " " + limit_clause
-
-        if delete_stmt._post_criteria_clause is not None:
-            dlc = self.process(
-                delete_stmt._post_criteria_clause,
-                from_linter=from_linter,
-                **kw,
-            )
-            if dlc:
-                text += " " + dlc
+        dlc = self.delete_post_criteria_clause(
+            delete_stmt, from_linter=from_linter, **kw
+        )
+        if dlc:
+            text += " " + dlc
 
         if (
             self.implicit_returning or delete_stmt._returning

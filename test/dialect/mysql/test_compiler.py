@@ -53,6 +53,7 @@ from sqlalchemy import UnicodeText
 from sqlalchemy import VARCHAR
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.dialects.mysql import insert
+from sqlalchemy.dialects.mysql import limit
 from sqlalchemy.dialects.mysql import match
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
@@ -72,6 +73,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import Variation
+from sqlalchemy.testing.fixtures import CacheKeyFixture
 
 
 class ReservedWordFixture(AssertsCompiledSQL):
@@ -623,7 +625,114 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
-class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
+class CustomExtensionTest(
+    fixtures.TestBase, AssertsCompiledSQL, fixtures.CacheKeySuite
+):
+    __dialect__ = "mysql"
+
+    @fixtures.CacheKeySuite.run_suite_tests
+    def test_dml_limit_cache_key(self):
+        t = sql.table("t", sql.column("col1"), sql.column("col2"))
+        return lambda: [
+            t.update().ext(limit(5)),
+            t.delete().ext(limit(5)),
+            t.update(),
+            t.delete(),
+        ]
+
+    def test_update_limit(self):
+        t = sql.table("t", sql.column("col1"), sql.column("col2"))
+
+        self.assert_compile(
+            t.update().values({"col1": 123}).ext(limit(5)),
+            "UPDATE t SET col1=%s LIMIT __[POSTCOMPILE_param_1]",
+            params={"col1": 123, "param_1": 5},
+            check_literal_execute={"param_1": 5},
+        )
+
+        # does not make sense but we want this to compile
+        self.assert_compile(
+            t.update().values({"col1": 123}).ext(limit(0)),
+            "UPDATE t SET col1=%s LIMIT __[POSTCOMPILE_param_1]",
+            params={"col1": 123, "param_1": 0},
+            check_literal_execute={"param_1": 0},
+        )
+
+        # many times is fine too
+        self.assert_compile(
+            t.update()
+            .values({"col1": 123})
+            .ext(limit(0))
+            .ext(limit(3))
+            .ext(limit(42)),
+            "UPDATE t SET col1=%s LIMIT __[POSTCOMPILE_param_1]",
+            params={"col1": 123, "param_1": 42},
+            check_literal_execute={"param_1": 42},
+        )
+
+    def test_delete_limit(self):
+        t = sql.table("t", sql.column("col1"), sql.column("col2"))
+
+        self.assert_compile(
+            t.delete().ext(limit(5)),
+            "DELETE FROM t LIMIT __[POSTCOMPILE_param_1]",
+            params={"param_1": 5},
+            check_literal_execute={"param_1": 5},
+        )
+
+        # does not make sense but we want this to compile
+        self.assert_compile(
+            t.delete().ext(limit(0)),
+            "DELETE FROM t LIMIT __[POSTCOMPILE_param_1]",
+            params={"param_1": 5},
+            check_literal_execute={"param_1": 0},
+        )
+
+        # many times is fine too
+        self.assert_compile(
+            t.delete().ext(limit(0)).ext(limit(3)).ext(limit(42)),
+            "DELETE FROM t LIMIT __[POSTCOMPILE_param_1]",
+            params={"param_1": 42},
+            check_literal_execute={"param_1": 42},
+        )
+
+    @testing.combinations((update,), (delete,))
+    def test_update_delete_limit_int_only(self, crud_fn):
+        t = sql.table("t", sql.column("col1"), sql.column("col2"))
+
+        with expect_raises(ValueError):
+            # note using coercions we get an immediate raise
+            # without having to wait for compilation
+            crud_fn(t).ext(limit("not an int"))
+
+    def test_legacy_update_limit_ext_interaction(self):
+        t = sql.table("t", sql.column("col1"), sql.column("col2"))
+
+        stmt = (
+            t.update()
+            .values({"col1": 123})
+            .with_dialect_options(mysql_limit=5)
+        )
+        stmt.apply_syntax_extension_point(
+            lambda existing: [literal_column("this is a clause")],
+            "post_criteria",
+        )
+        self.assert_compile(
+            stmt, "UPDATE t SET col1=%s LIMIT 5 this is a clause"
+        )
+
+    def test_legacy_delete_limit_ext_interaction(self):
+        t = sql.table("t", sql.column("col1"), sql.column("col2"))
+
+        stmt = t.delete().with_dialect_options(mysql_limit=5)
+        stmt.apply_syntax_extension_point(
+            lambda existing: [literal_column("this is a clause")],
+            "post_criteria",
+        )
+        self.assert_compile(stmt, "DELETE FROM t LIMIT 5 this is a clause")
+
+
+class SQLTest(fixtures.TestBase, AssertsCompiledSQL, CacheKeyFixture):
     """Tests MySQL-dialect specific compilation."""
 
     __dialect__ = mysql.dialect()
@@ -718,7 +827,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=mysql.dialect(),
         )
 
-    def test_update_limit(self):
+    def test_legacy_update_limit(self):
         t = sql.table("t", sql.column("col1"), sql.column("col2"))
 
         self.assert_compile(
@@ -752,7 +861,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             "UPDATE t SET col1=%s WHERE t.col2 = %s LIMIT 1",
         )
 
-    def test_delete_limit(self):
+    def test_legacy_delete_limit(self):
         t = sql.table("t", sql.column("col1"), sql.column("col2"))
 
         self.assert_compile(t.delete(), "DELETE FROM t")
@@ -777,7 +886,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     @testing.combinations((update,), (delete,))
-    def test_update_delete_limit_int_only(self, crud_fn):
+    def test_legacy_update_delete_limit_int_only(self, crud_fn):
         t = sql.table("t", sql.column("col1"), sql.column("col2"))
 
         with expect_raises(ValueError):

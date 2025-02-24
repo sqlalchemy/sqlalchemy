@@ -511,16 +511,25 @@ available.
 
     select(...).prefix_with(["HIGH_PRIORITY", "SQL_SMALL_RESULT"])
 
-* UPDATE with LIMIT::
+* UPDATE
+  with LIMIT::
 
-    update(...).with_dialect_options(mysql_limit=10, mariadb_limit=10)
+    from sqlalchemy.dialects.mysql import limit
+
+    update(...).ext(limit(10))
+
+  .. versionchanged:: 2.1 the :func:`_mysql.limit()` extension supersedes the
+     previous use of ``mysql_limit``
 
 * DELETE
   with LIMIT::
 
-    delete(...).with_dialect_options(mysql_limit=10, mariadb_limit=10)
+    from sqlalchemy.dialects.mysql import limit
 
-  .. versionadded:: 2.0.37 Added delete with limit
+    delete(...).ext(limit(10))
+
+  .. versionchanged:: 2.1 the :func:`_mysql.limit()` extension supersedes the
+     previous use of ``mysql_limit``
 
 * optimizer hints, use :meth:`_expression.Select.prefix_with` and
   :meth:`_query.Query.prefix_with`::
@@ -1750,19 +1759,35 @@ class MySQLCompiler(compiler.SQLCompiler):
             # No offset provided, so just use the limit
             return " \n LIMIT %s" % (self.process(limit_clause, **kw),)
 
-    def update_limit_clause(self, update_stmt):
+    def update_post_criteria_clause(self, update_stmt, **kw):
         limit = update_stmt.kwargs.get("%s_limit" % self.dialect.name, None)
-        if limit is not None:
-            return f"LIMIT {int(limit)}"
-        else:
-            return None
+        supertext = super().update_post_criteria_clause(update_stmt, **kw)
 
-    def delete_limit_clause(self, delete_stmt):
-        limit = delete_stmt.kwargs.get("%s_limit" % self.dialect.name, None)
         if limit is not None:
-            return f"LIMIT {int(limit)}"
+            limit_text = f"LIMIT {int(limit)}"
+            if supertext is not None:
+                return f"{limit_text} {supertext}"
+            else:
+                return limit_text
         else:
-            return None
+            return supertext
+
+    def delete_post_criteria_clause(self, delete_stmt, **kw):
+        limit = delete_stmt.kwargs.get("%s_limit" % self.dialect.name, None)
+        supertext = super().delete_post_criteria_clause(delete_stmt, **kw)
+
+        if limit is not None:
+            limit_text = f"LIMIT {int(limit)}"
+            if supertext is not None:
+                return f"{limit_text} {supertext}"
+            else:
+                return limit_text
+        else:
+            return supertext
+
+    def visit_mysql_dml_limit_clause(self, element, **kw):
+        kw["literal_execute"] = True
+        return f"LIMIT {self.process(element._limit_clause, **kw)}"
 
     def update_tables_clause(self, update_stmt, from_table, extra_froms, **kw):
         kw["asfrom"] = True
