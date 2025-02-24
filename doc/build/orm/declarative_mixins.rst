@@ -724,7 +724,7 @@ define on the class itself. The
 here to create user-defined collation routines that pull
 from multiple collections::
 
-    from sqlalchemy.orm import declarative_mixin, declared_attr
+    from sqlalchemy.orm import declared_attr
 
 
     class MySQLSettings:
