@@ -1817,11 +1817,6 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
     
     @property
-    def escape_literals(self):
-        """Target backend supports ESCAPE literals.
-        Example:
-            SELECT some_table.id 
-            FROM some_table 
-            WHERE (some_table.data LIKE concat(%(data_1)s, '%%') ESCAPE '#')
-        """
+    def like_escapes(self):
+        """Target backend supports custom ESCAPE characters with LIKE comparisons"""
         return exclusions.open()
