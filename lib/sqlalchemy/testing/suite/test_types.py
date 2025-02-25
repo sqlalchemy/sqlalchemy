@@ -1484,8 +1484,8 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
         return datatype, compare_value, p_s
 
-    @_index_fixtures(False)
     @testing.requires.legacy_unconditional_json_extract
+    @_index_fixtures(False)
     def test_index_typed_access(self, datatype, value):
         data_table = self.tables.data_table
         data_element = {"key1": value}
@@ -1506,8 +1506,8 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             eq_(roundtrip, compare_value)
             is_(type(roundtrip), type(compare_value))
 
-    @_index_fixtures(True)
     @testing.requires.legacy_unconditional_json_extract
+    @_index_fixtures(True)
     def test_index_typed_comparison(self, datatype, value):
         data_table = self.tables.data_table
         data_element = {"key1": value}
@@ -1531,8 +1531,8 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             # make sure we get a row even if value is None
             eq_(row, (compare_value,))
 
-    @_index_fixtures(True)
     @testing.requires.legacy_unconditional_json_extract
+    @_index_fixtures(True)
     def test_path_typed_comparison(self, datatype, value):
         data_table = self.tables.data_table
         data_element = {"key1": {"subkey1": value}}
