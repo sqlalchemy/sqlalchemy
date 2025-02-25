@@ -1980,6 +1980,21 @@ class PGCompiler(compiler.SQLCompiler):
         else:
             return ""
 
+    def visit_postgresql_distinct_on(self, element, **kw):
+        if self.stack[-1]["selectable"]._distinct_on:
+            raise exc.CompileError(
+                "Cannot mix ``select.ext(distinct_on(...))`` and "
+                "``select.distinct(...)``"
+            )
+
+        if element._distinct_on:
+            cols = ", ".join(
+                self.process(col, **kw) for col in element._distinct_on
+            )
+            return f"ON ({cols})"
+        else:
+            return None
+
     def for_update_clause(self, select, **kw):
         if select._for_update_arg.read:
             if select._for_update_arg.key_share:

@@ -91,6 +91,7 @@ from ..sql.selectable import HasSuffixes
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..sql.selectable import SelectLabelStyle
 from ..util import deprecated
+from ..util import warn_deprecated
 from ..util.typing import Literal
 from ..util.typing import Self
 from ..util.typing import TupleAny
@@ -2687,11 +2688,18 @@ class Query(
          the PostgreSQL dialect will render a ``DISTINCT ON (<expressions>)``
          construct.
 
-         .. deprecated:: 1.4 Using \*expr in other dialects is deprecated
-            and will raise :class:`_exc.CompileError` in a future version.
+         .. deprecated:: 2.1 Passing expressions to
+           :meth:`_orm.Query.distinct` is deprecated, use
+           :func:`_postgresql.distinct_on` instead.
 
         """
         if expr:
+            warn_deprecated(
+                "Passing expression to ``distinct`` to generate a DISTINCT "
+                "ON clause is deprecated. Use instead the "
+                "``postgresql.distinct_on`` function as an extension.",
+                "2.1",
+            )
             self._distinct = True
             self._distinct_on = self._distinct_on + tuple(
                 coercions.expect(roles.ByOfRole, e) for e in expr
@@ -2707,6 +2715,10 @@ class Query(
         .. seealso::
 
             :ref:`examples_syntax_extensions`
+
+            :func:`_mysql.limit` - DML LIMIT for MySQL
+
+            :func:`_postgresql.distinct_on` - DISTINCT ON for PostgreSQL
 
         .. versionadded:: 2.1
 

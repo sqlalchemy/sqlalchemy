@@ -101,6 +101,7 @@ from .visitors import prefix_anon_map
 from .. import exc
 from .. import util
 from ..util import HasMemoized_ro_memoized_attribute
+from ..util import warn_deprecated
 from ..util.typing import Literal
 from ..util.typing import Self
 from ..util.typing import TupleAny
@@ -6273,28 +6274,49 @@ class Select(
 
             SELECT DISTINCT user.id, user.name FROM user
 
-        The method also accepts an ``*expr`` parameter which produces the
-        PostgreSQL dialect-specific ``DISTINCT ON`` expression.  Using this
-        parameter on other backends which don't support this syntax will
-        raise an error.
+        The method also historically accepted an ``*expr`` parameter which
+        produced the PostgreSQL dialect-specific ``DISTINCT ON`` expression.
+        This is now replaced using the :func:`_postgresql.distinct_on`
+        extension::
+
+            from sqlalchemy import select
+            from sqlalchemy.dialects.postgresql import distinct_on
+
+            stmt = select(users_table).ext(distinct_on(users_table.c.name))
+
+        Using this parameter on other backends which don't support this
+        syntax will raise an error.
 
         :param \*expr: optional column expressions.  When present,
          the PostgreSQL dialect will render a ``DISTINCT ON (<expressions>)``
          construct.  A deprecation warning and/or :class:`_exc.CompileError`
          will be raised on other backends.
 
+         .. deprecated:: 2.1 Passing expressions to
+           :meth:`_sql.Select.distinct` is deprecated, use
+           :func:`_postgresql.distinct_on` instead.
+
          .. deprecated:: 1.4 Using \*expr in other dialects is deprecated
             and will raise :class:`_exc.CompileError` in a future version.
 
+        .. seealso::
+
+            :func:`_postgresql.distinct_on`
+
+            :meth:`_sql.HasSyntaxExtensions.ext`
         """
+        self._distinct = True
         if expr:
-            self._distinct = True
+            warn_deprecated(
+                "Passing expression to ``distinct`` to generate a "
+                "DISTINCT ON clause is deprecated. Use instead the "
+                "``postgresql.distinct_on`` function as an extension.",
+                "2.1",
+            )
             self._distinct_on = self._distinct_on + tuple(
                 coercions.expect(roles.ByOfRole, e, apply_propagate_attrs=self)
                 for e in expr
             )
-        else:
-            self._distinct = True
         return self
 
     @_generative

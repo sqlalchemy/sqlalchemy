@@ -23,6 +23,7 @@ from .sql import CacheKeySuite as CacheKeySuite
 from .sql import (
     ComputedReflectionFixtureTest as ComputedReflectionFixtureTest,
 )
+from .sql import DistinctOnFixture as DistinctOnFixture
 from .sql import insertmanyvalues_fixture as insertmanyvalues_fixture
 from .sql import NoCache as NoCache
 from .sql import RemovesEvents as RemovesEvents

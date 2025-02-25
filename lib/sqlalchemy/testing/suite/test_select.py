@@ -1837,7 +1837,10 @@ class DistinctOnTest(AssertsCompiledSQL, fixtures.TablesTest):
 
     @testing.fails_if(testing.requires.supports_distinct_on)
     def test_distinct_on(self):
-        stm = select("*").distinct(column("q")).select_from(table("foo"))
+        with testing.expect_deprecated(
+            "Passing expression to ``distinct`` to generate "
+        ):
+            stm = select("*").distinct(column("q")).select_from(table("foo"))
         with testing.expect_deprecated(
             "DISTINCT ON is currently supported only by the PostgreSQL "
         ):
