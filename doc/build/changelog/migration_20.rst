@@ -458,7 +458,7 @@ of the :class:`_orm.Mapped` generic container.  Annotations which don't use
 :class:`_orm.Mapped` which link to constructs such as :func:`_orm.relationship`
 will raise errors in Python, as they suggest mis-configurations.
 
-SQLAlchemy applications that use the :ref:`Mypy plugin <mypy_toplevel>` with
+SQLAlchemy applications that use the Mypy plugin with
 explicit annotations that don't use :class:`_orm.Mapped` in their annotations
 are subject to these errors, as would occur in the example below::
 

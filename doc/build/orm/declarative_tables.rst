@@ -423,7 +423,7 @@ allow mapping database types that can support multiple Python types, such as
 
 The above example maps the union of ``list[int]`` and ``list[str]`` to the Postgresql
 :class:`_postgresql.JSONB` datatype, while naming a union of ``float,
-str, bool`` will match to the :class:`.JSON` datatype.   An equivalent
+str, bool`` will match to the :class:`_types.JSON` datatype.   An equivalent
 union, stated in the :class:`_orm.Mapped` construct, will match into the
 corresponding entry in the type map.
 

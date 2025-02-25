@@ -368,7 +368,7 @@ ORM Declarative Models
 ~~~~~~~~~~~~~~~~~~~~~~
 
 SQLAlchemy 1.4 introduced the first SQLAlchemy-native ORM typing support
-using a combination of sqlalchemy2-stubs_ and the :ref:`Mypy Plugin <mypy_toplevel>`.
+using a combination of sqlalchemy2-stubs_ and the Mypy Plugin.
 In SQLAlchemy 2.0, the Mypy plugin **remains available, and has been updated
 to work with SQLAlchemy 2.0's typing system**.  However, it should now be
 considered **deprecated**, as applications now have a straightforward path to adopting the
@@ -729,7 +729,7 @@ and :class:`_engine.Row` objects::
 Using Legacy Mypy-Typed Models
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-SQLAlchemy applications that use the :ref:`Mypy plugin <mypy_toplevel>` with
+SQLAlchemy applications that use the Mypy plugin with
 explicit annotations that don't use :class:`_orm.Mapped` in their annotations
 are subject to errors under the new system, as such annotations are flagged as
 errors when using constructs such as :func:`_orm.relationship`.

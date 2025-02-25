@@ -1384,7 +1384,7 @@ annotations within class definitions at runtime. A requirement of this form is
 that all ORM annotations must make use of a generic container called
 :class:`_orm.Mapped` to be properly annotated. Legacy SQLAlchemy mappings which
 include explicit :pep:`484` typing annotations, such as those which use the
-:ref:`legacy Mypy extension <mypy_toplevel>` for typing support, may include
+legacy Mypy extension for typing support, may include
 directives such as those for :func:`_orm.relationship` that don't include this
 generic.
 
