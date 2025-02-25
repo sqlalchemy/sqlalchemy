@@ -3440,7 +3440,7 @@ class Mapper(
 
     def identity_key_from_row(
         self,
-        row: Optional[Union[Row[Any], RowMapping]],
+        row: Union[Row[Any], RowMapping],
         identity_token: Optional[Any] = None,
         adapter: Optional[ORMAdapter] = None,
     ) -> _IdentityKeyType[_O]:
@@ -3459,14 +3459,15 @@ class Mapper(
         if adapter:
             pk_cols = [adapter.columns[c] for c in pk_cols]
 
+        mapping: RowMapping
         if hasattr(row, "_mapping"):
-            mapping = row._mapping  # type: ignore
+            mapping = row._mapping
         else:
-            mapping = cast("Mapping[Any, Any]", row)
+            mapping = row  # type: ignore[assignment]
 
         return (
             self._identity_class,
-            tuple(mapping[column] for column in pk_cols),  # type: ignore
+            tuple(mapping[column] for column in pk_cols),
             identity_token,
         )
 

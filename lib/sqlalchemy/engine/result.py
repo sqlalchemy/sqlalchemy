@@ -52,11 +52,11 @@ else:
     from sqlalchemy.cyextension.resultproxy import tuplegetter as tuplegetter
 
 if typing.TYPE_CHECKING:
-    from ..sql.schema import Column
+    from ..sql.elements import SQLCoreOperations
     from ..sql.type_api import _ResultProcessorType
 
-_KeyType = Union[str, "Column[Any]"]
-_KeyIndexType = Union[str, "Column[Any]", int]
+_KeyType = Union[str, "SQLCoreOperations[Any]"]
+_KeyIndexType = Union[_KeyType, int]
 
 # is overridden in cursor using _CursorKeyMapRecType
 _KeyMapRecType = Any
