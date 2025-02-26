@@ -1826,3 +1826,9 @@ class SuiteRequirements(Requirements):
     def supports_bitwise_shift(self):
         """Target database supports bitwise left or right shift"""
         return exclusions.closed()
+
+    @property
+    def like_escapes(self):
+        """Target backend supports custom ESCAPE characters
+        with LIKE comparisons"""
+        return exclusions.open()
