@@ -1541,6 +1541,7 @@ class LikeFunctionsTest(fixtures.TablesTest):
         col = self.tables.some_table.c.data
         self._test(col.startswith("ab%c"), {1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
+    @testing.requires.like_escapes
     def test_startswith_autoescape(self):
         col = self.tables.some_table.c.data
         self._test(col.startswith("ab%c", autoescape=True), {3})
@@ -1552,10 +1553,12 @@ class LikeFunctionsTest(fixtures.TablesTest):
             {1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
         )
 
+    @testing.requires.like_escapes
     def test_startswith_escape(self):
         col = self.tables.some_table.c.data
         self._test(col.startswith("ab##c", escape="#"), {7})
 
+    @testing.requires.like_escapes
     def test_startswith_autoescape_escape(self):
         col = self.tables.some_table.c.data
         self._test(col.startswith("ab%c", autoescape=True, escape="#"), {3})
@@ -1571,14 +1574,17 @@ class LikeFunctionsTest(fixtures.TablesTest):
             col.endswith(literal_column("'e%fg'")), {1, 2, 3, 4, 5, 6, 7, 8, 9}
         )
 
+    @testing.requires.like_escapes
     def test_endswith_autoescape(self):
         col = self.tables.some_table.c.data
         self._test(col.endswith("e%fg", autoescape=True), {6})
 
+    @testing.requires.like_escapes
     def test_endswith_escape(self):
         col = self.tables.some_table.c.data
         self._test(col.endswith("e##fg", escape="#"), {9})
 
+    @testing.requires.like_escapes
     def test_endswith_autoescape_escape(self):
         col = self.tables.some_table.c.data
         self._test(col.endswith("e%fg", autoescape=True, escape="#"), {6})
@@ -1588,14 +1594,17 @@ class LikeFunctionsTest(fixtures.TablesTest):
         col = self.tables.some_table.c.data
         self._test(col.contains("b%cde"), {1, 2, 3, 4, 5, 6, 7, 8, 9})
 
+    @testing.requires.like_escapes
     def test_contains_autoescape(self):
         col = self.tables.some_table.c.data
         self._test(col.contains("b%cde", autoescape=True), {3})
 
+    @testing.requires.like_escapes
     def test_contains_escape(self):
         col = self.tables.some_table.c.data
         self._test(col.contains("b##cde", escape="#"), {7})
 
+    @testing.requires.like_escapes
     def test_contains_autoescape_escape(self):
         col = self.tables.some_table.c.data
         self._test(col.contains("b%cd", autoescape=True, escape="#"), {3})
