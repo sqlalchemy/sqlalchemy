@@ -1219,7 +1219,11 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             "CHECK (a < b) DEFERRABLE INITIALLY DEFERRED",
         )
 
-    def test_external_ck_constraint_cancels_internal(self):
+    @testing.variation("isolate", [True, False])
+    @testing.variation("type_", ["add", "drop"])
+    def test_external_ck_constraint_cancels_internal(
+        self, isolate: testing.Variation, type_: testing.Variation
+    ):
         t, t2 = self._constraint_create_fixture()
 
         constraint = CheckConstraint(
@@ -1230,15 +1234,27 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             table=t,
         )
 
-        schema.AddConstraint(constraint)
+        if type_.add:
+            cls = schema.AddConstraint
+        elif type_.drop:
+            cls = schema.DropConstraint
+        else:
+            type_.fail()
 
-        # once we make an AddConstraint,
-        # inline compilation of the CONSTRAINT
-        # is disabled
-        self.assert_compile(
-            schema.CreateTable(t),
-            "CREATE TABLE tbl (a INTEGER, b INTEGER)",
-        )
+        if not isolate:
+            cls(constraint, isolate_from_table=False)
+            self.assert_compile(
+                schema.CreateTable(t),
+                "CREATE TABLE tbl (a INTEGER, b INTEGER, "
+                "CONSTRAINT my_test_constraint CHECK (a < b) "
+                "DEFERRABLE INITIALLY DEFERRED)",
+            )
+        else:
+            cls(constraint)
+            self.assert_compile(
+                schema.CreateTable(t),
+                "CREATE TABLE tbl (a INTEGER, b INTEGER)",
+            )
 
     def test_render_drop_constraint(self):
         t, t2 = self._constraint_create_fixture()
