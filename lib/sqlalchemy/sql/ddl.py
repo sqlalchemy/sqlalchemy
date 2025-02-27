@@ -751,11 +751,33 @@ class AddConstraint(_CreateBase):
 
     __visit_name__ = "add_constraint"
 
-    def __init__(self, element):
+    def __init__(
+        self,
+        element: Constraint,
+        *,
+        isolate_from_table: bool = True,
+    ):
+        """Construct a new :class:`.AddConstraint` construct.
+
+        :param element: a :class:`.Constraint` object
+
+        :param isolate_from_table: optional boolean, defaults to True.  Has
+         the effect of the incoming constraint being isolated from being
+         included in a CREATE TABLE sequence when associated with a
+         :class:`.Table`.
+
+         .. versionadded:: 2.0.39 - added
+            :paramref:`.AddConstraint.isolate_from_table`, defaulting
+            to True.  Previously, the behavior of this parameter was implicitly
+            turned on in all cases.
+
+        """
         super().__init__(element)
-        element._create_rule = util.portable_instancemethod(
-            self._create_rule_disable
-        )
+
+        if isolate_from_table:
+            element._create_rule = util.portable_instancemethod(
+                self._create_rule_disable
+            )
 
 
 class DropConstraint(_DropBase):
@@ -763,12 +785,40 @@ class DropConstraint(_DropBase):
 
     __visit_name__ = "drop_constraint"
 
-    def __init__(self, element, cascade=False, if_exists=False, **kw):
+    def __init__(
+        self,
+        element: Constraint,
+        *,
+        cascade: bool = False,
+        if_exists: bool = False,
+        isolate_from_table: bool = True,
+        **kw: Any,
+    ):
+        """Construct a new :class:`.DropConstraint` construct.
+
+        :param element: a :class:`.Constraint` object
+        :param cascade: optional boolean, indicates backend-specific
+         "CASCADE CONSTRAINT" directive should be rendered if available
+        :param if_exists: optional boolean, indicates backend-specific
+         "IF EXISTS" directive should be rendered if available
+        :param isolate_from_table: optional boolean, defaults to True.  Has
+         the effect of the incoming constraint being isolated from being
+         included in a CREATE TABLE sequence when associated with a
+         :class:`.Table`.
+
+         .. versionadded:: 2.0.39 - added
+            :paramref:`.DropConstraint.isolate_from_table`, defaulting
+            to True.  Previously, the behavior of this parameter was implicitly
+            turned on in all cases.
+
+        """
         self.cascade = cascade
         super().__init__(element, if_exists=if_exists, **kw)
-        element._create_rule = util.portable_instancemethod(
-            self._create_rule_disable
-        )
+
+        if isolate_from_table:
+            element._create_rule = util.portable_instancemethod(
+                self._create_rule_disable
+            )
 
 
 class SetTableComment(_CreateDropBase):
