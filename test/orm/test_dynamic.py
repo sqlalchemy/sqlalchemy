@@ -16,7 +16,6 @@ from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import noload
 from sqlalchemy.orm import PassiveFlag
 from sqlalchemy.orm import Query
 from sqlalchemy.orm import relationship
@@ -548,33 +547,6 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             [],
         )
 
-    @testing.combinations(("star",), ("attronly",), argnames="type_")
-    def test_noload_issue(self, type_, user_address_fixture):
-        """test #6420.   a noload that hits the dynamic loader
-        should have no effect.
-
-        """
-
-        User, Address = user_address_fixture()
-
-        s = fixture_session()
-
-        if type_ == "star":
-            u1 = s.query(User).filter_by(id=7).options(noload("*")).first()
-            assert "name" not in u1.__dict__["name"]
-        elif type_ == "attronly":
-            u1 = (
-                s.query(User)
-                .filter_by(id=7)
-                .options(noload(User.addresses))
-                .first()
-            )
-
-            eq_(u1.__dict__["name"], "jack")
-
-        # noload doesn't affect a dynamic loader, because it has no state
-        eq_(list(u1.addresses), [Address(id=1)])
-
     def test_m2m(self, order_item_fixture):
         Order, Item = order_item_fixture(
             items_args={"backref": backref("orders", lazy="dynamic")}
@@ -798,30 +770,6 @@ class WriteOnlyTest(
     _WriteOnlyFixture, _fixtures.FixtureTest, AssertsCompiledSQL
 ):
     __dialect__ = "default"
-
-    @testing.combinations(("star",), ("attronly",), argnames="type_")
-    def test_noload_issue(self, type_, user_address_fixture):
-        """test #6420.   a noload that hits the dynamic loader
-        should have no effect.
-
-        """
-
-        User, Address = user_address_fixture()
-
-        s = fixture_session()
-
-        if type_ == "star":
-            u1 = s.query(User).filter_by(id=7).options(noload("*")).first()
-            assert "name" not in u1.__dict__["name"]
-        elif type_ == "attronly":
-            u1 = (
-                s.query(User)
-                .filter_by(id=7)
-                .options(noload(User.addresses))
-                .first()
-            )
-
-            eq_(u1.__dict__["name"], "jack")
 
     def test_iteration_error(self, user_address_fixture):
         User, Address = user_address_fixture()

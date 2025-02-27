@@ -38,7 +38,6 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.assertsql import assert_engine
 from sqlalchemy.testing.assertsql import CompiledSQL
@@ -2476,65 +2475,6 @@ class ManualBackrefTest(_fixtures.FixtureTest):
             "a relationship on the target class.",
             configure_mappers,
         )
-
-
-class NoLoadBackPopulates(_fixtures.FixtureTest):
-    """test the noload stratgegy which unlike others doesn't use
-    lazyloader to set up instrumentation"""
-
-    def test_o2m(self):
-        users, Address, addresses, User = (
-            self.tables.users,
-            self.classes.Address,
-            self.tables.addresses,
-            self.classes.User,
-        )
-
-        self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties={
-                "addresses": relationship(
-                    Address, back_populates="user", lazy="noload"
-                )
-            },
-        )
-
-        self.mapper_registry.map_imperatively(
-            Address, addresses, properties={"user": relationship(User)}
-        )
-
-        u1 = User()
-        a1 = Address()
-        u1.addresses.append(a1)
-        is_(a1.user, u1)
-
-    def test_m2o(self):
-        users, Address, addresses, User = (
-            self.tables.users,
-            self.classes.Address,
-            self.tables.addresses,
-            self.classes.User,
-        )
-
-        self.mapper_registry.map_imperatively(
-            User, users, properties={"addresses": relationship(Address)}
-        )
-
-        self.mapper_registry.map_imperatively(
-            Address,
-            addresses,
-            properties={
-                "user": relationship(
-                    User, back_populates="addresses", lazy="noload"
-                )
-            },
-        )
-
-        u1 = User()
-        a1 = Address()
-        a1.user = u1
-        in_(a1, u1.addresses)
 
 
 class JoinConditionErrorTest(fixtures.TestBase):

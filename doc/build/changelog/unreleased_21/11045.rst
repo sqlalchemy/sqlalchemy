@@ -1,0 +1,8 @@
+.. change::
+    :tags: orm
+    :tickets: 11045
+
+    The :func:`_orm.noload` relationship loader option and related
+    ``lazy='noload'`` setting is deprecated and will be removed in a future
+    release.   This option was originally intended for custom loader patterns
+    that are no longer applicable in modern SQLAlchemy.

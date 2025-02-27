@@ -18,7 +18,7 @@ from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
 
 
-class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
+class DefaultStrategyOptionsTestFixtures(_fixtures.FixtureTest):
     def _assert_fully_loaded(self, users):
         # verify everything loaded, with no additional sql needed
         def go():
@@ -192,6 +192,9 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         )
 
         return fixture_session()
+
+
+class DefaultStrategyOptionsTest(DefaultStrategyOptionsTestFixtures):
 
     def test_downgrade_baseline(self):
         """Mapper strategy defaults load as expected
@@ -367,67 +370,6 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
 
         # lastly, make sure they actually loaded properly
         eq_(users, self.static.user_all_result)
-
-    def test_noload_with_joinedload(self):
-        """Mapper load strategy defaults can be downgraded with
-        noload('*') option, while explicit joinedload() option
-        is still honored"""
-        sess = self._downgrade_fixture()
-        users = []
-
-        # test noload('*') shuts off 'orders' subquery, only 1 sql
-        def go():
-            users[:] = (
-                sess.query(self.classes.User)
-                .options(sa.orm.noload("*"))
-                .options(joinedload(self.classes.User.addresses))
-                .order_by(self.classes.User.id)
-                .all()
-            )
-
-        self.assert_sql_count(testing.db, go, 1)
-
-        # verify all the addresses were joined loaded (no more sql)
-        self._assert_addresses_loaded(users)
-
-        # User.orders should have loaded "noload" (meaning [])
-        def go():
-            for u in users:
-                assert u.orders == []
-
-        self.assert_sql_count(testing.db, go, 0)
-
-    def test_noload_with_subqueryload(self):
-        """Mapper load strategy defaults can be downgraded with
-        noload('*') option, while explicit subqueryload() option
-        is still honored"""
-        sess = self._downgrade_fixture()
-        users = []
-
-        # test noload('*') option combined with subqueryload()
-        # shuts off 'addresses' load AND orders.items load: 2 sql expected
-        def go():
-            users[:] = (
-                sess.query(self.classes.User)
-                .options(sa.orm.noload("*"))
-                .options(subqueryload(self.classes.User.orders))
-                .order_by(self.classes.User.id)
-                .all()
-            )
-
-        self.assert_sql_count(testing.db, go, 2)
-
-        def go():
-            # Verify orders have already been loaded: 0 sql
-            for u, static in zip(users, self.static.user_all_result):
-                assert len(u.orders) == len(static.orders)
-            # Verify noload('*') prevented orders.items load
-            # and set 'items' to []
-            for u in users:
-                for o in u.orders:
-                    assert o.items == []
-
-        self.assert_sql_count(testing.db, go, 0)
 
     def test_joined(self):
         """Mapper load strategy defaults can be upgraded with
@@ -652,99 +594,6 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
 
         # verify everything loaded, with no additional sql needed
         self._assert_fully_loaded(users)
-
-
-class NoLoadTest(_fixtures.FixtureTest):
-    run_inserts = "once"
-    run_deletes = None
-
-    def test_o2m_noload(self):
-        Address, addresses, users, User = (
-            self.classes.Address,
-            self.tables.addresses,
-            self.tables.users,
-            self.classes.User,
-        )
-
-        m = self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties=dict(
-                addresses=relationship(
-                    self.mapper_registry.map_imperatively(Address, addresses),
-                    lazy="noload",
-                )
-            ),
-        )
-        q = fixture_session().query(m)
-        result = [None]
-
-        def go():
-            x = q.filter(User.id == 7).all()
-            x[0].addresses
-            result[0] = x
-
-        self.assert_sql_count(testing.db, go, 1)
-
-        self.assert_result(
-            result[0], User, {"id": 7, "addresses": (Address, [])}
-        )
-
-    def test_upgrade_o2m_noload_lazyload_option(self):
-        Address, addresses, users, User = (
-            self.classes.Address,
-            self.tables.addresses,
-            self.tables.users,
-            self.classes.User,
-        )
-
-        m = self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties=dict(
-                addresses=relationship(
-                    self.mapper_registry.map_imperatively(Address, addresses),
-                    lazy="noload",
-                )
-            ),
-        )
-        q = fixture_session().query(m).options(sa.orm.lazyload(User.addresses))
-        result = [None]
-
-        def go():
-            x = q.filter(User.id == 7).all()
-            x[0].addresses
-            result[0] = x
-
-        self.sql_count_(2, go)
-
-        self.assert_result(
-            result[0], User, {"id": 7, "addresses": (Address, [{"id": 1}])}
-        )
-
-    def test_m2o_noload_option(self):
-        Address, addresses, users, User = (
-            self.classes.Address,
-            self.tables.addresses,
-            self.tables.users,
-            self.classes.User,
-        )
-        self.mapper_registry.map_imperatively(
-            Address, addresses, properties={"user": relationship(User)}
-        )
-        self.mapper_registry.map_imperatively(User, users)
-        s = fixture_session()
-        a1 = (
-            s.query(Address)
-            .filter_by(id=1)
-            .options(sa.orm.noload(Address.user))
-            .first()
-        )
-
-        def go():
-            eq_(a1.user, None)
-
-        self.sql_count_(0, go)
 
 
 class Issue11292Test(fixtures.DeclarativeMappedTest):

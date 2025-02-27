@@ -1846,6 +1846,10 @@ def _warnings_warn(
     category: Optional[Type[Warning]] = None,
     stacklevel: int = 2,
 ) -> None:
+
+    if category is None and isinstance(message, Warning):
+        category = type(message)
+
     # adjust the given stacklevel to be outside of SQLAlchemy
     try:
         frame = sys._getframe(stacklevel)

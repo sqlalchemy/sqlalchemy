@@ -3222,7 +3222,7 @@ class JoinedNoLoadConflictTest(fixtures.DeclarativeMappedTest):
             name = Column(String(20))
 
             children = relationship(
-                "Child", back_populates="parent", lazy="noload"
+                "Child", back_populates="parent", lazy="raise"
             )
 
         class Child(ComparableEntity, Base):
