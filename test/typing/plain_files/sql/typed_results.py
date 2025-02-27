@@ -8,6 +8,7 @@ from typing import Type
 from sqlalchemy import Column
 from sqlalchemy import column
 from sqlalchemy import create_engine
+from sqlalchemy import func
 from sqlalchemy import insert
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
@@ -117,9 +118,22 @@ def t_result_ctxmanager() -> None:
         reveal_type(r4)
 
 
-def t_core_mappings() -> None:
+def t_mappings() -> None:
     r = connection.execute(select(t_user)).mappings().one()
-    r.get(t_user.c.id)
+    r["name"]  # string
+    r.get(t_user.c.id)  # column
+
+    r2 = connection.execute(select(User)).mappings().one()
+    r2[User.id]  # orm attribute
+    r2[User.__table__.c.id]  # form clause column
+
+    m2 = User.id * 2
+    s2 = User.__table__.c.id + 2
+    fn = func.abs(User.id)
+    r3 = connection.execute(select(m2, s2, fn)).mappings().one()
+    r3[m2]  # col element
+    r3[s2]  # also col element
+    r3[fn]  # function
 
 
 def t_entity_varieties() -> None:
