@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any as typing_Any
 from typing import Optional
 from typing import TypeVar
 
@@ -24,7 +24,7 @@ from ...sql import operators
 from ...sql._typing import _TypeEngineArgument
 
 
-_T = TypeVar("_T", bound=Any)
+_T = TypeVar("_T", bound=typing_Any)
 
 
 def Any(other, arrexpr, operator=operators.eq):
@@ -237,7 +237,7 @@ class ARRAY(sqltypes.ARRAY):
 
     def __init__(
         self,
-        item_type: _TypeEngineArgument[Any],
+        item_type: _TypeEngineArgument[typing_Any],
         as_tuple: bool = False,
         dimensions: Optional[int] = None,
         zero_indexes: bool = False,
