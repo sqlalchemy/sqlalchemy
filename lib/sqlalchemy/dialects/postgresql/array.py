@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 
 from __future__ import annotations
@@ -29,6 +28,7 @@ from ...sql import operators
 
 if TYPE_CHECKING:
     from ...engine.interfaces import Dialect
+    from ...sql._typing import _ColumnExpressionArgument
     from ...sql._typing import _TypeEngineArgument
     from ...sql.elements import ColumnElement
     from ...sql.elements import Grouping
@@ -45,22 +45,30 @@ if TYPE_CHECKING:
 _T = TypeVar("_T", bound=typing_Any)
 
 
-def Any(other, arrexpr, operator=operators.eq):
+def Any(
+    other: typing_Any,
+    arrexpr: _ColumnExpressionArgument[_T],
+    operator: OperatorType = operators.eq,
+) -> ColumnElement[bool]:
     """A synonym for the ARRAY-level :meth:`.ARRAY.Comparator.any` method.
     See that method for details.
 
     """
 
-    return arrexpr.any(other, operator)
+    return arrexpr.any(other, operator)  # type: ignore[no-any-return, union-attr]  # noqa: E501
 
 
-def All(other, arrexpr, operator=operators.eq):
+def All(
+    other: typing_Any,
+    arrexpr: _ColumnExpressionArgument[_T],
+    operator: OperatorType = operators.eq,
+) -> ColumnElement[bool]:
     """A synonym for the ARRAY-level :meth:`.ARRAY.Comparator.all` method.
     See that method for details.
 
     """
 
-    return arrexpr.all(other, operator)
+    return arrexpr.all(other, operator)  # type: ignore[no-any-return, union-attr]  # noqa: E501
 
 
 class array(expression.ExpressionClauseList[_T]):
