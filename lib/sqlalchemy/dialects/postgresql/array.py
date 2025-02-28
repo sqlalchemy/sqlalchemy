@@ -11,8 +11,11 @@ from __future__ import annotations
 
 import re
 from typing import Any as typing_Any
+from typing import Iterable
 from typing import Optional
+from typing import TYPE_CHECKING
 from typing import TypeVar
+from typing import Union
 
 from .operators import CONTAINED_BY
 from .operators import CONTAINS
@@ -21,7 +24,15 @@ from ... import types as sqltypes
 from ... import util
 from ...sql import expression
 from ...sql import operators
-from ...sql._typing import _TypeEngineArgument
+
+if TYPE_CHECKING:
+    from ...sql._typing import _TypeEngineArgument
+    from ...sql.elements import Grouping
+    from ...sql.expression import BindParameter
+    from ...sql.operators import OperatorType
+    from ...sql.selectable import _SelectIterable
+    from ...sql.type_api import TypeEngine
+    from ...util.typing import Self
 
 
 _T = TypeVar("_T", bound=typing_Any)
@@ -107,15 +118,20 @@ class array(expression.ExpressionClauseList[_T]):
     stringify_dialect = "postgresql"
     inherit_cache = True
 
-    def __init__(self, clauses, **kw):
-        type_arg = kw.pop("type_", None)
+    def __init__(
+        self,
+        clauses: Iterable[_T],
+        *,
+        type_: Optional[_TypeEngineArgument[_T]] = None,
+        **kw: typing_Any,
+    ):
         super().__init__(operators.comma_op, *clauses, **kw)
 
         self._type_tuple = [arg.type for arg in self.clauses]
 
         main_type = (
-            type_arg
-            if type_arg is not None
+            type_
+            if type_ is not None
             else self._type_tuple[0] if self._type_tuple else sqltypes.NULLTYPE
         )
 
@@ -127,15 +143,21 @@ class array(expression.ExpressionClauseList[_T]):
                     if main_type.dimensions is not None
                     else 2
                 ),
-            )
+            )  # type: ignore[assignment]
         else:
-            self.type = ARRAY(main_type)
+            self.type = ARRAY(main_type)  # type: ignore[assignment]
 
     @property
-    def _select_iterable(self):
+    def _select_iterable(self) -> _SelectIterable:
         return (self,)
 
-    def _bind_param(self, operator, obj, _assume_scalar=False, type_=None):
+    def _bind_param(
+        self,
+        operator: OperatorType,
+        obj: typing_Any,
+        type_: Optional[TypeEngine[_T]] = None,
+        _assume_scalar: bool = False,
+    ) -> BindParameter[_T]:
         if _assume_scalar or operator is operators.getitem:
             return expression.BindParameter(
                 None,
@@ -154,9 +176,11 @@ class array(expression.ExpressionClauseList[_T]):
                     )
                     for o in obj
                 ]
-            )
+            )  # type: ignore[return-value]
 
-    def self_group(self, against=None):
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> Union[Self, Grouping[_T]]:
         if against in (operators.any_op, operators.all_op, operators.getitem):
             return expression.Grouping(self)
         else:
