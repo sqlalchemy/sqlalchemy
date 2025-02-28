@@ -82,6 +82,7 @@ from ..util.typing import Self
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
 
+
 if typing.TYPE_CHECKING:
     from ._typing import _ByArgument
     from ._typing import _ColumnExpressionArgument
@@ -118,6 +119,7 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import CoreExecuteOptionsParameter
     from ..engine.interfaces import SchemaTranslateMapType
     from ..engine.result import Result
+
 
 _NUMERIC = Union[float, Decimal]
 _NUMBER = Union[float, int, Decimal]
@@ -2219,8 +2221,8 @@ class TypeClause(DQLDMLClauseElement):
         ("type", InternalTraversal.dp_type)
     ]
 
-    def __init__(self, type_):
-        self.type = type_
+    def __init__(self, type_: TypeEngine[Any]):
+        self.type: TypeEngine[Any] = type_
 
 
 class TextClause(
@@ -3882,10 +3884,9 @@ class BinaryExpression(OperatorExpression[_T]):
 
     """
 
-    modifiers: Optional[Mapping[str, Any]]
-
     left: ColumnElement[Any]
     right: ColumnElement[Any]
+    modifiers: Mapping[str, Any]
 
     def __init__(
         self,

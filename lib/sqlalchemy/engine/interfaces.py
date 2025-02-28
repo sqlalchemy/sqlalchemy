@@ -70,6 +70,7 @@ if TYPE_CHECKING:
     from ..sql.sqltypes import Integer
     from ..sql.type_api import _TypeMemoDict
     from ..sql.type_api import TypeEngine
+    from ..util.langhelpers import generic_fn_descriptor
 
 ConnectArgsType = Tuple[Sequence[str], MutableMapping[str, Any]]
 
@@ -122,7 +123,7 @@ class DBAPIConnection(Protocol):
 
     def commit(self) -> None: ...
 
-    def cursor(self) -> DBAPICursor: ...
+    def cursor(self, *args: Any, **kwargs: Any) -> DBAPICursor: ...
 
     def rollback(self) -> None: ...
 
@@ -781,7 +782,7 @@ class Dialect(EventTarget):
     max_identifier_length: int
     """The maximum length of identifier names."""
 
-    supports_server_side_cursors: bool
+    supports_server_side_cursors: Union[generic_fn_descriptor[bool], bool]
     """indicates if the dialect supports server side cursors"""
 
     server_side_cursors: bool
@@ -2483,7 +2484,7 @@ class Dialect(EventTarget):
 
     def get_isolation_level_values(
         self, dbapi_conn: DBAPIConnection
-    ) -> List[IsolationLevel]:
+    ) -> Sequence[IsolationLevel]:
         """return a sequence of string isolation level names that are accepted
         by this dialect.
 
