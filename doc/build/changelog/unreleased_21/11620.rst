@@ -1,0 +1,14 @@
+.. change::
+    :tags: sql server, fairly easy, sql
+    :tickets: 11620
+        Refactored identity insert handling to improve readability and maintainability:
+        - Extracted identity insert logic into helper methods:
+            * : Determines if identity insert should be enabled.
+            * : Handles warnings or errors based on ``warn_on_identity_insert``.
+        - Simplified the main method by delegating responsibilities to these helper methods.
+        - Added validation for ``warn_on_identity_insert``:
+            * Ensures the value is one of ``"warn"``, ``"error"``, or ``"silence"``.
+            * Raises ``ValueError`` for invalid values.
+        - Improved type safety and clarity for identity insert behavior.
+        - Added warnings and error messages to guide users when ``warn_on_identity_insert`` is set to ``"warn"`` or ``"error"``.
+        This refactor enhances code organization, reduces redundancy, and ensures consistent behavior for identity insert handling.
