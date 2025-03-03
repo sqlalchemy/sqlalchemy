@@ -3601,6 +3601,7 @@ class PGDialect(default.DefaultDialect):
                         pg_catalog.pg_sequence.c.seqcache,
                         "cycle",
                         pg_catalog.pg_sequence.c.seqcycle,
+                        type_=sqltypes.JSON(),
                     )
                 )
                 .select_from(pg_catalog.pg_sequence)
@@ -5010,11 +5011,12 @@ class PGDialect(default.DefaultDialect):
                     key=lambda t: t[0],
                 )
                 for name, def_ in sorted_constraints:
-                    # constraint is in the form "CHECK (expression)".
+                    # constraint is in the form "CHECK (expression)"
+                    # or "NOT NULL". Ignore the "NOT NULL" and
                     # remove "CHECK (" and the tailing ")".
-                    check = def_[7:-1]
-                    constraints.append({"name": name, "check": check})
-
+                    if def_.casefold().startswith("check"):
+                        check = def_[7:-1]
+                        constraints.append({"name": name, "check": check})
             domain_rec: ReflectedDomain = {
                 "name": domain["name"],
                 "schema": domain["schema"],
