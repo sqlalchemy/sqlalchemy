@@ -2813,7 +2813,7 @@ class JSON(Indexable, TypeEngine[Any]):
 
 
 class ARRAY(
-    SchemaEventTarget, Indexable, Concatenable, TypeEngine[Sequence[Any]]
+    SchemaEventTarget, Indexable, Concatenable, TypeEngine[Sequence[_T]]
 ):
     """Represent a SQL Array type.
 
@@ -2936,7 +2936,7 @@ class ARRAY(
 
     def __init__(
         self,
-        item_type: _TypeEngineArgument[Any],
+        item_type: _TypeEngineArgument[_T],
         as_tuple: bool = False,
         dimensions: Optional[int] = None,
         zero_indexes: bool = False,
@@ -2985,8 +2985,8 @@ class ARRAY(
         self.zero_indexes = zero_indexes
 
     class Comparator(
-        Indexable.Comparator[Sequence[Any]],
-        Concatenable.Comparator[Sequence[Any]],
+        Indexable.Comparator[Sequence[_T]],
+        Concatenable.Comparator[Sequence[_T]],
     ):
         """Define comparison operations for :class:`_types.ARRAY`.
 
@@ -2997,7 +2997,7 @@ class ARRAY(
 
         __slots__ = ()
 
-        type: ARRAY
+        type: ARRAY[_T]
 
         @overload
         def _setup_getitem(
