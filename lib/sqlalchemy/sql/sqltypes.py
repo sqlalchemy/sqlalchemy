@@ -2591,6 +2591,8 @@ class JSON(Indexable, TypeEngine[Any]):
 
         __slots__ = ()
 
+        type: JSON
+
         def _setup_getitem(self, index):
             if not isinstance(index, str) and isinstance(
                 index, collections_abc.Sequence
