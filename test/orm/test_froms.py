@@ -1893,7 +1893,9 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
                 .order_by(User.id)
             )
 
-        compile_state = _ORMSelectCompileState.create_for_statement(stmt, None)
+        compile_state = _ORMSelectCompileState._create_orm_context(
+            stmt, toplevel=True, compiler=None
+        )
         is_(compile_state._primary_entity, None)
 
     def test_column_queries_one(self):
