@@ -265,10 +265,10 @@ class AbstractORMCompileState(CompileState):
     @classmethod
     def create_for_statement(
         cls,
-        statement: Union[Select, FromStatement],
-        compiler: Optional[SQLCompiler],
+        statement: Executable,
+        compiler: SQLCompiler,
         **kw: Any,
-    ) -> AbstractORMCompileState:
+    ) -> CompileState:
         """Create a context for a statement given a :class:`.Compiler`.
 
         This method is always invoked in the context of SQLCompiler.process().
@@ -437,15 +437,30 @@ class ORMCompileState(AbstractORMCompileState):
     def __init__(self, *arg, **kw):
         raise NotImplementedError()
 
-    if TYPE_CHECKING:
+    @classmethod
+    def create_for_statement(
+        cls,
+        statement: Executable,
+        compiler: SQLCompiler,
+        **kw: Any,
+    ) -> ORMCompileState:
+        return cls._create_orm_context(
+            cast("Union[Select, FromStatement]", statement),
+            toplevel=not compiler.stack,
+            compiler=compiler,
+            **kw,
+        )
 
-        @classmethod
-        def create_for_statement(
-            cls,
-            statement: Union[Select, FromStatement],
-            compiler: Optional[SQLCompiler],
-            **kw: Any,
-        ) -> ORMCompileState: ...
+    @classmethod
+    def _create_orm_context(
+        cls,
+        statement: Union[Select, FromStatement],
+        *,
+        toplevel: bool,
+        compiler: Optional[SQLCompiler],
+        **kw: Any,
+    ) -> ORMCompileState:
+        raise NotImplementedError()
 
     def _append_dedupe_col_collection(self, obj, col_collection):
         dedupe = self.dedupe_columns
@@ -755,12 +770,16 @@ class ORMFromStatementCompileState(ORMCompileState):
     eager_joins = _EMPTY_DICT
 
     @classmethod
-    def create_for_statement(
+    def _create_orm_context(
         cls,
-        statement_container: Union[Select, FromStatement],
+        statement: Union[Select, FromStatement],
+        *,
+        toplevel: bool,
         compiler: Optional[SQLCompiler],
         **kw: Any,
     ) -> ORMFromStatementCompileState:
+        statement_container = statement
+
         assert isinstance(statement_container, FromStatement)
 
         if compiler is not None and compiler.stack:
@@ -1067,20 +1086,16 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
     _having_criteria = ()
 
     @classmethod
-    def create_for_statement(
+    def _create_orm_context(
         cls,
         statement: Union[Select, FromStatement],
+        *,
+        toplevel: bool,
         compiler: Optional[SQLCompiler],
         **kw: Any,
     ) -> ORMSelectCompileState:
-        """compiler hook, we arrive here from compiler.visit_select() only."""
 
         self = cls.__new__(cls)
-
-        if compiler is not None:
-            toplevel = not compiler.stack
-        else:
-            toplevel = True
 
         select_statement = statement
 
