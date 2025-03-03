@@ -3340,7 +3340,9 @@ class Query(
             ORMCompileState._get_plugin_class_for_plugin(stmt, "orm"),
         )
 
-        return compile_state_cls.create_for_statement(stmt, None)
+        return compile_state_cls._create_orm_context(
+            stmt, toplevel=True, compiler=None
+        )
 
     def _compile_context(self, for_statement: bool = False) -> QueryContext:
         compile_state = self._compile_state(for_statement=for_statement)
