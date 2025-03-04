@@ -68,7 +68,6 @@ if TYPE_CHECKING:
     from ._orm_types import DMLStrategyArgument
     from ._orm_types import SynchronizeSessionArgument
     from ._typing import _CLE
-    from .compiler import SQLCompiler
     from .elements import BindParameter
     from .elements import ClauseList
     from .elements import ColumnClause  # noqa
@@ -658,9 +657,7 @@ class CompileState:
     _ambiguous_table_name_map: Optional[_AmbiguousTableNameMap]
 
     @classmethod
-    def create_for_statement(
-        cls, statement: Executable, compiler: SQLCompiler, **kw: Any
-    ) -> CompileState:
+    def create_for_statement(cls, statement, compiler, **kw):
         # factory construction.
 
         if statement._propagate_attrs:

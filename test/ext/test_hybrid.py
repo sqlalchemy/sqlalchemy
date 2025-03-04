@@ -22,7 +22,6 @@ from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
-from sqlalchemy.orm.context import ORMSelectCompileState
 from sqlalchemy.sql import coercions
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import roles
@@ -532,9 +531,7 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT a.id, a.foo FROM a",
         )
 
-        compile_state = ORMSelectCompileState._create_orm_context(
-            stmt, toplevel=True, compiler=None
-        )
+        compile_state = stmt._compile_state_factory(stmt, None)
         eq_(
             compile_state._column_naming_convention(
                 LABEL_STYLE_DISAMBIGUATE_ONLY, legacy=False

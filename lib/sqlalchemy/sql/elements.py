@@ -298,7 +298,8 @@ class CompilerElement(Visitable):
             if bind:
                 dialect = bind.dialect
             elif self.stringify_dialect == "default":
-                dialect = self._default_dialect()
+                default = util.preloaded.engine_default
+                dialect = default.StrCompileDialect()
             else:
                 url = util.preloaded.engine_url
                 dialect = url.URL.create(
@@ -306,10 +307,6 @@ class CompilerElement(Visitable):
                 ).get_dialect()()
 
         return self._compiler(dialect, **kw)
-
-    def _default_dialect(self):
-        default = util.preloaded.engine_default
-        return default.StrCompileDialect()
 
     def _compiler(self, dialect: Dialect, **kw: Any) -> Compiled:
         """Return a compiler appropriate for this ClauseElement, given a
@@ -406,10 +403,6 @@ class ClauseElement(
 
         self._propagate_attrs = util.immutabledict(values)
         return self
-
-    def _default_compiler(self) -> SQLCompiler:
-        dialect = self._default_dialect()
-        return dialect.statement_compiler(dialect, self)  # type: ignore
 
     def _clone(self, **kw: Any) -> Self:
         """Create a shallow copy of this ClauseElement.

@@ -4694,7 +4694,7 @@ class SelectState(util.MemoizedSlots, CompileState):
     def __init__(
         self,
         statement: Select[Any],
-        compiler: SQLCompiler,
+        compiler: Optional[SQLCompiler],
         **kw: Any,
     ):
         self.statement = statement
@@ -5742,9 +5742,8 @@ class Select(
             :attr:`_sql.Select.columns_clause_froms`
 
         """
-        compiler = self._default_compiler()
 
-        return self._compile_state_factory(self, compiler)._get_display_froms()
+        return self._compile_state_factory(self, None)._get_display_froms()
 
     @property
     @util.deprecated(
