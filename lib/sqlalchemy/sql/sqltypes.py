@@ -72,6 +72,7 @@ if TYPE_CHECKING:
     from .schema import MetaData
     from .type_api import _BindProcessorType
     from .type_api import _ComparatorFactory
+    from .type_api import _LiteralProcessorType
     from .type_api import _MatchedOnType
     from .type_api import _ResultProcessorType
     from ..engine.interfaces import Dialect
@@ -2465,17 +2466,21 @@ class JSON(Indexable, TypeEngine[Any]):
         _integer = Integer()
         _string = String()
 
-        def string_bind_processor(self, dialect):
+        def string_bind_processor(
+            self, dialect: Dialect
+        ) -> Optional[_BindProcessorType[str]]:
             return self._string._cached_bind_processor(dialect)
 
-        def string_literal_processor(self, dialect):
+        def string_literal_processor(
+            self, dialect: Dialect
+        ) -> Optional[_LiteralProcessorType[str]]:
             return self._string._cached_literal_processor(dialect)
 
-        def bind_processor(self, dialect):
+        def bind_processor(self, dialect: Dialect) -> _BindProcessorType[Any]:
             int_processor = self._integer._cached_bind_processor(dialect)
             string_processor = self.string_bind_processor(dialect)
 
-            def process(value):
+            def process(value: Optional[Any]) -> Any:
                 if int_processor and isinstance(value, int):
                     value = int_processor(value)
                 elif string_processor and isinstance(value, str):
@@ -2484,11 +2489,13 @@ class JSON(Indexable, TypeEngine[Any]):
 
             return process
 
-        def literal_processor(self, dialect):
+        def literal_processor(
+            self, dialect: Dialect
+        ) -> _LiteralProcessorType[Any]:
             int_processor = self._integer._cached_literal_processor(dialect)
             string_processor = self.string_literal_processor(dialect)
 
-            def process(value):
+            def process(value: Optional[Any]) -> Any:
                 if int_processor and isinstance(value, int):
                     value = int_processor(value)
                 elif string_processor and isinstance(value, str):
@@ -2538,6 +2545,8 @@ class JSON(Indexable, TypeEngine[Any]):
         """Define comparison operations for :class:`_types.JSON`."""
 
         __slots__ = ()
+
+        type: JSON
 
         def _setup_getitem(self, index):
             if not isinstance(index, str) and isinstance(
