@@ -22,6 +22,7 @@ from typing import Callable
 from typing import cast
 from typing import Dict
 from typing import Generic
+from typing import Iterable
 from typing import List
 from typing import Optional
 from typing import overload
@@ -69,10 +70,12 @@ from ..util.typing import TupleAny
 if TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
     from ._typing import _TypeEngineArgument
+    from .elements import ColumnElement
     from .operators import OperatorType
     from .schema import MetaData
     from .type_api import _BindProcessorType
     from .type_api import _ComparatorFactory
+    from .type_api import _LiteralProcessorType
     from .type_api import _MatchedOnType
     from .type_api import _ResultProcessorType
     from ..engine.interfaces import Dialect
@@ -80,6 +83,7 @@ if TYPE_CHECKING:
 _T = TypeVar("_T", bound="Any")
 _CT = TypeVar("_CT", bound=Any)
 _TE = TypeVar("_TE", bound="TypeEngine[Any]")
+_P = TypeVar("_P")
 
 
 class HasExpressionLookup(TypeEngineMixin):
@@ -2987,7 +2991,20 @@ class ARRAY(
 
         type: ARRAY
 
-        def _setup_getitem(self, index):
+        @overload
+        def _setup_getitem(
+            self, index: int
+        ) -> Tuple[OperatorType, int, TypeEngine[Any]]: ...
+
+        @overload
+        def _setup_getitem(
+            self, index: slice
+        ) -> Tuple[OperatorType, Slice, TypeEngine[Any]]: ...
+
+        def _setup_getitem(self, index: Union[int, slice]) -> Union[
+            Tuple[OperatorType, int, TypeEngine[Any]],
+            Tuple[OperatorType, Slice, TypeEngine[Any]],
+        ]:
             arr_type = self.type
 
             return_type: TypeEngine[Any]
@@ -3013,7 +3030,7 @@ class ARRAY(
 
                 return operators.getitem, index, return_type
 
-        def contains(self, *arg, **kw):
+        def contains(self, *arg: Any, **kw: Any) -> ColumnElement[bool]:
             """``ARRAY.contains()`` not implemented for the base ARRAY type.
             Use the dialect-specific ARRAY type.
 
@@ -3027,7 +3044,9 @@ class ARRAY(
             )
 
         @util.preload_module("sqlalchemy.sql.elements")
-        def any(self, other, operator=None):
+        def any(
+            self, other: Any, operator: Optional[OperatorType] = None
+        ) -> ColumnElement[bool]:
             """Return ``other operator ANY (array)`` clause.
 
             .. legacy:: This method is an :class:`_types.ARRAY` - specific
@@ -3074,7 +3093,9 @@ class ARRAY(
             )
 
         @util.preload_module("sqlalchemy.sql.elements")
-        def all(self, other, operator=None):
+        def all(
+            self, other: Any, operator: Optional[OperatorType] = None
+        ) -> ColumnElement[bool]:
             """Return ``other operator ALL (array)`` clause.
 
             .. legacy:: This method is an :class:`_types.ARRAY` - specific
@@ -3123,23 +3144,27 @@ class ARRAY(
     comparator_factory = Comparator
 
     @property
-    def hashable(self):
+    def hashable(self) -> bool:  # type: ignore[override]
         return self.as_tuple
 
     @property
-    def python_type(self):
+    def python_type(self) -> Type[Any]:
         return list
 
-    def compare_values(self, x, y):
-        return x == y
+    def compare_values(self, x: Any, y: Any) -> bool:
+        return x == y  # type: ignore[no-any-return]
 
-    def _set_parent(self, parent, outer=False, **kw):
+    def _set_parent(
+        self, parent: SchemaEventTarget, outer: bool = False, **kw: Any
+    ) -> None:
         """Support SchemaEventTarget"""
 
         if not outer and isinstance(self.item_type, SchemaEventTarget):
             self.item_type._set_parent(parent, **kw)
 
-    def _set_parent_with_dispatch(self, parent, **kw):
+    def _set_parent_with_dispatch(
+        self, parent: SchemaEventTarget, **kw: Any
+    ) -> None:
         """Support SchemaEventTarget"""
 
         super()._set_parent_with_dispatch(parent, outer=True)
@@ -3147,17 +3172,19 @@ class ARRAY(
         if isinstance(self.item_type, SchemaEventTarget):
             self.item_type._set_parent_with_dispatch(parent)
 
-    def literal_processor(self, dialect):
+    def literal_processor(
+        self, dialect: Dialect
+    ) -> Optional[_LiteralProcessorType[_T]]:
         item_proc = self.item_type.dialect_impl(dialect).literal_processor(
             dialect
         )
         if item_proc is None:
             return None
 
-        def to_str(elements):
+        def to_str(elements: Iterable[Any]) -> str:
             return f"[{', '.join(elements)}]"
 
-        def process(value):
+        def process(value: Sequence[Any]) -> str:
             inner = self._apply_item_processor(
                 value, item_proc, self.dimensions, to_str
             )
@@ -3165,7 +3192,13 @@ class ARRAY(
 
         return process
 
-    def _apply_item_processor(self, arr, itemproc, dim, collection_callable):
+    def _apply_item_processor(
+        self,
+        arr: Sequence[Any],
+        itemproc: Optional[Callable[[Any], Any]],
+        dim: Optional[int],
+        collection_callable: Callable[[Iterable[Any]], _P],
+    ) -> _P:
         """Helper method that can be used by bind_processor(),
         literal_processor(), etc. to apply an item processor to elements of
         an array value, taking into account the 'dimensions' for this
