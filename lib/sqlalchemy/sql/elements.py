@@ -3788,7 +3788,9 @@ class CollectionAggregate(UnaryExpression[_T]):
     # operate and reverse_operate are hardwired to
     # dispatch onto the type comparator directly, so that we can
     # ensure "reversed" behavior.
-    def operate(self, op, *other, **kwargs):
+    def operate(
+        self, op: OperatorType, *other: Any, **kwargs: Any
+    ) -> ColumnElement[_T]:
         if not operators.is_comparison(op):
             raise exc.ArgumentError(
                 "Only comparison operators may be used with ANY/ALL"
@@ -3796,7 +3798,9 @@ class CollectionAggregate(UnaryExpression[_T]):
         kwargs["reverse"] = True
         return self.comparator.operate(operators.mirror(op), *other, **kwargs)
 
-    def reverse_operate(self, op, other, **kwargs):
+    def reverse_operate(
+        self, op: OperatorType, other: Any, **kwargs: Any
+    ) -> ColumnElement[_T]:
         # comparison operators should never call reverse_operate
         assert not operators.is_comparison(op)
         raise exc.ArgumentError(
