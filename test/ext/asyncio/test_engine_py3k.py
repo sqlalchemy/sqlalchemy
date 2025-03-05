@@ -1335,11 +1335,12 @@ class AsyncResultTest(EngineFixture):
     @async_test
     async def test_scalars(self, async_engine, case):
         users = self.tables.users
+        stmt = select(users).order_by(users.c.user_id)
         async with async_engine.connect() as conn:
             if case == "scalars":
-                result = (await conn.scalars(select(users))).all()
+                result = (await conn.scalars(stmt)).all()
             elif case == "stream_scalars":
-                result = await (await conn.stream_scalars(select(users))).all()
+                result = await (await conn.stream_scalars(stmt)).all()
 
         eq_(result, list(range(1, 20)))
 

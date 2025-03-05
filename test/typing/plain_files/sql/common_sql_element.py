@@ -193,35 +193,35 @@ first_stmt = select(str_col, int_col)
 second_stmt = select(str_col, int_col)
 third_stmt = select(int_col, str_col)
 
-# EXPECTED_TYPE: CompoundSelect[tuple[str, int]]
+# EXPECTED_TYPE: CompoundSelect[Tuple[str, int]]
 reveal_type(union(first_stmt, second_stmt))
-# EXPECTED_TYPE: CompoundSelect[tuple[str, int]]
+# EXPECTED_TYPE: CompoundSelect[Tuple[str, int]]
 reveal_type(union_all(first_stmt, second_stmt))
-# EXPECTED_TYPE: CompoundSelect[tuple[str, int]]
+# EXPECTED_TYPE: CompoundSelect[Tuple[str, int]]
 reveal_type(except_(first_stmt, second_stmt))
-# EXPECTED_TYPE: CompoundSelect[tuple[str, int]]
+# EXPECTED_TYPE: CompoundSelect[Tuple[str, int]]
 reveal_type(except_all(first_stmt, second_stmt))
-# EXPECTED_TYPE: CompoundSelect[tuple[str, int]]
+# EXPECTED_TYPE: CompoundSelect[Tuple[str, int]]
 reveal_type(intersect(first_stmt, second_stmt))
-# EXPECTED_TYPE: CompoundSelect[tuple[str, int]]
+# EXPECTED_TYPE: CompoundSelect[Tuple[str, int]]
 reveal_type(intersect_all(first_stmt, second_stmt))
 
-# EXPECTED_TYPE: Result[tuple[str, int]]
+# EXPECTED_TYPE: Result[Tuple[str, int]]
 reveal_type(Session().execute(union(first_stmt, second_stmt)))
-# EXPECTED_TYPE: Result[tuple[str, int]]
+# EXPECTED_TYPE: Result[Tuple[str, int]]
 reveal_type(Session().execute(union_all(first_stmt, second_stmt)))
 
-# EXPECTED_TYPE: CompoundSelect[tuple[str, int]]
+# EXPECTED_TYPE: CompoundSelect[Tuple[str, int]]
 reveal_type(first_stmt.union(second_stmt))
-# EXPECTED_TYPE: CompoundSelect[tuple[str, int]]
+# EXPECTED_TYPE: CompoundSelect[Tuple[str, int]]
 reveal_type(first_stmt.union_all(second_stmt))
-# EXPECTED_TYPE: CompoundSelect[tuple[str, int]]
+# EXPECTED_TYPE: CompoundSelect[Tuple[str, int]]
 reveal_type(first_stmt.except_(second_stmt))
-# EXPECTED_TYPE: CompoundSelect[tuple[str, int]]
+# EXPECTED_TYPE: CompoundSelect[Tuple[str, int]]
 reveal_type(first_stmt.except_all(second_stmt))
-# EXPECTED_TYPE: CompoundSelect[tuple[str, int]]
+# EXPECTED_TYPE: CompoundSelect[Tuple[str, int]]
 reveal_type(first_stmt.intersect(second_stmt))
-# EXPECTED_TYPE: CompoundSelect[tuple[str, int]]
+# EXPECTED_TYPE: CompoundSelect[Tuple[str, int]]
 reveal_type(first_stmt.intersect_all(second_stmt))
 
 # TODO: the following do not error because _SelectStatementForCompoundArgument
@@ -243,15 +243,15 @@ reveal_type(intersect(first_stmt, third_stmt))
 # EXPECTED_TYPE: CompoundSelect[Never]
 reveal_type(intersect_all(first_stmt, third_stmt))
 
-# EXPECTED_TYPE: CompoundSelect[tuple[str, int]]
+# EXPECTED_TYPE: CompoundSelect[Tuple[str, int]]
 reveal_type(first_stmt.union(third_stmt))
-# EXPECTED_TYPE: CompoundSelect[tuple[str, int]]
+# EXPECTED_TYPE: CompoundSelect[Tuple[str, int]]
 reveal_type(first_stmt.union_all(third_stmt))
-# EXPECTED_TYPE: CompoundSelect[tuple[str, int]]
+# EXPECTED_TYPE: CompoundSelect[Tuple[str, int]]
 reveal_type(first_stmt.except_(third_stmt))
-# EXPECTED_TYPE: CompoundSelect[tuple[str, int]]
+# EXPECTED_TYPE: CompoundSelect[Tuple[str, int]]
 reveal_type(first_stmt.except_all(third_stmt))
-# EXPECTED_TYPE: CompoundSelect[tuple[str, int]]
+# EXPECTED_TYPE: CompoundSelect[Tuple[str, int]]
 reveal_type(first_stmt.intersect(third_stmt))
-# EXPECTED_TYPE: CompoundSelect[tuple[str, int]]
+# EXPECTED_TYPE: CompoundSelect[Tuple[str, int]]
 reveal_type(first_stmt.intersect_all(third_stmt))

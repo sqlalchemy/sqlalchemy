@@ -629,8 +629,9 @@ class PickleTypesTest(fixtures.TestBase):
             proc = subprocess.run(
                 [sys.executable, "-c", code],
                 env={**os.environ, "PYTHONPATH": pythonpath},
+                stderr=subprocess.PIPE,
             )
-            eq_(proc.returncode, 0)
+            eq_(proc.returncode, 0, proc.stderr.decode(errors="replace"))
             os.unlink(name)
 
 

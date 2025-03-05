@@ -129,47 +129,6 @@ jobs:
         run: tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
         continue-on-error: ${{ matrix.python-version == 'pypy-3.10' }}
 
-  run-test-arm64:
-    # Hopefully something native can be used at some point https://github.blog/changelog/2023-10-30-accelerate-your-ci-cd-with-arm-based-hosted-runners-in-github-actions/
-    name: test-arm64-${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.os }}
-    runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        python-version:
-          - cp37-cp37m
-          - cp38-cp38
-          - cp39-cp39
-          - cp310-cp310
-          - cp311-cp311
-          - cp312-cp312
-          - cp313-cp313
-        build-type:
-          - "cext"
-          - "nocext"
-
-      fail-fast: false
-
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Set up emulation
-        run: |
-          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-
-      - name: Run tests
-        uses: docker://quay.io/pypa/manylinux2014_aarch64
-        with:
-          args: |
-            bash -c "
-            export PATH=/opt/python/${{ matrix.python-version }}/bin:$PATH &&
-            python --version &&
-            python -m pip install --upgrade pip &&
-            pip install --upgrade tox setuptools &&
-            pip list &&
-            tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
-            "
-
   run-tox:
     name: ${{ matrix.tox-env }}-${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
