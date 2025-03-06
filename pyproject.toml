@@ -45,6 +45,13 @@ filterwarnings = [
     # sqlite3 warnings due to test/dialect/test_sqlite.py->test_native_datetime,
     # which is asserting that these deprecated-in-py312 handlers are functional
     "ignore:The default (date)?(time)?(stamp)? (adapter|converter):DeprecationWarning",
+
+    # warning regarding using "fork" mode for multiprocessing when the parent
+    # has threads; using pytest-xdist introduces threads in the parent
+    # and we use multiprocessing in test/aaa_profiling/test_memusage.py where
+    # we require "fork" mode
+    # https://github.com/python/cpython/pull/100229#issuecomment-2704616288
+    "ignore:This process .* is multi-threaded:DeprecationWarning",
 ]
 markers = [
     "memory_intensive: memory / CPU intensive suite tests",

@@ -10,8 +10,8 @@ from sqlalchemy.testing import requires
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import is_
 from sqlalchemy.util import py310
-from sqlalchemy.util import py311
 from sqlalchemy.util import py312
+from sqlalchemy.util import py314
 from sqlalchemy.util import py38
 from sqlalchemy.util import typing as sa_typing
 
@@ -42,7 +42,7 @@ def null_union_types():
 def generic_unions():
     # remove new-style unions `int | str` that are not generic
     res = union_types() + null_union_types()
-    if py310:
+    if py310 and not py314:
         new_ut = type(int | str)
         res = [t for t in res if not isinstance(t, new_ut)]
     return res
@@ -200,6 +200,29 @@ A_null_union = typing_extensions.Annotated[
 ]
 
 
+def compare_type_by_string(a, b):
+    """python 3.14 has made ForwardRefs not really comparable or reliably
+    hashable.
+
+    As we need to compare types here, including structures like
+    `Union["str", "int"]`, without having to dive into cpython's source code
+    each time a new release comes out, compare based on stringification,
+    which still presents changing rules but at least are easy to diagnose
+    and correct for different python versions.
+
+    See discussion at https://github.com/python/cpython/issues/129463
+    for background
+
+    """
+
+    if isinstance(a, (set, list)):
+        a = sorted(a, key=lambda x: str(x))
+    if isinstance(b, (set, list)):
+        b = sorted(b, key=lambda x: str(x))
+
+    eq_(str(a), str(b))
+
+
 def annotated_l():
     return [A_str, A_null_str, A_union, A_null_union]
 
@@ -234,14 +257,6 @@ class TestTestingThings(fixtures.TestBase):
         is_(typing.Union, typing_extensions.Union)
         is_(typing.Optional, typing_extensions.Optional)
 
-    def test_make_union(self):
-        v = int, str
-        eq_(typing.Union[int, str], typing.Union.__getitem__(v))
-        if py311:
-            # need eval since it's a syntax error in python < 3.11
-            eq_(typing.Union[int, str], eval("typing.Union[*(int, str)]"))
-            eq_(typing.Union[int, str], eval("typing.Union[*v]"))
-
     @requires.python312
     def test_make_type_alias_type(self):
         # verify that TypeAliasType('foo', int) it the same as 'type foo = int'
@@ -253,9 +268,11 @@ class TestTestingThings(fixtures.TestBase):
         eq_(x_type.__value__, x.__value__)
 
     def test_make_fw_ref(self):
-        eq_(make_fw_ref("str"), typing.ForwardRef("str"))
-        eq_(make_fw_ref("str|int"), typing.ForwardRef("str|int"))
-        eq_(
+        compare_type_by_string(make_fw_ref("str"), typing.ForwardRef("str"))
+        compare_type_by_string(
+            make_fw_ref("str|int"), typing.ForwardRef("str|int")
+        )
+        compare_type_by_string(
             make_fw_ref("Optional[Union[str, int]]"),
             typing.ForwardRef("Optional[Union[str, int]]"),
         )
@@ -317,8 +334,11 @@ class TestTyping(fixtures.TestBase):
         ]
 
         for t in all_types():
-            # use is since union compare equal between new/old style
-            exp = any(t is k for k in generics)
+            if py314:
+                exp = any(t == k for k in generics)
+            else:
+                # use is since union compare equal between new/old style
+                exp = any(t is k for k in generics)
             eq_(sa_typing.is_generic(t), exp, t)
 
     def test_is_pep695(self):
@@ -360,70 +380,82 @@ class TestTyping(fixtures.TestBase):
         eq_(sa_typing.pep695_values(TAext_null_union), {int, str, None})
         eq_(sa_typing.pep695_values(TA_null_union2), {int, str, None})
         eq_(sa_typing.pep695_values(TAext_null_union2), {int, str, None})
-        eq_(
+
+        compare_type_by_string(
             sa_typing.pep695_values(TA_null_union3),
-            {int, typing.ForwardRef("typing.Union[None, bool]")},
+            [int, typing.ForwardRef("typing.Union[None, bool]")],
         )
-        eq_(
+
+        compare_type_by_string(
             sa_typing.pep695_values(TAext_null_union3),
             {int, typing.ForwardRef("typing.Union[None, bool]")},
         )
-        eq_(
+
+        compare_type_by_string(
             sa_typing.pep695_values(TA_null_union4),
-            {int, typing.ForwardRef("TA_null_union2")},
+            [int, typing.ForwardRef("TA_null_union2")],
         )
-        eq_(
+        compare_type_by_string(
             sa_typing.pep695_values(TAext_null_union4),
             {int, typing.ForwardRef("TAext_null_union2")},
         )
+
         eq_(sa_typing.pep695_values(TA_union_ta), {int, str})
         eq_(sa_typing.pep695_values(TAext_union_ta), {int, str})
         eq_(sa_typing.pep695_values(TA_null_union_ta), {int, str, None, float})
-        eq_(
+
+        compare_type_by_string(
             sa_typing.pep695_values(TAext_null_union_ta),
             {int, str, None, float},
         )
-        eq_(
+
+        compare_type_by_string(
             sa_typing.pep695_values(TA_list),
-            {int, str, typing.List[typing.ForwardRef("TA_list")]},
+            [int, str, typing.List[typing.ForwardRef("TA_list")]],
         )
-        eq_(
+
+        compare_type_by_string(
             sa_typing.pep695_values(TAext_list),
             {int, str, typing.List[typing.ForwardRef("TAext_list")]},
         )
-        eq_(
+
+        compare_type_by_string(
             sa_typing.pep695_values(TA_recursive),
-            {typing.ForwardRef("TA_recursive"), str},
+            [str, typing.ForwardRef("TA_recursive")],
         )
-        eq_(
+        compare_type_by_string(
             sa_typing.pep695_values(TAext_recursive),
             {typing.ForwardRef("TAext_recursive"), str},
         )
-        eq_(
+        compare_type_by_string(
             sa_typing.pep695_values(TA_null_recursive),
-            {typing.ForwardRef("TA_recursive"), str, None},
+            [str, typing.ForwardRef("TA_recursive"), None],
         )
-        eq_(
+        compare_type_by_string(
             sa_typing.pep695_values(TAext_null_recursive),
             {typing.ForwardRef("TAext_recursive"), str, None},
         )
-        eq_(
+        compare_type_by_string(
             sa_typing.pep695_values(TA_recursive_a),
-            {typing.ForwardRef("TA_recursive_b"), int},
+            [int, typing.ForwardRef("TA_recursive_b")],
         )
-        eq_(
+        compare_type_by_string(
             sa_typing.pep695_values(TAext_recursive_a),
             {typing.ForwardRef("TAext_recursive_b"), int},
         )
-        eq_(
+        compare_type_by_string(
             sa_typing.pep695_values(TA_recursive_b),
-            {typing.ForwardRef("TA_recursive_a"), str},
+            [str, typing.ForwardRef("TA_recursive_a")],
         )
-        eq_(
+        compare_type_by_string(
             sa_typing.pep695_values(TAext_recursive_b),
             {typing.ForwardRef("TAext_recursive_a"), str},
         )
+
+    @requires.up_to_date_typealias_type
+    def test_pep695_value_generics(self):
         # generics
+
         eq_(sa_typing.pep695_values(TA_generic), {typing.List[TV]})
         eq_(sa_typing.pep695_values(TAext_generic), {typing.List[TV]})
         eq_(sa_typing.pep695_values(TA_generic_typed), {typing.List[TV]})
@@ -459,17 +491,23 @@ class TestTyping(fixtures.TestBase):
             fn(typing.Optional[typing.Union[int, str]]), typing.Union[int, str]
         )
         eq_(fn(typing.Union[int, str, None]), typing.Union[int, str])
+
         eq_(fn(typing.Union[int, str, "None"]), typing.Union[int, str])
 
         eq_(fn(make_fw_ref("None")), typing_extensions.Never)
         eq_(fn(make_fw_ref("typing.Union[None]")), typing_extensions.Never)
         eq_(fn(make_fw_ref("Union[None, str]")), typing.ForwardRef("str"))
-        eq_(
+
+        compare_type_by_string(
             fn(make_fw_ref("Union[None, str, int]")),
             typing.Union["str", "int"],
         )
-        eq_(fn(make_fw_ref("Optional[int]")), typing.ForwardRef("int"))
-        eq_(
+
+        compare_type_by_string(
+            fn(make_fw_ref("Optional[int]")), typing.ForwardRef("int")
+        )
+
+        compare_type_by_string(
             fn(make_fw_ref("typing.Optional[Union[int | str]]")),
             typing.ForwardRef("Union[int | str]"),
         )
@@ -482,9 +520,12 @@ class TestTyping(fixtures.TestBase):
         for t in union_types() + type_aliases() + new_types() + annotated_l():
             eq_(fn(t), t)
 
-        eq_(
+        compare_type_by_string(
             fn(make_fw_ref("Union[typing.Dict[str, int], int, None]")),
-            typing.Union["typing.Dict[str, int]", "int"],
+            typing.Union[
+                "typing.Dict[str, int]",
+                "int",
+            ],
         )
 
     def test_make_union_type(self):
@@ -508,18 +549,9 @@ class TestTyping(fixtures.TestBase):
             typing.Union[bool, TAext_int, NT_str],
         )
 
+    @requires.up_to_date_typealias_type
     @requires.python38
-    def test_includes_none(self):
-        eq_(sa_typing.includes_none(None), True)
-        eq_(sa_typing.includes_none(type(None)), True)
-        eq_(sa_typing.includes_none(typing.ForwardRef("None")), True)
-        eq_(sa_typing.includes_none(int), False)
-        for t in union_types():
-            eq_(sa_typing.includes_none(t), False)
-
-        for t in null_union_types():
-            eq_(sa_typing.includes_none(t), True, str(t))
-
+    def test_includes_none_generics(self):
         # TODO: these are false negatives
         false_negatives = {
             TA_null_union4,  # does not evaluate FW ref
@@ -531,6 +563,18 @@ class TestTyping(fixtures.TestBase):
             else:
                 exp = "null" in t.__name__
             eq_(sa_typing.includes_none(t), exp, str(t))
+
+    @requires.python38
+    def test_includes_none(self):
+        eq_(sa_typing.includes_none(None), True)
+        eq_(sa_typing.includes_none(type(None)), True)
+        eq_(sa_typing.includes_none(typing.ForwardRef("None")), True)
+        eq_(sa_typing.includes_none(int), False)
+        for t in union_types():
+            eq_(sa_typing.includes_none(t), False)
+
+        for t in null_union_types():
+            eq_(sa_typing.includes_none(t), True, str(t))
 
         for t in annotated_l():
             eq_(

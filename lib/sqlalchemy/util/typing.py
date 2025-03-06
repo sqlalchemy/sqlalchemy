@@ -73,7 +73,9 @@ if compat.py310:
 else:
     NoneType = type(None)  # type: ignore
 
-NoneFwd = ForwardRef("None")
+
+def is_fwd_none(typ: Any) -> bool:
+    return isinstance(typ, ForwardRef) and typ.__forward_arg__ == "None"
 
 
 _AnnotationScanType = Union[
@@ -397,7 +399,7 @@ def pep695_values(type_: _AnnotationScanType) -> Set[Any]:
             if isinstance(t, list):
                 stack.extend(t)
             else:
-                types.add(None if t in {NoneType, NoneFwd} else t)
+                types.add(None if t is NoneType or is_fwd_none(t) else t)
         return types
     else:
         return {res}
@@ -469,8 +471,7 @@ def de_optionalize_union_types(
 
             typ.discard(None)  # type: ignore
 
-        typ.discard(NoneType)
-        typ.discard(NoneFwd)
+        typ = {t for t in typ if t is not NoneType and not is_fwd_none(t)}
 
         return make_union_type(*typ)
 
@@ -546,7 +547,8 @@ def _de_optionalize_fwd_ref_union_types(
 
 def make_union_type(*types: _AnnotationScanType) -> Type[Any]:
     """Make a Union type."""
-    return Union.__getitem__(types)  # type: ignore
+
+    return Union[types]  # type: ignore
 
 
 def includes_none(type_: Any) -> bool:
@@ -572,7 +574,7 @@ def includes_none(type_: Any) -> bool:
     if is_newtype(type_):
         return includes_none(type_.__supertype__)
     try:
-        return type_ in (NoneFwd, NoneType, None)
+        return type_ in (NoneType, None) or is_fwd_none(type_)
     except TypeError:
         # if type_ is Column, mapped_column(), etc. the use of "in"
         # resolves to ``__eq__()`` which then gives us an expression object
