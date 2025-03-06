@@ -29,3 +29,12 @@ class VersionedRowsTestNewBase(
     fixtures.TestBase,
 ):
     pass
+
+
+test_qualify = __import__(
+    "examples.syntax_extensions.test_qualify"
+).syntax_extensions.test_qualify
+
+
+class QualifyCompileTest(test_qualify.QualifyCompileTest, fixtures.TestBase):
+    pass

@@ -1,8 +1,8 @@
 .. _examples_toplevel:
 
-============
-ORM Examples
-============
+=====================
+Core and ORM Examples
+=====================
 
 The SQLAlchemy distribution includes a variety of code examples illustrating
 a select set of patterns, some typical and some not so typical.   All are
@@ -134,6 +134,16 @@ Horizontal Sharding
 -------------------
 
 .. automodule:: examples.sharding
+
+Extending Core
+==============
+
+.. _examples_syntax_extensions:
+
+Extending Statements like SELECT, INSERT, etc
+----------------------------------------------
+
+.. automodule:: examples.syntax_extensions
 
 Extending the ORM
 =================

@@ -651,6 +651,10 @@ class _ORMCompileState(_AbstractORMCompileState):
         passed to with_polymorphic (which is completely unnecessary in modern
         use).
 
+        TODO: What is a "quasi-legacy" case?   Do we need this method with
+        2.0 style select() queries or not?   Why is with_polymorphic referring
+        to an alias or subquery "legacy" ?
+
         """
         if (
             not ext_info.is_aliased_class
@@ -862,8 +866,8 @@ class _ORMFromStatementCompileState(_ORMCompileState):
                 if opt._is_compile_state:
                     opt.process_compile_state(self)
 
-        if statement_container._with_context_options:
-            for fn, key in statement_container._with_context_options:
+        if statement_container._compile_state_funcs:
+            for fn, key in statement_container._compile_state_funcs:
                 fn(self)
 
         self.primary_columns = []
@@ -1230,8 +1234,8 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
         # after it's been set up above
         # self._dump_option_struct()
 
-        if select_statement._with_context_options:
-            for fn, key in select_statement._with_context_options:
+        if select_statement._compile_state_funcs:
+            for fn, key in select_statement._compile_state_funcs:
                 fn(self)
 
         self.primary_columns = []
@@ -1338,6 +1342,11 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
             self.distinct_on = ()
 
         self.distinct = query._distinct
+
+        self.syntax_extensions = {
+            key: current_adapter(value, True) if current_adapter else value
+            for key, value in query._get_syntax_extensions_as_dict().items()
+        }
 
         if query._correlate:
             # ORM mapped entities that are mapped to joins can be passed
@@ -1489,7 +1498,7 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
 
         stmt.__dict__.update(
             _with_options=statement._with_options,
-            _with_context_options=statement._with_context_options,
+            _compile_state_funcs=statement._compile_state_funcs,
             _execution_options=statement._execution_options,
             _propagate_attrs=statement._propagate_attrs,
         )
@@ -1723,6 +1732,7 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
         group_by,
         independent_ctes,
         independent_ctes_opts,
+        syntax_extensions,
     ):
         statement = Select._create_raw_select(
             _raw_columns=raw_columns,
@@ -1752,6 +1762,8 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
         statement._fetch_clause_options = fetch_clause_options
         statement._independent_ctes = independent_ctes
         statement._independent_ctes_opts = independent_ctes_opts
+        if syntax_extensions:
+            statement._set_syntax_extensions(**syntax_extensions)
 
         if prefixes:
             statement._prefixes = prefixes
@@ -2421,6 +2433,7 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
             "independent_ctes_opts": (
                 self.select_statement._independent_ctes_opts
             ),
+            "syntax_extensions": self.syntax_extensions,
         }
 
     @property

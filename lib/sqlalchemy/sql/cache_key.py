@@ -478,10 +478,10 @@ class CacheKey(NamedTuple):
         return repr((sql_str, param_tuple))
 
     def __eq__(self, other: Any) -> bool:
-        return bool(self.key == other.key)
+        return other is not None and bool(self.key == other.key)
 
     def __ne__(self, other: Any) -> bool:
-        return not (self.key == other.key)
+        return other is None or not (self.key == other.key)
 
     @classmethod
     def _diff_tuples(cls, left: CacheKey, right: CacheKey) -> str:
@@ -629,7 +629,7 @@ class _CacheKeyTraversal(HasTraversalDispatch):
 
     visit_propagate_attrs = PROPAGATE_ATTRS
 
-    def visit_with_context_options(
+    def visit_compile_state_funcs(
         self,
         attrname: str,
         obj: Any,

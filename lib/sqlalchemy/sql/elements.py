@@ -2717,6 +2717,29 @@ class True_(SingletonConstant, roles.ConstExprRole[bool], ColumnElement[bool]):
 True_._create_singleton()
 
 
+class ElementList(DQLDMLClauseElement):
+    """Describe a list of clauses that will be space separated.
+
+    This is a minimal version of :class:`.ClauseList` which is used by
+    the :class:`.HasSyntaxExtension` class.  It does not do any coercions
+    so should be used internally only.
+
+    .. versionadded:: 2.1
+
+    """
+
+    __visit_name__ = "element_list"
+
+    _traverse_internals: _TraverseInternalsType = [
+        ("clauses", InternalTraversal.dp_clauseelement_tuple),
+    ]
+
+    clauses: typing_Tuple[ClauseElement, ...]
+
+    def __init__(self, clauses: Sequence[ClauseElement]):
+        self.clauses = tuple(clauses)
+
+
 class ClauseList(
     roles.InElementRole,
     roles.OrderByRole,
@@ -3580,6 +3603,7 @@ class _label_reference(ColumnElement[_T]):
 
     def __init__(self, element: ColumnElement[_T]):
         self.element = element
+        self._propagate_attrs = element._propagate_attrs
 
     @util.ro_non_memoized_property
     def _from_objects(self) -> List[FromClause]:
@@ -4786,6 +4810,16 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
     @property
     def _order_by_label_element(self):
         return self
+
+    def as_reference(self) -> _label_reference[_T]:
+        """refer to this labeled expression in a clause such as GROUP BY,
+        ORDER BY etc. as the label name itself, without expanding
+        into the full expression.
+
+        .. versionadded:: 2.1
+
+        """
+        return _label_reference(self)
 
     @HasMemoized.memoized_attribute
     def element(self) -> ColumnElement[_T]:

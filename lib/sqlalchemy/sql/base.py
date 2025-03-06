@@ -59,6 +59,8 @@ from ..util import HasMemoized as HasMemoized
 from ..util import hybridmethod
 from ..util.typing import Self
 from ..util.typing import TypeGuard
+from ..util.typing import TypeVarTuple
+from ..util.typing import Unpack
 
 if TYPE_CHECKING:
     from . import coercions
@@ -68,7 +70,11 @@ if TYPE_CHECKING:
     from ._orm_types import SynchronizeSessionArgument
     from ._typing import _CLE
     from .compiler import SQLCompiler
+    from .dml import Delete
+    from .dml import Insert
+    from .dml import Update
     from .elements import BindParameter
+    from .elements import ClauseElement
     from .elements import ClauseList
     from .elements import ColumnClause  # noqa
     from .elements import ColumnElement
@@ -80,6 +86,7 @@ if TYPE_CHECKING:
     from .selectable import _JoinTargetElement
     from .selectable import _SelectIterable
     from .selectable import FromClause
+    from .selectable import Select
     from ..engine import Connection
     from ..engine import CursorResult
     from ..engine.interfaces import _CoreMultiExecuteParams
@@ -98,6 +105,9 @@ if not TYPE_CHECKING:
     coercions = None  # noqa
     elements = None  # noqa
     type_api = None  # noqa
+
+
+_Ts = TypeVarTuple("_Ts")
 
 
 class _NoArg(Enum):
@@ -998,6 +1008,212 @@ class ExecutableOption(HasCopyInternals):
         return c
 
 
+_L = TypeVar("_L", bound=str)
+
+
+class HasSyntaxExtensions(Generic[_L]):
+
+    _position_map: Mapping[_L, str]
+
+    @_generative
+    def ext(self, extension: SyntaxExtension) -> Self:
+        """Applies a SQL syntax extension to this statement.
+
+        SQL syntax extensions are :class:`.ClauseElement` objects that define
+        some vendor-specific syntactical construct that take place in specific
+        parts of a SQL statement.   Examples include vendor extensions like
+        PostgreSQL / SQLite's "ON DUPLICATE KEY UPDATE", PostgreSQL's
+        "DISTINCT ON", and MySQL's "LIMIT" that can be applied to UPDATE
+        and DELETE statements.
+
+        .. seealso::
+
+            :ref:`examples_syntax_extensions`
+
+        .. versionadded:: 2.1
+
+        """
+        extension = coercions.expect(
+            roles.SyntaxExtensionRole, extension, apply_propagate_attrs=self
+        )
+        self._apply_syntax_extension_to_self(extension)
+        return self
+
+    @util.preload_module("sqlalchemy.sql.elements")
+    def apply_syntax_extension_point(
+        self,
+        apply_fn: Callable[[Sequence[ClauseElement]], Sequence[ClauseElement]],
+        position: _L,
+    ) -> None:
+        """Apply a :class:`.SyntaxExtension` to a known extension point.
+
+        Should be used only internally by :class:`.SyntaxExtension`.
+
+        E.g.::
+
+            class Qualify(SyntaxExtension, ClauseElement):
+
+                # ...
+
+                def apply_to_select(self, select_stmt: Select) -> None:
+                    # append self to existing
+                    select_stmt.apply_extension_point(
+                        lambda existing: [*existing, self], "post_criteria"
+                    )
+
+
+            class ReplaceExt(SyntaxExtension, ClauseElement):
+
+                # ...
+
+                def apply_to_select(self, select_stmt: Select) -> None:
+                    # replace any existing elements regardless of type
+                    select_stmt.apply_extension_point(
+                        lambda existing: [self], "post_criteria"
+                    )
+
+
+            class ReplaceOfTypeExt(SyntaxExtension, ClauseElement):
+
+                # ...
+
+                def apply_to_select(self, select_stmt: Select) -> None:
+                    # replace any existing elements of the same type
+                    select_stmt.apply_extension_point(
+                        self.append_replacing_same_type, "post_criteria"
+                    )
+
+        :param apply_fn: callable function that will receive a sequence of
+         :class:`.ClauseElement` that is already populating the extension
+         point (the sequence is empty if there isn't one), and should return
+         a new sequence of :class:`.ClauseElement` that will newly populate
+         that point. The function typically can choose to concatenate the
+         existing values with the new one, or to replace the values that are
+         there with a new one by returning a list of a single element, or
+         to perform more complex operations like removing only the same
+         type element from the input list of merging already existing elements
+         of the same type. Some examples are shown in the examples above
+        :param position: string name of the position to apply to.  This
+         varies per statement type.   IDEs should show the possible values
+         for each statement type as it's typed with a ``typing.Literal`` per
+         statement.
+
+        .. seealso::
+
+            :ref:`examples_syntax_extensions`
+
+
+        """  # noqa: E501
+
+        try:
+            attrname = self._position_map[position]
+        except KeyError as ke:
+            raise ValueError(
+                f"Unknown position {position!r} for {self.__class__} "
+                f"construct; known positions: "
+                f"{', '.join(repr(k) for k in self._position_map)}"
+            ) from ke
+        else:
+            ElementList = util.preloaded.sql_elements.ElementList
+            existing: Optional[ClauseElement] = getattr(self, attrname, None)
+            if existing is None:
+                input_seq: Tuple[ClauseElement, ...] = ()
+            elif isinstance(existing, ElementList):
+                input_seq = existing.clauses
+            else:
+                input_seq = (existing,)
+
+            new_seq = apply_fn(input_seq)
+            assert new_seq, "cannot return empty sequence"
+            new = new_seq[0] if len(new_seq) == 1 else ElementList(new_seq)
+            setattr(self, attrname, new)
+
+    def _apply_syntax_extension_to_self(
+        self, extension: SyntaxExtension
+    ) -> None:
+        raise NotImplementedError()
+
+    def _get_syntax_extensions_as_dict(self) -> Mapping[_L, SyntaxExtension]:
+        res: Dict[_L, SyntaxExtension] = {}
+        for name, attr in self._position_map.items():
+            value = getattr(self, attr)
+            if value is not None:
+                res[name] = value
+        return res
+
+    def _set_syntax_extensions(self, **extensions: SyntaxExtension) -> None:
+        for name, value in extensions.items():
+            setattr(self, self._position_map[name], value)  # type: ignore[index]  # noqa: E501
+
+
+class SyntaxExtension(roles.SyntaxExtensionRole):
+    """Defines a unit that when also extending from :class:`.ClauseElement`
+    can be applied to SQLAlchemy statements :class:`.Select`,
+    :class:`_sql.Insert`, :class:`.Update` and :class:`.Delete` making use of
+    pre-established SQL insertion points within these constructs.
+
+    .. versionadded:: 2.1
+
+    .. seealso::
+
+        :ref:`examples_syntax_extensions`
+
+    """
+
+    def append_replacing_same_type(
+        self, existing: Sequence[ClauseElement]
+    ) -> Sequence[ClauseElement]:
+        """Utility function that can be used as
+        :paramref:`_sql.HasSyntaxExtensions.apply_extension_point.apply_fn`
+        to remove any other element of the same type in existing and appending
+        ``self`` to the list.
+
+        This is equivalent to::
+
+            stmt.apply_extension_point(
+                lambda existing: [
+                    *(e for e in existing if not isinstance(e, ReplaceOfTypeExt)),
+                    self,
+                ],
+                "post_criteria",
+            )
+
+        .. seealso::
+
+            :ref:`examples_syntax_extensions`
+
+            :meth:`_sql.HasSyntaxExtensions.apply_syntax_extension_point`
+
+        """  # noqa: E501
+        cls = type(self)
+        return [*(e for e in existing if not isinstance(e, cls)), self]  # type: ignore[list-item] # noqa: E501
+
+    def apply_to_select(self, select_stmt: Select[Unpack[_Ts]]) -> None:
+        """Apply this :class:`.SyntaxExtension` to a :class:`.Select`"""
+        raise NotImplementedError(
+            f"Extension {type(self).__name__} cannot be applied to select"
+        )
+
+    def apply_to_update(self, update_stmt: Update) -> None:
+        """Apply this :class:`.SyntaxExtension` to an :class:`.Update`"""
+        raise NotImplementedError(
+            f"Extension {type(self).__name__} cannot be applied to update"
+        )
+
+    def apply_to_delete(self, delete_stmt: Delete) -> None:
+        """Apply this :class:`.SyntaxExtension` to a :class:`.Delete`"""
+        raise NotImplementedError(
+            f"Extension {type(self).__name__} cannot be applied to delete"
+        )
+
+    def apply_to_insert(self, insert_stmt: Insert) -> None:
+        """Apply this :class:`.SyntaxExtension` to an
+        :class:`_sql.Insert`"""
+        raise NotImplementedError(
+            f"Extension {type(self).__name__} cannot be applied to insert"
+        )
+
+
 class Executable(roles.StatementRole):
     """Mark a :class:`_expression.ClauseElement` as supporting execution.
 
@@ -1011,7 +1227,7 @@ class Executable(roles.StatementRole):
     _execution_options: _ImmutableExecuteOptions = util.EMPTY_DICT
     _is_default_generator = False
     _with_options: Tuple[ExecutableOption, ...] = ()
-    _with_context_options: Tuple[
+    _compile_state_funcs: Tuple[
         Tuple[Callable[[CompileState], None], Any], ...
     ] = ()
     _compile_options: Optional[Union[Type[CacheableOptions], CacheableOptions]]
@@ -1019,8 +1235,8 @@ class Executable(roles.StatementRole):
     _executable_traverse_internals = [
         ("_with_options", InternalTraversal.dp_executable_options),
         (
-            "_with_context_options",
-            ExtendedInternalTraversal.dp_with_context_options,
+            "_compile_state_funcs",
+            ExtendedInternalTraversal.dp_compile_state_funcs,
         ),
         ("_propagate_attrs", ExtendedInternalTraversal.dp_propagate_attrs),
     ]
@@ -1076,14 +1292,10 @@ class Executable(roles.StatementRole):
         """Apply options to this statement.
 
         In the general sense, options are any kind of Python object
-        that can be interpreted by the SQL compiler for the statement.
-        These options can be consumed by specific dialects or specific kinds
-        of compilers.
-
-        The most commonly known kind of option are the ORM level options
-        that apply "eager load" and other loading behaviors to an ORM
-        query.   However, options can theoretically be used for many other
-        purposes.
+        that can be interpreted by systems that consume the statement outside
+        of the regular SQL compiler chain.  Specifically, these options are
+        the ORM level options that apply "eager load" and other loading
+        behaviors to an ORM query.
 
         For background on specific kinds of options for specific kinds of
         statements, refer to the documentation for those option objects.
@@ -1127,14 +1339,14 @@ class Executable(roles.StatementRole):
         return self
 
     @_generative
-    def _add_context_option(
+    def _add_compile_state_func(
         self,
         callable_: Callable[[CompileState], None],
         cache_args: Any,
     ) -> Self:
-        """Add a context option to this statement.
+        """Add a compile state function to this statement.
 
-        These are callable functions that will
+        When using the ORM only, these are callable functions that will
         be given the CompileState object upon compilation.
 
         A second argument cache_args is required, which will be combined with
@@ -1142,7 +1354,7 @@ class Executable(roles.StatementRole):
         cache key.
 
         """
-        self._with_context_options += ((callable_, cache_args),)
+        self._compile_state_funcs += ((callable_, cache_args),)
         return self
 
     @overload

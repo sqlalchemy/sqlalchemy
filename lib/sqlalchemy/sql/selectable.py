@@ -77,7 +77,9 @@ from .base import Executable
 from .base import Generative
 from .base import HasCompileState
 from .base import HasMemoized
+from .base import HasSyntaxExtensions
 from .base import Immutable
+from .base import SyntaxExtension
 from .coercions import _document_text_coercion
 from .elements import _anonymous_label
 from .elements import BindParameter
@@ -5217,6 +5219,9 @@ class Select(
     HasSuffixes,
     HasHints,
     HasCompileState,
+    HasSyntaxExtensions[
+        Literal["post_select", "pre_columns", "post_criteria", "post_body"]
+    ],
     _SelectFromElements,
     GenerativeSelect,
     TypedReturnsRows[Unpack[_Ts]],
@@ -5225,6 +5230,14 @@ class Select(
 
     The :class:`_sql.Select` object is normally constructed using the
     :func:`_sql.select` function.  See that function for details.
+
+    Available extension points:
+
+    * ``post_select``: applies additional logic after the ``SELECT`` keyword.
+    * ``pre_columns``: applies additional logic between the ``DISTINCT``
+        keyword (if any) and the list of columns.
+    * ``post_criteria``: applies additional logic after the ``HAVING`` clause.
+    * ``post_body``: applies additional logic after the ``FOR UPDATE`` clause.
 
     .. seealso::
 
@@ -5248,6 +5261,49 @@ class Select(
     _where_criteria: Tuple[ColumnElement[Any], ...] = ()
     _having_criteria: Tuple[ColumnElement[Any], ...] = ()
     _from_obj: Tuple[FromClause, ...] = ()
+
+    _position_map = util.immutabledict(
+        {
+            "post_select": "_post_select_clause",
+            "pre_columns": "_pre_columns_clause",
+            "post_criteria": "_post_criteria_clause",
+            "post_body": "_post_body_clause",
+        }
+    )
+
+    _post_select_clause: Optional[ClauseElement] = None
+    """extension point for a ClauseElement that will be compiled directly
+    after the SELECT keyword.
+
+    .. versionadded:: 2.1
+
+    """
+
+    _pre_columns_clause: Optional[ClauseElement] = None
+    """extension point for a ClauseElement that will be compiled directly
+    before the "columns" clause; after DISTINCT (if present).
+
+    .. versionadded:: 2.1
+
+    """
+
+    _post_criteria_clause: Optional[ClauseElement] = None
+    """extension point for a ClauseElement that will be compiled directly
+    after "criteria", following the HAVING clause but before ORDER BY.
+
+    .. versionadded:: 2.1
+
+    """
+
+    _post_body_clause: Optional[ClauseElement] = None
+    """extension point for a ClauseElement that will be compiled directly
+    after the "body", following the ORDER BY, LIMIT, and FOR UPDATE sections
+    of the SELECT.
+
+    .. versionadded:: 2.1
+
+    """
+
     _auto_correlate = True
     _is_select_statement = True
     _compile_options: CacheableOptions = (
@@ -5277,6 +5333,10 @@ class Select(
             ("_distinct", InternalTraversal.dp_boolean),
             ("_distinct_on", InternalTraversal.dp_clauseelement_tuple),
             ("_label_style", InternalTraversal.dp_plain_obj),
+            ("_post_select_clause", InternalTraversal.dp_clauseelement),
+            ("_pre_columns_clause", InternalTraversal.dp_clauseelement),
+            ("_post_criteria_clause", InternalTraversal.dp_clauseelement),
+            ("_post_body_clause", InternalTraversal.dp_clauseelement),
         ]
         + HasCTE._has_ctes_traverse_internals
         + HasPrefixes._has_prefixes_traverse_internals
@@ -5320,6 +5380,11 @@ class Select(
         ]
 
         GenerativeSelect.__init__(self)
+
+    def _apply_syntax_extension_to_self(
+        self, extension: SyntaxExtension
+    ) -> None:
+        extension.apply_to_select(self)
 
     def _scalar_type(self) -> TypeEngine[Any]:
         if not self._raw_columns:

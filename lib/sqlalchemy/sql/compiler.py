@@ -2778,6 +2778,9 @@ class SQLCompiler(Compiled):
     def visit_tuple(self, clauselist, **kw):
         return "(%s)" % self.visit_clauselist(clauselist, **kw)
 
+    def visit_element_list(self, element, **kw):
+        return self._generate_delimited_list(element.clauses, " ", **kw)
+
     def visit_clauselist(self, clauselist, **kw):
         sep = clauselist.operator
         if sep is None:
@@ -4744,6 +4747,11 @@ class SQLCompiler(Compiled):
 
         text = "SELECT "  # we're off to a good start !
 
+        if select_stmt._post_select_clause is not None:
+            psc = self.process(select_stmt._post_select_clause, **kwargs)
+            if psc is not None:
+                text += psc + " "
+
         if select_stmt._hints:
             hint_text, byfrom = self._setup_select_hints(select_stmt)
             if hint_text:
@@ -4760,6 +4768,12 @@ class SQLCompiler(Compiled):
             )
 
         text += self.get_select_precolumns(select_stmt, **kwargs)
+
+        if select_stmt._pre_columns_clause is not None:
+            pcc = self.process(select_stmt._pre_columns_clause, **kwargs)
+            if pcc is not None:
+                text += pcc + " "
+
         # the actual list of columns to print in the SELECT column list.
         inner_columns = [
             c
@@ -4833,6 +4847,11 @@ class SQLCompiler(Compiled):
             toplevel,
             kwargs,
         )
+
+        if select_stmt._post_body_clause is not None:
+            pbc = self.process(select_stmt._post_body_clause, **kwargs)
+            if pbc:
+                text += " " + pbc
 
         if select_stmt._statement_hints:
             per_dialect = [
@@ -5004,6 +5023,11 @@ class SQLCompiler(Compiled):
             )
             if t:
                 text += " \nHAVING " + t
+
+        if select._post_criteria_clause is not None:
+            pcc = self.process(select._post_criteria_clause, **kwargs)
+            if pcc is not None:
+                text += " \n" + pcc
 
         if select._order_by_clauses:
             text += self.order_by_clause(select, **kwargs)
@@ -6134,9 +6158,7 @@ class SQLCompiler(Compiled):
     ):
         """Provide a hook to override the generation of an
         UPDATE..FROM clause.
-
         MySQL and MSSQL override this.
-
         """
         raise NotImplementedError(
             "This backend does not support multiple-table "
@@ -6262,6 +6284,16 @@ class SQLCompiler(Compiled):
         limit_clause = self.update_limit_clause(update_stmt)
         if limit_clause:
             text += " " + limit_clause
+
+        if update_stmt._post_criteria_clause is not None:
+            ulc = self.process(
+                update_stmt._post_criteria_clause,
+                from_linter=from_linter,
+                **kw,
+            )
+
+            if ulc:
+                text += " " + ulc
 
         if (
             self.implicit_returning or update_stmt._returning
@@ -6414,6 +6446,15 @@ class SQLCompiler(Compiled):
         limit_clause = self.delete_limit_clause(delete_stmt)
         if limit_clause:
             text += " " + limit_clause
+
+        if delete_stmt._post_criteria_clause is not None:
+            dlc = self.process(
+                delete_stmt._post_criteria_clause,
+                from_linter=from_linter,
+                **kw,
+            )
+            if dlc:
+                text += " " + dlc
 
         if (
             self.implicit_returning or delete_stmt._returning
