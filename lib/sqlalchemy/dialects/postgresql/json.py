@@ -337,7 +337,7 @@ class JSONB(JSON):
             .. versionadded:: 2.0
             """
             if not isinstance(array, _pg_array):
-                array = _pg_array(array)  # type: ignore[no-untyped-call]
+                array = _pg_array(array)
             right_side = cast(array, ARRAY(sqltypes.TEXT))
             return self.operate(DELETE_PATH, right_side, result_type=JSONB)
 
