@@ -432,7 +432,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
     @testing.fixture
     def testtable(self, connection, testdomain):
         connection.exec_driver_sql(
-            "CREATE TABLE testtable (question integer, answer " "testdomain)"
+            "CREATE TABLE testtable (question integer, answer testdomain)"
         )
         yield
         connection.exec_driver_sql("DROP TABLE testtable")
