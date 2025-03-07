@@ -7,9 +7,9 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import Dict
 from typing import List
 from typing import Optional
-from typing import Tuple
 from typing import Union
 
 from . import ext
@@ -24,17 +24,19 @@ from ...sql import roles
 from ...sql import schema
 from ...sql._typing import _DMLTableArgument
 from ...sql.base import _exclusive_against
-from ...sql.base import _generative
 from ...sql.base import ColumnCollection
 from ...sql.base import ReadOnlyColumnCollection
+from ...sql.base import SyntaxExtension
+from ...sql.dml import _DMLColumnElement
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
 from ...sql.elements import ColumnElement
 from ...sql.elements import KeyedColumnElement
 from ...sql.elements import TextClause
 from ...sql.expression import alias
+from ...sql.type_api import NULLTYPE
+from ...sql.visitors import InternalTraversal
 from ...util.typing import Self
-
 
 __all__ = ("Insert", "insert")
 
@@ -70,7 +72,7 @@ class Insert(StandardInsert):
     """
 
     stringify_dialect = "postgresql"
-    inherit_cache = False
+    inherit_cache = True
 
     @util.memoized_property
     def excluded(
@@ -109,7 +111,6 @@ class Insert(StandardInsert):
         },
     )
 
-    @_generative
     @_on_conflict_exclusive
     def on_conflict_do_update(
         self,
@@ -169,12 +170,12 @@ class Insert(StandardInsert):
             :ref:`postgresql_insert_on_conflict`
 
         """
-        self._post_values_clause = OnConflictDoUpdate(
-            constraint, index_elements, index_where, set_, where
+        return self.ext(
+            OnConflictDoUpdate(
+                constraint, index_elements, index_where, set_, where
+            )
         )
-        return self
 
-    @_generative
     @_on_conflict_exclusive
     def on_conflict_do_nothing(
         self,
@@ -206,19 +207,24 @@ class Insert(StandardInsert):
             :ref:`postgresql_insert_on_conflict`
 
         """
-        self._post_values_clause = OnConflictDoNothing(
-            constraint, index_elements, index_where
+        return self.ext(
+            OnConflictDoNothing(constraint, index_elements, index_where)
         )
-        return self
 
 
-class OnConflictClause(ClauseElement):
+class OnConflictClause(SyntaxExtension, ClauseElement):
     stringify_dialect = "postgresql"
 
     constraint_target: Optional[str]
     inferred_target_elements: Optional[List[Union[str, schema.Column[Any]]]]
     inferred_target_whereclause: Optional[
         Union[ColumnElement[Any], TextClause]
+    ]
+
+    _traverse_internals = [
+        ("constraint_target", InternalTraversal.dp_string),
+        ("inferred_target_elements", InternalTraversal.dp_multi_list),
+        ("inferred_target_whereclause", InternalTraversal.dp_clauseelement),
     ]
 
     def __init__(
@@ -283,16 +289,28 @@ class OnConflictClause(ClauseElement):
                 self.inferred_target_whereclause
             ) = None
 
+    def apply_to_insert(self, insert_stmt: StandardInsert) -> None:
+        insert_stmt.apply_syntax_extension_point(
+            self.append_replacing_same_type, "post_values"
+        )
+
 
 class OnConflictDoNothing(OnConflictClause):
     __visit_name__ = "on_conflict_do_nothing"
+
+    inherit_cache = True
 
 
 class OnConflictDoUpdate(OnConflictClause):
     __visit_name__ = "on_conflict_do_update"
 
-    update_values_to_set: List[Tuple[Union[schema.Column[Any], str], Any]]
+    update_values_to_set: Dict[_DMLColumnElement, ColumnElement[Any]]
     update_whereclause: Optional[ColumnElement[Any]]
+
+    _traverse_internals = OnConflictClause._traverse_internals + [
+        ("update_values_to_set", InternalTraversal.dp_dml_values),
+        ("update_whereclause", InternalTraversal.dp_clauseelement),
+    ]
 
     def __init__(
         self,
@@ -328,10 +346,13 @@ class OnConflictDoUpdate(OnConflictClause):
                 "or a ColumnCollection such as the `.c.` collection "
                 "of a Table object"
             )
-        self.update_values_to_set = [
-            (coercions.expect(roles.DMLColumnRole, key), value)
-            for key, value in set_.items()
-        ]
+
+        self.update_values_to_set = {
+            coercions.expect(roles.DMLColumnRole, k): coercions.expect(
+                roles.ExpressionElementRole, v, type_=NULLTYPE, is_crud=True
+            )
+            for k, v in set_.items()
+        }
         self.update_whereclause = (
             coercions.expect(roles.WhereHavingRole, where)
             if where is not None

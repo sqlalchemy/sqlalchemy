@@ -1,3 +1,5 @@
+import random
+
 from sqlalchemy import BLOB
 from sqlalchemy import BOOLEAN
 from sqlalchemy import Boolean
@@ -629,6 +631,51 @@ class CustomExtensionTest(
     fixtures.TestBase, AssertsCompiledSQL, fixtures.CacheKeySuite
 ):
     __dialect__ = "mysql"
+
+    @fixtures.CacheKeySuite.run_suite_tests
+    def test_insert_on_duplicate_key_cache_key(self):
+        table = Table(
+            "foos",
+            MetaData(),
+            Column("id", Integer, primary_key=True),
+            Column("bar", String(10)),
+            Column("baz", String(10)),
+        )
+
+        def stmt0():
+            # note a multivalues INSERT is not cacheable; use just one
+            # set of values
+            return insert(table).values(
+                {"id": 1, "bar": "ab"},
+            )
+
+        def stmt1():
+            stmt = stmt0()
+            return stmt.on_duplicate_key_update(
+                bar=stmt.inserted.bar, baz=stmt.inserted.baz
+            )
+
+        def stmt15():
+            stmt = insert(table).values(
+                {"id": 1},
+            )
+            return stmt.on_duplicate_key_update(
+                bar=stmt.inserted.bar, baz=stmt.inserted.baz
+            )
+
+        def stmt2():
+            stmt = stmt0()
+            return stmt.on_duplicate_key_update(bar=stmt.inserted.bar)
+
+        def stmt3():
+            stmt = stmt0()
+            # use different literal values; ensure each cache key is
+            # identical
+            return stmt.on_duplicate_key_update(
+                bar=random.choice(["a", "b", "c"])
+            )
+
+        return lambda: [stmt0(), stmt1(), stmt15(), stmt2(), stmt3()]
 
     @fixtures.CacheKeySuite.run_suite_tests
     def test_dml_limit_cache_key(self):

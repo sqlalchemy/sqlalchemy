@@ -2085,18 +2085,12 @@ class PGCompiler(compiler.SQLCompiler):
             else:
                 continue
 
-            # TODO: this coercion should be up front.  we can't cache
-            # SQL constructs with non-bound literals buried in them
-            if coercions._is_literal(value):
-                value = elements.BindParameter(None, value, type_=c.type)
-
-            else:
-                if (
-                    isinstance(value, elements.BindParameter)
-                    and value.type._isnull
-                ):
-                    value = value._clone()
-                    value.type = c.type
+            assert not coercions._is_literal(value)
+            if (
+                isinstance(value, elements.BindParameter)
+                and value.type._isnull
+            ):
+                value = value._with_binary_element_type(c.type)
             value_text = self.process(value.self_group(), use_schema=False)
 
             key_text = self.preparer.quote(c.name)

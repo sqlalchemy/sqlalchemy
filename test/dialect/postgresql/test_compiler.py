@@ -1,3 +1,5 @@
+import random
+
 from sqlalchemy import and_
 from sqlalchemy import BigInteger
 from sqlalchemy import bindparam
@@ -2667,7 +2669,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
-class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
+class InsertOnConflictTest(
+    fixtures.TablesTest, AssertsCompiledSQL, fixtures.CacheKeySuite
+):
     __dialect__ = postgresql.dialect()
 
     run_create_tables = None
@@ -2786,6 +2790,111 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
                 f"{expected}",
             )
 
+    @fixtures.CacheKeySuite.run_suite_tests
+    def test_insert_on_conflict_cache_key(self):
+        table = Table(
+            "foos",
+            MetaData(),
+            Column("id", Integer, primary_key=True),
+            Column("bar", String(10)),
+            Column("baz", String(10)),
+        )
+        Index("foo_idx", table.c.id)
+
+        def stmt0():
+            # note a multivalues INSERT is not cacheable; use just one
+            # set of values
+            return insert(table).values(
+                {"id": 1, "bar": "ab"},
+            )
+
+        def stmt1():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing()
+
+        def stmt2():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing(index_elements=["id"])
+
+        def stmt21():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing(index_elements=[table.c.id])
+
+        def stmt22():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing(
+                index_elements=["id", table.c.bar]
+            )
+
+        def stmt23():
+            stmt = stmt0()
+            return stmt.on_conflict_do_nothing(index_elements=["id", "bar"])
+
+        def stmt24():
+            stmt = insert(table).values(
+                {"id": 1, "bar": "ab", "baz": "xy"},
+            )
+            return stmt.on_conflict_do_nothing(index_elements=["id", "bar"])
+
+        def stmt3():
+            stmt = stmt0()
+            return stmt.on_conflict_do_update(
+                index_elements=["id"],
+                set_={
+                    "bar": random.choice(["a", "b", "c"]),
+                    "baz": random.choice(["d", "e", "f"]),
+                },
+            )
+
+        def stmt31():
+            stmt = stmt0()
+            return stmt.on_conflict_do_update(
+                index_elements=["id"],
+                set_={
+                    "baz": random.choice(["d", "e", "f"]),
+                },
+            )
+
+        def stmt4():
+            stmt = stmt0()
+
+            return stmt.on_conflict_do_update(
+                constraint=table.primary_key, set_=stmt.excluded
+            )
+
+        def stmt41():
+            stmt = stmt0()
+
+            return stmt.on_conflict_do_update(
+                constraint=table.primary_key,
+                set_=stmt.excluded,
+                where=table.c.bar != random.choice(["q", "p", "r", "z"]),
+            )
+
+        def stmt42():
+            stmt = stmt0()
+
+            return stmt.on_conflict_do_update(
+                constraint=table.primary_key,
+                set_=stmt.excluded,
+                where=table.c.baz != random.choice(["q", "p", "r", "z"]),
+            )
+
+        return lambda: [
+            stmt0(),
+            stmt1(),
+            stmt2(),
+            stmt21(),
+            stmt22(),
+            stmt23(),
+            stmt24(),
+            stmt3(),
+            stmt31(),
+            stmt4(),
+            stmt41(),
+            stmt42(),
+        ]
+
     @testing.combinations("control", "excluded", "dict")
     def test_set_excluded(self, scenario):
         """test #8014, sending all of .excluded to set"""
@@ -2831,6 +2940,34 @@ class InsertOnConflictTest(fixtures.TablesTest, AssertsCompiledSQL):
                     "CONFLICT (id) DO UPDATE "
                     "SET id = excluded.id, name = excluded.name",
                 )
+
+    def test_dont_consume_set_collection(self):
+        users = self.tables.users
+        stmt = insert(users).values(
+            [
+                {
+                    "name": "spongebob",
+                },
+                {
+                    "name": "sandy",
+                },
+            ]
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[users.c.name], set_=dict(name=stmt.excluded.name)
+        )
+        self.assert_compile(
+            stmt,
+            "INSERT INTO users (name) VALUES (%(name_m0)s), (%(name_m1)s) "
+            "ON CONFLICT (name) DO UPDATE SET name = excluded.name",
+        )
+        stmt = stmt.returning(users)
+        self.assert_compile(
+            stmt,
+            "INSERT INTO users (name) VALUES (%(name_m0)s), (%(name_m1)s) "
+            "ON CONFLICT (name) DO UPDATE SET name = excluded.name "
+            "RETURNING users.id, users.name",
+        )
 
     def test_on_conflict_do_no_call_twice(self):
         users = self.table1
