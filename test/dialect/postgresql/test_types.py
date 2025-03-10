@@ -3448,7 +3448,9 @@ class SpecialTypesCompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(type_, expected)
 
 
-class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
+class SpecialTypesTest(
+    AssertsCompiledSQL, fixtures.TablesTest, ComparesTables
+):
     """test DDL and reflection of PG-specific types"""
 
     __only_on__ = ("postgresql >= 8.3.0",)
@@ -3500,6 +3502,64 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
         assert t.c.plain_interval.type.precision is None
         assert t.c.precision_interval.type.precision == 3
         assert t.c.bitstring.type.length == 4
+
+    @testing.combinations(
+        (psycopg.dialect(),),
+        (psycopg2.dialect(),),
+        (asyncpg.dialect(),),
+        (pg8000.dialect(),),
+        argnames="dialect",
+        id_="n",
+    )
+    def test_network_address_cast(self, special_types_table, dialect):
+        stmt = select(special_types_table.c.id).where(
+            special_types_table.c.addr == "127.0.0.1",
+            special_types_table.c.addr2 == "08:00:2b:01:02:03",
+            special_types_table.c.addr3 == "192.168.100.128/25",
+            special_types_table.c.addr4 == "08:00:2b:01:02:03:04:05",
+        )
+        param, param2, param3, param4 = {
+            "format": ("%s", "%s", "%s", "%s"),
+            "numeric_dollar": ("$1", "$2", "$3", "$4"),
+            "pyformat": (
+                "%(addr_1)s",
+                "%(addr2_1)s",
+                "%(addr3_1)s",
+                "%(addr4_1)s",
+            ),
+        }[dialect.paramstyle]
+        expected = (
+            "SELECT sometable.id FROM sometable "
+            f"WHERE sometable.addr = {param} "
+            f"AND sometable.addr2 = {param2} "
+            f"AND sometable.addr3 = {param3} "
+            f"AND sometable.addr4 = {param4}"
+        )
+        self.assert_compile(stmt, expected, dialect=dialect)
+
+    @testing.combinations(
+        (postgresql.INET, "127.0.0.1"),
+        (postgresql.CIDR, "192.168.100.128/25"),
+        (postgresql.MACADDR, "08:00:2b:01:02:03"),
+        (postgresql.MACADDR8, "08:00:2b:01:02:03:04:05"),
+        argnames="column_type, value",
+        id_="na",
+    )
+    def test_network_address_round_trip(
+        self, connection, metadata, column_type, value
+    ):
+        t = Table(
+            "addresses",
+            metadata,
+            Column("name", String),
+            Column("value", column_type),
+        )
+        t.create(connection)
+        connection.execute(t.insert(), {"name": "test", "value": value})
+        eq_(
+            connection.scalar(select(t.c.name).where(t.c.value == value)),
+            "test",
+        )
 
     def test_tsvector_round_trip(self, connection, metadata):
         t = Table("t1", metadata, Column("data", postgresql.TSVECTOR))

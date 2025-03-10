@@ -55,12 +55,22 @@ class BYTEA(sqltypes.LargeBinary):
 class INET(sqltypes.TypeEngine[str]):
     __visit_name__ = "INET"
 
+    def coerce_compared_value(
+        self, op: Optional[OperatorType], value: Any
+    ) -> TypeEngine[Any]:
+        return self
+
 
 PGInet = INET
 
 
 class CIDR(sqltypes.TypeEngine[str]):
     __visit_name__ = "CIDR"
+
+    def coerce_compared_value(
+        self, op: Optional[OperatorType], value: Any
+    ) -> TypeEngine[Any]:
+        return self
 
 
 PGCidr = CIDR
@@ -69,12 +79,22 @@ PGCidr = CIDR
 class MACADDR(sqltypes.TypeEngine[str]):
     __visit_name__ = "MACADDR"
 
+    def coerce_compared_value(
+        self, op: Optional[OperatorType], value: Any
+    ) -> TypeEngine[Any]:
+        return self
+
 
 PGMacAddr = MACADDR
 
 
 class MACADDR8(sqltypes.TypeEngine[str]):
     __visit_name__ = "MACADDR8"
+
+    def coerce_compared_value(
+        self, op: Optional[OperatorType], value: Any
+    ) -> TypeEngine[Any]:
+        return self
 
 
 PGMacAddr8 = MACADDR8
