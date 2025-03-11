@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 12060
+
+    Fixed issue in PostgreSQL network types :class:`_postgresql.INET`,
+    :class:`_postgresql.CIDR`, :class:`_postgresql.MACADDR`,
+    :class:`_postgresql.MACADDR8` where sending string values to compare to
+    these types would render an explicit CAST to VARCHAR, causing some SQL /
+    driver combinations to fail.  Pull request courtesy Denis Laxalde.
