@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 12326
-
-    Fixed bug where using DML returning such as :meth:`.Insert.returning` with
-    an ORM model that has :func:`_orm.column_property` constructs that contain
-    subqueries would fail with an internal error.

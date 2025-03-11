@@ -10,7 +10,120 @@
 
 .. changelog::
     :version: 2.0.39
-    :include_notes_from: unreleased_20
+    :released: March 11, 2025
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 11751
+
+        Add SQL typing to reflection query used to retrieve a the structure
+        of IDENTITY columns, adding explicit JSON typing to the query to suit
+        unusual PostgreSQL driver configurations that don't support JSON natively.
+
+    .. change::
+        :tags: bug, postgresql
+
+        Fixed issue affecting PostgreSQL 17.3 and greater where reflection of
+        domains with "NOT NULL" as part of their definition would include an
+        invalid constraint entry in the data returned by
+        :meth:`_postgresql.PGInspector.get_domains` corresponding to an additional
+        "NOT NULL" constraint that isn't a CHECK constraint; the existing
+        ``"nullable"`` entry in the dictionary already indicates if the domain
+        includes a "not null" constraint.   Note that such domains also cannot be
+        reflected on PostgreSQL 17.0 through 17.2 due to a bug on the PostgreSQL
+        side; if encountering errors in reflection of domains which include NOT
+        NULL, upgrade to PostgreSQL server 17.3 or greater.
+
+    .. change::
+        :tags: typing, usecase
+        :tickets: 11922
+
+        Support generic types for compound selects (:func:`_sql.union`,
+        :func:`_sql.union_all`, :meth:`_sql.Select.union`,
+        :meth:`_sql.Select.union_all`, etc) returning the type of the first select.
+        Pull request courtesy of Mingyu Park.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 12060
+
+        Fixed issue in PostgreSQL network types :class:`_postgresql.INET`,
+        :class:`_postgresql.CIDR`, :class:`_postgresql.MACADDR`,
+        :class:`_postgresql.MACADDR8` where sending string values to compare to
+        these types would render an explicit CAST to VARCHAR, causing some SQL /
+        driver combinations to fail.  Pull request courtesy Denis Laxalde.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 12326
+
+        Fixed bug where using DML returning such as :meth:`.Insert.returning` with
+        an ORM model that has :func:`_orm.column_property` constructs that contain
+        subqueries would fail with an internal error.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 12328
+
+        Fixed bug in ORM enabled UPDATE (and theoretically DELETE) where using a
+        multi-table DML statement would not allow ORM mapped columns from mappers
+        other than the primary UPDATE mapper to be named in the RETURNING clause;
+        they would be omitted instead and cause a column not found exception.
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 12338
+
+        Fixed bug where :meth:`_asyncio.AsyncResult.scalar`,
+        :meth:`_asyncio.AsyncResult.scalar_one_or_none`, and
+        :meth:`_asyncio.AsyncResult.scalar_one` would raise an ``AttributeError``
+        due to a missing internal attribute.  Pull request courtesy Allen Ho.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 12357
+
+        Fixed issue where the "is ORM" flag of a :func:`.select` or other ORM
+        statement would not be propagated to the ORM :class:`.Session` based on a
+        multi-part operator expression alone, e.g. such as ``Cls.attr + Cls.attr +
+        Cls.attr`` or similar, leading to ORM behaviors not taking place for such
+        statements.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 12364
+
+        Fixed issue where using :func:`_orm.aliased` around a :class:`.CTE`
+        construct could cause inappropriate "duplicate CTE" errors in cases where
+        that aliased construct appeared multiple times in a single statement.
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 12368
+
+        Fixed issue that omitted the comma between multiple SQLite table extension
+        clauses, currently ``WITH ROWID`` and ``STRICT``, when both options
+        :paramref:`.Table.sqlite_with_rowid` and  :paramref:`.Table.sqlite_strict`
+        were configured at their non-default settings at the same time.  Pull
+        request courtesy david-fed.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 12382
+
+        Added new parameters :paramref:`.AddConstraint.isolate_from_table` and
+        :paramref:`.DropConstraint.isolate_from_table`, defaulting to True, which
+        both document and allow to be controllable the long-standing behavior of
+        these two constructs blocking the given constraint from being included
+        inline within the "CREATE TABLE" sequence, under the assumption that
+        separate add/drop directives were to be used.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 12417
+
+        Fixed compiler issue in the PostgreSQL dialect where incorrect keywords
+        would be passed when using "FOR UPDATE OF" inside of a subquery.
 
 .. changelog::
     :version: 2.0.38

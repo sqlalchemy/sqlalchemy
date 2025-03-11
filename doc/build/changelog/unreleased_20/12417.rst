@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 12417
-
-    Fixed compiler issue in the PostgreSQL dialect where incorrect keywords
-    would be passed when using "FOR UPDATE OF" inside of a subquery.

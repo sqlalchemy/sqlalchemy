@@ -1,8 +1,0 @@
-.. change::
-    :tags: typing, usecase
-    :tickets: 11922
-
-    Support generic types for compound selects (:func:`_sql.union`,
-    :func:`_sql.union_all`, :meth:`_sql.Select.union`,
-    :meth:`_sql.Select.union_all`, etc) returning the type of the first select.
-    Pull request courtesy of Mingyu Park.
