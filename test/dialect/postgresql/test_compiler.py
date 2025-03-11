@@ -1731,6 +1731,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "FOR UPDATE OF table1",
         )
 
+        # test issue #12417
+        subquery = select(table1.c.myid).with_for_update(of=table1).lateral()
+        statement = select(subquery.c.myid)
+        self.assert_compile(
+            statement,
+            "SELECT anon_1.myid FROM LATERAL (SELECT mytable.myid AS myid "
+            "FROM mytable FOR UPDATE OF mytable) AS anon_1",
+        )
+
     def test_for_update_with_schema(self):
         m = MetaData()
         table1 = Table(
