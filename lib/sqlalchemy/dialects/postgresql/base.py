@@ -1672,6 +1672,11 @@ RESERVED_WORDS = {
     "verbose",
 }
 
+FK_ON_DELETE = re.compile(
+    r"^(?:RESTRICT|CASCADE|SET (?:NULL|DEFAULT)(?:\s*\(.+\))?|NO ACTION)$",
+    re.I,
+)
+
 colspecs = {
     sqltypes.ARRAY: _array.ARRAY,
     sqltypes.Interval: INTERVAL,
@@ -2249,6 +2254,11 @@ class PGDDLCompiler(compiler.DDLCompiler):
         text = super().visit_foreign_key_constraint(constraint)
         text += self._define_constraint_validity(constraint)
         return text
+
+    def define_constraint_ondelete_cascade(self, constraint):
+        return " ON DELETE %s" % self.preparer.validate_sql_phrase(
+            constraint.ondelete, FK_ON_DELETE
+        )
 
     def visit_create_enum_type(self, create, **kw):
         type_ = create.element
@@ -4251,7 +4261,8 @@ class PGDialect(default.DefaultDialect):
             r"[\s]?(ON UPDATE "
             r"(CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT)+)?"
             r"[\s]?(ON DELETE "
-            r"(CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT)+)?"
+            r"(CASCADE|RESTRICT|NO ACTION|"
+            r"SET (?:NULL|DEFAULT)(?:\s\(.+\))?)+)?"
             r"[\s]?(DEFERRABLE|NOT DEFERRABLE)?"
             r"[\s]?(INITIALLY (DEFERRED|IMMEDIATE)+)?"
         )
