@@ -52,49 +52,39 @@ class BYTEA(sqltypes.LargeBinary):
     __visit_name__ = "BYTEA"
 
 
-class INET(sqltypes.TypeEngine[str]):
-    __visit_name__ = "INET"
+class _NetworkAddressTypeMixin:
 
     def coerce_compared_value(
         self, op: Optional[OperatorType], value: Any
     ) -> TypeEngine[Any]:
+        if TYPE_CHECKING:
+            assert isinstance(self, TypeEngine)
         return self
+
+
+class INET(_NetworkAddressTypeMixin, sqltypes.TypeEngine[str]):
+    __visit_name__ = "INET"
 
 
 PGInet = INET
 
 
-class CIDR(sqltypes.TypeEngine[str]):
+class CIDR(_NetworkAddressTypeMixin, sqltypes.TypeEngine[str]):
     __visit_name__ = "CIDR"
-
-    def coerce_compared_value(
-        self, op: Optional[OperatorType], value: Any
-    ) -> TypeEngine[Any]:
-        return self
 
 
 PGCidr = CIDR
 
 
-class MACADDR(sqltypes.TypeEngine[str]):
+class MACADDR(_NetworkAddressTypeMixin, sqltypes.TypeEngine[str]):
     __visit_name__ = "MACADDR"
-
-    def coerce_compared_value(
-        self, op: Optional[OperatorType], value: Any
-    ) -> TypeEngine[Any]:
-        return self
 
 
 PGMacAddr = MACADDR
 
 
-class MACADDR8(sqltypes.TypeEngine[str]):
+class MACADDR8(_NetworkAddressTypeMixin, sqltypes.TypeEngine[str]):
     __visit_name__ = "MACADDR8"
-
-    def coerce_compared_value(
-        self, op: Optional[OperatorType], value: Any
-    ) -> TypeEngine[Any]:
-        return self
 
 
 PGMacAddr8 = MACADDR8
