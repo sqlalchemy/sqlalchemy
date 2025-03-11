@@ -2001,9 +2001,10 @@ class PGCompiler(compiler.SQLCompiler):
             for c in select._for_update_arg.of:
                 tables.update(sql_util.surface_selectables_only(c))
 
+            of_kw = dict(kw)
+            of_kw.update(ashint=True, use_schema=False)
             tmp += " OF " + ", ".join(
-                self.process(table, ashint=True, use_schema=False, **kw)
-                for table in tables
+                self.process(table, **of_kw) for table in tables
             )
 
         if select._for_update_arg.nowait:
