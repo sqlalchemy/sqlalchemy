@@ -1032,39 +1032,60 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             ")",
         )
 
-    def test_column_defaults_ddl(self):
+    @testing.combinations(
+        (
+            Boolean(create_constraint=True),
+            sql.false(),
+            "BOOLEAN DEFAULT 0, CHECK (x IN (0, 1))",
+        ),
+        (
+            String(),
+            func.sqlite_version(),
+            "VARCHAR DEFAULT (sqlite_version())",
+        ),
+        (Integer(), func.abs(-5) + 17, "INTEGER DEFAULT (abs(-5) + 17)"),
+        (
+            # test #12425
+            String(),
+            func.now(),
+            "VARCHAR DEFAULT CURRENT_TIMESTAMP",
+        ),
+        (
+            # test #12425
+            String(),
+            func.datetime(func.now(), "localtime"),
+            "VARCHAR DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime'))",
+        ),
+        (
+            # test #12425
+            String(),
+            text("datetime(CURRENT_TIMESTAMP, 'localtime')"),
+            "VARCHAR DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime'))",
+        ),
+        (
+            # default with leading spaces that should not be
+            # parenthesized
+            String,
+            text("  'some default'"),
+            "VARCHAR DEFAULT   'some default'",
+        ),
+        (String, text("'some default'"), "VARCHAR DEFAULT 'some default'"),
+        argnames="datatype,default,expected",
+    )
+    def test_column_defaults_ddl(self, datatype, default, expected):
         t = Table(
             "t",
             MetaData(),
             Column(
                 "x",
-                Boolean(create_constraint=True),
-                server_default=sql.false(),
+                datatype,
+                server_default=default,
             ),
         )
 
         self.assert_compile(
             CreateTable(t),
-            "CREATE TABLE t (x BOOLEAN DEFAULT (0), CHECK (x IN (0, 1)))",
-        )
-
-        t = Table(
-            "t",
-            MetaData(),
-            Column("x", String(), server_default=func.sqlite_version()),
-        )
-        self.assert_compile(
-            CreateTable(t),
-            "CREATE TABLE t (x VARCHAR DEFAULT (sqlite_version()))",
-        )
-
-        t = Table(
-            "t",
-            MetaData(),
-            Column("x", Integer(), server_default=func.abs(-5) + 17),
-        )
-        self.assert_compile(
-            CreateTable(t), "CREATE TABLE t (x INTEGER DEFAULT (abs(-5) + 17))"
+            f"CREATE TABLE t (x {expected})",
         )
 
     def test_create_partial_index(self):

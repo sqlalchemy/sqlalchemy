@@ -274,8 +274,8 @@ def int_within_variance(expected, received, variance):
     )
 
 
-def eq_regex(a, b, msg=None):
-    assert re.match(b, a), msg or "%r !~ %r" % (a, b)
+def eq_regex(a, b, msg=None, flags=0):
+    assert re.match(b, a, flags), msg or "%r !~ %r" % (a, b)
 
 
 def eq_(a, b, msg=None):
