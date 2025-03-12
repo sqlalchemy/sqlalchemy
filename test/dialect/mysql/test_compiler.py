@@ -450,7 +450,7 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
             self.assert_compile(
                 schema.CreateTable(tbl),
                 "CREATE TABLE testtbl ("
-                "time DATETIME DEFAULT (CURRENT_TIMESTAMP), "
+                "time DATETIME DEFAULT CURRENT_TIMESTAMP, "
                 "name VARCHAR(255) DEFAULT 'some str', "
                 "description VARCHAR(255) DEFAULT (lower('hi')), "
                 "data JSON DEFAULT (json_object()))",

@@ -1,0 +1,18 @@
+.. change::
+    :tags: bug, sqlite
+    :tickets: 12425
+
+    Expanded the rules for when to apply parenthesis to a server default in DDL
+    to suit the general case of a default string that contains non-word
+    characters such as spaces or operators and is not a string literal.
+
+.. change::
+    :tags: bug, mysql
+    :tickets: 12425
+
+    Fixed issue in MySQL server default reflection where a default that has
+    spaces would not be correctly reflected.  Additionally, expanded the rules
+    for when to apply parenthesis to a server default in DDL to suit the
+    general case of a default string that contains non-word characters such as
+    spaces or operators and is not a string literal.
+

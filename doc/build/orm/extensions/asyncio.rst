@@ -273,7 +273,7 @@ configuration:
     CREATE TABLE a (
         id INTEGER NOT NULL,
         data VARCHAR NOT NULL,
-        create_date DATETIME DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
+        create_date DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
         PRIMARY KEY (id)
     )
     ...

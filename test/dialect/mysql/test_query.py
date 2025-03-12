@@ -5,17 +5,22 @@ from sqlalchemy import Boolean
 from sqlalchemy import cast
 from sqlalchemy import Column
 from sqlalchemy import Computed
+from sqlalchemy import DateTime
 from sqlalchemy import delete
 from sqlalchemy import exc
 from sqlalchemy import false
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy import schema
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy import true
 from sqlalchemy import update
 from sqlalchemy.dialects.mysql import limit
@@ -53,6 +58,35 @@ class IdiosyncrasyTest(fixtures.TestBase):
                 connection.scalar(select(cast(false().is_(false()), Boolean))),
                 True,
             )
+
+
+class ServerDefaultCreateTest(fixtures.TestBase):
+    @testing.combinations(
+        (Integer, text("10")),
+        (Integer, text("'10'")),
+        (Integer, "10"),
+        (Boolean, true()),
+        (Integer, text("3+5"), testing.requires.mysql_expression_defaults),
+        (Integer, text("3 + 5"), testing.requires.mysql_expression_defaults),
+        (Integer, text("(3 * 5)"), testing.requires.mysql_expression_defaults),
+        (DateTime, func.now()),
+        (
+            Integer,
+            literal_column("3") + literal_column("5"),
+            testing.requires.mysql_expression_defaults,
+        ),
+        argnames="datatype, default",
+    )
+    def test_create_server_defaults(
+        self, connection, metadata, datatype, default
+    ):
+        t = Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("thecol", datatype, server_default=default),
+        )
+        t.create(connection)
 
 
 class MatchTest(fixtures.TablesTest):
