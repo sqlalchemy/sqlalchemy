@@ -861,7 +861,8 @@ def _append_param_parameter(
                 _col_bind_name(c)
                 if not _compile_state_isinsert(compile_state)
                 or not compile_state._has_multi_parameters
-                else "%s_m0" % _col_bind_name(c)
+                else "%s_%sm0"
+                % (_col_bind_name(c), "cte_" if kw.get("visiting_cte") else "")
             ),
             accumulate_bind_names=accumulated_bind_names,
             **kw,
@@ -888,7 +889,8 @@ def _append_param_parameter(
                 _col_bind_name(c)
                 if not _compile_state_isinsert(compile_state)
                 or not compile_state._has_multi_parameters
-                else "%s_m0" % _col_bind_name(c)
+                else "%s_%sm0"
+                % (_col_bind_name(c), "cte_" if kw.get("visiting_cte") else "")
             ),
             accumulate_bind_names=accumulated_bind_names,
             **kw,
@@ -1316,6 +1318,10 @@ def _process_multiparam_default_bind(
     index: int,
     kw: Dict[str, Any],
 ) -> str:
+    # Проверяем, находимся ли мы в CTE
+    visiting_cte = kw.get("visiting_cte")
+    prefix = "cte_" if visiting_cte else ""
+
     if not c.default:
         raise exc.CompileError(
             "INSERT value for column %s is explicitly rendered as a bound"
@@ -1337,8 +1343,12 @@ def _process_multiparam_default_bind(
     else:
         col = _multiparam_column(c, index)
         assert isinstance(stmt, dml.Insert)
+
+        # Используем префикс cte_ в имени, если находимся в CTE
+        name = f"{col.key}_{prefix}default" if prefix else None
+
         return _create_insert_prefetch_bind_param(
-            compiler, col, process=True, **kw
+            compiler, col, process=True, name=name, **kw
         )
 
 
@@ -1451,12 +1461,18 @@ def _extend_values_for_multiparams(
                         compiler,
                         col,
                         row[key],
-                        name="%s_m%d" % (col.key, i + 1),
+                        name="%s_%sm%d"
+                        % (
+                            col.key,
+                            "cte_" if kw.get("visiting_cte") else "",
+                            i + 1,
+                        ),
                         **kw,
                     )
                 else:
                     new_param = compiler.process(row[key].self_group(), **kw)
             else:
+                # Pass visiting_cte info to _process_multiparam_default_bind
                 new_param = _process_multiparam_default_bind(
                     compiler, stmt, col, i, kw
                 )
