@@ -7112,14 +7112,25 @@ class DDLCompiler(Compiled):
     ) -> str:
         text = ""
         if constraint.ondelete is not None:
-            text += " ON DELETE %s" % self.preparer.validate_sql_phrase(
-                constraint.ondelete, FK_ON_DELETE
-            )
+            text += self.define_constraint_ondelete_cascade(constraint)
+
         if constraint.onupdate is not None:
-            text += " ON UPDATE %s" % self.preparer.validate_sql_phrase(
-                constraint.onupdate, FK_ON_UPDATE
-            )
+            text += self.define_constraint_onupdate_cascade(constraint)
         return text
+
+    def define_constraint_ondelete_cascade(
+        self, constraint: ForeignKeyConstraint
+    ) -> str:
+        return " ON DELETE %s" % self.preparer.validate_sql_phrase(
+            constraint.ondelete, FK_ON_DELETE
+        )
+
+    def define_constraint_onupdate_cascade(
+        self, constraint: ForeignKeyConstraint
+    ) -> str:
+        return " ON UPDATE %s" % self.preparer.validate_sql_phrase(
+            constraint.onupdate, FK_ON_UPDATE
+        )
 
     def define_constraint_deferrability(self, constraint: Constraint) -> str:
         text = ""

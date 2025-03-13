@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import datetime
 import decimal
+import re
 from typing import TYPE_CHECKING
 
 from sqlalchemy import alias
@@ -6674,6 +6675,9 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
                 "FOO RESTRICT",
                 "CASCADE WRONG",
                 "SET  NULL",
+                # test that PostgreSQL's syntax added in #11595 is not
+                # accepted by base compiler
+                "SET NULL(postgresql_db.some_column)",
             ):
                 const = schema.AddConstraint(
                     schema.ForeignKeyConstraint(
@@ -6682,7 +6686,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
                 )
                 assert_raises_message(
                     exc.CompileError,
-                    r"Unexpected SQL phrase: '%s'" % phrase,
+                    rf"Unexpected SQL phrase: '{re.escape(phrase)}'",
                     const.compile,
                 )
 
