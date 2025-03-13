@@ -1,6 +1,7 @@
 from pathlib import Path
 import re
 
+
 from sqlalchemy.util.tool_support import code_writer_cmd
 
 sa_path = Path(__file__).parent.parent / "lib/sqlalchemy"
