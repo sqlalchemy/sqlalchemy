@@ -1258,6 +1258,29 @@ with selected constraint constructs:
       <https://www.postgresql.org/docs/current/static/sql-altertable.html>`_ -
       in the PostgreSQL documentation.
 
+* Column list with foreign key ``ON DELETE SET`` actions:  This applies to
+  :class:`.ForeignKey` and :class:`.ForeignKeyConstraint`, the :paramref:`.ForeignKey.ondelete`
+  parameter will accept on the PostgreSQL backend only a string list of column
+  names inside parenthesis, following the ``SET NULL`` or ``SET DEFAULT``
+  phrases, which will limit the set of columns that are subject to the
+  action::
+
+        fktable = Table(
+            "fktable",
+            metadata,
+            Column("tid", Integer),
+            Column("id", Integer),
+            Column("fk_id_del_set_null", Integer),
+            ForeignKeyConstraint(
+                columns=["tid", "fk_id_del_set_null"],
+                refcolumns=[pktable.c.tid, pktable.c.id],
+                ondelete="SET NULL (fk_id_del_set_null)",
+            ),
+        )
+
+  .. versionadded:: 2.0.40
+
+
 .. _postgresql_table_valued_overview:
 
 Table values, Table and Column valued functions, Row and Tuple objects
@@ -1666,6 +1689,7 @@ RESERVED_WORDS = {
     "similar",
     "verbose",
 }
+
 
 colspecs = {
     sqltypes.ARRAY: _array.ARRAY,
@@ -2244,6 +2268,19 @@ class PGDDLCompiler(compiler.DDLCompiler):
         text = super().visit_foreign_key_constraint(constraint)
         text += self._define_constraint_validity(constraint)
         return text
+
+    @util.memoized_property
+    def _fk_ondelete_pattern(self):
+        return re.compile(
+            r"^(?:RESTRICT|CASCADE|SET (?:NULL|DEFAULT)(?:\s*\(.+\))?"
+            r"|NO ACTION)$",
+            re.I,
+        )
+
+    def define_constraint_ondelete_cascade(self, constraint):
+        return " ON DELETE %s" % self.preparer.validate_sql_phrase(
+            constraint.ondelete, self._fk_ondelete_pattern
+        )
 
     def visit_create_enum_type(self, create, **kw):
         type_ = create.element
@@ -4246,7 +4283,8 @@ class PGDialect(default.DefaultDialect):
             r"[\s]?(ON UPDATE "
             r"(CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT)+)?"
             r"[\s]?(ON DELETE "
-            r"(CASCADE|RESTRICT|NO ACTION|SET NULL|SET DEFAULT)+)?"
+            r"(CASCADE|RESTRICT|NO ACTION|"
+            r"SET (?:NULL|DEFAULT)(?:\s\(.+\))?)+)?"
             r"[\s]?(DEFERRABLE|NOT DEFERRABLE)?"
             r"[\s]?(INITIALLY (DEFERRED|IMMEDIATE)+)?"
         )
