@@ -311,6 +311,11 @@ arguments. The value is any string which will be output after the appropriate
 Note that these clauses require ``InnoDB`` tables when used with MySQL.
 They may also not be supported on other databases.
 
+On PostgreSQL, the ``SET NULL`` and ``SET DEFAULT`` actions of ``ON DELETE``
+clause also accept a list of columns to cascade on; e.g., ``ON DELETE SET NULL
+(note_id)``. Otherwise, all columns in the foreign key constraint are normally
+considered.
+
 .. seealso::
 
     For background on integration of ``ON DELETE CASCADE`` with
