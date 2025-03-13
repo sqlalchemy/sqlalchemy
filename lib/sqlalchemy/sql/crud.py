@@ -861,8 +861,11 @@ def _append_param_parameter(
                 _col_bind_name(c)
                 if not _compile_state_isinsert(compile_state)
                 or not compile_state._has_multi_parameters
-                    else "%s_%sm0"
-                    % (_col_bind_name(c), "cte_" if kw.get("visiting_cte") is not None else "")
+                else "%s_%sm0"
+                % (
+                    _col_bind_name(c),
+                    "cte_" if kw.get("visiting_cte") is not None else "",
+                )
             ),
             accumulate_bind_names=accumulated_bind_names,
             **kw,
@@ -890,7 +893,10 @@ def _append_param_parameter(
                 if not _compile_state_isinsert(compile_state)
                 or not compile_state._has_multi_parameters
                 else "%s_%sm0"
-                % (_col_bind_name(c), "cte_" if kw.get("visiting_cte") is not None else "")
+                % (
+                    _col_bind_name(c),
+                    "cte_" if kw.get("visiting_cte") is not None else "",
+                )
             ),
             accumulate_bind_names=accumulated_bind_names,
             **kw,
@@ -1464,7 +1470,11 @@ def _extend_values_for_multiparams(
                         name="%s_%sm%d"
                         % (
                             col.key,
-                            "cte_" if kw.get("visiting_cte") is not None else "",
+                            (
+                                "cte_"
+                                if kw.get("visiting_cte") is not None
+                                else ""
+                            ),
                             i + 1,
                         ),
                         **kw,
