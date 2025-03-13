@@ -1672,10 +1672,6 @@ RESERVED_WORDS = {
     "verbose",
 }
 
-FK_ON_DELETE = re.compile(
-    r"^(?:RESTRICT|CASCADE|SET (?:NULL|DEFAULT)(?:\s*\(.+\))?|NO ACTION)$",
-    re.I,
-)
 
 colspecs = {
     sqltypes.ARRAY: _array.ARRAY,
@@ -2255,9 +2251,17 @@ class PGDDLCompiler(compiler.DDLCompiler):
         text += self._define_constraint_validity(constraint)
         return text
 
+    @util.memoized_property
+    def _fk_ondelete_pattern(self):
+        return re.compile(
+            r"^(?:RESTRICT|CASCADE|SET (?:NULL|DEFAULT)(?:\s*\(.+\))?"
+            r"|NO ACTION)$",
+            re.I,
+        )
+
     def define_constraint_ondelete_cascade(self, constraint):
         return " ON DELETE %s" % self.preparer.validate_sql_phrase(
-            constraint.ondelete, FK_ON_DELETE
+            constraint.ondelete, self._fk_ondelete_pattern
         )
 
     def visit_create_enum_type(self, create, **kw):
