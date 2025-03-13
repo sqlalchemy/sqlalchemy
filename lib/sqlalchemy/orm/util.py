@@ -85,6 +85,7 @@ from ..sql.cache_key import MemoizedHasCacheKey
 from ..sql.elements import ColumnElement
 from ..sql.elements import KeyedColumnElement
 from ..sql.selectable import FromClause
+from ..sql.selectable import GenerativeSelect
 from ..util.langhelpers import MemoizedSlots
 from ..util.typing import de_stringify_annotation as _de_stringify_annotation
 from ..util.typing import eval_name_only as _eval_name_only
@@ -1015,6 +1016,19 @@ class AliasedInsp(
         flat: bool = False,
         adapt_on_names: bool = False,
     ) -> Union[AliasedClass[_O], FromClause]:
+        if isinstance(element, GenerativeSelect):
+            util.warn(
+                f"{type(element).__name__} can't be aliased, "
+                f"coercing to subquery instead."
+            )
+            if name:
+                return coercions.expect(
+                    roles.FromClauseRole, element.subquery(name=name)
+                )
+            else:
+                return coercions.expect(
+                    roles.AnonymizedFromClauseRole, element.subquery()
+                )
         if isinstance(element, FromClause):
             if adapt_on_names:
                 raise sa_exc.ArgumentError(
