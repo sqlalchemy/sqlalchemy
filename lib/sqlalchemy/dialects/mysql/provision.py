@@ -42,6 +42,10 @@ def generate_driver_url(url, driver, query_str):
 
     if driver == "mariadbconnector":
         new_url = new_url.difference_update_query(["charset"])
+    elif driver == "mysqlconnector":
+        new_url = new_url.update_query_pairs(
+            [("collation", "utf8mb4_general_ci")]
+        )
 
     try:
         new_url.get_dialect()

@@ -2538,6 +2538,10 @@ class MySQLDialect(default.DefaultDialect):
     # allow for the "true" and "false" keywords, however
     supports_native_boolean = False
 
+    # support for BIT type; mysqlconnector coerces result values automatically,
+    # all other MySQL DBAPIs require a conversion routine
+    supports_native_bit = False
+
     # identifiers are 64, however aliases can be 255...
     max_identifier_length = 255
     max_index_name_length = 64
@@ -2739,10 +2743,12 @@ class MySQLDialect(default.DefaultDialect):
                 % (".".join(map(str, server_version_info)),)
             )
         if is_mariadb:
-            self.preparer = MariaDBIdentifierPreparer
-            # this would have been set by the default dialect already,
-            # so set it again
-            self.identifier_preparer = self.preparer(self)
+
+            if not issubclass(self.preparer, MariaDBIdentifierPreparer):
+                self.preparer = MariaDBIdentifierPreparer
+                # this would have been set by the default dialect already,
+                # so set it again
+                self.identifier_preparer = self.preparer(self)
 
             # this will be updated on first connect in initialize()
             # if using older mariadb version
