@@ -393,6 +393,7 @@ def _create_bind_param(
     process: Literal[True] = ...,
     required: bool = False,
     name: Optional[str] = None,
+    force_anonymous: bool = False,
     **kw: Any,
 ) -> str: ...
 
@@ -413,10 +414,14 @@ def _create_bind_param(
     process: bool = True,
     required: bool = False,
     name: Optional[str] = None,
+    force_anonymous: bool = False,
     **kw: Any,
 ) -> Union[str, elements.BindParameter[Any]]:
-    if name is None:
+    if force_anonymous:
+        name = None
+    elif name is None:
         name = col.key
+
     bindparam = elements.BindParameter(
         name, value, type_=col.type, required=required
     )
@@ -486,7 +491,7 @@ def _key_getters_for_crud_column(
         )
 
         def _column_as_key(
-            key: Union[ColumnClause[Any], str]
+            key: Union[ColumnClause[Any], str],
         ) -> Union[str, Tuple[str, str]]:
             str_key = c_key_role(key)
             if hasattr(key, "table") and key.table in _et:
@@ -832,6 +837,7 @@ def _append_param_parameter(
 ):
     value = parameters.pop(col_key)
 
+    has_visiting_cte = kw.get("visiting_cte") is not None
     col_value = compiler.preparer.format_column(
         c, use_table=compile_state.include_table_with_column_exprs
     )
@@ -864,6 +870,7 @@ def _append_param_parameter(
                 else "%s_m0" % _col_bind_name(c)
             ),
             accumulate_bind_names=accumulated_bind_names,
+            force_anonymous=has_visiting_cte,
             **kw,
         )
     elif value._is_bind_parameter:
@@ -1435,6 +1442,7 @@ def _extend_values_for_multiparams(
     values_0 = initial_values
     values = [initial_values]
 
+    has_visiting_cte = kw.get("visiting_cte") is not None
     mp = compile_state._multi_parameters
     assert mp is not None
     for i, row in enumerate(mp[1:]):
@@ -1451,7 +1459,8 @@ def _extend_values_for_multiparams(
                         compiler,
                         col,
                         row[key],
-                        name="%s_m%d" % (col.key, i + 1),
+                        name=("%s_m%d" % (col.key, i + 1)),
+                        force_anonymous=has_visiting_cte,
                         **kw,
                     )
                 else:
