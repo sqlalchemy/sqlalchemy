@@ -1021,15 +1021,13 @@ class AliasedInsp(
                 f"{type(element).__name__} can't be aliased, "
                 f"coercing to subquery instead."
             )
-            if name:
-                return coercions.expect(
-                    roles.FromClauseRole, element.subquery(name=name)
-                )
-            else:
-                return coercions.expect(
-                    roles.AnonymizedFromClauseRole, element.subquery()
-                )
-        if isinstance(element, FromClause):
+            return coercions.expect(
+                roles.FromClauseRole,
+                element.subquery(name=name),
+                flat=flat,
+                allow_select=True
+            )
+        elif isinstance(element, FromClause):
             if adapt_on_names:
                 raise sa_exc.ArgumentError(
                     "adapt_on_names only applies to ORM elements"

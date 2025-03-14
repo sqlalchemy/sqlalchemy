@@ -592,6 +592,12 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
                 name="point_alias",
             )
             eq_(q1.name, "point_alias")
+            self.assert_compile(select(q1),
+                                "SELECT point_alias.x "
+                                "FROM (SELECT point.x AS x "
+                                "FROM point "
+                                "WHERE point.id = :id_1) AS point_alias"
+                                )
 
     def test_anonymous_select_alias(self):
         class Point:
@@ -603,6 +609,12 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         ):
             q1 = aliased(element=select(Point.x).filter(Point.id == 1))
             eq_(q1.name, "%%(%d anon)s" % id(q1))
+            self.assert_compile(select(q1),
+                                "SELECT anon_1.x "
+                                "FROM (SELECT point.x AS x "
+                                "FROM point "
+                                "WHERE point.id = :id_1) AS anon_1"
+                                )
 
     def test_named_union_alias(self):
         class Point:
@@ -616,6 +628,15 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         ):
             q3 = aliased(element=union(q1, q2), name="point_alias")
             eq_(q3.name, "point_alias")
+            self.assert_compile(select(q3),
+                                "SELECT point_alias.x "
+                                "FROM (SELECT point.x AS x "
+                                "FROM point "
+                                "WHERE point.id = :id_1 "
+                                "UNION SELECT point.y AS y "
+                                "FROM point "
+                                "WHERE point.id = :id_2) AS point_alias"
+                                )
 
     def test_anonymous_union_alias(self):
         class Point:
@@ -629,6 +650,15 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         ):
             q3 = aliased(element=union(q1, q2))
             eq_(q3.name, "%%(%d anon)s" % id(q3))
+            self.assert_compile(select(q3),
+                                "SELECT anon_1.x "
+                                "FROM (SELECT point.x AS x "
+                                "FROM point "
+                                "WHERE point.id = :id_1 "
+                                "UNION SELECT point.y AS y "
+                                "FROM point "
+                                "WHERE point.id = :id_2) AS anon_1"
+                                )
 
 
 class IdentityKeyTest(_fixtures.FixtureTest):
