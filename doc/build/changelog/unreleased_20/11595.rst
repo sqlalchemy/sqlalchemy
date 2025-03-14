@@ -1,0 +1,7 @@
+.. change::
+    :tags: feature, postgresql
+    :tickets: 11595, 11946
+
+    Added support for specifying a list of columns for ``SET NULL`` and
+    ``SET DEFAULT`` actions of ``ON DELETE`` clause of foreign key definition on
+    PostgreSQL.

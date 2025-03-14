@@ -1142,6 +1142,48 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             ")",
         )
 
+    def test_create_foreign_key_constraint_ondelete_column_list(self):
+        m = MetaData()
+        pktable = Table(
+            "pktable",
+            m,
+            Column("tid", Integer, primary_key=True),
+            Column("id", Integer, primary_key=True),
+        )
+        fktable = Table(
+            "fktable",
+            m,
+            Column("tid", Integer),
+            Column("id", Integer),
+            Column("fk_id_del_set_null", Integer),
+            Column("fk_id_del_set_default", Integer, server_default=text("0")),
+            ForeignKeyConstraint(
+                columns=["tid", "fk_id_del_set_null"],
+                refcolumns=[pktable.c.tid, pktable.c.id],
+                ondelete="SET NULL (fk_id_del_set_null)",
+            ),
+            ForeignKeyConstraint(
+                columns=["tid", "fk_id_del_set_default"],
+                refcolumns=[pktable.c.tid, pktable.c.id],
+                ondelete="SET DEFAULT(fk_id_del_set_default)",
+            ),
+        )
+
+        self.assert_compile(
+            schema.CreateTable(fktable),
+            "CREATE TABLE fktable ("
+            "tid INTEGER, id INTEGER, "
+            "fk_id_del_set_null INTEGER, "
+            "fk_id_del_set_default INTEGER DEFAULT 0, "
+            "FOREIGN KEY(tid, fk_id_del_set_null)"
+            " REFERENCES pktable (tid, id)"
+            " ON DELETE SET NULL (fk_id_del_set_null), "
+            "FOREIGN KEY(tid, fk_id_del_set_default)"
+            " REFERENCES pktable (tid, id)"
+            " ON DELETE SET DEFAULT(fk_id_del_set_default)"
+            ")",
+        )
+
     def test_exclude_constraint_min(self):
         m = MetaData()
         tbl = Table("testtbl", m, Column("room", Integer, primary_key=True))
