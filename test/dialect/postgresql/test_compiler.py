@@ -1946,6 +1946,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             String,
         )
 
+    def test_array_literal_empty_type(self):
+        self.assert_compile(
+            postgresql.array([], type_=Date),
+            "ARRAY[]::DATE[]",
+        )
+
     def test_array_literal(self):
         self.assert_compile(
             func.array_dims(
