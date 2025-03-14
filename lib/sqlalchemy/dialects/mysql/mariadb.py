@@ -46,16 +46,22 @@ class MariaDBDialect(MySQLDialect):
 
 
 def loader(driver):
-    driver_mod = __import__(
+    dialect_mod = __import__(
         "sqlalchemy.dialects.mysql.%s" % driver
     ).dialects.mysql
-    driver_cls = getattr(driver_mod, driver).dialect
 
-    return type(
-        "MariaDBDialect_%s" % driver,
-        (
-            MariaDBDialect,
-            driver_cls,
-        ),
-        {"supports_statement_cache": True},
-    )
+    driver_mod = getattr(dialect_mod, driver)
+    if hasattr(driver_mod, "mariadb_dialect"):
+        driver_cls = driver_mod.mariadb_dialect
+        return driver_cls
+    else:
+        driver_cls = driver_mod.dialect
+
+        return type(
+            "MariaDBDialect_%s" % driver,
+            (
+                MariaDBDialect,
+                driver_cls,
+            ),
+            {"supports_statement_cache": True},
+        )

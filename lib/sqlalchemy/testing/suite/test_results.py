@@ -268,6 +268,8 @@ class ServerSideCursorsTest(
             return isinstance(cursor, sscursor)
         elif self.engine.dialect.driver == "mariadbconnector":
             return not cursor.buffered
+        elif self.engine.dialect.driver == "mysqlconnector":
+            return "buffered" not in type(cursor).__name__.lower()
         elif self.engine.dialect.driver in ("asyncpg", "aiosqlite"):
             return cursor.server_side
         elif self.engine.dialect.driver == "pg8000":
