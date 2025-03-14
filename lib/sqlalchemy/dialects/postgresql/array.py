@@ -24,6 +24,7 @@ from ... import types as sqltypes
 from ... import util
 from ...sql import expression
 from ...sql import operators
+from ...sql.visitors import InternalTraversal
 
 if TYPE_CHECKING:
     from ...engine.interfaces import Dialect
@@ -96,6 +97,20 @@ class array(expression.ExpressionClauseList[_T]):
 
         array(["foo", "bar"], type_=CHAR)
 
+    In particular, when constructing an empty array, the ``type_`` argument
+    will be used as a type cast so that::
+
+        stmt = array([], type_=Integer)
+        print(stmt.compile(dialect=postgresql.dialect()))
+
+    Produces:
+
+    .. sourcecode:: sql
+
+        ARRAY[]::INTEGER[]
+
+    As required by PostgreSQL for empty arrays.
+
     Multidimensional arrays are produced by nesting :class:`.array` constructs.
     The dimensionality of the final :class:`_types.ARRAY`
     type is calculated by
@@ -129,6 +144,10 @@ class array(expression.ExpressionClauseList[_T]):
 
     stringify_dialect = "postgresql"
     inherit_cache = True
+    _traverse_internals = (
+        expression.ExpressionClauseList._traverse_internals
+        + [("type", InternalTraversal.dp_type)]
+    )
 
     def __init__(
         self,

@@ -1988,6 +1988,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             String,
         )
 
+    @testing.combinations(
+        ("with type_", Date, "ARRAY[]::DATE[]"),
+        ("no type_", None, "ARRAY[]"),
+        id_="iaa",
+    )
+    def test_array_literal_empty(self, type_, expected):
+        self.assert_compile(postgresql.array([], type_=type_), expected)
+
     def test_array_literal(self):
         self.assert_compile(
             func.array_dims(
@@ -4237,4 +4245,24 @@ class CacheKeyTest(fixtures.CacheKeyFixture, fixtures.TestBase):
                 ),
             ),
             compare_values=False,
+        )
+
+    def test_array(self):
+        self._run_cache_key_equal_fixture(
+            lambda: (
+                array([0]),
+                array([0], type_=Integer),
+                array([1], type_=Integer),
+            ),
+            compare_values=False,
+        )
+
+    def test_array_empty(self):
+        self._run_cache_key_fixture(
+            lambda: (
+                array([], type_=Integer),
+                array([], type_=Text),
+                array([0]),
+            ),
+            compare_values=True,
         )

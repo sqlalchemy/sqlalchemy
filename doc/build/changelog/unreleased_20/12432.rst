@@ -1,0 +1,8 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 12432
+
+    When building a PostgreSQL ``ARRAY`` literal using
+    :class:`_postgresql.array` with an empty ``clauses`` argument, use the
+    ``type_`` argument to cast the resulting ``ARRAY[]`` SQL expression.
+    Pull request courtesy Denis Laxalde.
