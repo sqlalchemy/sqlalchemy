@@ -1788,6 +1788,11 @@ class PGCompiler(compiler.SQLCompiler):
         }"""
 
     def visit_array(self, element, **kw):
+        if not element.clauses and not isinstance(
+            element.type.item_type, sqltypes.NullType
+        ):
+            # XXX seems to work, but not sure this is the canonical API
+            return "ARRAY[]::%s" % element.type.compile(self.dialect)
         return "ARRAY[%s]" % self.visit_clauselist(element, **kw)
 
     def visit_slice(self, element, **kw):

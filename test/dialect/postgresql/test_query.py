@@ -37,6 +37,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import CursorSQL
@@ -1639,6 +1640,15 @@ class TableValuedRoundTripTest(fixtures.TestBase):
         )
 
         eq_(connection.execute(stmt).all(), [(4, 1), (3, 2), (2, 3), (1, 4)])
+
+    def test_array_empty_with_type(self, connection):
+        stmt = select(postgresql.array([], type_=Integer))
+        eq_(connection.execute(stmt).all(), [([],)])
+
+    def test_array_empty_no_type(self, connection):
+        stmt = select(postgresql.array([]))
+        with expect_raises(exc.ProgrammingError):
+            connection.execute(stmt)
 
     def test_plain_old_unnest(self, connection):
         fn = func.unnest(

@@ -22,6 +22,7 @@ from ... import util
 from ...sql import expression
 from ...sql import operators
 from ...sql._typing import _TypeEngineArgument
+from ...sql.visitors import InternalTraversal
 
 
 _T = TypeVar("_T", bound=Any)
@@ -106,6 +107,10 @@ class array(expression.ExpressionClauseList[_T]):
 
     stringify_dialect = "postgresql"
     inherit_cache = True
+    _traverse_internals = (
+        expression.ExpressionClauseList._traverse_internals
+        + [("type", InternalTraversal.dp_type)]
+    )
 
     def __init__(self, clauses, **kw):
         type_arg = kw.pop("type_", None)
