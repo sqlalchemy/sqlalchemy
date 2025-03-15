@@ -142,12 +142,10 @@ class array(expression.ExpressionClauseList[_T]):
     ):
         super().__init__(operators.comma_op, *clauses, **kw)
 
-        self._type_tuple = [arg.type for arg in self.clauses]
-
         main_type = (
             type_
             if type_ is not None
-            else self._type_tuple[0] if self._type_tuple else sqltypes.NULLTYPE
+            else self.clauses[0].type if self.clauses else sqltypes.NULLTYPE
         )
 
         if isinstance(main_type, ARRAY):
