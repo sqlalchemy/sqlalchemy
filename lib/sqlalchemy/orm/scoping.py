@@ -103,7 +103,7 @@ __all__ = ["scoped_session"]
     Session,
     ":class:`_orm.Session`",
     ":class:`_orm.scoping.scoped_session`",
-    classmethods=["close_all", "object_session", "identity_key"],
+    classmethods=["object_session", "identity_key"],
     methods=[
         "__contains__",
         "__iter__",
@@ -2159,21 +2159,6 @@ class scoped_session(Generic[_S]):
         """  # noqa: E501
 
         return self._proxied.info
-
-    @classmethod
-    def close_all(cls) -> None:
-        r"""Close *all* sessions in memory.
-
-        .. container:: class_bases
-
-            Proxied for the :class:`_orm.Session` class on
-            behalf of the :class:`_orm.scoping.scoped_session` class.
-
-        .. deprecated:: 1.3 The :meth:`.Session.close_all` method is deprecated and will be removed in a future release.  Please refer to :func:`.session.close_all_sessions`.
-
-        """  # noqa: E501
-
-        return Session.close_all()
 
     @classmethod
     def object_session(cls, instance: object) -> Optional[Session]:

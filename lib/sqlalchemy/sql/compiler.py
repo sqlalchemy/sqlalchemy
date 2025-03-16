@@ -7618,7 +7618,7 @@ class IdentifierPreparer:
         not taking case convention into account."""
         return not self.legal_characters.match(str(value))
 
-    def quote_schema(self, schema: str, force: Any = None) -> str:
+    def quote_schema(self, schema: str) -> str:
         """Conditionally quote a schema name.
 
 
@@ -7630,34 +7630,10 @@ class IdentifierPreparer:
         quoting behavior for schema names.
 
         :param schema: string schema name
-        :param force: unused
-
-            .. deprecated:: 0.9
-
-                The :paramref:`.IdentifierPreparer.quote_schema.force`
-                parameter is deprecated and will be removed in a future
-                release.  This flag has no effect on the behavior of the
-                :meth:`.IdentifierPreparer.quote` method; please refer to
-                :class:`.quoted_name`.
-
         """
-        if force is not None:
-            # not using the util.deprecated_params() decorator in this
-            # case because of the additional function call overhead on this
-            # very performance-critical spot.
-            util.warn_deprecated(
-                "The IdentifierPreparer.quote_schema.force parameter is "
-                "deprecated and will be removed in a future release.  This "
-                "flag has no effect on the behavior of the "
-                "IdentifierPreparer.quote method; please refer to "
-                "quoted_name().",
-                # deprecated 0.9. warning from 1.3
-                version="0.9",
-            )
-
         return self.quote(schema)
 
-    def quote(self, ident: str, force: Any = None) -> str:
+    def quote(self, ident: str) -> str:
         """Conditionally quote an identifier.
 
         The identifier is quoted if it is a reserved word, contains
@@ -7668,31 +7644,7 @@ class IdentifierPreparer:
         quoting behavior for identifier names.
 
         :param ident: string identifier
-        :param force: unused
-
-            .. deprecated:: 0.9
-
-                The :paramref:`.IdentifierPreparer.quote.force`
-                parameter is deprecated and will be removed in a future
-                release.  This flag has no effect on the behavior of the
-                :meth:`.IdentifierPreparer.quote` method; please refer to
-                :class:`.quoted_name`.
-
         """
-        if force is not None:
-            # not using the util.deprecated_params() decorator in this
-            # case because of the additional function call overhead on this
-            # very performance-critical spot.
-            util.warn_deprecated(
-                "The IdentifierPreparer.quote.force parameter is "
-                "deprecated and will be removed in a future release.  This "
-                "flag has no effect on the behavior of the "
-                "IdentifierPreparer.quote method; please refer to "
-                "quoted_name().",
-                # deprecated 0.9. warning from 1.3
-                version="0.9",
-            )
-
         force = getattr(ident, "quote", None)
 
         if force is None:

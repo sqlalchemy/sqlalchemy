@@ -45,30 +45,6 @@ class ToMetaDataTest(fixtures.TestBase):
 class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
     __backend__ = True
 
-    def test_ident_preparer_force(self):
-        preparer = testing.db.dialect.identifier_preparer
-        preparer.quote("hi")
-        with testing.expect_deprecated(
-            "The IdentifierPreparer.quote.force parameter is deprecated"
-        ):
-            preparer.quote("hi", True)
-
-        with testing.expect_deprecated(
-            "The IdentifierPreparer.quote.force parameter is deprecated"
-        ):
-            preparer.quote("hi", False)
-
-        preparer.quote_schema("hi")
-        with testing.expect_deprecated(
-            "The IdentifierPreparer.quote_schema.force parameter is deprecated"
-        ):
-            preparer.quote_schema("hi", True)
-
-        with testing.expect_deprecated(
-            "The IdentifierPreparer.quote_schema.force parameter is deprecated"
-        ):
-            preparer.quote_schema("hi", True)
-
     def test_empty_and_or(self):
         with testing.expect_deprecated(
             r"Invoking and_\(\) without arguments is deprecated, and "

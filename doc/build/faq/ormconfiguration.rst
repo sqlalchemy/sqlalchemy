@@ -110,11 +110,11 @@ such as:
 * :attr:`_orm.Mapper.columns` - A namespace of :class:`_schema.Column` objects and other named
   SQL expressions associated with the mapping.
 
-* :attr:`_orm.Mapper.mapped_table` - The :class:`_schema.Table` or other selectable to which
+* :attr:`_orm.Mapper.persist_selectable` - The :class:`_schema.Table` or other selectable to which
   this mapper is mapped.
 
 * :attr:`_orm.Mapper.local_table` - The :class:`_schema.Table` that is "local" to this mapper;
-  this differs from :attr:`_orm.Mapper.mapped_table` in the case of a mapper mapped
+  this differs from :attr:`_orm.Mapper.persist_selectable` in the case of a mapper mapped
   using inheritance to a composed selectable.
 
 .. _faq_combining_columns:

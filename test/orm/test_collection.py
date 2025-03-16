@@ -2788,6 +2788,40 @@ class CustomCollectionsTest(fixtures.MappedTest):
 
 
 class InstrumentationTest(fixtures.ORMTest):
+    def test_name_setup(self):
+
+        class Base:
+            @collection.iterator
+            def base_iterate(self, x):
+                return "base_iterate"
+
+            @collection.appender
+            def base_append(self, x):
+                return "base_append"
+
+            @collection.remover
+            def base_remove(self, x):
+                return "base_remove"
+
+        from sqlalchemy.orm.collections import _instrument_class
+
+        _instrument_class(Base)
+
+        eq_(Base._sa_remover(Base(), 5), "base_remove")
+        eq_(Base._sa_appender(Base(), 5), "base_append")
+        eq_(Base._sa_iterator(Base(), 5), "base_iterate")
+
+        class Sub(Base):
+            @collection.remover
+            def sub_remove(self, x):
+                return "sub_remove"
+
+        _instrument_class(Sub)
+
+        eq_(Sub._sa_appender(Sub(), 5), "base_append")
+        eq_(Sub._sa_remover(Sub(), 5), "sub_remove")
+        eq_(Sub._sa_iterator(Sub(), 5), "base_iterate")
+
     def test_uncooperative_descriptor_in_sweep(self):
         class DoNotTouch:
             def __get__(self, obj, owner):
