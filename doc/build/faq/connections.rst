@@ -342,7 +342,7 @@ reconnect operation:
     ping: 1
     ...
 
-.. versionadded: 1.4  the above recipe makes use of 1.4-specific behaviors and will
+.. versionadded:: 1.4  the above recipe makes use of 1.4-specific behaviors and will
    not work as given on previous SQLAlchemy versions.
 
 The above recipe is tested for SQLAlchemy 1.4.

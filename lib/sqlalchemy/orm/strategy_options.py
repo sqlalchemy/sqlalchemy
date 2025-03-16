@@ -730,8 +730,6 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
                 with_expression(SomeClass.x_y_expr, SomeClass.x + SomeClass.y)
             )
 
-        .. versionadded:: 1.2
-
         :param key: Attribute to be populated
 
         :param expr: SQL expression to be applied to the attribute.
@@ -758,8 +756,6 @@ class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
         This uses an additional SELECT with IN against all matched primary
         key values, and is the per-query analogue to the ``"selectin"``
         setting on the :paramref:`.mapper.polymorphic_load` parameter.
-
-        .. versionadded:: 1.2
 
         .. seealso::
 
@@ -1205,8 +1201,6 @@ class Load(_AbstractLoad):
         :param \*opts: A series of loader option objects (ultimately
          :class:`_orm.Load` objects) which should be applied to the path
          specified by this :class:`_orm.Load` object.
-
-        .. versionadded:: 1.3.6
 
         .. seealso::
 

@@ -130,8 +130,6 @@ class MONEY(sqltypes.TypeEngine[str]):
             def column_expression(self, column: Any):
                 return cast(column, Numeric())
 
-    .. versionadded:: 1.2
-
     """  # noqa: E501
 
     __visit_name__ = "MONEY"
@@ -164,11 +162,7 @@ class TSQUERY(sqltypes.TypeEngine[str]):
 
 
 class REGCLASS(sqltypes.TypeEngine[str]):
-    """Provide the PostgreSQL REGCLASS type.
-
-    .. versionadded:: 1.2.7
-
-    """
+    """Provide the PostgreSQL REGCLASS type."""
 
     __visit_name__ = "REGCLASS"
 
@@ -228,8 +222,6 @@ class INTERVAL(type_api.NativeForEmulated, sqltypes._AbstractInterval):
         :param fields: string fields specifier.  allows storage of fields
          to be limited, such as ``"YEAR"``, ``"MONTH"``, ``"DAY TO HOUR"``,
          etc.
-
-         .. versionadded:: 1.2
 
         """
         self.precision = precision

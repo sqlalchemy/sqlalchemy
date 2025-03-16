@@ -360,8 +360,6 @@ Above, the :meth:`.FunctionElement.as_comparison` indicates that the
 ``Point.geom`` expressions. The :func:`.foreign` annotation additionally notes
 which column takes on the "foreign key" role in this particular relationship.
 
-.. versionadded:: 1.3 Added :meth:`.FunctionElement.as_comparison`.
-
 .. _relationship_overlapping_foreignkeys:
 
 Overlapping Foreign Keys

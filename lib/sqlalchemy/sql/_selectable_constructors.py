@@ -564,8 +564,6 @@ def table(name: str, *columns: ColumnClause[Any], **kw: Any) -> TableClause:
 
     :param schema: The schema name for this table.
 
-        .. versionadded:: 1.3.18 :func:`_expression.table` can now
-           accept a ``schema`` argument.
     """
 
     return TableClause(name, *columns, **kw)

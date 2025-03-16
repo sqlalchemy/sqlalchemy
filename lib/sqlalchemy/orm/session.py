@@ -3560,7 +3560,7 @@ class Session(_SessionClassMethods, EventTarget):
 
             :meth:`.Session.delete` - main documentation on delete
 
-        .. versionadded: 2.1
+        .. versionadded:: 2.1
 
         """
 
@@ -3715,7 +3715,7 @@ class Session(_SessionClassMethods, EventTarget):
          Contents of this dictionary are passed to the
          :meth:`.Session.get_bind` method.
 
-         .. versionadded: 2.0.0rc1
+         .. versionadded:: 2.0.0rc1
 
         :return: The object instance, or ``None``.
 
@@ -4004,7 +4004,7 @@ class Session(_SessionClassMethods, EventTarget):
 
             :meth:`.Session.merge` - main documentation on merge
 
-        .. versionadded: 2.1
+        .. versionadded:: 2.1
 
         """
 
@@ -5239,8 +5239,6 @@ def close_all_sessions() -> None:
 
     This function is not for general use but may be useful for test suites
     within the teardown scheme.
-
-    .. versionadded:: 1.3
 
     """
 

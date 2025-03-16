@@ -86,10 +86,6 @@ may be used::
 
     stmt = select(AddressUser).group_by(*AddressUser.id.expressions)
 
-.. versionadded:: 1.3.17 Added the
-   :attr:`.ColumnProperty.Comparator.expressions` accessor.
-
-
 .. note::
 
     A mapping against multiple tables as illustrated above supports

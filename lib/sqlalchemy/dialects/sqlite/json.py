@@ -33,9 +33,6 @@ class JSON(sqltypes.JSON):
     always JSON string values.
 
 
-    .. versionadded:: 1.3
-
-
     .. _JSON1: https://www.sqlite.org/json1.html
 
     """

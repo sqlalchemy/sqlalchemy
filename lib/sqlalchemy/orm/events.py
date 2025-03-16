@@ -245,9 +245,6 @@ class InstanceEvents(event.Events[ClassManager[Any]]):
        object is moved to a new loader context from within one of these
        events if this flag is not set.
 
-       .. versionadded:: 1.3.14
-
-
     """
 
     _target_class_doc = "SomeClass"
@@ -461,15 +458,6 @@ class InstanceEvents(event.Events[ClassManager[Any]]):
                 @event.listens_for(SomeClass, "load", restore_load_context=True)
                 def on_load(instance, context):
                     instance.some_unloaded_attribute
-
-            .. versionchanged:: 1.3.14 Added
-               :paramref:`.InstanceEvents.restore_load_context`
-               and :paramref:`.SessionEvents.restore_load_context` flags which
-               apply to "on load" events, which will ensure that the loading
-               context for an object is restored when the event hook is
-               complete; a warning is emitted if the load context of the object
-               changes without this flag being set.
-
 
         The :meth:`.InstanceEvents.load` event is also available in a
         class-method decorator format called :func:`_orm.reconstructor`.
@@ -988,8 +976,6 @@ class MapperEvents(event.Events[mapperlib.Mapper[Any]]):
         :meth:`.MapperEvents.before_mapper_configured` event provides for a
         meaningful return value when it is registered with the ``retval=True``
         parameter.
-
-        .. versionadded:: 1.3
 
         e.g.::
 
@@ -1574,16 +1560,12 @@ class SessionEvents(event.Events[Session]):
        objects will be the instance's :class:`.InstanceState` management
        object, rather than the mapped instance itself.
 
-       .. versionadded:: 1.3.14
-
     :param restore_load_context=False: Applies to the
        :meth:`.SessionEvents.loaded_as_persistent` event.  Restores the loader
        context of the object when the event hook is complete, so that ongoing
        eager load operations continue to target the object appropriately.  A
        warning is emitted if the object is moved to a new loader context from
        within this event if this flag is not set.
-
-       .. versionadded:: 1.3.14
 
     """
 
@@ -2705,8 +2687,6 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
                 else:
                     return value
 
-        .. versionadded:: 1.2
-
         :param target: the object instance receiving the event.
           If the listener is registered with ``raw=True``, this will
           be the :class:`.InstanceState` object.
@@ -2993,11 +2973,6 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
 
         The old collection received will contain its previous contents.
 
-        .. versionchanged:: 1.2 The collection passed to
-           :meth:`.AttributeEvents.dispose_collection` will now have its
-           contents before the dispose intact; previously, the collection
-           would be empty.
-
         .. seealso::
 
             :class:`.AttributeEvents` - background on listener options such
@@ -3011,8 +2986,6 @@ class AttributeEvents(event.Events[QueryableAttribute[Any]]):
         This event is triggered when the :func:`.attributes.flag_modified`
         function is used to trigger a modify event on an attribute without
         any specific value being set.
-
-        .. versionadded:: 1.2
 
         :param target: the object instance receiving the event.
           If the listener is registered with ``raw=True``, this will
@@ -3098,11 +3071,6 @@ class QueryEvents(event.Events[Query[Any]]):
         once, and not called for subsequent invocations of a particular query
         that is being cached.
 
-        .. versionadded:: 1.3.11  - added the "bake_ok" flag to the
-           :meth:`.QueryEvents.before_compile` event and disallowed caching via
-           the "baked" extension from occurring for event handlers that
-           return  a new :class:`_query.Query` object if this flag is not set.
-
         .. seealso::
 
             :meth:`.QueryEvents.before_compile_update`
@@ -3156,8 +3124,6 @@ class QueryEvents(event.Events[Query[Any]]):
          dictionary can be modified to alter the VALUES clause of the
          resulting UPDATE statement.
 
-        .. versionadded:: 1.2.17
-
         .. seealso::
 
             :meth:`.QueryEvents.before_compile`
@@ -3196,8 +3162,6 @@ class QueryEvents(event.Events[Query[Any]]):
         :param delete_context: a "delete context" object which is
          the same kind of object as described in
          :paramref:`.QueryEvents.after_bulk_delete.delete_context`.
-
-        .. versionadded:: 1.2.17
 
         .. seealso::
 

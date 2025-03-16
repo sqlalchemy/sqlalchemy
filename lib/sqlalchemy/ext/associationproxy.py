@@ -152,8 +152,6 @@ def association_proxy(
         source, as this object may have other state that is still to be
         kept.
 
-        .. versionadded:: 1.3
-
         .. seealso::
 
             :ref:`cascade_scalar_deletes` - complete usage example
@@ -477,11 +475,6 @@ class AssociationProxy(
          to look at the type of the actual destination object to get the
          complete path.
 
-        .. versionadded:: 1.3 - :class:`.AssociationProxy` no longer stores
-           any state specific to a particular parent class; the state is now
-           stored in per-class :class:`.AssociationProxyInstance` objects.
-
-
         """
         return self._as_instance(class_, obj)
 
@@ -588,8 +581,6 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
         # view if proxy object is scalar or not
         >>> proxy_state.scalar
         False
-
-    .. versionadded:: 1.3
 
     """  # noqa
 

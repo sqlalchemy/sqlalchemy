@@ -528,8 +528,6 @@ class Mapper(
             the columns specific to this subclass.  The SELECT uses
             IN to fetch multiple subclasses at once.
 
-         .. versionadded:: 1.2
-
          .. seealso::
 
             :ref:`with_polymorphic_mapper_config`
@@ -3100,9 +3098,6 @@ class Mapper(
 
         The above process produces an ordering that is deterministic in terms
         of the order in which attributes were assigned to the class.
-
-        .. versionchanged:: 1.3.19 ensured deterministic ordering for
-           :meth:`_orm.Mapper.all_orm_descriptors`.
 
         When dealing with a :class:`.QueryableAttribute`, the
         :attr:`.QueryableAttribute.property` attribute refers to the

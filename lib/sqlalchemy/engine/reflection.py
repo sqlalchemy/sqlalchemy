@@ -1316,8 +1316,6 @@ class Inspector(inspection.Inspectable["Inspector"]):
 
         :return: a dictionary, with the table comment.
 
-        .. versionadded:: 1.2
-
         .. seealso:: :meth:`Inspector.get_multi_table_comment`
         """
 

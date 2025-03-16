@@ -537,8 +537,6 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     def get_execution_options(self) -> _ExecuteOptions:
         """Get the non-SQL options which will take effect during execution.
 
-        .. versionadded:: 1.3
-
         .. seealso::
 
             :meth:`_engine.Connection.execution_options`
@@ -3137,8 +3135,6 @@ class Engine(
 
     def get_execution_options(self) -> _ExecuteOptions:
         """Get the non-SQL options which will take effect during execution.
-
-        .. versionadded: 1.3
 
         .. seealso::
 

@@ -873,8 +873,6 @@ class Query(
         in its result list, and False if this query returns a tuple of entities
         for each result.
 
-        .. versionadded:: 1.3.11
-
         .. seealso::
 
             :meth:`_query.Query.only_return_tuples`
@@ -1128,12 +1126,6 @@ class Query(
          store the object's primary key value, the call would look like::
 
             my_object = query.get({"id": 5, "version_id": 10})
-
-         .. versionadded:: 1.3 the :meth:`_query.Query.get`
-            method now optionally
-            accepts a dictionary of attribute names to values in order to
-            indicate a primary key identifier.
-
 
         :return: The object instance, or ``None``.
 
@@ -1715,8 +1707,6 @@ class Query(
 
     def get_execution_options(self) -> _ImmutableExecuteOptions:
         """Get the non-SQL options which will take effect during execution.
-
-        .. versionadded:: 1.3
 
         .. seealso::
 

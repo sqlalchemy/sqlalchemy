@@ -645,11 +645,6 @@ name as follows::
 
     `The Importance of Naming Constraints <https://alembic.sqlalchemy.org/en/latest/naming.html>`_ - in the Alembic documentation.
 
-
-.. versionadded:: 1.3.0 added multi-column naming tokens such as ``%(column_0_N_name)s``.
-   Generated names that go beyond the character limit for the target database will be
-   deterministically truncated.
-
 .. _naming_check_constraints:
 
 Naming CHECK Constraints

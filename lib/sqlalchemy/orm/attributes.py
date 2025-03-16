@@ -2753,8 +2753,6 @@ def set_attribute(
      is being supplied; the object may be used to track the origin of the
      chain of events.
 
-     .. versionadded:: 1.2.3
-
     """
     state, dict_ = instance_state(instance), instance_dict(instance)
     state.manager[key].impl.set(state, dict_, value, initiator)
@@ -2822,8 +2820,6 @@ def flag_dirty(instance: object) -> None:
     will be able to see the object in the :attr:`.Session.dirty` collection and
     may establish changes on it, which will then be included in the SQL
     emitted.
-
-    .. versionadded:: 1.2
 
     .. seealso::
 

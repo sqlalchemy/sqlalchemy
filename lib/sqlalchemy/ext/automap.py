@@ -229,7 +229,7 @@ the same series of classes as what would be seen in
 :attr:`.AutomapBase.by_module` when explicit ``__module__`` conventions are
 present.
 
-.. versionadded: 2.0
+.. versionadded:: 2.0
 
     Added the :attr:`.AutomapBase.by_module` collection, which stores
     classes within a named hierarchy based on dot-separated module names,

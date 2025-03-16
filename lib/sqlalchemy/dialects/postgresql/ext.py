@@ -58,8 +58,6 @@ class aggregate_order_by(expression.ColumnElement):
 
         SELECT string_agg(a, ',' ORDER BY a) FROM table;
 
-    .. versionchanged:: 1.2.13 - the ORDER BY argument may be multiple terms
-
     .. seealso::
 
         :class:`_functions.array_agg`
@@ -209,8 +207,6 @@ class ExcludeConstraint(ColumnCollectionConstraint):
           elements; works the same way as that of the
           :ref:`postgresql_ops <postgresql_operator_classes>`
           parameter specified to the :class:`_schema.Index` construct.
-
-          .. versionadded:: 1.3.21
 
           .. seealso::
 

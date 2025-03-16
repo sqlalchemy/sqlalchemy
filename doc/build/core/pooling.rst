@@ -566,8 +566,6 @@ handled by the connection pool and replaced with a new connection.
 
 Note that the flag only applies to :class:`.QueuePool` use.
 
-.. versionadded:: 1.3
-
 .. seealso::
 
     :ref:`pool_disconnects`

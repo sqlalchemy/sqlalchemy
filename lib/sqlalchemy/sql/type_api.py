@@ -291,8 +291,6 @@ class TypeEngine(Visitable, Generic[_T]):
     The default value of ``None`` indicates that the values stored by
     this type are self-sorting.
 
-    .. versionadded:: 1.3.8
-
     """
 
     should_evaluate_none: bool = False
@@ -1407,8 +1405,6 @@ class Emulated(TypeEngineMixin):
     Current examples of :class:`.Emulated` are:  :class:`.Interval`,
     :class:`.Enum`, :class:`.Boolean`.
 
-    .. versionadded:: 1.2.0b3
-
     """
 
     native: bool
@@ -1466,11 +1462,7 @@ def _is_native_for_emulated(
 
 
 class NativeForEmulated(TypeEngineMixin):
-    """Indicates DB-native types supported by an :class:`.Emulated` type.
-
-    .. versionadded:: 1.2.0b3
-
-    """
+    """Indicates DB-native types supported by an :class:`.Emulated` type."""
 
     @classmethod
     def adapt_native_to_emulated(

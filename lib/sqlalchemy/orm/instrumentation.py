@@ -21,13 +21,6 @@ or global basis using the :mod:`sqlalchemy.ext.instrumentation`
 module, which provides the means to build and specify
 alternate instrumentation forms.
 
-.. versionchanged: 0.8
-   The instrumentation extension system was moved out of the
-   ORM and into the external :mod:`sqlalchemy.ext.instrumentation`
-   package.  When that package is imported, it installs
-   itself within sqlalchemy.orm so that its more comprehensive
-   resolution mechanics take effect.
-
 """
 
 

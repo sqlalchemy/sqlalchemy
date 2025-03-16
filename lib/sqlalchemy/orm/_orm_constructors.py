@@ -1795,8 +1795,6 @@ def relationship(
       default, changes in state will be back-populated only if neither
       sides of a relationship is viewonly.
 
-      .. versionadded:: 1.3.17
-
       .. versionchanged:: 1.4 - A relationship that specifies
          :paramref:`_orm.relationship.viewonly` automatically implies
          that :paramref:`_orm.relationship.sync_backref` is ``False``.
@@ -1815,11 +1813,6 @@ def relationship(
          necessary to set it to ``True`` as the "omit_join" optimization is
          automatically detected; if it is not detected, then the
          optimization is not supported.
-
-         .. versionchanged:: 1.3.11  setting ``omit_join`` to True will now
-            emit a warning as this was not the intended use of this flag.
-
-      .. versionadded:: 1.3
 
     :param init: Specific to :ref:`orm_declarative_native_dataclasses`,
      specifies if the mapped attribute should be part of the ``__init__()``
@@ -2208,8 +2201,6 @@ def query_expression(
 
     :param default_expr: Optional SQL expression object that will be used in
         all cases if not assigned later with :func:`_orm.with_expression`.
-
-    .. versionadded:: 1.2
 
     .. seealso::
 

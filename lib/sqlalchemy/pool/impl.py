@@ -119,8 +119,6 @@ class QueuePool(Pool):
           timeouts, ensure that a recycle or pre-ping strategy is in use to
           gracefully handle stale connections.
 
-          .. versionadded:: 1.3
-
           .. seealso::
 
             :ref:`pool_use_lifo`

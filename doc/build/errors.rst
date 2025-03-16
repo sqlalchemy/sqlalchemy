@@ -1142,11 +1142,6 @@ Overall, "delete-orphan" cascade is usually applied
 on the "one" side of a one-to-many relationship so that it deletes objects
 in the "many" side, and not the other way around.
 
-.. versionchanged:: 1.3.18  The text of the "delete-orphan" error message
-   when used on a many-to-one or many-to-many relationship has been updated
-   to be more descriptive.
-
-
 .. seealso::
 
     :ref:`unitofwork_cascades`

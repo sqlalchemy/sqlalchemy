@@ -423,9 +423,6 @@ def identity_key(
       :param ident: primary key, may be a scalar or tuple argument.
       :param identity_token: optional identity token
 
-        .. versionadded:: 1.2 added identity_token
-
-
     * ``identity_key(instance=instance)``
 
       This form will produce the identity key for a given instance.  The
@@ -461,8 +458,6 @@ def identity_key(
       :param row: :class:`.Row` row returned by a :class:`_engine.CursorResult`
        (must be given as a keyword arg)
       :param identity_token: optional identity token
-
-        .. versionadded:: 1.2 added identity_token
 
     """  # noqa: E501
     if class_ is not None:
@@ -1997,8 +1992,6 @@ def with_parent(
     :param from_entity:
       Entity in which to consider as the left side.  This defaults to the
       "zero" entity of the :class:`_query.Query` itself.
-
-      .. versionadded:: 1.2
 
     """  # noqa: E501
     prop_t: RelationshipProperty[Any]

@@ -33,9 +33,6 @@ originate from :mod:`sqlalchemy.types` or from the local dialect::
         VARCHAR2,
     )
 
-.. versionadded:: 1.2.19 Added :class:`_types.NCHAR` to the list of datatypes
-   exported by the Oracle dialect.
-
 Types which are specific to Oracle Database, or have Oracle-specific
 construction arguments, are as follows:
 

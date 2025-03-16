@@ -403,8 +403,6 @@ of the baked query::
     # the "query" argument, pass that.
     my_q += lambda q: q.filter(my_subq.to_query(q).exists())
 
-.. versionadded:: 1.3
-
 .. _baked_with_before_compile:
 
 Using the before_compile event
@@ -433,12 +431,6 @@ The above strategy is appropriate for an event that will modify a
 given :class:`_query.Query` in exactly the same way every time, not dependent
 on specific parameters or external state that changes.
 
-.. versionadded:: 1.3.11  - added the "bake_ok" flag to the
-   :meth:`.QueryEvents.before_compile` event and disallowed caching via
-   the "baked" extension from occurring for event handlers that
-   return  a new :class:`_query.Query` object if this flag is not set.
-
-
 Disabling Baked Queries Session-wide
 ------------------------------------
 
@@ -455,8 +447,6 @@ The immediate rationale for this flag is so that an application
 which is seeing issues potentially due to cache key conflicts from user-defined
 baked queries or other baked query issues can turn the behavior off, in
 order to identify or eliminate baked queries as the cause of an issue.
-
-.. versionadded:: 1.2
 
 Lazy Loading Integration
 ------------------------

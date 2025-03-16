@@ -2420,11 +2420,6 @@ class TextClause(
             select id from table where name=:name_1
             UNION ALL select id from table where name=:name_2
 
-        .. versionadded:: 1.3.11  Added support for the
-           :paramref:`.BindParameter.unique` flag to work with
-           :func:`_expression.text`
-           constructs.
-
         """  # noqa: E501
         self._bindparams = new_params = self._bindparams.copy()
 
@@ -5300,10 +5295,6 @@ class quoted_name(util.MemoizedSlots, str):
     The above logic will run the "has table" logic against the Oracle Database
     backend, passing the name exactly as ``"some_table"`` without converting to
     upper case.
-
-    .. versionchanged:: 1.2 The :class:`.quoted_name` construct is now
-       importable from ``sqlalchemy.sql``, in addition to the previous
-       location of ``sqlalchemy.sql.elements``.
 
     """
 

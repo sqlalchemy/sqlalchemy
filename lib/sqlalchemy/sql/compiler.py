@@ -1491,8 +1491,6 @@ class SQLCompiler(Compiled):
         a VALUES expression, the string is assigned here, where it can be
         used for insert batching schemes to rewrite the VALUES expression.
 
-        .. versionadded:: 1.3.8
-
         .. versionchanged:: 2.0 This collection is no longer used by
            SQLAlchemy's built-in dialects, in favor of the currently
            internal ``_insertmanyvalues`` collection that is used only by
@@ -1552,19 +1550,6 @@ class SQLCompiler(Compiled):
         ultimately nestable, and this attribute should never be consulted
         by a ``visit_`` method, as it is not guaranteed to be assigned
         nor guaranteed to correspond to the current statement being compiled.
-
-        .. versionadded:: 1.3.21
-
-            For compatibility with previous versions, use the following
-            recipe::
-
-                statement = getattr(self, "current_executable", False)
-                if statement is False:
-                    statement = self.stack[-1]["selectable"]
-
-            For versions 1.4 and above, ensure only .current_executable
-            is used; the format of "self.stack" may change.
-
 
         """
         try:
@@ -7518,8 +7503,6 @@ class IdentifierPreparer:
         a filter for elements that are intended to represent keyword sequences,
         such as "INITIALLY", "INITIALLY DEFERRED", etc.   no special characters
         should be present.
-
-        .. versionadded:: 1.3
 
         """
 

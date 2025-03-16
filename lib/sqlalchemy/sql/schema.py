@@ -684,8 +684,6 @@ class Table(
             :class:`_schema.Table` will
             resolve to that table normally.
 
-            .. versionadded:: 1.3
-
             .. seealso::
 
                 :paramref:`.MetaData.reflect.resolve_fks`
@@ -798,10 +796,6 @@ class Table(
 
         :param comment: Optional string that will render an SQL comment on table
             creation.
-
-            .. versionadded:: 1.2 Added the :paramref:`_schema.Table.comment`
-                parameter
-                to :class:`_schema.Table`.
 
         :param \**kw: Additional keyword arguments not mentioned above are
             dialect specific, and passed in the form ``<dialectname>_<argname>``.
@@ -1763,7 +1757,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         :param insert_default: An alias of :paramref:`.Column.default`
             for compatibility with :func:`_orm.mapped_column`.
 
-            .. versionadded: 2.0.31
+            .. versionadded:: 2.0.31
 
         :param doc: optional String that can be used by the ORM or similar
             to document attributes on the Python side.   This attribute does
@@ -2029,10 +2023,6 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
 
         :param comment: Optional string that will render an SQL comment on
              table creation.
-
-             .. versionadded:: 1.2 Added the
-                :paramref:`_schema.Column.comment`
-                parameter to :class:`_schema.Column`.
 
         :param insert_sentinel: Marks this :class:`_schema.Column` as an
          :term:`insert sentinel` used for optimizing the performance of the
@@ -3515,7 +3505,7 @@ class ColumnDefault(DefaultGenerator, ABC):
 class ScalarElementColumnDefault(ColumnDefault):
     """default generator for a fixed scalar Python value
 
-    .. versionadded: 2.0
+    .. versionadded:: 2.0
 
     """
 
@@ -3663,8 +3653,6 @@ class CallableColumnDefault(ColumnDefault):
 
 class IdentityOptions(DialectKWArgs):
     """Defines options for a named database sequence or an identity column.
-
-    .. versionadded:: 1.3.18
 
     .. seealso::
 
@@ -5585,11 +5573,6 @@ class MetaData(HasSchemaAttr):
               it along with a ``fn(constraint, table)`` callable to the
               naming_convention dictionary.
 
-          .. versionadded:: 1.3.0 - added new ``%(column_0N_name)s``,
-             ``%(column_0_N_name)s``, and related tokens that produce
-             concatenations of names, keys, or labels for all columns referred
-             to by a given constraint.
-
           .. seealso::
 
                 :ref:`constraint_naming_conventions` - for detailed usage
@@ -5721,13 +5704,6 @@ class MetaData(HasSchemaAttr):
             collection when cycles are detected so that they may be applied
             to a schema separately.
 
-            .. versionchanged:: 1.3.17 - a warning is emitted when
-               :attr:`.MetaData.sorted_tables` cannot perform a proper sort
-               due to cyclical dependencies.  This will be an exception in a
-               future release.  Additionally, the sort will continue to return
-               other tables not involved in the cycle in dependency order which
-               was not the case previously.
-
         .. seealso::
 
             :func:`_schema.sort_tables`
@@ -5851,8 +5827,6 @@ class MetaData(HasSchemaAttr):
          :class:`_schema.Table` after the :meth:`_schema.MetaData.reflect`
          operation is
          complete.   Defaults to True.
-
-         .. versionadded:: 1.3.0
 
          .. seealso::
 
@@ -6033,8 +6007,6 @@ class Computed(FetchedValue, SchemaItem):
         )
 
     See the linked documentation below for complete details.
-
-    .. versionadded:: 1.3.11
 
     .. seealso::
 

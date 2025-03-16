@@ -620,11 +620,7 @@ class InspectionAttr:
     """
 
     _is_internal_proxy = False
-    """True if this object is an internal proxy object.
-
-    .. versionadded:: 1.2.12
-
-    """
+    """True if this object is an internal proxy object."""
 
     is_clause_element = False
     """True if this object is an instance of

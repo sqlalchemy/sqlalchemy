@@ -122,8 +122,6 @@ can be bypassed in :func:`_sa.create_engine` through the use of the
 parameter which allows for a custom callable
 that creates a Python sqlite3 driver level connection directly.
 
-.. versionadded:: 1.3.9
-
 .. seealso::
 
     `Uniform Resource Identifiers <https://www.sqlite.org/uri.html>`_ - in

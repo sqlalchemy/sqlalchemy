@@ -325,8 +325,6 @@ Server dialect supports this parameter by passing the
    feature would cause ``fast_executemany`` to not be used in most cases
    even if specified.
 
-.. versionadded:: 1.3
-
 .. seealso::
 
     `fast executemany <https://github.com/mkleehammer/pyodbc/wiki/Features-beyond-the-DB-API#fast_executemany>`_

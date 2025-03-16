@@ -205,10 +205,6 @@ available, which will alter the pysqlite connection using the ``.isolation_level
 attribute on the DBAPI connection and set it to None for the duration
 of the setting.
 
-.. versionadded:: 1.3.16 added support for SQLite AUTOCOMMIT isolation level
-   when using the pysqlite / sqlite3 SQLite driver.
-
-
 The other axis along which SQLite's transactional locking is impacted is
 via the nature of the ``BEGIN`` statement used.   The three varieties
 are "deferred", "immediate", and "exclusive", as described at
@@ -378,9 +374,6 @@ indicated from a :class:`_schema.Column` object.
 
     `ON CONFLICT <https://www.sqlite.org/lang_conflict.html>`_ - in the SQLite
     documentation
-
-.. versionadded:: 1.3
-
 
 The ``sqlite_on_conflict`` parameters accept a  string argument which is just
 the resolution name to be chosen, which on SQLite can be one of ROLLBACK,
