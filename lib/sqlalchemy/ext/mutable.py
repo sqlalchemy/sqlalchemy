@@ -649,8 +649,6 @@ class Mutable(MutableBase):
         """
 
         def listen_for_type(mapper: Mapper[_O], class_: type) -> None:
-            if mapper.non_primary:
-                return
             for prop in mapper.column_attrs:
                 if isinstance(prop.columns[0].type, sqltype):
                     cls.associate_with_attribute(getattr(class_, prop.key))
@@ -714,8 +712,6 @@ class Mutable(MutableBase):
             mapper: Mapper[_T],
             class_: Union[DeclarativeAttributeIntercept, type],
         ) -> None:
-            if mapper.non_primary:
-                return
             _APPLIED_KEY = "_ext_mutable_listener_applied"
 
             for prop in mapper.column_attrs:

@@ -9,7 +9,6 @@
 
 from __future__ import annotations
 
-import itertools
 import re
 import typing
 from typing import Any
@@ -1135,7 +1134,6 @@ class registry:
 
     _class_registry: clsregistry._ClsRegistryType
     _managers: weakref.WeakKeyDictionary[ClassManager[Any], Literal[True]]
-    _non_primary_mappers: weakref.WeakKeyDictionary[Mapper[Any], Literal[True]]
     metadata: MetaData
     constructor: CallableReference[Callable[..., None]]
     type_annotation_map: _MutableTypeAnnotationMapType
@@ -1197,7 +1195,6 @@ class registry:
 
         self._class_registry = class_registry
         self._managers = weakref.WeakKeyDictionary()
-        self._non_primary_mappers = weakref.WeakKeyDictionary()
         self.metadata = lcl_metadata
         self.constructor = constructor
         self.type_annotation_map = {}
@@ -1277,9 +1274,7 @@ class registry:
     def mappers(self) -> FrozenSet[Mapper[Any]]:
         """read only collection of all :class:`_orm.Mapper` objects."""
 
-        return frozenset(manager.mapper for manager in self._managers).union(
-            self._non_primary_mappers
-        )
+        return frozenset(manager.mapper for manager in self._managers)
 
     def _set_depends_on(self, registry: RegistryType) -> None:
         if registry is self:
@@ -1335,23 +1330,13 @@ class registry:
             todo.update(reg._dependencies.difference(done))
 
     def _mappers_to_configure(self) -> Iterator[Mapper[Any]]:
-        return itertools.chain(
-            (
-                manager.mapper
-                for manager in list(self._managers)
-                if manager.is_mapped
-                and not manager.mapper.configured
-                and manager.mapper._ready_for_configure
-            ),
-            (
-                npm
-                for npm in list(self._non_primary_mappers)
-                if not npm.configured and npm._ready_for_configure
-            ),
+        return (
+            manager.mapper
+            for manager in list(self._managers)
+            if manager.is_mapped
+            and not manager.mapper.configured
+            and manager.mapper._ready_for_configure
         )
-
-    def _add_non_primary_mapper(self, np_mapper: Mapper[Any]) -> None:
-        self._non_primary_mappers[np_mapper] = True
 
     def _dispose_cls(self, cls: Type[_O]) -> None:
         clsregistry._remove_class(cls.__name__, cls, self._class_registry)

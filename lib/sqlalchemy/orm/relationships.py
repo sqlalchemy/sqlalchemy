@@ -1690,7 +1690,6 @@ class RelationshipProperty(
         return self.entity.mapper
 
     def do_init(self) -> None:
-        self._check_conflicts()
         self._process_dependent_arguments()
         self._setup_entity()
         self._setup_registry_dependencies()
@@ -1988,25 +1987,6 @@ class RelationshipProperty(
 
         return _resolver(self.parent.class_, self)
 
-    def _check_conflicts(self) -> None:
-        """Test that this relationship is legal, warn about
-        inheritance conflicts."""
-        if self.parent.non_primary and not class_mapper(
-            self.parent.class_, configure=False
-        ).has_property(self.key):
-            raise sa_exc.ArgumentError(
-                "Attempting to assign a new "
-                "relationship '%s' to a non-primary mapper on "
-                "class '%s'.  New relationships can only be added "
-                "to the primary mapper, i.e. the very first mapper "
-                "created for class '%s' "
-                % (
-                    self.key,
-                    self.parent.class_.__name__,
-                    self.parent.class_.__name__,
-                )
-            )
-
     @property
     def cascade(self) -> CascadeOptions:
         """Return the current cascade setting for this
@@ -2109,9 +2089,6 @@ class RelationshipProperty(
     def _generate_backref(self) -> None:
         """Interpret the 'backref' instruction to create a
         :func:`_orm.relationship` complementary to this one."""
-
-        if self.parent.non_primary:
-            return
 
         resolve_back_populates = self._init_args.back_populates.resolved
 
