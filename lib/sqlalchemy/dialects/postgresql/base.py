@@ -1042,10 +1042,6 @@ Operator classes are also supported by the
 :paramref:`_postgresql.ExcludeConstraint.ops` parameter. See that parameter for
 details.
 
-.. versionadded:: 1.3.21 added support for operator classes with
-   :class:`_postgresql.ExcludeConstraint`.
-
-
 Index Types
 ^^^^^^^^^^^
 
@@ -1185,8 +1181,6 @@ dialect in conjunction with the :class:`_schema.Table` construct:
         ...,
         postgresql_partition_by="LIST (part_column)",
     )
-
-  .. versionadded:: 1.2.6
 
 *
   ``TABLESPACE``::

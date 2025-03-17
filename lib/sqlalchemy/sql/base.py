@@ -1507,8 +1507,6 @@ class Executable(roles.StatementRole):
     def get_execution_options(self) -> _ExecuteOptions:
         """Get the non-SQL options which will take effect during execution.
 
-        .. versionadded:: 1.3
-
         .. seealso::
 
             :meth:`.Executable.execution_options`

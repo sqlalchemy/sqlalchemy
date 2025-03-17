@@ -379,8 +379,6 @@ class ColumnProperty(
         """The full sequence of columns referenced by this
          attribute, adjusted for any aliasing in progress.
 
-        .. versionadded:: 1.3.17
-
         .. seealso::
 
            :ref:`maptojoin` - usage example
@@ -450,8 +448,6 @@ class ColumnProperty(
         def _memoized_attr_expressions(self) -> Sequence[NamedColumn[Any]]:
             """The full sequence of columns referenced by this
             attribute, adjusted for any aliasing in progress.
-
-            .. versionadded:: 1.3.17
 
             """
             if self.adapter:

@@ -1441,8 +1441,6 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
            ``__member__`` attribute. For example
            ``lambda x: [i.value for i in x]``.
 
-           .. versionadded:: 1.2.3
-
         :param sort_key_function: a Python callable which may be used as the
            "key" argument in the Python ``sorted()`` built-in.   The SQLAlchemy
            ORM requires that primary key columns which are mapped must
@@ -1451,8 +1449,6 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
            used to set a default sort key function for the objects.  By
            default, the database value of the enumeration is used as the
            sorting function.
-
-           .. versionadded:: 1.3.8
 
         :param omit_aliases: A boolean that when true will remove aliases from
            pep 435 enums. defaults to ``True``.
@@ -1951,10 +1947,6 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
     don't support a "native boolean" datatype, an option exists to
     also create a CHECK constraint on the target column
 
-    .. versionchanged:: 1.2 the :class:`.Boolean` datatype now asserts that
-       incoming Python values are already in pure boolean form.
-
-
     """
 
     __visit_name__ = "boolean"
@@ -2288,8 +2280,6 @@ class JSON(Indexable, TypeEngine[Any]):
 
         data_table.c.data["some key"].as_integer()
 
-      .. versionadded:: 1.3.11
-
     Additional operations may be available from the dialect-specific versions
     of :class:`_types.JSON`, such as
     :class:`sqlalchemy.dialects.postgresql.JSON` and
@@ -2324,9 +2314,6 @@ class JSON(Indexable, TypeEngine[Any]):
 
         # boolean comparison
         data_table.c.data["some_boolean"].as_boolean() == True
-
-    .. versionadded:: 1.3.11 Added type-specific casters for the basic JSON
-       data element types.
 
     .. note::
 
@@ -2407,12 +2394,6 @@ class JSON(Indexable, TypeEngine[Any]):
             "sqlite://",
             json_serializer=lambda obj: json.dumps(obj, ensure_ascii=False),
         )
-
-    .. versionchanged:: 1.3.7
-
-        SQLite dialect's ``json_serializer`` and ``json_deserializer``
-        parameters renamed from ``_json_serializer`` and
-        ``_json_deserializer``.
 
     .. seealso::
 
@@ -2637,8 +2618,6 @@ class JSON(Indexable, TypeEngine[Any]):
                     mytable.c.json_column["some_data"].as_boolean() == True
                 )
 
-            .. versionadded:: 1.3.11
-
             """  # noqa: E501
             return self._binary_w_type(Boolean(), "as_boolean")
 
@@ -2653,8 +2632,6 @@ class JSON(Indexable, TypeEngine[Any]):
                 stmt = select(mytable.c.json_column["some_data"].as_string()).where(
                     mytable.c.json_column["some_data"].as_string() == "some string"
                 )
-
-            .. versionadded:: 1.3.11
 
             """  # noqa: E501
             return self._binary_w_type(Unicode(), "as_string")
@@ -2671,8 +2648,6 @@ class JSON(Indexable, TypeEngine[Any]):
                     mytable.c.json_column["some_data"].as_integer() == 5
                 )
 
-            .. versionadded:: 1.3.11
-
             """  # noqa: E501
             return self._binary_w_type(Integer(), "as_integer")
 
@@ -2687,8 +2662,6 @@ class JSON(Indexable, TypeEngine[Any]):
                 stmt = select(mytable.c.json_column["some_data"].as_float()).where(
                     mytable.c.json_column["some_data"].as_float() == 29.75
                 )
-
-            .. versionadded:: 1.3.11
 
             """  # noqa: E501
             return self._binary_w_type(Float(), "as_float")
@@ -2727,8 +2700,6 @@ class JSON(Indexable, TypeEngine[Any]):
 
             Note that comparison of full JSON structures may not be
             supported by all backends.
-
-            .. versionadded:: 1.3.11
 
             """
             return self.expr
@@ -3680,7 +3651,7 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
          as Python uuid objects, converting to/from string via the
          DBAPI.
 
-         .. versionchanged: 2.0 ``as_uuid`` now defaults to ``True``.
+         .. versionchanged:: 2.0 ``as_uuid`` now defaults to ``True``.
 
         :param native_uuid=True: if True, backends that support either the
          ``UUID`` datatype directly, or a UUID-storing value
@@ -3830,7 +3801,7 @@ class UUID(Uuid[_UUID_RETURN], type_api.NativeForEmulated):
          as Python uuid objects, converting to/from string via the
          DBAPI.
 
-         .. versionchanged: 2.0 ``as_uuid`` now defaults to ``True``.
+         .. versionchanged:: 2.0 ``as_uuid`` now defaults to ``True``.
 
         """
         self.as_uuid = as_uuid

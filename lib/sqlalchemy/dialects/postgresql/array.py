@@ -119,8 +119,6 @@ class array(expression.ExpressionClauseList[_T]):
             ARRAY[q, x]
         ] AS anon_1
 
-    .. versionadded:: 1.3.6 added support for multidimensional array literals
-
     .. seealso::
 
         :class:`_postgresql.ARRAY`

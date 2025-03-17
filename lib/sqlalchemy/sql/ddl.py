@@ -1266,13 +1266,6 @@ def sort_tables(
         collection when cycles are detected so that they may be applied
         to a schema separately.
 
-        .. versionchanged:: 1.3.17 - a warning is emitted when
-           :func:`_schema.sort_tables` cannot perform a proper sort due to
-           cyclical dependencies.  This will be an exception in a future
-           release.  Additionally, the sort will continue to return
-           other tables not involved in the cycle in dependency order
-           which was not the case previously.
-
     :param tables: a sequence of :class:`_schema.Table` objects.
 
     :param skip_fn: optional callable which will be passed a

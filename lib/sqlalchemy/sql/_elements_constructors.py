@@ -358,9 +358,6 @@ def collate(
     The collation expression is also quoted if it is a case sensitive
     identifier, e.g. contains uppercase characters.
 
-    .. versionchanged:: 1.2 quoting is automatically applied to COLLATE
-       expressions if they are case sensitive.
-
     """
     return CollationClause._create_collation_expression(expression, collation)
 
@@ -686,11 +683,6 @@ def bindparam(
 
       .. note:: The "expanding" feature does not support "executemany"-
          style parameter sets.
-
-      .. versionadded:: 1.2
-
-      .. versionchanged:: 1.3 the "expanding" bound parameter feature now
-         supports empty lists.
 
     :param literal_execute:
       if True, the bound parameter will be rendered in the compile phase
@@ -1722,8 +1714,6 @@ def tuple_(
         from sqlalchemy import tuple_
 
         tuple_(table.c.col1, table.c.col2).in_([(1, 2), (5, 12), (10, 19)])
-
-    .. versionchanged:: 1.3.6 Added support for SQLite IN tuples.
 
     .. warning::
 

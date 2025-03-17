@@ -35,9 +35,6 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum, _StringType):
           quotes when generating the schema.  This object may also be a
           PEP-435-compliant enumerated type.
 
-          .. versionadded: 1.1 added support for PEP-435-compliant enumerated
-             types.
-
         :param strict: This flag has no effect.
 
          .. versionchanged:: The MySQL ENUM type as well as the base Enum

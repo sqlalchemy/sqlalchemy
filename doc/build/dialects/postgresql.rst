@@ -69,9 +69,6 @@ The combination of ENUM and ARRAY is not directly supported by backend
 DBAPIs at this time.   Prior to SQLAlchemy 1.3.17, a special workaround
 was needed in order to allow this combination to work, described below.
 
-.. versionchanged:: 1.3.17 The combination of ENUM and ARRAY is now directly
-   handled by SQLAlchemy's implementation without any workarounds needed.
-
 .. sourcecode:: python
 
     from sqlalchemy import TypeDecorator
@@ -119,10 +116,6 @@ Using JSON/JSONB with ARRAY
 Similar to using ENUM, prior to SQLAlchemy 1.3.17, for an ARRAY of JSON/JSONB
 we need to render the appropriate CAST.   Current psycopg2 drivers accommodate
 the result set correctly without any special steps.
-
-.. versionchanged:: 1.3.17 The combination of JSON/JSONB and ARRAY is now
-   directly handled by SQLAlchemy's implementation without any workarounds
-   needed.
 
 .. sourcecode:: python
 

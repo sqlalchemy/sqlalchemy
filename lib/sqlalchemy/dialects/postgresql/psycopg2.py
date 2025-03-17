@@ -171,9 +171,6 @@ For example, to indicate two hosts using the ``primary`` strategy::
    is repaired, previously ports were not correctly interpreted in this context.
    libpq comma-separated format is also now supported.
 
-.. versionadded:: 1.3.20 Support for multiple hosts in PostgreSQL connection
-   string.
-
 .. seealso::
 
     `libpq connection strings <https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING>`_ - please refer
@@ -197,8 +194,6 @@ initial scheme::
 
 In the above form, a blank "dsn" string is passed to the ``psycopg2.connect()``
 function which in turn represents an empty DSN passed to libpq.
-
-.. versionadded:: 1.3.2 support for parameter-less connections with psycopg2.
 
 .. seealso::
 

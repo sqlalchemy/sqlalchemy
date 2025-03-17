@@ -571,8 +571,6 @@ class DefaultDialect(Dialect):
         If the dialect's class level max_identifier_length should be used,
         can return None.
 
-        .. versionadded:: 1.3.9
-
         """
         return None
 
@@ -586,8 +584,6 @@ class DefaultDialect(Dialect):
 
         By default, calls the :meth:`_engine.Interfaces.get_isolation_level`
         method, propagating any exceptions raised.
-
-        .. versionadded:: 1.3.22
 
         """
         return self.get_isolation_level(dbapi_conn)
@@ -2257,12 +2253,6 @@ class DefaultExecutionContext(ExecutionContext):
          to the current column default invocation.   When ``False``, the
          raw parameters of the statement are returned including the
          naming convention used in the case of multi-valued INSERT.
-
-        .. versionadded:: 1.2  added
-           :meth:`.DefaultExecutionContext.get_current_parameters`
-           which provides more functionality over the existing
-           :attr:`.DefaultExecutionContext.current_parameters`
-           attribute.
 
         .. seealso::
 

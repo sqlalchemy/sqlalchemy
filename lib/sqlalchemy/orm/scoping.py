@@ -694,7 +694,7 @@ class scoped_session(Generic[_S]):
 
             :meth:`.Session.delete` - main documentation on delete
 
-        .. versionadded: 2.1
+        .. versionadded:: 2.1
 
 
         """  # noqa: E501
@@ -1078,7 +1078,7 @@ class scoped_session(Generic[_S]):
          Contents of this dictionary are passed to the
          :meth:`.Session.get_bind` method.
 
-         .. versionadded: 2.0.0rc1
+         .. versionadded:: 2.0.0rc1
 
         :return: The object instance, or ``None``.
 
@@ -1617,7 +1617,7 @@ class scoped_session(Generic[_S]):
 
             :meth:`.Session.merge` - main documentation on merge
 
-        .. versionadded: 2.1
+        .. versionadded:: 2.1
 
 
         """  # noqa: E501

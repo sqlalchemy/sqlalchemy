@@ -277,8 +277,6 @@ class InvalidatePoolError(DisconnectionError):
     :class:`_exc.DisconnectionError`, allowing three attempts to reconnect
     before giving up.
 
-    .. versionadded:: 1.2
-
     """
 
     invalidate_pool: bool = True
@@ -412,11 +410,7 @@ class NoSuchTableError(InvalidRequestError):
 
 
 class UnreflectableTableError(InvalidRequestError):
-    """Table exists but can't be reflected for some reason.
-
-    .. versionadded:: 1.2
-
-    """
+    """Table exists but can't be reflected for some reason."""
 
 
 class UnboundExecutionError(InvalidRequestError):

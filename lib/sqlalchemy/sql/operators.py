@@ -908,8 +908,6 @@ class ColumnOperators(Operators):
 
             WHERE COL IN (?, ?, ?)
 
-          .. versionadded:: 1.2 added "expanding" bound parameters
-
           If an empty list is passed, a special "empty list" expression,
           which is specific to the database in use, is rendered.  On
           SQLite this would be:
@@ -917,9 +915,6 @@ class ColumnOperators(Operators):
           .. sourcecode:: sql
 
             WHERE COL IN (SELECT 1 FROM (SELECT 1) WHERE 1!=1)
-
-          .. versionadded:: 1.3 "expanding" bound parameters now support
-             empty lists
 
         * a :func:`_expression.select` construct, which is usually a
           correlated scalar select::
@@ -957,11 +952,6 @@ class ColumnOperators(Operators):
         .. versionchanged:: 1.4 The ``not_in()`` operator is renamed from
            ``notin_()`` in previous releases.  The previous name remains
            available for backwards compatibility.
-
-        .. versionchanged:: 1.2  The :meth:`.ColumnOperators.in_` and
-           :meth:`.ColumnOperators.not_in` operators
-           now produce a "static" expression for an empty IN sequence
-           by default.
 
         .. seealso::
 

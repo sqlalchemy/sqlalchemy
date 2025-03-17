@@ -1187,8 +1187,6 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
                 def foobar(cls):
                     return func.subfoobar(self._foobar)
 
-        .. versionadded:: 1.2
-
         .. seealso::
 
             :ref:`hybrid_reuse_subclass`
@@ -1272,11 +1270,7 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
         return hybrid_property._InPlace(self)
 
     def getter(self, fget: _HybridGetterType[_T]) -> hybrid_property[_T]:
-        """Provide a modifying decorator that defines a getter method.
-
-        .. versionadded:: 1.2
-
-        """
+        """Provide a modifying decorator that defines a getter method."""
 
         return self._copy(fget=fget)
 
@@ -1390,8 +1384,6 @@ class hybrid_property(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
                 def fullname(cls, value):
                     fname, lname = value.split(" ", 1)
                     return [(cls.first_name, fname), (cls.last_name, lname)]
-
-        .. versionadded:: 1.2
 
         """
         return self._copy(update_expr=meth)

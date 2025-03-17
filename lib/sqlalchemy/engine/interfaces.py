@@ -386,8 +386,6 @@ class ReflectedColumn(TypedDict):
     computed: NotRequired[ReflectedComputed]
     """indicates that this column is computed by the database.
     Only some dialects return this key.
-
-    .. versionadded:: 1.3.16 - added support for computed reflection.
     """
 
     identity: NotRequired[ReflectedIdentity]
@@ -430,8 +428,6 @@ class ReflectedCheckConstraint(ReflectedConstraint):
 
     dialect_options: NotRequired[Dict[str, Any]]
     """Additional dialect-specific options detected for this check constraint
-
-    .. versionadded:: 1.3.8
     """
 
 
@@ -540,8 +536,6 @@ class ReflectedIndex(TypedDict):
     """optional dict mapping column names or expressions to tuple of sort
     keywords, which may include ``asc``, ``desc``, ``nulls_first``,
     ``nulls_last``.
-
-    .. versionadded:: 1.3.5
     """
 
     dialect_options: NotRequired[Dict[str, Any]]
@@ -1750,8 +1744,6 @@ class Dialect(EventTarget):
         :raise: ``NotImplementedError`` for dialects that don't support
          comments.
 
-        .. versionadded:: 1.2
-
         """
 
         raise NotImplementedError()
@@ -2476,8 +2468,6 @@ class Dialect(EventTarget):
         The method defaults to using the :meth:`.Dialect.get_isolation_level`
         method unless overridden by a dialect.
 
-        .. versionadded:: 1.3.22
-
         """
         raise NotImplementedError()
 
@@ -2587,8 +2577,6 @@ class Dialect(EventTarget):
                     __import__(package + ".provision")
                 except ImportError:
                     pass
-
-        .. versionadded:: 1.3.14
 
         """
 
@@ -2747,9 +2735,6 @@ class CreateEnginePlugin:
         engine = create_engine(
             "mysql+pymysql://scott:tiger@localhost/test", plugins=["myplugin"]
         )
-
-    .. versionadded:: 1.2.3  plugin names can also be specified
-       to :func:`_sa.create_engine` as a list
 
     A plugin may consume plugin-specific arguments from the
     :class:`_engine.URL` object as well as the ``kwargs`` dictionary, which is

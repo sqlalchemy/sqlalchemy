@@ -80,10 +80,6 @@ class ConcreteBase:
         class Employee(ConcreteBase, Base):
             _concrete_discriminator_name = "_concrete_discriminator"
 
-    .. versionadded:: 1.3.19 Added the ``_concrete_discriminator_name``
-       attribute to :class:`_declarative.ConcreteBase` so that the
-       virtual discriminator column name can be customized.
-
     .. versionchanged:: 1.4.2 The ``_concrete_discriminator_name`` attribute
        need only be placed on the basemost class to take correct effect for
        all subclasses.   An explicit error message is now raised if the

@@ -416,12 +416,6 @@ set, the two options are to use the :class:`_types.NCHAR` and
 the SQLAlchemy dialect to use NCHAR/NCLOB for the :class:`.Unicode` /
 :class:`.UnicodeText` datatypes instead of VARCHAR/CLOB.
 
-.. versionchanged:: 1.3 The :class:`.Unicode` and :class:`.UnicodeText`
-   datatypes now correspond to the ``VARCHAR2`` and ``CLOB`` Oracle Database
-   datatypes unless the ``use_nchar_for_unicode=True`` is passed to the dialect
-   when :func:`_sa.create_engine` is called.
-
-
 .. _oracledb_unicode_encoding_errors:
 
 Encoding Errors
@@ -435,9 +429,6 @@ handled.  The value is ultimately consumed by the Python `decode
 is passed both via python-oracledb's ``encodingErrors`` parameter consumed by
 ``Cursor.var()``, as well as SQLAlchemy's own decoding function, as the
 python-oracledb dialect makes use of both under different circumstances.
-
-.. versionadded:: 1.3.11
-
 
 .. _oracledb_setinputsizes:
 
@@ -464,9 +455,6 @@ On the SQLAlchemy side, the :meth:`.DialectEvents.do_setinputsizes` event can
 be used both for runtime visibility (e.g. logging) of the setinputsizes step as
 well as to fully control how ``setinputsizes()`` is used on a per-statement
 basis.
-
-.. versionadded:: 1.2.9 Added :meth:`.DialectEvents.setinputsizes`
-
 
 Example 1 - logging all setinputsizes calls
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -584,10 +572,6 @@ disable this coercion to decimal for performance reasons, pass the flag
 The ``coerce_to_decimal`` flag only impacts the results of plain string
 SQL statements that are not otherwise associated with a :class:`.Numeric`
 SQLAlchemy type (or a subclass of such).
-
-.. versionchanged:: 1.2 The numeric handling system for the oracle dialects has
-   been reworked to take advantage of newer driver features as well as better
-   integration of outputtypehandlers.
 
 .. versionadded:: 2.0.0 added support for the python-oracledb driver.
 

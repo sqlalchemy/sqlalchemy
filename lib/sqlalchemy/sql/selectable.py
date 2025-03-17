@@ -2660,9 +2660,6 @@ class HasCTE(roles.HasCTERole, SelectsRows):
         method may be
         used to establish these.
 
-        .. versionchanged:: 1.3.13 Added support for prefixes.
-           In particular - MATERIALIZED and NOT MATERIALIZED.
-
         :param name: name given to the common table expression.  Like
          :meth:`_expression.FromClause.alias`, the name can be left as
          ``None`` in which case an anonymous symbol will be used at query
@@ -3672,7 +3669,7 @@ class SelectBase(
         :meth:`_expression.SelectBase.subquery`
         method.
 
-        .. versionchanged: 1.4 - the ``.as_scalar()`` method was renamed to
+        .. versionchanged:: 1.4 - the ``.as_scalar()`` method was renamed to
            :meth:`_expression.SelectBase.scalar_subquery`.
 
         .. seealso::

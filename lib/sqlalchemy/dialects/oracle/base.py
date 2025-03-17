@@ -146,17 +146,6 @@ Valid values for ``isolation_level`` include:
    warning is emitted for this initial first-connect condition as it is
    expected to be a common restriction on Oracle databases.
 
-.. versionadded:: 1.3.16 added support for AUTOCOMMIT to the cx_Oracle dialect
-   as well as the notion of a default isolation level
-
-.. versionadded:: 1.3.21 Added support for SERIALIZABLE as well as live
-   reading of the isolation level.
-
-.. versionchanged:: 1.3.22 In the event that the default isolation
-   level cannot be read due to permissions on the v$transaction view as
-   is common in Oracle installations, the default isolation level is hardcoded
-   to "READ COMMITTED" which was the behavior prior to 1.3.21.
-
 .. seealso::
 
     :ref:`dbapi_autocommit`
@@ -552,9 +541,6 @@ Raw information regarding these constraints can be acquired using
 :meth:`_reflection.Inspector.get_unique_constraints`,
 :meth:`_reflection.Inspector.get_check_constraints`, and
 :meth:`_reflection.Inspector.get_indexes`.
-
-.. versionchanged:: 1.2 The Oracle Database dialect can now reflect UNIQUE and
-   CHECK constraints.
 
 When using reflection at the :class:`_schema.Table` level, the
 :class:`_schema.Table`

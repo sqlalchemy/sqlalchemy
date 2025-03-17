@@ -110,8 +110,6 @@ class Insert(StandardInsert):
     The :class:`~.mysql.Insert` object is created using the
     :func:`sqlalchemy.dialects.mysql.insert` function.
 
-    .. versionadded:: 1.2
-
     """
 
     stringify_dialect = "mysql"
@@ -197,13 +195,6 @@ class Insert(StandardInsert):
                     ("value", "some value"),
                 ]
             )
-
-         .. versionchanged:: 1.3 parameters can be specified as a dictionary
-            or list of 2-tuples; the latter form provides for parameter
-            ordering.
-
-
-        .. versionadded:: 1.2
 
         .. seealso::
 

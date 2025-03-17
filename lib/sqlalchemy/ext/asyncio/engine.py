@@ -1208,8 +1208,6 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):
             Proxied for the :class:`_engine.Engine` class on
             behalf of the :class:`_asyncio.AsyncEngine` class.
 
-        .. versionadded: 1.3
-
         .. seealso::
 
             :meth:`_engine.Engine.execution_options`

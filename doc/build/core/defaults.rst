@@ -171,14 +171,6 @@ multi-valued INSERT construct, the subset of parameters that corresponds to
 the individual VALUES clause is isolated from the full parameter dictionary
 and returned alone.
 
-.. versionadded:: 1.2
-
-    Added :meth:`.DefaultExecutionContext.get_current_parameters` method,
-    which improves upon the still-present
-    :attr:`.DefaultExecutionContext.current_parameters` attribute
-    by offering the service of organizing multiple VALUES clauses
-    into individual parameter dictionaries.
-
 .. _defaults_client_invoked_sql:
 
 Client-Invoked SQL Expressions
@@ -633,8 +625,6 @@ including the default schema, if any.
 
 Computed Columns (GENERATED ALWAYS AS)
 --------------------------------------
-
-.. versionadded:: 1.3.11
 
 The :class:`.Computed` construct allows a :class:`_schema.Column` to be declared in
 DDL as a "GENERATED ALWAYS AS" column, that is, one which has a value that is

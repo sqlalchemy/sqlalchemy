@@ -672,9 +672,6 @@ this context is unambiguous:
     {printsql}INSERT INTO my_table (id, data) VALUES (%s, %s)
     ON DUPLICATE KEY UPDATE data = %s, updated_at = CURRENT_TIMESTAMP
 
-.. versionchanged:: 1.3 support for parameter-ordered UPDATE clause within
-   MySQL ON DUPLICATE KEY UPDATE
-
 .. warning::
 
     The :meth:`_mysql.Insert.on_duplicate_key_update`
@@ -708,10 +705,6 @@ table:
 
 When rendered, the "inserted" namespace will produce the expression
 ``VALUES(<columnname>)``.
-
-.. versionadded:: 1.2 Added support for MySQL ON DUPLICATE KEY UPDATE clause
-
-
 
 rowcount Support
 ----------------
@@ -816,9 +809,6 @@ is available using the keyword argument ``mysql_with_parser``::
         mariadb_prefix="FULLTEXT",
         mariadb_with_parser="ngram",
     )
-
-.. versionadded:: 1.3
-
 
 .. _mysql_foreign_keys:
 

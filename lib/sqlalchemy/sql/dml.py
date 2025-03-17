@@ -463,7 +463,7 @@ class UpdateBase(
 
             upd = table.update().dialect_options(mysql_limit=10)
 
-        .. versionadded: 1.4 - this method supersedes the dialect options
+        .. versionadded:: 1.4 - this method supersedes the dialect options
            associated with the constructor.
 
 
