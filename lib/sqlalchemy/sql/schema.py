@@ -2837,9 +2837,18 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             issuing DDL for this constraint. Typical values include CASCADE,
             DELETE and RESTRICT.
 
+            .. seealso::
+
+                :ref:`on_update_on_delete`
+
         :param ondelete: Optional string. If set, emit ON DELETE <value> when
             issuing DDL for this constraint. Typical values include CASCADE,
-            SET NULL and RESTRICT.
+            SET NULL and RESTRICT.  Some dialects may allow for additional
+            syntaxes.
+
+            .. seealso::
+
+                :ref:`on_update_on_delete`
 
         :param deferrable: Optional bool. If set, emit DEFERRABLE or NOT
             DEFERRABLE when issuing DDL for this constraint.
@@ -4623,12 +4632,21 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         :param name: Optional, the in-database name of the key.
 
         :param onupdate: Optional string. If set, emit ON UPDATE <value> when
-          issuing DDL for this constraint. Typical values include CASCADE,
-          DELETE and RESTRICT.
+            issuing DDL for this constraint. Typical values include CASCADE,
+            DELETE and RESTRICT.
+
+            .. seealso::
+
+                :ref:`on_update_on_delete`
 
         :param ondelete: Optional string. If set, emit ON DELETE <value> when
-          issuing DDL for this constraint. Typical values include CASCADE,
-          SET NULL and RESTRICT.
+            issuing DDL for this constraint. Typical values include CASCADE,
+            SET NULL and RESTRICT.  Some dialects may allow for additional
+            syntaxes.
+
+            .. seealso::
+
+                :ref:`on_update_on_delete`
 
         :param deferrable: Optional bool. If set, emit DEFERRABLE or NOT
           DEFERRABLE when issuing DDL for this constraint.

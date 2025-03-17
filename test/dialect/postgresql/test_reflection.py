@@ -7,6 +7,7 @@ from sqlalchemy import BigInteger
 from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Identity
 from sqlalchemy import Index
 from sqlalchemy import inspect
@@ -20,6 +21,7 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import Text
+from sqlalchemy import text
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import base as postgresql
@@ -907,6 +909,53 @@ class ReflectionTest(
         meta2 = MetaData()
         subject = Table("subject", meta2, autoload_with=connection)
         eq_(subject.primary_key.columns.keys(), ["p2", "p1"])
+
+    def test_reflected_foreign_key_ondelete_column_list(
+        self, metadata, connection
+    ):
+        meta1 = metadata
+        pktable = Table(
+            "pktable",
+            meta1,
+            Column("tid", Integer, primary_key=True),
+            Column("id", Integer, primary_key=True),
+        )
+        Table(
+            "fktable",
+            meta1,
+            Column("tid", Integer),
+            Column("id", Integer),
+            Column("fk_id_del_set_null", Integer),
+            Column("fk_id_del_set_default", Integer, server_default=text("0")),
+            ForeignKeyConstraint(
+                name="fktable_tid_fk_id_del_set_null_fkey",
+                columns=["tid", "fk_id_del_set_null"],
+                refcolumns=[pktable.c.tid, pktable.c.id],
+                ondelete="SET NULL (fk_id_del_set_null)",
+            ),
+            ForeignKeyConstraint(
+                name="fktable_tid_fk_id_del_set_default_fkey",
+                columns=["tid", "fk_id_del_set_default"],
+                refcolumns=[pktable.c.tid, pktable.c.id],
+                ondelete="SET DEFAULT(fk_id_del_set_default)",
+            ),
+        )
+
+        meta1.create_all(connection)
+        meta2 = MetaData()
+        fktable = Table("fktable", meta2, autoload_with=connection)
+        fkey_set_null = next(
+            c
+            for c in fktable.foreign_key_constraints
+            if c.name == "fktable_tid_fk_id_del_set_null_fkey"
+        )
+        eq_(fkey_set_null.ondelete, "SET NULL (fk_id_del_set_null)")
+        fkey_set_default = next(
+            c
+            for c in fktable.foreign_key_constraints
+            if c.name == "fktable_tid_fk_id_del_set_default_fkey"
+        )
+        eq_(fkey_set_default.ondelete, "SET DEFAULT (fk_id_del_set_default)")
 
     def test_pg_weirdchar_reflection(self, metadata, connection):
         meta1 = metadata
