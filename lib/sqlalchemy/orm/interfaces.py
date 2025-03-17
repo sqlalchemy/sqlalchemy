@@ -1109,10 +1109,7 @@ class StrategizedProperty(MapperProperty[_T]):
         self.strategy = self._get_strategy(self.strategy_key)
 
     def post_instrument_class(self, mapper: Mapper[Any]) -> None:
-        if (
-            not self.parent.non_primary
-            and not mapper.class_manager._attr_has_impl(self.key)
-        ):
+        if not mapper.class_manager._attr_has_impl(self.key):
             self.strategy.init_class_attribute(mapper)
 
     _all_strategies: collections.defaultdict[
