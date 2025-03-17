@@ -5,7 +5,7 @@
     Added the ability to create custom SQL constructs that can define new
     clauses within SELECT, INSERT, UPDATE, and DELETE statements without
     needing to modify the construction or compilation code of of
-    :class:`.Select`, :class:`.Insert`, :class:`.Update`, or :class:`.Delete`
+    :class:`.Select`, :class:`_sql.Insert`, :class:`.Update`, or :class:`.Delete`
     directly.  Support for testing these constructs, including caching support,
     is present along with an example test suite.  The use case for these
     constructs is expected to be third party dialects for analytical SQL
