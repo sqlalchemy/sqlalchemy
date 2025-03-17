@@ -99,3 +99,21 @@ range_col_stmt = select(Column(INT4RANGE()), Column(INT8MULTIRANGE()))
 
 # EXPECTED_TYPE: Select[Tuple[Range[int], Sequence[Range[int]]]]
 reveal_type(range_col_stmt)
+
+array_from_ints = array(range(2))
+
+# EXPECTED_TYPE: array[int]
+reveal_type(array_from_ints)
+
+array_of_strings = array([], type_=Text)
+
+# EXPECTED_TYPE: array[str]
+reveal_type(array_of_strings)
+
+array_of_ints = array([0], type_=Integer)
+
+# EXPECTED_TYPE: array[int]
+reveal_type(array_of_ints)
+
+# EXPECTED_MYPY: Cannot infer type argument 1 of "array"
+array([0], type_=Text)
