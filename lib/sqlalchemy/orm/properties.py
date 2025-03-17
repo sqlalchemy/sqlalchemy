@@ -28,6 +28,7 @@ from typing import TypeVar
 from typing import Union
 
 from . import attributes
+from . import exc as orm_exc
 from . import strategy_options
 from .base import _DeclarativeMapped
 from .base import class_mapper
@@ -56,6 +57,7 @@ from ..sql.type_api import TypeEngine
 from ..util.typing import de_optionalize_union_types
 from ..util.typing import get_args
 from ..util.typing import includes_none
+from ..util.typing import is_a_type
 from ..util.typing import is_fwd_ref
 from ..util.typing import is_pep593
 from ..util.typing import is_pep695
@@ -862,16 +864,23 @@ class MappedColumn(
                     isinstance(our_type, type)
                     and issubclass(our_type, TypeEngine)
                 ):
-                    raise sa_exc.ArgumentError(
+                    raise orm_exc.MappedAnnotationError(
                         f"The type provided inside the {self.column.key!r} "
                         "attribute Mapped annotation is the SQLAlchemy type "
                         f"{our_type}. Expected a Python type instead"
                     )
-                else:
-                    raise sa_exc.ArgumentError(
+                elif is_a_type(our_type):
+                    raise orm_exc.MappedAnnotationError(
                         "Could not locate SQLAlchemy Core type for Python "
                         f"type {our_type} inside the {self.column.key!r} "
                         "attribute Mapped annotation"
+                    )
+                else:
+                    raise orm_exc.MappedAnnotationError(
+                        f"The object provided inside the {self.column.key!r} "
+                        "attribute Mapped annotation is not a Python type, "
+                        f"it's the object {our_type!r}. Expected a Python "
+                        "type."
                     )
 
             self.column._set_type(new_sqltype)

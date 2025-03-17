@@ -35,6 +35,7 @@ import weakref
 
 from . import attributes  # noqa
 from . import exc
+from . import exc as orm_exc
 from ._typing import _O
 from ._typing import insp_is_aliased_class
 from ._typing import insp_is_mapper
@@ -2306,7 +2307,7 @@ def _extract_mapped_subtype(
 
     if raw_annotation is None:
         if required:
-            raise sa_exc.ArgumentError(
+            raise orm_exc.MappedAnnotationError(
                 f"Python typing annotation is required for attribute "
                 f'"{cls.__name__}.{key}" when primary argument(s) for '
                 f'"{attr_cls.__name__}" construct are None or not present'
@@ -2326,14 +2327,14 @@ def _extract_mapped_subtype(
             str_cleanup_fn=_cleanup_mapped_str_annotation,
         )
     except _CleanupError as ce:
-        raise sa_exc.ArgumentError(
+        raise orm_exc.MappedAnnotationError(
             f"Could not interpret annotation {raw_annotation}.  "
             "Check that it uses names that are correctly imported at the "
             "module level. See chained stack trace for more hints."
         ) from ce
     except NameError as ne:
         if raiseerr and "Mapped[" in raw_annotation:  # type: ignore
-            raise sa_exc.ArgumentError(
+            raise orm_exc.MappedAnnotationError(
                 f"Could not interpret annotation {raw_annotation}.  "
                 "Check that it uses names that are correctly imported at the "
                 "module level. See chained stack trace for more hints."
@@ -2362,7 +2363,7 @@ def _extract_mapped_subtype(
                 ):
                     return None
 
-                raise sa_exc.ArgumentError(
+                raise orm_exc.MappedAnnotationError(
                     f'Type annotation for "{cls.__name__}.{key}" '
                     "can't be correctly interpreted for "
                     "Annotated Declarative Table form.  ORM annotations "
@@ -2383,7 +2384,7 @@ def _extract_mapped_subtype(
                 return annotated, None
 
         if len(annotated.__args__) != 1:
-            raise sa_exc.ArgumentError(
+            raise orm_exc.MappedAnnotationError(
                 "Expected sub-type for Mapped[] annotation"
             )
 

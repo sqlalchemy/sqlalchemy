@@ -1577,7 +1577,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                                 is_dataclass,
                             )
                         except NameError as ne:
-                            raise exc.ArgumentError(
+                            raise orm_exc.MappedAnnotationError(
                                 f"Could not resolve all types within mapped "
                                 f'annotation: "{annotation}".  Ensure all '
                                 f"types are written correctly and are "
