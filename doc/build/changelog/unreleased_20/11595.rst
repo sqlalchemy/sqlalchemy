@@ -1,0 +1,11 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 11595
+
+    Added support for specifying a list of columns for ``SET NULL`` and ``SET
+    DEFAULT`` actions of ``ON DELETE`` clause of foreign key definition on
+    PostgreSQL.  Pull request courtesy Denis Laxalde.
+
+    .. seealso::
+
+        :ref:`postgresql_constraint_options`
