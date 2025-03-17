@@ -122,7 +122,7 @@ class DBAPIConnection(Protocol):
 
     def commit(self) -> None: ...
 
-    def cursor(self) -> DBAPICursor: ...
+    def cursor(self, *args: Any, **kwargs: Any) -> DBAPICursor: ...
 
     def rollback(self) -> None: ...
 
@@ -779,6 +779,12 @@ class Dialect(EventTarget):
 
     max_identifier_length: int
     """The maximum length of identifier names."""
+    max_index_name_length: Optional[int]
+    """The maximum length of index names if different from
+    ``max_identifier_length``."""
+    max_constraint_name_length: Optional[int]
+    """The maximum length of constraint names if different from
+    ``max_identifier_length``."""
 
     supports_server_side_cursors: bool
     """indicates if the dialect supports server side cursors"""
@@ -1281,8 +1287,6 @@ class Dialect(EventTarget):
            any :meth:`_engine.Dialect.on_connect` hooks are called.
 
         """
-
-        pass
 
     if TYPE_CHECKING:
 
@@ -2482,7 +2486,7 @@ class Dialect(EventTarget):
 
     def get_isolation_level_values(
         self, dbapi_conn: DBAPIConnection
-    ) -> List[IsolationLevel]:
+    ) -> Sequence[IsolationLevel]:
         """return a sequence of string isolation level names that are accepted
         by this dialect.
 
@@ -2655,6 +2659,9 @@ class Dialect(EventTarget):
     def get_dialect_pool_class(self, url: URL) -> Type[Pool]:
         """return a Pool class to use for a given URL"""
         raise NotImplementedError()
+
+    def validate_identifier(self, ident: str) -> None:
+        """Validates an identifier name, raising an exception if invalid"""
 
 
 class CreateEnginePlugin:

@@ -17,11 +17,14 @@ import contextlib
 import typing
 from typing import Any
 from typing import Callable
+from typing import Generic
 from typing import Iterable
 from typing import List
 from typing import Optional
 from typing import Sequence as typing_Sequence
 from typing import Tuple
+from typing import TypeVar
+from typing import Union
 
 from . import roles
 from .base import _generative
@@ -38,10 +41,12 @@ if typing.TYPE_CHECKING:
     from .compiler import Compiled
     from .compiler import DDLCompiler
     from .elements import BindParameter
+    from .schema import Column
     from .schema import Constraint
     from .schema import ForeignKeyConstraint
+    from .schema import Index
     from .schema import SchemaItem
-    from .schema import Sequence
+    from .schema import Sequence as Sequence  # noqa: F401
     from .schema import Table
     from .selectable import TableClause
     from ..engine.base import Connection
@@ -49,6 +54,8 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import CompiledCacheType
     from ..engine.interfaces import Dialect
     from ..engine.interfaces import SchemaTranslateMapType
+
+_SI = TypeVar("_SI", bound=Union["SchemaItem", str])
 
 
 class BaseDDLElement(ClauseElement):
@@ -87,7 +94,7 @@ class DDLIfCallable(Protocol):
     def __call__(
         self,
         ddl: BaseDDLElement,
-        target: SchemaItem,
+        target: Union[SchemaItem, str],
         bind: Optional[Connection],
         tables: Optional[List[Table]] = None,
         state: Optional[Any] = None,
@@ -106,7 +113,7 @@ class DDLIf(typing.NamedTuple):
     def _should_execute(
         self,
         ddl: BaseDDLElement,
-        target: SchemaItem,
+        target: Union[SchemaItem, str],
         bind: Optional[Connection],
         compiler: Optional[DDLCompiler] = None,
         **kw: Any,
@@ -172,7 +179,7 @@ class ExecutableDDLElement(roles.DDLRole, Executable, BaseDDLElement):
     """
 
     _ddl_if: Optional[DDLIf] = None
-    target: Optional[SchemaItem] = None
+    target: Union[SchemaItem, str, None] = None
 
     def _execute_on_connection(
         self, connection, distilled_params, execution_options
@@ -415,7 +422,7 @@ class DDL(ExecutableDDLElement):
         )
 
 
-class _CreateDropBase(ExecutableDDLElement):
+class _CreateDropBase(ExecutableDDLElement, Generic[_SI]):
     """Base class for DDL constructs that represent CREATE and DROP or
     equivalents.
 
@@ -425,15 +432,13 @@ class _CreateDropBase(ExecutableDDLElement):
 
     """
 
-    def __init__(
-        self,
-        element,
-    ):
+    def __init__(self, element: _SI) -> None:
         self.element = self.target = element
         self._ddl_if = getattr(element, "_ddl_if", None)
 
     @property
     def stringify_dialect(self):
+        assert not isinstance(self.element, str)
         return self.element.create_drop_stringify_dialect
 
     def _create_rule_disable(self, compiler):
@@ -447,19 +452,19 @@ class _CreateDropBase(ExecutableDDLElement):
         return False
 
 
-class _CreateBase(_CreateDropBase):
-    def __init__(self, element, if_not_exists=False):
+class _CreateBase(_CreateDropBase[_SI]):
+    def __init__(self, element: _SI, if_not_exists: bool = False) -> None:
         super().__init__(element)
         self.if_not_exists = if_not_exists
 
 
-class _DropBase(_CreateDropBase):
-    def __init__(self, element, if_exists=False):
+class _DropBase(_CreateDropBase[_SI]):
+    def __init__(self, element: _SI, if_exists: bool = False) -> None:
         super().__init__(element)
         self.if_exists = if_exists
 
 
-class CreateSchema(_CreateBase):
+class CreateSchema(_CreateBase[str]):
     """Represent a CREATE SCHEMA statement.
 
     The argument here is the string name of the schema.
@@ -474,13 +479,13 @@ class CreateSchema(_CreateBase):
         self,
         name: str,
         if_not_exists: bool = False,
-    ):
+    ) -> None:
         """Create a new :class:`.CreateSchema` construct."""
 
         super().__init__(element=name, if_not_exists=if_not_exists)
 
 
-class DropSchema(_DropBase):
+class DropSchema(_DropBase[str]):
     """Represent a DROP SCHEMA statement.
 
     The argument here is the string name of the schema.
@@ -496,14 +501,14 @@ class DropSchema(_DropBase):
         name: str,
         cascade: bool = False,
         if_exists: bool = False,
-    ):
+    ) -> None:
         """Create a new :class:`.DropSchema` construct."""
 
         super().__init__(element=name, if_exists=if_exists)
         self.cascade = cascade
 
 
-class CreateTable(_CreateBase):
+class CreateTable(_CreateBase["Table"]):
     """Represent a CREATE TABLE statement."""
 
     __visit_name__ = "create_table"
@@ -515,7 +520,7 @@ class CreateTable(_CreateBase):
             typing_Sequence[ForeignKeyConstraint]
         ] = None,
         if_not_exists: bool = False,
-    ):
+    ) -> None:
         """Create a :class:`.CreateTable` construct.
 
         :param element: a :class:`_schema.Table` that's the subject
@@ -537,7 +542,7 @@ class CreateTable(_CreateBase):
         self.include_foreign_key_constraints = include_foreign_key_constraints
 
 
-class _DropView(_DropBase):
+class _DropView(_DropBase["Table"]):
     """Semi-public 'DROP VIEW' construct.
 
     Used by the test suite for dialect-agnostic drops of views.
@@ -549,7 +554,9 @@ class _DropView(_DropBase):
 
 
 class CreateConstraint(BaseDDLElement):
-    def __init__(self, element: Constraint):
+    element: Constraint
+
+    def __init__(self, element: Constraint) -> None:
         self.element = element
 
 
@@ -666,16 +673,18 @@ class CreateColumn(BaseDDLElement):
 
     __visit_name__ = "create_column"
 
-    def __init__(self, element):
+    element: Column[Any]
+
+    def __init__(self, element: Column[Any]) -> None:
         self.element = element
 
 
-class DropTable(_DropBase):
+class DropTable(_DropBase["Table"]):
     """Represent a DROP TABLE statement."""
 
     __visit_name__ = "drop_table"
 
-    def __init__(self, element: Table, if_exists: bool = False):
+    def __init__(self, element: Table, if_exists: bool = False) -> None:
         """Create a :class:`.DropTable` construct.
 
         :param element: a :class:`_schema.Table` that's the subject
@@ -690,30 +699,24 @@ class DropTable(_DropBase):
         super().__init__(element, if_exists=if_exists)
 
 
-class CreateSequence(_CreateBase):
+class CreateSequence(_CreateBase["Sequence"]):
     """Represent a CREATE SEQUENCE statement."""
 
     __visit_name__ = "create_sequence"
 
-    def __init__(self, element: Sequence, if_not_exists: bool = False):
-        super().__init__(element, if_not_exists=if_not_exists)
 
-
-class DropSequence(_DropBase):
+class DropSequence(_DropBase["Sequence"]):
     """Represent a DROP SEQUENCE statement."""
 
     __visit_name__ = "drop_sequence"
 
-    def __init__(self, element: Sequence, if_exists: bool = False):
-        super().__init__(element, if_exists=if_exists)
 
-
-class CreateIndex(_CreateBase):
+class CreateIndex(_CreateBase["Index"]):
     """Represent a CREATE INDEX statement."""
 
     __visit_name__ = "create_index"
 
-    def __init__(self, element, if_not_exists=False):
+    def __init__(self, element: Index, if_not_exists: bool = False) -> None:
         """Create a :class:`.Createindex` construct.
 
         :param element: a :class:`_schema.Index` that's the subject
@@ -727,12 +730,12 @@ class CreateIndex(_CreateBase):
         super().__init__(element, if_not_exists=if_not_exists)
 
 
-class DropIndex(_DropBase):
+class DropIndex(_DropBase["Index"]):
     """Represent a DROP INDEX statement."""
 
     __visit_name__ = "drop_index"
 
-    def __init__(self, element, if_exists=False):
+    def __init__(self, element: Index, if_exists: bool = False) -> None:
         """Create a :class:`.DropIndex` construct.
 
         :param element: a :class:`_schema.Index` that's the subject
@@ -746,7 +749,7 @@ class DropIndex(_DropBase):
         super().__init__(element, if_exists=if_exists)
 
 
-class AddConstraint(_CreateBase):
+class AddConstraint(_CreateBase["Constraint"]):
     """Represent an ALTER TABLE ADD CONSTRAINT statement."""
 
     __visit_name__ = "add_constraint"
@@ -756,7 +759,7 @@ class AddConstraint(_CreateBase):
         element: Constraint,
         *,
         isolate_from_table: bool = True,
-    ):
+    ) -> None:
         """Construct a new :class:`.AddConstraint` construct.
 
         :param element: a :class:`.Constraint` object
@@ -780,7 +783,7 @@ class AddConstraint(_CreateBase):
             )
 
 
-class DropConstraint(_DropBase):
+class DropConstraint(_DropBase["Constraint"]):
     """Represent an ALTER TABLE DROP CONSTRAINT statement."""
 
     __visit_name__ = "drop_constraint"
@@ -793,7 +796,7 @@ class DropConstraint(_DropBase):
         if_exists: bool = False,
         isolate_from_table: bool = True,
         **kw: Any,
-    ):
+    ) -> None:
         """Construct a new :class:`.DropConstraint` construct.
 
         :param element: a :class:`.Constraint` object
@@ -821,13 +824,13 @@ class DropConstraint(_DropBase):
             )
 
 
-class SetTableComment(_CreateDropBase):
+class SetTableComment(_CreateDropBase["Table"]):
     """Represent a COMMENT ON TABLE IS statement."""
 
     __visit_name__ = "set_table_comment"
 
 
-class DropTableComment(_CreateDropBase):
+class DropTableComment(_CreateDropBase["Table"]):
     """Represent a COMMENT ON TABLE '' statement.
 
     Note this varies a lot across database backends.
@@ -837,25 +840,25 @@ class DropTableComment(_CreateDropBase):
     __visit_name__ = "drop_table_comment"
 
 
-class SetColumnComment(_CreateDropBase):
+class SetColumnComment(_CreateDropBase["Column[Any]"]):
     """Represent a COMMENT ON COLUMN IS statement."""
 
     __visit_name__ = "set_column_comment"
 
 
-class DropColumnComment(_CreateDropBase):
+class DropColumnComment(_CreateDropBase["Column[Any]"]):
     """Represent a COMMENT ON COLUMN IS NULL statement."""
 
     __visit_name__ = "drop_column_comment"
 
 
-class SetConstraintComment(_CreateDropBase):
+class SetConstraintComment(_CreateDropBase["Constraint"]):
     """Represent a COMMENT ON CONSTRAINT IS statement."""
 
     __visit_name__ = "set_constraint_comment"
 
 
-class DropConstraintComment(_CreateDropBase):
+class DropConstraintComment(_CreateDropBase["Constraint"]):
     """Represent a COMMENT ON CONSTRAINT IS NULL statement."""
 
     __visit_name__ = "drop_constraint_comment"
