@@ -1500,6 +1500,7 @@ def over(
     order_by: Optional[_ByArgument] = None,
     range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
     rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+    groups: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
 ) -> Over[_T]:
     r"""Produce an :class:`.Over` object against a function.
 
@@ -1562,10 +1563,12 @@ def over(
     :param range\_: optional range clause for the window.  This is a
      tuple value which can contain integer values or ``None``,
      and will render a RANGE BETWEEN PRECEDING / FOLLOWING clause.
-
     :param rows: optional rows clause for the window.  This is a tuple
      value which can contain integer values or None, and will render
      a ROWS BETWEEN PRECEDING / FOLLOWING clause.
+    :param groups: optional groups clause for the window.  This is a
+     tuple value which can contain integer values or ``None``,
+     and will render a GROUPS BETWEEN PRECEDING / FOLLOWING clause.
 
     This function is also available from the :data:`~.expression.func`
     construct itself via the :meth:`.FunctionElement.over` method.
@@ -1579,7 +1582,7 @@ def over(
         :func:`_expression.within_group`
 
     """  # noqa: E501
-    return Over(element, partition_by, order_by, range_, rows)
+    return Over(element, partition_by, order_by, range_, rows, groups)
 
 
 @_document_text_coercion("text", ":func:`.text`", ":paramref:`.text.text`")

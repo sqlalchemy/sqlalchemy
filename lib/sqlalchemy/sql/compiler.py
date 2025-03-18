@@ -2880,6 +2880,8 @@ class SQLCompiler(Compiled):
             range_ = f"RANGE BETWEEN {self.process(over.range_, **kwargs)}"
         elif over.rows is not None:
             range_ = f"ROWS BETWEEN {self.process(over.rows, **kwargs)}"
+        elif over.groups is not None:
+            range_ = f"GROUPS BETWEEN {self.process(over.groups, **kwargs)}"
         else:
             range_ = None
 

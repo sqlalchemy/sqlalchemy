@@ -3208,6 +3208,41 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={"param_1": 10, "param_2": 1},
         )
 
+        self.assert_compile(
+            select(func.row_number().over(order_by=expr, groups=(None, 0))),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid GROUPS BETWEEN "
+            "UNBOUNDED PRECEDING AND CURRENT ROW)"
+            " AS anon_1 FROM mytable",
+        )
+
+        self.assert_compile(
+            select(func.row_number().over(order_by=expr, groups=(-5, 10))),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid GROUPS BETWEEN "
+            ":param_1 PRECEDING AND :param_2 FOLLOWING)"
+            " AS anon_1 FROM mytable",
+            checkparams={"param_1": 5, "param_2": 10},
+        )
+
+        self.assert_compile(
+            select(func.row_number().over(order_by=expr, groups=(1, 10))),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid GROUPS BETWEEN "
+            ":param_1 FOLLOWING AND :param_2 FOLLOWING)"
+            " AS anon_1 FROM mytable",
+            checkparams={"param_1": 1, "param_2": 10},
+        )
+
+        self.assert_compile(
+            select(func.row_number().over(order_by=expr, groups=(-10, -1))),
+            "SELECT row_number() OVER "
+            "(ORDER BY mytable.myid GROUPS BETWEEN "
+            ":param_1 PRECEDING AND :param_2 PRECEDING)"
+            " AS anon_1 FROM mytable",
+            checkparams={"param_1": 10, "param_2": 1},
+        )
+
     def test_over_invalid_framespecs(self):
         assert_raises_message(
             exc.ArgumentError,
