@@ -3260,10 +3260,39 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert_raises_message(
             exc.ArgumentError,
-            "'range_' and 'rows' are mutually exclusive",
+            "too many frame spec clauses provided: "
+            "'range_' and 'rows'",
             func.row_number().over,
             range_=(-5, 8),
             rows=(-2, 5),
+        )
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "too many frame spec clauses provided: "
+            "'range_' and 'groups'",
+            func.row_number().over,
+            range_=(-5, 8),
+            groups=(None, None),
+        )
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "too many frame spec clauses provided: "
+            "'rows' and 'groups'",
+            func.row_number().over,
+            rows=(-2, 5),
+            groups=(None, None),
+        )
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "too many frame spec clauses provided: "
+            "'range_' and 'rows' and 'groups'",
+            func.row_number().over,
+            range_=(-5, 8),
+            rows=(-2, 5),
+            groups=(None, None),
         )
 
     def test_over_within_group(self):
