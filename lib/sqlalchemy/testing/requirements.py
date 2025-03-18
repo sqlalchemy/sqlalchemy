@@ -1169,6 +1169,19 @@ class SuiteRequirements(Requirements):
         return self.precision_numerics_many_significant_digits
 
     @property
+    def server_defaults(self):
+        """Target backend supports server side defaults for columns"""
+
+        return exclusions.closed()
+
+    @property
+    def expression_server_defaults(self):
+        """Target backend supports server side defaults with SQL expressions
+        for columns"""
+
+        return exclusions.closed()
+
+    @property
     def implicit_decimal_binds(self):
         """target backend will return a selected Decimal as a Decimal, not
         a string.

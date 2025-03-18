@@ -14,6 +14,7 @@ import sqlalchemy as sa
 from .. import config
 from .. import engines
 from .. import eq_
+from .. import eq_regex
 from .. import expect_raises
 from .. import expect_raises_message
 from .. import expect_warnings
@@ -23,6 +24,8 @@ from ..provision import get_temp_table_name
 from ..provision import temp_table_keyword_args
 from ..schema import Column
 from ..schema import Table
+from ... import Boolean
+from ... import DateTime
 from ... import event
 from ... import ForeignKey
 from ... import func
@@ -2882,6 +2885,47 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
         opts = insp.get_foreign_keys("user")[0]["options"]
         eq_(opts, expected)
         # eq_(dict((k, opts[k]) for k in opts if opts[k]), expected)
+
+    @testing.combinations(
+        (Integer, sa.text("10"), r"'?10'?"),
+        (Integer, "10", r"'?10'?"),
+        (Boolean, sa.true(), r"1|true"),
+        (
+            Integer,
+            sa.text("3 + 5"),
+            r"3\+5",
+            testing.requires.expression_server_defaults,
+        ),
+        (
+            Integer,
+            sa.text("(3 * 5)"),
+            r"3\*5",
+            testing.requires.expression_server_defaults,
+        ),
+        (DateTime, func.now(), r"current_timestamp|now|getdate"),
+        (
+            Integer,
+            sa.literal_column("3") + sa.literal_column("5"),
+            r"3\+5",
+            testing.requires.expression_server_defaults,
+        ),
+        argnames="datatype, default, expected_reg",
+    )
+    @testing.requires.server_defaults
+    def test_server_defaults(
+        self, metadata, connection, datatype, default, expected_reg
+    ):
+        t = Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("thecol", datatype, server_default=default),
+        )
+        t.create(connection)
+
+        reflected = inspect(connection).get_columns("t")[1]["default"]
+        reflected_sanitized = re.sub(r"[\(\) \']", "", reflected)
+        eq_regex(reflected_sanitized, expected_reg, flags=re.IGNORECASE)
 
 
 class NormalizedNameTest(fixtures.TablesTest):
