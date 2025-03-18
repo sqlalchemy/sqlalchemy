@@ -117,3 +117,9 @@ reveal_type(array_of_ints)
 
 # EXPECTED_MYPY: Cannot infer type argument 1 of "array"
 array([0], type_=Text)
+
+# EXPECTED_TYPE: ARRAY[str]
+reveal_type(ARRAY(Text))
+
+# EXPECTED_TYPE: Column[Sequence[int]]
+reveal_type(Column(type_=ARRAY(Integer)))
