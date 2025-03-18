@@ -1,0 +1,7 @@
+.. change::
+    :tags: sql
+    :tickets: 12444
+    
+    Implemented support for the GROUPS frame specification in window 
+    functions by adding "groups" option to :class:`.Over` and 
+    :meth:`.FunctionElement.over`. Pull request courtesy Kaan Dikmen.
