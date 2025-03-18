@@ -4246,37 +4246,23 @@ class Over(ColumnElement[_T]):
                 _literal_as_text_role=roles.ByOfRole,
             )
 
-        self.range_, self.rows, self.groups = None, None, None
-        if range_:
-            self.range_ = _FrameClause(range_)
-            if rows:
-                raise exc.ArgumentError(
-                    "'range_' and 'rows' are mutually exclusive"
-                )
-            if groups:
-                raise exc.ArgumentError(
-                    "'range_' and 'groups' are mutually exclusive"
-                )
-        if rows:
-            self.rows = _FrameClause(rows)
-            if range_:
-                raise exc.ArgumentError(
-                    "'rows' and 'range_' are mutually exclusive"
-                )
-            if groups:
-                raise exc.ArgumentError(
-                    "'rows' and 'groups' are mutually exclusive"
-                )
-        if groups:
-            self.groups = _FrameClause(groups)
-            if range_:
-                raise exc.ArgumentError(
-                    "'groups' and 'range_' are mutually exclusive"
-                )
-            if rows:
-                raise exc.ArgumentError(
-                    "'groups' and 'rows' are mutually exclusive"
-                )
+        # validate frame spec and assign clause
+        _frame_spec_map = {"range_": range_, "rows": rows, "groups": groups}
+        if sum([v is not None for v in _frame_spec_map.values()]) > 1:
+            _clauses = [
+                f"'{k}'"
+                for i, k in enumerate(_frame_spec_map.keys())
+                if list(_frame_spec_map.values())[i]
+            ]
+            _clauses_str = ' and '.join(_clauses)
+            raise exc.ArgumentError(
+                f"too many frame spec clauses provided: {_clauses_str}"
+            )
+        else:
+            self.range_, self.rows, self.groups = [
+                (_FrameClause(v) if v else None)
+                for v in _frame_spec_map.values()
+            ]
 
     if not TYPE_CHECKING:
 
