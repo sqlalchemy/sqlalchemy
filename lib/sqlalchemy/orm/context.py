@@ -1750,9 +1750,10 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
             statement._order_by_clauses += tuple(order_by)
 
         if distinct_on:
-            statement.distinct.non_generative(statement, *distinct_on)
+            statement._distinct = True
+            statement._distinct_on = distinct_on
         elif distinct:
-            statement.distinct.non_generative(statement)
+            statement._distinct = True
 
         if group_by:
             statement._group_by_clauses += tuple(group_by)

@@ -1982,8 +1982,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_distinct_on(self):
         with testing.expect_deprecated(
+            "Passing expression to",
             "DISTINCT ON is currently supported only by the PostgreSQL "
-            "dialect"
+            "dialect",
         ):
             select("*").distinct(table1.c.myid).compile()
 

@@ -17,6 +17,7 @@ from .base import TestBase
 from .. import config
 from .. import mock
 from ..assertions import eq_
+from ..assertions import expect_deprecated
 from ..assertions import ne_
 from ..util import adict
 from ..util import drop_all_tables_from_metadata
@@ -533,3 +534,26 @@ def insertmanyvalues_fixture(
             return orig_conn(dialect, context)
 
     connection._exec_insertmany_context = _exec_insertmany_context
+
+
+class DistinctOnFixture:
+    @config.fixture(params=["legacy", "new"])
+    def distinct_on_fixture(self, request):
+        from sqlalchemy.dialects.postgresql import distinct_on
+
+        def go(query, *expr):
+            if request.param == "legacy":
+                if expr:
+                    with expect_deprecated(
+                        "Passing expression to ``distinct`` to generate a "
+                        "DISTINCT "
+                        "ON clause is deprecated. Use instead the "
+                        "``postgresql.distinct_on`` function as an extension."
+                    ):
+                        return query.distinct(*expr)
+                else:
+                    return query.distinct()
+            elif request.param == "new":
+                return query.ext(distinct_on(*expr))
+
+        return go

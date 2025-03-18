@@ -102,4 +102,5 @@ __all__ = (
     "insert",
     "Insert",
     "match",
+    "limit",
 )

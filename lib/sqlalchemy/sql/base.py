@@ -1030,6 +1030,10 @@ class HasSyntaxExtensions(Generic[_L]):
 
             :ref:`examples_syntax_extensions`
 
+            :func:`_mysql.limit` - DML LIMIT for MySQL
+
+            :func:`_postgresql.distinct_on` - DISTINCT ON for PostgreSQL
+
         .. versionadded:: 2.1
 
         """

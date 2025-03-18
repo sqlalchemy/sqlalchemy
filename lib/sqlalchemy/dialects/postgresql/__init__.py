@@ -37,6 +37,7 @@ from .dml import Insert
 from .dml import insert
 from .ext import aggregate_order_by
 from .ext import array_agg
+from .ext import distinct_on
 from .ext import ExcludeConstraint
 from .ext import phraseto_tsquery
 from .ext import plainto_tsquery
@@ -164,4 +165,5 @@ __all__ = (
     "array_agg",
     "insert",
     "Insert",
+    "distinct_on",
 )

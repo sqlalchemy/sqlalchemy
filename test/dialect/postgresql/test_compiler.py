@@ -1,4 +1,5 @@
 import random
+import re
 
 from sqlalchemy import and_
 from sqlalchemy import BigInteger
@@ -42,6 +43,7 @@ from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.dialects.postgresql import array_agg as pg_array_agg
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.dialects.postgresql import DOMAIN
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.dialects.postgresql import insert
@@ -72,6 +74,7 @@ from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import AssertsCompiledSQL
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import eq_ignore_whitespace
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertions import is_
 from sqlalchemy.types import TypeEngine
@@ -3543,7 +3546,12 @@ class InsertOnConflictTest(
         )
 
 
-class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
+class DistinctOnTest(
+    fixtures.MappedTest,
+    AssertsCompiledSQL,
+    fixtures.CacheKeySuite,
+    fixtures.DistinctOnFixture,
+):
     """Test 'DISTINCT' with SQL expression language and orm.Query with
     an emphasis on PG's 'DISTINCT ON' syntax.
 
@@ -3560,80 +3568,81 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
             Column("b", String),
         )
 
-    def test_plain_generative(self):
+    def test_distinct_on_no_cols(self, distinct_on_fixture):
         self.assert_compile(
-            select(self.table).distinct(),
+            distinct_on_fixture(select(self.table)),
             "SELECT DISTINCT t.id, t.a, t.b FROM t",
         )
 
-    def test_on_columns_generative(self):
+    def test_distinct_on_cols(self, distinct_on_fixture):
         self.assert_compile(
-            select(self.table).distinct(self.table.c.a),
+            distinct_on_fixture(select(self.table), self.table.c.a),
             "SELECT DISTINCT ON (t.a) t.id, t.a, t.b FROM t",
         )
 
-    def test_on_columns_generative_multi_call(self):
         self.assert_compile(
-            select(self.table)
-            .distinct(self.table.c.a)
-            .distinct(self.table.c.b),
+            distinct_on_fixture(
+                self.table.select(), self.table.c.a, self.table.c.b
+            ),
+            "SELECT DISTINCT ON (t.a, t.b) t.id, t.a, t.b FROM t",
+            checkparams={},
+        )
+
+    def test_distinct_on_columns_generative_multi_call(
+        self, distinct_on_fixture
+    ):
+        stmt = select(self.table)
+        stmt = distinct_on_fixture(stmt, self.table.c.a)
+        stmt = distinct_on_fixture(stmt, self.table.c.b)
+
+        self.assert_compile(
+            stmt,
             "SELECT DISTINCT ON (t.a, t.b) t.id, t.a, t.b FROM t",
         )
 
-    def test_plain_inline(self):
+    def test_distinct_on_dupe_columns_generative_multi_call(
+        self, distinct_on_fixture
+    ):
+        stmt = select(self.table)
+        stmt = distinct_on_fixture(stmt, self.table.c.a)
+        stmt = distinct_on_fixture(stmt, self.table.c.a)
+
         self.assert_compile(
-            select(self.table).distinct(),
-            "SELECT DISTINCT t.id, t.a, t.b FROM t",
+            stmt,
+            "SELECT DISTINCT ON (t.a, t.a) t.id, t.a, t.b FROM t",
         )
 
-    def test_on_columns_inline_list(self):
-        self.assert_compile(
-            select(self.table)
-            .distinct(self.table.c.a, self.table.c.b)
-            .order_by(self.table.c.a, self.table.c.b),
-            "SELECT DISTINCT ON (t.a, t.b) t.id, "
-            "t.a, t.b FROM t ORDER BY t.a, t.b",
-        )
-
-    def test_on_columns_inline_scalar(self):
-        self.assert_compile(
-            select(self.table).distinct(self.table.c.a),
-            "SELECT DISTINCT ON (t.a) t.id, t.a, t.b FROM t",
-        )
-
-    def test_literal_binds(self):
-        self.assert_compile(
-            select(self.table).distinct(self.table.c.a == 10),
-            "SELECT DISTINCT ON (t.a = 10) t.id, t.a, t.b FROM t",
-            literal_binds=True,
-        )
-
-    def test_query_plain(self):
+    def test_legacy_query_plain(self, distinct_on_fixture):
         sess = Session()
         self.assert_compile(
-            sess.query(self.table).distinct(),
+            distinct_on_fixture(sess.query(self.table)),
             "SELECT DISTINCT t.id AS t_id, t.a AS t_a, t.b AS t_b FROM t",
         )
 
-    def test_query_on_columns(self):
+    def test_legacy_query_on_columns(self, distinct_on_fixture):
         sess = Session()
         self.assert_compile(
-            sess.query(self.table).distinct(self.table.c.a),
+            distinct_on_fixture(sess.query(self.table), self.table.c.a),
             "SELECT DISTINCT ON (t.a) t.id AS t_id, t.a AS t_a, "
             "t.b AS t_b FROM t",
         )
 
-    def test_query_on_columns_multi_call(self):
+    def test_legacy_query_distinct_on_columns_multi_call(
+        self, distinct_on_fixture
+    ):
         sess = Session()
         self.assert_compile(
-            sess.query(self.table)
-            .distinct(self.table.c.a)
-            .distinct(self.table.c.b),
+            distinct_on_fixture(
+                distinct_on_fixture(sess.query(self.table), self.table.c.a),
+                self.table.c.b,
+            ),
             "SELECT DISTINCT ON (t.a, t.b) t.id AS t_id, t.a AS t_a, "
             "t.b AS t_b FROM t",
         )
 
-    def test_query_on_columns_subquery(self):
+    def test_legacy_query_distinct_on_columns_subquery(
+        self, distinct_on_fixture
+    ):
         sess = Session()
 
         class Foo:
@@ -3646,33 +3655,34 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         f1 = aliased(Foo, subq)
         self.assert_compile(
-            sess.query(f1).distinct(f1.a, f1.b),
+            distinct_on_fixture(sess.query(f1), f1.a, f1.b),
             "SELECT DISTINCT ON (anon_1.a, anon_1.b) anon_1.id "
             "AS anon_1_id, anon_1.a AS anon_1_a, anon_1.b "
             "AS anon_1_b FROM (SELECT t.id AS id, t.a AS a, "
             "t.b AS b FROM t) AS anon_1",
         )
 
-    def test_query_distinct_on_aliased(self):
+    def test_legacy_query_distinct_on_aliased(self, distinct_on_fixture):
         class Foo:
             pass
 
+        clear_mappers()
         self.mapper_registry.map_imperatively(Foo, self.table)
         a1 = aliased(Foo)
         sess = Session()
+
+        q = distinct_on_fixture(sess.query(a1), a1.a)
         self.assert_compile(
-            sess.query(a1).distinct(a1.a),
+            q,
             "SELECT DISTINCT ON (t_1.a) t_1.id AS t_1_id, "
             "t_1.a AS t_1_a, t_1.b AS t_1_b FROM t AS t_1",
         )
 
-    def test_distinct_on_subquery_anon(self):
+    def test_distinct_on_subquery_anon(self, distinct_on_fixture):
         sq = select(self.table).alias()
-        q = (
-            select(self.table.c.id, sq.c.id)
-            .distinct(sq.c.id)
-            .where(self.table.c.id == sq.c.id)
-        )
+        q = distinct_on_fixture(
+            select(self.table.c.id, sq.c.id), sq.c.id
+        ).where(self.table.c.id == sq.c.id)
 
         self.assert_compile(
             q,
@@ -3681,19 +3691,122 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
             "AS b FROM t) AS anon_1 WHERE t.id = anon_1.id",
         )
 
-    def test_distinct_on_subquery_named(self):
+    def test_distinct_on_subquery_named(self, distinct_on_fixture):
         sq = select(self.table).alias("sq")
-        q = (
-            select(self.table.c.id, sq.c.id)
-            .distinct(sq.c.id)
-            .where(self.table.c.id == sq.c.id)
-        )
+        q = distinct_on_fixture(
+            select(self.table.c.id, sq.c.id), sq.c.id
+        ).where(self.table.c.id == sq.c.id)
         self.assert_compile(
             q,
             "SELECT DISTINCT ON (sq.id) t.id, sq.id AS id_1 "
             "FROM t, (SELECT t.id AS id, t.a AS a, "
             "t.b AS b FROM t) AS sq WHERE t.id = sq.id",
         )
+
+    @fixtures.CacheKeySuite.run_suite_tests
+    def test_distinct_on_ext_cache_key(self):
+        def leg():
+            with expect_deprecated("Passing expression"):
+                return self.table.select().distinct(self.table.c.a)
+
+        return lambda: [
+            self.table.select().ext(distinct_on(self.table.c.a)),
+            self.table.select().ext(distinct_on(self.table.c.b)),
+            self.table.select().ext(
+                distinct_on(self.table.c.a, self.table.c.b)
+            ),
+            self.table.select().ext(
+                distinct_on(self.table.c.b, self.table.c.a)
+            ),
+            self.table.select(),
+            self.table.select().distinct(),
+            leg(),
+        ]
+
+    def test_distinct_on_cache_key_equal(self, distinct_on_fixture):
+        self._run_cache_key_equal_fixture(
+            lambda: [
+                distinct_on_fixture(self.table.select(), self.table.c.a),
+                distinct_on_fixture(select(self.table), self.table.c.a),
+            ],
+            compare_values=True,
+        )
+        self._run_cache_key_equal_fixture(
+            lambda: [
+                distinct_on_fixture(
+                    distinct_on_fixture(self.table.select(), self.table.c.a),
+                    self.table.c.b,
+                ),
+                distinct_on_fixture(
+                    select(self.table), self.table.c.a, self.table.c.b
+                ),
+            ],
+            compare_values=True,
+        )
+
+    def test_distinct_on_literal_binds(self, distinct_on_fixture):
+        self.assert_compile(
+            distinct_on_fixture(select(self.table), self.table.c.a == 10),
+            "SELECT DISTINCT ON (t.a = 10) t.id, t.a, t.b FROM t",
+            literal_binds=True,
+        )
+
+    def test_distinct_on_col_str(self, distinct_on_fixture):
+        stmt = distinct_on_fixture(select(self.table), "a")
+        self.assert_compile(
+            stmt,
+            "SELECT DISTINCT ON (t.a) t.id, t.a, t.b FROM t",
+            dialect="postgresql",
+        )
+
+    def test_distinct_on_label(self, distinct_on_fixture):
+        stmt = distinct_on_fixture(select(self.table.c.a.label("foo")), "foo")
+        self.assert_compile(stmt, "SELECT DISTINCT ON (foo) t.a AS foo FROM t")
+
+    def test_unresolvable_distinct_label(self, distinct_on_fixture):
+        stmt = distinct_on_fixture(
+            select(self.table.c.a.label("foo")), "not a label"
+        )
+        with expect_raises_message(
+            exc.CompileError,
+            "Can't resolve label reference for.* expression 'not a"
+            " label' should be explicitly",
+        ):
+            self.assert_compile(stmt, "ingored")
+
+    def test_distinct_on_ext_with_legacy_distinct(self):
+        with (
+            expect_raises_message(
+                exc.InvalidRequestError,
+                re.escape(
+                    "Cannot mix ``select.ext(distinct_on(...))`` and "
+                    "``select.distinct(...)``"
+                ),
+            ),
+            expect_deprecated("Passing expression"),
+        ):
+            s = (
+                self.table.select()
+                .distinct(self.table.c.b)
+                .ext(distinct_on(self.table.c.a))
+            )
+
+        # opposite order is not detected...
+        with expect_deprecated("Passing expression"):
+            s = (
+                self.table.select()
+                .ext(distinct_on(self.table.c.a))
+                .distinct(self.table.c.b)
+            )
+        # but it raises while compiling
+        with expect_raises_message(
+            exc.CompileError,
+            re.escape(
+                "Cannot mix ``select.ext(distinct_on(...))`` and "
+                "``select.distinct(...)``"
+            ),
+        ):
+            self.assert_compile(s, "ignored")
 
 
 class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):

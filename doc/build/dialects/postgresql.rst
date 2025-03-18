@@ -590,6 +590,8 @@ PostgreSQL SQL Elements and Functions
 
 .. autoclass:: ts_headline
 
+.. autofunction:: distinct_on
+
 PostgreSQL Constraint Types
 ---------------------------
 
