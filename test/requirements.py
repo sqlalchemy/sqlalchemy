@@ -1,7 +1,4 @@
-"""Requirements specific to SQLAlchemy's own unit tests.
-
-
-"""
+"""Requirements specific to SQLAlchemy's own unit tests."""
 
 from sqlalchemy import exc
 from sqlalchemy.sql import sqltypes
@@ -210,6 +207,19 @@ class DefaultRequirements(SuiteRequirements):
                     "native boolean dialect",
                 ),
             ]
+        )
+
+    @property
+    def server_defaults(self):
+        """Target backend supports server side defaults for columns"""
+
+        return exclusions.open()
+
+    @property
+    def expression_server_defaults(self):
+        return skip_if(
+            lambda config: against(config, "mysql", "mariadb")
+            and not self._mysql_expression_defaults(config)
         )
 
     @property
@@ -1813,6 +1823,15 @@ class DefaultRequirements(SuiteRequirements):
         # 1. we have mysql / mariadb and
         # 2. they dont enforce check constraints
         return not self._mysql_check_constraints_exist(config)
+
+    def _mysql_expression_defaults(self, config):
+        return (against(config, ["mysql", "mariadb"])) and (
+            config.db.dialect._support_default_function
+        )
+
+    @property
+    def mysql_expression_defaults(self):
+        return only_if(self._mysql_expression_defaults)
 
     def _mysql_not_mariadb_102(self, config):
         return (against(config, ["mysql", "mariadb"])) and (

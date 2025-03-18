@@ -1936,12 +1936,13 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             colspec.append("AUTO_INCREMENT")
         else:
             default = self.get_column_default_string(column)
+
             if default is not None:
                 if (
-                    isinstance(
-                        column.server_default.arg, functions.FunctionElement
-                    )
-                    and self.dialect._support_default_function
+                    self.dialect._support_default_function
+                    and not re.match(r"^\s*[\'\"\(]", default)
+                    and "ON UPDATE" not in default
+                    and re.match(r".*\W.*", default)
                 ):
                     colspec.append(f"DEFAULT ({default})")
                 else:
