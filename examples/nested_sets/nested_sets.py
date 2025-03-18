@@ -44,7 +44,7 @@ def before_insert(mapper, connection, instance):
         instance.left = 1
         instance.right = 2
     else:
-        personnel = mapper.mapped_table
+        personnel = mapper.persist_selectable
         right_most_sibling = connection.scalar(
             select(personnel.c.rgt).where(
                 personnel.c.emp == instance.parent.emp

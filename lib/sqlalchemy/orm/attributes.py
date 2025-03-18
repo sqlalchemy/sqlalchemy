@@ -1925,33 +1925,32 @@ class _CollectionAttributeImpl(_HasCollectionAdapter, _AttributeImpl):
         # not trigger a lazy load of the old collection.
         new_collection, user_data = self._initialize_collection(state)
         if _adapt:
-            if new_collection._converter is not None:
-                iterable = new_collection._converter(iterable)
+            setting_type = util.duck_type_collection(iterable)
+            receiving_type = self._duck_typed_as
+
+            if setting_type is not receiving_type:
+                given = (
+                    "None" if iterable is None else iterable.__class__.__name__
+                )
+                wanted = (
+                    "None"
+                    if self._duck_typed_as is None
+                    else self._duck_typed_as.__name__
+                )
+                raise TypeError(
+                    "Incompatible collection type: %s is not %s-like"
+                    % (given, wanted)
+                )
+
+            # If the object is an adapted collection, return the (iterable)
+            # adapter.
+            if hasattr(iterable, "_sa_iterator"):
+                iterable = iterable._sa_iterator()
+            elif setting_type is dict:
+                new_keys = list(iterable)
+                iterable = iterable.values()
             else:
-                setting_type = util.duck_type_collection(iterable)
-                receiving_type = self._duck_typed_as
-
-                if setting_type is not receiving_type:
-                    given = (
-                        iterable is None
-                        and "None"
-                        or iterable.__class__.__name__
-                    )
-                    wanted = self._duck_typed_as.__name__
-                    raise TypeError(
-                        "Incompatible collection type: %s is not %s-like"
-                        % (given, wanted)
-                    )
-
-                # If the object is an adapted collection, return the (iterable)
-                # adapter.
-                if hasattr(iterable, "_sa_iterator"):
-                    iterable = iterable._sa_iterator()
-                elif setting_type is dict:
-                    new_keys = list(iterable)
-                    iterable = iterable.values()
-                else:
-                    iterable = iter(iterable)
+                iterable = iter(iterable)
         elif util.duck_type_collection(iterable) is dict:
             new_keys = list(value)
 

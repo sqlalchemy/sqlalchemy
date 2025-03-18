@@ -1067,28 +1067,14 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     execute_sequence_format = list
 
-    _cx_oracle_threaded = None
-
     _cursor_var_unicode_kwargs = util.immutabledict()
 
-    @util.deprecated_params(
-        threaded=(
-            "1.3",
-            "The 'threaded' parameter to the cx_oracle/oracledb dialect "
-            "is deprecated as a dialect-level argument, and will be removed "
-            "in a future release.  As of version 1.3, it defaults to False "
-            "rather than True.  The 'threaded' option can be passed to "
-            "cx_Oracle directly in the URL query string passed to "
-            ":func:`_sa.create_engine`.",
-        )
-    )
     def __init__(
         self,
         auto_convert_lobs=True,
         coerce_to_decimal=True,
         arraysize=None,
         encoding_errors=None,
-        threaded=None,
         **kwargs,
     ):
         OracleDialect.__init__(self, **kwargs)
@@ -1098,8 +1084,6 @@ class OracleDialect_cx_oracle(OracleDialect):
             self._cursor_var_unicode_kwargs = {
                 "encodingErrors": encoding_errors
             }
-        if threaded is not None:
-            self._cx_oracle_threaded = threaded
         self.auto_convert_lobs = auto_convert_lobs
         self.coerce_to_decimal = coerce_to_decimal
         if self._use_nchar_for_unicode:
@@ -1373,17 +1357,6 @@ class OracleDialect_cx_oracle(OracleDialect):
     def create_connect_args(self, url):
         opts = dict(url.query)
 
-        for opt in ("use_ansi", "auto_convert_lobs"):
-            if opt in opts:
-                util.warn_deprecated(
-                    f"{self.driver} dialect option {opt!r} should only be "
-                    "passed to create_engine directly, not within the URL "
-                    "string",
-                    version="1.3",
-                )
-                util.coerce_kw_type(opts, opt, bool)
-                setattr(self, opt, opts.pop(opt))
-
         database = url.database
         service_name = opts.pop("service_name", None)
         if database or service_name:
@@ -1415,9 +1388,6 @@ class OracleDialect_cx_oracle(OracleDialect):
             opts["password"] = url.password
         if url.username is not None:
             opts["user"] = url.username
-
-        if self._cx_oracle_threaded is not None:
-            opts.setdefault("threaded", self._cx_oracle_threaded)
 
         def convert_cx_oracle_constant(value):
             if isinstance(value, str):

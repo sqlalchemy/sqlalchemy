@@ -208,18 +208,6 @@ class _SessionClassMethods:
     """Class-level methods for :class:`.Session`, :class:`.sessionmaker`."""
 
     @classmethod
-    @util.deprecated(
-        "1.3",
-        "The :meth:`.Session.close_all` method is deprecated and will be "
-        "removed in a future release.  Please refer to "
-        ":func:`.session.close_all_sessions`.",
-    )
-    def close_all(cls) -> None:
-        """Close *all* sessions in memory."""
-
-        close_all_sessions()
-
-    @classmethod
     @util.preload_module("sqlalchemy.orm.util")
     def identity_key(
         cls,

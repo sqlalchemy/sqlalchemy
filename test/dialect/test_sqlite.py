@@ -321,23 +321,17 @@ class JSONTest(fixtures.TestBase):
             connection.scalar(select(sqlite_json.c.foo["json"])), value["json"]
         )
 
-    def test_deprecated_serializer_args(self, metadata):
+    def test_serializer_args(self, metadata):
         sqlite_json = Table("json_test", metadata, Column("foo", sqlite.JSON))
         data_element = {"foo": "bar"}
 
         js = mock.Mock(side_effect=json.dumps)
         jd = mock.Mock(side_effect=json.loads)
 
-        with testing.expect_deprecated(
-            "The _json_deserializer argument to the SQLite "
-            "dialect has been renamed",
-            "The _json_serializer argument to the SQLite "
-            "dialect has been renamed",
-        ):
-            engine = engines.testing_engine(
-                options=dict(_json_serializer=js, _json_deserializer=jd)
-            )
-            metadata.create_all(engine)
+        engine = engines.testing_engine(
+            options=dict(json_serializer=js, json_deserializer=jd)
+        )
+        metadata.create_all(engine)
 
         with engine.begin() as conn:
             conn.execute(sqlite_json.insert(), {"foo": data_element})

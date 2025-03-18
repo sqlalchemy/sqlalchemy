@@ -1152,11 +1152,6 @@ class Mapper(
     c: ReadOnlyColumnCollection[str, Column[Any]]
     """A synonym for :attr:`_orm.Mapper.columns`."""
 
-    @util.non_memoized_property
-    @util.deprecated("1.3", "Use .persist_selectable")
-    def mapped_table(self):
-        return self.persist_selectable
-
     @util.memoized_property
     def _path_registry(self) -> _CachingEntityRegistry:
         return PathRegistry.per_mapper(self)

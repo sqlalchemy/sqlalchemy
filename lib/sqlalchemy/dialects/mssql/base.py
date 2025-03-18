@@ -100,14 +100,6 @@ is set to ``False`` on any integer primary key column::
    ``dialect_options`` key in :meth:`_reflection.Inspector.get_columns`.
    Use the information in the ``identity`` key instead.
 
-.. deprecated:: 1.3
-
-   The use of :class:`.Sequence` to specify IDENTITY characteristics is
-   deprecated and will be removed in a future release.   Please use
-   the :class:`_schema.Identity` object parameters
-   :paramref:`_schema.Identity.start` and
-   :paramref:`_schema.Identity.increment`.
-
 .. versionchanged::  1.4   Removed the ability to use a :class:`.Sequence`
    object to modify IDENTITY characteristics. :class:`.Sequence` objects
    now only manipulate true T-SQL SEQUENCE types.
@@ -2832,22 +2824,8 @@ class MSIdentifierPreparer(compiler.IdentifierPreparer):
     def _unescape_identifier(self, value):
         return value.replace("]]", "]")
 
-    def quote_schema(self, schema, force=None):
+    def quote_schema(self, schema):
         """Prepare a quoted table and schema name."""
-
-        # need to re-implement the deprecation warning entirely
-        if force is not None:
-            # not using the util.deprecated_params() decorator in this
-            # case because of the additional function call overhead on this
-            # very performance-critical spot.
-            util.warn_deprecated(
-                "The IdentifierPreparer.quote_schema.force parameter is "
-                "deprecated and will be removed in a future release.  This "
-                "flag has no effect on the behavior of the "
-                "IdentifierPreparer.quote method; please refer to "
-                "quoted_name().",
-                version="1.3",
-            )
 
         dbname, owner = _schema_elements(schema)
         if dbname:

@@ -23,7 +23,6 @@ from sqlalchemy.engine import result_tuple
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import clear_mappers
-from sqlalchemy.orm import collections
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import contains_alias
 from sqlalchemy.orm import contains_eager
@@ -44,7 +43,6 @@ from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm import undefer
 from sqlalchemy.orm import with_polymorphic
-from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.strategy_options import lazyload
 from sqlalchemy.orm.strategy_options import noload
 from sqlalchemy.testing import assert_raises_message
@@ -72,7 +70,6 @@ from .test_default_strategies import DefaultStrategyOptionsTestFixtures
 from .test_deferred import InheritanceTest as _deferred_InheritanceTest
 from .test_dynamic import _DynamicFixture
 from .test_dynamic import _WriteOnlyFixture
-from .test_options import PathTest as OptionsPathTest
 from .test_options import PathTest
 from .test_options import QueryTest as OptionsQueryTest
 from .test_query import QueryTest
@@ -821,194 +818,6 @@ class DeprecatedMapperTest(
             "be discarded",
         ):
             m.add_property(key, new_prop)
-
-
-class DeprecatedOptionAllTest(OptionsPathTest, _fixtures.FixtureTest):
-    run_inserts = "once"
-    run_deletes = None
-
-    def _mapper_fixture_one(self):
-        users, User, addresses, Address, orders, Order = (
-            self.tables.users,
-            self.classes.User,
-            self.tables.addresses,
-            self.classes.Address,
-            self.tables.orders,
-            self.classes.Order,
-        )
-        keywords, items, item_keywords, Keyword, Item = (
-            self.tables.keywords,
-            self.tables.items,
-            self.tables.item_keywords,
-            self.classes.Keyword,
-            self.classes.Item,
-        )
-        self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties={
-                "addresses": relationship(Address),
-                "orders": relationship(Order),
-            },
-        )
-        self.mapper_registry.map_imperatively(Address, addresses)
-        self.mapper_registry.map_imperatively(
-            Order,
-            orders,
-            properties={
-                "items": relationship(Item, secondary=self.tables.order_items)
-            },
-        )
-        self.mapper_registry.map_imperatively(
-            Keyword,
-            keywords,
-            properties={
-                "keywords": column_property(keywords.c.name + "some keyword")
-            },
-        )
-        self.mapper_registry.map_imperatively(
-            Item,
-            items,
-            properties=dict(
-                keywords=relationship(Keyword, secondary=item_keywords)
-            ),
-        )
-
-    def _assert_eager_with_entity_exception(
-        self, entity_list, options, message
-    ):
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            message,
-            fixture_session()
-            .query(*entity_list)
-            .options(*options)
-            ._compile_context,
-        )
-
-    def test_defer_addtl_attrs(self):
-        users, User, Address, addresses = (
-            self.tables.users,
-            self.classes.User,
-            self.classes.Address,
-            self.tables.addresses,
-        )
-
-        self.mapper_registry.map_imperatively(Address, addresses)
-        self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties={
-                "addresses": relationship(
-                    Address, lazy="selectin", order_by=addresses.c.id
-                )
-            },
-        )
-
-        sess = fixture_session()
-
-        with testing.expect_deprecated(undefer_needs_chaining):
-            sess.query(User).options(
-                defer(User.addresses, Address.email_address)
-            )
-
-        with testing.expect_deprecated(undefer_needs_chaining):
-            sess.query(User).options(
-                undefer(User.addresses, Address.email_address)
-            )
-
-
-class InstrumentationTest(fixtures.ORMTest):
-    def test_dict_subclass4(self):
-        # tests #2654
-        with testing.expect_deprecated(
-            r"The collection.converter\(\) handler is deprecated and will "
-            "be removed in a future release.  Please refer to the "
-            "AttributeEvents"
-        ):
-
-            class MyDict(collections.KeyFuncDict):
-                def __init__(self):
-                    super().__init__(lambda value: "k%d" % value)
-
-                @collection.converter
-                def _convert(self, dictlike):
-                    for key, value in dictlike.items():
-                        yield value + 5
-
-        class Foo:
-            pass
-
-        instrumentation.register_class(Foo)
-        attributes._register_attribute(
-            Foo,
-            "attr",
-            parententity=object(),
-            comparator=object(),
-            uselist=True,
-            typecallable=MyDict,
-            useobject=True,
-        )
-
-        f = Foo()
-        f.attr = {"k1": 1, "k2": 2}
-
-        eq_(f.attr, {"k7": 7, "k6": 6})
-
-    def test_name_setup(self):
-        with testing.expect_deprecated(
-            r"The collection.converter\(\) handler is deprecated and will "
-            "be removed in a future release.  Please refer to the "
-            "AttributeEvents"
-        ):
-
-            class Base:
-                @collection.iterator
-                def base_iterate(self, x):
-                    return "base_iterate"
-
-                @collection.appender
-                def base_append(self, x):
-                    return "base_append"
-
-                @collection.converter
-                def base_convert(self, x):
-                    return "base_convert"
-
-                @collection.remover
-                def base_remove(self, x):
-                    return "base_remove"
-
-        from sqlalchemy.orm.collections import _instrument_class
-
-        _instrument_class(Base)
-
-        eq_(Base._sa_remover(Base(), 5), "base_remove")
-        eq_(Base._sa_appender(Base(), 5), "base_append")
-        eq_(Base._sa_iterator(Base(), 5), "base_iterate")
-        eq_(Base._sa_converter(Base(), 5), "base_convert")
-
-        with testing.expect_deprecated(
-            r"The collection.converter\(\) handler is deprecated and will "
-            "be removed in a future release.  Please refer to the "
-            "AttributeEvents"
-        ):
-
-            class Sub(Base):
-                @collection.converter
-                def base_convert(self, x):
-                    return "sub_convert"
-
-                @collection.remover
-                def sub_remove(self, x):
-                    return "sub_remove"
-
-        _instrument_class(Sub)
-
-        eq_(Sub._sa_appender(Sub(), 5), "base_append")
-        eq_(Sub._sa_remover(Sub(), 5), "sub_remove")
-        eq_(Sub._sa_iterator(Sub(), 5), "base_iterate")
-        eq_(Sub._sa_converter(Sub(), 5), "sub_convert")
 
 
 class ViewonlyFlagWarningTest(fixtures.MappedTest):
@@ -1775,61 +1584,6 @@ class RequirementsTest(fixtures.MappedTest):
             Column("ht1b_id", Integer, ForeignKey("ht1.id"), primary_key=True),
             Column("value", String(10)),
         )
-
-
-class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
-    __dialect__ = "default"
-
-    def test_deep_options(self):
-        users, items, order_items, Order, Item, User, orders = (
-            self.tables.users,
-            self.tables.items,
-            self.tables.order_items,
-            self.classes.Order,
-            self.classes.Item,
-            self.classes.User,
-            self.tables.orders,
-        )
-
-        self.mapper_registry.map_imperatively(
-            Item,
-            items,
-            properties=dict(description=deferred(items.c.description)),
-        )
-        self.mapper_registry.map_imperatively(
-            Order,
-            orders,
-            properties=dict(items=relationship(Item, secondary=order_items)),
-        )
-        self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties=dict(orders=relationship(Order, order_by=orders.c.id)),
-        )
-
-        sess = fixture_session()
-        q = sess.query(User).order_by(User.id)
-        result = q.all()
-        item = result[0].orders[1].items[1]
-
-        def go():
-            eq_(item.description, "item 4")
-
-        self.sql_count_(1, go)
-        eq_(item.description, "item 4")
-
-        sess.expunge_all()
-        with assertions.expect_deprecated(undefer_needs_chaining):
-            result = q.options(
-                undefer(User.orders, Order.items, Item.description)
-            ).all()
-        item = result[0].orders[1].items[1]
-
-        def go():
-            eq_(item.description, "item 4")
-
-        self.sql_count_(0, go)
-        eq_(item.description, "item 4")
 
 
 class SubOptionsTest(PathTest, OptionsQueryTest):

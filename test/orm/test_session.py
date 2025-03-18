@@ -465,11 +465,7 @@ class SessionUtilTest(_fixtures.FixtureTest):
         assert u1 in s1
         assert u2 in s2
 
-        with assertions.expect_deprecated(
-            r"The Session.close_all\(\) method is deprecated and will "
-            "be removed in a future release. "
-        ):
-            Session.close_all()
+        close_all_sessions()
 
         assert u1 not in s1
         assert u2 not in s2

@@ -2454,35 +2454,18 @@ def defaultload(*keys: _AttrType) -> _AbstractLoad:
 
 
 @loader_unbound_fn
-def defer(
-    key: _AttrType, *addl_attrs: _AttrType, raiseload: bool = False
-) -> _AbstractLoad:
-    if addl_attrs:
-        util.warn_deprecated(
-            "The *addl_attrs on orm.defer is deprecated.  Please use "
-            "method chaining in conjunction with defaultload() to "
-            "indicate a path.",
-            version="1.3",
-        )
-
+def defer(key: _AttrType, *, raiseload: bool = False) -> _AbstractLoad:
     if raiseload:
         kw = {"raiseload": raiseload}
     else:
         kw = {}
 
-    return _generate_from_keys(Load.defer, (key,) + addl_attrs, False, kw)
+    return _generate_from_keys(Load.defer, (key,), False, kw)
 
 
 @loader_unbound_fn
-def undefer(key: _AttrType, *addl_attrs: _AttrType) -> _AbstractLoad:
-    if addl_attrs:
-        util.warn_deprecated(
-            "The *addl_attrs on orm.undefer is deprecated.  Please use "
-            "method chaining in conjunction with defaultload() to "
-            "indicate a path.",
-            version="1.3",
-        )
-    return _generate_from_keys(Load.undefer, (key,) + addl_attrs, False, {})
+def undefer(key: _AttrType) -> _AbstractLoad:
+    return _generate_from_keys(Load.undefer, (key,), False, {})
 
 
 @loader_unbound_fn

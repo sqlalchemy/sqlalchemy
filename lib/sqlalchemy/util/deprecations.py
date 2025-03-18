@@ -203,7 +203,7 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_F], _F]:
 
         @deprecated_params(
             weak_identity_map=(
-                "0.7",
+                "2.0",
                 "the :paramref:`.Session.weak_identity_map parameter "
                 "is deprecated.",
             )
