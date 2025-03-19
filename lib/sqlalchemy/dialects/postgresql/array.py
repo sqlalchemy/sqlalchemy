@@ -199,7 +199,7 @@ class array(expression.ExpressionClauseList[_T]):
             return self
 
 
-class ARRAY(sqltypes.ARRAY):
+class ARRAY(sqltypes.ARRAY[_T]):
     """PostgreSQL ARRAY type.
 
     The :class:`_postgresql.ARRAY` type is constructed in the same way
@@ -273,7 +273,7 @@ class ARRAY(sqltypes.ARRAY):
 
     def __init__(
         self,
-        item_type: _TypeEngineArgument[typing_Any],
+        item_type: _TypeEngineArgument[_T],
         as_tuple: bool = False,
         dimensions: Optional[int] = None,
         zero_indexes: bool = False,
@@ -322,7 +322,7 @@ class ARRAY(sqltypes.ARRAY):
         self.dimensions = dimensions
         self.zero_indexes = zero_indexes
 
-    class Comparator(sqltypes.ARRAY.Comparator):
+    class Comparator(sqltypes.ARRAY.Comparator[_T]):
         """Define comparison operations for :class:`_types.ARRAY`.
 
         Note that these operations are in addition to those provided
@@ -363,7 +363,7 @@ class ARRAY(sqltypes.ARRAY):
     def _against_native_enum(self) -> bool:
         return (
             isinstance(self.item_type, sqltypes.Enum)
-            and self.item_type.native_enum
+            and self.item_type.native_enum  # type: ignore[attr-defined]
         )
 
     def literal_processor(
