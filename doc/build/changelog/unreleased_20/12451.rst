@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 12451
+
+    Fixed regression caused by :ticket:`7471` leading to a SQL compilation
+    issue where name disambiguation for two same-named FROM clauses with table
+    aliasing in use at the same time would produce invalid SQL in the FROM
+    clause with two "AS" clauses for the aliased table, due to double aliasing.
