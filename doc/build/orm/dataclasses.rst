@@ -933,6 +933,11 @@ applies when using this mapping style.
 Applying ORM mappings to an existing attrs class
 -------------------------------------------------
 
+.. warning:: The ``attrs`` library is not part of SQLAlchemy's continuous
+   integration testing, and compatibility with this library may change without
+   notice due to incompatibilities introduced by either side.
+
+
 The attrs_ library is a popular third party library that provides similar
 features as dataclasses, with many additional features provided not
 found in ordinary dataclasses.
@@ -942,103 +947,27 @@ initiates a process to scan the class for attributes that define the class'
 behavior, which are then used to generate methods, documentation, and
 annotations.
 
-The SQLAlchemy ORM supports mapping an attrs_ class using **Declarative with
-Imperative Table** or **Imperative** mapping. The general form of these two
-styles is fully equivalent to the
-:ref:`orm_declarative_dataclasses_declarative_table` and
-:ref:`orm_declarative_dataclasses_imperative_table` mapping forms used with
-dataclasses, where the inline attribute directives used by dataclasses or attrs
-are unchanged, and SQLAlchemy's table-oriented instrumentation is applied at
-runtime.
+The SQLAlchemy ORM supports mapping an attrs_ class using **Imperative** mapping.
+The general form of this style is equivalent to the
+:ref:`orm_imperative_dataclasses` mapping form used with
+dataclasses, where the class construction uses ``attrs`` alone, with ORM mappings
+applied after the fact without any class attribute scanning.
 
 The ``@define`` decorator of attrs_ by default replaces the annotated class
 with a new __slots__ based class, which is not supported. When using the old
 style annotation ``@attr.s`` or using ``define(slots=False)``, the class
-does not get replaced. Furthermore attrs removes its own class-bound attributes
+does not get replaced. Furthermore ``attrs`` removes its own class-bound attributes
 after the decorator runs, so that SQLAlchemy's mapping process takes over these
 attributes without any issue. Both decorators, ``@attr.s`` and ``@define(slots=False)``
 work with SQLAlchemy.
 
-Mapping attrs with Declarative "Imperative Table"
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. versionchanged:: 2.0  SQLAlchemy integration with ``attrs`` works only
+   with imperative mapping style, that is, not using Declarative.
+   The introduction of ORM Annotated Declarative style is not cross-compatible
+   with ``attrs``.
 
-In the "Declarative with Imperative Table" style, a :class:`_schema.Table`
-object is declared inline with the declarative class.   The
-``@define`` decorator is applied to the class first, then the
-:meth:`_orm.registry.mapped` decorator second::
-
-    from __future__ import annotations
-
-    from typing import List
-    from typing import Optional
-
-    from attrs import define
-    from sqlalchemy import Column
-    from sqlalchemy import ForeignKey
-    from sqlalchemy import Integer
-    from sqlalchemy import MetaData
-    from sqlalchemy import String
-    from sqlalchemy import Table
-    from sqlalchemy.orm import Mapped
-    from sqlalchemy.orm import registry
-    from sqlalchemy.orm import relationship
-
-    mapper_registry = registry()
-
-
-    @mapper_registry.mapped
-    @define(slots=False)
-    class User:
-        __table__ = Table(
-            "user",
-            mapper_registry.metadata,
-            Column("id", Integer, primary_key=True),
-            Column("name", String(50)),
-            Column("FullName", String(50), key="fullname"),
-            Column("nickname", String(12)),
-        )
-        id: Mapped[int]
-        name: Mapped[str]
-        fullname: Mapped[str]
-        nickname: Mapped[str]
-        addresses: Mapped[List[Address]]
-
-        __mapper_args__ = {  # type: ignore
-            "properties": {
-                "addresses": relationship("Address"),
-            }
-        }
-
-
-    @mapper_registry.mapped
-    @define(slots=False)
-    class Address:
-        __table__ = Table(
-            "address",
-            mapper_registry.metadata,
-            Column("id", Integer, primary_key=True),
-            Column("user_id", Integer, ForeignKey("user.id")),
-            Column("email_address", String(50)),
-        )
-        id: Mapped[int]
-        user_id: Mapped[int]
-        email_address: Mapped[Optional[str]]
-
-.. note:: The ``attrs`` ``slots=True`` option, which enables ``__slots__`` on
-   a mapped class, cannot be used with SQLAlchemy mappings without fully
-   implementing alternative
-   :ref:`attribute instrumentation <examples_instrumentation>`, as mapped
-   classes normally rely upon direct access to ``__dict__`` for state storage.
-   Behavior is undefined when this option is present.
-
-
-
-Mapping attrs with Imperative Mapping
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Just as is the case with dataclasses, we can make use of
-:meth:`_orm.registry.map_imperatively` to map an existing ``attrs`` class
-as well::
+The ``attrs`` class is built first.  The SQLAlchemy ORM mapping can be
+applied after the fact using :meth:`_orm.registry.map_imperatively`::
 
     from __future__ import annotations
 
@@ -1101,11 +1030,6 @@ as well::
     )
 
     mapper_registry.map_imperatively(Address, address)
-
-The above form is equivalent to the previous example using
-Declarative with Imperative Table.
-
-
 
 .. _dataclass: https://docs.python.org/3/library/dataclasses.html
 .. _dataclasses: https://docs.python.org/3/library/dataclasses.html
