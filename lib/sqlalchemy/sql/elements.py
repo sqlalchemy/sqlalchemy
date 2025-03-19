@@ -4194,6 +4194,7 @@ class Over(ColumnElement[_T]):
         ("partition_by", InternalTraversal.dp_clauseelement),
         ("range_", InternalTraversal.dp_plain_obj),
         ("rows", InternalTraversal.dp_plain_obj),
+        ("groups", InternalTraversal.dp_plain_obj),
     ]
 
     order_by: Optional[ClauseList] = None
@@ -4205,6 +4206,7 @@ class Over(ColumnElement[_T]):
 
     range_: Optional[typing_Tuple[_IntOrRange, _IntOrRange]]
     rows: Optional[typing_Tuple[_IntOrRange, _IntOrRange]]
+    groups: Optional[typing_Tuple[_IntOrRange, _IntOrRange]]
 
     def __init__(
         self,
@@ -4213,6 +4215,7 @@ class Over(ColumnElement[_T]):
         order_by: Optional[_ByArgument] = None,
         range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
         rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+        groups: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
     ):
         self.element = element
         if order_by is not None:
@@ -4225,19 +4228,14 @@ class Over(ColumnElement[_T]):
                 _literal_as_text_role=roles.ByOfRole,
             )
 
-        if range_:
-            self.range_ = self._interpret_range(range_)
-            if rows:
-                raise exc.ArgumentError(
-                    "'range_' and 'rows' are mutually exclusive"
-                )
-            else:
-                self.rows = None
-        elif rows:
-            self.rows = self._interpret_range(rows)
-            self.range_ = None
+        if sum(bool(item) for item in (range_, rows, groups)) > 1:
+            raise exc.ArgumentError(
+                "only one of 'rows', 'range_', or 'groups' may be provided"
+            )
         else:
-            self.rows = self.range_ = None
+            self.range_ = self._interpret_range(range_) if range_ else None
+            self.rows = self._interpret_range(rows) if rows else None
+            self.groups = self._interpret_range(groups) if groups else None
 
     def __reduce__(self):
         return self.__class__, (
@@ -4246,6 +4244,7 @@ class Over(ColumnElement[_T]):
             self.order_by,
             self.range_,
             self.rows,
+            self.groups,
         )
 
     def _interpret_range(
@@ -4360,6 +4359,7 @@ class WithinGroup(ColumnElement[_T]):
         order_by: Optional[_ByArgument] = None,
         rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
         range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+        groups: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
     ) -> Over[_T]:
         """Produce an OVER clause against this :class:`.WithinGroup`
         construct.
@@ -4374,6 +4374,7 @@ class WithinGroup(ColumnElement[_T]):
             order_by=order_by,
             range_=range_,
             rows=rows,
+            groups=groups,
         )
 
     @overload
@@ -4491,6 +4492,7 @@ class FunctionFilter(Generative, ColumnElement[_T]):
         ] = None,
         range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
         rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+        groups: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
     ) -> Over[_T]:
         """Produce an OVER clause against this filtered function.
 
@@ -4516,6 +4518,7 @@ class FunctionFilter(Generative, ColumnElement[_T]):
             order_by=order_by,
             range_=range_,
             rows=rows,
+            groups=groups,
         )
 
     def within_group(

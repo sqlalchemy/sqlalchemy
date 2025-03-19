@@ -1508,6 +1508,7 @@ def over(
     order_by: Optional[_ByArgument] = None,
     range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
     rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
+    groups: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
 ) -> Over[_T]:
     r"""Produce an :class:`.Over` object against a function.
 
@@ -1525,8 +1526,9 @@ def over(
 
         ROW_NUMBER() OVER(ORDER BY some_column)
 
-    Ranges are also possible using the :paramref:`.expression.over.range_`
-    and :paramref:`.expression.over.rows` parameters.  These
+    Ranges are also possible using the :paramref:`.expression.over.range_`,
+    :paramref:`.expression.over.rows`, and :paramref:`.expression.over.groups`
+    parameters.  These
     mutually-exclusive parameters each accept a 2-tuple, which contains
     a combination of integers and None::
 
@@ -1559,6 +1561,10 @@ def over(
 
         func.row_number().over(order_by="x", range_=(1, 3))
 
+    * GROUPS BETWEEN 1 FOLLOWING AND 3 FOLLOWING::
+
+        func.row_number().over(order_by="x", groups=(1, 3))
+
     :param element: a :class:`.FunctionElement`, :class:`.WithinGroup`,
      or other compatible construct.
     :param partition_by: a column element or string, or a list
@@ -1570,10 +1576,14 @@ def over(
     :param range\_: optional range clause for the window.  This is a
      tuple value which can contain integer values or ``None``,
      and will render a RANGE BETWEEN PRECEDING / FOLLOWING clause.
-
     :param rows: optional rows clause for the window.  This is a tuple
      value which can contain integer values or None, and will render
      a ROWS BETWEEN PRECEDING / FOLLOWING clause.
+    :param groups: optional groups clause for the window.  This is a
+     tuple value which can contain integer values or ``None``,
+     and will render a GROUPS BETWEEN PRECEDING / FOLLOWING clause.
+
+     .. versionadded:: 2.0.40
 
     This function is also available from the :data:`~.expression.func`
     construct itself via the :meth:`.FunctionElement.over` method.
@@ -1587,7 +1597,7 @@ def over(
         :func:`_expression.within_group`
 
     """  # noqa: E501
-    return Over(element, partition_by, order_by, range_, rows)
+    return Over(element, partition_by, order_by, range_, rows, groups)
 
 
 @_document_text_coercion("text", ":func:`.text`", ":paramref:`.text.text`")

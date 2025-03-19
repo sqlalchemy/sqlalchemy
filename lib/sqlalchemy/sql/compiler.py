@@ -2896,13 +2896,17 @@ class SQLCompiler(Compiled):
 
     def visit_over(self, over, **kwargs):
         text = over.element._compiler_dispatch(self, **kwargs)
-        if over.range_:
+        if over.range_ is not None:
             range_ = "RANGE BETWEEN %s" % self._format_frame_clause(
                 over.range_, **kwargs
             )
-        elif over.rows:
+        elif over.rows is not None:
             range_ = "ROWS BETWEEN %s" % self._format_frame_clause(
                 over.rows, **kwargs
+            )
+        elif over.groups is not None:
+            range_ = "GROUPS BETWEEN %s" % self._format_frame_clause(
+                over.groups, **kwargs
             )
         else:
             range_ = None

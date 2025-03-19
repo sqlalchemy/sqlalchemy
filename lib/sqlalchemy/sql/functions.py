@@ -435,6 +435,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
         order_by: Optional[_ByArgument] = None,
         rows: Optional[Tuple[Optional[int], Optional[int]]] = None,
         range_: Optional[Tuple[Optional[int], Optional[int]]] = None,
+        groups: Optional[Tuple[Optional[int], Optional[int]]] = None,
     ) -> Over[_T]:
         """Produce an OVER clause against this function.
 
@@ -466,6 +467,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             order_by=order_by,
             rows=rows,
             range_=range_,
+            groups=groups,
         )
 
     def within_group(
