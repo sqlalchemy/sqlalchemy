@@ -5260,6 +5260,7 @@ class SQLCompiler(Compiled):
         use_schema=True,
         from_linter=None,
         ambiguous_table_name_map=None,
+        enclosing_alias=None,
         **kwargs,
     ):
         if from_linter:
@@ -5278,7 +5279,11 @@ class SQLCompiler(Compiled):
                 ret = self.preparer.quote(table.name)
 
                 if (
-                    not effective_schema
+                    (
+                        enclosing_alias is None
+                        or enclosing_alias.element is not table
+                    )
+                    and not effective_schema
                     and ambiguous_table_name_map
                     and table.name in ambiguous_table_name_map
                 ):
