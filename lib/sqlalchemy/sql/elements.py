@@ -4246,7 +4246,7 @@ class Over(ColumnElement[_T]):
                 _literal_as_text_role=roles.ByOfRole,
             )
 
-        if (range_ and (rows or groups)) or (rows and (range_ or groups)):
+        if sum(bool(item) for item in (range_, rows, groups)) > 1:
             raise exc.ArgumentError(
                 "only one of 'rows', 'range_', or 'groups' may be provided"
             )
