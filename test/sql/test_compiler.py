@@ -3260,8 +3260,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert_raises_message(
             exc.ArgumentError,
-            "too many frame spec clauses provided: "
-            "'range_' and 'rows'",
+            "only one of 'rows', 'range_', or 'groups' may be provided",
             func.row_number().over,
             range_=(-5, 8),
             rows=(-2, 5),
@@ -3269,8 +3268,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert_raises_message(
             exc.ArgumentError,
-            "too many frame spec clauses provided: "
-            "'range_' and 'groups'",
+            "only one of 'rows', 'range_', or 'groups' may be provided",
             func.row_number().over,
             range_=(-5, 8),
             groups=(None, None),
@@ -3278,8 +3276,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert_raises_message(
             exc.ArgumentError,
-            "too many frame spec clauses provided: "
-            "'rows' and 'groups'",
+            "only one of 'rows', 'range_', or 'groups' may be provided",
             func.row_number().over,
             rows=(-2, 5),
             groups=(None, None),
@@ -3287,8 +3284,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert_raises_message(
             exc.ArgumentError,
-            "too many frame spec clauses provided: "
-            "'range_' and 'rows' and 'groups'",
+            "only one of 'rows', 'range_', or 'groups' may be provided",
             func.row_number().over,
             range_=(-5, 8),
             rows=(-2, 5),

@@ -4246,23 +4246,14 @@ class Over(ColumnElement[_T]):
                 _literal_as_text_role=roles.ByOfRole,
             )
 
-        # validate frame spec and assign clause
-        _frame_spec_map = {"range_": range_, "rows": rows, "groups": groups}
-        if sum([v is not None for v in _frame_spec_map.values()]) > 1:
-            _clauses = [
-                f"'{k}'"
-                for i, k in enumerate(_frame_spec_map.keys())
-                if list(_frame_spec_map.values())[i]
-            ]
-            _clauses_str = ' and '.join(_clauses)
+        if (range_ and (rows or groups)) or (rows and (range_ or groups)):
             raise exc.ArgumentError(
-                f"too many frame spec clauses provided: {_clauses_str}"
+                "only one of 'rows', 'range_', or 'groups' may be provided"
             )
         else:
-            self.range_, self.rows, self.groups = [
-                (_FrameClause(v) if v else None)
-                for v in _frame_spec_map.values()
-            ]
+            self.range_ = _FrameClause(range_) if range_ else None
+            self.rows = _FrameClause(rows) if rows else None
+            self.groups = _FrameClause(groups) if groups else None
 
     if not TYPE_CHECKING:
 
