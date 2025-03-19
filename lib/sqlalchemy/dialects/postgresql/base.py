@@ -1807,6 +1807,8 @@ class PGCompiler(compiler.SQLCompiler):
         }"""
 
     def visit_array(self, element, **kw):
+        if not element.clauses and not element.type.item_type._isnull:
+            return "ARRAY[]::%s" % element.type.compile(self.dialect)
         return "ARRAY[%s]" % self.visit_clauselist(element, **kw)
 
     def visit_slice(self, element, **kw):
