@@ -452,6 +452,7 @@ class CoreFixtures:
             func.row_number().over(order_by=table_a.c.a, range_=(0, 10)),
             func.row_number().over(order_by=table_a.c.a, range_=(None, 10)),
             func.row_number().over(order_by=table_a.c.a, rows=(None, 20)),
+            func.row_number().over(order_by=table_a.c.a, groups=(None, 20)),
             func.row_number().over(order_by=table_a.c.b),
             func.row_number().over(
                 order_by=table_a.c.a, partition_by=table_a.c.b
@@ -1201,6 +1202,14 @@ class CoreFixtures:
             func.row_number().over(
                 order_by=table_a.c.a,
                 range_=(random.randint(50, 60), None),
+            ),
+            func.row_number().over(
+                order_by=table_a.c.a,
+                groups=(random.randint(50, 60), random.randint(60, 70)),
+            ),
+            func.row_number().over(
+                order_by=table_a.c.a,
+                groups=(random.randint(-40, -20), random.randint(60, 70)),
             ),
         )
 
