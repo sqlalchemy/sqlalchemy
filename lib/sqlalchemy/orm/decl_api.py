@@ -81,8 +81,8 @@ from ..util.typing import Self
 if TYPE_CHECKING:
     from ._typing import _O
     from ._typing import _RegistryType
-    from .decl_base import _DataclassArguments
     from .instrumentation import ClassManager
+    from .interfaces import _DataclassArguments
     from .interfaces import MapperProperty
     from .state import InstanceState  # noqa
     from ..sql._typing import _TypeEngineArgument
@@ -594,7 +594,6 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
             "kw_only": kw_only,
             "dataclass_callable": dataclass_callable,
         }
-
         current_transforms: _DataclassArguments
 
         if hasattr(cls, "_sa_apply_dc_transforms"):
@@ -1597,20 +1596,18 @@ class registry:
         """
 
         def decorate(cls: Type[_O]) -> Type[_O]:
-            setattr(
-                cls,
-                "_sa_apply_dc_transforms",
-                {
-                    "init": init,
-                    "repr": repr,
-                    "eq": eq,
-                    "order": order,
-                    "unsafe_hash": unsafe_hash,
-                    "match_args": match_args,
-                    "kw_only": kw_only,
-                    "dataclass_callable": dataclass_callable,
-                },
-            )
+            apply_dc_transforms: _DataclassArguments = {
+                "init": init,
+                "repr": repr,
+                "eq": eq,
+                "order": order,
+                "unsafe_hash": unsafe_hash,
+                "match_args": match_args,
+                "kw_only": kw_only,
+                "dataclass_callable": dataclass_callable,
+            }
+
+            setattr(cls, "_sa_apply_dc_transforms", apply_dc_transforms)
             _as_declarative(self, cls, cls.__dict__)
             return cls
 

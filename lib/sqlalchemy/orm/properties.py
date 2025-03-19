@@ -36,6 +36,7 @@ from .descriptor_props import CompositeProperty
 from .descriptor_props import ConcreteInheritedProperty
 from .descriptor_props import SynonymProperty
 from .interfaces import _AttributeOptions
+from .interfaces import _DataclassDefaultsDontSet
 from .interfaces import _DEFAULT_ATTRIBUTE_OPTIONS
 from .interfaces import _IntrospectsAnnotations
 from .interfaces import _MapsColumns
@@ -96,6 +97,7 @@ __all__ = [
 
 @log.class_logger
 class ColumnProperty(
+    _DataclassDefaultsDontSet,
     _MapsColumns[_T],
     StrategizedProperty[_T],
     _IntrospectsAnnotations,
@@ -130,6 +132,7 @@ class ColumnProperty(
         "comparator_factory",
         "active_history",
         "expire_on_flush",
+        "_default_scalar_value",
         "_creation_order",
         "_is_polymorphic_discriminator",
         "_mapped_by_synonym",
@@ -149,6 +152,7 @@ class ColumnProperty(
         raiseload: bool = False,
         comparator_factory: Optional[Type[PropComparator[_T]]] = None,
         active_history: bool = False,
+        default_scalar_value: Any = None,
         expire_on_flush: bool = True,
         info: Optional[_InfoType] = None,
         doc: Optional[str] = None,
@@ -173,6 +177,7 @@ class ColumnProperty(
             else self.__class__.Comparator
         )
         self.active_history = active_history
+        self._default_scalar_value = default_scalar_value
         self.expire_on_flush = expire_on_flush
 
         if info is not None:
@@ -324,6 +329,7 @@ class ColumnProperty(
             deferred=self.deferred,
             group=self.group,
             active_history=self.active_history,
+            default_scalar_value=self._default_scalar_value,
         )
 
     def merge(
@@ -505,6 +511,7 @@ class MappedSQLExpression(ColumnProperty[_T], _DeclarativeMapped[_T]):
 
 
 class MappedColumn(
+    _DataclassDefaultsDontSet,
     _IntrospectsAnnotations,
     _MapsColumns[_T],
     _DeclarativeMapped[_T],
@@ -534,6 +541,7 @@ class MappedColumn(
         "deferred_group",
         "deferred_raiseload",
         "active_history",
+        "_default_scalar_value",
         "_attribute_options",
         "_has_dataclass_arguments",
         "_use_existing_column",
@@ -564,12 +572,11 @@ class MappedColumn(
             )
         )
 
-        insert_default = kw.pop("insert_default", _NoArg.NO_ARG)
+        insert_default = kw.get("insert_default", _NoArg.NO_ARG)
         self._has_insert_default = insert_default is not _NoArg.NO_ARG
+        self._default_scalar_value = _NoArg.NO_ARG
 
-        if self._has_insert_default:
-            kw["default"] = insert_default
-        elif attr_opts.dataclasses_default is not _NoArg.NO_ARG:
+        if attr_opts.dataclasses_default is not _NoArg.NO_ARG:
             kw["default"] = attr_opts.dataclasses_default
 
         self.deferred_group = kw.pop("deferred_group", None)
@@ -578,7 +585,13 @@ class MappedColumn(
         self.active_history = kw.pop("active_history", False)
 
         self._sort_order = kw.pop("sort_order", _NoArg.NO_ARG)
+
+        # note that this populates "default" into the Column, so that if
+        # we are a dataclass and "default" is a dataclass default, it is still
+        # used as a Core-level default for the Column in addition to its
+        # dataclass role
         self.column = cast("Column[_T]", Column(*arg, **kw))
+
         self.foreign_keys = self.column.foreign_keys
         self._has_nullable = "nullable" in kw and kw.get("nullable") not in (
             None,
@@ -600,6 +613,7 @@ class MappedColumn(
         new._has_dataclass_arguments = self._has_dataclass_arguments
         new._use_existing_column = self._use_existing_column
         new._sort_order = self._sort_order
+        new._default_scalar_value = self._default_scalar_value
         util.set_creation_order(new)
         return new
 
@@ -615,7 +629,11 @@ class MappedColumn(
                 self.deferred_group or self.deferred_raiseload
             )
 
-        if effective_deferred or self.active_history:
+        if (
+            effective_deferred
+            or self.active_history
+            or self._default_scalar_value is not _NoArg.NO_ARG
+        ):
             return ColumnProperty(
                 self.column,
                 deferred=effective_deferred,
@@ -623,6 +641,11 @@ class MappedColumn(
                 raiseload=self.deferred_raiseload,
                 attribute_options=self._attribute_options,
                 active_history=self.active_history,
+                default_scalar_value=(
+                    self._default_scalar_value
+                    if self._default_scalar_value is not _NoArg.NO_ARG
+                    else None
+                ),
             )
         else:
             return None
@@ -774,13 +797,19 @@ class MappedColumn(
             use_args_from = None
 
         if use_args_from is not None:
-            if (
-                not self._has_insert_default
-                and use_args_from.column.default is not None
-            ):
-                self.column.default = None
 
-            use_args_from.column._merge(self.column)
+            if (
+                self._has_insert_default
+                or self._attribute_options.dataclasses_default
+                is not _NoArg.NO_ARG
+            ):
+                omit_defaults = True
+            else:
+                omit_defaults = False
+
+            use_args_from.column._merge(
+                self.column, omit_defaults=omit_defaults
+            )
             sqltype = self.column.type
 
             if (

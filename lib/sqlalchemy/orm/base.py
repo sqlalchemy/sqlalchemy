@@ -97,6 +97,8 @@ class LoaderCallableStatus(Enum):
 
     """
 
+    DONT_SET = 5
+
 
 (
     PASSIVE_NO_RESULT,
@@ -104,6 +106,7 @@ class LoaderCallableStatus(Enum):
     ATTR_WAS_SET,
     ATTR_EMPTY,
     NO_VALUE,
+    DONT_SET,
 ) = tuple(LoaderCallableStatus)
 
 NEVER_SET = NO_VALUE

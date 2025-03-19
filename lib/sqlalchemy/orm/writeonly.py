@@ -39,6 +39,7 @@ from . import attributes
 from . import interfaces
 from . import relationships
 from . import strategies
+from .base import ATTR_EMPTY
 from .base import NEVER_SET
 from .base import object_mapper
 from .base import PassiveFlag
@@ -388,6 +389,17 @@ class _WriteOnlyAttributeImpl(
     ) -> List[Tuple[InstanceState[Any], Any]]:
         c = self._get_collection_history(state, passive)
         return [(attributes.instance_state(x), x) for x in c.all_items]
+
+    def _default_value(
+        self, state: InstanceState[Any], dict_: _InstanceDict
+    ) -> Any:
+        value = None
+        for fn in self.dispatch.init_scalar:
+            ret = fn(state, value, dict_)
+            if ret is not ATTR_EMPTY:
+                value = ret
+
+        return value
 
     def _get_collection_history(
         self, state: InstanceState[Any], passive: PassiveFlag

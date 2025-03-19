@@ -56,6 +56,7 @@ from .base import PassiveFlag
 from .base import state_str
 from .base import WriteOnlyMapped
 from .interfaces import _AttributeOptions
+from .interfaces import _DataclassDefaultsDontSet
 from .interfaces import _IntrospectsAnnotations
 from .interfaces import MANYTOMANY
 from .interfaces import MANYTOONE
@@ -81,6 +82,7 @@ from ..sql import visitors
 from ..sql._typing import _ColumnExpressionArgument
 from ..sql._typing import _HasClauseElement
 from ..sql.annotation import _safe_annotate
+from ..sql.base import _NoArg
 from ..sql.elements import ColumnClause
 from ..sql.elements import ColumnElement
 from ..sql.util import _deep_annotate
@@ -340,7 +342,10 @@ class _RelationshipArgs(NamedTuple):
 
 @log.class_logger
 class RelationshipProperty(
-    _IntrospectsAnnotations, StrategizedProperty[_T], log.Identified
+    _DataclassDefaultsDontSet,
+    _IntrospectsAnnotations,
+    StrategizedProperty[_T],
+    log.Identified,
 ):
     """Describes an object property that holds a single item or list
     of items that correspond to a related database table.
@@ -453,6 +458,15 @@ class RelationshipProperty(
             _RelationshipArg("remote_side", remote_side, None),
             _StringRelationshipArg("back_populates", back_populates, None),
         )
+
+        if self._attribute_options.dataclasses_default not in (
+            _NoArg.NO_ARG,
+            None,
+        ):
+            raise sa_exc.ArgumentError(
+                "Only 'None' is accepted as dataclass "
+                "default for a relationship()"
+            )
 
         self.post_update = post_update
         self.viewonly = viewonly
@@ -2186,6 +2200,18 @@ class RelationshipProperty(
             self._dependency_processor = (  # type: ignore
                 dependency._DependencyProcessor.from_relationship
             )(self)
+
+        if (
+            self.uselist
+            and self._attribute_options.dataclasses_default
+            is not _NoArg.NO_ARG
+        ):
+            raise sa_exc.ArgumentError(
+                f"On relationship {self}, the dataclass default for "
+                "relationship may only be set for "
+                "a relationship that references a scalar value, i.e. "
+                "many-to-one or explicitly uselist=False"
+            )
 
     @util.memoized_property
     def _use_get(self) -> bool:
