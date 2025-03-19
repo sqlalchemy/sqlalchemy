@@ -6901,65 +6901,59 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             render_schema_translate=True,
         )
 
-    def test_schema_non_schema_disambiguation(self):
-        """test #7471"""
-
-        t1 = table("some_table", column("id"), column("q"))
-        t2 = table("some_table", column("id"), column("p"), schema="foo")
-
-        self.assert_compile(
-            select(t1, t2),
+    @testing.combinations(
+        (
+            lambda t1, t2: select(t1, t2),
             "SELECT some_table_1.id, some_table_1.q, "
             "foo.some_table.id AS id_1, foo.some_table.p "
             "FROM some_table AS some_table_1, foo.some_table",
-        )
-
-        self.assert_compile(
-            select(t1, t2).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
+        ),
+        (
+            lambda t1, t2: select(t1, t2).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ),
             # the original "tablename_colname" label is preserved despite
             # the alias of some_table
             "SELECT some_table_1.id AS some_table_id, some_table_1.q AS "
             "some_table_q, foo.some_table.id AS foo_some_table_id, "
             "foo.some_table.p AS foo_some_table_p "
             "FROM some_table AS some_table_1, foo.some_table",
-        )
-
-        self.assert_compile(
-            select(t1, t2).join_from(t1, t2, t1.c.id == t2.c.id),
+        ),
+        (
+            lambda t1, t2: select(t1, t2).join_from(
+                t1, t2, t1.c.id == t2.c.id
+            ),
             "SELECT some_table_1.id, some_table_1.q, "
             "foo.some_table.id AS id_1, foo.some_table.p "
             "FROM some_table AS some_table_1 "
             "JOIN foo.some_table ON some_table_1.id = foo.some_table.id",
-        )
-
-        self.assert_compile(
-            select(t1, t2).where(t1.c.id == t2.c.id),
+        ),
+        (
+            lambda t1, t2: select(t1, t2).where(t1.c.id == t2.c.id),
             "SELECT some_table_1.id, some_table_1.q, "
             "foo.some_table.id AS id_1, foo.some_table.p "
             "FROM some_table AS some_table_1, foo.some_table "
             "WHERE some_table_1.id = foo.some_table.id",
-        )
-
-        self.assert_compile(
-            select(t1).where(t1.c.id == t2.c.id),
+        ),
+        (
+            lambda t1, t2: select(t1).where(t1.c.id == t2.c.id),
             "SELECT some_table_1.id, some_table_1.q "
             "FROM some_table AS some_table_1, foo.some_table "
             "WHERE some_table_1.id = foo.some_table.id",
-        )
-
-        subq = select(t1).where(t1.c.id == t2.c.id).subquery()
-        self.assert_compile(
-            select(t2).select_from(t2).join(subq, t2.c.id == subq.c.id),
+        ),
+        (
+            lambda t2, subq: select(t2)
+            .select_from(t2)
+            .join(subq, t2.c.id == subq.c.id),
             "SELECT foo.some_table.id, foo.some_table.p "
             "FROM foo.some_table JOIN "
             "(SELECT some_table_1.id AS id, some_table_1.q AS q "
             "FROM some_table AS some_table_1, foo.some_table "
             "WHERE some_table_1.id = foo.some_table.id) AS anon_1 "
             "ON foo.some_table.id = anon_1.id",
-        )
-
-        self.assert_compile(
-            select(t1, subq.c.id)
+        ),
+        (
+            lambda t1, subq: select(t1, subq.c.id)
             .select_from(t1)
             .join(subq, t1.c.id == subq.c.id),
             # some_table is only aliased inside the subquery.  this is not
@@ -6971,7 +6965,58 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM some_table AS some_table_1, foo.some_table "
             "WHERE some_table_1.id = foo.some_table.id) AS anon_1 "
             "ON some_table.id = anon_1.id",
+        ),
+        (
+            # issue #12451
+            lambda t1alias, t2: select(t2, t1alias),
+            "SELECT foo.some_table.id, foo.some_table.p, "
+            "some_table_1.id AS id_1, some_table_1.q FROM foo.some_table, "
+            "some_table AS some_table_1",
+        ),
+        (
+            # issue #12451
+            lambda t1alias, t2: select(t2).join(
+                t1alias, t1alias.c.q == t2.c.p
+            ),
+            "SELECT foo.some_table.id, foo.some_table.p FROM foo.some_table "
+            "JOIN some_table AS some_table_1 "
+            "ON some_table_1.q = foo.some_table.p",
+        ),
+        (
+            # issue #12451
+            lambda t1alias, t2: select(t1alias).join(
+                t2, t1alias.c.q == t2.c.p
+            ),
+            "SELECT some_table_1.id, some_table_1.q "
+            "FROM some_table AS some_table_1 "
+            "JOIN foo.some_table ON some_table_1.q = foo.some_table.p",
+        ),
+        (
+            # issue #12451
+            lambda t1alias, t2alias: select(t1alias, t2alias).join(
+                t2alias, t1alias.c.q == t2alias.c.p
+            ),
+            "SELECT some_table_1.id, some_table_1.q, "
+            "some_table_2.id AS id_1, some_table_2.p "
+            "FROM some_table AS some_table_1 "
+            "JOIN foo.some_table AS some_table_2 "
+            "ON some_table_1.q = some_table_2.p",
+        ),
+    )
+    def test_schema_non_schema_disambiguation(self, stmt, expected):
+        """test #7471, and its regression #12451"""
+
+        t1 = table("some_table", column("id"), column("q"))
+        t2 = table("some_table", column("id"), column("p"), schema="foo")
+        t1alias = t1.alias()
+        t2alias = t2.alias()
+        subq = select(t1).where(t1.c.id == t2.c.id).subquery()
+
+        stmt = testing.resolve_lambda(
+            stmt, t1=t1, t2=t2, subq=subq, t1alias=t1alias, t2alias=t2alias
         )
+
+        self.assert_compile(stmt, expected)
 
     def test_alias(self):
         a = alias(table4, "remtable")
