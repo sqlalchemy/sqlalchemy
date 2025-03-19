@@ -1449,6 +1449,7 @@ class HasCacheKeySubclass(fixtures.TestBase):
             "modifiers",
         },
         "next_value": {"sequence"},
+        "array": ({"type", "clauses"}),
     }
 
     ignore_keys = {
@@ -1627,6 +1628,7 @@ class HasCacheKeySubclass(fixtures.TestBase):
             {"_with_options", "_raw_columns", "_setup_joins"},
             {"args"},
         ),
+        "array": ({"type", "clauses"}, {"clauses", "type_"}),
         "next_value": ({"sequence"}, {"seq"}),
     }
 

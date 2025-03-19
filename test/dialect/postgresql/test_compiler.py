@@ -1,3 +1,5 @@
+import random
+
 from sqlalchemy import and_
 from sqlalchemy import BigInteger
 from sqlalchemy import bindparam
@@ -35,6 +37,7 @@ from sqlalchemy import tuple_
 from sqlalchemy import types as sqltypes
 from sqlalchemy import UniqueConstraint
 from sqlalchemy import update
+from sqlalchemy import VARCHAR
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
@@ -1985,6 +1988,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             ).type.item_type._type_affinity,
             String,
         )
+
+    @testing.combinations(
+        ("with type_", Date, "ARRAY[]::DATE[]"),
+        ("no type_", None, "ARRAY[]"),
+        id_="iaa",
+    )
+    def test_array_literal_empty(self, type_, expected):
+        self.assert_compile(postgresql.array([], type_=type_), expected)
 
     def test_array_literal(self):
         self.assert_compile(
@@ -4098,6 +4109,52 @@ class CacheKeyTest(fixtures.CacheKeyFixture, fixtures.TestBase):
                 aggregate_order_by(
                     column("a", Integer), column("a"), column("b")
                 ),
+            ),
+            compare_values=False,
+        )
+
+    def test_array_equivalent_keys_one_element(self):
+        self._run_cache_key_equal_fixture(
+            lambda: (
+                array([random.randint(0, 10)]),
+                array([random.randint(0, 10)], type_=Integer),
+                array([random.randint(0, 10)], type_=Integer),
+            ),
+            compare_values=False,
+        )
+
+    def test_array_equivalent_keys_two_elements(self):
+        self._run_cache_key_equal_fixture(
+            lambda: (
+                array([random.randint(0, 10), random.randint(0, 10)]),
+                array(
+                    [random.randint(0, 10), random.randint(0, 10)],
+                    type_=Integer,
+                ),
+                array(
+                    [random.randint(0, 10), random.randint(0, 10)],
+                    type_=Integer,
+                ),
+            ),
+            compare_values=False,
+        )
+
+    def test_array_heterogeneous(self):
+        self._run_cache_key_fixture(
+            lambda: (
+                array([], type_=Integer),
+                array([], type_=Text),
+                array([]),
+                array([random.choice(["t1", "t2", "t3"])]),
+                array(
+                    [
+                        random.choice(["t1", "t2", "t3"]),
+                        random.choice(["t1", "t2", "t3"]),
+                    ]
+                ),
+                array([random.choice(["t1", "t2", "t3"])], type_=Text),
+                array([random.choice(["t1", "t2", "t3"])], type_=VARCHAR(30)),
+                array([random.randint(0, 10), random.randint(0, 10)]),
             ),
             compare_values=False,
         )
