@@ -551,6 +551,7 @@ The guide at :ref:`whatsnew_20_toplevel` provides an overview of
 new features and behaviors for SQLAlchemy 2.0 which extend beyond the base
 set of 1.4->2.0 API changes.
 
+
 2.0 Migration - Core Connection / Transaction
 ---------------------------------------------
 
@@ -2094,6 +2095,53 @@ complex feature is seldom used in this way, where as was the case with
 when using an explicit :func:`_orm.aliased` object, both from a user point
 of view as well as how the internals of the SQLAlchemy ORM must handle it.
 
+
+Filtering with `in_`/`not_in` no longer accepts explicit subqueries
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Synopsis**
+
+Support for accepting explicit subqueries in specific filtering operations, such
+as `_sql.expression.ColumnOperators.in_` and
+`_sql.expression.ColumnOperators.not_in`, has been removed in 2.0. The following
+legacy usage will raise warnings and is incompatible with the type checking
+system ::
+
+    subq = (
+        session.query(User.id)
+        .filter(User.name == "foo")
+    ).subquery()
+    q = (
+        session.query(User)
+        .filter(User.id.in_(subq))
+    )
+
+**Migration to 2.0**
+
+Under 2.0, SQLAlchemy will automatically interpret a fully constructed query
+passed to `in_` and `not_in` as a subquery based on the implied context ::
+
+    subq = select(User.id).filter(User.name == "foo")
+    stmt = (
+        session.execute(
+            select(User)
+            .filter(User.id.in_(subq))
+        )
+
+
+**Partial Migration Notes**
+
+A partial migration to 2.0 in which :class:`.orm.query.Query` is still utilized,
+must be updated for compliance with the new API as well::
+
+    subq = (
+        session.query(User.id)
+        .filter(User.name == "foo")
+    )
+    q = (
+        session.query(User)
+        .filter(User.id.in_(subq))
+    )
 
 .. _joinedload_not_uniqued:
 
