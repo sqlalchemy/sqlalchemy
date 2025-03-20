@@ -1640,6 +1640,10 @@ class TableValuedRoundTripTest(fixtures.TestBase):
 
         eq_(connection.execute(stmt).all(), [(4, 1), (3, 2), (2, 3), (1, 4)])
 
+    def test_array_empty_with_type(self, connection):
+        stmt = select(postgresql.array([], type_=Integer))
+        eq_(connection.execute(stmt).all(), [([],)])
+
     def test_plain_old_unnest(self, connection):
         fn = func.unnest(
             postgresql.array(["one", "two", "three", "four"])

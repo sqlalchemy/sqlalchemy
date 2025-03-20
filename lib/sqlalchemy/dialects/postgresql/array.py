@@ -24,6 +24,7 @@ from ... import types as sqltypes
 from ... import util
 from ...sql import expression
 from ...sql import operators
+from ...sql.visitors import InternalTraversal
 
 if TYPE_CHECKING:
     from ...engine.interfaces import Dialect
@@ -38,6 +39,7 @@ if TYPE_CHECKING:
     from ...sql.type_api import _LiteralProcessorType
     from ...sql.type_api import _ResultProcessorType
     from ...sql.type_api import TypeEngine
+    from ...sql.visitors import _TraverseInternalsType
     from ...util.typing import Self
 
 
@@ -91,10 +93,31 @@ class array(expression.ExpressionClauseList[_T]):
             ARRAY[%(param_3)s, %(param_4)s, %(param_5)s]) AS anon_1
 
     An instance of :class:`.array` will always have the datatype
-    :class:`_types.ARRAY`.  The "inner" type of the array is inferred from
-    the values present, unless the ``type_`` keyword argument is passed::
+    :class:`_types.ARRAY`.  The "inner" type of the array is inferred from the
+    values present, unless the :paramref:`_postgresql.array.type_` keyword
+    argument is passed::
 
         array(["foo", "bar"], type_=CHAR)
+
+    When constructing an empty array, the :paramref:`_postgresql.array.type_`
+    argument is particularly important as PostgreSQL server typically requires
+    a cast to be rendered for the inner type in order to render an empty array.
+    SQLAlchemy's compilation for the empty array will produce this cast so
+    that::
+
+        stmt = array([], type_=Integer)
+        print(stmt.compile(dialect=postgresql.dialect()))
+
+    Produces:
+
+    .. sourcecode:: sql
+
+        ARRAY[]::INTEGER[]
+
+    As required by PostgreSQL for empty arrays.
+
+    .. versionadded:: 2.0.40 added support to render empty PostgreSQL array
+       literals with a required cast.
 
     Multidimensional arrays are produced by nesting :class:`.array` constructs.
     The dimensionality of the final :class:`_types.ARRAY`
@@ -130,7 +153,11 @@ class array(expression.ExpressionClauseList[_T]):
     __visit_name__ = "array"
 
     stringify_dialect = "postgresql"
-    inherit_cache = True
+
+    _traverse_internals: _TraverseInternalsType = [
+        ("clauses", InternalTraversal.dp_clauseelement_tuple),
+        ("type", InternalTraversal.dp_type),
+    ]
 
     def __init__(
         self,
@@ -139,6 +166,14 @@ class array(expression.ExpressionClauseList[_T]):
         type_: Optional[_TypeEngineArgument[_T]] = None,
         **kw: typing_Any,
     ):
+        r"""Construct an ARRAY literal.
+
+        :param clauses: iterable, such as a list, containing elements to be
+         rendered in the array
+        :param type\_: optional type.  If omitted, the type is inferred
+         from the contents of the array.
+
+        """
         super().__init__(operators.comma_op, *clauses, **kw)
 
         main_type = (
