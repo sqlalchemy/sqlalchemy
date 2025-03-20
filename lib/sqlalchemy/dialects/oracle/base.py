@@ -757,6 +757,7 @@ from .types import RAW
 from .types import ROWID  # noqa
 from .types import TIMESTAMP
 from .types import VARCHAR2  # noqa
+from .types import VECTOR
 from ... import Computed
 from ... import exc
 from ... import schema as sa_schema
@@ -836,6 +837,7 @@ ischema_names = {
     "BINARY_DOUBLE": BINARY_DOUBLE,
     "BINARY_FLOAT": BINARY_FLOAT,
     "ROWID": ROWID,
+    "VECTOR": VECTOR,
 }
 
 
@@ -992,6 +994,16 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_ROWID(self, type_, **kw):
         return "ROWID"
+
+    def visit_VECTOR(self, type_, **kw):
+        if type_.dim is None and type_.storage_format is None:
+            return f"VECTOR"
+        elif type_.storage_format is None:
+            return f"VECTOR({type_.dim},*)"
+        elif type_.dim is None:
+            return f"VECTOR(*, {type_.storage_format})"
+        else:
+            return f"VECTOR({type_.dim},{type_.storage_format})"
 
 
 class OracleCompiler(compiler.SQLCompiler):
@@ -1511,6 +1523,9 @@ class OracleDDLCompiler(compiler.DDLCompiler):
             text += "UNIQUE "
         if index.dialect_options["oracle"]["bitmap"]:
             text += "BITMAP "
+        vector_options = index.dialect_options["oracle"]["vector"]
+        if vector_options:
+            text += "VECTOR "
         text += "INDEX %s ON %s (%s)" % (
             self._prepared_index_name(index, include_schema=True),
             preparer.format_table(index.table, use_schema=True),
@@ -1528,6 +1543,45 @@ class OracleDDLCompiler(compiler.DDLCompiler):
                 text += " COMPRESS %d" % (
                     index.dialect_options["oracle"]["compress"]
                 )
+        if vector_options:
+            if vector_options is True:
+                vector_options = {}
+            parts = []
+            parameters = vector_options.get("parameters", {})
+            using = parameters.get("type", "HNSW").upper()
+            if using == "HNSW":
+                parts.append("ORGANIZATION INMEMORY NEIGHBOR GRAPH")
+            elif using == "IVF":
+                parts.append("ORGANIZATION NEIGHBOR PARTITIONS")
+            vector_distance = vector_options.get("distance")
+            if vector_distance is not None:
+                vector_distance = vector_distance.upper()
+                if vector_distance not in (
+                    "EUCLIDEAN",
+                    "DOT",
+                    "COSINE",
+                    "MANHATTAN",
+                ):
+                    raise ValueError("Unknown vector_distance value")
+                parts.append(f"DISTANCE {vector_distance}")
+            target_accuracy = vector_options.get("accuracy")
+            if target_accuracy is not None:
+                if target_accuracy < 0 or target_accuracy > 100:
+                    raise ValueError(
+                        "Accuracy value should be an integer between 0 and 100"
+                    )
+                parts.append(f"WITH TARGET ACCURACY {target_accuracy}")
+            if parameters:
+                parameters_str = ", ".join(
+                    f"{k} {v}" for k, v in parameters.items()
+                )
+                parts.append(f"PARAMETERS ({parameters_str})")
+            parallel = vector_options.get("parallel")
+            if parallel is not None:
+                if not isinstance(parallel, int):
+                    raise ValueError("Parallel value must be an integer")
+                parts.append(f"PARALLEL {parallel}")
+            text += " " + " ".join(parts)
         return text
 
     def post_create_table(self, table):
@@ -1679,7 +1733,14 @@ class OracleDialect(default.DefaultDialect):
                 "tablespace": None,
             },
         ),
-        (sa_schema.Index, {"bitmap": False, "compress": False}),
+        (
+            sa_schema.Index,
+            {
+                "bitmap": False,
+                "compress": False,
+                "vector": False,
+            },
+        ),
         (sa_schema.Sequence, {"order": None}),
         (sa_schema.Identity, {"order": None, "on_null": None}),
     ]
