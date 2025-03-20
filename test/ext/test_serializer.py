@@ -301,6 +301,16 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
             "max(users.name) OVER (ROWS BETWEEN CURRENT "
             "ROW AND UNBOUNDED FOLLOWING)",
         ),
+        (
+            lambda: func.max(users.c.name).over(groups=(None, 0)),
+            "max(users.name) OVER (GROUPS BETWEEN UNBOUNDED "
+            "PRECEDING AND CURRENT ROW)",
+        ),
+        (
+            lambda: func.max(users.c.name).over(groups=(0, None)),
+            "max(users.name) OVER (GROUPS BETWEEN CURRENT "
+            "ROW AND UNBOUNDED FOLLOWING)",
+        ),
     )
     def test_over(self, over_fn, sql):
         o = over_fn()

@@ -844,6 +844,34 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "AS anon_1 FROM mytable",
         )
 
+    def test_funcfilter_windowing_groups(self):
+        self.assert_compile(
+            select(
+                func.rank()
+                .filter(table1.c.name > "foo")
+                .over(groups=(1, 5), partition_by=["description"])
+            ),
+            "SELECT rank() FILTER (WHERE mytable.name > :name_1) "
+            "OVER (PARTITION BY mytable.description GROUPS BETWEEN :param_1 "
+            "FOLLOWING AND :param_2 FOLLOWING) "
+            "AS anon_1 FROM mytable",
+        )
+
+    def test_funcfilter_windowing_groups_positional(self):
+        self.assert_compile(
+            select(
+                func.rank()
+                .filter(table1.c.name > "foo")
+                .over(groups=(1, 5), partition_by=["description"])
+            ),
+            "SELECT rank() FILTER (WHERE mytable.name > ?) "
+            "OVER (PARTITION BY mytable.description GROUPS BETWEEN ? "
+            "FOLLOWING AND ? FOLLOWING) "
+            "AS anon_1 FROM mytable",
+            checkpositional=("foo", 1, 5),
+            dialect="default_qmark",
+        )
+
     def test_funcfilter_more_criteria(self):
         ff = func.rank().filter(table1.c.name > "foo")
         ff2 = ff.filter(table1.c.myid == 1)
