@@ -1908,7 +1908,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
             id_column, tbl
         )
 
-         # Determine if we need to select the lastrowid
+        # Determine if we need to select the lastrowid
         self._select_lastrowid = (
             not self.compiled.inline
             and id_column is not None
@@ -1920,13 +1920,15 @@ class MSExecutionContext(default.DefaultExecutionContext):
 
         # Handle identity insert warnings or errors
         if self._enable_identity_insert:
-            assert self.dialect.automatic_identity_insert, "automatic_identity_insert must be set"
+            assert self.dialect.automatic_identity_insert, (
+                "automatic_identity_insert must be set"
+            )
 
             if self.dialect.automatic_identity_insert == "warn":
                 util.warn_limited(
-                    "Automatic identity insert is enabled for table %s."
-                    "In future versions, this behavior may be disabled by default."
-                    "Consider explicitly managing IDENTITY_INSERT.",
+"Automatic identity insert is enabled for table %s."
+"In future versions, this behavior may be disabled by default."
+"Consider explicitly managing IDENTITY_INSERT.",
                     tbl.name,
                 )
             elif self.dialect.automatic_identity_insert == "silence":

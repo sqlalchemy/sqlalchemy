@@ -148,7 +148,7 @@ class IdentityInsertTest(fixtures.TablesTest, AssertsCompiledSQL):
         conn.execute(cattable.insert().values(id=9, description="Python"))
         cats = conn.execute(cattable.select().order_by(cattable.c.id))
         eq_([(9, "Python")], list(cats))
-    
+
     def test_identity_insert_enabled(self, connection):
         conn = connection
         conn.dialect.automatic_identity_insert = True
@@ -175,6 +175,7 @@ class IdentityInsertTest(fixtures.TablesTest, AssertsCompiledSQL):
         conn.execute(t.insert().values({"id": 1, "description": "descrip"}))
 
         eq_(conn.execute(select(t)).first(), (1, "descrip"))
+
 
 class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
     __only_on__ = "mssql"
