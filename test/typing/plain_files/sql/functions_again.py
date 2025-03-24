@@ -1,4 +1,6 @@
+from sqlalchemy import column
 from sqlalchemy import func
+from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
@@ -53,6 +55,10 @@ reveal_type(stmt1)
 # test #10818
 # EXPECTED_TYPE: coalesce[str]
 reveal_type(func.coalesce(Foo.c, "a", "b"))
+# EXPECTED_TYPE: coalesce[str]
+reveal_type(func.coalesce("a", "b"))
+# EXPECTED_TYPE: coalesce[int]
+reveal_type(func.coalesce(column("x", Integer), 3))
 
 
 stmt2 = select(Foo.a, func.coalesce(Foo.c, "a", "b")).group_by(Foo.a)

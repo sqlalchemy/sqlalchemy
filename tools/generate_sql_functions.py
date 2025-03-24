@@ -67,10 +67,10 @@ def process_functions(filename: str, cmd: code_writer_cmd) -> str:
                             textwrap.indent(
                                 f"""
 
-# set ColumnElement[_T] as a separate overload, to appease mypy
-# which seems to not want to accept _T from _ColumnExpressionArgument.
-# this is even if all non-generic types are removed from it, so
-# reasons remain unclear for why this does not work
+# set ColumnElement[_T] as a separate overload, to appease
+# mypy which seems to not want to accept _T from
+# _ColumnExpressionArgument. Seems somewhat related to the covariant
+# _HasClauseElement as of mypy 1.15
 
 @overload
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
@@ -90,16 +90,14 @@ def {key}( {'  # noqa: A001' if is_reserved_word else ''}
 ) -> {fn_class.__name__}[_T]:
         ...
 
-
 @overload
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     self,
-    col: _ColumnExpressionOrLiteralArgument[_T],
+    col: _T,
     *args: _ColumnExpressionOrLiteralArgument[Any],
     **kwargs: Any,
 ) -> {fn_class.__name__}[_T]:
         ...
-
 
 def {key}( {'  # noqa: A001' if is_reserved_word else ''}
     self,
