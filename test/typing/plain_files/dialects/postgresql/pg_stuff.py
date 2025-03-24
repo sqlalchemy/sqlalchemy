@@ -123,3 +123,11 @@ reveal_type(ARRAY(Text))
 
 # EXPECTED_TYPE: Column[Sequence[int]]
 reveal_type(Column(type_=ARRAY(Integer)))
+
+stmt_array_agg = select(func.array_agg(Column("num", type_=Integer)))
+
+# EXPECTED_TYPE: Select[Sequence[int]]
+reveal_type(stmt_array_agg)
+
+# EXPECTED_TYPE: Select[Sequence[str]]
+reveal_type(select(func.array_agg(Test.ident_str)))
