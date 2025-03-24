@@ -1,6 +1,4 @@
-"""Generate inline stubs for generic functions on func
-
-"""
+"""Generate inline stubs for generic functions on func"""
 
 # mypy: ignore-errors
 
@@ -10,6 +8,9 @@ import inspect
 import re
 from tempfile import NamedTemporaryFile
 import textwrap
+import typing
+
+import typing_extensions
 
 from sqlalchemy.sql.functions import _registry
 from sqlalchemy.sql.functions import ReturnTypeFromArgs
@@ -168,12 +169,25 @@ def {key}(self) -> Type[{_type}]:{_reserved_word}
                     if issubclass(fn_class, ReturnTypeFromArgs):
                         count += 1
 
+                        # Would be ReturnTypeFromArgs
+                        (orig_base,) = typing_extensions.get_original_bases(
+                            fn_class
+                        )
+                        # Type parameter of ReturnTypeFromArgs
+                        (rtype,) = typing.get_args(orig_base)
+                        # The origin type, if rtype is a generic
+                        orig_type = typing.get_origin(rtype)
+                        if orig_type is not None:
+                            coltype = rf".*{orig_type.__name__}\[.*int\]"
+                        else:
+                            coltype = ".*int"
+
                         buf.write(
                             textwrap.indent(
                                 rf"""
 stmt{count} = select(func.{key}(column('x', Integer)))
 
-# EXPECTED_RE_TYPE: .*Select\[.*int\]
+# EXPECTED_RE_TYPE: .*Select\[{coltype}\]
 reveal_type(stmt{count})
 
 """,
