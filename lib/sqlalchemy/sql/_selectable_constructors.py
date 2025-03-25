@@ -691,6 +691,8 @@ def values(
 
         from sqlalchemy import column
         from sqlalchemy import values
+        from sqlalchemy import Integer
+        from sqlalchemy import String
 
         value_expr = values(
             column("id", Integer),
