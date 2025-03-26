@@ -843,7 +843,9 @@ class AsyncSession(ReversibleProxy[Session]):
         """
         trans = self.sync_session.get_transaction()
         if trans is not None:
-            return AsyncSessionTransaction._retrieve_proxy_for_target(trans)
+            return AsyncSessionTransaction._retrieve_proxy_for_target(
+                trans, async_session=self
+            )
         else:
             return None
 
@@ -859,7 +861,9 @@ class AsyncSession(ReversibleProxy[Session]):
 
         trans = self.sync_session.get_nested_transaction()
         if trans is not None:
-            return AsyncSessionTransaction._retrieve_proxy_for_target(trans)
+            return AsyncSessionTransaction._retrieve_proxy_for_target(
+                trans, async_session=self
+            )
         else:
             return None
 
@@ -1895,6 +1899,21 @@ class AsyncSessionTransaction(
         """Commit this :class:`_asyncio.AsyncTransaction`."""
 
         await greenlet_spawn(self._sync_transaction().commit)
+
+    @classmethod
+    def _regenerate_proxy_for_target(  # type: ignore[override]
+        cls,
+        target: SessionTransaction,
+        async_session: AsyncSession,
+        **additional_kw: Any,  # noqa: U100
+    ) -> AsyncSessionTransaction:
+        sync_transaction = target
+        nested = target.nested
+        obj = cls.__new__(cls)
+        obj.session = async_session
+        obj.sync_transaction = obj._assign_proxied(sync_transaction)
+        obj.nested = nested
+        return obj
 
     async def start(
         self, is_ctxmanager: bool = False

@@ -38,6 +38,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import expect_deprecated
@@ -933,6 +934,38 @@ class AsyncProxyTest(AsyncFixture):
 
         is_(async_session.get_transaction(), None)
         is_(async_session.get_nested_transaction(), None)
+
+    @async_test
+    async def test_get_transaction_gced(self, async_session):
+        """test #12471
+
+        this tests that the AsyncSessionTransaction is regenerated if
+        we don't have any reference to it beforehand.
+
+        """
+        is_(async_session.get_transaction(), None)
+        is_(async_session.get_nested_transaction(), None)
+
+        await async_session.begin()
+
+        trans = async_session.get_transaction()
+        is_not(trans, None)
+        is_(trans.session, async_session)
+        is_false(trans.nested)
+        is_(
+            trans.sync_transaction,
+            async_session.sync_session.get_transaction(),
+        )
+
+        await async_session.begin_nested()
+        nested = async_session.get_nested_transaction()
+        is_not(nested, None)
+        is_true(nested.nested)
+        is_(nested.session, async_session)
+        is_(
+            nested.sync_transaction,
+            async_session.sync_session.get_nested_transaction(),
+        )
 
     @async_test
     async def test_async_object_session(self, async_engine):
