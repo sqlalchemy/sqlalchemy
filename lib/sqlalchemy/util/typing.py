@@ -34,6 +34,8 @@ from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
+import typing_extensions
+
 from . import compat
 
 if True:  # zimports removes the tailing comments
@@ -67,10 +69,6 @@ _VT = TypeVar("_VT")
 _VT_co = TypeVar("_VT_co", covariant=True)
 
 TupleAny = Tuple[Any, ...]
-
-# typing_extensions.Literal is different from typing.Literal until
-# Python 3.10.1
-LITERAL_TYPES = frozenset([typing.Literal, Literal])
 
 
 if compat.py310:
@@ -331,7 +329,7 @@ def resolve_name_to_real_class_name(name: str, module_name: str) -> str:
 
 
 def is_pep593(type_: Optional[Any]) -> bool:
-    return type_ is not None and get_origin(type_) is Annotated
+    return type_ is not None and get_origin(type_) in _type_tuples.Annotated
 
 
 def is_non_string_iterable(obj: Any) -> TypeGuard[Iterable[Any]]:
@@ -341,14 +339,14 @@ def is_non_string_iterable(obj: Any) -> TypeGuard[Iterable[Any]]:
 
 
 def is_literal(type_: Any) -> bool:
-    return get_origin(type_) in LITERAL_TYPES
+    return get_origin(type_) in _type_tuples.Literal
 
 
 def is_newtype(type_: Optional[_AnnotationScanType]) -> TypeGuard[NewType]:
     return hasattr(type_, "__supertype__")
     # doesn't work in 3.9, 3.8, 3.7 as it passes a closure, not an
     # object instance
-    # return isinstance(type_, NewType)
+    # isinstance(type, type_instances.NewType)
 
 
 def is_generic(type_: _AnnotationScanType) -> TypeGuard[GenericProtocol[Any]]:
@@ -356,7 +354,13 @@ def is_generic(type_: _AnnotationScanType) -> TypeGuard[GenericProtocol[Any]]:
 
 
 def is_pep695(type_: _AnnotationScanType) -> TypeGuard[TypeAliasType]:
-    return isinstance(type_, TypeAliasType)
+    # NOTE: a generic TAT does not instance check as TypeAliasType outside of
+    # python 3.10. For sqlalchemy use cases it's fine to consider it a TAT
+    # though.
+    # NOTE: things seems to work also without this additional check
+    if is_generic(type_):
+        return is_pep695(type_.__origin__)
+    return isinstance(type_, _type_instances.TypeAliasType)
 
 
 def pep695_values(type_: _AnnotationScanType) -> Set[Any]:
@@ -368,15 +372,15 @@ def pep695_values(type_: _AnnotationScanType) -> Set[Any]:
     """
     _seen = set()
 
-    def recursive_value(type_):
-        if type_ in _seen:
+    def recursive_value(inner_type):
+        if inner_type in _seen:
             # recursion are not supported (at least it's flagged as
             # an error by pyright). Just avoid infinite loop
-            return type_
-        _seen.add(type_)
-        if not is_pep695(type_):
-            return type_
-        value = type_.__value__
+            return inner_type
+        _seen.add(inner_type)
+        if not is_pep695(inner_type):
+            return inner_type
+        value = inner_type.__value__
         if not is_union(value):
             return value
         return [recursive_value(t) for t in value.__args__]
@@ -403,7 +407,7 @@ def is_fwd_ref(
 ) -> TypeGuard[ForwardRef]:
     if check_for_plain_string and isinstance(type_, str):
         return True
-    elif isinstance(type_, ForwardRef):
+    elif isinstance(type_, _type_instances.ForwardRef):
         return True
     elif check_generic and is_generic(type_):
         return any(
@@ -677,3 +681,30 @@ class CallableReference(Generic[_FN]):
         def __set__(self, instance: Any, value: _FN) -> None: ...
 
         def __delete__(self, instance: Any) -> None: ...
+
+
+class _TypingInstances:
+    def __getattr__(self, key: str) -> tuple[type, ...]:
+        types = tuple(
+            {
+                t
+                for t in [
+                    getattr(typing, key, None),
+                    getattr(typing_extensions, key, None),
+                ]
+                if t is not None
+            }
+        )
+        if not types:
+            raise AttributeError(key)
+        self.__dict__[key] = types
+        return types
+
+
+_type_tuples = _TypingInstances()
+if TYPE_CHECKING:
+    _type_instances = typing_extensions
+else:
+    _type_instances = _type_tuples
+
+LITERAL_TYPES = _type_tuples.Literal
