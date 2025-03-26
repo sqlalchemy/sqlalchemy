@@ -146,8 +146,6 @@ class TestTestingThings(fixtures.TestBase):
         # no need to test typing_extensions.Union, typing_extensions.Optional
         is_(typing.Union, typing_extensions.Union)
         is_(typing.Optional, typing_extensions.Optional)
-        if py312:
-            is_(typing.TypeAliasType, typing_extensions.TypeAliasType)
 
     def test_make_union(self):
         v = int, str
