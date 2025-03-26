@@ -358,7 +358,7 @@ def is_generic(type_: _AnnotationScanType) -> TypeGuard[GenericProtocol[Any]]:
 def is_pep695(type_: _AnnotationScanType) -> TypeGuard[TypeAliasType]:
     if hasattr(typing, "TypeAliasType"):
         # Types should be differentiated
-        return isinstance(type_, (TypeAliasType, typing.TypeAliasType))  # type: ignore[attr-defined]
+        return isinstance(type_, (TypeAliasType, typing.TypeAliasType))
     return isinstance(type_, TypeAliasType)
 
 
