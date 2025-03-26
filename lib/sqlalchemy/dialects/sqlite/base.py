@@ -1041,6 +1041,10 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
             regexp=r"(\d+)/(\d+)/(\d+) (\d+)-(\d+)-(\d+)",
         )
 
+    :param truncate_microseconds: when ``True`` microseconds will be truncated
+     from the datetime. Can't be specified together with ``storage_format``
+     or ``regexp``.
+
     :param storage_format: format string which will be applied to the dict
      with keys year, month, day, hour, minute, second, and microsecond.
 
@@ -1226,6 +1230,10 @@ class TIME(_DateTimeMixin, sqltypes.Time):
             storage_format="%(hour)02d-%(minute)02d-%(second)02d-%(microsecond)06d",
             regexp=re.compile("(\d+)-(\d+)-(\d+)-(?:-(\d+))?"),
         )
+
+    :param truncate_microseconds: when ``True`` microseconds will be truncated
+     from the time. Can't be specified together with ``storage_format``
+     or ``regexp``.
 
     :param storage_format: format string which will be applied to the dict
      with keys hour, minute, second, and microsecond.
