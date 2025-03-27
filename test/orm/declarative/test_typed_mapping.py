@@ -96,6 +96,8 @@ from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.util import compat
 from sqlalchemy.util.typing import Annotated
 
+TV = typing.TypeVar("TV")
+
 
 class _SomeDict1(TypedDict):
     type: Literal["1"]
@@ -127,7 +129,16 @@ if compat.py310:
     )
     _JsonPep695 = TypeAliasType("_JsonPep695", _JsonPep604)
 
+TypingTypeAliasType = getattr(typing, "TypeAliasType", TypeAliasType)
+
 _StrPep695 = TypeAliasType("_StrPep695", str)
+_TypingStrPep695 = TypingTypeAliasType("_TypingStrPep695", str)
+_GenericPep695 = TypeAliasType("_GenericPep695", List[TV], type_params=(TV,))
+_TypingGenericPep695 = TypingTypeAliasType(
+    "_TypingGenericPep695", List[TV], type_params=(TV,)
+)
+_GenericPep695Typed = _GenericPep695[int]
+_TypingGenericPep695Typed = _TypingGenericPep695[int]
 _UnionPep695 = TypeAliasType("_UnionPep695", Union[_SomeDict1, _SomeDict2])
 strtypalias_keyword = TypeAliasType(
     "strtypalias_keyword", Annotated[str, mapped_column(info={"hi": "there"})]
@@ -141,6 +152,9 @@ strtypalias_ta: TypeAlias = Annotated[str, mapped_column(info={"hi": "there"})]
 strtypalias_plain = Annotated[str, mapped_column(info={"hi": "there"})]
 _Literal695 = TypeAliasType(
     "_Literal695", Literal["to-do", "in-progress", "done"]
+)
+_TypingLiteral695 = TypingTypeAliasType(
+    "_TypingLiteral695", Literal["to-do", "in-progress", "done"]
 )
 _RecursiveLiteral695 = TypeAliasType("_RecursiveLiteral695", _Literal695)
 
@@ -1084,20 +1098,52 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             ):
                 declare()
 
+    @testing.variation(
+        "type_",
+        [
+            "str_extension",
+            "str_typing",
+            "generic_extension",
+            "generic_typing",
+            "generic_typed_extension",
+            "generic_typed_typing",
+        ],
+    )
     @testing.requires.python312
     def test_pep695_typealias_as_typemap_keys(
-        self, decl_base: Type[DeclarativeBase]
+        self, decl_base: Type[DeclarativeBase], type_
     ):
         """test #10807"""
 
         decl_base.registry.update_type_annotation_map(
-            {_UnionPep695: JSON, _StrPep695: String(30)}
+            {
+                _UnionPep695: JSON,
+                _StrPep695: String(30),
+                _TypingStrPep695: String(30),
+                _GenericPep695: String(30),
+                _TypingGenericPep695: String(30),
+                _GenericPep695Typed: String(30),
+                _TypingGenericPep695Typed: String(30),
+            }
         )
 
         class Test(decl_base):
             __tablename__ = "test"
             id: Mapped[int] = mapped_column(primary_key=True)
-            data: Mapped[_StrPep695]
+            if type_.str_extension:
+                data: Mapped[_StrPep695]
+            elif type_.str_typing:
+                data: Mapped[_TypingStrPep695]
+            elif type_.generic_extension:
+                data: Mapped[_GenericPep695]
+            elif type_.generic_typing:
+                data: Mapped[_TypingGenericPep695]
+            elif type_.generic_typed_extension:
+                data: Mapped[_GenericPep695Typed]
+            elif type_.generic_typed_typing:
+                data: Mapped[_TypingGenericPep695Typed]
+            else:
+                type_.fail()
             structure: Mapped[_UnionPep695]
 
         eq_(Test.__table__.c.data.type._type_affinity, String)
@@ -1154,7 +1200,20 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         else:
             eq_(MyClass.data_one.type.length, None)
 
-    @testing.variation("type_", ["literal", "recursive", "not_literal"])
+    @testing.variation(
+        "type_",
+        [
+            "literal",
+            "literal_typing",
+            "recursive",
+            "not_literal",
+            "not_literal_typing",
+            "generic",
+            "generic_typing",
+            "generic_typed",
+            "generic_typed_typing",
+        ],
+    )
     @testing.combinations(True, False, argnames="in_map")
     @testing.requires.python312
     def test_pep695_literal_defaults_to_enum(self, decl_base, type_, in_map):
@@ -1169,8 +1228,20 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                     status: Mapped[_RecursiveLiteral695]  # noqa: F821
                 elif type_.literal:
                     status: Mapped[_Literal695]  # noqa: F821
+                elif type_.literal_typing:
+                    status: Mapped[_TypingLiteral695]  # noqa: F821
                 elif type_.not_literal:
                     status: Mapped[_StrPep695]  # noqa: F821
+                elif type_.not_literal_typing:
+                    status: Mapped[_TypingStrPep695]  # noqa: F821
+                elif type_.generic:
+                    status: Mapped[_GenericPep695]  # noqa: F821
+                elif type_.generic_typing:
+                    status: Mapped[_TypingGenericPep695]  # noqa: F821
+                elif type_.generic_typed:
+                    status: Mapped[_GenericPep695Typed]  # noqa: F821
+                elif type_.generic_typed_typing:
+                    status: Mapped[_TypingGenericPep695Typed]  # noqa: F821
                 else:
                     type_.fail()
 
@@ -1180,11 +1251,17 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             decl_base.registry.update_type_annotation_map(
                 {
                     _Literal695: Enum(enum.Enum),  # noqa: F821
+                    _TypingLiteral695: Enum(enum.Enum),  # noqa: F821
                     _RecursiveLiteral695: Enum(enum.Enum),  # noqa: F821
                     _StrPep695: Enum(enum.Enum),  # noqa: F821
+                    _TypingStrPep695: Enum(enum.Enum),  # noqa: F821
+                    _GenericPep695: Enum(enum.Enum),  # noqa: F821
+                    _TypingGenericPep695: Enum(enum.Enum),  # noqa: F821
+                    _GenericPep695Typed: Enum(enum.Enum),  # noqa: F821
+                    _TypingGenericPep695Typed: Enum(enum.Enum),  # noqa: F821
                 }
             )
-            if type_.literal:
+            if type_.literal or type_.literal_typing:
                 Foo = declare()
                 col = Foo.__table__.c.status
                 is_true(isinstance(col.type, Enum))

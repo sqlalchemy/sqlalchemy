@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, typing
+    :tickets: 12473
+
+    Fixed regression caused by ``typing_extension==4.13.0`` that introduced
+    a different implementation for ``TypeAliasType`` while SQLAlchemy assumed
+    that it would be equivalent to the ``typing`` version.

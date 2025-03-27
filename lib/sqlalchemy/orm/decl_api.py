@@ -1233,7 +1233,7 @@ class registry:
 
                 search = (
                     (python_type, python_type_type),
-                    *((lt, python_type_type) for lt in LITERAL_TYPES),  # type: ignore[arg-type] # noqa: E501
+                    *((lt, python_type_type) for lt in LITERAL_TYPES),
                 )
             else:
                 python_type_type = python_type.__origin__
