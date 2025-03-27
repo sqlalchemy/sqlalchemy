@@ -258,7 +258,7 @@ class AsyncConnection(
 
     @classmethod
     def _regenerate_proxy_for_target(
-        cls, target: Connection
+        cls, target: Connection, **additional_kw: Any  # noqa: U100
     ) -> AsyncConnection:
         return AsyncConnection(
             AsyncEngine._retrieve_proxy_for_target(target.engine), target
@@ -1045,7 +1045,9 @@ class AsyncEngine(ProxyComparable[Engine], AsyncConnectable):
         return self.sync_engine
 
     @classmethod
-    def _regenerate_proxy_for_target(cls, target: Engine) -> AsyncEngine:
+    def _regenerate_proxy_for_target(
+        cls, target: Engine, **additional_kw: Any  # noqa: U100
+    ) -> AsyncEngine:
         return AsyncEngine(target)
 
     @contextlib.asynccontextmanager
@@ -1346,7 +1348,7 @@ class AsyncTransaction(
 
     @classmethod
     def _regenerate_proxy_for_target(
-        cls, target: Transaction
+        cls, target: Transaction, **additional_kw: Any  # noqa: U100
     ) -> AsyncTransaction:
         sync_connection = target.connection
         sync_transaction = target
