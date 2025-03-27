@@ -1,7 +1,9 @@
 .. change::
-    :tags: bug, typing
+    :tags: bug, orm
     :tickets: 12473
 
-    Fixed regression caused by ``typing_extension==4.13.0`` that introduced
-    a different implementation for ``TypeAliasType`` while SQLAlchemy assumed
-    that it would be equivalent to the ``typing`` version.
+    Fixed regression in ORM Annotated Declarative class interpretation caused
+    by ``typing_extension==4.13.0`` that introduced a different implementation
+    for ``TypeAliasType`` while SQLAlchemy assumed that it would be equivalent
+    to the ``typing`` version, leading to pep-695 type annotations not
+    resolving to SQL types as expected.
