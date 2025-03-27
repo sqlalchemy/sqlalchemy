@@ -82,6 +82,7 @@ from ..util.typing import Self
 from ..util.typing import TupleAny
 from ..util.typing import Unpack
 
+
 if typing.TYPE_CHECKING:
     from ._typing import _ByArgument
     from ._typing import _ColumnExpressionArgument
@@ -118,6 +119,7 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import CoreExecuteOptionsParameter
     from ..engine.interfaces import SchemaTranslateMapType
     from ..engine.result import Result
+
 
 _NUMERIC = Union[float, Decimal]
 _NUMBER = Union[float, int, Decimal]
