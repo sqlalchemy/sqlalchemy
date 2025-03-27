@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, asyncio
+    :tickets: 12471
+
+    Fixed issue where :meth:`.AsyncSession.get_transaction` and
+    :meth:`.AsyncSession.get_nested_transaction` would fail with
+    ``NotImplementedError`` if the "proxy transaction" used by
+    :class:`.AsyncSession` were garbage collected and needed regeneration.

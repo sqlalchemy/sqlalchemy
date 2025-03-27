@@ -71,26 +71,26 @@ class ReversibleProxy(Generic[_PT]):
         cls._proxy_objects.pop(ref, None)
 
     @classmethod
-    def _regenerate_proxy_for_target(cls, target: _PT) -> Self:
+    def _regenerate_proxy_for_target(
+        cls, target: _PT, **additional_kw: Any
+    ) -> Self:
         raise NotImplementedError()
 
     @overload
     @classmethod
     def _retrieve_proxy_for_target(
-        cls,
-        target: _PT,
-        regenerate: Literal[True] = ...,
+        cls, target: _PT, regenerate: Literal[True] = ..., **additional_kw: Any
     ) -> Self: ...
 
     @overload
     @classmethod
     def _retrieve_proxy_for_target(
-        cls, target: _PT, regenerate: bool = True
+        cls, target: _PT, regenerate: bool = True, **additional_kw: Any
     ) -> Optional[Self]: ...
 
     @classmethod
     def _retrieve_proxy_for_target(
-        cls, target: _PT, regenerate: bool = True
+        cls, target: _PT, regenerate: bool = True, **additional_kw: Any
     ) -> Optional[Self]:
         try:
             proxy_ref = cls._proxy_objects[weakref.ref(target)]
@@ -102,7 +102,7 @@ class ReversibleProxy(Generic[_PT]):
                 return proxy  # type: ignore
 
         if regenerate:
-            return cls._regenerate_proxy_for_target(target)
+            return cls._regenerate_proxy_for_target(target, **additional_kw)
         else:
             return None
 
