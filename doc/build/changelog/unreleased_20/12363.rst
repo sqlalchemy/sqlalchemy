@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 12363
-
-    Fixed issue in :class:`.CTE` constructs involving multiple DDL
-    :class:`_sql.Insert` statements with multiple VALUES parameter sets where the
-    bound parameter names generated for these parameter sets would conflict,
-    generating a compile time error.
-

@@ -10,7 +10,122 @@
 
 .. changelog::
     :version: 2.0.40
-    :include_notes_from: unreleased_20
+    :released: March 27, 2025
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 11595
+
+        Added support for specifying a list of columns for ``SET NULL`` and ``SET
+        DEFAULT`` actions of ``ON DELETE`` clause of foreign key definition on
+        PostgreSQL.  Pull request courtesy Denis Laxalde.
+
+        .. seealso::
+
+            :ref:`postgresql_constraint_options`
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 12329
+
+        Fixed regression which occurred as of 2.0.37 where the checked
+        :class:`.ArgumentError` that's raised when an inappropriate type or object
+        is used inside of a :class:`.Mapped` annotation would raise ``TypeError``
+        with "boolean value of this clause is not defined" if the object resolved
+        into a SQL expression in a boolean context, for programs where future
+        annotations mode was not enabled.  This case is now handled explicitly and
+        a new error message has also been tailored for this case.  In addition, as
+        there are at least half a dozen distinct error scenarios for intepretation
+        of the :class:`.Mapped` construct, these scenarios have all been unified
+        under a new subclass of :class:`.ArgumentError` called
+        :class:`.MappedAnnotationError`, to provide some continuity between these
+        different scenarios, even though specific messaging remains distinct.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 12332
+
+        Support has been re-added for the MySQL-Connector/Python DBAPI using the
+        ``mysql+mysqlconnector://`` URL scheme.   The DBAPI now works against
+        modern MySQL versions as well as MariaDB versions (in the latter case it's
+        required to pass charset/collation explicitly).   Note however that
+        server side cursor support is disabled due to unresolved issues with this
+        driver.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 12363
+
+        Fixed issue in :class:`.CTE` constructs involving multiple DDL
+        :class:`_sql.Insert` statements with multiple VALUES parameter sets where the
+        bound parameter names generated for these parameter sets would conflict,
+        generating a compile time error.
+
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 12425
+
+        Expanded the rules for when to apply parenthesis to a server default in DDL
+        to suit the general case of a default string that contains non-word
+        characters such as spaces or operators and is not a string literal.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 12425
+
+        Fixed issue in MySQL server default reflection where a default that has
+        spaces would not be correctly reflected.  Additionally, expanded the rules
+        for when to apply parenthesis to a server default in DDL to suit the
+        general case of a default string that contains non-word characters such as
+        spaces or operators and is not a string literal.
+
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 12432
+
+        When building a PostgreSQL ``ARRAY`` literal using
+        :class:`_postgresql.array` with an empty ``clauses`` argument, the
+        :paramref:`_postgresql.array.type_` parameter is now significant in that it
+        will be used to render the resulting ``ARRAY[]`` SQL expression with a
+        cast, such as ``ARRAY[]::INTEGER``. Pull request courtesy Denis Laxalde.
+
+    .. change::
+        :tags: sql, usecase
+        :tickets: 12450
+
+        Implemented support for the GROUPS frame specification in window functions
+        by adding :paramref:`_sql.over.groups` option to :func:`_sql.over`
+        and :meth:`.FunctionElement.over`. Pull request courtesy Kaan Dikmen.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 12451
+
+        Fixed regression caused by :ticket:`7471` leading to a SQL compilation
+        issue where name disambiguation for two same-named FROM clauses with table
+        aliasing in use at the same time would produce invalid SQL in the FROM
+        clause with two "AS" clauses for the aliased table, due to double aliasing.
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 12471
+
+        Fixed issue where :meth:`.AsyncSession.get_transaction` and
+        :meth:`.AsyncSession.get_nested_transaction` would fail with
+        ``NotImplementedError`` if the "proxy transaction" used by
+        :class:`.AsyncSession` were garbage collected and needed regeneration.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 12473
+
+        Fixed regression in ORM Annotated Declarative class interpretation caused
+        by ``typing_extension==4.13.0`` that introduced a different implementation
+        for ``TypeAliasType`` while SQLAlchemy assumed that it would be equivalent
+        to the ``typing`` version, leading to pep-695 type annotations not
+        resolving to SQL types as expected.
 
 .. changelog::
     :version: 2.0.39

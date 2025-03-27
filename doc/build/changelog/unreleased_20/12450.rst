@@ -1,7 +1,0 @@
-.. change::
-    :tags: sql, usecase
-    :tickets: 12450
-
-    Implemented support for the GROUPS frame specification in window functions
-    by adding :paramref:`_sql.over.groups` option to :func:`_sql.over`
-    and :meth:`.FunctionElement.over`. Pull request courtesy Kaan Dikmen.

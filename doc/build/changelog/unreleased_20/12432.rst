@@ -1,9 +1,0 @@
-.. change::
-    :tags: usecase, postgresql
-    :tickets: 12432
-
-    When building a PostgreSQL ``ARRAY`` literal using
-    :class:`_postgresql.array` with an empty ``clauses`` argument, the
-    :paramref:`_postgresql.array.type_` parameter is now significant in that it
-    will be used to render the resulting ``ARRAY[]`` SQL expression with a
-    cast, such as ``ARRAY[]::INTEGER``. Pull request courtesy Denis Laxalde.
