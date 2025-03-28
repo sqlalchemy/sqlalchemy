@@ -32,6 +32,7 @@ from .base import ROWID
 from .base import TIMESTAMP
 from .base import VARCHAR
 from .base import VARCHAR2
+from .base import VECTOR
 
 # Alias oracledb also as oracledb_async
 oracledb_async = type(
@@ -64,4 +65,5 @@ __all__ = (
     "NVARCHAR2",
     "ROWID",
     "REAL",
+    "VECTOR",
 )
