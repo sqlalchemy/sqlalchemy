@@ -4171,6 +4171,7 @@ class GenerativeSelect(SelectBase, Generative):
         count: _LimitOffsetType,
         with_ties: bool = False,
         percent: bool = False,
+        fetch_type: str = "",
     ) -> Self:
         """Return a new selectable with the given FETCH FIRST criterion
         applied.
@@ -4202,6 +4203,9 @@ class GenerativeSelect(SelectBase, Generative):
         :param percent: When ``True``, ``count`` represents the percentage
          of the total number of selected rows to return. Defaults to ``False``
 
+        :param fetch_type: Can be set as ``EXACT``, ``APPROX``, or ``APPROXIMATE``
+        in case of oracle dialect.
+
         .. seealso::
 
            :meth:`_sql.GenerativeSelect.limit`
@@ -4218,6 +4222,7 @@ class GenerativeSelect(SelectBase, Generative):
             self._fetch_clause_options = {
                 "with_ties": with_ties,
                 "percent": percent,
+                "fetch_type": fetch_type,
             }
         return self
 
