@@ -2602,6 +2602,45 @@ class ReflectionTest(
             connection.execute(sa_ddl.DropConstraintComment(cst))
         all_none()
 
+    @testing.skip_if("postgresql < 11.0", "not supported")
+    def test_reflection_constraints_with_include(self, connection, metadata):
+        Table(
+            "foo",
+            metadata,
+            Column("id", Integer, nullable=False),
+            Column("value", Integer, nullable=False),
+            Column("misc", String),
+        )
+        metadata.create_all(connection)
+        connection.exec_driver_sql(
+            "ALTER TABLE foo ADD UNIQUE (id) INCLUDE (value)"
+        )
+        connection.exec_driver_sql(
+            "ALTER TABLE foo ADD PRIMARY KEY (id) INCLUDE (value, misc)"
+        )
+
+        unq = inspect(connection).get_unique_constraints("foo")
+        expected_unq = [
+            {
+                "column_names": ["id"],
+                "name": "foo_id_value_key",
+                "dialect_options": {
+                    "postgresql_include": ["value"],
+                },
+                "comment": None,
+            }
+        ]
+        eq_(unq, expected_unq)
+
+        pk = inspect(connection).get_pk_constraint("foo")
+        expected_pk = {
+            "comment": None,
+            "constrained_columns": ["id"],
+            "dialect_options": {"postgresql_include": ["value", "misc"]},
+            "name": "foo_pkey",
+        }
+        eq_(pk, expected_pk)
+
 
 class CustomTypeReflectionTest(fixtures.TestBase):
     class CustomType:
