@@ -234,7 +234,7 @@ logic::
             """Produce a SQL expression that represents the value
             of the _email column, minus the last twelve characters."""
 
-            return func.substr(cls._email, 0, func.length(cls._email) - 12)
+            return func.substr(cls._email, 1, func.length(cls._email) - 12)
 
 Above, accessing the ``email`` property of an instance of ``EmailAddress``
 will return the value of the ``_email`` attribute, removing or adding the
@@ -249,7 +249,7 @@ attribute, a SQL function is rendered which produces the same effect:
     {execsql}SELECT address.email AS address_email, address.id AS address_id
     FROM address
     WHERE substr(address.email, ?, length(address.email) - ?) = ?
-    (0, 12, 'address')
+    (1, 12, 'address')
     {stop}
 
 Read more about Hybrids at :ref:`hybrids_toplevel`.
