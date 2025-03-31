@@ -1178,21 +1178,11 @@ class StatementImpl(_CoerceLiterals, RoleImpl):
         if resolved is not original_element and not isinstance(
             original_element, str
         ):
-            # use same method as Connection uses; this will later raise
-            # ObjectNotExecutableError
+            # use same method as Connection uses
             try:
                 original_element._execute_on_connection
-            except AttributeError:
-                util.warn_deprecated(
-                    "Object %r should not be used directly in a SQL statement "
-                    "context, such as passing to methods such as "
-                    "session.execute().  This usage will be disallowed in a "
-                    "future release.  "
-                    "Please use Core select() / update() / delete() etc. "
-                    "with Session.execute() and other statement execution "
-                    "methods." % original_element,
-                    "1.4",
-                )
+            except AttributeError as err:
+                raise exc.ObjectNotExecutableError(original_element) from err
 
         return resolved
 
