@@ -1714,9 +1714,12 @@ class Inspector(inspection.Inspectable["Inspector"]):
                 if pk in cols_by_orig_name and pk not in exclude_columns
             ]
 
-            # update pk constraint name and comment
+            # update pk constraint name, comment and dialect_kwargs
             table.primary_key.name = pk_cons.get("name")
             table.primary_key.comment = pk_cons.get("comment", None)
+            dialect_options = pk_cons.get("dialect_options")
+            if dialect_options:
+                table.primary_key.dialect_kwargs.update(dialect_options)
 
             # tell the PKConstraint to re-initialize
             # its column collection

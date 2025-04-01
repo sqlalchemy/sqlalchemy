@@ -22,6 +22,7 @@ from sqlalchemy import Integer
 from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import null
+from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy import schema
 from sqlalchemy import select
 from sqlalchemy import Sequence
@@ -792,6 +793,40 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         expr = testing.resolve_lambda(expr_fn, tbl=tbl)
         self.assert_compile(expr, expected, dialect=dd)
+
+    @testing.combinations(
+        (
+            lambda tbl: schema.AddConstraint(
+                UniqueConstraint(tbl.c.id, postgresql_include=[tbl.c.value])
+            ),
+            "ALTER TABLE foo ADD UNIQUE (id) INCLUDE (value)",
+        ),
+        (
+            lambda tbl: schema.AddConstraint(
+                PrimaryKeyConstraint(
+                    tbl.c.id, postgresql_include=[tbl.c.value, "misc"]
+                )
+            ),
+            "ALTER TABLE foo ADD PRIMARY KEY (id) INCLUDE (value, misc)",
+        ),
+        (
+            lambda tbl: schema.CreateIndex(
+                Index("idx", tbl.c.id, postgresql_include=[tbl.c.value])
+            ),
+            "CREATE INDEX idx ON foo (id) INCLUDE (value)",
+        ),
+    )
+    def test_include(self, expr_fn, expected):
+        m = MetaData()
+        tbl = Table(
+            "foo",
+            m,
+            Column("id", Integer, nullable=False),
+            Column("value", Integer, nullable=False),
+            Column("misc", String),
+        )
+        expr = testing.resolve_lambda(expr_fn, tbl=tbl)
+        self.assert_compile(expr, expected)
 
     def test_create_index_with_labeled_ops(self):
         m = MetaData()

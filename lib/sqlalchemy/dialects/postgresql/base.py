@@ -978,6 +978,8 @@ PostgreSQL-Specific Index Options
 Several extensions to the :class:`.Index` construct are available, specific
 to the PostgreSQL dialect.
 
+.. _postgresql_covering_indexes:
+
 Covering Indexes
 ^^^^^^^^^^^^^^^^
 
@@ -989,6 +991,10 @@ string names::
 would render the index as ``CREATE INDEX my_index ON table (x) INCLUDE (y)``
 
 Note that this feature requires PostgreSQL 11 or later.
+
+.. seealso::
+
+  :ref:`postgresql_constraint_options`
 
 .. versionadded:: 1.4
 
@@ -1262,6 +1268,42 @@ with selected constraint constructs:
 
       `PostgreSQL ALTER TABLE options
       <https://www.postgresql.org/docs/current/static/sql-altertable.html>`_ -
+      in the PostgreSQL documentation.
+
+* ``INCLUDE``:  This option adds one or more columns as a "payload" to the
+  unique index created automatically by PostgreSQL for the constraint.
+  For example, the following table definition::
+
+      Table(
+          "mytable",
+          metadata,
+          Column("id", Integer, nullable=False),
+          Column("value", Integer, nullable=False),
+          UniqueConstraint("id", postgresql_include=["value"]),
+      )
+
+  would produce the DDL statement
+
+  .. sourcecode:: sql
+
+       CREATE TABLE mytable (
+           id INTEGER NOT NULL,
+           value INTEGER NOT NULL,
+           UNIQUE (id) INCLUDE (value)
+        )
+
+  Note that this feature requires PostgreSQL 11 or later.
+
+  .. versionadded:: 2.0.41
+
+  .. seealso::
+
+      :ref:`postgresql_covering_indexes`
+
+  .. seealso::
+
+      `PostgreSQL CREATE TABLE options
+      <https://www.postgresql.org/docs/current/static/sql-createtable.html>`_ -
       in the PostgreSQL documentation.
 
 * Column list with foreign key ``ON DELETE SET`` actions:  This applies to
@@ -2260,6 +2302,18 @@ class PGDDLCompiler(compiler.DDLCompiler):
         not_valid = constraint.dialect_options["postgresql"]["not_valid"]
         return " NOT VALID" if not_valid else ""
 
+    def _define_include(self, obj):
+        includeclause = obj.dialect_options["postgresql"]["include"]
+        if not includeclause:
+            return ""
+        inclusions = [
+            obj.table.c[col] if isinstance(col, str) else col
+            for col in includeclause
+        ]
+        return " INCLUDE (%s)" % ", ".join(
+            [self.preparer.quote(c.name) for c in inclusions]
+        )
+
     def visit_check_constraint(self, constraint, **kw):
         if constraint._type_bound:
             typ = list(constraint.columns)[0].type
@@ -2281,6 +2335,16 @@ class PGDDLCompiler(compiler.DDLCompiler):
     def visit_foreign_key_constraint(self, constraint, **kw):
         text = super().visit_foreign_key_constraint(constraint)
         text += self._define_constraint_validity(constraint)
+        return text
+
+    def visit_primary_key_constraint(self, constraint, **kw):
+        text = super().visit_primary_key_constraint(constraint)
+        text += self._define_include(constraint)
+        return text
+
+    def visit_unique_constraint(self, constraint, **kw):
+        text = super().visit_unique_constraint(constraint)
+        text += self._define_include(constraint)
         return text
 
     @util.memoized_property
@@ -2397,15 +2461,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
             )
         )
 
-        includeclause = index.dialect_options["postgresql"]["include"]
-        if includeclause:
-            inclusions = [
-                index.table.c[col] if isinstance(col, str) else col
-                for col in includeclause
-            ]
-            text += " INCLUDE (%s)" % ", ".join(
-                [preparer.quote(c.name) for c in inclusions]
-            )
+        text += self._define_include(index)
 
         nulls_not_distinct = index.dialect_options["postgresql"][
             "nulls_not_distinct"
@@ -3154,8 +3210,15 @@ class PGDialect(default.DefaultDialect):
             },
         ),
         (
+            schema.PrimaryKeyConstraint,
+            {"include": None},
+        ),
+        (
             schema.UniqueConstraint,
-            {"nulls_not_distinct": None},
+            {
+                "include": None,
+                "nulls_not_distinct": None,
+            },
         ),
     ]
 
@@ -4037,20 +4100,34 @@ class PGDialect(default.DefaultDialect):
         result = connection.execute(oid_q, params)
         return result.all()
 
-    @lru_cache()
-    def _constraint_query(self, is_unique):
+    @util.memoized_property
+    def _constraint_query(self):
+        if self.server_version_info >= (11, 0):
+            indnkeyatts = pg_catalog.pg_index.c.indnkeyatts
+        else:
+            indnkeyatts = sql.null().label("indnkeyatts")
+
+        if self.server_version_info >= (15,):
+            indnullsnotdistinct = pg_catalog.pg_index.c.indnullsnotdistinct
+        else:
+            indnullsnotdistinct = sql.false().label("indnullsnotdistinct")
+
         con_sq = (
             select(
                 pg_catalog.pg_constraint.c.conrelid,
                 pg_catalog.pg_constraint.c.conname,
-                pg_catalog.pg_constraint.c.conindid,
-                sql.func.unnest(pg_catalog.pg_constraint.c.conkey).label(
-                    "attnum"
-                ),
+                sql.func.unnest(pg_catalog.pg_index.c.indkey).label("attnum"),
                 sql.func.generate_subscripts(
-                    pg_catalog.pg_constraint.c.conkey, 1
+                    pg_catalog.pg_index.c.indkey, 1
                 ).label("ord"),
+                indnkeyatts,
+                indnullsnotdistinct,
                 pg_catalog.pg_description.c.description,
+            )
+            .join(
+                pg_catalog.pg_index,
+                pg_catalog.pg_constraint.c.conindid
+                == pg_catalog.pg_index.c.indexrelid,
             )
             .outerjoin(
                 pg_catalog.pg_description,
@@ -4060,6 +4137,9 @@ class PGDialect(default.DefaultDialect):
             .where(
                 pg_catalog.pg_constraint.c.contype == bindparam("contype"),
                 pg_catalog.pg_constraint.c.conrelid.in_(bindparam("oids")),
+                # NOTE: filtering also on pg_index.indrelid for oids does
+                # not seem to have a performance effect, but it may be an
+                # option if perf problems are reported
             )
             .subquery("con")
         )
@@ -4068,9 +4148,10 @@ class PGDialect(default.DefaultDialect):
             select(
                 con_sq.c.conrelid,
                 con_sq.c.conname,
-                con_sq.c.conindid,
                 con_sq.c.description,
                 con_sq.c.ord,
+                con_sq.c.indnkeyatts,
+                con_sq.c.indnullsnotdistinct,
                 pg_catalog.pg_attribute.c.attname,
             )
             .select_from(pg_catalog.pg_attribute)
@@ -4093,7 +4174,7 @@ class PGDialect(default.DefaultDialect):
             .subquery("attr")
         )
 
-        constraint_query = (
+        return (
             select(
                 attr_sq.c.conrelid,
                 sql.func.array_agg(
@@ -4105,30 +4186,14 @@ class PGDialect(default.DefaultDialect):
                 ).label("cols"),
                 attr_sq.c.conname,
                 sql.func.min(attr_sq.c.description).label("description"),
+                sql.func.min(attr_sq.c.indnkeyatts).label("indnkeyatts"),
+                sql.func.bool_and(attr_sq.c.indnullsnotdistinct).label(
+                    "indnullsnotdistinct"
+                ),
             )
             .group_by(attr_sq.c.conrelid, attr_sq.c.conname)
             .order_by(attr_sq.c.conrelid, attr_sq.c.conname)
         )
-
-        if is_unique:
-            if self.server_version_info >= (15,):
-                constraint_query = constraint_query.join(
-                    pg_catalog.pg_index,
-                    attr_sq.c.conindid == pg_catalog.pg_index.c.indexrelid,
-                ).add_columns(
-                    sql.func.bool_and(
-                        pg_catalog.pg_index.c.indnullsnotdistinct
-                    ).label("indnullsnotdistinct")
-                )
-            else:
-                constraint_query = constraint_query.add_columns(
-                    sql.false().label("indnullsnotdistinct")
-                )
-        else:
-            constraint_query = constraint_query.add_columns(
-                sql.null().label("extra")
-            )
-        return constraint_query
 
     def _reflect_constraint(
         self, connection, contype, schema, filter_names, scope, kind, **kw
@@ -4145,26 +4210,45 @@ class PGDialect(default.DefaultDialect):
             batches[0:3000] = []
 
             result = connection.execute(
-                self._constraint_query(is_unique),
+                self._constraint_query,
                 {"oids": [r[0] for r in batch], "contype": contype},
-            )
+            ).mappings()
 
             result_by_oid = defaultdict(list)
-            for oid, cols, constraint_name, comment, extra in result:
-                result_by_oid[oid].append(
-                    (cols, constraint_name, comment, extra)
-                )
+            for row_dict in result:
+                result_by_oid[row_dict["conrelid"]].append(row_dict)
 
             for oid, tablename in batch:
                 for_oid = result_by_oid.get(oid, ())
                 if for_oid:
-                    for cols, constraint, comment, extra in for_oid:
-                        if is_unique:
-                            yield tablename, cols, constraint, comment, {
-                                "nullsnotdistinct": extra
-                            }
+                    for row in for_oid:
+                        # See note in get_multi_indexes
+                        all_cols = row["cols"]
+                        indnkeyatts = row["indnkeyatts"]
+                        if (
+                            indnkeyatts is not None
+                            and len(all_cols) > indnkeyatts
+                        ):
+                            inc_cols = all_cols[indnkeyatts:]
+                            cst_cols = all_cols[:indnkeyatts]
                         else:
-                            yield tablename, cols, constraint, comment, None
+                            inc_cols = []
+                            cst_cols = all_cols
+
+                        opts = {}
+                        if self.server_version_info >= (11,):
+                            opts["postgresql_include"] = inc_cols
+                        if is_unique:
+                            opts["postgresql_nulls_not_distinct"] = row[
+                                "indnullsnotdistinct"
+                            ]
+                        yield (
+                            tablename,
+                            cst_cols,
+                            row["conname"],
+                            row["description"],
+                            opts,
+                        )
                 else:
                     yield tablename, None, None, None, None
 
@@ -4190,20 +4274,27 @@ class PGDialect(default.DefaultDialect):
         # only a single pk can be present for each table. Return an entry
         # even if a table has no primary key
         default = ReflectionDefaults.pk_constraint
+
+        def pk_constraint(pk_name, cols, comment, opts):
+            info = {
+                "constrained_columns": cols,
+                "name": pk_name,
+                "comment": comment,
+            }
+            if opts:
+                info["dialect_options"] = opts
+            return info
+
         return (
             (
                 (schema, table_name),
                 (
-                    {
-                        "constrained_columns": [] if cols is None else cols,
-                        "name": pk_name,
-                        "comment": comment,
-                    }
+                    pk_constraint(pk_name, cols, comment, opts)
                     if pk_name is not None
                     else default()
                 ),
             )
-            for table_name, cols, pk_name, comment, _ in result
+            for table_name, cols, pk_name, comment, opts in result
         )
 
     @reflection.cache
@@ -4599,7 +4690,10 @@ class PGDialect(default.DefaultDialect):
                     # "The number of key columns in the index, not counting any
                     # included columns, which are merely stored and do not
                     # participate in the index semantics"
-                    if indnkeyatts and len(all_elements) > indnkeyatts:
+                    if (
+                        indnkeyatts is not None
+                        and len(all_elements) > indnkeyatts
+                    ):
                         # this is a "covering index" which has INCLUDE columns
                         # as well as regular index columns
                         inc_cols = all_elements[indnkeyatts:]
@@ -4729,12 +4823,7 @@ class PGDialect(default.DefaultDialect):
                 "comment": comment,
             }
             if options:
-                if options["nullsnotdistinct"]:
-                    uc_dict["dialect_options"] = {
-                        "postgresql_nulls_not_distinct": options[
-                            "nullsnotdistinct"
-                        ]
-                    }
+                uc_dict["dialect_options"] = options
 
             uniques[(schema, table_name)].append(uc_dict)
         return uniques.items()

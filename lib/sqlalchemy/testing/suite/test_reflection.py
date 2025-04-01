@@ -1954,6 +1954,8 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
             if dupe:
                 names_that_duplicate_index.add(dupe)
             eq_(refl.pop("comment", None), None)
+            # ignore dialect_options
+            refl.pop("dialect_options", None)
             eq_(orig, refl)
 
         reflected_metadata = MetaData()
