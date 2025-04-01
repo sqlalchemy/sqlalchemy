@@ -4417,7 +4417,10 @@ class PGDialect(default.DefaultDialect):
 
     @util.memoized_property
     def _index_query(self):
-        pg_class_index = pg_catalog.pg_class.alias("cls_idx")
+        # NOTE: pg_index is used as from two times to improve performance,
+        # since extraing all the index information from `idx_sq` to avoid
+        # the second pg_index use leads to a worse performing query in
+        # particular when querying for a single table (as of pg 17)
         # NOTE: repeating oids clause improve query performance
 
         # subquery to get the columns
@@ -4499,13 +4502,13 @@ class PGDialect(default.DefaultDialect):
         return (
             select(
                 pg_catalog.pg_index.c.indrelid,
-                pg_class_index.c.relname.label("relname_index"),
+                pg_catalog.pg_class.c.relname,
                 pg_catalog.pg_index.c.indisunique,
                 pg_catalog.pg_constraint.c.conrelid.is_not(None).label(
                     "has_constraint"
                 ),
                 pg_catalog.pg_index.c.indoption,
-                pg_class_index.c.reloptions,
+                pg_catalog.pg_class.c.reloptions,
                 pg_catalog.pg_am.c.amname,
                 # NOTE: pg_get_expr is very fast so this case has almost no
                 # performance impact
@@ -4530,12 +4533,12 @@ class PGDialect(default.DefaultDialect):
                 ~pg_catalog.pg_index.c.indisprimary,
             )
             .join(
-                pg_class_index,
-                pg_catalog.pg_index.c.indexrelid == pg_class_index.c.oid,
+                pg_catalog.pg_class,
+                pg_catalog.pg_index.c.indexrelid == pg_catalog.pg_class.c.oid,
             )
             .join(
                 pg_catalog.pg_am,
-                pg_class_index.c.relam == pg_catalog.pg_am.c.oid,
+                pg_catalog.pg_class.c.relam == pg_catalog.pg_am.c.oid,
             )
             .outerjoin(
                 cols_sq,
@@ -4552,7 +4555,9 @@ class PGDialect(default.DefaultDialect):
                     == sql.any_(_array.array(("p", "u", "x"))),
                 ),
             )
-            .order_by(pg_catalog.pg_index.c.indrelid, pg_class_index.c.relname)
+            .order_by(
+                pg_catalog.pg_index.c.indrelid, pg_catalog.pg_class.c.relname
+            )
         )
 
     def get_multi_indexes(
@@ -4587,7 +4592,7 @@ class PGDialect(default.DefaultDialect):
                     continue
 
                 for row in result_by_oid[oid]:
-                    index_name = row["relname_index"]
+                    index_name = row["relname"]
 
                     table_indexes = indexes[(schema, table_name)]
 
