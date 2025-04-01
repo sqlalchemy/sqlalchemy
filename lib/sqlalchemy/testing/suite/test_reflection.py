@@ -2905,6 +2905,16 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
         ),
         (DateTime, func.now(), r"current_timestamp|now|getdate"),
         (
+            DateTime,
+            sa.text("now() ON UPDATE now()"),
+            r"current_timestamp|now|getdate",
+        ),
+        (
+            DateTime,
+            sa.text("now() on update now()"),
+            r"current_timestamp|now|getdate",
+        ),
+        (
             Integer,
             sa.literal_column("3") + sa.literal_column("5"),
             r"3\+5",

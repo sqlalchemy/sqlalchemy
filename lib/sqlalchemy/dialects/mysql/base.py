@@ -1941,7 +1941,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
                 if (
                     self.dialect._support_default_function
                     and not re.match(r"^\s*[\'\"\(]", default)
-                    and "ON UPDATE" not in default
+                    and "ON UPDATE".casefold() not in default.casefold()
                     and re.match(r".*\W.*", default)
                 ):
                     colspec.append(f"DEFAULT ({default})")

@@ -442,6 +442,11 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
                 "description", String(255), server_default=func.lower("hi")
             ),
             Column("data", JSON, server_default=func.json_object()),
+            Column(
+                "updated",
+                DateTime,
+                server_default=text("now() on update now()"),
+            ),
         )
 
         eq_(dialect._support_default_function, has_brackets)
@@ -453,7 +458,8 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
                 "time DATETIME DEFAULT CURRENT_TIMESTAMP, "
                 "name VARCHAR(255) DEFAULT 'some str', "
                 "description VARCHAR(255) DEFAULT (lower('hi')), "
-                "data JSON DEFAULT (json_object()))",
+                "data JSON DEFAULT (json_object()), "
+                "updated DATETIME DEFAULT now() on update now())",
                 dialect=dialect,
             )
         else:
@@ -463,7 +469,8 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
                 "time DATETIME DEFAULT CURRENT_TIMESTAMP, "
                 "name VARCHAR(255) DEFAULT 'some str', "
                 "description VARCHAR(255) DEFAULT lower('hi'), "
-                "data JSON DEFAULT json_object())",
+                "data JSON DEFAULT json_object(), "
+                "updated DATETIME DEFAULT now() on update now())",
                 dialect=dialect,
             )
 

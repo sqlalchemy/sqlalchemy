@@ -75,6 +75,16 @@ class ServerDefaultCreateTest(fixtures.TestBase):
             literal_column("3") + literal_column("5"),
             testing.requires.mysql_expression_defaults,
         ),
+        (
+            DateTime,
+            text("now() ON UPDATE now()"),
+            testing.requires.mysql_expression_defaults,
+        ),
+        (
+            DateTime,
+            text("now() on update now()"),
+            testing.requires.mysql_expression_defaults,
+        ),
         argnames="datatype, default",
     )
     def test_create_server_defaults(

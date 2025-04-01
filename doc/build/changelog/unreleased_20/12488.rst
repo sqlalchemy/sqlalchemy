@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 12488
+
+    Fixed issue where using lowercase `on update` in server defaults would incorrectly
+    apply parenthesis and thus causing an error in the generated DDL.
