@@ -4117,9 +4117,6 @@ class PGDialect(default.DefaultDialect):
                     pg_catalog.pg_constraint.c.conkey, 1
                 ).label("ord"),
                 pg_catalog.pg_description.c.description,
-                pg_catalog.pg_get_constraintdef(
-                    pg_catalog.pg_constraint.c.oid, True
-                ).label("condef"),
             )
             .outerjoin(
                 pg_catalog.pg_description,
@@ -4133,6 +4130,38 @@ class PGDialect(default.DefaultDialect):
             .subquery("con")
         )
 
+        include_sq = (
+            select(
+                pg_catalog.pg_attribute.c.attrelid,
+                pg_catalog.pg_index.c.indexrelid,
+                pg_catalog.pg_index.c.indnkeyatts,
+                sql.func.array_agg(
+                    aggregate_order_by(
+                        pg_catalog.pg_attribute.c.attname,
+                        sql.func.array_position(
+                            pg_catalog.pg_index.c.indkey,
+                            pg_catalog.pg_attribute.c.attnum,
+                        ),
+                    )
+                ).label("include"),
+            )
+            .select_from(pg_catalog.pg_attribute)
+            .join(
+                pg_catalog.pg_index,
+                pg_catalog.pg_index.c.indrelid
+                == pg_catalog.pg_attribute.c.attrelid,
+            )
+            .where(
+                pg_catalog.pg_attribute.c.attnum
+                == sql.any_(pg_catalog.pg_index.c.indkey)
+            )
+            .group_by(
+                pg_catalog.pg_attribute.c.attrelid,
+                pg_catalog.pg_index.c.indexrelid,
+                pg_catalog.pg_index.c.indnkeyatts,
+            )
+        ).subquery("include")
+
         attr_sq = (
             select(
                 con_sq.c.conrelid,
@@ -4140,8 +4169,9 @@ class PGDialect(default.DefaultDialect):
                 con_sq.c.conindid,
                 con_sq.c.description,
                 con_sq.c.ord,
-                con_sq.c.condef,
                 pg_catalog.pg_attribute.c.attname,
+                include_sq.c.indnkeyatts,
+                include_sq.c.include,
             )
             .select_from(pg_catalog.pg_attribute)
             .join(
@@ -4149,6 +4179,14 @@ class PGDialect(default.DefaultDialect):
                 sql.and_(
                     pg_catalog.pg_attribute.c.attnum == con_sq.c.attnum,
                     pg_catalog.pg_attribute.c.attrelid == con_sq.c.conrelid,
+                ),
+            )
+            .outerjoin(
+                include_sq,
+                sql.and_(
+                    include_sq.c.attrelid
+                    == pg_catalog.pg_attribute.c.attrelid,
+                    include_sq.c.indexrelid == con_sq.c.conindid,
                 ),
             )
             .where(
@@ -4175,9 +4213,15 @@ class PGDialect(default.DefaultDialect):
                 ).label("cols"),
                 attr_sq.c.conname,
                 sql.func.min(attr_sq.c.description).label("description"),
-                attr_sq.c.condef,
+                attr_sq.c.indnkeyatts,
+                attr_sq.c.include,
             )
-            .group_by(attr_sq.c.conrelid, attr_sq.c.conname, attr_sq.c.condef)
+            .group_by(
+                attr_sq.c.conrelid,
+                attr_sq.c.conname,
+                attr_sq.c.indnkeyatts,
+                attr_sq.c.include,
+            )
             .order_by(attr_sq.c.conrelid, attr_sq.c.conname)
         )
 
@@ -4201,10 +4245,6 @@ class PGDialect(default.DefaultDialect):
             )
         return constraint_query
 
-    @util.memoized_property
-    def _include_regex_pattern(self):
-        return re.compile(r"INCLUDE \((.+)\)")
-
     def _reflect_constraint(
         self, connection, contype, schema, filter_names, scope, kind, **kw
     ):
@@ -4214,8 +4254,6 @@ class PGDialect(default.DefaultDialect):
         )
         batches = list(table_oids)
         is_unique = contype == "u"
-
-        INCLUDE_REGEX = self._include_regex_pattern
 
         while batches:
             batch = batches[0:3000]
@@ -4227,23 +4265,42 @@ class PGDialect(default.DefaultDialect):
             )
 
             result_by_oid = defaultdict(list)
-            for oid, cols, constraint_name, comment, condef, extra in result:
+            for (
+                oid,
+                cols,
+                constraint_name,
+                comment,
+                indnkeyatts,
+                include,
+                extra,
+            ) in result:
                 result_by_oid[oid].append(
-                    (cols, constraint_name, comment, condef, extra)
+                    (
+                        cols,
+                        constraint_name,
+                        comment,
+                        indnkeyatts,
+                        include,
+                        extra,
+                    )
                 )
 
             for oid, tablename in batch:
                 for_oid = result_by_oid.get(oid, ())
                 if for_oid:
-                    for cols, constraint, comment, condef, extra in for_oid:
+                    for (
+                        cols,
+                        constraint,
+                        comment,
+                        indnkeyatts,
+                        include,
+                        extra,
+                    ) in for_oid:
                         opts = {}
                         if is_unique:
                             opts["nullsnotdistinct"] = extra
-                        m = INCLUDE_REGEX.search(condef)
-                        if m:
-                            opts["include"] = [
-                                v.strip() for v in m.group(1).split(", ")
-                            ]
+                        if include and include[indnkeyatts:]:
+                            opts["include"] = include[indnkeyatts:]
                         if not opts:
                             opts = None
                         yield tablename, cols, constraint, comment, opts

@@ -2609,14 +2609,17 @@ class ReflectionTest(
             metadata,
             Column("id", Integer, nullable=False),
             Column("value", Integer, nullable=False),
-            Column("misc", String),
+            Column("foo", String),
+            Column("arr", ARRAY(Integer)),
+            Column("bar", SmallInteger),
         )
         metadata.create_all(connection)
         connection.exec_driver_sql(
             "ALTER TABLE foo ADD UNIQUE (id) INCLUDE (value)"
         )
         connection.exec_driver_sql(
-            "ALTER TABLE foo ADD PRIMARY KEY (id) INCLUDE (value, misc)"
+            "ALTER TABLE foo "
+            "ADD PRIMARY KEY (id) INCLUDE (arr, foo, bar, value)"
         )
 
         unq = inspect(connection).get_unique_constraints("foo")
@@ -2636,7 +2639,14 @@ class ReflectionTest(
         expected_pk = {
             "comment": None,
             "constrained_columns": ["id"],
-            "dialect_options": {"postgresql_include": ["value", "misc"]},
+            "dialect_options": {
+                "postgresql_include": [
+                    "arr",
+                    "foo",
+                    "bar",
+                    "value",
+                ]
+            },
             "name": "foo_pkey",
         }
         eq_(pk, expected_pk)
