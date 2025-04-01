@@ -530,6 +530,13 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT 1 OFFSET :param_1 ROWS FETCH FIRST :param_2 ROWS ONLY",
             checkparams={"param_1": 2, "param_2": 1},
         )
+    
+    def test_fetch_type(self):
+        self.assert_compile(
+            select(1).fetch(2, fetch_type = "EXACT"),
+            "SELECT 1 FETCH EXACT FIRST :param_1 ROWS ONLY",
+            checkparams={"param_1": 2} 
+        )
 
     def test_select_precol_compile_ordering(self):
         s1 = (
