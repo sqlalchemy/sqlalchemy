@@ -820,7 +820,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         ),
     )
     def test_include(self, expr_fn, expected):
-        dd = PGDialect()
         m = MetaData()
         tbl = Table(
             "foo",
@@ -830,7 +829,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("misc", String),
         )
         expr = testing.resolve_lambda(expr_fn, tbl=tbl)
-        self.assert_compile(expr, expected, dialect=dd)
+        self.assert_compile(expr, expected)
 
     def test_create_index_with_labeled_ops(self):
         m = MetaData()
