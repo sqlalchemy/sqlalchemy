@@ -61,6 +61,9 @@ class IdiosyncrasyTest(fixtures.TestBase):
 
 
 class ServerDefaultCreateTest(fixtures.TestBase):
+    __only_on__ = "mysql", "mariadb"
+    __backend__ = True
+
     @testing.combinations(
         (Integer, text("10")),
         (Integer, text("'10'")),
@@ -74,6 +77,18 @@ class ServerDefaultCreateTest(fixtures.TestBase):
             Integer,
             literal_column("3") + literal_column("5"),
             testing.requires.mysql_expression_defaults,
+        ),
+        (
+            DateTime,
+            text("now() ON UPDATE now()"),
+        ),
+        (
+            DateTime,
+            text("now() on update now()"),
+        ),
+        (
+            DateTime,
+            text("now() ON   UPDATE now()"),
         ),
         argnames="datatype, default",
     )
