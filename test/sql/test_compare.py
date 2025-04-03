@@ -53,6 +53,7 @@ from sqlalchemy.sql.elements import BindParameter
 from sqlalchemy.sql.elements import ClauseElement
 from sqlalchemy.sql.elements import ClauseList
 from sqlalchemy.sql.elements import CollationClause
+from sqlalchemy.sql.elements import DMLTargetCopy
 from sqlalchemy.sql.elements import DQLDMLClauseElement
 from sqlalchemy.sql.elements import ElementList
 from sqlalchemy.sql.elements import Immutable
@@ -366,6 +367,10 @@ class CoreFixtures:
             bindparam("x", type_=Integer),
             bindparam("x", type_=String),
             bindparam(None),
+        ),
+        lambda: (
+            DMLTargetCopy(table_a.c.a),
+            DMLTargetCopy(table_a.c.b),
         ),
         lambda: (_OffsetLimitParam("x"), _OffsetLimitParam("y")),
         lambda: (func.foo(), func.foo(5), func.bar()),

@@ -31,6 +31,7 @@ from .elements import CollationClause
 from .elements import CollectionAggregate
 from .elements import ColumnClause
 from .elements import ColumnElement
+from .elements import DMLTargetCopy
 from .elements import Extract
 from .elements import False_
 from .elements import FunctionFilter
@@ -52,6 +53,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrLiteralArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
+    from ._typing import _DMLOnlyColumnArgument
     from ._typing import _TypeEngineArgument
     from .elements import BinaryExpression
     from .selectable import FromClause
@@ -457,6 +459,41 @@ def not_(clause: _ColumnExpressionArgument[_T]) -> ColumnElement[_T]:
     """
 
     return coercions.expect(roles.ExpressionElementRole, clause).__invert__()
+
+
+def from_dml_column(column: _DMLOnlyColumnArgument[_T]) -> DMLTargetCopy[_T]:
+    r"""A placeholder that may be used in compiled INSERT or UPDATE expressions
+    to refer to the SQL expression or value being applied to another column.
+
+    Given a table such as::
+
+        t = Table(
+            "t",
+            MetaData(),
+            Column("x", Integer),
+            Column("y", Integer),
+        )
+
+    The :func:`_sql.from_dml_column` construct allows automatic copying
+    of an expression assigned to a different column to be re-used::
+
+        >>> stmt = t.insert().values(x=func.foobar(3), y=from_dml_column(t.c.x) + 5)
+        >>> print(stmt)
+        INSERT INTO t (x, y) VALUES (foobar(:foobar_1), (foobar(:foobar_1) + :param_1))
+
+    The :func:`_sql.from_dml_column` construct is intended to be useful primarily
+    with event-based hooks such as those used by ORM hybrids.
+
+    .. seealso::
+
+        :ref:`hybrid_bulk_update`
+
+    .. versionadded:: 2.1
+
+
+    """  # noqa: E501
+
+    return DMLTargetCopy(column)
 
 
 def bindparam(

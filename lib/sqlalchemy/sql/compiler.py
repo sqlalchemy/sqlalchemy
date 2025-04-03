@@ -3640,6 +3640,16 @@ class SQLCompiler(Compiled):
             % self.dialect.name
         )
 
+    def visit_dmltargetcopy(self, element, *, bindmarkers=None, **kw):
+        if bindmarkers is None:
+            raise exc.CompileError(
+                "DML target objects may only be used with "
+                "compiled INSERT or UPDATE statements"
+            )
+
+        bindmarkers[element.column.key] = element
+        return f"__BINDMARKER_~~{element.column.key}~~"
+
     def visit_bindparam(
         self,
         bindparam,

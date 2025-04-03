@@ -2,11 +2,13 @@ import itertools
 import random
 
 from sqlalchemy import bindparam
+from sqlalchemy import cast
 from sqlalchemy import column
 from sqlalchemy import DateTime
 from sqlalchemy import exc
 from sqlalchemy import exists
 from sqlalchemy import ForeignKey
+from sqlalchemy import from_dml_column
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import literal
@@ -1016,6 +1018,161 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             )
         else:
             paramstyle.fail()
+
+
+class FromDMLColumnTest(
+    _UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL
+):
+    """test the from_dml_column() feature added as part of #12496"""
+
+    __dialect__ = "default_enhanced"
+
+    def test_from_bound_col_value(self):
+        mytable = self.tables.mytable
+
+        # from_dml_column() refers to another column in SET, then the
+        # same parameter is rendered
+        stmt = mytable.update().values(
+            name="some name", description=from_dml_column(mytable.c.name)
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET name=:name, description=:name",
+            checkparams={"name": "some name"},
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET name=?, description=?",
+            checkpositional=("some name", "some name"),
+            dialect="sqlite",
+        )
+
+    def test_from_static_col_value(self):
+        mytable = self.tables.mytable
+
+        # from_dml_column() refers to a column not in SET, then the
+        # column is rendered
+        stmt = mytable.update().values(
+            description=from_dml_column(mytable.c.name)
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET description=mytable.name",
+            checkparams={},
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET description=mytable.name",
+            checkpositional=(),
+            dialect="sqlite",
+        )
+
+    def test_from_sql_onupdate(self):
+        """test combinations with a column that has a SQL onupdate"""
+
+        mytable = self.tables.mytable_with_onupdate
+        stmt = mytable.update().values(
+            description=from_dml_column(mytable.c.updated_at)
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable_with_onupdate SET description=now(), "
+            "updated_at=now()",
+        )
+
+        stmt = mytable.update().values(
+            description=cast(from_dml_column(mytable.c.updated_at), String)
+            + " o clock"
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable_with_onupdate SET "
+            "description=(CAST(now() AS VARCHAR) || :param_1), "
+            "updated_at=now()",
+        )
+
+        stmt = mytable.update().values(
+            description=cast(from_dml_column(mytable.c.updated_at), String)
+            + " "
+            + from_dml_column(mytable.c.name)
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable_with_onupdate SET "
+            "description=(CAST(now() AS VARCHAR) || :param_1 || "
+            "mytable_with_onupdate.name), updated_at=now()",
+        )
+
+        stmt = mytable.update().values(
+            name="some name",
+            description=cast(from_dml_column(mytable.c.updated_at), String)
+            + " "
+            + from_dml_column(mytable.c.name),
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable_with_onupdate SET "
+            "name=:name, "
+            "description=(CAST(now() AS VARCHAR) || :param_1 || "
+            ":name), updated_at=now()",
+            checkparams={"name": "some name", "param_1": " "},
+        )
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable_with_onupdate SET "
+            "name=?, "
+            "description=(CAST(CURRENT_TIMESTAMP AS VARCHAR) || ? || "
+            "?), updated_at=CURRENT_TIMESTAMP",
+            checkpositional=("some name", " ", "some name"),
+            dialect="sqlite",
+        )
+
+    def test_from_sql_expr(self):
+        mytable = self.tables.mytable
+        stmt = mytable.update().values(
+            name=mytable.c.name + "lala",
+            description=from_dml_column(mytable.c.name),
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET name=(mytable.name || :name_1), "
+            "description=(mytable.name || :name_1)",
+            checkparams={"name_1": "lala"},
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET name=(mytable.name || ?), "
+            "description=(mytable.name || ?)",
+            checkpositional=("lala", "lala"),
+            dialect="sqlite",
+        )
+
+    def test_from_sql_expr_multiple_dmlcol(self):
+        mytable = self.tables.mytable
+        stmt = mytable.update().values(
+            name=mytable.c.name + "lala",
+            description=from_dml_column(mytable.c.name)
+            + " "
+            + cast(from_dml_column(mytable.c.myid), String),
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET name=(mytable.name || :name_1), "
+            "description=((mytable.name || :name_1) || :param_1 || "
+            "CAST(mytable.myid AS VARCHAR))",
+            checkparams={"name_1": "lala", "param_1": " "},
+        )
 
 
 class UpdateFromCompileTest(

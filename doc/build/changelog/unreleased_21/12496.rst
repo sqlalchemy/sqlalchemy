@@ -1,0 +1,11 @@
+.. change::
+    :tags: feature, sql
+    :tickets: 12496
+
+    Added new Core feature :func:`_sql.from_dml_column` that may be used in
+    expressions inside of :meth:`.UpdateBase.values` for INSERT or UPDATE; this
+    construct will copy whatever SQL expression is used for the given target
+    column in the statement to be used with additional columns. The construct
+    is mostly intended to be a helper with ORM :class:`.hybrid_property` within
+    DML hooks.
+

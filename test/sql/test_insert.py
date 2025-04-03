@@ -3,9 +3,12 @@ from __future__ import annotations
 from typing import Tuple
 
 from sqlalchemy import bindparam
+from sqlalchemy import cast
 from sqlalchemy import Column
 from sqlalchemy import column
+from sqlalchemy import DateTime
 from sqlalchemy import exc
+from sqlalchemy import from_dml_column
 from sqlalchemy import func
 from sqlalchemy import insert
 from sqlalchemy import Integer
@@ -64,6 +67,15 @@ class _InsertTestBase:
             Column("x", Integer, default=10),
             Column("y", Integer, server_default=text("5")),
             Column("z", Integer, default=lambda: 10),
+        )
+
+        Table(
+            "mytable_w_sql_default",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(30)),
+            Column("description", String(30)),
+            Column("created_at", DateTime, default=func.now()),
         )
 
 
@@ -1180,6 +1192,139 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
                 params={},
                 supports_default_values=False,
             )
+
+
+class FromDMLInsertTest(
+    _InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL
+):
+    __dialect__ = "default_enhanced"
+
+    def test_from_bound_col_value(self):
+        mytable = self.tables.mytable
+
+        # from_dml_column() refers to another column in SET, then the
+        # same parameter is rendered
+        stmt = mytable.insert().values(
+            name="some name", description=from_dml_column(mytable.c.name)
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable (name, description) VALUES (:name, :name)",
+            checkparams={"name": "some name"},
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable (name, description) VALUES (?, ?)",
+            checkpositional=("some name", "some name"),
+            dialect="sqlite",
+        )
+
+    def test_from_static_col_value(self):
+        mytable = self.tables.mytable
+
+        # from_dml_column() refers to a column not in SET, then it
+        # raises for INSERT
+        stmt = mytable.insert().values(
+            description=from_dml_column(mytable.c.name)
+        )
+
+        with expect_raises_message(
+            exc.CompileError,
+            "Can't resolve referenced column name in INSERT statement: 'name'",
+        ):
+            stmt.compile()
+
+    def test_from_sql_default(self):
+        """test combinations with a column that has a SQL default"""
+
+        mytable = self.tables.mytable_w_sql_default
+        stmt = mytable.insert().values(
+            description=from_dml_column(mytable.c.created_at)
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable_w_sql_default (description, created_at) "
+            "VALUES (now(), now())",
+        )
+
+        stmt = mytable.insert().values(
+            description=cast(from_dml_column(mytable.c.created_at), String)
+            + " o clock"
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable_w_sql_default (description, created_at) "
+            "VALUES ((CAST(now() AS VARCHAR) || :param_1), now())",
+        )
+
+        stmt = mytable.insert().values(
+            name="some name",
+            description=cast(from_dml_column(mytable.c.created_at), String)
+            + " "
+            + from_dml_column(mytable.c.name),
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable_w_sql_default "
+            "(name, description, created_at) VALUES "
+            "(:name, (CAST(now() AS VARCHAR) || :param_1 || :name), now())",
+            checkparams={"name": "some name", "param_1": " "},
+        )
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable_w_sql_default "
+            "(name, description, created_at) VALUES "
+            "(?, (CAST(CURRENT_TIMESTAMP AS VARCHAR) || ? || ?), "
+            "CURRENT_TIMESTAMP)",
+            checkpositional=("some name", " ", "some name"),
+            dialect="sqlite",
+        )
+
+    def test_from_sql_expr(self):
+        mytable = self.tables.mytable
+        stmt = mytable.insert().values(
+            name=mytable.c.name + "lala",
+            description=from_dml_column(mytable.c.name),
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable (name, description) VALUES "
+            "((mytable.name || :name_1), (mytable.name || :name_1))",
+            checkparams={"name_1": "lala"},
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable (name, description) VALUES "
+            "((mytable.name || ?), (mytable.name || ?))",
+            checkpositional=("lala", "lala"),
+            dialect="sqlite",
+        )
+
+    def test_from_sql_expr_multiple_dmlcol(self):
+        mytable = self.tables.mytable
+        stmt = mytable.insert().values(
+            myid=5,
+            name=mytable.c.name + "lala",
+            description=from_dml_column(mytable.c.name)
+            + " "
+            + cast(from_dml_column(mytable.c.myid), String),
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable (myid, name, description) VALUES "
+            "(:myid, (mytable.name || :name_1), "
+            "((mytable.name || :name_1) || :param_1 || "
+            "CAST(:myid AS VARCHAR)))",
+            checkparams={"myid": 5, "name_1": "lala", "param_1": " "},
+        )
 
 
 class InsertImplicitReturningTest(

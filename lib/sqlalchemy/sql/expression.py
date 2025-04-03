@@ -28,6 +28,7 @@ from ._elements_constructors import desc as desc
 from ._elements_constructors import distinct as distinct
 from ._elements_constructors import extract as extract
 from ._elements_constructors import false as false
+from ._elements_constructors import from_dml_column as from_dml_column
 from ._elements_constructors import funcfilter as funcfilter
 from ._elements_constructors import label as label
 from ._elements_constructors import not_ as not_
