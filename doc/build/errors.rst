@@ -136,7 +136,7 @@ What causes an application to use up all the connections that it has available?
   upon to release resources in a timely manner.
 
   A common reason this can occur is that the application uses ORM sessions and
-  does not call :meth:`.Session.close` upon them one the work involving that
+  does not call :meth:`.Session.close` upon them once the work involving that
   session is complete. Solution is to make sure ORM sessions if using the ORM,
   or engine-bound :class:`_engine.Connection` objects if using Core, are explicitly
   closed at the end of the work being done, either via the appropriate
