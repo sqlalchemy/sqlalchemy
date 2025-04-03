@@ -32,6 +32,11 @@ from .base import ROWID
 from .base import TIMESTAMP
 from .base import VARCHAR
 from .base import VARCHAR2
+from .base import VECTOR
+from .base import VectorIndexType
+from .base import VectorDistanceType
+from .base import VectorStorageFormat
+from .base import VectorIndexConfig
 
 # Alias oracledb also as oracledb_async
 oracledb_async = type(
@@ -64,4 +69,9 @@ __all__ = (
     "NVARCHAR2",
     "ROWID",
     "REAL",
+    "VECTOR",
+    "VectorIndexType",
+    "VectorDistanceType",
+    "VectorStorageFormat",
+    "VectorIndexConfig",
 )

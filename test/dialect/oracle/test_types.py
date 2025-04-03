@@ -2,6 +2,7 @@ import datetime
 import decimal
 import os
 import random
+import array
 
 from sqlalchemy import bindparam
 from sqlalchemy import cast
@@ -34,9 +35,16 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy import Unicode
 from sqlalchemy import UnicodeText
 from sqlalchemy import VARCHAR
+from sqlalchemy import Index
+from sqlalchemy import delete
 from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.dialects.oracle import cx_oracle
 from sqlalchemy.dialects.oracle import oracledb
+from sqlalchemy.dialects.oracle import VECTOR
+from sqlalchemy.dialects.oracle import VectorStorageFormat
+from sqlalchemy.dialects.oracle import VectorIndexType
+from sqlalchemy.dialects.oracle import VectorDistanceType
+from sqlalchemy.dialects.oracle import VectorIndexConfig
 from sqlalchemy.sql import column
 from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -950,6 +958,181 @@ class TypesTest(fixtures.TestBase):
             assert connection.execute(t.select()).fetchall() == [(1, "foobar")]
         finally:
             exec_sql(connection, "DROP TABLE Z_TEST")
+
+    @testing.fails_if("oracle<=23.4")
+    def test_vector_dim(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("c1", VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32)),
+        )
+
+        t1.create(connection)
+        eq_(t1.c.c1.type.dim, 3)
+
+    @testing.fails_if("oracle<=23.4")
+    def test_vector_insert(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("c1", VECTOR(storage_format=VectorStorageFormat.INT8)),
+        )
+
+        t1.create(connection)
+        connection.execute(
+            t1.insert(),
+            dict(id=1, c1=[6, 7, 8, 5]),
+        )
+        eq_(
+            connection.execute(t1.select()).first(),
+            (1, [6, 7, 8, 5]),
+        )
+        connection.execute(t1.delete().where(t1.c.id == 1))
+        connection.execute(t1.insert(), dict(id=1, c1=[6, 7]))
+        eq_(
+            connection.execute(t1.select()).first(),
+            (1, [6, 7]),
+        )
+
+    @testing.fails_if("oracle<=23.4")
+    def test_vector_insert_array(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("c1", VECTOR),
+        )
+
+        t1.create(connection)
+        connection.execute(
+            t1.insert(),
+            dict(id=1, c1=array.array("b", [6, 7, 8, 5])),
+        )
+        eq_(
+            connection.execute(t1.select()).first(),
+            (1, [6, 7, 8, 5]),
+        )
+
+        connection.execute(t1.delete().where(t1.c.id == 1))
+
+        connection.execute(
+            t1.insert(), dict(id=1, c1=array.array("b", [6, 7]))
+        )
+        eq_(
+            connection.execute(t1.select()).first(),
+            (1, [6, 7]),
+        )
+
+    @testing.fails_if("oracle<=23.4")
+    def test_vector_multiformat_insert(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("c1", VECTOR),
+        )
+
+        t1.create(connection)
+        connection.execute(
+            t1.insert(),
+            dict(id=1, c1=[6.12, 7.54, 8.33]),
+        )
+        eq_(
+            connection.execute(t1.select()).first(),
+            (1, [6.12, 7.54, 8.33]),
+        )
+        connection.execute(t1.delete().where(t1.c.id == 1))
+        connection.execute(t1.insert(), dict(id=1, c1=[6, 7]))
+        eq_(
+            connection.execute(t1.select()).first(),
+            (1, [6, 7]),
+        )
+
+    @testing.fails_if("oracle<=23.4")
+    def test_vector_format(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("c1", VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32)),
+        )
+
+        t1.create(connection)
+        eq_(t1.c.c1.type.storage_format, VectorStorageFormat.FLOAT32)
+
+    @testing.fails_if("oracle<=23.4")
+    def test_vector_hnsw_index(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("id", Integer),
+            Column("embedding", VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32)),
+        )
+
+        t1.create(connection)
+
+        hnsw_index = Index(
+            "hnsw_vector_index", t1.c.embedding, oracle_vector=True
+        )
+        hnsw_index.create(connection)
+
+        connection.execute(t1.insert(), dict(id=1, embedding=[6, 7, 8]))
+        eq_(
+            connection.execute(t1.select()).first(),
+            (1, [6.0, 7.0, 8.0]),
+        )
+
+    @testing.fails_if("oracle<=23.4")
+    def test_vector_ivf_index(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("id", Integer),
+            Column("embedding", VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32)),
+        )
+
+        t1.create(connection)
+        ivf_index = Index(
+            "ivf_vector_index",
+            t1.c.embedding,
+            oracle_vector=VectorIndexConfig(
+                index_type = VectorIndexType.IVF,
+                distance = VectorDistanceType.DOT,
+                accuracy = 90,
+                ivf_neighbor_partitions = 5, 
+            ),
+        )
+        ivf_index.create(connection)
+
+        connection.execute(t1.insert(), dict(id=1, embedding=[6, 7, 8]))
+        eq_(
+            connection.execute(t1.select()).first(),
+            (1, [6.0, 7.0, 8.0]),
+        )
+
+    @testing.fails_if("oracle<=23.4")
+    def test_vector_l2_distance(self, metadata, connection):
+        t1 = Table(
+            "t1",
+            metadata,
+            Column("id", Integer),
+            Column("embedding", VECTOR(dim=3, storage_format=VectorStorageFormat.INT8)),
+        )
+
+        t1.create(connection)
+
+        connection.execute(t1.insert(), dict(id=1, embedding=[8, 9, 10]))
+        connection.execute(t1.insert(), dict(id=2, embedding=[1, 2, 3]))
+        connection.execute(
+            t1.insert(),
+            dict(id=3, embedding=[15, 16, 17]),
+        )
+
+        query_vector = [2, 3, 4]
+        res = connection.execute(
+            t1.select().order_by((t1.c.embedding.l2_distance(query_vector)))
+        ).first()
+        eq_(res.embedding, [1, 2, 3])
 
 
 class LOBFetchTest(fixtures.TablesTest):
