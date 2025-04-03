@@ -418,6 +418,96 @@ required if using the connection string directly with ``pyodbc.connect()``).
 
 :ticket:`11250`
 
+.. _change_12496:
+
+New Hybrid DML hook features
+----------------------------
+
+To complement the existing :meth:`.hybrid_property.update_expression` decorator,
+a new decorator :meth:`.hybrid_property.bulk_dml` is added, which works
+specifically with parameter dictionaries passed to :meth:`_orm.Session.execute`
+when dealing with ORM-enabled :func:`_dml.insert` or :func:`_dml.update`::
+
+    from typing import MutableMapping
+    from dataclasses import dataclass
+
+
+    @dataclass
+    class Point:
+        x: int
+        y: int
+
+
+    class Location(Base):
+        __tablename__ = "location"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        x: Mapped[int]
+        y: Mapped[int]
+
+        @hybrid_property
+        def coordinates(self) -> Point:
+            return Point(self.x, self.y)
+
+        @coordinates.inplace.bulk_dml
+        @classmethod
+        def _coordinates_bulk_dml(
+            cls, mapping: MutableMapping[str, Any], value: Point
+        ) -> None:
+            mapping["x"] = value.x
+            mapping["y"] = value.y
+
+Additionally, a new helper :func:`_sql.from_dml_column` is added, which may be
+used with the :meth:`.hybrid_property.update_expression` hook to indicate
+re-use of a column expression from elsewhere in the UPDATE statement's SET
+clause::
+
+    from sqlalchemy import from_dml_column
+
+
+    class Product(Base):
+        __tablename__ = "product"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        price: Mapped[float]
+        tax_rate: Mapped[float]
+
+        @hybrid_property
+        def total_price(self) -> float:
+            return self.price * (1 + self.tax_rate)
+
+        @total_price.inplace.update_expression
+        @classmethod
+        def _total_price_update_expression(cls, value: Any) -> List[Tuple[Any, Any]]:
+            return [(cls.price, value / (1 + from_dml_column(cls.tax_rate)))]
+
+In the above example, if the ``tax_rate`` column is also indicated in the
+SET clause of the UPDATE, that expression will be used for the ``total_price``
+expression rather than making use of the previous value of the ``tax_rate``
+column:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy import update
+    >>> print(update(Product).values({Product.tax_rate: 0.08, Product.total_price: 125.00}))
+    {printsql}UPDATE product SET tax_rate=:tax_rate, price=(:param_1 / (:tax_rate + :param_2))
+
+When the target column is omitted, :func:`_sql.from_dml_column` falls back to
+using the original column expression:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy import update
+    >>> print(update(Product).values({Product.total_price: 125.00}))
+    {printsql}UPDATE product SET price=(:param_1 / (tax_rate + :param_2))
+
+
+.. seealso::
+
+    :ref:`hybrid_bulk_update`
+
+:ticket:`12496`
+
 .. _change_10556:
 
 Addition of ``BitString`` subclass for handling postgresql ``BIT`` columns

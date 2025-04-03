@@ -810,6 +810,9 @@ class CompositeProperty(
 
             return list(zip(self._comparable_elements, values))
 
+        def _bulk_dml_setter(self, key: str) -> Optional[Callable[..., Any]]:
+            return self.prop._populate_composite_bulk_save_mappings_fn()
+
         @util.memoized_property
         def _comparable_elements(self) -> Sequence[QueryableAttribute[Any]]:
             if self._adapt_to_entity:

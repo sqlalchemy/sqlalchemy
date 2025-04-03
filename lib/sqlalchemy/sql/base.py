@@ -2384,11 +2384,34 @@ def _entity_namespace(
             raise
 
 
+@overload
 def _entity_namespace_key(
     entity: Union[_HasEntityNamespace, ExternallyTraversible],
     key: str,
-    default: Union[SQLCoreOperations[Any], _NoArg] = NO_ARG,
-) -> SQLCoreOperations[Any]:
+) -> SQLCoreOperations[Any]: ...
+
+
+@overload
+def _entity_namespace_key(
+    entity: Union[_HasEntityNamespace, ExternallyTraversible],
+    key: str,
+    default: _NoArg,
+) -> SQLCoreOperations[Any]: ...
+
+
+@overload
+def _entity_namespace_key(
+    entity: Union[_HasEntityNamespace, ExternallyTraversible],
+    key: str,
+    default: _T,
+) -> Union[SQLCoreOperations[Any], _T]: ...
+
+
+def _entity_namespace_key(
+    entity: Union[_HasEntityNamespace, ExternallyTraversible],
+    key: str,
+    default: Union[SQLCoreOperations[Any], _T, _NoArg] = NO_ARG,
+) -> Union[SQLCoreOperations[Any], _T]:
     """Return an entry from an entity_namespace.
 
 

@@ -35,6 +35,7 @@ from .context import _AbstractORMCompileState
 from .context import _ORMFromStatementCompileState
 from .context import FromStatement
 from .context import QueryContext
+from .interfaces import PropComparator
 from .. import exc as sa_exc
 from .. import util
 from ..engine import Dialect
@@ -150,7 +151,7 @@ def _bulk_insert(
             # for all other cases we need to establish a local dictionary
             # so that the incoming dictionaries aren't mutated
             mappings = [dict(m) for m in mappings]
-        _expand_composites(mapper, mappings)
+        _expand_other_attrs(mapper, mappings)
 
     connection = session_transaction.connection(base_mapper)
 
@@ -309,7 +310,7 @@ def _bulk_update(
             mappings = [state.dict for state in mappings]
     else:
         mappings = [dict(m) for m in mappings]
-        _expand_composites(mapper, mappings)
+        _expand_other_attrs(mapper, mappings)
 
     if session_transaction.session.connection_callable:
         raise NotImplementedError(
@@ -371,19 +372,32 @@ def _bulk_update(
         return _result.null_result()
 
 
-def _expand_composites(mapper, mappings):
-    composite_attrs = mapper.composites
-    if not composite_attrs:
+def _expand_other_attrs(
+    mapper: Mapper[Any], mappings: Iterable[Dict[str, Any]]
+) -> None:
+    all_attrs = mapper.all_orm_descriptors
+
+    attr_keys = set(all_attrs.keys())
+
+    bulk_dml_setters = {
+        key: setter
+        for key, setter in (
+            (key, attr._bulk_dml_setter(key))
+            for key, attr in (
+                (key, _entity_namespace_key(mapper, key, default=NO_VALUE))
+                for key in attr_keys
+            )
+            if attr is not NO_VALUE and isinstance(attr, PropComparator)
+        )
+        if setter is not None
+    }
+    setters_todo = set(bulk_dml_setters)
+    if not setters_todo:
         return
 
-    composite_keys = set(composite_attrs.keys())
-    populators = {
-        key: composite_attrs[key]._populate_composite_bulk_save_mappings_fn()
-        for key in composite_keys
-    }
     for mapping in mappings:
-        for key in composite_keys.intersection(mapping):
-            populators[key](mapping)
+        for key in setters_todo.intersection(mapping):
+            bulk_dml_setters[key](mapping)
 
 
 class _ORMDMLState(_AbstractORMCompileState):
@@ -401,7 +415,7 @@ class _ORMDMLState(_AbstractORMCompileState):
 
             if isinstance(k, str):
                 desc = _entity_namespace_key(mapper, k, default=NO_VALUE)
-                if desc is NO_VALUE:
+                if not isinstance(desc, PropComparator):
                     yield (
                         coercions.expect(roles.DMLColumnRole, k),
                         (
@@ -426,6 +440,7 @@ class _ORMDMLState(_AbstractORMCompileState):
                 attr = _entity_namespace_key(
                     k_anno["entity_namespace"], k_anno["proxy_key"]
                 )
+                assert isinstance(attr, PropComparator)
                 yield from core_get_crud_kv_pairs(
                     statement,
                     attr._bulk_update_tuples(v),

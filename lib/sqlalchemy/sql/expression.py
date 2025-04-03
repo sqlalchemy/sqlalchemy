@@ -82,6 +82,7 @@ from .elements import ClauseList as ClauseList
 from .elements import CollectionAggregate as CollectionAggregate
 from .elements import ColumnClause as ColumnClause
 from .elements import ColumnElement as ColumnElement
+from .elements import DMLTargetCopy as DMLTargetCopy
 from .elements import ExpressionClauseList as ExpressionClauseList
 from .elements import Extract as Extract
 from .elements import False_ as False_

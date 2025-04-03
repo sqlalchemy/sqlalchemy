@@ -112,6 +112,7 @@ if TYPE_CHECKING:
     from ..engine import RowMapping
     from ..sql._typing import _ColumnExpressionArgument
     from ..sql._typing import _EquivalentColumnMap
+    from ..sql.base import _EntityNamespace
     from ..sql.base import ReadOnlyColumnCollection
     from ..sql.elements import ColumnClause
     from ..sql.elements import ColumnElement
@@ -3096,9 +3097,9 @@ class Mapper(
 
         return self._filter_properties(descriptor_props.SynonymProperty)
 
-    @property
-    def entity_namespace(self):
-        return self.class_
+    @util.ro_non_memoized_property
+    def entity_namespace(self) -> _EntityNamespace:
+        return self.class_  # type: ignore[return-value]
 
     @HasMemoized.memoized_attribute
     def column_attrs(self) -> util.ReadOnlyProperties[ColumnProperty[Any]]:
