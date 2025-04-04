@@ -124,6 +124,9 @@ return types are in use.
 .. autoclass:: percentile_disc
     :no-members:
 
+.. autoclass:: pow
+    :no-members:
+
 .. autoclass:: random
     :no-members:
 

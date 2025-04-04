@@ -2010,6 +2010,9 @@ class PGCompiler(compiler.SQLCompiler):
     def visit_aggregate_strings_func(self, fn, **kw):
         return "string_agg%s" % self.function_argspec(fn)
 
+    def visit_pow_func(self, fn, **kw):
+        return f"power{self.function_argspec(fn)}"
+
     def visit_sequence(self, seq, **kw):
         return "nextval('%s')" % self.preparer.format_sequence(seq)
 

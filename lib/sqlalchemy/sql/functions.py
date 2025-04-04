@@ -1199,6 +1199,42 @@ class _FunctionGenerator:
         @property
         def percentile_disc(self) -> Type[percentile_disc[Any]]: ...
 
+        # set ColumnElement[_T] as a separate overload, to appease
+        # mypy which seems to not want to accept _T from
+        # _ColumnExpressionArgument. Seems somewhat related to the covariant
+        # _HasClauseElement as of mypy 1.15
+
+        @overload
+        def pow(  # noqa: A001
+            self,
+            col: ColumnElement[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> pow[_T]: ...
+
+        @overload
+        def pow(  # noqa: A001
+            self,
+            col: _ColumnExpressionArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> pow[_T]: ...
+
+        @overload
+        def pow(  # noqa: A001
+            self,
+            col: _T,
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> pow[_T]: ...
+
+        def pow(  # noqa: A001
+            self,
+            col: _ColumnExpressionOrLiteralArgument[_T],
+            *args: _ColumnExpressionOrLiteralArgument[Any],
+            **kwargs: Any,
+        ) -> pow[_T]: ...
+
         @property
         def random(self) -> Type[random]: ...
 
@@ -1687,6 +1723,23 @@ class now(GenericFunction[datetime.datetime]):
     """
 
     type = sqltypes.DateTime()
+    inherit_cache = True
+
+
+class pow(ReturnTypeFromArgs[_T]):  # noqa: A001
+    """The SQL POW() function which performs the power operator.
+
+    E.g.:
+
+    .. sourcecode:: pycon+sql
+
+        >>> print(select(func.pow(2, 8)))
+        {printsql}SELECT pow(:pow_2, :pow_3) AS pow_1
+
+    .. versionadded:: 2.1
+
+    """
+
     inherit_cache = True
 
 

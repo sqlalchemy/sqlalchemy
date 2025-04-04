@@ -127,34 +127,40 @@ stmt19 = select(func.percent_rank())
 reveal_type(stmt19)
 
 
-stmt20 = select(func.rank())
+stmt20 = select(func.pow(column("x", Integer)))
 
 # EXPECTED_RE_TYPE: .*Select\[.*int\]
 reveal_type(stmt20)
 
 
-stmt21 = select(func.session_user())
+stmt21 = select(func.rank())
 
-# EXPECTED_RE_TYPE: .*Select\[.*str\]
+# EXPECTED_RE_TYPE: .*Select\[.*int\]
 reveal_type(stmt21)
 
 
-stmt22 = select(func.sum(column("x", Integer)))
+stmt22 = select(func.session_user())
 
-# EXPECTED_RE_TYPE: .*Select\[.*int\]
+# EXPECTED_RE_TYPE: .*Select\[.*str\]
 reveal_type(stmt22)
 
 
-stmt23 = select(func.sysdate())
+stmt23 = select(func.sum(column("x", Integer)))
 
-# EXPECTED_RE_TYPE: .*Select\[.*datetime\]
+# EXPECTED_RE_TYPE: .*Select\[.*int\]
 reveal_type(stmt23)
 
 
-stmt24 = select(func.user())
+stmt24 = select(func.sysdate())
+
+# EXPECTED_RE_TYPE: .*Select\[.*datetime\]
+reveal_type(stmt24)
+
+
+stmt25 = select(func.user())
 
 # EXPECTED_RE_TYPE: .*Select\[.*str\]
-reveal_type(stmt24)
+reveal_type(stmt25)
 
 # END GENERATED FUNCTION TYPING TESTS
 

@@ -30,6 +30,7 @@ from operator import mul as _uncast_mul
 from operator import ne as _uncast_ne
 from operator import neg as _uncast_neg
 from operator import or_ as _uncast_or_
+from operator import pow as _uncast_pow
 from operator import rshift as _uncast_rshift
 from operator import sub as _uncast_sub
 from operator import truediv as _uncast_truediv
@@ -114,6 +115,7 @@ mul = cast(OperatorType, _uncast_mul)
 ne = cast(OperatorType, _uncast_ne)
 neg = cast(OperatorType, _uncast_neg)
 or_ = cast(OperatorType, _uncast_or_)
+pow_ = cast(OperatorType, _uncast_pow)
 rshift = cast(OperatorType, _uncast_rshift)
 sub = cast(OperatorType, _uncast_sub)
 truediv = cast(OperatorType, _uncast_truediv)
@@ -1938,6 +1940,29 @@ class ColumnOperators(Operators):
         """
         return self.reverse_operate(floordiv, other)
 
+    def __pow__(self, other: Any) -> ColumnOperators:
+        """Implement the ``**`` operator.
+
+        In a column context, produces the clause ``pow(a, b)``, or a similar
+        dialect-specific expression.
+
+        .. versionadded:: 2.1
+
+        """
+        return self.operate(pow_, other)
+
+    def __rpow__(self, other: Any) -> ColumnOperators:
+        """Implement the ``**`` operator in reverse.
+
+        .. seealso::
+
+            :meth:`.ColumnOperators.__pow__`.
+
+        .. versionadded:: 2.1
+
+        """
+        return self.reverse_operate(pow_, other)
+
 
 _commutative: Set[Any] = {eq, ne, add, mul}
 _comparison: Set[Any] = {eq, ne, lt, gt, ge, le}
@@ -2541,6 +2566,7 @@ _PRECEDENCE: Dict[OperatorType, int] = {
     getitem: 15,
     json_getitem_op: 15,
     json_path_getitem_op: 15,
+    pow_: 15,
     mul: 8,
     truediv: 8,
     floordiv: 8,

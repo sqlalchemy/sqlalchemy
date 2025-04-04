@@ -2040,6 +2040,9 @@ class MSSQLCompiler(compiler.SQLCompiler):
         delimeter = fn.clauses.clauses[1]._compiler_dispatch(self, **kw)
         return f"string_agg({expr}, {delimeter})"
 
+    def visit_pow_func(self, fn, **kw):
+        return f"POWER{self.function_argspec(fn)}"
+
     def visit_concat_op_expression_clauselist(
         self, clauselist, operator, **kw
     ):

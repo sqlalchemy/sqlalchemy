@@ -5,8 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Default implementation of SQL comparison operations.
-"""
+"""Default implementation of SQL comparison operations."""
 
 from __future__ import annotations
 
@@ -21,6 +20,7 @@ from typing import Type
 from typing import Union
 
 from . import coercions
+from . import functions
 from . import operators
 from . import roles
 from . import type_api
@@ -351,6 +351,19 @@ def _between_impl(
     )
 
 
+def _pow_impl(
+    expr: ColumnElement[Any],
+    op: OperatorType,
+    other: Any,
+    reverse: bool = False,
+    **kw: Any,
+) -> ColumnElement[Any]:
+    if reverse:
+        return functions.pow(other, expr)
+    else:
+        return functions.pow(expr, other)
+
+
 def _collate_impl(
     expr: ColumnElement[str], op: OperatorType, collation: str, **kw: Any
 ) -> ColumnElement[str]:
@@ -549,4 +562,5 @@ operator_lookup: Dict[
     "regexp_match_op": (_regexp_match_impl, util.EMPTY_DICT),
     "not_regexp_match_op": (_regexp_match_impl, util.EMPTY_DICT),
     "regexp_replace_op": (_regexp_replace_impl, util.EMPTY_DICT),
+    "pow": (_pow_impl, util.EMPTY_DICT),
 }

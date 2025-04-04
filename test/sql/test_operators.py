@@ -2646,6 +2646,14 @@ class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         expr = column("bar", Integer()) // column("foo", Integer)
         assert isinstance(expr.type, Integer)
 
+    def test_power_operator(self):
+        expr = column("bar", Integer()) ** column("foo", Integer)
+        self.assert_compile(expr, "pow(bar, foo)")
+        expr = column("bar", Integer()) ** 42
+        self.assert_compile(expr, "pow(bar, :pow_1)", {"pow_1": 42})
+        expr = 99 ** column("bar", Integer())
+        self.assert_compile(expr, "pow(:pow_1, bar)", {"pow_1": 42})
+
 
 class ComparisonOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"

@@ -1021,6 +1021,9 @@ class OracleCompiler(compiler.SQLCompiler):
     def visit_char_length_func(self, fn, **kw):
         return "LENGTH" + self.function_argspec(fn, **kw)
 
+    def visit_pow_func(self, fn, **kw):
+        return f"POWER{self.function_argspec(fn)}"
+
     def visit_match_op_binary(self, binary, operator, **kw):
         return "CONTAINS (%s, %s)" % (
             self.process(binary.left),

@@ -43,6 +43,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import eq_ignore_whitespace
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.util import resolve_lambda
 from sqlalchemy.types import TypeEngine
 
 
@@ -1678,6 +1679,25 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(t),
             f"CREATE TABLE table1 (x INTEGER) {expected_sql}",
         )
+
+    @testing.combinations(
+        (lambda t: t.c.a**t.c.b, "POWER(t.a, t.b)", {}),
+        (lambda t: t.c.a**3, "POWER(t.a, :pow_1)", {"pow_1": 3}),
+        (lambda t: t.c.c.match(t.c.d), "CONTAINS (t.c, t.d)", {}),
+        (lambda t: t.c.c.match("w"), "CONTAINS (t.c, :c_1)", {"c_1": "w"}),
+        (lambda t: func.pow(t.c.a, 3), "POWER(t.a, :pow_1)", {"pow_1": 3}),
+        (lambda t: func.power(t.c.a, t.c.b), "power(t.a, t.b)", {}),
+    )
+    def test_simple_compile(self, fn, string, params):
+        t = table(
+            "t",
+            column("a", Integer),
+            column("b", Integer),
+            column("c", String),
+            column("d", String),
+        )
+        expr = resolve_lambda(fn, t=t)
+        self.assert_compile(expr, string, params)
 
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):

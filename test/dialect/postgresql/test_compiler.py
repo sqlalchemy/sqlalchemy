@@ -79,6 +79,7 @@ from sqlalchemy.testing.assertions import eq_ignore_whitespace
 from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertions import is_
+from sqlalchemy.testing.util import resolve_lambda
 from sqlalchemy.types import TypeEngine
 from sqlalchemy.util import OrderedDict
 
@@ -2765,6 +2766,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "foo NOT ILIKE %(foo_1)s ESCAPE ''",
             dialect=dialect,
         )
+
+    @testing.combinations(
+        (lambda t: t.c.a**t.c.b, "power(t.a, t.b)", {}),
+        (lambda t: t.c.a**3, "power(t.a, %(pow_1)s)", {"pow_1": 3}),
+        (lambda t: func.pow(t.c.a, 3), "power(t.a, %(pow_1)s)", {"pow_1": 3}),
+        (lambda t: func.power(t.c.a, t.c.b), "power(t.a, t.b)", {}),
+    )
+    def test_simple_compile(self, fn, string, params):
+        t = table("t", column("a", Integer), column("b", Integer))
+        expr = resolve_lambda(fn, t=t)
+        self.assert_compile(expr, string, params)
 
 
 class InsertOnConflictTest(
