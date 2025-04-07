@@ -244,10 +244,30 @@ def decorator(target: Callable[..., Any]) -> Callable[[_Fn], _Fn]:
         if not inspect.isfunction(fn) and not inspect.ismethod(fn):
             raise Exception("not a decoratable function")
 
-        spec = compat.inspect_getfullargspec(fn)
-        env: Dict[str, Any] = {}
+        # Python 3.14 defer creating __annotations__ until its used.
+        # We do not want to create __annotations__ now.
+        annofunc = getattr(fn, "__annotate__", None)
+        if annofunc is not None:
+            fn.__annotate__ = None  # type: ignore[union-attr]
+            try:
+                spec = compat.inspect_getfullargspec(fn)
+            finally:
+                fn.__annotate__ = annofunc  # type: ignore[union-attr]
+        else:
+            spec = compat.inspect_getfullargspec(fn)
 
-        spec = _update_argspec_defaults_into_env(spec, env)
+        # Do not generate code for annotations.
+        # update_wrapper() copies the annotation from fn to decorated.
+        # We use dummy defaults for code generation to avoid having
+        # copy of large globals for compiling.
+        # We copy __defaults__ and __kwdefaults__ from fn to decorated.
+        empty_defaults = (None,) * len(spec.defaults or ())
+        empty_kwdefaults = dict.fromkeys(spec.kwonlydefaults or ())
+        spec = spec._replace(
+            annotations={},
+            defaults=empty_defaults,
+            kwonlydefaults=empty_kwdefaults,
+        )
 
         names = (
             tuple(cast("Tuple[str, ...]", spec[0]))
@@ -292,41 +312,21 @@ def decorator(target: Callable[..., Any]) -> Callable[[_Fn], _Fn]:
                 % metadata
             )
 
-        mod = sys.modules[fn.__module__]
-        env.update(vars(mod))
-        env.update({targ_name: target, fn_name: fn, "__name__": fn.__module__})
+        env: Dict[str, Any] = {
+            targ_name: target,
+            fn_name: fn,
+            "__name__": fn.__module__,
+        }
 
         decorated = cast(
             types.FunctionType,
             _exec_code_in_env(code, env, fn.__name__),
         )
-        decorated.__defaults__ = getattr(fn, "__func__", fn).__defaults__
-
-        decorated.__wrapped__ = fn  # type: ignore[attr-defined]
+        decorated.__defaults__ = fn.__defaults__
+        decorated.__kwdefaults__ = fn.__kwdefaults__  # type: ignore
         return update_wrapper(decorated, fn)  # type: ignore[return-value]
 
     return update_wrapper(decorate, target)  # type: ignore[return-value]
-
-
-def _update_argspec_defaults_into_env(spec, env):
-    """given a FullArgSpec, convert defaults to be symbol names in an env."""
-
-    if spec.defaults:
-        new_defaults = []
-        i = 0
-        for arg in spec.defaults:
-            if type(arg).__module__ not in ("builtins", "__builtin__"):
-                name = "x%d" % i
-                env[name] = arg
-                new_defaults.append(name)
-                i += 1
-            else:
-                new_defaults.append(arg)
-        elem = list(spec)
-        elem[3] = tuple(new_defaults)
-        return compat.FullArgSpec(*elem)
-    else:
-        return spec
 
 
 def _exec_code_in_env(
