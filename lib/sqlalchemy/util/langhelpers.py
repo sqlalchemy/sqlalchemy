@@ -323,7 +323,7 @@ def decorator(target: Callable[..., Any]) -> Callable[[_Fn], _Fn]:
             _exec_code_in_env(code, env, fn.__name__),
         )
         decorated.__defaults__ = fn.__defaults__
-        decorated.__kwdefaults__ = fn.__kwdefaults__  # type: ignore[union-attr]
+        decorated.__kwdefaults__ = fn.__kwdefaults__  # type: ignore
         return update_wrapper(decorated, fn)  # type: ignore[return-value]
 
     return update_wrapper(decorate, target)  # type: ignore[return-value]
