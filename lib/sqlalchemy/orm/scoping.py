@@ -1086,8 +1086,7 @@ class scoped_session(Generic[_S]):
             Proxied for the :class:`_orm.Session` class on
             behalf of the :class:`_orm.scoping.scoped_session` class.
 
-        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query
-        selects no rows.
+        Raises :class:`_exc.NoResultFound` if the query selects no rows.
 
         For a detailed documentation of the arguments see the
         method :meth:`.Session.get`.

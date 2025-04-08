@@ -628,8 +628,7 @@ class AsyncSession(ReversibleProxy[Session]):
         """Return an instance based on the given primary key identifier,
         or raise an exception if not found.
 
-        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects
-        no rows.
+        Raises :class:`_exc.NoResultFound` if the query selects no rows.
 
         ..versionadded: 2.0.22
 

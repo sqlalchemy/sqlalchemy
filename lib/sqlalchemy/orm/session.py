@@ -3718,8 +3718,7 @@ class Session(_SessionClassMethods, EventTarget):
         """Return exactly one instance based on the given primary key
         identifier, or raise an exception if not found.
 
-        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query
-        selects no rows.
+        Raises :class:`_exc.NoResultFound` if the query selects no rows.
 
         For a detailed documentation of the arguments see the
         method :meth:`.Session.get`.

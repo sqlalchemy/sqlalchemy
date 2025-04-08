@@ -1175,8 +1175,7 @@ class async_scoped_session(Generic[_AS]):
             Proxied for the :class:`_asyncio.AsyncSession` class on
             behalf of the :class:`_asyncio.scoping.async_scoped_session` class.
 
-        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects
-        no rows.
+        Raises :class:`_exc.NoResultFound` if the query selects no rows.
 
         ..versionadded: 2.0.22
 
