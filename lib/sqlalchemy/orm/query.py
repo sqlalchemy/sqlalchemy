@@ -2836,7 +2836,7 @@ class Query(
     def one(self) -> _T:
         """Return exactly one result or raise an exception.
 
-        Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects
+        Raises ``sqlalchemy.exc.NoResultFound`` if the query selects
         no rows.  Raises ``sqlalchemy.orm.exc.MultipleResultsFound``
         if multiple object identities are returned, or if multiple
         rows are returned for a query that returns only scalar values
