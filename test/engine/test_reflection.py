@@ -36,6 +36,7 @@ from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_instance_of
+from sqlalchemy.testing import is_none
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
@@ -1335,6 +1336,28 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         t3 = Table("sometable", m2, extend_existing=True)
         eq_(t3.comment, "t1 comment")
         eq_(t3.c.id.comment, "c1 comment")
+
+    @testing.requires.column_collation_reflection
+    def test_column_collation_reflection(self, connection, metadata):
+        m1 = metadata
+        Table(
+            "t",
+            m1,
+            Column("collated", sa.String(collation="C")),
+            Column("not_collated", sa.String()),
+        )
+        m1.create_all(connection)
+
+        m2 = MetaData()
+        t2 = Table("t", m2, autoload_with=connection)
+
+        eq_(t2.c.collated.type.collation, "C")
+        is_none(t2.c.not_collated.type.collation)
+
+        insp = inspect(connection)
+        collated, not_collated = insp.get_columns("t")
+        eq_(collated["type"].collation, "C")
+        is_none(not_collated["type"].collation)
 
     @testing.requires.check_constraint_reflection
     def test_check_constraint_reflection(self, connection, metadata):

@@ -3793,6 +3793,7 @@ class PGDialect(default.DefaultDialect):
                 pg_catalog.pg_attribute.c.attnotnull.label("not_null"),
                 pg_catalog.pg_class.c.relname.label("table_name"),
                 pg_catalog.pg_description.c.description.label("comment"),
+                pg_catalog.pg_collation.c.collname.label("collation"),
                 generated,
                 identity,
             )
@@ -3816,6 +3817,19 @@ class PGDialect(default.DefaultDialect):
                     == pg_catalog.pg_attribute.c.attrelid,
                     pg_catalog.pg_description.c.objsubid
                     == pg_catalog.pg_attribute.c.attnum,
+                ),
+            )
+            .outerjoin(
+                pg_catalog.pg_type,
+                pg_catalog.pg_type.c.oid == pg_catalog.pg_attribute.c.atttypid,
+            )
+            .outerjoin(
+                pg_catalog.pg_collation,
+                sql.and_(
+                    pg_catalog.pg_attribute.c.attcollation
+                    != pg_catalog.pg_type.c.typcollation,
+                    pg_catalog.pg_collation.c.oid
+                    == pg_catalog.pg_attribute.c.attcollation,
                 ),
             )
             .where(self._pg_class_relkind_condition(relkinds))
@@ -3873,6 +3887,7 @@ class PGDialect(default.DefaultDialect):
         domains: Dict[str, ReflectedDomain],
         enums: Dict[str, ReflectedEnum],
         type_description: str,
+        collation: Optional[str],
     ) -> sqltypes.TypeEngine[Any]:
         """
         Attempts to reconstruct a column type defined in ischema_names based
@@ -3972,6 +3987,7 @@ class PGDialect(default.DefaultDialect):
                     domains,
                     enums,
                     type_description="DOMAIN '%s'" % domain["name"],
+                    collation=domain["collation"],
                 )
                 args = (domain["name"], data_type)
 
@@ -4004,6 +4020,9 @@ class PGDialect(default.DefaultDialect):
             )
             return sqltypes.NULLTYPE
 
+        if collation is not None:
+            kwargs["collation"] = collation
+
         data_type = schema_type(*args, **kwargs)
         if array_dim >= 1:
             # postgres does not preserve dimensionality or size of array types.
@@ -4027,6 +4046,7 @@ class PGDialect(default.DefaultDialect):
                 domains,
                 enums,
                 type_description="column '%s'" % row_dict["name"],
+                collation=row_dict["collation"],
             )
 
             default = row_dict["default"]
