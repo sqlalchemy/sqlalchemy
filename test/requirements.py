@@ -160,6 +160,10 @@ class DefaultRequirements(SuiteRequirements):
         return only_on(["postgresql", "sqlite", self._mysql_80])
 
     @property
+    def column_collation_reflection(self):
+        return only_on(["postgresql"])
+
+    @property
     def comment_reflection(self):
         return only_on(["postgresql", "mysql", "mariadb", "oracle", "mssql"])
 
