@@ -456,8 +456,13 @@ def _collect_update_commands(
 
         pks = mapper._pks_by_table[table]
 
-        if use_orm_update_stmt is not None:
+        if (
+            use_orm_update_stmt is not None
+            and not use_orm_update_stmt._maintain_values_ordering
+        ):
             # TODO: ordered values, etc
+            # ORM bulk_persistence will raise for the maintain_values_ordering
+            # case right now
             value_params = use_orm_update_stmt._values
         else:
             value_params = {}

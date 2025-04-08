@@ -27,7 +27,6 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -833,31 +832,6 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "UPDATE mytable SET foo(myid)=:param_1",
         )
 
-    @testing.fixture
-    def randomized_param_order_update(self):
-        from sqlalchemy.sql.dml import UpdateDMLState
-
-        super_process_ordered_values = UpdateDMLState._process_ordered_values
-
-        # this fixture is needed for Python 3.6 and above to work around
-        # dictionaries being insert-ordered.  in python 2.7 the previous
-        # logic fails pretty easily without this fixture.
-        def _process_ordered_values(self, statement):
-            super_process_ordered_values(self, statement)
-
-            tuples = list(self._dict_parameters.items())
-            random.shuffle(tuples)
-            self._dict_parameters = dict(tuples)
-
-        dialect = default.StrCompileDialect()
-        dialect.paramstyle = "qmark"
-        dialect.positional = True
-
-        with mock.patch.object(
-            UpdateDMLState, "_process_ordered_values", _process_ordered_values
-        ):
-            yield
-
     def random_update_order_parameters():
         from sqlalchemy import ARRAY
 
@@ -890,9 +864,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
 
     @random_update_order_parameters()
-    def test_update_to_expression_two(
-        self, randomized_param_order_update, t, idx_to_value
-    ):
+    def test_update_to_expression_two(self, t, idx_to_value):
         """test update from an expression.
 
         this logic is triggered currently by a left side that doesn't

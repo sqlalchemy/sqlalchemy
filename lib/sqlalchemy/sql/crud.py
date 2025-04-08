@@ -231,11 +231,6 @@ def _get_crud_params(
         spd = mp[0]
         stmt_parameter_tuples = list(spd.items())
         spd_str_key = {_column_as_key(key) for key in spd}
-    elif compile_state._ordered_values:
-        spd = compile_state._dict_parameters
-        stmt_parameter_tuples = compile_state._ordered_values
-        assert spd is not None
-        spd_str_key = {_column_as_key(key) for key in spd}
     elif compile_state._dict_parameters:
         spd = compile_state._dict_parameters
         stmt_parameter_tuples = list(spd.items())
@@ -617,9 +612,9 @@ def _scan_cols(
 
     assert compile_state.isupdate or compile_state.isinsert
 
-    if compile_state._parameter_ordering:
+    if compile_state._maintain_values_ordering:
         parameter_ordering = [
-            _column_as_key(key) for key in compile_state._parameter_ordering
+            _column_as_key(key) for key in compile_state._dict_parameters
         ]
         ordered_keys = set(parameter_ordering)
         cols = [
