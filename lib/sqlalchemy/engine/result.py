@@ -1513,8 +1513,8 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
     def one(self) -> Row[Unpack[_Ts]]:
         """Return exactly one row or raise an exception.
 
-        Raises :class:`.NoResultFound` if the result returns no
-        rows, or :class:`.MultipleResultsFound` if multiple rows
+        Raises :class:`_exc.NoResultFound` if the result returns no
+        rows, or :class:`_exc.MultipleResultsFound` if multiple rows
         would be returned.
 
         .. note::  This method returns one **row**, e.g. tuple, by default.
