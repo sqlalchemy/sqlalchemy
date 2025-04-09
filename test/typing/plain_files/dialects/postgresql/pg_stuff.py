@@ -10,6 +10,7 @@ from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import Text
 from sqlalchemy import UniqueConstraint
+from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.dialects.postgresql import DATERANGE
@@ -131,3 +132,25 @@ reveal_type(stmt_array_agg)
 
 # EXPECTED_TYPE: Select[Tuple[Sequence[str]]]
 reveal_type(select(func.array_agg(Test.ident_str)))
+
+stmt_array_agg_order_by_1 = select(
+    func.array_agg(
+        aggregate_order_by(
+            Column("title", type_=Text),
+            Column("date", type_=DATERANGE).desc(),
+            Column("id", type_=Integer),
+        ),
+    )
+)
+
+# EXPECTED_TYPE: Select[Tuple[Sequence[str]]]
+reveal_type(stmt_array_agg_order_by_1)
+
+stmt_array_agg_order_by_2 = select(
+    func.array_agg(
+        aggregate_order_by(Test.ident_str, Test.id.desc(), Test.ident),
+    )
+)
+
+# EXPECTED_TYPE: Select[Tuple[Sequence[str]]]
+reveal_type(stmt_array_agg_order_by_2)

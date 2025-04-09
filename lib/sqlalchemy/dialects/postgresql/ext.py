@@ -8,6 +8,10 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import Iterable
+from typing import List
+from typing import Optional
+from typing import overload
 from typing import TYPE_CHECKING
 from typing import TypeVar
 
@@ -23,13 +27,19 @@ from ...sql.schema import ColumnCollectionConstraint
 from ...sql.sqltypes import TEXT
 from ...sql.visitors import InternalTraversal
 
-_T = TypeVar("_T", bound=Any)
-
 if TYPE_CHECKING:
+    from ...sql._typing import _ColumnExpressionArgument
+    from ...sql.elements import ClauseElement
+    from ...sql.elements import ColumnElement
+    from ...sql.operators import OperatorType
+    from ...sql.selectable import FromClause
+    from ...sql.visitors import _CloneCallableType
     from ...sql.visitors import _TraverseInternalsType
 
+_T = TypeVar("_T", bound=Any)
 
-class aggregate_order_by(expression.ColumnElement):
+
+class aggregate_order_by(expression.ColumnElement[_T]):
     """Represent a PostgreSQL aggregate order by expression.
 
     E.g.::
@@ -75,11 +85,32 @@ class aggregate_order_by(expression.ColumnElement):
         ("order_by", InternalTraversal.dp_clauseelement),
     ]
 
-    def __init__(self, target, *order_by):
-        self.target = coercions.expect(roles.ExpressionElementRole, target)
+    @overload
+    def __init__(
+        self,
+        target: ColumnElement[_T],
+        *order_by: _ColumnExpressionArgument[Any],
+    ): ...
+
+    @overload
+    def __init__(
+        self,
+        target: _ColumnExpressionArgument[_T],
+        *order_by: _ColumnExpressionArgument[Any],
+    ): ...
+
+    def __init__(
+        self,
+        target: _ColumnExpressionArgument[_T],
+        *order_by: _ColumnExpressionArgument[Any],
+    ):
+        self.target: ClauseElement = coercions.expect(
+            roles.ExpressionElementRole, target
+        )
         self.type = self.target.type
 
         _lob = len(order_by)
+        self.order_by: ClauseElement
         if _lob == 0:
             raise TypeError("at least one ORDER BY element is required")
         elif _lob == 1:
@@ -91,18 +122,22 @@ class aggregate_order_by(expression.ColumnElement):
                 *order_by, _literal_as_text_role=roles.ExpressionElementRole
             )
 
-    def self_group(self, against=None):
+    def self_group(
+        self, against: Optional[OperatorType] = None
+    ) -> ClauseElement:
         return self
 
-    def get_children(self, **kwargs):
+    def get_children(self, **kwargs: Any) -> Iterable[ClauseElement]:
         return self.target, self.order_by
 
-    def _copy_internals(self, clone=elements._clone, **kw):
+    def _copy_internals(
+        self, clone: _CloneCallableType = elements._clone, **kw: Any
+    ) -> None:
         self.target = clone(self.target, **kw)
         self.order_by = clone(self.order_by, **kw)
 
     @property
-    def _from_objects(self):
+    def _from_objects(self) -> List[FromClause]:
         return self.target._from_objects + self.order_by._from_objects
 
 
