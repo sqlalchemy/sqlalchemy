@@ -11,14 +11,11 @@ import datetime as dt
 from typing import Optional
 from typing import Type
 from typing import TYPE_CHECKING
-import sqlalchemy.types as types
-from sqlalchemy.types import UserDefinedType, Float
 
 from ... import exc
 from ...sql import sqltypes
 from ...types import NVARCHAR
 from ...types import VARCHAR
-import array
 
 if TYPE_CHECKING:
     from ...engine.interfaces import Dialect
@@ -317,82 +314,3 @@ class ROWID(sqltypes.TypeEngine):
 class _OracleBoolean(sqltypes.Boolean):
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
-
-
-class VECTOR(types.TypeEngine):
-    """Oracle VECTOR datatype."""
-
-    cache_ok = True
-    __visit_name__ = "VECTOR"
-
-    def __init__(self, dim=None, storage_format=None, *args):
-        """
-        :param dim: The dimension of the VECTOR datatype. This should be an
-        integer value.
-        :param storage_format: The VECTOR storage type format. This
-        may be int8, binary, float32, or float64.
-        """
-        if dim is not None and isinstance(dim, int):
-            self.dim = dim
-            self.storage_format = storage_format
-
-        elif dim is not None and isinstance(dim, str):
-            self.dim = storage_format
-            self.storage_format = dim
-
-        else:
-            self.dim = storage_format
-            self.storage_format = dim
-
-    def _cached_bind_processor(self, dialect):
-        """
-        Convert a list to a array.array before binding it to the database.
-        """
-
-        def process(value):
-            if value is None or isinstance(value, array.array):
-                return value
-
-            # Convert list to a array.array
-            elif isinstance(value, list):
-                format = self._array_typecode(self.storage_format)
-                value = array.array(format, value)
-                return value
-
-            else:
-                raise TypeError("VECTOR accepts list or array.array()")
-
-        return process
-
-    def _cached_result_processor(self, dialect, coltype):
-        """
-        Convert a array.array to list before binding it to the database.
-        """
-
-        def process(value):
-            if isinstance(value, array.array):
-                return list(value)
-
-        return process
-
-    def _array_typecode(self, format):
-        """
-        Map storage format to array typecode.
-        """
-        typecode_map = {
-            "int8": "b",  # Signed int
-            "binary": "B",  # Unsigned int
-            "float32": "f",  # Float
-            "float64": "d",  # Double
-        }
-        return typecode_map.get(format, "d")
-
-    class comparator_factory(types.TypeEngine.Comparator):
-        def l2_distance(self, other):
-            return self.op("<->", return_type=Float)(other)
-
-        def inner_product(self, other):
-            return self.op("<#>", return_type=Float)(other)
-
-        def cosine_distance(self, other):
-            return self.op("<=>", return_type=Float)(other)
