@@ -7,22 +7,30 @@
 # mypy: ignore-errors
 from __future__ import annotations
 
+import array
 import datetime as dt
+from enum import Enum
 from typing import Optional
 from typing import Type
 from typing import TYPE_CHECKING
-import sqlalchemy.types as types
-from sqlalchemy.types import UserDefinedType, Float
 
+import sqlalchemy.types as types
+from sqlalchemy.types import Float
 from ... import exc
 from ...sql import sqltypes
 from ...types import NVARCHAR
 from ...types import VARCHAR
-import array
 
 if TYPE_CHECKING:
     from ...engine.interfaces import Dialect
     from ...sql.type_api import _LiteralProcessorType
+
+
+class VectorStorageFormat(Enum):
+    INT8 = "INT8"
+    BINARY = "BINARY"
+    FLOAT32 = "FLOAT32"
+    FLOAT64 = "FLOAT64"
 
 
 class RAW(sqltypes._Binary):
@@ -325,24 +333,27 @@ class VECTOR(types.TypeEngine):
     cache_ok = True
     __visit_name__ = "VECTOR"
 
-    def __init__(self, dim=None, storage_format=None, *args):
-        """
-        :param dim: The dimension of the VECTOR datatype. This should be an
-        integer value.
-        :param storage_format: The VECTOR storage type format. This
-        may be int8, binary, float32, or float64.
-        """
-        if dim is not None and isinstance(dim, int):
-            self.dim = dim
-            self.storage_format = storage_format
+    def __init__(self, dim=None, storage_format=None):
+        """Construct a VECTOR.
 
-        elif dim is not None and isinstance(dim, str):
-            self.dim = storage_format
-            self.storage_format = dim
+        :param dim: integer. The dimension of the VECTOR datatype. This
+         should be an integer value.
 
-        else:
-            self.dim = storage_format
-            self.storage_format = dim
+        :param storage_format: VectorStorageFormat. The VECTOR storage
+         type format. This may be Enum values form
+         `VectorStorageFormat` INT8, BINARY, FLOAT32, or FLOAT64.
+
+        """
+        if dim is not None and not isinstance(dim, int):
+            raise TypeError("dim must be an interger")
+        if storage_format is not None and not isinstance(
+            storage_format, VectorStorageFormat
+        ):
+            raise TypeError(
+                "storage_format must be an enum of type VectorStorageFormat"
+            )
+        self.dim = dim
+        self.storage_format = storage_format
 
     def _cached_bind_processor(self, dialect):
         """
@@ -355,8 +366,8 @@ class VECTOR(types.TypeEngine):
 
             # Convert list to a array.array
             elif isinstance(value, list):
-                format = self._array_typecode(self.storage_format)
-                value = array.array(format, value)
+                typecode = self._array_typecode(self.storage_format)
+                value = array.array(typecode, value)
                 return value
 
             else:
@@ -375,17 +386,17 @@ class VECTOR(types.TypeEngine):
 
         return process
 
-    def _array_typecode(self, format):
+    def _array_typecode(self, typecode):
         """
         Map storage format to array typecode.
         """
         typecode_map = {
-            "int8": "b",  # Signed int
-            "binary": "B",  # Unsigned int
-            "float32": "f",  # Float
-            "float64": "d",  # Double
+            VectorStorageFormat.INT8: "b",  # Signed int
+            VectorStorageFormat.BINARY: "B",  # Unsigned int
+            VectorStorageFormat.FLOAT32: "f",  # Float
+            VectorStorageFormat.FLOAT64: "d",  # Double
         }
-        return typecode_map.get(format, "d")
+        return typecode_map.get(typecode, "d")
 
     class comparator_factory(types.TypeEngine.Comparator):
         def l2_distance(self, other):

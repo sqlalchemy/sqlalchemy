@@ -744,14 +744,208 @@ The ``oracle_compress`` parameter accepts either an integer specifying the
 number of prefix columns to compress, or ``True`` to use the default (all
 columns for non-unique indexes, all but the last column for unique indexes).
 
+VECTOR Datatype
+---------------
+
+Oracle Database 23ai introduced a new VECTOR datatype for artificial intelligence and machine
+learning search operations. The VECTOR datatype is a homogeneous array of 8-bit signed integers,
+8-bit unsigned integers, 32-bit floating-point numbers, or 64-bit floating-point numbers.
+For more information on the VECTOR datatype please visit this `link
+<https://python-oracledb.readthedocs.io/en/latest/user_guide/vector_data_type.html>`_.
+
+CREATE TABLE
+~~~~~~~~~~~~
+
+With the VECTOR datatype, you can specify the dimension for the data and the storage
+format. Valid values for storage format are enum values from `VectorStorageFormat`
+(`INT8`, `BINARY`, `FLOAT32`, `FLOAT64`).
+To create a table that includes a VECTOR column::
+
+    from sqlalchemy.dialects.oracle import VECTOR, VectorStorageFormat
+
+    t = Table("t1", metadata,
+        Column('id', Integer, primary_key=True),
+        Column("embedding", VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32),
+        Column(...), ...
+    )
+
+Vectors can also be defined with an arbitrary number of dimensions and formats. This allows
+you to specify vectors of different dimensions with the various storage formats mentioned above.
+
+For Example
+
+* In this case, the storage format is flexible, allowing any vector type data to be inserted,
+  such as INT8 or BINARY etc.
+
+    vector_col:Mapped[array.array] = mapped_column(VECTOR(dim=3))
+
+* The dimension is flexible in this case, meaning that any dimension vector can be used.
+
+    vector_col:Mapped[array.array] = mapped_column(VECTOR(storage_format=VectorStorageType.INT8))
+
+* Both the dimensions and the storage format are flexible.
+
+    vector_col:Mapped[array.array] = mapped_column(VECTOR)
+
+INSERT VECTOR DATA
+~~~~~~~~~~~~~~~~~~
+
+VECTOR data can be inserted using Python list or Python array.array() objects. Python arrays of type
+FLOAT (32-bit), DOUBLE (64-bit), or INT (8-bit signed integer) are used as bind values when
+inserting VECTOR columns::
+
+    from sqlalchemy import insert, select
+    import array
+
+    vector_data_8 = [1, 2, 3]
+    statement  = insert(t1)
+    with engine.connect() as conn:
+        conn.execute(statement,[
+            {"id":1,"embedding":vector_data_8},
+            ])
+
+VECTOR INDEXES
+~~~~~~~~~~~~~~
+
+There are two VECTOR indexes supported in VECTOR search: IVF Flat index and HNSW
+index.
+
+To utilize VECTOR indexing, set the `oracle_vector` parameter to True to use
+the default values provided by Oracle. HNSW is the default indexing method::
+
+    Index(
+            'vector_index',
+            t1.c.embedding,
+            oracle_vector = True,
+        )
+
+If you wish to use custom parameters, you can specify all the parameters using the VectorIndexConfig
+Dataclass in the `oracle_vector` option. To learn more about the parameters that can be passed please
+visit this `link. <https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/create-vector-index.html>`_
+
+Configuring Oracle VECTOR Indexes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When using Oracle VECTOR indexes, the configuration parameters are divided based on index type
+**HNSW** and **IVF**. This structure applies to both HNSW and IVF VECTOR indexes.
+
+Comman Attributes
+^^^^^^^^^^^^^^^^^
+
+* ``accuracy``:
+    - Specifies the accuracy of the nearest neighbor search during query execution.
+    - **Valid Range**: Greater than 0 and less than or equal to 100.
+
+* ``distance``:
+    - Specifies the metric for calculating distance between VECTORS.
+    - **Valid Values**: Enum values from `VectorDistanceType` (`EUCLIDEAN`, `COSINE`, `DOT`, `MANHATTAN`).
+
+* ``parallel``:
+    - Specifies degree of parallelism
+
+HNSW Parameters
+^^^^^^^^^^^^^^^
+
+* ``type``:
+    - Specifies the indexing method. For HNSW, this must be `"VectorIndexType.HNSW"`.
+
+* ``neighbors``:
+    - The number of nearest neighbors considered during the search.
+    - **Valid Range**: Greater than 0 and less than or equal to 2048.
+
+* ``efconstruction``:
+    - Controls the trade-off between indexing speed and recall quality during index construction.
+    - **Valid Range**: Greater than 0 and less than or equal to 65535.
+
+IVF Parameters
+^^^^^^^^^^^^^^
+
+* ``type``:
+    - Specifies the indexing method. For IVF, this must be `"VectorIndexType.IVF"`.
+
+* ``neighbor partitions``:
+    - The number of partitions used to divide the dataset.
+    - **Valid Range**: Greater than 0 and less than or equal to 10,000,000.
+
+* ``sample_per_partition``:
+    - The number of samples used per partition.
+    - **Valid Range**: Between 1 and ``num_vectors / neighbor partitions``.
+
+* ``min_vectors_per_partition``:
+    - The minimum number of vectors per partition.
+    - **Valid Range**: From 0 (no trimming) to the total number of vectors (results in 1 partition).
+
+Example Configurations
+^^^^^^^^^^^^^^^^^^^^^^
+
+For custom configurations, the parameters can be specified as shown in the following examples::
+
+    from sqlalchemy.dialects.oracle import (
+        VectorIndexType,
+        VectorDistanceType,
+        VectorIndexConfig,
+)
+
+    Index(
+            'hnsw_vector_index',
+            t1.c.embedding,
+            oracle_vector = VectorIndexConfig(
+                index_type = VectorIndexType.HNSW,
+                distance = VectorDistanceType.COSINE,
+                accuracy = 90,
+                hnsw_neighbors = 5,
+                hnsw_efconstruction = 20,
+                parallel = 10
+            )
+        )
+
+    Index(
+            'ivf_vector_index',
+            t1.c.embedding,
+            oracle_vector = VectorIndexConfig(
+                index_type = VectorIndexType.IVF,
+                distance = VectorDistanceType.DOT,
+                accuracy = 90,
+                ivf_neighbor_partitions = 5,
+            )
+        )
+
+Similarity Searching
+~~~~~~~~~~~~~~~~~~~~
+
+You can  use the following shorthand VECTOR distance functions:
+
+* ``l2_distance``
+* ``cosine_distance``
+* ``inner_product``
+
+Example Usage::
+
+    from sqlalchemy.orm import Session
+    from sqlalchemy.sql import func
+    import array
+
+    session = Session(bind=engine)
+    query_vector = [2,3,4]
+    result_vector = session.scalars(select(t1).order_by(t1.embedding.l2_distance(query_vector)).limit(3))
+
+    for user in vector:
+        print(user.id,user.embedding)
+
+.. versionadded:: 2.1.0 Added support for VECTOR specific to Oracle Database.
+
 """  # noqa
 
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass
+from dataclasses import fields
+from enum import Enum
 from functools import lru_cache
 from functools import wraps
 import re
+from typing import Optional
 
 from . import dictionary
 from .types import _OracleBoolean
@@ -853,6 +1047,87 @@ ischema_names = {
     "ROWID": ROWID,
     "VECTOR": VECTOR,
 }
+
+
+class VectorIndexType(Enum):
+    HNSW = "HNSW"
+    IVF = "IVF"
+
+
+class VectorDistanceType(Enum):
+    EUCLIDEAN = "EUCLIDEAN"
+    DOT = "DOT"
+    COSINE = "COSINE"
+    MANHATTAN = "MANHATTAN"
+
+
+@dataclass
+class VectorIndexConfig:
+    index_type: VectorIndexType = VectorIndexType.HNSW
+    distance: Optional[VectorDistanceType] = None
+    accuracy: Optional[int] = None
+    hnsw_neighbors: Optional[int] = None
+    hnsw_efconstruction: Optional[int] = None
+    ivf_neighbor_partitions: Optional[int] = None
+    ivf_sample_per_partition: Optional[int] = None
+    ivf_min_vectors_per_partition: Optional[int] = None
+    parallel: Optional[int] = None
+
+    def __post_init__(self):
+        self.index_type = VectorIndexType(self.index_type)
+        for field in [
+            "hnsw_neighbors",
+            "hnsw_efconstruction",
+            "ivf_neighbor_partitions",
+            "ivf_sample_per_partition",
+            "ivf_min_vectors_per_partition",
+            "parallel",
+            "accuracy",
+        ]:
+            value = getattr(self, field)
+            if value is not None and not isinstance(value, int):
+                raise TypeError(
+                    f"{field} must be an integer if"
+                    f"provided, got {type(value).__name__}"
+                )
+
+
+def build_vector_index_config(vector_index_config: VectorIndexConfig) -> str:
+    parts = []
+    sql_param_name = {
+        "hnsw_neighbors": "neighbors",
+        "hnsw_efconstruction": "efconstruction",
+        "ivf_neighbor_partitions": "neighbor partitions",
+        "ivf_sample_per_partition": "sample_per_partition",
+        "ivf_min_vectors_per_partition": "min_vectors_per_partition",
+    }
+    if vector_index_config.index_type == VectorIndexType.HNSW:
+        parts.append("ORGANIZATION INMEMORY NEIGHBOR GRAPH")
+    elif vector_index_config.index_type == VectorIndexType.IVF:
+        parts.append("ORGANIZATION NEIGHBOR PARTITIONS")
+    if vector_index_config.distance is not None:
+        parts.append(f"DISTANCE {vector_index_config.distance.value}")
+
+    if vector_index_config.accuracy is not None:
+        parts.append(f"WITH TARGET ACCURACY {vector_index_config.accuracy}")
+
+    parameters_str = [f"type {vector_index_config.index_type.name}"]
+    prefix = vector_index_config.index_type.name.lower() + "_"
+
+    for field in fields(vector_index_config):
+        if field.name.startswith(prefix):
+            key = sql_param_name.get(field.name)
+            value = getattr(vector_index_config, field.name)
+            if value is not None:
+                parameters_str.append(f"{key} {value}")
+
+    parameters_str = ", ".join(parameters_str)
+    parts.append(f"PARAMETERS ({parameters_str})")
+
+    if vector_index_config.parallel is not None:
+        parts.append(f"PARALLEL {vector_index_config.parallel}")
+
+    return " ".join(parts)
 
 
 class OracleTypeCompiler(compiler.GenericTypeCompiler):
@@ -1011,13 +1286,13 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_VECTOR(self, type_, **kw):
         if type_.dim is None and type_.storage_format is None:
-            return f"VECTOR"
+            return "VECTOR(*,*)"
         elif type_.storage_format is None:
             return f"VECTOR({type_.dim},*)"
         elif type_.dim is None:
-            return f"VECTOR(*, {type_.storage_format})"
+            return f"VECTOR(*,{type_.storage_format.value})"
         else:
-            return f"VECTOR({type_.dim},{type_.storage_format})"
+            return f"VECTOR({type_.dim},{type_.storage_format.value})"
 
 
 class OracleCompiler(compiler.SQLCompiler):
@@ -1559,43 +1834,9 @@ class OracleDDLCompiler(compiler.DDLCompiler):
                 )
         if vector_options:
             if vector_options is True:
-                vector_options = {}
-            parts = []
-            parameters = vector_options.get("parameters", {})
-            using = parameters.get("type", "HNSW").upper()
-            if using == "HNSW":
-                parts.append("ORGANIZATION INMEMORY NEIGHBOR GRAPH")
-            elif using == "IVF":
-                parts.append("ORGANIZATION NEIGHBOR PARTITIONS")
-            vector_distance = vector_options.get("distance")
-            if vector_distance is not None:
-                vector_distance = vector_distance.upper()
-                if vector_distance not in (
-                    "EUCLIDEAN",
-                    "DOT",
-                    "COSINE",
-                    "MANHATTAN",
-                ):
-                    raise ValueError("Unknown vector_distance value")
-                parts.append(f"DISTANCE {vector_distance}")
-            target_accuracy = vector_options.get("accuracy")
-            if target_accuracy is not None:
-                if target_accuracy < 0 or target_accuracy > 100:
-                    raise ValueError(
-                        "Accuracy value should be an integer between 0 and 100"
-                    )
-                parts.append(f"WITH TARGET ACCURACY {target_accuracy}")
-            if parameters:
-                parameters_str = ", ".join(
-                    f"{k} {v}" for k, v in parameters.items()
-                )
-                parts.append(f"PARAMETERS ({parameters_str})")
-            parallel = vector_options.get("parallel")
-            if parallel is not None:
-                if not isinstance(parallel, int):
-                    raise ValueError("Parallel value must be an integer")
-                parts.append(f"PARALLEL {parallel}")
-            text += " " + " ".join(parts)
+                vector_options = VectorIndexConfig()
+
+            text += " " + build_vector_index_config(vector_options)
         return text
 
     def post_create_table(self, table):
