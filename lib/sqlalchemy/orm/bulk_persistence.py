@@ -1046,8 +1046,6 @@ class _BulkUDCompileState(_ORMDMLState):
     def _get_resolved_values(cls, mapper, statement):
         if statement._multi_values:
             return []
-        elif statement._ordered_values:
-            return list(statement._ordered_values)
         elif statement._values:
             return list(statement._values.items())
         else:
@@ -1468,9 +1466,7 @@ class _BulkORMUpdate(_BulkUDCompileState, UpdateDMLState):
         # are passed through to the new statement, which will then raise
         # InvalidRequestError because UPDATE doesn't support multi_values
         # right now.
-        if statement._ordered_values:
-            new_stmt._ordered_values = self._resolved_values
-        elif statement._values:
+        if statement._values:
             new_stmt._values = self._resolved_values
 
         new_crit = self._adjust_for_extra_criteria(
@@ -1557,7 +1553,7 @@ class _BulkORMUpdate(_BulkUDCompileState, UpdateDMLState):
 
         UpdateDMLState.__init__(self, statement, compiler, **kw)
 
-        if self._ordered_values:
+        if self._maintain_values_ordering:
             raise sa_exc.InvalidRequestError(
                 "bulk ORM UPDATE does not support ordered_values() for "
                 "custom UPDATE statements with bulk parameter sets.  Use a "

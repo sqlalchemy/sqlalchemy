@@ -124,8 +124,7 @@ class DMLState(CompileState):
     _multi_parameters: Optional[
         List[MutableMapping[_DMLColumnElement, Any]]
     ] = None
-    _ordered_values: Optional[List[Tuple[_DMLColumnElement, Any]]] = None
-    _parameter_ordering: Optional[List[_DMLColumnElement]] = None
+    _maintain_values_ordering: bool = False
     _primary_table: FromClause
     _supports_implicit_returning = True
 
@@ -348,7 +347,7 @@ class UpdateDMLState(DMLState):
         self.statement = statement
 
         self.isupdate = True
-        if statement._ordered_values is not None:
+        if statement._maintain_values_ordering:
             self._process_ordered_values(statement)
         elif statement._values is not None:
             self._process_values(statement)
@@ -364,14 +363,12 @@ class UpdateDMLState(DMLState):
         )
 
     def _process_ordered_values(self, statement: ValuesBase) -> None:
-        parameters = statement._ordered_values
-
+        parameters = statement._values
         if self._no_parameters:
             self._no_parameters = False
             assert parameters is not None
             self._dict_parameters = dict(parameters)
-            self._ordered_values = parameters
-            self._parameter_ordering = [key for key, value in parameters]
+            self._maintain_values_ordering = True
         else:
             raise exc.InvalidRequestError(
                 "Can only invoke ordered_values() once, and not mixed "
@@ -1003,7 +1000,7 @@ class ValuesBase(UpdateBase):
         ...,
     ] = ()
 
-    _ordered_values: Optional[List[Tuple[_DMLColumnElement, Any]]] = None
+    _maintain_values_ordering: bool = False
 
     _select_names: Optional[List[str]] = None
     _inline: bool = False
@@ -1016,12 +1013,13 @@ class ValuesBase(UpdateBase):
     @_generative
     @_exclusive_against(
         "_select_names",
-        "_ordered_values",
+        "_maintain_values_ordering",
         msgs={
             "_select_names": "This construct already inserts from a SELECT",
-            "_ordered_values": "This statement already has ordered "
+            "_maintain_values_ordering": "This statement already has ordered "
             "values present",
         },
+        defaults={"_maintain_values_ordering": False},
     )
     def values(
         self,
@@ -1590,7 +1588,7 @@ class Update(
             ("table", InternalTraversal.dp_clauseelement),
             ("_where_criteria", InternalTraversal.dp_clauseelement_tuple),
             ("_inline", InternalTraversal.dp_boolean),
-            ("_ordered_values", InternalTraversal.dp_dml_ordered_values),
+            ("_maintain_values_ordering", InternalTraversal.dp_boolean),
             ("_values", InternalTraversal.dp_dml_values),
             ("_returning", InternalTraversal.dp_clauseelement_tuple),
             ("_hints", InternalTraversal.dp_table_hint_list),
@@ -1614,7 +1612,6 @@ class Update(
     def __init__(self, table: _DMLTableArgument):
         super().__init__(table)
 
-    @_generative
     def ordered_values(self, *args: Tuple[_DMLColumnArgument, Any]) -> Self:
         """Specify the VALUES clause of this UPDATE statement with an explicit
         parameter ordering that will be maintained in the SET clause of the
@@ -1638,15 +1635,13 @@ class Update(
         """  # noqa: E501
         if self._values:
             raise exc.ArgumentError(
-                "This statement already has values present"
-            )
-        elif self._ordered_values:
-            raise exc.ArgumentError(
-                "This statement already has ordered values present"
+                "This statement already has "
+                f"{'ordered ' if self._maintain_values_ordering else ''}"
+                "values present"
             )
 
-        kv_generator = DMLState.get_plugin_class(self)._get_crud_kv_pairs
-        self._ordered_values = kv_generator(self, args, True)
+        self = self.values(dict(args))
+        self._maintain_values_ordering = True
         return self
 
     @_generative

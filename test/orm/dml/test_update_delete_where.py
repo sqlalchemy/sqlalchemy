@@ -2023,10 +2023,10 @@ class UpdateDeleteTest(fixtures.MappedTest):
         def do_orm_execute(bulk_ud):
             cols = [
                 c.key
-                for c, v in (
+                for c in (
                     (
                         bulk_ud.result.context
-                    ).compiled.compile_state.statement._ordered_values
+                    ).compiled.compile_state.statement._values
                 )
             ]
             m1(cols)
@@ -2081,10 +2081,8 @@ class UpdateDeleteTest(fixtures.MappedTest):
         result = session.execute(stmt)
         cols = [
             c.key
-            for c, v in (
-                (
-                    result.context
-                ).compiled.compile_state.statement._ordered_values
+            for c in (
+                (result.context).compiled.compile_state.statement._values
             )
         ]
         eq_(["age_int", "name"], cols)
@@ -2102,9 +2100,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         result = session.execute(stmt)
         cols = [
             c.key
-            for c, v in (
-                result.context
-            ).compiled.compile_state.statement._ordered_values
+            for c in (result.context).compiled.compile_state.statement._values
         ]
         eq_(["name", "age_int"], cols)
 
