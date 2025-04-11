@@ -34,6 +34,8 @@ if TYPE_CHECKING:
 class ReflectedState:
     """Stores raw information about a SHOW CREATE TABLE statement."""
 
+    charset: Optional[str]
+
     def __init__(self) -> None:
         self.columns: list[ReflectedColumn] = []
         self.table_options: dict[str, str] = {}
@@ -58,7 +60,7 @@ class MySQLTableDefinitionParser:  # type: ignore[type-var]
         self, show_create: str, charset: Optional[str]
     ) -> ReflectedState:
         state = ReflectedState()
-        state.charset = charset  # type: ignore[attr-defined]
+        state.charset = charset
         for line in re.split(r"\r?\n", show_create):
             if line.startswith("  " + self.preparer.initial_quote):
                 self._parse_column(line, state)
@@ -409,7 +411,7 @@ class MySQLTableDefinitionParser:  # type: ignore[type-var]
 
     def _parse_keyexprs(
         self, identifiers: str
-    ) -> list[tuple[Any, Optional[int], Any]]:
+    ) -> list[tuple[str, Optional[int], str]]:
         """Unpack '"col"(2),"col" ASC'-ish strings into components."""
 
         return [

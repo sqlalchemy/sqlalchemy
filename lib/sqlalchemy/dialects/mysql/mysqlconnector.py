@@ -151,8 +151,6 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
 
     execution_ctx_cls = MySQLExecutionContext_mysqlconnector
 
-    execution_ctx_cls = MySQLExecutionContext_mysqlconnector
-
     preparer: type[MySQLIdentifierPreparer] = (
         MySQLIdentifierPreparer_mysqlconnector
     )

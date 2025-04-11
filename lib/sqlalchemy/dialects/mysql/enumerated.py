@@ -36,7 +36,7 @@ class ENUM(type_api.NativeForEmulated, sqltypes.Enum, _StringType):
 
     native_enum = True
 
-    def __init__(self, *enums: Union[str, Enum], **kw: Any):
+    def __init__(self, *enums: Union[str, Enum], **kw: Any) -> None:
         """Construct an ENUM.
 
         E.g.::

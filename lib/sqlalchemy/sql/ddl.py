@@ -32,7 +32,6 @@ from .base import _generative
 from .base import Executable
 from .base import SchemaVisitor
 from .elements import ClauseElement
-from .schema import Column
 from .. import exc
 from .. import util
 from ..util import topological
@@ -42,6 +41,7 @@ if typing.TYPE_CHECKING:
     from .compiler import Compiled
     from .compiler import DDLCompiler
     from .elements import BindParameter
+    from .schema import Column
     from .schema import Constraint
     from .schema import ForeignKeyConstraint
     from .schema import Index
@@ -432,6 +432,8 @@ class _CreateDropBase(ExecutableDDLElement, Generic[_SI]):
 
     """
 
+    element: _SI
+
     def __init__(self, element: _SI) -> None:
         self.element = self.target = element
         self._ddl_if = getattr(element, "_ddl_if", None)
@@ -715,7 +717,6 @@ class CreateIndex(_CreateBase["Index"]):
     """Represent a CREATE INDEX statement."""
 
     __visit_name__ = "create_index"
-    element: Index
 
     def __init__(self, element: Index, if_not_exists: bool = False) -> None:
         """Create a :class:`.Createindex` construct.
@@ -841,13 +842,13 @@ class DropTableComment(_CreateDropBase["Table"]):
     __visit_name__ = "drop_table_comment"
 
 
-class SetColumnComment(_CreateDropBase[Column[Any]]):
+class SetColumnComment(_CreateDropBase["Column[Any]"]):
     """Represent a COMMENT ON COLUMN IS statement."""
 
     __visit_name__ = "set_column_comment"
 
 
-class DropColumnComment(_CreateDropBase[Column[Any]]):
+class DropColumnComment(_CreateDropBase["Column[Any]"]):
     """Represent a COMMENT ON COLUMN IS NULL statement."""
 
     __visit_name__ = "drop_column_comment"

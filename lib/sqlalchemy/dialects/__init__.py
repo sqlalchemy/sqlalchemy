@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from typing import Callable
 from typing import Optional
 from typing import Type
@@ -15,7 +16,6 @@ from typing import TYPE_CHECKING
 from .. import util
 
 if TYPE_CHECKING:
-    from .mysql import mariadb
     from ..engine.interfaces import Dialect
 
 __all__ = ("mssql", "mysql", "oracle", "postgresql", "sqlite")
@@ -40,7 +40,7 @@ def _auto_fn(name: str) -> Optional[Callable[[], Type[Dialect]]]:
             # hardcoded.   if mysql / mariadb etc were third party dialects
             # they would just publish all the entrypoints, which would actually
             # look much nicer.
-            module: "mariadb" = __import__(  # type: ignore[valid-type]
+            module: Any = __import__(
                 "sqlalchemy.dialects.mysql.mariadb"
             ).dialects.mysql.mariadb
             return module.loader(driver)  # type: ignore
@@ -52,7 +52,7 @@ def _auto_fn(name: str) -> Optional[Callable[[], Type[Dialect]]]:
 
     if hasattr(module, driver):
         module = getattr(module, driver)
-        return lambda: module.dialect  # type: ignore[attr-defined]
+        return lambda: module.dialect
     else:
         return None
 

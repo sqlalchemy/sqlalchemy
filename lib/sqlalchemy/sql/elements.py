@@ -2129,8 +2129,8 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
         else:
             return self
 
-    def _with_binary_element_type(self, type_):
-        c: Self = ClauseElement._clone(self)  # type: ignore[assignment]
+    def _with_binary_element_type(self, type_: TypeEngine[Any]) -> Self:
+        c: Self = ClauseElement._clone(self)
         c.type = type_
         return c
 

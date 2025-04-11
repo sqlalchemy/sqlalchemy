@@ -1494,9 +1494,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         """
         self.native_enum = kw.pop("native_enum", True)
         self.create_constraint = kw.pop("create_constraint", False)
-        self.values_callable: Optional[
-            Callable[[type[enum.Enum]], Sequence[str]]
-        ] = kw.pop("values_callable", None)
+        self.values_callable = kw.pop("values_callable", None)
         self._sort_key_function = kw.pop("sort_key_function", NO_ARG)
         length_arg = kw.pop("length", NO_ARG)
         self._omit_aliases = kw.pop("omit_aliases", True)
@@ -1657,13 +1655,9 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
     ) -> None:
         self.enums = list(values)
 
-        self._valid_lookup: dict[
-            Union[enum.Enum, str, None], Optional[str]
-        ] = dict(zip(reversed(objects), reversed(values)))
+        self._valid_lookup = dict(zip(reversed(objects), reversed(values)))
 
-        self._object_lookup: dict[
-            Optional[str], Union[enum.Enum, str, None]
-        ] = dict(zip(values, objects))
+        self._object_lookup = dict(zip(values, objects))
 
         self._valid_lookup.update(
             [
@@ -3518,7 +3512,6 @@ class BINARY(_Binary):
 class VARBINARY(_Binary):
     """The SQL VARBINARY type."""
 
-    length: Optional[int]
     __visit_name__ = "VARBINARY"
 
 

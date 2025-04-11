@@ -63,7 +63,7 @@ class _MariaDBUUID(UUID[_UUID_RETURN]):
         # off native_uuid for internal data handling
         return True
 
-    def bind_processor(self, dialect: "MariaDBDialect") -> Optional[_BindProcessorType[_UUID_RETURN]]:  # type: ignore[override] # noqa: E501
+    def bind_processor(self, dialect: MariaDBDialect) -> Optional[_BindProcessorType[_UUID_RETURN]]:  # type: ignore[override] # noqa: E501
         if not dialect.supports_native_uuid or not dialect._allows_uuid_binds:
             return super().bind_processor(dialect)  # type: ignore[return-value] # noqa: E501
         else:

@@ -1405,9 +1405,10 @@ class MySQLCompiler(compiler.SQLCompiler):
                 )
             )
         elif binary.type._type_affinity in (sqltypes.Numeric, sqltypes.Float):
+            binary.type = cast(sqltypes.Numeric[Any], binary.type)
             if (
-                binary.type.scale is not None  # type: ignore[attr-defined]
-                and binary.type.precision is not None  # type: ignore[attr-defined]  # noqa: E501
+                binary.type.scale is not None
+                and binary.type.precision is not None
             ):
                 # using DECIMAL here because MySQL does not recognize NUMERIC
                 type_expression = (
@@ -1415,8 +1416,8 @@ class MySQLCompiler(compiler.SQLCompiler):
                     % (
                         self.process(binary.left, **kw),
                         self.process(binary.right, **kw),
-                        binary.type.precision,  # type: ignore[attr-defined]
-                        binary.type.scale,  # type: ignore[attr-defined]
+                        binary.type.precision,
+                        binary.type.scale,
                     )
                 )
             else:
@@ -1507,9 +1508,7 @@ class MySQLCompiler(compiler.SQLCompiler):
                     isinstance(element, elements.BindParameter)
                     and element.type._isnull
                 ):
-                    element = element._clone()
-                    element.type = column.type
-                    return element
+                    return element._with_binary_element_type(column.type)
                 elif (
                     isinstance(element, elements.ColumnClause)
                     and element.table is on_duplicate.inserted_alias
@@ -2602,7 +2601,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         else:
             return self._extend_string(type_, {"national": True}, "CHAR")
 
-    def visit_UUID(self, type_: UUID[sqltypes._UUID_RETURN], **kw: Any) -> str:  # type: ignore[override]  # NOQA: E501
+    def visit_UUID(self, type_: UUID[Any], **kw: Any) -> str:  # type: ignore[override]  # NOQA: E501
         return "UUID"
 
     def visit_VARBINARY(self, type_: VARBINARY, **kw: Any) -> str:
@@ -3901,6 +3900,8 @@ class _DecodingRow:
     # seem to come up in DDL queries.
 
     _encoding_compat: dict[Optional[str], str] = {
+        # this dict should be [str, str] but mypy will not allow to call
+        # _encoding_compat.get(None, None)
         "koi8r": "koi8_r",
         "koi8u": "koi8_u",
         "utf16": "utf-16-be",  # MySQL's uft16 is always bigendian

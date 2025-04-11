@@ -182,9 +182,7 @@ class MySQLDialect_asyncmy(MySQLDialect_pymysql):
         dbapi_connection.terminate()
 
     # _translate_args should not be defined here, is only for super class.
-    def create_connect_args(
-        self, url: URL, _translate_args: Any = None
-    ) -> ConnectArgsType:
+    def create_connect_args(self, url: URL) -> ConnectArgsType:  # type: ignore[override]  # noqa: E501
         return super().create_connect_args(
             url, _translate_args=dict(username="user", database="db")
         )
