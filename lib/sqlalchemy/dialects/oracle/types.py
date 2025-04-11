@@ -7,11 +7,15 @@
 # mypy: ignore-errors
 from __future__ import annotations
 
+import array
 import datetime as dt
+from enum import Enum
 from typing import Optional
 from typing import Type
 from typing import TYPE_CHECKING
 
+import sqlalchemy.types as types
+from sqlalchemy.types import Float
 from ... import exc
 from ...sql import sqltypes
 from ...types import NVARCHAR
@@ -20,6 +24,13 @@ from ...types import VARCHAR
 if TYPE_CHECKING:
     from ...engine.interfaces import Dialect
     from ...sql.type_api import _LiteralProcessorType
+
+
+class VectorStorageFormat(Enum):
+    INT8 = "INT8"
+    BINARY = "BINARY"
+    FLOAT32 = "FLOAT32"
+    FLOAT64 = "FLOAT64"
 
 
 class RAW(sqltypes._Binary):
@@ -314,3 +325,85 @@ class ROWID(sqltypes.TypeEngine):
 class _OracleBoolean(sqltypes.Boolean):
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
+
+
+class VECTOR(types.TypeEngine):
+    """Oracle VECTOR datatype."""
+
+    cache_ok = True
+    __visit_name__ = "VECTOR"
+
+    def __init__(self, dim=None, storage_format=None):
+        """Construct a VECTOR.
+
+        :param dim: integer. The dimension of the VECTOR datatype. This
+         should be an integer value.
+
+        :param storage_format: VectorStorageFormat. The VECTOR storage
+         type format. This may be Enum values form
+         `VectorStorageFormat` INT8, BINARY, FLOAT32, or FLOAT64.
+
+        """
+        if dim is not None and not isinstance(dim, int):
+            raise TypeError("dim must be an interger")
+        if storage_format is not None and not isinstance(
+            storage_format, VectorStorageFormat
+        ):
+            raise TypeError(
+                "storage_format must be an enum of type VectorStorageFormat"
+            )
+        self.dim = dim
+        self.storage_format = storage_format
+
+    def _cached_bind_processor(self, dialect):
+        """
+        Convert a list to a array.array before binding it to the database.
+        """
+
+        def process(value):
+            if value is None or isinstance(value, array.array):
+                return value
+
+            # Convert list to a array.array
+            elif isinstance(value, list):
+                typecode = self._array_typecode(self.storage_format)
+                value = array.array(typecode, value)
+                return value
+
+            else:
+                raise TypeError("VECTOR accepts list or array.array()")
+
+        return process
+
+    def _cached_result_processor(self, dialect, coltype):
+        """
+        Convert a array.array to list before binding it to the database.
+        """
+
+        def process(value):
+            if isinstance(value, array.array):
+                return list(value)
+
+        return process
+
+    def _array_typecode(self, typecode):
+        """
+        Map storage format to array typecode.
+        """
+        typecode_map = {
+            VectorStorageFormat.INT8: "b",  # Signed int
+            VectorStorageFormat.BINARY: "B",  # Unsigned int
+            VectorStorageFormat.FLOAT32: "f",  # Float
+            VectorStorageFormat.FLOAT64: "d",  # Double
+        }
+        return typecode_map.get(typecode, "d")
+
+    class comparator_factory(types.TypeEngine.Comparator):
+        def l2_distance(self, other):
+            return self.op("<->", return_type=Float)(other)
+
+        def inner_product(self, other):
+            return self.op("<#>", return_type=Float)(other)
+
+        def cosine_distance(self, other):
+            return self.op("<=>", return_type=Float)(other)
