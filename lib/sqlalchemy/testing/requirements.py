@@ -658,6 +658,11 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def column_collation_reflection(self):
+        """Indicates if the database support column collation reflection"""
+        return exclusions.open()
+
+    @property
     def comment_reflection(self):
         """Indicates if the database support table comment reflection"""
         return exclusions.closed()
