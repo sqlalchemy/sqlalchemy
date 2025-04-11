@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from typing import Union
 
 from .asyncio import AsyncAdapt_dbapi_connection
 from .asyncio import AsyncAdapt_dbapi_cursor
@@ -19,6 +20,7 @@ from ..util.concurrency import await_
 if TYPE_CHECKING:
     from ..engine.interfaces import ConnectArgsType
     from ..engine.url import URL
+    from ..util.langhelpers import generic_fn_descriptor
 
 
 class AsyncAdapt_aioodbc_cursor(AsyncAdapt_dbapi_cursor):
@@ -138,7 +140,9 @@ class aiodbcConnector(PyODBCConnector):
     is_async = True
     supports_statement_cache = True
 
-    supports_server_side_cursors = True
+    supports_server_side_cursors: Union[generic_fn_descriptor[bool], bool] = (
+        True
+    )
 
     @classmethod
     def import_dbapi(cls):

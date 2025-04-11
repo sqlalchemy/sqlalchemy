@@ -59,6 +59,7 @@ from .sqltypes import TableValueType
 from .type_api import TypeEngine
 from .visitors import InternalTraversal
 from .. import util
+from ..util._immutabledict_cy import immutabledict
 
 
 if TYPE_CHECKING:
@@ -787,7 +788,7 @@ class FunctionAsBinary(BinaryExpression[Any]):
         self.type = sqltypes.BOOLEANTYPE
         self.negate = None
         self._is_implicitly_boolean = True
-        self.modifiers = {}
+        self.modifiers = immutabledict({})
 
     @property
     def left_expr(self) -> ColumnElement[Any]:
