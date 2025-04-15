@@ -265,7 +265,7 @@ will remain consistent with the state of the transaction::
     from sqlalchemy import event
 
     postgresql_engine = create_engine(
-        "postgresql+pyscopg2://scott:tiger@hostname/dbname",
+        "postgresql+psycopg2://scott:tiger@hostname/dbname",
 
         # disable default reset-on-return scheme
         pool_reset_on_return=None,
