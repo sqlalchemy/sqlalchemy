@@ -4246,7 +4246,7 @@ def _dispose_registries(registries: Set[_RegistryType], cascade: bool) -> None:
         reg._new_mappers = False
 
 
-def reconstructor(fn: Callable[..., Any]) -> Callable[..., Any]:
+def reconstructor(fn: _Fn) -> _Fn:
     """Decorate a method as the 'reconstructor' hook.
 
     Designates a single method as the "reconstructor", an ``__init__``-like
