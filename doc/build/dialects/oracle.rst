@@ -31,6 +31,7 @@ originate from :mod:`sqlalchemy.types` or from the local dialect::
         TIMESTAMP,
         VARCHAR,
         VARCHAR2,
+        VECTOR,
     )
 
 Types which are specific to Oracle Database, or have Oracle-specific
@@ -75,6 +76,9 @@ construction arguments, are as follows:
   :members: __init__
 
 .. autoclass:: TIMESTAMP
+  :members: __init__
+
+.. autoclass:: VECTOR
   :members: __init__
 
 .. _oracledb:
