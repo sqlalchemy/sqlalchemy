@@ -4272,7 +4272,7 @@ def reconstructor(fn: _Fn) -> _Fn:
         :meth:`.InstanceEvents.load`
 
     """
-    setattr(fn, "__sa_reconstructor__", True)
+    fn.__sa_reconstructor__ = True  # type: ignore[attr-defined]
     return fn
 
 
