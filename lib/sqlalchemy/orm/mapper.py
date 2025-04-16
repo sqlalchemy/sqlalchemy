@@ -4272,7 +4272,7 @@ def reconstructor(fn: Callable[..., Any]) -> Callable[..., Any]:
         :meth:`.InstanceEvents.load`
 
     """
-    fn.__sa_reconstructor__ = True
+    setattr(fn, "__sa_reconstructor__", True)
     return fn
 
 
