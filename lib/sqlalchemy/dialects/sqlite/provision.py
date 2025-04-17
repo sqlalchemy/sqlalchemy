@@ -52,8 +52,6 @@ def _format_url(url, driver, ident):
         assert "test_schema" not in filename
         tokens = re.split(r"[_\.]", filename)
 
-        new_filename = f"{driver}"
-
         for token in tokens:
             if token in _drivernames:
                 if driver is None:
