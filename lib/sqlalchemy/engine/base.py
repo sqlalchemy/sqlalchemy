@@ -2437,7 +2437,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                     break
 
             if sqlalchemy_exception and is_disconnect != ctx.is_disconnect:
-                sqlalchemy_exception.connection_invalidated = is_disconnect = (
+                sqlalchemy_exception.connection_invalidated = (
                     ctx.is_disconnect
                 )
 
