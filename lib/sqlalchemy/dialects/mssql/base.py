@@ -1324,7 +1324,7 @@ class _BASETIMEIMPL(TIME):
 
 
 class _DateTimeBase:
-    def bind_processor(self):
+    def bind_processor(self, dialect):
         def process(value):
             if type(value) == datetime.date:
                 return datetime.datetime(value.year, value.month, value.day)
@@ -3949,6 +3949,7 @@ index_info AS (
             )
         )
 
+        # group rows by constraint ID, to handle multi-column FKs
         fkeys = util.defaultdict(
             lambda: {
                 "name": None,
