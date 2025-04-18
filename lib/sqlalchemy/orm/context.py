@@ -240,7 +240,7 @@ class _AbstractORMCompileState(CompileState):
         if compiler is None:
             # this is the legacy / testing only ORM _compile_state() use case.
             # there is no need to apply criteria options for this.
-            self.global_attributes = ga = {}
+            self.global_attributes = {}
             assert toplevel
             return
         else:
@@ -1889,8 +1889,6 @@ class _ORMSelectCompileState(_ORMCompileState, SelectState):
                         "Expected mapped entity or "
                         "selectable/table as join target"
                     )
-
-            of_type = None
 
             if isinstance(onclause, interfaces.PropComparator):
                 # descriptor/property given (or determined); this tells us

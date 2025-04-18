@@ -101,7 +101,7 @@ class IdentityMap:
         if state.modified:
             self._modified.add(state)
 
-    def _manage_removed_state(self, state: InstanceState[Any]) -> None:
+    def _manage_removed_state(self, state: InstanceState[Any] | None) -> None:
         del state._instance_dict
         if state.modified:
             self._modified.discard(state)
@@ -160,19 +160,15 @@ class _WeakInstanceDict(IdentityMap):
         self, state: InstanceState[Any]
     ) -> Optional[InstanceState[Any]]:
         assert state.key is not None
-        if state.key in self._dict:
-            try:
-                existing = existing_non_none = self._dict[state.key]
-            except KeyError:
-                # catch gc removed the key after we just checked for it
-                existing = None
-            else:
-                if existing_non_none is not state:
-                    self._manage_removed_state(existing_non_none)
-                else:
-                    return None
-        else:
+        try:
+            existing = self._dict[state.key]
+        except KeyError:
             existing = None
+        else:
+            if existing is state:
+                return None
+            assert existing is not None
+            self._manage_removed_state(existing)
 
         self._dict[state.key] = state
         self._manage_incoming_state(state)
