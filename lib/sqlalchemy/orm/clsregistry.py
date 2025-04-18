@@ -69,11 +69,11 @@ def _add_class(
 
     """
     if classname in decl_class_registry:
-        if not isinstance(
-            decl_class_registry[classname], _MultipleClassMarker
-        ):
-            decl_class_registry[classname] = _MultipleClassMarker(
-                [cls, cast("Type[Any]", decl_class_registry[classname])]
+        # class already exists.
+        existing = decl_class_registry[classname]
+        if not isinstance(existing, _MultipleClassMarker):
+            existing = decl_class_registry[classname] = _MultipleClassMarker(
+                [cls, cast("Type[Any]", existing)]
             )
     else:
         decl_class_registry[classname] = cls
