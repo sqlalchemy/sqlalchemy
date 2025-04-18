@@ -256,10 +256,7 @@ class LambdaElement(elements.ClauseElement):
 
                 self.closure_cache_key = cache_key
 
-                try:
-                    rec = lambda_cache[tracker_key + cache_key]
-                except KeyError:
-                    rec = None
+                rec = lambda_cache.get(tracker_key + cache_key)
             else:
                 cache_key = _cache_key.NO_CACHE
                 rec = None
@@ -1173,7 +1170,7 @@ class AnalyzedFunction:
                         closure_pywrappers.append(bind)
                 else:
                     value = fn.__globals__[name]
-                    new_globals[name] = bind = PyWrapper(fn, name, value)
+                    new_globals[name] = PyWrapper(fn, name, value)
 
             # rewrite the original fn.   things that look like they will
             # become bound parameters are wrapped in a PyWrapper.
