@@ -112,7 +112,7 @@ def find_cycles(
                     todo.remove(node)
                     break
             else:
-                node = stack.pop()
+                stack.pop()
     return output
 
 

@@ -537,7 +537,7 @@ class DifficultParametersTest(fixtures.TestBase):
             t.c[name].in_(["some name", "some other_name"])
         )
 
-        row = connection.execute(stmt).first()
+        connection.execute(stmt).first()
 
     @testing.fixture
     def multirow_fixture(self, metadata, connection):
@@ -621,7 +621,7 @@ class ReturningGuardsTest(fixtures.TablesTest):
                         f"current server capabilities does not support "
                         f".*RETURNING when executemany is used",
                     ):
-                        result = connection.execute(
+                        connection.execute(
                             stmt,
                             [
                                 {id_param_name: 1, "data": "d1"},
