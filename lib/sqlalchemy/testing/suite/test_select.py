@@ -1780,7 +1780,7 @@ class IdentityAutoincrementTest(fixtures.TablesTest):
         )
 
     def test_autoincrement_with_identity(self, connection):
-        res = connection.execute(self.tables.tbl.insert(), {"desc": "row"})
+        connection.execute(self.tables.tbl.insert(), {"desc": "row"})
         res = connection.execute(self.tables.tbl.select()).first()
         eq_(res, (1, "row"))
 
