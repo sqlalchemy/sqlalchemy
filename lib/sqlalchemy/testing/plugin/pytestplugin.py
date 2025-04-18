@@ -270,7 +270,6 @@ def pytest_collection_modifyitems(session, config, items):
         for test_class in test_classes:
             # transfer legacy __backend__ and __sparse_backend__ symbols
             # to be markers
-            add_markers = set()
             if getattr(test_class.cls, "__backend__", False) or getattr(
                 test_class.cls, "__only_on__", False
             ):
