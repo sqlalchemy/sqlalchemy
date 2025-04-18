@@ -167,6 +167,7 @@ class _WeakInstanceDict(IdentityMap):
         else:
             if existing is state:
                 return None
+            assert existing is not None
             self._manage_removed_state(existing)
 
         self._dict[state.key] = state
