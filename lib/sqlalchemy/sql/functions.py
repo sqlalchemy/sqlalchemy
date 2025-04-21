@@ -787,7 +787,7 @@ class FunctionAsBinary(BinaryExpression[Any]):
         self.type = sqltypes.BOOLEANTYPE
         self.negate = None
         self._is_implicitly_boolean = True
-        self.modifiers = {}
+        self.modifiers = util.immutabledict({})
 
     @property
     def left_expr(self) -> ColumnElement[Any]:

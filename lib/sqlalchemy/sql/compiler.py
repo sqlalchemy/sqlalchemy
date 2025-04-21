@@ -95,6 +95,7 @@ if typing.TYPE_CHECKING:
     from .base import Executable
     from .cache_key import CacheKey
     from .ddl import ExecutableDDLElement
+    from .dml import Delete
     from .dml import Insert
     from .dml import Update
     from .dml import UpdateBase
@@ -6180,7 +6181,9 @@ class SQLCompiler(Compiled):
             "criteria within UPDATE"
         )
 
-    def update_post_criteria_clause(self, update_stmt, **kw):
+    def update_post_criteria_clause(
+        self, update_stmt: Update, **kw: Any
+    ) -> Optional[str]:
         """provide a hook to override generation after the WHERE criteria
         in an UPDATE statement
 
@@ -6195,7 +6198,9 @@ class SQLCompiler(Compiled):
         else:
             return None
 
-    def delete_post_criteria_clause(self, delete_stmt, **kw):
+    def delete_post_criteria_clause(
+        self, delete_stmt: Delete, **kw: Any
+    ) -> Optional[str]:
         """provide a hook to override generation after the WHERE criteria
         in a DELETE statement
 
@@ -6881,7 +6886,7 @@ class DDLCompiler(Compiled):
         else:
             schema_name = None
 
-        index_name = self.preparer.format_index(index)
+        index_name: str = self.preparer.format_index(index)
 
         if schema_name:
             index_name = schema_name + "." + index_name

@@ -4,11 +4,10 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
+# mypy: disable-error-code="import-not-found"
 
 
 r"""
-
 
 .. dialect:: mysql+pyodbc
     :name: PyODBC
@@ -44,8 +43,15 @@ Pass through exact pyodbc connection string::
     connection_uri = "mysql+pyodbc:///?odbc_connect=%s" % params
 
 """  # noqa
+from __future__ import annotations
 
+import datetime
 import re
+from typing import Any
+from typing import Callable
+from typing import Optional
+from typing import TYPE_CHECKING
+from typing import Union
 
 from .base import MySQLDialect
 from .base import MySQLExecutionContext
@@ -55,23 +61,32 @@ from ... import util
 from ...connectors.pyodbc import PyODBCConnector
 from ...sql.sqltypes import Time
 
+if TYPE_CHECKING:
+    import pyodbc
+
+    from ...engine import Connection
+    from ...engine.interfaces import Dialect
+    from ...sql.type_api import _ResultProcessorType
+
 
 class _pyodbcTIME(TIME):
-    def result_processor(self, dialect, coltype):
-        def process(value):
+    def result_processor(
+        self, dialect: Dialect, coltype: object
+    ) -> _ResultProcessorType[datetime.time]:
+        def process(value: Any) -> Union[datetime.time, None]:
             # pyodbc returns a datetime.time object; no need to convert
-            return value
+            return value  # type: ignore[no-any-return]
 
         return process
 
 
 class MySQLExecutionContext_pyodbc(MySQLExecutionContext):
-    def get_lastrowid(self):
+    def get_lastrowid(self) -> int:
         cursor = self.create_cursor()
         cursor.execute("SELECT LAST_INSERT_ID()")
-        lastrowid = cursor.fetchone()[0]
+        lastrowid = cursor.fetchone()[0]  # type: ignore[index]
         cursor.close()
-        return lastrowid
+        return lastrowid  # type: ignore[no-any-return]
 
 
 class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
@@ -82,7 +97,7 @@ class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
 
     pyodbc_driver_name = "MySQL"
 
-    def _detect_charset(self, connection):
+    def _detect_charset(self, connection: Connection) -> str:
         """Sniff out the character set in use for connection results."""
 
         # Prefer 'character_set_results' for the current connection over the
@@ -107,21 +122,25 @@ class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
         )
         return "latin1"
 
-    def _get_server_version_info(self, connection):
+    def _get_server_version_info(
+        self, connection: Connection
+    ) -> tuple[int, ...]:
         return MySQLDialect._get_server_version_info(self, connection)
 
-    def _extract_error_code(self, exception):
+    def _extract_error_code(self, exception: BaseException) -> Optional[int]:
         m = re.compile(r"\((\d+)\)").search(str(exception.args))
-        c = m.group(1)
+        if m is None:
+            return None
+        c: Optional[str] = m.group(1)
         if c:
             return int(c)
         else:
             return None
 
-    def on_connect(self):
+    def on_connect(self) -> Callable[[pyodbc.Connection], None]:
         super_ = super().on_connect()
 
-        def on_connect(conn):
+        def on_connect(conn: pyodbc.Connection) -> None:
             if super_ is not None:
                 super_(conn)
 
