@@ -241,7 +241,7 @@ def _get_crud_params(
         stmt_parameter_tuples = list(spd.items())
         spd_str_key = {_column_as_key(key) for key in spd}
     else:
-        stmt_parameter_tuples = spd = spd_str_key = None
+        stmt_parameter_tuples = spd_str_key = None
 
     # if we have statement parameters - set defaults in the
     # compiled params
