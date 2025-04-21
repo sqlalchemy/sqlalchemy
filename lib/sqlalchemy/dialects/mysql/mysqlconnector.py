@@ -22,11 +22,19 @@ degree which the driver is functional.   There are still ongoing issues
 with features such as server side cursors which remain disabled until
 upstream issues are repaired.
 
+.. warning:: The MySQL Connector/Python driver published by Oracle is subject
+   to frequent, major regressions of essential functionality such as being able
+   to correctly persist simple binary strings which indicate it is not well
+   tested.  The SQLAlchemy project is not able to maintain this dialect fully as
+   regressions in the driver prevent it from being included in continuous
+   integration.
+
 .. versionchanged:: 2.0.39
 
     The MySQL Connector/Python dialect has been updated to support the
     latest version of this DBAPI.   Previously, MySQL Connector/Python
-    was not fully supported.
+    was not fully supported.  However, support remains limited due to ongoing
+    regressions introduced in this driver.
 
 Connecting to MariaDB with MySQL Connector/Python
 --------------------------------------------------
