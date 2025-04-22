@@ -3,6 +3,8 @@ import gc
 import itertools
 import multiprocessing
 import pickle
+import pytest
+import sysconfig
 import weakref
 
 import sqlalchemy as sa
@@ -52,6 +54,11 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
 from ..orm import _fixtures
+
+
+pytestmark = pytest.mark.skipif(
+    bool(sysconfig.get_config_var("Py_GIL_DISABLED")),
+    reason="memory usage is different under free-threaded Python (temporary skip)")
 
 
 class A(ComparableEntity):
@@ -1050,6 +1057,12 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
     def test_many_discarded_relationships(self):
         """a use case that really isn't supported, nonetheless we can
         guard against memleaks here so why not"""
+
+        import sysconfig
+        import pytest
+
+        if bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
+            pytest.skip()
 
         m1 = MetaData()
         t1 = Table("t1", m1, Column("id", Integer, primary_key=True))

@@ -20,6 +20,7 @@ to provide specific inclusion/exclusions.
 from __future__ import annotations
 
 import platform
+import sysconfig
 
 from . import asyncio as _test_asyncio
 from . import exclusions
@@ -1585,7 +1586,7 @@ class SuiteRequirements(Requirements):
         gc.collect() is called, as well as clean out unreferenced subclasses.
 
         """
-        return self.cpython
+        return self.cpython and not bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
 
     @property
     def no_coverage(self):

@@ -2062,6 +2062,12 @@ class DeferredMapperEventsTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
 
     @testing.requires.predictable_gc
     def test_instrument_event_auto_remove(self):
+        import sysconfig
+        import pytest
+
+        if bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
+            pytest.skip()
+
         class Bar:
             pass
 

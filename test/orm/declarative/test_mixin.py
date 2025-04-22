@@ -2110,6 +2110,13 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
 
     @testing.requires.predictable_gc
     def test_singleton_gc(self):
+
+        import sysconfig
+        import pytest
+
+        if bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
+            pytest.skip()
+
         counter = mock.Mock()
 
         class Mixin:

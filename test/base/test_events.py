@@ -855,6 +855,12 @@ class SubclassGrowthTest(TearDownLocalEventsFixture, fixtures.TestBase):
         self.Target = Target
 
     def test_subclass(self):
+        import sysconfig
+        import pytest
+
+        if bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
+            pytest.skip()
+
         class SubTarget(self.Target):
             pass
 
