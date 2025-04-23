@@ -1581,12 +1581,17 @@ class SuiteRequirements(Requirements):
         return exclusions.only_if(check_lib, "patch library needed")
 
     @property
+    def gil_enabled(self):
+        """Test should run if the Python distribution is GIL-enabled."""
+        return bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
+
+    @property
     def predictable_gc(self):
         """target platform must remove all cycles unconditionally when
         gc.collect() is called, as well as clean out unreferenced subclasses.
 
         """
-        return self.cpython and not bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
+        return self.cpython
 
     @property
     def no_coverage(self):

@@ -3,8 +3,6 @@ import gc
 import itertools
 import multiprocessing
 import pickle
-import pytest
-import sysconfig
 import weakref
 
 import sqlalchemy as sa
@@ -56,11 +54,6 @@ from sqlalchemy.testing.util import gc_collect
 from ..orm import _fixtures
 
 
-pytestmark = pytest.mark.skipif(
-    bool(sysconfig.get_config_var("Py_GIL_DISABLED")),
-    reason="memory usage is different under free-threaded Python (temporary skip)")
-
-
 class A(ComparableEntity):
     pass
 
@@ -73,6 +66,7 @@ class ASub(A):
     pass
 
 
+@testing.requires.gil_enabled
 def assert_cycles(expected=0):
     def decorate(fn):
         def go():
@@ -95,6 +89,7 @@ def assert_cycles(expected=0):
     return decorate
 
 
+@testing.requires.gil_enabled
 def profile_memory(
     maxtimes=250, assert_no_sessions=True, get_num_objects=None
 ):
@@ -250,11 +245,13 @@ def profile_memory(
     return decorate
 
 
+@testing.requires.gil_enabled
 def assert_no_mappers():
     clear_mappers()
     gc_collect()
 
 
+@testing.requires.gil_enabled
 class EnsureZeroed(fixtures.ORMTest):
     def setup_test(self):
         _sessions.clear()
@@ -1054,15 +1051,10 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             metadata.drop_all(self.engine)
         assert_no_mappers()
 
+    @testing.requires.gil_enabled
     def test_many_discarded_relationships(self):
         """a use case that really isn't supported, nonetheless we can
         guard against memleaks here so why not"""
-
-        import sysconfig
-        import pytest
-
-        if bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
-            pytest.skip()
 
         m1 = MetaData()
         t1 = Table("t1", m1, Column("id", Integer, primary_key=True))
@@ -1700,6 +1692,7 @@ class MiscMemoryIntensiveTests(fixtures.TestBase):
         decl_base.metadata.create_all(testing.db)
         yield User
 
+    @testing.requires.gil_enabled
     @testing.requires.predictable_gc
     def test_gced_delete_on_rollback(self, user_fixture):
         User = user_fixture
@@ -1743,6 +1736,7 @@ class MiscMemoryIntensiveTests(fixtures.TestBase):
 class WeakIdentityMapTest(_fixtures.FixtureTest):
     run_inserts = None
 
+    @testing.requires.gil_enabled
     @testing.requires.predictable_gc
     def test_weakref(self):
         """test the weak-referencing identity map, which strongly-
@@ -1788,6 +1782,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         assert user.name == "fred"
         assert s.identity_map
 
+    @testing.requires.gil_enabled
     @testing.requires.predictable_gc
     def test_weakref_pickled(self):
         users, User = self.tables.users, pickleable.User
@@ -1821,6 +1816,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
 
         assert not s.identity_map
 
+    @testing.requires.gil_enabled
     @testing.requires.predictable_gc
     def test_weakref_with_cycles_o2m(self):
         Address, addresses, users, User = (
@@ -1861,6 +1857,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         user = s.query(User).options(joinedload(User.addresses)).one()
         eq_(user, User(name="ed", addresses=[Address(email_address="ed2")]))
 
+    @testing.requires.gil_enabled
     @testing.requires.predictable_gc
     def test_weakref_with_cycles_o2o(self):
         Address, addresses, users, User = (

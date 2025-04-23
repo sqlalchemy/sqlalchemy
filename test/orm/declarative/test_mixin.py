@@ -2108,15 +2108,9 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
             "SELECT b.x + :x_1 AS anon_1, b.id AS b_id, b.x AS b_x FROM b",
         )
 
+    @testing.requires.gil_enabled
     @testing.requires.predictable_gc
     def test_singleton_gc(self):
-
-        import sysconfig
-        import pytest
-
-        if bool(sysconfig.get_config_var("Py_GIL_DISABLED")):
-            pytest.skip()
-
         counter = mock.Mock()
 
         class Mixin:
