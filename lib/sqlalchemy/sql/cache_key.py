@@ -494,7 +494,6 @@ class CacheKey(NamedTuple):
         k2 = other.key
 
         stack: List[int] = []
-        pickup_index = 0
         while True:
             s1, s2 = k1, k2
             for idx in stack:
@@ -502,8 +501,6 @@ class CacheKey(NamedTuple):
                 s2 = s2[idx]
 
             for idx, (e1, e2) in enumerate(zip_longest(s1, s2)):
-                if idx < pickup_index:
-                    continue
                 if e1 != e2:
                     if isinstance(e1, tuple) and isinstance(e2, tuple):
                         stack.append(idx)
