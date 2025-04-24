@@ -460,7 +460,7 @@ class QuotedNameArgumentTest(fixtures.TablesTest):
             is_true(isinstance(res, dict))
         else:
             with expect_raises(NotImplementedError):
-                res = insp.get_table_options(name)
+                insp.get_table_options(name)
 
     @quote_fixtures
     @testing.requires.view_column_reflection
@@ -2047,7 +2047,7 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
             is_true(isinstance(res, dict))
         else:
             with expect_raises(NotImplementedError):
-                res = insp.get_table_options("users", schema=schema)
+                insp.get_table_options("users", schema=schema)
 
     @testing.combinations((True, testing.requires.schemas), False)
     def test_multi_get_table_options(self, use_schema):
@@ -2063,7 +2063,7 @@ class ComponentReflectionTest(ComparesTables, OneConnectionTablesTest):
             eq_(res, exp)
         else:
             with expect_raises(NotImplementedError):
-                res = insp.get_multi_table_options()
+                insp.get_multi_table_options()
 
     @testing.fixture
     def get_multi_exp(self, connection):
