@@ -516,7 +516,7 @@ class CacheKey(NamedTuple):
                             e2,
                         )
             else:
-                pickup_index = stack.pop(-1)
+                stack.pop(-1)
                 break
 
     def _diff(self, other: CacheKey) -> str:
