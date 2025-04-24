@@ -124,7 +124,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | SAP ASE (fork of former Sybase dialect)        | sqlalchemy-sybase_                    |
 +------------------------------------------------+---------------------------------------+
-| SAP Hana [1]_                                  | sqlalchemy-hana_                      |
+| SAP HANA                                       | sqlalchemy-hana_                      |
 +------------------------------------------------+---------------------------------------+
 | SAP Sybase SQL Anywhere                        | sqlalchemy-sqlany_                    |
 +------------------------------------------------+---------------------------------------+
