@@ -101,7 +101,7 @@ class IdentityMap:
         if state.modified:
             self._modified.add(state)
 
-    def _manage_removed_state(self, state: InstanceState[Any] | None) -> None:
+    def _manage_removed_state(self, state: InstanceState[Any]) -> None:
         del state._instance_dict
         if state.modified:
             self._modified.discard(state)
