@@ -3478,7 +3478,6 @@ class MySQLDialect(default.DefaultDialect):
             full_name = self.identifier_preparer.format_table(table)
         st = "SHOW CREATE TABLE %s" % full_name
 
-        rp = None
         try:
             rp = connection.execution_options(
                 skip_user_error_events=True
