@@ -4292,7 +4292,7 @@ class SQLCompiler(Compiled):
                 inner = "(%s)" % (inner,)
             return inner
         else:
-            enclosing_alias = kwargs["enclosing_alias"] = alias
+            kwargs["enclosing_alias"] = alias
 
         if asfrom or ashint:
             if isinstance(alias.name, elements._truncated_label):
