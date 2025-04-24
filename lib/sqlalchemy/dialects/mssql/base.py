@@ -3953,10 +3953,8 @@ index_info AS (
         )
 
         # group rows by constraint ID, to handle multi-column FKs
-        fkeys = []
-
-        def fkey_rec():
-            return {
+        fkeys = util.defaultdict(
+            lambda: {
                 "name": None,
                 "constrained_columns": [],
                 "referred_schema": None,
@@ -3964,8 +3962,7 @@ index_info AS (
                 "referred_columns": [],
                 "options": {},
             }
-
-        fkeys = util.defaultdict(fkey_rec)
+        )
 
         for r in connection.execute(s).all():
             (

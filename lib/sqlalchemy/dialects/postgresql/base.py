@@ -3941,7 +3941,6 @@ class PGDialect(default.DefaultDialect):
                 schema_type = ENUM
                 enum = enums[enum_or_domain_key]
 
-                args = tuple(enum["labels"])
                 kwargs["name"] = enum["name"]
 
                 if not enum["visible"]:
