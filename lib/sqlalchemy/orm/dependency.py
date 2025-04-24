@@ -1054,7 +1054,7 @@ class ManyToManyDP(DependencyProcessor):
             # so that prop_has_changes() returns True
             for state in states:
                 if self._pks_changed(uowcommit, state):
-                    history = uowcommit.get_attribute_history(
+                    uowcommit.get_attribute_history(
                         state, self.key, attributes.PASSIVE_OFF
                     )
 

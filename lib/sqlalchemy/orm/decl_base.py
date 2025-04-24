@@ -1296,8 +1296,6 @@ class _ClassScanMapperConfig(_MapperConfig):
                     or isinstance(attr_value, _MappedAttribute)
                 )
             )
-        else:
-            is_dataclass_field = False
 
         is_dataclass_field = False
         extracted = _extract_mapped_subtype(

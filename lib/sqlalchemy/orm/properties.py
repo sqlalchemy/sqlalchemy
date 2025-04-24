@@ -847,8 +847,6 @@ class MappedColumn(
                         )
 
         if sqltype._isnull and not self.column.foreign_keys:
-            new_sqltype = None
-
             checks: List[Any]
             if our_type_is_pep593:
                 checks = [our_type, raw_pep_593_type]

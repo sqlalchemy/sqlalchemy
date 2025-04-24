@@ -1103,7 +1103,6 @@ class Load(_AbstractLoad):
         """
         path = self.path
 
-        ezero = None
         for ent in mapper_entities:
             ezero = ent.entity_zero
             if ezero and orm_util._entity_corresponds_to(

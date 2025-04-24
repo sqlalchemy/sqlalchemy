@@ -4014,14 +4014,7 @@ class Session(_SessionClassMethods, EventTarget):
         else:
             key_is_persistent = True
 
-        if key in self.identity_map:
-            try:
-                merged = self.identity_map[key]
-            except KeyError:
-                # object was GC'ed right as we checked for it
-                merged = None
-        else:
-            merged = None
+        merged = self.identity_map.get(key)
 
         if merged is None:
             if key_is_persistent and key in _resolve_conflict_map:

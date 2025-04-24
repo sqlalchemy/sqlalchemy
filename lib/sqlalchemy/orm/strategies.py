@@ -1435,7 +1435,6 @@ class ImmediateLoader(PostLoader):
             alternate_effective_path = path._truncate_recursive()
             extra_options = (new_opt,)
         else:
-            new_opt = None
             alternate_effective_path = path
             extra_options = ()
 
@@ -2164,8 +2163,6 @@ class JoinedLoader(AbstractRelationshipLoader):
             compile_state.multi_row_eager_loaders = True
 
         path = path[self.parent_property]
-
-        with_polymorphic = None
 
         user_defined_adapter = (
             self._init_user_defined_eager_proc(

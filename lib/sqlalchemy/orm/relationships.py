@@ -1758,8 +1758,6 @@ class RelationshipProperty(
         extracted_mapped_annotation: Optional[_AnnotationScanType],
         is_dataclass_field: bool,
     ) -> None:
-        argument = extracted_mapped_annotation
-
         if extracted_mapped_annotation is None:
             if self.argument is None:
                 self._raise_for_required(key, cls)
@@ -2912,9 +2910,6 @@ class JoinCondition:
     ) -> None:
         """Check the foreign key columns collected and emit error
         messages."""
-
-        can_sync = False
-
         foreign_cols = self._gather_columns_with_annotation(
             join_condition, "foreign"
         )

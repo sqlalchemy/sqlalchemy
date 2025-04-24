@@ -72,7 +72,7 @@ def add_class(
         # class already exists.
         existing = decl_class_registry[classname]
         if not isinstance(existing, _MultipleClassMarker):
-            existing = decl_class_registry[classname] = _MultipleClassMarker(
+            decl_class_registry[classname] = _MultipleClassMarker(
                 [cls, cast("Type[Any]", existing)]
             )
     else:
@@ -317,7 +317,7 @@ class _ModuleMarker(ClsRegistryToken):
                 else:
                     raise
         else:
-            existing = self.contents[name] = _MultipleClassMarker(
+            self.contents[name] = _MultipleClassMarker(
                 [cls], on_remove=lambda: self._remove_item(name)
             )
 
