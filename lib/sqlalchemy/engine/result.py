@@ -809,7 +809,6 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                     "was required"
                 )
         else:
-            next_row = _NO_ROW
             # if we checked for second row then that would have
             # closed us :)
             self._soft_close(hard=True)

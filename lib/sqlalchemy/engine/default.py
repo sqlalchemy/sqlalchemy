@@ -739,8 +739,6 @@ class DefaultDialect(Dialect):
                 raise
 
     def do_ping(self, dbapi_connection: DBAPIConnection) -> bool:
-        cursor = None
-
         cursor = dbapi_connection.cursor()
         try:
             cursor.execute(self._dialect_specific_select_one)
@@ -1844,7 +1842,7 @@ class DefaultExecutionContext(ExecutionContext):
 
         if self.is_crud or self.is_text:
             result = self._setup_dml_or_text_result()
-            yp = sr = False
+            yp = False
         else:
             yp = exec_opt.get("yield_per", None)
             sr = self._is_server_side or exec_opt.get("stream_results", False)
