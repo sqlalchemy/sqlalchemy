@@ -385,6 +385,9 @@ class PluginLoader:
 
         self.impls[name] = load
 
+    def deregister(self, name: str) -> None:
+        del self.impls[name]
+
 
 def _inspect_func_args(fn):
     try:
