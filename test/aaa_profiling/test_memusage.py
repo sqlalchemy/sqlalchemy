@@ -7,6 +7,7 @@ import weakref
 
 import sqlalchemy as sa
 from sqlalchemy import and_
+from sqlalchemy import ClauseElement
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
@@ -20,8 +21,10 @@ from sqlalchemy import Unicode
 from sqlalchemy import util
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects import registry
 from sqlalchemy.dialects import sqlite
 from sqlalchemy.engine import result
+from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.engine.processors import to_decimal_processor_factory
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
@@ -39,6 +42,7 @@ from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm.session import _sessions
 from sqlalchemy.sql import column
 from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql.base import DialectKWArgs
 from sqlalchemy.sql.util import visit_binary_product
 from sqlalchemy.sql.visitors import cloned_traverse
 from sqlalchemy.sql.visitors import replacement_traverse
@@ -1136,6 +1140,22 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             metadata.drop_all(self.engine)
 
 
+class SomeFoo(DialectKWArgs, ClauseElement):
+    pass
+
+
+class FooDialect(DefaultDialect):
+    construct_arguments = [
+        (
+            SomeFoo,
+            {
+                "bar": False,
+                "bat": False,
+            },
+        )
+    ]
+
+
 @testing.add_to_marker.memory_intensive
 class CycleTest(_fixtures.FixtureTest):
     __requires__ = ("cpython", "no_windows")
@@ -1157,6 +1177,33 @@ class CycleTest(_fixtures.FixtureTest):
         @assert_cycles()
         def go():
             return s.query(User).all()
+
+        go()
+
+    @testing.fixture
+    def foo_dialect(self):
+        registry.register("foo", __name__, "FooDialect")
+
+        yield
+        registry.deregister("foo")
+
+    def test_dialect_kwargs(self, foo_dialect):
+
+        @assert_cycles()
+        def go():
+            ff = SomeFoo()
+
+            ff._validate_dialect_kwargs({"foo_bar": True})
+
+            eq_(ff.dialect_options["foo"]["bar"], True)
+
+            eq_(ff.dialect_options["foo"]["bat"], False)
+
+            eq_(ff.dialect_kwargs["foo_bar"], True)
+            eq_(ff.dialect_kwargs["foo_bat"], False)
+
+            ff.dialect_kwargs["foo_bat"] = True
+            eq_(ff.dialect_options["foo"]["bat"], True)
 
         go()
 

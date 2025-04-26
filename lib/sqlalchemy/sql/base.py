@@ -372,6 +372,8 @@ class _DialectArgView(MutableMapping[str, Any]):
 
     """
 
+    __slots__ = ("obj",)
+
     def __init__(self, obj):
         self.obj = obj
 
@@ -530,7 +532,7 @@ class DialectKWArgs:
             construct_arg_dictionary[cls] = {}
         construct_arg_dictionary[cls][argument_name] = default
 
-    @util.memoized_property
+    @property
     def dialect_kwargs(self):
         """A collection of keyword arguments specified as dialect-specific
         options to this construct.
@@ -558,14 +560,15 @@ class DialectKWArgs:
 
     _kw_registry = util.PopulateDict(_kw_reg_for_dialect)
 
-    def _kw_reg_for_dialect_cls(self, dialect_name):
+    @classmethod
+    def _kw_reg_for_dialect_cls(cls, dialect_name):
         construct_arg_dictionary = DialectKWArgs._kw_registry[dialect_name]
         d = _DialectArgDict()
 
         if construct_arg_dictionary is None:
             d._defaults.update({"*": None})
         else:
-            for cls in reversed(self.__class__.__mro__):
+            for cls in reversed(cls.__mro__):
                 if cls in construct_arg_dictionary:
                     d._defaults.update(construct_arg_dictionary[cls])
         return d
@@ -589,9 +592,7 @@ class DialectKWArgs:
 
         """
 
-        return util.PopulateDict(
-            util.portable_instancemethod(self._kw_reg_for_dialect_cls)
-        )
+        return util.PopulateDict(self._kw_reg_for_dialect_cls)
 
     def _validate_dialect_kwargs(self, kwargs: Dict[str, Any]) -> None:
         # validate remaining kwargs that they all specify DB prefixes
