@@ -74,7 +74,7 @@ for both synchronous and asynchronous code environments.
 
 To take advantage of ``psycopg``'s pool,
 
-- Create a custom ``psycopg.Connection`` class that returns "closed"
+- Create a custom ``psycopg.Connection`` subclass that returns "closed"
   checked-out pool connections to the pool.
 - Create a ``psycopg_pool.ConnectionPool`` instance that uses this connection
   class along with the desired pool configuration.
@@ -85,7 +85,7 @@ To take advantage of ``psycopg``'s pool,
   - Sets the ``create_engine.creator`` parameter to use the Psycopg 3 pool to
     obtain new connections.
 
-For example::
+Here is an example that uses ``psycopg_pool.ConnectionPool``::
 
     import psycopg
     import psycopg_pool
@@ -116,6 +116,20 @@ For example::
         poolclass=NullPool,           # Disable SQLAlchemy's default connection pool
         creator=mypool.getconn,       # Use Psycopg 3 connection pool to obtain connections
     )
+
+Usage of ``psycopg_pool.AsyncConnectionPool`` is similar, but it requires the
+following ``psycopg.AsyncConnection`` subclass instead:
+
+    class MyConnection(psycopg.AsyncConnection):
+        async def close(self):
+            if pool := getattr(self, "_pool", None):
+                # Connection currently checked out from its pool;
+                # instead of closing it, return it to the pool.
+                await pool.putconn(self)
+            else:
+                # Connection being removed from its pool, or not part of any pool;
+                # close the connection for real.
+                await super().close()
 
 The resulting engine may then be used normally. Internally, Psycopg 3 handles
 connection pooling::
