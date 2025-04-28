@@ -724,6 +724,14 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
     @overload
     def _only_one_row(
+        self: ResultInternal[Row[Any]],
+        raise_for_second_row: bool,
+        raise_for_none: bool,
+        scalar: Literal[True],
+    ) -> Any: ...
+
+    @overload
+    def _only_one_row(
         self,
         raise_for_second_row: bool,
         raise_for_none: Literal[True],

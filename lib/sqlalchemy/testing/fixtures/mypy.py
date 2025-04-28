@@ -143,7 +143,9 @@ class MypyTest(TestBase):
         from sqlalchemy.ext.mypy.util import mypy_14
 
         expected_messages = []
-        expected_re = re.compile(r"\s*# EXPECTED(_MYPY)?(_RE)?(_TYPE)?: (.+)")
+        expected_re = re.compile(
+            r"\s*# EXPECTED(_MYPY)?(_RE)?(_ROW)?(_TYPE)?: (.+)"
+        )
         py_ver_re = re.compile(r"^#\s*PYTHON_VERSION\s?>=\s?(\d+\.\d+)")
         with open(path) as file_:
             current_assert_messages = []
@@ -161,9 +163,24 @@ class MypyTest(TestBase):
                 if m:
                     is_mypy = bool(m.group(1))
                     is_re = bool(m.group(2))
-                    is_type = bool(m.group(3))
+                    is_row = bool(m.group(3))
+                    is_type = bool(m.group(4))
 
-                    expected_msg = re.sub(r"# noqa[:]? ?.*", "", m.group(4))
+                    expected_msg = re.sub(r"# noqa[:]? ?.*", "", m.group(5))
+                    if is_row:
+                        expected_msg = re.sub(
+                            r"Row\[([^\]]+)\]",
+                            lambda m: f"tuple[{m.group(1)}, fallback=s"
+                            f"qlalchemy.engine.row.{m.group(0)}]",
+                            expected_msg,
+                        )
+                        # For some reason it does not use or syntax (|)
+                        expected_msg = re.sub(
+                            r"Optional\[(.*)\]",
+                            lambda m: f"Union[{m.group(1)}, None]",
+                            expected_msg,
+                        )
+
                     if is_type:
                         if not is_re:
                             # the goal here is that we can cut-and-paste
@@ -243,7 +260,9 @@ class MypyTest(TestBase):
 
         return expected_messages
 
-    def _check_output(self, path, expected_messages, stdout, stderr, exitcode):
+    def _check_output(
+        self, path, expected_messages, stdout: str, stderr, exitcode
+    ):
         not_located = []
         filename = os.path.basename(path)
         if expected_messages:
@@ -263,7 +282,8 @@ class MypyTest(TestBase):
                 ):
                     while raw_lines:
                         ol = raw_lines.pop(0)
-                        if not re.match(r".+\.py:\d+: note: +def \[.*", ol):
+                        if not re.match(r".+\.py:\d+: note: +def .*", ol):
+                            raw_lines.insert(0, ol)
                             break
                 elif re.match(
                     r".+\.py:\d+: note: .*(?:perhaps|suggestion)", e, re.I
