@@ -15,7 +15,7 @@ A frequent need is to force the "string" version of a type, that is
 the one rendered in a CREATE TABLE statement or other SQL function
 like CAST, to be changed.   For example, an application may want
 to force the rendering of ``BINARY`` for all platforms
-except for one, in which is wants ``BLOB`` to be rendered.  Usage
+except for one, in which it wants ``BLOB`` to be rendered.  Usage
 of an existing generic type, in this case :class:`.LargeBinary`, is
 preferred for most use cases.  But to control
 types more accurately, a compilation directive that is per-dialect
