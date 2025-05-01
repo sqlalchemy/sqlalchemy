@@ -33,6 +33,8 @@ repos:
     -   id: black-docs
         name: Format docs code block with black
         entry: python tools/format_docs_code.py -f
-        language: system
+        language: python
         types: [rst]
         exclude: README.*
+        additional_dependencies:
+            - black==24.10.0
