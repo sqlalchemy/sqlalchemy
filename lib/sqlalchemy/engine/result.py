@@ -726,6 +726,14 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
 
     @overload
     def _only_one_row(
+        self: ResultInternal[Row[_T, Unpack[TupleAny]]],
+        raise_for_second_row: bool,
+        raise_for_none: bool,
+        scalar: Literal[True],
+    ) -> _T: ...
+
+    @overload
+    def _only_one_row(
         self,
         raise_for_second_row: bool,
         raise_for_none: Literal[True],
@@ -1463,13 +1471,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
             raise_for_second_row=True, raise_for_none=False, scalar=False
         )
 
-    @overload
-    def scalar_one(self: Result[_T]) -> _T: ...
-
-    @overload
-    def scalar_one(self) -> Any: ...
-
-    def scalar_one(self) -> Any:
+    def scalar_one(self: Result[_T, Unpack[TupleAny]]) -> _T:
         """Return exactly one scalar result or raise an exception.
 
         This is equivalent to calling :meth:`_engine.Result.scalars` and
@@ -1486,13 +1488,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
             raise_for_second_row=True, raise_for_none=True, scalar=True
         )
 
-    @overload
-    def scalar_one_or_none(self: Result[_T]) -> Optional[_T]: ...
-
-    @overload
-    def scalar_one_or_none(self) -> Optional[Any]: ...
-
-    def scalar_one_or_none(self) -> Optional[Any]:
+    def scalar_one_or_none(self: Result[_T, Unpack[TupleAny]]) -> Optional[_T]:
         """Return exactly one scalar result or ``None``.
 
         This is equivalent to calling :meth:`_engine.Result.scalars` and
@@ -1542,13 +1538,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
             raise_for_second_row=True, raise_for_none=True, scalar=False
         )
 
-    @overload
-    def scalar(self: Result[_T]) -> Optional[_T]: ...
-
-    @overload
-    def scalar(self) -> Any: ...
-
-    def scalar(self) -> Any:
+    def scalar(self: Result[_T, Unpack[TupleAny]]) -> Optional[_T]:
         """Fetch the first column of the first row, and close the result set.
 
         Returns ``None`` if there are no rows to fetch.
