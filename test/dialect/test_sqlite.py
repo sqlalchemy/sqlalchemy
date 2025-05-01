@@ -785,6 +785,16 @@ class DialectTest(
             " y INTEGER GENERATED ALWAYS AS (x + 2)%s)" % text,
         )
 
+    @testing.combinations(
+        (func.localtimestamp(),),
+        (func.now(),),
+        (func.char_length("test"),),
+        (func.aggregate_strings("abc", ","),),
+        argnames="fn",
+    )
+    def test_builtin_functions_roundtrip(self, fn, connection):
+        connection.execute(select(fn))
+
 
 class AttachedDBTest(fixtures.TablesTest):
     __only_on__ = "sqlite"
@@ -969,7 +979,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_localtime(self):
         self.assert_compile(
-            func.localtimestamp(), 'DATETIME(CURRENT_TIMESTAMP, "localtime")'
+            func.localtimestamp(), "DATETIME(CURRENT_TIMESTAMP, 'localtime')"
         )
 
     def test_constraints_with_schemas(self):
