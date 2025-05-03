@@ -233,14 +233,14 @@ at our choosing::
         __mapper_args__ = {"version_id_col": version_uuid, "version_id_generator": False}
 
 
-    u1 = User(name="u1", version_uuid=uuid.uuid4())
+    u1 = User(name="u1", version_uuid=uuid.uuid4().hex)
 
     session.add(u1)
 
     session.commit()
 
     u1.name = "u2"
-    u1.version_uuid = uuid.uuid4()
+    u1.version_uuid = uuid.uuid4().hex
 
     session.commit()
 
