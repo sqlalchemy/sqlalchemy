@@ -604,7 +604,7 @@ class ColumnOperators(Operators):
         """
         return self.operate(matmul, other)
 
-    def __rmatmul__(self, other):
+    def __rmatmul__(self, other: Any) -> ColumnOperators:
         """Implement the ``@`` operator.
 
         In a column context, produces the clause ``b @ a``.
