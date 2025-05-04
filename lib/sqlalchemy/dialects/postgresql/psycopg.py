@@ -148,17 +148,18 @@ Here is an example that uses ``psycopg_pool.AsyncConnectionPool``::
             min_size=1,   # Minimum pool size
             max_size=5,   # Maximum pool size
             max_idle=60,  # Maximum idle time (seconds) for unused pool connections
+            open=False,   # See comment below
         )
 
-        # Define a callable that awaits a connection
-        async def get_connection():
-            return await mypool.getconn()
+        # Must explicitly open AsyncConnectionPool outside constructor
+        # (https://www.psycopg.org/psycopg3/docs/advanced/pool.html#other-ways-to-create-a-pool)
+        await mypool.open()
 
         # Create an engine that uses the connection pool to get a connection
         engine = create_async_engine(
             url="postgresql+psycopg://",   # Only need the dialect now
             poolclass=NullPool,            # Disable SQLAlchemy's default connection pool
-            async_creator=get_connection,  # Use Psycopg 3 connection pool to obtain connections
+            async_creator=mypool.getconn,  # Use Psycopg 3 connection pool to obtain connections
         )
 
 The resulting engine may then be used normally. Internally, Psycopg 3 handles
