@@ -25,6 +25,7 @@ from operator import inv as _uncast_inv
 from operator import le as _uncast_le
 from operator import lshift as _uncast_lshift
 from operator import lt as _uncast_lt
+from operator import matmul as _uncast_matmul
 from operator import mod as _uncast_mod
 from operator import mul as _uncast_mul
 from operator import ne as _uncast_ne
@@ -119,6 +120,7 @@ pow_ = cast(OperatorType, _uncast_pow)
 rshift = cast(OperatorType, _uncast_rshift)
 sub = cast(OperatorType, _uncast_sub)
 truediv = cast(OperatorType, _uncast_truediv)
+matmul = cast(OperatorType, _uncast_matmul)
 
 
 class Operators:
@@ -593,6 +595,22 @@ class ColumnOperators(Operators):
 
         """
         return self.operate(ne, other)
+
+    def __matmul__(self, other: Any) -> ColumnOperators:
+        """Implement the ``@`` operator.
+
+        In a column context, produces the clause ``a @ b``.
+
+        """
+        return self.operate(matmul, other)
+
+    def __rmatmul__(self, other):
+        """Implement the ``@`` operator.
+
+        In a column context, produces the clause ``b @ a``.
+
+        """
+        return self.reverse_operate(matmul, other)
 
     def is_distinct_from(self, other: Any) -> ColumnOperators:
         """Implement the ``IS DISTINCT FROM`` operator.
