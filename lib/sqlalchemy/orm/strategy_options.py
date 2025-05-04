@@ -1864,7 +1864,8 @@ class _LoadElement(
             return replacement
 
         raise sa_exc.InvalidRequestError(
-            f"Loader strategies for {replacement.path} conflict"
+            f"Loader strategy replacement {replacement.path} "
+            f"is in conflict with existing strategy {existing.path}"
         )
 
 
