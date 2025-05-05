@@ -4062,6 +4062,90 @@ class CompositeTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             # round trip!
             eq_(u1.address, Address("123 anywhere street"))
 
+    @testing.variation("explicit_col", [True, False])
+    @testing.variation("use_dataclass", [True, False])
+    @testing.variation("disable_none_on", [True, False])
+    def test_optional_composite(
+        self, decl_base, explicit_col, use_dataclass, disable_none_on
+    ):
+        """test #12570"""
+
+        global Point
+
+        if use_dataclass:
+
+            @dataclasses.dataclass
+            class Point:
+                x: Optional[int]
+                y: Optional[int]
+
+        else:
+
+            class Point:
+                def __init__(self, x, y):
+                    self.x = x
+                    self.y = y
+
+                def __composite_values__(self):
+                    return (self.x, self.y)
+
+                def __eq__(self, other):
+                    return (
+                        isinstance(other, Point)
+                        and self.x == other.x
+                        and self.y == other.y
+                    )
+
+        class Edge(decl_base):
+            __tablename__ = "edge"
+            id: Mapped[int] = mapped_column(primary_key=True)
+
+            if disable_none_on:
+                if explicit_col or not use_dataclass:
+                    start: Mapped[Optional[Point]] = composite(
+                        mapped_column("x1", Integer, nullable=True),
+                        mapped_column("y1", Integer, nullable=True),
+                        return_none_on=None,
+                    )
+                else:
+                    start: Mapped[Optional[Point]] = composite(
+                        mapped_column("x1"),
+                        mapped_column("y1"),
+                        return_none_on=None,
+                    )
+            else:
+                if explicit_col or not use_dataclass:
+                    start: Mapped[Optional[Point]] = composite(
+                        mapped_column("x1", Integer, nullable=True),
+                        mapped_column("y1", Integer, nullable=True),
+                    )
+                else:
+                    start: Mapped[Optional[Point]] = composite(
+                        mapped_column("x1"), mapped_column("y1")
+                    )
+
+        eq_(Edge.__table__.c.x1.type._type_affinity, Integer)
+        eq_(Edge.__table__.c.y1.type._type_affinity, Integer)
+        is_true(Edge.__table__.c.x1.nullable)
+        is_true(Edge.__table__.c.y1.nullable)
+
+        decl_base.metadata.create_all(testing.db)
+
+        with Session(testing.db) as sess:
+            sess.add(Edge(start=None))
+            sess.commit()
+
+            if disable_none_on:
+                eq_(
+                    sess.execute(select(Edge.start)).scalar_one(),
+                    Point(x=None, y=None),
+                )
+            else:
+                eq_(
+                    sess.execute(select(Edge.start)).scalar_one(),
+                    None,
+                )
+
 
 class AllYourFavoriteHitsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     """try a bunch of common mappings using the new style"""

@@ -639,6 +639,7 @@ def composite(
     group: Optional[str] = None,
     deferred: bool = False,
     raiseload: bool = False,
+    return_none_on: Union[_NoArg, None, Callable[..., bool]] = _NoArg.NO_ARG,
     comparator_factory: Optional[Type[Composite.Comparator[_T]]] = None,
     active_history: bool = False,
     init: Union[_NoArg, bool] = _NoArg.NO_ARG,
@@ -663,6 +664,7 @@ def composite(
     group: Optional[str] = None,
     deferred: bool = False,
     raiseload: bool = False,
+    return_none_on: Union[_NoArg, None, Callable[..., bool]] = _NoArg.NO_ARG,
     comparator_factory: Optional[Type[Composite.Comparator[_T]]] = None,
     active_history: bool = False,
     init: Union[_NoArg, bool] = _NoArg.NO_ARG,
@@ -686,6 +688,7 @@ def composite(
     group: Optional[str] = None,
     deferred: bool = False,
     raiseload: bool = False,
+    return_none_on: Union[_NoArg, None, Callable[..., bool]] = _NoArg.NO_ARG,
     comparator_factory: Optional[Type[Composite.Comparator[_T]]] = None,
     active_history: bool = False,
     init: Union[_NoArg, bool] = _NoArg.NO_ARG,
@@ -710,6 +713,7 @@ def composite(
     group: Optional[str] = None,
     deferred: bool = False,
     raiseload: bool = False,
+    return_none_on: Union[_NoArg, None, Callable[..., bool]] = _NoArg.NO_ARG,
     comparator_factory: Optional[Type[Composite.Comparator[_T]]] = None,
     active_history: bool = False,
     init: Union[_NoArg, bool] = _NoArg.NO_ARG,
@@ -750,6 +754,23 @@ def composite(
       When ``True``, indicates that the "previous" value for a
       scalar attribute should be loaded when replaced, if not
       already loaded.  See the same flag on :func:`.column_property`.
+
+    :param return_none_on=None: A callable that will be evaluated when the
+     composite object is to be constructed, which upon returning the boolean
+     value ``True`` will instead bypass the construction and cause the
+     resulting value to be None.   This typically may be assigned a lambda
+     that will evaluate to True when all the columns within the composite
+     are themselves None, e.g.::
+
+        composite(
+            MyComposite, return_none_on=lambda *cols: all(x is None for x in cols)
+        )
+
+     The above lambda for :paramref:`.composite.return_none_on` is used
+     automatically when using ORM Annotated Declarative along with an optional
+     value within the :class:`.Mapped` annotation.
+
+     .. versionadded:: 2.1
 
     :param group:
       A group name for this property when marked as deferred.
@@ -807,13 +828,15 @@ def composite(
 
      .. versionadded:: 2.0.42
 
-    """
+    """  # noqa: E501
+
     if __kw:
         raise _no_kw()
 
     return Composite(
         _class_or_attr,
         *attrs,
+        return_none_on=return_none_on,
         attribute_options=_AttributeOptions(
             init,
             repr,

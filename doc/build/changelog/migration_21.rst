@@ -328,6 +328,121 @@ This change includes the following API changes:
 
 :ticket:`12168`
 
+.. _change_12570:
+
+New rules for None-return for ORM Composites
+--------------------------------------------
+
+ORM composite attributes configured using :func:`_orm.composite` can now
+specify whether or not they should return ``None`` using a new parameter
+:paramref:`_orm.composite.return_none_on`.   By default, a composite
+attribute now returns a non-None object in all cases, whereas previously
+under 2.0, a ``None`` value would be returned for a pending object with
+``None`` values for all composite columns.
+
+Given a composite mapping::
+
+    import dataclasses
+
+
+    @dataclasses.dataclass
+    class Point:
+        x: int | None
+        y: int | None
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class Vertex(Base):
+        __tablename__ = "vertices"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+
+        start: Mapped[Point] = composite(mapped_column("x1"), mapped_column("y1"))
+        end: Mapped[Point] = composite(mapped_column("x2"), mapped_column("y2"))
+
+When constructing a pending ``Vertex`` object, the initial value of the
+``x1``, ``y1``, ``x2``, ``y2`` columns is ``None``.   Under version 2.0,
+accessing the composite at this stage would automatically return ``None``::
+
+    >>> v1 = Vertex()
+    >>> v1.start
+    None
+
+Under 2.1, the default behavior is to return the composite class with attributes
+set to ``None``::
+
+    >>> v1 = Vertex()
+    >>> v1.start
+    Point(x=None, y=None)
+
+This behavior is now consistent with other forms of access, such as accessing
+the attribute from a persistent object as well as querying for the attribute
+directly.  It is also consistent with the mapped annotation ``Mapped[Point]``.
+
+The behavior can be further controlled by applying the
+:paramref:`_orm.composite.return_none_on` parameter, which accepts a callable
+that returns True if the composite should be returned as None, given the
+arguments that would normally be passed to the composite class.  The typical callable
+here would return True (i.e. the value should be ``None``) for the case where all
+columns are ``None``::
+
+    class Vertex(Base):
+        __tablename__ = "vertices"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+
+        start: Mapped[Point] = composite(
+            mapped_column("x1"),
+            mapped_column("y1"),
+            return_none_on=lambda x, y: x is None and y is None,
+        )
+        end: Mapped[Point] = composite(
+            mapped_column("x2"),
+            mapped_column("y2"),
+            return_none_on=lambda x, y: x is None and y is None,
+        )
+
+For the above class, any ``Vertex`` instance whether pending or persistent will
+return ``None`` for ``start`` and ``end`` if both composite columns for the attribute
+are ``None``::
+
+    >>> v1 = Vertex()
+    >>> v1.start
+    None
+
+The :paramref:`_orm.composite.return_none_on` parameter is also set
+automatically, if not otherwise set explicitly, when using
+:ref:`orm_declarative_mapped_column`; setting the left hand side to
+``Optional`` or ``| None`` will assign the above ``None``-handling callable::
+
+
+    class Vertex(Base):
+        __tablename__ = "vertices"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+
+        # will apply return_none_on=lambda *args: all(arg is None for arg in args)
+        start: Mapped[Point | None] = composite(mapped_column("x1"), mapped_column("y1"))
+        end: Mapped[Point | None] = composite(mapped_column("x2"), mapped_column("y2"))
+
+The above object will return ``None`` for ``start`` and ``end`` automatically
+if the columns are also None::
+
+    >>> session.scalars(
+    ...     select(Vertex.start).where(Vertex.x1 == None, Vertex.y1 == None)
+    ... ).first()
+    None
+
+If :paramref:`_orm.composite.return_none_on` is set explicitly, that value will
+supersede the choice made by ORM Annotated Declarative.   This includes that
+the parameter may be explicitly set to ``None`` which will disable the ORM
+Annotated Declarative setting from taking place.
+
+:ticket:`12570`
+
 New Features and Improvements - Core
 =====================================
 
