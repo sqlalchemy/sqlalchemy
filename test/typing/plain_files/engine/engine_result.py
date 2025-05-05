@@ -1,5 +1,3 @@
-from typing import reveal_type
-
 from sqlalchemy import column
 from sqlalchemy.engine import Result
 from sqlalchemy.engine import Row
@@ -26,7 +24,7 @@ def row_one(row: Row[int, str, bool]) -> None:
     # EXPECTED_TYPE: Any
     reveal_type(rm[column("bar")])
 
-    # EXPECTED_MYPY: Invalid index type "int" for "RowMapping"; expected type "str | SQLCoreOperations[Any]"  # noqa: E501
+    # EXPECTED_MYPY_RE: Invalid index type "int" for "RowMapping"; expected type "(str \| SQLCoreOperations\[Any\]|Union\[str, SQLCoreOperations\[Any\]\])"  # noqa: E501
     rm[3]
 
 
