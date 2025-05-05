@@ -722,11 +722,177 @@ The ``oracle_compress`` parameter accepts either an integer specifying the
 number of prefix columns to compress, or ``True`` to use the default (all
 columns for non-unique indexes, all but the last column for unique indexes).
 
+.. _oracle_vector_datatype:
+
+VECTOR Datatype
+---------------
+
+Oracle Database 23ai introduced a new VECTOR datatype for artificial intelligence
+and machine learning search operations. The VECTOR datatype is a homogeneous array
+of 8-bit signed integers, 8-bit unsigned integers (binary), 32-bit floating-point numbers,
+or 64-bit floating-point numbers.
+
+.. seealso::
+
+    `Using VECTOR Data
+    <https://python-oracledb.readthedocs.io/en/latest/user_guide/vector_data_type.html>`_ - in the documentation
+    for the :ref:`oracledb` driver.
+
+.. versionadded:: 2.0.41
+
+CREATE TABLE support for VECTOR
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+With the :class:`.VECTOR` datatype, you can specify the dimension for the data
+and the storage format. Valid values for storage format are enum values from
+:class:`.VectorStorageFormat`. To create a table that includes a
+:class:`.VECTOR` column::
+
+    from sqlalchemy.dialects.oracle import VECTOR, VectorStorageFormat
+
+    t = Table(
+        "t1",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column(
+            "embedding",
+            VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32),
+        ),
+        Column(...),
+        ...,
+    )
+
+Vectors can also be defined with an arbitrary number of dimensions and formats.
+This allows you to specify vectors of different dimensions with the various
+storage formats mentioned above.
+
+**Examples**
+
+* In this case, the storage format is flexible, allowing any vector type data to be inserted,
+  such as INT8 or BINARY etc::
+
+    vector_col: Mapped[array.array] = mapped_column(VECTOR(dim=3))
+
+* The dimension is flexible in this case, meaning that any dimension vector can be used::
+
+    vector_col: Mapped[array.array] = mapped_column(
+        VECTOR(storage_format=VectorStorageType.INT8)
+    )
+
+* Both the dimensions and the storage format are flexible::
+
+    vector_col: Mapped[array.array] = mapped_column(VECTOR)
+
+Python Datatypes for VECTOR
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+VECTOR data can be inserted using Python list or Python ``array.array()`` objects.
+Python arrays of type FLOAT (32-bit), DOUBLE (64-bit), or INT (8-bit signed integer)
+are used as bind values when inserting VECTOR columns::
+
+    from sqlalchemy import insert, select
+
+    with engine.begin() as conn:
+        conn.execute(
+            insert(t1),
+            {"id": 1, "embedding": [1, 2, 3]},
+        )
+
+VECTOR Indexes
+~~~~~~~~~~~~~~
+
+The VECTOR feature supports an Oracle-specific parameter ``oracle_vector``
+on the :class:`.Index` construct, which allows the construction of VECTOR
+indexes.
+
+To utilize VECTOR indexing, set the ``oracle_vector`` parameter to True to use
+the default values provided by Oracle. HNSW is the default indexing method::
+
+    from sqlalchemy import Index
+
+    Index(
+        "vector_index",
+        t1.c.embedding,
+        oracle_vector=True,
+    )
+
+The full range of parameters for vector indexes are available by using the
+:class:`.VectorIndexConfig` dataclass in place of a boolean; this dataclass
+allows full configuration of the index::
+
+    Index(
+        "hnsw_vector_index",
+        t1.c.embedding,
+        oracle_vector=VectorIndexConfig(
+            index_type=VectorIndexType.HNSW,
+            distance=VectorDistanceType.COSINE,
+            accuracy=90,
+            hnsw_neighbors=5,
+            hnsw_efconstruction=20,
+            parallel=10,
+        ),
+    )
+
+    Index(
+        "ivf_vector_index",
+        t1.c.embedding,
+        oracle_vector=VectorIndexConfig(
+            index_type=VectorIndexType.IVF,
+            distance=VectorDistanceType.DOT,
+            accuracy=90,
+            ivf_neighbor_partitions=5,
+        ),
+    )
+
+For complete explanation of these parameters, see the Oracle documentation linked
+below.
+
+.. seealso::
+
+    `CREATE VECTOR INDEX <https://www.oracle.com/pls/topic/lookup?ctx=dblatest&id=GUID-B396C369-54BB-4098-A0DD-7C54B3A0D66F>`_ - in the Oracle documentation
+
+
+
+Similarity Searching
+~~~~~~~~~~~~~~~~~~~~
+
+When using the :class:`_oracle.VECTOR` datatype with a :class:`.Column` or similar
+ORM mapped construct, additional comparison functions are available, including:
+
+* ``l2_distance``
+* ``cosine_distance``
+* ``inner_product``
+
+Example Usage::
+
+    result_vector = connection.scalars(
+        select(t1).order_by(t1.embedding.l2_distance([2, 3, 4])).limit(3)
+    )
+
+    for user in vector:
+        print(user.id, user.embedding)
+
+FETCH APPROXIMATE support
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Approximate vector search can only be performed when all syntax and semantic
+rules are satisfied, the corresponding vector index is available, and the
+query optimizer determines to perform it. If any of these conditions are
+unmet, then an approximate search is not performed. In this case the query
+returns exact results.
+
+To enable approximate searching during similarity searches on VECTORS, the
+``oracle_fetch_approximate`` parameter may be used with the :meth:`.Select.fetch`
+clause to add ``FETCH APPROX`` to the SELECT statement::
+
+    select(users_table).fetch(5, oracle_fetch_approximate=True)
+
 """  # noqa
 
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import fields
 from functools import lru_cache
 from functools import wraps
 import re
@@ -749,6 +915,9 @@ from .types import RAW
 from .types import ROWID  # noqa
 from .types import TIMESTAMP
 from .types import VARCHAR2  # noqa
+from .vector import VECTOR
+from .vector import VectorIndexConfig
+from .vector import VectorIndexType
 from ... import Computed
 from ... import exc
 from ... import schema as sa_schema
@@ -767,6 +936,7 @@ from ...sql import func
 from ...sql import null
 from ...sql import or_
 from ...sql import select
+from ...sql import selectable as sa_selectable
 from ...sql import sqltypes
 from ...sql import util as sql_util
 from ...sql import visitors
@@ -828,6 +998,7 @@ ischema_names = {
     "BINARY_DOUBLE": BINARY_DOUBLE,
     "BINARY_FLOAT": BINARY_FLOAT,
     "ROWID": ROWID,
+    "VECTOR": VECTOR,
 }
 
 
@@ -984,6 +1155,16 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_ROWID(self, type_, **kw):
         return "ROWID"
+
+    def visit_VECTOR(self, type_, **kw):
+        if type_.dim is None and type_.storage_format is None:
+            return "VECTOR(*,*)"
+        elif type_.storage_format is None:
+            return f"VECTOR({type_.dim},*)"
+        elif type_.dim is None:
+            return f"VECTOR(*,{type_.storage_format.value})"
+        else:
+            return f"VECTOR({type_.dim},{type_.storage_format.value})"
 
 
 class OracleCompiler(compiler.SQLCompiler):
@@ -1222,6 +1403,29 @@ class OracleCompiler(compiler.SQLCompiler):
             return select._limit_clause
         else:
             return select._fetch_clause
+
+    def fetch_clause(
+        self,
+        select,
+        fetch_clause=None,
+        require_offset=False,
+        use_literal_execute_for_simple_int=False,
+        **kw,
+    ):
+        text = super().fetch_clause(
+            select,
+            fetch_clause=fetch_clause,
+            require_offset=require_offset,
+            use_literal_execute_for_simple_int=(
+                use_literal_execute_for_simple_int
+            ),
+            **kw,
+        )
+
+        if select.dialect_options["oracle"]["fetch_approximate"]:
+            text = re.sub("FETCH FIRST", "FETCH APPROX FIRST", text)
+
+        return text
 
     def translate_select_structure(self, select_stmt, **kwargs):
         select = select_stmt
@@ -1471,6 +1675,48 @@ class OracleCompiler(compiler.SQLCompiler):
 
 
 class OracleDDLCompiler(compiler.DDLCompiler):
+
+    def _build_vector_index_config(
+        self, vector_index_config: VectorIndexConfig
+    ) -> str:
+        parts = []
+        sql_param_name = {
+            "hnsw_neighbors": "neighbors",
+            "hnsw_efconstruction": "efconstruction",
+            "ivf_neighbor_partitions": "neighbor partitions",
+            "ivf_sample_per_partition": "sample_per_partition",
+            "ivf_min_vectors_per_partition": "min_vectors_per_partition",
+        }
+        if vector_index_config.index_type == VectorIndexType.HNSW:
+            parts.append("ORGANIZATION INMEMORY NEIGHBOR GRAPH")
+        elif vector_index_config.index_type == VectorIndexType.IVF:
+            parts.append("ORGANIZATION NEIGHBOR PARTITIONS")
+        if vector_index_config.distance is not None:
+            parts.append(f"DISTANCE {vector_index_config.distance.value}")
+
+        if vector_index_config.accuracy is not None:
+            parts.append(
+                f"WITH TARGET ACCURACY {vector_index_config.accuracy}"
+            )
+
+        parameters_str = [f"type {vector_index_config.index_type.name}"]
+        prefix = vector_index_config.index_type.name.lower() + "_"
+
+        for field in fields(vector_index_config):
+            if field.name.startswith(prefix):
+                key = sql_param_name.get(field.name)
+                value = getattr(vector_index_config, field.name)
+                if value is not None:
+                    parameters_str.append(f"{key} {value}")
+
+        parameters_str = ", ".join(parameters_str)
+        parts.append(f"PARAMETERS ({parameters_str})")
+
+        if vector_index_config.parallel is not None:
+            parts.append(f"PARALLEL {vector_index_config.parallel}")
+
+        return " ".join(parts)
+
     def define_constraint_cascades(self, constraint):
         text = ""
         if constraint.ondelete is not None:
@@ -1503,6 +1749,9 @@ class OracleDDLCompiler(compiler.DDLCompiler):
             text += "UNIQUE "
         if index.dialect_options["oracle"]["bitmap"]:
             text += "BITMAP "
+        vector_options = index.dialect_options["oracle"]["vector"]
+        if vector_options:
+            text += "VECTOR "
         text += "INDEX %s ON %s (%s)" % (
             self._prepared_index_name(index, include_schema=True),
             preparer.format_table(index.table, use_schema=True),
@@ -1520,6 +1769,11 @@ class OracleDDLCompiler(compiler.DDLCompiler):
                 text += " COMPRESS %d" % (
                     index.dialect_options["oracle"]["compress"]
                 )
+        if vector_options:
+            if vector_options is True:
+                vector_options = VectorIndexConfig()
+
+            text += " " + self._build_vector_index_config(vector_options)
         return text
 
     def post_create_table(self, table):
@@ -1670,7 +1924,16 @@ class OracleDialect(default.DefaultDialect):
                 "tablespace": None,
             },
         ),
-        (sa_schema.Index, {"bitmap": False, "compress": False}),
+        (
+            sa_schema.Index,
+            {
+                "bitmap": False,
+                "compress": False,
+                "vector": False,
+            },
+        ),
+        (sa_selectable.Select, {"fetch_approximate": False}),
+        (sa_selectable.CompoundSelect, {"fetch_approximate": False}),
     ]
 
     @util.deprecated_params(

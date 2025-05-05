@@ -21,6 +21,11 @@ from sqlalchemy import text
 from sqlalchemy import Unicode
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects import oracle
+from sqlalchemy.dialects.oracle import VECTOR
+from sqlalchemy.dialects.oracle import VectorDistanceType
+from sqlalchemy.dialects.oracle import VectorIndexConfig
+from sqlalchemy.dialects.oracle import VectorIndexType
+from sqlalchemy.dialects.oracle import VectorStorageFormat
 from sqlalchemy.dialects.oracle.base import BINARY_DOUBLE
 from sqlalchemy.dialects.oracle.base import BINARY_FLOAT
 from sqlalchemy.dialects.oracle.base import DOUBLE_PRECISION
@@ -698,6 +703,25 @@ class TableReflectionTest(fixtures.TestBase):
         tbl = Table("test_tablespace", m2, autoload_with=connection)
         assert tbl.dialect_options["oracle"]["tablespace"] == "TEMP"
 
+    @testing.only_on("oracle>=23.4")
+    def test_reflection_w_vector_column(self, connection, metadata):
+        tb1 = Table(
+            "test_vector",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(30)),
+            Column(
+                "embedding",
+                VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32),
+            ),
+        )
+        metadata.create_all(connection)
+
+        m2 = MetaData()
+
+        tb1 = Table("test_vector", m2, autoload_with=connection)
+        assert tb1.columns.keys() == ["id", "name", "embedding"]
+
 
 class ViewReflectionTest(fixtures.TestBase):
     __only_on__ = "oracle"
@@ -1179,6 +1203,42 @@ class RoundTripIndexTest(fixtures.TestBase):
 
         eq_(len(reflectedtable.constraints), 1)
         eq_(len(reflectedtable.indexes), 5)
+
+    @testing.only_on("oracle>=23.4")
+    def test_vector_index(self, metadata, connection):
+        tb1 = Table(
+            "test_vector",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(30)),
+            Column(
+                "embedding",
+                VECTOR(dim=3, storage_format=VectorStorageFormat.FLOAT32),
+            ),
+        )
+        tb1.create(connection)
+
+        ivf_index = Index(
+            "ivf_vector_index",
+            tb1.c.embedding,
+            oracle_vector=VectorIndexConfig(
+                index_type=VectorIndexType.IVF,
+                distance=VectorDistanceType.DOT,
+                accuracy=90,
+                ivf_neighbor_partitions=5,
+            ),
+        )
+        ivf_index.create(connection)
+
+        expected = [
+            {
+                "name": "ivf_vector_index",
+                "column_names": ["embedding"],
+                "dialect_options": {},
+                "unique": False,
+            },
+        ]
+        eq_(inspect(connection).get_indexes("test_vector"), expected)
 
 
 class DBLinkReflectionTest(fixtures.TestBase):
