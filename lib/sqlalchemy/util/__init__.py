@@ -9,7 +9,6 @@
 from collections import defaultdict as defaultdict
 from functools import partial as partial
 from functools import update_wrapper as update_wrapper
-from typing import TYPE_CHECKING
 
 from . import preloaded as preloaded
 from ._collections import coerce_generator_arg as coerce_generator_arg
