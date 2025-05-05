@@ -1,4 +1,3 @@
-from typing import reveal_type
 from typing import Tuple
 
 from sqlalchemy import column
@@ -25,7 +24,7 @@ def row_one(row: Row[Tuple[int, str, bool]]) -> None:
     # EXPECTED_TYPE: Any
     reveal_type(rm[column("bar")])
 
-    # EXPECTED_MYPY: Invalid index type "int" for "RowMapping"; expected type "str | SQLCoreOperations[Any]"  # noqa: E501
+    # EXPECTED_MYPY_RE: Invalid index type "int" for "RowMapping"; expected type "(str \| SQLCoreOperations\[Any\]|Union\[str, SQLCoreOperations\[Any\]\])"  # noqa: E501
     rm[3]
 
 
