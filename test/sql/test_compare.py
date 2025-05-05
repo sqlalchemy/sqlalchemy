@@ -43,6 +43,7 @@ from sqlalchemy.sql import True_
 from sqlalchemy.sql import type_coerce
 from sqlalchemy.sql import visitors
 from sqlalchemy.sql.annotation import Annotated
+from sqlalchemy.sql.base import DialectKWArgs
 from sqlalchemy.sql.base import HasCacheKey
 from sqlalchemy.sql.base import SingletonConstant
 from sqlalchemy.sql.base import SyntaxExtension
@@ -549,6 +550,7 @@ class CoreFixtures:
             select(table_a.c.a).fetch(2, percent=True),
             select(table_a.c.a).fetch(2, with_ties=True),
             select(table_a.c.a).fetch(2, with_ties=True, percent=True),
+            select(table_a.c.a).fetch(2, oracle_fetch_approximate=True),
             select(table_a.c.a).fetch(2).offset(3),
             select(table_a.c.a).fetch(2).offset(5),
             select(table_a.c.a).limit(2).offset(5),
@@ -1682,6 +1684,7 @@ class HasCacheKeySubclass(fixtures.TestBase):
                 NoInit,
                 SingletonConstant,
                 SyntaxExtension,
+                DialectKWArgs,
             ]
         )
     )
