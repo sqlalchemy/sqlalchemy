@@ -70,6 +70,7 @@ from ..util.typing import TupleAny
 
 if TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
+    from ._typing import _CreateDropBind
     from ._typing import _TypeEngineArgument
     from .elements import ColumnElement
     from .operators import OperatorType
@@ -1179,21 +1180,23 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         kw.setdefault("_adapted_from", self)
         return super().adapt(cls, **kw)
 
-    def create(self, bind, checkfirst=False):
+    def create(self, bind: _CreateDropBind, checkfirst: bool = False) -> None:
         """Issue CREATE DDL for this type, if applicable."""
 
         t = self.dialect_impl(bind.dialect)
         if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
             t.create(bind, checkfirst=checkfirst)
 
-    def drop(self, bind, checkfirst=False):
+    def drop(self, bind: _CreateDropBind, checkfirst: bool = False) -> None:
         """Issue DROP DDL for this type, if applicable."""
 
         t = self.dialect_impl(bind.dialect)
         if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
             t.drop(bind, checkfirst=checkfirst)
 
-    def _on_table_create(self, target, bind, **kw):
+    def _on_table_create(
+        self, target: Any, bind: _CreateDropBind, **kw: Any
+    ) -> None:
         if not self._is_impl_for_variant(bind.dialect, kw):
             return
 
@@ -1201,7 +1204,9 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
             t._on_table_create(target, bind, **kw)
 
-    def _on_table_drop(self, target, bind, **kw):
+    def _on_table_drop(
+        self, target: Any, bind: _CreateDropBind, **kw: Any
+    ) -> None:
         if not self._is_impl_for_variant(bind.dialect, kw):
             return
 
@@ -1209,7 +1214,9 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
             t._on_table_drop(target, bind, **kw)
 
-    def _on_metadata_create(self, target, bind, **kw):
+    def _on_metadata_create(
+        self, target: Any, bind: _CreateDropBind, **kw: Any
+    ) -> None:
         if not self._is_impl_for_variant(bind.dialect, kw):
             return
 
@@ -1217,7 +1224,9 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
             t._on_metadata_create(target, bind, **kw)
 
-    def _on_metadata_drop(self, target, bind, **kw):
+    def _on_metadata_drop(
+        self, target: Any, bind: _CreateDropBind, **kw: Any
+    ) -> None:
         if not self._is_impl_for_variant(bind.dialect, kw):
             return
 
@@ -1225,7 +1234,9 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
             t._on_metadata_drop(target, bind, **kw)
 
-    def _is_impl_for_variant(self, dialect, kw):
+    def _is_impl_for_variant(
+        self, dialect: Dialect, kw: Dict[str, Any]
+    ) -> Optional[bool]:
         variant_mapping = kw.pop("variant_mapping", None)
 
         if not variant_mapping:
@@ -1242,7 +1253,7 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
 
         # since PostgreSQL is the only DB that has ARRAY this can only
         # be integration tested by PG-specific tests
-        def _we_are_the_impl(typ):
+        def _we_are_the_impl(typ: SchemaType) -> bool:
             return (
                 typ is self
                 or isinstance(typ, ARRAY)
@@ -1255,6 +1266,8 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
             return True
         elif dialect.name not in variant_mapping:
             return _we_are_the_impl(variant_mapping["_default"])
+        else:
+            return None
 
 
 _EnumTupleArg = Union[Sequence[enum.Enum], Sequence[str]]

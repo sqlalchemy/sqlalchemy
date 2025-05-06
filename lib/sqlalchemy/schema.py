@@ -65,6 +65,7 @@ from .sql.schema import MetaData as MetaData
 from .sql.schema import PrimaryKeyConstraint as PrimaryKeyConstraint
 from .sql.schema import SchemaConst as SchemaConst
 from .sql.schema import SchemaItem as SchemaItem
+from .sql.schema import SchemaVisitable as SchemaVisitable
 from .sql.schema import Sequence as Sequence
 from .sql.schema import Table as Table
 from .sql.schema import UniqueConstraint as UniqueConstraint

@@ -1540,8 +1540,19 @@ class SchemaEventTarget(event.EventTarget):
         self.dispatch.after_parent_attach(self, parent)
 
 
+class SchemaVisitable(SchemaEventTarget, visitors.Visitable):
+    """Base class for elements that are targets of a :class:`.SchemaVisitor`.
+
+    .. versionadded:: 2.0.41
+
+    """
+
+
 class SchemaVisitor(ClauseVisitor):
-    """Define the visiting for ``SchemaItem`` objects."""
+    """Define the visiting for ``SchemaItem`` and more
+    generally ``SchemaVisitable`` objects.
+
+    """
 
     __traverse_options__ = {"schema_visitor": True}
 
