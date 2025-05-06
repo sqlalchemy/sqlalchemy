@@ -68,6 +68,7 @@ from .base import DedupeColumnCollection
 from .base import DialectKWArgs
 from .base import Executable
 from .base import SchemaEventTarget as SchemaEventTarget
+from .base import SchemaVisitable as SchemaVisitable
 from .coercions import _document_text_coercion
 from .elements import ClauseElement
 from .elements import ColumnClause
@@ -91,6 +92,7 @@ from ..util.typing import TypeGuard
 
 if typing.TYPE_CHECKING:
     from ._typing import _AutoIncrementType
+    from ._typing import _CreateDropBind
     from ._typing import _DDLColumnArgument
     from ._typing import _InfoType
     from ._typing import _TextCoercedExpressionArgument
@@ -108,7 +110,6 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import _CoreMultiExecuteParams
     from ..engine.interfaces import CoreExecuteOptionsParameter
     from ..engine.interfaces import ExecutionContext
-    from ..engine.mock import MockConnection
     from ..engine.reflection import _ReflectionInfo
     from ..sql.selectable import FromClause
 
@@ -116,8 +117,6 @@ _T = TypeVar("_T", bound="Any")
 _SI = TypeVar("_SI", bound="SchemaItem")
 _TAB = TypeVar("_TAB", bound="Table")
 
-
-_CreateDropBind = Union["Engine", "Connection", "MockConnection"]
 
 _ConstraintNameArgument = Optional[Union[str, _NoneName]]
 
@@ -212,7 +211,7 @@ def _copy_expression(
 
 
 @inspection._self_inspects
-class SchemaItem(SchemaEventTarget, visitors.Visitable):
+class SchemaItem(SchemaVisitable):
     """Base class for items that define a database schema."""
 
     __visit_name__ = "schema_item"

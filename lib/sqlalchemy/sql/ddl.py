@@ -865,8 +865,9 @@ class DropConstraintComment(_CreateDropBase["Constraint"]):
 
 
 class InvokeDDLBase(SchemaVisitor):
-    def __init__(self, connection):
+    def __init__(self, connection, **kw):
         self.connection = connection
+        assert not kw, f"Unexpected keywords: {kw.keys()}"
 
     @contextlib.contextmanager
     def with_ddl_events(self, target, **kw):

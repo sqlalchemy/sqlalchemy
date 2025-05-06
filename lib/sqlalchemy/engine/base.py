@@ -70,12 +70,11 @@ if typing.TYPE_CHECKING:
     from ..sql._typing import _InfoType
     from ..sql.compiler import Compiled
     from ..sql.ddl import ExecutableDDLElement
-    from ..sql.ddl import SchemaDropper
-    from ..sql.ddl import SchemaGenerator
+    from ..sql.ddl import InvokeDDLBase
     from ..sql.functions import FunctionElement
     from ..sql.schema import DefaultGenerator
     from ..sql.schema import HasSchemaAttr
-    from ..sql.schema import SchemaItem
+    from ..sql.schema import SchemaVisitable
     from ..sql.selectable import TypedReturnsRows
 
 
@@ -2441,8 +2440,8 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
     def _run_ddl_visitor(
         self,
-        visitorcallable: Type[Union[SchemaGenerator, SchemaDropper]],
-        element: SchemaItem,
+        visitorcallable: Type[InvokeDDLBase],
+        element: SchemaVisitable,
         **kwargs: Any,
     ) -> None:
         """run a DDL visitor.
@@ -2451,7 +2450,9 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         options given to the visitor so that "checkfirst" is skipped.
 
         """
-        visitorcallable(self.dialect, self, **kwargs).traverse_single(element)
+        visitorcallable(
+            dialect=self.dialect, connection=self, **kwargs
+        ).traverse_single(element)
 
 
 class ExceptionContextImpl(ExceptionContext):
@@ -3239,8 +3240,8 @@ class Engine(
 
     def _run_ddl_visitor(
         self,
-        visitorcallable: Type[Union[SchemaGenerator, SchemaDropper]],
-        element: SchemaItem,
+        visitorcallable: Type[InvokeDDLBase],
+        element: SchemaVisitable,
         **kwargs: Any,
     ) -> None:
         with self.begin() as conn:

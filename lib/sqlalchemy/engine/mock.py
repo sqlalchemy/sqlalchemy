@@ -27,10 +27,9 @@ if typing.TYPE_CHECKING:
     from .interfaces import Dialect
     from .url import URL
     from ..sql.base import Executable
-    from ..sql.ddl import SchemaDropper
-    from ..sql.ddl import SchemaGenerator
+    from ..sql.ddl import InvokeDDLBase
     from ..sql.schema import HasSchemaAttr
-    from ..sql.schema import SchemaItem
+    from ..sql.visitors import Visitable
 
 
 class MockConnection:
@@ -53,12 +52,14 @@ class MockConnection:
 
     def _run_ddl_visitor(
         self,
-        visitorcallable: Type[Union[SchemaGenerator, SchemaDropper]],
-        element: SchemaItem,
+        visitorcallable: Type[InvokeDDLBase],
+        element: Visitable,
         **kwargs: Any,
     ) -> None:
         kwargs["checkfirst"] = False
-        visitorcallable(self.dialect, self, **kwargs).traverse_single(element)
+        visitorcallable(
+            dialect=self.dialect, connection=self, **kwargs
+        ).traverse_single(element)
 
     def execute(
         self,

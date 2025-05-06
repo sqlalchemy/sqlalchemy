@@ -70,7 +70,10 @@ if TYPE_CHECKING:
     from .sqltypes import TableValueType
     from .sqltypes import TupleType
     from .type_api import TypeEngine
+    from ..engine import Connection
     from ..engine import Dialect
+    from ..engine import Engine
+    from ..engine.mock import MockConnection
     from ..util.typing import TypeGuard
 
 _T = TypeVar("_T", bound=Any)
@@ -300,6 +303,8 @@ _EquivalentColumnMap = Dict["ColumnElement[Any]", Set["ColumnElement[Any]"]]
 _LimitOffsetType = Union[int, _ColumnExpressionArgument[int], None]
 
 _AutoIncrementType = Union[bool, Literal["auto", "ignore_fk"]]
+
+_CreateDropBind = Union["Engine", "Connection", "MockConnection"]
 
 if TYPE_CHECKING:
 

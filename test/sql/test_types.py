@@ -297,6 +297,7 @@ class AdaptTest(fixtures.TestBase):
                     "schema",
                     "metadata",
                     "name",
+                    "dispatch",
                 ):
                     continue
                 # assert each value was copied, or that
