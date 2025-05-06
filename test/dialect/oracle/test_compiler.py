@@ -310,6 +310,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={"param_1": 20, "param_2": 10},
         )
 
+    @testing.only_on("oracle>=23.4")
+    def test_fetch_type(self):
+        t = table("sometable", column("col1"), column("col2"))
+        s = select(t).fetch(2, oracle_fetch_approximate=True)
+        self.assert_compile(
+            s,
+            "SELECT sometable.col1, sometable.col2 FROM sometable "
+            "FETCH APPROX FIRST __[POSTCOMPILE_param_1] ROWS ONLY",
+            checkparams={"param_1": 2},
+        )
+
     def test_limit_two(self):
         t = table("sometable", column("col1"), column("col2"))
         s = select(t).limit(10).offset(20).subquery()
