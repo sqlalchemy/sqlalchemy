@@ -920,5 +920,5 @@ def _parse_url(name: str) -> URL:
 
     else:
         raise exc.ArgumentError(
-            "Could not parse SQLAlchemy URL from string '%s'" % name
+            "Could not parse SQLAlchemy URL from given URL string"
         )

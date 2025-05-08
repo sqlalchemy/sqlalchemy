@@ -791,6 +791,13 @@ class CreateEngineTest(fixtures.TestBase):
             module=mock_dbapi,
         )
 
+    def test_cant_parse_str(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"^Could not parse SQLAlchemy URL from given URL string$",
+        ):
+            create_engine("notarealurl")
+
     def test_urlattr(self):
         """test the url attribute on ``Engine``."""
 
