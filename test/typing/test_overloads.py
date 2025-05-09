@@ -79,12 +79,10 @@ class OverloadTest(fixtures.TestBase):
 
     @testing.combinations(
         (CoreExecuteOptionsParameter, core_execution_options),
-        # https://github.com/python/cpython/issues/133701
-        (
-            OrmExecuteOptionsParameter,
-            orm_execution_options,
-            testing.requires.fail_python314b1,
-        ),
+        # note: this failed on python 3.14.0b1
+        # due to https://github.com/python/cpython/issues/133701.
+        # something to keep in mind in case it breaks again
+        (OrmExecuteOptionsParameter, orm_execution_options),
     )
     def test_typed_dicts(self, typ, expected):
         # we currently expect these to be union types with first entry

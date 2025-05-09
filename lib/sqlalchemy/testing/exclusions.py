@@ -392,8 +392,8 @@ def open():  # noqa
     return skip_if(BooleanPredicate(False, "mark as execute"))
 
 
-def closed():
-    return skip_if(BooleanPredicate(True, "marked as skip"))
+def closed(reason="marked as skip"):
+    return skip_if(BooleanPredicate(True, reason))
 
 
 def fails(reason=None):
