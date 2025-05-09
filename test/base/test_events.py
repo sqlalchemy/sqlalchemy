@@ -854,7 +854,9 @@ class SubclassGrowthTest(TearDownLocalEventsFixture, fixtures.TestBase):
 
         self.Target = Target
 
+    @testing.requires.gil_enabled
     def test_subclass(self):
+
         class SubTarget(self.Target):
             pass
 
