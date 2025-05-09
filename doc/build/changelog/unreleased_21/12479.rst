@@ -1,0 +1,15 @@
+.. change::
+    :tags: feature, sql
+    :tickets: 12479
+
+    Added support for the matrix multiplication operator (``@``), corresponding
+    to the Python function :func:`operator.matmul`. In the context of SQL
+    expressions, using the ``@`` operator between two column expressions will
+    render the ``@`` operator in the resulting SQL string. This allows
+    representing matrix multiplication operations directly within SQLAlchemy
+    expressions.
+
+
+    .. seealso::
+
+        :ref:`change_12479`

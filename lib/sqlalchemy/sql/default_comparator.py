@@ -442,6 +442,7 @@ operator_lookup: Dict[
     "sub": (_binary_operate, util.EMPTY_DICT),
     "div": (_binary_operate, util.EMPTY_DICT),
     "mod": (_binary_operate, util.EMPTY_DICT),
+    "matmul": (_binary_operate, util.EMPTY_DICT),
     "bitwise_xor_op": (_binary_operate, util.EMPTY_DICT),
     "bitwise_or_op": (_binary_operate, util.EMPTY_DICT),
     "bitwise_and_op": (_binary_operate, util.EMPTY_DICT),

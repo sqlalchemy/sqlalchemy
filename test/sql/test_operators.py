@@ -136,6 +136,7 @@ class DefaultColumnComparatorTest(
         (operators.is_not, right_column),
         (operators.isnot, right_column),  # deprecated 1.4; See #5429
         (operators.concat_op, right_column),
+        (operators.matmul, right_column),
         id_="ns",
     )
     def test_operate(self, operator, right):
@@ -184,6 +185,7 @@ class DefaultColumnComparatorTest(
         operators.and_,
         operators.or_,
         operators.mul,
+        operators.matmul,
         argnames="op",
     )
     def test_nonsensical_negations(self, op):
@@ -2571,6 +2573,7 @@ class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         ("mul", operator.mul, "*"),
         ("sub", operator.sub, "-"),
         ("mod", operator.mod, "%"),
+        ("matmul", operators.matmul, "@"),
         id_="iaa",
     )
     def test_math_op(self, py_op, sql_op):

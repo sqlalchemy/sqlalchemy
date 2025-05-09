@@ -283,6 +283,7 @@ OPERATORS = {
     operators.gt: " > ",
     operators.ge: " >= ",
     operators.eq: " = ",
+    operators.matmul: " @ ",
     operators.is_distinct_from: " IS DISTINCT FROM ",
     operators.is_not_distinct_from: " IS NOT DISTINCT FROM ",
     operators.concat_op: " || ",
