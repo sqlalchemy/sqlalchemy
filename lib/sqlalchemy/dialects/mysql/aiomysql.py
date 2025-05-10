@@ -33,6 +33,7 @@ from __future__ import annotations
 
 from types import ModuleType
 from typing import Any
+from typing import cast
 from typing import Optional
 from typing import TYPE_CHECKING
 
@@ -95,10 +96,10 @@ class AsyncAdapt_aiomysql_connection(AsyncAdapt_dbapi_connection):
 
     def terminate(self) -> None:
         # it's not awaitable.
-        self._connection.close()
+        cast(AiomysqlConnection, self._connection).close()
 
     def close(self) -> None:
-        await_(self._connection.ensure_closed())
+        await_(cast(AiomysqlConnection, self._connection).ensure_closed())
 
 
 class AsyncAdapt_aiomysql_dbapi:

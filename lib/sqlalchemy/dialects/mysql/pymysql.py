@@ -52,6 +52,7 @@ from __future__ import annotations
 
 from types import ModuleType
 from typing import Any
+from typing import cast
 from typing import Literal
 from typing import Optional
 from typing import TYPE_CHECKING
@@ -116,9 +117,9 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
 
     def do_ping(self, dbapi_connection: pymysql.Connection) -> Literal[True]:  # type: ignore # noqa: E501
         if self._send_false_to_ping:
-            dbapi_connection.ping(False)
+            cast("pymysql.Connection[Any]", dbapi_connection).ping(False)
         else:
-            dbapi_connection.ping()
+            cast("pymysql.Connection[Any]", dbapi_connection).ping()
 
         return True
 
@@ -130,6 +131,7 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
         return super().create_connect_args(
             url, _translate_args=_translate_args
         )
+
 
     def is_disconnect(
         self, e: Exception, connection: Any, cursor: Any

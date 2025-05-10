@@ -48,6 +48,7 @@ from __future__ import annotations
 import datetime
 import re
 from typing import Any
+from typing import cast
 from typing import Callable
 from typing import Optional
 from typing import TYPE_CHECKING
@@ -148,9 +149,13 @@ class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
             #   https://github.com/mkleehammer/pyodbc/wiki/Unicode
             pyodbc_SQL_CHAR = 1  # pyodbc.SQL_CHAR
             pyodbc_SQL_WCHAR = -8  # pyodbc.SQL_WCHAR
-            conn.setdecoding(pyodbc_SQL_CHAR, encoding="utf-8")
-            conn.setdecoding(pyodbc_SQL_WCHAR, encoding="utf-8")
-            conn.setencoding(encoding="utf-8")
+            cast("pyodbc.Connection", conn).setdecoding(
+                pyodbc_SQL_CHAR, encoding="utf-8"
+            )
+            cast("pyodbc.Connection", conn).setdecoding(
+                pyodbc_SQL_WCHAR, encoding="utf-8"
+            )
+            cast("pyodbc.Connection", conn).setencoding(encoding="utf-8")
 
         return on_connect
 
