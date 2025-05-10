@@ -977,6 +977,16 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         self.assert_compile(Column("x", MyType()) >> 5, "x -> :x_1")
 
+    def test_matmul(self):
+        class MyType(UserDefinedType):
+            cache_ok = True
+
+            class comparator_factory(UserDefinedType.Comparator):
+                def __matmul__(self, other):
+                    return self.op("->")(other)
+
+        self.assert_compile(Column("x", MyType()) @ 5, "x -> :x_1")
+
 
 class JSONIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def setup_test(self):

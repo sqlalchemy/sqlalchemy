@@ -558,6 +558,7 @@ operator_lookup: Dict[
     "getitem": (_getitem_impl, util.EMPTY_DICT),
     "lshift": (_unsupported_impl, util.EMPTY_DICT),
     "rshift": (_unsupported_impl, util.EMPTY_DICT),
+    "matmul": (_unsupported_impl, util.EMPTY_DICT),
     "contains": (_unsupported_impl, util.EMPTY_DICT),
     "regexp_match_op": (_regexp_match_impl, util.EMPTY_DICT),
     "not_regexp_match_op": (_regexp_match_impl, util.EMPTY_DICT),
