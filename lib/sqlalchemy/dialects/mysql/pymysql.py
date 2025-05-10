@@ -132,7 +132,6 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
             url, _translate_args=_translate_args
         )
 
-
     def is_disconnect(
         self, e: Exception, connection: Any, cursor: Any
     ) -> bool:

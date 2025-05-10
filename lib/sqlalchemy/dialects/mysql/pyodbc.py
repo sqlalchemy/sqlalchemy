@@ -48,8 +48,8 @@ from __future__ import annotations
 import datetime
 import re
 from typing import Any
-from typing import cast
 from typing import Callable
+from typing import cast
 from typing import Optional
 from typing import TYPE_CHECKING
 from typing import Union
