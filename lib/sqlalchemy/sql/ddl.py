@@ -432,6 +432,8 @@ class _CreateDropBase(ExecutableDDLElement, Generic[_SI]):
 
     """
 
+    element: _SI
+
     def __init__(self, element: _SI) -> None:
         self.element = self.target = element
         self._ddl_if = getattr(element, "_ddl_if", None)
