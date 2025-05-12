@@ -967,6 +967,16 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         self.assert_compile(Column("x", MyType()) << 5, "x -> :x_1")
 
+    def test_rlshift(self):
+        class MyType(UserDefinedType):
+            cache_ok = True
+
+            class comparator_factory(UserDefinedType.Comparator):
+                def __rlshift__(self, other):
+                    return self.op("->")(other)
+
+        self.assert_compile(5 << Column("x", MyType()), "x -> :x_1")
+
     def test_rshift(self):
         class MyType(UserDefinedType):
             cache_ok = True
@@ -976,6 +986,16 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                     return self.op("->")(other)
 
         self.assert_compile(Column("x", MyType()) >> 5, "x -> :x_1")
+
+    def test_rrshift(self):
+        class MyType(UserDefinedType):
+            cache_ok = True
+
+            class comparator_factory(UserDefinedType.Comparator):
+                def __rrshift__(self, other):
+                    return self.op("->")(other)
+
+        self.assert_compile(5 >> Column("x", MyType()), "x -> :x_1")
 
     def test_matmul(self):
         class MyType(UserDefinedType):
