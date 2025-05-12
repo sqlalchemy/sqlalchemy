@@ -1202,9 +1202,18 @@ dialect in conjunction with the :class:`_schema.Table` construct:
 
   .. versionadded:: 2.0.26
 
+* ``WITH``:
+
+    Table("some_table", metadata, ..., postgresql_with={"fillfactor": 100})
+
+    Set various storage options on the table
+
 * ``WITH OIDS``::
 
     Table("some_table", metadata, ..., postgresql_with_oids=True)
+
+    Automatically add object identifiers to table rows. Legacy feature, removed
+    in postgresql 12.
 
 * ``WITHOUT OIDS``::
 
@@ -2583,6 +2592,12 @@ class PGDDLCompiler(compiler.DDLCompiler):
         if pg_opts["using"]:
             table_opts.append("\n USING %s" % pg_opts["using"])
 
+        if pg_opts["with"]:
+            storage_params = (
+                "%s = %s" % (k, v) for (k, v) in pg_opts["with"].items()
+            )
+            table_opts.append(" WITH (%s)" % ", ".join(storage_params))
+
         if pg_opts["with_oids"] is True:
             table_opts.append("\n WITH OIDS")
         elif pg_opts["with_oids"] is False:
@@ -3198,6 +3213,7 @@ class PGDialect(default.DefaultDialect):
                 "tablespace": None,
                 "partition_by": None,
                 "with_oids": None,
+                "with": None,
                 "on_commit": None,
                 "inherits": None,
                 "using": None,
