@@ -50,33 +50,10 @@ in Python and use them directly in SQLite queries as described here: :ref:`pysql
 Serializable isolation / Savepoints / Transactional DDL (asyncio version)
 -------------------------------------------------------------------------
 
-Similarly to pysqlite, aiosqlite does not support SAVEPOINT feature.
+A newly revised version of this important section is now available
+at the top level of the SQLAlchemy SQLite documentation, in the section
+:ref:`sqlite_transactions`.
 
-The solution is similar to :ref:`pysqlite_serializable`. This is achieved by the event listeners in async::
-
-    from sqlalchemy import create_engine, event
-    from sqlalchemy.ext.asyncio import create_async_engine
-
-    engine = create_async_engine("sqlite+aiosqlite:///myfile.db")
-
-
-    @event.listens_for(engine.sync_engine, "connect")
-    def do_connect(dbapi_connection, connection_record):
-        # disable aiosqlite's emitting of the BEGIN statement entirely.
-        # also stops it from emitting COMMIT before any DDL.
-        dbapi_connection.isolation_level = None
-
-
-    @event.listens_for(engine.sync_engine, "begin")
-    def do_begin(conn):
-        # emit our own BEGIN
-        conn.exec_driver_sql("BEGIN")
-
-.. warning:: When using the above recipe, it is advised to not use the
-   :paramref:`.Connection.execution_options.isolation_level` setting on
-   :class:`_engine.Connection` and :func:`_sa.create_engine`
-   with the SQLite driver,
-   as this function necessarily will also alter the ".isolation_level" setting.
 
 .. _aiosqlite_pooling:
 

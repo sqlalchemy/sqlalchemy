@@ -354,76 +354,10 @@ Then use the above ``MixedBinary`` datatype in the place where
 Serializable isolation / Savepoints / Transactional DDL
 -------------------------------------------------------
 
-In the section :ref:`sqlite_concurrency`, we refer to the pysqlite
-driver's assortment of issues that prevent several features of SQLite
-from working correctly.  The pysqlite DBAPI driver has several
-long-standing bugs which impact the correctness of its transactional
-behavior.   In its default mode of operation, SQLite features such as
-SERIALIZABLE isolation, transactional DDL, and SAVEPOINT support are
-non-functional, and in order to use these features, workarounds must
-be taken.
+A newly revised version of this important section is now available
+at the top level of the SQLAlchemy SQLite documentation, in the section
+:ref:`sqlite_transactions`.
 
-The issue is essentially that the driver attempts to second-guess the user's
-intent, failing to start transactions and sometimes ending them prematurely, in
-an effort to minimize the SQLite databases's file locking behavior, even
-though SQLite itself uses "shared" locks for read-only activities.
-
-SQLAlchemy chooses to not alter this behavior by default, as it is the
-long-expected behavior of the pysqlite driver; if and when the pysqlite
-driver attempts to repair these issues, that will be more of a driver towards
-defaults for SQLAlchemy.
-
-The good news is that with a few events, we can implement transactional
-support fully, by disabling pysqlite's feature entirely and emitting BEGIN
-ourselves. This is achieved using two event listeners::
-
-    from sqlalchemy import create_engine, event
-
-    engine = create_engine("sqlite:///myfile.db")
-
-
-    @event.listens_for(engine, "connect")
-    def do_connect(dbapi_connection, connection_record):
-        # disable pysqlite's emitting of the BEGIN statement entirely.
-        # also stops it from emitting COMMIT before any DDL.
-        dbapi_connection.isolation_level = None
-
-
-    @event.listens_for(engine, "begin")
-    def do_begin(conn):
-        # emit our own BEGIN
-        conn.exec_driver_sql("BEGIN")
-
-.. warning:: When using the above recipe, it is advised to not use the
-   :paramref:`.Connection.execution_options.isolation_level` setting on
-   :class:`_engine.Connection` and :func:`_sa.create_engine`
-   with the SQLite driver,
-   as this function necessarily will also alter the ".isolation_level" setting.
-
-
-Above, we intercept a new pysqlite connection and disable any transactional
-integration.   Then, at the point at which SQLAlchemy knows that transaction
-scope is to begin, we emit ``"BEGIN"`` ourselves.
-
-When we take control of ``"BEGIN"``, we can also control directly SQLite's
-locking modes, introduced at
-`BEGIN TRANSACTION <https://sqlite.org/lang_transaction.html>`_,
-by adding the desired locking mode to our ``"BEGIN"``::
-
-    @event.listens_for(engine, "begin")
-    def do_begin(conn):
-        conn.exec_driver_sql("BEGIN EXCLUSIVE")
-
-.. seealso::
-
-    `BEGIN TRANSACTION <https://sqlite.org/lang_transaction.html>`_ -
-    on the SQLite site
-
-    `sqlite3 SELECT does not BEGIN a transaction <https://bugs.python.org/issue9924>`_ -
-    on the Python bug tracker
-
-    `sqlite3 module breaks transactions and potentially corrupts data <https://bugs.python.org/issue10740>`_ -
-    on the Python bug tracker
 
 .. _pysqlite_udfs:
 
