@@ -3688,6 +3688,144 @@ class PGDialect(default.DefaultDialect):
         return relkinds
 
     @reflection.cache
+    def get_table_options(self, connection, table_name, schema=None, **kw):
+        data = self.get_multi_table_options(
+            connection,
+            schema=schema,
+            filter_names=[table_name],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.ANY,
+            **kw,
+        )
+        return self._value_or_raise(data, table_name, schema)
+
+    @util.memoized_property
+    def _table_options_query(self):
+        inherits_sq = (
+            select(
+                pg_catalog.pg_inherits.c.inhrelid,
+                pg_catalog.pg_inherits.c.inhseqno,
+                pg_catalog.pg_class.c.relname.label("parent_table"),
+            )
+            .select_from(pg_catalog.pg_inherits)
+            .join(
+                pg_catalog.pg_class,
+                pg_catalog.pg_inherits.c.inhparent
+                == pg_catalog.pg_class.c.oid,
+            )
+            .where(pg_catalog.pg_inherits.c.inhrelid.in_(bindparam("oids")))
+            .subquery("inherits")
+        )
+
+        return (
+            select(
+                pg_catalog.pg_class.c.oid,
+                pg_catalog.pg_class.c.relname,
+                pg_catalog.pg_class.c.reloptions,
+                sql.func.min(pg_catalog.pg_am.c.amname).label(
+                    "access_method_name"
+                ),
+                sql.func.min(pg_catalog.pg_tablespace.c.spcname).label(
+                    "tablespace_name"
+                ),
+                sql.func.array_remove(
+                    sql.func.array_agg(
+                        aggregate_order_by(
+                            inherits_sq.c.parent_table,
+                            inherits_sq.c.inhseqno.asc(),
+                        )
+                    ),
+                    None,
+                ).label("parent_table_names"),
+            )
+            .select_from(pg_catalog.pg_class)
+            .join(
+                pg_catalog.pg_am,
+                sql.and_(
+                    pg_catalog.pg_class.c.relam == pg_catalog.pg_am.c.oid,
+                    pg_catalog.pg_am.c.amtype == "t",
+                ),
+            )
+            .outerjoin(
+                inherits_sq,
+                pg_catalog.pg_class.c.oid == inherits_sq.c.inhrelid,
+            )
+            .outerjoin(
+                pg_catalog.pg_tablespace,
+                pg_catalog.pg_tablespace.c.oid
+                == pg_catalog.pg_class.c.reltablespace,
+            )
+            .group_by(pg_catalog.pg_class.c.oid)
+            .where(pg_catalog.pg_class.c.oid.in_(bindparam("oids")))
+        )
+
+    def get_multi_table_options(
+        self, connection, schema, filter_names, scope, kind, **kw
+    ):
+        table_oids = self._get_table_oids(
+            connection, schema, filter_names, scope, kind, **kw
+        )
+
+        table_options = {}
+        default = ReflectionDefaults.table_options
+
+        batches = list(table_oids)
+
+        while batches:
+            batch = batches[0:3000]
+            batches[0:3000] = []
+
+            print("fetching oids", batch)
+
+            result = connection.execute(
+                self._table_options_query, {"oids": [r[0] for r in batch]}
+            ).mappings()
+
+            result_by_oid = {}
+
+            for row_dict in result:
+                result_by_oid[row_dict["oid"]] = row_dict
+
+            print("result_by_oid", result_by_oid)
+
+            for oid, tablename in batch:
+                if oid not in result_by_oid:
+                    table_options[(schema, tablename)] = default()
+                    continue
+
+                result = result_by_oid[oid]
+                this_table_options: dict[str, Any] = {
+                    "postgresql_inherits": tuple(result["parent_table_names"]),
+                    "postgresql_using": result["access_method_name"],
+                }
+
+                if result["reloptions"]:
+                    # TODO: Compiler should (properly) support with.
+                    this_table_options["postgresql_with"] = dict(
+                        option.split("=", 1) for option in result["reloptions"]
+                    )
+
+                if self.server_version_info and self.server_version_info < (
+                    12,
+                ):
+                    if isinstance(this_table_options["postgresql_with"], dict):
+                        table_storage_params = this_table_options[
+                            "postgresql_with"
+                        ]
+                        result["postgresql_with_oids"] = (
+                            table_storage_params["OIDS"].lower() == "true"
+                        )
+
+                if result["tablespace_name"] is not None:
+                    table_options["postgresql_tablespace"] = result[
+                        "tablespace_name"
+                    ]
+
+                table_options[(schema, tablename)] = this_table_options
+
+        return table_options.items()
+
+    @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
         data = self.get_multi_columns(
             connection,
