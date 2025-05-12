@@ -681,13 +681,22 @@ class ColumnOperators(Operators):
         return self.operate(rshift, other)
 
     def __matmul__(self, other: Any) -> ColumnOperators:
-        """Implement the @ operator.
+        """Implement the ``@`` operator.
 
         Not used by SQLAlchemy core, this is provided
         for custom operator systems which want to use
         @ as an extension point.
         """
         return self.operate(matmul, other)
+
+    def __rmatmul__(self, other: Any) -> ColumnOperators:
+        """Implement the ``@`` operator in reverse.
+
+        Not used by SQLAlchemy core, this is provided
+        for custom operator systems which want to use
+        @ as an extension point.
+        """
+        return self.reverse_operate(matmul, other)
 
     def concat(self, other: Any) -> ColumnOperators:
         """Implement the 'concat' operator.
