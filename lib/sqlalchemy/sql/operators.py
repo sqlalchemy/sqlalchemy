@@ -672,7 +672,7 @@ class ColumnOperators(Operators):
         return self.operate(lshift, other)
 
     def __rlshift__(self, other: Any) -> ColumnOperators:
-        """Implement the ``<<`` operator.
+        """Implement the ``<<`` operator in reverse.
 
         Not used by SQLAlchemy core, this is provided
         for custom operator systems which want to use
