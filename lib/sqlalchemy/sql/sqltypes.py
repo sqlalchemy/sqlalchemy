@@ -611,7 +611,10 @@ class Float(Numeric[_N]):
 
     __visit_name__ = "float"
 
-    scale = None
+    if not TYPE_CHECKING:
+        # this is not in 2.1 branch, not clear if needed for 2.0
+        # implementation
+        scale = None
 
     @overload
     def __init__(

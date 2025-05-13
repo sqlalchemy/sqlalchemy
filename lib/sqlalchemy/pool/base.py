@@ -1079,6 +1079,8 @@ class PoolProxiedConnection(ManagesConnection):
 
         def rollback(self) -> None: ...
 
+        def __getattr__(self, key: str) -> Any: ...
+
     @property
     def is_valid(self) -> bool:
         """Return True if this :class:`.PoolProxiedConnection` still refers

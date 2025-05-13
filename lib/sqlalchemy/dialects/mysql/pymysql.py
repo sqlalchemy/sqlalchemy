@@ -4,8 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
-
 
 r"""
 
@@ -49,9 +47,26 @@ and targets 100% compatibility.   Most behavioral notes for MySQL-python apply
 to the pymysql driver as well.
 
 """  # noqa
+from __future__ import annotations
+
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import TYPE_CHECKING
+from typing import Union
 
 from .mysqldb import MySQLDialect_mysqldb
 from ...util import langhelpers
+from ...util.typing import Literal
+
+if TYPE_CHECKING:
+
+    from ...engine.interfaces import ConnectArgsType
+    from ...engine.interfaces import DBAPIConnection
+    from ...engine.interfaces import DBAPICursor
+    from ...engine.interfaces import DBAPIModule
+    from ...engine.interfaces import PoolProxiedConnection
+    from ...engine.url import URL
 
 
 class MySQLDialect_pymysql(MySQLDialect_mysqldb):
@@ -61,7 +76,7 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     description_encoding = None
 
     @langhelpers.memoized_property
-    def supports_server_side_cursors(self):
+    def supports_server_side_cursors(self) -> bool:  # type: ignore[override]
         try:
             cursors = __import__("pymysql.cursors").cursors
             self._sscursor = cursors.SSCursor
@@ -70,11 +85,11 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
             return False
 
     @classmethod
-    def import_dbapi(cls):
+    def import_dbapi(cls) -> DBAPIModule:
         return __import__("pymysql")
 
     @langhelpers.memoized_property
-    def _send_false_to_ping(self):
+    def _send_false_to_ping(self) -> bool:
         """determine if pymysql has deprecated, changed the default of,
         or removed the 'reconnect' argument of connection.ping().
 
@@ -101,7 +116,7 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
                     not insp.defaults or insp.defaults[0] is not False
                 )
 
-    def do_ping(self, dbapi_connection):
+    def do_ping(self, dbapi_connection: DBAPIConnection) -> Literal[True]:  # type: ignore # noqa: E501
         if self._send_false_to_ping:
             dbapi_connection.ping(False)
         else:
@@ -109,17 +124,24 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
 
         return True
 
-    def create_connect_args(self, url, _translate_args=None):
+    def create_connect_args(
+        self, url: URL, _translate_args: Optional[Dict[str, Any]] = None
+    ) -> ConnectArgsType:
         if _translate_args is None:
             _translate_args = dict(username="user")
         return super().create_connect_args(
             url, _translate_args=_translate_args
         )
 
-    def is_disconnect(self, e, connection, cursor):
+    def is_disconnect(
+        self,
+        e: DBAPIModule.Error,
+        connection: Optional[Union[PoolProxiedConnection, DBAPIConnection]],
+        cursor: Optional[DBAPICursor],
+    ) -> bool:
         if super().is_disconnect(e, connection, cursor):
             return True
-        elif isinstance(e, self.dbapi.Error):
+        elif isinstance(e, self.loaded_dbapi.Error):
             str_e = str(e).lower()
             return (
                 "already closed" in str_e or "connection was killed" in str_e
@@ -127,7 +149,7 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
         else:
             return False
 
-    def _extract_error_code(self, exception):
+    def _extract_error_code(self, exception: BaseException) -> Any:
         if isinstance(exception.args[0], Exception):
             exception = exception.args[0]
         return exception.args[0]

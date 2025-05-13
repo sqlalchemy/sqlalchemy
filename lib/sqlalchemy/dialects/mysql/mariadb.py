@@ -4,9 +4,15 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
+
+from __future__ import annotations
+
+from typing import Any
+from typing import Callable
+
 from .base import MariaDBIdentifierPreparer
 from .base import MySQLDialect
+from .base import MySQLIdentifierPreparer
 from .base import MySQLTypeCompiler
 from ...sql import sqltypes
 
@@ -30,10 +36,10 @@ class INET6(sqltypes.TypeEngine[str]):
 
 
 class MariaDBTypeCompiler(MySQLTypeCompiler):
-    def visit_INET4(self, type_, **kwargs) -> str:
+    def visit_INET4(self, type_: INET4, **kwargs: Any) -> str:
         return "INET4"
 
-    def visit_INET6(self, type_, **kwargs) -> str:
+    def visit_INET6(self, type_: INET6, **kwargs: Any) -> str:
         return "INET6"
 
 
@@ -41,11 +47,11 @@ class MariaDBDialect(MySQLDialect):
     is_mariadb = True
     supports_statement_cache = True
     name = "mariadb"
-    preparer = MariaDBIdentifierPreparer
+    preparer: type[MySQLIdentifierPreparer] = MariaDBIdentifierPreparer
     type_compiler_cls = MariaDBTypeCompiler
 
 
-def loader(driver):
+def loader(driver: str) -> Callable[[], type[MariaDBDialect]]:
     dialect_mod = __import__(
         "sqlalchemy.dialects.mysql.%s" % driver
     ).dialects.mysql
@@ -53,7 +59,7 @@ def loader(driver):
     driver_mod = getattr(dialect_mod, driver)
     if hasattr(driver_mod, "mariadb_dialect"):
         driver_cls = driver_mod.mariadb_dialect
-        return driver_cls
+        return driver_cls  # type: ignore[no-any-return]
     else:
         driver_cls = driver_mod.dialect
 

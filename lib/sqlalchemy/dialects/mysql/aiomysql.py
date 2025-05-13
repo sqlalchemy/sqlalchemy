@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-# mypy: ignore-errors
 
 r"""
 .. dialect:: mysql+aiomysql
@@ -29,20 +28,44 @@ This dialect should normally be used only with the
     )
 
 """  # noqa
+from __future__ import annotations
+
+from types import ModuleType
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import Tuple
+from typing import TYPE_CHECKING
+from typing import Union
+
 from .pymysql import MySQLDialect_pymysql
 from ... import pool
 from ... import util
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
+from ...connectors.asyncio import AsyncAdapt_dbapi_module
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
 from ...util.concurrency import await_fallback
 from ...util.concurrency import await_only
+
+if TYPE_CHECKING:
+
+    from ...connectors.asyncio import AsyncIODBAPIConnection
+    from ...connectors.asyncio import AsyncIODBAPICursor
+    from ...engine.interfaces import ConnectArgsType
+    from ...engine.interfaces import DBAPIConnection
+    from ...engine.interfaces import DBAPICursor
+    from ...engine.interfaces import DBAPIModule
+    from ...engine.interfaces import PoolProxiedConnection
+    from ...engine.url import URL
 
 
 class AsyncAdapt_aiomysql_cursor(AsyncAdapt_dbapi_cursor):
     __slots__ = ()
 
-    def _make_new_cursor(self, connection):
+    def _make_new_cursor(
+        self, connection: AsyncIODBAPIConnection
+    ) -> AsyncIODBAPICursor:
         return connection.cursor(self._adapt_connection.dbapi.Cursor)
 
 
@@ -51,7 +74,9 @@ class AsyncAdapt_aiomysql_ss_cursor(
 ):
     __slots__ = ()
 
-    def _make_new_cursor(self, connection):
+    def _make_new_cursor(
+        self, connection: AsyncIODBAPIConnection
+    ) -> AsyncIODBAPICursor:
         return connection.cursor(
             self._adapt_connection.dbapi.aiomysql.cursors.SSCursor
         )
@@ -63,17 +88,17 @@ class AsyncAdapt_aiomysql_connection(AsyncAdapt_dbapi_connection):
     _cursor_cls = AsyncAdapt_aiomysql_cursor
     _ss_cursor_cls = AsyncAdapt_aiomysql_ss_cursor
 
-    def ping(self, reconnect):
+    def ping(self, reconnect: bool) -> None:
         assert not reconnect
-        return self.await_(self._connection.ping(reconnect))
+        self.await_(self._connection.ping(reconnect))
 
-    def character_set_name(self):
-        return self._connection.character_set_name()
+    def character_set_name(self) -> Optional[str]:
+        return self._connection.character_set_name()  # type: ignore[no-any-return]  # noqa: E501
 
-    def autocommit(self, value):
+    def autocommit(self, value: Any) -> None:
         self.await_(self._connection.autocommit(value))
 
-    def terminate(self):
+    def terminate(self) -> None:
         # it's not awaitable.
         self._connection.close()
 
@@ -87,15 +112,15 @@ class AsyncAdaptFallback_aiomysql_connection(AsyncAdapt_aiomysql_connection):
     await_ = staticmethod(await_fallback)
 
 
-class AsyncAdapt_aiomysql_dbapi:
-    def __init__(self, aiomysql, pymysql):
+class AsyncAdapt_aiomysql_dbapi(AsyncAdapt_dbapi_module):
+    def __init__(self, aiomysql: ModuleType, pymysql: ModuleType):
         self.aiomysql = aiomysql
         self.pymysql = pymysql
         self.paramstyle = "format"
         self._init_dbapi_attributes()
         self.Cursor, self.SSCursor = self._init_cursors_subclasses()
 
-    def _init_dbapi_attributes(self):
+    def _init_dbapi_attributes(self) -> None:
         for name in (
             "Warning",
             "Error",
@@ -121,7 +146,7 @@ class AsyncAdapt_aiomysql_dbapi:
         ):
             setattr(self, name, getattr(self.pymysql, name))
 
-    def connect(self, *arg, **kw):
+    def connect(self, *arg: Any, **kw: Any) -> AsyncAdapt_aiomysql_connection:
         async_fallback = kw.pop("async_fallback", False)
         creator_fn = kw.pop("async_creator_fn", self.aiomysql.connect)
 
@@ -136,37 +161,43 @@ class AsyncAdapt_aiomysql_dbapi:
                 await_only(creator_fn(*arg, **kw)),
             )
 
-    def _init_cursors_subclasses(self):
+    def _init_cursors_subclasses(
+        self,
+    ) -> Tuple[AsyncIODBAPICursor, AsyncIODBAPICursor]:
         # suppress unconditional warning emitted by aiomysql
-        class Cursor(self.aiomysql.Cursor):
-            async def _show_warnings(self, conn):
+        class Cursor(self.aiomysql.Cursor):  # type: ignore[misc, name-defined]
+            async def _show_warnings(
+                self, conn: AsyncIODBAPIConnection
+            ) -> None:
                 pass
 
-        class SSCursor(self.aiomysql.SSCursor):
-            async def _show_warnings(self, conn):
+        class SSCursor(self.aiomysql.SSCursor):  # type: ignore[misc, name-defined]   # noqa: E501
+            async def _show_warnings(
+                self, conn: AsyncIODBAPIConnection
+            ) -> None:
                 pass
 
-        return Cursor, SSCursor
+        return Cursor, SSCursor  # type: ignore[return-value]
 
 
 class MySQLDialect_aiomysql(MySQLDialect_pymysql):
     driver = "aiomysql"
     supports_statement_cache = True
 
-    supports_server_side_cursors = True
+    supports_server_side_cursors = True  # type: ignore[assignment]
     _sscursor = AsyncAdapt_aiomysql_ss_cursor
 
     is_async = True
     has_terminate = True
 
     @classmethod
-    def import_dbapi(cls):
+    def import_dbapi(cls) -> AsyncAdapt_aiomysql_dbapi:
         return AsyncAdapt_aiomysql_dbapi(
             __import__("aiomysql"), __import__("pymysql")
         )
 
     @classmethod
-    def get_pool_class(cls, url):
+    def get_pool_class(cls, url: URL) -> type:
         async_fallback = url.query.get("async_fallback", False)
 
         if util.asbool(async_fallback):
@@ -174,28 +205,37 @@ class MySQLDialect_aiomysql(MySQLDialect_pymysql):
         else:
             return pool.AsyncAdaptedQueuePool
 
-    def do_terminate(self, dbapi_connection) -> None:
+    def do_terminate(self, dbapi_connection: DBAPIConnection) -> None:
         dbapi_connection.terminate()
 
-    def create_connect_args(self, url):
+    def create_connect_args(
+        self, url: URL, _translate_args: Optional[Dict[str, Any]] = None
+    ) -> ConnectArgsType:
         return super().create_connect_args(
             url, _translate_args=dict(username="user", database="db")
         )
 
-    def is_disconnect(self, e, connection, cursor):
+    def is_disconnect(
+        self,
+        e: DBAPIModule.Error,
+        connection: Optional[Union[PoolProxiedConnection, DBAPIConnection]],
+        cursor: Optional[DBAPICursor],
+    ) -> bool:
         if super().is_disconnect(e, connection, cursor):
             return True
         else:
             str_e = str(e).lower()
             return "not connected" in str_e
 
-    def _found_rows_client_flag(self):
-        from pymysql.constants import CLIENT
+    def _found_rows_client_flag(self) -> int:
+        from pymysql.constants import CLIENT  # type: ignore
 
-        return CLIENT.FOUND_ROWS
+        return CLIENT.FOUND_ROWS  # type: ignore[no-any-return]
 
-    def get_driver_connection(self, connection):
-        return connection._connection
+    def get_driver_connection(
+        self, connection: DBAPIConnection
+    ) -> AsyncIODBAPIConnection:
+        return connection._connection  # type: ignore[no-any-return]
 
 
 dialect = MySQLDialect_aiomysql
