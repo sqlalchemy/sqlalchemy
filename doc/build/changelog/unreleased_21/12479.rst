@@ -1,0 +1,6 @@
+.. change::
+    :tags: core, feature, sql
+    :tickets: 12479
+
+      The Core operator system now includes the `matmul` operator, i.e. the
+      @ operator in Python as an optional operator.
