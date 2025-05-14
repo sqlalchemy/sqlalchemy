@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, typing
-    :tickets: 12588
-
-    Removed ``__getattr__()`` rule from ``sqlalchemy/__init__.py`` that
-    appeared to be trying to correct for a previous typographical error in the
-    imports. This rule interferes with type checking and is removed.
-

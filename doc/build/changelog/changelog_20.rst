@@ -10,7 +10,93 @@
 
 .. changelog::
     :version: 2.0.41
-    :include_notes_from: unreleased_20
+    :released: May 14, 2025
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 10665
+
+        Added support for ``postgresql_include`` keyword argument to
+        :class:`_schema.UniqueConstraint` and :class:`_schema.PrimaryKeyConstraint`.
+        Pull request courtesy Denis Laxalde.
+
+        .. seealso::
+
+            :ref:`postgresql_constraint_options`
+
+    .. change::
+        :tags: usecase, oracle
+        :tickets: 12317, 12341
+
+        Added new datatype :class:`_oracle.VECTOR` and accompanying DDL and DQL
+        support to fully support this type for Oracle Database. This change
+        includes the base :class:`_oracle.VECTOR` type that adds new type-specific
+        methods ``l2_distance``, ``cosine_distance``, ``inner_product`` as well as
+        new parameters ``oracle_vector`` for the :class:`.Index` construct,
+        allowing vector indexes to be configured, and ``oracle_fetch_approximate``
+        for the :meth:`.Select.fetch` clause.  Pull request courtesy Suraj Shaw.
+
+        .. seealso::
+
+            :ref:`oracle_vector_datatype`
+
+
+    .. change::
+        :tags: bug, platform
+        :tickets: 12405
+
+        Adjusted the test suite as well as the ORM's method of scanning classes for
+        annotations to work under current beta releases of Python 3.14 (currently
+        3.14.0b1) as part of an ongoing effort to support the production release of
+        this Python release.  Further changes to Python's means of working with
+        annotations is expected in subsequent beta releases for which SQLAlchemy's
+        test suite will need further adjustments.
+
+
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 12488
+
+        Fixed regression caused by the DEFAULT rendering changes in version 2.0.40
+        via :ticket:`12425` where using lowercase ``on update`` in a MySQL server
+        default would incorrectly apply parenthesis, leading to errors when MySQL
+        interpreted the rendered DDL.  Pull request courtesy Alexander Ruehe.
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 12566
+
+        Fixed and added test support for some SQLite SQL functions hardcoded into
+        the compiler, most notably the ``localtimestamp`` function which rendered
+        with incorrect internal quoting.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 12579
+
+        The error message that is emitted when a URL cannot be parsed no longer
+        includes the URL itself within the error message.
+
+
+    .. change::
+        :tags: bug, typing
+        :tickets: 12588
+
+        Removed ``__getattr__()`` rule from ``sqlalchemy/__init__.py`` that
+        appeared to be trying to correct for a previous typographical error in the
+        imports. This rule interferes with type checking and is removed.
+
+
+    .. change::
+        :tags: bug, installation
+
+        Removed the "license classifier" from setup.cfg for SQLAlchemy 2.0, which
+        eliminates loud deprecation warnings when building the package.  SQLAlchemy
+        2.1 will use a full :pep:`639` configuration in pyproject.toml while
+        SQLAlchemy 2.0 remains using ``setup.cfg`` for setup.
+
+
 
 .. changelog::
     :version: 2.0.40
