@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, mysql
-    :tickets: 12488
-
-    Fixed regression caused by the DEFAULT rendering changes in version 2.0.40
-    via :ticket:`12425` where using lowercase ``on update`` in a MySQL server
-    default would incorrectly apply parenthesis, leading to errors when MySQL
-    interpreted the rendered DDL.  Pull request courtesy Alexander Ruehe.

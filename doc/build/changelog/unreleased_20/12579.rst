@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, engine
-    :tickets: 12579
-
-    The error message that is emitted when a URL cannot be parsed no longer
-    includes the URL itself within the error message.
-
