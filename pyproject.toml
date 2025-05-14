@@ -1,7 +1,7 @@
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
-    "setuptools>=61.0",
+    "setuptools>=77.0.3",
     "cython>=3; platform_python_implementation == 'CPython'", # Skip cython when using pypy
 ]
 
@@ -11,11 +11,11 @@ name = "SQLAlchemy"
 description = "Database Abstraction Library"
 readme = "README.rst"
 authors = [{name = "Mike Bayer", email = "mike_mp@zzzcomputing.com"}]
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
@@ -100,7 +100,6 @@ postgresql_psycopgbinary = ["sqlalchemy[postgresql-psycopgbinary]"]
 
 [tool.setuptools]
 include-package-data = true
-license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
 where = ["lib"]
