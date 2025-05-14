@@ -1,10 +1,12 @@
 .. change::
-    :tags: bug, orm
+    :tags: bug, platform
     :tickets: 12405
 
-    Changes to the test suite to accommodate Python 3.14 and its new
-    implementation of :pep:`649`, which highly modifies how typing annotations
-    are interpreted at runtime.  Use of the new
-    ``annotationlib.get_annotations()`` function is enabled when python 3.14 is
-    present, and many other changes to how pep-484 type objects are interpreted
-    at runtime are made.
+    Adjusted the test suite as well as the ORM's method of scanning classes for
+    annotations to work under current beta releases of Python 3.14 (currently
+    3.14.0b1) as part of an ongoing effort to support the production release of
+    this Python release.  Further changes to Python's means of working with
+    annotations is expected in subsequent beta releases for which SQLAlchemy's
+    test suite will need further adjustments.
+
+
