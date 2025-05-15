@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 12593
+
+    Implemented the :func:`_orm.defer`, :func:`_orm.undefer` and
+    :func:`_orm.load_only` loader options to work for composite attributes, a
+    use case that had never been supported previously.
