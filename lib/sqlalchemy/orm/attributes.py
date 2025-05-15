@@ -462,6 +462,9 @@ class QueryableAttribute(
     ) -> bool:
         return self.impl.hasparent(state, optimistic=optimistic) is not False
 
+    def _column_strategy_attrs(self) -> Sequence[QueryableAttribute[Any]]:
+        return (self,)
+
     def __getattr__(self, key: str) -> Any:
         try:
             return util.MemoizedSlots.__getattr__(self, key)
@@ -595,7 +598,7 @@ def create_proxied_attribute(
     # TODO: can move this to descriptor_props if the need for this
     # function is removed from ext/hybrid.py
 
-    class Proxy(QueryableAttribute[Any]):
+    class Proxy(QueryableAttribute[_T_co]):
         """Presents the :class:`.QueryableAttribute` interface as a
         proxy on top of a Python descriptor / :class:`.PropComparator`
         combination.
@@ -610,13 +613,13 @@ def create_proxied_attribute(
 
         def __init__(
             self,
-            class_,
-            key,
-            descriptor,
-            comparator,
-            adapt_to_entity=None,
-            doc=None,
-            original_property=None,
+            class_: _ExternalEntityType[Any],
+            key: str,
+            descriptor: Any,
+            comparator: interfaces.PropComparator[_T_co],
+            adapt_to_entity: Optional[AliasedInsp[Any]] = None,
+            doc: Optional[str] = None,
+            original_property: Optional[QueryableAttribute[_T_co]] = None,
         ):
             self.class_ = class_
             self.key = key
@@ -640,6 +643,13 @@ def create_proxied_attribute(
             ("key", visitors.ExtendedInternalTraversal.dp_string),
             ("_parententity", visitors.ExtendedInternalTraversal.dp_multi),
         ]
+
+        def _column_strategy_attrs(self) -> Sequence[QueryableAttribute[Any]]:
+            prop = self.original_property
+            if prop is None:
+                return ()
+            else:
+                return prop._column_strategy_attrs()
 
         @property
         def _impl_uses_objects(self):
