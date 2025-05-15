@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime as dt
 from typing import Any
+from typing import Literal
 from typing import Optional
 from typing import overload
 from typing import Type
@@ -16,13 +17,14 @@ from uuid import UUID as _python_UUID
 
 from ...sql import sqltypes
 from ...sql import type_api
-from ...util.typing import Literal
+from ...sql.type_api import TypeEngine
+
+from .bitstring import BitString
 
 if TYPE_CHECKING:
     from ...engine.interfaces import Dialect
     from ...sql.operators import OperatorType
     from ...sql.type_api import _LiteralProcessorType
-    from ...sql.type_api import TypeEngine
 
 _DECIMAL_TYPES = (1231, 1700)
 _FLOAT_TYPES = (700, 701, 1021, 1022)
@@ -256,7 +258,8 @@ class INTERVAL(type_api.NativeForEmulated, sqltypes._AbstractInterval):
 PGInterval = INTERVAL
 
 
-class BIT(sqltypes.TypeEngine[int]):
+class BIT(sqltypes.TypeEngine[BitString]):
+    render_bind_cast = True
     __visit_name__ = "BIT"
 
     def __init__(
@@ -270,6 +273,44 @@ class BIT(sqltypes.TypeEngine[int]):
             self.length = length or 1
         self.varying = varying
 
+    def bind_processor(self, dialect):
+        def bound_value(value):
+            if isinstance(value, BitString):
+                return str(value)
+            return value
+        return bound_value
+
+    def result_processor(self, dialect, coltype):
+        def from_result_value(value):
+            if value is not None:
+                value = BitString(value)
+            return value
+        return from_result_value
+
+    def coerce_compared_value(self, op, value) -> TypeEngine[Any]:
+        if isinstance(value, str):
+            return self
+        return super().coerce_compared_value(op, value)
+
+    @property
+    def python_type(self):
+        return BitString
+
+    class comparator_factory(TypeEngine.Comparator[BitString]):
+        def __lshift__(self, other: Any):
+            return self.bitwise_lshift(other)
+
+        def __rshift__(self, other: Any):
+            return self.bitwise_rshift(other)
+
+        def __and__(self, other: Any):
+            return self.bitwise_and(other)
+
+        def __or__(self, other: Any):
+            return self.bitwise_or(other)
+
+        def __invert__(self):
+            return self.bitwise_not()
 
 PGBit = BIT
 

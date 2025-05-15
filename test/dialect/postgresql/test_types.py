@@ -46,6 +46,7 @@ from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.dialects.postgresql import array_agg
 from sqlalchemy.dialects.postgresql import asyncpg
 from sqlalchemy.dialects.postgresql import base
+from sqlalchemy.dialects.postgresql import BitString
 from sqlalchemy.dialects.postgresql import BIT
 from sqlalchemy.dialects.postgresql import BYTEA
 from sqlalchemy.dialects.postgresql import CITEXT
@@ -3514,7 +3515,9 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
             metadata,
             Column("id", postgresql.UUID, primary_key=True),
             Column("flag", postgresql.BIT),
-            Column("bitstring", postgresql.BIT(4)),
+            Column("bitstring_varying", postgresql.BIT(varying=True)),
+            Column("bitstring_varying_6", postgresql.BIT(6, varying=True)),
+            Column("bitstring_4", postgresql.BIT(4)),
             Column("addr", postgresql.INET),
             Column("addr2", postgresql.MACADDR),
             Column("addr4", postgresql.MACADDR8),
@@ -3542,7 +3545,19 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
         self.assert_tables_equal(special_types_table, t, strict_types=True)
         assert t.c.plain_interval.type.precision is None
         assert t.c.precision_interval.type.precision == 3
-        assert t.c.bitstring.type.length == 4
+
+        assert t.c.flag.type.varying is False
+        assert t.c.flag.type.length == 1
+
+        assert t.c.bitstring_varying.type.varying is True
+        assert t.c.bitstring_varying.type.length is None
+
+        assert t.c.bitstring_varying_6.type.varying is True
+        assert t.c.bitstring_varying_6.type.length  == 6
+
+        assert t.c.bitstring_4.type.varying is False
+        assert t.c.bitstring_4.type.length == 4
+
 
     @testing.combinations(
         (postgresql.INET, "127.0.0.1"),
@@ -3567,6 +3582,38 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
             connection.scalar(select(t.c.name).where(t.c.value == value)),
             "test",
         )
+
+    @testing.combinations(
+        (postgresql.BIT(varying=True), BitString("")),
+        (postgresql.BIT(varying=True), BitString("1101010101")),
+        (postgresql.BIT(6, varying=True), BitString("")),
+        (postgresql.BIT(6, varying=True), BitString("010101")),
+        (postgresql.BIT(1), BitString("0")),
+        (postgresql.BIT(4), BitString("0010")),
+        (postgresql.BIT(4), "0010"),
+        argnames="column_type, value",
+    )
+    def test_bitstring_round_trip(
+        self, connection, metadata, column_type, value
+    ):
+        t = Table(
+            "bits",
+            metadata,
+            Column("name", String),
+            Column("value", column_type)
+        )
+        t.create(connection)
+
+        connection.execute(t.insert(), {"name": "test", "value": value})
+        print('value type affinity', t.c.value.type._type_affinity)
+        eq_(
+            connection.scalar(select(t.c.name).where(t.c.value == value)),
+            "test",
+        )
+
+        result_value = connection.scalar(select(t.c.value).where(t.c.name == "test"))
+        assert isinstance(result_value, BitString)
+        assert str(result_value) == str(value)
 
     def test_tsvector_round_trip(self, connection, metadata):
         t = Table("t1", metadata, Column("data", postgresql.TSVECTOR))
@@ -4167,6 +4214,107 @@ class HStoreRoundTripTest(fixtures.TablesTest):
             )
             s.add(d)
             eq_(s.query(Data.data, Data).all(), [(d.data, d)])
+
+
+class BitTests(fixtures.TestBase):
+    def test_concatenation(self, connection):
+        coltype = BIT(varying=True)
+
+        q = select(
+            literal(BitString('1111'), coltype).concat(BitString('0000'))
+        )
+        r = connection.execute(q).first()
+        eq_(r[0], BitString('11110000'))
+
+    @testing.skip("compiler bug")
+    def test_invert_operator(self, connection):
+        coltype = BIT(4)
+
+        q = select(
+            literal(BitString('0010'), coltype).bitwise_not()
+        )
+        r = connection.execute(q).first()
+
+        # Observing r[0] == '1101' here.
+        # See: sql.compiler.Compiler._label_select_column
+        # The unary operator does not "wrap a column expression"
+        # and it isn't a from clause of the select,
+        # the compiler doesn't actually add the column to the select's
+        # result_columns and thus the type's result_processor never gets
+        # called.
+        eq_(r[0], BitString('1101'))
+
+    def test_and_operator(self, connection):
+        coltype = BIT(6)
+
+        q1 = select(
+            literal(BitString('001010'), coltype)
+            & literal(BitString('010111'), coltype)
+        )
+        r1 = connection.execute(q1).first()
+
+        eq_(r1[0], BitString('000010'))
+
+        q2 = select(
+            literal(BitString('010101'), coltype) & BitString('001011')
+        )
+        r2 = connection.execute(q2).first()
+        eq_(r2[0], BitString('000001'))
+
+    def test_or_operator(self, connection):
+        coltype = BIT(6)
+
+        q1 = select(
+            literal(BitString('001010'), coltype)
+            & literal(BitString('010111'), coltype)
+        )
+        r1 = connection.execute(q1).first()
+
+        eq_(r1[0], BitString('011111'))
+
+        q2 = select(
+            literal(BitString('010101')) & BitString('001001')
+        )
+        r2 = connection.execute(q2).first()
+        eq_(r2[0], BitString('011101'))
+
+    def test_xor_operator(self, connection):
+        coltype = BIT(6)
+
+        q1 = select(
+            literal(BitString('001010'), coltype)
+            & literal(BitString('010111'), coltype)
+        )
+        r1 = connection.execute(q1).first()
+        eq_(r1[0], BitString('001101'))
+
+        q2 = select(
+            literal(BitString('010101'), coltype) & BitString('001011')
+        )
+        r2 = connection.execute(q2).first()
+        eq_(r2[0], BitString('011110'))
+
+    def test_lshift_operator(self, connection):
+        coltype = BIT(6)
+
+        q = select(
+            literal(BitString('001010'), coltype),
+            literal(BitString('001010'), coltype) << 1,
+        )
+
+        r = connection.execute(q).first()
+        eq_(tuple(r), (BitString('001010'), BitString('010100')))
+
+    def test_rshift_operator(self, connection):
+        coltype = BIT(6)
+
+        q = select(
+            literal(BitString('001010'), coltype),
+            literal(BitString('001010'), coltype) >> 1
+        )
+
+        r = connection.execute(q).first()
+        eq_(tuple(r), (BitString('001010'), BitString('000101')))
 
 
 class RangeMiscTests(fixtures.TestBase):
@@ -6626,7 +6774,7 @@ class PGInsertManyValuesTest(fixtures.TestBase):
 
     @testing.combinations(
         ("BYTEA", BYTEA(), b"7\xe7\x9f"),
-        ("BIT", BIT(3), "011"),
+        ("BIT", BIT(3), BitString("011")),
         argnames="type_,value",
         id_="iaa",
     )
@@ -6658,11 +6806,6 @@ class PGInsertManyValuesTest(fixtures.TestBase):
         )
 
         t.create(connection)
-
-        if type_._type_affinity is BIT and testing.against("+asyncpg"):
-            import asyncpg
-
-            value = asyncpg.BitString(value)
 
         result = connection.execute(
             t.insert().returning(
