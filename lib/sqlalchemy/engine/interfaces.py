@@ -51,6 +51,7 @@ if TYPE_CHECKING:
     from .base import Engine
     from .cursor import CursorResult
     from .url import URL
+    from ..connectors.asyncio import AsyncIODBAPIConnection
     from ..event import _ListenerFnType
     from ..event import dispatcher
     from ..exc import StatementError
@@ -70,6 +71,7 @@ if TYPE_CHECKING:
     from ..sql.sqltypes import Integer
     from ..sql.type_api import _TypeMemoDict
     from ..sql.type_api import TypeEngine
+    from ..util.langhelpers import generic_fn_descriptor
 
 ConnectArgsType = Tuple[Sequence[str], MutableMapping[str, Any]]
 
@@ -781,7 +783,7 @@ class Dialect(EventTarget):
     """The maximum length of constraint names if different from
     ``max_identifier_length``."""
 
-    supports_server_side_cursors: bool
+    supports_server_side_cursors: Union[generic_fn_descriptor[bool], bool]
     """indicates if the dialect supports server side cursors"""
 
     server_side_cursors: bool
@@ -2306,7 +2308,7 @@ class Dialect(EventTarget):
         """
         return self.on_connect()
 
-    def on_connect(self) -> Optional[Callable[[Any], Any]]:
+    def on_connect(self) -> Optional[Callable[[Any], None]]:
         """return a callable which sets up a newly created DBAPI connection.
 
         The callable should accept a single argument "conn" which is the
@@ -3356,7 +3358,7 @@ class AdaptedConnection:
 
     __slots__ = ("_connection",)
 
-    _connection: Any
+    _connection: AsyncIODBAPIConnection
 
     @property
     def driver_connection(self) -> Any:
