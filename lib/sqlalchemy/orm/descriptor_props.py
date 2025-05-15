@@ -104,6 +104,11 @@ class DescriptorProperty(MapperProperty[_T]):
 
     descriptor: DescriptorReference[Any]
 
+    def _column_strategy_attrs(self) -> Sequence[QueryableAttribute[Any]]:
+        raise NotImplementedError(
+            "This MapperProperty does not implement column loader strategies"
+        )
+
     def get_history(
         self,
         state: InstanceState[Any],
@@ -508,6 +513,9 @@ class CompositeProperty(
 
             props.append(prop)
         return props
+
+    def _column_strategy_attrs(self) -> Sequence[QueryableAttribute[Any]]:
+        return self._comparable_elements
 
     @util.non_memoized_property
     @util.preload_module("orm.properties")
@@ -1007,6 +1015,9 @@ class SynonymProperty(DescriptorProperty[_T]):
                 % (self.parent.class_.__name__, self.name, attr)
             )
         return attr.property
+
+    def _column_strategy_attrs(self) -> Sequence[QueryableAttribute[Any]]:
+        return (getattr(self.parent.class_, self.name),)
 
     def _comparator_factory(self, mapper: Mapper[Any]) -> SQLORMOperations[_T]:
         prop = self._proxied_object
