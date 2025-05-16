@@ -475,6 +475,11 @@ class _stateful_declared_attr(declared_attr[_T]):
         return declared_attr(fn, **self.kw)
 
 
+@util.deprecated(
+    "2.1",
+    "The declarative_mixin decorator was used only by the now removed "
+    "mypy plugin so it has no longer any use and can be safely removed.",
+)
 def declarative_mixin(cls: Type[_T]) -> Type[_T]:
     """Mark a class as providing the feature of "declarative mixin".
 
