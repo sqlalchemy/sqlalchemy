@@ -2108,6 +2108,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
             "SELECT b.x + :x_1 AS anon_1, b.id AS b_id, b.x AS b_x FROM b",
         )
 
+    @testing.requires.gil_enabled
     @testing.requires.predictable_gc
     def test_singleton_gc(self):
         counter = mock.Mock()

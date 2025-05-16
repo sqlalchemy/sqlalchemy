@@ -2060,6 +2060,7 @@ class DeferredMapperEventsTest(RemoveORMEventsGlobally, _fixtures.FixtureTest):
         )
         eq_(canary, [])
 
+    @testing.requires.gil_enabled
     @testing.requires.predictable_gc
     def test_instrument_event_auto_remove(self):
         class Bar:
