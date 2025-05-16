@@ -15,16 +15,18 @@ from typing import Type
 from typing import TYPE_CHECKING
 from uuid import UUID as _python_UUID
 
+from .bitstring import BitString
 from ...sql import sqltypes
 from ...sql import type_api
 from ...sql.type_api import TypeEngine
 
-from .bitstring import BitString
-
 if TYPE_CHECKING:
     from ...engine.interfaces import Dialect
+    from ...sql.operators import ColumnOperators
     from ...sql.operators import OperatorType
+    from ...sql.type_api import _BindProcessorType
     from ...sql.type_api import _LiteralProcessorType
+    from ...sql.type_api import _ResultProcessorType
 
 _DECIMAL_TYPES = (1231, 1700)
 _FLOAT_TYPES = (700, 701, 1021, 1022)
@@ -273,44 +275,58 @@ class BIT(sqltypes.TypeEngine[BitString]):
             self.length = length or 1
         self.varying = varying
 
-    def bind_processor(self, dialect):
-        def bound_value(value):
+    def bind_processor(
+        self, dialect: Dialect
+    ) -> _BindProcessorType[BitString]:
+        def bound_value(value: Any) -> Any:
             if isinstance(value, BitString):
                 return str(value)
             return value
+
         return bound_value
 
-    def result_processor(self, dialect, coltype):
-        def from_result_value(value):
+    def result_processor(
+        self, dialect: Dialect, coltype: object
+    ) -> _ResultProcessorType[BitString]:
+        def from_result_value(value: Any) -> Any:
             if value is not None:
                 value = BitString(value)
             return value
+
         return from_result_value
 
-    def coerce_compared_value(self, op, value) -> TypeEngine[Any]:
+    def coerce_compared_value(
+        self, op: OperatorType | None, value: Any
+    ) -> TypeEngine[Any]:
         if isinstance(value, str):
             return self
         return super().coerce_compared_value(op, value)
 
     @property
-    def python_type(self):
+    def python_type(self) -> type[Any]:
         return BitString
 
     class comparator_factory(TypeEngine.Comparator[BitString]):
-        def __lshift__(self, other: Any):
+        def __lshift__(self, other: Any) -> ColumnOperators:
             return self.bitwise_lshift(other)
 
-        def __rshift__(self, other: Any):
+        def __rshift__(self, other: Any) -> ColumnOperators:
             return self.bitwise_rshift(other)
 
-        def __and__(self, other: Any):
+        def __and__(self, other: Any) -> ColumnOperators:
             return self.bitwise_and(other)
 
-        def __or__(self, other: Any):
+        def __or__(self, other: Any) -> ColumnOperators:
             return self.bitwise_or(other)
 
-        def __invert__(self):
+        # __xor__ is not defined on sql.operators.ColumnOperators.
+        # Use `bitwise_xor` directly instead.
+        # def __xor__(self, other: Any) -> ColumnOperators:
+        #     return self.bitwise_xor(other)
+
+        def __invert__(self) -> ColumnOperators:
             return self.bitwise_not()
+
 
 PGBit = BIT
 
