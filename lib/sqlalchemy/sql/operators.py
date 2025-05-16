@@ -25,6 +25,7 @@ from operator import inv as _uncast_inv
 from operator import le as _uncast_le
 from operator import lshift as _uncast_lshift
 from operator import lt as _uncast_lt
+from operator import matmul as _uncast_matmul
 from operator import mod as _uncast_mod
 from operator import mul as _uncast_mul
 from operator import ne as _uncast_ne
@@ -110,6 +111,7 @@ inv = cast(OperatorType, _uncast_inv)
 le = cast(OperatorType, _uncast_le)
 lshift = cast(OperatorType, _uncast_lshift)
 lt = cast(OperatorType, _uncast_lt)
+matmul = cast(OperatorType, _uncast_matmul)
 mod = cast(OperatorType, _uncast_mod)
 mul = cast(OperatorType, _uncast_mul)
 ne = cast(OperatorType, _uncast_ne)
@@ -661,7 +663,7 @@ class ColumnOperators(Operators):
         return self.operate(getitem, index)
 
     def __lshift__(self, other: Any) -> ColumnOperators:
-        """implement the << operator.
+        """Implement the ``<<`` operator.
 
         Not used by SQLAlchemy core, this is provided
         for custom operator systems which want to use
@@ -669,14 +671,50 @@ class ColumnOperators(Operators):
         """
         return self.operate(lshift, other)
 
+    def __rlshift__(self, other: Any) -> ColumnOperators:
+        """Implement the ``<<`` operator in reverse.
+
+        Not used by SQLAlchemy core, this is provided
+        for custom operator systems which want to use
+        << as an extension point.
+        """
+        return self.reverse_operate(lshift, other)
+
     def __rshift__(self, other: Any) -> ColumnOperators:
-        """implement the >> operator.
+        """Implement the ``>>`` operator.
 
         Not used by SQLAlchemy core, this is provided
         for custom operator systems which want to use
         >> as an extension point.
         """
         return self.operate(rshift, other)
+
+    def __rrshift__(self, other: Any) -> ColumnOperators:
+        """Implement the ``>>`` operator in reverse.
+
+        Not used by SQLAlchemy core, this is provided
+        for custom operator systems which want to use
+        >> as an extension point.
+        """
+        return self.reverse_operate(rshift, other)
+
+    def __matmul__(self, other: Any) -> ColumnOperators:
+        """Implement the ``@`` operator.
+
+        Not used by SQLAlchemy core, this is provided
+        for custom operator systems which want to use
+        @ as an extension point.
+        """
+        return self.operate(matmul, other)
+
+    def __rmatmul__(self, other: Any) -> ColumnOperators:
+        """Implement the ``@`` operator in reverse.
+
+        Not used by SQLAlchemy core, this is provided
+        for custom operator systems which want to use
+        @ as an extension point.
+        """
+        return self.reverse_operate(matmul, other)
 
     def concat(self, other: Any) -> ColumnOperators:
         """Implement the 'concat' operator.
