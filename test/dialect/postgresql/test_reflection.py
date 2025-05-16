@@ -2930,6 +2930,16 @@ class TestTableOptionsReflection(fixtures.TestBase):
     __only_on__ = "postgresql"
     __backend__ = True
 
+    def setupTests(self, connection):
+        connection.exec_driver_sql(
+            "CREATE ACCESS METHOD myaccessmethod "
+            "TYPE TABLE "
+            "HANDLER heap_tableam_handler"
+        )
+
+    def teardownTests(self, connection):
+        connection.exec_driver_sql("DROP ACCESS METHOD myaccessmethod")
+
     def test_table_inherits(self, metadata, connection):
         def assert_inherits_from(table_name, expect_base_tables):
             table_options = inspect(connection).get_table_options(table_name)
@@ -2991,49 +3001,33 @@ class TestTableOptionsReflection(fixtures.TestBase):
         no_params_options = inspect(connection).get_table_options(
             "table_no_storage_params"
         )
-        assert "postgresql_with" in no_params_options
+        assert "postgresql_with" not in no_params_options
 
         assert_has_storage_param("table_with_fillfactor", "fillfactor", "10")
         assert_has_storage_param(
             "table_with_parallel_workers", "parallel_workers", "15"
         )
 
-    # @testing.skip_if("postgresql >= 12.0", "with_oids not supported")
-    # def test_table_with_oids(self, metadata, connection):
-    #     Table("table_with_oids", metadata, postgresql_with_oids=True)
-    #     Table("table_without_oids", metadata, postgresql_with_oids=False)
-    #     metadata.create_all(connection)
-
-    #     table_options = inspect(connection).get_table_options("table_with_oids")
-    #     eq_(table_options["postgresql_with_oids"], True)
-
-    #     table_options = inspect(connection).get_table_options("table_without_oids")
-    #     eq_(table_options["postgresql_with_oids"], False)
-
-    def test_table_using(self, metadata, connection):
+    def test_table_using(self, metadata: MetaData, connection):
         Table("table_using_heap", metadata, postgresql_using="heap")
-        Table("heap_is_default", metadata)
+        Table(
+            "table_using_myaccessmethod",
+            metadata,
+            postgresql_using="myaccessmethod",
+        )
         metadata.create_all(connection)
 
-        table_options = inspect(connection).get_table_options(
+        table_using_heap_options = inspect(connection).get_table_options(
             "table_using_heap"
         )
-        print("table_options", table_options)
-        eq_(table_options["postgresql_using"], "heap")
+        eq_(table_using_heap_options["postgresql_using"], "heap")
 
-        table_options = inspect(connection).get_table_options(
-            "heap_is_default"
+        table_using_myaccessmethod_options = inspect(
+            connection
+        ).get_table_options("table_using_myaccessmethod")
+        eq_(
+            table_using_myaccessmethod_options["postgresql_using"],
+            "myaccessmethod",
         )
-        eq_(table_options["postgresql_using"], "heap")
 
-        # TODO: Test custom access method.
-
-        # self.define_table(metadata, "table_using_btree", postgresql_using="btree")
-        # table_options = inspect(connection).get_table_options("table_using_btree")
-        # eq_(table_options["using"], "btree")
-
-    # def test_table_option_tablespace(self, metadata, connection):
-    #     self.define_simple_table(metadata, "table_sample_tablespace", postgresql_tablespace="sample_tablespace")
-
-    #     table_options = inspect(connection).get_table_options("table_sample_tablespace")
-    #     eq_(table_options["tablespace"], "sample_tablespace")
+        metadata.drop_all(connection)

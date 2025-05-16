@@ -1206,14 +1206,14 @@ dialect in conjunction with the :class:`_schema.Table` construct:
 
     Table("some_table", metadata, ..., postgresql_with={"fillfactor": 100})
 
-    Set various storage options on the table
+ Set various storage options on the table
 
 * ``WITH OIDS``::
 
     Table("some_table", metadata, ..., postgresql_with_oids=True)
 
-    Automatically add object identifiers to table rows. Legacy feature, removed
-    in postgresql 12.
+Automatically add object identifiers to table rows. Removed
+in postgresql 12.
 
 * ``WITHOUT OIDS``::
 
