@@ -177,7 +177,7 @@ class BitString(str):
         count: SupportsIndex = -1,
     ) -> BitString:
         new = BitString(new)
-        return BitString(super().replace(old, new, count=count), False)
+        return BitString(super().replace(old, new, count), False)
 
     def split(
         self,
