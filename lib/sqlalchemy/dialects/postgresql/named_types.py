@@ -503,20 +503,6 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
     def __test_init__(cls):
         return cls("name", sqltypes.Integer)
 
-    def adapt(self, impl, **kw):
-        if self.default:
-            kw["default"] = self.default
-        if self.constraint_name is not None:
-            kw["constraint_name"] = self.constraint_name
-        if self.not_null:
-            kw["not_null"] = self.not_null
-        if self.check is not None:
-            kw["check"] = str(self.check)
-        if self.create_type:
-            kw["create_type"] = self.create_type
-
-        return super().adapt(impl, **kw)
-
 
 class CreateEnumType(schema._CreateDropBase):
     __visit_name__ = "create_enum_type"
