@@ -29,162 +29,42 @@ This dialect should normally be used only with the
     )
 
 """  # noqa
-from collections import deque
-
 from .pymysql import MySQLDialect_pymysql
 from ... import pool
 from ... import util
-from ...engine import AdaptedConnection
-from ...util.concurrency import asyncio
+from ...connectors.asyncio import AsyncAdapt_dbapi_connection
+from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
+from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
 from ...util.concurrency import await_fallback
 from ...util.concurrency import await_only
 
 
-class AsyncAdapt_aiomysql_cursor:
-    # TODO: base on connectors/asyncio.py
-    # see #10415
-    server_side = False
-    __slots__ = (
-        "_adapt_connection",
-        "_connection",
-        "await_",
-        "_cursor",
-        "_rows",
-    )
+class AsyncAdapt_aiomysql_cursor(AsyncAdapt_dbapi_cursor):
+    __slots__ = ()
 
-    def __init__(self, adapt_connection):
-        self._adapt_connection = adapt_connection
-        self._connection = adapt_connection._connection
-        self.await_ = adapt_connection.await_
+    def _make_new_cursor(self, connection):
+        return connection.cursor(self._adapt_connection.dbapi.Cursor)
 
-        cursor = self._connection.cursor(adapt_connection.dbapi.Cursor)
 
-        # see https://github.com/aio-libs/aiomysql/issues/543
-        self._cursor = self.await_(cursor.__aenter__())
-        self._rows = deque()
+class AsyncAdapt_aiomysql_ss_cursor(
+    AsyncAdapt_dbapi_ss_cursor, AsyncAdapt_aiomysql_cursor
+):
+    __slots__ = ()
 
-    @property
-    def description(self):
-        return self._cursor.description
-
-    @property
-    def rowcount(self):
-        return self._cursor.rowcount
-
-    @property
-    def arraysize(self):
-        return self._cursor.arraysize
-
-    @arraysize.setter
-    def arraysize(self, value):
-        self._cursor.arraysize = value
-
-    @property
-    def lastrowid(self):
-        return self._cursor.lastrowid
-
-    def close(self):
-        # note we aren't actually closing the cursor here,
-        # we are just letting GC do it.   to allow this to be async
-        # we would need the Result to change how it does "Safe close cursor".
-        # MySQL "cursors" don't actually have state to be "closed" besides
-        # exhausting rows, which we already have done for sync cursor.
-        # another option would be to emulate aiosqlite dialect and assign
-        # cursor only if we are doing server side cursor operation.
-        self._rows.clear()
-
-    def execute(self, operation, parameters=None):
-        return self.await_(self._execute_async(operation, parameters))
-
-    def executemany(self, operation, seq_of_parameters):
-        return self.await_(
-            self._executemany_async(operation, seq_of_parameters)
+    def _make_new_cursor(self, connection):
+        return connection.cursor(
+            self._adapt_connection.dbapi.aiomysql.cursors.SSCursor
         )
 
-    async def _execute_async(self, operation, parameters):
-        async with self._adapt_connection._execute_mutex:
-            result = await self._cursor.execute(operation, parameters)
 
-            if not self.server_side:
-                # aiomysql has a "fake" async result, so we have to pull it out
-                # of that here since our default result is not async.
-                # we could just as easily grab "_rows" here and be done with it
-                # but this is safer.
-                self._rows = deque(await self._cursor.fetchall())
-            return result
-
-    async def _executemany_async(self, operation, seq_of_parameters):
-        async with self._adapt_connection._execute_mutex:
-            return await self._cursor.executemany(operation, seq_of_parameters)
-
-    def setinputsizes(self, *inputsizes):
-        pass
-
-    def __iter__(self):
-        while self._rows:
-            yield self._rows.popleft()
-
-    def fetchone(self):
-        if self._rows:
-            return self._rows.popleft()
-        else:
-            return None
-
-    def fetchmany(self, size=None):
-        if size is None:
-            size = self.arraysize
-
-        rr = self._rows
-        return [rr.popleft() for _ in range(min(size, len(rr)))]
-
-    def fetchall(self):
-        retval = list(self._rows)
-        self._rows.clear()
-        return retval
-
-
-class AsyncAdapt_aiomysql_ss_cursor(AsyncAdapt_aiomysql_cursor):
-    # TODO: base on connectors/asyncio.py
-    # see #10415
+class AsyncAdapt_aiomysql_connection(AsyncAdapt_dbapi_connection):
     __slots__ = ()
-    server_side = True
 
-    def __init__(self, adapt_connection):
-        self._adapt_connection = adapt_connection
-        self._connection = adapt_connection._connection
-        self.await_ = adapt_connection.await_
-
-        cursor = self._connection.cursor(adapt_connection.dbapi.SSCursor)
-
-        self._cursor = self.await_(cursor.__aenter__())
-
-    def close(self):
-        if self._cursor is not None:
-            self.await_(self._cursor.close())
-            self._cursor = None
-
-    def fetchone(self):
-        return self.await_(self._cursor.fetchone())
-
-    def fetchmany(self, size=None):
-        return self.await_(self._cursor.fetchmany(size=size))
-
-    def fetchall(self):
-        return self.await_(self._cursor.fetchall())
-
-
-class AsyncAdapt_aiomysql_connection(AdaptedConnection):
-    # TODO: base on connectors/asyncio.py
-    # see #10415
-    await_ = staticmethod(await_only)
-    __slots__ = ("dbapi", "_execute_mutex")
-
-    def __init__(self, dbapi, connection):
-        self.dbapi = dbapi
-        self._connection = connection
-        self._execute_mutex = asyncio.Lock()
+    _cursor_cls = AsyncAdapt_aiomysql_cursor
+    _ss_cursor_cls = AsyncAdapt_aiomysql_ss_cursor
 
     def ping(self, reconnect):
+        assert not reconnect
         return self.await_(self._connection.ping(reconnect))
 
     def character_set_name(self):
@@ -192,18 +72,6 @@ class AsyncAdapt_aiomysql_connection(AdaptedConnection):
 
     def autocommit(self, value):
         self.await_(self._connection.autocommit(value))
-
-    def cursor(self, server_side=False):
-        if server_side:
-            return AsyncAdapt_aiomysql_ss_cursor(self)
-        else:
-            return AsyncAdapt_aiomysql_cursor(self)
-
-    def rollback(self):
-        self.await_(self._connection.rollback())
-
-    def commit(self):
-        self.await_(self._connection.commit())
 
     def terminate(self):
         # it's not awaitable.
@@ -214,8 +82,6 @@ class AsyncAdapt_aiomysql_connection(AdaptedConnection):
 
 
 class AsyncAdaptFallback_aiomysql_connection(AsyncAdapt_aiomysql_connection):
-    # TODO: base on connectors/asyncio.py
-    # see #10415
     __slots__ = ()
 
     await_ = staticmethod(await_fallback)

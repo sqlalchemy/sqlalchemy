@@ -27,201 +27,63 @@ This dialect should normally be used only with the
     )
 
 """  # noqa
-from collections import deque
-from contextlib import asynccontextmanager
+from __future__ import annotations
 
 from .pymysql import MySQLDialect_pymysql
 from ... import pool
 from ... import util
-from ...engine import AdaptedConnection
-from ...util.concurrency import asyncio
+from ...connectors.asyncio import AsyncAdapt_dbapi_connection
+from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
+from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
 from ...util.concurrency import await_fallback
 from ...util.concurrency import await_only
 
 
-class AsyncAdapt_asyncmy_cursor:
-    # TODO: base on connectors/asyncio.py
-    # see #10415
-    server_side = False
-    __slots__ = (
-        "_adapt_connection",
-        "_connection",
-        "await_",
-        "_cursor",
-        "_rows",
-    )
-
-    def __init__(self, adapt_connection):
-        self._adapt_connection = adapt_connection
-        self._connection = adapt_connection._connection
-        self.await_ = adapt_connection.await_
-
-        cursor = self._connection.cursor()
-
-        self._cursor = self.await_(cursor.__aenter__())
-        self._rows = deque()
-
-    @property
-    def description(self):
-        return self._cursor.description
-
-    @property
-    def rowcount(self):
-        return self._cursor.rowcount
-
-    @property
-    def arraysize(self):
-        return self._cursor.arraysize
-
-    @arraysize.setter
-    def arraysize(self, value):
-        self._cursor.arraysize = value
-
-    @property
-    def lastrowid(self):
-        return self._cursor.lastrowid
-
-    def close(self):
-        # note we aren't actually closing the cursor here,
-        # we are just letting GC do it.   to allow this to be async
-        # we would need the Result to change how it does "Safe close cursor".
-        # MySQL "cursors" don't actually have state to be "closed" besides
-        # exhausting rows, which we already have done for sync cursor.
-        # another option would be to emulate aiosqlite dialect and assign
-        # cursor only if we are doing server side cursor operation.
-        self._rows.clear()
-
-    def execute(self, operation, parameters=None):
-        return self.await_(self._execute_async(operation, parameters))
-
-    def executemany(self, operation, seq_of_parameters):
-        return self.await_(
-            self._executemany_async(operation, seq_of_parameters)
-        )
-
-    async def _execute_async(self, operation, parameters):
-        async with self._adapt_connection._mutex_and_adapt_errors():
-            if parameters is None:
-                result = await self._cursor.execute(operation)
-            else:
-                result = await self._cursor.execute(operation, parameters)
-
-            if not self.server_side:
-                # asyncmy has a "fake" async result, so we have to pull it out
-                # of that here since our default result is not async.
-                # we could just as easily grab "_rows" here and be done with it
-                # but this is safer.
-                self._rows = deque(await self._cursor.fetchall())
-            return result
-
-    async def _executemany_async(self, operation, seq_of_parameters):
-        async with self._adapt_connection._mutex_and_adapt_errors():
-            return await self._cursor.executemany(operation, seq_of_parameters)
-
-    def setinputsizes(self, *inputsizes):
-        pass
-
-    def __iter__(self):
-        while self._rows:
-            yield self._rows.popleft()
-
-    def fetchone(self):
-        if self._rows:
-            return self._rows.popleft()
-        else:
-            return None
-
-    def fetchmany(self, size=None):
-        if size is None:
-            size = self.arraysize
-
-        rr = self._rows
-        return [rr.popleft() for _ in range(min(size, len(rr)))]
-
-    def fetchall(self):
-        retval = list(self._rows)
-        self._rows.clear()
-        return retval
-
-
-class AsyncAdapt_asyncmy_ss_cursor(AsyncAdapt_asyncmy_cursor):
-    # TODO: base on connectors/asyncio.py
-    # see #10415
+class AsyncAdapt_asyncmy_cursor(AsyncAdapt_dbapi_cursor):
     __slots__ = ()
-    server_side = True
 
-    def __init__(self, adapt_connection):
-        self._adapt_connection = adapt_connection
-        self._connection = adapt_connection._connection
-        self.await_ = adapt_connection.await_
 
-        cursor = self._connection.cursor(
-            adapt_connection.dbapi.asyncmy.cursors.SSCursor
+class AsyncAdapt_asyncmy_ss_cursor(
+    AsyncAdapt_dbapi_ss_cursor, AsyncAdapt_asyncmy_cursor
+):
+    __slots__ = ()
+
+    def _make_new_cursor(self, connection):
+        return connection.cursor(
+            self._adapt_connection.dbapi.asyncmy.cursors.SSCursor
         )
 
-        self._cursor = self.await_(cursor.__aenter__())
 
-    def close(self):
-        if self._cursor is not None:
-            self.await_(self._cursor.close())
-            self._cursor = None
+class AsyncAdapt_asyncmy_connection(AsyncAdapt_dbapi_connection):
+    __slots__ = ()
 
-    def fetchone(self):
-        return self.await_(self._cursor.fetchone())
+    _cursor_cls = AsyncAdapt_asyncmy_cursor
+    _ss_cursor_cls = AsyncAdapt_asyncmy_ss_cursor
 
-    def fetchmany(self, size=None):
-        return self.await_(self._cursor.fetchmany(size=size))
+    def _handle_exception(self, error):
+        if isinstance(error, AttributeError):
+            raise self.dbapi.InternalError(
+                "network operation failed due to asyncmy attribute error"
+            )
 
-    def fetchall(self):
-        return self.await_(self._cursor.fetchall())
-
-
-class AsyncAdapt_asyncmy_connection(AdaptedConnection):
-    # TODO: base on connectors/asyncio.py
-    # see #10415
-    await_ = staticmethod(await_only)
-    __slots__ = ("dbapi", "_execute_mutex")
-
-    def __init__(self, dbapi, connection):
-        self.dbapi = dbapi
-        self._connection = connection
-        self._execute_mutex = asyncio.Lock()
-
-    @asynccontextmanager
-    async def _mutex_and_adapt_errors(self):
-        async with self._execute_mutex:
-            try:
-                yield
-            except AttributeError:
-                raise self.dbapi.InternalError(
-                    "network operation failed due to asyncmy attribute error"
-                )
+        raise error
 
     def ping(self, reconnect):
         assert not reconnect
         return self.await_(self._do_ping())
 
     async def _do_ping(self):
-        async with self._mutex_and_adapt_errors():
-            return await self._connection.ping(False)
+        try:
+            async with self._execute_mutex:
+                return await self._connection.ping(False)
+        except Exception as error:
+            self._handle_exception(error)
 
     def character_set_name(self):
         return self._connection.character_set_name()
 
     def autocommit(self, value):
         self.await_(self._connection.autocommit(value))
-
-    def cursor(self, server_side=False):
-        if server_side:
-            return AsyncAdapt_asyncmy_ss_cursor(self)
-        else:
-            return AsyncAdapt_asyncmy_cursor(self)
-
-    def rollback(self):
-        self.await_(self._connection.rollback())
-
-    def commit(self):
-        self.await_(self._connection.commit())
 
     def terminate(self):
         # it's not awaitable.
