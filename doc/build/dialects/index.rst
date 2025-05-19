@@ -86,6 +86,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +------------------------------------------------+---------------------------------------+
 | Databricks                                     | databricks_                           |
 +------------------------------------------------+---------------------------------------+
+| Denodo                                         | denodo-sqlalchemy_                    |
++------------------------------------------------+---------------------------------------+
 | EXASolution                                    | sqlalchemy_exasol_                    |
 +------------------------------------------------+---------------------------------------+
 | Elasticsearch (readonly)                       | elasticsearch-dbapi_                  |
@@ -179,3 +181,4 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _sqlalchemy-kinetica: https://github.com/kineticadb/sqlalchemy-kinetica/
 .. _sqlalchemy-tidb: https://github.com/pingcap/sqlalchemy-tidb
 .. _ydb-sqlalchemy: https://github.com/ydb-platform/ydb-sqlalchemy/
+.. _denodo-sqlalchemy: https://pypi.org/project/denodo-sqlalchemy/
