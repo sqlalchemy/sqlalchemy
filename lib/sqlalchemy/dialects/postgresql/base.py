@@ -4110,7 +4110,7 @@ class PGDialect(default.DefaultDialect):
         if self.server_version_info >= (11, 0):
             indnkeyatts = pg_catalog.pg_index.c.indnkeyatts
         else:
-            indnkeyatts = sql.null().label("indnkeyatts")
+            indnkeyatts = pg_catalog.pg_index.c.indnatts.label("indnkeyatts")
 
         if self.server_version_info >= (15,):
             indnullsnotdistinct = pg_catalog.pg_index.c.indnullsnotdistinct
@@ -4230,10 +4230,7 @@ class PGDialect(default.DefaultDialect):
                         # See note in get_multi_indexes
                         all_cols = row["cols"]
                         indnkeyatts = row["indnkeyatts"]
-                        if (
-                            indnkeyatts is not None
-                            and len(all_cols) > indnkeyatts
-                        ):
+                        if len(all_cols) > indnkeyatts:
                             inc_cols = all_cols[indnkeyatts:]
                             cst_cols = all_cols[:indnkeyatts]
                         else:
@@ -4585,7 +4582,7 @@ class PGDialect(default.DefaultDialect):
         if self.server_version_info >= (11, 0):
             indnkeyatts = pg_catalog.pg_index.c.indnkeyatts
         else:
-            indnkeyatts = sql.null().label("indnkeyatts")
+            indnkeyatts = pg_catalog.pg_index.c.indnatts.label("indnkeyatts")
 
         if self.server_version_info >= (15,):
             nulls_not_distinct = pg_catalog.pg_index.c.indnullsnotdistinct
@@ -4695,10 +4692,7 @@ class PGDialect(default.DefaultDialect):
                     # "The number of key columns in the index, not counting any
                     # included columns, which are merely stored and do not
                     # participate in the index semantics"
-                    if (
-                        indnkeyatts is not None
-                        and len(all_elements) > indnkeyatts
-                    ):
+                    if len(all_elements) > indnkeyatts:
                         # this is a "covering index" which has INCLUDE columns
                         # as well as regular index columns
                         inc_cols = all_elements[indnkeyatts:]
