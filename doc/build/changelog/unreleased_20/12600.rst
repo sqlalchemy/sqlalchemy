@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, postgresql, reflection
+    :tickets: 12600
+
+    Fixed regression caused by :ticket:`10665` where the newly modified
+    constraint reflection query would fail on older versions of PostgreSQL 
+    such as version 9.6.  Pull request courtesy Denis Laxalde.
