@@ -46,7 +46,7 @@ Discussions = "https://github.com/sqlalchemy/sqlalchemy/discussions"
 asyncio = ["greenlet>=1"]
 mypy = [
     "mypy >= 1.7",
-    "types-greenlet >= 2"
+    "types-greenlet >= 2",
 ]
 mssql = ["pyodbc"]
 mssql-pymssql = ["pymssql"]
@@ -67,6 +67,7 @@ postgresql-psycopg2cffi = ["psycopg2cffi"]
 postgresql-psycopg = ["psycopg>=3.0.7,!=3.1.15"]
 postgresql-psycopgbinary = ["psycopg[binary]>=3.0.7,!=3.1.15"]
 pymysql = ["pymysql"]
+cymysql = ["cymysql"]
 aiomysql = [
     "greenlet>=1",  # same as ".[asyncio]" if this syntax were supported
     "aiomysql",

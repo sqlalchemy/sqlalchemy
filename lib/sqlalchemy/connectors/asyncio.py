@@ -20,13 +20,17 @@ from typing import NoReturn
 from typing import Optional
 from typing import Protocol
 from typing import Sequence
+from typing import TYPE_CHECKING
 
 from ..engine import AdaptedConnection
-from ..engine.interfaces import _DBAPICursorDescription
-from ..engine.interfaces import _DBAPIMultiExecuteParams
-from ..engine.interfaces import _DBAPISingleExecuteParams
 from ..util.concurrency import await_
-from ..util.typing import Self
+
+if TYPE_CHECKING:
+    from ..engine.interfaces import _DBAPICursorDescription
+    from ..engine.interfaces import _DBAPIMultiExecuteParams
+    from ..engine.interfaces import _DBAPISingleExecuteParams
+    from ..engine.interfaces import DBAPIModule
+    from ..util.typing import Self
 
 
 class AsyncIODBAPIConnection(Protocol):
@@ -36,13 +40,18 @@ class AsyncIODBAPIConnection(Protocol):
 
     """
 
-    async def close(self) -> None: ...
+    # note that async DBAPIs dont agree if close() should be awaitable,
+    # so it is omitted here and picked up by the __getattr__ hook below
 
     async def commit(self) -> None: ...
 
     def cursor(self, *args: Any, **kwargs: Any) -> AsyncIODBAPICursor: ...
 
     async def rollback(self) -> None: ...
+
+    def __getattr__(self, key: str) -> Any: ...
+
+    def __setattr__(self, key: str, value: Any) -> None: ...
 
 
 class AsyncIODBAPICursor(Protocol):
@@ -99,6 +108,16 @@ class AsyncIODBAPICursor(Protocol):
     async def nextset(self) -> Optional[bool]: ...
 
     def __aiter__(self) -> AsyncIterator[Any]: ...
+
+
+class AsyncAdapt_dbapi_module:
+    if TYPE_CHECKING:
+        Error = DBAPIModule.Error
+        OperationalError = DBAPIModule.OperationalError
+        InterfaceError = DBAPIModule.InterfaceError
+        IntegrityError = DBAPIModule.IntegrityError
+
+        def __getattr__(self, key: str) -> Any: ...
 
 
 class AsyncAdapt_dbapi_cursor:

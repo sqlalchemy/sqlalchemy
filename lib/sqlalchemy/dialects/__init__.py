@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from typing import Callable
 from typing import Optional
 from typing import Type
@@ -39,7 +40,7 @@ def _auto_fn(name: str) -> Optional[Callable[[], Type[Dialect]]]:
             # hardcoded.   if mysql / mariadb etc were third party dialects
             # they would just publish all the entrypoints, which would actually
             # look much nicer.
-            module = __import__(
+            module: Any = __import__(
                 "sqlalchemy.dialects.mysql.mariadb"
             ).dialects.mysql.mariadb
             return module.loader(driver)  # type: ignore
