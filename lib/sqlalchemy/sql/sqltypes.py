@@ -6,9 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: allow-untyped-defs, allow-untyped-calls
 
-"""SQL specific types.
-
-"""
+"""SQL specific types."""
 from __future__ import annotations
 
 import collections.abc as collections_abc

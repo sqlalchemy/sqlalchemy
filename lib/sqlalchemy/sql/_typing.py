@@ -340,11 +340,11 @@ if TYPE_CHECKING:
     def is_selectable(t: Any) -> TypeGuard[Selectable]: ...
 
     def is_select_base(
-        t: Union[Executable, ReturnsRows]
+        t: Union[Executable, ReturnsRows],
     ) -> TypeGuard[SelectBase]: ...
 
     def is_select_statement(
-        t: Union[Executable, ReturnsRows]
+        t: Union[Executable, ReturnsRows],
     ) -> TypeGuard[Select[Unpack[TupleAny]]]: ...
 
     def is_table(t: FromClause) -> TypeGuard[TableClause]: ...

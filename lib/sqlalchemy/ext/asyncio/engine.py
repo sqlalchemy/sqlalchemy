@@ -1433,7 +1433,7 @@ def _get_sync_engine_or_connection(
 
 
 def _get_sync_engine_or_connection(
-    async_engine: Union[AsyncEngine, AsyncConnection]
+    async_engine: Union[AsyncEngine, AsyncConnection],
 ) -> Union[Engine, Connection]:
     if isinstance(async_engine, AsyncConnection):
         return async_engine._proxied
