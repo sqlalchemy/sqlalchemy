@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 12600
+
+    Fix query for unique and primary key constraints reflection on PostgreSQL 10
+    and below.

@@ -4110,7 +4110,7 @@ class PGDialect(default.DefaultDialect):
         if self.server_version_info >= (11, 0):
             indnkeyatts = pg_catalog.pg_index.c.indnkeyatts
         else:
-            indnkeyatts = sql.null().label("indnkeyatts")
+            indnkeyatts = pg_catalog.pg_index.c.indnatts.label("indnkeyatts")
 
         if self.server_version_info >= (15,):
             indnullsnotdistinct = pg_catalog.pg_index.c.indnullsnotdistinct
@@ -4585,7 +4585,7 @@ class PGDialect(default.DefaultDialect):
         if self.server_version_info >= (11, 0):
             indnkeyatts = pg_catalog.pg_index.c.indnkeyatts
         else:
-            indnkeyatts = sql.null().label("indnkeyatts")
+            indnkeyatts = pg_catalog.pg_index.c.indnatts.label("indnkeyatts")
 
         if self.server_version_info >= (15,):
             nulls_not_distinct = pg_catalog.pg_index.c.indnullsnotdistinct
