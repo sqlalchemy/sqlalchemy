@@ -5,9 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""ORM event interfaces.
-
-"""
+"""ORM event interfaces."""
 from __future__ import annotations
 
 from typing import Any
@@ -1602,7 +1600,7 @@ class SessionEvents(event.Events[Session]):
     _dispatch_target = Session
 
     def _lifecycle_event(  # type: ignore [misc]
-        fn: Callable[[SessionEvents, Session, Any], None]
+        fn: Callable[[SessionEvents, Session, Any], None],
     ) -> Callable[[SessionEvents, Session, Any], None]:
         _sessionevents_lifecycle_event_names.add(fn.__name__)
         return fn

@@ -297,7 +297,7 @@ def type_id_for_callee(callee: Expression) -> Optional[int]:
 
 
 def type_id_for_named_node(
-    node: Union[NameExpr, MemberExpr, SymbolNode]
+    node: Union[NameExpr, MemberExpr, SymbolNode],
 ) -> Optional[int]:
     type_id, fullnames = _lookup.get(node.name, (None, None))
 

@@ -103,6 +103,7 @@ class MappedClassProtocol(Protocol[_O]):
 
 class _DeclMappedClassProtocol(MappedClassProtocol[_O], Protocol):
     "Internal more detailed version of ``MappedClassProtocol``."
+
     metadata: MetaData
     __tablename__: str
     __mapper_args__: _MapperKwArgs

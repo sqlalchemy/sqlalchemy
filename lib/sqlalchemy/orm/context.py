@@ -2525,7 +2525,7 @@ def _column_descriptions(
 
 
 def _legacy_filter_by_entity_zero(
-    query_or_augmented_select: Union[Query[Any], Select[Any]]
+    query_or_augmented_select: Union[Query[Any], Select[Any]],
 ) -> Optional[_InternalEntityType[Any]]:
     self = query_or_augmented_select
     if self._setup_joins:
@@ -2540,7 +2540,7 @@ def _legacy_filter_by_entity_zero(
 
 
 def _entity_from_pre_ent_zero(
-    query_or_augmented_select: Union[Query[Any], Select[Any]]
+    query_or_augmented_select: Union[Query[Any], Select[Any]],
 ) -> Optional[_InternalEntityType[Any]]:
     self = query_or_augmented_select
     if not self._raw_columns:

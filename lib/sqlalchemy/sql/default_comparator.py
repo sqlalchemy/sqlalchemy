@@ -5,8 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Default implementation of SQL comparison operations.
-"""
+"""Default implementation of SQL comparison operations."""
 
 from __future__ import annotations
 

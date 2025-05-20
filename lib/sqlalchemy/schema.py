@@ -5,9 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Compatibility namespace for sqlalchemy.sql.schema and related.
-
-"""
+"""Compatibility namespace for sqlalchemy.sql.schema and related."""
 
 from __future__ import annotations
 

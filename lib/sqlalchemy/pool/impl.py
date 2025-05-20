@@ -6,9 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 
-"""Pool implementation classes.
-
-"""
+"""Pool implementation classes."""
 from __future__ import annotations
 
 import threading
