@@ -3548,7 +3548,11 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
         (postgresql.INET, "127.0.0.1"),
         (postgresql.CIDR, "192.168.100.128/25"),
         (postgresql.MACADDR, "08:00:2b:01:02:03"),
-        (postgresql.MACADDR8, "08:00:2b:01:02:03:04:05"),
+        (
+            postgresql.MACADDR8,
+            "08:00:2b:01:02:03:04:05",
+            testing.skip_if("postgresql < 10"),
+        ),
         argnames="column_type, value",
         id_="na",
     )

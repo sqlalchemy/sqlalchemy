@@ -1007,7 +1007,7 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
         (func.to_tsquery,),
         (func.plainto_tsquery,),
         (func.phraseto_tsquery,),
-        (func.websearch_to_tsquery,),
+        (func.websearch_to_tsquery, testing.skip_if("postgresql < 11")),
         argnames="to_ts_func",
     )
     @testing.variation("use_regconfig", [True, False, "literal"])
