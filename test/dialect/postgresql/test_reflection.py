@@ -910,6 +910,9 @@ class ReflectionTest(
         subject = Table("subject", meta2, autoload_with=connection)
         eq_(subject.primary_key.columns.keys(), ["p2", "p1"])
 
+    @testing.skip_if(
+        "postgresql < 15.0", "on delete with column list not supported"
+    )
     def test_reflected_foreign_key_ondelete_column_list(
         self, metadata, connection
     ):
