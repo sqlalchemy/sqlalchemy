@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 import typing
-from typing import Any
+from typing import Any, Mapping
 from typing import Callable
 from typing import Collection
 from typing import Iterable
@@ -136,6 +136,7 @@ def mapped_column(
     system: bool = False,
     comment: Optional[str] = None,
     sort_order: Union[_NoArg, int] = _NoArg.NO_ARG,
+    dataclass_metadata: Union[_NoArg, Mapping[Any, Any], None] = _NoArg.NO_ARG,
     **kw: Any,
 ) -> MappedColumn[Any]:
     r"""declare a new ORM-mapped :class:`_schema.Column` construct
@@ -355,7 +356,14 @@ def mapped_column(
         autoincrement=autoincrement,
         insert_default=insert_default,
         attribute_options=_AttributeOptions(
-            init, repr, default, default_factory, compare, kw_only, hash
+            init,
+            repr,
+            default,
+            default_factory,
+            compare,
+            kw_only,
+            hash,
+            dataclass_metadata,
         ),
         doc=doc,
         key=key,
@@ -461,6 +469,7 @@ def column_property(
     expire_on_flush: bool = True,
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
+    dataclass_metadata: Union[_NoArg, Mapping[Any, Any], None] = _NoArg.NO_ARG,
 ) -> MappedSQLExpression[_T]:
     r"""Provide a column-level property for use with a mapping.
 
@@ -595,6 +604,7 @@ def column_property(
             compare,
             kw_only,
             hash,
+            dataclass_metadata,
         ),
         group=group,
         deferred=deferred,
@@ -627,6 +637,7 @@ def composite(
     hash: Union[_NoArg, bool, None] = _NoArg.NO_ARG,  # noqa: A002
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
+    dataclass_metadata: Union[_NoArg, Mapping[Any, Any], None] = _NoArg.NO_ARG,
     **__kw: Any,
 ) -> Composite[Any]: ...
 
@@ -697,6 +708,7 @@ def composite(
     hash: Union[_NoArg, bool, None] = _NoArg.NO_ARG,  # noqa: A002
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
+    dataclass_metadata: Union[_NoArg, Mapping[Any, Any], None] = _NoArg.NO_ARG,
     **__kw: Any,
 ) -> Composite[Any]:
     r"""Return a composite column-based property for use with a Mapper.
@@ -783,7 +795,14 @@ def composite(
         _class_or_attr,
         *attrs,
         attribute_options=_AttributeOptions(
-            init, repr, default, default_factory, compare, kw_only, hash
+            init,
+            repr,
+            default,
+            default_factory,
+            compare,
+            kw_only,
+            hash,
+            dataclass_metadata,
         ),
         group=group,
         deferred=deferred,
@@ -1037,6 +1056,7 @@ def relationship(
     info: Optional[_InfoType] = None,
     omit_join: Literal[None, False] = None,
     sync_backref: Optional[bool] = None,
+    dataclass_metadata: Union[_NoArg, Mapping[Any, Any], None] = _NoArg.NO_ARG,
     **kw: Any,
 ) -> _RelationshipDeclared[Any]:
     """Provide a relationship between two mapped classes.
@@ -1870,7 +1890,14 @@ def relationship(
         cascade=cascade,
         viewonly=viewonly,
         attribute_options=_AttributeOptions(
-            init, repr, default, default_factory, compare, kw_only, hash
+            init,
+            repr,
+            default,
+            default_factory,
+            compare,
+            kw_only,
+            hash,
+            dataclass_metadata,
         ),
         lazy=lazy,
         passive_deletes=passive_deletes,
@@ -1908,6 +1935,7 @@ def synonym(
     hash: Union[_NoArg, bool, None] = _NoArg.NO_ARG,  # noqa: A002
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
+    dataclass_metadata: Union[_NoArg, Mapping[Any, Any], None] = _NoArg.NO_ARG,
 ) -> Synonym[Any]:
     """Denote an attribute name as a synonym to a mapped property,
     in that the attribute will mirror the value and expression behavior
@@ -2021,7 +2049,14 @@ def synonym(
         descriptor=descriptor,
         comparator_factory=comparator_factory,
         attribute_options=_AttributeOptions(
-            init, repr, default, default_factory, compare, kw_only, hash
+            init,
+            repr,
+            default,
+            default_factory,
+            compare,
+            kw_only,
+            hash,
+            dataclass_metadata,
         ),
         doc=doc,
         info=info,
@@ -2156,6 +2191,7 @@ def deferred(
     expire_on_flush: bool = True,
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
+    dataclass_metadata: Union[_NoArg, Mapping[Any, Any], None] = _NoArg.NO_ARG,
 ) -> MappedSQLExpression[_T]:
     r"""Indicate a column-based mapped attribute that by default will
     not load unless accessed.
@@ -2186,7 +2222,14 @@ def deferred(
         column,
         *additional_columns,
         attribute_options=_AttributeOptions(
-            init, repr, default, default_factory, compare, kw_only, hash
+            init,
+            repr,
+            default,
+            default_factory,
+            compare,
+            kw_only,
+            hash,
+            dataclass_metadata,
         ),
         group=group,
         deferred=True,
@@ -2226,6 +2269,7 @@ def query_expression(
             _NoArg.NO_ARG,
             _NoArg.NO_ARG,
             compare,
+            _NoArg.NO_ARG,
             _NoArg.NO_ARG,
             _NoArg.NO_ARG,
         ),
