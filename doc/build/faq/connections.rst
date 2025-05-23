@@ -258,7 +258,9 @@ statement executions::
                     fn(cursor_obj, statement, context=context, *arg)
                 except engine.dialect.dbapi.Error as raw_dbapi_err:
                     connection = context.root_connection
-                    if engine.dialect.is_disconnect(raw_dbapi_err, connection, cursor_obj):
+                    if engine.dialect.is_disconnect(
+                        raw_dbapi_err, connection.connection.dbapi_connection, cursor_obj
+                    ):
                         engine.logger.error(
                             "disconnection error, attempt %d/%d",
                             retry + 1,
