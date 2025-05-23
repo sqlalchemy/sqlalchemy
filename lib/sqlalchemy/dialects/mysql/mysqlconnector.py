@@ -162,7 +162,7 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
 
     @classmethod
     def import_dbapi(cls) -> DBAPIModule:
-        return cast(DBAPIModule, __import__("mysql.connector").connector)
+        return cast("DBAPIModule", __import__("mysql.connector").connector)
 
     def do_ping(self, dbapi_connection: DBAPIConnection) -> bool:
         dbapi_connection.ping(False)
