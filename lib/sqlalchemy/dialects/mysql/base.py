@@ -3706,7 +3706,7 @@ class MySQLDialect(default.DefaultDialect):
         if not row:
             return None
         else:
-            return cast("Optional[str]", row[fetch_col])
+            return cast(Optional[str], row[fetch_col])
 
     def _detect_charset(self, connection: Connection) -> str:
         raise NotImplementedError()
@@ -3819,7 +3819,7 @@ class MySQLDialect(default.DefaultDialect):
         row = self._compat_first(rp, charset=charset)
         if not row:
             raise exc.NoSuchTableError(full_name)
-        return cast("str", row[1]).strip()
+        return cast(str, row[1]).strip()
 
     @overload
     def _describe_table(
