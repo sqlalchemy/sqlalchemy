@@ -342,6 +342,10 @@ def mapped_column(
 
      .. versionadded:: 2.0.36
 
+    :param dataclass_metadata: Specific to
+     :ref:`orm_declarative_native_dataclasses`, supplies metadata
+     to be attached to the generated dataclass field.
+
     :param \**kw: All remaining keyword arguments are passed through to the
      constructor for the :class:`_schema.Column`.
 
@@ -592,6 +596,9 @@ def column_property(
 
      .. versionadded:: 2.0.36
 
+    :param dataclass_metadata: Specific to
+     :ref:`orm_declarative_native_dataclasses`, supplies metadata
+     to be attached to the generated dataclass field.
     """
     return MappedSQLExpression(
         column,
@@ -787,6 +794,10 @@ def composite(
      class.
 
      .. versionadded:: 2.0.36
+
+    :param dataclass_metadata: Specific to
+     :ref:`orm_declarative_native_dataclasses`, supplies metadata
+     to be attached to the generated dataclass field.
     """
     if __kw:
         raise _no_kw()
@@ -1873,6 +1884,10 @@ def relationship(
      class.
 
      .. versionadded:: 2.0.36
+
+    :param dataclass_metadata: Specific to
+     :ref:`orm_declarative_native_dataclasses`, supplies metadata
+     to be attached to the generated dataclass field.
     """
 
     return _RelationshipDeclared(
