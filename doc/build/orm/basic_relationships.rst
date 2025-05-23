@@ -1018,7 +1018,7 @@ within any of these string expressions::
 
 In an example like the above, the string passed to :class:`_orm.Mapped`
 can be disambiguated from a specific class argument by passing the class
-location string directly to :paramref:`_orm.relationship.argument` as well.
+location string directly to the first positional parameter (:paramref:`_orm.relationship.argument`) as well.
 Below illustrates a typing-only import for ``Child``, combined with a
 runtime specifier for the target class that will search for the correct
 name within the :class:`_orm.registry`::
