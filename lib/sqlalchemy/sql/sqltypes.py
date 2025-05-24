@@ -1099,14 +1099,6 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
 
         parent._on_table_attach(util.portable_instancemethod(self._set_table))
 
-    def _variant_mapping_for_set_table(self, column):
-        if column.type._variant_mapping:
-            variant_mapping = dict(column.type._variant_mapping)
-            variant_mapping["_default"] = column.type
-        else:
-            variant_mapping = None
-        return variant_mapping
-
     def _set_table(self, column, table):
         if self.inherit_schema:
             self.schema = table.schema
@@ -1116,21 +1108,17 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         if not self._create_events:
             return
 
-        variant_mapping = self._variant_mapping_for_set_table(column)
-
         event.listen(
             table,
             "before_create",
-            util.portable_instancemethod(
-                self._on_table_create, {"variant_mapping": variant_mapping}
+            self._run_only_on_mapped_variant(
+                self._on_table_create, column.type
             ),
         )
         event.listen(
             table,
             "after_drop",
-            util.portable_instancemethod(
-                self._on_table_drop, {"variant_mapping": variant_mapping}
-            ),
+            self._run_only_on_mapped_variant(self._on_table_drop, column.type),
         )
         if self.metadata is None:
             # if SchemaType were created w/ a metadata argument, these
@@ -1139,17 +1127,15 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
             event.listen(
                 table.metadata,
                 "before_create",
-                util.portable_instancemethod(
-                    self._on_metadata_create,
-                    {"variant_mapping": variant_mapping},
+                self._run_only_on_mapped_variant(
+                    self._on_metadata_create, column.type
                 ),
             )
             event.listen(
                 table.metadata,
                 "after_drop",
-                util.portable_instancemethod(
-                    self._on_metadata_drop,
-                    {"variant_mapping": variant_mapping},
+                self._run_only_on_mapped_variant(
+                    self._on_metadata_drop, column.type
                 ),
             )
 
@@ -1194,68 +1180,84 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
             t.drop(bind, checkfirst=checkfirst)
 
     def _on_table_create(self, target, bind, **kw):
-        if not self._is_impl_for_variant(bind.dialect, kw):
-            return
-
         t = self.dialect_impl(bind.dialect)
         if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
             t._on_table_create(target, bind, **kw)
 
     def _on_table_drop(self, target, bind, **kw):
-        if not self._is_impl_for_variant(bind.dialect, kw):
-            return
-
         t = self.dialect_impl(bind.dialect)
         if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
             t._on_table_drop(target, bind, **kw)
 
     def _on_metadata_create(self, target, bind, **kw):
-        if not self._is_impl_for_variant(bind.dialect, kw):
-            return
-
         t = self.dialect_impl(bind.dialect)
         if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
             t._on_metadata_create(target, bind, **kw)
 
     def _on_metadata_drop(self, target, bind, **kw):
-        if not self._is_impl_for_variant(bind.dialect, kw):
-            return
-
         t = self.dialect_impl(bind.dialect)
         if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
             t._on_metadata_drop(target, bind, **kw)
 
-    def _is_impl_for_variant(self, dialect, kw):
-        variant_mapping = kw.pop("variant_mapping", None)
+    TResult = TypeVar('TResult')
 
-        if not variant_mapping:
-            return True
+    def _run_only_on_mapped_variant(
+        self,
+        method: Callable[..., TResult],
+        variant: Optional[TypeEngine[Any]] = None,
+    ) -> Callable[..., Optional[TResult]]:
+        """
+        For types which have a _variant_mapping, each variant
+        will be set up with an independent listener for each of the
+        events it is sensitive to, so that events and constructs like
+        `CheckConstraint` can be configured on the base type in a
+        dialect-agnostic fashion.
 
-        # for types that have _variant_mapping, all the impls in the map
-        # that are SchemaEventTarget subclasses get set up as event holders.
-        # this is so that constructs that need
-        # to be associated with the Table at dialect-agnostic time etc. like
-        # CheckConstraints can be set up with that table.  they then add
-        # to these constraints a DDL check_rule that among other things
-        # will check this _is_impl_for_variant() method to determine when
-        # the dialect is known that we are part of the table's DDL sequence.
+        Unfortunately, this means that all of these listeners will fire
+        independently. This method wraps the listeners to ensure that
+        only the mapped variant will fire.
+
+        If the variant doesn't fire, then the listener will return `None`.
+        """
 
         # since PostgreSQL is the only DB that has ARRAY this can only
         # be integration tested by PG-specific tests
-        def _we_are_the_impl(typ):
-            return (
-                typ is self
-                or isinstance(typ, ARRAY)
-                and typ.item_type is self  # type: ignore[comparison-overlap]
+
+        if variant is not None and hasattr(variant, "_variant_mapping"):
+            variant_mapping = dict(variant._variant_mapping)  # type: ignore
+            variant_mapping["_default"] = variant
+            return util.portable_instancemethod(
+                self._run_method_if_currently_mapped_variant,
+                {
+                    "variant_mapping": variant_mapping,
+                    "method": method
+                },
             )
+        else:
+            return util.portable_instancemethod(method)
 
-        if dialect.name in variant_mapping and _we_are_the_impl(
-            variant_mapping[dialect.name]
+    def _run_method_if_currently_mapped_variant(
+        self,
+        target_or_bind: Any,
+        *args: Any,
+        variant_mapping: dict[str, TypeEngine[Any]],
+        method: Callable[..., TResult],
+        **kwargs: Any,
+    ) -> Optional[TResult]:
+        if isinstance(target_or_bind, SchemaEventTarget):
+            dialect = args[0].dialect
+        else:
+            dialect = target_or_bind.dialect
+
+        variant = variant_mapping.get(dialect.name, variant_mapping["_default"])
+
+        if (
+            variant is self
+            or isinstance(variant, ARRAY) and variant.item_type is self
         ):
-            return True
-        elif dialect.name not in variant_mapping:
-            return _we_are_the_impl(variant_mapping["_default"])
-
+            return method(target_or_bind, *args, **kwargs) or False
+        else:
+            return False
 
 _EnumTupleArg = Union[Sequence[enum.Enum], Sequence[str]]
 
@@ -1786,11 +1788,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         return super().adapt(cls, **kw)
 
     def _should_create_constraint(self, compiler, **kw):
-        if not self._is_impl_for_variant(compiler.dialect, kw):
-            return False
-        return (
-            not self.native_enum or not compiler.dialect.supports_native_enum
-        )
+        return not self.native_enum or not compiler.dialect.supports_native_enum
 
     @util.preload_module("sqlalchemy.sql.schema")
     def _set_table(self, column, table):
@@ -1800,14 +1798,11 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         if not self.create_constraint:
             return
 
-        variant_mapping = self._variant_mapping_for_set_table(column)
-
         e = schema.CheckConstraint(
             type_coerce(column, String()).in_(self.enums),
             name=_NONE_NAME if self.name is None else self.name,
-            _create_rule=util.portable_instancemethod(
-                self._should_create_constraint,
-                {"variant_mapping": variant_mapping},
+            _create_rule=self._run_only_on_mapped_variant(
+                self._should_create_constraint, column.type
             ),
             _type_bound=True,
         )
@@ -2023,8 +2018,6 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
         )
 
     def _should_create_constraint(self, compiler, **kw):
-        if not self._is_impl_for_variant(compiler.dialect, kw):
-            return False
         return (
             not compiler.dialect.supports_native_boolean
             and compiler.dialect.non_native_boolean_check_constraint
@@ -2036,15 +2029,10 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
         if not self.create_constraint:
             return
 
-        variant_mapping = self._variant_mapping_for_set_table(column)
-
         e = schema.CheckConstraint(
             type_coerce(column, self).in_([0, 1]),
             name=_NONE_NAME if self.name is None else self.name,
-            _create_rule=util.portable_instancemethod(
-                self._should_create_constraint,
-                {"variant_mapping": variant_mapping},
-            ),
+            _create_rule=self._run_only_on_mapped_variant(self._should_create_constraint),
             _type_bound=True,
         )
         assert e.table is table
