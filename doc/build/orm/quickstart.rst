@@ -80,11 +80,11 @@ of each attribute corresponds to the column that is to be part of the database
 table. The datatype of each column is taken first from the Python datatype
 that's associated with each :class:`_orm.Mapped` annotation; ``int`` for
 ``INTEGER``, ``str`` for ``VARCHAR``, etc. Nullability derives from whether or
-not the ``Optional[]`` type modifier is used. More specific typing information
-may be indicated using SQLAlchemy type objects in the right side
-:func:`_orm.mapped_column` directive, such as the :class:`.String` datatype
-used above in the ``User.name`` column. The association between Python types
-and SQL types can be customized using the
+not the ``Optional[]`` (or its equivalent) type modifier is used. More specific
+typing information may be indicated using SQLAlchemy type objects in the right
+side :func:`_orm.mapped_column` directive, such as the :class:`.String`
+datatype used above in the ``User.name`` column. The association between Python
+types and SQL types can be customized using the
 :ref:`type annotation map <orm_declarative_mapped_column_type_map>`.
 
 The :func:`_orm.mapped_column` directive is used for all column-based
