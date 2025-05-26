@@ -13,11 +13,11 @@ from typing import Any
 from typing import Callable
 from typing import cast
 from typing import Optional
-from typing import Type
 from typing import Union
 
 from . import url as _url
 from .. import util
+from ..engine import Connection
 
 
 if typing.TYPE_CHECKING:
@@ -27,8 +27,7 @@ if typing.TYPE_CHECKING:
     from .interfaces import Dialect
     from .url import URL
     from ..sql.base import Executable
-    from ..sql.ddl import SchemaDropper
-    from ..sql.ddl import SchemaGenerator
+    from ..sql.ddl import InvokeDDLBase
     from ..sql.schema import HasSchemaAttr
     from ..sql.schema import SchemaItem
 
@@ -53,12 +52,12 @@ class MockConnection:
 
     def _run_ddl_visitor(
         self,
-        visitorcallable: Type[Union[SchemaGenerator, SchemaDropper]],
+        visitorcallable: Callable[[Connection], InvokeDDLBase],
         element: SchemaItem,
         **kwargs: Any,
     ) -> None:
         kwargs["checkfirst"] = False
-        visitorcallable(self.dialect, self, **kwargs).traverse_single(element)
+        visitorcallable(cast(Connection, self), **kwargs).traverse_single(element)
 
     def execute(
         self,

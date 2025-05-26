@@ -865,7 +865,7 @@ class DropConstraintComment(_CreateDropBase["Constraint"]):
 
 
 class InvokeDDLBase(SchemaVisitor):
-    def __init__(self, connection):
+    def __init__(self, connection, **kw):
         self.connection = connection
 
     @contextlib.contextmanager
@@ -908,13 +908,28 @@ class InvokeDropDDLBase(InvokeDDLBase):
 
 class SchemaGenerator(InvokeCreateDDLBase):
     def __init__(
-        self, dialect, connection, checkfirst=False, tables=None, **kwargs
+        self,
+        arg1: Connection | Dialect,
+        arg2: Optional[Connection] = None,
+        /,
+        checkfirst=False,
+        tables=None,
+        **kwargs
     ):
+        if arg2 is not None:
+            util.warn_deprecated(
+                "The `dialect` parameter should no longer be used. "
+                "Use `SchemaGenerator(connection, **kwargs)` instead. ",
+                "2.1"
+            )
+            connection = arg2
+        else:
+            connection = typing.cast("Connection", arg1)
         super().__init__(connection, **kwargs)
         self.checkfirst = checkfirst
         self.tables = tables
-        self.preparer = dialect.identifier_preparer
-        self.dialect = dialect
+        self.dialect = connection.dialect
+        self.preparer = connection.dialect.identifier_preparer
         self.memo = {}
 
     def _can_create_table(self, table):
@@ -1062,13 +1077,29 @@ class SchemaGenerator(InvokeCreateDDLBase):
 
 class SchemaDropper(InvokeDropDDLBase):
     def __init__(
-        self, dialect, connection, checkfirst=False, tables=None, **kwargs
+        self,
+        arg1: Connection | Dialect,
+        arg2: Optional[Connection] = None,
+        /,
+        checkfirst=False,
+        tables=None,
+        **kwargs
     ):
+
+        if arg2 is not None:
+            util.warn_deprecated(
+                "The `dialect` parameter should no longer be used. "
+                "Use `SchemaDropper(connection, **kwargs)` instead. ",
+                "2.1"
+            )
+            connection = arg2
+        else:
+            connection = typing.cast("Connection", arg1)
         super().__init__(connection, **kwargs)
         self.checkfirst = checkfirst
         self.tables = tables
-        self.preparer = dialect.identifier_preparer
-        self.dialect = dialect
+        self.dialect = connection.dialect
+        self.preparer = self.dialect.identifier_preparer
         self.memo = {}
 
     def visit_metadata(self, metadata):

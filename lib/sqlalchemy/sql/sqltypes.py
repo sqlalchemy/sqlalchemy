@@ -72,7 +72,9 @@ if TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
     from ._typing import _TypeEngineArgument
     from .elements import ColumnElement
+    from ..engine.base import Connection
     from .operators import OperatorType
+    from .schema import _CreateDropBind
     from .schema import MetaData
     from .type_api import _BindProcessorType
     from .type_api import _ComparatorFactory
@@ -1165,19 +1167,24 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         kw.setdefault("_adapted_from", self)
         return super().adapt(cls, **kw)
 
-    def create(self, bind, checkfirst=False):
+    def create(self, bind: _CreateDropBind, checkfirst=False):
         """Issue CREATE DDL for this type, if applicable."""
+        def ddl_generator(conn: Connection, **kwargs):
+            return conn.dialect.ddl_generator(conn, **kwargs)
 
-        t = self.dialect_impl(bind.dialect)
-        if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
-            t.create(bind, checkfirst=checkfirst)
+        return bind._run_ddl_visitor(
+            ddl_generator, self, checkfirst=checkfirst
+        )
 
     def drop(self, bind, checkfirst=False):
         """Issue DROP DDL for this type, if applicable."""
 
-        t = self.dialect_impl(bind.dialect)
-        if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
-            t.drop(bind, checkfirst=checkfirst)
+        def ddl_dropper(conn: Connection, **kwargs):
+            return conn.dialect.ddl_dropper(conn, **kwargs)
+
+        return bind._run_ddl_visitor(
+            ddl_dropper, self, checkfirst=checkfirst
+        )
 
     def _on_table_create(self, target, bind, **kw):
         t = self.dialect_impl(bind.dialect)

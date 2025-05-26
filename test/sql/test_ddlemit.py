@@ -1,5 +1,7 @@
 from unittest.mock import Mock
 
+from typing import Callable
+
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Index
@@ -8,8 +10,12 @@ from sqlalchemy import MetaData
 from sqlalchemy import schema
 from sqlalchemy import Sequence
 from sqlalchemy import Table
+from sqlalchemy import Enum
+from sqlalchemy.engine import default
+from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.sql.ddl import SchemaDropper
 from sqlalchemy.sql.ddl import SchemaGenerator
+from sqlalchemy import testing
 from sqlalchemy.testing import fixtures
 
 
@@ -39,7 +45,6 @@ class EmitDDLTest(fixtures.TestBase):
         connection = self._mock_connection(item_exists)
 
         return SchemaGenerator(
-            connection.dialect,
             connection,
             checkfirst=checkfirst,
             tables=tables,
@@ -51,7 +56,6 @@ class EmitDDLTest(fixtures.TestBase):
         connection = self._mock_connection(item_exists)
 
         return SchemaDropper(
-            connection.dialect,
             connection,
             checkfirst=checkfirst,
             tables=tables,
@@ -416,3 +420,164 @@ class EmitDDLTest(fixtures.TestBase):
                     if e not in set(c.include_foreign_key_constraints)
                 ]
         assert not elements, "elements remain in list: %r" % elements
+
+
+class DialectDDLGenerationTests(fixtures.TestBase):
+
+    def _mock_connection(self, **dialect_kwargs):
+        dialect = self._dialect_fixture(**dialect_kwargs)
+        return MockConnection(dialect, execute=lambda *args, **kwargs: None)
+
+    def _dialect_fixture(
+        self,
+        add_generated: Callable[[str, str], None] | None = None,
+        add_dropped: Callable[[str, str], None] | None = None,
+    ):
+        class MyGenerator(SchemaGenerator):
+            def visit_table(self, table, *args, **kwargs):
+                assert add_generated is not None
+                add_generated("table", table.name)
+
+            def visit_sequence(self, sequence, *args, **kwargs):
+                assert add_generated is not None
+                add_generated("sequence", sequence.name)
+
+            def visit_enum(self, enum, *args, **kwargs):
+                assert add_generated is not None
+                add_generated("enum", enum.name)
+
+        class MyDropper(SchemaDropper):
+            def visit_table(self, table, *args, **kwargs):
+                assert add_dropped is not None
+                add_dropped("table", table.name)
+
+            def visit_sequence(self, sequence, *args, **kwargs):
+                assert add_dropped is not None
+                add_dropped("sequence", sequence.name)
+
+            def visit_enum(self, enum, *args, **kwargs):
+                assert add_dropped is not None
+                add_dropped("enum", enum.name)
+
+        class MyDialect(default.DefaultDialect):
+            if add_generated is not None:
+                ddl_generator = MyGenerator
+
+            if add_dropped is not None:
+                ddl_dropper = MyDropper
+
+        return MyDialect()
+
+    def test_metadata_create_all_uses_dialect_generate(self):
+        generated_tables = set()
+
+        def add_generated(type, name):
+            assert type == "table"
+            generated_tables.add(name)
+
+        connection = self._mock_connection(add_generated=add_generated)
+
+        m = MetaData()
+        tables = [
+            Table(f"table_{i}", m, Column("pk", Integer, primary_key=True))
+            for i in range(5)
+        ]
+        # TODO: sequences, enums
+
+        m.create_all(connection)
+        assert generated_tables == {t.name for t in tables}
+
+    def test_metadata_drop_all_uses_dialect_ddl_dropper(self):
+        dropped_tables = set()
+
+        def add_dropped(type, name):
+            assert type == "table"
+            dropped_tables.add(name)
+
+        connection = self._mock_connection(add_dropped=add_dropped)
+
+        m = MetaData()
+        tables = [
+            Table(f"table_{i}", m, Column("pk", Integer, primary_key=True))
+            for i in range(5)
+        ]
+        # TODO: sequences, enums
+
+        m.drop_all(connection)
+        assert dropped_tables == {t.name for t in tables}
+
+    @testing.combinations(
+        (
+            "table",
+            "mytable",
+            lambda m: Table(
+                "mytable", m, Column("pk", Integer, primary_key=True)
+            ),
+        ),
+        (
+            "sequence",
+            "mysequence",
+            lambda m: Sequence("mysequence", metadata=m),
+        ),
+        (
+            "enum",
+            "myenum",
+            lambda m: Enum("1", "2", "3", name="myenum", metadata=m),
+        ),
+        argnames="item_type, name, schema_item",
+    )
+    def test_create_uses_dialect_ddl_generator(
+        self, item_type, name, schema_item
+    ):
+        generated_items = set()
+
+        def add_generated(type, name):
+            assert type == item_type
+            generated_items.add(name)
+
+        connection = self._mock_connection(add_generated=add_generated)
+
+        m = MetaData()
+        item = schema_item(m)
+
+        item.create(connection)
+        assert len(generated_items) == 1
+        assert generated_items.pop() == name
+
+    @testing.combinations(
+        (
+            "table",
+            "mytable",
+            lambda m: Table(
+                "mytable", m, Column("pk", Integer, primary_key=True)
+            ),
+        ),
+        (
+            "sequence",
+            "mysequence",
+            lambda m: Sequence("mysequence", metadata=m),
+        ),
+        (
+            "enum",
+            "myenum",
+            lambda m: Enum("1", "2", "3", name="myenum", metadata=m),
+        ),
+        argnames="item_type, name, schema_item",
+    )
+    def test_drop_uses_dialect_ddl_generator(
+        self, item_type, name, schema_item
+    ):
+        dropped_items = set()
+
+        def add_dropped(type, name):
+            assert type == item_type
+            dropped_items.add(name)
+
+        connection = self._mock_connection(add_dropped=add_dropped)
+
+        m = MetaData()
+        item = schema_item(m)
+
+        item.drop(connection)
+        assert len(dropped_items) == 1
+        assert dropped_items.pop() == name

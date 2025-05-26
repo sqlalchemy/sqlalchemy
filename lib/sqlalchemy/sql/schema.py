@@ -1280,8 +1280,10 @@ class Table(
             :meth:`_schema.MetaData.create_all`.
 
         """
+        def ddl_generator(conn: Connection, **kwargs):
+            return conn.dialect.ddl_generator(conn, **kwargs)
 
-        bind._run_ddl_visitor(ddl.SchemaGenerator, self, checkfirst=checkfirst)
+        bind._run_ddl_visitor(ddl_generator, self, checkfirst=checkfirst)
 
     def drop(self, bind: _CreateDropBind, checkfirst: bool = False) -> None:
         """Issue a ``DROP`` statement for this
@@ -1293,7 +1295,12 @@ class Table(
             :meth:`_schema.MetaData.drop_all`.
 
         """
-        bind._run_ddl_visitor(ddl.SchemaDropper, self, checkfirst=checkfirst)
+        def ddl_dropper(conn: Connection, **kwargs):
+            return conn.dialect.ddl_dropper(conn, **kwargs)
+
+        bind._run_ddl_visitor(
+            ddl_dropper, self, checkfirst=checkfirst
+        )
 
     @util.deprecated(
         "1.4",
@@ -2058,14 +2065,14 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         if l_args:
             coltype = l_args[0]
 
-            if hasattr(coltype, "_sqla_type"):
-                if type_ is not None:
-                    raise exc.ArgumentError(
-                        "May not pass type_ positionally and as a keyword."
-                    )
-                type_ = l_args.pop(0)  # type: ignore
-            elif l_args[0] is None:
-                l_args.pop(0)
+        if hasattr(coltype, "_sqla_type"):
+            if type_ is not None:
+                raise exc.ArgumentError(
+                    "May not pass type_ positionally and as a keyword."
+                )
+            type_ = l_args.pop(0)  # type: ignore
+        elif l_args[0] is None:
+            l_args.pop(0)
 
         if name is not None:
             name = quoted_name(name, quote)
@@ -4033,13 +4040,16 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
 
     def create(self, bind: _CreateDropBind, checkfirst: bool = True) -> None:
         """Creates this sequence in the database."""
+        def ddl_generator(conn: Connection, **kwargs):
+            return conn.dialect.ddl_generator(conn, **kwargs)
 
-        bind._run_ddl_visitor(ddl.SchemaGenerator, self, checkfirst=checkfirst)
+        bind._run_ddl_visitor(ddl_generator, self, checkfirst=checkfirst)
 
     def drop(self, bind: _CreateDropBind, checkfirst: bool = True) -> None:
         """Drops this sequence from the database."""
-
-        bind._run_ddl_visitor(ddl.SchemaDropper, self, checkfirst=checkfirst)
+        def ddl_dropper(conn: Connection, **kwargs):
+            return conn.dialect.ddl_dropper(conn, **kwargs)
+        bind._run_ddl_visitor(ddl_dropper, self, checkfirst=checkfirst)
 
     def _not_a_column_expr(self) -> NoReturn:
         raise exc.InvalidRequestError(
@@ -5407,11 +5417,11 @@ class Index(
         :class:`.Connection` or :class:`.Engine`` for connectivity.
 
         .. seealso::
-
             :meth:`_schema.MetaData.create_all`.
-
         """
-        bind._run_ddl_visitor(ddl.SchemaGenerator, self, checkfirst=checkfirst)
+        def ddl_generator(connection: Connection, **kwargs):
+            return connection.dialect.ddl_generator(connection, **kwargs)
+        bind._run_ddl_visitor(ddl_generator, self, checkfirst=checkfirst)
 
     def drop(self, bind: _CreateDropBind, checkfirst: bool = False) -> None:
         """Issue a ``DROP`` statement for this
@@ -5423,7 +5433,9 @@ class Index(
             :meth:`_schema.MetaData.drop_all`.
 
         """
-        bind._run_ddl_visitor(ddl.SchemaDropper, self, checkfirst=checkfirst)
+        def ddl_dropper(connection: Connection, **kwargs):
+            return connection.dialect.ddl_dropper(connection, **kwargs)
+        bind._run_ddl_visitor(ddl_dropper, self, checkfirst=checkfirst)
 
     def __repr__(self) -> str:
         exprs: _typing_Sequence[Any]  # noqa: F842
@@ -5987,8 +5999,11 @@ class MetaData(HasSchemaAttr):
           in the target database.
 
         """
+        def ddl_generator(connection: Connection, **kwargs):
+            return connection.dialect.ddl_generator(connection, **kwargs)
+
         bind._run_ddl_visitor(
-            ddl.SchemaGenerator, self, checkfirst=checkfirst, tables=tables
+            ddl_generator, self, checkfirst=checkfirst, tables=tables
         )
 
     def drop_all(
@@ -6015,8 +6030,11 @@ class MetaData(HasSchemaAttr):
           present in the target database.
 
         """
+        def ddl_dropper(connection: Connection, **kwargs):
+            return connection.dialect.ddl_dropper(connection, **kwargs)
+
         bind._run_ddl_visitor(
-            ddl.SchemaDropper, self, checkfirst=checkfirst, tables=tables
+            ddl_dropper, self, checkfirst=checkfirst, tables=tables
         )
 
 

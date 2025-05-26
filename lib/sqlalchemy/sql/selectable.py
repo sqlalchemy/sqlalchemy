@@ -94,7 +94,6 @@ from .elements import literal_column
 from .elements import TableValuedColumn
 from .elements import UnaryExpression
 from .operators import OperatorType
-from .sqltypes import NULLTYPE
 from .visitors import _TraverseInternalsType
 from .visitors import InternalTraversal
 from .visitors import prefix_anon_map
@@ -5384,7 +5383,9 @@ class Select(
     ) -> None:
         extension.apply_to_select(self)
 
+    @util.preload_module("sqlalchemy.sql.sqltypes")
     def _scalar_type(self) -> TypeEngine[Any]:
+        from .sqltypes import NULLTYPE
         if not self._raw_columns:
             return NULLTYPE
         elem = self._raw_columns[0]
