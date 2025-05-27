@@ -6,9 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 
-"""Base constructs for connection pools.
-
-"""
+"""Base constructs for connection pools."""
 
 from __future__ import annotations
 

@@ -51,7 +51,7 @@ class ShardTest:
 
     @classmethod
     def define_tables(cls, metadata):
-        global db1, db2, db3, db4, weather_locations, weather_reports
+        global weather_locations
 
         cls.tables.ids = ids = Table(
             "ids", metadata, Column("nextid", Integer, nullable=False)

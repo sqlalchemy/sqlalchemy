@@ -5,9 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""State tracking utilities used by :class:`_orm.Session`.
-
-"""
+"""State tracking utilities used by :class:`_orm.Session`."""
 
 from __future__ import annotations
 
