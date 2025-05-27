@@ -1,6 +1,4 @@
-"""this suite experiments with other kinds of relationship syntaxes.
-
-"""
+"""this suite experiments with other kinds of relationship syntaxes."""
 
 from __future__ import annotations
 

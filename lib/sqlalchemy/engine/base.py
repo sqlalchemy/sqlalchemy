@@ -4,9 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-"""Defines :class:`_engine.Connection` and :class:`_engine.Engine`.
-
-"""
+"""Defines :class:`_engine.Connection` and :class:`_engine.Engine`."""
 from __future__ import annotations
 
 import contextlib

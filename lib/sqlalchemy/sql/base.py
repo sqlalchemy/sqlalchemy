@@ -6,9 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: allow-untyped-defs, allow-untyped-calls
 
-"""Foundational utilities common to many sql modules.
-
-"""
+"""Foundational utilities common to many sql modules."""
 
 
 from __future__ import annotations
@@ -2154,7 +2152,7 @@ class ColumnSet(util.OrderedSet["ColumnClause[Any]"]):
 
 
 def _entity_namespace(
-    entity: Union[_HasEntityNamespace, ExternallyTraversible]
+    entity: Union[_HasEntityNamespace, ExternallyTraversible],
 ) -> _EntityNamespace:
     """Return the nearest .entity_namespace for the given entity.
 

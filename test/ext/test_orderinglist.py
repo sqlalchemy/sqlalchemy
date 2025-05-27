@@ -70,7 +70,7 @@ class OrderingListTest(fixtures.MappedTest):
         """Build a relationship situation using the given
         test_collection_class factory"""
 
-        global metadata, slides_table, bullets_table, Slide, Bullet
+        global slides_table, bullets_table, Slide, Bullet
 
         slides_table = Table(
             "test_Slides",

@@ -6,9 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: allow-untyped-defs, allow-untyped-calls
 
-"""High level utilities which build upon other modules here.
-
-"""
+"""High level utilities which build upon other modules here."""
 from __future__ import annotations
 
 from collections import deque
