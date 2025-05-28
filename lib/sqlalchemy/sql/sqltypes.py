@@ -44,9 +44,9 @@ from .base import _NONE_NAME
 from .base import NO_ARG
 from .base import SchemaEventTarget
 from .cache_key import HasCacheKey
-from .elements import quoted_name
 from .elements import Slice
 from .elements import TypeCoerce as type_coerce  # noqa
+from .schema import SchemaType
 from .type_api import Emulated
 from .type_api import NativeForEmulated  # noqa
 from .type_api import to_instance as to_instance
@@ -55,7 +55,7 @@ from .type_api import TypeEngine as TypeEngine
 from .type_api import TypeEngineMixin
 from .type_api import Variant  # noqa
 from .visitors import InternalTraversal
-from .. import event
+from .visitors import Visitable
 from .. import exc
 from .. import inspection
 from .. import util
@@ -72,10 +72,7 @@ if TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
     from ._typing import _TypeEngineArgument
     from .elements import ColumnElement
-    from ..engine.base import Connection
     from .operators import OperatorType
-    from .schema import _CreateDropBind
-    from .schema import MetaData
     from .type_api import _BindProcessorType
     from .type_api import _ComparatorFactory
     from .type_api import _LiteralProcessorType
@@ -1022,249 +1019,6 @@ class LargeBinary(_Binary):
 
         """
         _Binary.__init__(self, length=length)
-
-
-class SchemaType(SchemaEventTarget, TypeEngineMixin):
-    """Add capabilities to a type which allow for schema-level DDL to be
-    associated with a type.
-
-    Supports types that must be explicitly created/dropped (i.e. PG ENUM type)
-    as well as types that are complimented by table or schema level
-    constraints, triggers, and other rules.
-
-    :class:`.SchemaType` classes can also be targets for the
-    :meth:`.DDLEvents.before_parent_attach` and
-    :meth:`.DDLEvents.after_parent_attach` events, where the events fire off
-    surrounding the association of the type object with a parent
-    :class:`_schema.Column`.
-
-    .. seealso::
-
-        :class:`.Enum`
-
-        :class:`.Boolean`
-
-
-    """
-
-    _use_schema_map = True
-
-    name: Optional[str]
-
-    def __init__(
-        self,
-        name: Optional[str] = None,
-        schema: Optional[str] = None,
-        metadata: Optional[MetaData] = None,
-        inherit_schema: bool = False,
-        quote: Optional[bool] = None,
-        _create_events: bool = True,
-        _adapted_from: Optional[SchemaType] = None,
-    ):
-        if name is not None:
-            self.name = quoted_name(name, quote)
-        else:
-            self.name = None
-        self.schema = schema
-        self.metadata = metadata
-        self.inherit_schema = inherit_schema
-        self._create_events = _create_events
-
-        if _create_events and self.metadata:
-            event.listen(
-                self.metadata,
-                "before_create",
-                util.portable_instancemethod(self._on_metadata_create),
-            )
-            event.listen(
-                self.metadata,
-                "after_drop",
-                util.portable_instancemethod(self._on_metadata_drop),
-            )
-
-        if _adapted_from:
-            self.dispatch = self.dispatch._join(_adapted_from.dispatch)
-
-    def _set_parent(self, parent, **kw):
-        # set parent hook is when this type is associated with a column.
-        # Column calls it for all SchemaEventTarget instances, either the
-        # base type and/or variants in _variant_mapping.
-
-        # we want to register a second hook to trigger when that column is
-        # associated with a table.  in that event, we and all of our variants
-        # may want to set up some state on the table such as a CheckConstraint
-        # that will conditionally render at DDL render time.
-
-        # the base SchemaType also sets up events for
-        # on_table/metadata_create/drop in this method, which is used by
-        # "native" types with a separate CREATE/DROP e.g. Postgresql.ENUM
-
-        parent._on_table_attach(util.portable_instancemethod(self._set_table))
-
-    def _set_table(self, column, table):
-        if self.inherit_schema:
-            self.schema = table.schema
-        elif self.metadata and self.schema is None and self.metadata.schema:
-            self.schema = self.metadata.schema
-
-        if not self._create_events:
-            return
-
-        event.listen(
-            table,
-            "before_create",
-            self._run_only_on_mapped_variant(
-                self._on_table_create, column.type
-            ),
-        )
-        event.listen(
-            table,
-            "after_drop",
-            self._run_only_on_mapped_variant(self._on_table_drop, column.type),
-        )
-        if self.metadata is None:
-            # if SchemaType were created w/ a metadata argument, these
-            # events would already have been associated with that metadata
-            # and would preclude an association with table.metadata
-            event.listen(
-                table.metadata,
-                "before_create",
-                self._run_only_on_mapped_variant(
-                    self._on_metadata_create, column.type
-                ),
-            )
-            event.listen(
-                table.metadata,
-                "after_drop",
-                self._run_only_on_mapped_variant(
-                    self._on_metadata_drop, column.type
-                ),
-            )
-
-    def copy(self, **kw):
-        return self.adapt(
-            cast("Type[TypeEngine[Any]]", self.__class__),
-            _create_events=True,
-            metadata=(
-                kw.get("_to_metadata", self.metadata)
-                if self.metadata is not None
-                else None
-            ),
-        )
-
-    @overload
-    def adapt(self, cls: Type[_TE], **kw: Any) -> _TE: ...
-
-    @overload
-    def adapt(
-        self, cls: Type[TypeEngineMixin], **kw: Any
-    ) -> TypeEngine[Any]: ...
-
-    def adapt(
-        self, cls: Type[Union[TypeEngine[Any], TypeEngineMixin]], **kw: Any
-    ) -> TypeEngine[Any]:
-        kw.setdefault("_create_events", False)
-        kw.setdefault("_adapted_from", self)
-        return super().adapt(cls, **kw)
-
-    def create(self, bind: _CreateDropBind, checkfirst=False):
-        """Issue CREATE DDL for this type, if applicable."""
-        def ddl_generator(conn: Connection, **kwargs):
-            return conn.dialect.ddl_generator(conn, **kwargs)
-
-        return bind._run_ddl_visitor(
-            ddl_generator, self, checkfirst=checkfirst
-        )
-
-    def drop(self, bind, checkfirst=False):
-        """Issue DROP DDL for this type, if applicable."""
-
-        def ddl_dropper(conn: Connection, **kwargs):
-            return conn.dialect.ddl_dropper(conn, **kwargs)
-
-        return bind._run_ddl_visitor(
-            ddl_dropper, self, checkfirst=checkfirst
-        )
-
-    def _on_table_create(self, target, bind, **kw):
-        t = self.dialect_impl(bind.dialect)
-        if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
-            t._on_table_create(target, bind, **kw)
-
-    def _on_table_drop(self, target, bind, **kw):
-        t = self.dialect_impl(bind.dialect)
-        if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
-            t._on_table_drop(target, bind, **kw)
-
-    def _on_metadata_create(self, target, bind, **kw):
-        t = self.dialect_impl(bind.dialect)
-        if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
-            t._on_metadata_create(target, bind, **kw)
-
-    def _on_metadata_drop(self, target, bind, **kw):
-        t = self.dialect_impl(bind.dialect)
-        if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
-            t._on_metadata_drop(target, bind, **kw)
-
-    TResult = TypeVar('TResult')
-
-    def _run_only_on_mapped_variant(
-        self,
-        method: Callable[..., TResult],
-        variant: Optional[TypeEngine[Any]] = None,
-    ) -> Callable[..., Optional[TResult]]:
-        """
-        For types which have a _variant_mapping, each variant
-        will be set up with an independent listener for each of the
-        events it is sensitive to, so that events and constructs like
-        `CheckConstraint` can be configured on the base type in a
-        dialect-agnostic fashion.
-
-        Unfortunately, this means that all of these listeners will fire
-        independently. This method wraps the listeners to ensure that
-        only the mapped variant will fire.
-
-        If the variant doesn't fire, then the listener will return `None`.
-        """
-
-        # since PostgreSQL is the only DB that has ARRAY this can only
-        # be integration tested by PG-specific tests
-
-        if variant is not None and hasattr(variant, "_variant_mapping"):
-            variant_mapping = dict(variant._variant_mapping)  # type: ignore
-            variant_mapping["_default"] = variant
-            return util.portable_instancemethod(
-                self._run_method_if_currently_mapped_variant,
-                {
-                    "variant_mapping": variant_mapping,
-                    "method": method
-                },
-            )
-        else:
-            return util.portable_instancemethod(method)
-
-    def _run_method_if_currently_mapped_variant(
-        self,
-        target_or_bind: Any,
-        *args: Any,
-        variant_mapping: dict[str, TypeEngine[Any]],
-        method: Callable[..., TResult],
-        **kwargs: Any,
-    ) -> Optional[TResult]:
-        if isinstance(target_or_bind, SchemaEventTarget):
-            dialect = args[0].dialect
-        else:
-            dialect = target_or_bind.dialect
-
-        variant = variant_mapping.get(dialect.name, variant_mapping["_default"])
-
-        if (
-            variant is self
-            or isinstance(variant, ARRAY) and variant.item_type is self
-        ):
-            return method(target_or_bind, *args, **kwargs) or False
-        else:
-            return False
 
 _EnumTupleArg = Union[Sequence[enum.Enum], Sequence[str]]
 

@@ -1100,7 +1100,7 @@ class TypeEngine(Visitable, Generic[_T]):
         return util.generic_repr(self)
 
 
-class TypeEngineMixin:
+class TypeEngineMixin(Visitable):
     """classes which subclass this can act as "mixin" classes for
     TypeEngine."""
 

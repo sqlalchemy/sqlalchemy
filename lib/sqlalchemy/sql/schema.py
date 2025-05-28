@@ -79,6 +79,8 @@ from .elements import quoted_name
 from .elements import TextClause
 from .selectable import TableClause
 from .type_api import to_instance
+from .type_api import TypeEngine
+from .type_api import TypeEngineMixin
 from .visitors import ExternallyTraversible
 from .. import event
 from .. import exc
@@ -102,10 +104,10 @@ if typing.TYPE_CHECKING:
     from .elements import BindParameter
     from .elements import KeyedColumnElement
     from .functions import Function
-    from .type_api import TypeEngine
     from .visitors import anon_map
     from ..engine import Connection
     from ..engine import Engine
+    from ..engine.base import dispatcher
     from ..engine.interfaces import _CoreMultiExecuteParams
     from ..engine.interfaces import CoreExecuteOptionsParameter
     from ..engine.interfaces import ExecutionContext
@@ -3766,6 +3768,224 @@ class IdentityOptions(DialectKWArgs):
             }.items()
             if v != None
         }
+
+
+class SchemaType(HasSchemaAttr, TypeEngineMixin):
+    """
+    Adds the capability for a type to emit schema-level DDL
+    and be created/dropped during DDL updates (e.g. PG `ENUM`)
+
+    Also adds the capability to respond to schema-level constraints,
+    triggers or rules.
+    """
+
+    _use_schema_map = True
+
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        schema: Optional[str] = None,
+        metadata: Optional[MetaData] = None,
+        inherit_schema: bool = False,
+        quote: Optional[bool] = None,
+        _create_events: bool = True,
+        _adapted_from: Optional[SchemaType] = None
+    ):
+        if name is not None:
+            self.name = quoted_name(name, quote)
+        else:
+            self.name = None
+
+        self.inherit_schema = inherit_schema
+        self._create_events = _create_events
+
+        self.schema = schema
+        self._set_metadata(metadata)
+
+        if _adapted_from:
+            self.dispatch = cast(
+                "dispatcher",
+                self.dispatch._join(_adapted_from.dispatch)
+            )
+
+    def create(self, bind: _CreateDropBind, checkfirst: bool = True) -> None:
+        def ddl_generator(conn: Connection, **kwargs):
+            return conn.dialect.ddl_generator(conn, **kwargs)
+
+        bind._run_ddl_visitor(ddl_generator, self, checkfirst=checkfirst)
+
+    def drop(self, bind: _CreateDropBind, checkfirst: bool = True) -> None:
+        def ddl_dropper(conn: Connection, **kwargs):
+            return conn.dialect.ddl_dropper(conn, **kwargs)
+
+        bind._run_ddl_visitor(ddl_dropper, self, checkfirst=checkfirst)
+
+    def _set_metadata(
+        self,
+        metadata: MetaData | None,
+        _from_table: Optional[Table] = None,
+        _from_column: Optional[ColumnElement] = None
+    ):
+        if metadata is not None and self._create_events and metadata:
+            observed_variant = (
+                _from_column.type if _from_column is not None else None
+            )
+            event.listen(
+                metadata,
+                "before_create",
+                self._run_only_on_mapped_variant(
+                    self._on_metadata_create, observed_variant
+                )
+            )
+            event.listen(
+                metadata,
+                "after_drop",
+                self._run_only_on_mapped_variant(
+                    self._on_metadata_drop, observed_variant
+                )
+            )
+
+        self.metadata = metadata
+
+        if metadata and self.schema is None:
+            self.schema = metadata.schema
+
+    def _set_parent(self, parent, **kw):
+        assert isinstance(parent, ColumnElement)
+        parent._on_table_attach(util.portable_instancemethod(self._set_table))
+
+    def _set_table(self, column, table):
+        if self.inherit_schema:
+            self.schema = table.schema
+
+        if self.metadata is None:
+            self._set_metadata(table.metadata, table, column)
+
+        if self.inherit_schema and self.schema != table.schema:
+            self.schema = table.schema
+
+        if self._create_events:
+            event.listen(
+                table,
+                "before_create",
+                self._run_only_on_mapped_variant(
+                    self._on_table_create, column.type
+                )
+            )
+            event.listen(
+                table,
+                "after_drop",
+                self._run_only_on_mapped_variant(
+                    self._on_table_drop, column.type
+                )
+            )
+
+    def copy(self, **kw):
+        return self.adapt(
+            cast(type[TypeEngine[Any]], self.__class__),
+            _create_events=True,
+            metadata=kw.get("_to_metadata", self.metadata)
+        )
+
+    @overload
+    def adapt(
+        self, cls: type[TypeEngine[Any]], **kw: Any
+    ) -> TypeEngine[Any]: ...
+
+    @overload
+    def adapt(
+        self, cls: type[TypeEngineMixin], **kw: Any
+    ) -> TypeEngine[Any]: ...
+
+    def adapt(
+        self, cls: type[TypeEngine[Any] | TypeEngineMixin], **kw: Any
+    ) -> TypeEngine[Any]:
+        kw.setdefault("_create_events", False)
+        kw.setdefault("_adapted_from", self)
+        return super().adapt(cls, **kw)
+
+    TResult = TypeVar("TResult")
+
+    def _run_only_on_mapped_variant(
+        self,
+        method: Callable[..., TResult],
+        variant: Optional[TypeEngine[Any]] = None,
+    ) -> Callable[..., Optional[TResult]]:
+        """
+        For types which have a _variant_mapping, each variant
+        will be set up with an independent listener for each of the
+        events it is sensitive to, so that events and constructs like
+        `CheckConstraint` can be configured on the base type in a
+        dialect-agnostic fashion.
+
+        Unfortunately, this means that all of these listeners will fire
+        independently. This method wraps the listeners to ensure that
+        only the mapped variant will fire.
+
+        If the variant doesn't fire, then the listener will return `None`.
+        """
+
+        # since PostgreSQL is the only DB that has ARRAY this can only
+        # be integration tested by PG-specific tests
+
+        if variant is not None and hasattr(variant, "_variant_mapping"):
+            variant_mapping = dict(variant._variant_mapping)  # type: ignore
+            variant_mapping["_default"] = variant
+            return util.portable_instancemethod(
+                self._run_method_if_currently_mapped_variant,
+                {
+                    "variant_mapping": variant_mapping,
+                    "method": method
+                },
+            )
+        else:
+            return util.portable_instancemethod(method)
+
+    def _run_method_if_currently_mapped_variant(
+        self,
+        target_or_bind: Any,
+        *args: Any,
+        variant_mapping: dict[str, TypeEngine[Any]],
+        method: Callable[..., TResult],
+        **kwargs: Any,
+    ) -> Optional[TResult]:
+        from .sqltypes import ARRAY
+        if isinstance(target_or_bind, SchemaEventTarget):
+            dialect = args[0].dialect
+        else:
+            dialect = target_or_bind.dialect
+
+        variant = variant_mapping.get(
+            dialect.name, variant_mapping["_default"]
+        )
+
+        if (
+            variant is self
+            or isinstance(variant, ARRAY) and variant.item_type is self
+        ):
+            return method(target_or_bind, *args, **kwargs)
+        else:
+            return None
+
+    def _on_table_create(self, target, bind, **kw):
+        t = self.dialect_impl(bind.dialect)
+        if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
+            t._on_table_create(target, bind, **kw)
+
+    def _on_table_drop(self, target: MetaData, bind: _CreateDropBind, **kw):
+        t = self.dialect_impl(bind.dialect)
+        if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
+            t._on_table_drop(target, bind, **kw)
+
+    def _on_metadata_create(self, target: MetaData, bind: _CreateDropBind, **kw):
+        t = self.dialect_impl(bind.dialect)
+        if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
+            t._on_metadata_create(target, bind, **kw)
+
+    def _on_metadata_drop(self, target: MetaData, bind: _CreateDropBind, **kw):
+        t = self.dialect_impl(bind.dialect)
+        if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
+            t._on_metadata_drop(target, bind, **kw)
 
 
 class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):

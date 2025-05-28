@@ -2468,13 +2468,9 @@ class SchemaTypeTest(fixtures.TestBase):
         m2 = MetaData()
         t2 = t1.to_metadata(m2)
 
-        if assign_metadata:
-            # metadata was transferred
-            # issue #11802
-            is_(t2.c.y.type.metadata, m2)
-        else:
-            # metadata isn't set
-            is_(t2.c.y.type.metadata, None)
+        # metadata was transferred
+        # issue #11802
+        is_(t2.c.y.type.metadata, m2)
 
         # our test type sets table, though
         is_(t2.c.y.type.table, t2)
