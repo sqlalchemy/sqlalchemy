@@ -4513,6 +4513,9 @@ class PGDialect(default.DefaultDialect):
                 pg_catalog.pg_index.c.indexrelid,
                 pg_catalog.pg_index.c.indrelid,
                 sql.func.unnest(pg_catalog.pg_index.c.indkey).label("attnum"),
+                sql.func.unnest(pg_catalog.pg_index.c.indclass).label(
+                    "att_opclass"
+                ),
                 sql.func.generate_subscripts(
                     pg_catalog.pg_index.c.indkey, 1
                 ).label("ord"),
@@ -4544,6 +4547,8 @@ class PGDialect(default.DefaultDialect):
                     else_=pg_catalog.pg_attribute.c.attname.cast(TEXT),
                 ).label("element"),
                 (idx_sq.c.attnum == 0).label("is_expr"),
+                pg_catalog.pg_opclass.c.opcname,
+                pg_catalog.pg_opclass.c.opcdefault,
             )
             .select_from(idx_sq)
             .outerjoin(
@@ -4553,6 +4558,10 @@ class PGDialect(default.DefaultDialect):
                     pg_catalog.pg_attribute.c.attnum == idx_sq.c.attnum,
                     pg_catalog.pg_attribute.c.attrelid == idx_sq.c.indrelid,
                 ),
+            )
+            .outerjoin(
+                pg_catalog.pg_opclass,
+                pg_catalog.pg_opclass.c.oid == idx_sq.c.att_opclass,
             )
             .where(idx_sq.c.indrelid.in_(bindparam("oids")))
             .subquery("idx_attr")
@@ -4568,6 +4577,12 @@ class PGDialect(default.DefaultDialect):
                 sql.func.array_agg(
                     aggregate_order_by(attr_sq.c.is_expr, attr_sq.c.ord)
                 ).label("elements_is_expr"),
+                sql.func.array_agg(
+                    aggregate_order_by(attr_sq.c.opcname, attr_sq.c.ord)
+                ).label("elements_opclass"),
+                sql.func.array_agg(
+                    aggregate_order_by(attr_sq.c.opcdefault, attr_sq.c.ord)
+                ).label("elements_opdefault"),
             )
             .group_by(attr_sq.c.indexrelid)
             .subquery("idx_cols")
@@ -4610,6 +4625,8 @@ class PGDialect(default.DefaultDialect):
                 nulls_not_distinct,
                 cols_sq.c.elements,
                 cols_sq.c.elements_is_expr,
+                cols_sq.c.elements_opclass,
+                cols_sq.c.elements_opdefault,
             )
             .select_from(pg_catalog.pg_index)
             .where(
@@ -4682,6 +4699,8 @@ class PGDialect(default.DefaultDialect):
 
                     all_elements = row["elements"]
                     all_elements_is_expr = row["elements_is_expr"]
+                    all_elements_opclass = row["elements_opclass"]
+                    all_elements_opdefault = row["elements_opdefault"]
                     indnkeyatts = row["indnkeyatts"]
                     # "The number of key columns in the index, not counting any
                     # included columns, which are merely stored and do not
@@ -4701,10 +4720,18 @@ class PGDialect(default.DefaultDialect):
                             not is_expr
                             for is_expr in all_elements_is_expr[indnkeyatts:]
                         )
+                        idx_elements_opclass = all_elements_opclass[
+                            :indnkeyatts
+                        ]
+                        idx_elements_opdefault = all_elements_opdefault[
+                            :indnkeyatts
+                        ]
                     else:
                         idx_elements = all_elements
                         idx_elements_is_expr = all_elements_is_expr
                         inc_cols = []
+                        idx_elements_opclass = all_elements_opclass
+                        idx_elements_opdefault = all_elements_opdefault
 
                     index = {"name": index_name, "unique": row["indisunique"]}
                     if any(idx_elements_is_expr):
@@ -4717,6 +4744,19 @@ class PGDialect(default.DefaultDialect):
                         index["expressions"] = idx_elements
                     else:
                         index["column_names"] = idx_elements
+
+                    dialect_options = {}
+
+                    if not all(idx_elements_opdefault):
+                        dialect_options["postgresql_ops"] = {
+                            name: opclass
+                            for name, opclass, is_default in zip(
+                                idx_elements,
+                                idx_elements_opclass,
+                                idx_elements_opdefault,
+                            )
+                            if not is_default
+                        }
 
                     sorting = {}
                     for col_index, col_flags in enumerate(row["indoption"]):
@@ -4737,7 +4777,6 @@ class PGDialect(default.DefaultDialect):
                     if row["has_constraint"]:
                         index["duplicates_constraint"] = index_name
 
-                    dialect_options = {}
                     if row["reloptions"]:
                         dialect_options["postgresql_with"] = dict(
                             [
