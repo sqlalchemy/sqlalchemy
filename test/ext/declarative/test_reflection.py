@@ -276,8 +276,10 @@ class DeferredReflectionTest(testing.AssertsCompiledSQL, DeferredReflectBase):
                 ],
             )
 
+    @testing.requires.gil_enabled
     @testing.requires.predictable_gc
     def test_cls_not_strong_ref(self):
+
         class User(DeferredReflection, ComparableEntity, Base):
             __tablename__ = "users"
 
