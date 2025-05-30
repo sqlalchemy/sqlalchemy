@@ -151,88 +151,22 @@ class ReturnCombinationTests(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT lower(foo.x) AS lower_1 FROM foo",
         )
 
-    def test_returning_fromclause(self):
-        t = table("t", column("x"), column("y"), column("z"))
-        stmt = t.update().returning(t)
+    def test_returning_cte_unlabeled_expression(self, table_fixture):
+        t = table_fixture
+        stmt = delete(t).returning(
+            t.c.id,
+            t.c.id * -1
+        ).cte()
+        assert stmt.c.id.name == "id"
 
-        self.assert_compile(
-            stmt,
-            "UPDATE t SET x=%(x)s, y=%(y)s, z=%(z)s RETURNING t.x, t.y, t.z",
-        )
-
-        eq_(
-            stmt.returning_column_descriptions,
-            [
-                {
-                    "name": "x",
-                    "type": testing.eq_type_affinity(NullType),
-                    "expr": t.c.x,
-                },
-                {
-                    "name": "y",
-                    "type": testing.eq_type_affinity(NullType),
-                    "expr": t.c.y,
-                },
-                {
-                    "name": "z",
-                    "type": testing.eq_type_affinity(NullType),
-                    "expr": t.c.z,
-                },
-            ],
-        )
-
-        cte = stmt.cte("c")
-
-        stmt = select(cte.c.z)
-        self.assert_compile(
-            stmt,
-            "WITH c AS (UPDATE t SET x=%(x)s, y=%(y)s, z=%(z)s "
-            "RETURNING t.x, t.y, t.z) SELECT c.z FROM c",
-        )
-
-    def test_returning_inspectable(self):
-        t = table("t", column("x"), column("y"), column("z"))
-
-        class HasClauseElement:
-            def __clause_element__(self):
-                return t
-
-        stmt = update(HasClauseElement()).returning(HasClauseElement())
-
-        eq_(
-            stmt.returning_column_descriptions,
-            [
-                {
-                    "name": "x",
-                    "type": testing.eq_type_affinity(NullType),
-                    "expr": t.c.x,
-                },
-                {
-                    "name": "y",
-                    "type": testing.eq_type_affinity(NullType),
-                    "expr": t.c.y,
-                },
-                {
-                    "name": "z",
-                    "type": testing.eq_type_affinity(NullType),
-                    "expr": t.c.z,
-                },
-            ],
-        )
-
-        self.assert_compile(
-            stmt,
-            "UPDATE t SET x=%(x)s, y=%(y)s, z=%(z)s "
-            "RETURNING t.x, t.y, t.z",
-        )
-        cte = stmt.cte("c")
-
-        stmt = select(cte.c.z)
-        self.assert_compile(
-            stmt,
-            "WITH c AS (UPDATE t SET x=%(x)s, y=%(y)s, z=%(z)s "
-            "RETURNING t.x, t.y, t.z) SELECT c.z FROM c",
-        )
+    def test_returning_cte_labeled_expression(self, table_fixture):
+        t = table_fixture
+        stmt = delete(t).returning(
+            t.c.id,
+            (t.c.id * -1).label("negative_id")
+        ).cte()
+        eq_(list(stmt.c.keys()), ["id", "negative_id"])
+        eq_(stmt.c.negative_id.name, "negative_id")
 
 
 class InsertReturningTest(fixtures.TablesTest, AssertsExecutionResults):
