@@ -2683,6 +2683,7 @@ class CustomTypeReflectionTest(fixtures.TestBase):
                 "default": None,
                 "not_null": False,
                 "comment": None,
+                "collation": None,
                 "generated": "",
                 "identity_options": None,
             }
@@ -2725,6 +2726,7 @@ class CustomTypeReflectionTest(fixtures.TestBase):
                 "default": None,
                 "not_null": False,
                 "comment": None,
+                "collation": None,
                 "generated": "",
                 "identity_options": None,
             }
