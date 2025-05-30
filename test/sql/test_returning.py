@@ -234,6 +234,31 @@ class ReturnCombinationTests(fixtures.TestBase, AssertsCompiledSQL):
             "RETURNING t.x, t.y, t.z) SELECT c.z FROM c",
         )
 
+    def test_returning_cte_labeled_expression(self, table_fixture):
+        t = table_fixture
+
+        stmt = delete(t).returning(
+            t.c.id,
+            (t.c.id * -1).label("negative_id")
+        ).cte()
+
+        eq_(list(stmt.c.keys()), ["id", "negative_id"])
+        eq_(stmt.c.negative_id.name, "negative_id")
+
+    def test_returning_cte_multiple_unlabeled_expressions(self, table_fixture):
+        t = table_fixture
+
+        stmt = delete(t).returning(
+            t.c.id,
+            t.c.id * -1,
+            t.c.id + 10,
+            t.c.id - 10,
+            -1 * t.c.id
+        ).cte()
+
+        assert stmt.c.id is not None
+        assert all(col is not None for col in stmt.c)
+
 
 class InsertReturningTest(fixtures.TablesTest, AssertsExecutionResults):
     __requires__ = ("insert_returning",)
