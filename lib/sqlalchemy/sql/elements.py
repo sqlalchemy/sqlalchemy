@@ -1689,7 +1689,8 @@ class ColumnElement(
         if name is None:
             name = self._anon_name_label
             if key is None:
-                key = self._proxy_key
+                # fallback to anonymous label only as last resort
+                key = self._proxy_key if self._proxy_key else self._anon_key_label
         else:
             key = name
 
