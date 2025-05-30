@@ -310,3 +310,22 @@ pg_collation = Table(
     Column("collicurules", Text, info={"server_version": (16,)}),
     Column("collversion", Text, info={"server_version": (10,)}),
 )
+
+pg_inherits = Table(
+    "pg_inherits",
+    pg_catalog_meta,
+    Column("inhrelid", OID),
+    Column("inhparent", OID),
+    Column("inhseqno", Integer),
+    Column("inhdetachpending", Boolean),
+)
+
+pg_tablespace = Table(
+    "pg_tablespace",
+    pg_catalog_meta,
+    Column("oid", OID),
+    Column("spcname", NAME),
+    Column("spcowner", OID),
+    Column("spcacl", ARRAY(Text)),
+    Column("spcoptions", ARRAY(Text)),
+)
