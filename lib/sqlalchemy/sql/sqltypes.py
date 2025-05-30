@@ -1645,14 +1645,14 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         )
 
     @property
-    def sort_key_function(self):
+    def sort_key_function(self):  # type: ignore[override]
         if self._sort_key_function is NO_ARG:
             return self._db_value_for_elem
         else:
             return self._sort_key_function
 
     @property
-    def native(self):
+    def native(self):  # type: ignore[override]
         return self.native_enum
 
     def _db_value_for_elem(self, elem):
@@ -2755,7 +2755,7 @@ class JSON(Indexable, TypeEngine[Any]):
     def python_type(self):
         return dict
 
-    @property  # type: ignore  # mypy property bug
+    @property
     def should_evaluate_none(self):
         """Alias of :attr:`_types.JSON.none_as_null`"""
         return not self.none_as_null
@@ -3702,7 +3702,7 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
         return _python_UUID if self.as_uuid else str
 
     @property
-    def native(self):
+    def native(self):  # type: ignore[override]
         return self.native_uuid
 
     def coerce_compared_value(self, op, value):

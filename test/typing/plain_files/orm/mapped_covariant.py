@@ -21,7 +21,10 @@ from sqlalchemy.sql.elements import SQLCoreOperations
 
 
 class ParentProtocol(Protocol):
-    name: Mapped[str]
+    # Read-only for simplicity, mutable protocol members are complicated,
+    # see https://mypy.readthedocs.io/en/latest/common_issues.html#covariant-subtyping-of-mutable-protocol-members-is-rejected
+    @property
+    def name(self) -> Mapped[str]: ...
 
 
 class ChildProtocol(Protocol):

@@ -60,7 +60,7 @@ class QueuePool(Pool):
 
     """
 
-    _is_asyncio = False  # type: ignore[assignment]
+    _is_asyncio = False
 
     _queue_class: Type[sqla_queue.QueueCommon[ConnectionPoolEntry]] = (
         sqla_queue.Queue
@@ -269,7 +269,7 @@ class AsyncAdaptedQueuePool(QueuePool):
 
     """
 
-    _is_asyncio = True  # type: ignore[assignment]
+    _is_asyncio = True
     _queue_class: Type[sqla_queue.QueueCommon[ConnectionPoolEntry]] = (
         sqla_queue.AsyncAdaptedQueue
     )
@@ -278,7 +278,7 @@ class AsyncAdaptedQueuePool(QueuePool):
 
 
 class FallbackAsyncAdaptedQueuePool(AsyncAdaptedQueuePool):
-    _queue_class = sqla_queue.FallbackAsyncAdaptedQueue
+    _queue_class = sqla_queue.FallbackAsyncAdaptedQueue  # type: ignore[assignment] # noqa: E501
 
 
 class NullPool(Pool):
@@ -356,7 +356,7 @@ class SingletonThreadPool(Pool):
 
     """
 
-    _is_asyncio = False  # type: ignore[assignment]
+    _is_asyncio = False
 
     def __init__(
         self,

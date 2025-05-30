@@ -154,7 +154,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
             return (0, 0, 0)
 
     @util.langhelpers.memoized_property
-    def supports_server_side_cursors(self) -> bool:  # type: ignore[override]
+    def supports_server_side_cursors(self) -> bool:
         try:
             cursors = __import__("MySQLdb.cursors").cursors
             self._sscursor = cursors.SSCursor

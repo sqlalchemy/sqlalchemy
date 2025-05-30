@@ -478,7 +478,7 @@ class DefaultDialect(Dialect):
         return weakref.WeakKeyDictionary()
 
     @property
-    def dialect_description(self):
+    def dialect_description(self):  # type: ignore[override]
         return self.name + "+" + self.driver
 
     @property
@@ -1627,7 +1627,7 @@ class DefaultExecutionContext(ExecutionContext):
             return "unknown"
 
     @property
-    def executemany(self):
+    def executemany(self):  # type: ignore[override]
         return self.execute_style in (
             ExecuteStyle.EXECUTEMANY,
             ExecuteStyle.INSERTMANYVALUES,
@@ -1841,6 +1841,7 @@ class DefaultExecutionContext(ExecutionContext):
         if self._rowcount is None and exec_opt.get("preserve_rowcount", False):
             self._rowcount = self.cursor.rowcount
 
+        yp: Optional[Union[int, bool]]
         if self.is_crud or self.is_text:
             result = self._setup_dml_or_text_result()
             yp = False

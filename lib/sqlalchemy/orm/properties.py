@@ -234,7 +234,7 @@ class ColumnProperty(
             return self.strategy._have_default_expression  # type: ignore
 
         return ("deferred", True) not in self.strategy_key or (
-            self not in self.parent._readonly_props  # type: ignore
+            self not in self.parent._readonly_props
         )
 
     @util.preload_module("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")

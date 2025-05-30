@@ -461,7 +461,7 @@ class ClauseElement(
         return self
 
     @property
-    def _constructor(self):
+    def _constructor(self):  # type: ignore[override]
         """return the 'constructor' for this ClauseElement.
 
         This is for the purposes for creating a new object of
@@ -694,6 +694,7 @@ class ClauseElement(
         else:
             elem_cache_key = None
 
+        extracted_params: Optional[Sequence[BindParameter[Any]]]
         if elem_cache_key is not None:
             if TYPE_CHECKING:
                 assert compiled_cache is not None
@@ -2297,7 +2298,7 @@ class TextClause(
     _allow_label_resolve = False
 
     @property
-    def _is_star(self):
+    def _is_star(self):  # type: ignore[override]
         return self.text == "*"
 
     def __init__(self, text: str):
@@ -4789,11 +4790,11 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
             return self
 
     @property
-    def primary_key(self):
+    def primary_key(self):  # type: ignore[override]
         return self.element.primary_key
 
     @property
-    def foreign_keys(self):
+    def foreign_keys(self):  # type: ignore[override]
         return self.element.foreign_keys
 
     def _copy_internals(
@@ -4926,7 +4927,7 @@ class ColumnClause(
     _is_multiparam_column = False
 
     @property
-    def _is_star(self):
+    def _is_star(self):  # type: ignore[override]
         return self.is_literal and self.name == "*"
 
     def __init__(

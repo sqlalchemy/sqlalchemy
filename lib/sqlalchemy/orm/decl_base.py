@@ -2017,8 +2017,7 @@ class _DeferredMapperConfig(_ClassScanMapperConfig):
     def _early_mapping(self, mapper_kw: _MapperKwArgs) -> None:
         pass
 
-    # mypy disallows plain property override of variable
-    @property  # type: ignore
+    @property
     def cls(self) -> Type[Any]:
         return self._cls()  # type: ignore
 
