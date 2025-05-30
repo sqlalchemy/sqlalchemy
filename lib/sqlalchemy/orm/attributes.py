@@ -631,11 +631,11 @@ def _create_proxied_attribute(
             self._doc = self.__doc__ = doc
 
         @property
-        def _parententity(self):
+        def _parententity(self):  # type: ignore[override]
             return inspection.inspect(self.class_, raiseerr=False)
 
         @property
-        def parent(self):
+        def parent(self):  # type: ignore[override]
             return inspection.inspect(self.class_, raiseerr=False)
 
         _is_internal_proxy = True

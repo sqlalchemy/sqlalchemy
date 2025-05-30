@@ -477,7 +477,7 @@ class Table(
             table.dispatch.before_parent_attach(table, metadata)
             metadata._add_table(name, schema, table)
             try:
-                table.__init__(name, metadata, *args, _no_init=False, **kw)
+                table.__init__(name, metadata, *args, _no_init=False, **kw)  # type: ignore[misc] # noqa: E501
                 table.dispatch.after_parent_attach(table, metadata)
                 return table
             except Exception:
@@ -2239,7 +2239,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         return _DefaultDescriptionTuple._from_column_default(self.onupdate)
 
     @util.memoized_property
-    def _gen_static_annotations_cache_key(self) -> bool:  # type: ignore
+    def _gen_static_annotations_cache_key(self) -> bool:
         """special attribute used by cache key gen, if true, we will
         use a static cache key for the annotations dictionary, else we
         will generate a new cache key for annotations each time.

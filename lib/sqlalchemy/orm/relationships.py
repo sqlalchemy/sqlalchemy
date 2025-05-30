@@ -533,8 +533,7 @@ class RelationshipProperty(
         else:
             self._overlaps = ()
 
-        # mypy ignoring the @property setter
-        self.cascade = cascade  # type: ignore
+        self.cascade = cascade
 
         if back_populates:
             if backref:
