@@ -256,6 +256,7 @@ class ReturnCombinationTests(fixtures.TestBase, AssertsCompiledSQL):
             -1 * t.c.id
         ).cte()
 
+        assert len(stmt.c) == 5
         assert stmt.c.id is not None
         assert all(col is not None for col in stmt.c)
 
