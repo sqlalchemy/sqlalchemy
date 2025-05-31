@@ -186,7 +186,7 @@ class MySQLDialect_asyncmy(MySQLDialect_pymysql):
             )
 
     def _found_rows_client_flag(self) -> int:
-        from asyncmy.constants import CLIENT  # type: ignore
+        from asyncmy.constants import CLIENT  # type: ignore[import-not-found]
 
         return CLIENT.FOUND_ROWS  # type: ignore[no-any-return]
 

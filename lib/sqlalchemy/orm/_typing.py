@@ -126,7 +126,7 @@ def is_orm_option(
 def is_user_defined_option(
     opt: ExecutableOption,
 ) -> TypeGuard[UserDefinedOption]:
-    return not opt._is_core and opt._is_user_defined  # type: ignore
+    return not opt._is_core and opt._is_user_defined  # type: ignore[attr-defined] # noqa: E501
 
 
 def is_composite_class(obj: Any) -> bool:

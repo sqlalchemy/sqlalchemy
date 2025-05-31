@@ -204,7 +204,9 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
         # supports_sane_rowcount.
         if self.dbapi is not None:
             try:
-                from mysql.connector import constants  # type: ignore
+                from mysql.connector import (
+                    constants,  # type: ignore[import-not-found]
+                )
 
                 ClientFlag = constants.ClientFlag
 
@@ -227,10 +229,10 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
         return None
 
     def _detect_charset(self, connection: Connection) -> str:
-        return connection.connection.charset  # type: ignore
+        return connection.connection.charset  # type: ignore[no-any-return]
 
     def _extract_error_code(self, exception: BaseException) -> int:
-        return exception.errno  # type: ignore
+        return exception.errno  # type: ignore[attr-defined, no-any-return]
 
     def is_disconnect(
         self,

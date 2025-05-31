@@ -30,7 +30,7 @@ def connection_memoize(key: str) -> Callable[[_C], _C]:
     """
 
     @util.decorator
-    def decorated(fn, self, connection):  # type: ignore
+    def decorated(fn, self, connection):  # type: ignore[no-untyped-def]
         connection = connection.connect()
         try:
             return connection.info[key]

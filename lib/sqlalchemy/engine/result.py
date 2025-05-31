@@ -318,7 +318,7 @@ class SimpleResultMetaData(ResultMetaData):
             _tuplefilter = tuplegetter(*_translated_indexes)
         else:
             _translated_indexes = _tuplefilter = None
-        self.__init__(  # type: ignore
+        self.__init__(  # type: ignore[misc]
             state["_keys"],
             _translated_indexes=_translated_indexes,
             _tuplefilter=_tuplefilter,
@@ -466,7 +466,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                     )
 
         else:
-            process_row = Row  # type: ignore
+            process_row = Row  # type: ignore[assignment]
 
         metadata = self._metadata
 
@@ -478,7 +478,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
             if processors:
                 processors = tf(processors)
 
-            _make_row_orig: Callable[..., _R] = functools.partial(  # type: ignore  # noqa E501
+            _make_row_orig: Callable[..., _R] = functools.partial(  # type: ignore[assignment]  # noqa E501
                 process_row, metadata, processors, key_to_index
             )
 
@@ -488,7 +488,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                 return _make_row_orig(fixed_tf(row))
 
         else:
-            make_row = functools.partial(  # type: ignore
+            make_row = functools.partial(  # type: ignore[assignment]
                 process_row, metadata, processors, key_to_index
             )
 
@@ -497,7 +497,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
             _make_row = make_row
 
             def make_row(row: _InterimRowType[Row[Unpack[TupleAny]]]) -> _R:
-                return _log_row(_make_row(row))  # type: ignore
+                return _log_row(_make_row(row))  # type: ignore[arg-type, return-value] # noqa: E501
 
         return make_row
 
@@ -521,7 +521,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                     uniques.add(hashed)
                     if post_creational_filter:
                         obj = post_creational_filter(obj)
-                    yield obj  # type: ignore
+                    yield obj  # type: ignore[misc]
 
         else:
 
@@ -532,7 +532,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                     )
                     if post_creational_filter:
                         row = post_creational_filter(row)
-                    yield row  # type: ignore
+                    yield row  # type: ignore[misc]
 
         return iterrows
 
@@ -552,7 +552,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
         if make_row:
             made_rows = [make_row(row) for row in rows]
         else:
-            made_rows = rows  # type: ignore
+            made_rows = rows  # type: ignore[assignment]
 
         interim_rows: List[_R]
 
@@ -560,7 +560,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
             uniques, strategy = self._unique_strategy
 
             interim_rows = [
-                made_row  # type: ignore
+                made_row  # type: ignore[misc]
                 for made_row, sig_row in [
                     (
                         made_row,
@@ -568,10 +568,10 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                     )
                     for made_row in made_rows
                 ]
-                if sig_row not in uniques and not uniques.add(sig_row)  # type: ignore # noqa: E501
+                if sig_row not in uniques and not uniques.add(sig_row)  # type: ignore[func-returns-value] # noqa: E501
             ]
         else:
-            interim_rows = made_rows  # type: ignore
+            interim_rows = made_rows  # type: ignore[assignment]
 
         if post_creational_filter:
             interim_rows = [
@@ -607,7 +607,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                             uniques.add(hashed)
                         if post_creational_filter:
                             obj = post_creational_filter(obj)
-                        return obj  # type: ignore
+                        return obj  # type: ignore[return-value]
 
         else:
 
@@ -621,7 +621,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                     )
                     if post_creational_filter:
                         interim_row = post_creational_filter(interim_row)
-                    return interim_row  # type: ignore
+                    return interim_row  # type: ignore[return-value]
 
         return onerow
 
@@ -652,7 +652,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                 return [
                     made_row
                     for made_row, sig_row in made_rows
-                    if sig_row not in uniques and not uniques.add(sig_row)  # type: ignore  # noqa: E501
+                    if sig_row not in uniques and not uniques.add(sig_row)  # type: ignore[func-returns-value]  # noqa: E501
                 ]
 
             def manyrows(
@@ -720,7 +720,7 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                     rows = [make_row(row) for row in rows]
                 if post_creational_filter:
                     rows = [post_creational_filter(row) for row in rows]
-                return rows  # type: ignore
+                return rows  # type: ignore[return-value]
 
         return manyrows
 
@@ -829,9 +829,9 @@ class ResultInternal(InPlaceGenerative, Generic[_R]):
                 row = post_creational_filter(row)
 
         if scalar and make_row:
-            return row[0]  # type: ignore
+            return row[0]  # type: ignore[index, no-any-return]
         else:
-            return row  # type: ignore
+            return row  # type: ignore[return-value]
 
     def _iter_impl(self) -> Iterator[_R]:
         return self._iterator_getter(self)
@@ -1229,7 +1229,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
             workaround for SQLAlchemy 2.1.
 
         """
-        return self  # type: ignore
+        return self  # type: ignore[return-value]
 
     @deprecated(
         "2.1.0",
@@ -1263,7 +1263,7 @@ class Result(_WithKeys, ResultInternal[Row[Unpack[_Ts]]]):
 
         """
 
-        return self  # type: ignore
+        return self  # type: ignore[return-value]
 
     def _raw_row_iterator(self) -> Iterator[_RowData]:
         """Return a safe iterator that yields raw row data.
@@ -2352,7 +2352,7 @@ class ChunkedIteratorResult(IteratorResult[Unpack[_Ts]]):
 
     def _soft_close(self, hard: bool = False, **kw: Any) -> None:
         super()._soft_close(hard=hard, **kw)
-        self.chunks = lambda size: []  # type: ignore
+        self.chunks = lambda size: []  # type: ignore[assignment, return-value]
 
     def _fetchmany_impl(
         self, size: Optional[int] = None

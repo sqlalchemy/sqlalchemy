@@ -230,7 +230,7 @@ def remote(expr: _CEA) -> _CEA:
         :func:`.foreign`
 
     """
-    return _annotate_columns(  # type: ignore
+    return _annotate_columns(  # type: ignore[return-value]
         coercions.expect(roles.ColumnArgumentRole, expr), {"remote": True}
     )
 
@@ -250,7 +250,7 @@ def foreign(expr: _CEA) -> _CEA:
 
     """
 
-    return _annotate_columns(  # type: ignore
+    return _annotate_columns(  # type: ignore[return-value]
         coercions.expect(roles.ColumnArgumentRole, expr), {"foreign": True}
     )
 
@@ -305,7 +305,7 @@ class _StringRelationshipArg(_RelationshipArg[_T1, _T2]):
             attr_value = attr_value()
 
         if isinstance(attr_value, attributes.QueryableAttribute):
-            attr_value = attr_value.key  # type: ignore
+            attr_value = attr_value.key  # type: ignore[assignment]
 
         self.resolved = attr_value
 
@@ -529,7 +529,7 @@ class RelationshipProperty(
         self._reverse_property: Set[RelationshipProperty[Any]] = set()
 
         if overlaps:
-            self._overlaps = set(re.split(r"\s*,\s*", overlaps))  # type: ignore  # noqa: E501
+            self._overlaps = set(re.split(r"\s*,\s*", overlaps))  # type: ignore[assignment]  # noqa: E501
         else:
             self._overlaps = ()
 
@@ -547,7 +547,7 @@ class RelationshipProperty(
 
     @property
     def back_populates(self) -> str:
-        return self._init_args.back_populates.effective_value()  # type: ignore
+        return self._init_args.back_populates.effective_value()  # type: ignore[no-any-return] # noqa: E501
 
     @back_populates.setter
     def back_populates(self, value: str) -> None:
@@ -666,7 +666,7 @@ class RelationshipProperty(
 
         def _memoized_attr_entity(self) -> _InternalEntityType[_PT]:
             if self._of_type:
-                return inspect(self._of_type)  # type: ignore
+                return inspect(self._of_type)  # type: ignore[return-value]
             else:
                 return self.prop.entity
 
@@ -756,7 +756,7 @@ class RelationshipProperty(
             )
 
         # https://github.com/python/mypy/issues/4266
-        __hash__ = None  # type: ignore
+        __hash__ = None  # type: ignore[assignment]
 
         def __eq__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
             """Implement the ``==`` operator.
@@ -1854,13 +1854,13 @@ class RelationshipProperty(
             elif not is_write_only and not is_dynamic:
                 self.uselist = False
 
-            if argument.__args__:  # type: ignore
+            if argument.__args__:  # type: ignore[union-attr]
                 if isinstance(arg_origin, type) and issubclass(
                     arg_origin, typing.Mapping
                 ):
-                    type_arg = argument.__args__[-1]  # type: ignore
+                    type_arg = argument.__args__[-1]  # type: ignore[union-attr] # noqa: E501
                 else:
-                    type_arg = argument.__args__[0]  # type: ignore
+                    type_arg = argument.__args__[0]  # type: ignore[union-attr]
                 if hasattr(type_arg, "__forward_arg__"):
                     str_argument = type_arg.__forward_arg__
 
@@ -1932,7 +1932,7 @@ class RelationshipProperty(
             try:
                 entity = inspect(resolved_argument)
             except sa_exc.NoInspectionAvailable:
-                entity = None  # type: ignore
+                entity = None  # type: ignore[assignment]
 
             if not hasattr(entity, "mapper"):
                 raise sa_exc.ArgumentError(
@@ -2194,7 +2194,7 @@ class RelationshipProperty(
         if self.uselist is None:
             self.uselist = self.direction is not MANYTOONE
         if not self.viewonly:
-            self._dependency_processor = (  # type: ignore
+            self._dependency_processor = (  # type: ignore[no-untyped-call]
                 dependency._DependencyProcessor.from_relationship
             )(self)
 
@@ -2309,13 +2309,13 @@ class RelationshipProperty(
 def _annotate_columns(element: _CE, annotations: _AnnotationDict) -> _CE:
     def clone(elem: _CE) -> _CE:
         if isinstance(elem, expression.ColumnClause):
-            elem = elem._annotate(annotations.copy())  # type: ignore
+            elem = elem._annotate(annotations.copy())  # type: ignore[assignment, attr-defined] # noqa: E501
         elem._copy_internals(clone=clone)
         return elem
 
     if element is not None:
         element = clone(element)
-    clone = None  # type: ignore # remove gc cycles
+    clone = None  # type: ignore[assignment] # remove gc cycles
     return element
 
 

@@ -826,7 +826,7 @@ class Table(
         PrimaryKeyConstraint(
             _implicit_generated=True
         )._set_parent_with_dispatch(self)
-        self.foreign_keys = set()  # type: ignore
+        self.foreign_keys = set()  # type: ignore[misc]
         self._extra_dependencies: Set[Table] = set()
         if self.schema is not None:
             self.fullname = "%s.%s" % (self.schema, self.name)
@@ -2051,7 +2051,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                     raise exc.ArgumentError(
                         "May not pass name positionally and as a keyword."
                     )
-                name = l_args.pop(0)  # type: ignore
+                name = l_args.pop(0)  # type: ignore[assignment]
             elif l_args[0] is None:
                 l_args.pop(0)
         if l_args:
@@ -2062,7 +2062,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                     raise exc.ArgumentError(
                         "May not pass type_ positionally and as a keyword."
                     )
-                type_ = l_args.pop(0)  # type: ignore
+                type_ = l_args.pop(0)  # type: ignore[assignment]
             elif l_args[0] is None:
                 l_args.pop(0)
 
@@ -2076,9 +2076,9 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         # name = None is expected to be an interim state
         # note this use case is legacy now that ORM declarative has a
         # dedicated "column" construct local to the ORM
-        super().__init__(name, type_)  # type: ignore
+        super().__init__(name, type_)  # type: ignore[arg-type]
 
-        self.key = key if key is not None else name  # type: ignore
+        self.key = key if key is not None else name  # type: ignore[assignment]
         self.primary_key = primary_key
         self._insert_sentinel = insert_sentinel
         self._omit_from_statements = _omit_from_statements
@@ -2697,7 +2697,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             primary_key.add(c)
 
         if fk:
-            foreign_keys.update(fk)  # type: ignore
+            foreign_keys.update(fk)  # type: ignore[arg-type]
 
         return c.key, c
 
@@ -2913,7 +2913,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         self.constraint = _constraint
 
         # .parent is not Optional under normal use
-        self.parent = None  # type: ignore
+        self.parent = None  # type: ignore[assignment]
 
         self.use_alter = use_alter
         self.name = name
@@ -3092,7 +3092,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         # our column is a Column, and any subquery etc. proxying us
         # would be doing so via another Column, so that's what would
         # be returned here
-        return table.columns.corresponding_column(self.column)  # type: ignore
+        return table.columns.corresponding_column(self.column)  # type: ignore[return-value] # noqa: E501
 
     @util.memoized_property
     def _column_tokens(self) -> Tuple[Optional[str], str, Optional[str]]:
@@ -3213,7 +3213,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
         self.parent._setup_on_memoized_fks(set_type)
 
-        self.column = column  # type: ignore
+        self.column = column  # type: ignore[misc]
 
     @util.ro_memoized_property
     def column(self) -> Column[Any]:
@@ -3653,16 +3653,16 @@ class CallableColumnDefault(ColumnDefault):
         try:
             argspec = util.get_callable_argspec(fn, no_self=True)
         except TypeError:
-            return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+            return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore[call-arg, no-any-return, no-untyped-call] # noqa: E501
 
         defaulted = argspec[3] is not None and len(argspec[3]) or 0
         positionals = len(argspec[0]) - defaulted
 
         if positionals == 0:
-            return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+            return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore[call-arg, no-any-return, no-untyped-call] # noqa: E501
 
         elif positionals == 1:
-            return fn  # type: ignore
+            return fn  # type: ignore[return-value]
         else:
             raise exc.ArgumentError(
                 "ColumnDefault Python function takes zero or one "
@@ -5058,7 +5058,7 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
 
         if table.primary_key is not self:
             table.constraints.discard(table.primary_key)
-            table.primary_key = self  # type: ignore
+            table.primary_key = self  # type: ignore[misc]
             table.constraints.add(self)
 
         table_pks = [c for c in table.c if c.primary_key]
@@ -5117,11 +5117,11 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
 
         self._columns.extend(columns)
 
-        PrimaryKeyConstraint._autoincrement_column._reset(self)  # type: ignore
+        PrimaryKeyConstraint._autoincrement_column._reset(self)  # type: ignore[attr-defined] # noqa: E501
         self._set_parent_with_dispatch(self.table)
 
     def _replace(self, col: Column[Any]) -> None:
-        PrimaryKeyConstraint._autoincrement_column._reset(self)  # type: ignore
+        PrimaryKeyConstraint._autoincrement_column._reset(self)  # type: ignore[attr-defined] # noqa: E501
         self._columns.replace(col)
 
         self.dispatch._sa_event_column_added_to_pk_constraint(self, col)
@@ -5693,7 +5693,7 @@ class MetaData(HasSchemaAttr):
     def clear(self) -> None:
         """Clear all Table objects from this MetaData."""
 
-        dict.clear(self.tables)  # type: ignore
+        dict.clear(self.tables)  # type: ignore[arg-type]
         self._schemas.clear()
         self._fk_memos.clear()
 
@@ -5747,7 +5747,7 @@ class MetaData(HasSchemaAttr):
 
         """
         return ddl.sort_tables(
-            sorted(self.tables.values(), key=lambda t: t.key)  # type: ignore
+            sorted(self.tables.values(), key=lambda t: t.key)  # type: ignore[attr-defined] # noqa: E501
         )
 
     # overload needed to work around mypy this mypy

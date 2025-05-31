@@ -257,7 +257,7 @@ class SET(_StringType):
                 if value is not None and not isinstance(value, (int, str)):
                     value = ",".join(value)
                 if super_convert:
-                    return super_convert(value)  # type: ignore
+                    return super_convert(value)  # type: ignore[arg-type, no-any-return] # noqa: E501
                 else:
                     return value
 

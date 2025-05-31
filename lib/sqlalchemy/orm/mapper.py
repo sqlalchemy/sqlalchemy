@@ -776,7 +776,7 @@ class Mapper(
         # interim - polymorphic_on is further refined in
         # _configure_polymorphic_setter
         self.polymorphic_on = (
-            coercions.expect(  # type: ignore
+            coercions.expect(  # type: ignore[assignment]
                 roles.ColumnArgumentOrKeyRole,
                 polymorphic_on,
                 argname="polymorphic_on",
@@ -1544,12 +1544,12 @@ class Mapper(
             if fc.primary_key and pk_cols.issuperset(fc.primary_key):
                 # ordering is important since it determines the ordering of
                 # mapper.primary_key (and therefore query.get())
-                self._pks_by_table[fc] = util.ordered_column_set(  # type: ignore  # noqa: E501
+                self._pks_by_table[fc] = util.ordered_column_set(  # type: ignore[assignment]  # noqa: E501
                     fc.primary_key
                 ).intersection(
                     pk_cols
                 )
-            self._cols_by_table[fc] = util.ordered_column_set(fc.c).intersection(  # type: ignore  # noqa: E501
+            self._cols_by_table[fc] = util.ordered_column_set(fc.c).intersection(  # type: ignore[assignment]  # noqa: E501
                 all_cols
             )
 
@@ -1653,7 +1653,7 @@ class Mapper(
         }
 
     def _configure_properties(self) -> None:
-        self.columns = self.c = sql_base.ColumnCollection()  # type: ignore
+        self.columns = self.c = sql_base.ColumnCollection()  # type: ignore[assignment] # noqa: E501
 
         # object attribute names mapped to MapperProperty objects
         self._props = util.OrderedDict()
@@ -2286,7 +2286,7 @@ class Mapper(
             "in properties.ColumnProperty %s",
             key,
         )
-        return new_prop  # type: ignore
+        return new_prop  # type: ignore[no-any-return]
 
     @util.preload_module("sqlalchemy.orm.descriptor_props")
     def _property_from_column(
@@ -4152,7 +4152,7 @@ def _configure_registries(
             else:
                 return
 
-            Mapper.dispatch._for_class(Mapper).before_configured()  # type: ignore # noqa: E501
+            Mapper.dispatch._for_class(Mapper).before_configured()  # type: ignore[arg-type, call-arg, misc] # noqa: E501
             # initialize properties on all mappers
             # note that _mapper_registry is unordered, which
             # may randomly conceal/reveal issues related to
@@ -4161,7 +4161,7 @@ def _configure_registries(
             _do_configure_registries(registries, cascade)
         finally:
             _already_compiling = False
-    Mapper.dispatch._for_class(Mapper).after_configured()  # type: ignore
+    Mapper.dispatch._for_class(Mapper).after_configured()  # type: ignore[arg-type, call-arg, misc] # noqa: E501
 
 
 @util.preload_module("sqlalchemy.orm.decl_api")
@@ -4194,7 +4194,7 @@ def _do_configure_registries(
                     "Original exception was: %s"
                     % (mapper, mapper._configure_failed)
                 )
-                e._configure_failed = mapper._configure_failed  # type: ignore
+                e._configure_failed = mapper._configure_failed  # type: ignore[attr-defined] # noqa: E501
                 raise e
 
             if not mapper.configured:

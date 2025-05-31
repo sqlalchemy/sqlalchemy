@@ -1679,7 +1679,7 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         kw["length"] = NO_ARG if self.length == 0 else self.length
         return cast(
             Enum,
-            self._generic_type_affinity(_enums=enum_args, **kw),  # type: ignore  # noqa: E501
+            self._generic_type_affinity(_enums=enum_args, **kw),  # type: ignore[call-arg]  # noqa: E501
         )
 
     def _setup_for_values(
@@ -1944,7 +1944,7 @@ class PickleType(TypeDecorator[object]):
         if impl:
             # custom impl is not necessarily a LargeBinary subclass.
             # make an exception to typing for this
-            self.impl = to_instance(impl)  # type: ignore
+            self.impl = to_instance(impl)  # type: ignore[assignment]
 
     def __reduce__(self):
         return PickleType, (self.protocol, None, self.comparator)
@@ -2279,7 +2279,7 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator[dt.timedelta]):
             def process(value: Any) -> Optional[dt.timedelta]:
                 if value is None:
                     return None
-                return value - epoch  # type: ignore
+                return value - epoch  # type: ignore[no-any-return]
 
         return process
 

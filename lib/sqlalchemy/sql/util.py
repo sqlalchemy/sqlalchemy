@@ -303,11 +303,11 @@ def visit_binary_product(
             # those are just column elements by themselves
             yield element
         elif element.__visit_name__ == "binary" and operators.is_comparison(
-            element.operator  # type: ignore
+            element.operator  # type: ignore[attr-defined]
         ):
-            stack.insert(0, element)  # type: ignore
-            for l in visit(element.left):  # type: ignore
-                for r in visit(element.right):  # type: ignore
+            stack.insert(0, element)  # type: ignore[arg-type]
+            for l in visit(element.left):  # type: ignore[attr-defined]
+                for r in visit(element.right):  # type: ignore[attr-defined]
                     fn(stack[0], l, r)
             stack.pop(0)
             for elem in element.get_children():
@@ -319,7 +319,7 @@ def visit_binary_product(
                 yield from visit(elem)
 
     list(visit(expr))
-    visit = None  # type: ignore  # remove gc cycles
+    visit = None  # type: ignore[assignment]  # remove gc cycles
 
 
 def find_tables(
@@ -383,7 +383,7 @@ def unwrap_order_by(clause: Any) -> Any:
         t = stack.popleft()
         if isinstance(t, ColumnElement) and (
             not isinstance(t, UnaryExpression)
-            or not operators.is_ordering_modifier(t.modifier)  # type: ignore
+            or not operators.is_ordering_modifier(t.modifier)  # type: ignore[arg-type] # noqa: E501
         ):
             if isinstance(t, Label) and not isinstance(
                 t.element, ScalarSelect
@@ -916,7 +916,7 @@ def reduce_columns(
 
     column_set = util.OrderedSet(columns)
     cset_no_text: util.OrderedSet[ColumnElement[Any]] = column_set.difference(
-        c for c in column_set if is_text_clause(c)  # type: ignore
+        c for c in column_set if is_text_clause(c)  # type: ignore[assignment]
     )
 
     omit = util.column_set()
@@ -1148,9 +1148,9 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
 
         # TODO: cython candidate
 
-        if self.include_fn and not self.include_fn(col):  # type: ignore
+        if self.include_fn and not self.include_fn(col):  # type: ignore[arg-type] # noqa: E501
             return None
-        elif self.exclude_fn and self.exclude_fn(col):  # type: ignore
+        elif self.exclude_fn and self.exclude_fn(col):  # type: ignore[arg-type] # noqa: E501
             return None
 
         if isinstance(col, FromClause) and not isinstance(
@@ -1163,7 +1163,7 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
                             break
                     else:
                         return None
-                return self.selectable  # type: ignore
+                return self.selectable  # type: ignore[return-value]
             elif isinstance(col, Alias) and isinstance(
                 col.element, TableClause
             ):
@@ -1174,7 +1174,7 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
                 # we are an alias of a table and we are not derived from an
                 # alias of a table (which nonetheless may be the same table
                 # as ours) so, same thing
-                return col  # type: ignore
+                return col  # type: ignore[return-value]
             else:
                 # other cases where we are a selectable and the element
                 # is another join or selectable that contains a table which our
@@ -1209,7 +1209,7 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
         if TYPE_CHECKING:
             assert isinstance(col, KeyedColumnElement)
 
-        return self._corresponding_column(  # type: ignore
+        return self._corresponding_column(  # type: ignore[no-any-return]
             col, require_embedded=True
         )
 
@@ -1293,7 +1293,7 @@ class ColumnAdapter(ClauseAdapter):
             adapt_from_selectables=adapt_from_selectables,
         )
 
-        self.columns = util.WeakPopulateDict(self._locate_col)  # type: ignore
+        self.columns = util.WeakPopulateDict(self._locate_col)  # type: ignore[arg-type, assignment] # noqa: E501
         if self.include_fn or self.exclude_fn:
             self.columns = self._IncludeExcludeMapping(self, self.columns)
         self.adapt_required = adapt_required
@@ -1318,7 +1318,7 @@ class ColumnAdapter(ClauseAdapter):
     def wrap(self, adapter):
         ac = copy.copy(self)
         ac._wrap = adapter
-        ac.columns = util.WeakPopulateDict(ac._locate_col)  # type: ignore
+        ac.columns = util.WeakPopulateDict(ac._locate_col)  # type: ignore[arg-type, assignment] # noqa: E501
         if ac.include_fn or ac.exclude_fn:
             ac.columns = self._IncludeExcludeMapping(ac, ac.columns)
 
@@ -1458,7 +1458,7 @@ def _make_slice(
             offset_clause = 0
 
         if start != 0:
-            offset_clause = offset_clause + start  # type: ignore
+            offset_clause = offset_clause + start  # type: ignore[operator]
 
         if offset_clause == 0:
             offset_clause = None
