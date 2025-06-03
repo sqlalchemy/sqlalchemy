@@ -558,10 +558,11 @@ The two qualities that :func:`_orm.mapped_column` derives from the
   ``True``, that will also imply that the column should be ``NOT NULL``.
 
   In the absence of **both** of these parameters, the presence of
-  ``typing.Optional[]`` within the :class:`_orm.Mapped` type annotation will be
-  used to determine nullability, where ``typing.Optional[]`` means ``NULL``,
-  and the absence of ``typing.Optional[]`` means ``NOT NULL``. If there is no
-  ``Mapped[]`` annotation present at all, and there is no
+  ``typing.Optional[]`` (or its equivalent) within the :class:`_orm.Mapped`
+  type annotation will be used to determine nullability, where
+  ``typing.Optional[]`` means ``NULL``, and the absence of
+  ``typing.Optional[]`` means ``NOT NULL``. If there is no ``Mapped[]``
+  annotation present at all, and there is no
   :paramref:`_orm.mapped_column.nullable` or
   :paramref:`_orm.mapped_column.primary_key` parameter, then SQLAlchemy's usual
   default for :class:`_schema.Column` of ``NULL`` is used.
