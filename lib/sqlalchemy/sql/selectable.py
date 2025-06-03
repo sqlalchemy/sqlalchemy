@@ -5385,9 +5385,10 @@ class Select(
 
     @util.preload_module("sqlalchemy.sql.sqltypes")
     def _scalar_type(self) -> TypeEngine[Any]:
-        from .sqltypes import NULLTYPE
+        sqltypes = util.preloaded.sql_sqltypes
+
         if not self._raw_columns:
-            return NULLTYPE
+            return sqltypes.NULLTYPE
         elem = self._raw_columns[0]
         cols = list(elem._select_iterable)
         return cols[0].type

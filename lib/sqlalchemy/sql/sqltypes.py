@@ -1551,15 +1551,13 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
     def _should_create_constraint(self, compiler, **kw):
         return not self.native_enum or not compiler.dialect.supports_native_enum
 
-    @util.preload_module("sqlalchemy.sql.schema")
     def _set_table(self, column, table):
-        schema = util.preloaded.sql_schema
         SchemaType._set_table(self, column, table)
 
         if not self.create_constraint:
             return
 
-        e = schema.CheckConstraint(
+        e = CheckConstraint(
             type_coerce(column, String()).in_(self.enums),
             name=_NONE_NAME if self.name is None else self.name,
             _create_rule=self._run_only_on_mapped_variant(
@@ -1784,16 +1782,16 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
             and compiler.dialect.non_native_boolean_check_constraint
         )
 
-    @util.preload_module("sqlalchemy.sql.schema")
     def _set_table(self, column, table):
-        schema = util.preloaded.sql_schema
         if not self.create_constraint:
             return
 
-        e = schema.CheckConstraint(
+        e = CheckConstraint(
             type_coerce(column, self).in_([0, 1]),
             name=_NONE_NAME if self.name is None else self.name,
-            _create_rule=self._run_only_on_mapped_variant(self._should_create_constraint),
+            _create_rule=self._run_only_on_mapped_variant(
+                self._should_create_constraint
+            ),
             _type_bound=True,
         )
         assert e.table is table
