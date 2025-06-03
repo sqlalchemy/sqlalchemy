@@ -155,6 +155,7 @@ class DefaultDialect(Dialect):
     supports_sequences = False
     sequences_optional = False
     preexecute_autoincrement_sequences = False
+    supports_schema_type_kinds = ()
     supports_identity_columns = False
     postfetch_lastrowid = True
     favor_returning_over_lastrowid = False
@@ -1197,6 +1198,7 @@ class StrCompileDialect(DefaultDialect):
     supports_sequences = True
     sequences_optional = True
     preexecute_autoincrement_sequences = False
+    supports_schema_type_kinds = '*'
 
     supports_native_boolean = True
 

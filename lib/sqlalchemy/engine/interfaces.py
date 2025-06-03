@@ -1021,6 +1021,14 @@ class Dialect(EventTarget):
     supports_sequences: bool
     """Indicates if the dialect supports CREATE SEQUENCE or similar."""
 
+    supports_schema_type_kinds: ClassVar[tuple[str, ...] | Literal['*']]
+    """Indicates if the dialect supports CREATE [kind] of a given
+    schema type.
+
+    Can be set to a literal '*' to indicate that the dialect supports
+    any kind of schema type.
+    """
+
     sequences_optional: bool
     """If True, indicates if the :paramref:`_schema.Sequence.optional`
       parameter on the :class:`_schema.Sequence` construct
@@ -1541,6 +1549,27 @@ class Dialect(EventTarget):
         """
         raise NotImplementedError()
 
+    def get_schema_type_names(
+        self,
+        connection: Connection,
+        kind: tuple[str, ...] | str,
+        **kw: Any
+    ) -> List[str]:
+        """
+        Returns a list of all :class:`SchemaType` names available
+        in the database.
+
+        `kind` can be used to restrict the types returned by this
+        method. If provided, must be the name (or a tuple of names)
+        of supported :attr:`Dialect.supports_schema_type_kinds` values.
+
+        This is an internal dialect method. Applications should use
+        :meth:`_engine.Inspector.get_schema_type_names`.
+
+        .. versionadded: 2.1
+        """
+        raise NotImplementedError
+
     def get_view_definition(
         self,
         connection: Connection,
@@ -1902,6 +1931,32 @@ class Dialect(EventTarget):
         """
 
         raise NotImplementedError()
+
+    def has_schema_type(
+        self,
+        connection: Connection,
+        kind: tuple[str, ...] | str,
+        schema_type_name: str,
+        schema: Optional[str] = None,
+        **kw: Any
+    ) -> bool:
+        """Check the existence of a particular schema type of the
+        specified `kind` in the database.
+
+        If `kind` is provided, it must be the name or a tuple of names
+        of supported :attr:`Dialect.schema_type_kind`. Implementations should
+        raise `ValueError` otherwise.
+
+        Given a :class:`_engine.Connection` object, a string `kind` and a
+        string `schema_type_kind`, return ``True`` if the given schema type
+        exists in the database, ``False`` otherwise.
+
+        This is an internal dialect method. Applications should use
+        :meth:`_engine.Inspector.has_schema_type`.
+
+        .. versionadded: 2.1
+        """
+        raise NotImplementedError
 
     def has_schema(
         self, connection: Connection, schema_name: str, **kw: Any
