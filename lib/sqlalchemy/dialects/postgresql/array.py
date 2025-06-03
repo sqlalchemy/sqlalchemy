@@ -396,7 +396,7 @@ class ARRAY(sqltypes.ARRAY[_T]):
     def _against_native_enum(self) -> bool:
         return (
             isinstance(self.item_type, sqltypes.Enum)
-            and self.item_type.native_enum  # type: ignore[attr-defined]
+            and self.item_type.native_enum
         )
 
     def literal_processor(

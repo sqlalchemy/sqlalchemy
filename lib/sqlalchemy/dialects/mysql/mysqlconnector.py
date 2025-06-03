@@ -117,13 +117,13 @@ class IdentifierPreparerCommon_mysqlconnector:
         return value
 
 
-class MySQLIdentifierPreparer_mysqlconnector(  # type:ignore[misc]
+class MySQLIdentifierPreparer_mysqlconnector(
     IdentifierPreparerCommon_mysqlconnector, MySQLIdentifierPreparer
 ):
     pass
 
 
-class MariaDBIdentifierPreparer_mysqlconnector(  # type:ignore[misc]
+class MariaDBIdentifierPreparer_mysqlconnector(
     IdentifierPreparerCommon_mysqlconnector, MariaDBIdentifierPreparer
 ):
     pass

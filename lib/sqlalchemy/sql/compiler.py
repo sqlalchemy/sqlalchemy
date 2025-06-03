@@ -4205,7 +4205,7 @@ class SQLCompiler(Compiled):
                 if self.preparer._requires_quotes(cte_name):
                     cte_name = self.preparer.quote(cte_name)
                 text += self.get_render_as_alias_suffix(cte_name)
-                return text
+                return text  # type: ignore[no-any-return]
             else:
                 return self.preparer.format_alias(cte, cte_name)
 
@@ -6363,7 +6363,7 @@ class SQLCompiler(Compiled):
 
         self.stack.pop(-1)
 
-        return text
+        return text  # type: ignore[no-any-return]
 
     def delete_extra_from_clause(
         self, delete_stmt, from_table, extra_froms, from_hints, **kw

@@ -524,6 +524,7 @@ class MutableBase:
             if val is not None:
                 if coerce:
                     val = cls.coerce(key, val)
+                    assert val is not None
                     state.dict[key] = val
                 val._parents[state] = key
 

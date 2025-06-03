@@ -75,7 +75,7 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     description_encoding = None
 
     @langhelpers.memoized_property
-    def supports_server_side_cursors(self) -> bool:  # type: ignore[override]
+    def supports_server_side_cursors(self) -> bool:
         try:
             cursors = __import__("pymysql.cursors").cursors
             self._sscursor = cursors.SSCursor
@@ -115,7 +115,7 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
                     not insp.defaults or insp.defaults[0] is not False
                 )
 
-    def do_ping(self, dbapi_connection: DBAPIConnection) -> Literal[True]:  # type: ignore # noqa: E501
+    def do_ping(self, dbapi_connection: DBAPIConnection) -> Literal[True]:
         if self._send_false_to_ping:
             dbapi_connection.ping(False)
         else:
