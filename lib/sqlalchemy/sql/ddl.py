@@ -1396,17 +1396,9 @@ class SchemaDropper(InvokeDropDDLBase):
         schema_types = {}
 
         for col in table.columns:
-            t = col.type.dialect_impl(self.connection.dialect)
-            if isinstance(t, TypeDecorator):
-                t = t.impl_instance
-
-            if hasattr(t, "item_type"):
-                item_t = getattr(t, "item_type")
-                if isinstance(item_t, TypeEngine):
-                    t = item_t
-
+            t = resolve_schema_type(col.type, self.connection.dialect)
             if (
-                not isinstance(t, SchemaType)
+                t is None
                 or t._key in schema_types
                 or (t.kind, t._key) in _ignore_types
             ):

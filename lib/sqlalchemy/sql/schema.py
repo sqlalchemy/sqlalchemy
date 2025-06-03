@@ -2075,12 +2075,12 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         if l_args:
             coltype = l_args[0]
 
-        if hasattr(coltype, "_sqla_type"):
-            if type_ is not None:
-                raise exc.ArgumentError(
-                    "May not pass type_ positionally and as a keyword."
-                )
-            type_ = l_args.pop(0)  # type: ignore
+            if hasattr(coltype, "_sqla_type"):
+                if type_ is not None:
+                    raise exc.ArgumentError(
+                        "May not pass type_ positionally and as a keyword."
+                    )
+                type_ = l_args.pop(0)  # type: ignore
         elif l_args[0] is None:
             l_args.pop(0)
 
@@ -3898,7 +3898,7 @@ class SchemaType(HasSchemaAttr, TypeEngineMixin):
             # or has a column attached to at least one table.
             type_registry[self._key] = self
         elif _from_table is not None:
-            if self.inherit_schema:
+            if self.inherit_schema and self._key != existing._key:
                 # If we are inheriting the schema, ensure that the
                 # registered type is created using the correct key
                 del type_registry[existing._key]
