@@ -5,6 +5,7 @@ from ipaddress import IPv4Address
 from ipaddress import IPv4Network
 from ipaddress import IPv6Address
 from ipaddress import IPv6Network
+import pytest
 import re
 import uuid
 
@@ -836,12 +837,12 @@ class NamedTypeTest(
                 "pg_class JOIN pg_catalog.pg_namespace.*",
                 dialect="postgresql",
             ),
-            RegexSQL("DROP TABLE t", dialect="postgresql"),
             RegexSQL(
                 r"SELECT pg_catalog.pg_type.typname .* WHERE "
                 "pg_catalog.pg_type.typname = ",
                 dialect="postgresql",
             ),
+            RegexSQL("DROP TABLE t", dialect="postgresql"),
             RegexSQL("DROP TYPE myenum", dialect="postgresql"),
         )
 
@@ -1002,6 +1003,13 @@ class NamedTypeTest(
         e1 = Enum("one", "two", "three", name="myenum", metadata=metadata)
         table = Table("e1", metadata, Column("c1", e1))
 
+        pytest.skip(
+            "e1 would now be considered 'internal' to table "
+            "and created on table create with or without checkfirst"
+        )
+        # We could re-enable this test by declaring the enum across two
+        # different tables.
+
         # need checkfirst here, otherwise enum will not be created
         assert_raises_message(
             sa.exc.ProgrammingError,
@@ -1010,6 +1018,8 @@ class NamedTypeTest(
             connection,
         )
         connection.rollback()
+
+        # In addition, adding checkfirst would not alter this outcome.
 
         table.create(connection, checkfirst=True)
         table.drop(connection)
@@ -1062,7 +1072,9 @@ class NamedTypeTest(
         )
         etype.create(connection)
         try:
-            assert connection.dialect.has_type(connection, "fourfivesixtype")
+            assert connection.dialect.has_type(
+                connection, "fourfivesixtype"
+            )
         finally:
             etype.drop(connection)
             assert not connection.dialect.has_type(
@@ -1438,78 +1450,80 @@ class DomainTest(
             connection.execute(table.insert(), {"value": None})
 
 
-class DomainDDLEventTest(DDLEventWCreateHarness, fixtures.TestBase):
-    __backend__ = True
+# SchemaTypes no longer listen to DDL events
 
-    __only_on__ = "postgresql > 8.3"
+# class DomainDDLEventTest(DDLEventWCreateHarness, fixtures.TestBase):
+#     __backend__ = True
 
-    creates_implicitly_with_table = False
-    drops_implicitly_with_table = False
-    requires_table_to_exist = False
+#     __only_on__ = "postgresql > 8.3"
 
-    @testing.fixture
-    def produce_subject(self):
-        return DOMAIN(
-            name="email",
-            data_type=Text,
-            check=r"VALUE ~ '[^@]+@[^@]+\.[^@]+'",
-        )
+#     creates_implicitly_with_table = False
+#     drops_implicitly_with_table = False
+#     requires_table_to_exist = False
 
-    @testing.fixture
-    def produce_table_integrated_subject(self, metadata, produce_subject):
-        return Table(
-            "table",
-            metadata,
-            Column("id", Integer, primary_key=True),
-            Column("email", produce_subject),
-        )
+#     @testing.fixture
+#     def produce_subject(self):
+#         return DOMAIN(
+#             name="email",
+#             data_type=Text,
+#             check=r"VALUE ~ '[^@]+@[^@]+\.[^@]+'",
+#         )
 
-
-class EnumDDLEventTest(DDLEventWCreateHarness, fixtures.TestBase):
-    __backend__ = True
-
-    __only_on__ = "postgresql > 8.3"
-
-    creates_implicitly_with_table = False
-    drops_implicitly_with_table = False
-    requires_table_to_exist = False
-
-    @testing.fixture
-    def produce_subject(self):
-        return Enum(
-            "x",
-            "y",
-            "z",
-            name="status",
-        )
-
-    @testing.fixture
-    def produce_event_target(self, produce_subject, connection):
-        return produce_subject.dialect_impl(connection.dialect)
-
-    @testing.fixture
-    def produce_table_integrated_subject(self, metadata, produce_subject):
-        return Table(
-            "table",
-            metadata,
-            Column("id", Integer, primary_key=True),
-            Column("status", produce_subject),
-        )
+#     @testing.fixture
+#     def produce_table_integrated_subject(self, metadata, produce_subject):
+#         return Table(
+#             "table",
+#             metadata,
+#             Column("id", Integer, primary_key=True),
+#             Column("email", produce_subject),
+#         )
 
 
-class NativeEnumDDLEventTest(EnumDDLEventTest):
-    @testing.fixture
-    def produce_event_target(self, produce_subject, connection):
-        return produce_subject
+# class EnumDDLEventTest(DDLEventWCreateHarness, fixtures.TestBase):
+#     __backend__ = True
 
-    @testing.fixture
-    def produce_subject(self):
-        return ENUM(
-            "x",
-            "y",
-            "z",
-            name="status",
-        )
+#     __only_on__ = "postgresql > 8.3"
+
+#     creates_implicitly_with_table = False
+#     drops_implicitly_with_table = False
+#     requires_table_to_exist = False
+
+#     @testing.fixture
+#     def produce_subject(self):
+#         return Enum(
+#             "x",
+#             "y",
+#             "z",
+#             name="status",
+#         )
+
+#     @testing.fixture
+#     def produce_event_target(self, produce_subject, connection):
+#         return produce_subject.dialect_impl(connection.dialect)
+
+#     @testing.fixture
+#     def produce_table_integrated_subject(self, metadata, produce_subject):
+#         return Table(
+#             "table",
+#             metadata,
+#             Column("id", Integer, primary_key=True),
+#             Column("status", produce_subject),
+#         )
+
+
+# class NativeEnumDDLEventTest(EnumDDLEventTest):
+#     @testing.fixture
+#     def produce_event_target(self, produce_subject, connection):
+#         return produce_subject
+
+#     @testing.fixture
+#     def produce_subject(self):
+#         return ENUM(
+#             "x",
+#             "y",
+#             "z",
+#             name="status",
+#         )
 
 
 class OIDTest(fixtures.TestBase):

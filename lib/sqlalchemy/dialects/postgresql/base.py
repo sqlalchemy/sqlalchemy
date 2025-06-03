@@ -1594,6 +1594,7 @@ from ... import select
 from ... import sql
 from ... import util
 from ...engine import characteristics
+from ...engine import Connection
 from ...engine import default
 from ...engine import interfaces
 from ...engine import ObjectKind
@@ -1604,6 +1605,7 @@ from ...engine.reflection import ReflectionDefaults
 from ...sql import bindparam
 from ...sql import coercions
 from ...sql import compiler
+from ...sql import ddl
 from ...sql import elements
 from ...sql import expression
 from ...sql import roles
@@ -2366,7 +2368,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
             constraint.ondelete, self._fk_ondelete_pattern
         )
 
-    def visit_create_enum_type(self, create, **kw):
+    def visit_create_enum(self, create, **kw):
         type_ = create.element
 
         return "CREATE TYPE %s AS ENUM (%s)" % (
@@ -2377,7 +2379,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
             ),
         )
 
-    def visit_drop_enum_type(self, drop, **kw):
+    def visit_drop_enum(self, drop, **kw):
         type_ = drop.element
 
         return "DROP TYPE %s" % (self.preparer.format_type(type_))
@@ -2842,6 +2844,34 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         return "JSONPATH"
 
 
+class PGDDLGenerator(ddl.SchemaGenerator):
+    def __init__(
+        self, connection, item: schema.SchemaItem, checkfirst=False, **kwargs: Any
+    ) -> None:
+        super().__init__(connection, item, **kwargs)
+        self.checkfirst = checkfirst
+
+    def visit_DOMAIN(self, domain: DOMAIN, create_ok: bool = False, **kw):
+        if not create_ok and not self._can_create_schema_type(domain, **kw):
+            return
+        with self.with_ddl_events(domain):
+            CreateDomainType(domain)._invoke_with(self.connection)
+
+
+class PGDDLDropper(ddl.SchemaDropper):
+    def __init__(
+        self, connection, item: schema.SchemaItem, checkfirst=False, **kwargs: Any
+    ) -> None:
+        super().__init__(connection, item, **kwargs)
+        self.checkfirst = checkfirst
+
+    def visit_DOMAIN(self, domain, drop_ok: bool = False, **kw):
+        if not drop_ok and not self._can_drop_schema_type(domain, **kw):
+            return
+        with self.with_ddl_events(domain):
+            DropDomainType(domain)._invoke_with(self.connection)
+
+
 class PGIdentifierPreparer(compiler.IdentifierPreparer):
     reserved_words = RESERVED_WORDS
 
@@ -3131,6 +3161,12 @@ class PGDialect(default.DefaultDialect):
     postfetch_lastrowid = False
     use_insertmanyvalues = True
 
+    supports_schema_type_kinds = ('enum', 'DOMAIN')
+    _schema_type_kind_typtype = {
+        'enum': 'e',
+        'DOMAIN': 'd'
+    }
+
     returns_native_bytes = True
 
     insertmanyvalues_implicit_sentinel = (
@@ -3156,6 +3192,8 @@ class PGDialect(default.DefaultDialect):
 
     statement_compiler = PGCompiler
     ddl_compiler = PGDDLCompiler
+    ddl_generator = PGDDLGenerator
+    ddl_dropper = PGDDLDropper
     type_compiler_cls = PGTypeCompiler
     preparer = PGIdentifierPreparer
     execution_ctx_cls = PGExecutionContext
@@ -3457,6 +3495,21 @@ class PGDialect(default.DefaultDialect):
             query = query.where(pg_catalog.pg_namespace.c.nspname == schema)
         return query
 
+    def _pg_type_filter_schema(self, query, schema):
+        query = query.join(
+            pg_catalog.pg_namespace,
+            pg_catalog.pg_namespace.c.oid == pg_catalog.pg_type.c.typnamespace
+        )
+
+        if schema is None:
+            query = query.where(
+                pg_catalog.pg_type_is_visible(pg_catalog.pg_type.c.oid),
+                pg_catalog.pg_namespace.c.nspname != "pg_catalog"
+            )
+        elif schema != "*":
+            query = query.where(pg_catalog.pg_namespace.c.nspname == schema)
+        return query
+
     def _pg_class_relkind_condition(self, relkinds, pg_class_table=None):
         if pg_class_table is None:
             pg_class_table = pg_catalog.pg_class
@@ -3493,6 +3546,7 @@ class PGDialect(default.DefaultDialect):
         )
         return bool(connection.scalar(query))
 
+    # TODO: Deprecate?
     @reflection.cache
     def has_type(self, connection, type_name, schema=None, **kw):
         query = (
@@ -3513,6 +3567,26 @@ class PGDialect(default.DefaultDialect):
         elif schema != "*":
             query = query.where(pg_catalog.pg_namespace.c.nspname == schema)
 
+        return bool(connection.scalar(query))
+
+    @reflection.cache
+    def has_schema_type(
+        self,
+        connection: Connection,
+        kind: str,
+        schema_type_name: str,
+        schema: str | None = None,
+        **kw
+    ) -> bool:
+        typtype = self._schema_type_kind_typtype[kind]
+        query = (
+            select(pg_catalog.pg_type.c.typname)
+            .where(
+                pg_catalog.pg_type.c.typname == schema_type_name,
+                pg_catalog.pg_type.c.typtype == typtype,
+            )
+        )
+        query = self._pg_type_filter_schema(query, schema)
         return bool(connection.scalar(query))
 
     def _get_server_version_info(self, connection):
@@ -3561,6 +3635,13 @@ class PGDialect(default.DefaultDialect):
             self._pg_class_relkind_condition(relkinds)
         )
         query = self._pg_class_filter_scope_schema(query, schema, scope=scope)
+        return connection.scalars(query).all()
+
+    def _get_typnames_for_typtypes(self, connection, schema, typtypes):
+        query = select(pg_catalog.pg_type.c.typname).where(
+            pg_catalog.pg_type.c.typtype == sql.any_(_array.array(typtypes))
+        )
+        query = self._pg_type_filter_schema(query, schema)
         return connection.scalars(query).all()
 
     @reflection.cache
@@ -3621,6 +3702,12 @@ class PGDialect(default.DefaultDialect):
         return self._get_relnames_for_relkinds(
             connection, schema, relkinds=("S",), scope=ObjectScope.ANY
         )
+
+    @reflection.cache
+    def get_schema_type_names(self, connection, kind: str, schema=None, **kw):
+        typtypes = (self._schema_type_kind_typtype[kind], )
+
+        return self._get_typnames_for_typtypes(connection, schema, typtypes)
 
     @reflection.cache
     def get_view_definition(self, connection, view_name, schema=None, **kw):
@@ -5002,17 +5089,6 @@ class PGDialect(default.DefaultDialect):
             check_constraints[(schema, table_name)].append(entry)
         return check_constraints.items()
 
-    def _pg_type_filter_schema(self, query, schema):
-        if schema is None:
-            query = query.where(
-                pg_catalog.pg_type_is_visible(pg_catalog.pg_type.c.oid),
-                # ignore pg_catalog schema
-                pg_catalog.pg_namespace.c.nspname != "pg_catalog",
-            )
-        elif schema != "*":
-            query = query.where(pg_catalog.pg_namespace.c.nspname == schema)
-        return query
-
     @lru_cache()
     def _enum_query(self, schema):
         lbl_agg_sq = (
@@ -5039,11 +5115,6 @@ class PGDialect(default.DefaultDialect):
                 ),
                 pg_catalog.pg_namespace.c.nspname.label("schema"),
                 lbl_agg_sq.c.labels.label("labels"),
-            )
-            .join(
-                pg_catalog.pg_namespace,
-                pg_catalog.pg_namespace.c.oid
-                == pg_catalog.pg_type.c.typnamespace,
             )
             .outerjoin(
                 lbl_agg_sq, pg_catalog.pg_type.c.oid == lbl_agg_sq.c.enumtypid
@@ -5113,11 +5184,6 @@ class PGDialect(default.DefaultDialect):
                 con_sq.c.condefs,
                 con_sq.c.connames,
                 pg_catalog.pg_collation.c.collname,
-            )
-            .join(
-                pg_catalog.pg_namespace,
-                pg_catalog.pg_namespace.c.oid
-                == pg_catalog.pg_type.c.typnamespace,
             )
             .outerjoin(
                 pg_catalog.pg_collation,

@@ -9,160 +9,29 @@ from __future__ import annotations
 
 from typing import Any
 from typing import Optional
-from typing import Type
 from typing import TYPE_CHECKING
 from typing import Union
 
+from ...engine import Dialect
 from ... import schema
 from ... import util
 from ...sql import coercions
+from ...sql import ddl
 from ...sql import elements
 from ...sql import roles
 from ...sql import sqltypes
 from ...sql import type_api
 from ...sql.base import _NoArg
-from ...sql.ddl import InvokeCreateDDLBase
-from ...sql.ddl import InvokeDropDDLBase
+from ...sql.schema import SchemaType
 
 if TYPE_CHECKING:
     from ...sql._typing import _TypeEngineArgument
 
 
-class NamedType(sqltypes.TypeEngine):
-    """Base for named types."""
-
-    __abstract__ = True
-    DDLGenerator: Type[NamedTypeGenerator]
-    DDLDropper: Type[NamedTypeDropper]
-    create_type: bool
-
-    def create(self, bind, checkfirst=True, **kw):
-        """Emit ``CREATE`` DDL for this type.
-
-        :param bind: a connectable :class:`_engine.Engine`,
-         :class:`_engine.Connection`, or similar object to emit
-         SQL.
-        :param checkfirst: if ``True``, a query against
-         the PG catalog will be first performed to see
-         if the type does not exist already before
-         creating.
-
-        """
-        bind._run_ddl_visitor(self.DDLGenerator, self, checkfirst=checkfirst)
-
-    def drop(self, bind, checkfirst=True, **kw):
-        """Emit ``DROP`` DDL for this type.
-
-        :param bind: a connectable :class:`_engine.Engine`,
-         :class:`_engine.Connection`, or similar object to emit
-         SQL.
-        :param checkfirst: if ``True``, a query against
-         the PG catalog will be first performed to see
-         if the type actually exists before dropping.
-
-        """
-        bind._run_ddl_visitor(self.DDLDropper, self, checkfirst=checkfirst)
-
-    def _check_for_name_in_memos(self, checkfirst, kw):
-        """Look in the 'ddl runner' for 'memos', then
-        note our name in that collection.
-
-        This to ensure a particular named type is operated
-        upon only once within any kind of create/drop
-        sequence without relying upon "checkfirst".
-
-        """
-        if not self.create_type:
-            return True
-        if "_ddl_runner" in kw:
-            ddl_runner = kw["_ddl_runner"]
-            type_name = f"pg_{self.__visit_name__}"
-            if type_name in ddl_runner.memo:
-                existing = ddl_runner.memo[type_name]
-            else:
-                existing = ddl_runner.memo[type_name] = set()
-            present = (self.schema, self.name) in existing
-            existing.add((self.schema, self.name))
-            return present
-        else:
-            return False
-
-    def _on_table_create(self, target, bind, checkfirst=False, **kw):
-        if (
-            checkfirst
-            or (
-                not self.metadata
-                and not kw.get("_is_metadata_operation", False)
-            )
-        ) and not self._check_for_name_in_memos(checkfirst, kw):
-            self.create(bind=bind, checkfirst=checkfirst)
-
-    def _on_table_drop(self, target, bind, checkfirst=False, **kw):
-        if (
-            not self.metadata
-            and not kw.get("_is_metadata_operation", False)
-            and not self._check_for_name_in_memos(checkfirst, kw)
-        ):
-            self.drop(bind=bind, checkfirst=checkfirst)
-
-    def _on_metadata_create(self, target, bind, checkfirst=False, **kw):
-        if not self._check_for_name_in_memos(checkfirst, kw):
-            self.create(bind=bind, checkfirst=checkfirst)
-
-    def _on_metadata_drop(self, target, bind, checkfirst=False, **kw):
-        if not self._check_for_name_in_memos(checkfirst, kw):
-            self.drop(bind=bind, checkfirst=checkfirst)
+NamedType = SchemaType
 
 
-class NamedTypeGenerator(InvokeCreateDDLBase):
-    def __init__(self, dialect, connection, checkfirst=False, **kwargs):
-        super().__init__(connection, **kwargs)
-        self.checkfirst = checkfirst
-
-    def _can_create_type(self, type_):
-        if not self.checkfirst:
-            return True
-
-        effective_schema = self.connection.schema_for_object(type_)
-        return not self.connection.dialect.has_type(
-            self.connection, type_.name, schema=effective_schema
-        )
-
-
-class NamedTypeDropper(InvokeDropDDLBase):
-    def __init__(self, dialect, connection, checkfirst=False, **kwargs):
-        super().__init__(connection, **kwargs)
-        self.checkfirst = checkfirst
-
-    def _can_drop_type(self, type_):
-        if not self.checkfirst:
-            return True
-
-        effective_schema = self.connection.schema_for_object(type_)
-        return self.connection.dialect.has_type(
-            self.connection, type_.name, schema=effective_schema
-        )
-
-
-class EnumGenerator(NamedTypeGenerator):
-    def visit_enum(self, enum):
-        if not self._can_create_type(enum):
-            return
-
-        with self.with_ddl_events(enum):
-            self.connection.execute(CreateEnumType(enum))
-
-
-class EnumDropper(NamedTypeDropper):
-    def visit_enum(self, enum):
-        if not self._can_drop_type(enum):
-            return
-
-        with self.with_ddl_events(enum):
-            self.connection.execute(DropEnumType(enum))
-
-
-class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
+class ENUM(type_api.NativeForEmulated, sqltypes.Enum):
     """PostgreSQL ENUM type.
 
     This is a subclass of :class:`_types.Enum` which includes
@@ -231,8 +100,6 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
     """
 
     native_enum = True
-    DDLGenerator = EnumGenerator
-    DDLDropper = EnumDropper
 
     def __init__(
         self,
@@ -278,7 +145,7 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
         self.create_type = create_type
         if name is not _NoArg.NO_ARG:
             kw["name"] = name
-        super().__init__(*enums, **kw)
+        super().__init__(*enums, create_type=create_type, **kw)
 
     def coerce_compared_value(self, op, value):
         super_coerced_type = super().coerce_compared_value(op, value)
@@ -305,55 +172,11 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
         kw.setdefault("schema", impl.schema)
         kw.setdefault("inherit_schema", impl.inherit_schema)
         kw.setdefault("metadata", impl.metadata)
-        kw.setdefault("_create_events", False)
         kw.setdefault("values_callable", impl.values_callable)
         kw.setdefault("omit_aliases", impl._omit_aliases)
         kw.setdefault("_adapted_from", impl)
-        if type_api._is_native_for_emulated(impl.__class__):
-            kw.setdefault("create_type", impl.create_type)
 
         return cls(**kw)
-
-    def create(self, bind=None, checkfirst=True):
-        """Emit ``CREATE TYPE`` for this
-        :class:`_postgresql.ENUM`.
-
-        If the underlying dialect does not support
-        PostgreSQL CREATE TYPE, no action is taken.
-
-        :param bind: a connectable :class:`_engine.Engine`,
-         :class:`_engine.Connection`, or similar object to emit
-         SQL.
-        :param checkfirst: if ``True``, a query against
-         the PG catalog will be first performed to see
-         if the type does not exist already before
-         creating.
-
-        """
-        if not bind.dialect.supports_native_enum:
-            return
-
-        super().create(bind, checkfirst=checkfirst)
-
-    def drop(self, bind=None, checkfirst=True):
-        """Emit ``DROP TYPE`` for this
-        :class:`_postgresql.ENUM`.
-
-        If the underlying dialect does not support
-        PostgreSQL DROP TYPE, no action is taken.
-
-        :param bind: a connectable :class:`_engine.Engine`,
-         :class:`_engine.Connection`, or similar object to emit
-         SQL.
-        :param checkfirst: if ``True``, a query against
-         the PG catalog will be first performed to see
-         if the type actually exists before dropping.
-
-        """
-        if not bind.dialect.supports_native_enum:
-            return
-
-        super().drop(bind, checkfirst=checkfirst)
 
     def get_dbapi_type(self, dbapi):
         """dont return dbapi.STRING for ENUM in PostgreSQL, since that's
@@ -362,24 +185,7 @@ class ENUM(NamedType, type_api.NativeForEmulated, sqltypes.Enum):
         return None
 
 
-class DomainGenerator(NamedTypeGenerator):
-    def visit_DOMAIN(self, domain):
-        if not self._can_create_type(domain):
-            return
-        with self.with_ddl_events(domain):
-            self.connection.execute(CreateDomainType(domain))
-
-
-class DomainDropper(NamedTypeDropper):
-    def visit_DOMAIN(self, domain):
-        if not self._can_drop_type(domain):
-            return
-
-        with self.with_ddl_events(domain):
-            self.connection.execute(DropDomainType(domain))
-
-
-class DOMAIN(NamedType, sqltypes.SchemaType):
+class DOMAIN(NamedType, type_api.TypeEngine[str]):
     r"""Represent the DOMAIN PostgreSQL type.
 
     A domain is essentially a data type with optional constraints
@@ -400,9 +206,6 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
     .. versionadded:: 2.0
 
     """  # noqa: E501
-
-    DDLGenerator = DomainGenerator
-    DDLDropper = DomainDropper
 
     __visit_name__ = "DOMAIN"
 
@@ -463,18 +266,19 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
         if check is not None:
             check = coercions.expect(roles.DDLExpressionRole, check)
         self.check = check
-        self.create_type = create_type
-        super().__init__(name=name, **kw)
+        super().__init__(name=name, create_type=create_type, **kw)
 
     @classmethod
     def __test_init__(cls):
         return cls("name", sqltypes.Integer)
 
     def adapt(self, impl, **kw):
-        if self.default:
-            kw["default"] = self.default
         if self.constraint_name is not None:
             kw["constraint_name"] = self.constraint_name
+        if self.default is not None:
+            kw["default"] = self.default
+        if self.collation is not None:
+            kw["collation"] = self.collation
         if self.not_null:
             kw["not_null"] = self.not_null
         if self.check is not None:
@@ -484,13 +288,11 @@ class DOMAIN(NamedType, sqltypes.SchemaType):
 
         return super().adapt(impl, **kw)
 
+    def supports_create(self, dialect: Dialect):
+        return dialect.name == "postgresql"
 
-class CreateEnumType(schema._CreateDropBase):
-    __visit_name__ = "create_enum_type"
-
-
-class DropEnumType(schema._CreateDropBase):
-    __visit_name__ = "drop_enum_type"
+CreateEnumType = ddl.CreateEnum
+DropEnumType = ddl.DropEnum
 
 
 class CreateDomainType(schema._CreateDropBase):
