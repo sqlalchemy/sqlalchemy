@@ -2449,7 +2449,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
     def _run_ddl_visitor(
         self,
-        visitorcallable: Callable[[Connection], InvokeDDLBase],
+        visitorcallable: Callable[[Connection, SchemaItem], InvokeDDLBase],
         element: SchemaItem,
         **kwargs: Any,
     ) -> None:
@@ -2459,7 +2459,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         options given to the visitor so that "checkfirst" is skipped.
 
         """
-        visitorcallable(self, **kwargs).traverse_single(element)
+        visitorcallable(self, element, **kwargs).invoke()
 
 
 class ExceptionContextImpl(ExceptionContext):
@@ -3245,7 +3245,7 @@ class Engine(
 
     def _run_ddl_visitor(
         self,
-        visitorcallable: Callable[[Connection], InvokeDDLBase],
+        visitorcallable: Callable[[Connection, SchemaItem], InvokeDDLBase],
         element: SchemaItem,
         **kwargs: Any,
     ) -> None:

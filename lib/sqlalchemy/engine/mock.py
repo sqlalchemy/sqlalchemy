@@ -52,12 +52,12 @@ class MockConnection:
 
     def _run_ddl_visitor(
         self,
-        visitorcallable: Callable[[Connection], InvokeDDLBase],
+        visitorcallable: Callable[[Connection, SchemaItem], InvokeDDLBase],
         element: SchemaItem,
         **kwargs: Any,
     ) -> None:
         kwargs["checkfirst"] = False
-        visitorcallable(cast(Connection, self), **kwargs).traverse_single(element)
+        visitorcallable(cast(Connection, self), element, **kwargs).invoke()
 
     def execute(
         self,

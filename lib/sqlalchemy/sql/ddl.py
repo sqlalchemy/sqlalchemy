@@ -865,8 +865,24 @@ class DropConstraintComment(_CreateDropBase["Constraint"]):
 
 
 class InvokeDDLBase(SchemaVisitor):
-    def __init__(self, connection, **kw):
+    def __init__(self, connection, initial_target: Visitable, **kw):
         self.connection = connection
+        self.initial_target = initial_target
+
+    def invoke(self):
+        self.traverse_single(self.initial_target)
+
+    @property
+    def is_metadata_operation(self):
+        return isinstance(self.initial_target, MetaData)
+
+    @property
+    def is_table_operation(self):
+        return isinstance(self.initial_target, Table)
+
+    @property
+    def is_type_operation(self):
+        return isinstance(self.initial_target, (TypeEngine, TypeDecorator))
 
     @contextlib.contextmanager
     def with_ddl_events(self, target, **kw):
@@ -1074,33 +1090,31 @@ class SchemaGenerator(InvokeCreateDDLBase):
         with self.with_ddl_events(index):
             CreateIndex(index)._invoke_with(self.connection)
 
+    def visit_enum(
+        self, enum: Enum, create_ok: bool = False
+    ) -> None:
+        if not create_ok and not self._can_create_schema_type(enum):
+            return
+
+        with self.with_ddl_events(enum):
+            CreateEnum(enum)._invoke_with(self.connection)
+
 
 class SchemaDropper(InvokeDropDDLBase):
     def __init__(
         self,
-        arg1: Connection | Dialect,
-        arg2: Optional[Connection] = None,
+        connection: Connection,
+        target: SchemaItem,
         /,
         checkfirst=False,
         tables=None,
         **kwargs
     ):
-
-        if arg2 is not None:
-            util.warn_deprecated(
-                "The `dialect` parameter should no longer be used. "
-                "Use `SchemaDropper(connection, **kwargs)` instead. ",
-                "2.1"
-            )
-            connection = arg2
-        else:
-            connection = typing.cast("Connection", arg1)
-        super().__init__(connection, **kwargs)
+        super().__init__(connection, target, **kwargs)
         self.checkfirst = checkfirst
         self.tables = tables
         self.dialect = connection.dialect
         self.preparer = self.dialect.identifier_preparer
-        self.memo = {}
 
     def visit_metadata(self, metadata):
         if self.tables is not None:

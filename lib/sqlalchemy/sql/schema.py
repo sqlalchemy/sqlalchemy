@@ -1282,8 +1282,10 @@ class Table(
             :meth:`_schema.MetaData.create_all`.
 
         """
-        def ddl_generator(conn: Connection, **kwargs):
-            return conn.dialect.ddl_generator(conn, **kwargs)
+        def ddl_generator(
+            conn: Connection, target: SchemaItem, **kwargs: Any
+        ) -> SchemaGenerator:
+            return conn.dialect.ddl_generator(conn, target, **kwargs)
 
         bind._run_ddl_visitor(ddl_generator, self, checkfirst=checkfirst)
 
@@ -1297,8 +1299,10 @@ class Table(
             :meth:`_schema.MetaData.drop_all`.
 
         """
-        def ddl_dropper(conn: Connection, **kwargs):
-            return conn.dialect.ddl_dropper(conn, **kwargs)
+        def ddl_dropper(
+            conn: Connection, item: SchemaItem, **kwargs: Any
+        ) -> SchemaDropper:
+            return conn.dialect.ddl_dropper(conn, item, **kwargs)
 
         bind._run_ddl_visitor(
             ddl_dropper, self, checkfirst=checkfirst
@@ -4260,15 +4264,15 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
 
     def create(self, bind: _CreateDropBind, checkfirst: bool = True) -> None:
         """Creates this sequence in the database."""
-        def ddl_generator(conn: Connection, **kwargs):
-            return conn.dialect.ddl_generator(conn, **kwargs)
+        def ddl_generator(conn: Connection, target: Any, **kwargs):
+            return conn.dialect.ddl_generator(conn, target, **kwargs)
 
         bind._run_ddl_visitor(ddl_generator, self, checkfirst=checkfirst)
 
     def drop(self, bind: _CreateDropBind, checkfirst: bool = True) -> None:
         """Drops this sequence from the database."""
-        def ddl_dropper(conn: Connection, **kwargs):
-            return conn.dialect.ddl_dropper(conn, **kwargs)
+        def ddl_dropper(conn: Connection, target: Any, **kwargs):
+            return conn.dialect.ddl_dropper(conn, target, **kwargs)
         bind._run_ddl_visitor(ddl_dropper, self, checkfirst=checkfirst)
 
     def _not_a_column_expr(self) -> NoReturn:
@@ -6219,8 +6223,10 @@ class MetaData(HasSchemaAttr):
           in the target database.
 
         """
-        def ddl_generator(connection: Connection, **kwargs):
-            return connection.dialect.ddl_generator(connection, **kwargs)
+        def ddl_generator(
+            connection: Connection, item: SchemaItem, **kwargs: Any
+        ) -> SchemaGenerator:
+            return connection.dialect.ddl_generator(connection, item, **kwargs)
 
         bind._run_ddl_visitor(
             ddl_generator, self, checkfirst=checkfirst, tables=tables
@@ -6250,8 +6256,10 @@ class MetaData(HasSchemaAttr):
           present in the target database.
 
         """
-        def ddl_dropper(connection: Connection, **kwargs):
-            return connection.dialect.ddl_dropper(connection, **kwargs)
+        def ddl_dropper(
+            connection: Connection, item: SchemaItem, **kwargs: Any
+        ) -> SchemaDropper:
+            return connection.dialect.ddl_dropper(connection, item, **kwargs)
 
         bind._run_ddl_visitor(
             ddl_dropper, self, checkfirst=checkfirst, tables=tables
