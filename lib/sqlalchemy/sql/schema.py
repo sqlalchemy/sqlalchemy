@@ -79,6 +79,7 @@ from .elements import quoted_name
 from .elements import TextClause
 from .selectable import TableClause
 from .type_api import to_instance
+from .type_api import TypeDecorator
 from .type_api import TypeEngine
 from .type_api import TypeEngineMixin
 from .visitors import ExternallyTraversible
@@ -101,6 +102,8 @@ if typing.TYPE_CHECKING:
     from .base import ColumnSet
     from .base import ReadOnlyColumnCollection
     from .compiler import DDLCompiler
+    from .ddl import SchemaDropper
+    from .ddl import SchemaGenerator
     from .elements import BindParameter
     from .elements import KeyedColumnElement
     from .functions import Function
@@ -111,6 +114,7 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import _CoreMultiExecuteParams
     from ..engine.interfaces import CoreExecuteOptionsParameter
     from ..engine.interfaces import ExecutionContext
+    from ..engine.interfaces import Dialect
     from ..engine.mock import MockConnection
     from ..engine.reflection import _ReflectionInfo
     from ..sql.selectable import FromClause
@@ -3785,6 +3789,15 @@ class SchemaType(HasSchemaAttr, TypeEngineMixin):
 
     _use_schema_map = True
 
+    name: str | None
+
+    metadata: MetaData | None
+    table: Table | None
+    column: Column | None
+
+    inherit_schema: bool
+    create_type: bool
+
     def __init__(
         self,
         name: Optional[str] = None,
@@ -3792,7 +3805,7 @@ class SchemaType(HasSchemaAttr, TypeEngineMixin):
         metadata: Optional[MetaData] = None,
         inherit_schema: bool = False,
         quote: Optional[bool] = None,
-        _create_events: bool = True,
+        create_type: bool = True,
         _adapted_from: Optional[SchemaType] = None
     ):
         if name is not None:
@@ -3801,93 +3814,128 @@ class SchemaType(HasSchemaAttr, TypeEngineMixin):
             self.name = None
 
         self.inherit_schema = inherit_schema
-        self._create_events = _create_events
 
-        self.schema = schema
-        self._set_metadata(metadata)
+        self.schema = schema or (
+            not _adapted_from and metadata and metadata.schema
+        ) or None
+        if metadata:
+            self._set_metadata(
+                metadata,
+                _from_table=_adapted_from and _adapted_from.table,
+                _from_column=_adapted_from and _adapted_from.column
+            )
+        else:
+            self.metadata = None
+
+        self.table = self.column = None
+        self.create_type = create_type
 
         if _adapted_from:
+            # TODO: Is this still necessary?
             self.dispatch = cast(
                 "dispatcher",
                 self.dispatch._join(_adapted_from.dispatch)
             )
 
-    def create(self, bind: _CreateDropBind, checkfirst: bool = True) -> None:
-        def ddl_generator(conn: Connection, **kwargs):
-            return conn.dialect.ddl_generator(conn, **kwargs)
+    @property
+    def kind(self) -> str:
+        """
+        Represents the kind of DDL specification statement
+        issued by a `SchemaType` subclasses to create an
+        instance of this particular `SchemaType`
+        (e.g. `TYPE` for pg ENUM types, `DOMAIN` for pg `DOMAIN`
+        types).
 
-        bind._run_ddl_visitor(ddl_generator, self, checkfirst=checkfirst)
+        Default behaviour is to return the `__visit_name__` of the type,
+        however this can be customised if different `TypeEngine` instances
+        in the dialect share the same DDL namespace (for instance, if pg
+        RANGE ever used CREATE TYPE).
+        """
+        return type(self).__visit_name__
+
+    @property
+    def _key(self) -> str:
+        return (
+            _get_table_key(self.name, self.schema)
+            if self.name is not None
+            else '<unknown>'
+        )
+
+    def create(self, bind: _CreateDropBind, checkfirst: bool = True) -> None:
+        def ddl_generator(
+            conn: Connection, item: SchemaItem, **kwargs: Any
+        ) -> SchemaGenerator:
+            return conn.dialect.ddl_generator(conn, item, **kwargs)
+
+        bind._run_ddl_visitor(
+            ddl_generator,
+            self,
+            checkfirst=checkfirst
+        )
 
     def drop(self, bind: _CreateDropBind, checkfirst: bool = True) -> None:
-        def ddl_dropper(conn: Connection, **kwargs):
-            return conn.dialect.ddl_dropper(conn, **kwargs)
+        def ddl_dropper(conn: Connection, item: SchemaItem, **kwargs: Any):
+            return conn.dialect.ddl_dropper(conn, item, **kwargs)
 
-        bind._run_ddl_visitor(ddl_dropper, self, checkfirst=checkfirst)
+        bind._run_ddl_visitor(
+            ddl_dropper,
+            self,
+            checkfirst=checkfirst
+        )
 
     def _set_metadata(
         self,
-        metadata: MetaData | None,
+        metadata: MetaData,
         _from_table: Optional[Table] = None,
-        _from_column: Optional[ColumnElement] = None
+        _from_column: Optional[Column] = None,
     ):
-        if metadata is not None and self._create_events and metadata:
-            observed_variant = (
-                _from_column.type if _from_column is not None else None
-            )
-            event.listen(
-                metadata,
-                "before_create",
-                self._run_only_on_mapped_variant(
-                    self._on_metadata_create, observed_variant
-                )
-            )
-            event.listen(
-                metadata,
-                "after_drop",
-                self._run_only_on_mapped_variant(
-                    self._on_metadata_drop, observed_variant
-                )
-            )
+        type_registry = metadata._types[self.kind]
+
+        existing = type_registry.get(self._key, None)
+
+        if existing is None:
+            # Only register the type when it is constructed with metadata
+            # or has a column attached to at least one table.
+            type_registry[self._key] = self
+        elif _from_table is not None:
+            if self.inherit_schema:
+                # If we are inheriting the schema, ensure that the
+                # registered type is created using the correct key
+                del type_registry[existing._key]
+                type_registry[self._key] = existing
+
+            if (
+                existing.table is not None
+                and existing.table is not _from_table
+            ):
+                # This type is shared between at least two different tables.
+                # Replace the registered type with no table or column
+                # information.
+                # DDL for this type will only be emitted during metadata-level
+                # generation or when `Table.create` is called with
+                # `checkfirst=True`
+                type_registry[self._key] = cast(SchemaType, self.copy())
 
         self.metadata = metadata
 
-        if metadata and self.schema is None:
-            self.schema = metadata.schema
-
     def _set_parent(self, parent, **kw):
-        assert isinstance(parent, ColumnElement)
-        parent._on_table_attach(util.portable_instancemethod(self._set_table))
+        assert isinstance(parent, Column)
+        parent._on_table_attach(self._set_table)
 
     def _set_table(self, column, table):
+        assert table.metadata
+
         if self.inherit_schema:
             self.schema = table.schema
 
-        if self.metadata is None:
-            self._set_metadata(table.metadata, table, column)
+        self._set_metadata(table.metadata, table, column)
 
-        if self.inherit_schema and self.schema != table.schema:
-            self.schema = table.schema
-
-        if self._create_events:
-            event.listen(
-                table,
-                "before_create",
-                self._run_only_on_mapped_variant(
-                    self._on_table_create, column.type
-                )
-            )
-            event.listen(
-                table,
-                "after_drop",
-                self._run_only_on_mapped_variant(
-                    self._on_table_drop, column.type
-                )
-            )
+        self.column = column
+        self.table = table
 
     def copy(self, **kw):
         return self.adapt(
             cast(type[TypeEngine[Any]], self.__class__),
-            _create_events=True,
             metadata=kw.get("_to_metadata", self.metadata)
         )
 
@@ -3904,7 +3952,7 @@ class SchemaType(HasSchemaAttr, TypeEngineMixin):
     def adapt(
         self, cls: type[TypeEngine[Any] | TypeEngineMixin], **kw: Any
     ) -> TypeEngine[Any]:
-        kw.setdefault("_create_events", False)
+        kw.setdefault("create_type", self.create_type)
         kw.setdefault("_adapted_from", self)
         return super().adapt(cls, **kw)
 
@@ -3971,25 +4019,15 @@ class SchemaType(HasSchemaAttr, TypeEngineMixin):
         else:
             return None
 
-    def _on_table_create(self, target, bind, **kw):
-        t = self.dialect_impl(bind.dialect)
-        if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
-            t._on_table_create(target, bind, **kw)
+    def supports_create(self, dialect: Dialect) -> bool:
+        """
+        Return `True` if this type can be created as a type in this dialect.
 
-    def _on_table_drop(self, target: MetaData, bind: _CreateDropBind, **kw):
-        t = self.dialect_impl(bind.dialect)
-        if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
-            t._on_table_drop(target, bind, **kw)
-
-    def _on_metadata_create(self, target: MetaData, bind: _CreateDropBind, **kw):
-        t = self.dialect_impl(bind.dialect)
-        if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
-            t._on_metadata_create(target, bind, **kw)
-
-    def _on_metadata_drop(self, target: MetaData, bind: _CreateDropBind, **kw):
-        t = self.dialect_impl(bind.dialect)
-        if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
-            t._on_metadata_drop(target, bind, **kw)
+        By default this returns `False`, but implementations can override this
+        method in order to perform additional checks before attempting to
+        create a DDL specification of this type
+        """
+        return False
 
 
 class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
@@ -5860,6 +5898,9 @@ class MetaData(HasSchemaAttr):
             self.info = info
         self._schemas: Set[str] = set()
         self._sequences: Dict[str, Sequence] = {}
+        self._types: Dict[str, Dict[str, SchemaType]] = (
+            collections.defaultdict(dict)
+        )
         self._fk_memos: Dict[Tuple[str, Optional[str]], List[ForeignKey]] = (
             collections.defaultdict(list)
         )
@@ -5915,6 +5956,7 @@ class MetaData(HasSchemaAttr):
             "schema": self.schema,
             "schemas": self._schemas,
             "sequences": self._sequences,
+            "types": self._types,
             "fk_memos": self._fk_memos,
             "naming_convention": self.naming_convention,
         }
@@ -5924,6 +5966,7 @@ class MetaData(HasSchemaAttr):
         self.schema = state["schema"]
         self.naming_convention = state["naming_convention"]
         self._sequences = state["sequences"]
+        self._types = state["types"]
         self._schemas = state["schemas"]
         self._fk_memos = state["fk_memos"]
 

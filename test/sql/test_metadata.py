@@ -2553,118 +2553,123 @@ class SchemaTypeTest(fixtures.TestBase):
         eq_(t1.c.y.type.evt_targets, (t1,))
         eq_(t2.c.y.type.evt_targets, (t2, t2))
 
-    def test_enum_column_copy_transfers_events(self):
-        m = MetaData()
+    # SchemaType no longer listens to metadata before_create
+    # and after_drop events
+    # def test_enum_column_copy_transfers_events(self):
+    #     m = MetaData()
 
-        type_ = self.WrapEnum("a", "b", "c", name="foo")
-        y = Column("y", type_)
-        y_copy = y._copy()
-        t1 = Table("x", m, y_copy)
+    #     type_ = self.WrapEnum("a", "b", "c", name="foo")
+    #     y = Column("y", type_)
+    #     y_copy = y._copy()
+    #     t1 = Table("x", m, y_copy)
 
-        is_true(y_copy.type._create_events)
+    #     is_true(y_copy.type._create_events)
 
-        # for PostgreSQL, this will emit CREATE TYPE
-        m.dispatch.before_create(t1, testing.db)
-        try:
-            eq_(t1.c.y.type.evt_targets, (t1,))
-        finally:
-            # do the drop so that PostgreSQL emits DROP TYPE
-            m.dispatch.after_drop(t1, testing.db)
+    #     # for PostgreSQL, this will emit CREATE TYPE
+    #     m.dispatch.before_create(t1, testing.db)
+    #     try:
+    #         eq_(t1.c.y.type.evt_targets, (t1,))
+    #     finally:
+    #         # do the drop so that PostgreSQL emits DROP TYPE
+    #         m.dispatch.after_drop(t1, testing.db)
 
-    def test_enum_nonnative_column_copy_transfers_events(self):
-        m = MetaData()
+    # def test_enum_nonnative_column_copy_transfers_events(self):
+    #     m = MetaData()
 
-        type_ = self.WrapEnum("a", "b", "c", name="foo", native_enum=False)
-        y = Column("y", type_)
-        y_copy = y._copy()
-        t1 = Table("x", m, y_copy)
+    #     type_ = self.WrapEnum("a", "b", "c", name="foo", native_enum=False)
+    #     y = Column("y", type_)
+    #     y_copy = y._copy()
+    #     t1 = Table("x", m, y_copy)
 
-        is_true(y_copy.type._create_events)
+    #     is_true(y_copy.type._create_events)
 
-        m.dispatch.before_create(t1, testing.db)
-        eq_(t1.c.y.type.evt_targets, (t1,))
+    #     m.dispatch.before_create(t1, testing.db)
+    #     eq_(t1.c.y.type.evt_targets, (t1,))
 
-    def test_enum_nonnative_column_copy_transfers_constraintpref(self):
-        m = MetaData()
+    # Enum, Boolean no longer listen to table or metadata create events
+    # def test_enum_nonnative_column_copy_transfers_constraintpref(self):
+    #     m = MetaData()
 
-        type_ = self.WrapEnum(
-            "a",
-            "b",
-            "c",
-            name="foo",
-            native_enum=False,
-            create_constraint=False,
-        )
-        y = Column("y", type_)
-        y_copy = y._copy()
-        Table("x", m, y_copy)
+    #     type_ = self.WrapEnum(
+    #         "a",
+    #         "b",
+    #         "c",
+    #         name="foo",
+    #         native_enum=False,
+    #         create_constraint=False,
+    #     )
+    #     y = Column("y", type_)
+    #     y_copy = y._copy()
+    #     Table("x", m, y_copy)
 
-        is_false(y_copy.type.create_constraint)
+    #     is_false(y_copy.type.create_constraint)
 
-    def test_boolean_column_copy_transfers_events(self):
-        m = MetaData()
+    # def test_boolean_column_copy_transfers_events(self):
+    #     m = MetaData()
 
-        type_ = self.WrapBoolean()
-        y = Column("y", type_)
-        y_copy = y._copy()
-        Table("x", m, y_copy)
+    #     type_ = self.WrapBoolean()
+    #     y = Column("y", type_)
+    #     y_copy = y._copy()
+    #     Table("x", m, y_copy)
 
-        is_true(y_copy.type._create_events)
+    #     is_true(y_copy.type._create_events)
 
-    def test_boolean_nonnative_column_copy_transfers_constraintpref(self):
-        m = MetaData()
+    # def test_boolean_nonnative_column_copy_transfers_constraintpref(self):
+    #     m = MetaData()
 
-        type_ = self.WrapBoolean(create_constraint=False)
-        y = Column("y", type_)
-        y_copy = y._copy()
-        Table("x", m, y_copy)
+    #     type_ = self.WrapBoolean(create_constraint=False)
+    #     y = Column("y", type_)
+    #     y_copy = y._copy()
+    #     Table("x", m, y_copy)
 
-        is_false(y_copy.type.create_constraint)
+    #     is_false(y_copy.type.create_constraint)
 
-    def test_metadata_dispatch_no_new_impl(self):
-        m1 = MetaData()
-        typ = self.MyType(metadata=m1)
-        m1.dispatch.before_create(m1, testing.db)
-        eq_(typ.evt_targets, (m1,))
+    # SchemaType no longer listens to metadata before_create
+    # and after_drop events
+    # def test_metadata_dispatch_no_new_impl(self):
+    #     m1 = MetaData()
+    #     typ = self.MyType(metadata=m1)
+    #     m1.dispatch.before_create(m1, testing.db)
+    #     eq_(typ.evt_targets, (m1,))
 
-        dialect_impl = typ.dialect_impl(testing.db.dialect)
-        eq_(dialect_impl.evt_targets, ())
+    #     dialect_impl = typ.dialect_impl(testing.db.dialect)
+    #     eq_(dialect_impl.evt_targets, ())
 
-    def test_metadata_dispatch_new_impl(self):
-        m1 = MetaData()
-        typ = self.MyTypeWImpl(metadata=m1)
-        m1.dispatch.before_create(m1, testing.db)
-        eq_(typ.evt_targets, (m1,))
+    # def test_metadata_dispatch_new_impl(self):
+    #     m1 = MetaData()
+    #     typ = self.MyTypeWImpl(metadata=m1)
+    #     m1.dispatch.before_create(m1, testing.db)
+    #     eq_(typ.evt_targets, (m1,))
 
-        dialect_impl = typ.dialect_impl(testing.db.dialect)
-        eq_(dialect_impl.evt_targets, (m1,))
+    #     dialect_impl = typ.dialect_impl(testing.db.dialect)
+    #     eq_(dialect_impl.evt_targets, (m1,))
 
-    def test_table_dispatch_decorator_schematype(self):
-        m1 = MetaData()
-        typ = self.MyTypeDecAndSchema()
-        t1 = Table("t1", m1, Column("x", typ))
-        m1.dispatch.before_create(t1, testing.db)
-        eq_(typ.evt_targets, (t1,))
+    # def test_table_dispatch_decorator_schematype(self):
+    #     m1 = MetaData()
+    #     typ = self.MyTypeDecAndSchema()
+    #     t1 = Table("t1", m1, Column("x", typ))
+    #     t1.dispatch.before_create(t1, testing.db)
+    #     eq_(typ.evt_targets, (t1,))
 
-    def test_table_dispatch_no_new_impl(self):
-        m1 = MetaData()
-        typ = self.MyType()
-        t1 = Table("t1", m1, Column("x", typ))
-        m1.dispatch.before_create(t1, testing.db)
-        eq_(typ.evt_targets, (t1,))
+    # def test_table_dispatch_no_new_impl(self):
+    #     m1 = MetaData()
+    #     typ = self.MyType()
+    #     t1 = Table("t1", m1, Column("x", typ))
+    #     t1.dispatch.before_create(t1, testing.db)
+    #     eq_(typ.evt_targets, (t1,))
 
-        dialect_impl = typ.dialect_impl(testing.db.dialect)
-        eq_(dialect_impl.evt_targets, ())
+    #     dialect_impl = typ.dialect_impl(testing.db.dialect)
+    #     eq_(dialect_impl.evt_targets, ())
 
-    def test_table_dispatch_new_impl(self):
-        m1 = MetaData()
-        typ = self.MyTypeWImpl()
-        t1 = Table("t1", m1, Column("x", typ))
-        m1.dispatch.before_create(t1, testing.db)
-        eq_(typ.evt_targets, (t1,))
+    # def test_table_dispatch_new_impl(self):
+    #     m1 = MetaData()
+    #     typ = self.MyTypeWImpl()
+    #     t1 = Table("t1", m1, Column("x", typ))
+    #     t1.dispatch.before_create(t1, testing.db)
+    #     eq_(typ.evt_targets, (t1,))
 
-        dialect_impl = typ.dialect_impl(testing.db.dialect)
-        eq_(dialect_impl.evt_targets, (t1,))
+    #     dialect_impl = typ.dialect_impl(testing.db.dialect)
+    #     eq_(dialect_impl.evt_targets, (t1,))
 
     def test_create_metadata_bound_no_crash(self):
         m1 = MetaData()

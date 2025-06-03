@@ -14,6 +14,7 @@ to invoke them for a create/drop call.
 from __future__ import annotations
 
 import contextlib
+import itertools
 import typing
 from typing import Any
 from typing import Callable
@@ -32,6 +33,11 @@ from .base import _generative
 from .base import Executable
 from .base import SchemaVisitor
 from .elements import ClauseElement
+from .schema import MetaData
+from .schema import SchemaType
+from .schema import Table
+from .type_api import TypeDecorator
+from .type_api import TypeEngine
 from .. import exc
 from .. import util
 from ..util import topological
@@ -47,8 +53,10 @@ if typing.TYPE_CHECKING:
     from .schema import Index
     from .schema import SchemaItem
     from .schema import Sequence as Sequence  # noqa: F401
-    from .schema import Table
     from .selectable import TableClause
+    from .sqltypes import ARRAY
+    from .sqltypes import Enum
+    from .visitors import Visitable
     from ..engine.base import Connection
     from ..engine.interfaces import CacheStats
     from ..engine.interfaces import CompiledCacheType
@@ -711,6 +719,24 @@ class DropSequence(_DropBase["Sequence"]):
     __visit_name__ = "drop_sequence"
 
 
+class CreateEnum(_CreateBase["Enum"]):
+    """Represent a PG CREATE TYPE [AS ENUM] statement
+
+    .. versionadded: 2.1
+    """
+
+    __visit_name__ = "create_enum"
+
+
+class DropEnum(_DropBase["Enum"]):
+    """Represent a PG CREATE TYPE [AS ENUM] statement
+
+    .. versionadded: 2.1
+    """
+
+    __visit_name__ = "drop_enum"
+
+
 class CreateIndex(_CreateBase["Index"]):
     """Represent a CREATE INDEX statement."""
 
@@ -925,58 +951,79 @@ class InvokeDropDDLBase(InvokeDDLBase):
 class SchemaGenerator(InvokeCreateDDLBase):
     def __init__(
         self,
-        arg1: Connection | Dialect,
-        arg2: Optional[Connection] = None,
+        connection: Connection,
+        initial_target: Visitable,
         /,
         checkfirst=False,
         tables=None,
         **kwargs
     ):
-        if arg2 is not None:
-            util.warn_deprecated(
-                "The `dialect` parameter should no longer be used. "
-                "Use `SchemaGenerator(connection, **kwargs)` instead. ",
-                "2.1"
-            )
-            connection = arg2
-        else:
-            connection = typing.cast("Connection", arg1)
-        super().__init__(connection, **kwargs)
+        super().__init__(connection, initial_target, **kwargs)
         self.checkfirst = checkfirst
         self.tables = tables
         self.dialect = connection.dialect
         self.preparer = connection.dialect.identifier_preparer
-        self.memo = {}
 
     def _can_create_table(self, table):
         self.dialect.validate_identifier(table.name)
         effective_schema = self.connection.schema_for_object(table)
         if effective_schema:
             self.dialect.validate_identifier(effective_schema)
-        return not self.checkfirst or not self.dialect.has_table(
-            self.connection, table.name, schema=effective_schema
+        return (
+            not self.checkfirst
+            or not self.dialect.has_table(
+                self.connection, table.name, schema=effective_schema
+            )
         )
 
     def _can_create_index(self, index):
         effective_schema = self.connection.schema_for_object(index.table)
         if effective_schema:
             self.dialect.validate_identifier(effective_schema)
-        return not self.checkfirst or not self.dialect.has_index(
-            self.connection,
-            index.table.name,
-            index.name,
-            schema=effective_schema,
+        return (
+            not self.checkfirst
+            or not self.dialect.has_index(
+                self.connection,
+                index.table.name,
+                index.name,
+                schema=effective_schema,
+            )
         )
 
     def _can_create_sequence(self, sequence):
         effective_schema = self.connection.schema_for_object(sequence)
 
-        return self.dialect.supports_sequences and (
-            (not self.dialect.sequences_optional or not sequence.optional)
+        return (
+            self.dialect.supports_sequences
+            and (not self.dialect.sequences_optional or not sequence.optional)
             and (
                 not self.checkfirst
                 or not self.dialect.has_sequence(
                     self.connection, sequence.name, schema=effective_schema
+                )
+            )
+        )
+
+    def _can_create_schema_type(self, schema_type: SchemaType) -> bool:
+        effective_schema = self.connection.schema_for_object(schema_type)
+
+        supports_kind = (
+            self.dialect.supports_schema_type_kinds == '*'
+            or schema_type.kind in self.dialect.supports_schema_type_kinds
+        ) and schema_type.supports_create(self.connection.dialect)
+
+        return (
+            supports_kind
+            and (self.is_type_operation or schema_type.create_type)
+            and (
+                not self.checkfirst
+                # Prefer raising a compilation error later
+                or schema_type.name is None
+                or not self.dialect.has_schema_type(
+                    self.connection,
+                    schema_type.kind,
+                    schema_type.name,
+                    schema=effective_schema
                 )
             )
         )
@@ -999,6 +1046,20 @@ class SchemaGenerator(InvokeCreateDDLBase):
 
         event_collection = [t for (t, fks) in collection if t is not None]
 
+        schema_types = {
+            resolved_t._key: resolved_t
+            for t in itertools.chain.from_iterable(
+                kind.values() for kind in metadata._types.values()
+            )
+            if (
+                t.column is None
+                and (resolved_t := resolve_schema_type(
+                    t, self.connection.dialect
+                )) is not None
+                and self._can_create_schema_type(resolved_t)
+            )
+        }
+
         with self.with_ddl_events(
             metadata,
             tables=event_collection,
@@ -1007,13 +1068,15 @@ class SchemaGenerator(InvokeCreateDDLBase):
             for seq in seq_coll:
                 self.traverse_single(seq, create_ok=True)
 
+            for t in schema_types.values():
+                self.traverse_single(t, create_ok=True)
+
             for table, fkcs in collection:
                 if table is not None:
                     self.traverse_single(
                         table,
                         create_ok=True,
-                        include_foreign_key_constraints=fkcs,
-                        _is_metadata_operation=True,
+                        include_foreign_key_constraints=fkcs
                     )
                 else:
                     for fkc in fkcs:
@@ -1023,17 +1086,54 @@ class SchemaGenerator(InvokeCreateDDLBase):
         self,
         table,
         create_ok=False,
-        include_foreign_key_constraints=None,
-        _is_metadata_operation=False,
+        include_foreign_key_constraints=None
     ):
         if not create_ok and not self._can_create_table(table):
             return
 
+        metadata = table.metadata
+        assert metadata is not None
+
+        schema_types = {}
+
+        for col in table.columns:
+            t = resolve_schema_type(col.type, self.connection.dialect)
+
+            if t is None or t._key in schema_types:
+                continue
+
+            try:
+                metadata_type = metadata._types[t.kind][t._key]
+            except KeyError:
+                continue
+
+            should_include = (
+                # If registered type stored in the metadata was first used
+                # inside this table and it is never used on a different
+                # table, then the type is considered internal to the
+                # table definition and DDL should be generated here.
+                # table generation
+                metadata_type.table is table
+            ) or (
+                # If this is a shared type, but we are allowed to check
+                # that the type hasn't yet been created in the schema
+                # (which it would be during a metadata operation),
+                # then we should includ the type
+                self.checkfirst
+                and not self.is_metadata_operation
+            )
+
+            if should_include and self._can_create_schema_type(t):
+                schema_types[t._key] = t
+
         with self.with_ddl_events(
             table,
             checkfirst=self.checkfirst,
-            _is_metadata_operation=_is_metadata_operation,
+            _is_metadata_operation=self.is_metadata_operation,
         ):
+            for t in schema_types.values():
+                self.traverse_single(t, create_ok=True)
+
             for column in table.columns:
                 if column.default is not None:
                     self.traverse_single(column.default)
@@ -1172,6 +1272,17 @@ class SchemaDropper(InvokeDropDDLBase):
             if self._can_drop_sequence(s)
         ]
 
+        schema_types = {
+            resolved_t._key: resolved_t
+            for t in itertools.chain.from_iterable(
+                kind.values() for kind in metadata._types.values()
+            )
+            if (
+                (resolved_t := resolve_schema_type(t, self.connection.dialect)) is not None
+                and self._can_drop_schema_type(t)
+            )
+        }
+
         event_collection = [t for (t, fks) in collection if t is not None]
 
         with self.with_ddl_events(
@@ -1184,8 +1295,10 @@ class SchemaDropper(InvokeDropDDLBase):
                     self.traverse_single(
                         table,
                         drop_ok=True,
-                        _is_metadata_operation=True,
                         _ignore_sequences=seq_coll,
+                        _ignore_types={
+                            (t.kind, t._key) for t in schema_types.values()
+                        }
                     )
                 else:
                     for fkc in fkcs:
@@ -1194,34 +1307,69 @@ class SchemaDropper(InvokeDropDDLBase):
             for seq in seq_coll:
                 self.traverse_single(seq, drop_ok=seq.column is None)
 
+            for typ in schema_types.values():
+                self.traverse_single(typ, drop_ok=True)
+
     def _can_drop_table(self, table):
         self.dialect.validate_identifier(table.name)
         effective_schema = self.connection.schema_for_object(table)
         if effective_schema:
             self.dialect.validate_identifier(effective_schema)
-        return not self.checkfirst or self.dialect.has_table(
-            self.connection, table.name, schema=effective_schema
+        return (
+            not self.checkfirst
+            or self.dialect.has_table(
+                self.connection, table.name, schema=effective_schema
+            )
         )
 
     def _can_drop_index(self, index):
         effective_schema = self.connection.schema_for_object(index.table)
         if effective_schema:
             self.dialect.validate_identifier(effective_schema)
-        return not self.checkfirst or self.dialect.has_index(
-            self.connection,
-            index.table.name,
-            index.name,
-            schema=effective_schema,
+
+        return (
+            not self.checkfirst
+            or self.dialect.has_index(
+                self.connection,
+                index.table.name,
+                index.name,
+                schema=effective_schema,
+            )
         )
 
     def _can_drop_sequence(self, sequence):
         effective_schema = self.connection.schema_for_object(sequence)
-        return self.dialect.supports_sequences and (
-            (not self.dialect.sequences_optional or not sequence.optional)
+
+        return (
+            self.dialect.supports_sequences
+            and (not self.dialect.sequences_optional or not sequence.optional)
             and (
                 not self.checkfirst
                 or self.dialect.has_sequence(
                     self.connection, sequence.name, schema=effective_schema
+                )
+            )
+        )
+
+    def _can_drop_schema_type(self, schema_type: SchemaType):
+        effective_schema = self.connection.schema_for_object(schema_type)
+
+        supports_kind = (
+            self.dialect.supports_schema_type_kinds == '*'
+            or schema_type.kind in self.dialect.supports_schema_type_kinds
+        ) and schema_type.supports_create(self.dialect)
+
+        return (
+            supports_kind
+            and (self.is_type_operation or schema_type.create_type)
+            and schema_type.name is not None
+            and (
+                not self.checkfirst
+                or self.dialect.has_schema_type(
+                    self.connection,
+                    schema_type.kind,
+                    schema_type.name,
+                    schema=effective_schema
                 )
             )
         )
@@ -1237,19 +1385,56 @@ class SchemaDropper(InvokeDropDDLBase):
         self,
         table,
         drop_ok=False,
-        _is_metadata_operation=False,
         _ignore_sequences=(),
+        _ignore_types=(),
     ):
         if not drop_ok and not self._can_drop_table(table):
             return
 
+        metadata = table.metadata
+        assert metadata is not None
+        schema_types = {}
+
+        for col in table.columns:
+            t = col.type.dialect_impl(self.connection.dialect)
+            if isinstance(t, TypeDecorator):
+                t = t.impl_instance
+
+            if hasattr(t, "item_type"):
+                item_t = getattr(t, "item_type")
+                if isinstance(item_t, TypeEngine):
+                    t = item_t
+
+            if (
+                not isinstance(t, SchemaType)
+                or t._key in schema_types
+                or (t.kind, t._key) in _ignore_types
+            ):
+                continue
+
+            try:
+                metadata_type = metadata._types[t.kind][t._key]
+            except KeyError:
+                continue
+
+            # Unlike create, we only ever drop types which are strictly
+            # internal to the table as there might exist other tables
+            # which depend on the type.
+            if (
+                metadata_type.table is table
+                and self._can_drop_schema_type(t)
+            ):
+                schema_types[t._key] = t
+
         with self.with_ddl_events(
             table,
             checkfirst=self.checkfirst,
-            _is_metadata_operation=_is_metadata_operation,
+            _is_metadata_operation=self.is_metadata_operation,
         ):
             DropTable(table)._invoke_with(self.connection)
 
+            for t in schema_types.values():
+                self.traverse_single(t, drop_ok=True)
             # traverse client side defaults which may refer to server-side
             # sequences. noting that some of these client side defaults may
             # also be set up as server side defaults
@@ -1275,6 +1460,13 @@ class SchemaDropper(InvokeDropDDLBase):
             return
         with self.with_ddl_events(sequence):
             DropSequence(sequence)._invoke_with(self.connection)
+
+    def visit_enum(self, enum, drop_ok=False):
+        if not drop_ok and not self._can_drop_schema_type(enum):
+            return
+
+        with self.with_ddl_events(enum):
+            DropEnum(enum)._invoke_with(self.connection)
 
 
 def sort_tables(
@@ -1477,3 +1669,25 @@ def sort_tables_and_constraints(
         (table, table.foreign_key_constraints.difference(remaining_fkcs))
         for table in candidate_sort
     ] + [(None, list(remaining_fkcs))]
+
+
+def resolve_schema_type(
+    typ: TypeEngine[Any], dialect: Dialect
+) -> SchemaType | None:
+    """
+    Tries to associate a :class:`SchemaType` with the given
+    type. If no schema type can be associated with the type,
+    returns `None`.
+    """
+
+    typ = typ.dialect_impl(dialect)
+
+    if hasattr(typ, "item_type"):
+        item_t = typing.cast("ARRAY", typ).item_type
+        if isinstance(item_t, TypeEngine):
+            typ = item_t
+
+    if isinstance(typ, TypeDecorator):
+        typ = typ.impl_instance
+
+    return typ if isinstance(typ, SchemaType) else None

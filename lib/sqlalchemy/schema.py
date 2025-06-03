@@ -17,6 +17,7 @@ from .sql.ddl import _DropView as _DropView
 from .sql.ddl import AddConstraint as AddConstraint
 from .sql.ddl import BaseDDLElement as BaseDDLElement
 from .sql.ddl import CreateColumn as CreateColumn
+from .sql.ddl import CreateEnum as CreateEnum
 from .sql.ddl import CreateIndex as CreateIndex
 from .sql.ddl import CreateSchema as CreateSchema
 from .sql.ddl import CreateSequence as CreateSequence
@@ -26,6 +27,7 @@ from .sql.ddl import DDLElement as DDLElement
 from .sql.ddl import DropColumnComment as DropColumnComment
 from .sql.ddl import DropConstraint as DropConstraint
 from .sql.ddl import DropConstraintComment as DropConstraintComment
+from .sql.ddl import DropEnum as DropEnum
 from .sql.ddl import DropIndex as DropIndex
 from .sql.ddl import DropSchema as DropSchema
 from .sql.ddl import DropSequence as DropSequence

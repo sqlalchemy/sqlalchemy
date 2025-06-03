@@ -46,6 +46,7 @@ from .base import SchemaEventTarget
 from .cache_key import HasCacheKey
 from .elements import Slice
 from .elements import TypeCoerce as type_coerce  # noqa
+from .schema import CheckConstraint
 from .schema import SchemaType
 from .type_api import Emulated
 from .type_api import NativeForEmulated  # noqa
@@ -55,7 +56,6 @@ from .type_api import TypeEngine as TypeEngine
 from .type_api import TypeEngineMixin
 from .type_api import Variant  # noqa
 from .visitors import InternalTraversal
-from .visitors import Visitable
 from .. import exc
 from .. import inspection
 from .. import util
@@ -1302,8 +1302,18 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
             metadata=kw.pop("metadata", None),
             inherit_schema=kw.pop("inherit_schema", False),
             quote=kw.pop("quote", None),
-            _create_events=kw.pop("_create_events", True),
+            create_type=kw.pop("create_type", True),
             _adapted_from=kw.pop("_adapted_from", None),
+        )
+
+    def supports_create(self, dialect: Dialect) -> bool:
+        return (
+            dialect.supports_native_enum
+            and self.native_enum
+            and (
+                dialect.supports_schema_type_kinds == '*'
+                or self.kind in dialect.supports_schema_type_kinds
+            )
         )
 
     def _parse_into_values(
@@ -1539,7 +1549,6 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
     def adapt_to_emulated(self, impltype, **kw):
         self._make_enum_kw(kw)
         kw["_disable_warnings"] = True
-        kw.setdefault("_create_events", False)
         assert "_enums" in kw
         return impltype(**kw)
 
@@ -1739,7 +1748,7 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
         self,
         create_constraint: bool = False,
         name: Optional[str] = None,
-        _create_events: bool = True,
+        create_type: bool = False,
         _adapted_from: Optional[SchemaType] = None,
     ):
         """Construct a Boolean.
@@ -1765,15 +1774,22 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
         """
         self.create_constraint = create_constraint
         self.name = name
-        self._create_events = _create_events
+
+        # Included only to support SchemaType.adapt
+        if create_type:
+            raise ValueError("Boolean can not be created as a DDL element")
+        self.create_type = False
+
         if _adapted_from:
-            self.dispatch = self.dispatch._join(_adapted_from.dispatch)
+            self.dispatch = cast(
+                "dispatcher",
+                self.dispatch._join(_adapted_from.dispatch)
+            )
 
     def copy(self, **kw):
         # override SchemaType.copy() to not include to_metadata logic
         return self.adapt(
             cast("Type[TypeEngine[Any]]", self.__class__),
-            _create_events=True,
         )
 
     def _should_create_constraint(self, compiler, **kw):

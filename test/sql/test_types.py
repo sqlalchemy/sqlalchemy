@@ -292,12 +292,12 @@ class AdaptTest(fixtures.TestBase):
                 if k in (
                     "impl",
                     "_is_oracle_number",
-                    "_create_events",
                     "create_constraint",
                     "inherit_schema",
                     "schema",
                     "metadata",
                     "name",
+                    "dispatch",
                 ):
                     continue
                 # assert each value was copied, or that

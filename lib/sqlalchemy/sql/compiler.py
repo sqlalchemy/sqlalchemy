@@ -6966,6 +6966,12 @@ class DDLCompiler(Compiled):
             text += "IF EXISTS "
         return text + self.preparer.format_sequence(drop.element)
 
+    def visit_create_enum(self, create, prefix=None, **kw):
+        raise NotImplementedError
+
+    def visit_drop_enum(self, drop, **kw):
+        raise NotImplementedError
+
     def visit_drop_constraint(self, drop, **kw):
         constraint = drop.element
         if constraint.name is not None:
