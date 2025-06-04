@@ -1,0 +1,8 @@
+.. change::
+    :tags: reflection, mysql, mariadb
+    :tickets: 12240 
+
+    Updated the reflection logic for indexes in the MariaDB and MySQL
+    dialect to avoid setting the undocumented ``type`` key in the
+    :class:`_engine.ReflectedIndex` dicts returned by
+    :class:`_engine.Inspector.get_indexes` method.
