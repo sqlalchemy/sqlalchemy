@@ -21,6 +21,7 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import true
+from sqlalchemy.dialects.mysql import TIMESTAMP
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import combinations
 from sqlalchemy.testing import eq_
@@ -84,6 +85,16 @@ class ServerDefaultCreateTest(fixtures.TestBase):
         (
             DateTime,
             text("now() ON   UPDATE now()"),
+        ),
+        (
+            TIMESTAMP(fsp=3),
+            text("now(3)"),
+            testing.requires.mysql_fsp,
+        ),
+        (
+            TIMESTAMP(fsp=3),
+            text("CURRENT_TIMESTAMP(3)"),
+            testing.requires.mysql_fsp,
         ),
         argnames="datatype, default",
     )

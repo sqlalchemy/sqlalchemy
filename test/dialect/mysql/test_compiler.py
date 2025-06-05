@@ -453,6 +453,26 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
                 DateTime,
                 server_default=text("now() ON UPDATE now()"),
             ),
+            Column(
+                "updated4",
+                DateTime,
+                server_default=text("now(3)"),
+            ),
+            Column(
+                "updated5",
+                DateTime,
+                server_default=text("nOW(3)"),
+            ),
+            Column(
+                "updated6",
+                DateTime,
+                server_default=text("notnow(1)"),
+            ),
+            Column(
+                "updated7",
+                DateTime,
+                server_default=text("CURRENT_TIMESTAMP(3)"),
+            ),
         )
 
         eq_(dialect._support_default_function, has_brackets)
@@ -467,7 +487,11 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
                 "data JSON DEFAULT (json_object()), "
                 "updated1 DATETIME DEFAULT now() on update now(), "
                 "updated2 DATETIME DEFAULT now() On  UpDate now(), "
-                "updated3 DATETIME DEFAULT now() ON UPDATE now())",
+                "updated3 DATETIME DEFAULT now() ON UPDATE now(), "
+                "updated4 DATETIME DEFAULT now(3), "
+                "updated5 DATETIME DEFAULT nOW(3), "
+                "updated6 DATETIME DEFAULT (notnow(1)), "
+                "updated7 DATETIME DEFAULT CURRENT_TIMESTAMP(3))",
                 dialect=dialect,
             )
         else:
@@ -480,7 +504,11 @@ class CompileTest(ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL):
                 "data JSON DEFAULT json_object(), "
                 "updated1 DATETIME DEFAULT now() on update now(), "
                 "updated2 DATETIME DEFAULT now() On  UpDate now(), "
-                "updated3 DATETIME DEFAULT now() ON UPDATE now())",
+                "updated3 DATETIME DEFAULT now() ON UPDATE now(), "
+                "updated4 DATETIME DEFAULT now(3), "
+                "updated5 DATETIME DEFAULT nOW(3), "
+                "updated6 DATETIME DEFAULT notnow(1), "
+                "updated7 DATETIME DEFAULT CURRENT_TIMESTAMP(3))",
                 dialect=dialect,
             )
 
