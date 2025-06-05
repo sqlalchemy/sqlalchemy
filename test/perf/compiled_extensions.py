@@ -402,24 +402,20 @@ class DistillParam(Case):
         self.impl._distill_params_20([])
 
     @test_case
-    def list_20(self):
-        self.impl._distill_params_20(self.list_tup)
-
-    @test_case
-    def tuple_20(self):
-        self.impl._distill_params_20(self.tup_tup)
-
-    @test_case
     def list_dict_20(self):
-        self.impl._distill_params_20(self.list_tup)
+        self.impl._distill_params_20(self.list_dic)
 
     @test_case
     def tuple_dict_20(self):
-        self.impl._distill_params_20(self.dict)
+        self.impl._distill_params_20(self.tup_dic)
 
     @test_case
     def mapping_20(self):
         self.impl._distill_params_20(self.mapping)
+
+    @test_case
+    def dict_20(self):
+        self.impl._distill_params_20(self.dict)
 
     @test_case
     def raw_none(self):
@@ -440,14 +436,18 @@ class DistillParam(Case):
 
     @test_case
     def raw_list_dict(self):
-        self.impl._distill_raw_params(self.list_tup)
+        self.impl._distill_raw_params(self.list_dic)
 
     @test_case
     def raw_tuple_dict(self):
-        self.impl._distill_raw_params(self.dict)
+        self.impl._distill_raw_params(self.tup_dic)
 
     @test_case
     def raw_mapping(self):
+        self.impl._distill_raw_params(self.mapping)
+
+    @test_case
+    def raw_dict(self):
         self.impl._distill_raw_params(self.mapping)
 
 

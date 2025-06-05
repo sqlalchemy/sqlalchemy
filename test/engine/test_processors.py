@@ -5,6 +5,7 @@ from types import MappingProxyType
 from sqlalchemy import exc
 from sqlalchemy.engine import processors
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import combinations
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
@@ -152,13 +153,6 @@ class _DistillArgsTest(fixtures.TestBase):
         eq_(self.module._distill_params_20(()), ())
         eq_(self.module._distill_params_20([]), [])
 
-    def test_distill_20_sequence_sequence(self):
-        eq_(self.module._distill_params_20(((1, 2, 3),)), ((1, 2, 3),))
-        eq_(self.module._distill_params_20([(1, 2, 3)]), [(1, 2, 3)])
-
-        eq_(self.module._distill_params_20(((1, 2), (2, 3))), ((1, 2), (2, 3)))
-        eq_(self.module._distill_params_20([(1, 2), (2, 3)]), [(1, 2), (2, 3)])
-
     def test_distill_20_sequence_dict(self):
         eq_(self.module._distill_params_20(({"a": 1},)), ({"a": 1},))
         eq_(
@@ -170,27 +164,23 @@ class _DistillArgsTest(fixtures.TestBase):
             (MappingProxyType({"a": 1}),),
         )
 
-    def test_distill_20_sequence_error(self):
+    @combinations(
+        [(1, 2, 3)],
+        [([1, 2, 3],)],
+        [[1, 2, 3]],
+        [["a", "b"]],
+        [((1, 2, 3),)],
+        [[(1, 2, 3)]],
+        [((1, 2), (2, 3))],
+        [[(1, 2), (2, 3)]],
+        argnames="arg",
+    )
+    def test_distill_20_sequence_error(self, arg):
         with expect_raises_message(
             exc.ArgumentError,
-            "List argument must consist only of tuples or dictionaries",
+            "List argument must consist only of dictionaries",
         ):
-            self.module._distill_params_20((1, 2, 3))
-        with expect_raises_message(
-            exc.ArgumentError,
-            "List argument must consist only of tuples or dictionaries",
-        ):
-            self.module._distill_params_20(([1, 2, 3],))
-        with expect_raises_message(
-            exc.ArgumentError,
-            "List argument must consist only of tuples or dictionaries",
-        ):
-            self.module._distill_params_20([1, 2, 3])
-        with expect_raises_message(
-            exc.ArgumentError,
-            "List argument must consist only of tuples or dictionaries",
-        ):
-            self.module._distill_params_20(["a", "b"])
+            self.module._distill_params_20(arg)
 
     def test_distill_20_dict(self):
         eq_(self.module._distill_params_20({"foo": "bar"}), [{"foo": "bar"}])
