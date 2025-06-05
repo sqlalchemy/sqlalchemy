@@ -2083,6 +2083,11 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
                     self.dialect._support_default_function
                     and not re.match(r"^\s*[\'\"\(]", default)
                     and not re.search(r"ON +UPDATE", default, re.I)
+                    and not re.match(
+                        r"\bnow\(\d+\)|\bcurrent_timestamp\(\d+\)",
+                        default,
+                        re.I,
+                    )
                     and re.match(r".*\W.*", default)
                 ):
                     colspec.append(f"DEFAULT ({default})")
