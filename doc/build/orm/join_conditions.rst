@@ -422,13 +422,19 @@ What this refers to originates from the fact that ``Article.magazine_id`` is
 the subject of two different foreign key constraints; it refers to
 ``Magazine.id`` directly as a source column, but also refers to
 ``Writer.magazine_id`` as a source column in the context of the
-composite key to ``Writer``.   If we associate an ``Article`` with a
-particular ``Magazine``, but then associate the ``Article`` with a
-``Writer`` that's  associated  with a *different* ``Magazine``, the ORM
-will overwrite ``Article.magazine_id`` non-deterministically, silently
-changing which magazine to which we refer; it may
-also attempt to place NULL into this column if we de-associate a
-``Writer`` from an ``Article``.  The warning lets us know this is the case.
+composite key to ``Writer``.
+
+When objects are added to an ORM :class:`.Session` using :meth:`.Session.add`,
+the ORM :term:`flush` process takes on the task of reconciling object
+refereneces that correspond to :func:`_orm.relationship` configurations and
+delivering this state to the databse using INSERT/UPDATE/DELETE statements.  In
+this specific example, if we associate an ``Article`` with a particular
+``Magazine``, but then associate the ``Article`` with a ``Writer`` that's
+associated  with a *different* ``Magazine``, this flush process will overwrite
+``Article.magazine_id`` non-deterministically, silently changing which magazine
+to which we refer; it may also attempt to place NULL into this column if we
+de-associate a ``Writer`` from an ``Article``.  The warning lets us know that
+this scenario may occur during ORM flush sequences.
 
 To solve this, we need to break out the behavior of ``Article`` to include
 all three of the following features:
