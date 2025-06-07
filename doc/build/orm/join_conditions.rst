@@ -389,7 +389,7 @@ for both; then to make ``Article`` refer to ``Writer`` as well,
 
         article_id = mapped_column(Integer)
         magazine_id = mapped_column(ForeignKey("magazine.id"))
-        writer_id = mapped_column()
+        writer_id = mapped_column(Integer)
 
         magazine = relationship("Magazine")
         writer = relationship("Writer")
