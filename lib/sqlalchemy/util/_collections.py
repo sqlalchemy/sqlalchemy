@@ -393,7 +393,7 @@ def coerce_generator_arg(arg: Any) -> List[Any]:
 
 def to_list(x: Any, default: Optional[List[Any]] = None) -> List[Any]:
     if x is None:
-        return default  # type: ignore
+        return default  # type: ignore[return-value]
     if not is_non_string_iterable(x):
         return [x]
     elif isinstance(x, list):
@@ -544,7 +544,7 @@ class LRUCache(typing.MutableMapping[_KT, _VT]):
             while len(self) > self.capacity + self.capacity * self.threshold:
                 if size_alert:
                     size_alert = False
-                    self.size_alert(self)  # type: ignore
+                    self.size_alert(self)  # type: ignore[misc]
                 by_counter = sorted(
                     self._data.values(),
                     key=operator.itemgetter(2),

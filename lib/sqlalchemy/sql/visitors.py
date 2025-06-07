@@ -123,11 +123,11 @@ class Visitable:
             try:
                 meth = getter(visitor)
             except AttributeError as err:
-                return visitor.visit_unsupported_compilation(self, err, **kw)  # type: ignore  # noqa: E501
+                return visitor.visit_unsupported_compilation(self, err, **kw)  # type: ignore[no-any-return]  # noqa: E501
             else:
-                return meth(self, **kw)  # type: ignore  # noqa: E501
+                return meth(self, **kw)  # type: ignore[no-any-return]  # noqa: E501
 
-        cls._compiler_dispatch = (  # type: ignore
+        cls._compiler_dispatch = (  # type: ignore[method-assign]
             cls._original_compiler_dispatch
         ) = _compiler_dispatch
 
@@ -498,7 +498,7 @@ class HasTraversalDispatch:
 
         """
         name = _dispatch_lookup[visit_symbol]
-        return getattr(self, name, None)  # type: ignore
+        return getattr(self, name, None)  # type: ignore[return-value]
 
     def run_generated_dispatch(
         self,
@@ -1129,7 +1129,7 @@ def replacement_traverse(
             newelem = replace(elem)
             if newelem is not None:
                 stop_on.add(id(newelem))
-                return newelem  # type: ignore
+                return newelem  # type: ignore[no-any-return]
             else:
                 # base "already seen" on id(), not hash, so that we don't
                 # replace an Annotated element with its non-annotated one, and
@@ -1140,11 +1140,11 @@ def replacement_traverse(
                         newelem = kw["replace"](elem)
                         if newelem is not None:
                             cloned[id_elem] = newelem
-                            return newelem  # type: ignore
+                            return newelem  # type: ignore[no-any-return]
 
                     cloned[id_elem] = newelem = elem._clone(**kw)
                     newelem._copy_internals(clone=clone, **kw)
-                return cloned[id_elem]  # type: ignore
+                return cloned[id_elem]  # type: ignore[no-any-return]
 
     if obj is not None:
         obj = clone(

@@ -1018,7 +1018,7 @@ class hybrid_method(interfaces.InspectionAttrInfo, Generic[_P, _R]):
         if expr is not None:
             self.expression(expr)
         else:
-            self.expression(func)  # type: ignore
+            self.expression(func)  # type: ignore[arg-type]
 
     @property
     def inplace(self) -> Self:
@@ -1051,9 +1051,9 @@ class hybrid_method(interfaces.InspectionAttrInfo, Generic[_P, _R]):
         self, instance: Optional[object], owner: Type[object]
     ) -> Union[Callable[_P, _R], Callable[_P, SQLCoreOperations[_R]]]:
         if instance is None:
-            return self.expr.__get__(owner, owner)  # type: ignore
+            return self.expr.__get__(owner, owner)  # type: ignore[no-any-return] # noqa: E501
         else:
-            return self.func.__get__(instance, owner)  # type: ignore
+            return self.func.__get__(instance, owner)  # type: ignore[no-any-return] # noqa: E501
 
     def expression(
         self, expr: Callable[Concatenate[Any, _P], SQLCoreOperations[_R]]
@@ -1069,7 +1069,7 @@ class hybrid_method(interfaces.InspectionAttrInfo, Generic[_P, _R]):
 
 def _unwrap_classmethod(meth: _T) -> _T:
     if isinstance(meth, classmethod):
-        return meth.__func__  # type: ignore
+        return meth.__func__  # type: ignore[return-value]
     else:
         return meth
 
@@ -1512,7 +1512,7 @@ class ExprComparator(Comparator[_T]):
         # this accessor is not normally used, however is accessed by things
         # like ORM synonyms if the hybrid is used in this context; the
         # .property attribute is not necessarily accessible
-        return self.expression.property  # type: ignore
+        return self.expression.property  # type: ignore[no-any-return, union-attr] # noqa: E501
 
     def operate(
         self, op: OperatorType, *other: Any, **kwargs: Any
@@ -1522,4 +1522,4 @@ class ExprComparator(Comparator[_T]):
     def reverse_operate(
         self, op: OperatorType, other: Any, **kwargs: Any
     ) -> ColumnElement[Any]:
-        return op(other, self.expression, **kwargs)  # type: ignore
+        return op(other, self.expression, **kwargs)  # type: ignore[no-any-return] # noqa: E501

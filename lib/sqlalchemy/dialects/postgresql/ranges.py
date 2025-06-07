@@ -171,13 +171,13 @@ class Range(Generic[_T]):
             )
 
         if self.upper is None:
-            return (  # type: ignore
+            return (  # type: ignore[no-any-return]
                 value > self.lower
                 if self.bounds[0] == "("
                 else value >= self.lower
             )
 
-        return (  # type: ignore
+        return (  # type: ignore[no-any-return]
             value > self.lower
             if self.bounds[0] == "("
             else value >= self.lower
@@ -477,14 +477,14 @@ class Range(Generic[_T]):
                 return False
             if bound1 == "]":
                 if bound2 == "[":
-                    return value1 == value2 - step  # type: ignore
+                    return value1 == value2 - step  # type: ignore[no-any-return] # noqa: E501
                 else:
                     return value1 == value2
             else:
                 if bound2 == "[":
                     return value1 == value2
                 else:
-                    return value1 == value2 - step  # type: ignore
+                    return value1 == value2 - step  # type: ignore[no-any-return] # noqa: E501
         elif res == 0:
             # Cover cases like [0,0] -|- [1,] and [0,2) -|- (1,3]
             if (
@@ -704,8 +704,8 @@ class Range(Generic[_T]):
             return "empty"
 
         l, r = self.lower, self.upper
-        l = "" if l is None else l  # type: ignore
-        r = "" if r is None else r  # type: ignore
+        l = "" if l is None else l  # type: ignore[assignment]
+        r = "" if r is None else r  # type: ignore[assignment]
 
         b0, b1 = cast("Tuple[str, str]", self.bounds)
 
@@ -779,7 +779,7 @@ class AbstractRange(sqltypes.TypeEngine[_T]):
             # The adapt() operation here is cached per type-class-per-dialect,
             # so is not much of a performance concern
             visit_name = self.__visit_name__
-            return type(  # type: ignore
+            return type(  # type: ignore[no-any-return]
                 f"{visit_name}RangeImpl",
                 (cls, self.__class__),
                 {"__visit_name__": visit_name},

@@ -619,7 +619,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
             self.obj = weakref.ref(inst, self._cleanup)
             self.class_ = inst.__class__
         else:
-            self.obj = lambda: None  # type: ignore
+            self.obj = lambda: None  # type: ignore[assignment]
             self.class_ = state_dict["class_"]
 
         self.committed_state = state_dict.get("committed_state", {})

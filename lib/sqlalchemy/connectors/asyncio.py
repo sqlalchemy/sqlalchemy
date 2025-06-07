@@ -270,7 +270,7 @@ class AsyncAdapt_dbapi_ss_cursor(AsyncAdapt_dbapi_cursor):
     def close(self) -> None:
         if self._cursor is not None:
             await_(self._cursor.close())
-            self._cursor = None  # type: ignore
+            self._cursor = None  # type: ignore[assignment]
 
     def fetchone(self) -> Optional[Any]:
         return await_(self._cursor.fetchone())

@@ -914,7 +914,7 @@ def _parse_url(name: str) -> URL:
         if components["port"]:
             components["port"] = int(components["port"])
 
-        return URL.create(name, **components)  # type: ignore
+        return URL.create(name, **components)  # type: ignore[arg-type]
 
     else:
         raise exc.ArgumentError(
