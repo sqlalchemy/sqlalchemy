@@ -95,13 +95,14 @@ from ... import pool
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
-from ...engine.interfaces import DBAPIModule
 from ...util.concurrency import await_
+from ...connectors.asyncio import AsyncAdapt_dbapi_module
 
 if TYPE_CHECKING:
     from ...connectors.asyncio import AsyncIODBAPIConnection
     from ...engine.interfaces import DBAPIConnection
     from ...engine.interfaces import DBAPICursor
+    from ...engine.interfaces import DBAPIModule
     from ...engine.url import URL
     from ...pool.base import PoolProxiedConnection
 
@@ -186,7 +187,7 @@ class AsyncAdapt_aiosqlite_connection(AsyncAdapt_dbapi_connection):
             super()._handle_exception(error)
 
 
-class AsyncAdapt_aiosqlite_dbapi:
+class AsyncAdapt_aiosqlite_dbapi(AsyncAdapt_dbapi_module):
     def __init__(self, aiosqlite: ModuleType, sqlite: ModuleType):
         self.aiosqlite = aiosqlite
         self.sqlite = sqlite
@@ -225,8 +226,6 @@ class AsyncAdapt_aiosqlite_dbapi:
             self,
             await_(connection),
         )
-
-    def __getattr__(self, key: str) -> Any: ...
 
 
 class SQLiteExecutionContext_aiosqlite(SQLiteExecutionContext):
