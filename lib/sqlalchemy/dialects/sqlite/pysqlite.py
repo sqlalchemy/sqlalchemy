@@ -605,7 +605,7 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
         connection: Optional[Union[PoolProxiedConnection, DBAPIConnection]],
         cursor: Optional[DBAPICursor],
     ) -> bool:
-        self.dbapi = cast(DBAPIModule, self.dbapi)
+        self.dbapi = cast("DBAPIModule", self.dbapi)
         return isinstance(
             e, self.dbapi.ProgrammingError
         ) and "Cannot operate on a closed database." in str(e)

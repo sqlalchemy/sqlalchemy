@@ -94,9 +94,9 @@ from .pysqlite import SQLiteDialect_pysqlite
 from ... import pool
 from ...connectors.asyncio import AsyncAdapt_dbapi_connection
 from ...connectors.asyncio import AsyncAdapt_dbapi_cursor
+from ...connectors.asyncio import AsyncAdapt_dbapi_module
 from ...connectors.asyncio import AsyncAdapt_dbapi_ss_cursor
 from ...util.concurrency import await_
-from ...connectors.asyncio import AsyncAdapt_dbapi_module
 
 if TYPE_CHECKING:
     from ...connectors.asyncio import AsyncIODBAPIConnection
@@ -262,7 +262,7 @@ class SQLiteDialect_aiosqlite(SQLiteDialect_pysqlite):
         connection: Optional[Union[PoolProxiedConnection, DBAPIConnection]],
         cursor: Optional[DBAPICursor],
     ) -> bool:
-        self.dbapi = cast(DBAPIModule, self.dbapi)
+        self.dbapi = cast("DBAPIModule", self.dbapi)
         if isinstance(e, self.dbapi.OperationalError):
             err_lower = str(e).lower()
             if (
