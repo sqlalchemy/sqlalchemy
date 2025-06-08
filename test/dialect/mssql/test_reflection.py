@@ -985,6 +985,54 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             },
         )
 
+    def test_comments_with_dropped_column(self, metadata, connection):
+        """test issue #12654"""
+
+        Table(
+            "tbl_with_comments",
+            metadata,
+            Column(
+                "id", types.Integer, primary_key=True, comment="pk comment"
+            ),
+            Column("foobar", Integer, comment="comment_foobar"),
+            Column("foo", Integer, comment="comment_foo"),
+            Column(
+                "bar",
+                Integer,
+                comment="comment_bar",
+            ),
+        )
+        metadata.create_all(connection)
+        insp = inspect(connection)
+        eq_(
+            {
+                c["name"]: c["comment"]
+                for c in insp.get_columns("tbl_with_comments")
+            },
+            {
+                "id": "pk comment",
+                "foobar": "comment_foobar",
+                "foo": "comment_foo",
+                "bar": "comment_bar",
+            },
+        )
+
+        connection.exec_driver_sql(
+            "ALTER TABLE [tbl_with_comments] DROP COLUMN [foobar]"
+        )
+        insp = inspect(connection)
+        eq_(
+            {
+                c["name"]: c["comment"]
+                for c in insp.get_columns("tbl_with_comments")
+            },
+            {
+                "id": "pk comment",
+                "foo": "comment_foo",
+                "bar": "comment_bar",
+            },
+        )
+
 
 class InfoCoerceUnicodeTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_info_unicode_cast_no_2000(self):
