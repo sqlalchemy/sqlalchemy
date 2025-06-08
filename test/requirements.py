@@ -160,6 +160,10 @@ class DefaultRequirements(SuiteRequirements):
         return only_on(["postgresql", "sqlite", self._mysql_80])
 
     @property
+    def temp_table_comment_reflection(self):
+        return only_on(["postgresql", "mysql", "mariadb", "oracle"])
+
+    @property
     def comment_reflection(self):
         return only_on(["postgresql", "mysql", "mariadb", "oracle", "mssql"])
 
@@ -992,6 +996,10 @@ class DefaultRequirements(SuiteRequirements):
 
         """
         return exclusions.open()
+
+    @property
+    def nvarchar_types(self):
+        return only_on(["mssql", "oracle", "sqlite", "mysql", "mariadb"])
 
     @property
     def unicode_data_no_special_types(self):

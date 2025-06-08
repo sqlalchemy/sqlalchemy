@@ -298,26 +298,36 @@ class HasIndexTest(fixtures.TablesTest):
         )
 
 
-class BizarroCharacterFKResolutionTest(fixtures.TestBase):
-    """tests for #10275"""
+class BizarroCharacterTest(fixtures.TestBase):
 
     __backend__ = True
-    __requires__ = ("foreign_key_constraint_reflection",)
 
-    @testing.combinations(
-        ("id",), ("(3)",), ("col%p",), ("[brack]",), argnames="columnname"
-    )
+    def column_names():
+        return testing.combinations(
+            ("plainname",),
+            ("(3)",),
+            ("col%p",),
+            ("[brack]",),
+            argnames="columnname",
+        )
+
+    def table_names():
+        return testing.combinations(
+            ("plain",),
+            ("(2)",),
+            ("per % cent",),
+            ("[brackets]",),
+            argnames="tablename",
+        )
+
     @testing.variation("use_composite", [True, False])
-    @testing.combinations(
-        ("plain",),
-        ("(2)",),
-        ("per % cent",),
-        ("[brackets]",),
-        argnames="tablename",
-    )
+    @column_names()
+    @table_names()
+    @testing.requires.foreign_key_constraint_reflection
     def test_fk_ref(
         self, connection, metadata, use_composite, tablename, columnname
     ):
+        """tests for #10275"""
         tt = Table(
             tablename,
             metadata,
@@ -356,6 +366,77 @@ class BizarroCharacterFKResolutionTest(fixtures.TestBase):
         assert o2.c.ref.references(t1.c[0])
         if use_composite:
             assert o2.c.ref2.references(t1.c[1])
+
+    @column_names()
+    @table_names()
+    @testing.requires.identity_columns
+    def test_reflect_identity(
+        self, tablename, columnname, connection, metadata
+    ):
+        Table(
+            tablename,
+            metadata,
+            Column(columnname, Integer, Identity(), primary_key=True),
+        )
+        metadata.create_all(connection)
+        insp = inspect(connection)
+
+        eq_(insp.get_columns(tablename)[0]["identity"]["start"], 1)
+
+    @column_names()
+    @table_names()
+    @testing.requires.comment_reflection
+    def test_reflect_comments(
+        self, tablename, columnname, connection, metadata
+    ):
+        Table(
+            tablename,
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column(columnname, Integer, comment="some comment"),
+        )
+        metadata.create_all(connection)
+        insp = inspect(connection)
+
+        eq_(insp.get_columns(tablename)[1]["comment"], "some comment")
+
+
+class TempTableElementsTest(fixtures.TestBase):
+
+    __backend__ = True
+
+    __requires__ = ("temp_table_reflection",)
+
+    @testing.fixture
+    def tablename(self):
+        return get_temp_table_name(
+            config, config.db, f"ident_tmp_{config.ident}"
+        )
+
+    @testing.requires.identity_columns
+    def test_reflect_identity(self, tablename, connection, metadata):
+        Table(
+            tablename,
+            metadata,
+            Column("id", Integer, Identity(), primary_key=True),
+        )
+        metadata.create_all(connection)
+        insp = inspect(connection)
+
+        eq_(insp.get_columns(tablename)[0]["identity"]["start"], 1)
+
+    @testing.requires.temp_table_comment_reflection
+    def test_reflect_comments(self, tablename, connection, metadata):
+        Table(
+            tablename,
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("foobar", Integer, comment="some comment"),
+        )
+        metadata.create_all(connection)
+        insp = inspect(connection)
+
+        eq_(insp.get_columns(tablename)[1]["comment"], "some comment")
 
 
 class QuotedNameArgumentTest(fixtures.TablesTest):
@@ -2772,11 +2853,23 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
             eq_(typ.scale, 5)
 
     @testing.requires.table_reflection
-    def test_varchar_reflection(self, connection, metadata):
-        typ = self._type_round_trip(
-            connection, metadata, sql_types.String(52)
-        )[0]
-        assert isinstance(typ, sql_types.String)
+    @testing.combinations(
+        sql_types.String,
+        sql_types.VARCHAR,
+        sql_types.CHAR,
+        (sql_types.NVARCHAR, testing.requires.nvarchar_types),
+        (sql_types.NCHAR, testing.requires.nvarchar_types),
+        argnames="type_",
+    )
+    def test_string_length_reflection(self, connection, metadata, type_):
+        typ = self._type_round_trip(connection, metadata, type_(52))[0]
+        if issubclass(type_, sql_types.VARCHAR):
+            assert isinstance(typ, sql_types.VARCHAR)
+        elif issubclass(type_, sql_types.CHAR):
+            assert isinstance(typ, sql_types.CHAR)
+        else:
+            assert isinstance(typ, sql_types.String)
+
         eq_(typ.length, 52)
 
     @testing.requires.table_reflection
@@ -3266,11 +3359,12 @@ __all__ = (
     "ComponentReflectionTestExtra",
     "TableNoColumnsTest",
     "QuotedNameArgumentTest",
-    "BizarroCharacterFKResolutionTest",
+    "BizarroCharacterTest",
     "HasTableTest",
     "HasIndexTest",
     "NormalizedNameTest",
     "ComputedReflectionTest",
     "IdentityReflectionTest",
     "CompositeKeyReflectionTest",
+    "TempTableElementsTest",
 )
