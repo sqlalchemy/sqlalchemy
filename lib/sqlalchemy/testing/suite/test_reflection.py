@@ -2870,6 +2870,7 @@ class ComponentReflectionTestExtra(ComparesIndexes, fixtures.TestBase):
             assert isinstance(typ, sql_types.String)
 
         eq_(typ.length, 52)
+        assert isinstance(typ.length, int)
 
     @testing.requires.table_reflection
     def test_nullable_reflection(self, connection, metadata):
