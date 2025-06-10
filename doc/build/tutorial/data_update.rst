@@ -135,7 +135,7 @@ anywhere a column expression might be placed::
 UPDATE..FROM
 ~~~~~~~~~~~~~
 
-Some databases such as PostgreSQL and MySQL support a syntax "UPDATE FROM"
+Some databases such as PostgreSQL, MSSQL and MySQL support a syntax ``UPDATE...FROM``
 where additional tables may be stated directly in a special FROM clause. This
 syntax will be generated implicitly when additional tables are located in the
 WHERE clause of the statement::
@@ -171,6 +171,27 @@ order to refer to additional tables::
   {printsql}UPDATE user_account, address
   SET address.email_address=%s, user_account.fullname=%s
   WHERE user_account.id = address.user_id AND address.email_address = %s
+
+``UPDATE...FROM`` can also be
+combined with the :class:`_sql.Values` construct
+on backends such as PostgreSQL, to create a single UPDATE statement that updates
+multiple rows at once against the named form of VALUES::
+
+  >>> from sqlalchemy import Values
+  >>> values = Values(
+  ...     user_table.c.id,
+  ...     user_table.c.name,
+  ...     name="my_values",
+  ... ).data([(1, "new_name"), (2, "another_name"), ("3", "name_name")])
+  >>> update_stmt = (
+  ...     user_table.update().values(name=values.c.name).where(user_table.c.id == values.c.id)
+  ... )
+  >>> from sqlalchemy.dialects import postgresql
+  >>> print(update_stmt.compile(dialect=postgresql.dialect()))
+  {printsql}UPDATE user_account
+  SET name=my_values.name
+  FROM (VALUES (%(param_1)s, %(param_2)s), (%(param_3)s, %(param_4)s), (%(param_5)s, %(param_6)s)) AS my_values (id, name)
+  WHERE user_account.id = my_values.id
 
 .. _tutorial_parameter_ordered_updates:
 

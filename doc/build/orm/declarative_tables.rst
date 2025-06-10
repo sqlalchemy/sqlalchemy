@@ -1026,9 +1026,9 @@ more open ended.
             col_a: Mapped[str | float | bool | None]
             col_b: Mapped[str | float | bool]
 
-    This raises an error since the union types used by ``col_a`` or ``col_b``,
-    are not found in ``TABase`` type map and ``JsonScalar`` must be referenced
-    directly.
+  This raises an error since the union types used by ``col_a`` or ``col_b``,
+  are not found in ``TABase`` type map and ``JsonScalar`` must be referenced
+  directly.
 
 .. _orm_declarative_mapped_column_pep593:
 
