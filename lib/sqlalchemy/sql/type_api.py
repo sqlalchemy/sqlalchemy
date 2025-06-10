@@ -387,7 +387,7 @@ class TypeEngine(Visitable, Generic[_T]):
         as the sole positional argument and will return a string representation
         to be rendered in a SQL statement.
 
-        .. note::
+        .. tip::
 
             This method is only called relative to a **dialect specific type
             object**, which is often **private to a dialect in use** and is not
@@ -421,7 +421,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
         If processing is not necessary, the method should return ``None``.
 
-        .. note::
+        .. tip::
 
             This method is only called relative to a **dialect specific type
             object**, which is often **private to a dialect in use** and is not
@@ -457,7 +457,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
         If processing is not necessary, the method should return ``None``.
 
-        .. note::
+        .. tip::
 
             This method is only called relative to a **dialect specific type
             object**, which is often **private to a dialect in use** and is not
@@ -496,11 +496,19 @@ class TypeEngine(Visitable, Generic[_T]):
         It is the SQL analogue of the :meth:`.TypeEngine.result_processor`
         method.
 
+        .. note:: The :func:`.TypeEngine.column_expression` method is applied
+           only to the **outermost columns clause** of a SELECT statement, that
+           is, the columns that are to be delivered directly into the returned
+           result rows.  It does **not** apply to the columns clause inside
+           of subqueries.  This necessarily avoids double conversions against
+           the column and only runs the conversion when ready to be returned
+           to the client.
+
         This method is called during the **SQL compilation** phase of a
         statement, when rendering a SQL string. It is **not** called
         against specific values.
 
-        .. note::
+        .. tip::
 
             This method is only called relative to a **dialect specific type
             object**, which is often **private to a dialect in use** and is not
