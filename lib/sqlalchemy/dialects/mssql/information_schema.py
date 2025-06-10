@@ -88,23 +88,41 @@ columns = Table(
     schema="INFORMATION_SCHEMA",
 )
 
-mssql_temp_table_columns = Table(
-    "COLUMNS",
+sys_columns = Table(
+    "columns",
     ischema,
-    Column("TABLE_SCHEMA", CoerceUnicode, key="table_schema"),
-    Column("TABLE_NAME", CoerceUnicode, key="table_name"),
-    Column("COLUMN_NAME", CoerceUnicode, key="column_name"),
-    Column("IS_NULLABLE", Integer, key="is_nullable"),
-    Column("DATA_TYPE", String, key="data_type"),
-    Column("ORDINAL_POSITION", Integer, key="ordinal_position"),
-    Column(
-        "CHARACTER_MAXIMUM_LENGTH", Integer, key="character_maximum_length"
-    ),
-    Column("NUMERIC_PRECISION", Integer, key="numeric_precision"),
-    Column("NUMERIC_SCALE", Integer, key="numeric_scale"),
-    Column("COLUMN_DEFAULT", Integer, key="column_default"),
-    Column("COLLATION_NAME", String, key="collation_name"),
-    schema="tempdb.INFORMATION_SCHEMA",
+    Column("object_id", Integer),
+    Column("name", CoerceUnicode),
+    Column("column_id", Integer),
+    Column("default_object_id", Integer),
+    Column("user_type_id", Integer),
+    Column("is_nullable", Integer),
+    Column("ordinal_position", Integer),
+    Column("max_length", Integer),
+    Column("precision", Integer),
+    Column("scale", Integer),
+    Column("collation_name", String),
+    schema="sys",
+)
+
+sys_types = Table(
+    "types",
+    ischema,
+    Column("name", CoerceUnicode, key="name"),
+    Column("system_type_id", Integer, key="system_type_id"),
+    Column("user_type_id", Integer, key="user_type_id"),
+    Column("schema_id", Integer, key="schema_id"),
+    Column("max_length", Integer, key="max_length"),
+    Column("precision", Integer, key="precision"),
+    Column("scale", Integer, key="scale"),
+    Column("collation_name", CoerceUnicode, key="collation_name"),
+    Column("is_nullable", Boolean, key="is_nullable"),
+    Column("is_user_defined", Boolean, key="is_user_defined"),
+    Column("is_assembly_type", Boolean, key="is_assembly_type"),
+    Column("default_object_id", Integer, key="default_object_id"),
+    Column("rule_object_id", Integer, key="rule_object_id"),
+    Column("is_table_type", Boolean, key="is_table_type"),
+    schema="sys",
 )
 
 constraints = Table(
@@ -115,6 +133,17 @@ constraints = Table(
     Column("CONSTRAINT_NAME", CoerceUnicode, key="constraint_name"),
     Column("CONSTRAINT_TYPE", CoerceUnicode, key="constraint_type"),
     schema="INFORMATION_SCHEMA",
+)
+
+sys_default_constraints = Table(
+    "default_constraints",
+    ischema,
+    Column("object_id", Integer),
+    Column("name", CoerceUnicode),
+    Column("schema_id", Integer),
+    Column("parent_column_id", Integer),
+    Column("definition", CoerceUnicode),
+    schema="sys",
 )
 
 column_constraints = Table(
@@ -182,6 +211,7 @@ computed_columns = Table(
     ischema,
     Column("object_id", Integer),
     Column("name", CoerceUnicode),
+    Column("column_id", Integer),
     Column("is_computed", Boolean),
     Column("is_persisted", Boolean),
     Column("definition", CoerceUnicode),
@@ -220,6 +250,7 @@ identity_columns = Table(
     ischema,
     Column("object_id", Integer),
     Column("name", CoerceUnicode),
+    Column("column_id", Integer),
     Column("is_identity", Boolean),
     Column("seed_value", NumericSqlVariant),
     Column("increment_value", NumericSqlVariant),
