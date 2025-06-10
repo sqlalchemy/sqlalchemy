@@ -405,9 +405,18 @@ class NamedTypeTest(
             Column("value", dt),
             schema=symbol_name,
         )
-        conn = connection.execution_options(
-            schema_translate_map={symbol_name: testing.config.test_schema}
-        )
+
+        execution_opts = {
+            "schema_translate_map": {symbol_name: testing.config.test_schema}
+        }
+
+        if symbol_name is None:
+            # we are adding/ removing None from the schema_translate_map across
+            # runs, so we can't use caching else compiler will raise if it sees
+            # an inconsistency here
+            execution_opts["compiled_cache"] = None  # type: ignore
+
+        conn = connection.execution_options(**execution_opts)
         t1.create(conn)
         assert "schema_mytype" in [
             e["name"]
