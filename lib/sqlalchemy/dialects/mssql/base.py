@@ -3738,7 +3738,7 @@ where
                 MSNChar,
                 MSNText,
             ):
-                kwargs["length"] = maxlen / 2 if maxlen != -1 else None
+                kwargs["length"] = maxlen // 2 if maxlen != -1 else None
                 if collation:
                     kwargs["collation"] = collation
 
