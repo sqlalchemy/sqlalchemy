@@ -659,6 +659,12 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def temp_table_comment_reflection(self):
+        """indicates if database supports comments on temp tables and
+        the dialect can reflect them"""
+        return exclusions.closed()
+
+    @property
     def comment_reflection(self):
         """Indicates if the database support table comment reflection"""
         return exclusions.closed()
@@ -822,6 +828,11 @@ class SuiteRequirements(Requirements):
         """Target database must support VARCHAR with no length"""
 
         return exclusions.open()
+
+    @property
+    def nvarchar_types(self):
+        """target database supports NVARCHAR and NCHAR as an actual datatype"""
+        return exclusions.closed()
 
     @property
     def unicode_data_no_special_types(self):
