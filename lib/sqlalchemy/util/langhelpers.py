@@ -901,36 +901,6 @@ def generic_repr(
     return "%s(%s)" % (obj.__class__.__name__, ", ".join(output))
 
 
-class portable_instancemethod:
-    """Turn an instancemethod into a (parent, name) pair
-    to produce a serializable callable.
-
-    """
-
-    __slots__ = "target", "name", "kwargs", "__weakref__"
-
-    def __getstate__(self):
-        return {
-            "target": self.target,
-            "name": self.name,
-            "kwargs": self.kwargs,
-        }
-
-    def __setstate__(self, state):
-        self.target = state["target"]
-        self.name = state["name"]
-        self.kwargs = state.get("kwargs", ())
-
-    def __init__(self, meth, kwargs=()):
-        self.target = meth.__self__
-        self.name = meth.__name__
-        self.kwargs = kwargs
-
-    def __call__(self, *arg, **kw):
-        kw.update(self.kwargs)
-        return getattr(self.target, self.name)(*arg, **kw)
-
-
 def class_hierarchy(cls):
     """Return an unordered sequence of all classes related to cls.
 

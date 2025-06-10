@@ -780,9 +780,7 @@ class AddConstraint(_CreateBase["Constraint"]):
         super().__init__(element)
 
         if isolate_from_table:
-            element._create_rule = util.portable_instancemethod(
-                self._create_rule_disable
-            )
+            element._create_rule = self._create_rule_disable
 
 
 class DropConstraint(_DropBase["Constraint"]):
@@ -821,9 +819,7 @@ class DropConstraint(_DropBase["Constraint"]):
         super().__init__(element, if_exists=if_exists, **kw)
 
         if isolate_from_table:
-            element._create_rule = util.portable_instancemethod(
-                self._create_rule_disable
-            )
+            element._create_rule = self._create_rule_disable
 
 
 class SetTableComment(_CreateDropBase["Table"]):

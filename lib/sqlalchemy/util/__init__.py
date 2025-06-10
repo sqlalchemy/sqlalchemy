@@ -136,7 +136,6 @@ from .langhelpers import (
     parse_user_argument_for_enum as parse_user_argument_for_enum,
 )
 from .langhelpers import PluginLoader as PluginLoader
-from .langhelpers import portable_instancemethod as portable_instancemethod
 from .langhelpers import quoted_token_parser as quoted_token_parser
 from .langhelpers import ro_memoized_property as ro_memoized_property
 from .langhelpers import ro_non_memoized_property as ro_non_memoized_property
