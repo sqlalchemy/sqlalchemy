@@ -417,7 +417,7 @@ parameters or a column expression.
    :meth:`.TypeEngine.column_expression` conversion method is applied only to
    the **outermost** columns clause in a SELECT; it does **not** apply to
    columns rendered inside of subqueries, as these column expressions are not
-   directly delivered to a result.  The expression could not be applied to
+   directly delivered to a result.  The expression should not be applied to
    both, as this would lead to double-conversion of columns, and the
    "outermost" level rather than the "innermost" level is used so that
    conversion routines don't interfere with the internal expressions used by
