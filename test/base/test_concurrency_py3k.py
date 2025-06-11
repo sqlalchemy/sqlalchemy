@@ -81,6 +81,7 @@ class TestAsyncioCompat(fixtures.TestBase):
         with expect_raises_message(ValueError, "sync error"):
             await greenlet_spawn(go)
 
+    @testing.requires.not_python314
     def test_await_fallback_no_greenlet(self):
         to_await = run1()
         await_fallback(to_await)
