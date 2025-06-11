@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from ...engine.interfaces import Dialect
     from ...sql.type_api import _BindProcessorType
     from ...sql.type_api import _ResultProcessorType
+    from ...sql.type_api import TypeEngine
 
 
 class _NumericCommonType:
@@ -394,6 +395,12 @@ class TINYINT(_IntegerType):
 
         """
         super().__init__(display_width=display_width, **kw)
+
+    def _compare_type_affinity(self, other: TypeEngine[Any]) -> bool:
+        return (
+            self._type_affinity is other._type_affinity
+            or other._type_affinity is sqltypes.Boolean
+        )
 
 
 class SMALLINT(_IntegerType, sqltypes.SMALLINT):

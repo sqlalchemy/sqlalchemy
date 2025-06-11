@@ -1,3 +1,5 @@
+import pickle
+
 from sqlalchemy import desc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
@@ -27,8 +29,7 @@ from sqlalchemy.testing.schema import Table
 
 
 def pickle_protocols():
-    return iter([-1, 1, 2])
-    # return iter([-1, 0, 1, 2])
+    return range(-2, pickle.HIGHEST_PROTOCOL)
 
 
 class User(ComparableEntity):
