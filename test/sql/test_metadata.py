@@ -518,7 +518,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         t.c.x._init_items(s1)
         assert s1.metadata is m1
 
-    def test_pickle_metadata_sequence_implicit(self):
+    def test_pickle_metadata_sequence_implicit(self, picklers):
         m1 = MetaData()
         Table(
             "a",
@@ -527,13 +527,13 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             Column("x", Integer, Sequence("x_seq")),
         )
 
-        m2 = pickle.loads(pickle.dumps(m1))
+        m2 = picklers.loads(picklers.dumps(m1))
 
         t2 = Table("a", m2, extend_existing=True)
 
         eq_(m2._sequences, {"x_seq": t2.c.x.default})
 
-    def test_pickle_metadata_schema(self):
+    def test_pickle_metadata_schema(self, picklers):
         m1 = MetaData()
         Table(
             "a",
@@ -543,7 +543,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             schema="y",
         )
 
-        m2 = pickle.loads(pickle.dumps(m1))
+        m2 = picklers.loads(picklers.dumps(m1))
 
         Table("a", m2, schema="y", extend_existing=True)
 
@@ -811,19 +811,27 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
 
 
 class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
-    @testing.requires.check_constraints
-    def test_copy(self):
-        # TODO: modernize this test for 2.0
 
+    @testing.fixture
+    def copy_fixture(self, metadata):
         from sqlalchemy.testing.schema import Table
-
-        meta = MetaData()
 
         table = Table(
             "mytable",
-            meta,
+            metadata,
             Column("myid", Integer, Sequence("foo_id_seq"), primary_key=True),
             Column("name", String(40), nullable=True),
+            Column("status", Boolean(create_constraint=True)),
+            Column(
+                "entry",
+                Enum(
+                    "one",
+                    "two",
+                    "three",
+                    name="entry_enum",
+                    create_constraint=True,
+                ),
+            ),
             Column(
                 "foo",
                 String(40),
@@ -843,7 +851,7 @@ class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
 
         table2 = Table(
             "othertable",
-            meta,
+            metadata,
             Column("id", Integer, Sequence("foo_seq"), primary_key=True),
             Column("myid", Integer, ForeignKey("mytable.myid")),
             test_needs_fk=True,
@@ -851,103 +859,119 @@ class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
 
         table3 = Table(
             "has_comments",
-            meta,
+            metadata,
             Column("foo", Integer, comment="some column"),
             comment="table comment",
         )
 
-        def test_to_metadata():
+        metadata.create_all(testing.db)
+
+        return table, table2, table3
+
+    @testing.fixture(
+        params=[
+            "to_metadata",
+            "pickle",
+            "pickle_via_reflect",
+        ]
+    )
+    def copy_tables_fixture(self, request, metadata, copy_fixture, picklers):
+        table, table2, table3 = copy_fixture
+
+        test = request.param
+
+        if test == "to_metadata":
             meta2 = MetaData()
             table_c = table.to_metadata(meta2)
             table2_c = table2.to_metadata(meta2)
             table3_c = table3.to_metadata(meta2)
-            return (table_c, table2_c, table3_c)
+            return (table_c, table2_c, table3_c, (True, False))
 
-        def test_pickle():
-            meta.bind = testing.db
-            meta2 = pickle.loads(pickle.dumps(meta))
-            pickle.loads(pickle.dumps(meta2))
+        elif test == "pickle":
+            meta2 = picklers.loads(picklers.dumps(metadata))
+            picklers.loads(picklers.dumps(meta2))
             return (
                 meta2.tables["mytable"],
                 meta2.tables["othertable"],
                 meta2.tables["has_comments"],
+                (True, False),
             )
 
-        def test_pickle_via_reflect():
+        elif test == "pickle_via_reflect":
             # this is the most common use case, pickling the results of a
             # database reflection
             meta2 = MetaData()
             t1 = Table("mytable", meta2, autoload_with=testing.db)
             Table("othertable", meta2, autoload_with=testing.db)
             Table("has_comments", meta2, autoload_with=testing.db)
-            meta3 = pickle.loads(pickle.dumps(meta2))
+            meta3 = picklers.loads(picklers.dumps(meta2))
             assert meta3.tables["mytable"] is not t1
 
             return (
                 meta3.tables["mytable"],
                 meta3.tables["othertable"],
                 meta3.tables["has_comments"],
+                (False, True),
             )
 
-        meta.create_all(testing.db)
-        try:
-            for test, has_constraints, reflect in (
-                (test_to_metadata, True, False),
-                (test_pickle, True, False),
-                (test_pickle_via_reflect, False, True),
-            ):
-                table_c, table2_c, table3_c = test()
-                self.assert_tables_equal(table, table_c)
-                self.assert_tables_equal(table2, table2_c)
-                assert table is not table_c
-                assert table.primary_key is not table_c.primary_key
-                assert (
-                    list(table2_c.c.myid.foreign_keys)[0].column
-                    is table_c.c.myid
+        assert False
+
+    @testing.requires.check_constraints
+    def test_copy(self, metadata, copy_fixture, copy_tables_fixture):
+
+        table, table2, table3 = copy_fixture
+        table_c, table2_c, table3_c, (has_constraints, reflect) = (
+            copy_tables_fixture
+        )
+
+        self.assert_tables_equal(table, table_c)
+        self.assert_tables_equal(table2, table2_c)
+        assert table is not table_c
+        assert table.primary_key is not table_c.primary_key
+        assert list(table2_c.c.myid.foreign_keys)[0].column is table_c.c.myid
+        assert list(table2_c.c.myid.foreign_keys)[0].column is not table.c.myid
+        assert "x" in str(table_c.c.foo.server_default.arg)
+        if not reflect:
+            assert isinstance(table_c.c.myid.default, Sequence)
+            assert str(table_c.c.foo.server_onupdate.arg) == "q"
+            assert str(table_c.c.bar.default.arg) == "y"
+            assert (
+                getattr(
+                    table_c.c.bar.onupdate.arg,
+                    "arg",
+                    table_c.c.bar.onupdate.arg,
                 )
-                assert (
-                    list(table2_c.c.myid.foreign_keys)[0].column
-                    is not table.c.myid
-                )
-                assert "x" in str(table_c.c.foo.server_default.arg)
-                if not reflect:
-                    assert isinstance(table_c.c.myid.default, Sequence)
-                    assert str(table_c.c.foo.server_onupdate.arg) == "q"
-                    assert str(table_c.c.bar.default.arg) == "y"
-                    assert (
-                        getattr(
-                            table_c.c.bar.onupdate.arg,
-                            "arg",
-                            table_c.c.bar.onupdate.arg,
-                        )
-                        == "z"
-                    )
-                    assert isinstance(table2_c.c.id.default, Sequence)
+                == "z"
+            )
+            assert isinstance(table2_c.c.id.default, Sequence)
 
-                # constraints don't get reflected for any dialect right
-                # now
+        if testing.requires.unique_constraint_reflection.enabled:
+            for c in table_c.constraints:
+                if isinstance(c, UniqueConstraint):
+                    break
+            else:
+                for c in table_c.indexes:
+                    break
+                else:
+                    assert False
 
-                if has_constraints:
-                    for c in table_c.c.description.constraints:
-                        if isinstance(c, CheckConstraint):
-                            break
-                    else:
-                        assert False
-                    assert str(c.sqltext) == "description='hi'"
-                    for c in table_c.constraints:
-                        if isinstance(c, UniqueConstraint):
-                            break
-                    else:
-                        assert False
-                    assert c.columns.contains_column(table_c.c.name)
-                    assert not c.columns.contains_column(table.c.name)
+            assert c.columns.contains_column(table_c.c.name)
+            assert not c.columns.contains_column(table.c.name)
 
-                if testing.requires.comment_reflection.enabled:
-                    eq_(table3_c.comment, "table comment")
-                    eq_(table3_c.c.foo.comment, "some column")
+        # CHECK constraints don't get reflected for any dialect right
+        # now
 
-        finally:
-            meta.drop_all(testing.db)
+        if has_constraints:
+            for c in table_c.c.description.constraints:
+                if isinstance(c, CheckConstraint):
+                    break
+            else:
+                assert False
+            assert str(c.sqltext) == "description='hi'"
+
+        if testing.requires.comment_reflection.enabled:
+            eq_(table3_c.comment, "table comment")
+            eq_(table3_c.c.foo.comment, "some column")
 
     def test_col_key_fk_parent(self):
         # test #2643

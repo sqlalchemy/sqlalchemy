@@ -14,6 +14,7 @@ from .. import assertions
 from .. import config
 from ..assertions import eq_
 from ..util import drop_all_tables_from_metadata
+from ..util import picklers
 from ... import Column
 from ... import func
 from ... import Integer
@@ -193,6 +194,10 @@ class TestBase:
             return testing_engine(**kw)
 
         return go
+
+    @config.fixture(params=picklers())
+    def picklers(self, request):
+        yield request.param
 
     @config.fixture()
     def metadata(self, request):

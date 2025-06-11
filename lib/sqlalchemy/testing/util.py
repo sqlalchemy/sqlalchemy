@@ -10,10 +10,12 @@
 from __future__ import annotations
 
 from collections import deque
+from collections import namedtuple
 import contextlib
 import decimal
 import gc
 from itertools import chain
+import pickle
 import random
 import sys
 from sys import getsizeof
@@ -55,15 +57,10 @@ else:
 
 
 def picklers():
-    picklers = set()
-    import pickle
+    nt = namedtuple("picklers", ["loads", "dumps"])
 
-    picklers.add(pickle)
-
-    # yes, this thing needs this much testing
-    for pickle_ in picklers:
-        for protocol in range(-2, pickle.HIGHEST_PROTOCOL + 1):
-            yield pickle_.loads, lambda d: pickle_.dumps(d, protocol)
+    for protocol in range(-2, pickle.HIGHEST_PROTOCOL + 1):
+        yield nt(pickle.loads, lambda d: pickle.dumps(d, protocol))
 
 
 def random_choices(population, k=1):

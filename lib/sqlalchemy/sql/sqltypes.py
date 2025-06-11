@@ -1537,6 +1537,12 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
             self.enum_class = None
             return enums, enums  # type: ignore[return-value]
 
+    def _compare_type_affinity(self, other: TypeEngine[Any]) -> bool:
+        return (
+            super()._compare_type_affinity(other)
+            or other._type_affinity is String
+        )
+
     def _resolve_for_literal(self, value: Any) -> Enum:
         tv = type(value)
         typ = self._resolve_for_python_type(tv, tv, tv)
