@@ -143,7 +143,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 
 .. [1] Supports version 1.3.x only at the moment.
 
-.. _openGauss-sqlalchemy: https://gitee.com/opengauss/openGauss-sqlalchemy
+.. _openGauss-sqlalchemy: https://pypi.org/project/opengauss-sqlalchemy
 .. _rockset-sqlalchemy: https://pypi.org/project/rockset-sqlalchemy
 .. _sqlalchemy-ingres: https://github.com/ActianCorp/sqlalchemy-ingres
 .. _nzalchemy: https://pypi.org/project/nzalchemy/
