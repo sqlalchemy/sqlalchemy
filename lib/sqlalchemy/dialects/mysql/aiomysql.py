@@ -201,7 +201,7 @@ class MySQLDialect_aiomysql(MySQLDialect_pymysql):
             return "not connected" in str_e
 
     def _found_rows_client_flag(self) -> int:
-        from pymysql.constants import CLIENT  # type: ignore
+        from pymysql.constants import CLIENT  # type: ignore[import-untyped]
 
         return CLIENT.FOUND_ROWS  # type: ignore[no-any-return]
 

@@ -465,7 +465,7 @@ class CollectionAdapter:
         # is realistically only during garbage collection of this object, so
         # we type this as a callable that returns _AdaptedCollectionProtocol
         # in all cases.
-        self._data = weakref.ref(data)  # type: ignore
+        self._data = weakref.ref(data)  # type: ignore[assignment]
 
         self.owner_state = owner_state
         data._sa_adapter = self
@@ -724,7 +724,7 @@ class CollectionAdapter:
         self.owner_state = d["owner_state"]
 
         # see note in constructor regarding this type: ignore
-        self._data = weakref.ref(d["data"])  # type: ignore
+        self._data = weakref.ref(d["data"])  # type: ignore[assignment]
 
         d["data"]._sa_adapter = self
         self.invalidated = d["invalidated"]

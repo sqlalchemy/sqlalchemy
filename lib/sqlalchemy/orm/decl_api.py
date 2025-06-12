@@ -451,7 +451,7 @@ class declared_attr(interfaces._MappedAttribute[_T], _declared_attr_common):
     @hybridproperty
     def directive(cls) -> _declared_directive[Any]:
         # see mapping_api.rst for docstring
-        return _declared_directive  # type: ignore
+        return _declared_directive  # type: ignore[return-value]
 
     @hybridproperty
     def cascading(cls) -> _stateful_declared_attr[_T]:
@@ -606,7 +606,7 @@ class MappedAsDataclass(metaclass=DCTransformDeclarative):
 
             _ClassScanMapperConfig._assert_dc_arguments(current)
 
-            cls._sa_apply_dc_transforms = current_transforms = {  # type: ignore  # noqa: E501
+            cls._sa_apply_dc_transforms = current_transforms = {  # type: ignore[assignment]  # noqa: E501
                 k: current.get(k, _NoArg.NO_ARG) if v is _NoArg.NO_ARG else v
                 for k, v in apply_dc_transforms.items()
             }
@@ -1254,7 +1254,7 @@ class registry:
             # we search through full __mro__ for types.  however...
             sql_type = self.type_annotation_map.get(pt)
             if sql_type is None:
-                sql_type = sqltypes._type_map_get(pt)  # type: ignore  # noqa: E501
+                sql_type = sqltypes._type_map_get(pt)  # type: ignore[arg-type]  # noqa: E501
 
             if sql_type is not None:
                 sql_type_inst = sqltypes.to_instance(sql_type)
@@ -1695,7 +1695,7 @@ class registry:
         def decorate(cls: Type[_T]) -> Type[_T]:
             kw["cls"] = cls
             kw["name"] = cls.__name__
-            return self.generate_base(**kw)  # type: ignore
+            return self.generate_base(**kw)  # type: ignore[no-any-return]
 
         return decorate
 
@@ -1747,7 +1747,7 @@ class registry:
 
         """
         _as_declarative(self, cls, cls.__dict__)
-        return cls.__mapper__  # type: ignore
+        return cls.__mapper__  # type: ignore[attr-defined, no-any-return]
 
     def map_imperatively(
         self,

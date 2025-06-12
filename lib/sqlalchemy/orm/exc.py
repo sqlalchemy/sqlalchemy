@@ -223,7 +223,7 @@ def _default_unmapped(cls: Type[Any]) -> Optional[str]:
     base = util.preloaded.orm_base
 
     try:
-        mappers = base.manager_of_class(cls).mappers  # type: ignore
+        mappers = base.manager_of_class(cls).mappers  # type: ignore[attr-defined] # noqa: E501
     except (
         UnmappedClassError,
         TypeError,

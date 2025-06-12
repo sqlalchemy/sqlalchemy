@@ -46,7 +46,7 @@ class IdentityMap:
         self._wr = weakref.ref(self)
 
     def _kill(self) -> None:
-        self._add_unpresent = _killed  # type: ignore
+        self._add_unpresent = _killed  # type: ignore[method-assign]
 
     def all_states(self) -> List[InstanceState[Any]]:
         raise NotImplementedError()

@@ -184,8 +184,7 @@ reportTypedDictNotRequiredAccess = "warning"
 mypy_path = "./lib/"
 show_error_codes = true
 incremental = true
-# would be nice to enable this but too many error are surfaceds
-# enable_error_code = "ignore-without-code"
+enable_error_code = "ignore-without-code"
 
 [[tool.mypy.overrides]]
 

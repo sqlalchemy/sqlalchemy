@@ -522,7 +522,7 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
         strat = kwargs.pop("strategy")
         if strat == "mock":
             # this case is deprecated
-            return create_mock_engine(url, **kwargs)  # type: ignore
+            return create_mock_engine(url, **kwargs)  # type: ignore[return-value] # noqa: E501
         else:
             raise exc.ArgumentError("unknown strategy: %r" % strat)
 
@@ -549,7 +549,7 @@ def create_engine(url: Union[str, _url.URL], **kwargs: Any) -> Engine:
             return value
 
     else:
-        pop_kwarg = kwargs.pop  # type: ignore
+        pop_kwarg = kwargs.pop  # type: ignore[assignment]
 
     dialect_args = {}
     # consume dialect arguments from kwargs

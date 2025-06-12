@@ -836,7 +836,7 @@ class ScalarFunctionColumn(NamedColumn[_T]):
 
         # if type is None, we get NULLTYPE, which is our _T.  But I don't
         # know how to get the overloads to express that correctly
-        self.type = type_api.to_instance(type_)  # type: ignore
+        self.type = type_api.to_instance(type_)  # type: ignore[assignment]
 
 
 class _FunctionGenerator:
@@ -937,7 +937,7 @@ class _FunctionGenerator:
         # passthru __ attributes; fixes pydoc
         if name.startswith("__"):
             try:
-                return self.__dict__[name]  # type: ignore
+                return self.__dict__[name]  # type: ignore[no-any-return]
             except KeyError:
                 raise AttributeError(name)
 
@@ -1396,7 +1396,7 @@ class Function(FunctionElement[_T]):
 
         # if type is None, we get NULLTYPE, which is our _T.  But I don't
         # know how to get the overloads to express that correctly
-        self.type = type_api.to_instance(type_)  # type: ignore
+        self.type = type_api.to_instance(type_)  # type: ignore[assignment]
 
         FunctionElement.__init__(self, *clauses)
 
@@ -1581,13 +1581,13 @@ class GenericFunction(Function[_T]):
             )
         )
 
-        self.type = type_api.to_instance(  # type: ignore
+        self.type = type_api.to_instance(  # type: ignore[assignment]
             kwargs.pop("type_", None) or getattr(self, "type", None)
         )
 
 
-register_function("cast", Cast)  # type: ignore
-register_function("extract", Extract)  # type: ignore
+register_function("cast", Cast)  # type: ignore[arg-type]
+register_function("extract", Extract)  # type: ignore[arg-type]
 
 
 class next_value(GenericFunction[int]):
@@ -1612,7 +1612,7 @@ class next_value(GenericFunction[int]):
             seq, schema.Sequence
         ), "next_value() accepts a Sequence object as input."
         self.sequence = seq
-        self.type = sqltypes.to_instance(  # type: ignore
+        self.type = sqltypes.to_instance(  # type: ignore[assignment]
             seq.data_type or getattr(self, "type", None)
         )
 

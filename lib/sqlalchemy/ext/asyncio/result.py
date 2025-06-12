@@ -127,7 +127,7 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[Unpack[_Ts]]]):
             workaround for SQLAlchemy 2.1.
 
         """
-        return self  # type: ignore
+        return self  # type: ignore[return-value]
 
     @deprecated(
         "2.1.0",
@@ -162,7 +162,7 @@ class AsyncResult(_WithKeys, AsyncCommon[Row[Unpack[_Ts]]]):
 
         """
 
-        return self  # type: ignore
+        return self  # type: ignore[return-value]
 
     @_generative
     def unique(self, strategy: Optional[_UniqueFilterType] = None) -> Self:
@@ -972,9 +972,9 @@ async def _ensure_sync_result(result: _RT, calling_method: Any) -> _RT:
         return result
 
     if not is_cursor:
-        cursor_result = getattr(result, "raw", None)  # type: ignore
+        cursor_result = getattr(result, "raw", None)  # type: ignore[assignment] # noqa: E501
     else:
-        cursor_result = result  # type: ignore
+        cursor_result = result  # type: ignore[assignment]
     if cursor_result and cursor_result.context._is_server_side:
         await greenlet_spawn(cursor_result.close)
         raise async_exc.AsyncMethodRequired(

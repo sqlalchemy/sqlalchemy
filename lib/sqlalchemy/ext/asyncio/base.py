@@ -99,7 +99,7 @@ class ReversibleProxy(Generic[_PT]):
         else:
             proxy = proxy_ref()
             if proxy is not None:
-                return proxy  # type: ignore
+                return proxy  # type: ignore[return-value]
 
         if regenerate:
             return cls._regenerate_proxy_for_target(target, **additional_kw)
@@ -144,7 +144,7 @@ class GeneratorStartableContext(StartableContext[_T_co]):
         args: Tuple[Any, ...],
         kwds: Dict[str, Any],
     ):
-        self.gen = func(*args, **kwds)  # type: ignore
+        self.gen = func(*args, **kwds)  # type: ignore[assignment]
 
     async def start(self, is_ctxmanager: bool = False) -> _T_co:
         try:
