@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, tests
+    :tickets: 12668
+
+    Backported to SQLAlchemy 1.4 an improvement to the test suite with regards
+    to how asyncio related tests are run, now using the newer Python 3.11
+    ``asyncio.Runner`` or a backported equivalent, rather than relying on the
+    previous implementation based on ``asyncio.get_event_loop()``.  This allows
+    the SQLAlchemy 1.4 codebase to run on Python 3.14 which has removed this
+    method.  Pull request courtesy Nils Philippsen.
+

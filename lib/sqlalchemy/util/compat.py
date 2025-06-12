@@ -14,6 +14,7 @@ import operator
 import platform
 import sys
 
+py314 = sys.version_info >= (3, 14)
 py313 = sys.version_info >= (3, 13)
 py312 = sys.version_info >= (3, 12)
 py311 = sys.version_info >= (3, 11)
