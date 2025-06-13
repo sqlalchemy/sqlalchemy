@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import functools
-import itertools
 import math
 from typing import Any
 from typing import cast
@@ -17,29 +16,26 @@ from typing import SupportsIndex
 
 @functools.total_ordering
 class BitString(str):
-    """Represent a PostgreSQL bit string.
+    """Represent a PostgreSQL bit string in python"""
 
-    e.g.
-        b = BitString('101')
-    """
+    _DIGITS = frozenset("01")
 
     def __new__(cls, _value: str, _check: bool = True) -> BitString:
-        if not isinstance(_value, BitString) and (
-            _check and _value and any(c not in "01" for c in _value)
-        ):
+        do_check = not isinstance(_value, BitString) or _check
+        if do_check and cls._DIGITS.union(_value) > cls._DIGITS:
             raise ValueError("BitString must only contain '0' and '1' chars")
         return super().__new__(cls, _value)
 
     @classmethod
     def from_int(cls, value: int, length: int) -> BitString:
         """
-        Returns a BitString consisting of the bits in the little-endian
-        representation of the given python int ``value``. A ``ValueError``
-        is raised if ``value`` is not a non-negative integer.
+        Returns a BitString consisting of the bits in the integer ``value``.
+        A ``ValueError`` is raised if ``value`` is not a non-negative integer.
 
         If the provided ``value`` can not be represented in a bit string
         of at most ``length``, a ``ValueError`` will be raised. The bitstring
         will be padded on the left by ``'0'`` to bits to produce a
+        bitstring of the desired length.
         """
         if value < 0:
             raise ValueError("value must be non-negative")
@@ -86,7 +82,9 @@ class BitString(str):
         """
         Returns the value of the flag at the given index
 
-        e.g. BitString('0101').get_flag(4) == 1
+        e.g.::
+
+            BitString("0101").get_flag(4) == "1"
         """
         return cast(Literal["0", "1"], super().__getitem__(index))
 
@@ -196,21 +194,7 @@ class BitString(str):
         return int(self, 2) if self else 0
 
     def to_bytes(self, length: int = -1) -> bytes:
-        s = str(self)
-        bs: list[int] = []
-        while s:
-            bs.insert(0, int(s[-8:], 2))
-            s = s[:-8]
-        if length >= 0:
-            bs = list(itertools.dropwhile(lambda c: c == 0, bs))
-            if len(bs) > length:
-                raise ValueError(
-                    f"Cannot fit a BitString of length {len(self)} into a "
-                    f"bytes instance of length {length}"
-                )
-            # "zfill" the result with 0 bytes
-            bs = [0] * (length - len(bs)) + bs
-        return bytes(bs)
+        return int(self).to_bytes(length if length >= 0 else self.octet_length)
 
     def __bytes__(self) -> bytes:
         return self.to_bytes()
@@ -226,25 +210,23 @@ class BitString(str):
     def __hash__(self) -> int:
         return hash(BitString) ^ super().__hash__()
 
-    def __getitem__(self, key: SupportsIndex | slice[Any, Any, Any]) -> str:
+    def __getitem__(
+        self, key: SupportsIndex | slice[Any, Any, Any]
+    ) -> BitString:
         return BitString(super().__getitem__(key), False)
 
     def __add__(self, o: str) -> BitString:
         """Return self + o"""
         if not isinstance(o, str):
             raise TypeError(
-                ("Can only concatenate str (not '{0}') to BitString").format(
-                    type(o)
-                )
+                f"Can only concatenate str (not '{type(self)}') to BitString"
             )
         return BitString("".join([self, o]))
 
     def __radd__(self, o: str) -> BitString:
         if not isinstance(o, str):
             raise TypeError(
-                (f"Can only concatenate str (not '{0}') to BitString").format(
-                    type(o)
-                )
+                f"Can only concatenate str (not '{type(self)}') to BitString"
             )
         return BitString("".join([o, self]))
 
@@ -253,7 +235,8 @@ class BitString(str):
         Shifts each the bitstring to the left by the given amount.
         String length is preserved.
 
-        i.e. BitString('000101') << 1 == BitString('001010')
+        e.g.::
+            BitString("000101") << 1 == BitString("001010")
         """
         return BitString(
             "".join([self, *("0" for _ in range(amount))])[-len(self) :], False
@@ -264,7 +247,8 @@ class BitString(str):
         Shifts each bit in the bitstring to the right by the given amount.
         String length is preserved.
 
-        e.g. BitString('101') >> 1 == BitString('010')
+        e.g.::
+            BitString("101") >> 1 == BitString("010")
         """
         return BitString(self[:-amount], False).zfill(width=len(self))
 
@@ -272,7 +256,8 @@ class BitString(str):
         """
         Inverts (~) each bit in the bitstring
 
-        e.g. ~BitString('01010') == BitString('10101')
+        e.g.::
+            ~BitString("01010") == BitString("10101")
         """
         return BitString("".join("1" if x == "0" else "0" for x in self))
 
@@ -281,7 +266,8 @@ class BitString(str):
         Performs a bitwise and (``&``) with the given operand.
         A ``ValueError`` is raised if the operand is not the same length.
 
-        e.g. BitString('011') & BitString('011') == BitString('010')
+        e.g.::
+            BitString("011") & BitString("011") == BitString("010")
         """
 
         if not isinstance(o, str):
@@ -303,7 +289,8 @@ class BitString(str):
         Performs a bitwise or (``|``) with the given operand.
         A ``ValueError`` is raised if the operand is not the same length.
 
-        e.g. BitString('011') | BitString('010') == BitString('011')
+        e.g.::
+            BitString("011") | BitString("010") == BitString("011")
         """
         if not isinstance(o, str):
             return NotImplemented
@@ -325,7 +312,8 @@ class BitString(str):
         Performs a bitwise xor (``^``) with the given operand.
         A ``ValueError`` is raised if the operand is not the same length.
 
-        e.g. BitString('011') ^ BitString('010') == BitString('001')
+        e.g.::
+            BitString("011") ^ BitString("010") == BitString("001")
         """
 
         if not isinstance(o, BitString):
@@ -345,3 +333,7 @@ class BitString(str):
             ),
             False,
         )
+
+    __rand__ = __and__
+    __ror__ = __or__
+    __rxor__ = __xor__

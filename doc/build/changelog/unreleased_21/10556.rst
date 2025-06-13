@@ -1,0 +1,11 @@
+.. change::
+    :tags: feature, postgresql
+    :tickets: 10556
+
+Adds the :class:`dialects.postgresql.BitString` representing PostgreSQL bitstrings
+in python. This type, which is a subtype of the :class:`str` builtin includes
+functionality for converting to/from :class:`int` and :class:`bytes`, in
+addition to implementing utility methods and operators for dealing with bits.
+
+In PostgreSQL drivers, the :class:`postgresql.BIT` type now binds to instances of
+this new utility class.

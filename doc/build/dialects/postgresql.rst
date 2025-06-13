@@ -374,6 +374,21 @@ don't yet fully support, conversion of rows to Python ``ipaddress`` datatypes
 
 .. versionadded:: 2.0.18 - added the ``native_inet_types`` parameter.
 
+PostgreSQL BIT type
+-------------------
+
+The PostgreSQL dialect provides a :class:`_postgresql.BitString` type which
+represents an ordered sequence of boolean switches. This is exposed in python as a
+subclass of :class:`str` which exposes appropriate bitwise methods and operators.
+
+* :class:`_postgrsql.BIT` - Typing support for PostgreSQL bitstrings.
+
+* :class:`_postgresql.BitString` - Python implementation of postgresql bitstrings
+
+.. versionadded:: 2.1
+
+PostgreSQL supports
+
 PostgreSQL Data Types
 ---------------------
 

@@ -384,3 +384,25 @@ would appear in a valid ODBC connection string (i.e., the same as would be
 required if using the connection string directly with ``pyodbc.connect()``).
 
 :ticket:`11250`
+
+.. _change_12594
+
+Addition of ``BitString`` subclass for handling postgresql ``BIT`` columns
+--------------------------------------------------------------------------
+
+Values of :class:`_dialects.postgresl.BIT` columns in the postgresql dialect are
+now objects of a new :class:`str` subclass,
+:class:`_dialects.postgresql.BitString`. Previously, the value of :class:`BIT`
+columns was driver dependent, with most drivers using :class:`str` instances
+except asyncpg, which used :class:`asyncpg.BitString`.
+
+For implementations using the `psycopg`, `psycopg2` or `pg8000` drivers, the new type is
+mostly compatible with :class:`str` with some additional methods for manipulating bits and
+implementations of the bitwise operators. However, equality and ordering
+value will now fail. This can be rectified by wrapping or unwrapping one side
+of the comparison so that both sides are similarly typed.
+
+For implementations using the `asyncpg` driver, the new type is incompatible with
+the existing :class:`asyncpg.BitString` type.
+
+:ticket:`10556`

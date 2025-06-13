@@ -247,11 +247,9 @@ class AsyncpgBit(BIT):
         asyncpg_BitString = dialect.dbapi.asyncpg.BitString
 
         def to_bind(value):
-            print(f"processing bound value '{value}'")
             if isinstance(value, str):
                 value = BitString(value)
                 r = asyncpg_BitString.from_int(int(value), len(value))
-                print(f"returning {r}")
                 return r
             return value
 
@@ -260,7 +258,6 @@ class AsyncpgBit(BIT):
     def result_processor(self, dialect, coltype):
         def to_result(value):
             if value is not None:
-                print(f"result {value} length {len(value)}")
                 value = BitString.from_int(value.to_int(), length=len(value))
             return value
 
