@@ -2833,6 +2833,15 @@ class NegationTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     table1 = table("mytable", column("myid", Integer), column("name", String))
 
+    @testing.combinations(
+        (~literal(5), "NOT :param_1"), (~-literal(5), "NOT -:param_1")
+    )
+    def test_nonsensical_negates(self, expr, expected):
+        """exercise codepaths in the UnaryExpression._negate() method where the
+        type is not BOOLEAN"""
+
+        self.assert_compile(expr, expected)
+
     def test_negate_operators_1(self):
         for py_op, op in ((operator.neg, "-"), (operator.inv, "NOT ")):
             for expr, expected in (
@@ -4834,6 +4843,50 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 class BitOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"
+
+    @testing.combinations(
+        ("neg", operators.neg, "-"),
+        ("inv", operators.inv, "NOT "),
+        ("not", operators.bitwise_not_op, "~"),
+        ("distinct", operators.distinct_op, "DISTINCT "),
+        id_="iaa",
+        argnames="py_op, sql_op",
+    )
+    @testing.variation("named", ["column", "unnamed", "label"])
+    def test_wraps_named_column_heuristic(self, py_op, sql_op, named):
+        """test for #12681"""
+
+        if named.column:
+            expr = py_op(column("q", String))
+            assert isinstance(expr, UnaryExpression)
+
+            self.assert_compile(
+                select(expr),
+                f"SELECT {sql_op}q",
+            )
+
+        elif named.unnamed:
+            expr = py_op(literal("x", String))
+            assert isinstance(expr, UnaryExpression)
+
+            self.assert_compile(
+                select(expr),
+                f"SELECT {sql_op}:param_1 AS anon_1",
+            )
+        elif named.label:
+            expr = py_op(literal("x", String).label("z"))
+            if py_op is operators.inv:
+                # special case for operators.inv due to Label._negate()
+                # not sure if this should be changed but still works out in the
+                # end
+                assert isinstance(expr.element, UnaryExpression)
+            else:
+                assert isinstance(expr, UnaryExpression)
+
+            self.assert_compile(
+                select(expr),
+                f"SELECT {sql_op}:param_1 AS z",
+            )
 
     def test_compile_not_column_lvl(self):
         c = column("c", Integer)

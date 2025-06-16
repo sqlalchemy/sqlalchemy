@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 12681
+
+    Fixed issue where :func:`.select` of a free-standing scalar expression that
+    has a unary operator applied, such as negation, would not apply result
+    processors to the selected column even though the correct type remains in
+    place for the unary expression.
+
