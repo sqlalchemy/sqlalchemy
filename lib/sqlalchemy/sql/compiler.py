@@ -6221,8 +6221,8 @@ class SQLCompiler(Compiled):
         visiting_cte: Optional[CTE] = None,
         **kw: Any,
     ) -> str:
-        compile_state = update_stmt._compile_state_factory(  # type: ignore[call-arg] # noqa: E501
-            update_stmt, self, **kw  # type: ignore[arg-type]
+        compile_state = update_stmt._compile_state_factory(
+            update_stmt, self, **kw
         )
         if TYPE_CHECKING:
             assert isinstance(compile_state, UpdateDMLState)
