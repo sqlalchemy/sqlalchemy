@@ -751,6 +751,8 @@ class ClauseElement(
             return self._negate()
 
     def _negate(self) -> ClauseElement:
+        # TODO: this code is uncovered and in all likelihood is not included
+        # in any codepath.  So this should raise NotImplementedError in 2.1
         grouped = self.self_group(against=operators.inv)
         assert isinstance(grouped, ColumnElement)
         return UnaryExpression(grouped, operator=operators.inv)
@@ -1442,6 +1444,10 @@ class ColumnElement(
 
     _alt_names: Sequence[str] = ()
 
+    if TYPE_CHECKING:
+
+        def _ungroup(self) -> ColumnElement[_T]: ...
+
     @overload
     def self_group(self, against: None = None) -> ColumnElement[_T]: ...
 
@@ -1476,7 +1482,8 @@ class ColumnElement(
             grouped = self.self_group(against=operators.inv)
             assert isinstance(grouped, ColumnElement)
             return UnaryExpression(
-                grouped, operator=operators.inv, wraps_column_expression=True
+                grouped,
+                operator=operators.inv,
             )
 
     type: TypeEngine[_T]
@@ -2997,9 +3004,7 @@ class ExpressionClauseList(OperatorExpression[_T]):
     def _negate(self) -> Any:
         grouped = self.self_group(against=operators.inv)
         assert isinstance(grouped, ColumnElement)
-        return UnaryExpression(
-            grouped, operator=operators.inv, wraps_column_expression=True
-        )
+        return UnaryExpression(grouped, operator=operators.inv)
 
 
 class BooleanClauseList(ExpressionClauseList[bool]):
@@ -3617,15 +3622,18 @@ class UnaryExpression(ColumnElement[_T]):
         ("modifier", InternalTraversal.dp_operator),
     ]
 
-    element: ClauseElement
+    element: ColumnElement[Any]
+    operator: Optional[OperatorType]
+    modifier: Optional[OperatorType]
 
     def __init__(
         self,
         element: ColumnElement[Any],
+        *,
         operator: Optional[OperatorType] = None,
         modifier: Optional[OperatorType] = None,
         type_: Optional[_TypeEngineArgument[_T]] = None,
-        wraps_column_expression: bool = False,
+        wraps_column_expression: bool = False,  # legacy, not used as of 2.0.42
     ):
         self.operator = operator
         self.modifier = modifier
@@ -3638,7 +3646,12 @@ class UnaryExpression(ColumnElement[_T]):
         # know how to get the overloads to express that correctly
         self.type = type_api.to_instance(type_)  # type: ignore
 
-        self.wraps_column_expression = wraps_column_expression
+    def _wraps_unnamed_column(self):
+        ungrouped = self.element._ungroup()
+        return (
+            not isinstance(ungrouped, NamedColumn)
+            or ungrouped._non_anon_label is None
+        )
 
     @classmethod
     def _create_nulls_first(
@@ -3648,7 +3661,6 @@ class UnaryExpression(ColumnElement[_T]):
         return UnaryExpression(
             coercions.expect(roles.ByOfRole, column),
             modifier=operators.nulls_first_op,
-            wraps_column_expression=False,
         )
 
     @classmethod
@@ -3659,7 +3671,6 @@ class UnaryExpression(ColumnElement[_T]):
         return UnaryExpression(
             coercions.expect(roles.ByOfRole, column),
             modifier=operators.nulls_last_op,
-            wraps_column_expression=False,
         )
 
     @classmethod
@@ -3669,7 +3680,6 @@ class UnaryExpression(ColumnElement[_T]):
         return UnaryExpression(
             coercions.expect(roles.ByOfRole, column),
             modifier=operators.desc_op,
-            wraps_column_expression=False,
         )
 
     @classmethod
@@ -3680,7 +3690,6 @@ class UnaryExpression(ColumnElement[_T]):
         return UnaryExpression(
             coercions.expect(roles.ByOfRole, column),
             modifier=operators.asc_op,
-            wraps_column_expression=False,
         )
 
     @classmethod
@@ -3695,7 +3704,6 @@ class UnaryExpression(ColumnElement[_T]):
             col_expr,
             operator=operators.distinct_op,
             type_=col_expr.type,
-            wraps_column_expression=False,
         )
 
     @classmethod
@@ -3710,7 +3718,6 @@ class UnaryExpression(ColumnElement[_T]):
             col_expr,
             operator=operators.bitwise_not_op,
             type_=col_expr.type,
-            wraps_column_expression=False,
         )
 
     @property
@@ -3724,16 +3731,15 @@ class UnaryExpression(ColumnElement[_T]):
     def _from_objects(self) -> List[FromClause]:
         return self.element._from_objects
 
-    def _negate(self):
+    def _negate(self) -> ColumnElement[Any]:
         if self.type._type_affinity is type_api.BOOLEANTYPE._type_affinity:
             return UnaryExpression(
                 self.self_group(against=operators.inv),
                 operator=operators.inv,
                 type_=type_api.BOOLEANTYPE,
-                wraps_column_expression=self.wraps_column_expression,
             )
         else:
-            return ClauseElement._negate(self)
+            return ColumnElement._negate(self)
 
     def self_group(
         self, against: Optional[OperatorType] = None
@@ -3770,7 +3776,6 @@ class CollectionAggregate(UnaryExpression[_T]):
             col_expr,
             operator=operators.any_op,
             type_=type_api.BOOLEANTYPE,
-            wraps_column_expression=False,
         )
 
     @classmethod
@@ -3786,7 +3791,6 @@ class CollectionAggregate(UnaryExpression[_T]):
             col_expr,
             operator=operators.all_op,
             type_=type_api.BOOLEANTYPE,
-            wraps_column_expression=False,
         )
 
     # operate and reverse_operate are hardwired to
@@ -3821,7 +3825,6 @@ class AsBoolean(WrapsColumnExpression[bool], UnaryExpression[bool]):
         self.operator = operator
         self.negate = negate
         self.modifier = None
-        self.wraps_column_expression = True
         self._is_implicitly_boolean = element._is_implicitly_boolean
 
     @property
@@ -4044,13 +4047,11 @@ class GroupedElement(DQLDMLClauseElement):
 
     __visit_name__ = "grouping"
 
-    element: ClauseElement
-
     def self_group(self, against: Optional[OperatorType] = None) -> Self:
         return self
 
-    def _ungroup(self):
-        return self.element._ungroup()
+    def _ungroup(self) -> ClauseElement:
+        raise NotImplementedError()
 
 
 class Grouping(GroupedElement, ColumnElement[_T]):
@@ -4078,6 +4079,10 @@ class Grouping(GroupedElement, ColumnElement[_T]):
 
     def _with_binary_element_type(self, type_):
         return self.__class__(self.element._with_binary_element_type(type_))
+
+    def _ungroup(self) -> ColumnElement[_T]:
+        assert isinstance(self.element, ColumnElement)
+        return self.element._ungroup()
 
     @util.memoized_property
     def _is_implicitly_boolean(self):
