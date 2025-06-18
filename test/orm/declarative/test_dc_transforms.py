@@ -164,6 +164,8 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         a3 = A("data")
         eq_(repr(a3), "some_module.A(id=None, data='data', x=None, bs=[])")
 
+    # TODO: get this test to work with future anno mode as well
+    # anno only: @testing.exclusions.closed("doesn't work for future annotations mode yet")  # noqa: E501
     def test_generic_class(self):
         """further test for #8665"""
 
@@ -311,6 +313,8 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         a3 = A("data")
         eq_(repr(a3), "some_module.A(id=None, data='data', x=None, bs=[])")
 
+    # TODO: get this test to work with future anno mode as well
+    # anno only: @testing.exclusions.closed("doesn't work for future annotations mode yet")  # noqa: E501
     @testing.variation("dc_type", ["decorator", "superclass"])
     def test_dataclass_fn(self, dc_type: Variation):
         annotations = {}
@@ -387,6 +391,9 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
         take place on INSERT
 
         """
+
+        # anno only: global intpk, str30, s_str30, user_fk
+
         intpk = Annotated[int, mapped_column(primary_key=True)]
         str30 = Annotated[
             str, mapped_column(String(30), insert_default=func.foo())
@@ -1212,6 +1219,8 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
         c1 = Child()
         eq_regex(repr(c1), r".*\.Child\(a=10, b=7, c=9\)")
 
+    # TODO: get this test to work with future anno mode as well
+    # anno only: @testing.exclusions.closed("doesn't work for future annotations mode yet")  # noqa: E501
     def test_abstract_is_dc(self):
         collected_annotations = {}
 
@@ -1233,6 +1242,8 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
         eq_(collected_annotations, {Mixin: {"b": int}, Child: {"c": int}})
         eq_regex(repr(Child(6, 7)), r".*\.Child\(b=6, c=7\)")
 
+    # TODO: get this test to work with future anno mode as well
+    # anno only: @testing.exclusions.closed("doesn't work for future annotations mode yet")  # noqa: E501
     @testing.variation("check_annotations", [True, False])
     def test_abstract_is_dc_w_mapped(self, check_annotations):
         if check_annotations:
@@ -1296,6 +1307,8 @@ class DataclassesForNonMappedClassesTest(fixtures.TestBase):
 
         eq_regex(repr(Child(a=5, b=6, c=7)), r".*\.Child\(c=7\)")
 
+    # TODO: get this test to work with future anno mode as well
+    # anno only: @testing.exclusions.closed("doesn't work for future annotations mode yet")  # noqa: E501
     @testing.variation(
         "dataclass_scope",
         ["on_base", "on_mixin", "on_base_class", "on_sub_class"],

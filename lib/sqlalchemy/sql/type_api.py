@@ -5,14 +5,11 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Base types API.
-
-"""
+"""Base types API."""
 
 from __future__ import annotations
 
 from enum import Enum
-from types import ModuleType
 import typing
 from typing import Any
 from typing import Callable
@@ -58,6 +55,7 @@ if typing.TYPE_CHECKING:
     from .sqltypes import NUMERICTYPE as NUMERICTYPE  # noqa: F401
     from .sqltypes import STRINGTYPE as STRINGTYPE  # noqa: F401
     from .sqltypes import TABLEVALUE as TABLEVALUE  # noqa: F401
+    from ..engine.interfaces import DBAPIModule
     from ..engine.interfaces import Dialect
     from ..util.typing import GenericProtocol
 
@@ -389,7 +387,7 @@ class TypeEngine(Visitable, Generic[_T]):
         as the sole positional argument and will return a string representation
         to be rendered in a SQL statement.
 
-        .. note::
+        .. tip::
 
             This method is only called relative to a **dialect specific type
             object**, which is often **private to a dialect in use** and is not
@@ -423,7 +421,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
         If processing is not necessary, the method should return ``None``.
 
-        .. note::
+        .. tip::
 
             This method is only called relative to a **dialect specific type
             object**, which is often **private to a dialect in use** and is not
@@ -459,7 +457,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
         If processing is not necessary, the method should return ``None``.
 
-        .. note::
+        .. tip::
 
             This method is only called relative to a **dialect specific type
             object**, which is often **private to a dialect in use** and is not
@@ -498,11 +496,19 @@ class TypeEngine(Visitable, Generic[_T]):
         It is the SQL analogue of the :meth:`.TypeEngine.result_processor`
         method.
 
+        .. note:: The :func:`.TypeEngine.column_expression` method is applied
+           only to the **outermost columns clause** of a SELECT statement, that
+           is, the columns that are to be delivered directly into the returned
+           result rows.  It does **not** apply to the columns clause inside
+           of subqueries.  This necessarily avoids double conversions against
+           the column and only runs the conversion when ready to be returned
+           to the client.
+
         This method is called during the **SQL compilation** phase of a
         statement, when rendering a SQL string. It is **not** called
         against specific values.
 
-        .. note::
+        .. tip::
 
             This method is only called relative to a **dialect specific type
             object**, which is often **private to a dialect in use** and is not
@@ -612,7 +618,7 @@ class TypeEngine(Visitable, Generic[_T]):
 
         return x == y  # type: ignore[no-any-return]
 
-    def get_dbapi_type(self, dbapi: ModuleType) -> Optional[Any]:
+    def get_dbapi_type(self, dbapi: DBAPIModule) -> Optional[Any]:
         """Return the corresponding type object from the underlying DB-API, if
         any.
 
@@ -2263,7 +2269,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
         instance.__dict__.update(self.__dict__)
         return instance
 
-    def get_dbapi_type(self, dbapi: ModuleType) -> Optional[Any]:
+    def get_dbapi_type(self, dbapi: DBAPIModule) -> Optional[Any]:
         """Return the DBAPI type object represented by this
         :class:`.TypeDecorator`.
 

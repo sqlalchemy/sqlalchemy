@@ -103,6 +103,7 @@ class MappedClassProtocol(Protocol[_O]):
 
 class _DeclMappedClassProtocol(MappedClassProtocol[_O], Protocol):
     "Internal more detailed version of ``MappedClassProtocol``."
+
     metadata: MetaData
     __tablename__: str
     __mapper_args__: _MapperKwArgs
@@ -1997,8 +1998,7 @@ class _DeferredMapperConfig(_ClassScanMapperConfig):
     def _early_mapping(self, mapper_kw: _MapperKwArgs) -> None:
         pass
 
-    # mypy disallows plain property override of variable
-    @property  # type: ignore
+    @property
     def cls(self) -> Type[Any]:
         return self._cls()  # type: ignore
 

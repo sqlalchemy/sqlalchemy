@@ -2,7 +2,7 @@
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
 -   repo: https://github.com/python/black
-    rev: 24.10.0
+    rev: 25.1.0
     hooks:
     -   id: black
 
@@ -12,11 +12,11 @@ repos:
     -   id: zimports
 
 -   repo: https://github.com/pycqa/flake8
-    rev: 6.1.0
+    rev: 7.2.0
     hooks:
     -   id: flake8
         additional_dependencies:
-          - flake8-import-order
+          - flake8-import-order!=0.19.0
           - flake8-import-single==0.1.5
           - flake8-builtins
           - flake8-future-annotations>=0.0.5
@@ -37,4 +37,4 @@ repos:
         types: [rst]
         exclude: README.*
         additional_dependencies:
-            - black==24.10.0
+            - black==25.1.0

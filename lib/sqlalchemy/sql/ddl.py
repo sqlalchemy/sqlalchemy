@@ -432,12 +432,14 @@ class _CreateDropBase(ExecutableDDLElement, Generic[_SI]):
 
     """
 
+    element: _SI
+
     def __init__(self, element: _SI) -> None:
         self.element = self.target = element
         self._ddl_if = getattr(element, "_ddl_if", None)
 
     @property
-    def stringify_dialect(self):
+    def stringify_dialect(self):  # type: ignore[override]
         assert not isinstance(self.element, str)
         return self.element.create_drop_stringify_dialect
 
@@ -865,8 +867,9 @@ class DropConstraintComment(_CreateDropBase["Constraint"]):
 
 
 class InvokeDDLBase(SchemaVisitor):
-    def __init__(self, connection):
+    def __init__(self, connection, **kw):
         self.connection = connection
+        assert not kw, f"Unexpected keywords: {kw.keys()}"
 
     @contextlib.contextmanager
     def with_ddl_events(self, target, **kw):

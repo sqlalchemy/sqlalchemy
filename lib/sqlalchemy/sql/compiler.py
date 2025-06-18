@@ -95,6 +95,7 @@ if typing.TYPE_CHECKING:
     from .base import Executable
     from .cache_key import CacheKey
     from .ddl import ExecutableDDLElement
+    from .dml import Delete
     from .dml import Insert
     from .dml import Update
     from .dml import UpdateBase
@@ -4204,7 +4205,7 @@ class SQLCompiler(Compiled):
                 if self.preparer._requires_quotes(cte_name):
                     cte_name = self.preparer.quote(cte_name)
                 text += self.get_render_as_alias_suffix(cte_name)
-                return text
+                return text  # type: ignore[no-any-return]
             else:
                 return self.preparer.format_alias(cte, cte_name)
 
@@ -6180,7 +6181,9 @@ class SQLCompiler(Compiled):
             "criteria within UPDATE"
         )
 
-    def update_post_criteria_clause(self, update_stmt, **kw):
+    def update_post_criteria_clause(
+        self, update_stmt: Update, **kw: Any
+    ) -> Optional[str]:
         """provide a hook to override generation after the WHERE criteria
         in an UPDATE statement
 
@@ -6195,7 +6198,9 @@ class SQLCompiler(Compiled):
         else:
             return None
 
-    def delete_post_criteria_clause(self, delete_stmt, **kw):
+    def delete_post_criteria_clause(
+        self, delete_stmt: Delete, **kw: Any
+    ) -> Optional[str]:
         """provide a hook to override generation after the WHERE criteria
         in a DELETE statement
 
@@ -6216,8 +6221,8 @@ class SQLCompiler(Compiled):
         visiting_cte: Optional[CTE] = None,
         **kw: Any,
     ) -> str:
-        compile_state = update_stmt._compile_state_factory(  # type: ignore[call-arg] # noqa: E501
-            update_stmt, self, **kw  # type: ignore[arg-type]
+        compile_state = update_stmt._compile_state_factory(
+            update_stmt, self, **kw
         )
         if TYPE_CHECKING:
             assert isinstance(compile_state, UpdateDMLState)
@@ -6358,7 +6363,7 @@ class SQLCompiler(Compiled):
 
         self.stack.pop(-1)
 
-        return text
+        return text  # type: ignore[no-any-return]
 
     def delete_extra_from_clause(
         self, delete_stmt, from_table, extra_froms, from_hints, **kw
@@ -6881,7 +6886,7 @@ class DDLCompiler(Compiled):
         else:
             schema_name = None
 
-        index_name = self.preparer.format_index(index)
+        index_name: str = self.preparer.format_index(index)
 
         if schema_name:
             index_name = schema_name + "." + index_name

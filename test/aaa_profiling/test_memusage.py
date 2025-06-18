@@ -223,10 +223,14 @@ def profile_memory(
         # return run_plain
 
         def run_in_process(*func_args):
-            queue = multiprocessing.Queue()
-            proc = multiprocessing.Process(
-                target=profile, args=(queue, func_args)
-            )
+            # see
+            # https://docs.python.org/3.14/whatsnew/3.14.html
+            # #incompatible-changes - the default run type is no longer
+            # "fork", but since we are running closures in the process
+            # we need forked mode
+            ctx = multiprocessing.get_context("fork")
+            queue = ctx.Queue()
+            proc = ctx.Process(target=profile, args=(queue, func_args))
             proc.start()
             while True:
                 row = queue.get()
@@ -394,7 +398,7 @@ class MemUsageTest(EnsureZeroed):
 
 @testing.add_to_marker.memory_intensive
 class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
-    __requires__ = "cpython", "memory_process_intensive", "no_asyncio"
+    __requires__ = "cpython", "posix", "memory_process_intensive", "no_asyncio"
     __sparse_backend__ = True
 
     # ensure a pure growing test trips the assertion

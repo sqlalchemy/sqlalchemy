@@ -6,6 +6,6 @@
     version 1.3, has been removed.   The sole use case for "non primary"
     mappers was that of using :func:`_orm.relationship` to link to a mapped
     class against an alternative selectable; this use case is now suited by the
-    :doc:`relationship_aliased_class` feature.
+    :ref:`relationship_aliased_class` feature.
 
 

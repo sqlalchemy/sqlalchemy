@@ -27,6 +27,7 @@ from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import DOMAIN
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
+from sqlalchemy.dialects.postgresql import INET
 from sqlalchemy.dialects.postgresql import INTEGER
 from sqlalchemy.dialects.postgresql import INTERVAL
 from sqlalchemy.dialects.postgresql import pg_catalog
@@ -910,6 +911,9 @@ class ReflectionTest(
         subject = Table("subject", meta2, autoload_with=connection)
         eq_(subject.primary_key.columns.keys(), ["p2", "p1"])
 
+    @testing.skip_if(
+        "postgresql < 15.0", "on delete with column list not supported"
+    )
     def test_reflected_foreign_key_ondelete_column_list(
         self, metadata, connection
     ):
@@ -1719,6 +1723,54 @@ class ReflectionTest(
         eq_(
             list(t1.indexes)[0].dialect_options["postgresql"]["using"],
             "gin",
+        )
+
+    def test_index_reflection_with_operator_class(self, metadata, connection):
+        """reflect indexes with operator class on columns"""
+
+        Table(
+            "t",
+            metadata,
+            Column("id", Integer, nullable=False),
+            Column("name", String),
+            Column("alias", String),
+            Column("addr1", INET),
+            Column("addr2", INET),
+        )
+        metadata.create_all(connection)
+
+        # 'name' and 'addr1' use a non-default operator, 'addr2' uses the
+        # default one, and 'alias' uses no operator.
+        connection.exec_driver_sql(
+            "CREATE INDEX ix_t ON t USING btree"
+            " (name text_pattern_ops, alias, addr1 cidr_ops, addr2 inet_ops)"
+        )
+
+        ind = inspect(connection).get_indexes("t", None)
+        expected = [
+            {
+                "unique": False,
+                "column_names": ["name", "alias", "addr1", "addr2"],
+                "name": "ix_t",
+                "dialect_options": {
+                    "postgresql_ops": {
+                        "addr1": "cidr_ops",
+                        "name": "text_pattern_ops",
+                    },
+                },
+            }
+        ]
+        if connection.dialect.server_version_info >= (11, 0):
+            expected[0]["include_columns"] = []
+            expected[0]["dialect_options"]["postgresql_include"] = []
+        eq_(ind, expected)
+
+        m = MetaData()
+        t1 = Table("t", m, autoload_with=connection)
+        r_ind = list(t1.indexes)[0]
+        eq_(
+            r_ind.dialect_options["postgresql"]["ops"],
+            {"name": "text_pattern_ops", "addr1": "cidr_ops"},
         )
 
     @testing.skip_if("postgresql < 15.0", "nullsnotdistinct not supported")

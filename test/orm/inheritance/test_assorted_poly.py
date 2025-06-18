@@ -820,7 +820,7 @@ class RelationshipTest6(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        global people, managers, data
+        global people, managers
         people = Table(
             "people",
             metadata,

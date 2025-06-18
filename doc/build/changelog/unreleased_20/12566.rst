@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, sqlite
-    :tickets: 12566
-
-    Fixed and added test support for a few SQLite SQL functions hardcoded into
-    the compiler most notably the "localtimestamp" function which rendered with
-    incorrect internal quoting.

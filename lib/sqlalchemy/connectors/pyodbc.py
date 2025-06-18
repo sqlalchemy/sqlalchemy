@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 import re
-from types import ModuleType
 import typing
 from typing import Any
 from typing import Dict
@@ -28,6 +27,7 @@ from ..engine import URL
 from ..sql.type_api import TypeEngine
 
 if typing.TYPE_CHECKING:
+    from ..engine.interfaces import DBAPIModule
     from ..engine.interfaces import IsolationLevel
 
 
@@ -47,15 +47,13 @@ class PyODBCConnector(Connector):
     # hold the desired driver name
     pyodbc_driver_name: Optional[str] = None
 
-    dbapi: ModuleType
-
     def __init__(self, use_setinputsizes: bool = False, **kw: Any):
         super().__init__(**kw)
         if use_setinputsizes:
             self.bind_typing = interfaces.BindTyping.SETINPUTSIZES
 
     @classmethod
-    def import_dbapi(cls) -> ModuleType:
+    def import_dbapi(cls) -> DBAPIModule:
         return __import__("pyodbc")
 
     def create_connect_args(self, url: URL) -> ConnectArgsType:
@@ -150,7 +148,7 @@ class PyODBCConnector(Connector):
         ],
         cursor: Optional[interfaces.DBAPICursor],
     ) -> bool:
-        if isinstance(e, self.dbapi.ProgrammingError):
+        if isinstance(e, self.loaded_dbapi.ProgrammingError):
             return "The cursor's connection has been closed." in str(
                 e
             ) or "Attempt to use a closed connection." in str(e)

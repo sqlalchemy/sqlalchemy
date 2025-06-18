@@ -58,7 +58,85 @@ _F = TypeVar("_F", bound=Callable[..., Any])
 _MA = TypeVar("_MA", bound="HasMemoized.memoized_attribute[Any]")
 _M = TypeVar("_M", bound=ModuleType)
 
-if compat.py310:
+if compat.py314:
+    # vendor a minimal form of get_annotations per
+    # https://github.com/python/cpython/issues/133684#issuecomment-2863841891
+
+    from annotationlib import call_annotate_function  # type: ignore
+    from annotationlib import Format
+
+    def _get_and_call_annotate(obj, format):  # noqa: A002
+        annotate = getattr(obj, "__annotate__", None)
+        if annotate is not None:
+            ann = call_annotate_function(annotate, format, owner=obj)
+            if not isinstance(ann, dict):
+                raise ValueError(f"{obj!r}.__annotate__ returned a non-dict")
+            return ann
+        return None
+
+    # this is ported from py3.13.0a7
+    _BASE_GET_ANNOTATIONS = type.__dict__["__annotations__"].__get__  # type: ignore  # noqa: E501
+
+    def _get_dunder_annotations(obj):
+        if isinstance(obj, type):
+            try:
+                ann = _BASE_GET_ANNOTATIONS(obj)
+            except AttributeError:
+                # For static types, the descriptor raises AttributeError.
+                return {}
+        else:
+            ann = getattr(obj, "__annotations__", None)
+            if ann is None:
+                return {}
+
+        if not isinstance(ann, dict):
+            raise ValueError(
+                f"{obj!r}.__annotations__ is neither a dict nor None"
+            )
+        return dict(ann)
+
+    def _vendored_get_annotations(
+        obj: Any, *, format: Format  # noqa: A002
+    ) -> Mapping[str, Any]:
+        """A sparse implementation of annotationlib.get_annotations()"""
+
+        try:
+            ann = _get_dunder_annotations(obj)
+        except Exception:
+            pass
+        else:
+            if ann is not None:
+                return dict(ann)
+
+        # But if __annotations__ threw a NameError, we try calling __annotate__
+        ann = _get_and_call_annotate(obj, format)
+        if ann is None:
+            # If that didn't work either, we have a very weird object:
+            # evaluating
+            # __annotations__ threw NameError and there is no __annotate__.
+            # In that case,
+            # we fall back to trying __annotations__ again.
+            ann = _get_dunder_annotations(obj)
+
+        if ann is None:
+            if isinstance(obj, type) or callable(obj):
+                return {}
+            raise TypeError(f"{obj!r} does not have annotations")
+
+        if not ann:
+            return {}
+
+        return dict(ann)
+
+    def get_annotations(obj: Any) -> Mapping[str, Any]:
+        # FORWARDREF has the effect of giving us ForwardRefs and not
+        # actually trying to evaluate the annotations.  We need this so
+        # that the annotations act as much like
+        # "from __future__ import annotations" as possible, which is going
+        # away in future python as a separate mode
+        return _vendored_get_annotations(obj, format=Format.FORWARDREF)
+
+elif compat.py310:
 
     def get_annotations(obj: Any) -> Mapping[str, Any]:
         return inspect.get_annotations(obj)

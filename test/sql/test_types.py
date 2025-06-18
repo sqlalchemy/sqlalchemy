@@ -298,6 +298,7 @@ class AdaptTest(fixtures.TestBase):
                     "schema",
                     "metadata",
                     "name",
+                    "dispatch",
                 ):
                     continue
                 # assert each value was copied, or that
@@ -2819,21 +2820,23 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         e = Enum("x", "y", name="somename", create_constraint=True)
         eq_(
             repr(e),
-            "Enum('x', 'y', name='somename', create_constraint=True)",
+            "Enum('x', 'y', name='somename', inherit_schema=True, "
+            "create_constraint=True)",
         )
 
     def test_repr_three(self):
         e = Enum("x", "y", native_enum=False, length=255)
         eq_(
             repr(e),
-            "Enum('x', 'y', native_enum=False, length=255)",
+            "Enum('x', 'y', inherit_schema=True, "
+            "native_enum=False, length=255)",
         )
 
     def test_repr_four(self):
         e = Enum("x", "y", length=255)
         eq_(
             repr(e),
-            "Enum('x', 'y', length=255)",
+            "Enum('x', 'y', inherit_schema=True, length=255)",
         )
 
     def test_length_native(self):
@@ -2866,7 +2869,11 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
     def test_none_length_non_native(self):
         e = Enum("x", "y", native_enum=False, length=None)
         eq_(e.length, None)
-        eq_(repr(e), "Enum('x', 'y', native_enum=False, length=None)")
+        eq_(
+            repr(e),
+            "Enum('x', 'y', inherit_schema=True, "
+            "native_enum=False, length=None)",
+        )
         self.assert_compile(e, "VARCHAR", dialect="default")
 
     def test_omit_aliases(self, connection):

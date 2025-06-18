@@ -86,6 +86,7 @@ if typing.TYPE_CHECKING:
     from .interfaces import _ParamStyle
     from .interfaces import ConnectArgsType
     from .interfaces import DBAPIConnection
+    from .interfaces import DBAPIModule
     from .interfaces import IsolationLevel
     from .row import Row
     from .url import URL
@@ -431,7 +432,7 @@ class DefaultDialect(Dialect):
     delete_executemany_returning = False
 
     @util.memoized_property
-    def loaded_dbapi(self) -> ModuleType:
+    def loaded_dbapi(self) -> DBAPIModule:
         if self.dbapi is None:
             raise exc.InvalidRequestError(
                 f"Dialect {self} does not have a Python DBAPI established "
@@ -480,7 +481,7 @@ class DefaultDialect(Dialect):
         return weakref.WeakKeyDictionary()
 
     @property
-    def dialect_description(self):
+    def dialect_description(self):  # type: ignore[override]
         return self.name + "+" + self.driver
 
     @property
@@ -563,7 +564,7 @@ class DefaultDialect(Dialect):
                 % (self.label_length, self.max_identifier_length)
             )
 
-    def on_connect(self) -> Optional[Callable[[Any], Any]]:
+    def on_connect(self) -> Optional[Callable[[Any], None]]:
         # inherits the docstring from interfaces.Dialect.on_connect
         return None
 
@@ -952,7 +953,7 @@ class DefaultDialect(Dialect):
 
     def is_disconnect(
         self,
-        e: Exception,
+        e: DBAPIModule.Error,
         connection: Union[
             pool.PoolProxiedConnection, interfaces.DBAPIConnection, None
         ],
@@ -1057,7 +1058,7 @@ class DefaultDialect(Dialect):
             name = name_upper
         return name
 
-    def get_driver_connection(self, connection):
+    def get_driver_connection(self, connection: DBAPIConnection) -> Any:
         return connection
 
     def _overrides_default(self, method):
@@ -1631,7 +1632,7 @@ class DefaultExecutionContext(ExecutionContext):
             return "unknown"
 
     @property
-    def executemany(self):
+    def executemany(self):  # type: ignore[override]
         return self.execute_style in (
             ExecuteStyle.EXECUTEMANY,
             ExecuteStyle.INSERTMANYVALUES,
@@ -1845,6 +1846,7 @@ class DefaultExecutionContext(ExecutionContext):
         if self._rowcount is None and exec_opt.get("preserve_rowcount", False):
             self._rowcount = self.cursor.rowcount
 
+        yp: Optional[Union[int, bool]]
         if self.is_crud or self.is_text:
             result = self._setup_dml_or_text_result()
             yp = False

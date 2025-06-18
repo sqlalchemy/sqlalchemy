@@ -279,14 +279,3 @@ def __go(lcls: Any) -> None:
 
 
 __go(locals())
-
-
-def __getattr__(name: str) -> Any:
-    if name == "SingleonThreadPool":
-        _util.warn_deprecated(
-            "SingleonThreadPool was a typo in the v2 series. "
-            "Please use the correct SingletonThreadPool name.",
-            "2.0.24",
-        )
-        return SingletonThreadPool
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

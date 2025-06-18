@@ -1,0 +1,9 @@
+.. change::
+    :tags: core, feature, sql
+    :tickets: 12479
+
+      The Core operator system now includes the ``matmul`` operator, i.e. the
+      ``@`` operator in Python as an optional operator.
+      In addition to the ``__matmul__`` and ``__rmatmul__`` operator support
+      this change also adds the missing ``__rrshift__`` and ``__rlshift__``.
+      Pull request courtesy Aramís Segovia.

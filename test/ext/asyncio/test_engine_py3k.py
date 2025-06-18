@@ -269,9 +269,16 @@ class AsyncEngineTest(EngineFixture):
 
         is_false(async_engine == None)
 
-    @async_test
-    async def test_no_attach_to_event_loop(self, testing_engine):
-        """test #6409"""
+    def test_no_attach_to_event_loop(self, testing_engine):
+        """test #6409
+
+        note this test does not seem to trigger the bug that was originally
+        fixed in #6409, when using python 3.10 and higher (the original issue
+        can repro in 3.8 at least, based on my testing).  It's been simplified
+        to no longer explicitly create a new loop, asyncio.run() already
+        creates a new loop.
+
+        """
 
         import asyncio
         import threading
@@ -279,9 +286,6 @@ class AsyncEngineTest(EngineFixture):
         errs = []
 
         def go():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
             async def main():
                 tasks = [task() for _ in range(2)]
 

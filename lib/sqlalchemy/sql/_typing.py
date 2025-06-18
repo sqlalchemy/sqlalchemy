@@ -72,7 +72,10 @@ if TYPE_CHECKING:
     from .sqltypes import TableValueType
     from .sqltypes import TupleType
     from .type_api import TypeEngine
+    from ..engine import Connection
     from ..engine import Dialect
+    from ..engine import Engine
+    from ..engine.mock import MockConnection
     from ..util.typing import TypeGuard
 
 _T = TypeVar("_T", bound=Any)
@@ -304,6 +307,8 @@ _LimitOffsetType = Union[int, _ColumnExpressionArgument[int], None]
 
 _AutoIncrementType = Union[bool, Literal["auto", "ignore_fk"]]
 
+_CreateDropBind = Union["Engine", "Connection", "MockConnection"]
+
 if TYPE_CHECKING:
 
     def is_sql_compiler(c: Compiled) -> TypeGuard[SQLCompiler]: ...
@@ -335,11 +340,11 @@ if TYPE_CHECKING:
     def is_selectable(t: Any) -> TypeGuard[Selectable]: ...
 
     def is_select_base(
-        t: Union[Executable, ReturnsRows]
+        t: Union[Executable, ReturnsRows],
     ) -> TypeGuard[SelectBase]: ...
 
     def is_select_statement(
-        t: Union[Executable, ReturnsRows]
+        t: Union[Executable, ReturnsRows],
     ) -> TypeGuard[Select[Unpack[TupleAny]]]: ...
 
     def is_table(t: FromClause) -> TypeGuard[TableClause]: ...

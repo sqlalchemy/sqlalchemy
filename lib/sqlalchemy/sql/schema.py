@@ -71,6 +71,7 @@ from .base import DedupeColumnCollection
 from .base import DialectKWArgs
 from .base import Executable
 from .base import SchemaEventTarget as SchemaEventTarget
+from .base import SchemaVisitable as SchemaVisitable
 from .coercions import _document_text_coercion
 from .elements import ClauseElement
 from .elements import ColumnClause
@@ -91,6 +92,7 @@ from ..util.typing import TypeGuard
 
 if typing.TYPE_CHECKING:
     from ._typing import _AutoIncrementType
+    from ._typing import _CreateDropBind
     from ._typing import _DDLColumnArgument
     from ._typing import _DDLColumnReferenceArgument
     from ._typing import _InfoType
@@ -109,7 +111,6 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import _CoreMultiExecuteParams
     from ..engine.interfaces import CoreExecuteOptionsParameter
     from ..engine.interfaces import ExecutionContext
-    from ..engine.mock import MockConnection
     from ..engine.reflection import _ReflectionInfo
     from ..sql.selectable import FromClause
 
@@ -117,8 +118,6 @@ _T = TypeVar("_T", bound="Any")
 _SI = TypeVar("_SI", bound="SchemaItem")
 _TAB = TypeVar("_TAB", bound="Table")
 
-
-_CreateDropBind = Union["Engine", "Connection", "MockConnection"]
 
 _ConstraintNameArgument = Optional[Union[str, _NoneName]]
 
@@ -213,7 +212,7 @@ def _copy_expression(
 
 
 @inspection._self_inspects
-class SchemaItem(SchemaEventTarget, visitors.Visitable):
+class SchemaItem(SchemaVisitable):
     """Base class for items that define a database schema."""
 
     __visit_name__ = "schema_item"
@@ -478,7 +477,7 @@ class Table(
             table.dispatch.before_parent_attach(table, metadata)
             metadata._add_table(name, schema, table)
             try:
-                table.__init__(name, metadata, *args, _no_init=False, **kw)
+                table.__init__(name, metadata, *args, _no_init=False, **kw)  # type: ignore[misc] # noqa: E501
                 table.dispatch.after_parent_attach(table, metadata)
                 return table
             except Exception:
@@ -2240,7 +2239,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         return _DefaultDescriptionTuple._from_column_default(self.onupdate)
 
     @util.memoized_property
-    def _gen_static_annotations_cache_key(self) -> bool:  # type: ignore
+    def _gen_static_annotations_cache_key(self) -> bool:
         """special attribute used by cache key gen, if true, we will
         use a static cache key for the annotations dictionary, else we
         will generate a new cache key for annotations each time.

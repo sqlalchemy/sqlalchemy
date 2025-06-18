@@ -311,6 +311,20 @@ pg_collation = Table(
     Column("collversion", Text, info={"server_version": (10,)}),
 )
 
+pg_opclass = Table(
+    "pg_opclass",
+    pg_catalog_meta,
+    Column("oid", OID, info={"server_version": (9, 3)}),
+    Column("opcmethod", NAME),
+    Column("opcname", NAME),
+    Column("opsnamespace", OID),
+    Column("opsowner", OID),
+    Column("opcfamily", OID),
+    Column("opcintype", OID),
+    Column("opcdefault", Boolean),
+    Column("opckeytype", OID),
+)
+
 pg_inherits = Table(
     "pg_inherits",
     pg_catalog_meta,

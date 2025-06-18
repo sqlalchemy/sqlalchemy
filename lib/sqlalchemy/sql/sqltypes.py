@@ -6,9 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: allow-untyped-defs, allow-untyped-calls
 
-"""SQL specific types.
-
-"""
+"""SQL specific types."""
 from __future__ import annotations
 
 import collections.abc as collections_abc
@@ -40,6 +38,7 @@ from . import elements
 from . import operators
 from . import roles
 from . import type_api
+from .base import _NoArg
 from .base import _NONE_NAME
 from .base import NO_ARG
 from .base import SchemaEventTarget
@@ -70,10 +69,12 @@ from ..util.typing import TupleAny
 
 if TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
+    from ._typing import _CreateDropBind
     from ._typing import _TypeEngineArgument
     from .elements import ColumnElement
     from .operators import OperatorType
     from .schema import MetaData
+    from .schema import SchemaConst
     from .type_api import _BindProcessorType
     from .type_api import _ComparatorFactory
     from .type_api import _LiteralProcessorType
@@ -1052,9 +1053,9 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
     def __init__(
         self,
         name: Optional[str] = None,
-        schema: Optional[str] = None,
+        schema: Optional[Union[str, Literal[SchemaConst.BLANK_SCHEMA]]] = None,
         metadata: Optional[MetaData] = None,
-        inherit_schema: bool = False,
+        inherit_schema: Union[bool, _NoArg] = NO_ARG,
         quote: Optional[bool] = None,
         _create_events: bool = True,
         _adapted_from: Optional[SchemaType] = None,
@@ -1065,7 +1066,18 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
             self.name = None
         self.schema = schema
         self.metadata = metadata
-        self.inherit_schema = inherit_schema
+
+        if inherit_schema is True and schema is not None:
+            raise exc.ArgumentError(
+                "Ambiguously setting inherit_schema=True while "
+                "also passing a non-None schema argument"
+            )
+        self.inherit_schema = (
+            inherit_schema
+            if inherit_schema is not NO_ARG
+            else (schema is None and metadata is None)
+        )
+        # breakpoint()
         self._create_events = _create_events
 
         if _create_events and self.metadata:
@@ -1112,6 +1124,9 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
             self.schema = table.schema
         elif self.metadata and self.schema is None and self.metadata.schema:
             self.schema = self.metadata.schema
+
+        if self.schema is not None:
+            self.inherit_schema = False
 
         if not self._create_events:
             return
@@ -1179,21 +1194,23 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         kw.setdefault("_adapted_from", self)
         return super().adapt(cls, **kw)
 
-    def create(self, bind, checkfirst=False):
+    def create(self, bind: _CreateDropBind, checkfirst: bool = False) -> None:
         """Issue CREATE DDL for this type, if applicable."""
 
         t = self.dialect_impl(bind.dialect)
         if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
             t.create(bind, checkfirst=checkfirst)
 
-    def drop(self, bind, checkfirst=False):
+    def drop(self, bind: _CreateDropBind, checkfirst: bool = False) -> None:
         """Issue DROP DDL for this type, if applicable."""
 
         t = self.dialect_impl(bind.dialect)
         if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
             t.drop(bind, checkfirst=checkfirst)
 
-    def _on_table_create(self, target, bind, **kw):
+    def _on_table_create(
+        self, target: Any, bind: _CreateDropBind, **kw: Any
+    ) -> None:
         if not self._is_impl_for_variant(bind.dialect, kw):
             return
 
@@ -1201,7 +1218,9 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
             t._on_table_create(target, bind, **kw)
 
-    def _on_table_drop(self, target, bind, **kw):
+    def _on_table_drop(
+        self, target: Any, bind: _CreateDropBind, **kw: Any
+    ) -> None:
         if not self._is_impl_for_variant(bind.dialect, kw):
             return
 
@@ -1209,7 +1228,9 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
             t._on_table_drop(target, bind, **kw)
 
-    def _on_metadata_create(self, target, bind, **kw):
+    def _on_metadata_create(
+        self, target: Any, bind: _CreateDropBind, **kw: Any
+    ) -> None:
         if not self._is_impl_for_variant(bind.dialect, kw):
             return
 
@@ -1217,7 +1238,9 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
             t._on_metadata_create(target, bind, **kw)
 
-    def _on_metadata_drop(self, target, bind, **kw):
+    def _on_metadata_drop(
+        self, target: Any, bind: _CreateDropBind, **kw: Any
+    ) -> None:
         if not self._is_impl_for_variant(bind.dialect, kw):
             return
 
@@ -1225,7 +1248,9 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         if isinstance(t, SchemaType) and t.__class__ is not self.__class__:
             t._on_metadata_drop(target, bind, **kw)
 
-    def _is_impl_for_variant(self, dialect, kw):
+    def _is_impl_for_variant(
+        self, dialect: Dialect, kw: Dict[str, Any]
+    ) -> Optional[bool]:
         variant_mapping = kw.pop("variant_mapping", None)
 
         if not variant_mapping:
@@ -1242,7 +1267,7 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
 
         # since PostgreSQL is the only DB that has ARRAY this can only
         # be integration tested by PG-specific tests
-        def _we_are_the_impl(typ):
+        def _we_are_the_impl(typ: SchemaType) -> bool:
             return (
                 typ is self
                 or isinstance(typ, ARRAY)
@@ -1255,6 +1280,8 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
             return True
         elif dialect.name not in variant_mapping:
             return _we_are_the_impl(variant_mapping["_default"])
+        else:
+            return None
 
 
 _EnumTupleArg = Union[Sequence[enum.Enum], Sequence[str]]
@@ -1430,21 +1457,28 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
               :class:`_schema.MetaData` object if present, when passed using
               the :paramref:`_types.Enum.metadata` parameter.
 
-           Otherwise, if the :paramref:`_types.Enum.inherit_schema` flag is set
-           to ``True``, the schema will be inherited from the associated
+           Otherwise, the schema will be inherited from the associated
            :class:`_schema.Table` object if any; when
-           :paramref:`_types.Enum.inherit_schema` is at its default of
+           :paramref:`_types.Enum.inherit_schema` is set to
            ``False``, the owning table's schema is **not** used.
 
 
         :param quote: Set explicit quoting preferences for the type's name.
 
         :param inherit_schema: When ``True``, the "schema" from the owning
-           :class:`_schema.Table`
-           will be copied to the "schema" attribute of this
-           :class:`.Enum`, replacing whatever value was passed for the
-           ``schema`` attribute.   This also takes effect when using the
+           :class:`_schema.Table` will be copied to the "schema"
+           attribute of this :class:`.Enum`, replacing whatever value was
+           passed for the :paramref:`_types.Enum.schema` attribute.
+           This also takes effect when using the
            :meth:`_schema.Table.to_metadata` operation.
+           Set to ``False`` to retain the schema value provided.
+           By default the behavior will be to inherit the table schema unless
+           either :paramref:`_types.Enum.schema` and / or
+           :paramref:`_types.Enum.metadata` are set.
+
+           .. versionchanged:: 2.1 The default value of this parameter
+               was changed to ``True`` when :paramref:`_types.Enum.schema`
+               and :paramref:`_types.Enum.metadata` are not provided.
 
         :param validate_strings: when True, string values that are being
            passed to the database in a SQL statement will be checked
@@ -1532,12 +1566,13 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         # new Enum classes.
         if self.enum_class and values:
             kw.setdefault("name", self.enum_class.__name__.lower())
+
         SchemaType.__init__(
             self,
             name=kw.pop("name", None),
+            inherit_schema=kw.pop("inherit_schema", NO_ARG),
             schema=kw.pop("schema", None),
             metadata=kw.pop("metadata", None),
-            inherit_schema=kw.pop("inherit_schema", False),
             quote=kw.pop("quote", None),
             _create_events=kw.pop("_create_events", True),
             _adapted_from=kw.pop("_adapted_from", None),
@@ -1572,6 +1607,12 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         else:
             self.enum_class = None
             return enums, enums  # type: ignore[return-value]
+
+    def _compare_type_affinity(self, other: TypeEngine[Any]) -> bool:
+        return (
+            super()._compare_type_affinity(other)
+            or other._type_affinity is String
+        )
 
     def _resolve_for_literal(self, value: Any) -> Enum:
         tv = type(value)
@@ -1667,14 +1708,14 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         )
 
     @property
-    def sort_key_function(self):
+    def sort_key_function(self):  # type: ignore[override]
         if self._sort_key_function is NO_ARG:
             return self._db_value_for_elem
         else:
             return self._sort_key_function
 
     @property
-    def native(self):
+    def native(self):  # type: ignore[override]
         return self.native_enum
 
     def _db_value_for_elem(self, elem):
@@ -2751,7 +2792,7 @@ class JSON(Indexable, TypeEngine[Any]):
 
     comparator_factory = Comparator
 
-    @property  # type: ignore  # mypy property bug
+    @property
     def should_evaluate_none(self):
         """Alias of :attr:`_types.JSON.none_as_null`"""
         return not self.none_as_null
@@ -3698,7 +3739,7 @@ class Uuid(Emulated, TypeEngine[_UUID_RETURN]):
         return _python_UUID if self.as_uuid else str
 
     @property
-    def native(self):
+    def native(self):  # type: ignore[override]
         return self.native_uuid
 
     def coerce_compared_value(self, op, value):

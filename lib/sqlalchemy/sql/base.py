@@ -6,9 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 # mypy: allow-untyped-defs, allow-untyped-calls
 
-"""Foundational utilities common to many sql modules.
-
-"""
+"""Foundational utilities common to many sql modules."""
 
 
 from __future__ import annotations
@@ -1540,8 +1538,19 @@ class SchemaEventTarget(event.EventTarget):
         self.dispatch.after_parent_attach(self, parent)
 
 
+class SchemaVisitable(SchemaEventTarget, visitors.Visitable):
+    """Base class for elements that are targets of a :class:`.SchemaVisitor`.
+
+    .. versionadded:: 2.0.41
+
+    """
+
+
 class SchemaVisitor(ClauseVisitor):
-    """Define the visiting for ``SchemaItem`` objects."""
+    """Define the visiting for ``SchemaItem`` and more
+    generally ``SchemaVisitable`` objects.
+
+    """
 
     __traverse_options__ = {"schema_visitor": True}
 
@@ -2357,7 +2366,7 @@ class ColumnSet(util.OrderedSet["ColumnClause[Any]"]):
 
 
 def _entity_namespace(
-    entity: Union[_HasEntityNamespace, ExternallyTraversible]
+    entity: Union[_HasEntityNamespace, ExternallyTraversible],
 ) -> _EntityNamespace:
     """Return the nearest .entity_namespace for the given entity.
 

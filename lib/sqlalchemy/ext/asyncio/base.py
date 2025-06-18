@@ -215,7 +215,7 @@ class GeneratorStartableContext(StartableContext[_T_co]):
 
 
 def asyncstartablecontext(
-    func: Callable[..., AsyncIterator[_T_co]]
+    func: Callable[..., AsyncIterator[_T_co]],
 ) -> Callable[..., GeneratorStartableContext[_T_co]]:
     """@asyncstartablecontext decorator.
 

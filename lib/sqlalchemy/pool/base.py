@@ -6,9 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 
-"""Base constructs for connection pools.
-
-"""
+"""Base constructs for connection pools."""
 
 from __future__ import annotations
 
@@ -1076,6 +1074,8 @@ class PoolProxiedConnection(ManagesConnection):
         def cursor(self, *args: Any, **kwargs: Any) -> DBAPICursor: ...
 
         def rollback(self) -> None: ...
+
+        def __getattr__(self, key: str) -> Any: ...
 
     @property
     def is_valid(self) -> bool:

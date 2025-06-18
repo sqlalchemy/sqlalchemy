@@ -16,9 +16,13 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Composite
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import defer
+from sqlalchemy.orm import load_only
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import undefer
+from sqlalchemy.orm import undefer_group
 from sqlalchemy.orm.attributes import LoaderCallableStatus
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -1470,7 +1474,7 @@ class ManyToOneTest(fixtures.MappedTest):
         eq_(sess.query(ae).filter(ae.c == C("a2b1", b2)).one(), a2)
 
 
-class ConfigurationTest(fixtures.MappedTest):
+class ConfigAndDeferralTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -1508,7 +1512,7 @@ class ConfigurationTest(fixtures.MappedTest):
         class Edge(cls.Comparable):
             pass
 
-    def _test_roundtrip(self):
+    def _test_roundtrip(self, *, assert_deferred=False, options=()):
         Edge, Point = self.classes.Edge, self.classes.Point
 
         e1 = Edge(start=Point(3, 4), end=Point(5, 6))
@@ -1516,7 +1520,19 @@ class ConfigurationTest(fixtures.MappedTest):
         sess.add(e1)
         sess.commit()
 
-        eq_(sess.query(Edge).one(), Edge(start=Point(3, 4), end=Point(5, 6)))
+        stmt = select(Edge)
+        if options:
+            stmt = stmt.options(*options)
+        e1 = sess.execute(stmt).scalar_one()
+
+        names = ["start", "end", "x1", "x2", "y1", "y2"]
+        for name in names:
+            if assert_deferred:
+                assert name not in e1.__dict__
+            else:
+                assert name in e1.__dict__
+
+        eq_(e1, Edge(start=Point(3, 4), end=Point(5, 6)))
 
     def test_columns(self):
         edge, Edge, Point = (
@@ -1562,7 +1578,7 @@ class ConfigurationTest(fixtures.MappedTest):
 
         self._test_roundtrip()
 
-    def test_deferred(self):
+    def test_deferred_config(self):
         edge, Edge, Point = (
             self.tables.edge,
             self.classes.Edge,
@@ -1580,7 +1596,121 @@ class ConfigurationTest(fixtures.MappedTest):
                 ),
             },
         )
-        self._test_roundtrip()
+        self._test_roundtrip(assert_deferred=True)
+
+    def test_defer_option_on_cols(self):
+        edge, Edge, Point = (
+            self.tables.edge,
+            self.classes.Edge,
+            self.classes.Point,
+        )
+        self.mapper_registry.map_imperatively(
+            Edge,
+            edge,
+            properties={
+                "start": sa.orm.composite(
+                    Point,
+                    edge.c.x1,
+                    edge.c.y1,
+                ),
+                "end": sa.orm.composite(
+                    Point,
+                    edge.c.x2,
+                    edge.c.y2,
+                ),
+            },
+        )
+        self._test_roundtrip(
+            assert_deferred=True,
+            options=(
+                defer(Edge.x1),
+                defer(Edge.x2),
+                defer(Edge.y1),
+                defer(Edge.y2),
+            ),
+        )
+
+    def test_defer_option_on_composite(self):
+        edge, Edge, Point = (
+            self.tables.edge,
+            self.classes.Edge,
+            self.classes.Point,
+        )
+        self.mapper_registry.map_imperatively(
+            Edge,
+            edge,
+            properties={
+                "start": sa.orm.composite(
+                    Point,
+                    edge.c.x1,
+                    edge.c.y1,
+                ),
+                "end": sa.orm.composite(
+                    Point,
+                    edge.c.x2,
+                    edge.c.y2,
+                ),
+            },
+        )
+        self._test_roundtrip(
+            assert_deferred=True, options=(defer(Edge.start), defer(Edge.end))
+        )
+
+    @testing.variation("composite_only", [True, False])
+    def test_load_only_option_on_composite(self, composite_only):
+        edge, Edge, Point = (
+            self.tables.edge,
+            self.classes.Edge,
+            self.classes.Point,
+        )
+        self.mapper_registry.map_imperatively(
+            Edge,
+            edge,
+            properties={
+                "start": sa.orm.composite(
+                    Point, edge.c.x1, edge.c.y1, deferred=True
+                ),
+                "end": sa.orm.composite(
+                    Point,
+                    edge.c.x2,
+                    edge.c.y2,
+                ),
+            },
+        )
+
+        if composite_only:
+            self._test_roundtrip(
+                assert_deferred=False,
+                options=(load_only(Edge.start, Edge.end),),
+            )
+        else:
+            self._test_roundtrip(
+                assert_deferred=False,
+                options=(load_only(Edge.start, Edge.x2, Edge.y2),),
+            )
+
+    def test_defer_option_on_composite_via_group(self):
+        edge, Edge, Point = (
+            self.tables.edge,
+            self.classes.Edge,
+            self.classes.Point,
+        )
+        self.mapper_registry.map_imperatively(
+            Edge,
+            edge,
+            properties={
+                "start": sa.orm.composite(
+                    Point, edge.c.x1, edge.c.y1, deferred=True, group="s"
+                ),
+                "end": sa.orm.composite(
+                    Point, edge.c.x2, edge.c.y2, deferred=True
+                ),
+            },
+        )
+        self._test_roundtrip(
+            assert_deferred=False,
+            options=(undefer_group("s"), undefer(Edge.end)),
+        )
 
     def test_check_prop_type(self):
         edge, Edge, Point = (

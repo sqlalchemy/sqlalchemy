@@ -5,10 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Visitor/traversal interface and library functions.
-
-
-"""
+"""Visitor/traversal interface and library functions."""
 
 from __future__ import annotations
 
