@@ -324,3 +324,21 @@ pg_opclass = Table(
     Column("opcdefault", Boolean),
     Column("opckeytype", OID),
 )
+
+pg_inherits = Table(
+    "pg_inherits",
+    pg_catalog_meta,
+    Column("inhrelid", OID),
+    Column("inhparent", OID),
+    Column("inhseqno", Integer),
+    Column("inhdetachpending", Boolean, info={"server_version": (14,)}),
+)
+
+pg_tablespace = Table(
+    "pg_tablespace",
+    pg_catalog_meta,
+    Column("oid", OID),
+    Column("spcname", NAME),
+    Column("spcowner", OID),
+    Column("spcoptions", ARRAY(Text)),
+)

@@ -2136,7 +2136,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def reflect_table_options(self):
-        return only_on(["mysql", "mariadb", "oracle"])
+        return only_on(["mysql", "mariadb", "oracle", "postgresql"])
 
     @property
     def materialized_views(self):

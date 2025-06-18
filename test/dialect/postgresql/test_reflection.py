@@ -2999,3 +2999,106 @@ class TestReflectDifficultColTypes(fixtures.TablesTest):
         is_true(len(rows) > 0)
         for row in rows:
             self.check_int_list(row, "conkey")
+
+
+class TestTableOptionsReflection(fixtures.TestBase):
+    __only_on__ = "postgresql"
+    __backend__ = True
+
+    def test_table_inherits(self, metadata, connection):
+        def assert_inherits_from(table_name, expect_base_tables):
+            table_options = inspect(connection).get_table_options(table_name)
+            eq_(
+                table_options.get("postgresql_inherits", ()),
+                expect_base_tables,
+            )
+
+        def assert_column_names(table_name, expect_columns):
+            columns = inspect(connection).get_columns(table_name)
+            eq_([c["name"] for c in columns], expect_columns)
+
+        Table("base", metadata, Column("id", INTEGER, primary_key=True))
+        Table("name_mixin", metadata, Column("name", String(16)))
+        Table("single_inherits", metadata, postgresql_inherits="base")
+        Table(
+            "single_inherits_tuple_arg",
+            metadata,
+            postgresql_inherits=("base",),
+        )
+        Table(
+            "inherits_mixin",
+            metadata,
+            postgresql_inherits=("base", "name_mixin"),
+        )
+
+        metadata.create_all(connection)
+
+        assert_inherits_from("base", ())
+        assert_inherits_from("name_mixin", ())
+
+        assert_inherits_from("single_inherits", ("base",))
+        assert_column_names("single_inherits", ["id"])
+
+        assert_inherits_from("single_inherits_tuple_arg", ("base",))
+
+        assert_inherits_from("inherits_mixin", ("base", "name_mixin"))
+        assert_column_names("inherits_mixin", ["id", "name"])
+
+    def test_table_storage_params(self, metadata, connection):
+        def assert_has_storage_param(table_name, option_key, option_value):
+            table_options = inspect(connection).get_table_options(table_name)
+            storage_params = table_options["postgresql_with"]
+            assert isinstance(storage_params, dict)
+            eq_(storage_params[option_key], option_value)
+
+        Table("table_no_storage_params", metadata)
+        Table(
+            "table_with_fillfactor",
+            metadata,
+            postgresql_with={"fillfactor": 10},
+        )
+        Table(
+            "table_with_parallel_workers",
+            metadata,
+            postgresql_with={"parallel_workers": 15},
+        )
+
+        metadata.create_all(connection)
+
+        no_params_options = inspect(connection).get_table_options(
+            "table_no_storage_params"
+        )
+        assert "postgresql_with" not in no_params_options
+
+        assert_has_storage_param("table_with_fillfactor", "fillfactor", "10")
+        assert_has_storage_param(
+            "table_with_parallel_workers", "parallel_workers", "15"
+        )
+
+    def test_table_using_default(self, metadata: MetaData, connection):
+        Table("table_using_heap", metadata, postgresql_using="heap").create(
+            connection
+        )
+        options = inspect(connection).get_table_options("table_using_heap")
+        is_false("postgresql_using" in options)
+
+    def test_table_using_custom(self, metadata: MetaData, connection):
+        if not connection.exec_driver_sql(
+            "SELECT rolsuper FROM pg_roles WHERE rolname = current_user"
+        ).scalar():
+            config.skip_test("superuser required for CREATE ACCESS METHOD")
+        connection.exec_driver_sql(
+            "CREATE ACCESS METHOD myaccessmethod "
+            "TYPE TABLE "
+            "HANDLER heap_tableam_handler"
+        )
+        Table(
+            "table_using_myaccessmethod",
+            metadata,
+            postgresql_using="myaccessmethod",
+        ).create(connection)
+
+        options = inspect(connection).get_table_options(
+            "table_using_myaccessmethod"
+        )
+        eq_(options["postgresql_using"], "myaccessmethod")

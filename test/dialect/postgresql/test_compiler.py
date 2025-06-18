@@ -584,6 +584,43 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TABLE anothertable (id INTEGER) WITHOUT OIDS",
         )
 
+    def test_create_table_with_storage_parameters(self):
+        m = MetaData()
+
+        tbl = Table("atable1", m, postgresql_with={"fillfactor": 100})
+
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE atable1 () WITH (fillfactor = 100)",
+        )
+
+        tbl2 = Table(
+            "atable2",
+            m,
+            postgresql_with={"toast.autovacuum_insert_scale_factor": 1.25},
+        )
+
+        self.assert_compile(
+            schema.CreateTable(tbl2),
+            "CREATE TABLE atable2 () "
+            "WITH (toast.autovacuum_insert_scale_factor = 1.25)",
+        )
+
+        tbl3 = Table(
+            "atable3",
+            m,
+            postgresql_with={
+                "user_catalog_table": False,
+                "parallel_workers": 15,
+            },
+        )
+
+        self.assert_compile(
+            schema.CreateTable(tbl3),
+            "CREATE TABLE atable3 () "
+            "WITH (user_catalog_table = False, parallel_workers = 15)",
+        )
+
     def test_create_table_with_oncommit_option(self):
         m = MetaData()
         tbl = Table(

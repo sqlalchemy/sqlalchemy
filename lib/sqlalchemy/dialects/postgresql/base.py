@@ -1173,8 +1173,8 @@ PostgreSQL Table Options
 ------------------------
 
 Several options for CREATE TABLE are supported directly by the PostgreSQL
-dialect in conjunction with the :class:`_schema.Table` construct, listed in
-the following sections.
+dialect in conjunction with the :class:`_schema.Table` construct, detailed
+in the following sections.
 
 .. seealso::
 
@@ -1243,6 +1243,56 @@ Specifies the table access method to use for storing table data, such as
 
 .. versionadded:: 2.0.26
 
+.. _postgresql_table_options_with:
+
+``WITH``
+^^^^^^^^
+
+::
+
+    Table("some_table", metadata, ..., postgresql_with={"fillfactor": 100})
+
+The ``postgresql_with`` parameter accepts a dictionary of storage parameters
+that will be applied to the table using the ``WITH`` clause in the
+``CREATE TABLE`` statement. Storage parameters control various aspects of
+table behavior such as the fill factor for pages, autovacuum settings, and
+toast table parameters.
+
+When the table is created, the parameters are rendered as a comma-separated
+list within the ``WITH`` clause. For example::
+
+    Table(
+        "mytable",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        postgresql_with={
+            "fillfactor": 70,
+            "autovacuum_enabled": "false",
+            "toast.vacuum_truncate": True,
+        },
+    )
+
+This will generate DDL similar to:
+
+.. sourcecode:: sql
+
+    CREATE TABLE mytable (
+        id INTEGER NOT NULL,
+        PRIMARY KEY (id)
+    ) WITH (fillfactor = 70, autovacuum_enabled = false, toast.vacuum_truncate = True)
+
+The values in the dictionary can be integers, strings, or boolean values.
+Parameter names can include dots to specify parameters for associated objects
+like toast tables (e.g., ``toast.vacuum_truncate``).
+
+.. seealso::
+
+    `PostgreSQL Storage Parameters
+    <https://www.postgresql.org/docs/current/sql-createtable.html#SQL-CREATETABLE-STORAGE-PARAMETERS>`_ -
+    documentation on available storage parameters.
+
+.. versionadded:: 2.1
+
 ``WITH OIDS``
 ^^^^^^^^^^^^^
 
@@ -1252,6 +1302,8 @@ assigns a unique identifier to each row.
 ::
 
     Table("some_table", metadata, ..., postgresql_with_oids=True)
+
+.. note:: Support for tables "with OIDs" was removed in postgresql 12.
 
 ``WITHOUT OIDS``
 ^^^^^^^^^^^^^^^^
@@ -2662,6 +2714,10 @@ class PGDDLCompiler(compiler.DDLCompiler):
         if pg_opts["using"]:
             table_opts.append("\n USING %s" % pg_opts["using"])
 
+        if pg_opts["with"]:
+            storage_params = (f"{k} = {v}" for k, v in pg_opts["with"].items())
+            table_opts.append(f" WITH ({', '.join(storage_params)})")
+
         if pg_opts["with_oids"] is True:
             table_opts.append("\n WITH OIDS")
         elif pg_opts["with_oids"] is False:
@@ -3293,6 +3349,7 @@ class PGDialect(default.DefaultDialect):
                 "tablespace": None,
                 "partition_by": None,
                 "with_oids": None,
+                "with": None,
                 "on_commit": None,
                 "inherits": None,
                 "using": None,
@@ -3769,6 +3826,130 @@ class PGDialect(default.DefaultDialect):
         if ObjectKind.MATERIALIZED_VIEW in kind:
             relkinds += pg_catalog.RELKINDS_MAT_VIEW
         return relkinds
+
+    @reflection.cache
+    def get_table_options(self, connection, table_name, schema=None, **kw):
+        data = self.get_multi_table_options(
+            connection,
+            schema=schema,
+            filter_names=[table_name],
+            scope=ObjectScope.ANY,
+            kind=ObjectKind.ANY,
+            **kw,
+        )
+        return self._value_or_raise(data, table_name, schema)
+
+    @lru_cache()
+    def _table_options_query(self, schema, has_filter_names, scope, kind):
+        inherits_sq = (
+            select(
+                pg_catalog.pg_inherits.c.inhrelid,
+                sql.func.array_agg(
+                    aggregate_order_by(
+                        pg_catalog.pg_class.c.relname,
+                        pg_catalog.pg_inherits.c.inhseqno,
+                    )
+                ).label("parent_table_names"),
+            )
+            .select_from(pg_catalog.pg_inherits)
+            .join(
+                pg_catalog.pg_class,
+                pg_catalog.pg_inherits.c.inhparent
+                == pg_catalog.pg_class.c.oid,
+            )
+            .group_by(pg_catalog.pg_inherits.c.inhrelid)
+            .subquery("inherits")
+        )
+
+        if self.server_version_info < (12,):
+            # this is not in the pg_catalog.pg_class since it was
+            # removed in PostgreSQL version 12
+            has_oids = sql.column("relhasoids", BOOLEAN)
+        else:
+            has_oids = sql.null().label("relhasoids")
+
+        relkinds = self._kind_to_relkinds(kind)
+        query = (
+            select(
+                pg_catalog.pg_class.c.oid,
+                pg_catalog.pg_class.c.relname,
+                pg_catalog.pg_class.c.reloptions,
+                has_oids,
+                sql.case(
+                    (
+                        sql.and_(
+                            pg_catalog.pg_am.c.amname.is_not(None),
+                            pg_catalog.pg_am.c.amname
+                            != sql.func.current_setting(
+                                "default_table_access_method"
+                            ),
+                        ),
+                        pg_catalog.pg_am.c.amname,
+                    ),
+                    else_=sql.null(),
+                ).label("access_method_name"),
+                pg_catalog.pg_tablespace.c.spcname.label("tablespace_name"),
+                inherits_sq.c.parent_table_names,
+            )
+            .select_from(pg_catalog.pg_class)
+            .outerjoin(
+                # NOTE: on postgresql < 12, this could be avoided
+                # since relam is always 0 so nothing is joined.
+                pg_catalog.pg_am,
+                pg_catalog.pg_class.c.relam == pg_catalog.pg_am.c.oid,
+            )
+            .outerjoin(
+                inherits_sq,
+                pg_catalog.pg_class.c.oid == inherits_sq.c.inhrelid,
+            )
+            .outerjoin(
+                pg_catalog.pg_tablespace,
+                pg_catalog.pg_tablespace.c.oid
+                == pg_catalog.pg_class.c.reltablespace,
+            )
+            .where(self._pg_class_relkind_condition(relkinds))
+        )
+        query = self._pg_class_filter_scope_schema(query, schema, scope=scope)
+        if has_filter_names:
+            query = query.where(
+                pg_catalog.pg_class.c.relname.in_(bindparam("filter_names"))
+            )
+        return query
+
+    def get_multi_table_options(
+        self, connection, schema, filter_names, scope, kind, **kw
+    ):
+        has_filter_names, params = self._prepare_filter_names(filter_names)
+        query = self._table_options_query(
+            schema, has_filter_names, scope, kind
+        )
+        rows = connection.execute(query, params).mappings()
+        table_options = {}
+
+        for row in rows:
+            current: dict[str, Any] = {}
+            if row["access_method_name"] is not None:
+                current["postgresql_using"] = row["access_method_name"]
+
+            if row["parent_table_names"]:
+                current["postgresql_inherits"] = tuple(
+                    row["parent_table_names"]
+                )
+
+            if row["reloptions"]:
+                current["postgresql_with"] = dict(
+                    option.split("=", 1) for option in row["reloptions"]
+                )
+
+            if row["relhasoids"]:
+                current["postgresql_with_oids"] = True
+
+            if row["tablespace_name"] is not None:
+                current["postgresql_tablespace"] = row["tablespace_name"]
+
+            table_options[(schema, row["relname"])] = current
+
+        return table_options.items()
 
     @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
