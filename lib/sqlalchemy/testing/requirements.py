@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import os
 import platform
+import sysconfig
 
 from . import asyncio as _test_asyncio
 from . import exclusions
@@ -1635,6 +1636,11 @@ class SuiteRequirements(Requirements):
                 return True
 
         return exclusions.only_if(check_lib, "patch library needed")
+
+    @property
+    def gil_enabled(self):
+        """Test should run if the Python distribution is GIL-enabled."""
+        return bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
 
     @property
     def predictable_gc(self):
