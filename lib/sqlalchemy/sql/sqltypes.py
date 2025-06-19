@@ -13,6 +13,7 @@ import collections.abc as collections_abc
 import datetime as dt
 import decimal
 import enum
+import functools
 import json
 import pickle
 from typing import Any
@@ -1077,19 +1078,19 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
             if inherit_schema is not NO_ARG
             else (schema is None and metadata is None)
         )
-        # breakpoint()
+
         self._create_events = _create_events
 
         if _create_events and self.metadata:
             event.listen(
                 self.metadata,
                 "before_create",
-                util.portable_instancemethod(self._on_metadata_create),
+                self._on_metadata_create,
             )
             event.listen(
                 self.metadata,
                 "after_drop",
-                util.portable_instancemethod(self._on_metadata_drop),
+                self._on_metadata_drop,
             )
 
         if _adapted_from:
@@ -1109,7 +1110,7 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         # on_table/metadata_create/drop in this method, which is used by
         # "native" types with a separate CREATE/DROP e.g. Postgresql.ENUM
 
-        parent._on_table_attach(util.portable_instancemethod(self._set_table))
+        parent._on_table_attach(self._set_table)
 
     def _variant_mapping_for_set_table(self, column):
         if column.type._variant_mapping:
@@ -1136,15 +1137,15 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
         event.listen(
             table,
             "before_create",
-            util.portable_instancemethod(
-                self._on_table_create, {"variant_mapping": variant_mapping}
+            functools.partial(
+                self._on_table_create, variant_mapping=variant_mapping
             ),
         )
         event.listen(
             table,
             "after_drop",
-            util.portable_instancemethod(
-                self._on_table_drop, {"variant_mapping": variant_mapping}
+            functools.partial(
+                self._on_table_drop, variant_mapping=variant_mapping
             ),
         )
         if self.metadata is None:
@@ -1154,17 +1155,17 @@ class SchemaType(SchemaEventTarget, TypeEngineMixin):
             event.listen(
                 table.metadata,
                 "before_create",
-                util.portable_instancemethod(
+                functools.partial(
                     self._on_metadata_create,
-                    {"variant_mapping": variant_mapping},
+                    variant_mapping=variant_mapping,
                 ),
             )
             event.listen(
                 table.metadata,
                 "after_drop",
-                util.portable_instancemethod(
+                functools.partial(
                     self._on_metadata_drop,
-                    {"variant_mapping": variant_mapping},
+                    variant_mapping=variant_mapping,
                 ),
             )
 
@@ -1846,9 +1847,9 @@ class Enum(String, SchemaType, Emulated, TypeEngine[Union[str, enum.Enum]]):
         e = schema.CheckConstraint(
             type_coerce(column, String()).in_(self.enums),
             name=_NONE_NAME if self.name is None else self.name,
-            _create_rule=util.portable_instancemethod(
+            _create_rule=functools.partial(
                 self._should_create_constraint,
-                {"variant_mapping": variant_mapping},
+                variant_mapping=variant_mapping,
             ),
             _type_bound=True,
         )
@@ -2082,9 +2083,9 @@ class Boolean(SchemaType, Emulated, TypeEngine[bool]):
         e = schema.CheckConstraint(
             type_coerce(column, self).in_([0, 1]),
             name=_NONE_NAME if self.name is None else self.name,
-            _create_rule=util.portable_instancemethod(
+            _create_rule=functools.partial(
                 self._should_create_constraint,
-                {"variant_mapping": variant_mapping},
+                variant_mapping=variant_mapping,
             ),
             _type_bound=True,
         )
