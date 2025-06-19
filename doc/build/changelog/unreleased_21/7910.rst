@@ -1,0 +1,9 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 7910
+
+    Added method :meth:`.TableClause.insert_column` to complement
+    :meth:`.TableClause.append_column`, which inserts the given column at a
+    specific index.   This can be helpful for prepending primary key columns to
+    tables, etc.
+

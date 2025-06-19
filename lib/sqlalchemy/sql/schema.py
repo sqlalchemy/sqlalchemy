@@ -353,7 +353,7 @@ class Table(
         @util.ro_non_memoized_property
         def foreign_keys(self) -> Set[ForeignKey]: ...
 
-    _columns: DedupeColumnCollection[Column[Any]]
+    _columns: DedupeColumnCollection[Column[Any]]  # type: ignore[assignment]
 
     _sentinel_column: Optional[Column[Any]]
 
@@ -1200,8 +1200,55 @@ class Table(
         """
         self._extra_dependencies.add(table)
 
+    def _insert_col_impl(
+        self,
+        column: ColumnClause[Any],
+        *,
+        index: Optional[int] = None,
+        replace_existing: bool = False,
+    ) -> None:
+        try:
+            column._set_parent_with_dispatch(
+                self,
+                allow_replacements=replace_existing,
+                all_names={c.name: c for c in self.c},
+                index=index,
+            )
+        except exc.DuplicateColumnError as de:
+            raise exc.DuplicateColumnError(
+                f"{de.args[0]} Specify replace_existing=True to "
+                "Table.append_column() or Table.insert_column() to replace an "
+                "existing column."
+            ) from de
+
+    def insert_column(
+        self,
+        column: ColumnClause[Any],
+        index: int,
+        *,
+        replace_existing: bool = False,
+    ) -> None:
+        """Insert a :class:`_schema.Column` to this :class:`_schema.Table` at
+        a specific position.
+
+        Behavior is identical to :meth:`.Table.append_column` except that
+        the index position can be controlled using the
+        :paramref:`.Table.insert_column.index`
+        parameter.
+
+        :param replace_existing:
+         see :paramref:`.Table.append_column.replace_existing`
+        :param index: integer index to insert the new column.
+
+        .. versionadded:: 2.1
+
+        """
+        self._insert_col_impl(
+            column, index=index, replace_existing=replace_existing
+        )
+
     def append_column(
-        self, column: ColumnClause[Any], replace_existing: bool = False
+        self, column: ColumnClause[Any], *, replace_existing: bool = False
     ) -> None:
         """Append a :class:`_schema.Column` to this :class:`_schema.Table`.
 
@@ -1226,20 +1273,13 @@ class Table(
             version of sqlalchemy will instead rise a warning.
 
             .. versionadded:: 1.4.0
-        """
 
-        try:
-            column._set_parent_with_dispatch(
-                self,
-                allow_replacements=replace_existing,
-                all_names={c.name: c for c in self.c},
-            )
-        except exc.DuplicateColumnError as de:
-            raise exc.DuplicateColumnError(
-                f"{de.args[0]} Specify replace_existing=True to "
-                "Table.append_column() to replace an "
-                "existing column."
-            ) from de
+        .. seealso::
+
+            :meth:`.Table.insert_column`
+
+        """
+        self._insert_col_impl(column, replace_existing=replace_existing)
 
     def append_constraint(self, constraint: Union[Index, Constraint]) -> None:
         """Append a :class:`_schema.Constraint` to this
@@ -2313,6 +2353,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
         *,
         all_names: Dict[str, Column[Any]],
         allow_replacements: bool,
+        index: Optional[int] = None,
         **kw: Any,
     ) -> None:
         table = parent
@@ -2377,7 +2418,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                 "reflection operation, specify autoload_replace=False to "
                 "prevent this replacement."
             )
-        table._columns.replace(self, extra_remove=extra_remove)
+        table._columns.replace(self, extra_remove=extra_remove, index=index)
         all_names[self.name] = self
         self.table = table
 

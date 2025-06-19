@@ -1907,13 +1907,94 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
                 Column("col", String),
             )
 
+    @testing.combinations(
+        ((0,),), ((0, 1),), ((1, 2),), ((3,),), ((-2,),), argnames="positions"
+    )
+    @testing.variation("add_to_pk", [True, False])
+    @testing.variation("existing_pk", [True, False])
+    def test_insert_column_table(self, positions, add_to_pk, existing_pk):
+        t = Table(
+            "t",
+            MetaData(),
+            Column("a", Integer, primary_key=bool(existing_pk)),
+            Column("b", Integer),
+            Column("c", Integer),
+        )
+        expected_cols = ["a", "b", "c"]
+
+        if existing_pk:
+            expected_pk_cols = ["a"]
+        else:
+            expected_pk_cols = []
+
+        for pos in positions:
+            t.insert_column(
+                Column(f"i{pos}", Integer, primary_key=bool(add_to_pk)), pos
+            )
+            expected_cols.insert(pos, f"i{pos}")
+            if add_to_pk:
+                expected_pk_cols.append(f"i{pos}")
+        eq_([c.key for c in t.c], expected_cols)
+
+        eq_([c.key for c in t.primary_key], expected_pk_cols)
+
+    @testing.combinations(-4, -3, -2, -1, 0, 1, 2, 3)
+    def test_replace_col_with_index(self, new_index):
+        t = Table(
+            "t",
+            MetaData(),
+            Column("a", Integer),
+            Column("b", Integer),
+            Column("c", Integer),
+            Column("d", Integer),
+        )
+        newcol = Column("b", String)
+
+        expected = ["a", "q", "c", "d"]
+        expected.insert(new_index, "b")
+        expected.remove("q")
+
+        t.insert_column(newcol, index=new_index, replace_existing=True)
+        is_(t.c.b, newcol)
+        is_(t.c.b.type._type_affinity, String)
+
+        eq_([c.key for c in t.c], expected)
+
+        effective_positive_index = (
+            new_index if new_index >= 0 else max(0, 4 + new_index)
+        )
+        if effective_positive_index > 1:
+            # because we replaced
+            effective_positive_index -= 1
+
+        is_(t.c[effective_positive_index], newcol)
+
+    @testing.combinations(
+        ((0,),), ((0, 1),), ((1, 2),), ((3,),), argnames="positions"
+    )
+    def test_insert_column_tableclause(self, positions):
+        t = table(
+            "t",
+            column("a", Integer),
+            column("b", Integer),
+            column("c", Integer),
+        )
+
+        expected_cols = ["a", "b", "c"]
+        for pos in positions:
+            t.insert_column(column(f"i{pos}", Integer), pos)
+            expected_cols.insert(pos, f"i{pos}")
+
+        eq_([c.key for c in t.c], expected_cols)
+
     def test_append_column_existing_name(self):
         t = Table("t", MetaData(), Column("col", Integer))
 
         with testing.expect_raises_message(
             exc.DuplicateColumnError,
             r"A column with name 'col' is already present in table 't'. "
-            r"Specify replace_existing=True to Table.append_column\(\) to "
+            r"Specify replace_existing=True to Table.append_column\(\) or "
+            r"Table.insert_column\(\) to "
             r"replace an existing column.",
         ):
             t.append_column(Column("col", String))
@@ -1924,8 +2005,9 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
         with testing.expect_raises_message(
             exc.DuplicateColumnError,
             r"A column with key 'c2' is already present in table 't'. "
-            r"Specify replace_existing=True to Table.append_column\(\) "
-            r"to replace an existing column.",
+            r"Specify replace_existing=True to Table.append_column\(\) or "
+            r"Table.insert_column\(\) to "
+            r"replace an existing column.",
         ):
             t.append_column(Column("col", String, key="c2"))
 
@@ -3029,8 +3111,7 @@ class UseExistingTest(testing.AssertsCompiledSQL, fixtures.TablesTest):
             with expect_raises_message(
                 exc.DuplicateColumnError,
                 r"A column with name 'b' is already present in table 'users'. "
-                r"Specify replace_existing=True to Table.append_column\(\) "
-                r"to replace an existing column.",
+                r"Specify replace_existing=True to Table.append_column\(\) ",
             ):
                 t1.append_column(Column("b", String, key="b2"))
             return

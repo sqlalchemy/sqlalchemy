@@ -3127,6 +3127,8 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
     doesn't support having a primary key or column
     -level defaults, so implicit returning doesn't apply."""
 
+    _columns: DedupeColumnCollection[ColumnClause[Any]]
+
     @util.ro_memoized_property
     def _autoincrement_column(self) -> Optional[ColumnClause[Any]]:
         """No PK or default support so no autoincrement column."""
@@ -3135,7 +3137,7 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
     def __init__(self, name: str, *columns: ColumnClause[Any], **kw: Any):
         super().__init__()
         self.name = name
-        self._columns = DedupeColumnCollection()
+        self._columns = DedupeColumnCollection()  # type: ignore[unused-ignore]
         self.primary_key = ColumnSet()  # type: ignore
         self.foreign_keys = set()  # type: ignore
         for c in columns:
@@ -3174,16 +3176,26 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
     def description(self) -> str:
         return self.name
 
-    def append_column(self, c: ColumnClause[Any]) -> None:
+    def _insert_col_impl(
+        self,
+        c: ColumnClause[Any],
+        *,
+        index: Optional[int] = None,
+    ) -> None:
         existing = c.table
         if existing is not None and existing is not self:
             raise exc.ArgumentError(
                 "column object '%s' already assigned to table '%s'"
                 % (c.key, existing)
             )
-
-        self._columns.add(c)
+        self._columns.add(c, index=index)
         c.table = self
+
+    def append_column(self, c: ColumnClause[Any]) -> None:
+        self._insert_col_impl(c)
+
+    def insert_column(self, c: ColumnClause[Any], index: int) -> None:
+        self._insert_col_impl(c, index=index)
 
     @util.preload_module("sqlalchemy.sql.dml")
     def insert(self) -> util.preloaded.sql_dml.Insert:
