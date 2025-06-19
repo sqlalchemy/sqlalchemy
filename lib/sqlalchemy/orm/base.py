@@ -441,7 +441,7 @@ def _class_to_mapper(
     # can't get mypy to see an overload for this
     insp = inspection.inspect(class_or_mapper, False)
     if insp is not None:
-        return insp.mapper  # type: ignore
+        return insp.mapper  # type: ignore[no-any-return]
     else:
         assert isinstance(class_or_mapper, type)
         raise exc.UnmappedClassError(class_or_mapper)
@@ -457,7 +457,7 @@ def _mapper_or_none(
     # can't get mypy to see an overload for this
     insp = inspection.inspect(entity, False)
     if insp is not None:
-        return insp.mapper  # type: ignore
+        return insp.mapper  # type: ignore[no-any-return]
     else:
         return None
 

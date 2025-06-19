@@ -62,7 +62,9 @@ if compat.py314:
     # vendor a minimal form of get_annotations per
     # https://github.com/python/cpython/issues/133684#issuecomment-2863841891
 
-    from annotationlib import call_annotate_function  # type: ignore
+    from annotationlib import (  # type: ignore[import-not-found]
+        call_annotate_function,
+    )
     from annotationlib import Format
 
     def _get_and_call_annotate(obj, format):  # noqa: A002
@@ -75,7 +77,7 @@ if compat.py314:
         return None
 
     # this is ported from py3.13.0a7
-    _BASE_GET_ANNOTATIONS = type.__dict__["__annotations__"].__get__  # type: ignore  # noqa: E501
+    _BASE_GET_ANNOTATIONS = type.__dict__["__annotations__"].__get__  # type: ignore[index]  # noqa: E501
 
     def _get_dunder_annotations(obj):
         if isinstance(obj, type):
@@ -401,7 +403,7 @@ def decorator(target: Callable[..., Any]) -> Callable[[_Fn], _Fn]:
             _exec_code_in_env(code, env, fn.__name__),
         )
         decorated.__defaults__ = fn.__defaults__
-        decorated.__kwdefaults__ = fn.__kwdefaults__  # type: ignore
+        decorated.__kwdefaults__ = fn.__kwdefaults__  # type: ignore[union-attr] # noqa: E501
         return update_wrapper(decorated, fn)  # type: ignore[return-value]
 
     return update_wrapper(decorate, target)  # type: ignore[return-value]
@@ -1246,7 +1248,7 @@ def memoized_instancemethod(fn: _F) -> _F:
         self.__dict__[fn.__name__] = memo
         return result
 
-    return update_wrapper(oneshot, fn)  # type: ignore
+    return update_wrapper(oneshot, fn)  # type: ignore[return-value]
 
 
 class HasMemoized:
@@ -1323,7 +1325,7 @@ class HasMemoized:
             self._memoized_keys |= {fn.__name__}
             return result
 
-        return update_wrapper(oneshot, fn)  # type: ignore
+        return update_wrapper(oneshot, fn)  # type: ignore[return-value]
 
 
 if TYPE_CHECKING:
@@ -1493,7 +1495,7 @@ def duck_type_collection(
         ):
             return set
         else:
-            return specimen.__emulates__  # type: ignore
+            return specimen.__emulates__  # type: ignore[no-any-return]
 
     isa = issubclass if isinstance(specimen, type) else isinstance
     if isa(specimen, list):
@@ -1628,9 +1630,11 @@ class hybridmethod(Generic[_T]):
 
     def __get__(self, instance: Any, owner: Any) -> Callable[..., _T]:
         if instance is None:
-            return self.clslevel.__get__(owner, owner.__class__)  # type:ignore
+            return self.clslevel.__get__(owner, owner.__class__)  # type: ignore[no-any-return] # noqa: E501
         else:
-            return self.func.__get__(instance, owner)  # type:ignore
+            return self.func.__get__(  # type:ignore[no-any-return]
+                instance, owner
+            )
 
     def classlevel(self, func: Callable[..., Any]) -> hybridmethod[_T]:
         self.clslevel = func

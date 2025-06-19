@@ -658,7 +658,7 @@ class ORMExecuteState(util.MemoizedSlots):
         if opts is not None and opts.isinstance(
             context._ORMCompileState.default_compile_options
         ):
-            return opts  # type: ignore
+            return opts  # type: ignore[return-value]
         else:
             return None
 
@@ -1771,7 +1771,7 @@ class Session(_SessionClassMethods, EventTarget):
         if (
             join_transaction_mode
             and join_transaction_mode
-            not in JoinTransactionMode.__args__  # type: ignore
+            not in JoinTransactionMode.__args__  # type: ignore[attr-defined]
         ):
             raise sa_exc.ArgumentError(
                 f"invalid selection for join_transaction_mode: "
@@ -5102,7 +5102,7 @@ class sessionmaker(_SessionClassMethods, Generic[_S]):
         self,
         bind: Optional[_SessionBind] = None,
         *,
-        class_: Type[_S] = Session,  # type: ignore
+        class_: Type[_S] = Session,  # type: ignore[assignment]
         autoflush: bool = True,
         expire_on_commit: bool = True,
         info: Optional[_InfoType] = None,

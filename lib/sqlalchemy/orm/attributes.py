@@ -214,7 +214,7 @@ class QueryableAttribute(
         # interim class manager setup, there's a check for None to see if it
         # needs to be populated, so we assign None here leaving the attribute
         # in a temporarily not-type-correct state
-        self.impl = impl  # type: ignore
+        self.impl = impl  # type: ignore[assignment]
 
         assert comparator is not None
         self.comparator = comparator
@@ -231,7 +231,7 @@ class QueryableAttribute(
                 if key in base:
                     self.dispatch._update(base[key].dispatch)
                     if base[key].dispatch._active_history:
-                        self.dispatch._active_history = True  # type: ignore
+                        self.dispatch._active_history = True  # type: ignore[attr-defined] # noqa: E501
 
     _cache_key_traversal = [
         ("key", visitors.ExtendedInternalTraversal.dp_string),
@@ -529,11 +529,11 @@ class InstrumentedAttribute(QueryableAttribute[_T_co]):
     def __doc__(self) -> Optional[str]:
         return self._doc
 
-    @__doc__.setter  # type: ignore
+    @__doc__.setter  # type: ignore[no-redef]
     def __doc__(self, value: Optional[str]) -> None:
         self._doc = value
 
-    @__doc__.classlevel  # type: ignore
+    @__doc__.classlevel  # type: ignore[no-redef]
     def __doc__(cls) -> Optional[str]:
         return super().__doc__
 
@@ -2675,7 +2675,7 @@ def _register_descriptor(
         class_, key, comparator=comparator, parententity=parententity
     )
 
-    descriptor.__doc__ = doc  # type: ignore
+    descriptor.__doc__ = doc  # type: ignore[method-assign]
 
     manager.instrument_attribute(key, descriptor)
     return descriptor

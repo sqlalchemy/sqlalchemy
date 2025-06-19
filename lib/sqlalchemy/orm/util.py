@@ -209,7 +209,7 @@ class CascadeOptions(FrozenSet[str]):
         cls, value_list: Optional[Union[Iterable[str], str]]
     ) -> CascadeOptions:
         if isinstance(value_list, str) or value_list is None:
-            return cls.from_string(value_list)  # type: ignore
+            return cls.from_string(value_list)  # type: ignore[no-any-return]
         values = set(value_list)
         if values.difference(cls._allowed_cascades):
             raise sa_exc.ArgumentError(
@@ -1132,7 +1132,7 @@ class AliasedInsp(
         }
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
-        self.__init__(  # type: ignore
+        self.__init__(  # type: ignore[misc]
             state["entity"],
             state["mapper"],
             state["alias"],
@@ -1459,7 +1459,7 @@ class LoaderCriteriaOption(CriteriaOption):
                 self.where_criteria._resolve_with_args(ext_info.entity),
             )
         else:
-            crit = self.where_criteria  # type: ignore
+            crit = self.where_criteria  # type: ignore[assignment]
         assert isinstance(crit, ColumnElement)
         return sql_util._deep_annotate(
             crit,
@@ -1886,7 +1886,7 @@ class _ORMJoin(expression.Join):
         if (
             not prop
             and getattr(right_info, "mapper", None)
-            and right_info.mapper.single  # type: ignore
+            and right_info.mapper.single  # type: ignore[union-attr]
         ):
             right_info = cast("_InternalEntityType[Any]", right_info)
             # if single inheritance target and we are using a manual
@@ -2326,14 +2326,14 @@ def _extract_mapped_subtype(
             "module level. See chained stack trace for more hints."
         ) from ce
     except NameError as ne:
-        if raiseerr and "Mapped[" in raw_annotation:  # type: ignore
+        if raiseerr and "Mapped[" in raw_annotation:  # type: ignore[operator]
             raise orm_exc.MappedAnnotationError(
                 f"Could not interpret annotation {raw_annotation}.  "
                 "Check that it uses names that are correctly imported at the "
                 "module level. See chained stack trace for more hints."
             ) from ne
 
-        annotated = raw_annotation  # type: ignore
+        annotated = raw_annotation  # type: ignore[assignment]
 
     if is_dataclass_field:
         return annotated, None

@@ -1722,7 +1722,7 @@ class SQLCompiler(Compiled):
             ):
                 # set to None to just mark the in positiontup, it will not
                 # be replaced below.
-                param_pos[bind_name] = None  # type: ignore
+                param_pos[bind_name] = None  # type: ignore[assignment]
             else:
                 ph = f"{self._numeric_binds_identifier_char}{num}"
                 num += 1
@@ -1772,7 +1772,7 @@ class SQLCompiler(Compiled):
         # mypy is not able to see the two value types as the above Union,
         # it just sees "object".  don't know how to resolve
         return {
-            key: value  # type: ignore
+            key: value  # type: ignore[misc]
             for key, value in (
                 (
                     self.bind_names[bindparam],

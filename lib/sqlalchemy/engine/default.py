@@ -308,7 +308,7 @@ class DefaultDialect(Dialect):
         use_insertmanyvalues: Optional[bool] = None,
         # util.deprecated_params decorator cannot render the
         # Linting.NO_LINTING constant
-        compiler_linting: Linting = int(compiler.NO_LINTING),  # type: ignore
+        compiler_linting: Linting = int(compiler.NO_LINTING),  # type: ignore[assignment] # noqa: E501
         server_side_cursors: bool = False,
         **kwargs: Any,
     ):
@@ -1345,7 +1345,7 @@ class DefaultExecutionContext(ExecutionContext):
         self.is_text = compiled.isplaintext
 
         if ii or iu or id_:
-            dml_statement = compiled.compile_state.statement  # type: ignore
+            dml_statement = compiled.compile_state.statement  # type: ignore[union-attr] # noqa: E501
             if TYPE_CHECKING:
                 assert isinstance(dml_statement, UpdateBase)
             self.is_crud = True
@@ -1457,7 +1457,7 @@ class DefaultExecutionContext(ExecutionContext):
 
             self._expanded_parameters = expanded_state.parameter_expansion
 
-            flattened_processors = dict(processors)  # type: ignore
+            flattened_processors = dict(processors)  # type: ignore[arg-type]
             flattened_processors.update(expanded_state.processors)
             positiontup = expanded_state.positiontup
         elif compiled.positional:
@@ -2204,7 +2204,7 @@ class DefaultExecutionContext(ExecutionContext):
             parameters = self.dialect.execute_sequence_format(
                 [
                     (
-                        processors[key](compiled_params[key])  # type: ignore
+                        processors[key](compiled_params[key])  # type: ignore[operator] # noqa: E501
                         if key in processors
                         else compiled_params[key]
                     )
@@ -2214,7 +2214,7 @@ class DefaultExecutionContext(ExecutionContext):
         else:
             parameters = {
                 key: (
-                    processors[key](compiled_params[key])  # type: ignore
+                    processors[key](compiled_params[key])  # type: ignore[assignment, operator] # noqa: E501
                     if key in processors
                     else compiled_params[key]
                 )

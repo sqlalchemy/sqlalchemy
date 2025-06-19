@@ -419,7 +419,7 @@ class ClassManager(
             self.uninstall_member(key)
 
         self.mapper = None
-        self.dispatch = None  # type: ignore
+        self.dispatch = None  # type: ignore[assignment]
         self.new_init = None
         self.info.clear()
 
