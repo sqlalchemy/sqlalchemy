@@ -16,43 +16,42 @@ objects, but is also slightly more complex.
 
 """
 
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
-from sqlalchemy import Integer
-from sqlalchemy import String
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.ext.declarative import as_declarative
-from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import declared_attr
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 
 
-@as_declarative()
-class Base:
+class Base(DeclarativeBase):
     """Base class which provides automated table name
     and surrogate primary key column.
-
     """
 
     @declared_attr
     def __tablename__(cls):
         return cls.__name__.lower()
 
-    id = Column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
 
 
 class AddressAssociation(Base):
     """Associates a collection of Address objects
     with a particular parent.
-
     """
 
     __tablename__ = "address_association"
 
-    discriminator = Column(String)
+    discriminator: Mapped[str] = mapped_column()
     """Refers to the type of parent."""
+    addresses: Mapped[list["Address"]] = relationship(
+        back_populates="association"
+    )
 
     __mapper_args__ = {"polymorphic_on": discriminator}
 
@@ -62,14 +61,17 @@ class Address(Base):
 
     This represents all address records in a
     single table.
-
     """
 
-    association_id = Column(Integer, ForeignKey("address_association.id"))
-    street = Column(String)
-    city = Column(String)
-    zip = Column(String)
-    association = relationship("AddressAssociation", backref="addresses")
+    association_id: Mapped[int] = mapped_column(
+        ForeignKey("address_association.id")
+    )
+    street: Mapped[str]
+    city: Mapped[str]
+    zip: Mapped[str]
+    association: Mapped["AddressAssociation"] = relationship(
+        back_populates="addresses"
+    )
 
     parent = association_proxy("association", "parent")
 
@@ -85,12 +87,11 @@ class Address(Base):
 class HasAddresses:
     """HasAddresses mixin, creates a relationship to
     the address_association table for each parent.
-
     """
 
     @declared_attr
-    def address_association_id(cls):
-        return Column(Integer, ForeignKey("address_association.id"))
+    def address_association_id(cls) -> Mapped[int]:
+        return mapped_column(ForeignKey("address_association.id"))
 
     @declared_attr
     def address_association(cls):
@@ -98,7 +99,7 @@ class HasAddresses:
         discriminator = name.lower()
 
         assoc_cls = type(
-            "%sAddressAssociation" % name,
+            f"{name}AddressAssociation",
             (AddressAssociation,),
             dict(
                 __tablename__=None,
@@ -117,11 +118,11 @@ class HasAddresses:
 
 
 class Customer(HasAddresses, Base):
-    name = Column(String)
+    name: Mapped[str]
 
 
 class Supplier(HasAddresses, Base):
-    company_name = Column(String)
+    company_name: Mapped[str]
 
 
 engine = create_engine("sqlite://", echo=True)

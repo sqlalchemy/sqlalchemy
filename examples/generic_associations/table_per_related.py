@@ -17,19 +17,18 @@ is completely automated.
 
 """
 
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
-from sqlalchemy import String
-from sqlalchemy.ext.declarative import as_declarative
-from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import declared_attr
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 
 
-@as_declarative()
-class Base:
+class Base(DeclarativeBase):
     """Base class which provides automated table name
     and surrogate primary key column.
 
@@ -39,7 +38,7 @@ class Base:
     def __tablename__(cls):
         return cls.__name__.lower()
 
-    id = Column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
 
 
 class Address:
@@ -52,9 +51,9 @@ class Address:
 
     """
 
-    street = Column(String)
-    city = Column(String)
-    zip = Column(String)
+    street: Mapped[str]
+    city: Mapped[str]
+    zip: Mapped[str]
 
     def __repr__(self):
         return "%s(street=%r, city=%r, zip=%r)" % (
@@ -74,25 +73,25 @@ class HasAddresses:
     @declared_attr
     def addresses(cls):
         cls.Address = type(
-            "%sAddress" % cls.__name__,
+            f"{cls.__name__}Address",
             (Address, Base),
             dict(
-                __tablename__="%s_address" % cls.__tablename__,
-                parent_id=Column(
-                    Integer, ForeignKey("%s.id" % cls.__tablename__)
+                __tablename__=f"{cls.__tablename__}_address",
+                parent_id=mapped_column(
+                    Integer, ForeignKey(f"{cls.__tablename__}.id")
                 ),
-                parent=relationship(cls),
+                parent=relationship(cls, overlaps="addresses"),
             ),
         )
         return relationship(cls.Address)
 
 
 class Customer(HasAddresses, Base):
-    name = Column(String)
+    name: Mapped[str]
 
 
 class Supplier(HasAddresses, Base):
-    company_name = Column(String)
+    company_name: Mapped[str]
 
 
 engine = create_engine("sqlite://", echo=True)
