@@ -1947,6 +1947,10 @@ class _CollectionAttributeImpl(_HasCollectionAdapter, _AttributeImpl):
         pop: bool = False,
         _adapt: bool = True,
     ) -> None:
+
+        if value is DONT_SET:
+            return
+
         iterable = orig_iterable = value
         new_keys = None
 

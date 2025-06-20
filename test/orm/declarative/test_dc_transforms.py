@@ -909,68 +909,43 @@ class DCTransformsTest(AssertsCompiledSQL, fixtures.TestBase):
 
 
 class RelationshipDefaultFactoryTest(fixtures.TestBase):
-    def test_list(self, dc_decl_base: Type[MappedAsDataclass]):
-        class A(dc_decl_base):
-            __tablename__ = "a"
 
-            id: Mapped[int] = mapped_column(primary_key=True, init=False)
+    @testing.variation("collection_type", ["list", "set", "list_set_mismatch"])
+    def test_no_funny_business(
+        self,
+        dc_decl_base: Type[MappedAsDataclass],
+        collection_type: testing.Variation,
+    ):
+        if collection_type.list:
+            expected = "list"
+        else:
+            expected = "set"
 
-            bs: Mapped[List["B"]] = relationship(  # noqa: F821
-                default_factory=lambda: [B(data="hi")]
-            )
-
-        class B(dc_decl_base):
-            __tablename__ = "b"
-
-            id: Mapped[int] = mapped_column(primary_key=True, init=False)
-            a_id = mapped_column(ForeignKey("a.id"), init=False)
-            data: Mapped[str]
-
-        a1 = A()
-        eq_(a1.bs[0].data, "hi")
-
-    def test_set(self, dc_decl_base: Type[MappedAsDataclass]):
-        class A(dc_decl_base):
-            __tablename__ = "a"
-
-            id: Mapped[int] = mapped_column(primary_key=True, init=False)
-
-            bs: Mapped[Set["B"]] = relationship(  # noqa: F821
-                default_factory=lambda: {B(data="hi")}
-            )
-
-        class B(dc_decl_base, unsafe_hash=True):
-            __tablename__ = "b"
-
-            id: Mapped[int] = mapped_column(primary_key=True, init=False)
-            a_id = mapped_column(ForeignKey("a.id"), init=False)
-            data: Mapped[str]
-
-        a1 = A()
-        eq_(a1.bs.pop().data, "hi")
-
-    def test_oh_no_mismatch(self, dc_decl_base: Type[MappedAsDataclass]):
-        class A(dc_decl_base):
-            __tablename__ = "a"
-
-            id: Mapped[int] = mapped_column(primary_key=True, init=False)
-
-            bs: Mapped[Set["B"]] = relationship(  # noqa: F821
-                default_factory=lambda: [B(data="hi")]
-            )
-
-        class B(dc_decl_base, unsafe_hash=True):
-            __tablename__ = "b"
-
-            id: Mapped[int] = mapped_column(primary_key=True, init=False)
-            a_id = mapped_column(ForeignKey("a.id"), init=False)
-            data: Mapped[str]
-
-        # old school collection mismatch error FTW
         with expect_raises_message(
-            TypeError, "Incompatible collection type: list is not set-like"
+            exc.ArgumentError,
+            f"For relationship A.bs using dataclass options, "
+            f"default_factory must be exactly <class '{expected}'>",
         ):
-            A()
+
+            class A(dc_decl_base):
+                __tablename__ = "a"
+
+                id: Mapped[int] = mapped_column(primary_key=True, init=False)
+
+                if collection_type.list:
+                    bs: Mapped[List["B"]] = relationship(  # noqa: F821
+                        default_factory=lambda: [B(data="hi")]  # noqa: F821
+                    )
+                elif collection_type.set:
+                    bs: Mapped[Set["B"]] = relationship(  # noqa: F821
+                        default_factory=lambda: {B(data="hi")}  # noqa: F821
+                    )
+                elif collection_type.list_set_mismatch:
+                    bs: Mapped[Set["B"]] = relationship(  # noqa: F821
+                        default_factory=list
+                    )
+                else:
+                    collection_type.fail()
 
     def test_one_to_one_example(self, dc_decl_base: Type[MappedAsDataclass]):
         """test example in the relationship docs will derive uselist=False
@@ -2529,6 +2504,72 @@ class UseDescriptorDefaultsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             # field was explicit so is overridden by merge
             eq_(u3.status, "default_status")
+
+    @testing.variation("use_attr_init", [True, False])
+    def test_collection_merge_scenario(self, dc_decl_base, use_attr_init):
+        if use_attr_init:
+            attr_init_kw = {}
+        else:
+            attr_init_kw = {"init": False}
+
+        class MyClass(dc_decl_base):
+            __tablename__ = "myclass"
+
+            id: Mapped[int] = mapped_column(
+                primary_key=True, autoincrement=False
+            )
+            name: Mapped[str]
+            things: Mapped[List["Thing"]] = relationship(
+                cascade="all, delete-orphan",
+                default_factory=list,
+                **attr_init_kw,
+            )
+
+        class Thing(dc_decl_base):
+            __tablename__ = "thing"
+            id: Mapped[int] = mapped_column(
+                primary_key=True, autoincrement=False
+            )
+            my_id: Mapped[int] = mapped_column(
+                ForeignKey("myclass.id"), init=False
+            )
+            name: Mapped[str]
+
+        dc_decl_base.metadata.create_all(testing.db)
+
+        with Session(testing.db) as sess:
+            if use_attr_init:
+                u1 = MyClass(id=1, name="x", things=[Thing(id=1, name="t1")])
+            else:
+                u1 = MyClass(id=1, name="x")
+                u1.things = [Thing(id=1, name="t1")]
+            sess.add(u1)
+
+            sess.flush()
+
+            u2 = sess.merge(MyClass(id=1, name="y"))
+            is_(u2, u1)
+            eq_(u2.name, "y")
+
+            if MyClass.use_descriptor_defaults:
+                tt = Thing(id=1, name="t1")
+                tt.my_id = 1
+                eq_(u2.things, [tt])
+            else:
+                eq_(u2.things, [])
+
+            if use_attr_init:
+                u3 = sess.merge(MyClass(id=1, name="z", things=[]))
+            else:
+                mc = MyClass(id=1, name="z")
+                mc.things = []
+                u3 = sess.merge(mc)
+
+            is_(u3, u1)
+            eq_(u3.name, "z")
+
+            # field was explicit so is overridden by merge
+            eq_(u3.things, [])
 
 
 class SynonymDescriptorDefaultTest(AssertsCompiledSQL, fixtures.TestBase):

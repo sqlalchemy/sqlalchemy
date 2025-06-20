@@ -136,8 +136,8 @@ lambdas which do the same::
 
 .. _change_12168:
 
-ORM Mapped Dataclasses no longer populate implicit ``default`` in ``__dict__``
-------------------------------------------------------------------------------
+ORM Mapped Dataclasses no longer populate implicit ``default``, collection-based ``default_factory`` in ``__dict__``
+--------------------------------------------------------------------------------------------------------------------
 
 This behavioral change addresses a widely reported issue with SQLAlchemy's
 :ref:`orm_declarative_native_dataclasses` feature that was introduced in 2.0.
@@ -289,6 +289,39 @@ on the instance, delivered via descriptor::
     >>> so = SomeObject()
     >>> so.status
     default_status
+
+default_factory for collection-based relationships internally uses DONT_SET
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A late add to the behavioral change brings equivalent behavior to the
+use of the :paramref:`_orm.relationship.default_factory` parameter with
+collection-based relationships.   This attribute is `documented <orm_declarative_dc_relationships>`
+as being limited to exactly the collection class that's stated on the left side
+of the annotation, which is now enforced at mapper configuration time::
+
+    class Parent(Base):
+        __tablename__ = "parents"
+
+        id: Mapped[int] = mapped_column(primary_key=True, init=False)
+        name: Mapped[str]
+
+        children: Mapped[list["Child"]] = relationship(default_factory=list)
+
+With the above mapping, the actual
+:paramref:`_orm.relationship.default_factory` parameter is replaced internally
+to instead use the same ``DONT_SET`` constant that's applied to
+:paramref:`_orm.relationship.default` for many-to-one relationships.
+SQLAlchemy's existing collection-on-attribute access behavior occurs as always
+on access::
+
+    >>> p1 = Parent(name="p1")
+    >>> p1.children
+    []
+
+This change to :paramref:`_orm.relationship.default_factory` accommodates a
+similar merge-based condition where an empty collection would be forced into
+a new object that in fact wants a merged collection to arrive.
+
 
 Related Changes
 ^^^^^^^^^^^^^^^

@@ -388,6 +388,7 @@ attributes from non-dataclass mixins to be part of the dataclass.
 
 
 
+.. _orm_declarative_dc_relationships:
 
 Relationship Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
