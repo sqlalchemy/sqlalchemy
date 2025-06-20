@@ -19,32 +19,29 @@ or "table_per_association" instead of this approach.
 """
 
 from sqlalchemy import and_
-from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import event
-from sqlalchemy import Integer
-from sqlalchemy import String
-from sqlalchemy.ext.declarative import as_declarative
-from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import foreign
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import remote
 from sqlalchemy.orm import Session
 
 
-@as_declarative()
-class Base:
+class Base(DeclarativeBase):
     """Base class which provides automated table name
     and surrogate primary key column.
-
     """
 
     @declared_attr
     def __tablename__(cls):
         return cls.__name__.lower()
 
-    id = Column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
 
 
 class Address(Base):
@@ -52,17 +49,16 @@ class Address(Base):
 
     This represents all address records in a
     single table.
-
     """
 
-    street = Column(String)
-    city = Column(String)
-    zip = Column(String)
+    street: Mapped[str]
+    city: Mapped[str]
+    zip: Mapped[str]
 
-    discriminator = Column(String)
+    discriminator: Mapped[str]
     """Refers to the type of parent."""
 
-    parent_id = Column(Integer)
+    parent_id: Mapped[int]
     """Refers to the primary key of the parent.
 
     This could refer to any table.
@@ -72,9 +68,8 @@ class Address(Base):
     def parent(self):
         """Provides in-Python access to the "parent" by choosing
         the appropriate relationship.
-
         """
-        return getattr(self, "parent_%s" % self.discriminator)
+        return getattr(self, f"parent_{self.discriminator}")
 
     def __repr__(self):
         return "%s(street=%r, city=%r, zip=%r)" % (
@@ -105,7 +100,9 @@ def setup_listener(mapper, class_):
         backref=backref(
             "parent_%s" % discriminator,
             primaryjoin=remote(class_.id) == foreign(Address.parent_id),
+            overlaps="addresses, parent_customer",
         ),
+        overlaps="addresses",
     )
 
     @event.listens_for(class_.addresses, "append")
@@ -114,11 +111,11 @@ def setup_listener(mapper, class_):
 
 
 class Customer(HasAddresses, Base):
-    name = Column(String)
+    name: Mapped[str]
 
 
 class Supplier(HasAddresses, Base):
-    company_name = Column(String)
+    company_name: Mapped[str]
 
 
 engine = create_engine("sqlite://", echo=True)
